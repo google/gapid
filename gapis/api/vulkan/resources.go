@@ -765,9 +765,9 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 	}
 	resourceID := resourceIDs[shader]
 
-	resource := resources.Find(shader.ResourceType(ctx), resourceID)
-	if resource == nil {
-		return fmt.Errorf("Couldn't find resource")
+	resource, err := resources.Find(shader.ResourceType(ctx), resourceID)
+	if err != nil {
+		return err
 	}
 
 	c, err := capture.ResolveFromPath(ctx, at.Capture)

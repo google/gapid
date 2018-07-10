@@ -83,6 +83,7 @@ func (n *Metrics) Path() *Any                   { return &Any{Path: &Any_Metrics
 func (n *Parameter) Path() *Any                 { return &Any{Path: &Any_Parameter{n}} }
 func (n *Report) Path() *Any                    { return &Any{Path: &Any_Report{n}} }
 func (n *ResourceData) Path() *Any              { return &Any{Path: &Any_ResourceData{n}} }
+func (n *MultiResourceData) Path() *Any         { return &Any{Path: &Any_MultiResourceData{n}} }
 func (n *Resources) Path() *Any                 { return &Any{Path: &Any_Resources{n}} }
 func (n *Result) Path() *Any                    { return &Any{Path: &Any_Result{n}} }
 func (n *Slice) Path() *Any                     { return &Any{Path: &Any_Slice{n}} }
@@ -119,6 +120,7 @@ func (n Metrics) Parent() Node                   { return n.Command }
 func (n Parameter) Parent() Node                 { return n.Command }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
+func (n MultiResourceData) Parent() Node         { return n.After }
 func (n Resources) Parent() Node                 { return n.Capture }
 func (n Result) Parent() Node                    { return n.Command }
 func (n Slice) Parent() Node                     { return oneOfNode(n.Array) }
@@ -150,6 +152,7 @@ func (n *Metrics) SetParent(p Node)                   { n.Command, _ = p.(*Comma
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
+func (n *MultiResourceData) SetParent(p Node)         { n.After, _ = p.(*Command) }
 func (n *Resources) SetParent(p Node)                 { n.Capture, _ = p.(*Capture) }
 func (n *Result) SetParent(p Node)                    { n.Command, _ = p.(*Command) }
 func (n *State) SetParent(p Node)                     { n.After, _ = p.(*Command) }
@@ -244,6 +247,11 @@ func (n Report) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.report", n.Pare
 // Format implements fmt.Formatter to print the version.
 func (n ResourceData) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.ID)
+}
+
+// Format implements fmt.Formatter to print the version.
+func (n MultiResourceData) Format(f fmt.State, c rune) {
+	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.IDs)
 }
 
 // Format implements fmt.Formatter to print the version.
@@ -598,6 +606,15 @@ func (n *Command) MemoryAfter(pool uint32, addr, size uint64) *Memory {
 func (n *Command) ResourceAfter(id *ID) *ResourceData {
 	return &ResourceData{
 		ID:    id,
+		After: n,
+	}
+}
+
+// ResourcesAfter returns the path node to the resources with the given
+// identifiers after this command.
+func (n *Command) ResourcesAfter(ids []*ID) *MultiResourceData {
+	return &MultiResourceData{
+		IDs:   ids,
 		After: n,
 	}
 }

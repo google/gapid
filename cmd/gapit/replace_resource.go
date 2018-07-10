@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
@@ -24,8 +25,10 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type replaceResourceVerb struct{ ReplaceResourceFlags }
@@ -50,13 +53,13 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 		return nil
 	}
 
-	if verb.Handle == "" {
-		app.Usage(ctx, "-handle argument is required")
+	if (verb.Handle == "") == (verb.UpdateResourceBinary == "") {
+		app.Usage(ctx, "only one of -handle or -updateresourcebinary arguments is required")
 		return nil
 	}
 
-	if verb.ResourcePath == "" {
-		app.Usage(ctx, "-resourcepath argument is required")
+	if verb.Handle != "" && verb.ResourcePath == "" {
+		app.Usage(ctx, "-resourcepath argument is required if -handle is specified")
 		return nil
 	}
 
@@ -90,36 +93,74 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 		verb.At = int(boxedCapture.(*service.Capture).NumCommands) - 1
 	}
 
-	for _, types := range resources.GetTypes() {
-		if types.Type == api.ResourceType_ShaderResource {
-			var matchedResource *service.Resource
-			for _, v := range types.GetResources() {
-				if strings.Contains(v.GetHandle(), verb.Handle) {
-					if matchedResource != nil {
-						return fmt.Errorf("Multiple resources matched: %s, %s", matchedResource.GetHandle(), v.GetHandle())
-					}
-					matchedResource = v
-				}
-			}
-			resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(matchedResource.ID)
-			newResourceBytes, err := ioutil.ReadFile(verb.ResourcePath)
-			if err != nil {
-				return log.Errf(ctx, err, "Could not read resource file %s", verb.ResourcePath)
-			}
+	var resourcePath *path.Any
+	var resourceData interface{}
 
-			newResourceData := api.NewResourceData(&api.Shader{Type: api.ShaderType_SpirvBinary, Source: string(newResourceBytes)})
-			newResourcePath, err := client.Set(ctx, resourcePath.Path(), newResourceData)
-			if err != nil {
-				return log.Errf(ctx, err, "Could not update data for shader: %v", matchedResource)
-			}
-			newCapture := newResourcePath.GetResourceData().GetAfter().GetCapture()
-			newCaptureFilepath, err := filepath.Abs(verb.OutputTraceFile)
-			err = client.SaveCapture(ctx, newCapture, newCaptureFilepath)
-
-			log.I(ctx, "Capture written to: %v", newCaptureFilepath)
-			return nil
+	switch {
+	case verb.Handle != "":
+		matchedResource, err := resources.FindSingle(func(t api.ResourceType, r service.Resource) bool {
+			return t == api.ResourceType_ShaderResource && strings.Contains(r.GetHandle(), verb.Handle)
+		})
+		if err != nil {
+			return err
 		}
+		resourcePath = capture.Command(uint64(verb.At)).ResourceAfter(matchedResource.ID).Path()
+		newResourceBytes, err := ioutil.ReadFile(verb.ResourcePath)
+		if err != nil {
+			return log.Errf(ctx, err, "Could not read resource file %s", verb.ResourcePath)
+		}
+		resourceData = api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: string(newResourceBytes)})
+	case verb.UpdateResourceBinary != "":
+		shaderResources := resources.FindAll(func(t api.ResourceType, r service.Resource) bool {
+			return t == api.ResourceType_ShaderResource
+		})
+		ids := make([]*path.ID, len(shaderResources))
+		resourcesSource := make([]*api.ResourceData, len(shaderResources))
+		for i, v := range shaderResources {
+			ids[i] = v.ID
+			resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.ID)
+			rd, err := client.Get(ctx, resourcePath.Path())
+			if err != nil {
+				log.Errf(ctx, err, "Could not get data for shader: %v", v)
+				return err
+			}
+			newData, err := verb.getNewResourceData(ctx, rd.(*api.ResourceData).GetShader().GetSource())
+			if err != nil {
+				log.Errf(ctx, err, "Could not update the shader: %v", v)
+				return err
+			}
+			resourcesSource[i] = api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: string(newData)})
+		}
+		resourceData = api.NewMultiResourceData(resourcesSource)
+		resourcePath = capture.Command(uint64(verb.At)).ResourcesAfter(ids).Path()
 	}
 
-	return fmt.Errorf("Failed to find the resource with the handle %s", verb.Handle)
+	newResourcePath, err := client.Set(ctx, resourcePath, resourceData)
+	if err != nil {
+		return log.Errf(ctx, err, "Could not update resource data: %v", resourcePath)
+	}
+	newCapture := path.FindCapture(newResourcePath.Node())
+	newCaptureFilepath, err := filepath.Abs(verb.OutputTraceFile)
+	err = client.SaveCapture(ctx, newCapture, newCaptureFilepath)
+
+	log.I(ctx, "Capture written to: %v", newCaptureFilepath)
+	return nil
+}
+
+// getNewResourceData runs the update resource binary on the old resource data
+// and returns the newly generated resource data
+func (verb *replaceResourceVerb) getNewResourceData(ctx context.Context, resourceData string) (string, error) {
+	stdout, stderr := bytes.Buffer{}, bytes.Buffer{}
+	cmd := shell.Cmd{Name: verb.UpdateResourceBinary}.
+		Read(bytes.NewBufferString(resourceData)).
+		Capture(&stdout, &stderr)
+
+	if err := cmd.Run(ctx); err != nil {
+		msg := fmt.Sprintf("Command '%v' returned error", verb.UpdateResourceBinary)
+		if stderr.Len() > 0 {
+			msg += fmt.Sprintf(": %v", stderr.String())
+		}
+		return "", log.Errf(ctx, err, msg)
+	}
+	return stdout.String(), nil
 }

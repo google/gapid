@@ -51,8 +51,8 @@ type Resource interface {
 
 // ResourceMeta represents resource with a state information obtained during building.
 type ResourceMeta struct {
-	Resource Resource    // Resolved resource.
-	IDMap    ResourceMap // Map for resolved resources to ids.
+	Resources []Resource  // Resolved resource.
+	IDMap     ResourceMap // Map for resolved resources to ids.
 }
 
 // ReplaceCallback is called from SetResourceData to propagate changes to current command stream.
@@ -99,4 +99,9 @@ func NewResourceData(data interface{}) *ResourceData {
 	default:
 		panic(fmt.Errorf("%T is not a ResourceData type", data))
 	}
+}
+
+// NewMultiResourceData returns a new *MultiResourceData with the specified resources.
+func NewMultiResourceData(resources []*ResourceData) *MultiResourceData {
+	return &MultiResourceData{Resources: resources}
 }
