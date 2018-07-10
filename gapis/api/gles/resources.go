@@ -321,9 +321,9 @@ func (s Shaderʳ) SetResourceData(
 	}
 	resourceID := resourceIDs[s]
 
-	resource := resources.Find(s.ResourceType(ctx), resourceID)
-	if resource != nil {
-		return fmt.Errorf("Couldn't find resource")
+	resource, err := resources.Find(s.ResourceType(ctx), resourceID)
+	if err != nil {
+		return err
 	}
 
 	c, err := capture.ResolveFromPath(ctx, capturePath)

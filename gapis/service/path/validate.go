@@ -250,6 +250,19 @@ func (n *ResourceData) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *MultiResourceData) Validate() error {
+	if err := checkNotNilAndValidate(n, n.After, "after"); err != nil {
+		return err
+	}
+	for _, id := range n.IDs {
+		if err := checkIsValid(n, id, "id"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Validate checks the path is valid.
 func (n *Resources) Validate() error {
 	return checkNotNilAndValidate(n, n.Capture, "capture")
 }

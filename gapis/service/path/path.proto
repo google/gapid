@@ -49,18 +49,19 @@ message Any {
     Memory memory = 21;
     Mesh mesh = 22;
     Metrics metrics = 23;
-    Parameter parameter = 24;
-    Report report = 25;
-    ResourceData resource_data = 26;
-    Resources resources = 27;
-    Result result = 28;
-    Slice slice = 29;
-    State state = 30;
-    StateTree state_tree = 31;
-    StateTreeNode state_tree_node = 32;
-    StateTreeNodeForPath state_tree_node_for_path = 33;
-    Stats stats = 34;
-    Thumbnail thumbnail = 35;
+    MultiResourceData multi_resource_data = 24;
+    Parameter parameter = 25;
+    Report report = 26;
+    ResourceData resource_data = 27;
+    Resources resources = 28;
+    Result result = 29;
+    Slice slice = 30;
+    State state = 31;
+    StateTree state_tree = 32;
+    StateTreeNode state_tree_node = 33;
+    StateTreeNodeForPath state_tree_node_for_path = 34;
+    Stats stats = 35;
+    Thumbnail thumbnail = 36;
   }
 }
 
@@ -376,6 +377,13 @@ message Resources {
 message ResourceData {
   ID ID = 1;
   Command after = 2;
+}
+
+// MultiResourceData is a path to a set of resource snapshots at a given point
+// in a command stream.
+message MultiResourceData {
+  Command after = 1;
+  repeated ID IDs = 2;
 }
 
 // Slice is a path to a subslice of a slice or array.

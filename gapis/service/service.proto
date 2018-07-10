@@ -101,6 +101,7 @@ message Value {
     api.ResourceData resource_data = 31;
     api.Mesh mesh = 32;
     api.Metrics metrics = 33;
+    api.MultiResourceData multi_resource_data = 34;
 
     image.Info image_info = 40;
 

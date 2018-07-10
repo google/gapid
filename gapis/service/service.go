@@ -243,6 +243,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_ImageInfo{v}}
 	case *device.Instance:
 		return &Value{Val: &Value_Device{v}}
+	case *api.MultiResourceData:
+		return &Value{Val: &Value_MultiResourceData{v}}
 
 	default:
 		if v := box.NewValue(v); v != nil {
@@ -280,17 +282,33 @@ func NewMemoryRanges(l memory.RangeList) []*MemoryRange {
 	return out
 }
 
-// Find looks up a resource by type and identifier.
-func (r *Resources) Find(ty api.ResourceType, id id.ID) *Resource {
+// FindAll returns all the resources that match the predicate f.
+func (r *Resources) FindAll(f func(api.ResourceType, Resource) bool) []*Resource {
+	var resources []*Resource
 	for _, t := range r.Types {
-		if t.Type == ty {
-			for _, r := range t.Resources {
-				if r.ID.ID() == id {
-					return r
-				}
+		for _, r := range t.Resources {
+			if f(t.Type, *r) {
+				resources = append(resources, r)
 			}
-			break
 		}
 	}
-	return nil
+	return resources
+}
+
+// FindSingle returns the single resource that matches the predicate f.
+// If there are 0 or multiple resources found, FindSingle returns an error.
+func (r *Resources) FindSingle(f func(api.ResourceType, Resource) bool) (*Resource, error) {
+	resources := r.FindAll(f)
+	if len(resources) != 1 {
+		return nil, fmt.Errorf("One resource expected, found %d", len(resources))
+	}
+	return resources[0], nil
+}
+
+// Find looks up a resource by type and identifier.
+// Returns an error if 0 or multiple resources are found.
+func (r *Resources) Find(ty api.ResourceType, id id.ID) (*Resource, error) {
+	return r.FindSingle(func(t api.ResourceType, r Resource) bool {
+		return t == ty && r.ID.ID() == id
+	})
 }

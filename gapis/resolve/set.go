@@ -63,8 +63,8 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 	case *path.Report:
 		return nil, fmt.Errorf("Reports are immutable")
 
-	case *path.ResourceData:
-		meta, err := ResourceMeta(ctx, p.ID, p.After)
+	case *path.MultiResourceData:
+		meta, err := ResourceMeta(ctx, p.IDs, p.After)
 		if err != nil {
 			return nil, err
 		}
@@ -85,12 +85,63 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			cmds[where] = with.(api.Cmd)
 		}
 
+		data, ok := val.(*api.MultiResourceData)
+		if !ok {
+			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
+		}
+
+		for i, resource := range meta.Resources {
+			if err := resource.SetResourceData(ctx, p.After, data.Resources[i], meta.IDMap, replaceCommands); err != nil {
+				return nil, err
+			}
+		}
+
+		// Store the new command list
+		c, err := changeCommands(ctx, p.After.Capture, cmds)
+		if err != nil {
+			return nil, err
+		}
+
+		return &path.MultiResourceData{
+			IDs: p.IDs, // TODO: Shouldn't this change?
+			After: &path.Command{
+				Capture: c,
+				Indices: p.After.Indices,
+			},
+		}, nil
+
+	case *path.ResourceData:
+		meta, err := ResourceMeta(ctx, []*path.ID{p.ID}, p.After)
+		if err != nil {
+			return nil, err
+		}
+
+		cmdIdx := p.After.Indices[0]
+		// If we change resource data, subcommands do not affect this, so change
+		// the main command.
+
+		oldCmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
+		if err != nil {
+			return nil, err
+		}
+
+		cmds := make([]api.Cmd, len(oldCmds))
+		copy(cmds, oldCmds)
+
+		replaceCommands := func(where uint64, with interface{}) {
+			cmds[where] = with.(api.Cmd)
+		}
+
 		data, ok := val.(*api.ResourceData)
 		if !ok {
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
-		if err := meta.Resource.SetResourceData(ctx, p.After, data, meta.IDMap, replaceCommands); err != nil {
+		if len(meta.Resources) != 1 {
+			return nil, fmt.Errorf("Expected a single resource, got %d", len(meta.Resources))
+		}
+
+		if err := meta.Resources[0].SetResourceData(ctx, p.After, data, meta.IDMap, replaceCommands); err != nil {
 			return nil, err
 		}
 

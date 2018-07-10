@@ -24,8 +24,8 @@ import (
 )
 
 // ResourceMeta returns the metadata for the specified resource.
-func ResourceMeta(ctx context.Context, id *path.ID, after *path.Command) (*api.ResourceMeta, error) {
-	obj, err := database.Build(ctx, &ResourceMetaResolvable{ID: id, After: after})
+func ResourceMeta(ctx context.Context, ids []*path.ID, after *path.Command) (*api.ResourceMeta, error) {
+	obj, err := database.Build(ctx, &ResourceMetaResolvable{IDs: ids, After: after})
 	if err != nil {
 		return nil, err
 	}
@@ -42,14 +42,18 @@ func (r *ResourceMetaResolvable) Resolve(ctx context.Context) (interface{}, erro
 	if !ok {
 		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.After)
 	}
-	id := r.ID.ID()
-	val, ok := res.resources[id]
-	if !ok {
-		return nil, fmt.Errorf("Could not find resource %v", id)
+	ids := r.IDs
+	values := make([]api.Resource, len(ids))
+	for i, id := range ids {
+		val, ok := res.resources[id.ID()]
+		if !ok {
+			return nil, fmt.Errorf("Could not find resource %v", id.ID())
+		}
+		values[i] = val
 	}
 	result := &api.ResourceMeta{
-		IDMap:    res.resourceMap,
-		Resource: val,
+		IDMap:     res.resourceMap,
+		Resources: values,
 	}
 	return result, nil
 }

@@ -127,6 +127,12 @@ message ResourceData {
   }
 }
 
+// MultiResourceData represents the state  of resources at a single point in a
+// capture
+message MultiResourceData {
+  repeated ResourceData resources = 1;
+}
+
 // Texture represents a texture resource.
 message Texture {
   oneof type {
