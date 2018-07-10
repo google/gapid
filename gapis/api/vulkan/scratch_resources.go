@@ -25,6 +25,10 @@ const (
 	scratchBufferSize = uint64(64 * 1024 * 1024)
 )
 
+// queueFamilyScratchResources holds the scratch resources for a queue family.
+// It manages the creation/destroy of a command pool, a fixed-size memory,
+// command buffers for each queue of this family, the usage of the fixed-size
+// memory and the submission of the commands buffers.
 type queueFamilyScratchResources struct {
 	sb             *stateBuilder
 	device         VkDevice
@@ -32,11 +36,14 @@ type queueFamilyScratchResources struct {
 	commandPool    VkCommandPool
 	commandBuffers map[VkQueue]VkCommandBuffer
 	memory         VkDeviceMemory
-	memorySize     VkDeviceSize
+	memorySize     uint64
 	allocated      uint64
 	postExecuted   map[VkQueue][]func()
 }
 
+// getQueueFamilyScratchResources returns the scratch resources for the family
+// of the given queue. If such a queeuFamilyScratchResources does not exist,
+// it will create one and return it.
 func (sb *stateBuilder) getQueueFamilyScratchResources(queue VkQueue) *queueFamilyScratchResources {
 	dev := sb.s.Queues().Get(queue).Device()
 	family := sb.s.Queues().Get(queue).Family()
@@ -51,7 +58,7 @@ func (sb *stateBuilder) getQueueFamilyScratchResources(queue VkQueue) *queueFami
 			commandPool:    VkCommandPool(0),
 			commandBuffers: map[VkQueue]VkCommandBuffer{},
 			memory:         VkDeviceMemory(0),
-			memorySize:     VkDeviceSize(bufferAllocationSize(scratchBufferSize)),
+			memorySize:     bufferAllocationSize(scratchBufferSize),
 			allocated:      uint64(0),
 			postExecuted:   map[VkQueue][]func(){},
 		}
@@ -59,6 +66,8 @@ func (sb *stateBuilder) getQueueFamilyScratchResources(queue VkQueue) *queueFami
 	return sb.scratchResources[dev][family]
 }
 
+// flushAllScratchResources submits all the comamnd buffers of all the queue
+// family scratch resources, and calls all the after-executed callbacks.
 func (sb *stateBuilder) flushAllScratchResources() {
 	for _, familyInfo := range sb.scratchResources {
 		for _, qr := range familyInfo {
@@ -67,6 +76,8 @@ func (sb *stateBuilder) flushAllScratchResources() {
 	}
 }
 
+// freeAllScratchResources frees all the command pool, memory, etc of all the
+// queue family scratch resources.
 func (sb *stateBuilder) freeAllScratchResources() {
 	for _, familyInfo := range sb.scratchResources {
 		for _, qr := range familyInfo {
@@ -75,11 +86,16 @@ func (sb *stateBuilder) freeAllScratchResources() {
 	}
 }
 
+// flushQueueFamilyScratchResources submits all the command buffers of the
+// scratch resources of the given queue's family, and also calls all the
+// after-executed callbacks registered on that queue family.
 func (sb *stateBuilder) flushQueueFamilyScratchResources(queue VkQueue) {
 	qr := sb.getQueueFamilyScratchResources(queue)
 	qr.flush()
 }
 
+// getCommandPool returns the scratch command pool of this queue family
+// scratch resource, creates one if it does not exist before.
 func (qr *queueFamilyScratchResources) getCommandPool() VkCommandPool {
 	if qr.commandPool != VkCommandPool(0) {
 		return qr.commandPool
@@ -104,6 +120,8 @@ func (qr *queueFamilyScratchResources) getCommandPool() VkCommandPool {
 	return qr.commandPool
 }
 
+// getCommandPool returns the scratch command buffer for the given queue,
+// creates one if it does not exist before.
 func (qr *queueFamilyScratchResources) getCommandBuffer(queue VkQueue) VkCommandBuffer {
 	sb := qr.sb
 	commandPool := qr.getCommandPool()
@@ -141,54 +159,77 @@ func (qr *queueFamilyScratchResources) getCommandBuffer(queue VkQueue) VkCommand
 	return commandBuffer
 }
 
+// getDeviceMemory returns the fixed-size scratch memory of this scratch
+// resource, creates one if it does not exist before.
 func (qr *queueFamilyScratchResources) getDeviceMemory() VkDeviceMemory {
-	sb := qr.sb
-	dev := qr.device
 	if qr.memory == VkDeviceMemory(0) {
-		deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-			return sb.s.DeviceMemories().Contains(VkDeviceMemory(x)) || GetState(sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
-		}))
-		memoryTypeIndex := sb.GetScratchBufferMemoryIndex(sb.s.Devices().Get(dev))
-		memorySize := VkDeviceSize(bufferAllocationSize(scratchBufferSize))
-		sb.write(sb.cb.VkAllocateMemory(
-			dev,
-			NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
-				NewVkMemoryAllocateInfo(sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
-					0, // pNext
-					VkDeviceSize(memorySize), // allocationSize
-					memoryTypeIndex,          // memoryTypeIndex
-				)).Ptr()),
-			memory.Nullptr,
-			sb.MustAllocWriteData(deviceMemory).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
-		qr.memory = deviceMemory
-		qr.memorySize = memorySize
+		qr.memory = qr.newDeviceMemory(qr.memorySize)
 		qr.allocated = uint64(0)
 	}
 	return qr.memory
 }
 
-func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize uint64, buffers map[VkBuffer]scratchBufferInfo) error {
+// newDeviceMemory creates a device memory with the given size.
+func (qr *queueFamilyScratchResources) newDeviceMemory(size uint64) VkDeviceMemory {
 	sb := qr.sb
 	dev := qr.device
-	if totalAllocationSize > uint64(qr.memorySize) {
-		return log.Errf(sb.ctx, nil, "cannot allocated scratch memory of size: %v, maximum allowed size is: %v", totalAllocationSize, qr.memorySize)
+	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+		return sb.s.DeviceMemories().Contains(VkDeviceMemory(x)) || GetState(sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
+	}))
+	memoryTypeIndex := sb.GetScratchBufferMemoryIndex(sb.s.Devices().Get(dev))
+	size = nextMultipleOf(size, 256)
+	sb.write(sb.cb.VkAllocateMemory(
+		dev,
+		NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
+			NewVkMemoryAllocateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
+				0,                  // pNext
+				VkDeviceSize(size), // allocationSize
+				memoryTypeIndex,    // memoryTypeIndex
+			)).Ptr()),
+		memory.Nullptr,
+		sb.MustAllocWriteData(deviceMemory).Ptr(),
+		VkResult_VK_SUCCESS,
+	))
+	return deviceMemory
+}
+
+// bindAndFillBuffers takes a list of buffer info, bind them with memory and
+// fill them. If the total allocation size of the buffers can be fit in the
+// fixed-size memory, bind with the fixed-size memory, returns the memory handle
+// and false. A flush on this scratch resource may be triggered if the remaining
+// space of the fixed-size memory is not large enough. If the total allocation
+// size is greater than the fixed-size memory size, a temporary device memory
+// will be created and returned with boolean value: true to indicate a temporary
+// device memory is created.
+func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize uint64, buffers map[VkBuffer]scratchBufferInfo) (VkDeviceMemory, bool) {
+	sb := qr.sb
+	dev := qr.device
+	var deviceMemory VkDeviceMemory
+	var allocated uint64
+	var usingTempMem bool
+	if totalAllocationSize > qr.memorySize {
+		deviceMemory = qr.newDeviceMemory(totalAllocationSize)
+		allocated = uint64(0)
+		usingTempMem = true
+	} else {
+		// Use the fixed-size scratch memory
+		if totalAllocationSize+qr.allocated > qr.memorySize {
+			qr.flush()
+			return qr.bindAndFillBuffers(totalAllocationSize, buffers)
+		}
+		deviceMemory = qr.getDeviceMemory()
+		allocated = qr.allocated
+		usingTempMem = false
 	}
-	if totalAllocationSize+qr.allocated > uint64(qr.memorySize) {
-		qr.flush()
-		return qr.bindAndFillBuffers(totalAllocationSize, buffers)
-	}
-	deviceMemory := qr.getDeviceMemory()
 	for buf, info := range buffers {
 		sb.write(sb.cb.VkBindBufferMemory(
-			dev, buf, deviceMemory, VkDeviceSize(qr.allocated), VkResult_VK_SUCCESS))
+			dev, buf, deviceMemory, VkDeviceSize(allocated), VkResult_VK_SUCCESS))
 
 		atData := sb.MustReserve(info.allocationSize)
 		ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
 		sb.write(sb.cb.VkMapMemory(
-			dev, deviceMemory, VkDeviceSize(qr.allocated), VkDeviceSize(info.allocationSize),
+			dev, deviceMemory, VkDeviceSize(allocated), VkDeviceSize(info.allocationSize),
 			VkMemoryMapFlags(0), ptrAtData.Ptr(), VkResult_VK_SUCCESS,
 		).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
 		ptrAtData.Free()
@@ -213,7 +254,7 @@ func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize ui
 				VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
 				0,                                 // pNext
 				deviceMemory,                      // memory
-				VkDeviceSize(qr.allocated),        // offset
+				VkDeviceSize(allocated),           // offset
 				VkDeviceSize(info.allocationSize), // size
 			)).Ptr(),
 			VkResult_VK_SUCCESS,
@@ -221,11 +262,18 @@ func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize ui
 
 		sb.write(sb.cb.VkUnmapMemory(dev, deviceMemory))
 		atData.Free()
-		qr.allocated += info.allocationSize
+		allocated += info.allocationSize
 	}
-	return nil
+	if !usingTempMem {
+		qr.allocated = allocated
+	}
+	return deviceMemory, usingTempMem
 }
 
+// flush submits all the command buffers of this scratch resource, waits until
+// all the submitted commands finish, resets the command buffer, clear the
+// usage of the fixed-size memory, and carry out the after-executed callbacks
+// registered on this queue family scratch resource.
 func (qr *queueFamilyScratchResources) flush() {
 	sb := qr.sb
 	for q, cb := range qr.commandBuffers {
@@ -273,6 +321,8 @@ func (qr *queueFamilyScratchResources) flush() {
 	}
 }
 
+// free frees the command pool, command buffers and device memory of this
+// queue family scratch resource.
 func (qr *queueFamilyScratchResources) free() {
 	sb := qr.sb
 	sb.write(sb.cb.VkDestroyCommandPool(qr.device, qr.commandPool, memory.Nullptr))
@@ -283,6 +333,15 @@ func (qr *queueFamilyScratchResources) free() {
 	qr.allocated = uint64(0)
 }
 
+// scratchTask wraps a set of buffers and command buffer commands which will be
+// used together for host and GPU execution. Buffers in a scratchTask will be
+// be allocated altogether, and command buffer commands will be submitted
+// altogether after all the buffers are properly allocated. It is guaranteed
+// that at the submission time of the command buffer commands, the buffers are
+// allocated and available to be accessed by the commands. ScratchTask also
+// holds callbacks for the host side commands to be carried out before the
+// submission of the comamnd buffer commands, and after the execution of the
+// commands.
 type scratchTask struct {
 	sb                  *stateBuilder
 	buffers             map[VkBuffer]scratchBufferInfo
@@ -299,6 +358,10 @@ type scratchBufferInfo struct {
 	allocationSize uint64
 }
 
+// newScratchTaskOnQueue creates a new scratchTask for the given queue, all the
+// commands to be recorded in the returned task will be submitted to the given
+// queue, and all the scratch resources, e.g. scratch memory, will be provided
+// by the queue family scratch resource of the given queue.
 func (sb *stateBuilder) newScratchTaskOnQueue(queue VkQueue) *scratchTask {
 	return &scratchTask{
 		sb:                  sb,
@@ -311,14 +374,24 @@ func (sb *stateBuilder) newScratchTaskOnQueue(queue VkQueue) *scratchTask {
 	}
 }
 
+// commit closes a scratchTask, tries to allocate memory for its buffers,
+// carries out the callbacks before the command buffer comamnds submission, add
+// the command buffer commands to the command, and pass the after-execution
+// callbacks to the after-execution callback queue.
 func (t *scratchTask) commit() error {
 	sb := t.sb
 	if t.totalAllocationSize == uint64(0) {
 		return log.Err(sb.ctx, nil, "Nil or empty scratch buffer session")
 	}
 	res := sb.getQueueFamilyScratchResources(t.queue)
-	if err := res.bindAndFillBuffers(t.totalAllocationSize, t.buffers); err != nil {
-		return log.Errf(sb.ctx, err, "commiting scratch buffers")
+	if mem, isTemp := res.bindAndFillBuffers(t.totalAllocationSize, t.buffers); isTemp {
+		// The fixed size scratch buffer is not large enough for the allocation,
+		// temporary device memory is created for this task, need to free the
+		// memory after the task is done.
+		t.deferUntilExecuted(func() {
+			sb.write(sb.cb.VkFreeMemory(res.device, mem, memory.Nullptr))
+		})
+		defer res.flush()
 	}
 	for _, f := range t.onCommit {
 		f()
@@ -327,27 +400,42 @@ func (t *scratchTask) commit() error {
 	for _, f := range t.cmdBufRecorded {
 		f(cb)
 	}
+	// pass the after-execution callbacks in the reverse order.
 	for i := len(t.defered) - 1; i >= 0; i-- {
 		res.postExecuted[t.queue] = append(res.postExecuted[t.queue], t.defered[i])
 	}
 	return nil
 }
 
-func (t *scratchTask) deferUntilCommitted(f ...func()) *scratchTask {
+// doOnCommitted register callbacks to be called when this scratchTask is
+// closed i.e. when onCommit() is called. Callbacks will be called in the order
+// in the argument list, and the calling order of doOnCommited.
+func (t *scratchTask) doOnCommitted(f ...func()) *scratchTask {
 	t.onCommit = append(t.onCommit, f...)
 	return t
 }
 
+// recordCmdBufCommand register callbacks to be called when this scratchTask is
+// committed, and after all buffers are allocated properly. A command buffer
+// will be given to each callback. Callbacks will be called in the same order
+// of recordCmdBufCommand being called and the argument list.
 func (t *scratchTask) recordCmdBufCommand(f ...func(cb VkCommandBuffer)) *scratchTask {
 	t.cmdBufRecorded = append(t.cmdBufRecorded, f...)
 	return t
 }
 
+// deferUntilExecuted register callbacks to be called when the execution of the
+// command buffer commands of this scratchTask is fully finished. Note that the
+// callbacks will be called in the reverse order of deferUntilExecuted being
+// called and the argument list.
 func (t *scratchTask) deferUntilExecuted(f ...func()) *scratchTask {
 	t.defered = append(t.defered, f...)
 	return t
 }
 
+// newBuffer creates a new VkBuffer with the given content and usage bits. The
+// content will NOT be filled to the buffer until this scratchTask is committed,
+// i.e. onCommit() being called. A VkBuffer will always be returned.
 func (t *scratchTask) newBuffer(subRngs []bufferSubRangeFillInfo, usages ...VkBufferUsageFlagBits) VkBuffer {
 	sb := t.sb
 	size := uint64(0)

@@ -694,7 +694,7 @@ func (h *ipStoreHandler) dispatch(info ipStoreDispatchInfo, tsk *scratchTask) er
 	tsk.deferUntilExecuted(func() {
 		h.sb.write(h.sb.cb.VkDestroyBuffer(info.dev, dataBuf, memory.Nullptr))
 	})
-	tsk.deferUntilCommitted(func() {
+	tsk.doOnCommitted(func() {
 		dataBufView := VkBufferView(newUnusedID(true, func(x uint64) bool {
 			return GetState(h.sb.newState).BufferViews().Contains(VkBufferView(x))
 		}))
@@ -810,7 +810,7 @@ func (h *ipStoreHandler) dispatch(info ipStoreDispatchInfo, tsk *scratchTask) er
 		h.sb.write(h.sb.cb.VkDestroyBuffer(info.dev, metadataBuf, memory.Nullptr))
 	})
 
-	tsk.deferUntilCommitted(func() {
+	tsk.doOnCommitted(func() {
 		writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreStorageImageBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, []VkDescriptorImageInfo{
 			NewVkDescriptorImageInfo(h.sb.ta,
 				0,       // Sampler
@@ -1147,7 +1147,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		))
 	}
 
-	tsk.deferUntilCommitted(func() {
+	tsk.doOnCommitted(func() {
 		writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderInputAttachmentBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfoList, []VkDescriptorBufferInfo{}, []VkBufferView{})
 	})
 
@@ -1173,7 +1173,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			),
 		}
 
-		tsk.deferUntilCommitted(func() {
+		tsk.doOnCommitted(func() {
 			writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderUniformBufferBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, []VkDescriptorImageInfo{}, bufInfoList, []VkBufferView{})
 		})
 	}
@@ -2303,15 +2303,12 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 			})
 
 			for len(h.copies[dstImg]) != 0 && len(h.content[dstImg]) != 0 {
-				// log.W(h.sb.ctx, "len(h.copies[dstImg]): %v", len(h.copies[dstImg]))
-				// log.W(h.sb.ctx, "len(h.content[dstImg]): %v", len(h.content[dstImg]))
 				copies := []VkBufferImageCopy{}
 				bufContent := []bufferSubRangeFillInfo{}
 				bufOffset := uint64(0)
-				for i, copy := range h.copies[dstImg] {
-					if bufOffset+h.content[dstImg][i].size() > scratchBufferSize {
-						break
-					}
+				tsk := h.sb.newScratchTaskOnQueue(queue)
+				addIthCopyAndContent := func(i int) {
+					copy := h.copies[dstImg][i]
 					copy.SetBufferOffset(VkDeviceSize(bufOffset))
 					copies = append(copies, copy)
 					content := h.content[dstImg][i]
@@ -2319,12 +2316,17 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 					bufContent = append(bufContent, content)
 					bufOffset += content.size()
 				}
-				if len(copies) == 0 || len(bufContent) == 0 {
-					return log.Errf(h.sb.ctx, nil, "not enough memory to allocate for the scratch buffer for copying image subresource, required size: %v, maximum scratch buffer size: %v", h.content[dstImg][0].size(), scratchBufferSize)
+
+				addIthCopyAndContent(0)
+				for i := 1; i < len(h.copies[dstImg]); i++ {
+					if nextMultipleOf(bufOffset+h.content[dstImg][i].size(), 256) > scratchBufferSize {
+						break
+					}
+					addIthCopyAndContent(i)
 				}
+
 				h.copies[dstImg] = h.copies[dstImg][len(copies):]
 				h.content[dstImg] = h.content[dstImg][len(bufContent):]
-				tsk := h.sb.newScratchTaskOnQueue(queue)
 				scratchBuffer := tsk.newBuffer(bufContent, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
 				tsk.deferUntilExecuted(func() {
 					h.sb.write(h.sb.cb.VkDestroyBuffer(h.sb.s.Queues().Get(tsk.queue).Device(), scratchBuffer, memory.Nullptr))
