@@ -67,7 +67,7 @@ func (m *bufferCompat) modifyBufferData(ctx context.Context, out transform.Write
 	s := out.State()
 
 	// Get the target buffer.
-	buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cb.Thread, nil, target)
+	buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cb.Thread, nil, nil, target)
 	if buf.IsNil() || err != nil {
 		// Unknown buffer
 		modify()

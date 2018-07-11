@@ -41,14 +41,14 @@
 ///////////
 
 @internal class QueueObject {
-  @unused VkDevice                       Device
-  @unused u32                            Family
-  @unused u32                            Index
-  @unused VkQueue                        VulkanHandle
-  map!(VkEvent, ref!EventObject)         PendingEvents
-  map!(VkSemaphore, ref!SemaphoreObject) PendingSemaphores
-  @unused ref!VulkanDebugMarkerInfo      DebugInfo
-  map!(u32, ref!CommandReference)        PendingCommands
+  @unused VkDevice                                  Device
+  @unused u32                                       Family
+  @unused u32                                       Index
+  @unused VkQueue                                   VulkanHandle
+  map!(VkEvent, ref!EventObject)                    PendingEvents
+  map!(VkSemaphore, ref!SemaphoreObject)            PendingSemaphores
+  @unused ref!VulkanDebugMarkerInfo                 DebugInfo
+  @untracked map!(u32, ref!CommandReference)        PendingCommands
 }
 
 @threadSafety("system")
@@ -187,6 +187,7 @@ cmd VkResult vkQueueSubmit(
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
 @blocking
+@alive
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
   if !(queue in Queues) { vkErrorInvalidQueue(queue) }

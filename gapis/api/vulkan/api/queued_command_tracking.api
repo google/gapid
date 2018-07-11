@@ -76,6 +76,7 @@ sub void execPendingCommands(VkQueue queue) {
         fenceObj := Fences[cmd.SignalFence]
         if fenceObj != null {
           fenceObj.Signaled = true
+          recordFenceSignal(cmd.SignalFence)
         }
       }
       if processSubcommand.b {

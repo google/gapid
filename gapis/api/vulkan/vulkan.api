@@ -271,43 +271,43 @@ enum LastSubmissionType {
 /////////////////////////////
 
 // Dispatchable objects.
-@serialize map!(VkInstance, ref!InstanceObject)             Instances
-@serialize map!(VkPhysicalDevice, ref!PhysicalDeviceObject) PhysicalDevices
-@serialize map!(VkDevice, ref!DeviceObject)                 Devices
-@serialize map!(VkQueue, ref!QueueObject)                   Queues
-@serialize map!(VkCommandBuffer, ref!CommandBufferObject)   CommandBuffers
+@handleMap @serialize map!(VkInstance, ref!InstanceObject)             Instances
+@handleMap @serialize map!(VkPhysicalDevice, ref!PhysicalDeviceObject) PhysicalDevices
+@handleMap @serialize map!(VkDevice, ref!DeviceObject)                 Devices
+@handleMap @serialize map!(VkQueue, ref!QueueObject)                   Queues
+@handleMap @serialize map!(VkCommandBuffer, ref!CommandBufferObject)   CommandBuffers
 // Non-dispatchable objects.
-@serialize map!(VkDeviceMemory, ref!DeviceMemoryObject)                  DeviceMemories
-@serialize map!(VkBuffer, ref!BufferObject)                              Buffers
-@serialize map!(VkBufferView, ref!BufferViewObject)                      BufferViews
-@serialize map!(VkImage, ref!ImageObject)                                Images
-@serialize map!(VkImageView, ref!ImageViewObject)                        ImageViews
-@serialize map!(VkShaderModule, ref!ShaderModuleObject)                  ShaderModules
-@serialize map!(VkPipeline, ref!GraphicsPipelineObject)                  GraphicsPipelines
-@serialize map!(VkPipeline, ref!ComputePipelineObject)                   ComputePipelines
-@serialize map!(VkPipelineLayout, ref!PipelineLayoutObject)              PipelineLayouts
-@serialize map!(VkSampler, ref!SamplerObject)                            Samplers
-@serialize map!(VkDescriptorSet, ref!DescriptorSetObject)                DescriptorSets
-@serialize map!(VkDescriptorSetLayout, ref!DescriptorSetLayoutObject)    DescriptorSetLayouts
-@serialize map!(VkDescriptorPool, ref!DescriptorPoolObject)              DescriptorPools
-@serialize map!(VkFence, ref!FenceObject)                                Fences
-@serialize map!(VkSemaphore, ref!SemaphoreObject)                        Semaphores
-@serialize map!(VkEvent, ref!EventObject)                                Events
-@serialize map!(VkQueryPool, ref!QueryPoolObject)                        QueryPools
-@serialize map!(VkFramebuffer, ref!FramebufferObject)                    Framebuffers
-@serialize map!(VkRenderPass, ref!RenderPassObject)                      RenderPasses
-@serialize map!(VkPipelineCache, ref!PipelineCacheObject)                PipelineCaches
-@serialize map!(VkCommandPool, ref!CommandPoolObject)                    CommandPools
-@serialize map!(VkSurfaceKHR, ref!SurfaceObject)                         Surfaces
-@serialize map!(VkSwapchainKHR, ref!SwapchainObject)                     Swapchains
-@serialize map!(VkDisplayModeKHR, ref!DisplayModeObject)                 DisplayModes
-@serialize map!(VkDebugReportCallbackEXT, ref!DebugReportCallbackObject) DebugReportCallbacks
+@handleMap @serialize map!(VkDeviceMemory, ref!DeviceMemoryObject)                  DeviceMemories
+@handleMap @serialize map!(VkBuffer, ref!BufferObject)                              Buffers
+@handleMap @serialize map!(VkBufferView, ref!BufferViewObject)                      BufferViews
+@handleMap @serialize map!(VkImage, ref!ImageObject)                                Images
+@handleMap @serialize map!(VkImageView, ref!ImageViewObject)                        ImageViews
+@handleMap @serialize map!(VkShaderModule, ref!ShaderModuleObject)                  ShaderModules
+@handleMap @serialize map!(VkPipeline, ref!GraphicsPipelineObject)                  GraphicsPipelines
+@handleMap @serialize map!(VkPipeline, ref!ComputePipelineObject)                   ComputePipelines
+@handleMap @serialize map!(VkPipelineLayout, ref!PipelineLayoutObject)              PipelineLayouts
+@handleMap @serialize map!(VkSampler, ref!SamplerObject)                            Samplers
+@handleMap @serialize map!(VkDescriptorSet, ref!DescriptorSetObject)                DescriptorSets
+@handleMap @serialize map!(VkDescriptorSetLayout, ref!DescriptorSetLayoutObject)    DescriptorSetLayouts
+@handleMap @serialize map!(VkDescriptorPool, ref!DescriptorPoolObject)              DescriptorPools
+@handleMap @serialize map!(VkFence, ref!FenceObject)                                Fences
+@handleMap @serialize map!(VkSemaphore, ref!SemaphoreObject)                        Semaphores
+@handleMap @serialize map!(VkEvent, ref!EventObject)                                Events
+@handleMap @serialize map!(VkQueryPool, ref!QueryPoolObject)                        QueryPools
+@handleMap @serialize map!(VkFramebuffer, ref!FramebufferObject)                    Framebuffers
+@handleMap @serialize map!(VkRenderPass, ref!RenderPassObject)                      RenderPasses
+@handleMap @serialize map!(VkPipelineCache, ref!PipelineCacheObject)                PipelineCaches
+@handleMap @serialize map!(VkCommandPool, ref!CommandPoolObject)                    CommandPools
+@handleMap @serialize map!(VkSurfaceKHR, ref!SurfaceObject)                         Surfaces
+@handleMap @serialize map!(VkSwapchainKHR, ref!SwapchainObject)                     Swapchains
+@handleMap @serialize map!(VkDisplayModeKHR, ref!DisplayModeObject)                 DisplayModes
+@handleMap @serialize map!(VkDebugReportCallbackEXT, ref!DebugReportCallbackObject) DebugReportCallbacks
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
-@serialize ref!QueueObject                              LastBoundQueue
-@serialize map!(VkQueue, ref!DrawInfo)                  LastDrawInfos
-@serialize map!(VkQueue, ref!ComputeInfo)               LastComputeInfos
-@serialize PresentInfo                                  LastPresentInfo
+@serialize @untracked ref!QueueObject                   LastBoundQueue
+@serialize @untrackedMap map!(VkQueue, ref!DrawInfo)    LastDrawInfos
+@serialize @untrackedMap map!(VkQueue, ref!ComputeInfo) LastComputeInfos
+@serialize @untracked PresentInfo                       LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
 
 @hidden bool IsRebuilding

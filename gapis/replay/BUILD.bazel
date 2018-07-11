@@ -37,6 +37,7 @@ go_library(
         "//core/data/id:go_default_library",
         "//core/image:go_default_library",
         "//core/log:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//gapir/client:go_default_library",

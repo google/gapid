@@ -185,7 +185,7 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, thread uint64, boun
 		size := uint64(indexCount) * sizeOfIndex
 
 		backingMemoryPieces, err := subGetBufferBoundMemoryPiecesInRange(
-			ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, boundIndexBuffer.BoundBuffer().Buffer(),
+			ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, nil, boundIndexBuffer.BoundBuffer().Buffer(),
 			boundIndexBuffer.BoundBuffer().Offset()+VkDeviceSize(uint64(firstIndex)*sizeOfIndex),
 			VkDeviceSize(size))
 		if err != nil {
@@ -197,7 +197,7 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, thread uint64, boun
 			piece := backingMemoryPieces.Get(bufOffset)
 			data, err := piece.DeviceMemory().Data().Slice(
 				uint64(piece.MemoryOffset()),
-				uint64(piece.MemoryOffset()+piece.Size())).Read(ctx, nil, s, nil)
+				uint64(piece.MemoryOffset()+piece.Size())).Read(ctx, nil, s, nil, nil)
 			if err != nil {
 				return []uint32{}, err
 			}
@@ -321,7 +321,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	sliceSize := uint64(boundVertexBuffer.Range())
 
 	formatElementAndTexelBlockSize, err :=
-		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, attribute.Fmt())
+		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, nil, attribute.Fmt())
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	}
 
 	backingMemoryPieces, err := subGetBufferBoundMemoryPiecesInRange(
-		ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, boundVertexBuffer.Buffer(),
+		ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, nil, boundVertexBuffer.Buffer(),
 		boundVertexBuffer.Offset()+VkDeviceSize(offset),
 		VkDeviceSize(fullSize))
 	if err != nil {
@@ -351,7 +351,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	for _, bo := range backingMemoryPieces.Keys() {
 		ds := uint64(backingMemoryPieces.Get(bo).MemoryOffset())
 		de := uint64(backingMemoryPieces.Get(bo).Size()) + ds
-		data, err := backingMemoryPieces.Get(bo).DeviceMemory().Data().Slice(ds, de).Read(ctx, nil, s, nil)
+		data, err := backingMemoryPieces.Get(bo).DeviceMemory().Data().Slice(ds, de).Read(ctx, nil, s, nil, nil)
 		if err != nil {
 			return nil, err
 		}

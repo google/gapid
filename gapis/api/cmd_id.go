@@ -28,6 +28,11 @@ func (id CmdID) Derived() CmdID {
 	return id | derivedBit
 }
 
+// Real create a real CmdID from a Derived CmdID.
+func (id CmdID) Real() CmdID {
+	return id & ^derivedBit
+}
+
 // IsReal returns true if the id is not derived nor CmdNoID.
 func (id CmdID) IsReal() bool {
 	return id != CmdNoID && (id&derivedBit) == 0

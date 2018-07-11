@@ -302,7 +302,7 @@ func changeCommands(ctx context.Context, p *path.Capture, newCmds []api.Cmd) (*p
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.New(ctx, old.Name+"*", old.Header, newCmds)
+	c, err := capture.New(ctx, old.Name+"*", old.Header, old.InitialState, newCmds)
 	if err != nil {
 		return nil, err
 	}

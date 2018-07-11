@@ -94,7 +94,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	ctx = log.Enter(ctx, "findIssues")
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.state.Arena}
 	t.lastGlError = GLenum_GL_NO_ERROR
-	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
+	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */, nil /* no watcher */)
 
 	mutatorsGlError := t.lastGlError
 	if e := FindErrorState(cmd.Extras()); e != nil {

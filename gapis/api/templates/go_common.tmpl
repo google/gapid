@@ -522,9 +522,9 @@
   {{else if IsMember           $}}{{Template "Go.Member" $}}
   {{else if IsGlobal           $}}{{Template "Go.Global" $}}
   {{else if IsParameter        $}}{{Template "Go.Parameter" $}}
-  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Get(int({{Template "Go.Read" $.Index}}))
-  {{else if IsMapIndex         $}}{{Template "Go.Read" $.Map}}.Get({{Template "Go.Read" $.Index}})
-  {{else if IsMapContains      $}}{{Template "Go.Read" $.Map}}.Contains({{Template "Go.Read" $.Key}})
+  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Getʷ(ϟctx, ϟw, int({{Template "Go.Read" $.Index}}))
+  {{else if IsMapIndex         $}}{{Template "Go.MapIndex" $}}
+  {{else if IsMapContains      $}}{{Template "Go.MapContains" $}}
   {{else if IsLength           $}}{{Template "Go.Type" $.Type}}({{Template "Go.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}})
   {{else if IsNull             $}}{{Template "Go.Null" $.Type}}
   {{else if IsNew              $}}new {{Template "Go.Type" $.Type}}
@@ -532,7 +532,7 @@
   {{else if IsSliceIndex       $}}{{Template "Go.Read" $.Slice  }}.Index({{Template "Go.Read" $.Index}}).{{Macro "Go.MemoryRead"}}[0]
   {{else if IsSliceRange       $}}{{Template "Go.Read" $.Slice  }}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}})
   {{else if IsPointerRange     $}}{{Template "Go.Read" $.Pointer}}.Slice({{Template "Go.Read" $.Range.LHS}}, {{Template "Go.Read" $.Range.RHS}}, ϟl)
-  {{else if IsClone            $}}{{Template "Go.Read" $.Slice  }}.Clone(ϟctx, ϟc, ϟg, ϟb)
+  {{else if IsClone            $}}{{Template "Go.Read" $.Slice  }}.Clone(ϟctx, ϟc, ϟg, ϟb, ϟw)
   {{else if IsMake             $}}Make{{Template "Go.Type" $.Type}}({{Template "Go.Read" $.Size}}, ϟg)
   {{else if IsSelect           $}}{{Template "Go.Select" $}}
   {{else if IsArrayInitializer $}}{{Template "Go.ArrayInitializer" $}}
@@ -572,9 +572,9 @@
       observed memory which is undesirable, so instead just perform regular
       (non-replay-builder) read logic.
     */}}
-    MustRead(ϟctx, ϟc, ϟg, nil)
+    MustRead(ϟctx, ϟc, ϟg, nil, ϟw)
   {{else}}
-    MustRead(ϟctx, ϟc, ϟg, ϟb)
+    MustRead(ϟctx, ϟc, ϟg, ϟb, ϟw)
   {{end}}
 {{end}}
 
@@ -591,9 +591,9 @@
   {{if $.Target.Object}}
     {{Template "Go.Read" $.Target.Object}}.{{$.Target.Function.Name}}(ϟctx, {{$args}})
   {{else if $.Target.Function.Extern}}
-    (externs{ϟctx, ϟc, ϟi, ϟg, ϟb}.{{$.Target.Function.Name}}({{$args}}))
+    (externs{ϟctx, ϟc, ϟi, ϟg, ϟb, ϟw}.{{$.Target.Function.Name}}({{$args}}))
   {{else if $.Target.Function.Subroutine}}
-    if ϟerr := {{Template "Go.Subroutine" $.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, {{$args}}); ϟerr != nil {
+    if ϟerr := {{Template "Go.Subroutine" $.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, ϟw, {{$args}}); ϟerr != nil {
       {{Template "Go.ReturnErr" "ϟerr"}}
     }
   {{else}}
@@ -651,7 +651,8 @@
   {{AssertType $ "ArrayInitializer"}}
 
   {{$a := $.Array | Underlying | Unpack}}
-  New{{Template "Go.Type" $}}(ϟa, {{ForEach $.Values "Go.Read" | JoinWith ", "}})
+  New{{Template "Go.Type" $}}(ϟa, §
+    {{ForEach $.Values "Go.Read" | JoinWith ", "}})
 {{end}}
 
 
@@ -703,7 +704,10 @@
   {{$ty := $.Object | TypeOf | Unpack}}
   {{Template "Go.Read" $.Object}}§
   {{if IsReference $ty}}{{if GetAnnotation $ty.To "resource"}}.OnAccess(ϟg)§{{end}}{{end}}
-  .{{$.Field | GoPublicName}}()
+  .{{$.Field | GoPublicName}}§
+  {{if GetAnnotation $.Field "untracked"}}()
+  {{else}}ʷ(ϟctx, ϟw)
+  {{end}}
 {{end}}
 
 
@@ -715,8 +719,41 @@
 {{define "Go.Global"}}
   {{AssertType $ "Global"}}
 
-  {{if eq $.Name "$Thread"}}ϟt
-  {{else                  }}ϟs.{{$.Name | GoPublicName}}()
+  {{if eq $.Name "$Thread"             }}ϟt
+  {{else if GetAnnotation $ "untracked"}}ϟs.{{$.Name | GoPublicName}}()
+  {{else                               }}ϟs.{{$.Name | GoPublicName}}ʷ(ϟctx, ϟw)
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a map index expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.MapIndex"}}
+  {{AssertType $ "MapIndex"}}
+
+  {{if GetAnnotation $.Map "untrackedMap"}}
+    {{Template "Go.Read" $.Map}}.Get({{Template "Go.Read" $.Index}})
+  {{else}}
+    {{Template "Go.Read" $.Map}}.Getʷ(ϟctx, ϟw, {{Template "Go.Read" $.Index}})
+  {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to execute a map containment expression.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Go.MapContains"}}
+  {{AssertType $ "MapContains"}}
+
+  {{if GetAnnotation $.Map "untrackedMap"}}
+    {{Template "Go.Read" $.Map}}.Contains({{Template "Go.Read" $.Key}})
+  {{else}}
+    {{Template "Go.Read" $.Map}}.Containsʷ(ϟctx, ϟw, {{Template "Go.Read" $.Key}})
   {{end}}
 {{end}}
 
@@ -734,7 +771,12 @@
   {{     if IsPseudonym   $ty}}{{Template "Go.ReadLength" "Type" $ty.To "Value" $.Value}}
   {{else if IsSlice       $ty}}{{Template "Go.Read" $.Value}}.Count()
   {{else if IsString      $ty}}len({{Template "Go.Read" $.Value}})
-  {{else if IsMap         $ty}}{{Template "Go.Read" $.Value}}.Len()
+  {{else if IsMap         $ty}}
+    {{if GetAnnotation $.Map "untrackedMap"}}
+      {{Template "Go.Read" $.Value}}.Len()
+    {{else}}
+      {{Template "Go.Read" $.Value}}.Lenʷ(ϟctx, ϟw)
+    {{end}}
   {{else                     }}{{Error "macro Go.ReadLength called with unsupported type: %v" $.Type}}
   {{end}}
 {{end}}
@@ -779,9 +821,10 @@
 
   {{$ty := $.Type | Unpack | Underlying}}
 
-  {{     if IsClass       $ty}}{{$.LHS}}.Equals({{$.RHS}})
-  {{else if IsStaticArray $ty}}{{$.LHS}}.Equals({{$.RHS}})
-  {{else                     }}{{$.LHS}} == {{$.RHS}}
+  {{if or (IsClass $ty) (IsStaticArray $ty)}}{{$.LHS}}.Equals§
+    {{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}§
+    {{$.RHS}})
+  {{else}}{{$.LHS}} == {{$.RHS}}
   {{end}}
 {{end}}
 

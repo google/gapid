@@ -108,4 +108,4 @@ func Find(id ID) API {
 }
 
 // CloneContext is used to keep track of references when cloning API objects.
-type CloneContext map[interface{}]interface{}
+type CloneContext map[RefID]interface{}

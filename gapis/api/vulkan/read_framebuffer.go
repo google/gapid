@@ -56,7 +56,7 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	} else {
 		// This is a VkQueuePresent, we need to extract the information out of this,
 		// so that we can correctly display the image.
-		cmd.Mutate(ctx, id, out.State(), nil)
+		cmd.Mutate(ctx, id, out.State(), nil, nil)
 	}
 
 	if r, ok := t.injections[id-api.CmdID(t.numInitialCommands)]; ok {

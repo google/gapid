@@ -79,6 +79,7 @@ cmd VkBool32 vkGetPhysicalDeviceXlibPresentationSupportKHR(
     u32              queueFamilyIndex,
     Display*         dpy,
     VisualID         visualID) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   return ?
 }
 
@@ -135,6 +136,7 @@ cmd VkBool32 vkGetPhysicalDeviceXcbPresentationSupportKHR(
     u32               queueFamilyIndex,
     xcb_connection_t* connection,
     xcb_visualid_t    visual_id) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   return ?
 }
 
@@ -189,6 +191,7 @@ cmd VkBool32 vkGetPhysicalDeviceWaylandPresentationSupportKHR(
     VkPhysicalDevice physicalDevice,
     u32              queueFamilyIndex,
     wl_display*      display) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   return ?
 }
 
@@ -243,5 +246,6 @@ cmd VkBool32 vkGetPhysicalDeviceMirPresentationSupportKHR(
     VkPhysicalDevice physicalDevice,
     u32              queueFamilyIndex,
     MirConnection*   connection) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   return ?
 }

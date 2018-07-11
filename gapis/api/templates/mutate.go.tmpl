@@ -76,6 +76,8 @@
     }
   }
 
+  {{Global "Watch" "true"}}
+
   {{Template "DeclareBuilderFunctionInfos" $}}
 
   {{ForEach $.Pseudonyms "DeclarePseudonymValue" | JoinWith "\n"}}
@@ -103,6 +105,7 @@
       ϟs *State, §
       ϟt uint64, §
       ϟb *builder.Builder, §
+      ϟw api.StateWatcher, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
     ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
@@ -148,7 +151,7 @@
       {{end}}
       func (ϟc *{{$name}}) Mutate(§
     {{end}}
-        ϟctx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb *builder.Builder) error {
+        ϟctx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb *builder.Builder, ϟw api.StateWatcher) error {
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
@@ -163,8 +166,16 @@
 
       {{Global "CurrentFunction" $}}
 
+      if ϟw != nil {
+        ϟw.OnBeginCmd(ϟctx, ϟi, ϟc)
+        defer ϟw.OnEndCmd(ϟctx, ϟi, ϟc)
+      }
+
       {{/* simulate the call */}}
       ϟo.ApplyReads(ϟg.Memory.ApplicationPool())
+      if ϟo != nil && ϟw != nil {
+        ϟw.OnReadObs(ϟctx, ϟo.Reads)
+      }
       {{Template "Block" $.Block}}
 
       return task.StopReason(ϟctx)
@@ -362,8 +373,8 @@
   {{else if IsIteration    $}}{{Template "Iteration" $}}
   {{else if IsMapIteration $}}{{Template "MapIteration" $}}
   {{else if IsCall         $}}{{Template "Go.Call" $}}
-  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnRead(ϟctx, ϟc, ϟg, ϟb)
-  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWrite(ϟctx, ϟc, ϟg, ϟb)
+  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnRead(ϟctx, ϟc, ϟg, ϟb, ϟw)
+  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWrite(ϟctx, ϟc, ϟg, ϟb, ϟw)
   {{else if IsFence        $}}{{Template "Fence" $}}
   {{else if IsBranch       $}}{{Template "Branch" $}}
   {{else if IsSwitch       $}}{{Template "Switch" $}}
@@ -436,7 +447,7 @@
 
   {
     {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}} := int32(0){{end}}
-    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.All() {
+    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.Allʷ(ϟctx, ϟw) {
       {{Template "Block" $.Block}}
       {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}}++{{end}}
     }
@@ -452,7 +463,7 @@
 {{define "Copy"}}
   {{AssertType $ "Copy"}}
 
-  {{Template "Go.Read" $.Dst}}.Copy(ϟctx, {{Template "Go.Read" $.Src}}, ϟc, ϟg, ϟb)
+  {{Template "Go.Read" $.Dst}}.Copy(ϟctx, {{Template "Go.Read" $.Src}}, ϟc, ϟg, ϟb, ϟw)
 {{end}}
 
 
@@ -513,7 +524,7 @@
     {{if $call.Target.Function.Subroutine}}
       {{/* Transform: v := sub() -> v, err := sub() */}}
       {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, {{$args}})
+      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, ϟw, {{$args}})
       if ϟerr != nil {
         {{Template "Go.ReturnErr" "ϟerr"}}
       }
@@ -541,10 +552,14 @@
     {{else                  }}{{Error "Unhandled assign to %v" $.LHS}}
     {{end}}
 
+    {{if GetAnnotation $.LHS "untracked"}}(§
+    {{else}}ʷ(ϟctx, ϟw, §
+    {{end}}
+
     {{if eq $.Operator "="}}
-      ({{Template "Go.Read" $.RHS}})
+      {{Template "Go.Read" $.RHS}})
     {{else}}
-      ({{Template "Go.Read" $.LHS}} {{$.Operator | TrimRight "="}} {{Template "Go.Read" $.RHS}})
+      {{Template "Go.Read" $.LHS}} {{$.Operator | TrimRight "="}} {{Template "Go.Read" $.RHS}})
     {{end}}
   {{end}}
 {{end}}
@@ -559,7 +574,7 @@
   {{AssertType $ "ArrayAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Array}}.Set(int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Array}}.Setʷ(ϟctx, ϟw, int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported ArrayAssign operator %s" $.Operator}}
   {{end}}
@@ -575,7 +590,15 @@
   {{AssertType $ "MapAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Map}}.Add({{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Map}}.§
+    {{if GetAnnotation $.To.Map "handleMap"}}
+      CreateHandleʷ(ϟctx, ϟw, §
+    {{else if GetAnnotation $.To.Map "untrackedMap"}}
+      Add(§
+    {{else}}§
+      Addʷ(ϟctx, ϟw, §
+    {{end}}
+    {{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported MapAssign operator %s" $.Operator}}
   {{end}}
@@ -590,7 +613,15 @@
 {{define "MapRemove"}}
   {{AssertType $ "MapRemove"}}
 
-  {{Template "Go.Read" $.Map}}.Remove({{Template "Go.Read" $.Key}})
+  {{Template "Go.Read" $.Map}}.§
+  {{if GetAnnotation $.Map "handleMap"}}
+    DestroyHandleʷ(ϟctx, ϟw, §
+  {{else if GetAnnotation $.Map "untrackedMap"}}
+    Remove(§
+  {{else}}
+    Removeʷ(ϟctx, ϟw, §
+  {{end}}
+  {{Template "Go.Read" $.Key}})
 {{end}}
 
 
@@ -603,7 +634,7 @@
   {{AssertType $ "SliceAssign"}}
 
   {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
-  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟc, ϟg, ϟb)
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟc, ϟg, ϟb, ϟw)
 {{end}}
 
 
@@ -636,7 +667,7 @@
         ϟdst, ϟgsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
         ϟcount := u64.Min(ϟdst.Count(), ϟgsrc.Count())
         ϟdst, ϟgsrc = ϟdst.Slice(0, ϟcount), ϟgsrc.Slice(0, ϟcount)
-        ϟgsrcElems := ϟgsrc.MustRead(ϟctx, ϟc, ϟg, ϟb)
+        ϟgsrcElems := ϟgsrc.MustRead(ϟctx, ϟc, ϟg, ϟb, ϟw)
       {{end}}
 
       {{/* Perform the call */}}
@@ -644,7 +675,7 @@
 
       {{if IsCopy $.Statement}}
         {{/* Apply the fenced-copy write */}}
-        ϟdst.MustWrite(ϟctx, ϟgsrcElems, ϟc, ϟg, ϟb)
+        ϟdst.MustWrite(ϟctx, ϟgsrcElems, ϟc, ϟg, ϟb, ϟw)
       {{end}}
     }
     {{if IsCopy $.Statement}}
@@ -665,6 +696,9 @@
 
   {{/* Merge the observed writes into the application pool */}}
   ϟo.ApplyWrites(ϟg.Memory.ApplicationPool())
+  if ϟo != nil && ϟw != nil {
+    ϟw.OnWriteObs(ϟctx, ϟo.Writes)
+  }
 {{end}}
 
 

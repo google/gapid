@@ -17,6 +17,7 @@ package replay
 import (
 	"context"
 
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -31,7 +32,7 @@ type Custom struct {
 	F func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error
 }
 
-func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return nil
 	}
@@ -49,3 +50,5 @@ func (Custom) CmdParams() api.Properties                                        
 func (Custom) CmdResult() *api.Property                                           { return nil }
 func (Custom) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (Custom) Extras() *api.CmdExtras                                             { return nil }
+func (cmd Custom) Clone(arena.Arena) api.Cmd                                      { return cmd }
+func (Custom) Alive() bool                                                        { return false }

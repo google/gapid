@@ -268,7 +268,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	stagingImgs := []ImageObjectʳ{}
 	stagingMems := []DeviceMemoryObjectʳ{}
 
-	srcElementAndTexelInfo, err := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info().Fmt())
+	srcElementAndTexelInfo, err := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img.Info().Fmt())
 	if err != nil {
 		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting element size and texel block info]")
 	}
@@ -278,7 +278,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	}
 	srcElementSize := srcElementAndTexelInfo.ElementSize()
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
-		srcElementSize, err = subGetDepthElementSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, img.Info().Fmt(), false)
+		srcElementSize, err = subGetDepthElementSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img.Info().Fmt(), false)
 		if err != nil {
 			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting element size for depth aspect] %v", err)
 		}
@@ -297,7 +297,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	if stagingImgFormat == VkFormat_VK_FORMAT_UNDEFINED {
 		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, nil, "unsupported aspect: %v", aspect)
 	}
-	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, stagingImgFormat)
+	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, stagingImgFormat)
 	stagingElementSize := stagingElementInfo.ElementSize()
 
 	stagingInfo := img.Info().Clone(p.sb.newState.Arena, api.CloneContext{})
@@ -327,7 +327,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		// Query the memory requirements so validation layers are happy
 		vkGetImageMemoryRequirements(p.sb, dev.VulkanHandle(), stagingImgHandle, MakeVkMemoryRequirements(p.sb.ta))
 
-		stagingImgSize, err := subInferImageSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, stagingImg)
+		stagingImgSize, err := subInferImageSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, stagingImg)
 		if err != nil {
 			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting staging image size]")
 		}
@@ -579,7 +579,7 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 	data := job.storeTarget.Aspects().
 		Get(job.aspect).Layers().Get(job.layer).Levels().Get(job.level).
 		Data().Slice(opaqueDataOffset, opaqueDataSizeInBytes).
-		MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+		MustRead(h.sb.ctx, nil, h.sb.oldState, nil, nil)
 
 	srcVkFmt := job.storeTarget.Info().Fmt()
 	if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
@@ -595,7 +595,7 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 	}
 
 	unpackedElementAndTexelBlockSize, _ := subGetElementAndTexelBlockSize(
-		h.sb.ctx, nil, api.CmdNoID, nil, h.sb.oldState, nil, 0, nil, unpackedFmt)
+		h.sb.ctx, nil, api.CmdNoID, nil, h.sb.oldState, nil, 0, nil, nil, unpackedFmt)
 	unpackedElementSize := unpackedElementAndTexelBlockSize.ElementSize()
 
 	// Using multiple texel buffers if necessary
@@ -2326,7 +2326,7 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 		// dstImg format is different with the srcImage format, the dst image
 		// should be a staging image.
 		srcVkFmt := srcImg.Info().Fmt()
-		data := dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+		data := dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil, nil)
 		if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data, opaqueBlockExtent)
 			if err != nil {
@@ -2343,7 +2343,7 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 		// be used directly, except when the src image is a dpeth 24 UNORM one.
 		if (srcImg.Info().Fmt() == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
 			(srcImg.Info().Fmt() == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
-			data := dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+			data := dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil, nil)
 			unpackedData, _, err = unpackDataForPriming(h.sb.ctx, data, srcImg.Info().Fmt(), srcAspect)
 			if err != nil {
 				return bufferSubRangeFillInfo{}, bufImgCopy, log.Errf(h.sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcImg.Info().Fmt(), srcAspect)
@@ -2357,7 +2357,7 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 			return bufferSubRangeFillInfo{}, bufImgCopy, err
 		}
 	} else if dataSlice.Size()%8 != 0 {
-		unpackedData = dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil)
+		unpackedData = dataSlice.MustRead(h.sb.ctx, nil, h.sb.oldState, nil, nil)
 		extendToMultipleOf8(&unpackedData)
 		if err := errorIfUnexpectedLength(uint64(len(unpackedData))); err != nil {
 			return bufferSubRangeFillInfo{}, bufImgCopy, err
@@ -2698,8 +2698,8 @@ func writeDescriptorSet(sb *stateBuilder, dev VkDevice, descSet VkDescriptorSet,
 }
 
 func walkImageSubresourceRange(sb *stateBuilder, img ImageObjectʳ, rng VkImageSubresourceRange, f func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent)) {
-	layerCount, _ := subImageSubresourceLayerCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, img, rng)
-	levelCount, _ := subImageSubresourceLevelCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, img, rng)
+	layerCount, _ := subImageSubresourceLayerCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, img, rng)
+	levelCount, _ := subImageSubresourceLevelCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, img, rng)
 	for _, aspect := range sb.imageAspectFlagBits(rng.AspectMask()) {
 		for i := uint32(0); i < levelCount; i++ {
 			level := rng.BaseMipLevel() + i

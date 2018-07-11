@@ -39,8 +39,8 @@ func wireframe(ctx context.Context) transform.Transformer {
 			newInfos := make([]VkGraphicsPipelineCreateInfo, count)
 			newRasterStateDatas := make([]api.AllocResult, count)
 			for i := uint64(0); i < count; i++ {
-				info := infos.Index(i).MustRead(ctx, cmd, s, nil)[0]
-				rasterState := info.PRasterizationState().MustRead(ctx, cmd, s, nil)
+				info := infos.Index(i).MustRead(ctx, cmd, s, nil, nil)[0]
+				rasterState := info.PRasterizationState().MustRead(ctx, cmd, s, nil, nil)
 				rasterState.SetPolygonMode(VkPolygonMode_VK_POLYGON_MODE_LINE)
 				newRasterStateDatas[i] = s.AllocDataOrPanic(ctx, rasterState)
 				info.SetPRasterizationState(NewVkPipelineRasterizationStateCreateInfoᶜᵖ(newRasterStateDatas[i].Ptr()))
