@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parse
+package cst
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/google/gapid/core/data/compare"
 )
@@ -25,6 +26,17 @@ type Token struct {
 	Source *Source // The source object this token is from (including the full rune array).
 	Start  int     // The start of the token in the full rune array.
 	End    int     // One past the end of the token.
+}
+
+// Tok returns t.
+func (t Token) Tok() Token {
+	return t
+}
+
+// Write writes the token to the writer.
+func (t Token) Write(w io.Writer) error {
+	_, err := io.WriteString(w, t.String())
+	return err
 }
 
 // Less returns true if t comes before rhs when considering source files and

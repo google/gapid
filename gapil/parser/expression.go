@@ -16,12 +16,13 @@ package parser
 
 import (
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 )
 
 // lhs { extend }
-func requireExpression(p *parse.Parser, cst *parse.Branch) ast.Node {
-	lhs := requireLHSExpression(p, cst)
+func requireExpression(p *parse.Parser, b *cst.Branch) ast.Node {
+	lhs := requireLHSExpression(p, b)
 	for {
 		if e := extendExpression(p, lhs); e != nil {
 			lhs = e
@@ -33,25 +34,25 @@ func requireExpression(p *parse.Parser, cst *parse.Branch) ast.Node {
 }
 
 // ( group | switch | literal | unary_op | generic)
-func requireLHSExpression(p *parse.Parser, cst *parse.Branch) ast.Node {
-	if g := group(p, cst); g != nil {
+func requireLHSExpression(p *parse.Parser, b *cst.Branch) ast.Node {
+	if g := group(p, b); g != nil {
 		return g
 	}
-	if s := switch_(p, cst); s != nil {
+	if s := switch_(p, b); s != nil {
 		return s
 	}
-	if l := literal(p, cst); l != nil {
+	if l := literal(p, b); l != nil {
 		return l
 	}
-	if u := unaryOp(p, cst); u != nil {
+	if u := unaryOp(p, b); u != nil {
 		return u
 	}
-	if g := generic(p, cst); g != nil {
+	if g := generic(p, b); g != nil {
 		return g
 	}
 	p.Expected("expression")
 	v := &ast.Invalid{}
-	p.SetCST(v, cst)
+	p.SetCST(v, b)
 	return v
 }
 
@@ -73,50 +74,50 @@ func extendExpression(p *parse.Parser, lhs ast.Node) ast.Node {
 }
 
 // 'null' | 'true' | 'false' | '"' string '"' | '?' | number
-func literal(p *parse.Parser, cst *parse.Branch) ast.Node {
-	if l := keyword(ast.KeywordNull, p, cst); l != nil {
+func literal(p *parse.Parser, b *cst.Branch) ast.Node {
+	if l := keyword(ast.KeywordNull, p, b); l != nil {
 		v := &ast.Null{}
 		p.SetCST(v, l)
 		return v
 	}
-	if l := keyword(ast.KeywordTrue, p, cst); l != nil {
+	if l := keyword(ast.KeywordTrue, p, b); l != nil {
 		v := &ast.Bool{Value: true}
 		p.SetCST(v, l)
 		return v
 	}
-	if l := keyword(ast.KeywordFalse, p, cst); l != nil {
+	if l := keyword(ast.KeywordFalse, p, b); l != nil {
 		v := &ast.Bool{Value: false}
 		p.SetCST(v, l)
 		return v
 	}
-	if s := string_(p, cst); s != nil {
+	if s := string_(p, b); s != nil {
 		return s
 	}
-	if u := unknown(p, cst); u != nil {
+	if u := unknown(p, b); u != nil {
 		return u
 	}
-	if n := number(p, cst); n != nil {
+	if n := number(p, b); n != nil {
 		return n
 	}
 	return nil
 }
 
-func unknown(p *parse.Parser, cst *parse.Branch) *ast.Unknown {
+func unknown(p *parse.Parser, b *cst.Branch) *ast.Unknown {
 	scanned := scanOperator(p)
 	if ast.OpUnknown != scanned {
 		p.Rollback()
 		return nil
 	}
 	n := &ast.Unknown{}
-	p.ParseLeaf(cst, func(p *parse.Parser, l *parse.Leaf) {
+	p.ParseLeaf(b, func(p *parse.Parser, l *cst.Leaf) {
 		p.SetCST(n, l)
-		l.SetToken(p.Consume())
+		l.Token = p.Consume()
 	})
 	return n
 }
 
 // "string" | `string`
-func string_(p *parse.Parser, cst *parse.Branch) *ast.String {
+func string_(p *parse.Parser, b *cst.Branch) *ast.String {
 	quote, backtick := p.Rune(ast.Quote), p.Rune(ast.Backtick)
 	var term rune
 	switch {
@@ -128,22 +129,22 @@ func string_(p *parse.Parser, cst *parse.Branch) *ast.String {
 		return nil
 	}
 	n := &ast.String{}
-	p.ParseLeaf(cst, func(p *parse.Parser, l *parse.Leaf) {
+	p.ParseLeaf(b, func(p *parse.Parser, l *cst.Leaf) {
 		p.SetCST(n, l)
 		p.SeekRune(term)
 		if !p.Rune(term) {
 			n = nil
 			return
 		}
-		l.SetToken(p.Consume())
-		v := l.Token().String()
+		l.Token = p.Consume()
+		v := l.Token.String()
 		n.Value = v[1 : len(v)-1]
 	})
 	return n
 }
 
-func requireString(p *parse.Parser, cst *parse.Branch) *ast.String {
-	s := string_(p, cst)
+func requireString(p *parse.Parser, b *cst.Branch) *ast.String {
+	s := string_(p, b)
 	if s == nil {
 		p.Expected("string")
 		s = ast.InvalidString
@@ -152,23 +153,23 @@ func requireString(p *parse.Parser, cst *parse.Branch) *ast.String {
 }
 
 // standard numeric formats
-func number(p *parse.Parser, cst *parse.Branch) *ast.Number {
+func number(p *parse.Parser, b *cst.Branch) *ast.Number {
 	_ = p.Rune('+') || p.Rune('-') // optional sign
 	if p.Numeric() == parse.NotNumeric {
 		p.Rollback()
 		return nil
 	}
 	n := &ast.Number{}
-	p.ParseLeaf(cst, func(p *parse.Parser, l *parse.Leaf) {
+	p.ParseLeaf(b, func(p *parse.Parser, l *cst.Leaf) {
 		p.SetCST(n, l)
-		l.SetToken(p.Consume())
-		n.Value = l.Token().String()
+		l.Token = p.Consume()
+		n.Value = l.Tok().String()
 	})
 	return n
 }
 
-func requireNumber(p *parse.Parser, cst *parse.Branch) *ast.Number {
-	n := number(p, cst)
+func requireNumber(p *parse.Parser, b *cst.Branch) *ast.Number {
+	n := number(p, b)
 	if n == nil {
 		p.Expected("number")
 		n = ast.InvalidNumber
@@ -177,61 +178,61 @@ func requireNumber(p *parse.Parser, cst *parse.Branch) *ast.Number {
 }
 
 // '(' expression ')'
-func group(p *parse.Parser, cst *parse.Branch) *ast.Group {
+func group(p *parse.Parser, b *cst.Branch) *ast.Group {
 	if !peekOperator(ast.OpListStart, p) {
 		return nil
 	}
 	e := &ast.Group{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(e, cst)
-		requireOperator(ast.OpListStart, p, cst)
-		e.Expression = requireExpression(p, cst)
-		requireOperator(ast.OpListEnd, p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(e, b)
+		requireOperator(ast.OpListStart, p, b)
+		e.Expression = requireExpression(p, b)
+		requireOperator(ast.OpListEnd, p, b)
 	})
 	return e
 }
 
 // switch '{' { 'case' { expresion } ':' block } '}'
-func switch_(p *parse.Parser, cst *parse.Branch) *ast.Switch {
+func switch_(p *parse.Parser, b *cst.Branch) *ast.Switch {
 	if !peekKeyword(ast.KeywordSwitch, p) {
 		return nil
 	}
 	e := &ast.Switch{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(e, cst)
-		requireKeyword(ast.KeywordSwitch, p, cst)
-		e.Value = requireExpression(p, cst)
-		requireOperator(ast.OpBlockStart, p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(e, b)
+		requireKeyword(ast.KeywordSwitch, p, b)
+		e.Value = requireExpression(p, b)
+		requireOperator(ast.OpBlockStart, p, b)
 		annotations := &ast.Annotations{}
-		parseAnnotations(annotations, p, cst)
+		parseAnnotations(annotations, p, b)
 		for peekKeyword(ast.KeywordCase, p) {
-			p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
+			p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
 				entry := &ast.Case{Annotations: *annotations}
-				p.SetCST(entry, cst)
-				requireKeyword(ast.KeywordCase, p, cst)
-				for !operator(ast.OpInitialise, p, cst) {
+				p.SetCST(entry, b)
+				requireKeyword(ast.KeywordCase, p, b)
+				for !operator(ast.OpInitialise, p, b) {
 					if len(entry.Conditions) > 0 {
-						requireOperator(ast.OpListSeparator, p, cst)
+						requireOperator(ast.OpListSeparator, p, b)
 					}
-					entry.Conditions = append(entry.Conditions, requireExpression(p, cst))
+					entry.Conditions = append(entry.Conditions, requireExpression(p, b))
 				}
-				entry.Block = requireBlock(p, cst)
+				entry.Block = requireBlock(p, b)
 				e.Cases = append(e.Cases, entry)
 			})
 			annotations = &ast.Annotations{}
-			parseAnnotations(annotations, p, cst)
+			parseAnnotations(annotations, p, b)
 		}
 		if peekKeyword(ast.KeywordDefault, p) {
-			p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
+			p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
 				entry := &ast.Default{}
-				p.SetCST(entry, cst)
-				requireKeyword(ast.KeywordDefault, p, cst)
-				requireOperator(ast.OpInitialise, p, cst)
-				entry.Block = requireBlock(p, cst)
+				p.SetCST(entry, b)
+				requireKeyword(ast.KeywordDefault, p, b)
+				requireOperator(ast.OpInitialise, p, b)
+				entry.Block = requireBlock(p, b)
 				e.Default = entry
 			})
 		}
-		requireOperator(ast.OpBlockEnd, p, cst)
+		requireOperator(ast.OpBlockEnd, p, b)
 	})
 	return e
 }
@@ -242,21 +243,21 @@ func index(p *parse.Parser, lhs ast.Node) *ast.Index {
 		return nil
 	}
 	e := &ast.Index{Object: lhs}
-	p.Extend(lhs, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(e, cst)
-		requireOperator(ast.OpIndexStart, p, cst)
-		e.Index = requireExpression(p, cst)
-		if operator(ast.OpSlice, p, cst) {
+	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(e, b)
+		requireOperator(ast.OpIndexStart, p, b)
+		e.Index = requireExpression(p, b)
+		if operator(ast.OpSlice, p, b) {
 			n := &ast.BinaryOp{LHS: e.Index, Operator: ast.OpSlice}
 			if !peekOperator(ast.OpIndexEnd, p) {
-				p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-					p.SetCST(n, cst)
-					n.RHS = requireExpression(p, cst)
+				p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+					p.SetCST(n, b)
+					n.RHS = requireExpression(p, b)
 				})
 			}
 			e.Index = n
 		}
-		requireOperator(ast.OpIndexEnd, p, cst)
+		requireOperator(ast.OpIndexEnd, p, b)
 	})
 	return e
 }
@@ -267,24 +268,24 @@ func call(p *parse.Parser, lhs ast.Node) *ast.Call {
 		return nil
 	}
 	e := &ast.Call{Target: lhs}
-	p.Extend(lhs, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(e, cst)
-		requireOperator(ast.OpListStart, p, cst)
-		for !operator(ast.OpListEnd, p, cst) {
-			arg := requireExpression(p, cst)
-			if i, ok := arg.(*ast.Generic); ok && operator(ast.OpInitialise, p, cst) {
+	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(e, b)
+		requireOperator(ast.OpListStart, p, b)
+		for !operator(ast.OpListEnd, p, b) {
+			arg := requireExpression(p, b)
+			if i, ok := arg.(*ast.Generic); ok && operator(ast.OpInitialise, p, b) {
 				n := &ast.NamedArg{Name: i.Name}
-				p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-					p.SetCST(n, cst)
-					n.Value = requireExpression(p, cst)
+				p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+					p.SetCST(n, b)
+					n.Value = requireExpression(p, b)
 				})
 				arg = n
 			}
 			e.Arguments = append(e.Arguments, arg)
-			if operator(ast.OpListEnd, p, cst) {
+			if operator(ast.OpListEnd, p, b) {
 				break
 			}
-			requireOperator(ast.OpListSeparator, p, cst)
+			requireOperator(ast.OpListSeparator, p, b)
 		}
 	})
 	return e
@@ -296,10 +297,10 @@ func member(p *parse.Parser, lhs ast.Node) *ast.Member {
 		return nil
 	}
 	e := &ast.Member{Object: lhs}
-	p.Extend(lhs, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(e, cst)
-		requireOperator(ast.OpMember, p, cst)
-		e.Name = requireIdentifier(p, cst)
+	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(e, b)
+		requireOperator(ast.OpMember, p, b)
+		e.Name = requireIdentifier(p, b)
 	})
 	return e
 }

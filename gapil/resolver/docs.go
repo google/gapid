@@ -17,8 +17,8 @@ package resolver
 import (
 	"strings"
 
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/core/text/parse"
 )
 
 const (
@@ -29,9 +29,9 @@ const (
 	blockDocEnd    = "*/"
 )
 
-func processSeparator(docs *[]string, s parse.Separator) {
+func processSeparator(docs *[]string, s cst.Separator) {
 	for _, f := range s {
-		s := f.Token().String()
+		s := f.Tok().String()
 		switch {
 		case strings.HasPrefix(s, lineDocStart):
 			line := strings.TrimSpace(strings.TrimPrefix(s, lineDocStart))

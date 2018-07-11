@@ -110,7 +110,7 @@ func (s *server) rel(path string) string {
 }
 
 func (s *server) nodeDoc(fa *fullAnalysis, n ast.Node) *ls.Document {
-	return s.docs[fa.mappings.CST(n).Token().Source.Filename]
+	return s.docs[fa.mappings.CST(n).Tok().Source.Filename]
 }
 
 func (s *server) nodeLocation(fa *fullAnalysis, n ast.Node) ls.Location {
@@ -249,7 +249,7 @@ func (s *server) Completions(ctx context.Context, doc *ls.Document, pos ls.Posit
 			for _, f := range sem.Enums {
 				list.Add(f.Name(), ls.Enum, "enum")
 				for _, e := range f.Entries {
-					list.Add(e.Name(), ls.Enum, fmt.Sprintf("%v(%v)", f.Name(), da.full.mappings.CST(e.AST.Value).Token().String()))
+					list.Add(e.Name(), ls.Enum, fmt.Sprintf("%v(%v)", f.Name(), da.full.mappings.CST(e.AST.Value).Tok().String()))
 				}
 			}
 			for _, c := range sem.Classes {
@@ -457,7 +457,7 @@ func (s *server) Hover(ctx context.Context, doc *ls.Document, pos ls.Position) (
 			if n.ast == nil {
 				continue
 			}
-			branch, ok := da.full.mappings.CST(n.ast).(*parse.Branch)
+			branch, ok := da.full.mappings.CST(n.ast).(*cst.Branch)
 			if !ok {
 				continue
 			}
@@ -693,11 +693,11 @@ func (fa *fullAnalysis) nodePosition(doc *ls.Document, n ast.Node) ls.Position {
 	return tokRange(doc, fa.mappings.CST(n).Token()).Start
 }
 
-func tokRange(doc *ls.Document, tok parse.Token) ls.Range {
+func tokRange(doc *ls.Document, tok cst.Token) ls.Range {
 	return doc.Body().Range(tok.Start, tok.End)
 }
 
-func fragRange(doc *ls.Document, f parse.Fragment) ls.Range {
+func fragRange(doc *ls.Document, f cst.Fragment) ls.Range {
 	if f == nil {
 		return doc.Body().Range(0, 0)
 	}

@@ -27,7 +27,7 @@ import (
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/host"
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
 	"github.com/google/gapid/gapil/semantic"
@@ -429,7 +429,7 @@ func (c *C) CurrentExpression() semantic.Expression {
 	return c.expressionStack[len(c.expressionStack)-1]
 }
 
-func (c *C) setCodeLocation(s *S, t parse.Token) {
+func (c *C) setCodeLocation(s *S, t cst.Token) {
 	_, file := filepath.Split(t.Source.Filename)
 	line, col := t.Cursor()
 	loc := Location{file, line, col}
@@ -479,11 +479,8 @@ func (c *C) onChangeStatement(s *S) {
 	if n == nil {
 		return
 	}
-	for _, ast := range c.mappings.SemanticToAST[n] {
-		if cst := c.mappings.CST(ast); cst != nil {
-			c.setCodeLocation(s, cst.Token())
-			return
-		}
+	if cst := c.mappings.CST(n); cst != nil {
+		c.setCodeLocation(s, cst.Tok())
 	}
 }
 
@@ -496,7 +493,7 @@ func (c *C) augmentPanics() {
 	loc := func(n semantic.Node) string {
 		for _, ast := range c.mappings.SemanticToAST[n] {
 			if cst := c.mappings.CST(ast); cst != nil {
-				tok := cst.Token()
+				tok := cst.Tok()
 				line, col := tok.Cursor()
 				file := tok.Source.Filename
 				return fmt.Sprintf("%v:%v:%v\n%s", file, line, col, tok.String())

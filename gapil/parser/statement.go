@@ -15,73 +15,74 @@
 package parser
 
 import (
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
+	"github.com/google/gapid/gapil/ast"
 )
 
 // '{' { statements } '}'
-func requireBlock(p *parse.Parser, cst *parse.Branch) *ast.Block {
+func requireBlock(p *parse.Parser, b *cst.Branch) *ast.Block {
 	block := &ast.Block{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(block, cst)
-		if operator(ast.OpBlockStart, p, cst) {
-			for !operator(ast.OpBlockEnd, p, cst) {
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(block, b)
+		if operator(ast.OpBlockStart, p, b) {
+			for !operator(ast.OpBlockEnd, p, b) {
 				if p.IsEOF() {
 					p.Error("end of file reached while looking for '%s'", ast.OpBlockEnd)
 					break
 				}
-				block.Statements = append(block.Statements, requireStatement(p, cst))
+				block.Statements = append(block.Statements, requireStatement(p, b))
 			}
 		} else {
-			block.Statements = append(block.Statements, requireStatement(p, cst))
+			block.Statements = append(block.Statements, requireStatement(p, b))
 		}
 	})
 	return block
 }
 
 // ( branch | iteration | return | expression ) [ declare_local | assign ]
-func requireStatement(p *parse.Parser, cst *parse.Branch) ast.Node {
-	if g := branch(p, cst); g != nil {
+func requireStatement(p *parse.Parser, b *cst.Branch) ast.Node {
+	if g := branch(p, b); g != nil {
 		return g
 	}
-	if g := delete(p, cst); g != nil {
+	if g := delete(p, b); g != nil {
 		return g
 	}
-	if g := iteration(p, cst); g != nil {
+	if g := iteration(p, b); g != nil {
 		return g
 	}
-	if g := return_(p, cst); g != nil {
+	if g := return_(p, b); g != nil {
 		return g
 	}
-	if g := abort(p, cst); g != nil {
+	if g := abort(p, b); g != nil {
 		return g
 	}
-	if g := fence(p, cst); g != nil {
+	if g := fence(p, b); g != nil {
 		return g
 	}
-	e := requireExpression(p, cst)
-	if g := declareLocal(p, cst, e); g != nil {
+	e := requireExpression(p, b)
+	if g := declareLocal(p, b, e); g != nil {
 		return g
 	}
-	if g := assign(p, cst, e); g != nil {
+	if g := assign(p, b, e); g != nil {
 		return g
 	}
 	return e
 }
 
 // 'if' expression block [ 'else' block ]
-func branch(p *parse.Parser, cst *parse.Branch) *ast.Branch {
+func branch(p *parse.Parser, b *cst.Branch) *ast.Branch {
 	if !peekKeyword(ast.KeywordIf, p) {
 		return nil
 	}
 	s := &ast.Branch{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(s, cst)
-		requireKeyword(ast.KeywordIf, p, cst)
-		s.Condition = requireExpression(p, cst)
-		s.True = requireBlock(p, cst)
-		if keyword(ast.KeywordElse, p, cst) != nil {
-			s.False = requireBlock(p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(s, b)
+		requireKeyword(ast.KeywordIf, p, b)
+		s.Condition = requireExpression(p, b)
+		s.True = requireBlock(p, b)
+		if keyword(ast.KeywordElse, p, b) != nil {
+			s.False = requireBlock(p, b)
 		}
 	})
 	return s
@@ -89,25 +90,25 @@ func branch(p *parse.Parser, cst *parse.Branch) *ast.Branch {
 
 // 'for' identifier 'in' expresion block
 // 'for' identifier, identifier, identifier 'in' expression block
-func iteration(p *parse.Parser, cst *parse.Branch) ast.Node {
+func iteration(p *parse.Parser, b *cst.Branch) ast.Node {
 	if !peekKeyword(ast.KeywordFor, p) {
 		return nil
 	}
 	isMap := false
 	s := &ast.MapIteration{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(s, cst)
-		requireKeyword(ast.KeywordFor, p, cst)
-		s.IndexVariable = requireIdentifier(p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(s, b)
+		requireKeyword(ast.KeywordFor, p, b)
+		s.IndexVariable = requireIdentifier(p, b)
 		if isMap = peekOperator(ast.OpListSeparator, p); isMap {
-			requireOperator(ast.OpListSeparator, p, cst)
-			s.KeyVariable = requireIdentifier(p, cst)
-			requireOperator(ast.OpListSeparator, p, cst)
-			s.ValueVariable = requireIdentifier(p, cst)
+			requireOperator(ast.OpListSeparator, p, b)
+			s.KeyVariable = requireIdentifier(p, b)
+			requireOperator(ast.OpListSeparator, p, b)
+			s.ValueVariable = requireIdentifier(p, b)
 		}
-		requireKeyword(ast.KeywordIn, p, cst)
-		s.Map = requireExpression(p, cst)
-		s.Block = requireBlock(p, cst)
+		requireKeyword(ast.KeywordIn, p, b)
+		s.Map = requireExpression(p, b)
+		s.Block = requireBlock(p, b)
 	})
 	if isMap {
 		return s
@@ -118,16 +119,16 @@ func iteration(p *parse.Parser, cst *parse.Branch) ast.Node {
 }
 
 // lhs ':=' expression
-func declareLocal(p *parse.Parser, cst *parse.Branch, lhs ast.Node) *ast.DeclareLocal {
+func declareLocal(p *parse.Parser, b *cst.Branch, lhs ast.Node) *ast.DeclareLocal {
 	l, ok := lhs.(*ast.Generic)
 	if !ok || len(l.Arguments) > 0 || !peekOperator(ast.OpDeclare, p) {
 		return nil
 	}
 	s := &ast.DeclareLocal{Name: l.Name}
-	p.Extend(lhs, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(s, cst)
-		requireOperator(ast.OpDeclare, p, cst)
-		s.RHS = requireExpression(p, cst)
+	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(s, b)
+		requireOperator(ast.OpDeclare, p, b)
+		s.RHS = requireExpression(p, b)
 	})
 	return s
 }
@@ -139,7 +140,7 @@ var assignments = []string{
 }
 
 // lhs ( '=' | '+=' | '-=' )  expression
-func assign(p *parse.Parser, cst *parse.Branch, lhs ast.Node) *ast.Assign {
+func assign(p *parse.Parser, b *cst.Branch, lhs ast.Node) *ast.Assign {
 	op := ""
 	for _, test := range assignments {
 		if peekOperator(test, p) {
@@ -151,68 +152,68 @@ func assign(p *parse.Parser, cst *parse.Branch, lhs ast.Node) *ast.Assign {
 		return nil
 	}
 	s := &ast.Assign{LHS: lhs, Operator: op}
-	p.Extend(lhs, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(s, cst)
-		requireOperator(op, p, cst)
-		s.RHS = requireExpression(p, cst)
+	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(s, b)
+		requireOperator(op, p, b)
+		s.RHS = requireExpression(p, b)
 	})
 	return s
 }
 
 // 'delete' ( expression, expression )
-func delete(p *parse.Parser, cst *parse.Branch) *ast.Delete {
+func delete(p *parse.Parser, b *cst.Branch) *ast.Delete {
 	if !peekKeyword(ast.KeywordDelete, p) {
 		return nil
 	}
 	f := &ast.Delete{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(f, cst)
-		requireKeyword(ast.KeywordDelete, p, cst)
-		requireOperator(ast.OpListStart, p, cst)
-		f.Map = requireExpression(p, cst)
-		requireOperator(ast.OpListSeparator, p, cst)
-		f.Key = requireExpression(p, cst)
-		requireOperator(ast.OpListEnd, p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(f, b)
+		requireKeyword(ast.KeywordDelete, p, b)
+		requireOperator(ast.OpListStart, p, b)
+		f.Map = requireExpression(p, b)
+		requireOperator(ast.OpListSeparator, p, b)
+		f.Key = requireExpression(p, b)
+		requireOperator(ast.OpListEnd, p, b)
 	})
 	return f
 }
 
 // 'return' expresssion
-func return_(p *parse.Parser, cst *parse.Branch) *ast.Return {
+func return_(p *parse.Parser, b *cst.Branch) *ast.Return {
 	if !peekKeyword(ast.KeywordReturn, p) {
 		return nil
 	}
 	s := &ast.Return{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(s, cst)
-		requireKeyword(ast.KeywordReturn, p, cst)
-		s.Value = requireExpression(p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(s, b)
+		requireKeyword(ast.KeywordReturn, p, b)
+		s.Value = requireExpression(p, b)
 	})
 	return s
 }
 
 // 'abort' statement
-func abort(p *parse.Parser, cst *parse.Branch) *ast.Abort {
+func abort(p *parse.Parser, b *cst.Branch) *ast.Abort {
 	if !peekKeyword(ast.KeywordAbort, p) {
 		return nil
 	}
 	f := &ast.Abort{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		requireKeyword(ast.KeywordAbort, p, cst)
-		p.SetCST(f, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		requireKeyword(ast.KeywordAbort, p, b)
+		p.SetCST(f, b)
 	})
 	return f
 }
 
 // 'fence' statement
-func fence(p *parse.Parser, cst *parse.Branch) *ast.Fence {
+func fence(p *parse.Parser, b *cst.Branch) *ast.Fence {
 	if !peekKeyword(ast.KeywordFence, p) {
 		return nil
 	}
 	f := &ast.Fence{}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		requireKeyword(ast.KeywordFence, p, cst)
-		p.SetCST(f, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		requireKeyword(ast.KeywordFence, p, b)
+		p.SetCST(f, b)
 	})
 	return f
 }

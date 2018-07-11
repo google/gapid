@@ -23,7 +23,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 )
@@ -54,23 +54,23 @@ type printer struct {
 	indenter   indenter
 	out        io.Writer
 	injections map[injectKey]string
-	aligns     map[parse.Node]struct{}
+	aligns     map[cst.Node]struct{}
 }
 
 // isNewline returns true if n starts on a new line.
-func isNewline(n parse.Node) bool {
+func isNewline(n cst.Node) bool {
 	for _, s := range n.Prefix() {
-		if strings.Contains(s.Token().String(), "\n") {
+		if strings.Contains(s.Tok().String(), "\n") {
 			return true
 		}
 	}
-	if b, ok := n.(*parse.Branch); ok && len(b.Children) > 0 {
+	if b, ok := n.(*cst.Branch); ok && len(b.Children) > 0 {
 		return isNewline(b.Children[0])
 	}
 	return false
 }
 
-// markup populates the parse.Node maps with information based on the ast tree.
+// markup populates the cst.Node maps with information based on the ast tree.
 func (p *printer) markup(n ast.Node) {
 	switch n := n.(type) {
 	case *ast.Alias:
@@ -108,9 +108,9 @@ func (p *printer) markup(n ast.Node) {
 		p.inject(n, beforePrefix, "•")
 		p.inject(n, afterSuffix, "•")
 
-		cst := p.CST(n).(*parse.Branch)
+		cst := p.CST(n).(*cst.Branch)
 		if c := len(cst.Children); c > 0 {
-			if cst.Children[0].Token().String() == ast.OpBlockStart {
+			if cst.Children[0].Tok().String() == ast.OpBlockStart {
 				// {•» statements... «•}
 				p.inject(cst.Children[0], beforeSuffix, "•»")
 				p.inject(cst.Children[c-1], afterPrefix, "«•")
@@ -278,7 +278,7 @@ func (p *printer) markup(n ast.Node) {
 		p.inject(n.Value, afterPrefix, "•")
 
 	case *ast.Switch:
-		cst := p.CST(n).(*parse.Branch)
+		cst := p.CST(n).(*cst.Branch)
 		p.align(n)
 		p.inject(n.Value, afterPrefix, "•")
 		p.inject(n.Value, beforeSuffix, "•")
@@ -291,7 +291,7 @@ func (p *printer) markup(n ast.Node) {
 
 // print traverses and prints the CST, applying modifications based on the
 // markup pass.
-func (p *printer) print(n parse.Node) {
+func (p *printer) print(n cst.Node) {
 	// emit any beforePrefix injections.
 	if s, ok := p.injections[injectKey{n, beforePrefix}]; ok {
 		p.write(s)
@@ -306,7 +306,7 @@ func (p *printer) print(n parse.Node) {
 	}
 
 	switch n := n.(type) {
-	case *parse.Branch:
+	case *cst.Branch:
 		// if this node should align the children, push a new tabber.
 		_, align := p.aligns[n]
 		if align {
@@ -319,8 +319,8 @@ func (p *printer) print(n parse.Node) {
 		if align {
 			p.popTabber()
 		}
-	case *parse.Leaf:
-		p.write(n.Token().String())
+	case *cst.Leaf:
+		p.write(n.Token.String())
 
 	default:
 		panic("Unknown parse node type")
@@ -375,7 +375,7 @@ const (
 )
 
 type injectKey struct {
-	n parse.Node
+	n cst.Node
 	p position
 }
 
@@ -387,12 +387,12 @@ func (p *printer) inject(n interface{}, r position, s string) {
 	var key injectKey
 	key.p = r
 	switch n := n.(type) {
-	case parse.Node:
+	case cst.Node:
 		key.n = n
 	case ast.Node:
 		key.n = p.CST(n)
 	default:
-		panic(fmt.Errorf("n must be a parse.Node or ast.Node. Got %T", n))
+		panic(fmt.Errorf("n must be a cst.Node or ast.Node. Got %T", n))
 	}
 	p.injections[key] = p.injections[key] + s
 }
@@ -400,16 +400,16 @@ func (p *printer) inject(n interface{}, r position, s string) {
 // align marks up n's children to be printed with a new tabwriter.
 func (p *printer) align(n ast.Node) {
 	if p.aligns == nil {
-		p.aligns = make(map[parse.Node]struct{})
+		p.aligns = make(map[cst.Node]struct{})
 	}
 	p.aligns[p.CST(n)] = struct{}{}
 }
 
 // separator writes sep to the indenter iff it is a comment.
 // All comments are preceeded with a soft whitespace.
-func (p *printer) separator(sep parse.Separator) {
+func (p *printer) separator(sep cst.Separator) {
 	for _, sep := range sep {
-		s := sep.Token().String()
+		s := sep.Tok().String()
 		switch {
 		case strings.HasPrefix(s, "//"), strings.HasPrefix(s, "/*"):
 			p.write("•")

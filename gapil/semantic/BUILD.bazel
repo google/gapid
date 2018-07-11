@@ -34,7 +34,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/slice:go_default_library",
-        "//core/text/parse:go_default_library",
+        "//core/text/parse/cst:go_default_library",
         "//gapil/ast:go_default_library",
         "//gapil/parser:go_default_library",
     ],

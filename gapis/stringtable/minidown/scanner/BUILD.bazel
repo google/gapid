@@ -21,6 +21,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/text/parse:go_default_library",
+        "//core/text/parse/cst:go_default_library",
         "//gapis/stringtable/minidown/token:go_default_library",
     ],
 )

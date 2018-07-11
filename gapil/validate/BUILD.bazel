@@ -25,7 +25,7 @@ go_library(
     importpath = "github.com/google/gapid/gapil/validate",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/text/parse:go_default_library",
+        "//core/text/parse/cst:go_default_library",
         "//gapil/analysis:go_default_library",
         "//gapil/semantic:go_default_library",
     ],

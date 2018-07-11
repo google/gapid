@@ -158,7 +158,7 @@ func (f *Functions) TokenOf(v semantic.Node) string {
 	if len(ast) == 0 {
 		return "*no ast*"
 	}
-	return f.mappings.CST(ast[0]).Token().String()
+	return f.mappings.CST(ast[0]).Tok().String()
 }
 
 // TargetField returns the *semantic.Field if e is an expression that refers to

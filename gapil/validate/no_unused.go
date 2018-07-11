@@ -15,7 +15,7 @@
 package validate
 
 import (
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -27,15 +27,15 @@ const annoUnused = "unused"
 func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 	types := map[semantic.Type]bool{}
 	fields := map[*semantic.Field]fieldUsage{}
-	tokens := map[semantic.Node]parse.Token{}
+	tokens := map[semantic.Node]cst.Token{}
 
 	// Gather all declared types
 	for _, t := range api.Classes {
 		types[t] = false
-		tokens[t] = mappings.CST(t.AST).Token()
+		tokens[t] = mappings.CST(t.AST).Tok()
 		for _, f := range t.Fields {
 			fields[f] = fieldUsage{}
-			tokens[f] = mappings.CST(f.AST).Token()
+			tokens[f] = mappings.CST(f.AST).Tok()
 			if _, ok := f.Type.(*semantic.Class); ok {
 				fields[f] = fieldUsage{false, true}
 			}
@@ -43,11 +43,11 @@ func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 	}
 	for _, t := range api.Enums {
 		types[t] = false
-		tokens[t] = mappings.CST(t.AST).Token()
+		tokens[t] = mappings.CST(t.AST).Tok()
 	}
 	for _, t := range api.Pseudonyms {
 		types[t] = false
-		tokens[t] = mappings.CST(t.AST).Token()
+		tokens[t] = mappings.CST(t.AST).Tok()
 	}
 
 	var markClassFieldsUsed func(ty semantic.Type, read, written bool)

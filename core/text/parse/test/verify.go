@@ -20,21 +20,21 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 )
 
-func VerifyTokens(ctx context.Context, got parse.Node) {
+func VerifyTokens(ctx context.Context, got cst.Node) {
 	next := 0
 	VerifyNodeTokens(ctx, got, &next)
 }
 
-func VerifyNodeTokens(ctx context.Context, n parse.Node, next *int) {
+func VerifyNodeTokens(ctx context.Context, n cst.Node, next *int) {
 	// walk the prefix
 	for _, f := range n.Prefix() {
 		VerifyFragmentTokens(ctx, f, next)
 	}
 	start := *next
-	if b, ok := n.(*parse.Branch); ok {
+	if b, ok := n.(*cst.Branch); ok {
 		for _, c := range b.Children {
 			VerifyNodeTokens(ctx, c, next)
 		}
@@ -46,15 +46,15 @@ func VerifyNodeTokens(ctx context.Context, n parse.Node, next *int) {
 	for _, f := range n.Suffix() {
 		VerifyFragmentTokens(ctx, f, next)
 	}
-	tok := n.Token()
+	tok := n.Tok()
 	if start != end {
 		assert.For(ctx, "branch start").That(tok.Start).Equals(start)
 		assert.For(ctx, "branch end").That(tok.End).Equals(end)
 	}
 }
 
-func VerifyFragmentTokens(ctx context.Context, f parse.Fragment, next *int) {
-	tok := f.Token()
+func VerifyFragmentTokens(ctx context.Context, f cst.Fragment, next *int) {
+	tok := f.Tok()
 	str := tok.String()
 	ctx = log.V{"token": str}.Bind(ctx)
 	length := utf8.RuneCountInString(str)

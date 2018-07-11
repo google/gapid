@@ -83,7 +83,7 @@ func (da *docAnalysis) walkUp(offset int) []nodes {
 }
 
 func (da *docAnalysis) contains(n ast.Node) bool {
-	return da.doc.Path() == da.full.mappings.CST(n).Token().Source.Filename
+	return da.doc.Path() == da.full.mappings.CST(n).Tok().Source.Filename
 }
 
 func (s *server) docAnalysis(ctx context.Context, doc *ls.Document) (*docAnalysis, error) {
@@ -307,7 +307,7 @@ func (a *analyzer) doAnalysis(
 		rootDA.sem = sem
 		for _, err := range errs {
 			if at := err.At; at != nil {
-				if source := at.Token().Source; source != nil {
+				if source := at.Tok().Source; source != nil {
 					if da, ok := das[source.Filename]; ok {
 						da.errs = append(da.errs, err)
 					}
@@ -324,7 +324,7 @@ func (a *analyzer) doAnalysis(
 		issues := validate.WithAnalysis(sem, processor.Mappings, &va, a)
 		for _, issue := range issues {
 			if at := issue.At; at != nil {
-				if source := at.Token().Source; source != nil {
+				if source := at.Tok().Source; source != nil {
 					if da, ok := das[source.Filename]; ok {
 						da.issues = append(da.issues, issue)
 					}

@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/core/text/parse/test"
 	"github.com/google/gapid/gapil/parser"
 )
@@ -33,7 +34,7 @@ func TestParsedCST(t *testing.T) {
 	assert := assert.To(t)
 	for _, test := range []struct {
 		name     string
-		expected parse.Node
+		expected cst.Node
 		source   string
 		errors   parse.ErrorList
 	}{

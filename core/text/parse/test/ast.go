@@ -18,6 +18,7 @@ import (
 	"strconv"
 
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 )
 
 type ListNode []interface{}
@@ -49,14 +50,14 @@ var (
 )
 
 func opParser(op string) parse.LeafParser {
-	return func(p *parse.Parser, _ *parse.Leaf) {
+	return func(p *parse.Parser, _ *cst.Leaf) {
 		if !p.String(op) {
 			p.Expected(op)
 		}
 	}
 }
 
-func maybeValue(p *parse.Parser, in *parse.Branch) interface{} {
+func maybeValue(p *parse.Parser, in *cst.Branch) interface{} {
 	switch {
 	case Peek(&p.Reader, tagBeginArray):
 		a := &ArrayNode{}
@@ -80,7 +81,7 @@ func maybeValue(p *parse.Parser, in *parse.Branch) interface{} {
 	return nil
 }
 
-func parseValue(p *parse.Parser, in *parse.Branch) interface{} {
+func parseValue(p *parse.Parser, in *cst.Branch) interface{} {
 	v := maybeValue(p, in)
 	if v == nil {
 		p.Expected("value")
@@ -88,25 +89,25 @@ func parseValue(p *parse.Parser, in *parse.Branch) interface{} {
 	return v
 }
 
-func (n *ValueNode) Parse(p *parse.Parser, l *parse.Leaf) {
+func (n *ValueNode) Parse(p *parse.Parser, l *cst.Leaf) {
 	if !p.AlphaNumeric() {
 		p.Expected("value")
 	}
 	n.Consume(p, l)
 }
 
-func (n *ValueNode) Consume(p *parse.Parser, l *parse.Leaf) {
-	l.SetToken(p.Consume())
-	*n = ValueNode(l.Token().String())
+func (n *ValueNode) Consume(p *parse.Parser, l *cst.Leaf) {
+	l.Token = p.Consume()
+	*n = ValueNode(l.Token.String())
 }
 
-func (n *NumberNode) Consume(p *parse.Parser, l *parse.Leaf) {
-	l.SetToken(p.Consume())
-	v, _ := strconv.ParseUint(l.Token().String(), 0, 32)
+func (n *NumberNode) Consume(p *parse.Parser, l *cst.Leaf) {
+	l.Token = p.Consume()
+	v, _ := strconv.ParseUint(l.Token.String(), 0, 32)
 	*n = NumberNode(v)
 }
 
-func (n *ListNode) Parse(p *parse.Parser, cst *parse.Branch) {
+func (n *ListNode) Parse(p *parse.Parser, cst *cst.Branch) {
 	v := maybeValue(p, cst)
 	if v == nil {
 		return
@@ -118,13 +119,13 @@ func (n *ListNode) Parse(p *parse.Parser, cst *parse.Branch) {
 	}
 }
 
-func (n *ArrayNode) Parse(p *parse.Parser, cst *parse.Branch) {
+func (n *ArrayNode) Parse(p *parse.Parser, cst *cst.Branch) {
 	p.ParseLeaf(cst, beginArray)
 	p.ParseBranch(cst, (*ListNode)(n).Parse)
 	p.ParseLeaf(cst, endArray)
 }
 
-func (n *CallNode) Parse(p *parse.Parser, cst *parse.Branch) {
+func (n *CallNode) Parse(p *parse.Parser, cst *cst.Branch) {
 	p.ParseLeaf(cst, beginCall)
 	p.ParseBranch(cst, n.args.Parse)
 	p.ParseLeaf(cst, endCall)

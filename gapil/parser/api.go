@@ -16,43 +16,44 @@ package parser
 
 import (
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 )
 
 // { import | extern | enum | alias | pseudonym | class | command | field }
-func requireAPI(p *parse.Parser, cst *parse.Branch) *ast.API {
+func requireAPI(p *parse.Parser, b *cst.Branch) *ast.API {
 	api := &ast.API{}
-	p.SetCST(api, cst)
+	p.SetCST(api, b)
 
 	annotations := &ast.Annotations{}
 	for !p.IsEOF() {
-		parseAnnotations(annotations, p, cst)
-		if i := import_(p, cst, annotations); i != nil {
+		parseAnnotations(annotations, p, b)
+		if i := import_(p, b, annotations); i != nil {
 			api.Imports = append(api.Imports, i)
-		} else if e := extern(p, cst, annotations); e != nil {
+		} else if e := extern(p, b, annotations); e != nil {
 			api.Externs = append(api.Externs, e)
-		} else if e := enum(p, cst, annotations); e != nil {
+		} else if e := enum(p, b, annotations); e != nil {
 			api.Enums = append(api.Enums, e)
-		} else if a := alias(p, cst, annotations); a != nil {
+		} else if a := alias(p, b, annotations); a != nil {
 			api.Aliases = append(api.Aliases, a)
-		} else if pn := pseudonym(p, cst, annotations); pn != nil {
+		} else if pn := pseudonym(p, b, annotations); pn != nil {
 			api.Pseudonyms = append(api.Pseudonyms, pn)
-		} else if c := class(p, cst, annotations); c != nil {
+		} else if c := class(p, b, annotations); c != nil {
 			api.Classes = append(api.Classes, c)
-		} else if c := command(p, cst, annotations); c != nil {
+		} else if c := command(p, b, annotations); c != nil {
 			api.Commands = append(api.Commands, c)
-		} else if s := subroutine(p, cst, annotations); s != nil {
+		} else if s := subroutine(p, b, annotations); s != nil {
 			api.Subroutines = append(api.Subroutines, s)
-		} else if c := definition(p, cst, annotations); c != nil {
+		} else if c := definition(p, b, annotations); c != nil {
 			api.Definitions = append(api.Definitions, c)
-		} else if c, i := cst, apiIndex(p, cst, annotations); i != nil {
+		} else if c, i := b, apiIndex(p, b, annotations); i != nil {
 			if api.Index != nil {
 				p.ErrorAt(c, "Redefining API index")
 			} else {
 				api.Index = i
 			}
 		} else {
-			api.Fields = append(api.Fields, requireField(p, cst, annotations))
+			api.Fields = append(api.Fields, requireField(p, b, annotations))
 		}
 		if len(*annotations) != 0 {
 			p.ErrorAt((*annotations)[0], "Annotation not consumed")
@@ -62,24 +63,24 @@ func requireAPI(p *parse.Parser, cst *parse.Branch) *ast.API {
 }
 
 // { '@' name [ '(' { expression ',' } ')' ] }
-func parseAnnotations(annotations *ast.Annotations, p *parse.Parser, cst *parse.Branch) {
+func parseAnnotations(annotations *ast.Annotations, p *parse.Parser, b *cst.Branch) {
 	for peekOperator(ast.OpAnnotation, p) {
 		a := &ast.Annotation{}
 		*annotations = append(*annotations, a)
-		p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-			requireOperator(ast.OpAnnotation, p, cst)
-			p.SetCST(a, cst)
-			a.Name = requireIdentifier(p, cst)
-			if operator(ast.OpListStart, p, cst) {
-				for !operator(ast.OpListEnd, p, cst) {
+		p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+			requireOperator(ast.OpAnnotation, p, b)
+			p.SetCST(a, b)
+			a.Name = requireIdentifier(p, b)
+			if operator(ast.OpListStart, p, b) {
+				for !operator(ast.OpListEnd, p, b) {
 					if p.IsEOF() {
 						p.Error("end of file reached while looking for '%s'", ast.OpListEnd)
 						break
 					}
 					if len(a.Arguments) > 0 {
-						requireOperator(ast.OpListSeparator, p, cst)
+						requireOperator(ast.OpListSeparator, p, b)
 					}
-					e := requireExpression(p, cst)
+					e := requireExpression(p, b)
 					a.Arguments = append(a.Arguments, e)
 				}
 			}
@@ -97,16 +98,16 @@ func consumeAnnotations(dst *ast.Annotations, src *ast.Annotations) {
 }
 
 // { annotation } 'import' [ identifier ] '"' path '""'
-func import_(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Import {
+func import_(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Import {
 	if !peekKeyword(ast.KeywordImport, p) {
 		return nil
 	}
 	i := &ast.Import{}
 	consumeAnnotations(&i.Annotations, a)
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(i, cst)
-		requireKeyword(ast.KeywordImport, p, cst)
-		i.Path = requireString(p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(i, b)
+		requireKeyword(ast.KeywordImport, p, b)
+		i.Path = requireString(p, b)
 	})
 	return i
 }
