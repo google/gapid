@@ -20,7 +20,6 @@ go_library(
         "branch.go",
         "fragment.go",
         "leaf.go",
-        "mapping.go",
         "node.go",
         "source.go",
         "token.go",

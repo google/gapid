@@ -150,7 +150,7 @@ func (s *scope) setCurrentNode(n semantic.Node) {
 	for _, n := range s.shared.mappings.SemanticToAST[n] {
 		s.shared.reached[n] = struct{}{}
 	}
-	if pn := s.shared.mappings.ParseNode(n); pn != nil {
+	if pn := s.shared.mappings.CST(n); pn != nil {
 		s.callstack.set(pn)
 	}
 }

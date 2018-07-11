@@ -15,106 +15,106 @@
 package parser
 
 import (
-	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 )
 
 // { annotation } 'class' identifer '{' { field } '}'
-func class(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Class {
-	if !peekKeyword(ast.KeywordClass, p) {
+func (p *parser) class(b *cst.Branch, a *ast.Annotations) *ast.Class {
+	if !p.peekKeyword(ast.KeywordClass) {
 		return nil
 	}
 	c := &ast.Class{}
 	consumeAnnotations(&c.Annotations, a)
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(c, b)
-		requireKeyword(ast.KeywordClass, p, b)
-		c.Name = requireIdentifier(p, b)
-		requireOperator(ast.OpBlockStart, p, b)
-		for !operator(ast.OpBlockEnd, p, b) {
-			c.Fields = append(c.Fields, requireField(p, b, nil))
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(c, b)
+		p.requireKeyword(ast.KeywordClass, b)
+		c.Name = p.requireIdentifier(b)
+		p.requireOperator(ast.OpBlockStart, b)
+		for !p.operator(ast.OpBlockEnd, b) {
+			c.Fields = append(c.Fields, p.requireField(b, nil))
 		}
 	})
 	return c
 }
 
 // { annotation } type identifier [ '=' expression ] [ ',' ]
-func requireField(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Field {
+func (p *parser) requireField(b *cst.Branch, a *ast.Annotations) *ast.Field {
 	f := &ast.Field{}
 	consumeAnnotations(&f.Annotations, a)
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(f, b)
-		parseAnnotations(&f.Annotations, p, b)
-		f.Type = requireTypeRef(p, b)
-		f.Name = requireIdentifier(p, b)
-		if operator(ast.OpAssign, p, b) {
-			f.Default = requireExpression(p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(f, b)
+		p.parseAnnotations(&f.Annotations, b)
+		f.Type = p.requireTypeRef(b)
+		f.Name = p.requireIdentifier(b)
+		if p.operator(ast.OpAssign, b) {
+			f.Default = p.requireExpression(b)
 		}
-		operator(ast.OpListSeparator, p, b)
+		p.operator(ast.OpListSeparator, b)
 	})
 	return f
 }
 
 // api_index number
-func apiIndex(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Number {
-	if !peekKeyword(ast.KeywordApiIndex, p) {
+func (p *parser) apiIndex(b *cst.Branch, a *ast.Annotations) *ast.Number {
+	if !p.peekKeyword(ast.KeywordApiIndex) {
 		return nil
 	}
 	if len(*a) != 0 {
-		p.ErrorAt((*a)[0], "Annotation on api_index not allowed")
+		cst := p.mappings.CST((*a)[0])
+		p.ErrorAt(cst, "Annotation on api_index not allowed")
 		return nil
 	}
 	var f *ast.Number
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		requireKeyword(ast.KeywordApiIndex, p, b)
-		f = requireNumber(p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.requireKeyword(ast.KeywordApiIndex, b)
+		f = p.requireNumber(b)
 	})
 	return f
 }
 
 // { annotation } 'define' identifier expression
-func definition(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Definition {
-	if !peekKeyword(ast.KeywordDefine, p) {
+func (p *parser) definition(b *cst.Branch, a *ast.Annotations) *ast.Definition {
+	if !p.peekKeyword(ast.KeywordDefine) {
 		return nil
 	}
 	d := &ast.Definition{}
 	consumeAnnotations(&d.Annotations, a)
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(d, b)
-		requireKeyword(ast.KeywordDefine, p, b)
-		d.Name = requireIdentifier(p, b)
-		d.Expression = requireExpression(p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(d, b)
+		p.requireKeyword(ast.KeywordDefine, b)
+		d.Name = p.requireIdentifier(b)
+		d.Expression = p.requireExpression(b)
 	})
 	return d
 }
 
 // { annotation } ( 'enum' | 'bitfield' ) name [ : type ] '{' { identifier '=' expression [ ',' ] } '}'
-func enum(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Enum {
-	if !peekKeyword(ast.KeywordEnum, p) && !peekKeyword(ast.KeywordBitfield, p) {
+func (p *parser) enum(b *cst.Branch, a *ast.Annotations) *ast.Enum {
+	if !p.peekKeyword(ast.KeywordEnum) && !p.peekKeyword(ast.KeywordBitfield) {
 		return nil
 	}
 	s := &ast.Enum{}
 	consumeAnnotations(&s.Annotations, a)
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(s, b)
-		if keyword(ast.KeywordEnum, p, b) == nil {
-			requireKeyword(ast.KeywordBitfield, p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(s, b)
+		if p.keyword(ast.KeywordEnum, b) == nil {
+			p.requireKeyword(ast.KeywordBitfield, b)
 			s.IsBitfield = true
 		}
-		s.Name = requireIdentifier(p, b)
-		if operator(ast.OpExtends, p, b) {
-			s.NumberType = requireTypeRef(p, b)
+		s.Name = p.requireIdentifier(b)
+		if p.operator(ast.OpExtends, b) {
+			s.NumberType = p.requireTypeRef(b)
 		}
-		requireOperator(ast.OpBlockStart, p, b)
-		for !operator(ast.OpBlockEnd, p, b) {
-			p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.requireOperator(ast.OpBlockStart, b)
+		for !p.operator(ast.OpBlockEnd, b) {
+			p.ParseBranch(b, func(b *cst.Branch) {
 				entry := &ast.EnumEntry{}
-				p.SetCST(entry, b)
-				entry.Name = requireIdentifier(p, b)
-				requireOperator(ast.OpAssign, p, b)
-				entry.Value = requireNumber(p, b)
-				operator(ast.OpListSeparator, p, b)
+				p.mappings.Add(entry, b)
+				entry.Name = p.requireIdentifier(b)
+				p.requireOperator(ast.OpAssign, b)
+				entry.Value = p.requireNumber(b)
+				p.operator(ast.OpListSeparator, b)
 				s.Entries = append(s.Entries, entry)
 			})
 		}
@@ -123,57 +123,57 @@ func enum(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Enum {
 }
 
 // { annotation } 'alias' type identifier
-func alias(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Alias {
-	if !peekKeyword(ast.KeywordAlias, p) {
+func (p *parser) alias(b *cst.Branch, a *ast.Annotations) *ast.Alias {
+	if !p.peekKeyword(ast.KeywordAlias) {
 		return nil
 	}
 	s := &ast.Alias{}
 	consumeAnnotations(&s.Annotations, a)
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(s, b)
-		requireKeyword(ast.KeywordAlias, p, b)
-		s.To = requireTypeRef(p, b)
-		s.Name = requireIdentifier(p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(s, b)
+		p.requireKeyword(ast.KeywordAlias, b)
+		s.To = p.requireTypeRef(b)
+		s.Name = p.requireIdentifier(b)
 	})
 	return s
 }
 
 // { annotation } 'type' type identifier
-func pseudonym(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Pseudonym {
-	if !peekKeyword(ast.KeywordPseudonym, p) {
+func (p *parser) pseudonym(b *cst.Branch, a *ast.Annotations) *ast.Pseudonym {
+	if !p.peekKeyword(ast.KeywordPseudonym) {
 		return nil
 	}
 	s := &ast.Pseudonym{}
 	consumeAnnotations(&s.Annotations, a)
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(s, b)
-		requireKeyword(ast.KeywordPseudonym, p, b)
-		s.To = requireTypeRef(p, b)
-		s.Name = requireIdentifier(p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(s, b)
+		p.requireKeyword(ast.KeywordPseudonym, b)
+		s.To = p.requireTypeRef(b)
+		s.Name = p.requireIdentifier(b)
 	})
 	return s
 }
 
 // [const] generic [.name] { extend_type }
-func typeRef(p *parse.Parser, b *cst.Branch) ast.Node {
+func (p *parser) typeRef(b *cst.Branch) ast.Node {
 	var ref ast.Node
 
-	if peekKeyword(ast.KeywordConst, p) {
+	if p.peekKeyword(ast.KeywordConst) {
 		c := &ast.PreConst{}
-		p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-			p.SetCST(c, b)
-			requireKeyword(ast.KeywordConst, p, b)
-			el := requireTypeBase(p, b)
+		p.ParseBranch(b, func(b *cst.Branch) {
+			p.mappings.Add(c, b)
+			p.requireKeyword(ast.KeywordConst, b)
+			el := p.requireTypeBase(b)
 			ptr := &ast.PointerType{To: el}
-			p.Extend(el, func(p *parse.Parser, b *cst.Branch) {
-				p.SetCST(ptr, b)
-				requireOperator(ast.OpPointer, p, b)
+			p.Extend(p.mappings.CST(el), func(b *cst.Branch) {
+				p.mappings.Add(ptr, b)
+				p.requireOperator(ast.OpPointer, b)
 			})
 			c.Type = ptr
 		})
 		ref = c
 	} else {
-		ref = typeBase(p, b)
+		ref = p.typeBase(b)
 	}
 
 	if ref == nil {
@@ -181,7 +181,7 @@ func typeRef(p *parse.Parser, b *cst.Branch) ast.Node {
 	}
 
 	for {
-		if t := extendTypeRef(p, ref); t != nil {
+		if t := p.extendTypeRef(ref); t != nil {
 			ref = t
 		} else {
 			break
@@ -191,26 +191,26 @@ func typeRef(p *parse.Parser, b *cst.Branch) ast.Node {
 }
 
 // generic [.name]
-func typeBase(p *parse.Parser, b *cst.Branch) ast.Node {
-	g := generic(p, b)
+func (p *parser) typeBase(b *cst.Branch) ast.Node {
+	g := p.generic(b)
 	if g == nil {
 		return nil
 	}
 
-	if peekOperator(ast.OpMember, p) {
+	if p.peekOperator(ast.OpMember) {
 		t := &ast.Imported{From: g.Name}
-		p.Extend(g, func(p *parse.Parser, b *cst.Branch) {
-			p.SetCST(t, b)
-			requireOperator(ast.OpMember, p, b)
-			t.Name = requireIdentifier(p, b)
+		p.Extend(p.mappings.CST(g), func(b *cst.Branch) {
+			p.mappings.Add(t, b)
+			p.requireOperator(ast.OpMember, b)
+			t.Name = p.requireIdentifier(b)
 		})
 		return t
 	}
 	return g
 }
 
-func requireTypeBase(p *parse.Parser, b *cst.Branch) ast.Node {
-	t := typeBase(p, b)
+func (p *parser) requireTypeBase(b *cst.Branch) ast.Node {
+	t := p.typeBase(b)
 	if t == nil {
 		p.Expected("type")
 		return ast.InvalidGeneric
@@ -219,18 +219,18 @@ func requireTypeBase(p *parse.Parser, b *cst.Branch) ast.Node {
 }
 
 // ref ( pointer_type | static_array_type )
-func extendTypeRef(p *parse.Parser, ref ast.Node) ast.Node {
-	if e := extendPointerType(p, ref); e != nil {
+func (p *parser) extendTypeRef(ref ast.Node) ast.Node {
+	if e := p.extendPointerType(ref); e != nil {
 		return e
 	}
-	if s := indexedType(p, ref); s != nil {
+	if s := p.indexedType(ref); s != nil {
 		return s
 	}
 	return nil
 }
 
-func requireTypeRef(p *parse.Parser, b *cst.Branch) ast.Node {
-	t := typeRef(p, b)
+func (p *parser) requireTypeRef(b *cst.Branch) ast.Node {
+	t := p.typeRef(b)
 	if t == nil {
 		p.Expected("type reference")
 		return ast.InvalidGeneric
@@ -239,32 +239,32 @@ func requireTypeRef(p *parse.Parser, b *cst.Branch) ast.Node {
 }
 
 // lhs_type ['const'] '*'
-func extendPointerType(p *parse.Parser, ref ast.Node) *ast.PointerType {
-	if !peekOperator(ast.OpPointer, p) && !peekKeyword(ast.KeywordConst, p) {
+func (p *parser) extendPointerType(ref ast.Node) *ast.PointerType {
+	if !p.peekOperator(ast.OpPointer) && !p.peekKeyword(ast.KeywordConst) {
 		return nil
 	}
 	t := &ast.PointerType{To: ref}
-	p.Extend(ref, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(t, b)
-		t.Const = keyword(ast.KeywordConst, p, b) != nil
-		requireOperator(ast.OpPointer, p, b)
+	p.Extend(p.mappings.CST(ref), func(b *cst.Branch) {
+		p.mappings.Add(t, b)
+		t.Const = p.keyword(ast.KeywordConst, b) != nil
+		p.requireOperator(ast.OpPointer, b)
 	})
 	return t
 }
 
 // lhs_type '[' [ expression ] ']'
-func indexedType(p *parse.Parser, ref ast.Node) *ast.IndexedType {
-	if !peekOperator(ast.OpIndexStart, p) {
+func (p *parser) indexedType(ref ast.Node) *ast.IndexedType {
+	if !p.peekOperator(ast.OpIndexStart) {
 		return nil
 	}
 	t := &ast.IndexedType{ValueType: ref}
-	p.Extend(ref, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(t, b)
-		requireOperator(ast.OpIndexStart, p, b)
-		if !peekOperator(ast.OpIndexEnd, p) {
-			t.Index = requireExpression(p, b)
+	p.Extend(p.mappings.CST(ref), func(b *cst.Branch) {
+		p.mappings.Add(t, b)
+		p.requireOperator(ast.OpIndexStart, b)
+		if !p.peekOperator(ast.OpIndexEnd) {
+			t.Index = p.requireExpression(b)
 		}
-		requireOperator(ast.OpIndexEnd, p, b)
+		p.requireOperator(ast.OpIndexEnd, b)
 	})
 	return t
 }

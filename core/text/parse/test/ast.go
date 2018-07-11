@@ -41,16 +41,14 @@ const (
 	tagEndCall    = ")"
 )
 
-var (
-	comma      = opParser(tagComma)
-	beginArray = opParser(tagBeginArray)
-	endArray   = opParser(tagEndArray)
-	beginCall  = opParser(tagBeginCall)
-	endCall    = opParser(tagEndCall)
-)
+func comma(p *parse.Parser) parse.LeafParser      { return opParser(p, tagComma) }
+func beginArray(p *parse.Parser) parse.LeafParser { return opParser(p, tagBeginArray) }
+func endArray(p *parse.Parser) parse.LeafParser   { return opParser(p, tagEndArray) }
+func beginCall(p *parse.Parser) parse.LeafParser  { return opParser(p, tagBeginCall) }
+func endCall(p *parse.Parser) parse.LeafParser    { return opParser(p, tagEndCall) }
 
-func opParser(op string) parse.LeafParser {
-	return func(p *parse.Parser, _ *cst.Leaf) {
+func opParser(p *parse.Parser, op string) parse.LeafParser {
+	return func(_ *cst.Leaf) {
 		if !p.String(op) {
 			p.Expected(op)
 		}
@@ -61,22 +59,21 @@ func maybeValue(p *parse.Parser, in *cst.Branch) interface{} {
 	switch {
 	case Peek(&p.Reader, tagBeginArray):
 		a := &ArrayNode{}
-		p.ParseBranch(in, a.Parse)
+		p.ParseBranch(in, a.Parser(p))
 		return a
 	case p.Numeric() != parse.NotNumeric:
 		var n NumberNode
-		p.ParseLeaf(in, n.Consume)
+		p.ParseLeaf(in, n.Consumer(p))
 		return &n
 	case p.AlphaNumeric():
 		var n ValueNode
-		p.ParseLeaf(in, n.Consume)
+		p.ParseLeaf(in, n.Consumer(p))
 		if Peek(&p.Reader, tagBeginCall) {
 			c := &CallNode{name: &n}
-			p.ParseBranch(in, c.Parse)
+			p.ParseBranch(in, c.Parser(p))
 			return c
-		} else {
-			return &n
 		}
+		return &n
 	}
 	return nil
 }
@@ -89,46 +86,58 @@ func parseValue(p *parse.Parser, in *cst.Branch) interface{} {
 	return v
 }
 
-func (n *ValueNode) Parse(p *parse.Parser, l *cst.Leaf) {
-	if !p.AlphaNumeric() {
-		p.Expected("value")
-	}
-	n.Consume(p, l)
-}
-
-func (n *ValueNode) Consume(p *parse.Parser, l *cst.Leaf) {
-	l.Token = p.Consume()
-	*n = ValueNode(l.Token.String())
-}
-
-func (n *NumberNode) Consume(p *parse.Parser, l *cst.Leaf) {
-	l.Token = p.Consume()
-	v, _ := strconv.ParseUint(l.Token.String(), 0, 32)
-	*n = NumberNode(v)
-}
-
-func (n *ListNode) Parse(p *parse.Parser, cst *cst.Branch) {
-	v := maybeValue(p, cst)
-	if v == nil {
-		return
-	}
-	*n = append(*n, v)
-	for p.String(tagComma) {
-		p.ParseLeaf(cst, nil)
-		*n = append(*n, parseValue(p, cst))
+func (n *ValueNode) Parse(p *parse.Parser) func(l *cst.Leaf) {
+	return func(l *cst.Leaf) {
+		if !p.AlphaNumeric() {
+			p.Expected("value")
+		}
+		n.Consumer(p)(l)
 	}
 }
 
-func (n *ArrayNode) Parse(p *parse.Parser, cst *cst.Branch) {
-	p.ParseLeaf(cst, beginArray)
-	p.ParseBranch(cst, (*ListNode)(n).Parse)
-	p.ParseLeaf(cst, endArray)
+func (n *ValueNode) Consumer(p *parse.Parser) parse.LeafParser {
+	return func(l *cst.Leaf) {
+		l.Token = p.Consume()
+		*n = ValueNode(l.Token.String())
+	}
 }
 
-func (n *CallNode) Parse(p *parse.Parser, cst *cst.Branch) {
-	p.ParseLeaf(cst, beginCall)
-	p.ParseBranch(cst, n.args.Parse)
-	p.ParseLeaf(cst, endCall)
+func (n *NumberNode) Consumer(p *parse.Parser) parse.LeafParser {
+	return func(l *cst.Leaf) {
+		l.Token = p.Consume()
+		v, _ := strconv.ParseUint(l.Token.String(), 0, 32)
+		*n = NumberNode(v)
+	}
+}
+
+func (n *ListNode) Parser(p *parse.Parser) parse.BranchParser {
+	return func(cst *cst.Branch) {
+		v := maybeValue(p, cst)
+		if v == nil {
+			return
+		}
+		*n = append(*n, v)
+		for p.String(tagComma) {
+			p.ParseLeaf(cst, nil)
+			*n = append(*n, parseValue(p, cst))
+		}
+	}
+}
+
+func (n *ArrayNode) Parser(p *parse.Parser) parse.BranchParser {
+	return func(cst *cst.Branch) {
+		p.ParseLeaf(cst, beginArray(p))
+		p.ParseBranch(cst, (*ListNode)(n).Parser(p))
+		p.ParseLeaf(cst, endArray(p))
+	}
+}
+
+func (n *CallNode) Parser(p *parse.Parser) parse.BranchParser {
+	return func(cst *cst.Branch) {
+		p.ParseLeaf(cst, beginCall(p))
+		p.ParseBranch(cst, n.args.Parser(p))
+		p.ParseLeaf(cst, endCall(p))
+	}
 }
 
 func Value(v interface{}) interface{} {

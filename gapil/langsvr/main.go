@@ -110,7 +110,7 @@ func (s *server) rel(path string) string {
 }
 
 func (s *server) nodeDoc(fa *fullAnalysis, n ast.Node) *ls.Document {
-	return s.docs[fa.mappings.CST(n).Tok().Source.Filename]
+	return s.docs[fa.mappings.AST.CST(n).Tok().Source.Filename]
 }
 
 func (s *server) nodeLocation(fa *fullAnalysis, n ast.Node) ls.Location {
@@ -249,7 +249,7 @@ func (s *server) Completions(ctx context.Context, doc *ls.Document, pos ls.Posit
 			for _, f := range sem.Enums {
 				list.Add(f.Name(), ls.Enum, "enum")
 				for _, e := range f.Entries {
-					list.Add(e.Name(), ls.Enum, fmt.Sprintf("%v(%v)", f.Name(), da.full.mappings.CST(e.AST.Value).Tok().String()))
+					list.Add(e.Name(), ls.Enum, fmt.Sprintf("%v(%v)", f.Name(), da.full.mappings.AST.CST(e.AST.Value).Tok().String()))
 				}
 			}
 			for _, c := range sem.Classes {
@@ -310,7 +310,7 @@ func (s *server) Signatures(ctx context.Context, doc *ls.Document, pos ls.Positi
 			params.Add(p.Name(), da.full.documentation(p.AST))
 		}
 		for i, a := range call.AST.Arguments {
-			if tok := da.full.mappings.CST(a).Token(); offset >= tok.Start {
+			if tok := da.full.mappings.AST.CST(a).Token(); offset >= tok.Start {
 				paramIndex = i
 			}
 		}
@@ -457,7 +457,7 @@ func (s *server) Hover(ctx context.Context, doc *ls.Document, pos ls.Position) (
 			if n.ast == nil {
 				continue
 			}
-			branch, ok := da.full.mappings.CST(n.ast).(*cst.Branch)
+			branch, ok := da.full.mappings.AST.CST(n.ast).(*cst.Branch)
 			if !ok {
 				continue
 			}
@@ -646,7 +646,7 @@ func underlying(ty semantic.Node) semantic.Node {
 func astChildAt(da *docAnalysis, parent ast.Node, offset int) ast.Node {
 	var child ast.Node
 	ast.Visit(parent, func(n ast.Node) {
-		cst := da.full.mappings.CST(n)
+		cst := da.full.mappings.AST.CST(n)
 		if cst == nil {
 			return
 		}
@@ -686,11 +686,11 @@ func (fa *fullAnalysis) nodeLocation(doc *ls.Document, n ast.Node) ls.Location {
 }
 
 func (fa *fullAnalysis) nodeRange(doc *ls.Document, n ast.Node) ls.Range {
-	return tokRange(doc, fa.mappings.CST(n).Token())
+	return tokRange(doc, fa.mappings.AST.CST(n).Token())
 }
 
 func (fa *fullAnalysis) nodePosition(doc *ls.Document, n ast.Node) ls.Position {
-	return tokRange(doc, fa.mappings.CST(n).Token()).Start
+	return tokRange(doc, fa.mappings.AST.CST(n).Token()).Start
 }
 
 func tokRange(doc *ls.Document, tok cst.Token) ls.Range {
@@ -706,7 +706,7 @@ func fragRange(doc *ls.Document, f cst.Fragment) ls.Range {
 
 func (fa *fullAnalysis) documentation(n ast.Node) string {
 	buf := &bytes.Buffer{}
-	cst := fa.mappings.CST(n)
+	cst := fa.mappings.AST.CST(n)
 	cst.Prefix().WriteTo(buf)
 	cst.Suffix().WriteTo(buf)
 	lines := strings.Split(buf.String(), "\n")

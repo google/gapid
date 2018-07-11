@@ -26,6 +26,5 @@ go_library(
     deps = [
         "//core/text/parse/cst:go_default_library",
         "//gapil/ast:go_default_library",
-        "//gapil/parser:go_default_library",
     ],
 )

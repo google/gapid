@@ -32,10 +32,10 @@ func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 	// Gather all declared types
 	for _, t := range api.Classes {
 		types[t] = false
-		tokens[t] = mappings.CST(t.AST).Tok()
+		tokens[t] = mappings.AST.CST(t.AST).Tok()
 		for _, f := range t.Fields {
 			fields[f] = fieldUsage{}
-			tokens[f] = mappings.CST(f.AST).Tok()
+			tokens[f] = mappings.AST.CST(f.AST).Tok()
 			if _, ok := f.Type.(*semantic.Class); ok {
 				fields[f] = fieldUsage{false, true}
 			}
@@ -43,11 +43,11 @@ func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 	}
 	for _, t := range api.Enums {
 		types[t] = false
-		tokens[t] = mappings.CST(t.AST).Tok()
+		tokens[t] = mappings.AST.CST(t.AST).Tok()
 	}
 	for _, t := range api.Pseudonyms {
 		types[t] = false
-		tokens[t] = mappings.CST(t.AST).Tok()
+		tokens[t] = mappings.AST.CST(t.AST).Tok()
 	}
 
 	var markClassFieldsUsed func(ty semantic.Type, read, written bool)
@@ -187,13 +187,13 @@ func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 		if a, ok := t.(semantic.Annotated); ok {
 			if anno := a.GetAnnotation(annoUnused); anno != nil {
 				if used {
-					issues.addf(mappings.CST(anno.AST), "Redundant annotation")
+					issues.addf(mappings.AST.CST(anno.AST), "Redundant annotation")
 				}
 				continue
 			}
 		}
 		if !used {
-			issues.addf(mappings.ParseNode(t), "Type %s declared but never used", t.Name())
+			issues.addf(mappings.CST(t), "Type %s declared but never used", t.Name())
 		}
 	}
 	for f, usage := range fields {
@@ -210,10 +210,10 @@ func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 		unused := len(msg) > 0
 		fiu, ciu := f.GetAnnotation(annoUnused), class.GetAnnotation(annoUnused)
 		if unused && fiu == nil && ciu == nil {
-			issues.addf(mappings.CST(f.AST), msg, f.Owner().Name(), f.Name())
+			issues.addf(mappings.AST.CST(f.AST), msg, f.Owner().Name(), f.Name())
 		}
 		if !unused && fiu != nil && ciu == nil {
-			issues.addf(mappings.CST(fiu.AST), "Redundant annotation")
+			issues.addf(mappings.AST.CST(fiu.AST), "Redundant annotation")
 		}
 	}
 	return issues

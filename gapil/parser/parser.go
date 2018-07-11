@@ -22,17 +22,9 @@ import (
 	"github.com/google/gapid/gapil/ast"
 )
 
-// ParseMap is the interface to an object into which ast<->cts mappings are stored.
-type ParseMap interface {
-	// The map object passed to parsers must support the interface used by the
-	// parsing library.
-	cst.Map
-}
-
-// NewParseMap returns a simple implementation of ParseMap sufficient for basic
-// mapping use cases.
-func NewParseMap() ParseMap {
-	return cst.NewMap()
+type parser struct {
+	*parse.Parser
+	mappings *ast.Mappings
 }
 
 // Parse takes a string containing a complete api description and
@@ -40,11 +32,11 @@ func NewParseMap() ParseMap {
 // If the string is not syntactically valid, it will also return the
 // errors encountered. If errors are returned, the ast returned will be
 // the incomplete tree so far, and may not be structurally valid.
-func Parse(filename, data string, m ParseMap) (*ast.API, parse.ErrorList) {
+func Parse(filename, data string, m *ast.Mappings) (*ast.API, parse.ErrorList) {
 	var api *ast.API
-	parser := func(p *parse.Parser, b *cst.Branch) {
-		api = requireAPI(p, b)
-	}
-	errors := parse.Parse(parser, filename, data, parse.NewSkip("//", "/*", "*/"), m)
+	errors := parse.Parse(filename, data, parse.NewSkip("//", "/*", "*/"), func(p *parse.Parser, b *cst.Branch) {
+		apiParser := parser{p, m}
+		api = apiParser.requireAPI(b)
+	})
 	return api, errors
 }

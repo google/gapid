@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/text/parse/cst"
+	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/format"
 	"github.com/google/gapid/gapil/parser"
 )
@@ -62,7 +62,7 @@ func (v *formatVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			log.F(ctx, true, "Failed to read api file. Error: %v", err)
 			continue
 		}
-		m := cst.NewMap()
+		m := &ast.Mappings{}
 		api, errs := parser.Parse(path, string(f), m)
 		if len(errs) > 0 {
 			l := log.From(ctx)

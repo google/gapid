@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/core/text/parse/test"
+	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 )
 
@@ -69,7 +70,7 @@ func TestParsedCST(t *testing.T) {
 			)),
 		},
 	} {
-		m := parser.NewParseMap()
+		m := &ast.Mappings{}
 		api, errs := parser.Parse("parser_test.api", test.source, m)
 		assert.For(test.name).ThatSlice(errs).Equals(test.errors)
 		assert.For(test.name).That(m.CST(api)).DeepEquals(test.expected)

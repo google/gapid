@@ -17,36 +17,30 @@ package semantic
 import (
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/gapil/parser"
 )
 
-// Mappings is a two-way relational map of AST nodes to semantic nodes.
+// Mappings is a two-way map of AST nodes to semantic nodes.
 type Mappings struct {
-	parser.ParseMap
+	AST           ast.Mappings
 	ASTToSemantic map[ast.Node][]Node
 	SemanticToAST map[Node][]ast.Node
 }
 
-// NewMappings returns a new, initialized Mappings struct.
-func NewMappings() *Mappings {
-	return &Mappings{
-		ParseMap:      parser.NewParseMap(),
-		ASTToSemantic: map[ast.Node][]Node{},
-		SemanticToAST: map[Node][]ast.Node{},
+// Add creates an association between the AST and semantic nodes.
+func (m *Mappings) Add(a ast.Node, s Node) {
+	if m.ASTToSemantic == nil {
+		m.ASTToSemantic = map[ast.Node][]Node{}
+		m.SemanticToAST = map[Node][]ast.Node{}
 	}
+	m.ASTToSemantic[a] = append(m.ASTToSemantic[a], s)
+	m.SemanticToAST[s] = append(m.SemanticToAST[s], a)
 }
 
-// Add creates a binding between the AST and semantic nodes.
-func (m *Mappings) Add(ast ast.Node, sem Node) {
-	m.ASTToSemantic[ast] = append(m.ASTToSemantic[ast], sem)
-	m.SemanticToAST[sem] = append(m.SemanticToAST[sem], ast)
-}
-
-// ParseNode returns the primary parse node for the semantic node.
-// If the semantic node has no parse node then nil is returned.
-func (m *Mappings) ParseNode(sem Node) cst.Node {
+// CST returns the primary CST for the semantic node.
+// If the semantic node has no associated CST then nil is returned.
+func (m *Mappings) CST(sem Node) cst.Node {
 	if asts, ok := m.SemanticToAST[sem]; ok && len(asts) > 0 {
-		if cst := m.CST(asts[0]); cst != nil {
+		if cst := m.AST.CST(asts[0]); cst != nil {
 			return cst
 		}
 	}
@@ -55,6 +49,7 @@ func (m *Mappings) ParseNode(sem Node) cst.Node {
 
 // MergeIn merges the mappings in other into m.
 func (m *Mappings) MergeIn(other *Mappings) {
+	m.AST.MergeIn(&other.AST)
 	for a, s := range other.ASTToSemantic {
 		m.ASTToSemantic[a] = append(m.ASTToSemantic[a], s...)
 	}

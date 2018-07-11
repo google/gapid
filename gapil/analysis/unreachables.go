@@ -41,7 +41,7 @@ func findUnreachables(
 				// Ensure this is reported only once.
 				if _, ok := reported[a]; !ok {
 					reported[a] = struct{}{}
-					at := mappings.CST(a)
+					at := mappings.AST.CST(a)
 					unreachables = append(unreachables, Unreachable{At: at, Node: n})
 				}
 				return false

@@ -82,16 +82,16 @@ func toValue(v interface{}) analysis.Value {
 
 func compile(ctx context.Context, source string) (*semantic.API, *semantic.Mappings, error) {
 	const maxErrors = 10
-	mappings := semantic.NewMappings()
-	parsed, errs := parser.Parse("analysis_test.api", source, mappings)
+	m := &semantic.Mappings{}
+	parsed, errs := parser.Parse("analysis_test.api", source, &m.AST)
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
 		return nil, nil, err
 	}
-	compiled, errs := resolver.Resolve([]*ast.API{parsed}, mappings, resolver.Options{})
+	compiled, errs := resolver.Resolve([]*ast.API{parsed}, m, resolver.Options{})
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
 		return nil, nil, err
 	}
-	return compiled, mappings, nil
+	return compiled, m, nil
 }
 
 func TestU32GlobalAnalysis(t *testing.T) {
