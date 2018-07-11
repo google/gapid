@@ -14,62 +14,32 @@
 
 package parse
 
-import "sync"
+import (
+	"github.com/google/gapid/core/text/parse/cst"
+)
 
 // BranchParser is a function that is passed to ParseBranch. It is handed the
 // Branch to fill in and the Parser to fill it from, and must either succeed or
 // add an error to the parser.
-type BranchParser func(p *Parser, cst *Branch)
+type BranchParser func(p *Parser, cst *cst.Branch)
 
 // LeafParser is a function that is passed to ParseLeaf. It is handed the
 // Leaf to fill in and the Parser to fill it from, and must either succeed or
 // add an error to the parser.
-type LeafParser func(p *Parser, cst *Leaf)
-
-// CSTMap is the interface to an object into which ast<->cts mappings are stored.
-type CSTMap interface {
-	// SetCST is called to map an ast node to a CST node.
-	SetCST(ast interface{}, cst Node)
-	// CST is called to lookup the CST mapping for an AST node.
-	CST(ast interface{}) Node
-}
-
-// cstMap is a simple implementation of CSTMap that just stores the mappings.
-type cstMap struct {
-	mappings map[interface{}]Node
-	mutex    sync.Mutex
-}
-
-func (m *cstMap) SetCST(ast interface{}, cst Node) {
-	m.mutex.Lock()
-	m.mappings[ast] = cst
-	m.mutex.Unlock()
-}
-
-func (m *cstMap) CST(ast interface{}) Node {
-	m.mutex.Lock()
-	out := m.mappings[ast]
-	m.mutex.Unlock()
-	return out
-}
-
-// NewCSTMap returns a new CSTMap instance.
-func NewCSTMap() CSTMap {
-	return &cstMap{mappings: make(map[interface{}]Node)}
-}
+type LeafParser func(p *Parser, cst *cst.Leaf)
 
 // Parse is the main entry point to the parse library.
 // Given a root parse function, the input string and the Skip controller, it builds
 // and initializes a Parser, runs the root using it, verifies it worked
 // correctly and then returns the errors generated if any.
-func Parse(root BranchParser, filename, data string, skip Skip, m CSTMap) []Error {
+func Parse(root BranchParser, filename, data string, skip Skip, m cst.Map) []Error {
 	if m == nil {
 		// We have to have a mapping store because of the extend call...
-		m = NewCSTMap()
+		m = cst.NewMap()
 	}
 	p := &Parser{
-		skip:   skip,
-		CSTMap: m,
+		skip: skip,
+		Map:  m,
 	}
 	p.setData(filename, data)
 	p.parse(root)
@@ -79,13 +49,13 @@ func Parse(root BranchParser, filename, data string, skip Skip, m CSTMap) []Erro
 // Parser contains all the context needed while parsing.
 // They are built for you by the Parse function.
 type Parser struct {
-	Reader           // The token reader for this parser.
-	CSTMap           // A map of cst nodes to ast nodes
-	Errors ErrorList // The set of errors generated during the parse.
-	skip   Skip      // The whitespace skipping function.
-	prefix Separator // The currently skipped prefix separator.
-	suffix Separator // The currently skipped suffix separator.
-	last   Node      // The last node fully parsed, potential suffix target
+	Reader                // The token reader for this parser.
+	cst.Map               // A map of cst nodes to ast nodes
+	Errors  ErrorList     // The set of errors generated during the parse.
+	skip    Skip          // The whitespace skipping function.
+	prefix  cst.Separator // The currently skipped prefix separator.
+	suffix  cst.Separator // The currently skipped suffix separator.
+	last    cst.Node      // The last node fully parsed, potential suffix target
 }
 
 func (p *Parser) parse(root BranchParser) {
@@ -95,7 +65,7 @@ func (p *Parser) parse(root BranchParser) {
 			panic(err)
 		}
 	}()
-	anchor := &Branch{}
+	anchor := &cst.Branch{}
 	anchor.AddPrefix(p.skip(p, SkipPrefix))
 	root(p, anchor)
 	if len(p.suffix) > 0 {
@@ -111,7 +81,7 @@ func (p *Parser) parse(root BranchParser) {
 	}
 }
 
-func (p *Parser) addChild(in *Branch, child Node) {
+func (p *Parser) addChild(in *cst.Branch, child cst.Node) {
 	if p.suffix != nil {
 		p.last.AddSuffix(p.suffix)
 		p.suffix = nil
@@ -119,40 +89,40 @@ func (p *Parser) addChild(in *Branch, child Node) {
 	child.AddPrefix(p.prefix)
 	p.prefix = nil
 	in.Children = append(in.Children, child)
-	p.setParent(child, in)
+	child.SetParent(in)
 }
 
-// ParseLeaf adds a new Leaf to cst and then calls the do function to
+// ParseLeaf adds a new Leaf to b and then calls the do function to
 // parse the Leaf.
 // If do is nil, a leaf will be built with the current unconsumed input.
-func (p *Parser) ParseLeaf(cst *Branch, do LeafParser) {
-	l := &Leaf{}
-	p.addChild(cst, l)
+func (p *Parser) ParseLeaf(b *cst.Branch, do LeafParser) {
+	l := &cst.Leaf{}
+	p.addChild(b, l)
 	if do != nil {
 		do(p, l)
 	}
 	if p.offset != p.cursor {
-		l.SetToken(p.Consume())
+		l.Token = p.Consume()
 	}
 	p.suffix = p.skip(p, SkipSuffix)
 	p.prefix = p.skip(p, SkipPrefix)
 	p.last = l
 }
 
-// ParseBranch adds a new Branch to cst and then calls the do function to
+// ParseBranch adds a new Branch to b and then calls the do function to
 // parse the branch.
 // This is called recursively to build the node tree.
-func (p *Parser) ParseBranch(cst *Branch, do BranchParser) {
+func (p *Parser) ParseBranch(b *cst.Branch, do BranchParser) {
 	if p.offset != p.cursor {
 		p.Error("Starting ParseBranch with parsed but unconsumed tokens")
 	}
-	b := &Branch{}
-	p.addChild(cst, b)
-	do(p, b)
+	n := &cst.Branch{}
+	p.addChild(b, n)
+	do(p, n)
 	if p.offset != p.cursor {
 		p.Error("Finishing ParseBranch with parsed but unconsumed tokens")
 	}
-	p.last = b
+	p.last = n
 }
 
 // Extend inserts a new branch between ast and its parent, and calls do() with
@@ -175,10 +145,10 @@ func (p *Parser) Extend(ast interface{}, do BranchParser) {
 		return
 	}
 
-	g := &Branch{}
-	g.parent = base
-	g.Children = []Node{n}
-	p.setParent(n, g)
+	g := &cst.Branch{}
+	g.SetParent(base)
+	g.Children = []cst.Node{n}
+	n.SetParent(g)
 
 	// Replace n with g in base.children.
 	for i := len(base.Children) - 1; i >= 0; i-- {
@@ -192,22 +162,11 @@ func (p *Parser) Extend(ast interface{}, do BranchParser) {
 	p.Error("Branches parent did not contain branch")
 }
 
-func (p *Parser) setParent(child Node, parent *Branch) {
-	switch n := child.(type) {
-	case *Branch:
-		n.parent = parent
-	case *Leaf:
-		n.parent = parent
-	default:
-		p.Error("Cannot set parent of node type %T", n)
-	}
-}
-
 // Error adds a new error to the parser error list. It will attempt to consume
 // a token from the reader to act as a place holder, and also to ensure
 // progress is made in the presence of errors.
 func (p *Parser) Error(message string, args ...interface{}) {
-	at := Fragment(nil)
+	at := cst.Fragment(nil)
 	if p.IsEOF() {
 		at = p.last
 	}
@@ -225,7 +184,6 @@ func (p *Parser) ErrorAt(at interface{}, message string, args ...interface{}) {
 // input. It uses value as the expected input, and parses a token of the stream
 // for the unexpected actual input.
 func (p *Parser) Expected(value string) {
-	invalid := &fragment{}
-	invalid.SetToken(p.GuessNextToken())
-	p.Errors.Add(&p.Reader, invalid, "Expected \"%s\" got \"%s\"", value, invalid.Token().String())
+	invalid := p.GuessNextToken()
+	p.Errors.Add(&p.Reader, invalid, "Expected \"%s\" got \"%s\"", value, invalid.String())
 }

@@ -238,8 +238,8 @@ func CheckErrors(apiName string, errs parse.ErrorList, maxErrors int) error {
 	}
 	for _, e := range errs {
 		if e.At != nil {
-			filename := e.At.Token().Source.Filename
-			line, column := e.At.Token().Cursor()
+			filename := e.At.Tok().Source.Filename
+			line, column := e.At.Tok().Cursor()
 			fmt.Fprintf(os.Stderr, "%s:%v:%v: %s\n", filename, line, column, e.Message)
 		} else {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", apiName, e.Message)

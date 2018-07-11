@@ -17,16 +17,15 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "ast.go",
-        "cst.go",
-        "verify.go",
+        "branch.go",
+        "fragment.go",
+        "leaf.go",
+        "mapping.go",
+        "node.go",
+        "source.go",
+        "token.go",
     ],
-    importpath = "github.com/google/gapid/core/text/parse/test",
+    importpath = "github.com/google/gapid/core/text/parse/cst",
     visibility = ["//visibility:public"],
-    deps = [
-        "//core/assert:go_default_library",
-        "//core/log:go_default_library",
-        "//core/text/parse:go_default_library",
-        "//core/text/parse/cst:go_default_library",
-    ],
+    deps = ["//core/data/compare:go_default_library"],
 )

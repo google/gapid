@@ -18,6 +18,7 @@ import (
 	"bytes"
 
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 )
 
 func Peek(r *parse.Reader, value string) bool {
@@ -26,19 +27,19 @@ func Peek(r *parse.Reader, value string) bool {
 	return result
 }
 
-func Token(value string) parse.Token {
-	source := &parse.Source{Filename: "cst_test.api", Runes: bytes.Runes([]byte(value))}
-	return parse.Token{Source: source, Start: 0, End: len(source.Runes)}
+func Token(value string) cst.Token {
+	source := &cst.Source{Filename: "cst_test.api", Runes: bytes.Runes([]byte(value))}
+	return cst.Token{Source: source, Start: 0, End: len(source.Runes)}
 }
 
-func Fragment(tok string) parse.Fragment {
-	return parse.NewFragment(Token(tok))
+func Fragment(tok string) cst.Fragment {
+	return Token(tok)
 }
 
-func Separator(list ...interface{}) parse.Separator {
-	var sep parse.Separator
+func Separator(list ...interface{}) cst.Separator {
+	var sep cst.Separator
 	for _, e := range list {
-		if f, ok := e.(parse.Fragment); ok {
+		if f, ok := e.(cst.Fragment); ok {
 			sep = append(sep, f)
 		} else {
 			sep = append(sep, Fragment(e.(string)))
@@ -47,21 +48,19 @@ func Separator(list ...interface{}) parse.Separator {
 	return sep
 }
 
-func Leaf(v string) parse.Node {
-	l := &parse.Leaf{}
-	l.SetToken(Token(v))
-	return l
+func Leaf(v string) cst.Node {
+	return &cst.Leaf{Token: Token(v)}
 }
 
-func asNode(v interface{}) parse.Node {
-	if n, ok := v.(parse.Node); ok {
+func asNode(v interface{}) cst.Node {
+	if n, ok := v.(cst.Node); ok {
 		return n
 	}
 	return Leaf(v.(string))
 }
 
-func Branch(nodes ...interface{}) *parse.Branch {
-	n := &parse.Branch{}
+func Branch(nodes ...interface{}) *cst.Branch {
+	n := &cst.Branch{}
 	for _, v := range nodes {
 		c := asNode(v)
 		n.Children = append(n.Children, c)
@@ -69,17 +68,17 @@ func Branch(nodes ...interface{}) *parse.Branch {
 	return n
 }
 
-func Node(prefix interface{}, v interface{}, suffix interface{}) parse.Node {
+func Node(prefix interface{}, v interface{}, suffix interface{}) cst.Node {
 	n := asNode(v)
 	if prefix != nil {
-		if sep, ok := prefix.(parse.Separator); ok {
+		if sep, ok := prefix.(cst.Separator); ok {
 			n.AddPrefix(sep)
 		} else {
 			n.AddPrefix(Separator(prefix))
 		}
 	}
 	if suffix != nil {
-		if sep, ok := suffix.(parse.Separator); ok {
+		if sep, ok := suffix.(cst.Separator); ok {
 			n.AddSuffix(sep)
 		} else {
 			n.AddSuffix(Separator(suffix))

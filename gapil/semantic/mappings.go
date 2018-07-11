@@ -15,7 +15,7 @@
 package semantic
 
 import (
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/parser"
 )
@@ -44,7 +44,7 @@ func (m *Mappings) Add(ast ast.Node, sem Node) {
 
 // ParseNode returns the primary parse node for the semantic node.
 // If the semantic node has no parse node then nil is returned.
-func (m *Mappings) ParseNode(sem Node) parse.Node {
+func (m *Mappings) ParseNode(sem Node) cst.Node {
 	if asts, ok := m.SemanticToAST[sem]; ok && len(asts) > 0 {
 		if cst := m.CST(asts[0]); cst != nil {
 			return cst

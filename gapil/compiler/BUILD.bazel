@@ -48,7 +48,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/host:go_default_library",
-        "//core/text/parse:go_default_library",
+        "//core/text/parse/cst:go_default_library",
         "//gapil/ast:go_default_library",
         "//gapil/compiler/mangling:go_default_library",
         "//gapil/compiler/mangling/c:go_default_library",

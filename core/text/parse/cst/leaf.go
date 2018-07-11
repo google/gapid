@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parse
+package cst
 
 import (
 	"io"
@@ -23,23 +23,24 @@ import (
 // Leaf nodes are part of the cst that cannot have child nodes, they represent
 // a single token from the input.
 type Leaf struct {
-	fragment
-	node
+	Token
+	NodeBase
 }
 
-func (n *Leaf) WriteTo(w io.Writer) error {
-	if err := n.prefix.WriteTo(w); err != nil {
+// Write writes the leaf node to the writer w.
+func (n *Leaf) Write(w io.Writer) error {
+	if err := n.Pre.Write(w); err != nil {
 		return err
 	}
-	if err := n.fragment.WriteTo(w); err != nil {
+	if err := n.Token.Write(w); err != nil {
 		return err
 	}
-	return n.suffix.WriteTo(w)
+	return n.Post.Write(w)
 }
 
 func compareLeaves(c compare.Comparator, reference, value *Leaf) {
-	c.With(c.Path.Member("fragment", reference, value)).Compare(reference.fragment, value.fragment)
-	c.With(c.Path.Member("node", reference, value)).Compare(reference.node, value.node)
+	c.With(c.Path.Member("Token", reference, value)).Compare(reference.Token, value.Token)
+	c.With(c.Path.Member("NodeBase", reference, value)).Compare(reference.NodeBase, value.NodeBase)
 }
 
 func init() {

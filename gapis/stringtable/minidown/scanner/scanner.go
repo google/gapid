@@ -21,10 +21,11 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapis/stringtable/minidown/token"
 )
 
-func skip(p *parse.Parser, mode parse.SkipMode) parse.Separator {
+func skip(p *parse.Parser, mode parse.SkipMode) cst.Separator {
 	for i := 0; ; i++ {
 		r := p.PeekN(i)
 		if !unicode.IsSpace(r) || r == '\r' || r == '\n' || r == utf8.RuneError {
@@ -32,7 +33,7 @@ func skip(p *parse.Parser, mode parse.SkipMode) parse.Separator {
 				return nil
 			}
 			p.AdvanceN(i)
-			return parse.Separator{parse.NewFragment(p.Consume())}
+			return cst.Separator{p.Consume()}
 		}
 	}
 }
@@ -40,7 +41,7 @@ func skip(p *parse.Parser, mode parse.SkipMode) parse.Separator {
 // Scan scans a minidown file producing a token list.
 func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 	tokens := []token.Token{}
-	parser := func(p *parse.Parser, root *parse.Branch) {
+	parser := func(p *parse.Parser, root *cst.Branch) {
 		i := 0
 		for !p.IsEOF() {
 			i++
@@ -53,7 +54,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				p.Rune('\r')
 				p.Consume()
 
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					p.Rune('\n')
 					tokens = append(tokens, token.NewLine{Leaf: cst})
 				})
@@ -61,7 +62,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 			}
 			switch p.Peek() {
 			case '\\':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					p.Advance()
 					r := p.Peek()
 					switch r {
@@ -74,7 +75,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '#':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					for p.Rune('#') {
 					}
 					if unicode.IsSpace(p.Peek()) {
@@ -85,7 +86,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '*':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					if r := p.PeekN(1); unicode.IsSpace(r) || r == utf8.RuneError {
 						// No text following the '*'? Then treat as bullet.
 						p.Advance()
@@ -99,7 +100,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '_':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					if r := p.PeekN(1); unicode.IsSpace(r) || r == utf8.RuneError {
 						// No text following the '_'? Then treat as text.
 						p.Advance()
@@ -113,7 +114,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '{':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					if ok, typed := parseTag(p); ok {
 						tokens = append(tokens, token.Tag{Leaf: cst, Typed: typed})
 					} else {
@@ -123,20 +124,20 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '[', '(':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					p.Advance()
 					tokens = append(tokens, token.OpenBracket{Leaf: cst})
 				})
 
 			case ']', ')', '}':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					p.Advance()
 					tokens = append(tokens, token.CloseBracket{Leaf: cst})
 				})
 
 			default: // assume text
 				trailingEmphasis := false
-				p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 					parseText(p)
 					tokens = append(tokens, token.Text{Leaf: cst})
 					if r := p.Peek(); r == '_' || r == '*' {
@@ -147,7 +148,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				// Trailing _ and * should be treated as emphasis, not text or bullets.
 				if trailingEmphasis {
 					for r := p.Peek(); r == '_' || r == '*'; r = p.Peek() {
-						p.ParseLeaf(root, func(p *parse.Parser, cst *parse.Leaf) {
+						p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
 							p.Advance()
 							for p.Rune(r) {
 							}

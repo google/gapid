@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/text/parse/cst"
 )
 
 var (
@@ -36,7 +37,7 @@ const (
 // Error represents the information that us useful in debugging a parse failure.
 type Error struct {
 	// At is the parse fragment that was being processed when the error was encountered.
-	At Fragment
+	At cst.Fragment
 	// Message is the message associated with the error.
 	Message string
 	// Stack is the captured stack trace at the point the error was noticed.
@@ -62,7 +63,7 @@ func (err Error) Format(f fmt.State, c rune) {
 		fmt.Fprintf(f, "%s", err.Message)
 		return
 	}
-	t := err.At.Token()
+	t := err.At.Tok()
 	line, column := t.Cursor()
 	filename := "-"
 	if t.Source != nil && t.Source.Filename != "" {
@@ -77,16 +78,14 @@ func init() {
 	})
 }
 
-func (l *ErrorList) Add(r *Reader, at Fragment, message string, args ...interface{}) {
+func (l *ErrorList) Add(r *Reader, at cst.Fragment, message string, args ...interface{}) {
 	if len(*l) >= ParseErrorLimit {
 		panic(AbortParse)
 	}
 	err := Error{At: at}
-	if at == nil || at.Token().Len() == 0 {
-		invalid := &fragment{}
+	if at == nil || at.Tok().Len() == 0 {
 		if r != nil {
-			invalid.SetToken(r.GuessNextToken())
-			err.At = invalid
+			err.At = r.GuessNextToken()
 		}
 	}
 	if len(args) > 0 {

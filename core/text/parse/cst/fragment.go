@@ -12,26 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parse
+package cst
 
 import (
-	"os"
-	"path/filepath"
+	"io"
 )
 
-type Source struct {
-	Filename string // The path which was used to load the source (if any).
-	Runes    []rune // The full content of the source file.
+// Fragment is a component of a cst that is backed by a token.
+// This includes Nodes and all forms of space and comment.
+type Fragment interface {
+	// Tok returns the underlying token of this fragment.
+	Tok() Token
+	// Write is used to write the underlying token out to the writer.
+	Write(io.Writer) error
 }
 
-// RelativeFilename returns the filename relative to the current working
-// directory.
-func (s Source) RelativeFilename() string {
-	path := s.Filename
-	if cwd, err := os.Getwd(); err == nil {
-		if rel, err := filepath.Rel(cwd, s.Filename); err == nil {
-			path = rel
+// Separator is a list type to manage fragments that were skipped.
+type Separator []Fragment
+
+// Write is used to write the list of separators to the writer.
+func (s Separator) Write(w io.Writer) error {
+	for _, n := range s {
+		if err := n.Write(w); err != nil {
+			return err
 		}
 	}
-	return path
+	return nil
 }

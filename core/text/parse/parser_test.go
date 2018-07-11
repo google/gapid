@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/core/text/parse/test"
 )
 
@@ -55,13 +56,13 @@ func TestErrorExpected(t *testing.T) {
 
 func TestUnconsumed(t *testing.T) {
 	ctx := log.Testing(t)
-	testCustomFail(ctx, "a", func(p *parse.Parser, cst *parse.Branch) {})
+	testCustomFail(ctx, "a", func(p *parse.Parser, n *cst.Branch) {})
 }
 
 func TestUnconsumedByBranch(t *testing.T) {
 	ctx := log.Testing(t)
-	testCustomFail(ctx, "a", func(p *parse.Parser, cst *parse.Branch) {
-		p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
+	testCustomFail(ctx, "a", func(p *parse.Parser, n *cst.Branch) {
+		p.ParseBranch(n, func(p *parse.Parser, n *cst.Branch) {
 			p.NotSpace()
 		})
 	})
@@ -69,9 +70,9 @@ func TestUnconsumedByBranch(t *testing.T) {
 
 func TestUnconsumedOnBranch(t *testing.T) {
 	ctx := log.Testing(t)
-	testCustomFail(ctx, "a", func(p *parse.Parser, cst *parse.Branch) {
+	testCustomFail(ctx, "a", func(p *parse.Parser, n *cst.Branch) {
 		p.NotSpace()
-		p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {})
+		p.ParseBranch(n, func(p *parse.Parser, n *cst.Branch) {})
 	})
 }
 
@@ -145,9 +146,9 @@ func TestComplex(t *testing.T) {
 
 func TestErrorLimit(t *testing.T) {
 	ctx := log.Testing(t)
-	errs := parse.Parse(func(p *parse.Parser, cst *parse.Branch) {
+	errs := parse.Parse(func(p *parse.Parser, n *cst.Branch) {
 		for i := 0; true; i++ {
-			p.ErrorAt(cst, "failure")
+			p.ErrorAt(n, "failure")
 			if i >= parse.ParseErrorLimit {
 				log.F(ctx, true, "Parsing not terminated. %d errors", i)
 			}
@@ -172,7 +173,7 @@ func TestCursor(t *testing.T) {
 	if len(errs) == 0 {
 		log.E(ctx, "Expected errors")
 	}
-	l, c := errs[0].At.Token().Cursor()
+	l, c := errs[0].At.Tok().Cursor()
 	assert.For(ctx, "Line").That(l).Equals(line)
 	assert.For(ctx, "Column").That(c).Equals(column)
 	assert.For(ctx, "Error").ThatString(errs[0]).HasPrefix(fmt.Sprintf("%s:%v:%v: Unexpected", filename, line, column))
@@ -184,25 +185,25 @@ func TestCustomPanic(t *testing.T) {
 	defer func() {
 		assert.For(ctx, "recover").That(recover()).Equals(custom)
 	}()
-	parse.Parse(func(p *parse.Parser, _ *parse.Branch) { panic(custom) }, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
+	parse.Parse(func(p *parse.Parser, _ *cst.Branch) { panic(custom) }, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
 }
 
-func testParse(ctx context.Context, content string, cst parse.Node, ast *test.ListNode) {
+func testParse(ctx context.Context, content string, n cst.Node, ast *test.ListNode) {
 	ctx = log.V{"content": content}.Bind(ctx)
 	root := List()
-	var gotCst *parse.Branch
-	rootParse := func(p *parse.Parser, cst *parse.Branch) {
-		gotCst = cst
-		root.Parse(p, cst)
+	var gotCst *cst.Branch
+	rootParse := func(p *parse.Parser, n *cst.Branch) {
+		gotCst = n
+		root.Parse(p, n)
 	}
 	errs := parse.Parse(rootParse, "parser_test.api", content, parse.NewSkip("//", "/*", "*/"), nil)
 	assert.For(ctx, "errors").ThatSlice(errs).IsEmpty()
 	out := &bytes.Buffer{}
-	gotCst.WriteTo(out)
+	gotCst.Write(out)
 	assert.For(ctx, "content").ThatString(out).Equals(content)
 	test.VerifyTokens(ctx, gotCst)
-	if cst != nil {
-		assert.For(ctx, "CST").That(gotCst).DeepEquals(cst)
+	if n != nil {
+		assert.For(ctx, "CST").That(gotCst).DeepEquals(n)
 	}
 	if ast != nil {
 		assert.For(ctx, "AST").That(root).DeepEquals(ast)
@@ -215,7 +216,7 @@ func testCustomFail(ctx context.Context, content string, do parse.BranchParser) 
 		log.E(ctx, "Expected errors")
 	} else {
 		for _, e := range errs {
-			line, column := e.At.Token().Cursor()
+			line, column := e.At.Tok().Cursor()
 			log.I(ctx, "%v:%v: %s\n", line, column, e.Message)
 		}
 	}

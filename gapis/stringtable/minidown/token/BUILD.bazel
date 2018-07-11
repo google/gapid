@@ -19,5 +19,5 @@ go_library(
     srcs = ["token.go"],
     importpath = "github.com/google/gapid/gapis/stringtable/minidown/token",
     visibility = ["//visibility:public"],
-    deps = ["//core/text/parse:go_default_library"],
+    deps = ["//core/text/parse/cst:go_default_library"],
 )

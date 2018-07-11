@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/semantic"
 )
@@ -270,6 +270,6 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 	}
 }
 
-func getSource(n parse.Node) string {
-	return string(n.Token().Source.Runes[n.Token().Start:n.Token().End])
+func getSource(n cst.Node) string {
+	return string(n.Tok().Source.Runes[n.Tok().Start:n.Tok().End])
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parse
+package cst
 
 import (
 	"io"
@@ -20,38 +20,40 @@ import (
 	"github.com/google/gapid/core/data/compare"
 )
 
-// Branch is a CST node  that can have children.
+// Branch is a CST node that can have children.
 type Branch struct {
-	node
+	NodeBase
 	// Children is the slice of child nodes for this Branch.
 	Children []Node
 }
 
-func (n *Branch) Token() Token {
+// Tok returns the underlying token of this node.
+func (n *Branch) Tok() Token {
 	tok := Token{}
 	if len(n.Children) > 0 {
-		first := n.Children[0].Token()
-		last := n.Children[len(n.Children)-1].Token()
+		first := n.Children[0].Tok()
+		last := n.Children[len(n.Children)-1].Tok()
 		tok = first
 		tok.End = last.End
 	}
 	return tok
 }
 
-func (n *Branch) WriteTo(w io.Writer) error {
-	if err := n.prefix.WriteTo(w); err != nil {
+// Write writes the branch node to the writer w.
+func (n *Branch) Write(w io.Writer) error {
+	if err := n.Pre.Write(w); err != nil {
 		return err
 	}
 	for _, c := range n.Children {
-		if err := c.WriteTo(w); err != nil {
+		if err := c.Write(w); err != nil {
 			return err
 		}
 	}
-	return n.suffix.WriteTo(w)
+	return n.Post.Write(w)
 }
 
 func compareBranches(c compare.Comparator, reference, value *Branch) {
-	c.With(c.Path.Member("node", reference, value)).Compare(reference.node, value.node)
+	c.With(c.Path.Member("NodeBase", reference, value)).Compare(reference.NodeBase, value.NodeBase)
 	c.With(c.Path.Member("Children", reference, value)).Compare(reference.Children, value.Children)
 }
 

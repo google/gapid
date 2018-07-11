@@ -15,36 +15,38 @@
 // Package token holds the tokens generated my the minidown scanner.
 package token
 
-import "github.com/google/gapid/core/text/parse"
+import (
+	"github.com/google/gapid/core/text/parse/cst"
+)
 
 // Token is the interface implemented by all tokens.
 type Token interface {
-	CST() parse.Node
+	CST() cst.Node
 }
 
 // Heading represents a run of '#'
 type Heading struct {
-	*parse.Leaf
+	*cst.Leaf
 }
 
 // NewLine represents a newline.
 type NewLine struct {
-	*parse.Leaf
+	*cst.Leaf
 }
 
 // Emphasis represets a '*', '_', '**' or '__' adjacent text.
 type Emphasis struct {
-	*parse.Leaf
+	*cst.Leaf
 }
 
 // Bullet represets a '*' non-adjacent to text.
 type Bullet struct {
-	*parse.Leaf
+	*cst.Leaf
 }
 
 // Text represents regular text.
 type Text struct {
-	*parse.Leaf
+	*cst.Leaf
 	Override string // If non-empty then the this should be used instead of the CST string.
 }
 
@@ -52,52 +54,52 @@ func (t Text) String() string {
 	if len(t.Override) > 0 {
 		return t.Override
 	}
-	return t.CST().Token().String()
+	return t.CST().Tok().String()
 }
 
 // Tag represents a alpha-numeric wrapped with double curly brackets.
 // For example '{{person}}'.
 type Tag struct {
-	*parse.Leaf
+	*cst.Leaf
 	Typed bool
 }
 
 // OpenBracket represents a '(', '[' or '{'.
 type OpenBracket struct {
-	*parse.Leaf
+	*cst.Leaf
 }
 
 // Is returns true if the bracket is of the type r.
-func (t OpenBracket) Is(r rune) bool { return t.Token().String() == string([]rune{r}) }
+func (t OpenBracket) Is(r rune) bool { return t.Token.String() == string([]rune{r}) }
 
 // CloseBracket represents a ')', ']' or '}'.
 type CloseBracket struct {
-	*parse.Leaf
+	*cst.Leaf
 }
 
 // Is returns true if the bracket is of the type r.
-func (t CloseBracket) Is(r rune) bool { return t.Token().String() == string([]rune{r}) }
+func (t CloseBracket) Is(r rune) bool { return t.Token.String() == string([]rune{r}) }
 
-// CST returns the parse.Node of this token.
-func (t Heading) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t Heading) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t NewLine) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t NewLine) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t Emphasis) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t Emphasis) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t Bullet) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t Bullet) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t Text) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t Text) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t Tag) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t Tag) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t OpenBracket) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t OpenBracket) CST() cst.Node { return t.Leaf }
 
-// CST returns the parse.Node of this token.
-func (t CloseBracket) CST() parse.Node { return t.Leaf }
+// CST returns the cst.Node of this token.
+func (t CloseBracket) CST() cst.Node { return t.Leaf }

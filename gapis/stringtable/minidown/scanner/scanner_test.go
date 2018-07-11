@@ -93,7 +93,7 @@ func TestScanner(t *testing.T) {
 			case token.Text:
 				got[i] = tok{t.String(), fmt.Sprintf("%T", t)}
 			default:
-				got[i] = tok{t.CST().Token().String(), fmt.Sprintf("%T", t)}
+				got[i] = tok{t.CST().Tok().String(), fmt.Sprintf("%T", t)}
 			}
 		}
 		assert.For(test.source).That(got).DeepEquals(test.expected)

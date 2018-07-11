@@ -18,18 +18,18 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 )
 
 // Issue holds details of a problem found when validating an API file.
 type Issue struct {
-	At      parse.Fragment
+	At      cst.Fragment
 	Problem interface{}
 }
 
 func (i Issue) String() string {
 	if at := i.At; at != nil {
-		return fmt.Sprintf("%v %v", at.Token().At(), i.Problem)
+		return fmt.Sprintf("%v %v", at.Tok().At(), i.Problem)
 	}
 	return fmt.Sprintf("%v", i.Problem)
 }
@@ -45,11 +45,11 @@ func (l Issues) String() string {
 	return strings.Join(lines, "\n")
 }
 
-func (l *Issues) add(at parse.Fragment, problem interface{}) {
+func (l *Issues) add(at cst.Fragment, problem interface{}) {
 	(*l) = append(*l, Issue{At: at, Problem: problem})
 }
 
-func (l *Issues) addf(at parse.Fragment, msg string, args ...interface{}) {
+func (l *Issues) addf(at cst.Fragment, msg string, args ...interface{}) {
 	l.add(at, fmt.Errorf(msg, args...))
 }
 
@@ -58,7 +58,7 @@ func (l Issues) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 func (l Issues) Less(i, j int) bool {
 	a, b := l[i].At, l[j].At
 	if a != nil && b != nil {
-		return a.Token().Less(b.Token())
+		return a.Tok().Less(b.Tok())
 	}
 	return fmt.Sprint(l[i].Problem) < fmt.Sprint(l[j].Problem)
 }

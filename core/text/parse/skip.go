@@ -14,7 +14,11 @@
 
 package parse
 
-import "unicode/utf8"
+import (
+	"unicode/utf8"
+
+	"github.com/google/gapid/core/text/parse/cst"
+)
 
 type SkipMode int
 
@@ -34,33 +38,27 @@ const (
 // tokens do not exist, even though the tokens may have been necessary to
 // separate the lexical tokens (whitespace), or carry useful information
 // (comments).
-type Skip func(parser *Parser, mode SkipMode) Separator
+type Skip func(parser *Parser, mode SkipMode) cst.Separator
 
 // NewSkip builds a Skip function for the common case of a parser that has one
 // type of line comment, one type of block comment, and want to treat all
 // unicode space characters as skippable.
 func NewSkip(line, blockstart, blockend string) Skip {
-	return func(p *Parser, mode SkipMode) Separator {
-		var sep Separator
+	return func(p *Parser, mode SkipMode) cst.Separator {
+		var sep cst.Separator
 		for {
 			switch {
 			case p.Space():
-				n := &fragment{}
-				n.SetToken(p.Consume())
-				sep = append(sep, n)
+				sep = append(sep, p.Consume())
 			case mode == SkipPrefix && p.EOL():
-				n := &fragment{}
-				n.SetToken(p.Consume())
-				sep = append(sep, n)
+				sep = append(sep, p.Consume())
 			case p.String(line):
 				if !p.SeekRune('\n') {
 					for !p.IsEOF() {
 						p.Advance()
 					}
 				}
-				n := &fragment{}
-				n.SetToken(p.Consume())
-				sep = append(sep, n)
+				sep = append(sep, p.Consume())
 			case p.String(blockstart):
 				first, _ := utf8.DecodeRuneInString(blockend)
 				for {
@@ -73,9 +71,7 @@ func NewSkip(line, blockstart, blockend string) Skip {
 					}
 					p.Advance()
 				}
-				n := &fragment{}
-				n.SetToken(p.Consume())
-				sep = append(sep, n)
+				sep = append(sep, p.Consume())
 			default:
 				return sep
 			}

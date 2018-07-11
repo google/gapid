@@ -15,94 +15,95 @@
 package parser
 
 import (
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
+	"github.com/google/gapid/gapil/ast"
 )
 
 // type name '(' [ param { ',' param } } ')' [ block ]
-func function(f *ast.Function, p *parse.Parser, cst *parse.Branch, withBlock bool) *ast.Function {
-	p.SetCST(f, cst)
+func function(f *ast.Function, p *parse.Parser, b *cst.Branch, withBlock bool) *ast.Function {
+	p.SetCST(f, b)
 	var result *ast.Parameter
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		result = &ast.Parameter{Type: requireTypeRef(p, cst)}
-		p.SetCST(result, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		result = &ast.Parameter{Type: requireTypeRef(p, b)}
+		p.SetCST(result, b)
 	})
-	f.Generic = requireGeneric(p, cst)
-	requireOperator(ast.OpListStart, p, cst)
-	for !operator(ast.OpListEnd, p, cst) {
+	f.Generic = requireGeneric(p, b)
+	requireOperator(ast.OpListStart, p, b)
+	for !operator(ast.OpListEnd, p, b) {
 		if p.IsEOF() {
 			p.Error("end of file reached while looking for '%s'", ast.OpListEnd)
 			break
 		}
 		if len(f.Parameters) > 0 {
-			operator(ast.OpListSeparator, p, cst)
+			operator(ast.OpListSeparator, p, b)
 		}
-		p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-			f.Parameters = append(f.Parameters, parameter(p, cst))
+		p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+			f.Parameters = append(f.Parameters, parameter(p, b))
 		})
 	}
 	f.Parameters = append(f.Parameters, result)
 	if withBlock {
-		f.Block = requireBlock(p, cst)
+		f.Block = requireBlock(p, b)
 	}
 	return f
 }
 
 // [ annotations ] [ 'this' ] type [annotations] name
-func parameter(p *parse.Parser, cst *parse.Branch) *ast.Parameter {
+func parameter(p *parse.Parser, b *cst.Branch) *ast.Parameter {
 	param := &ast.Parameter{}
-	parseAnnotations(&param.Annotations, p, cst)
-	p.SetCST(param, cst)
-	if keyword(ast.KeywordThis, p, cst) != nil {
+	parseAnnotations(&param.Annotations, p, b)
+	p.SetCST(param, b)
+	if keyword(ast.KeywordThis, p, b) != nil {
 		param.This = true
 	}
-	param.Type = requireTypeRef(p, cst)
-	parseAnnotations(&param.Annotations, p, cst)
-	param.Name = requireIdentifier(p, cst)
+	param.Type = requireTypeRef(p, b)
+	parseAnnotations(&param.Annotations, p, b)
+	param.Name = requireIdentifier(p, b)
 	return param
 }
 
 // { annotation } 'extern' function
-func extern(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Function {
+func extern(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Function {
 	if !peekKeyword(ast.KeywordExtern, p) {
 		return nil
 	}
 	e := &ast.Function{}
 	consumeAnnotations(&e.Annotations, a)
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(e, cst)
-		requireKeyword(ast.KeywordExtern, p, cst)
-		function(e, p, cst, false)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(e, b)
+		requireKeyword(ast.KeywordExtern, p, b)
+		function(e, p, b, false)
 	})
 	return e
 }
 
 // { annotation } 'cmd' function
-func command(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Function {
+func command(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Function {
 	if !peekKeyword(ast.KeywordCmd, p) {
 		return nil
 	}
 	cmd := &ast.Function{}
 	consumeAnnotations(&cmd.Annotations, a)
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(cmd, cst)
-		requireKeyword(ast.KeywordCmd, p, cst)
-		function(cmd, p, cst, true)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(cmd, b)
+		requireKeyword(ast.KeywordCmd, p, b)
+		function(cmd, p, b, true)
 	})
 	return cmd
 }
 
 // 'sub' function
-func subroutine(p *parse.Parser, cst *parse.Branch, a *ast.Annotations) *ast.Function {
+func subroutine(p *parse.Parser, b *cst.Branch, a *ast.Annotations) *ast.Function {
 	if !peekKeyword(ast.KeywordSub, p) {
 		return nil
 	}
 	cmd := &ast.Function{}
 	consumeAnnotations(&cmd.Annotations, a)
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(cmd, cst)
-		requireKeyword(ast.KeywordSub, p, cst)
-		function(cmd, p, cst, true)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(cmd, b)
+		requireKeyword(ast.KeywordSub, p, b)
+		function(cmd, p, b, true)
 	})
 	return cmd
 }

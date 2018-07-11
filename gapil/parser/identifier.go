@@ -16,25 +16,26 @@ package parser
 
 import (
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 )
 
-func identifier(p *parse.Parser, cst *parse.Branch) *ast.Identifier {
+func identifier(p *parse.Parser, b *cst.Branch) *ast.Identifier {
 	p.Rune('$')
 	if !p.AlphaNumeric() {
 		return nil
 	}
 	n := &ast.Identifier{}
-	p.ParseLeaf(cst, func(p *parse.Parser, l *parse.Leaf) {
+	p.ParseLeaf(b, func(p *parse.Parser, l *cst.Leaf) {
 		p.SetCST(n, l)
-		l.SetToken(p.Consume())
-		n.Value = l.Token().String()
+		l.Token = p.Consume()
+		n.Value = l.Token.String()
 	})
 	return n
 }
 
-func requireIdentifier(p *parse.Parser, cst *parse.Branch) *ast.Identifier {
-	n := identifier(p, cst)
+func requireIdentifier(p *parse.Parser, b *cst.Branch) *ast.Identifier {
+	n := identifier(p, b)
 	if n == nil {
 		p.Expected("Identifier")
 		return ast.InvalidIdentifier
@@ -43,33 +44,33 @@ func requireIdentifier(p *parse.Parser, cst *parse.Branch) *ast.Identifier {
 }
 
 // name '!' ( type | '(' type [ ',' type ] ')' )
-func generic(p *parse.Parser, cst *parse.Branch) *ast.Generic {
-	name := identifier(p, cst)
+func generic(p *parse.Parser, b *cst.Branch) *ast.Generic {
+	name := identifier(p, b)
 	if name == nil {
 		return nil
 	}
 
 	g := &ast.Generic{Name: name}
-	p.Extend(name, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(g, cst)
-		if operator(ast.OpGeneric, p, cst) {
-			if operator(ast.OpListStart, p, cst) {
-				for !operator(ast.OpListEnd, p, cst) {
+	p.Extend(name, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(g, b)
+		if operator(ast.OpGeneric, p, b) {
+			if operator(ast.OpListStart, p, b) {
+				for !operator(ast.OpListEnd, p, b) {
 					if len(g.Arguments) > 0 {
-						requireOperator(ast.OpListSeparator, p, cst)
+						requireOperator(ast.OpListSeparator, p, b)
 					}
-					g.Arguments = append(g.Arguments, requireTypeRef(p, cst))
+					g.Arguments = append(g.Arguments, requireTypeRef(p, b))
 				}
 			} else {
-				g.Arguments = append(g.Arguments, requireTypeRef(p, cst))
+				g.Arguments = append(g.Arguments, requireTypeRef(p, b))
 			}
 		}
 	})
 	return g
 }
 
-func requireGeneric(p *parse.Parser, cst *parse.Branch) *ast.Generic {
-	n := generic(p, cst)
+func requireGeneric(p *parse.Parser, b *cst.Branch) *ast.Generic {
+	n := generic(p, b)
 	if n == nil {
 		p.Expected("generic identifier")
 		n = ast.InvalidGeneric
@@ -89,7 +90,7 @@ func peekKeyword(k string, p *parse.Parser) bool {
 	return true
 }
 
-func keyword(k string, p *parse.Parser, cst *parse.Branch) *parse.Leaf {
+func keyword(k string, p *parse.Parser, b *cst.Branch) *cst.Leaf {
 	if !p.AlphaNumeric() {
 		return nil
 	}
@@ -97,15 +98,15 @@ func keyword(k string, p *parse.Parser, cst *parse.Branch) *parse.Leaf {
 		p.Rollback()
 		return nil
 	}
-	var result *parse.Leaf
-	p.ParseLeaf(cst, func(p *parse.Parser, l *parse.Leaf) {
+	var result *cst.Leaf
+	p.ParseLeaf(b, func(p *parse.Parser, l *cst.Leaf) {
 		result = l
 	})
 	return result
 }
 
-func requireKeyword(k string, p *parse.Parser, cst *parse.Branch) {
-	if keyword(k, p, cst) == nil {
+func requireKeyword(k string, p *parse.Parser, b *cst.Branch) {
+	if keyword(k, p, b) == nil {
 		p.Expected(string(k))
 	}
 }

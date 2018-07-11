@@ -293,12 +293,11 @@ func (rv *resolver) addType(t semantic.Type) {
 	withLocation := func(ty semantic.Type) string {
 		astBacked, ok := ty.(semantic.ASTBacked)
 		if ok {
-			tok := rv.mappings.CST(astBacked.ASTNode()).Token()
+			tok := rv.mappings.CST(astBacked.ASTNode()).Tok()
 			line, col := tok.Cursor()
 			return fmt.Sprintf("%s at %s:%d:%d", ty.Name(), tok.Source.Filename, line, col)
-		} else {
-			return ty.Name()
 		}
+		return ty.Name()
 	}
 
 	if prev, present := rv.scope.types[name]; present {

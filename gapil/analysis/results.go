@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/semantic"
-	"github.com/google/gapid/core/text/parse"
 )
 
 // Results holds the results of the static analysis.
@@ -37,13 +37,13 @@ type Results struct {
 
 // Unreachable represents an unreachable block or statement.
 type Unreachable struct {
-	At   parse.Node
+	At   cst.Node
 	Node semantic.Node
 }
 
 // CallstackEntry is a single entry in a callstack.
 type CallstackEntry struct {
-	Location   parse.Node
+	Location   cst.Node
 	Function   *semantic.Function
 	Parameters map[*semantic.Parameter]Value
 }
@@ -51,7 +51,7 @@ type CallstackEntry struct {
 func (e CallstackEntry) String() string {
 	at, fun := "<unknown>", ""
 	if e.Location != nil {
-		at = e.Location.Token().At()
+		at = e.Location.Tok().At()
 	}
 	if e.Function != nil {
 		callParams := e.Function.CallParameters()
@@ -77,7 +77,7 @@ func (c Callstack) String() string {
 }
 
 // At returns the parse node to the deepest point in the callstack.
-func (c Callstack) At() parse.Node {
+func (c Callstack) At() cst.Node {
 	if len(c) > 0 {
 		return c[len(c)-1].Location
 	}
@@ -92,14 +92,14 @@ func (c Callstack) clone() Callstack {
 }
 
 // set changes the deepest poin in the callstack to point to loc.
-func (c Callstack) set(loc parse.Node) {
+func (c Callstack) set(loc cst.Node) {
 	if len(c) > 0 {
 		c[len(c)-1].Location = loc
 	}
 }
 
 // enter pushes a new entry to the callstack.
-func (c *Callstack) enter(loc parse.Node, f *semantic.Function, params map[*semantic.Parameter]Value) {
+func (c *Callstack) enter(loc cst.Node, f *semantic.Function, params map[*semantic.Parameter]Value) {
 	*c = append(*c, CallstackEntry{
 		Location:   loc,
 		Function:   f,

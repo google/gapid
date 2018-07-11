@@ -18,8 +18,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/core/text/parse/cst"
+	"github.com/google/gapid/gapil/ast"
 )
 
 func peekOperator(op string, p *parse.Parser) bool {
@@ -28,18 +29,18 @@ func peekOperator(op string, p *parse.Parser) bool {
 	return op == scanned
 }
 
-func operator(op string, p *parse.Parser, cst *parse.Branch) bool {
+func operator(op string, p *parse.Parser, b *cst.Branch) bool {
 	scanned := scanOperator(p)
 	if op != scanned {
 		p.Rollback()
 		return false
 	}
-	p.ParseLeaf(cst, nil)
+	p.ParseLeaf(b, nil)
 	return true
 }
 
-func requireOperator(op string, p *parse.Parser, cst *parse.Branch) {
-	if !operator(op, p, cst) {
+func requireOperator(op string, p *parse.Parser, b *cst.Branch) {
+	if !operator(op, p, b) {
 		p.Expected(string(op))
 	}
 }
@@ -64,27 +65,27 @@ func binaryOp(p *parse.Parser, lhs ast.Node) *ast.BinaryOp {
 		return nil
 	}
 	n := &ast.BinaryOp{LHS: lhs, Operator: op}
-	p.Extend(lhs, func(p *parse.Parser, cst *parse.Branch) {
-		p.SetCST(n, cst)
-		p.ParseLeaf(cst, nil)
-		n.RHS = requireExpression(p, cst)
+	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
+		p.SetCST(n, b)
+		p.ParseLeaf(b, nil)
+		n.RHS = requireExpression(p, b)
 	})
 	return n
 }
 
 // operator expression
-func unaryOp(p *parse.Parser, cst *parse.Branch) *ast.UnaryOp {
+func unaryOp(p *parse.Parser, b *cst.Branch) *ast.UnaryOp {
 	op := scanOperator(p)
 	p.Rollback()
 	if _, found := ast.UnaryOperators[op]; !found {
 		return nil
 	}
 	n := &ast.UnaryOp{Operator: op}
-	p.ParseBranch(cst, func(p *parse.Parser, cst *parse.Branch) {
-		requireOperator(op, p, cst)
-		p.ParseLeaf(cst, nil)
-		p.SetCST(n, cst)
-		n.Expression = requireExpression(p, cst)
+	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
+		requireOperator(op, p, b)
+		p.ParseLeaf(b, nil)
+		p.SetCST(n, b)
+		n.Expression = requireExpression(p, b)
 	})
 	return n
 }

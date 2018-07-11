@@ -113,17 +113,17 @@ func (p *parser) parse() *node.Block {
 
 		case token.Heading:
 			if _, newline := p.prev.(token.NewLine); newline || p.prev == nil {
-				h := &node.Heading{Scale: len(t.CST().Token().String())}
+				h := &node.Heading{Scale: len(t.CST().Tok().String())}
 				p.add(h)
 				p.stack.push(h)
 				continue // Don't add whitespace suffix.
 			} else {
 				// Treat as text
-				p.add(&node.Text{Text: t.CST().Token().String()})
+				p.add(&node.Text{Text: t.CST().Tok().String()})
 			}
 
 		case token.Emphasis:
-			style := t.CST().Token().String()
+			style := t.CST().Tok().String()
 			if emphasis, ok := p.stack.head().(*node.Emphasis); ok && emphasis.Style == style {
 				// closing emphasis
 				p.stack.pop()
@@ -137,7 +137,7 @@ func (p *parser) parse() *node.Block {
 			p.add(&node.Text{Text: "*"})
 
 		case token.Tag:
-			str := t.CST().Token().String()
+			str := t.CST().Tok().String()
 			str = str[2 : len(str)-2] // trim {{ and }}
 			if t.Typed {
 				// Split name:type around ':'
@@ -158,7 +158,7 @@ func (p *parser) parse() *node.Block {
 				p.stack.push(l.Body)
 
 			default:
-				p.add(&node.Text{Text: t.CST().Token().String()})
+				p.add(&node.Text{Text: t.CST().Tok().String()})
 			}
 
 		case token.CloseBracket:
@@ -184,11 +184,11 @@ func (p *parser) parse() *node.Block {
 					p.stack.pop() // body
 					p.stack.pop() // target
 				} else {
-					p.add(&node.Text{Text: t.CST().Token().String()})
+					p.add(&node.Text{Text: t.CST().Tok().String()})
 				}
 
 			default:
-				p.add(&node.Text{Text: t.CST().Token().String()})
+				p.add(&node.Text{Text: t.CST().Tok().String()})
 			}
 
 		case token.NewLine:

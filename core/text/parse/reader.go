@@ -18,28 +18,30 @@ import (
 	"bytes"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/google/gapid/core/text/parse/cst"
 )
 
 // Reader is the interface to an object that converts a rune array into tokens.
 type Reader struct {
-	Source *Source // The source being parsed.
-	runes  []rune  // The string being parsed.
-	offset int     // The start of the current token.
-	cursor int     // The offset of the next unparsed rune.
+	Source *cst.Source // The source being parsed.
+	runes  []rune      // The string being parsed.
+	offset int         // The start of the current token.
+	cursor int         // The offset of the next unparsed rune.
 }
 
 func (r *Reader) setData(filename string, data string) {
 	r.runes = bytes.Runes([]byte(data))
-	r.Source = &Source{Filename: filename, Runes: r.runes}
+	r.Source = &cst.Source{Filename: filename, Runes: r.runes}
 }
 
 // Token peeks at the current scanned token value. It does not consume anything.
-func (r *Reader) Token() Token {
-	return Token{Source: r.Source, Start: r.offset, End: r.cursor}
+func (r *Reader) Token() cst.Token {
+	return cst.Token{Source: r.Source, Start: r.offset, End: r.cursor}
 }
 
 // Consume consumes the current token.
-func (r *Reader) Consume() Token {
+func (r *Reader) Consume() cst.Token {
 	tok := r.Token()
 	r.offset = r.cursor
 	return tok
@@ -92,7 +94,7 @@ func (r *Reader) EOL() bool {
 // arbitrary token from the stream. It is used by error handlers to indicate
 // where the error occurred. It guarantees that if the stream is not finished,
 // it will consume at least one character.
-func (r *Reader) GuessNextToken() Token {
+func (r *Reader) GuessNextToken() cst.Token {
 	if r.cursor == r.offset {
 		r.Space()
 		switch {
@@ -174,7 +176,7 @@ func (r *Reader) Space() bool {
 	return true
 }
 
-// Space skips over any non whitespace, returning true if it advanced the cursor.
+// NotSpace skips over any non whitespace, returning true if it advanced the cursor.
 func (r *Reader) NotSpace() bool {
 	i := r.cursor
 	for ; i < len(r.runes); i++ {
