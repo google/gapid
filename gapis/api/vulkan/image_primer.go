@@ -49,7 +49,10 @@ const (
 
 // interfaces to interact with state rebuilder
 
-func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ, sparseBindingQueue QueueObjectʳ) error {
+func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ) error {
+	if queue.IsNil() {
+		return log.Errf(p.sb.ctx, nil, "[Priming image data by buffer->image copy] Nil queue")
+	}
 	job := newImagePrimerBufCopyJob(img, sameLayoutsOfImage(img))
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
 		job.addDst(p.sb.ctx, aspect, aspect, img)
@@ -61,28 +64,33 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 	if sparseResidency(img) {
 		bcs.collectCopiesFromSparseImageBindings()
 	}
-	err := bcs.rolloutBufCopies(queue, sparseBindingQueue)
+	err := bcs.rolloutBufCopies(queue.VulkanHandle())
 	if err != nil {
-		return log.Errf(p.sb.ctx, err, "[Priming image data by buffer->image copy]")
+		return log.Errf(p.sb.ctx, err, "[Rolling out the buf->img copy commands for image: %v]", img.VulkanHandle())
 	}
 	return nil
 }
 
-func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue, sparseBindingQueue QueueObjectʳ) error {
+func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ) error {
+	if queue.IsNil() {
+		return log.Err(p.sb.ctx, nil, "[Priming image data by rendering] Nil queue")
+	}
+	renderTsk := p.sb.newScratchTaskOnQueue(queue.VulkanHandle())
+
 	copyJob := newImagePrimerBufCopyJob(img, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
 		stagingImgs, stagingImgMems, err := p.allocStagingImages(img, aspect)
 		if err != nil {
-			return log.Errf(p.sb.ctx, err, "[Creating staging image for priming image data by rendering]")
+			return log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by rendering]")
 		}
-		defer func() {
+		renderTsk.deferUntilExecuted(func() {
 			for _, img := range stagingImgs {
 				p.sb.write(p.sb.cb.VkDestroyImage(img.Device(), img.VulkanHandle(), memory.Nullptr))
 			}
 			for _, mem := range stagingImgMems {
 				p.sb.write(p.sb.cb.VkFreeMemory(mem.Device(), mem.VulkanHandle(), memory.Nullptr))
 			}
-		}()
+		})
 		copyJob.addDst(p.sb.ctx, aspect, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, stagingImgs...)
 	}
 	bcs := newImagePrimerBufferCopySession(p.sb, copyJob)
@@ -92,9 +100,9 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	if sparseResidency(img) {
 		bcs.collectCopiesFromSparseImageBindings()
 	}
-	err := bcs.rolloutBufCopies(queue, sparseBindingQueue)
+	err := bcs.rolloutBufCopies(queue.VulkanHandle())
 	if err != nil {
-		return log.Errf(p.sb.ctx, err, "[Copying data to staging images for priming image: %v data by rendering]")
+		return log.Errf(p.sb.ctx, err, "[Rolling out the buf->img copy commands for staging images]")
 	}
 
 	renderJobs := []*ipRenderJob{}
@@ -113,17 +121,24 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 		}
 	}
 	for _, renderJob := range renderJobs {
-		err := p.rh.render(renderJob, queue)
+		err := p.rh.render(renderJob, renderTsk)
 		if err != nil {
 			log.E(p.sb.ctx, "[Priming image: %v, aspect: %v, layer: %v, level: %v data by rendering] %v",
 				renderJob.renderTarget.VulkanHandle(), renderJob.aspect, renderJob.layer, renderJob.level, err)
 		}
 	}
 
+	if err := renderTsk.commit(); err != nil {
+		return log.Errf(p.sb.ctx, err, "[Committing scratch task for priming image: %v data by rendering]", img.VulkanHandle())
+	}
+
 	return nil
 }
 
-func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue, sparseBindingQueue QueueObjectʳ) error {
+func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ) error {
+	if queue.IsNil() {
+		return log.Err(p.sb.ctx, nil, "[Priming image data by imageStore] Nil queue")
+	}
 	storeJobs := []*ipStoreJob{}
 	for _, rng := range opaqueBoundRanges {
 		walkImageSubresourceRange(p.sb, img, rng,
@@ -158,25 +173,27 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 	}
 
 	whole := p.sb.imageWholeSubresourceRange(img)
-	transitionInfo := []imgSubRngLayoutTransitionInfo{}
+	transitionInfo := []imageSubRangeInfo{}
 	oldLayouts := []VkImageLayout{}
 	walkImageSubresourceRange(p.sb, img, whole, func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 		l := GetState(p.sb.newState).Images().Get(img.VulkanHandle()).Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
-		transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+		transitionInfo = append(transitionInfo, imageSubRangeInfo{
 			aspectMask:     VkImageAspectFlags(aspect),
 			baseMipLevel:   level,
 			levelCount:     1,
 			baseArrayLayer: layer,
 			layerCount:     1,
 			oldLayout:      l.Layout(),
-			newLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+			newLayout:      VkImageLayout_VK_IMAGE_LAYOUT_GENERAL,
+			oldQueue:       queue.VulkanHandle(),
+			newQueue:       queue.VulkanHandle(),
 		})
 		oldLayouts = append(oldLayouts, l.Layout())
 	})
-	p.sb.transitionImageLayout(img, transitionInfo, sparseBindingQueue, queue)
+	p.sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), transitionInfo)
 
 	for _, job := range storeJobs {
-		err := p.sh.store(job, queue)
+		err := p.sh.store(job, queue.VulkanHandle())
 		if err != nil {
 			log.E(p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by imageStore] %v", job.storeTarget.VulkanHandle(), job.aspect, job.layer, job.level, job.opaqueBlockOffset, job.opaqueBlockExtent, err)
 		}
@@ -186,12 +203,15 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 		transitionInfo[i].oldLayout = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
 		transitionInfo[i].newLayout = oldLayouts[i]
 	}
-	p.sb.transitionImageLayout(img, transitionInfo, sparseBindingQueue, queue)
+	p.sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), transitionInfo)
 
 	return nil
 }
 
-func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue, sparseBindingQueue QueueObjectʳ) error {
+func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRanges []VkImageSubresourceRange, queue QueueObjectʳ) error {
+	if queue.IsNil() {
+		return log.Err(p.sb.ctx, nil, "[Priming image data by pre-initialization] Nil queue")
+	}
 	newImg := GetState(p.sb.newState).Images().Get(img.VulkanHandle())
 	newMem := newImg.BoundMemory()
 	boundOffset := img.BoundMemoryOffset()
@@ -211,7 +231,7 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
 	atdata.Free()
 
-	transitionInfo := []imgSubRngLayoutTransitionInfo{}
+	transitionInfo := []imageSubRangeInfo{}
 	for _, rng := range opaqueBoundRanges {
 		walkImageSubresourceRange(p.sb, img, rng,
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
@@ -221,7 +241,7 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 
 				p.sb.ReadDataAt(origDataSlice.ResourceID(p.sb.ctx, p.sb.oldState), uint64(linearLayout.Offset())+dat.Address(), origDataSlice.Size())
 
-				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+				transitionInfo = append(transitionInfo, imageSubRangeInfo{
 					aspectMask:     VkImageAspectFlags(aspect),
 					baseMipLevel:   level,
 					levelCount:     1,
@@ -229,6 +249,8 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 					layerCount:     1,
 					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED,
 					newLayout:      origLevel.Layout(),
+					oldQueue:       queue.VulkanHandle(),
+					newQueue:       queue.VulkanHandle(),
 				})
 			})
 	}
@@ -252,7 +274,7 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 		newMem.VulkanHandle(),
 	))
 
-	p.sb.transitionImageLayout(img, transitionInfo, sparseBindingQueue, queue)
+	p.sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), transitionInfo)
 
 	return nil
 }
@@ -388,6 +410,8 @@ func useSpecifiedLayout(layout VkImageLayout) ipLayoutInfo {
 type ipStoreHandler struct {
 	sb              *stateBuilder
 	descSetLayouts  map[VkDevice]VkDescriptorSetLayout
+	descPools       map[VkDevice]VkDescriptorPool
+	descSets        map[VkDevice]VkDescriptorSet
 	pipelineLayouts map[VkDevice]VkPipelineLayout
 	pipelines       map[ipStoreShaderInfo]ComputePipelineObjectʳ
 	shaders         map[ipStoreShaderInfo]ShaderModuleObjectʳ
@@ -459,13 +483,15 @@ func newImagePrimerStoreHandler(sb *stateBuilder) *ipStoreHandler {
 	return &ipStoreHandler{
 		sb:              sb,
 		descSetLayouts:  map[VkDevice]VkDescriptorSetLayout{},
+		descPools:       map[VkDevice]VkDescriptorPool{},
+		descSets:        map[VkDevice]VkDescriptorSet{},
 		pipelineLayouts: map[VkDevice]VkPipelineLayout{},
 		pipelines:       map[ipStoreShaderInfo]ComputePipelineObjectʳ{},
 		shaders:         map[ipStoreShaderInfo]ShaderModuleObjectʳ{},
 	}
 }
 
-func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
+func (h *ipStoreHandler) store(job *ipStoreJob, queue VkQueue) error {
 
 	var err error
 
@@ -478,30 +504,33 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 	}
 
 	// create descriptor pool
-	descPool := VkDescriptorPool(newUnusedID(true, func(x uint64) bool {
-		return GetState(h.sb.newState).DescriptorPools().Contains(VkDescriptorPool(x))
-	}))
-	descPoolSizes := []VkDescriptorPoolSize{
-		// for target image
-		NewVkDescriptorPoolSize(h.sb.ta,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, // Type
-			1, // descriptorCount
-		),
-		// for image data
-		NewVkDescriptorPoolSize(h.sb.ta,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, // Type
-			1, // descriptorCount
-		),
-		// for image dimension info
-		NewVkDescriptorPoolSize(h.sb.ta,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // Type
-			1, // descriptorCount
-		),
+	if _, ok := h.descPools[dev]; !ok {
+		descPool := VkDescriptorPool(newUnusedID(true, func(x uint64) bool {
+			return GetState(h.sb.newState).DescriptorPools().Contains(VkDescriptorPool(x))
+		}))
+		descPoolSizes := []VkDescriptorPoolSize{
+			// for target image
+			NewVkDescriptorPoolSize(h.sb.ta,
+				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, // Type
+				1, // descriptorCount
+			),
+			// for image data
+			NewVkDescriptorPoolSize(h.sb.ta,
+				VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, // Type
+				1, // descriptorCount
+			),
+			// for image dimension info
+			NewVkDescriptorPoolSize(h.sb.ta,
+				VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // Type
+				1, // descriptorCount
+			),
+		}
+		vkCreateDescriptorPool(h.sb, dev, VkDescriptorPoolCreateFlags(
+			VkDescriptorPoolCreateFlagBits_VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+			1, descPoolSizes, descPool)
+		h.descPools[dev] = descPool
 	}
-	vkCreateDescriptorPool(h.sb, dev, VkDescriptorPoolCreateFlags(
-		VkDescriptorPoolCreateFlagBits_VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-		1, descPoolSizes, descPool)
-	defer h.sb.write(h.sb.cb.VkDestroyDescriptorPool(dev, descPool, memory.Nullptr))
+	descPool := h.descPools[dev]
 
 	// create descriptor set layout
 	if _, ok := h.descSetLayouts[dev]; !ok {
@@ -536,14 +565,14 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 	}
 
 	// allocate descriptor set
-	descSet := VkDescriptorSet(newUnusedID(true, func(x uint64) bool {
-		return GetState(h.sb.newState).DescriptorSets().Contains(VkDescriptorSet(x))
-	}))
-	vkAllocateDescriptorSet(h.sb, dev, descPool, h.descSetLayouts[dev], descSet)
-	defer func() {
-		h.sb.write(h.sb.cb.VkFreeDescriptorSets(dev, descPool, uint32(1),
-			NewVkDescriptorSetᶜᵖ(h.sb.MustAllocReadData(descSet).Ptr()), VkResult_VK_SUCCESS))
-	}()
+	if _, ok := h.descSets[dev]; !ok {
+		descSet := VkDescriptorSet(newUnusedID(true, func(x uint64) bool {
+			return GetState(h.sb.newState).DescriptorSets().Contains(VkDescriptorSet(x))
+		}))
+		vkAllocateDescriptorSet(h.sb, dev, descPool, h.descSetLayouts[dev], descSet)
+		h.descSets[dev] = descSet
+	}
+	descSet := h.descSets[dev]
 
 	// Create compute pipeline
 	if _, ok := h.pipelineLayouts[dev]; !ok {
@@ -623,23 +652,31 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue QueueObjectʳ) error {
 }
 
 func (h *ipStoreHandler) free() {
-	for _, p := range h.pipelines {
+	for dev, p := range h.pipelines {
 		h.sb.write(h.sb.cb.VkDestroyPipeline(p.Device(), p.VulkanHandle(), memory.Nullptr))
+		delete(h.pipelines, dev)
 	}
-	for _, m := range h.shaders {
+	for dev, m := range h.shaders {
 		h.sb.write(h.sb.cb.VkDestroyShaderModule(m.Device(), m.VulkanHandle(), memory.Nullptr))
+		delete(h.shaders, dev)
 	}
 	for dev, l := range h.pipelineLayouts {
 		h.sb.write(h.sb.cb.VkDestroyPipelineLayout(dev, l, memory.Nullptr))
+		delete(h.pipelineLayouts, dev)
+	}
+	for dev, p := range h.descPools {
+		h.sb.write(h.sb.cb.VkDestroyDescriptorPool(dev, p, memory.Nullptr))
+		delete(h.descPools, dev)
 	}
 	for dev, l := range h.descSetLayouts {
 		h.sb.write(h.sb.cb.VkDestroyDescriptorSetLayout(dev, l, memory.Nullptr))
+		delete(h.descSetLayouts, dev)
 	}
 }
 
 // Internal functions of image store handler
 
-func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue QueueObjectʳ) error {
+func (h *ipStoreHandler) dispatch(info ipStoreDispatchInfo, tsk *scratchTask) error {
 
 	// check the number of texel
 	if uint32(len(info.data))%info.dataElementSize != 0 {
@@ -652,30 +689,41 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue Queue
 	}
 
 	// data buffer and buffer view
-	dataBuf, dataMem := h.sb.allocAndFillScratchBuffer(
-		h.sb.s.Devices().Get(info.dev), []bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(info.data, 0)},
+	dataBuf := tsk.newBuffer([]bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(info.data, 0)},
 		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
-	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(info.dev), dataBuf, dataMem)
-	dataBufView := VkBufferView(newUnusedID(true, func(x uint64) bool {
-		return GetState(h.sb.newState).BufferViews().Contains(VkBufferView(x))
-	}))
-	h.sb.write(h.sb.cb.VkCreateBufferView(
-		info.dev,
-		h.sb.MustAllocReadData(
-			NewVkBufferViewCreateInfo(h.sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, // sType
-				0,                  // pNext
-				0,                  // flags
-				dataBuf,            // buffer
-				info.dataFormat,    // format
-				0,                  // offset
-				0xFFFFFFFFFFFFFFFF, // range
-			)).Ptr(),
-		memory.Nullptr,
-		h.sb.MustAllocWriteData(dataBufView).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-	defer h.sb.write(h.sb.cb.VkDestroyBufferView(info.dev, dataBufView, memory.Nullptr))
+	tsk.deferUntilExecuted(func() {
+		h.sb.write(h.sb.cb.VkDestroyBuffer(info.dev, dataBuf, memory.Nullptr))
+	})
+	tsk.doOnCommitted(func() {
+		dataBufView := VkBufferView(newUnusedID(true, func(x uint64) bool {
+			return GetState(h.sb.newState).BufferViews().Contains(VkBufferView(x))
+		}))
+		h.sb.write(h.sb.cb.VkCreateBufferView(
+			info.dev,
+			h.sb.MustAllocReadData(
+				NewVkBufferViewCreateInfo(h.sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, // sType
+					0,                  // pNext
+					0,                  // flags
+					dataBuf,            // buffer
+					info.dataFormat,    // format
+					0,                  // offset
+					0xFFFFFFFFFFFFFFFF, // range
+				)).Ptr(),
+			memory.Nullptr,
+			h.sb.MustAllocWriteData(dataBufView).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+		tsk.deferUntilExecuted(func() {
+			h.sb.write(h.sb.cb.VkDestroyBufferView(info.dev, dataBufView, memory.Nullptr))
+		})
+		writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreUniformTexelBufferBinding, 0,
+			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+			[]VkDescriptorImageInfo{},
+			[]VkDescriptorBufferInfo{},
+			[]VkBufferView{dataBufView},
+		)
+	})
 
 	// image view
 	imgView := VkImageView(newUnusedID(true, func(x uint64) bool {
@@ -718,7 +766,9 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue Queue
 		h.sb.MustAllocWriteData(imgView).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
-	defer h.sb.write(h.sb.cb.VkDestroyImageView(info.dev, imgView, memory.Nullptr))
+	tsk.deferUntilExecuted(func() {
+		h.sb.write(h.sb.cb.VkDestroyImageView(info.dev, imgView, memory.Nullptr))
+	})
 
 	// metadata buffer
 	// For an N dimensional image, metadata buffer contains:
@@ -753,63 +803,67 @@ func (h *ipStoreHandler) dispatchAndSubmit(info ipStoreDispatchInfo, queue Queue
 	metadata = append(metadata, uint32(info.offsetInOpaqueBlock), uint32(texelCount))
 	var db bytes.Buffer
 	binary.Write(&db, binary.LittleEndian, metadata)
-	metadataBuf, metadataMem := h.sb.allocAndFillScratchBuffer(
-		h.sb.s.Devices().Get(info.dev), []bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(db.Bytes(), 0)},
+	metadataBuf := tsk.newBuffer(
+		[]bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(db.Bytes(), 0)},
 		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(info.dev), metadataBuf, metadataMem)
+	tsk.deferUntilExecuted(func() {
+		h.sb.write(h.sb.cb.VkDestroyBuffer(info.dev, metadataBuf, memory.Nullptr))
+	})
 
-	writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreStorageImageBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, []VkDescriptorImageInfo{
-		NewVkDescriptorImageInfo(h.sb.ta,
-			0,       // Sampler
-			imgView, // ImageView
-			VkImageLayout_VK_IMAGE_LAYOUT_GENERAL, // ImageLayout
-		),
-	}, []VkDescriptorBufferInfo{}, []VkBufferView{})
-	writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreUniformBufferBinding, 0,
-		VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		[]VkDescriptorImageInfo{},
-		[]VkDescriptorBufferInfo{
-			NewVkDescriptorBufferInfo(h.sb.ta,
-				metadataBuf,        // Buffer
-				0,                  // Offset
-				0xFFFFFFFFFFFFFFFF, // Range
+	tsk.doOnCommitted(func() {
+		writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreStorageImageBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, []VkDescriptorImageInfo{
+			NewVkDescriptorImageInfo(h.sb.ta,
+				0,       // Sampler
+				imgView, // ImageView
+				VkImageLayout_VK_IMAGE_LAYOUT_GENERAL, // ImageLayout
 			),
-		},
-		[]VkBufferView{},
-	)
-	writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreUniformTexelBufferBinding, 0,
-		VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-		[]VkDescriptorImageInfo{},
-		[]VkDescriptorBufferInfo{},
-		[]VkBufferView{dataBufView},
-	)
+		}, []VkDescriptorBufferInfo{}, []VkBufferView{})
+		writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreUniformBufferBinding, 0,
+			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			[]VkDescriptorImageInfo{},
+			[]VkDescriptorBufferInfo{
+				NewVkDescriptorBufferInfo(h.sb.ta,
+					metadataBuf,        // Buffer
+					0,                  // Offset
+					0xFFFFFFFFFFFFFFFF, // Range
+				),
+			},
+			[]VkBufferView{},
+		)
+	})
 
 	// commands
-	commandBuffer, commandPool := h.sb.getCommandBuffer(queue)
-	h.sb.write(h.sb.cb.VkCmdBindPipeline(
-		commandBuffer,
-		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_COMPUTE,
-		info.pipeline,
-	))
-	h.sb.write(h.sb.cb.VkCmdBindDescriptorSets(
-		commandBuffer,
-		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_COMPUTE,
-		info.pipelineLayout,
-		0, 1, h.sb.MustAllocReadData(info.descSet).Ptr(),
-		0, NewU32ᶜᵖ(memory.Nullptr),
-	))
-	groupCount := uint32(roundUp(uint64(texelCount), specMaxComputeLocalGroupSizeX))
-	h.sb.write(h.sb.cb.VkCmdDispatch(commandBuffer, groupCount, 1, 1))
-	h.sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
+	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		h.sb.write(h.sb.cb.VkCmdBindPipeline(
+			commandBuffer,
+			VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_COMPUTE,
+			info.pipeline,
+		))
+		h.sb.write(h.sb.cb.VkCmdBindDescriptorSets(
+			commandBuffer,
+			VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_COMPUTE,
+			info.pipelineLayout,
+			0, 1, h.sb.MustAllocReadData(info.descSet).Ptr(),
+			0, NewU32ᶜᵖ(memory.Nullptr),
+		))
+		groupCount := uint32(roundUp(uint64(texelCount), specMaxComputeLocalGroupSizeX))
+		h.sb.write(h.sb.cb.VkCmdDispatch(commandBuffer, groupCount, 1, 1))
+	})
 
 	return nil
 }
 
-func (h *ipStoreHandler) storeThroughTexelBuffer(info ipStoreTexelBufferStoreInfo, queue QueueObjectʳ) {
+func (h *ipStoreHandler) storeThroughTexelBuffer(info ipStoreTexelBufferStoreInfo, queue VkQueue) {
 	dispatchStart := uint32(0)
 	maxDispatchTexelCount := specMaxComputeGlobalGroupCountX * specMaxComputeLocalGroupSizeX
+	maxDispatchSize := uint32(maxDispatchTexelCount) * info.dataElementSize
+	// Need to reserve a buffer for metadata which can have at most 6 uint32.
+	maxScratchTexelBufferSize := scratchBufferSize - nextMultipleOf(6*4, 256)
+	if maxScratchTexelBufferSize < uint64(maxDispatchSize) {
+		maxDispatchSize = uint32(maxScratchTexelBufferSize) / info.dataElementSize * info.dataElementSize
+	}
 	for dispatchStart < uint32(len(info.data)) {
-		dispatchEnd := dispatchStart + uint32(maxDispatchTexelCount)*info.dataElementSize
+		dispatchEnd := dispatchStart + maxDispatchSize
 		if dispatchEnd > uint32(len(info.data)) {
 			dispatchEnd = uint32(len(info.data))
 		}
@@ -825,10 +879,15 @@ func (h *ipStoreHandler) storeThroughTexelBuffer(info ipStoreTexelBufferStoreInf
 			pipelineLayout:      info.pipeline.PipelineLayout().VulkanHandle(),
 			pipeline:            info.pipeline.VulkanHandle(),
 		}
-		err := h.dispatchAndSubmit(dispatchInfo, queue)
+		tsk := h.sb.newScratchTaskOnQueue(queue)
+		err := h.dispatch(dispatchInfo, tsk)
 		if err != nil {
-			log.E(h.sb.ctx, "[Priming storage image: %v by imageStore] %v", info.job.storeTarget.VulkanHandle())
+			log.E(h.sb.ctx, "[Priming storage image: %v by imageStore, data range: [%v-%v) ] %v", info.job.storeTarget.VulkanHandle(), dispatchStart, dispatchEnd, err)
 		}
+		if err := tsk.commit(); err != nil {
+			log.E(h.sb.ctx, "[Committing scratch task for priming storage image: %v by imageStore, data range: [%v-%v) ] %v", info.job.storeTarget.VulkanHandle(), dispatchStart, dispatchEnd, err)
+		}
+		h.sb.flushQueueFamilyScratchResources(tsk.queue)
 		dispatchStart = dispatchEnd
 	}
 }
@@ -988,8 +1047,7 @@ func (h *ipRenderHandler) free() {
 	}
 }
 
-func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
-
+func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	var outputBarrierAspect VkImageAspectFlags
 	switch job.aspect {
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
@@ -1033,18 +1091,20 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	}
 	descPool := h.createDescriptorPool(descSetInfo)
 	if !descPool.IsNil() {
-		defer h.sb.write(h.sb.cb.VkDestroyDescriptorPool(dev, descPool.VulkanHandle(), memory.Nullptr))
+		tsk.deferUntilExecuted(func() {
+			h.sb.write(h.sb.cb.VkDestroyDescriptorPool(dev, descPool.VulkanHandle(), memory.Nullptr))
+		})
 	} else {
 		return log.Errf(h.sb.ctx, nil, "failed to create descriptor pool for %v input attachments", len(job.inputAttachmentImages))
 	}
 	descSetLayout := h.getOrCreateDescriptorSetLayout(descSetInfo)
 	descSet := h.allocDescriptorSet(dev, descPool.VulkanHandle(), descSetLayout.VulkanHandle())
 	if !descSet.IsNil() {
-		defer func() {
+		tsk.deferUntilExecuted(func() {
 			h.sb.write(h.sb.cb.VkFreeDescriptorSets(
 				dev, descSet.DescriptorPool(), 1, NewVkDescriptorSetᶜᵖ(
 					h.sb.MustAllocReadData(descSet.VulkanHandle()).Ptr()), VkResult_VK_SUCCESS))
-		}()
+		})
 	} else {
 		return log.Errf(h.sb.ctx, nil, "failed to allocate descriptorset with %v input attachments", len(job.inputAttachmentImages))
 	}
@@ -1058,7 +1118,9 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		view := h.createImageView(dev, input, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, job.layer, job.level)
 		inputViews = append(inputViews, view)
 		if !view.IsNil() {
-			defer h.sb.write(h.sb.cb.VkDestroyImageView(dev, view.VulkanHandle(), memory.Nullptr))
+			tsk.deferUntilExecuted(func() {
+				h.sb.write(h.sb.cb.VkDestroyImageView(dev, view.VulkanHandle(), memory.Nullptr))
+			})
 		} else {
 			return log.Errf(h.sb.ctx, nil, "failed to create image view for input attachment image: %v", input.VulkanHandle())
 		}
@@ -1069,7 +1131,9 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	}
 	outputView := h.createImageView(dev, job.renderTarget, job.aspect, job.layer, job.level)
 	if !outputView.IsNil() {
-		defer h.sb.write(h.sb.cb.VkDestroyImageView(dev, outputView.VulkanHandle(), memory.Nullptr))
+		tsk.deferUntilExecuted(func() {
+			h.sb.write(h.sb.cb.VkDestroyImageView(dev, outputView.VulkanHandle(), memory.Nullptr))
+		})
 	} else {
 		return log.Errf(h.sb.ctx, nil, "failed to create image view for rendering target image: %v", job.renderTarget.VulkanHandle())
 	}
@@ -1083,17 +1147,23 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		))
 	}
 
-	writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderInputAttachmentBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfoList, []VkDescriptorBufferInfo{}, []VkBufferView{})
+	tsk.doOnCommitted(func() {
+		writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderInputAttachmentBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfoList, []VkDescriptorBufferInfo{}, []VkBufferView{})
+	})
 
 	var stencilIndexBuf VkBuffer
-	var stencilIndexMem VkDeviceMemory
 	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 		// write the uniform buffer for rendering stencil value.
 		stencilBitIndices := []uint32{0}
 		var sbic bytes.Buffer
 		binary.Write(&sbic, binary.LittleEndian, stencilBitIndices)
-		stencilIndexBuf, stencilIndexMem = h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), []bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(sbic.Bytes(), 0)}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT|VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
-		defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(dev), stencilIndexBuf, stencilIndexMem)
+		stencilIndexBuf = tsk.newBuffer(
+			[]bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(sbic.Bytes(), 0)},
+			VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
+		tsk.deferUntilExecuted(func() {
+			h.sb.write(h.sb.cb.VkDestroyBuffer(dev, stencilIndexBuf, memory.Nullptr))
+		})
 
 		bufInfoList := []VkDescriptorBufferInfo{
 			NewVkDescriptorBufferInfo(h.sb.ta,
@@ -1103,7 +1173,9 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			),
 		}
 
-		writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderUniformBufferBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, []VkDescriptorImageInfo{}, bufInfoList, []VkBufferView{})
+		tsk.doOnCommitted(func() {
+			writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderUniformBufferBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, []VkDescriptorImageInfo{}, bufInfoList, []VkBufferView{})
+		})
 	}
 
 	renderPassInfo := ipRenderPassInfo{
@@ -1117,7 +1189,9 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	}
 	renderPass := h.createRenderPass(renderPassInfo, job.finalLayout)
 	if !renderPass.IsNil() {
-		defer h.sb.write(h.sb.cb.VkDestroyRenderPass(dev, renderPass.VulkanHandle(), memory.Nullptr))
+		tsk.deferUntilExecuted(func() {
+			h.sb.write(h.sb.cb.VkDestroyRenderPass(dev, renderPass.VulkanHandle(), memory.Nullptr))
+		})
 	} else {
 		return log.Errf(h.sb.ctx, nil, "failed to create renderpass for rendering")
 	}
@@ -1133,7 +1207,9 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	framebuffer := h.createFramebuffer(dev, renderPass.VulkanHandle(), allViews,
 		uint32(targetLevelSize.width), uint32(targetLevelSize.height))
 	if !framebuffer.IsNil() {
-		defer h.sb.write(h.sb.cb.VkDestroyFramebuffer(dev, framebuffer.VulkanHandle(), memory.Nullptr))
+		tsk.deferUntilExecuted(func() {
+			h.sb.write(h.sb.cb.VkDestroyFramebuffer(dev, framebuffer.VulkanHandle(), memory.Nullptr))
+		})
 	} else {
 		return log.Errf(h.sb.ctx, nil, "failed to create framebuffer for rendering")
 	}
@@ -1168,8 +1244,10 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		h.vertexBufferFillInfo = &i
 		h.vertexBufferFillInfo.storeNewData(h.sb)
 	}
-	vertexBuf, vertexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), []bufferSubRangeFillInfo{*h.vertexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(dev), vertexBuf, vertexBufMem)
+	vertexBuf := tsk.newBuffer([]bufferSubRangeFillInfo{*h.vertexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+	tsk.deferUntilExecuted(func() {
+		h.sb.write(h.sb.cb.VkDestroyBuffer(dev, vertexBuf, memory.Nullptr))
+	})
 
 	if h.indexBufferFillInfo == nil {
 		var ic bytes.Buffer
@@ -1180,10 +1258,10 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		h.indexBufferFillInfo = &i
 		h.indexBufferFillInfo.storeNewData(h.sb)
 	}
-	indexBuf, indexBufMem := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(dev), []bufferSubRangeFillInfo{*h.indexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(dev), indexBuf, indexBufMem)
-
-	commandBuffer, commandPool := h.sb.getCommandBuffer(queue)
+	indexBuf := tsk.newBuffer([]bufferSubRangeFillInfo{*h.indexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+	tsk.deferUntilExecuted(func() {
+		h.sb.write(h.sb.cb.VkDestroyBuffer(dev, indexBuf, memory.Nullptr))
+	})
 
 	inputBarriers := []VkImageMemoryBarrier{}
 	for _, input := range job.inputAttachmentImages {
@@ -1196,8 +1274,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 				VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),                                        // dstAccessMask
 				inputLevel.Layout(),                                                                                        // oldLayout
 				VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                     // newLayout
-				queue.Family(),                                                                                             // srcQueueFamilyIndex
-				queue.Family(),                                                                                             // dstQueueFamilyIndex
+				queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+				queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
 				input.VulkanHandle(),                                                                                       // image
 				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
 					VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT), // aspectMask
@@ -1216,8 +1294,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 		GetState(h.sb.newState).Images().Get(job.renderTarget.VulkanHandle()).Aspects().Get(
 			job.aspect).Layers().Get(job.layer).Levels().Get(job.level).Layout(), // oldLayout
 		outputPreRenderLayout,           // newLayout
-		queue.Family(),                  // srcQueueFamilyIndex
-		queue.Family(),                  // dstQueueFamilyIndex
+		queueFamilyIgnore,               // srcQueueFamilyIndex
+		queueFamilyIgnore,               // dstQueueFamilyIndex
 		job.renderTarget.VulkanHandle(), // image
 		NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
 			outputBarrierAspect, // aspectMask
@@ -1232,8 +1310,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			0, // pNext
 			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),                                        // dstAccessMask
-			uint32(queue.Family()),                                                                                     // srcQueueFamilyIndex
-			uint32(queue.Family()),                                                                                     // dstQueueFamilyIndex
+			queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+			queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
 			vertexBuf,                                                                                                  // buffer
 			0,                                                                                                          // offset
 			VkDeviceSize(h.vertexBufferFillInfo.size()), // size
@@ -1243,32 +1321,34 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			0, // pNext
 			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INDEX_READ_BIT),                                                   // dstAccessMask
-			uint32(queue.Family()),                                                                                     // srcQueueFamilyIndex
-			uint32(queue.Family()),                                                                                     // dstQueueFamilyIndex
+			queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+			queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
 			indexBuf,                                                                                                   // buffer
 			0,                                                                                                          // offset
 			VkDeviceSize(h.indexBufferFillInfo.size()), // size
 		),
 	}
 
-	h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		uint32(0),
-		memory.Nullptr,
-		uint32(len(bufBarriers)),
-		h.sb.MustAllocReadData(bufBarriers).Ptr(),
-		uint32(len(append(inputBarriers, outputBarrier))),
-		h.sb.MustAllocReadData(append(inputBarriers, outputBarrier)).Ptr(),
-	))
+	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			uint32(0),
+			memory.Nullptr,
+			uint32(len(bufBarriers)),
+			h.sb.MustAllocReadData(bufBarriers).Ptr(),
+			uint32(len(append(inputBarriers, outputBarrier))),
+			h.sb.MustAllocReadData(append(inputBarriers, outputBarrier)).Ptr(),
+		))
+	})
 
 	switch job.aspect {
 	// render color or depth aspect
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
 		drawInfo := ipRenderDrawInfo{
-			commandBuffer:    commandBuffer,
+			tsk:              tsk,
 			renderPass:       renderPass,
 			framebuffer:      framebuffer,
 			descSet:          descSet,
@@ -1289,77 +1369,79 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		// render the i'th bit of all pixels.
 		for i := uint32(0); i < uint32(8); i++ {
-			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-				commandBuffer,
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkDependencyFlags(0),
-				uint32(0),
-				memory.Nullptr,
-				uint32(1),
-				h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
-					NewVkBufferMemoryBarrier(h.sb.ta,
-						VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-						0, // pNext
-						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT),                                               // dstAccessMask
-						uint32(queue.Family()),                                                                                     // srcQueueFamilyIndex
-						uint32(queue.Family()),                                                                                     // dstQueueFamilyIndex
-						stencilIndexBuf,                                                                                            // buffer
-						0,                                                                                                          // offset
-						VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
-					)}).Ptr(),
-				uint32(1),
-				h.sb.MustAllocReadData([]VkImageMemoryBarrier{
-					NewVkImageMemoryBarrier(h.sb.ta,
-						VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-						0, // pNext
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // srcAccessMask
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // dstAccessMask
-						VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // oldLayout
-						VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // newLayout
-						queue.Family(),                  // srcQueueFamilyIndex
-						queue.Family(),                  // dstQueueFamilyIndex
-						job.renderTarget.VulkanHandle(), // image
-						NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-							outputBarrierAspect, // aspectMask
-							0,                   // baseMipLevel
-							job.renderTarget.Info().MipLevels(), // levelCount
-							0, // baseArrayLayer
-							job.renderTarget.Info().ArrayLayers(), // layerCount
-						),
-					)}).Ptr(),
-			))
-			h.sb.write(h.sb.cb.VkCmdUpdateBuffer(
-				commandBuffer,
-				stencilIndexBuf,
-				0, 4, NewVoidᶜᵖ(h.sb.MustAllocReadData([]uint32{i}).Ptr()),
-			))
-			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-				commandBuffer,
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkDependencyFlags(0),
-				uint32(0),
-				memory.Nullptr,
-				uint32(1),
-				h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
-					NewVkBufferMemoryBarrier(h.sb.ta,
-						VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-						0, // pNext
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_UNIFORM_READ_BIT),   // dstAccessMask
-						uint32(queue.Family()),                                       // srcQueueFamilyIndex
-						uint32(queue.Family()),                                       // dstQueueFamilyIndex
-						stencilIndexBuf,                                              // buffer
-						0,                                                            // offset
-						VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
-					)}).Ptr(),
-				uint32(0),
-				memory.Nullptr,
-			))
+			tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+				h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+					commandBuffer,
+					VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+					VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+					VkDependencyFlags(0),
+					uint32(0),
+					memory.Nullptr,
+					uint32(1),
+					h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
+						NewVkBufferMemoryBarrier(h.sb.ta,
+							VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+							0, // pNext
+							VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT),                                               // dstAccessMask
+							queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+							queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
+							stencilIndexBuf,                                                                                            // buffer
+							0,                                                                                                          // offset
+							VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+						)}).Ptr(),
+					uint32(1),
+					h.sb.MustAllocReadData([]VkImageMemoryBarrier{
+						NewVkImageMemoryBarrier(h.sb.ta,
+							VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+							0, // pNext
+							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // srcAccessMask
+							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // dstAccessMask
+							VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // oldLayout
+							VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // newLayout
+							queueFamilyIgnore,                                                            // srcQueueFamilyIndex
+							queueFamilyIgnore,                                                            // dstQueueFamilyIndex
+							job.renderTarget.VulkanHandle(),                                              // image
+							NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+								outputBarrierAspect, // aspectMask
+								0,                   // baseMipLevel
+								job.renderTarget.Info().MipLevels(), // levelCount
+								0, // baseArrayLayer
+								job.renderTarget.Info().ArrayLayers(), // layerCount
+							),
+						)}).Ptr(),
+				))
+				h.sb.write(h.sb.cb.VkCmdUpdateBuffer(
+					commandBuffer,
+					stencilIndexBuf,
+					0, 4, NewVoidᶜᵖ(h.sb.MustAllocReadData([]uint32{i}).Ptr()),
+				))
+				h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+					commandBuffer,
+					VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+					VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+					VkDependencyFlags(0),
+					uint32(0),
+					memory.Nullptr,
+					uint32(1),
+					h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
+						NewVkBufferMemoryBarrier(h.sb.ta,
+							VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+							0, // pNext
+							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
+							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_UNIFORM_READ_BIT),   // dstAccessMask
+							queueFamilyIgnore,                                            // srcQueueFamilyIndex
+							queueFamilyIgnore,                                            // dstQueueFamilyIndex
+							stencilIndexBuf,                                              // buffer
+							0,                                                            // offset
+							VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+						)}).Ptr(),
+					uint32(0),
+					memory.Nullptr,
+				))
+			})
 			drawInfo := ipRenderDrawInfo{
-				commandBuffer:    commandBuffer,
+				tsk:              tsk,
 				renderPass:       renderPass,
 				framebuffer:      framebuffer,
 				descSet:          descSet,
@@ -1379,48 +1461,49 @@ func (h *ipRenderHandler) render(job *ipRenderJob, queue QueueObjectʳ) error {
 			}
 			h.beginRenderPassAndDraw(drawInfo)
 		}
-		h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-			commandBuffer,
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkDependencyFlags(0),
-			0,
-			memory.Nullptr,
-			0,
-			memory.Nullptr,
-			1,
-			h.sb.MustAllocReadData([]VkImageMemoryBarrier{
-				NewVkImageMemoryBarrier(h.sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-					0, // pNext
-					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // srcAccessMask
-					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // dstAccessMask
-					VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // oldLayout
-					job.finalLayout,                 // newLayout
-					queue.Family(),                  // srcQueueFamilyIndex
-					queue.Family(),                  // dstQueueFamilyIndex
-					job.renderTarget.VulkanHandle(), // image
-					NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-						outputBarrierAspect, // aspectMask
-						0,                   // baseMipLevel
-						job.renderTarget.Info().MipLevels(), // levelCount
-						0, // baseArrayLayer
-						job.renderTarget.Info().ArrayLayers(), // layerCount
-					),
-				)}).Ptr(),
-		))
+		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+				commandBuffer,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				0,
+				memory.Nullptr,
+				0,
+				memory.Nullptr,
+				1,
+				h.sb.MustAllocReadData([]VkImageMemoryBarrier{
+					NewVkImageMemoryBarrier(h.sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+						0, // pNext
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // srcAccessMask
+						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // dstAccessMask
+						VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // oldLayout
+						job.finalLayout,                 // newLayout
+						queueFamilyIgnore,               // srcQueueFamilyIndex
+						queueFamilyIgnore,               // dstQueueFamilyIndex
+						job.renderTarget.VulkanHandle(), // image
+						NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+							outputBarrierAspect, // aspectMask
+							0,                   // baseMipLevel
+							job.renderTarget.Info().MipLevels(), // levelCount
+							0, // baseArrayLayer
+							job.renderTarget.Info().ArrayLayers(), // layerCount
+						),
+					)}).Ptr(),
+			))
+		})
 	default:
 		return log.Errf(h.sb.ctx, nil, "invalid aspect: %v to render", job.aspect)
 	}
 
-	h.sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
 	return nil
 }
 
 // Internal functions for render handler
 
 type ipRenderDrawInfo struct {
-	commandBuffer    VkCommandBuffer
+	tsk              *scratchTask
 	renderPass       RenderPassObjectʳ
 	framebuffer      FramebufferObjectʳ
 	descSet          DescriptorSetObjectʳ
@@ -1437,115 +1520,116 @@ type ipRenderDrawInfo struct {
 }
 
 func (h *ipRenderHandler) beginRenderPassAndDraw(info ipRenderDrawInfo) {
-
-	h.sb.write(h.sb.cb.VkCmdBeginRenderPass(
-		info.commandBuffer,
-		h.sb.MustAllocReadData(
-			NewVkRenderPassBeginInfo(h.sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
-				NewVoidᶜᵖ(memory.Nullptr),                                // pNext
-				info.renderPass.VulkanHandle(),                           // renderPass
-				info.framebuffer.VulkanHandle(),                          // framebuffer
-				NewVkRect2D(h.sb.ta, // renderArea
-					MakeVkOffset2D(h.sb.ta),
-					NewVkExtent2D(h.sb.ta, info.width, info.height),
-				),
-				0, // clearValueCount
-				0, // pClearValues
-			)).Ptr(),
-		VkSubpassContents(0),
-	))
-
-	if info.clearStencil {
-		h.sb.write(h.sb.cb.VkCmdClearAttachments(
-			info.commandBuffer,
-			uint32(1),
-			h.sb.MustAllocReadData([]VkClearAttachment{
-				NewVkClearAttachment(h.sb.ta,
-					VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT), // aspectMask
-					0, // colorAttachment
-					MakeVkClearValue(h.sb.ta), // clearValue
-				),
-			}).Ptr(),
-			uint32(1),
-			h.sb.MustAllocReadData([]VkClearRect{
-				NewVkClearRect(h.sb.ta,
-					NewVkRect2D(h.sb.ta,
+	info.tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		h.sb.write(h.sb.cb.VkCmdBeginRenderPass(
+			commandBuffer,
+			h.sb.MustAllocReadData(
+				NewVkRenderPassBeginInfo(h.sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
+					NewVoidᶜᵖ(memory.Nullptr),                                // pNext
+					info.renderPass.VulkanHandle(),                           // renderPass
+					info.framebuffer.VulkanHandle(),                          // framebuffer
+					NewVkRect2D(h.sb.ta, // renderArea
 						MakeVkOffset2D(h.sb.ta),
 						NewVkExtent2D(h.sb.ta, info.width, info.height),
-					), // rect
-					// the baseArrayLayer counts from the base layer of the
-					// attachment image view.
-					0, // baseArrayLayer
-					1, // layerCount
-				),
-			}).Ptr(),
+					),
+					0, // clearValueCount
+					0, // pClearValues
+				)).Ptr(),
+			VkSubpassContents(0),
 		))
-	}
 
-	h.sb.write(h.sb.cb.VkCmdBindPipeline(
-		info.commandBuffer,
-		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
-		info.pipeline.VulkanHandle(),
-	))
-	h.sb.write(h.sb.cb.VkCmdBindVertexBuffers(
-		info.commandBuffer,
-		0, 1,
-		h.sb.MustAllocReadData(info.vertexBuf).Ptr(),
-		h.sb.MustAllocReadData(VkDeviceSize(0)).Ptr(),
-	))
-	h.sb.write(h.sb.cb.VkCmdBindIndexBuffer(
-		info.commandBuffer,
-		info.indexBuf,
-		VkDeviceSize(0),
-		VkIndexType_VK_INDEX_TYPE_UINT32,
-	))
-	h.sb.write(h.sb.cb.VkCmdSetViewport(
-		info.commandBuffer,
-		uint32(0),
-		uint32(1),
-		NewVkViewportᶜᵖ(h.sb.MustAllocReadData(NewVkViewport(h.sb.ta,
-			0, 0, // x, y
-			float32(info.width), float32(info.height), // width, height
-			0, 1, // minDepth, maxDepth
-		)).Ptr()),
-	))
-	h.sb.write(h.sb.cb.VkCmdSetScissor(
-		info.commandBuffer,
-		uint32(0),
-		uint32(1),
-		NewVkRect2Dᶜᵖ(h.sb.MustAllocReadData(NewVkRect2D(h.sb.ta,
-			MakeVkOffset2D(h.sb.ta),
-			NewVkExtent2D(h.sb.ta, info.width, info.height),
-		)).Ptr()),
-	))
-	if info.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-		h.sb.write(h.sb.cb.VkCmdSetStencilWriteMask(
-			info.commandBuffer,
-			VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
-			info.stencilWriteMask,
+		if info.clearStencil {
+			h.sb.write(h.sb.cb.VkCmdClearAttachments(
+				commandBuffer,
+				uint32(1),
+				h.sb.MustAllocReadData([]VkClearAttachment{
+					NewVkClearAttachment(h.sb.ta,
+						VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT), // aspectMask
+						0, // colorAttachment
+						MakeVkClearValue(h.sb.ta), // clearValue
+					),
+				}).Ptr(),
+				uint32(1),
+				h.sb.MustAllocReadData([]VkClearRect{
+					NewVkClearRect(h.sb.ta,
+						NewVkRect2D(h.sb.ta,
+							MakeVkOffset2D(h.sb.ta),
+							NewVkExtent2D(h.sb.ta, info.width, info.height),
+						), // rect
+						// the baseArrayLayer counts from the base layer of the
+						// attachment image view.
+						0, // baseArrayLayer
+						1, // layerCount
+					),
+				}).Ptr(),
+			))
+		}
+
+		h.sb.write(h.sb.cb.VkCmdBindPipeline(
+			commandBuffer,
+			VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
+			info.pipeline.VulkanHandle(),
 		))
-		h.sb.write(h.sb.cb.VkCmdSetStencilReference(
-			info.commandBuffer,
-			VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
-			info.stencilReference,
+		h.sb.write(h.sb.cb.VkCmdBindVertexBuffers(
+			commandBuffer,
+			0, 1,
+			h.sb.MustAllocReadData(info.vertexBuf).Ptr(),
+			h.sb.MustAllocReadData(VkDeviceSize(0)).Ptr(),
 		))
-	}
-	h.sb.write(h.sb.cb.VkCmdBindDescriptorSets(
-		info.commandBuffer,
-		VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
-		info.pipelineLayout.VulkanHandle(),
-		0,
-		1,
-		h.sb.MustAllocReadData(info.descSet.VulkanHandle()).Ptr(),
-		0,
-		NewU32ᶜᵖ(memory.Nullptr),
-	))
-	h.sb.write(h.sb.cb.VkCmdDrawIndexed(
-		info.commandBuffer,
-		6, 1, 0, 0, 0,
-	))
-	h.sb.write(h.sb.cb.VkCmdEndRenderPass(info.commandBuffer))
+		h.sb.write(h.sb.cb.VkCmdBindIndexBuffer(
+			commandBuffer,
+			info.indexBuf,
+			VkDeviceSize(0),
+			VkIndexType_VK_INDEX_TYPE_UINT32,
+		))
+		h.sb.write(h.sb.cb.VkCmdSetViewport(
+			commandBuffer,
+			uint32(0),
+			uint32(1),
+			NewVkViewportᶜᵖ(h.sb.MustAllocReadData(NewVkViewport(h.sb.ta,
+				0, 0, // x, y
+				float32(info.width), float32(info.height), // width, height
+				0, 1, // minDepth, maxDepth
+			)).Ptr()),
+		))
+		h.sb.write(h.sb.cb.VkCmdSetScissor(
+			commandBuffer,
+			uint32(0),
+			uint32(1),
+			NewVkRect2Dᶜᵖ(h.sb.MustAllocReadData(NewVkRect2D(h.sb.ta,
+				MakeVkOffset2D(h.sb.ta),
+				NewVkExtent2D(h.sb.ta, info.width, info.height),
+			)).Ptr()),
+		))
+		if info.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+			h.sb.write(h.sb.cb.VkCmdSetStencilWriteMask(
+				commandBuffer,
+				VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
+				info.stencilWriteMask,
+			))
+			h.sb.write(h.sb.cb.VkCmdSetStencilReference(
+				commandBuffer,
+				VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
+				info.stencilReference,
+			))
+		}
+		h.sb.write(h.sb.cb.VkCmdBindDescriptorSets(
+			commandBuffer,
+			VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
+			info.pipelineLayout.VulkanHandle(),
+			0,
+			1,
+			h.sb.MustAllocReadData(info.descSet.VulkanHandle()).Ptr(),
+			0,
+			NewU32ᶜᵖ(memory.Nullptr),
+		))
+		h.sb.write(h.sb.cb.VkCmdDrawIndexed(
+			commandBuffer,
+			6, 1, 0, 0, 0,
+		))
+		h.sb.write(h.sb.cb.VkCmdEndRenderPass(commandBuffer))
+	})
 }
 
 func (h *ipRenderHandler) createFramebuffer(dev VkDevice, renderPass VkRenderPass, imgViews []VkImageView, width, height uint32) FramebufferObjectʳ {
@@ -2085,11 +2169,15 @@ func (s *ipBufCopyJob) addDst(ctx context.Context, srcAspect, dstAspect VkImageA
 }
 
 type ipBufferCopySession struct {
-	copies    map[ImageObjectʳ][]VkBufferImageCopy
-	content   []bufferSubRangeFillInfo
+	// Copies in the same order of content, all copies have offsets start at 0.
+	copies map[ImageObjectʳ][]VkBufferImageCopy
+	// The buffer content of each VkBufferImageCopy, all sub-range fill info
+	// starts their range at 0.
+	content   map[ImageObjectʳ][]bufferSubRangeFillInfo
 	totalSize uint64
-	job       *ipBufCopyJob
-	sb        *stateBuilder
+	// The source and destination image for this copy session.
+	job *ipBufCopyJob
+	sb  *stateBuilder
 }
 
 // interfaces to interact with image primer
@@ -2097,13 +2185,14 @@ type ipBufferCopySession struct {
 func newImagePrimerBufferCopySession(sb *stateBuilder, job *ipBufCopyJob) *ipBufferCopySession {
 	h := &ipBufferCopySession{
 		copies:  map[ImageObjectʳ][]VkBufferImageCopy{},
-		content: []bufferSubRangeFillInfo{},
+		content: map[ImageObjectʳ][]bufferSubRangeFillInfo{},
 		job:     job,
 		sb:      sb,
 	}
 	for _, dst := range job.srcAspectsToDsts {
 		for _, img := range dst.dstImgs {
 			h.copies[img] = []VkBufferImageCopy{}
+			h.content[img] = []bufferSubRangeFillInfo{}
 		}
 	}
 	return h
@@ -2125,13 +2214,13 @@ func (h *ipBufferCopySession) collectCopiesFromSubresourceRange(srcRng VkImageSu
 				bufFillInfo, bufImgCopy, err := h.getCopyAndData(
 					dstImg, h.job.srcAspectsToDsts[aspect].dstAspect,
 					h.job.srcImg, aspect, layer, level, MakeVkOffset3D(h.sb.ta),
-					extent, h.totalSize)
+					extent)
 				if err != nil {
 					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data for priming data at image: %v, aspect: %v, layer: %v, level: %v] %v", h.job.srcImg.VulkanHandle(), aspect, layer, level, err)
 					continue
 				}
 				h.copies[dstImg] = append(h.copies[dstImg], bufImgCopy)
-				h.content = append(h.content, bufFillInfo)
+				h.content[dstImg] = append(h.content[dstImg], bufFillInfo)
 				h.totalSize += bufFillInfo.size()
 			}
 		})
@@ -2147,46 +2236,39 @@ func (h *ipBufferCopySession) collectCopiesFromSparseImageBindings() {
 				bufFillInfo, bufImgCopy, err := h.getCopyAndData(
 					dstImg, h.job.srcAspectsToDsts[aspect].dstAspect,
 					h.job.srcImg, aspect, layer, level, blockData.Offset(),
-					blockData.Extent(), h.totalSize)
+					blockData.Extent())
 				if err != nil {
 					log.E(h.sb.ctx, "[Getting VkBufferImageCopy and raw data from sparse image binding at image: %v, aspect: %v, layer: %v, level: %v, offset: %v, extent: %v] %v", h.job.srcImg.VulkanHandle(), aspect, layer, level, blockData.Offset(), blockData.Extent(), err)
 					continue
 				}
 				h.copies[dstImg] = append(h.copies[dstImg], bufImgCopy)
-				h.content = append(h.content, bufFillInfo)
+				h.content[dstImg] = append(h.content[dstImg], bufFillInfo)
 				h.totalSize += bufFillInfo.size()
 			}
 		})
 }
 
-func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, dstImgsOldQueue QueueObjectʳ) error {
+func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 
-	if h.totalSize == 0 {
-		return log.Errf(h.sb.ctx, nil, "[Submit buf -> img copy commands] no valid data to copy")
+	if h.totalSize == 0 || len(h.copies) == 0 || len(h.content) == 0 {
+		return log.Errf(h.sb.ctx, nil, "no content for buf->img copy")
 	}
 
-	scratchBuffer, scratchMemory := h.sb.allocAndFillScratchBuffer(h.sb.s.Devices().Get(h.job.srcImg.Device()), h.content, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-	defer h.sb.freeScratchBuffer(h.sb.s.Devices().Get(h.job.srcImg.Device()), scratchBuffer, scratchMemory)
-
-	commandBuffer, commandPool := h.sb.getCommandBuffer(submissionQueue)
-	defer h.sb.endSubmitAndDestroyCommandBuffer(submissionQueue, commandBuffer, commandPool)
-
-	oldQueueFamilyIndex := uint32(submissionQueue.Family())
-	if !dstImgsOldQueue.IsNil() {
-		oldQueueFamilyIndex = uint32(dstImgsOldQueue.Family())
+	if len(h.copies) != len(h.content) {
+		return log.Errf(h.sb.ctx, nil, "mismatch number of VkBufferImageCopy: %v and buffer content pieces: %v", len(h.copies), len(h.content))
 	}
-	dstImgBarriers := []VkImageMemoryBarrier{}
+
 	for _, dst := range h.job.srcAspectsToDsts {
 		for _, dstImg := range dst.dstImgs {
-			barrier := NewVkImageMemoryBarrier(h.sb.ta,
+			preCopyDstImgBarrier := NewVkImageMemoryBarrier(h.sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 				0, // pNext
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,                                                                    // oldLayout
 				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // newLayout
-				oldQueueFamilyIndex,                                                                                        // srcQueueFamilyIndex
-				uint32(submissionQueue.Family()),                                                                           // dstQueueFamilyIndex
+				queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+				queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
 				dstImg.VulkanHandle(),                                                                                      // image
 				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
 					VkImageAspectFlags(dst.dstAspect), // aspectMask
@@ -2196,50 +2278,8 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 					dstImg.Info().ArrayLayers(), // layerCount
 				),
 			)
-			dstImgBarriers = append(dstImgBarriers, barrier)
-		}
-	}
 
-	h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		uint32(0),
-		memory.Nullptr,
-		uint32(1),
-		h.sb.MustAllocReadData(
-			NewVkBufferMemoryBarrier(h.sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-				0, // pNext
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-				uint32(submissionQueue.Family()),                                                                           // srcQueueFamilyIndex
-				uint32(submissionQueue.Family()),                                                                           // dstQueueFamilyIndex
-				scratchBuffer,                                                                                              // buffer
-				0,                                                                                                          // offset
-				VkDeviceSize(h.totalSize), // size
-			)).Ptr(),
-		uint32(len(dstImgBarriers)),
-		h.sb.MustAllocReadData(dstImgBarriers).Ptr(),
-	))
-
-	for _, dst := range h.job.srcAspectsToDsts {
-		for _, dstImg := range dst.dstImgs {
-			h.sb.write(h.sb.cb.VkCmdCopyBufferToImage(
-				commandBuffer,
-				scratchBuffer,
-				dstImg.VulkanHandle(),
-				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				uint32(len(h.copies[dstImg])),
-				h.sb.MustAllocReadData(h.copies[dstImg]).Ptr(),
-			))
-		}
-	}
-
-	dstImgBarriers = nil
-	for _, dst := range h.job.srcAspectsToDsts {
-		for _, dstImg := range dst.dstImgs {
+			postCopyDstImgBarriers := []VkImageMemoryBarrier{}
 			walkImageSubresourceRange(h.sb, dstImg, h.sb.imageWholeSubresourceRange(dstImg), func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				barrier := NewVkImageMemoryBarrier(h.sb.ta,
 					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
@@ -2248,8 +2288,8 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 					VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // oldLayout
 					h.job.finalLayout.layoutOf(aspect, layer, level),                                                           // newLayout
-					oldQueueFamilyIndex,                                                                                        // srcQueueFamilyIndex
-					uint32(submissionQueue.Family()),                                                                           // dstQueueFamilyIndex
+					queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+					queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
 					dstImg.VulkanHandle(),                                                                                      // image
 					NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
 						VkImageAspectFlags(aspect), // aspectMask
@@ -2259,35 +2299,113 @@ func (h *ipBufferCopySession) rolloutBufCopies(submissionQueue QueueObjectʳ, ds
 						1,     // layerCount
 					),
 				)
-				dstImgBarriers = append(dstImgBarriers, barrier)
+				postCopyDstImgBarriers = append(postCopyDstImgBarriers, barrier)
 			})
+
+			for len(h.copies[dstImg]) != 0 && len(h.content[dstImg]) != 0 {
+				copies := []VkBufferImageCopy{}
+				bufContent := []bufferSubRangeFillInfo{}
+				bufOffset := uint64(0)
+				tsk := h.sb.newScratchTaskOnQueue(queue)
+				addIthCopyAndContent := func(i int) {
+					copy := h.copies[dstImg][i]
+					copy.SetBufferOffset(VkDeviceSize(bufOffset))
+					copies = append(copies, copy)
+					content := h.content[dstImg][i]
+					content.setOffsetInBuffer(bufOffset)
+					bufContent = append(bufContent, content)
+					bufOffset += content.size()
+				}
+
+				addIthCopyAndContent(0)
+				for i := 1; i < len(h.copies[dstImg]); i++ {
+					if nextMultipleOf(bufOffset+h.content[dstImg][i].size(), 256) > scratchBufferSize {
+						break
+					}
+					addIthCopyAndContent(i)
+				}
+
+				h.copies[dstImg] = h.copies[dstImg][len(copies):]
+				h.content[dstImg] = h.content[dstImg][len(bufContent):]
+				scratchBuffer := tsk.newBuffer(bufContent, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+				tsk.deferUntilExecuted(func() {
+					h.sb.write(h.sb.cb.VkDestroyBuffer(h.sb.s.Queues().Get(tsk.queue).Device(), scratchBuffer, memory.Nullptr))
+				})
+
+				tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+					h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+						commandBuffer,
+						VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+						VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+						VkDependencyFlags(0),
+						uint32(0),
+						memory.Nullptr,
+						uint32(1),
+						h.sb.MustAllocReadData(
+							NewVkBufferMemoryBarrier(h.sb.ta,
+								VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+								0, // pNext
+								VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+								VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+								queueFamilyIgnore, // srcQueueFamilyIndex
+								queueFamilyIgnore, // dstQueueFamilyIndex
+								scratchBuffer,     // buffer
+								0,                 // offset
+								VkDeviceSize(bufOffset), // size
+							)).Ptr(),
+						uint32(1),
+						h.sb.MustAllocReadData(preCopyDstImgBarrier).Ptr(),
+					))
+				})
+
+				tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+					h.sb.write(h.sb.cb.VkCmdCopyBufferToImage(
+						commandBuffer,
+						scratchBuffer,
+						dstImg.VulkanHandle(),
+						VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						uint32(len(copies)),
+						h.sb.MustAllocReadData(copies).Ptr(),
+					))
+				})
+
+				tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+					h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+						commandBuffer,
+						VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+						VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+						VkDependencyFlags(0),
+						uint32(0),
+						memory.Nullptr,
+						uint32(0),
+						memory.Nullptr,
+						uint32(len(postCopyDstImgBarriers)),
+						h.sb.MustAllocReadData(postCopyDstImgBarriers).Ptr(),
+					))
+				})
+				if err := tsk.commit(); err != nil {
+					return log.Errf(h.sb.ctx, err, "[Committing scratch buffer filling and image copy commands, scratch buffer size: %v]", bufOffset)
+				}
+			}
 		}
 	}
-
-	h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		uint32(0),
-		memory.Nullptr,
-		uint32(0),
-		memory.Nullptr,
-		uint32(len(dstImgBarriers)),
-		h.sb.MustAllocReadData(dstImgBarriers).Ptr(),
-	))
-
 	return nil
 }
 
 // internal functions of ipBufferCopSessionr
 
-func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkImageAspectFlagBits, srcImg ImageObjectʳ, srcAspect VkImageAspectFlagBits, layer, level uint32, opaqueBlockOffset VkOffset3D, opaqueBlockExtent VkExtent3D, bufDataOffset uint64) (bufferSubRangeFillInfo, VkBufferImageCopy, error) {
+// getCopyAndData returns the buffer content and the VkBufferImageCopy struct
+// to be used to conduct the data copy from the specific subresource of the src
+// image to the corresponding subresource of the dst image. The returned content
+// and the VkBufferImageCopy assume the copy will be carried out with a buffer
+// range starts from 0, i.e. the bufferOffset of VkBufferImageCopy is 0, and the
+// bufferSubRangeFillInfo's range begin at 0.
+func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkImageAspectFlagBits, srcImg ImageObjectʳ, srcAspect VkImageAspectFlagBits, layer, level uint32, opaqueBlockOffset VkOffset3D, opaqueBlockExtent VkExtent3D) (bufferSubRangeFillInfo, VkBufferImageCopy, error) {
 	var err error
 	bufImgCopy := NewVkBufferImageCopy(h.sb.ta,
-		VkDeviceSize(bufDataOffset), // bufferOffset
-		0, // bufferRowLength
-		0, // bufferImageHeight
+		VkDeviceSize(0), // bufferOffset
+		0,               // bufferRowLength
+		0,               // bufferImageHeight
 		NewVkImageSubresourceLayers(h.sb.ta, // imageSubresource
 			VkImageAspectFlags(dstAspect), // aspectMask
 			level, // mipLevel
@@ -2369,16 +2487,16 @@ func (h *ipBufferCopySession) getCopyAndData(dstImg ImageObjectʳ, dstAspect VkI
 	}
 
 	if len(unpackedData) != 0 {
-		return newBufferSubRangeFillInfoFromNewData(unpackedData, bufDataOffset), bufImgCopy, nil
+		return newBufferSubRangeFillInfoFromNewData(unpackedData, 0), bufImgCopy, nil
 	}
-	return newBufferSubRangeFillInfoFromSlice(h.sb, dataSlice, bufDataOffset), bufImgCopy, nil
+	return newBufferSubRangeFillInfoFromSlice(h.sb, dataSlice, 0), bufImgCopy, nil
 }
 
 // free functions
 
 func extendToMultipleOf8(dataPtr *[]uint8) {
 	l := uint64(len(*dataPtr))
-	nl := nextMultipleOf8(l)
+	nl := nextMultipleOf(l, 8)
 	zeros := make([]uint8, nl-l)
 	*dataPtr = append(*dataPtr, zeros...)
 }

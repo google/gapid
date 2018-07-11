@@ -94,7 +94,7 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 		}
 		colorImg := st.LastPresentInfo().PresentImages().Get(imageIdx)
 		if !colorImg.IsNil() {
-			queue := colorImg.LastBoundQueue()
+			queue := st.Queues().Get(st.LastPresentInfo().Queue())
 			vkDevice := queue.Device()
 			device := st.Devices().Get(vkDevice)
 			vkPhysicalDevice := device.PhysicalDevice()

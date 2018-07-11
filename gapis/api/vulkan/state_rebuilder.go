@@ -27,7 +27,9 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-const queueFamilyIgnore = uint32(0xFFFFFFFF)
+const (
+	queueFamilyIgnore = uint32(0xFFFFFFFF)
+)
 
 type stateBuilder struct {
 	ctx                   context.Context
@@ -41,6 +43,7 @@ type stateBuilder struct {
 	extraReadIDsAndRanges []idAndRng
 	memoryIntervals       interval.U64RangeList
 	ta                    arena.Arena // temporary arena
+	scratchResources      map[VkDevice]map[uint32]*queueFamilyScratchResources
 }
 
 type idAndRng struct {
@@ -54,13 +57,14 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	// TODO: Debug Info
 	newState := api.NewStateWithAllocator(memory.NewBasicAllocator(oldState.Allocator.FreeList()), oldState.MemoryLayout)
 	sb := &stateBuilder{
-		ctx:             ctx,
-		s:               s,
-		oldState:        oldState,
-		newState:        newState,
-		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
-		memoryIntervals: interval.U64RangeList{},
-		ta:              arena.New(),
+		ctx:              ctx,
+		s:                s,
+		oldState:         oldState,
+		newState:         newState,
+		cb:               CommandBuilder{Thread: 0, Arena: newState.Arena},
+		memoryIntervals:  interval.U64RangeList{},
+		ta:               arena.New(),
+		scratchResources: map[VkDevice]map[uint32]*queueFamilyScratchResources{},
 	}
 
 	defer sb.ta.Dispose()
@@ -103,10 +107,10 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 
 	{
 		imgPrimer := newImagePrimer(sb)
+		defer imgPrimer.free()
 		for _, img := range s.Images().Keys() {
 			sb.createImage(s.Images().Get(img), imgPrimer)
 		}
-		imgPrimer.free()
 	}
 
 	for _, smp := range s.Samplers().Keys() {
@@ -188,6 +192,9 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	for _, qp := range s.CommandBuffers().Keys() {
 		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 	}
+
+	sb.flushAllScratchResources()
+	sb.freeAllScratchResources()
 
 	return sb.cmds, sb.memoryIntervals
 }
@@ -296,50 +303,6 @@ func (sb *stateBuilder) mustReadSlice(v sliceWithID) api.AllocResult {
 	sb.readMemories = append(sb.readMemories, &res)
 	sb.ReadDataAt(v.ResourceID(sb.ctx, sb.oldState), res.Address(), v.Size())
 	return res
-}
-
-func (sb *stateBuilder) getCommandBuffer(queue QueueObjectʳ) (VkCommandBuffer, VkCommandPool) {
-	commandBufferID := VkCommandBuffer(newUnusedID(true, func(x uint64) bool { return sb.s.CommandBuffers().Contains(VkCommandBuffer(x)) }))
-	commandPoolID := VkCommandPool(newUnusedID(true, func(x uint64) bool { return sb.s.CommandPools().Contains(VkCommandPool(x)) }))
-
-	sb.write(sb.cb.VkCreateCommandPool(
-		queue.Device(),
-		sb.MustAllocReadData(NewVkCommandPoolCreateInfo(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // sType
-			0,              // pNext
-			0,              // flags
-			queue.Family(), // queueFamilyIndex
-		)).Ptr(),
-		memory.Nullptr,
-		sb.MustAllocWriteData(commandPoolID).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-
-	sb.write(sb.cb.VkAllocateCommandBuffers(
-		queue.Device(),
-		sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
-			0,             // pNext
-			commandPoolID, // commandPool
-			VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, // level
-			uint32(1), // commandBufferCount
-		)).Ptr(),
-		sb.MustAllocWriteData(commandBufferID).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-
-	sb.write(sb.cb.VkBeginCommandBuffer(
-		commandBufferID,
-		sb.MustAllocReadData(NewVkCommandBufferBeginInfo(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-			0, // pNext
-			0, // flags
-			0, // pInheritanceInfo
-		)).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-
-	return commandBufferID, commandPoolID
 }
 
 func (sb *stateBuilder) endSubmitAndDestroyCommandBuffer(queue QueueObjectʳ, commandBuffer VkCommandBuffer, commandPool VkCommandPool) {
@@ -657,7 +620,7 @@ func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
 	))
 }
 
-type imgSubRngLayoutTransitionInfo struct {
+type imageSubRangeInfo struct {
 	aspectMask     VkImageAspectFlags
 	baseMipLevel   uint32
 	levelCount     uint32
@@ -665,37 +628,27 @@ type imgSubRngLayoutTransitionInfo struct {
 	layerCount     uint32
 	oldLayout      VkImageLayout
 	newLayout      VkImageLayout
+	oldQueue       VkQueue
+	newQueue       VkQueue
 }
 
-func (sb *stateBuilder) transitionImageLayout(image ImageObjectʳ,
-	transitionInfo []imgSubRngLayoutTransitionInfo,
-	oldQueue, newQueue QueueObjectʳ) {
-
-	if image.LastBoundQueue().IsNil() {
-		// We cannot transition an image that has never been
-		// on a queue
-		return
-	}
-	commandBuffer, commandPool := sb.getCommandBuffer(image.LastBoundQueue())
-
-	newFamily := newQueue.Family()
-	oldFamily := newQueue.Family()
-	if !oldQueue.IsNil() {
-		oldFamily = oldQueue.Family()
-	}
-
-	imgBarriers := []VkImageMemoryBarrier{}
-	for _, info := range transitionInfo {
-		imgBarriers = append(imgBarriers, NewVkImageMemoryBarrier(sb.ta,
+func (sb *stateBuilder) changeImageSubRangeLayoutAndOwnership(image VkImage, subRngInfo []imageSubRangeInfo) {
+	makeBarrier := func(info imageSubRangeInfo) VkImageMemoryBarrier {
+		newFamily := sb.s.Queues().Get(info.newQueue).Family()
+		oldFamily := newFamily
+		if info.oldQueue != VkQueue(0) {
+			oldFamily = sb.s.Queues().Get(info.oldQueue).Family()
+		}
+		return NewVkImageMemoryBarrier(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 			0, // pNext
 			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-			info.oldLayout,       // oldLayout
-			info.newLayout,       // newLayout
-			oldFamily,            // srcQueueFamilyIndex
-			newFamily,            // dstQueueFamilyIndex
-			image.VulkanHandle(), // image
+			info.oldLayout, // oldLayout
+			info.newLayout, // newLayout
+			oldFamily,      // srcQueueFamilyIndex
+			newFamily,      // dstQueueFamilyIndex
+			image,          // image
 			NewVkImageSubresourceRange(sb.ta,
 				info.aspectMask,
 				info.baseMipLevel,
@@ -703,23 +656,66 @@ func (sb *stateBuilder) transitionImageLayout(image ImageObjectʳ,
 				info.baseArrayLayer,
 				info.layerCount,
 			), // subresourceRange
-		))
+		)
 	}
 
-	sb.write(sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		0,
-		memory.Nullptr,
-		0,
-		memory.Nullptr,
-		uint32(len(imgBarriers)),
-		sb.MustAllocReadData(imgBarriers).Ptr(),
-	))
+	releaseBarriers := map[VkQueue][]VkImageMemoryBarrier{}
+	acquireBarriers := map[VkQueue][]VkImageMemoryBarrier{}
+	for _, info := range subRngInfo {
+		if info.oldQueue == VkQueue(0) {
+			acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
+			continue
+		}
+		oldFamily := sb.s.Queues().Get(info.oldQueue).Family()
+		newFamily := sb.s.Queues().Get(info.newQueue).Family()
+		if oldFamily == newFamily {
+			acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
+			continue
+		}
+		releaseBarriers[info.oldQueue] = append(releaseBarriers[info.oldQueue], makeBarrier(info))
+		acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
+	}
 
-	sb.endSubmitAndDestroyCommandBuffer(newQueue, commandBuffer, commandPool)
+	for oldQ, barriers := range releaseBarriers {
+		tsk := sb.newScratchTaskOnQueue(oldQ)
+		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+			sb.write(sb.cb.VkCmdPipelineBarrier(
+				commandBuffer,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				0,
+				memory.Nullptr,
+				0,
+				memory.Nullptr,
+				uint32(len(barriers)),
+				sb.MustAllocReadData(barriers).Ptr(),
+			))
+		})
+		tsk.commit()
+		// Need to block the GPU execution to synchronize the queue family
+		// acquire - release operations.
+		sb.flushQueueFamilyScratchResources(oldQ)
+	}
+
+	for newQ, barriers := range acquireBarriers {
+		tsk := sb.newScratchTaskOnQueue(newQ)
+		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+			sb.write(sb.cb.VkCmdPipelineBarrier(
+				commandBuffer,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				0,
+				memory.Nullptr,
+				0,
+				memory.Nullptr,
+				uint32(len(barriers)),
+				sb.MustAllocReadData(barriers).Ptr(),
+			))
+		})
+		tsk.commit()
+	}
 }
 
 func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
@@ -775,16 +771,23 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 	for _, v := range swp.SwapchainImages().All() {
-		q := sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
-			queueFamilyIndicesToU32Slice(v.Info().QueueFamilyIndices()),
-			v.Device(),
-			v.LastBoundQueue())
-		transitionInfo := []imgSubRngLayoutTransitionInfo{}
+		layoutTransitionInfo := []imageSubRangeInfo{}
+		ownerTransferInfo := []imageSubRangeInfo{}
 		walkImageSubresourceRange(sb, v, sb.imageWholeSubresourceRange(v),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				l := v.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
-				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+				if l.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || l.LastBoundQueue() == NilQueueObjectʳ {
+					return
+				}
+				q := sb.getQueueFor(
+					VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+					queueFamilyIndicesToU32Slice(v.Info().QueueFamilyIndices()),
+					v.Device(),
+					l.LastBoundQueue())
+				if q.IsNil() {
+					return
+				}
+				layoutTransitionInfo = append(layoutTransitionInfo, imageSubRangeInfo{
 					aspectMask:     VkImageAspectFlags(aspect),
 					baseMipLevel:   level,
 					levelCount:     1,
@@ -792,9 +795,25 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 					layerCount:     1,
 					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 					newLayout:      l.Layout(),
+					oldQueue:       VkQueue(0),
+					newQueue:       q.VulkanHandle(),
 				})
+				if q.Family() != l.LastBoundQueue().Family() {
+					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
+						aspectMask:     VkImageAspectFlags(aspect),
+						baseMipLevel:   level,
+						levelCount:     1,
+						baseArrayLayer: layer,
+						layerCount:     1,
+						oldLayout:      l.Layout(),
+						newLayout:      l.Layout(),
+						oldQueue:       q.VulkanHandle(),
+						newQueue:       l.LastBoundQueue().VulkanHandle(),
+					})
+				}
 			})
-		sb.transitionImageLayout(v, transitionInfo, NilQueueObjectʳ, q)
+		sb.changeImageSubRangeLayoutAndOwnership(v.VulkanHandle(), layoutTransitionInfo)
+		sb.changeImageSubRangeLayoutAndOwnership(v.VulkanHandle(), ownerTransferInfo)
 	}
 }
 
@@ -913,163 +932,8 @@ func (i *bufferSubRangeFillInfo) storeNewData(sb *stateBuilder) {
 	}
 }
 
-func (sb *stateBuilder) allocAndFillScratchBuffer(device DeviceObjectʳ, subRngs []bufferSubRangeFillInfo, usages ...VkBufferUsageFlagBits) (VkBuffer, VkDeviceMemory) {
-	buffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
-		return sb.s.Buffers().Contains(VkBuffer(x)) || GetState(sb.newState).Buffers().Contains(VkBuffer(x))
-	}))
-	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-		return sb.s.DeviceMemories().Contains(VkDeviceMemory(x)) || GetState(sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
-	}))
-	usageFlags := VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-	for _, u := range usages {
-		usageFlags |= VkBufferUsageFlags(u)
-	}
-	size := uint64(0)
-	for _, r := range subRngs {
-		if r.rng.Span().End > size {
-			size = r.rng.Span().End
-		}
-	}
-	sb.write(sb.cb.VkCreateBuffer(
-		device.VulkanHandle(),
-		sb.MustAllocReadData(
-			NewVkBufferCreateInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
-				0,                                       // pNext
-				0,                                       // flags
-				VkDeviceSize(size),                      // size
-				usageFlags,                              // usage
-				VkSharingMode_VK_SHARING_MODE_EXCLUSIVE, // sharingMode
-				0, // queueFamilyIndexCount
-				0, // pQueueFamilyIndices
-			)).Ptr(),
-		memory.Nullptr,
-		sb.MustAllocWriteData(buffer).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-
-	memoryTypeIndex := sb.GetScratchBufferMemoryIndex(device)
-
-	// Since we cannot guess how much the driver will actually request of us,
-	// overallocate by a factor of 2. This should be enough.
-	// Align to 0x100 to make validation layers happy. Assuming the buffer memory
-	// requirement has an alignment value compatible with 0x100.
-	allocSize := VkDeviceSize((uint64(size*2) + uint64(255)) & ^uint64(255))
-
-	// Make sure we allocate a buffer that is more than big enough for the
-	// data
-	sb.write(sb.cb.VkAllocateMemory(
-		device.VulkanHandle(),
-		NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkMemoryAllocateInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
-				0,               // pNext
-				allocSize,       // allocationSize
-				memoryTypeIndex, // memoryTypeIndex
-			)).Ptr()),
-		memory.Nullptr,
-		sb.MustAllocWriteData(deviceMemory).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-
-	sb.write(sb.cb.VkBindBufferMemory(
-		device.VulkanHandle(),
-		buffer,
-		deviceMemory,
-		0,
-		VkResult_VK_SUCCESS,
-	))
-
-	atData := sb.MustReserve(size)
-
-	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
-	sb.write(sb.cb.VkMapMemory(
-		device.VulkanHandle(),
-		deviceMemory,
-		VkDeviceSize(0),
-		VkDeviceSize(size),
-		VkMemoryMapFlags(0),
-		ptrAtData.Ptr(),
-		VkResult_VK_SUCCESS,
-	).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
-	ptrAtData.Free()
-
-	for _, r := range subRngs {
-		var hash id.ID
-		var err error
-		if r.hasNewData {
-			hash, err = database.Store(sb.ctx, r.data)
-			if err != nil {
-				panic(err)
-			}
-		} else {
-			hash = r.hash
-		}
-		sb.ReadDataAt(hash, atData.Address()+r.rng.First, r.rng.Count)
-	}
-	sb.write(sb.cb.VkFlushMappedMemoryRanges(
-		device.VulkanHandle(),
-		1,
-		sb.MustAllocReadData(NewVkMappedMemoryRange(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-			0,                  // pNext
-			deviceMemory,       // memory
-			0,                  // offset
-			VkDeviceSize(size), // size
-		)).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-	atData.Free()
-
-	sb.write(sb.cb.VkUnmapMemory(
-		device.VulkanHandle(),
-		deviceMemory,
-	))
-
-	return buffer, deviceMemory
-}
-
-func (sb *stateBuilder) freeScratchBuffer(device DeviceObjectʳ, buffer VkBuffer, mem VkDeviceMemory) {
-	sb.write(sb.cb.VkDestroyBuffer(device.VulkanHandle(), buffer, memory.Nullptr))
-	sb.write(sb.cb.VkFreeMemory(device.VulkanHandle(), mem, memory.Nullptr))
-}
-
-func (sb *stateBuilder) getSparseQueueFor(lastBoundQueue QueueObjectʳ, device VkDevice, queueFamilyIndices map[uint32]uint32) QueueObjectʳ {
-	hasQueueFamilyIndices := queueFamilyIndices != nil
-
-	if !lastBoundQueue.IsNil() {
-		queueProperties := sb.s.PhysicalDevices().Get(sb.s.Devices().Get(lastBoundQueue.Device()).PhysicalDevice()).QueueFamilyProperties()
-		if 0 != (uint32(queueProperties.Get(lastBoundQueue.Family()).QueueFlags()) & uint32(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT)) {
-			return lastBoundQueue
-		}
-	}
-
-	dev := sb.s.Devices().Get(device)
-	if dev.IsNil() {
-		return lastBoundQueue
-	}
-	phyDev := sb.s.PhysicalDevices().Get(dev.PhysicalDevice())
-	if phyDev.IsNil() {
-		return lastBoundQueue
-	}
-
-	queueProperties := sb.s.PhysicalDevices().Get(sb.s.Devices().Get(device).PhysicalDevice()).QueueFamilyProperties()
-
-	if hasQueueFamilyIndices {
-		for _, v := range sb.s.Queues().All() {
-			if v.Device() != device {
-				continue
-			}
-			if 0 != (uint32(queueProperties.Get(v.Family()).QueueFlags()) & uint32(VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT)) {
-				for _, i := range queueFamilyIndices {
-					if i == v.Family() {
-						return v
-					}
-				}
-			}
-		}
-	}
-	return lastBoundQueue
+func (i *bufferSubRangeFillInfo) setOffsetInBuffer(offsetInBuf uint64) {
+	i.rng = interval.U64Range{offsetInBuf, i.size()}
 }
 
 // getQueueFor returns a queue object from the old state. The returned queue
@@ -1203,7 +1067,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		buffer.Device(),
 		buffer.LastBoundQueue())
 
-	oldFamilyIndex := -1
+	oldFamilyIndex := queueFamilyIgnore
 
 	if buffer.SparseMemoryBindings().Len() > 0 {
 		// If this buffer has sparse memory bindings, then we have to set them all
@@ -1212,8 +1076,11 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 			return
 		}
 		memories := make(map[VkDeviceMemory]bool)
-		sparseQueue := sb.getSparseQueueFor(buffer.LastBoundQueue(), buffer.Device(), buffer.Info().QueueFamilyIndices().All())
-		oldFamilyIndex = int(sparseQueue.Family())
+		sparseQueue := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT,
+			queueFamilyIndicesToU32Slice(buffer.Info().QueueFamilyIndices()),
+			buffer.Device(), buffer.LastBoundQueue())
+		oldFamilyIndex = sparseQueue.Family()
 		if !buffer.Info().DedicatedAllocationNV().IsNil() {
 			for _, bind := range buffer.SparseMemoryBindings().All() {
 				if _, ok := memories[bind.Memory()]; !ok {
@@ -1298,83 +1165,85 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		))
 	}
 
-	scratchBuffer, scratchMemory := sb.allocAndFillScratchBuffer(
-		sb.s.Devices().Get(buffer.Device()),
-		contents,
-		VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+	tsk := sb.newScratchTaskOnQueue(queue.VulkanHandle())
+	defer func() {
+		if err := tsk.commit(); err != nil {
+			log.E(sb.ctx, "[Priming data for buffer: %v]: %v", buffer.VulkanHandle(), err)
+		}
+	}()
+	scratchBuffer := tsk.newBuffer(contents, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+	tsk.deferUntilExecuted(func() {
+		sb.write(sb.cb.VkDestroyBuffer(buffer.Device(), scratchBuffer, memory.Nullptr))
+	})
 
-	commandBuffer, commandPool := sb.getCommandBuffer(queue)
-
-	newFamilyIndex := queue.Family()
-
-	if oldFamilyIndex == -1 {
-		oldFamilyIndex = 0
-		newFamilyIndex = 0
+	newFamilyIndex := queueFamilyIgnore
+	if oldFamilyIndex != queueFamilyIgnore {
+		newFamilyIndex = queue.Family()
 	}
 
-	sb.write(sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		0,
-		memory.Nullptr,
-		1,
-		sb.MustAllocReadData(
-			NewVkBufferMemoryBarrier(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-				0, // pNext
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-				uint32(oldFamilyIndex), // srcQueueFamilyIndex
-				uint32(newFamilyIndex), // dstQueueFamilyIndex
-				scratchBuffer,          // buffer
-				0,                      // offset
-				VkDeviceSize(len(contents)), // size
-			)).Ptr(),
-		0,
-		memory.Nullptr,
-	))
+	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		sb.write(sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			0,
+			memory.Nullptr,
+			1,
+			sb.MustAllocReadData(
+				NewVkBufferMemoryBarrier(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+					0, // pNext
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					queueFamilyIgnore, // srcQueueFamilyIndex
+					queueFamilyIgnore, // dstQueueFamilyIndex
+					scratchBuffer,     // buffer
+					0,                 // offset
+					VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+				)).Ptr(),
+			0,
+			memory.Nullptr,
+		))
+		sb.write(sb.cb.VkCmdCopyBuffer(
+			commandBuffer,
+			scratchBuffer,
+			buffer.VulkanHandle(),
+			uint32(len(copies)),
+			sb.MustAllocReadData(copies).Ptr(),
+		))
 
-	sb.write(sb.cb.VkCmdCopyBuffer(
-		commandBuffer,
-		scratchBuffer,
-		buffer.VulkanHandle(),
-		uint32(len(copies)),
-		sb.MustAllocReadData(copies).Ptr(),
-	))
-
-	sb.write(sb.cb.VkCmdPipelineBarrier(
-		commandBuffer,
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-		VkDependencyFlags(0),
-		0,
-		memory.Nullptr,
-		1,
-		sb.MustAllocReadData(
-			NewVkBufferMemoryBarrier(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-				0, // pNext
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-				0, // srcQueueFamilyIndex
-				0, // dstQueueFamilyIndex
-				buffer.VulkanHandle(), // buffer
-				0, // offset
-				VkDeviceSize(len(contents)), // size
-			)).Ptr(),
-		0,
-		memory.Nullptr,
-	))
-
-	sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
-
-	sb.freeScratchBuffer(sb.s.Devices().Get(buffer.Device()), scratchBuffer, scratchMemory)
+		sb.write(sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			0,
+			memory.Nullptr,
+			1,
+			sb.MustAllocReadData(
+				NewVkBufferMemoryBarrier(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+					0, // pNext
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					oldFamilyIndex,        // srcQueueFamilyIndex
+					newFamilyIndex,        // dstQueueFamilyIndex
+					buffer.VulkanHandle(), // buffer
+					0, // offset
+					VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+				)).Ptr(),
+			0,
+			memory.Nullptr,
+		))
+	})
 }
 
-func nextMultipleOf8(v uint64) uint64 {
-	return (v + 7) & ^uint64(7)
+func nextMultipleOf(v, a uint64) uint64 {
+	if a == 0 {
+		return v
+	}
+	return (v + a - 1) / a * a
 }
 
 type byteSizeAndExtent struct {
@@ -1419,9 +1288,9 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 
 	return byteSizeAndExtent{
 		levelSize:             size,
-		alignedLevelSize:      nextMultipleOf8(size),
+		alignedLevelSize:      nextMultipleOf(size, 8),
 		levelSizeInBuf:        sizeInBuf,
-		alignedLevelSizeInBuf: nextMultipleOf8(sizeInBuf),
+		alignedLevelSizeInBuf: nextMultipleOf(sizeInBuf, 8),
 		width:  uint64(width),
 		height: uint64(height),
 		depth:  uint64(depth),
@@ -1447,6 +1316,27 @@ func (sb *stateBuilder) imageWholeSubresourceRange(img ImageObjectʳ) VkImageSub
 		0, // baseArrayLayer
 		img.Info().ArrayLayers(), // layerCount
 	)
+}
+
+// imageAllBoundQueues returns the all the last bound queues for all the image
+// subresource ranges (image level).
+func (sb *stateBuilder) imageAllLastBoundQueues(img ImageObjectʳ) []VkQueue {
+	seen := map[VkQueue]struct{}{}
+	result := []VkQueue{}
+	walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
+		func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+			// No need to handle for undefined layout
+			imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+			if imgLevel.LastBoundQueue().IsNil() {
+				return
+			}
+			q := imgLevel.LastBoundQueue().VulkanHandle()
+			if _, ok := seen[q]; !ok {
+				seen[q] = struct{}{}
+				result = append(result, q)
+			}
+		})
+	return result
 }
 
 // IsFullyBound returns true if the resource range from offset with size is
@@ -1562,7 +1452,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		return
 	}
 
-	var queue, sparseQueue QueueObjectʳ
+	var sparseQueue QueueObjectʳ
 	opaqueRanges := []VkImageSubresourceRange{}
 	// appendImageLevelToOpaqueRanges is a helper function to collect image levels
 	// from the current processing source image that do not have an undefined
@@ -1585,10 +1475,14 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	if img.OpaqueSparseMemoryBindings().Len() > 0 || img.SparseImageMemoryBindings().Len() > 0 {
 		// If this img has sparse memory bindings, then we have to set them all
 		// now
+		candidates := []QueueObjectʳ{}
+		for _, q := range sb.imageAllLastBoundQueues(img) {
+			candidates = append(candidates, sb.s.Queues().Get(q))
+		}
 		sparseQueue = sb.getQueueFor(
 			VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT,
 			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-			img.Device(), img.LastBoundQueue())
+			img.Device(), candidates...)
 
 		memories := make(map[VkDeviceMemory]bool)
 
@@ -1729,15 +1623,27 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 
 	// We don't currently prime the data in any of these formats.
 	if img.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-		transitionInfo := []imgSubRngLayoutTransitionInfo{}
+		transitionInfo := []imageSubRangeInfo{}
+		ownerTransferInfo := []imageSubRangeInfo{}
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				// No need to handle for undefined layout
 				imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
-				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
+				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || imgLevel.LastBoundQueue().IsNil() {
 					return
 				}
-				transitionInfo = append(transitionInfo, imgSubRngLayoutTransitionInfo{
+				q := sb.getQueueFor(
+					VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+					queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+					img.Device(), imgLevel.LastBoundQueue())
+				if q.IsNil() {
+					return
+				}
+				oldQueue := VkQueue(0)
+				if !sparseQueue.IsNil() {
+					oldQueue = sparseQueue.VulkanHandle()
+				}
+				transitionInfo = append(transitionInfo, imageSubRangeInfo{
 					aspectMask:     VkImageAspectFlags(aspect),
 					baseMipLevel:   level,
 					levelCount:     1,
@@ -1745,55 +1651,88 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 					layerCount:     1,
 					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 					newLayout:      imgLevel.Layout(),
+					oldQueue:       oldQueue,
+					newQueue:       q.VulkanHandle(),
 				})
+				if q.Family() != imgLevel.LastBoundQueue().Family() {
+					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
+						aspectMask:     VkImageAspectFlags(aspect),
+						baseMipLevel:   level,
+						levelCount:     1,
+						baseArrayLayer: layer,
+						layerCount:     1,
+						oldLayout:      imgLevel.Layout(),
+						newLayout:      imgLevel.Layout(),
+						oldQueue:       q.VulkanHandle(),
+						newQueue:       imgLevel.LastBoundQueue().VulkanHandle(),
+					})
+				}
 			})
-		queue = sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
-			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-			img.Device(), img.LastBoundQueue())
-		if queue.IsNil() {
-			return
-		}
-		sb.transitionImageLayout(img, transitionInfo, sparseQueue, queue)
+		sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), transitionInfo)
+		sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), ownerTransferInfo)
 		log.E(sb.ctx, "[Priming the data of image: %v] priming data for MS images not implemented", img.VulkanHandle())
 		return
 	}
-	if img.LastBoundQueue().IsNil() {
-		log.W(sb.ctx, "[Priming the data of image: %v] image has never been used on any queue, using an arbitrary queue for the priming commands", img.VulkanHandle())
-	}
 	// We have to handle the above cases at some point.
+
 	var err error
+	var queue QueueObjectʳ
+	queueCandidates := []QueueObjectʳ{}
+	for _, q := range sb.imageAllLastBoundQueues(img) {
+		queueCandidates = append(queueCandidates, sb.s.Queues().Get(q))
+	}
+
+	prime := func(flagBits VkQueueFlagBits, primerFunc func(ImageObjectʳ, []VkImageSubresourceRange, QueueObjectʳ) error) error {
+		queue = sb.getQueueFor(flagBits, queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()), img.Device(), queueCandidates...)
+		if queue.IsNil() {
+			return log.Errf(sb.ctx, nil, "cannot get a proper queue to prime data")
+		}
+		return primerFunc(img, opaqueRanges, queue)
+	}
+
 	if primeByBufCopy {
-		queue = sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
-			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-			img.Device(), img.LastBoundQueue())
-		err = imgPrimer.primeByBufferCopy(img, opaqueRanges, queue, sparseQueue)
+		err = prime(VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT, imgPrimer.primeByBufferCopy)
 	} else if primeByRendering {
-		queue = sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT,
-			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-			img.Device(), img.LastBoundQueue())
-		err = imgPrimer.primeByRendering(img, opaqueRanges, queue, sparseQueue)
+		err = prime(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT, imgPrimer.primeByRendering)
 	} else if primeByImageStore {
-		queue = sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
-			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-			img.Device(), img.LastBoundQueue())
-		err = imgPrimer.primeByImageStore(img, opaqueRanges, queue, sparseQueue)
+		err = prime(VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT, imgPrimer.primeByImageStore)
 	} else if primeByPreinitialization {
-		queue = sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
-			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-			img.Device(), img.LastBoundQueue())
-		err = imgPrimer.primeByPreinitialization(img, opaqueRanges, queue, sparseQueue)
+		err = prime(VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT, imgPrimer.primeByPreinitialization)
 	} else {
-		err = log.Errf(sb.ctx, nil, "There is no valid way to prim data into image: %v", img.VulkanHandle())
+		err = log.Errf(sb.ctx, nil, "There is no valid way to prime data into image: %v", img.VulkanHandle())
 	}
 	if err != nil {
 		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle(), err)
+		return
 	}
-	return
+
+	if !queue.IsNil() {
+		// Image data priming is recorded successfully, check if we need to
+		// to transfer the queue family ownership
+		ownerTransferInfo := []imageSubRangeInfo{}
+		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
+			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+				// No need to handle for undefined layout
+				imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
+				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || imgLevel.LastBoundQueue().IsNil() {
+					return
+				}
+				if queue.Family() != imgLevel.LastBoundQueue().Family() {
+					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
+						aspectMask:     VkImageAspectFlags(aspect),
+						baseMipLevel:   level,
+						levelCount:     1,
+						baseArrayLayer: layer,
+						layerCount:     1,
+						oldLayout:      imgLevel.Layout(),
+						newLayout:      imgLevel.Layout(),
+						oldQueue:       queue.VulkanHandle(),
+						newQueue:       imgLevel.LastBoundQueue().VulkanHandle(),
+					})
+				}
+			})
+		sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), ownerTransferInfo)
+	}
 }
 
 func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
@@ -2664,25 +2603,29 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	queue := sb.getQueueFor(
 		VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
 		[]uint32{}, qp.Device(), qp.LastBoundQueue())
-
-	commandBuffer, commandPool := sb.getCommandBuffer(queue)
-	for i := uint32(0); i < qp.QueryCount(); i++ {
-		if qp.Status().Get(i) != QueryStatus_QUERY_STATUS_INACTIVE {
-			sb.write(sb.cb.VkCmdBeginQuery(
-				commandBuffer,
-				qp.VulkanHandle(),
-				i,
-				VkQueryControlFlags(0)))
-		}
-		if qp.Status().Get(i) == QueryStatus_QUERY_STATUS_COMPLETE {
-			sb.write(sb.cb.VkCmdEndQuery(
-				commandBuffer,
-				qp.VulkanHandle(),
-				i))
-		}
+	if queue.IsNil() {
+		return
 	}
 
-	sb.endSubmitAndDestroyCommandBuffer(queue, commandBuffer, commandPool)
+	tsk := sb.newScratchTaskOnQueue(queue.VulkanHandle())
+	defer tsk.commit()
+	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		for i := uint32(0); i < qp.QueryCount(); i++ {
+			if qp.Status().Get(i) != QueryStatus_QUERY_STATUS_INACTIVE {
+				sb.write(sb.cb.VkCmdBeginQuery(
+					commandBuffer,
+					qp.VulkanHandle(),
+					i,
+					VkQueryControlFlags(0)))
+			}
+			if qp.Status().Get(i) == QueryStatus_QUERY_STATUS_COMPLETE {
+				sb.write(sb.cb.VkCmdEndQuery(
+					commandBuffer,
+					qp.VulkanHandle(),
+					i))
+			}
+		}
+	})
 }
 
 func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCommandBufferLevel) {

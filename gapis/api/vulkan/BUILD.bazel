@@ -66,6 +66,7 @@ go_library(
         "read_framebuffer.go",
         "replay.go",
         "resources.go",
+        "scratch_resources.go",
         "state.go",
         "state_rebuilder.go",
         "vulkan.go",

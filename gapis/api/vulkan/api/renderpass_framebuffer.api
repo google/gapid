@@ -221,11 +221,7 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   lastDrawInfo().InRenderPass = true
   attachments := lastDrawInfo().Framebuffer.ImageAttachments
   for i in (0 .. len(attachments)) {
-    v := attachments[as!u32(i)]
     loadImageAttachment(as!u32(i))
-    if (v.Image != null) {
-      v.Image.LastBoundQueue = LastBoundQueue
-    }
   }
   pushRenderPassMarker(args.RenderPass)
 }
@@ -339,12 +335,14 @@ sub void loadImageAttachment(u32 attachmentID) {
   if attachmentID != VK_ATTACHMENT_UNUSED {
     attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
     desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
-    switch desc.loadOp {
-      case VK_ATTACHMENT_LOAD_OP_LOAD:
-        readImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
-      default:
-        // write to the attachment image, to prevent any dependencies on previous writes
-        writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+    if attachment.Image != null {
+      switch desc.loadOp {
+        case VK_ATTACHMENT_LOAD_OP_LOAD:
+          readImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+        default:
+          // write to the attachment image, to prevent any dependencies on previous writes
+          writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+      }
     }
   }
 }
@@ -354,14 +352,16 @@ sub void storeImageAttachment(u32 attachmentID) {
   if attachmentID != VK_ATTACHMENT_UNUSED {
     attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
     desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
-    if desc.initialLayout != desc.finalLayout {
-      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
-    }
-    switch desc.storeOp {
-      case VK_ATTACHMENT_STORE_OP_STORE:
-        writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.finalLayout)
-      default: {
-        // do nothing
+    if attachment.Image != null {
+      if desc.initialLayout != desc.finalLayout {
+        transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
+      }
+      switch desc.storeOp {
+        case VK_ATTACHMENT_STORE_OP_STORE:
+          writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.finalLayout)
+        default: {
+          // do nothing
+        }
       }
     }
   }

@@ -239,7 +239,7 @@ func postImageData(ctx context.Context,
 		return
 	}
 
-	queue := imageObject.LastBoundQueue()
+	queue := imageObject.Aspects().Get(aspect).Layers().Get(0).Levels().Get(0).LastBoundQueue()
 	vkQueue := queue.VulkanHandle()
 	vkDevice := queue.Device()
 	device := GetState(s).Devices().Get(vkDevice)

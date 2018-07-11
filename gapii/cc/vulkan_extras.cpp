@@ -97,8 +97,8 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   VkDevice device = image->mDevice;
   VkPhysicalDevice physical_device = mState.Devices[device]->mPhysicalDevice;
   VkInstance instance = mState.PhysicalDevices[physical_device]->mInstance;
-  VkQueue queue = image->mLastBoundQueue->mVulkanHandle;
-  uint32_t queue_family = image->mLastBoundQueue->mFamily;
+  VkQueue queue = mState.LastPresentInfo.mQueue;
+  uint32_t queue_family = mState.Queues[queue]->mFamily;
   auto& instance_fn = mImports.mVkInstanceFunctions[instance];
 
   VkPhysicalDeviceMemoryProperties memory_properties(arena());
