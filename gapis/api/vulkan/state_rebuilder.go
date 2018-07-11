@@ -170,15 +170,15 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	}
 
 	for _, dp := range s.DescriptorPools().Keys() {
-		sb.createDescriptorPool(s.DescriptorPools().Get(dp))
+		sb.createDescriptorPoolAndAllocateDescriptorSets(s.DescriptorPools().Get(dp))
 	}
 
 	for _, fb := range s.Framebuffers().Keys() {
 		sb.createFramebuffer(s.Framebuffers().Get(fb))
 	}
 
-	for _, fb := range s.DescriptorSets().Keys() {
-		sb.createDescriptorSet(s.DescriptorSets().Get(fb))
+	for _, ds := range s.DescriptorSets().Keys() {
+		sb.writeDescriptorSet(s.DescriptorSets().Get(ds))
 	}
 
 	for _, qp := range s.QueryPools().Keys() {
@@ -2386,7 +2386,7 @@ func (sb *stateBuilder) createBufferView(bv BufferViewObjectʳ) {
 	))
 }
 
-func (sb *stateBuilder) createDescriptorPool(dp DescriptorPoolObjectʳ) {
+func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp DescriptorPoolObjectʳ) {
 	sb.write(sb.cb.VkCreateDescriptorPool(
 		dp.Device(),
 		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(sb.ta,
@@ -2401,6 +2401,29 @@ func (sb *stateBuilder) createDescriptorPool(dp DescriptorPoolObjectʳ) {
 		sb.MustAllocWriteData(dp.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+
+	descSetHandles := make([]VkDescriptorSet, 0, dp.DescriptorSets().Len())
+	descSetLayoutHandles := make([]VkDescriptorSetLayout, 0, dp.DescriptorSets().Len())
+	for vkDescSet, descSetObj := range dp.DescriptorSets().All() {
+		if sb.s.DescriptorSets().Contains(vkDescSet) {
+			descSetHandles = append(descSetHandles, vkDescSet)
+			descSetLayoutHandles = append(descSetLayoutHandles, descSetObj.Layout().VulkanHandle())
+		}
+	}
+	if len(descSetHandles) != 0 && len(descSetLayoutHandles) != 0 {
+		sb.write(sb.cb.VkAllocateDescriptorSets(
+			dp.Device(),
+			sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, // sType
+				0,                                                                            // pNext
+				dp.VulkanHandle(),                                                            // descriptorPool
+				uint32(len(descSetHandles)),                                                  // descriptorSetCount
+				NewVkDescriptorSetLayoutᶜᵖ(sb.MustAllocReadData(descSetLayoutHandles).Ptr()), // pSetLayouts
+			)).Ptr(),
+			sb.MustAllocWriteData(descSetHandles).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+	}
 }
 
 func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
@@ -2449,23 +2472,14 @@ func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 	}
 }
 
-func (sb *stateBuilder) createDescriptorSet(ds DescriptorSetObjectʳ) {
+func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 	ns := GetState(sb.newState)
 	if !ns.DescriptorPools().Contains(ds.DescriptorPool()) {
 		return
 	}
-	sb.write(sb.cb.VkAllocateDescriptorSets(
-		ds.Device(),
-		sb.MustAllocReadData(NewVkDescriptorSetAllocateInfo(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, // sType
-			0,                   // pNext
-			ds.DescriptorPool(), // descriptorPool
-			1,                   // descriptorSetCount
-			NewVkDescriptorSetLayoutᶜᵖ(sb.MustAllocReadData(ds.Layout().VulkanHandle()).Ptr()), // pSetLayouts
-		)).Ptr(),
-		sb.MustAllocWriteData(ds.VulkanHandle()).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
+	if !ns.DescriptorSets().Contains(ds.VulkanHandle()) {
+		return
+	}
 
 	writes := []VkWriteDescriptorSet{}
 	for _, k := range ds.Bindings().Keys() {
@@ -2565,13 +2579,15 @@ func (sb *stateBuilder) createDescriptorSet(ds DescriptorSetObjectʳ) {
 			}
 		}
 	}
-	sb.write(sb.cb.VkUpdateDescriptorSets(
-		ds.Device(),
-		uint32(len(writes)),
-		sb.MustAllocReadData(writes).Ptr(),
-		0,
-		memory.Nullptr,
-	))
+	if len(writes) > 0 {
+		sb.write(sb.cb.VkUpdateDescriptorSets(
+			ds.Device(),
+			uint32(len(writes)),
+			sb.MustAllocReadData(writes).Ptr(),
+			0,
+			memory.Nullptr,
+		))
+	}
 }
 
 func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
@@ -2646,7 +2662,7 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		VkResult_VK_SUCCESS,
 	))
 
-	if cb.Recording() == RecordingState_NOT_STARTED {
+	if cb.Recording() == RecordingState_NOT_STARTED || cb.Recording() == RecordingState_TO_BE_RESET {
 		return
 	}
 

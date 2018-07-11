@@ -113,6 +113,9 @@ cmd VkResult vkQueueSubmit(
       if cb.Recording != COMPLETED {
         vkErrorCommandBufferIncomplete(command_buffers[j])
       }
+      if (as!u32(cb.BeginInfo.Flags) & as!u32(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) != as!u32(0) {
+        cb.Recording = TO_BE_RESET
+      }
       for k in (0 .. len(cb.CommandReferences)) {
         ref := cb.CommandReferences[as!u32(k)]
         LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
