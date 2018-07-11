@@ -31,6 +31,8 @@ class StateSerializer {
   StateSerializer(SpyBase* spy, uint8_t api, CallObserver* observer)
       : mSpy(spy), mApi(api), mObserver(observer) {}
 
+  ~StateSerializer();
+
   // Serializes the given state to the underlying CallObserver.
   template <typename T, typename = CallObserver::enable_if_encodable<T> >
   inline void encodeState(
@@ -41,8 +43,9 @@ class StateSerializer {
   // init_observation is non-null, it is called to construct the observation,
   // otherwhise an empty observation is used.
   template <typename T>
-  inline gapil::Slice<T> encodeBuffer(
+  inline void encodeBuffer(
       uint64_t pool_size,
+      gapil::Slice<T>* dest,
       std::function<void(memory::Observation*)> init_observation);
 
   // Encodes the given data using the given observation. If sendObservation is
@@ -62,6 +65,7 @@ class StateSerializer {
   uint8_t mApi;
   CallObserver* mObserver;
   std::unordered_set<uint32_t> mSeenPools;
+  std::vector<std::function<void()>> mCleanup;
   int64_t mEmptyIndex = -1;
 };
 
@@ -74,11 +78,15 @@ inline void StateSerializer::encodeState(
 }
 
 template <typename T>
-inline gapil::Slice<T> StateSerializer::encodeBuffer(
+inline void StateSerializer::encodeBuffer(
     uint64_t pool_size,
+    gapil::Slice<T>* dest,
     std::function<void(memory::Observation*)> init_observation) {
-  return gapil::Slice<T>::create(createPool(pool_size, init_observation),
+  *dest = gapil::Slice<T>::create(createPool(pool_size, init_observation),
                                  false);
+  mCleanup.push_back(std::function<void()>([dest]() {
+      *dest = gapil::Slice<T>();
+  }));
 }
 
 inline void StateSerializer::sendData(memory::Observation* observation,
@@ -91,6 +99,12 @@ inline void StateSerializer::sendData(memory::Observation* observation,
   if (sendObservation) {
     mObserver->encode(observation);
   }
+}
+
+inline StateSerializer::~StateSerializer() {
+    for (auto& c: mCleanup) {
+        c();
+    }
 }
 
 }  // namespace gapii

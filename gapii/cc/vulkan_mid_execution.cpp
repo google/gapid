@@ -317,8 +317,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
   for (auto &mem : mState.DeviceMemories) {
     auto &memory = mem.second;
-    memory->mData =
-        serializer->encodeBuffer<uint8_t>(memory->mAllocationSize, nullptr);
+    serializer->encodeBuffer(memory->mAllocationSize, &memory->mData, nullptr);
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
         trackMappedCoherentMemory(
@@ -550,8 +549,10 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
                       level_sizes[img_level.get()] =
                           level_size(img->mInfo.mExtent, img->mInfo.mFormat,
                                      level, aspect);
-                      img_level->mData = serializer->encodeBuffer<uint8_t>(
-                          level_sizes[img_level.get()].level_size, nullptr);
+                      serializer->encodeBuffer(
+                          level_sizes[img_level.get()].level_size, 
+                          &img_level->mData,
+                          nullptr);
                     });
 
     if (img->mIsSwapchainImage) {
