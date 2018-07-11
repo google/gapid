@@ -154,11 +154,10 @@ func (f *Functions) AllCommandsSorted(api interface{}) ([]*semantic.Function, er
 
 // TokenOf returns the cst token string that represents the supplied semantic node
 func (f *Functions) TokenOf(v semantic.Node) string {
-	ast := f.mappings.SemanticToAST[v]
-	if len(ast) == 0 {
-		return "*no ast*"
+	if cst := f.mappings.CST(v); cst != nil {
+		return cst.Tok().String()
 	}
-	return f.mappings.CST(ast[0]).Tok().String()
+	return "*no ast*"
 }
 
 // TargetField returns the *semantic.Field if e is an expression that refers to

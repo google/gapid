@@ -65,7 +65,7 @@ func processSeparator(docs *[]string, s cst.Separator) {
 }
 
 func (rv *resolver) findDocumentation(node ast.Node) []string {
-	cst := rv.mappings.CST(node)
+	cst := rv.mappings.AST.CST(node)
 	docs := &[]string{}
 	processSeparator(docs, cst.Suffix())
 	if len(*docs) == 0 {

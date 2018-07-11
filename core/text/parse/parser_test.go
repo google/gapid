@@ -62,7 +62,7 @@ func TestUnconsumed(t *testing.T) {
 func TestUnconsumedByBranch(t *testing.T) {
 	ctx := log.Testing(t)
 	testCustomFail(ctx, "a", func(p *parse.Parser, n *cst.Branch) {
-		p.ParseBranch(n, func(p *parse.Parser, n *cst.Branch) {
+		p.ParseBranch(n, func(n *cst.Branch) {
 			p.NotSpace()
 		})
 	})
@@ -72,7 +72,7 @@ func TestUnconsumedOnBranch(t *testing.T) {
 	ctx := log.Testing(t)
 	testCustomFail(ctx, "a", func(p *parse.Parser, n *cst.Branch) {
 		p.NotSpace()
-		p.ParseBranch(n, func(p *parse.Parser, n *cst.Branch) {})
+		p.ParseBranch(n, func(n *cst.Branch) {})
 	})
 }
 
@@ -146,14 +146,14 @@ func TestComplex(t *testing.T) {
 
 func TestErrorLimit(t *testing.T) {
 	ctx := log.Testing(t)
-	errs := parse.Parse(func(p *parse.Parser, n *cst.Branch) {
+	errs := parse.Parse("parser_test.api", "", parse.NewSkip("//", "/*", "*/"), func(p *parse.Parser, n *cst.Branch) {
 		for i := 0; true; i++ {
 			p.ErrorAt(n, "failure")
 			if i >= parse.ParseErrorLimit {
 				log.F(ctx, true, "Parsing not terminated. %d errors", i)
 			}
 		}
-	}, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
+	})
 	assert.For(ctx, "errs").ThatSlice(errs).IsLength(parse.ParseErrorLimit)
 }
 
@@ -169,7 +169,9 @@ func TestCursor(t *testing.T) {
 		content += " "
 	}
 	content += "@  \n  "
-	errs := parse.Parse(root.Parse, filename, content, parse.NewSkip("//", "/*", "*/"), nil)
+	errs := parse.Parse(filename, content, parse.NewSkip("//", "/*", "*/"), func(p *parse.Parser, b *cst.Branch) {
+		root.Parser(p)(b)
+	})
 	if len(errs) == 0 {
 		log.E(ctx, "Expected errors")
 	}
@@ -185,7 +187,9 @@ func TestCustomPanic(t *testing.T) {
 	defer func() {
 		assert.For(ctx, "recover").That(recover()).Equals(custom)
 	}()
-	parse.Parse(func(p *parse.Parser, _ *cst.Branch) { panic(custom) }, "parser_test.api", "", parse.NewSkip("//", "/*", "*/"), nil)
+	parse.Parse("parser_test.api", "", parse.NewSkip("//", "/*", "*/"), func(p *parse.Parser, _ *cst.Branch) {
+		panic(custom)
+	})
 }
 
 func testParse(ctx context.Context, content string, n cst.Node, ast *test.ListNode) {
@@ -194,9 +198,9 @@ func testParse(ctx context.Context, content string, n cst.Node, ast *test.ListNo
 	var gotCst *cst.Branch
 	rootParse := func(p *parse.Parser, n *cst.Branch) {
 		gotCst = n
-		root.Parse(p, n)
+		root.Parser(p)(n)
 	}
-	errs := parse.Parse(rootParse, "parser_test.api", content, parse.NewSkip("//", "/*", "*/"), nil)
+	errs := parse.Parse("parser_test.api", content, parse.NewSkip("//", "/*", "*/"), rootParse)
 	assert.For(ctx, "errors").ThatSlice(errs).IsEmpty()
 	out := &bytes.Buffer{}
 	gotCst.Write(out)
@@ -210,8 +214,8 @@ func testParse(ctx context.Context, content string, n cst.Node, ast *test.ListNo
 	}
 }
 
-func testCustomFail(ctx context.Context, content string, do parse.BranchParser) {
-	errs := parse.Parse(do, "parser_test.api", content, parse.NewSkip("//", "/*", "*/"), nil)
+func testCustomFail(ctx context.Context, content string, do parse.RootParser) {
+	errs := parse.Parse("parser_test.api", content, parse.NewSkip("//", "/*", "*/"), do)
 	if len(errs) == 0 {
 		log.E(ctx, "Expected errors")
 	} else {
@@ -224,5 +228,7 @@ func testCustomFail(ctx context.Context, content string, do parse.BranchParser) 
 
 func testFail(ctx context.Context, content string) {
 	root := List()
-	testCustomFail(ctx, content, root.Parse)
+	testCustomFail(ctx, content, func(p *parse.Parser, b *cst.Branch) {
+		root.Parser(p)(b)
+	})
 }

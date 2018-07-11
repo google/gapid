@@ -492,7 +492,7 @@ func (c *C) augmentPanics() {
 
 	loc := func(n semantic.Node) string {
 		for _, ast := range c.mappings.SemanticToAST[n] {
-			if cst := c.mappings.CST(ast); cst != nil {
+			if cst := c.mappings.AST.CST(ast); cst != nil {
 				tok := cst.Tok()
 				line, col := tok.Cursor()
 				file := tok.Source.Filename

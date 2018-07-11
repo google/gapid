@@ -18,47 +18,43 @@ import (
 	"github.com/google/gapid/core/text/parse/cst"
 )
 
+// RootParser is a function that is passed to Parse. It is handed the Branch to
+// fill in and the Parser to fill it from, and must either succeed or add an
+// error to the parser.
+type RootParser func(*Parser, *cst.Branch)
+
 // BranchParser is a function that is passed to ParseBranch. It is handed the
-// Branch to fill in and the Parser to fill it from, and must either succeed or
-// add an error to the parser.
-type BranchParser func(p *Parser, cst *cst.Branch)
+// Branch to fill in, and must either succeed or add an error to the parser.
+type BranchParser func(*cst.Branch)
 
 // LeafParser is a function that is passed to ParseLeaf. It is handed the
 // Leaf to fill in and the Parser to fill it from, and must either succeed or
 // add an error to the parser.
-type LeafParser func(p *Parser, cst *cst.Leaf)
+type LeafParser func(*cst.Leaf)
 
 // Parse is the main entry point to the parse library.
 // Given a root parse function, the input string and the Skip controller, it builds
 // and initializes a Parser, runs the root using it, verifies it worked
 // correctly and then returns the errors generated if any.
-func Parse(root BranchParser, filename, data string, skip Skip, m cst.Map) []Error {
-	if m == nil {
-		// We have to have a mapping store because of the extend call...
-		m = cst.NewMap()
-	}
-	p := &Parser{
-		skip: skip,
-		Map:  m,
-	}
+func Parse(filename, data string, skip Skip, parse RootParser) []Error {
+	p := &Parser{skip: skip}
 	p.setData(filename, data)
-	p.parse(root)
+	p.parse(parse)
 	return p.Errors
 }
 
 // Parser contains all the context needed while parsing.
 // They are built for you by the Parse function.
 type Parser struct {
-	Reader                // The token reader for this parser.
-	cst.Map               // A map of cst nodes to ast nodes
-	Errors  ErrorList     // The set of errors generated during the parse.
-	skip    Skip          // The whitespace skipping function.
-	prefix  cst.Separator // The currently skipped prefix separator.
-	suffix  cst.Separator // The currently skipped suffix separator.
-	last    cst.Node      // The last node fully parsed, potential suffix target
+	Reader               // The token reader for this parser.
+	Errors ErrorList     // The set of errors generated during the parse.
+	skip   Skip          // The whitespace skipping function.
+	prefix cst.Separator // The currently skipped prefix separator.
+	suffix cst.Separator // The currently skipped suffix separator.
+	last   cst.Node      // The last node fully parsed, potential suffix target
 }
 
-func (p *Parser) parse(root BranchParser) {
+func (p *Parser) parse(root RootParser) {
 	defer func() {
 		err := recover()
 		if err != nil && err != AbortParse {
@@ -99,7 +95,7 @@ func (p *Parser) ParseLeaf(b *cst.Branch, do LeafParser) {
 	l := &cst.Leaf{}
 	p.addChild(b, l)
 	if do != nil {
-		do(p, l)
+		do(l)
 	}
 	if p.offset != p.cursor {
 		l.Token = p.Consume()
@@ -118,14 +114,14 @@ func (p *Parser) ParseBranch(b *cst.Branch, do BranchParser) {
 	}
 	n := &cst.Branch{}
 	p.addChild(b, n)
-	do(p, n)
+	do(n)
 	if p.offset != p.cursor {
 		p.Error("Finishing ParseBranch with parsed but unconsumed tokens")
 	}
 	p.last = n
 }
 
-// Extend inserts a new branch between ast and its parent, and calls do() with
+// Extend inserts a new branch between n and its parent, and calls do() with
 // the newly insterted branch.
 //
 // Extend will transform:
@@ -133,10 +129,9 @@ func (p *Parser) ParseBranch(b *cst.Branch, do BranchParser) {
 // to:
 //     n.parent ──> b ──> n
 // where b is passed as the second argument to do().
-func (p *Parser) Extend(ast interface{}, do BranchParser) {
-	n := p.CST(ast)
+func (p *Parser) Extend(n cst.Node, do BranchParser) {
 	if n == nil {
-		p.Error("ast node has not cst mapping")
+		p.Error("invalid cst node")
 		return
 	}
 	base := n.Parent()
@@ -154,7 +149,7 @@ func (p *Parser) Extend(ast interface{}, do BranchParser) {
 	for i := len(base.Children) - 1; i >= 0; i-- {
 		if base.Children[i] == n {
 			base.Children[i] = g
-			do(p, g)
+			do(g)
 			return
 		}
 	}
@@ -175,8 +170,7 @@ func (p *Parser) Error(message string, args ...interface{}) {
 
 // ErrorAt is like Error, except because it is handed a fragment, it will not
 // try to consume anything itself.
-func (p *Parser) ErrorAt(at interface{}, message string, args ...interface{}) {
-	loc := p.CST(at)
+func (p *Parser) ErrorAt(loc cst.Fragment, message string, args ...interface{}) {
 	p.Errors.Add(&p.Reader, loc, message, args...)
 }
 

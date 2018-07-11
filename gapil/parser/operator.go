@@ -18,19 +18,18 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 )
 
-func peekOperator(op string, p *parse.Parser) bool {
-	scanned := scanOperator(p)
+func (p *parser) peekOperator(op string) bool {
+	scanned := p.scanOperator()
 	p.Rollback()
 	return op == scanned
 }
 
-func operator(op string, p *parse.Parser, b *cst.Branch) bool {
-	scanned := scanOperator(p)
+func (p *parser) operator(op string, b *cst.Branch) bool {
+	scanned := p.scanOperator()
 	if op != scanned {
 		p.Rollback()
 		return false
@@ -39,13 +38,13 @@ func operator(op string, p *parse.Parser, b *cst.Branch) bool {
 	return true
 }
 
-func requireOperator(op string, p *parse.Parser, b *cst.Branch) {
-	if !operator(op, p, b) {
+func (p *parser) requireOperator(op string, b *cst.Branch) {
+	if !p.operator(op, b) {
 		p.Expected(string(op))
 	}
 }
 
-func scanOperator(p *parse.Parser) string {
+func (p *parser) scanOperator() string {
 	for _, op := range ast.Operators {
 		if p.String(string(op)) {
 			r, _ := utf8.DecodeLastRuneInString(string(op))
@@ -58,34 +57,34 @@ func scanOperator(p *parse.Parser) string {
 }
 
 // lhs operator expression
-func binaryOp(p *parse.Parser, lhs ast.Node) *ast.BinaryOp {
-	op := scanOperator(p)
+func (p *parser) binaryOp(lhs ast.Node) *ast.BinaryOp {
+	op := p.scanOperator()
 	if _, found := ast.BinaryOperators[op]; !found {
 		p.Rollback()
 		return nil
 	}
 	n := &ast.BinaryOp{LHS: lhs, Operator: op}
-	p.Extend(lhs, func(p *parse.Parser, b *cst.Branch) {
-		p.SetCST(n, b)
+	p.Extend(p.mappings.CST(lhs), func(b *cst.Branch) {
+		p.mappings.Add(n, b)
 		p.ParseLeaf(b, nil)
-		n.RHS = requireExpression(p, b)
+		n.RHS = p.requireExpression(b)
 	})
 	return n
 }
 
 // operator expression
-func unaryOp(p *parse.Parser, b *cst.Branch) *ast.UnaryOp {
-	op := scanOperator(p)
+func (p *parser) unaryOp(b *cst.Branch) *ast.UnaryOp {
+	op := p.scanOperator()
 	p.Rollback()
 	if _, found := ast.UnaryOperators[op]; !found {
 		return nil
 	}
 	n := &ast.UnaryOp{Operator: op}
-	p.ParseBranch(b, func(p *parse.Parser, b *cst.Branch) {
-		requireOperator(op, p, b)
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.requireOperator(op, b)
 		p.ParseLeaf(b, nil)
-		p.SetCST(n, b)
-		n.Expression = requireExpression(p, b)
+		p.mappings.Add(n, b)
+		n.Expression = p.requireExpression(b)
 	})
 	return n
 }

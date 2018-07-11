@@ -83,7 +83,7 @@ func (da *docAnalysis) walkUp(offset int) []nodes {
 }
 
 func (da *docAnalysis) contains(n ast.Node) bool {
-	return da.doc.Path() == da.full.mappings.CST(n).Tok().Source.Filename
+	return da.doc.Path() == da.full.mappings.AST.CST(n).Tok().Source.Filename
 }
 
 func (s *server) docAnalysis(ctx context.Context, doc *ls.Document) (*docAnalysis, error) {
@@ -232,7 +232,7 @@ func (a *analyzer) doAnalysis(
 	// Build a processor that will 'load' from the in-memory docs, falling back
 	// to disk loads.
 	processor := gapil.Processor{
-		Mappings:            semantic.NewMappings(),
+		Mappings:            &semantic.Mappings{},
 		Loader:              docsLoader{docs: docs},
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},
@@ -348,7 +348,7 @@ func (a *analyzer) doAnalysis(
 		traverseImports(rootDA.doc, func(importer, importee *docAnalysis, node *ast.Import) {
 			if len(importee.errs) > 0 {
 				msg := fmt.Sprintf("Import contains %d errors", len(importee.errs))
-				err := parse.Error{At: processor.Mappings.CST(node), Message: msg}
+				err := parse.Error{At: processor.Mappings.AST.CST(node), Message: msg}
 				importer.errs = append(importer.errs, err)
 			}
 		})

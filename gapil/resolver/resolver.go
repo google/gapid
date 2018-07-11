@@ -118,7 +118,7 @@ func (rv *resolver) errorf(at interface{}, message string, args ...interface{}) 
 			}
 		}
 		if ok && n != nil && !reflect.ValueOf(n).IsNil() {
-			rv.errors.Add(nil, rv.mappings.CST(n), message, args...)
+			rv.errors.Add(nil, rv.mappings.AST.CST(n), message, args...)
 			return
 		}
 	}
@@ -293,7 +293,7 @@ func (rv *resolver) addType(t semantic.Type) {
 	withLocation := func(ty semantic.Type) string {
 		astBacked, ok := ty.(semantic.ASTBacked)
 		if ok {
-			tok := rv.mappings.CST(astBacked.ASTNode()).Tok()
+			tok := rv.mappings.AST.CST(astBacked.ASTNode()).Tok()
 			line, col := tok.Cursor()
 			return fmt.Sprintf("%s at %s:%d:%d", ty.Name(), tok.Source.Filename, line, col)
 		}

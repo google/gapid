@@ -255,7 +255,7 @@ func VerifyCommand(reg *Registry, cmd *Command) {
 	seen := make(map[string]struct{})
 	for _, a := range apiCmd.Annotations {
 		if a.Name() == "if" || a.Name() == "doc" || a.Name() == "draw_call" {
-			seen[getSource(mappings.CST(a.AST))] = struct{}{}
+			seen[getSource(mappings.AST.CST(a.AST))] = struct{}{}
 		}
 	}
 	CompareSets(expected, seen, fmt.Sprintf("%s: ", cmdName))

@@ -33,8 +33,8 @@ import (
 const maxErrors = 10
 
 func compile(ctx context.Context, source string) (*semantic.API, *semantic.Mappings, error) {
-	m := semantic.NewMappings()
-	parsed, errs := parser.Parse("no_unreachables_test.api", source, m)
+	m := &semantic.Mappings{}
+	parsed, errs := parser.Parse("no_unreachables_test.api", source, &m.AST)
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
 		return nil, nil, err
 	}

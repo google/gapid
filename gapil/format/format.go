@@ -25,14 +25,13 @@ import (
 
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/gapil/parser"
 )
 
 const tabwriterFlags = 0 // | tabwriter.Debug
 
 // Format prints the full re-formatted AST tree to w.
-func Format(api *ast.API, m parser.ParseMap, w io.Writer) {
-	p := printer{ParseMap: m}
+func Format(api *ast.API, m *ast.Mappings, w io.Writer) {
+	p := printer{Mappings: m}
 	// traverse the AST, applying markup for the CST nodes.
 	p.markup(api)
 
@@ -49,7 +48,7 @@ func Format(api *ast.API, m parser.ParseMap, w io.Writer) {
 }
 
 type printer struct {
-	parser.ParseMap
+	*ast.Mappings
 	tabbers    []*tabwriter.Writer
 	indenter   indenter
 	out        io.Writer

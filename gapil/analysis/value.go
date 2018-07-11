@@ -665,7 +665,7 @@ func (s *scope) valueOf(n semantic.Expression) (out Value, setter func(Value)) {
 				}
 			}
 
-			s.callstack.enter(s.shared.mappings.CST(f.AST), f, params)
+			s.callstack.enter(s.shared.mappings.AST.CST(f.AST), f, params)
 			defer s.callstack.exit()
 
 			s.traverse(f.Block)

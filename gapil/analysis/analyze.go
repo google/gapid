@@ -106,7 +106,7 @@ func (s *scope) publicFunction(n *semantic.Function) {
 	}
 
 	// Push the callstack for the traveral of the command's statements.
-	ss.callstack.enter(ss.shared.mappings.CST(n.AST), n, params)
+	ss.callstack.enter(ss.shared.mappings.AST.CST(n.AST), n, params)
 	defer ss.callstack.exit()
 
 	// Process each statement

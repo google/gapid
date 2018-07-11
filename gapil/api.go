@@ -71,7 +71,7 @@ type Processor struct {
 // NewProcessor returns a new initialized Processor.
 func NewProcessor() *Processor {
 	return &Processor{
-		Mappings: semantic.NewMappings(),
+		Mappings: &semantic.Mappings{},
 		Loader:   absLoader{},
 		Parsed:   map[string]ParseResult{},
 		Resolved: map[string]ResolveResult{},
@@ -142,7 +142,7 @@ func (p *Processor) parse(path file.Path) (*ast.API, parse.ErrorList) {
 	if err != nil {
 		return nil, parse.ErrorList{parse.Error{Message: err.Error()}}
 	}
-	api, errs := parser.Parse(absname, string(info), p)
+	api, errs := parser.Parse(absname, string(info), &p.Mappings.AST)
 	p.parsedLock.Lock()
 	p.Parsed[absname] = ParseResult{api, errs}
 	p.parsedLock.Unlock()

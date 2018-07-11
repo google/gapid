@@ -54,7 +54,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				p.Rune('\r')
 				p.Consume()
 
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					p.Rune('\n')
 					tokens = append(tokens, token.NewLine{Leaf: cst})
 				})
@@ -62,7 +62,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 			}
 			switch p.Peek() {
 			case '\\':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					p.Advance()
 					r := p.Peek()
 					switch r {
@@ -75,7 +75,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '#':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					for p.Rune('#') {
 					}
 					if unicode.IsSpace(p.Peek()) {
@@ -86,7 +86,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '*':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					if r := p.PeekN(1); unicode.IsSpace(r) || r == utf8.RuneError {
 						// No text following the '*'? Then treat as bullet.
 						p.Advance()
@@ -100,7 +100,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '_':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					if r := p.PeekN(1); unicode.IsSpace(r) || r == utf8.RuneError {
 						// No text following the '_'? Then treat as text.
 						p.Advance()
@@ -114,7 +114,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '{':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					if ok, typed := parseTag(p); ok {
 						tokens = append(tokens, token.Tag{Leaf: cst, Typed: typed})
 					} else {
@@ -124,20 +124,20 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				})
 
 			case '[', '(':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					p.Advance()
 					tokens = append(tokens, token.OpenBracket{Leaf: cst})
 				})
 
 			case ']', ')', '}':
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					p.Advance()
 					tokens = append(tokens, token.CloseBracket{Leaf: cst})
 				})
 
 			default: // assume text
 				trailingEmphasis := false
-				p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+				p.ParseLeaf(root, func(cst *cst.Leaf) {
 					parseText(p)
 					tokens = append(tokens, token.Text{Leaf: cst})
 					if r := p.Peek(); r == '_' || r == '*' {
@@ -148,7 +148,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 				// Trailing _ and * should be treated as emphasis, not text or bullets.
 				if trailingEmphasis {
 					for r := p.Peek(); r == '_' || r == '*'; r = p.Peek() {
-						p.ParseLeaf(root, func(p *parse.Parser, cst *cst.Leaf) {
+						p.ParseLeaf(root, func(cst *cst.Leaf) {
 							p.Advance()
 							for p.Rune(r) {
 							}
@@ -159,7 +159,7 @@ func Scan(filename, data string) ([]token.Token, parse.ErrorList) {
 			}
 		}
 	}
-	errors := parse.Parse(parser, filename, data, skip, nil)
+	errors := parse.Parse(filename, data, skip, parser)
 	return tokens, errors
 }
 
