@@ -69,7 +69,7 @@ func assert(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Statement {
 		rv.errorf(in, "assert expression must be a bool, got %s", typename(t))
 	}
 	out := &semantic.Assert{AST: in, Condition: condition}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -83,14 +83,14 @@ func cast(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Expression {
 		obj = expression(rv, in.Arguments[0])
 	})
 	if equal(t, obj.ExpressionType()) {
-		rv.mappings.add(in, obj)
+		rv.mappings.Add(in, obj)
 		return obj
 	}
 	if !castable(obj.ExpressionType(), t) {
 		rv.errorf(in, "cannot cast from %s to %s", typename(obj.ExpressionType()), typename(t))
 	}
 	out := &semantic.Cast{AST: in, Object: obj, Type: t}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -103,11 +103,11 @@ func new_(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Expression {
 	if c, isclass := t.(*semantic.Class); isclass {
 		i := classInitializer(rv, c, in)
 		out := &semantic.Create{AST: in, Type: rt, Initializer: i}
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	}
 	out := &semantic.New{AST: in, Type: rt}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -123,7 +123,7 @@ func make_(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Expression {
 	})
 	size = castTo(rv, in.Arguments[0], size, semantic.Uint64Type)
 	out := &semantic.Make{AST: in, Type: getSliceType(rv, in, t), Size: size}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -138,7 +138,7 @@ func clone(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Expression {
 		return semantic.Invalid{}
 	}
 	out := &semantic.Clone{AST: in, Slice: slice, Type: st}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -152,7 +152,7 @@ func read(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Statement {
 		return semantic.Invalid{}
 	}
 	out := &semantic.Read{AST: in, Slice: slice}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -166,7 +166,7 @@ func write(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Statement {
 		return semantic.Invalid{}
 	}
 	out := &semantic.Write{AST: in, Slice: slice}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -186,7 +186,7 @@ func copy_(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Statement {
 		return semantic.Invalid{}
 	}
 	out := &semantic.Copy{AST: in, Src: src, Dst: dst}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -225,6 +225,6 @@ func length(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Expression {
 		t = semantic.Int32Type
 	}
 	out := &semantic.Length{AST: in, Object: obj, Type: t}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }

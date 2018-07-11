@@ -23,6 +23,7 @@ go_library(
         "internal.go",
         "invalid.go",
         "logical_order.go",
+        "mappings.go",
         "node.go",
         "statement.go",
         "symbols.go",
@@ -33,7 +34,9 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/slice:go_default_library",
+        "//core/text/parse:go_default_library",
         "//gapil/ast:go_default_library",
+        "//gapil/parser:go_default_library",
     ],
 )
 

@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -34,7 +33,7 @@ var (
 	apiPath   = flag.String("api", "", "Filename of the api file to verify (required)")
 	cacheDir  = flag.String("cache", "", "Directory for caching downloaded files (required)")
 	apiRoot   *semantic.API
-	mappings  *resolver.Mappings
+	mappings  *semantic.Mappings
 	numErrors = 0
 )
 

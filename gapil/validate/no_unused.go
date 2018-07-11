@@ -15,9 +15,8 @@
 package validate
 
 import (
-	"github.com/google/gapid/gapil/resolver"
-	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/core/text/parse"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 type fieldUsage struct{ read, written bool }
@@ -25,7 +24,7 @@ type fieldUsage struct{ read, written bool }
 const annoUnused = "unused"
 
 // noUnused verifies that all declared types and fields are used.
-func noUnused(api *semantic.API, mappings *resolver.Mappings) Issues {
+func noUnused(api *semantic.API, mappings *semantic.Mappings) Issues {
 	types := map[semantic.Type]bool{}
 	fields := map[*semantic.Field]fieldUsage{}
 	tokens := map[semantic.Node]parse.Token{}

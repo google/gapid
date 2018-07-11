@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapil"
-	"github.com/google/gapid/gapil/resolver"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 // TestCrashers checks that each of the crashers reported by the fuzzer no
@@ -79,7 +79,7 @@ func compile(data []byte) (err error) {
 	}()
 	defer timebomb(time.Second * 3)()
 	processor := gapil.Processor{
-		Mappings:            resolver.NewMappings(),
+		Mappings:            semantic.NewMappings(),
 		Loader:              gapil.NewDataLoader(data),
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},

@@ -65,10 +65,10 @@ func entity(rv *resolver, in ast.Node) interface{} {
 
 	switch out := out.(type) {
 	case *semantic.API:
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	case semantic.Expression:
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	}
 
@@ -82,7 +82,7 @@ func expression(rv *resolver, in ast.Node) semantic.Expression {
 	out := entity(rv, in)
 
 	if out, ok := out.(semantic.Expression); ok {
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	}
 
@@ -178,7 +178,7 @@ func functionCall(rv *resolver, in *ast.Call, target *semantic.Callable) *semant
 	} else {
 		out.Type = semantic.VoidType
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -214,7 +214,7 @@ func select_(rv *resolver, in *ast.Switch) *semantic.Select {
 		rv.errorf(in, "could not determine type of switch")
 		out.Type = semantic.VoidType
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -240,7 +240,7 @@ func choice(rv *resolver, in *ast.Case, vt semantic.Type) *semantic.Choice {
 	}
 	out.Annotations = annotations(rv, in.Annotations)
 	out.Expression = expression(rv, in.Block.Statements[0])
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -263,8 +263,8 @@ func member(rv *resolver, in *ast.Member) semantic.Expression {
 			out = &semantic.Field{Type: semantic.InvalidType, Named: semantic.Named(in.Name.Value)}
 		}
 		if out != nil {
-			rv.mappings.add(in.Name, owned)
-			rv.mappings.add(in, out)
+			rv.mappings.Add(in.Name, owned)
+			rv.mappings.Add(in, out)
 			return out
 		}
 		rv.errorf(in, "Invalid member lookup type %T found", owned)
@@ -272,8 +272,8 @@ func member(rv *resolver, in *ast.Member) semantic.Expression {
 	case *semantic.API:
 		owned := obj.Member(in.Name.Value)
 		if expr, ok := owned.(semantic.Expression); ok {
-			rv.mappings.add(in.Name, expr)
-			rv.mappings.add(in.Object, owned)
+			rv.mappings.Add(in.Name, expr)
+			rv.mappings.Add(in.Object, owned)
 			return expr
 		}
 		rv.errorf(in, "Expected expression, got: %T", owned)
@@ -319,7 +319,7 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 			rv.errorf(in, "array index must be a number, got %s", typename(it))
 		}
 		out := &semantic.ArrayIndex{AST: in, Array: object, Type: at, Index: index}
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	case *semantic.Pointer:
 		rv.with(semantic.Uint64Type, func() {
@@ -334,7 +334,7 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 				bop.RHS = castTo(rv, bop.AST.RHS, bop.RHS, semantic.Uint64Type)
 			}
 			out := &semantic.PointerRange{AST: in, Pointer: object, Type: at.Slice, Range: bop}
-			rv.mappings.add(in, out)
+			rv.mappings.Add(in, out)
 			return out
 		}
 		if n, ok := index.(semantic.Uint64Value); ok {
@@ -342,7 +342,7 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 			r := &semantic.BinaryOp{LHS: n, Operator: ast.OpSlice, RHS: n + 1}
 			slice := &semantic.PointerRange{AST: in, Pointer: object, Type: at.Slice, Range: r}
 			out := &semantic.SliceIndex{AST: in, Slice: slice, Type: at.Slice, Index: n}
-			rv.mappings.add(in, out)
+			rv.mappings.Add(in, out)
 			return out
 		}
 		rv.errorf(in, "type %s not valid slicing pointer", typename(index.ExpressionType()))
@@ -360,13 +360,13 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 				bop.RHS = castTo(rv, bop.AST.RHS, bop.RHS, semantic.Uint64Type)
 			}
 			out := &semantic.SliceRange{AST: in, Slice: object, Type: at, Range: bop}
-			rv.mappings.add(in, out)
+			rv.mappings.Add(in, out)
 			return out
 		}
 		// slice[a]
 		index = castTo(rv, in, index, semantic.Uint64Type)
 		out := &semantic.SliceIndex{AST: in, Slice: object, Type: at, Index: index}
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	case *semantic.Map:
 		// map[k]
@@ -378,7 +378,7 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 			rv.errorf(in, "type %s not valid indexing map", typename(it))
 		}
 		out := &semantic.MapIndex{AST: in, Map: object, Type: at, Index: index}
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	}
 	rv.errorf(in, "index operation on non indexable type %s", typename(at))
@@ -388,7 +388,7 @@ func index(rv *resolver, in *ast.Index) semantic.Expression {
 func identifier(rv *resolver, in *ast.Identifier) interface{} {
 	if in == ast.InvalidIdentifier {
 		out := semantic.Invalid{}
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	}
 	out := rv.get(in, in.Value)
@@ -409,18 +409,18 @@ func identifier(rv *resolver, in *ast.Identifier) interface{} {
 			Definition: out,
 			Expression: expression(rv, out.AST),
 		}
-		rv.mappings.add(in, s)
+		rv.mappings.Add(in, s)
 		return s
 	case *semantic.Function:
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return &semantic.Callable{Function: out}
 	case *semantic.API:
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	case genericSubroutine:
 		return out
 	case semantic.Expression:
-		rv.mappings.add(in, out)
+		rv.mappings.Add(in, out)
 		return out
 	case nil:
 		return semantic.Invalid{} // rv.get() already created error.
@@ -434,7 +434,7 @@ func generic(rv *resolver, in *ast.Generic) semantic.Node {
 	id := identifier(rv, in.Name)
 	if gs, ok := id.(genericSubroutine); ok {
 		f := gs.resolve(rv, in)
-		rv.mappings.add(in, f)
+		rv.mappings.Add(in, f)
 		return &semantic.Callable{Function: f}
 	}
 	if len(in.Arguments) > 0 {
@@ -460,7 +460,7 @@ func arrayCall(rv *resolver, in *ast.Call) semantic.Expression {
 	}
 
 	out := &semantic.ArrayInitializer{AST: in, Array: t}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	for _, a := range in.Arguments {
 		rv.with(array.ValueType, func() {
 			v := expression(rv, a)
@@ -491,9 +491,9 @@ func classCall(rv *resolver, in *ast.Call) semantic.Expression {
 
 func classInitializer(rv *resolver, class *semantic.Class, in *ast.Call) *semantic.ClassInitializer {
 	out := &semantic.ClassInitializer{AST: in, Class: class}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	if g, ok := in.Target.(*ast.Generic); ok {
-		rv.mappings.add(g.Name, out)
+		rv.mappings.Add(g.Name, out)
 	}
 	if len(in.Arguments) == 0 {
 		return out
@@ -515,7 +515,7 @@ func classInitializer(rv *resolver, class *semantic.Class, in *ast.Call) *semant
 				rv.errorf(n.Name, "member %s of class %s is not a field [%T]", n.Name.Value, class.Name(), m)
 				return out
 			}
-			rv.mappings.add(n.Name, f)
+			rv.mappings.Add(n.Name, f)
 			out.Fields = append(out.Fields, fieldInitializer(rv, class, f, n.Value))
 		}
 		return out
@@ -540,7 +540,7 @@ func fieldInitializer(rv *resolver, class *semantic.Class, field *semantic.Field
 	if !assignable(ft, vt) {
 		rv.errorf(in, "cannot assign %s to field '%s' of type %s", typename(vt), field.Name(), typename(ft))
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -549,19 +549,19 @@ func number(rv *resolver, in *ast.Number) semantic.Expression {
 	out := inferNumber(rv, in, infer)
 	if out != nil {
 		if infer == rv.scope.inferType {
-			rv.mappings.add(in, out)
+			rv.mappings.Add(in, out)
 			return out
 		}
 		return &semantic.Cast{Type: rv.scope.inferType, Object: out}
 	}
 	if v, err := strconv.ParseInt(in.Value, 0, 32); err == nil {
 		s := semantic.Int32Value(v)
-		rv.mappings.add(in, s)
+		rv.mappings.Add(in, s)
 		return s
 	}
 	if v, err := strconv.ParseFloat(in.Value, 64); err == nil {
 		s := semantic.Float64Value(v)
-		rv.mappings.add(in, s)
+		rv.mappings.Add(in, s)
 		return s
 	}
 	rv.errorf(in, "could not parse %s as a number (%s)", in.Value, typename(infer))

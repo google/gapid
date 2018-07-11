@@ -19,7 +19,6 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/gapil/analysis"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -44,12 +43,12 @@ func (e ErrUnreachable) Error() string {
 // Inspect checks the following:
 // * There are no unreachable blocks.
 // TODO: Check map indices are properly guarded by a check.
-func Inspect(api *semantic.API, mappings *resolver.Mappings) Issues {
+func Inspect(api *semantic.API, mappings *semantic.Mappings) Issues {
 	res := analysis.Analyze(api, mappings)
 	return inspect(api, mappings, res)
 }
 
-func inspect(api *semantic.API, mappings *resolver.Mappings, res *analysis.Results) Issues {
+func inspect(api *semantic.API, mappings *semantic.Mappings, res *analysis.Results) Issues {
 	issues := Issues{}
 	for _, unreachable := range res.Unreachables {
 		issues.add(unreachable.At, ErrUnreachable{unreachable})

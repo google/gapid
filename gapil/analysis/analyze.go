@@ -16,14 +16,13 @@ package analysis
 
 import (
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
 const maxPasses = 3
 
 // Analyze performs static analysis on the API semantic tree.
-func Analyze(api *semantic.API, mappings *resolver.Mappings) *Results {
+func Analyze(api *semantic.API, mappings *semantic.Mappings) *Results {
 	// Start by building a root scope for analysis.
 	s := &scope{
 		shared: &shared{

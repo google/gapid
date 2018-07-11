@@ -181,7 +181,7 @@ func annotations(rv *resolver, in ast.Annotations) semantic.Annotations {
 			entry.Arguments = append(entry.Arguments, expression(rv, arg))
 		}
 		out = append(out, entry)
-		rv.mappings.add(a, entry)
+		rv.mappings.Add(a, entry)
 	}
 	return out
 }
@@ -211,8 +211,8 @@ func global(rv *resolver, out *semantic.Global) {
 			rv.errorf(in, "cannot assign %s to %s", typename(dt), typename(out.Type))
 		}
 	}
-	rv.mappings.add(in, out)
-	rv.mappings.add(in.Name, out)
+	rv.mappings.Add(in, out)
+	rv.mappings.Add(in.Name, out)
 }
 
 // slicesByName is used to sort the slice list by name for generated code stability

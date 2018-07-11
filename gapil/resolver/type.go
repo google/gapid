@@ -129,7 +129,7 @@ func getSimpleType(rv *resolver, in *ast.Identifier) semantic.Type {
 		rv.errorf(in, "Type %s not found", name)
 		return semantic.VoidType
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	if a, ok := out.(*semantic.Alias); ok {
 		return resolveAlias(rv, in, a)
 	}
@@ -155,7 +155,7 @@ func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type) *semantic.Map {
 	name := fmt.Sprintf("%s%s%s%s", strings.Title(kt.Name()), TypeInfix, vt.Name(), MapSuffix)
 	for _, m := range rv.api.Maps {
 		if equal(kt, m.KeyType) && equal(vt, m.ValueType) {
-			rv.mappings.add(at, m)
+			rv.mappings.Add(at, m)
 			return m
 		}
 	}
@@ -165,7 +165,7 @@ func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type) *semantic.Map {
 		ValueType: vt,
 	}
 	rv.api.Maps = append(rv.api.Maps, out)
-	rv.mappings.add(at, out)
+	rv.mappings.Add(at, out)
 	return out
 }
 
@@ -173,7 +173,7 @@ func getStaticArrayType(rv *resolver, at ast.Node, of semantic.Type, size uint32
 	name := fmt.Sprintf("%s%s%d%s", strings.Title(of.Name()), TypeInfix, size, ArraySuffix)
 	for _, a := range rv.api.StaticArrays {
 		if equal(a.ValueType, of) && a.Size == size {
-			rv.mappings.add(at, a)
+			rv.mappings.Add(at, a)
 			return a
 		}
 	}
@@ -184,7 +184,7 @@ func getStaticArrayType(rv *resolver, at ast.Node, of semantic.Type, size uint32
 		SizeExpr:  sizeExpr,
 	}
 	rv.api.StaticArrays = append(rv.api.StaticArrays, out)
-	rv.mappings.add(at, out)
+	rv.mappings.Add(at, out)
 	return out
 }
 
@@ -192,7 +192,7 @@ func getRefType(rv *resolver, at ast.Node, to semantic.Type) *semantic.Reference
 	name := strings.Title(to.Name()) + RefSuffix
 	for _, p := range rv.api.References {
 		if equal(to, p.To) {
-			rv.mappings.add(at, p)
+			rv.mappings.Add(at, p)
 			return p
 		}
 	}
@@ -201,7 +201,7 @@ func getRefType(rv *resolver, at ast.Node, to semantic.Type) *semantic.Reference
 		To:    to,
 	}
 	rv.api.References = append(rv.api.References, out)
-	rv.mappings.add(at, out)
+	rv.mappings.Add(at, out)
 	return out
 }
 
@@ -213,7 +213,7 @@ func getPointerType(rv *resolver, at ast.Node, to semantic.Type, constant bool) 
 	name += PointerSuffix
 	for _, p := range rv.api.Pointers {
 		if equal(to, p.To) && constant == p.Const {
-			rv.mappings.add(at, p)
+			rv.mappings.Add(at, p)
 			return p
 		}
 	}
@@ -223,7 +223,7 @@ func getPointerType(rv *resolver, at ast.Node, to semantic.Type, constant bool) 
 		Const: constant,
 	}
 	rv.api.Pointers = append(rv.api.Pointers, out)
-	rv.mappings.add(at, out)
+	rv.mappings.Add(at, out)
 
 	out.Slice = getSliceType(rv, at, to)
 
@@ -234,7 +234,7 @@ func getSliceType(rv *resolver, at ast.Node, to semantic.Type) *semantic.Slice {
 	name := strings.Title(to.Name()) + SliceSuffix
 	for _, s := range rv.api.Slices {
 		if equal(to, s.To) {
-			rv.mappings.add(at, s)
+			rv.mappings.Add(at, s)
 			return s
 		}
 	}
@@ -243,7 +243,7 @@ func getSliceType(rv *resolver, at ast.Node, to semantic.Type) *semantic.Slice {
 		To:    to,
 	}
 	rv.api.Slices = append(rv.api.Slices, out)
-	rv.mappings.add(at, out)
+	rv.mappings.Add(at, out)
 
 	out.Pointer = getPointerType(rv, at, to, false)
 
@@ -258,7 +258,7 @@ func definition(rv *resolver, out *semantic.Definition) {
 	out.Annotations = annotations(rv, in.Annotations)
 	out.Docs = rv.findDocumentation(in)
 	out.Expression = expression(rv, in.Expression)
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 }
 
 func enum(rv *resolver, out *semantic.Enum) {
@@ -320,11 +320,11 @@ func enum(rv *resolver, out *semantic.Enum) {
 			Value: v,
 		}
 		out.Entries = append(out.Entries, entry)
-		rv.mappings.add(e, entry)
+		rv.mappings.Add(e, entry)
 		semantic.Add(out, entry)
 		rv.addNamed(entry)
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 }
 
 func class(rv *resolver, out *semantic.Class) {
@@ -335,8 +335,8 @@ func class(rv *resolver, out *semantic.Class) {
 	for _, f := range in.Fields {
 		out.Fields = append(out.Fields, field(rv, f, out))
 	}
-	rv.mappings.add(in, out)
-	rv.mappings.add(in.Name, out)
+	rv.mappings.Add(in, out)
+	rv.mappings.Add(in.Name, out)
 }
 
 func field(rv *resolver, in *ast.Field, class *semantic.Class) *semantic.Field {
@@ -357,8 +357,8 @@ func field(rv *resolver, in *ast.Field, class *semantic.Class) *semantic.Field {
 			rv.errorf(in, "cannot assign %s to %s", typename(dt), typename(out.Type))
 		}
 	}
-	rv.mappings.add(in, out)
-	rv.mappings.add(in.Name, out)
+	rv.mappings.Add(in, out)
+	rv.mappings.Add(in.Name, out)
 	return out
 }
 
@@ -367,7 +367,7 @@ func pseudonym(rv *resolver, out *semantic.Pseudonym) {
 	out.Docs = rv.findDocumentation(in)
 	out.Annotations = annotations(rv, in.Annotations)
 	out.To = type_(rv, in.To)
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	// Check the pseudonym doesn't refer to itself
 	path := stack{out}
 	for ty := semantic.Type(out.To); ty != nil; {

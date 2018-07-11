@@ -67,7 +67,7 @@ func inferNumber(rv *resolver, in *ast.Number, infer semantic.Type) semantic.Exp
 	default:
 		return nil
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
