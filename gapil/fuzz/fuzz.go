@@ -21,13 +21,13 @@ package fuzz
 
 import (
 	"github.com/google/gapid/gapil"
-	"github.com/google/gapid/gapil/resolver"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 func compile(data []byte) bool {
 	// Build a processor that will 'load' from data.
 	processor := gapil.Processor{
-		Mappings:            resolver.NewMappings(),
+		Mappings:            semantic.NewMappings(),
 		Loader:              gapil.NewDataLoader(data),
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},

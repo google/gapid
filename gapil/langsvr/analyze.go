@@ -32,7 +32,6 @@ import (
 	"github.com/google/gapid/gapil"
 	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapil/validate"
 )
@@ -45,7 +44,7 @@ const (
 type fullAnalysis struct {
 	docs     map[string]*docAnalysis
 	roots    map[string]*rootAnalysis // Root document path -> rootAnalysis
-	mappings *resolver.Mappings       // AST node to semantic node map
+	mappings *semantic.Mappings       // AST node to semantic node map
 }
 
 type rootAnalysis struct {
@@ -233,7 +232,7 @@ func (a *analyzer) doAnalysis(
 	// Build a processor that will 'load' from the in-memory docs, falling back
 	// to disk loads.
 	processor := gapil.Processor{
-		Mappings:            resolver.NewMappings(),
+		Mappings:            semantic.NewMappings(),
 		Loader:              docsLoader{docs: docs},
 		Parsed:              map[string]gapil.ParseResult{},
 		Resolved:            map[string]gapil.ResolveResult{},

@@ -43,7 +43,7 @@ type resolver struct {
 	scope              *scope // The current scope
 	globals            *scope // The global scope
 	nextID             uint64
-	mappings           *Mappings
+	mappings           *semantic.Mappings
 	genericSubroutines map[string]genericSubroutine
 	aliasStack         stack // Currently resolving aliases.
 	defStack           stack // Currently resolving definitions.

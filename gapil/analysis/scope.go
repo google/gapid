@@ -16,7 +16,6 @@ package analysis
 
 import (
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -35,7 +34,7 @@ type scope struct {
 
 // shared is the common data shared between all scopes.
 type shared struct {
-	mappings *resolver.Mappings
+	mappings *semantic.Mappings
 	literals map[semantic.Expression]Value
 	unknowns map[semantic.Type]Value
 	defaults map[semantic.Type]Value

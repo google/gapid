@@ -28,7 +28,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -44,7 +43,7 @@ type Functions struct {
 	templates *template.Template
 	funcs     template.FuncMap
 	globals   globalMap
-	mappings  *resolver.Mappings
+	mappings  *semantic.Mappings
 	active    *template.Template
 	writer    io.Writer
 	basePath  string
@@ -69,7 +68,7 @@ type Options struct {
 // including other templates.
 // The functions in funcs are made available to the templates, and can override the functions from this
 // package if needed.
-func NewFunctions(ctx context.Context, api *semantic.API, mappings *resolver.Mappings, options Options) (*Functions, error) {
+func NewFunctions(ctx context.Context, api *semantic.API, mappings *semantic.Mappings, options Options) (*Functions, error) {
 	basePath, err := filepath.Abs(options.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("Could not get absolute path to directory: '%s'. %v", options.Dir, err)

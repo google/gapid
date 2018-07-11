@@ -80,9 +80,9 @@ func toValue(v interface{}) analysis.Value {
 	panic(fmt.Errorf("toValue does not support type %T", v))
 }
 
-func compile(ctx context.Context, source string) (*semantic.API, *resolver.Mappings, error) {
+func compile(ctx context.Context, source string) (*semantic.API, *semantic.Mappings, error) {
 	const maxErrors = 10
-	mappings := resolver.NewMappings()
+	mappings := semantic.NewMappings()
 	parsed, errs := parser.Parse("analysis_test.api", source, mappings)
 	if err := gapil.CheckErrors(source, errs, maxErrors); err != nil {
 		return nil, nil, err

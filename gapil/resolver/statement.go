@@ -31,7 +31,7 @@ func block(rv *resolver, in *ast.Block, owner semantic.Node) *semantic.Block {
 			rv.addStatement(r)
 		}
 	})
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -111,7 +111,7 @@ func statement(rv *resolver, in ast.Node) semantic.Statement {
 		rv.errorf(in, "not a statement (%T)", in)
 		out = semantic.Invalid{}
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -147,7 +147,7 @@ func assign(rv *resolver, in *ast.Assign) semantic.Statement {
 	if out == nil {
 		out = &semantic.Assign{AST: in, LHS: lhs, Operator: in.Operator, RHS: rhs}
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -182,15 +182,15 @@ func addLocal(rv *resolver, in *ast.DeclareLocal, name string, value semantic.Ex
 	}
 	rv.addNamed(out.Local)
 	if in != nil {
-		rv.mappings.add(in, out)
-		rv.mappings.add(in.Name, out.Local)
+		rv.mappings.Add(in, out)
+		rv.mappings.Add(in.Name, out.Local)
 	}
 	return out
 }
 
 func declareLocal(rv *resolver, in *ast.DeclareLocal) *semantic.DeclareLocal {
 	out := addLocal(rv, in, in.Name.Value, expression(rv, in.RHS))
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -209,7 +209,7 @@ func branch(rv *resolver, in *ast.Branch) *semantic.Branch {
 	if in.False != nil {
 		out.False = block(rv, in.False, out)
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -223,7 +223,7 @@ func switch_(rv *resolver, in *ast.Switch) *semantic.Switch {
 	if in.Default != nil {
 		out.Default = block(rv, in.Default.Block, out)
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -244,13 +244,13 @@ func case_(rv *resolver, in *ast.Case, vt semantic.Type) *semantic.Case {
 	})
 	out.Annotations = annotations(rv, in.Annotations)
 	out.Block = block(rv, in.Block, out)
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
 func iteration(rv *resolver, in *ast.Iteration) semantic.Statement {
 	v := &semantic.Local{Named: semantic.Named(in.Variable.Value)}
-	rv.mappings.add(in.Variable, v)
+	rv.mappings.Add(in.Variable, v)
 	iterable := expression(rv, in.Iterable)
 	b, ok := iterable.(*semantic.BinaryOp)
 	if !ok {
@@ -265,7 +265,7 @@ func iteration(rv *resolver, in *ast.Iteration) semantic.Statement {
 		rv.addNamed(v)
 		out.Block = block(rv, in.Block, out)
 	})
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -273,9 +273,9 @@ func mapIteration(rv *resolver, in *ast.MapIteration) *semantic.MapIteration {
 	i := &semantic.Local{Named: semantic.Named(in.IndexVariable.Value)}
 	k := &semantic.Local{Named: semantic.Named(in.KeyVariable.Value)}
 	v := &semantic.Local{Named: semantic.Named(in.ValueVariable.Value)}
-	rv.mappings.add(in.IndexVariable, i)
-	rv.mappings.add(in.KeyVariable, k)
-	rv.mappings.add(in.ValueVariable, v)
+	rv.mappings.Add(in.IndexVariable, i)
+	rv.mappings.Add(in.KeyVariable, k)
+	rv.mappings.Add(in.ValueVariable, v)
 	out := &semantic.MapIteration{AST: in, IndexIterator: i, KeyIterator: k, ValueIterator: v}
 	out.Map = expression(rv, in.Map)
 	if m, ok := out.Map.ExpressionType().(*semantic.Map); ok {
@@ -294,7 +294,7 @@ func mapIteration(rv *resolver, in *ast.MapIteration) *semantic.MapIteration {
 		rv.addNamed(v)
 		out.Block = block(rv, in.Block, out)
 	})
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -309,6 +309,6 @@ func return_(rv *resolver, in *ast.Return, f *semantic.Function) *semantic.Retur
 	if !assignable(f.Return.Type, rt) {
 		rv.errorf(in, "cannot assign %s to %s", typename(rt), typename(f.Return.Type))
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }

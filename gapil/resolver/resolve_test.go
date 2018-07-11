@@ -43,7 +43,7 @@ type test struct {
 
 func (t test) check(ctx context.Context) *semantic.API {
 	log.I(ctx, "-------%s-------", t.name)
-	m := resolver.NewMappings()
+	m := semantic.NewMappings()
 	astAPI, errs := parser.Parse("resolve_test.api", t.source, m)
 	assert.For(ctx, "parse errors").That(errs).IsNil()
 	api, errs := resolver.Resolve([]*ast.API{astAPI}, m, t.opts)
@@ -295,7 +295,7 @@ cmd void C(u32 a) {
 		},
 	} {
 		log.I(ctx, "-------%s-------", test.name)
-		m := resolver.NewMappings()
+		m := semantic.NewMappings()
 		astAPI, errs := parser.Parse("resolve_test.api", test.source, m)
 		assert.For(ctx, "parse errors").That(errs).IsNil()
 		api, errs := resolver.Resolve([]*ast.API{astAPI}, m, resolver.Options{

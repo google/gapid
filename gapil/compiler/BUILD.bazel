@@ -52,7 +52,6 @@ go_library(
         "//gapil/ast:go_default_library",
         "//gapil/compiler/mangling:go_default_library",
         "//gapil/compiler/mangling/c:go_default_library",
-        "//gapil/resolver:go_default_library",
         "//gapil/semantic:go_default_library",
         "//gapis/api:go_default_library",
     ],

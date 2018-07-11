@@ -33,7 +33,7 @@ func unaryOp(rv *resolver, in *ast.UnaryOp) *semantic.UnaryOp {
 	default:
 		rv.icef(in, "unhandled unary operator %s", out.Operator)
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -122,7 +122,7 @@ func binaryOp(rv *resolver, in *ast.BinaryOp) semantic.Expression {
 		rv.icef(in, "unknown binary operator %s", in.Operator)
 		return semantic.Invalid{}
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }
 
@@ -156,6 +156,6 @@ func binaryOpIn(rv *resolver, in *ast.BinaryOp) semantic.Expression {
 		rv.errorf(in, "%s only allowed on maps, not %s", in.Operator, typename(rt))
 		return semantic.Invalid{}
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 	return out
 }

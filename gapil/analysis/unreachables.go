@@ -16,7 +16,6 @@ package analysis
 
 import (
 	"github.com/google/gapid/gapil/ast"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -24,7 +23,7 @@ import (
 // by traversing api which are not found in reached.
 func findUnreachables(
 	api *semantic.API,
-	mappings *resolver.Mappings,
+	mappings *semantic.Mappings,
 	reached map[ast.Node]struct{}) []Unreachable {
 
 	// Output list of unreachable blocks and statements.

@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/gapid/gapil/analysis"
 	"github.com/google/gapid/gapil/constset"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -164,7 +163,7 @@ func (nl *nodeLabeler) traverse(n semantic.Node, v analysis.Value) {
 	}
 }
 
-func buildConstantSets(api *semantic.API, mappings *resolver.Mappings) *ConstantSets {
+func buildConstantSets(api *semantic.API, mappings *semantic.Mappings) *ConstantSets {
 	b := &constsetPackBuilder{
 		syms:   map[string]struct{}{},
 		sets:   map[string]*constsetSetBuilder{},

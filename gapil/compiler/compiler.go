@@ -30,7 +30,6 @@ import (
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -73,7 +72,7 @@ type C struct {
 		append *codegen.Function
 	}
 	emptyString     codegen.Global
-	mappings        *resolver.Mappings
+	mappings        *semantic.Mappings
 	locationIndex   map[Location]int
 	locations       []Location
 	refRels         refRels
@@ -105,7 +104,7 @@ type C struct {
 
 // Compile compiles the given API semantic tree to a program using the given
 // settings.
-func Compile(api *semantic.API, mappings *resolver.Mappings, s Settings) (*Program, error) {
+func Compile(api *semantic.API, mappings *semantic.Mappings, s Settings) (*Program, error) {
 	hostABI := host.Instance(context.Background()).Configuration.ABIs[0]
 	if s.TargetABI == nil {
 		s.TargetABI = hostABI

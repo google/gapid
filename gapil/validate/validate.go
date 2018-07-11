@@ -22,7 +22,6 @@ import (
 	"sort"
 
 	"github.com/google/gapid/gapil/analysis"
-	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
@@ -34,7 +33,7 @@ type Options struct {
 // Validate performs a number of checks on the api file for correctness.
 // If any problems are found then they are returned as errors.
 // If options is nil then full validation is performed.
-func Validate(api *semantic.API, mappings *resolver.Mappings, options *Options) Issues {
+func Validate(api *semantic.API, mappings *semantic.Mappings, options *Options) Issues {
 	res := analysis.Analyze(api, mappings)
 	return WithAnalysis(api, mappings, options, res)
 }
@@ -43,7 +42,7 @@ func Validate(api *semantic.API, mappings *resolver.Mappings, options *Options) 
 // correctness using pre-built analysis results.
 // If any problems are found then they are returned as errors.
 // If options is nil then full validation is performed.
-func WithAnalysis(api *semantic.API, mappings *resolver.Mappings, options *Options, analysis *analysis.Results) Issues {
+func WithAnalysis(api *semantic.API, mappings *semantic.Mappings, options *Options, analysis *analysis.Results) Issues {
 	if options == nil {
 		options = &Options{true}
 	}

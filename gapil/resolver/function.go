@@ -55,8 +55,8 @@ func functionSignature(rv *resolver, out *semantic.Function) {
 	}
 	out.Signature = getSignature(rv, in, out.Return.Type, args)
 	out.Annotations = annotations(rv, in.Annotations)
-	rv.mappings.add(in, out)
-	rv.mappings.add(in.Generic.Name, out)
+	rv.mappings.Add(in, out)
+	rv.mappings.Add(in.Generic.Name, out)
 }
 
 func parameter(rv *resolver, owner *semantic.Function, in *ast.Parameter) *semantic.Parameter {
@@ -70,8 +70,8 @@ func parameter(rv *resolver, owner *semantic.Function, in *ast.Parameter) *seman
 	out.Docs = rv.findDocumentation(in)
 	out.Annotations = annotations(rv, in.Annotations)
 	out.Type = type_(rv, in.Type)
-	rv.mappings.add(in, out)
-	rv.mappings.add(in.Name, out)
+	rv.mappings.Add(in, out)
+	rv.mappings.Add(in.Name, out)
 	return out
 }
 
@@ -106,7 +106,7 @@ func functionBody(rv *resolver, owner semantic.Type, out *semantic.Function) {
 	if len(out.Docs) == 0 {
 		out.Docs = rv.findDocumentation(out.AST)
 	}
-	rv.mappings.add(in, out)
+	rv.mappings.Add(in, out)
 }
 
 func method(rv *resolver, out *semantic.Function) {
@@ -132,7 +132,7 @@ func method(rv *resolver, out *semantic.Function) {
 	default:
 		rv.errorf(out.AST, "invalid type for this , got %s[%T]", typename(t), t)
 	}
-	rv.mappings.add(out.AST, out)
+	rv.mappings.Add(out.AST, out)
 }
 
 func getSignature(rv *resolver, at ast.Node, r semantic.Type, args []semantic.Type) *semantic.Signature {

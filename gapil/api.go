@@ -58,7 +58,7 @@ type Loader interface {
 
 // Processor holds the state when resolving multiple api files.
 type Processor struct {
-	*resolver.Mappings
+	*semantic.Mappings
 	Loader              Loader
 	Parsed              map[string]ParseResult // guarded by parsedLock
 	Resolved            map[string]ResolveResult
@@ -71,7 +71,7 @@ type Processor struct {
 // NewProcessor returns a new initialized Processor.
 func NewProcessor() *Processor {
 	return &Processor{
-		Mappings: resolver.NewMappings(),
+		Mappings: semantic.NewMappings(),
 		Loader:   absLoader{},
 		Parsed:   map[string]ParseResult{},
 		Resolved: map[string]ResolveResult{},
