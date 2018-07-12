@@ -523,8 +523,8 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 		return
 	case *semantic.Slice:
 		e.writeBlob(s, buf, func(buf *codegen.Value) {
-			root := s.LocalInit("root", ptr.Index(0, compiler.SliceRoot).Load().Cast(e.T.Size)).Load()
-			base := s.LocalInit("base", ptr.Index(0, compiler.SliceBase).Load().Cast(e.T.Size)).Load()
+			root := ptr.Index(0, compiler.SliceRoot).Load()
+			base := ptr.Index(0, compiler.SliceBase).Load()
 			size := ptr.Index(0, compiler.SliceSize).Load()
 			count := ptr.Index(0, compiler.SliceCount).Load()
 			pool := ptr.Index(0, compiler.SlicePool).Load()
