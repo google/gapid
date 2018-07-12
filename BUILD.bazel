@@ -15,10 +15,11 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to")
 
+# gazelle:prefix github.com/google/gapid
+
 gazelle(
     name = "gazelle",
     mode = "fix",
-    prefix = "github.com/google/gapid",
 )
 
 # Alias meant to be used with 'bazel run <alias> -- <arguments>'.
