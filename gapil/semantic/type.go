@@ -162,7 +162,6 @@ func (d *DefinitionUsage) ExpressionType() Type { return d.Expression.Expression
 type Enum struct {
 	owned
 	members
-	resolved    bool
 	AST         *ast.Enum     // the underlying syntax node this was built from
 	Annotations               // the annotations applied to this enum
 	Named                     // the type name of the enum
@@ -245,6 +244,8 @@ func (t *Pseudonym) VisitMembers(visitor func(Owned)) {
 	}
 	t.To.VisitMembers(visitor)
 }
+
+func (t *Pseudonym) SortMembers() { t.members.sort() }
 
 // Alias is used as a temporary type holder during type resolution.
 // It is not present in the final semantic tree returned, but may be present
@@ -331,6 +332,8 @@ func (t *Pointer) VisitMembers(visitor func(Owned)) {
 	t.To.VisitMembers(visitor)
 }
 
+func (t *Pointer) SortMembers() { t.To.SortMembers() }
+
 // Slice represents an api slice type declaration, of the form To[]
 type Slice struct {
 	owned
@@ -366,6 +369,8 @@ func (t *Reference) Member(name string) Owned {
 func (t *Reference) VisitMembers(visitor func(Owned)) {
 	t.To.VisitMembers(visitor)
 }
+
+func (t *Reference) SortMembers() { t.To.SortMembers() }
 
 // Builtin represents one of the primitive types.
 type Builtin struct {
