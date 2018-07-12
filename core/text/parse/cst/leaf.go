@@ -16,8 +16,6 @@ package cst
 
 import (
 	"io"
-
-	"github.com/google/gapid/core/data/compare"
 )
 
 // Leaf nodes are part of the cst that cannot have child nodes, they represent
@@ -36,13 +34,4 @@ func (n *Leaf) Write(w io.Writer) error {
 		return err
 	}
 	return n.Post.Write(w)
-}
-
-func compareLeaves(c compare.Comparator, reference, value *Leaf) {
-	c.With(c.Path.Member("Token", reference, value)).Compare(reference.Token, value.Token)
-	c.With(c.Path.Member("NodeBase", reference, value)).Compare(reference.NodeBase, value.NodeBase)
-}
-
-func init() {
-	compare.Register(compareLeaves)
 }

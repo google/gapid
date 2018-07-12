@@ -16,8 +16,6 @@ package cst
 
 import (
 	"io"
-
-	"github.com/google/gapid/core/data/compare"
 )
 
 // Branch is a CST node that can have children.
@@ -50,13 +48,4 @@ func (n *Branch) Write(w io.Writer) error {
 		}
 	}
 	return n.Post.Write(w)
-}
-
-func compareBranches(c compare.Comparator, reference, value *Branch) {
-	c.With(c.Path.Member("NodeBase", reference, value)).Compare(reference.NodeBase, value.NodeBase)
-	c.With(c.Path.Member("Children", reference, value)).Compare(reference.Children, value.Children)
-}
-
-func init() {
-	compare.Register(compareBranches)
 }
