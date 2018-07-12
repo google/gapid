@@ -30,16 +30,23 @@ type NamedNode interface {
 // Owned is the interface to an object with a unique name and an owner.
 type Owned interface {
 	NamedNode
-	Owner() Owner   // Returns the owner of this node.
-	setOwner(Owner) // hidden method that sets the owner of a child
+	// Owner returns the owner of this node.
+	Owner() Owner
+	// setOwner sets the owner of this node.
+	setOwner(Owner)
 }
 
-// Owner is the interface for an object that has named members.
+// Owner is the interface for an object that has named Members.
 type Owner interface {
 	NamedNode
-	Member(string) Owned      // looks up a member by name from an owner
-	VisitMembers(func(Owned)) // invokes the supplied function once for each member
-	addMember(Owned)          // hidden method that adds a child to an owner
+	// Member looks up a member by name from an owner.
+	Member(string) Owned
+	// VisitMembers invokes the supplied function once for each member.
+	VisitMembers(func(Owned))
+	// SortMembers sorts the members alphabetically.
+	SortMembers()
+	// addMember adds a child to an owner.
+	addMember(Owned)
 }
 
 type ASTBacked interface {
@@ -80,12 +87,16 @@ func (m *members) addMember(child Owned) {
 	(*Symbols)(m).AddNamed(child)
 }
 
+// VisitMembers invokes the supplied function once for each member.
 func (m *members) VisitMembers(visitor func(Owned)) {
-	(*Symbols)(m).sort()
+	m.SortMembers()
 	for _, e := range (*Symbols)(m).entries {
 		visitor(e.node.(Owned))
 	}
 }
+
+// SortMembers sorts the members alphabetically.
+func (m *members) SortMembers() { (*Symbols)(m).sort() }
 
 type noAddMembers struct{}
 
@@ -95,3 +106,4 @@ type noMembers struct{ noAddMembers }
 
 func (noMembers) Member(string) Owned      { return nil }
 func (noMembers) VisitMembers(func(Owned)) {}
+func (noMembers) SortMembers()             {}

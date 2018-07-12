@@ -25,7 +25,7 @@ type Symbols struct {
 	entries byName
 }
 
-// Add inserts a named node into the symbol space.
+// AddNamed inserts a named node into the symbol space.
 func (s *Symbols) AddNamed(entry NamedNode) {
 	s.entries = append(s.entries, namedEntry{name: entry.Name(), node: entry})
 	s.sorted = false
