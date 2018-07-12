@@ -16,6 +16,23 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("//tools/build:rules.bzl", "api_library", "apic_template")
 
+filegroup(
+    name = "api_files",
+    srcs = glob([
+        "*.api",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+api_library(
+    name = "api",
+    api = "gvr.api",
+    apiname = "gvr",
+    includes = [":api_files"],
+    visibility = ["//visibility:public"],
+    deps = ["//gapis/messages:api"],
+)
+
 proto_library(
     name = "gvr_proto",
     srcs = ["resolvables.proto"],
@@ -29,17 +46,6 @@ go_proto_library(
     proto = ":gvr_proto",
     visibility = ["//visibility:public"],
     deps = ["//gapis/service/path:go_default_library"],
-)
-
-api_library(
-    name = "api",
-    api = "gvr.api",
-    apiname = "gvr",
-    includes = glob([
-        "*.api",
-    ]),
-    visibility = ["//visibility:public"],
-    deps = ["//gapis/messages:api"],
 )
 
 apic_template(
