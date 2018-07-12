@@ -207,7 +207,7 @@ func (p *parser) switch_(b *cst.Branch) *ast.Switch {
 		p.parseAnnotations(annotations, b)
 		for p.peekKeyword(ast.KeywordCase) {
 			p.ParseBranch(b, func(b *cst.Branch) {
-				entry := &ast.Case{Annotations: *annotations}
+				entry := &ast.Case{Annotations: annotationsOrNil(*annotations)}
 				p.mappings.Add(entry, b)
 				p.requireKeyword(ast.KeywordCase, b)
 				for !p.operator(ast.OpInitialise, b) {

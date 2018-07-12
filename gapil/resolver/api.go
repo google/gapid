@@ -174,7 +174,7 @@ func annotations(rv *resolver, in ast.Annotations) semantic.Annotations {
 	if len(in) == 0 {
 		return nil
 	}
-	out := semantic.Annotations{}
+	var out semantic.Annotations
 	for _, a := range in {
 		entry := &semantic.Annotation{AST: a, Named: semantic.Named(a.Name.Value)}
 		for _, arg := range a.Arguments {

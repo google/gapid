@@ -88,6 +88,13 @@ func (p *parser) parseAnnotations(annotations *ast.Annotations, b *cst.Branch) {
 	}
 }
 
+func annotationsOrNil(a ast.Annotations) ast.Annotations {
+	if len(a) > 0 {
+		return a
+	}
+	return nil
+}
+
 func consumeAnnotations(dst *ast.Annotations, src *ast.Annotations) {
 	if src == nil || len(*src) == 0 {
 		return
