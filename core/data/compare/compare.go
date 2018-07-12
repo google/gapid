@@ -34,13 +34,6 @@ type invalid string
 
 func (i invalid) Format(f fmt.State, r rune) { fmt.Fprint(f, "⚠ ", string(i)) }
 
-// Hidden is used when values are found to be different, but had hidden fields so cannot be directly returned
-type Hidden struct {
-	Value interface{}
-}
-
-func (i Hidden) Format(f fmt.State, r rune) { fmt.Fprintf(f, "⚠ Hidden %T%+v", i.Value, i.Value) }
-
 // Register assigns the function f with signature func(comparator, T, T) to
 // be used as the default comparator for instances of type T.
 // f may return nothing or a CompareAction.
