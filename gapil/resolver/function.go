@@ -26,8 +26,7 @@ func functionSignature(rv *resolver, out *semantic.Function) {
 	if !out.Subroutine && len(in.Generic.Arguments) > 0 {
 		rv.errorf(in.Generic.Arguments[0], "generic parameters are not supported here")
 	}
-	args := make([]semantic.Type, 0, len(in.Parameters)-1)
-	out.FullParameters = make([]*semantic.Parameter, 0, len(in.Parameters))
+	var args []semantic.Type
 	for i, inp := range in.Parameters {
 		outp := parameter(rv, out, inp)
 		if inp.This {

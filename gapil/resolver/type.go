@@ -331,7 +331,6 @@ func class(rv *resolver, out *semantic.Class) {
 	in := out.AST
 	out.Docs = rv.findDocumentation(in)
 	out.Annotations = annotations(rv, in.Annotations)
-	out.Fields = make([]*semantic.Field, 0, len(in.Fields))
 	for _, f := range in.Fields {
 		out.Fields = append(out.Fields, field(rv, f, out))
 	}

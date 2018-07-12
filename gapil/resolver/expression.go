@@ -112,7 +112,7 @@ func call(rv *resolver, in *ast.Call) semantic.Node {
 }
 
 func callArguments(rv *resolver, at ast.Node, in []ast.Node, params []*semantic.Parameter, name string) []semantic.Expression {
-	out := []semantic.Expression{}
+	var out []semantic.Expression
 	if len(params) != len(in) {
 		rv.errorf(at, "wrong number of arguments to %s, expected %v got %v", name, len(params), len(in))
 		return out
