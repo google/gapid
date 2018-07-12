@@ -1,0 +1,893 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package bapi;
+option go_package = "github.com/google/gapid/gapil/bapi";
+
+message Content {
+  Instances instances = 1;
+  repeated uint64 apis = 2;  // API ID
+}
+
+message Instances {
+  repeated API api = 1;
+  repeated Block block = 2;
+  repeated Callable callable = 3;
+  repeated Class class = 4;
+  repeated Definition definition = 5;
+  repeated Enum enum
+  = 9;
+  repeated EnumEntry enum_entry = 10;
+  repeated Expression expression = 11;
+  repeated Field field = 12;
+  repeated Function function = 13;
+  repeated Global global = 14;
+  repeated Local local = 15;
+  repeated Map map = 16;
+  repeated Parameter parameter = 17;
+  repeated Pointer pointer = 18;
+  repeated Pseudonym pseudonym = 19;
+  repeated Reference reference = 20;
+  repeated Signature signature = 21;
+  repeated Slice slice = 22;
+  repeated Statement statement = 23;
+  repeated StaticArray static_array = 24;
+
+  repeated ASTAnnotation ast_annotation = 27;
+  repeated ASTAbort ast_abort = 28;
+  repeated ASTAssign ast_assign = 29;
+  repeated ASTBinaryOp ast_binary_op = 30;
+  repeated ASTBlock ast_block = 31;
+  repeated ASTBool ast_bool = 32;
+  repeated ASTBranch ast_branch = 33;
+  repeated ASTCall ast_call = 34;
+  repeated ASTCase ast_case = 35;
+  repeated ASTClass ast_class = 36;
+  repeated ASTDeclareLocal ast_declare_local = 37;
+  repeated ASTDefault ast_default = 38;
+  repeated ASTDefinition ast_definition = 39;
+  repeated ASTDelete ast_delete = 40;
+  repeated ASTEnum ast_enum = 41;
+  repeated ASTEnumEntry ast_enum_entry = 42;
+  repeated ASTFence ast_fence = 43;
+  repeated ASTField ast_field = 44;
+  repeated ASTFunction ast_function = 45;
+  repeated ASTGeneric ast_generic = 46;
+  repeated ASTGroup ast_group = 47;
+  repeated ASTIdentifier ast_identifier = 48;
+  repeated ASTIndex ast_index = 49;
+  repeated ASTIndexedType ast_indexed_type = 51;
+  repeated ASTIteration ast_iteration = 52;
+  repeated ASTMapIteration ast_map_iteration = 53;
+  repeated ASTMember ast_member = 54;
+  repeated ASTNamedArg ast_named_arg = 55;
+  repeated ASTNode ast_node = 56;
+  repeated ASTNull ast_null = 57;
+  repeated ASTNumber ast_number = 58;
+  repeated ASTParameter ast_parameter = 59;
+  repeated ASTPointerType ast_pointer_type = 60;
+  repeated ASTPreConst ast_pre_const = 61;
+  repeated ASTPseudonym ast_pseudonym = 62;
+  repeated ASTReturn ast_return = 63;
+  repeated ASTString ast_string = 64;
+  repeated ASTSwitch ast_switch = 65;
+  repeated ASTUnaryOp ast_unary_op = 66;
+  repeated ASTUnknown ast_unknown = 67;
+
+  repeated string symbols = 68;
+}
+
+message Abort {
+  uint64 ast = 1;        // ASTAbort ID
+  uint64 function = 2;   // Function ID
+  uint64 statement = 3;  // Statement ID
+}
+
+message API {
+  uint64 name = 1;                     // String ID
+  repeated uint64 enums = 2;           // Enum ID
+  repeated uint64 definitions = 3;     // Definition ID
+  repeated uint64 classes = 4;         // Class ID
+  repeated uint64 pseudonyms = 5;      // Pseudonym ID
+  repeated uint64 externs = 6;         // Function ID
+  repeated uint64 subroutines = 7;     // Function ID
+  repeated uint64 functions = 8;       // Function ID
+  repeated uint64 methods = 9;         // Function ID
+  repeated uint64 globals = 10;        // Global ID
+  repeated uint64 static_arrays = 11;  // StaticArray ID
+  repeated uint64 maps = 12;           // Map ID
+  repeated uint64 pointers = 13;       // Pointer ID
+  repeated uint64 slices = 14;         // Slice ID
+  repeated uint64 references = 15;     // Reference ID
+  repeated uint64 signatures = 16;     // Signature ID
+  uint32 index = 17;
+}
+
+message Annotation {
+  uint64 ast = 1;                 // ASTAnnotation ID
+  uint64 name = 2;                // String ID
+  repeated uint64 arguments = 3;  // Expression ID
+}
+
+message Annotations {
+  repeated Annotation annotations = 1;
+}
+
+message ArrayAssign {
+  uint64 ast = 1;       // ASTAssign ID
+  uint64 to = 2;        // Expression ID
+  uint64 operator = 3;  // String ID
+  uint64 value = 4;     // Expression ID
+}
+
+message ArrayInitializer {
+  uint64 ast = 1;  // ASTCall ID
+  Type array = 2;
+  repeated uint64 Values = 3;  // Expression ID
+}
+
+message ArrayIndex {
+  uint64 ast = 1;    // ASTIndex ID
+  uint64 type = 2;   // StaticArray ID
+  uint64 array = 3;  // Expression ID
+  uint64 index = 4;  // Expression ID
+}
+
+message Assert {
+  uint64 ast = 1;        // ASTCall ID
+  uint64 condition = 2;  // Expression ID
+}
+
+message Assign {
+  uint64 ast = 1;       // ASTAssign ID
+  uint64 lhs = 2;       // Expression ID
+  uint64 operator = 3;  // String ID
+  uint64 rhs = 4;       // Expression ID
+}
+
+message Call {
+  uint64 ast = 1;                 // ASTCall ID
+  uint64 target = 2;              // Callable ID
+  repeated uint64 arguments = 3;  // Expression ID
+  Type type = 4;
+}
+
+message Callable {
+  uint64 object = 1;    // Expression ID
+  uint64 function = 2;  // Function ID
+}
+
+message Case {
+  uint64 ast = 1;  // ASTCase ID
+  Annotations annotations = 2;
+  repeated uint64 conditions = 3;  // Expression ID
+  uint64 block = 4;                // Block ID
+}
+
+message Cast {
+  uint64 ast = 1;     // ASTCall ID
+  uint64 object = 2;  // Expression ID
+  Type type = 3;
+}
+
+message Choice {
+  uint64 ast = 1;  // ASTCase ID
+  Annotations annotations = 2;
+  repeated uint64 conditions = 3;  // Expression ID
+  uint64 expression = 4;           // Expression ID
+}
+
+message Class {
+  Node owner = 1;
+  uint64 ast = 2;  // ASTClass ID
+  Annotations annotations = 3;
+  uint64 name = 4;  // String ID
+  Documentation docs = 5;
+  repeated uint64 fields = 6;   // Field ID
+  repeated uint64 methods = 7;  // Function ID
+}
+
+message ClassInitializer {
+  uint64 ast = 1;    // ASTCall ID
+  uint64 class = 2;  // Class ID
+  repeated FieldInitializer fields = 3;
+}
+
+message Clone {
+  uint64 ast = 1;    // ASTCall ID
+  uint64 slice = 2;  // Expression ID
+  uint64 type = 3;   // Slice ID
+}
+
+message Copy {
+  uint64 ast = 1;  // ASTCall ID
+  uint64 src = 2;  // Expression ID
+  uint64 dst = 3;  // Expression ID
+}
+
+message Create {
+  uint64 ast = 1;          // ASTCall ID
+  uint64 type = 2;         // Reference ID
+  uint64 initializer = 3;  // Expression ID
+}
+
+message BinaryOp {
+  uint64 ast = 1;  // ASTBinaryOp ID
+  Type type = 2;
+  uint64 lhs = 3;       // Expression ID
+  uint64 operator = 4;  // String ID
+  uint64 rhs = 5;       // Expression ID
+}
+
+message BitTest {
+  uint64 ast = 1;       // ASTBinaryOp ID
+  uint64 bitfield = 2;  // Expression ID
+  uint64 bits = 3;      // Expression ID
+}
+
+message Block {
+  uint64 ast = 1;                  // ASTBlock ID
+  repeated uint64 statements = 2;  // Statement ID
+}
+
+enum Builtin {
+  VoidType = 0;
+  AnyType = 1;
+  StringType = 2;
+  MessageType = 3;
+  BoolType = 4;
+  IntType = 5;
+  UintType = 6;
+  SizeType = 7;
+  CharType = 8;
+  Int8Type = 9;
+  Uint8Type = 10;
+  Int16Type = 11;
+  Uint16Type = 12;
+  Int32Type = 13;
+  Uint32Type = 14;
+  Int64Type = 15;
+  Uint64Type = 16;
+  Float32Type = 17;
+  Float64Type = 18;
+}
+
+message Branch {
+  uint64 ast = 1;        // ASTBranch ID
+  uint64 condition = 2;  // Expression ID
+  uint64 true = 3;       // Block ID
+  uint64 false = 4;      // Block ID
+}
+
+message DeclareLocal {
+  uint64 ast = 1;    // ASTDeclareLocal ID
+  uint64 local = 2;  // Local ID
+}
+
+message Documentation {
+  repeated uint64 strings = 1;  // String ID
+}
+
+message Definition {
+  uint64 name = 1;  // String ID
+  uint64 ast = 2;   // ASTDefinition ID
+  Annotations annotations = 3;
+  Documentation docs = 4;
+  uint64 expression = 5;  // Expression ID
+}
+
+message Enum {
+  Node owner = 1;
+  uint64 ast = 2;  // ASTEnum ID
+  Annotations annotations = 3;
+  uint64 name = 4;  // String ID
+  Documentation docs = 5;
+  bool is_bitfield = 6;
+  Type number_type = 7;
+  repeated uint64 entries = 8;  // EnumEntry ID
+}
+
+message EnumEntry {
+  Node owner = 1;
+  uint64 ast = 2;   // ASTEnumEntry ID
+  uint64 name = 4;  // String ID
+  Documentation docs = 5;
+  uint64 value = 6;  // Expression ID
+}
+
+message Expression {
+  oneof ty {
+    ArrayInitializer array_initializer = 1;
+    ArrayIndex array_index = 2;
+    BinaryOp binary_op = 3;
+    BitTest bit_test = 4;
+    bool bool_value = 5;
+    Call call = 6;
+    Cast cast = 7;
+    ClassInitializer class_initializer = 8;
+    Clone clone = 9;
+    Create create = 10;
+    uint64 definition = 11;  // Definition ID
+    uint64 enum_entry = 12;  // EnumEntry ID
+    float float32_value = 13;
+    double float64_value = 14;
+    uint64 global = 15;  // Global ID
+    Ignore ignore = 16;
+    int32 int8_value = 17;
+    int32 int16_value = 18;
+    int32 int32_value = 19;
+    int64 int64_value = 20;
+    Length length = 21;
+    uint64 local = 22;  // Local ID
+    Make make = 23;
+    MapContains map_contains = 24;
+    MapIndex map_index = 25;
+    Member member = 26;
+    MessageValue message_value = 27;
+    Null null = 28;
+    Observed observed = 29;
+    uint64 parameter = 30;  // Parameter ID
+    PointerRange pointer_range = 31;
+    Select select = 32;
+    SliceIndex slice_index = 33;
+    SliceRange slice_range = 34;
+    uint64 string_value = 35;  // String ID
+    uint32 uint8_value = 36;
+    uint32 uint16_value = 37;
+    uint32 uint32_value = 38;
+    uint64 uint64_value = 39;
+    UnaryOp unary_op = 40;
+    Unknown unknown = 41;
+  }
+}
+
+message Fence {
+  uint64 ast = 1;        // ASTFence ID
+  uint64 statement = 2;  // Statement ID
+  bool explicit = 3;
+}
+
+message Field {
+  Node owner = 1;
+  uint64 ast = 2;  // ASTField ID
+  Annotations annotations = 3;
+  Type type = 4;
+  uint64 name = 5;  // String ID
+  Documentation docs = 6;
+  uint64 default = 7;  // Expression ID
+}
+
+message FieldInitializer {
+  ASTNode ast = 1;
+  uint64 field = 2;  // Field ID
+  uint64 value = 3;  // Expression ID
+}
+
+message Function {
+  Node owner = 1;
+  uint64 ast = 2;  // ASTFunction ID
+  Annotations annotations = 3;
+  uint64 name = 4;  // String ID
+  Documentation docs = 5;
+  uint64 return = 6;                    // Parameter ID
+  uint64 this = 7;                      // Parameter ID
+  repeated uint64 full_parameters = 8;  // Parameter ID
+  uint64 block = 9;                     // Block ID
+  uint64 signature = 10;                // Signature ID
+  bool extern = 11;
+  bool subroutine = 12;
+  bool recursive = 13;
+  LogicalOrder order = 14;
+}
+
+message Global {
+  Node owner = 1;
+  uint64 ast = 2;  // ASTField ID
+  Annotations annotations = 3;
+  Type type = 4;
+  uint64 name = 5;     // String ID
+  uint64 default = 6;  // Expression ID
+}
+
+message Ignore {
+  ASTNode ast = 1;
+}
+
+message Iteration {
+  uint64 ast = 1;       // ASTIteration ID
+  uint64 iterator = 2;  // Local ID
+  uint64 from = 3;      // Expression ID
+  uint64 to = 4;        // Expression ID
+  uint64 block = 5;     // Block ID
+}
+
+message Length {
+  uint64 ast = 1;     // ASTCall ID
+  uint64 object = 2;  // Expression ID
+  Type type = 3;
+}
+
+message Local {
+  uint64 declaration = 1;  // Statement ID
+  Type type = 2;
+  uint64 name = 3;   // String ID
+  uint64 value = 4;  // Expression ID
+}
+
+message LogicalOrder {
+  bool resolved = 1;
+  bool pre = 2;
+  bool post = 3;
+}
+
+message Make {
+  uint64 ast = 1;   // ASTCall ID
+  uint64 type = 2;  // Slice ID
+  uint64 size = 3;  // Expression ID
+}
+
+message Map {
+  Node owner = 1;
+  uint64 name = 2;  // String ID
+  Type key_type = 3;
+  Type value_type = 4;
+}
+
+message MapAssign {
+  uint64 ast = 1;       // ASTAssign ID
+  uint64 to = 2;        // Expression ID
+  uint64 operator = 3;  // String ID
+  uint64 value = 4;     // Expression ID
+}
+
+message MapContains {
+  uint64 ast = 1;   // ASTBinaryOp ID
+  uint64 type = 2;  // Map ID
+  uint64 map = 3;   // Expression ID
+  uint64 key = 4;   // Expression ID
+}
+
+message MapIndex {
+  uint64 ast = 1;    // ASTIndex ID
+  uint64 type = 2;   // Map ID
+  uint64 map = 3;    // Expression ID
+  uint64 index = 4;  // Expression ID
+}
+
+message MapIteration {
+  uint64 ast = 1;             // ASTMapIteration ID
+  uint64 index_iterator = 2;  // Local ID
+  uint64 key_iterator = 3;    // Local ID
+  uint64 value_iterator = 4;  // Local ID
+  uint64 map = 5;             // Expression ID
+  uint64 block = 6;           // Block ID
+}
+
+message MapRemove {
+  uint64 ast = 1;   // ASTDelete ID
+  uint64 type = 2;  // Map ID
+  uint64 map = 3;   // Expression ID
+  uint64 key = 4;   // Expression ID
+}
+
+message Member {
+  uint64 ast = 1;     // ASTMember ID
+  uint64 object = 2;  // Expression ID
+  uint64 field = 3;   // Field ID
+}
+
+message MessageValue {
+  uint64 ast = 1;  // ASTClass ID
+  repeated FieldInitializer arguments = 2;
+}
+
+message Node {
+  oneof ty {
+    uint64 api = 1;         // API ID
+    uint64 block = 2;       // Block ID
+    uint64 class = 3;       // Class ID
+    uint64 definition = 4;  // Definition ID
+    uint64 enum_entry = 5;  // EnumEntry ID
+    uint64 enum
+    = 6;                       // Enum ID
+    uint64 expression = 7;     // Expression ID
+    uint64 field = 8;          // Field ID
+    uint64 function = 9;       // Function ID
+    uint64 global = 10;        // Global ID
+    uint64 local = 11;         // Local ID
+    uint64 map = 12;           // Map ID
+    uint64 parameter = 13;     // Parameter ID
+    uint64 pointer = 14;       // Pointer ID
+    uint64 pseudonym = 15;     // Pseudonym ID
+    uint64 reference = 16;     // Reference ID
+    uint64 signature = 17;     // Signature ID
+    uint64 slice = 18;         // Slice ID
+    uint64 statement = 19;     // Statement ID
+    uint64 static_array = 20;  // StaticArray ID
+  }
+}
+
+message Null {
+  uint64 ast = 1;  // ASTNull ID
+  Type type = 2;
+}
+
+message Observed {
+  uint64 parameter = 1;  // Parameter ID
+}
+
+message Parameter {
+  uint64 ast = 1;  // ASTParameter ID
+  Annotations annotations = 2;
+  uint64 function = 3;  // Function ID
+  uint64 name = 4;      // String ID
+  Documentation docs = 5;
+  Type type = 6;
+}
+
+message Pointer {
+  Node owner = 1;
+  uint64 name = 2;  // String ID
+  Type to = 3;
+  bool const = 4;
+  uint64 slice = 5;  // Slice ID
+}
+
+message PointerRange {
+  uint64 ast = 1;      // ASTIndex ID
+  uint64 type = 2;     // Slice ID
+  uint64 pointer = 3;  // Expression ID
+  uint64 range = 4;    // Expression ID
+}
+
+message Pseudonym {
+  Node owner = 1;
+  uint64 ast = 2;  // ASTPseudonym ID
+  Annotations annotations = 3;
+  uint64 name = 4;  // String ID
+  Documentation docs = 5;
+  Type to = 6;
+  repeated uint64 methods = 7;  // Function ID
+}
+
+message Read {
+  uint64 ast = 1;    // ASTCall ID
+  uint64 slice = 2;  // Expression ID
+}
+
+message Reference {
+  Node owner = 1;
+  uint64 name = 2;  // String ID
+  Type to = 3;
+}
+
+message Return {
+  uint64 ast = 1;       // ASTReturn ID
+  uint64 function = 2;  // Function ID
+  uint64 value = 3;     // Expression ID
+}
+
+message Select {
+  uint64 ast = 1;  // ASTSwitch ID
+  Type type = 2;
+  uint64 value = 3;  // Expression ID
+  repeated Choice choices = 4;
+  uint64 default = 5;  // Expression ID
+}
+
+message SliceAssign {
+  uint64 ast = 1;       // ASTAssign ID
+  uint64 to = 2;        // Expression ID
+  uint64 operator = 3;  // String ID
+  uint64 value = 4;     // Expression ID
+}
+
+message StaticArray {
+  Node owner = 1;
+  uint64 name = 2;  // String ID
+  Type value_type = 3;
+  uint32 size = 4;
+  uint64 size_expr = 5;  // Expression ID
+}
+
+message Signature {
+  Node owner = 1;
+  uint64 name = 2;  // String ID
+  Type return = 3;
+  repeated Type arguments = 4;
+}
+
+message Slice {
+  Node owner = 1;
+  uint64 name = 2;  // String ID
+  Type to = 3;
+  uint64 pointer = 4;  // Pointer ID
+}
+
+message SliceIndex {
+  uint64 ast = 1;    // ASTIndex ID
+  uint64 type = 2;   // Slice ID
+  uint64 slice = 3;  // Expression ID
+  uint64 index = 4;  // Expression ID
+}
+
+message SliceRange {
+  uint64 ast = 1;    // ASTIndex ID
+  uint64 type = 2;   // Slice ID
+  uint64 slice = 3;  // Expression ID
+  uint64 range = 4;  // Expression ID
+}
+
+message Statement {
+  oneof ty {
+    Abort abort = 1;
+    ArrayAssign array_assign = 2;
+    Assert assert = 3;
+    Assign assign = 4;
+    Block block = 5;
+    Branch branch = 6;
+    Case case = 7;
+    Copy copy = 8;
+    DeclareLocal declare_local = 9;
+    Fence fence = 10;
+    Iteration iteration = 11;
+    MapAssign map_assign = 12;
+    MapIteration map_iteration = 14;
+    MapRemove map_remove = 15;
+    Read read = 16;
+    Return return = 17;
+    SliceAssign slice_assign = 18;
+    Switch switch = 19;
+    uint64 expression = 20;  // Expression ID
+    Write write = 21;
+  }
+}
+
+message Switch {
+  uint64 ast = 1;    // ASTSwitch ID
+  uint64 value = 2;  // Expression ID
+  repeated Case cases = 3;
+  uint64 default = 4;  // Block ID
+}
+
+message Type {
+  oneof ty {
+    uint64 class = 1;  // Class ID
+    uint64 enum
+    = 2;                      // Enum ID
+    uint64 map = 3;           // Map ID
+    uint64 pointer = 4;       // Pointer ID
+    uint64 pseudonym = 5;     // Pseudonym ID
+    uint64 reference = 6;     // Reference ID
+    uint64 slice = 7;         // Slice ID
+    uint64 static_array = 8;  // StaticArray ID
+    Builtin builtin = 9;
+  }
+}
+
+message UnaryOp {
+  uint64 ast = 1;  // ASTUnaryOp ID
+  Type type = 2;
+  uint64 operator = 3;    // String ID
+  uint64 expression = 4;  // Expression ID
+}
+
+message Unknown {
+  uint64 ast = 1;       // ASTUnknown ID
+  uint64 inferred = 2;  // Expression ID
+}
+
+message Write {
+  uint64 ast = 1;    // ASTCall ID
+  uint64 slice = 2;  // Expression ID
+}
+
+message ASTAnnotation {
+  uint64 name = 1;  // ASTIdentifier ID
+  repeated ASTNode arguments = 2;
+}
+message ASTAnnotations {
+  repeated uint64 annotations = 1;  // ASTAnnotation ID
+}
+message ASTAbort {
+}
+message ASTAssign {
+  ASTNode lhs = 1;
+  uint64 operator = 2;  // String ID
+  ASTNode rhs = 3;
+}
+message ASTBinaryOp {
+  ASTNode lhs = 1;
+  uint64 operator = 2;  // String ID
+  ASTNode rhs = 3;
+}
+message ASTBlock {
+  repeated ASTNode statements = 1;
+}
+message ASTBool {
+  bool value = 1;
+}
+message ASTBranch {
+  ASTNode condition = 1;
+  uint64 true = 2;   // ASTBlock ID
+  uint64 false = 3;  // ASTBlock ID
+}
+message ASTCall {
+  ASTNode target = 1;
+  repeated ASTNode arguments = 2;
+}
+message ASTCase {
+  ASTAnnotations annotations = 1;
+  repeated ASTNode conditions = 2;
+  uint64 block = 3;  // ASTBlock ID
+}
+message ASTClass {
+  ASTAnnotations annotations = 1;
+  uint64 name = 2;             // ASTIdentifier ID
+  repeated uint64 fields = 3;  // ASTField ID
+}
+message ASTDeclareLocal {
+  uint64 name = 1;  // ASTIdentifier ID
+  ASTNode rhs = 2;
+}
+message ASTDefault {
+  uint64 block = 1;  // ASTBlock ID
+}
+message ASTDefinition {
+  ASTAnnotations annotations = 1;
+  uint64 name = 2;  // ASTIdentifier ID
+  ASTNode expression = 3;
+}
+message ASTDelete {
+  ASTNode map = 1;
+  ASTNode key = 2;
+}
+message ASTEnum {
+  ASTAnnotations annotations = 1;
+  ASTNode number_type = 2;
+  uint64 name = 3;  // ASTIdentifier ID
+  bool is_bitfield = 4;
+  repeated uint64 entries = 5;  // ASTEnumEntry ID
+}
+message ASTEnumEntry {
+  uint64 owner = 1;  // ASTEnum ID
+  uint64 name = 2;   // ASTIdentifier ID
+  uint64 value = 3;  // ASTNumber ID
+}
+message ASTFence {
+}
+message ASTField {
+  ASTAnnotations annotations = 1;
+  ASTNode type = 2;
+  uint64 name = 3;  // ASTIdentifier ID
+  ASTNode default = 4;
+}
+message ASTFunction {
+  ASTAnnotations annotations = 1;
+  uint64 generic = 2;              // ASTGeneric ID
+  repeated uint64 parameters = 3;  // ASTParameter ID
+  uint64 block = 4;                // ASTBlock ID
+}
+message ASTGeneric {
+  uint64 name = 1;  // ASTIdentifier ID
+  repeated ASTNode arguments = 2;
+}
+message ASTGroup {
+  ASTNode expression = 1;
+}
+message ASTIdentifier {
+  uint64 value = 1;  // String ID
+}
+message ASTIndex {
+  ASTNode object = 1;
+  ASTNode index = 2;
+}
+message ASTIndexedType {
+  ASTNode value_type = 1;
+  ASTNode index = 2;
+}
+message ASTIteration {
+  uint64 variable = 1;  // ASTIdentifier ID
+  ASTNode iterable = 2;
+  uint64 block = 3;  // ASTBlock ID
+}
+message ASTMapIteration {
+  uint64 index_variable = 1;  // ASTIdentifier ID
+  uint64 key_variable = 2;    // ASTIdentifier ID
+  uint64 value_variable = 3;  // ASTIdentifier ID
+  ASTNode map = 4;
+  uint64 block = 5;  // ASTBlock ID
+}
+message ASTMember {
+  ASTNode object = 1;
+  uint64 name = 2;  // ASTIdentifier ID
+}
+message ASTNamedArg {
+  uint64 name = 2;  // ASTIdentifier ID
+  ASTNode value = 1;
+}
+message ASTNode {
+  oneof ty {
+    uint64 abort = 1;           // ASTAbort ID
+    uint64 assign = 2;          // ASTAssign ID
+    uint64 binary_op = 3;       // ASTBinaryOp ID
+    uint64 bool = 4;            // ASTBool ID
+    uint64 branch = 5;          // ASTBranch ID
+    uint64 call = 6;            // ASTCall ID
+    uint64 declare_local = 7;   // ASTDeclareLocal ID
+    uint64 default = 8;         // ASTDefault ID
+    uint64 delete = 9;          // ASTDelete ID
+    uint64 fence = 10;          // ASTFence ID
+    uint64 generic = 11;        // ASTGeneric ID
+    uint64 group = 12;          // ASTGroup ID
+    uint64 identifier = 13;     // ASTIdentifier ID
+    uint64 index = 14;          // ASTIndex ID
+    uint64 indexed_type = 15;   // ASTIndexedType ID
+    uint64 iteration = 16;      // ASTIteration ID
+    uint64 map_iteration = 17;  // ASTMapIteration ID
+    uint64 member = 18;         // ASTMember ID
+    uint64 named_arg = 19;      // ASTNamedArg ID
+    uint64 null = 20;           // ASTNull ID
+    uint64 number = 21;         // ASTNumber ID
+    uint64 pointer_type = 22;   // ASTPointerType ID
+    uint64 pre_const = 23;      // ASTPreConst ID
+    uint64 return = 24;         // ASTReturn ID
+    uint64 string = 25;         // ASTString ID
+    uint64 switch = 26;         // ASTSwitch ID
+    uint64 unary_op = 27;       // ASTUnaryOp ID
+    uint64 unknown = 28;        // ASTUnknown ID
+  }
+}
+message ASTNull {
+}
+message ASTNumber {
+  uint64 value = 1;  // String ID
+}
+message ASTParameter {
+  ASTAnnotations annotations = 1;
+  bool this = 2;
+  ASTNode type = 3;
+  uint64 name = 4;  // ASTIdentifier ID
+}
+message ASTPointerType {
+  ASTNode to = 1;
+  bool const = 2;
+}
+message ASTPreConst {
+  ASTNode type = 1;
+}
+message ASTPseudonym {
+  ASTAnnotations annotations = 1;
+  uint64 name = 2;  // ASTIdentifier ID
+  ASTNode to = 3;
+}
+message ASTReturn {
+  ASTNode value = 1;
+}
+message ASTString {
+  uint64 value = 1;  // String ID
+}
+message ASTSwitch {
+  ASTNode value = 1;
+  repeated uint64 cases = 2;  // ASTCase ID
+  uint64 default = 3;         // ASTDefault ID
+}
+message ASTUnaryOp {
+  uint64 operator = 1;  // String ID
+  ASTNode expression = 2;
+}
+message ASTUnknown {
+}
