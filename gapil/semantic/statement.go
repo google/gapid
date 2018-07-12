@@ -210,7 +210,7 @@ func (*Return) isStatement() {}
 type Abort struct {
 	AST       *ast.Abort // the underlying syntax node this was built from
 	Function  *Function  // the function this is aborting
-	Statement Node
+	Statement Statement
 }
 
 func (*Abort) isNode()      {}
