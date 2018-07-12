@@ -79,10 +79,18 @@ type Device interface {
 	NativeBridgeABI(ctx context.Context, abi *device.ABI) *device.ABI
 	// ForceStop stops the everything associated with the given package.
 	ForceStop(ctx context.Context, pkg string) error
-	// SystemProperty returns the system property in string
+	// SystemProperty returns the system property in string.
 	SystemProperty(ctx context.Context, name string) (string, error)
-	// SetSystemProperty sets the system property with the given string value
+	// SetSystemProperty sets the system property with the given string value.
 	SetSystemProperty(ctx context.Context, name, value string) error
+	// SystemSetting returns the system setting with the given namespaced key.
+	SystemSetting(ctx context.Context, namespace, key string) (string, error)
+	// SetSystemSetting sets the system setting with with the given namespaced
+	// key to value.
+	SetSystemSetting(ctx context.Context, namespace, key, value string) error
+	// DeleteSystemSetting removes the system setting with with the given
+	// namespaced key.
+	DeleteSystemSetting(ctx context.Context, namespace, key string) error
 }
 
 // LogcatMessage represents a single logcat message.
