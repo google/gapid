@@ -75,8 +75,8 @@ var (
 	mapDifferentLength = map[int]string{1: "one"}
 	mapUint            = map[uint]string{1: "one", 2: "two"}
 
-	hidden1 = compare.Hidden{Value: Hide{1}}
-	hidden2 = compare.Hidden{Value: Hide{2}}
+	hidden1 = Hide{1}
+	hidden2 = Hide{2}
 
 	compareTests = []struct {
 		name string
@@ -199,7 +199,7 @@ var (
 			root.Nil(map[int]int{}, nil),
 		}},
 		{"hidden!=", Hide{1}, Hide{2}, []compare.Path{
-			root.Diff(hidden1, hidden2),
+			root.Member("Field<0>", Hide{1}, Hide{2}).Diff(1, 2),
 		}},
 		{"pointer!=", &valueBase, &valueDifferent, []compare.Path{
 			root.Diff(valueBase, valueDifferent),
@@ -267,7 +267,7 @@ var (
 		{root.Member("Slice", 0, 0).Entry(9, 0, 0).Entry("Key", 0, 0).Type(0, 0).Diff(0, 0),
 			"⟦0⟧ != ⟦0⟧ for v.Slice[9][Key]·type"},
 		{root.Diff(hidden1, compare.Missing),
-			"⟦⚠ Hidden compare_test.Hide{private:1}⟧ != ⟦⚠ Missing⟧"},
+			"⟦{private:1}⟧ != ⟦⚠ Missing⟧"},
 	}
 )
 

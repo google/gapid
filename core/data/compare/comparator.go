@@ -15,9 +15,11 @@
 package compare
 
 import (
+	"fmt"
 	"reflect"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
 // Comparator is passed to custom comparison functions holding the current comparison context.
@@ -152,17 +154,19 @@ func (t Comparator) compareValues(v1, v2 reflect.Value, ptr bool) {
 		t.compareValues(v1.Elem(), v2.Elem(), true)
 	case reflect.Struct:
 		t1 := v1.Type()
-		hidden := false
 		for i, n := 0, t1.NumField(); i < n; i++ {
 			f := t1.Field(i)
 			if r, _ := utf8.DecodeRuneInString(f.Name); unicode.IsUpper(r) {
 				t.With(t.Path.Member(f.Name, toValue(v1, ptr), toValue(v2, ptr))).compareValues(v1.Field(i), v2.Field(i), false)
 			} else {
-				hidden = true
+				// Filthy hack to inspect hidden fields.
+				// Credit to https://stackoverflow.com/a/43918797
+				h1, h2 := addressable(v1).Field(i), addressable(v2).Field(i)
+				f1 := reflect.NewAt(h1.Type(), unsafe.Pointer(h1.UnsafeAddr())).Elem()
+				f2 := reflect.NewAt(h2.Type(), unsafe.Pointer(h2.UnsafeAddr())).Elem()
+				name := fmt.Sprintf("Field<%d>", i)
+				t.With(t.Path.Member(name, toValue(v1, ptr), toValue(v2, ptr))).compareValues(f1, f2, false)
 			}
-		}
-		if hidden && !reflect.DeepEqual(toValue(v1, ptr), toValue(v2, ptr)) {
-			t.Handler(t.Path.Diff(Hidden{v1.Interface()}, Hidden{v2.Interface()}))
 		}
 	case reflect.Map:
 		if v1.Len() != v2.Len() {
@@ -196,4 +200,14 @@ func (t Comparator) compareValues(v1, v2 reflect.Value, ptr bool) {
 			t.Handler(t.Path.Diff(toValue(v1, false), toValue(v2, false)))
 		}
 	}
+}
+
+// addressable returns a copy (or passthough) of v so that it can be addressed.
+func addressable(v reflect.Value) reflect.Value {
+	if v.CanAddr() {
+		return v
+	}
+	c := reflect.New(v.Type()).Elem()
+	c.Set(v)
+	return c
 }
