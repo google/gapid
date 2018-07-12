@@ -629,8 +629,9 @@ void SerializeAndUpdate(StateSerializer* serializer,
                         gapil::Ref<gapii::Image> current,
                         const ImageData& read) {
   if (read.data) {
-    current->mData = serializer->encodeBuffer<uint8_t>(
-        read.data->size(), [serializer, &read](memory::Observation* obs) {
+    serializer->encodeBuffer<uint8_t>(
+        read.data->size(), &current->mData,
+        [serializer, &read](memory::Observation* obs) {
           serializer->sendData(obs, false, read.data->data(),
                                read.data->size());
         });
