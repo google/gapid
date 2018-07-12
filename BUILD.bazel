@@ -158,6 +158,7 @@ test_suite(
         "//core/text/cases:go_default_test",
         "//core/text/parse:go_default_test",
         "//gapil/analysis:go_default_test",
+        "//gapil/bapi:go_default_test",
         "//gapil/compiler:go_default_test",
         "//gapil/compiler/mangling/c:go_default_test",
         "//gapil/compiler/mangling/ia64:go_default_test",
