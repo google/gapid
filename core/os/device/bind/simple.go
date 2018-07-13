@@ -80,7 +80,7 @@ func (b *Simple) FileContents(ctx context.Context, path string) (string, error) 
 }
 
 // RemoveFile removes the given file from the device
-func (b* Simple) RemoveFile(ctx context.Context, path string) error {
+func (b *Simple) RemoveFile(ctx context.Context, path string) error {
 	return os.Remove(path)
 }
 

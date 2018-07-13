@@ -22,7 +22,6 @@ import (
 	"github.com/google/gapid/test/robot/search/script"
 )
 
-
 func query(w http.ResponseWriter, r *http.Request) (*search.Query, error) {
 	builder, err := script.Parse(r.Context(), r.FormValue("q"))
 	if err != nil {

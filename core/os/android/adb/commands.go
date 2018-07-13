@@ -199,7 +199,7 @@ func (b *binding) FileContents(ctx context.Context, path string) (string, error)
 }
 
 // RemoveFile removes the given file from the device
-func (b* binding) RemoveFile(ctx context.Context, path string) error {
+func (b *binding) RemoveFile(ctx context.Context, path string) error {
 	_, err := b.Shell("rm", "-f", path).Call(ctx)
 	return err
 }

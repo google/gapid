@@ -108,8 +108,8 @@ func Register(toProto, toObject interface{}) {
 	)
 
 	sigs := []generic.Sig{
-		generic.Sig{Name: "toProto", Interface: func(context.Context, O) (P, error) {return P{}, nil}, Function: toProto},
-		generic.Sig{Name: "toObject", Interface: func(context.Context, P) (O, error) {return O{}, nil}, Function: toObject},
+		generic.Sig{Name: "toProto", Interface: func(context.Context, O) (P, error) { return P{}, nil }, Function: toProto},
+		generic.Sig{Name: "toObject", Interface: func(context.Context, P) (O, error) { return O{}, nil }, Function: toObject},
 	}
 	m := generic.CheckSigs(sigs...)
 	if !m.Ok() {

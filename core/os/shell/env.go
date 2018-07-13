@@ -104,7 +104,6 @@ func (e *Env) Get(key string) string {
 	return ""
 }
 
-
 // Add inserts a new environment variable that is of the form "key=value".
 // That is, it parses the environment variable if necessary
 func (e *Env) Add(key string) {

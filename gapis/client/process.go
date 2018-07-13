@@ -62,7 +62,7 @@ func Connect(ctx context.Context, cfg Config) (Client, error) {
 		cfg.Port, err = process.StartOnDevice(ctx, cfg.Path.System(), process.StartOptions{
 			Args:    append(cfg.Args, layout.GoArgs(ctx)...),
 			Verbose: true,
-			Device: bind.Host(ctx),
+			Device:  bind.Host(ctx),
 		})
 		if err != nil {
 			return nil, err
@@ -91,7 +91,6 @@ func logLevel(ctx context.Context) log.Severity {
 	}
 	return log.Warning
 }
-
 
 func findGapis(ctx context.Context) (*file.Path, error) {
 	if path, err := layout.Gapis(ctx); err == nil {

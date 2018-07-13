@@ -247,7 +247,9 @@ func compare(ctx context.Context, got, expected interface{}, name string, fmt ..
 		return true
 	}
 
-	type ieq interface{ Equals(generic.TO) bool }
+	type ieq interface {
+		Equals(generic.TO) bool
+	}
 	ieqTy := reflect.TypeOf((*ieq)(nil)).Elem()
 	gTy, eTy := reflect.TypeOf(g), reflect.TypeOf(e)
 	if m := generic.Implements(reflect.TypeOf(g), ieqTy); m.Ok() && gTy == eTy {

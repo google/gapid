@@ -23,8 +23,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/core/text/reflow"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 func list(l interface{}) string {
