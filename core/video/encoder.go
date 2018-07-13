@@ -41,11 +41,20 @@ func init() {
 	}
 }
 
+// Checks to make sure an encoder has been set
+func GetEncoder() (string, error) {
+	if encoder == "" {
+		return encoder, fmt.Errorf("neither avconv nor ffmpeg was found")
+	} else {
+		return encoder, nil
+	}
+}
+
 // Encode will encode the frames written to the returned chan to a video that
 // can be read from the Reader.
 func Encode(ctx context.Context, settings Settings) (chan<- image.Image, io.Reader, error) {
 	if encoder == "" {
-		return nil, nil, fmt.Errorf("neither avconv or ffmpeg was found")
+		return nil, nil, fmt.Errorf("neither avconv nor ffmpeg was found")
 	}
 
 	in := make(chan image.Image, 64)

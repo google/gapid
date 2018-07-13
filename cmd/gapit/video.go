@@ -203,6 +203,11 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
 	}
 
+	_, err = video.GetEncoder()
+	if err != nil {
+		return log.Errf(ctx, err, "No valid encoder found in path")
+	}
+
 	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
