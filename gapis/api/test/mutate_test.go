@@ -323,7 +323,6 @@ func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 			cb.CmdVoidU64(20000),
 			cb.CmdVoidS64(-20000),
 			cb.CmdVoidBool(true),
-			cb.CmdVoidString("hello"),
 		},
 		expected: expected{
 			opcodes: []interface{}{
@@ -370,38 +369,6 @@ func TestOperationsOpCall_SingleInputArg(t *testing.T) {
 				opcode.Label{Value: 10},
 				opcode.PushI{DataType: protocol.Type_Bool, Value: 1},
 				opcode.Call{PushReturn: false, ApiIndex: funcInfoCmdVoidBool.ApiIndex, FunctionID: funcInfoCmdVoidBool.ID},
-
-				opcode.Label{Value: 11},
-				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x00},
-				opcode.Call{PushReturn: false, ApiIndex: funcInfoCmdVoidString.ApiIndex, FunctionID: funcInfoCmdVoidString.ID},
-			},
-			constants: []byte{'h', 'e', 'l', 'l', 'o', 0},
-		},
-	}.check(ctx, ml, ml)
-}
-
-func TestOperationsOpCall_3_Strings(t *testing.T) {
-	ctx := log.Testing(t)
-	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	a := arena.New()
-	defer a.Dispose()
-	cb := CommandBuilder{Thread: 0, Arena: a}
-	ml := device.Little32
-	test{
-		cmds: []api.Cmd{
-			cb.CmdVoid3Strings("hello", "world", "hello"),
-		},
-		expected: expected{
-			opcodes: []interface{}{
-				opcode.Label{Value: 0},
-				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x00},
-				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x08},
-				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x00},
-				opcode.Call{PushReturn: false, ApiIndex: funcInfoCmdVoid3Strings.ApiIndex, FunctionID: funcInfoCmdVoid3Strings.ID},
-			},
-			constants: []byte{
-				/* 0x00 */ 'h', 'e', 'l', 'l', 'o', 0x00, 0x00, 0x00,
-				/* 0x08 */ 'w', 'o', 'r', 'l', 'd', 0x00,
 			},
 		},
 	}.check(ctx, ml, ml)
@@ -923,7 +890,6 @@ func TestOperationsOpCall_ReturnValue(t *testing.T) {
 			cb.CmdU64(20000),
 			cb.CmdS64(-20000),
 			cb.CmdBool(true),
-			cb.CmdString("hello"),
 			cb.CmdPointer(p(0x10000)),
 		},
 		expected: expected{
@@ -951,8 +917,6 @@ func TestOperationsOpCall_ReturnValue(t *testing.T) {
 				opcode.Label{Value: 10},
 				opcode.Call{ApiIndex: funcInfoCmdBool.ApiIndex, FunctionID: funcInfoCmdBool.ID},
 				opcode.Label{Value: 11},
-				opcode.Call{ApiIndex: funcInfoCmdString.ApiIndex, FunctionID: funcInfoCmdString.ID},
-				opcode.Label{Value: 12},
 				opcode.Call{ApiIndex: funcInfoCmdPointer.ApiIndex, FunctionID: funcInfoCmdPointer.ID},
 			},
 		},

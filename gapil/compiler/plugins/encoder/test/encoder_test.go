@@ -129,20 +129,6 @@ func TestCmdPointers(t *testing.T) {
 	})
 }
 
-func TestCmdStrings(t *testing.T) {
-	ctx := log.Testing(t)
-
-	params := pb.CmdStrings{
-		Thread: 0x10,
-		A:      "hello",
-		B:      "world",
-	}
-	checkCallbacks(ctx, "params", encodeCmdStrings(&params, false), callbacks{
-		expectedType(&pb.CmdStrings{}),
-		cbEncodeObject{Type: 1, IsGroup: false, Data: encodeProto(&params)},
-	})
-}
-
 func TestBasicTypes(t *testing.T) {
 	ctx := log.Testing(t)
 

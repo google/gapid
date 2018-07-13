@@ -85,6 +85,10 @@ func functionBody(rv *resolver, owner semantic.Type, out *semantic.Function) {
 			rv.scope.function = out
 			for _, p := range out.FullParameters {
 				rv.addNamed(p)
+
+				if !out.Extern && !out.Subroutine && !isLegalCommandParameterType(p.Type) {
+					rv.errorf(p, "Parameters of type '%v' cannot be used in commands", p.Type)
+				}
 			}
 			if out.This != nil {
 				rv.add(string(ast.KeywordThis), out.This)
