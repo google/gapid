@@ -406,11 +406,11 @@ func TestInsertFence(t *testing.T) {
 sub void R(u8[] x) { read(x) }
 sub void W(u8[] x) { write(x) }
 sub void RW(u8[] x) { R(x) W(x) }
-cmd void C(u8[] x) { RW(x) }`,
+cmd void C(u8* x) { RW(x[0:1]) }`,
 		}, {
 			name: "Reverse declaration",
 			source: `
-cmd void C(u8[] x) { RW(x) }
+cmd void C(u8* x) { RW(x[0:1]) }
 sub void RW(u8[] x) { R(x) W(x) }
 sub void W(u8[] x) { write(x) }
 sub void R(u8[] x) { read(x) }`,
@@ -418,15 +418,15 @@ sub void R(u8[] x) { read(x) }`,
 			name: "Local, fence, call",
 			source: `
 sub void S(u8 a, u8[] x) { write(x) }
-cmd void C(u8[] x) {
+cmd void C(u8* x) {
   l := x[0]
-  S(l, x)
+  S(l, x[0:1])
 }`,
 		}, {
 			name: "Impossible fence",
 			source: `
 sub void S(u8 a, u8[] x) { write(x) }
-cmd void C(u8[] x) { S(x[0], x) }
+cmd void C(u8* x) { S(x[0], x[0:1]) }
 `,
 			errors: err("Only copy statements can be pre and post fence."),
 		}, {
@@ -439,26 +439,26 @@ cmd void C() { S() }
 			name: "Valid pre_fence annotation",
 			source: `
 @pre_fence sub void S() { }
-cmd void C(u8[] x) { S() write(x) }
+cmd void C(u8* x) { S() write(x[0:1]) }
 `,
 		}, {
 			name: "Conflicting pre_fence annotation",
 			source: `
 @pre_fence sub void S() { }
-cmd void C(u8[] x) { write(x) S() }
+cmd void C(u8* x) { write(x[0:1]) S() }
 `,
 			errors: err("pre-statement after fence"),
 		}, {
 			name: "Valid post_fence annotation",
 			source: `
 @post_fence sub void S() { }
-cmd void C(u8[] x) { read(x) S() }
+cmd void C(u8* x) { read(x[0:1]) S() }
 `,
 		}, {
 			name: "Conflicting post_fence annotation",
 			source: `
 @post_fence sub void S() { }
-cmd void C(u8[] x) { S() read(x) }
+cmd void C(u8* x) { S() read(x[0:1]) }
 `,
 			errors: err("pre-statement after fence"),
 		},

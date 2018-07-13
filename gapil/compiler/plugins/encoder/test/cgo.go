@@ -201,23 +201,6 @@ func encodeCmdPointers(cmd *pb.CmdPointers, isGroup bool) callbacks {
 	})
 }
 
-func encodeCmdStrings(cmd *pb.CmdStrings, isGroup bool) callbacks {
-	arena := arena.New()
-	defer arena.Dispose()
-
-	a := C.gapil_make_string((*C.arena)(arena.Pointer), (C.uint64_t)(len(cmd.A)), (unsafe.Pointer)(C.CString(cmd.A)))
-	b := C.gapil_make_string((*C.arena)(arena.Pointer), (C.uint64_t)(len(cmd.B)), (unsafe.Pointer)(C.CString(cmd.B)))
-
-	s := C.cmd_strings{
-		thread: (C.uint64_t)(cmd.Thread),
-		a:      a,
-		b:      b,
-	}
-	return withEncoder(func(ctx *C.context) {
-		C.cmd__cmd_strings__encode(&s, ctx, toUint8(isGroup))
-	})
-}
-
 func convBasicTypes(class *pb.BasicTypes, out *C.basic_types) (dispose func()) {
 	arena := arena.New()
 

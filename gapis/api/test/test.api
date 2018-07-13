@@ -125,12 +125,11 @@ cmd void cmdVoidF64(f64 a) { }
 cmd void cmdVoidU64(u64 a) { }
 cmd void cmdVoidS64(s64 a) { }
 cmd void cmdVoidBool(bool a) { }
-cmd void cmdVoidString(string a) { }
 
 ////////////////////////////////////////////////////////////////
 // Commands with more than one input
 ////////////////////////////////////////////////////////////////
-cmd void cmdVoid3Strings(string a, string b, string c) { }
+cmd void cmdVoid3Strings(u32 a, u32 b, u32 c) { }
 
 ////////////////////////////////////////////////////////////////
 // Commands with input arrays
@@ -214,7 +213,6 @@ cmd f64 cmdF64() { return 0 }
 cmd u64 cmdU64() { return 0 }
 cmd s64 cmdS64() { return 0 }
 cmd bool cmdBool() { return false }
-cmd string cmdString() { return "" }
 cmd void* cmdPointer() { return ? }
 
 ////////////////////////////////////////////////////////////////

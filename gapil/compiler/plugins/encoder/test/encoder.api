@@ -29,8 +29,6 @@ cmd void cmd_arrays(u8[1] a, s32[2] b, f32[3] c) {}
 
 cmd void cmd_pointers(u8* a, s32* b, f32* c) {}
 
-cmd void cmd_strings(string a, string b) {}
-
 class int_types {
     u8     a
     s8     b

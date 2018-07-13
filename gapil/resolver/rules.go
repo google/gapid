@@ -170,3 +170,16 @@ func isInvalid(n semantic.Node) bool {
 func isVoid(t semantic.Type) bool {
 	return semantic.Underlying(t) == semantic.VoidType
 }
+
+func isLegalCommandParameterType(t semantic.Type) bool {
+	switch semantic.Underlying(t) {
+	case semantic.AnyType:
+	case semantic.StringType:
+		return false
+	}
+	switch t.(type) {
+	case *semantic.Slice:
+		return false
+	}
+	return true
+}

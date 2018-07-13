@@ -62,12 +62,6 @@ typedef struct cmd_pointers_t {
   float* c;
 } cmd_pointers;
 
-typedef struct cmd_strings_t {
-  uint64_t thread;
-  string* a;
-  string* b;
-} cmd_strings;
-
 void cmd__cmd_ints__encode(cmd_ints* cmd, context* ctx, uint8_t is_group);
 void cmd__cmd_intsCall__encode(cmd_intsCall* cmd, context* ctx,
                                uint8_t is_group);
@@ -76,7 +70,6 @@ void cmd__cmd_enums__encode(cmd_enums* cmd, context* ctx, uint8_t is_group);
 void cmd__cmd_arrays__encode(cmd_arrays* cmd, context* ctx, uint8_t is_group);
 void cmd__cmd_pointers__encode(cmd_pointers* cmd, context* ctx,
                                uint8_t is_group);
-void cmd__cmd_strings__encode(cmd_strings* cmd, context* ctx, uint8_t is_group);
 
 typedef struct int_types_t {
   uint8_t a;
