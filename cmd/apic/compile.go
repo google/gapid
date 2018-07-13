@@ -127,7 +127,7 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		settings.Plugins = append(settings.Plugins, cloner.Plugin())
 	}
 	if v.Emit.Replay {
-		settings.Plugins = append(settings.Plugins, replay.Plugin())
+		settings.Plugins = append(settings.Plugins, replay.Plugin(nil))
 	}
 
 	switch v.Symbols {

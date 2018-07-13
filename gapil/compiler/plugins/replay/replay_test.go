@@ -330,7 +330,7 @@ func (t test) run(ctx context.Context) (succeeded bool) {
 	settings := compiler.Settings{
 		EmitExec: true,
 		Plugins: []compiler.Plugin{
-			replay.Plugin(),
+			replay.Plugin(nil),
 		},
 	}
 
@@ -355,10 +355,10 @@ func (t test) run(ctx context.Context) (succeeded bool) {
 		fmt.Println(program.Dump())
 	}
 
-	packedOpcodes, err := replay.Opcodes(env)
-	succeeded = assert.For(ctx, "Opcodes").ThatError(err).Succeeded()
+	payload, err := replay.Build(env, nil)
+	succeeded = assert.For(ctx, "Build").ThatError(err).Succeeded()
 	if succeeded {
-		got, err := opcode.Disassemble(bytes.NewReader(packedOpcodes), device.LittleEndian)
+		got, err := opcode.Disassemble(bytes.NewReader(payload.Opcodes), device.LittleEndian)
 		succeeded = assert.For(ctx, "Disassemble").ThatError(err).Succeeded()
 		if succeeded {
 			succeeded = assert.For(ctx, "opcodes").ThatSlice(got).Equals(t.expected)

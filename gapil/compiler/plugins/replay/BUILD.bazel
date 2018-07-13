@@ -17,12 +17,15 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "plugin.go",
+        "asm.go",
+        "callbacks.go",
+        "remap.go",
         "replay.go",
         "runtime.go",
     ],
     cdeps = [
-        "//gapil/runtime/cc:headers",
+        "//gapil/runtime/cc/replay:headers",
+        "//gapil/runtime/cc/replay:cc",
     ],
     cgo = True,
     importpath = "github.com/google/gapid/gapil/compiler/plugins/replay",
@@ -30,13 +33,11 @@ go_library(
     deps = [
         "//core/codegen:go_default_library",
         "//core/data/slice:go_default_library",
-        "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//gapil/compiler:go_default_library",
         "//gapil/executor:go_default_library",
         "//gapil/semantic:go_default_library",
-        "//gapis/replay/opcode:go_default_library",
-        "//gapis/replay/protocol:go_default_library",
+        "//gapir/replay_service:go_default_library",
     ],
 )
 
