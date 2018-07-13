@@ -14,7 +14,11 @@
 
 package assert
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/google/gapid/core/data/compare"
+)
 
 // OnMap is the result of calling ThatMap on an Assertion.
 // It provides assertion tests that are specific to map types.
@@ -59,25 +63,7 @@ func (o OnMap) EqualsWithComparator(expected interface{}, same func(a, b interfa
 
 // DeepEquals asserts the array or map matches expected using a deep-equal comparison.
 func (o OnMap) DeepEquals(expected interface{}) bool {
-	return o.mapsEqual(expected, reflect.DeepEqual)
-}
-
-func isZero(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.Array, reflect.String:
-		return v.Len() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
-		return v.IsNil()
-	}
-	return false
+	return o.mapsEqual(expected, compare.DeepEqual)
 }
 
 func (o OnMap) mapsEqual(expected interface{}, same func(a, b interface{}) bool) bool {
@@ -92,7 +78,7 @@ func (o OnMap) mapsEqual(expected interface{}, same func(a, b interface{}) bool)
 		for _, k := range gs.MapKeys() {
 			gv := gs.MapIndex(k)
 			ev := es.MapIndex(k)
-			if ev == reflect.ValueOf(nil) {
+			if !ev.IsValid() {
 				o.Printf("\tKey\tmissing:\t%#v\n", k.Interface())
 				equal = false
 				continue
