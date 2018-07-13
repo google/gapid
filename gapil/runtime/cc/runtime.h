@@ -125,6 +125,11 @@ typedef enum gapil_data_access_t {
 typedef void* gapil_pool_data_resolver(context*, pool*, uint64_t ptr,
                                        gapil_data_access, uint64_t* len);
 
+// callback to store the buffer at ptr of the given size into the database.
+// Writes the 20-byte database identifier of the stored data to id.
+typedef void* gapil_database_storer(context* ctx, void* ptr, uint64_t size,
+                                    uint8_t* id_out);
+
 // assigns to file and line the current source location within the .api file.
 // if there is no current source location then file and line are unassigned.
 typedef void gapil_get_code_location(context*, char** file, uint32_t* line);
@@ -151,6 +156,9 @@ void gapil_slice_release(slice);
 
 // sets the resolver callback used to return pointers to slice data.
 void gapil_set_pool_data_resolver(gapil_pool_data_resolver*);
+
+// sets the callback used to store data into the database.
+void gapil_set_database_storer(gapil_database_storer*);
 
 // sets the callback used to fetch the file and line location for the current
 // source location within the .api file.
@@ -238,6 +246,11 @@ DECL_GAPIL_CB(void, gapil_call_extern, context*, string* name, void* args,
 // logs a message to the current logger.
 // fmt is a printf-style message.
 DECL_GAPIL_CB(void, gapil_logf, context*, uint8_t severity, uint8_t* fmt, ...);
+
+// Stores the buffer at ptr of the given size into the database.
+// Writes the 20-byte database identifier of the stored data to id.
+DECL_GAPIL_CB(void, gapil_store_in_database, context* ctx, void* ptr,
+              uint64_t size, uint8_t* id_out);
 
 #undef DECL_GAPIL_CB
 

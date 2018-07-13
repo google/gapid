@@ -42,10 +42,12 @@ import (
 // // Implemented below.
 // extern void* pool_data_resolver(context*, pool*, uint64_t ptr, gapil_data_access, uint64_t* len);
 // extern void  get_code_location(context* ctx, char** file, uint32_t* line);
+// extern void  database_storer(context* ctx, void* ptr, uint64_t size, uint8_t* id_out);
 //
 // static void set_callbacks() {
 //   gapil_set_pool_data_resolver(&pool_data_resolver);
 //   gapil_set_code_locator(&get_code_location);
+//   gapil_set_database_storer(&database_storer);
 // }
 import "C"
 
@@ -208,6 +210,11 @@ func (e *Env) CContext() unsafe.Pointer {
 	return (unsafe.Pointer)(e.cCtx)
 }
 
+// Context returns the go context of the environment.
+func (e *Env) Context() context.Context {
+	return e.goCtx
+}
+
 // Globals returns the memory of the global state.
 func (e *Env) Globals() []byte {
 	return slice.Bytes((unsafe.Pointer)(e.cCtx.globals), e.Executor.globalsSize)
@@ -292,4 +299,17 @@ func get_code_location(c *C.context, file **C.char, line *C.uint32_t) {
 	}
 	*file = C.CString(l.File)
 	*line = (C.uint32_t)(l.Line)
+}
+
+//export database_storer
+func database_storer(c *C.context, ptr unsafe.Pointer, size C.uint64_t, idOut *C.uint8_t) {
+	env := GetEnv((unsafe.Pointer)(c))
+	ctx := env.Context()
+	sli := slice.Bytes(ptr, uint64(size))
+	id, err := database.Store(ctx, sli)
+	if err != nil {
+		panic(err)
+	}
+	out := slice.Bytes((unsafe.Pointer)(idOut), 20)
+	copy(out, id[:])
 }
