@@ -17,6 +17,8 @@
 #ifndef CORE_INTERVAL_LIST_H
 #define CORE_INTERVAL_LIST_H
 
+#include "range.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <vector>
@@ -48,30 +50,6 @@ inline bool operator==(const Interval<T>& lhs, const Interval<T>& rhs) {
   return lhs.start() == rhs.start() && lhs.end() == rhs.end();
 }
 
-// Range is a stl-compatibile iteratable that allows iteration over all
-// memory-contiguous elements of type T between a start and end pointer.
-template <typename T>
-class Range {
- public:
-  typedef T value_type;
-  typedef const T* const_iterator;
-
-  // Constructs the iterable with a pointer to the first element in the list
-  // and a pointer to one-past the last element in the list.
-  inline Range(const T* start, const T* end) : mStart(start), mEnd(end) {}
-
-  // begin() returns the pointer to the first element in the list.
-  inline const T* begin() const { return mStart; }
-  // end() returns the pointer to one-past the last element in the list.
-  inline const T* end() const { return mEnd; }
-  // size() returns the number of items in the list.
-  inline const size_t size() const { return mEnd - mStart; }
-
- private:
-  const T* mStart;
-  const T* mEnd;
-};
-
 // CustomIntervalList holds a ascendingly-sorted list of custom interval types.
 // Intervals can be added to the list using merge(), where they may be merged
 // with existing intervals if the spans are within the specified
@@ -93,6 +71,10 @@ class CustomIntervalList {
   // intersect the span between start and end.
   inline Range<T> intersect(interval_unit_type start,
                             interval_unit_type end) const;
+
+  // index_of returns the index of the interval that contains v, or -1 if
+  // there is no interval containing v.
+  inline ssize_t index_of(interval_unit_type v) const;
 
   // replace removes and/or trims any intervals overlapping i and then adds i
   // to this list. No merging is performed.
@@ -153,6 +135,18 @@ inline Range<T> CustomIntervalList<T>::intersect(interval_unit_type start,
   auto first = begin() + rangeFirst(start, -1);
   auto last = begin() + rangeLast(end, -1);
   return Range<T>(first, last + 1);
+}
+
+template <typename T>
+inline ssize_t CustomIntervalList<T>::index_of(interval_unit_type v) const {
+  auto i = rangeFirst(v, -1);
+  if (i >= count()) {
+    return -1;
+  }
+  if (mIntervals[i].mStart > v || mIntervals[i].mEnd < v) {
+    return -1;
+  }
+  return i;
 }
 
 template <typename T>
