@@ -72,9 +72,9 @@ func ExampleMapEquals() {
 	assert.For("different").ThatMap(mp).Equals(different)
 	// Output:
 	// Error:shorter
-	//      Shorter by 1 keys
-	// Error:longer
 	//      Key missing: 2
+	// Error:longer
+	//      Extra key: 2
 	// Error:different
 	//      Key: 1, "one" differs from expected: "two"
 }
@@ -94,9 +94,9 @@ func ExampleMapDeepEquals() {
 	assert.For("different").ThatMap(mp).DeepEquals(different)
 	// Output:
 	// Error:shorter
-	//      Shorter by 1 keys
-	// Error:longer
 	//      Key missing: 2
+	// Error:longer
+	//      Extra key: 2
 	// Error:different
 	//      Key: 1, []int{1, 1} differs from expected: []int{1, 2}
 }

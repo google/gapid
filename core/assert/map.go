@@ -70,21 +70,23 @@ func (o OnMap) mapsEqual(expected interface{}, same func(a, b interface{}) bool)
 	return o.Test(func() bool {
 		gs := reflect.ValueOf(o.mp)
 		es := reflect.ValueOf(expected)
-		if gs.Len() < es.Len() {
-			o.Printf("\tShorter\tby\t%v\tkeys\n", es.Len()-gs.Len())
-			return false
-		}
 		equal := true
 		for _, k := range gs.MapKeys() {
 			gv := gs.MapIndex(k)
 			ev := es.MapIndex(k)
 			if !ev.IsValid() {
-				o.Printf("\tKey\tmissing:\t%#v\n", k.Interface())
+				o.Printf("\tExtra key: %#v\n", k.Interface())
 				equal = false
 				continue
 			}
 			if !same(gv.Interface(), ev.Interface()) {
-				o.Printf("\tKey:\t%#v,\t%#v\tdiffers\tfrom\texpected:\t%#v\n", k.Interface(), gv.Interface(), ev.Interface())
+				o.Printf("\tKey: %#v, %#v differs from expected: %#v\n", k.Interface(), gv.Interface(), ev.Interface())
+				equal = false
+			}
+		}
+		for _, k := range es.MapKeys() {
+			if !gs.MapIndex(k).IsValid() {
+				o.Printf("\tKey missing: %#v\n", k.Interface())
 				equal = false
 			}
 		}
