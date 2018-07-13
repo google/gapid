@@ -16,29 +16,67 @@ package replay
 
 import (
 	"fmt"
+	"reflect"
 	"unsafe"
 
 	"github.com/google/gapid/core/data/slice"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/executor"
+	replaysrv "github.com/google/gapid/gapir/replay_service"
 )
 
-// #include "gapil/runtime/cc/runtime.h"
+// #include "gapil/runtime/cc/replay/replay.h"
 //
-// typedef buffer* (TGetReplayOpcodes) (context*);
-// buffer* get_replay_opcodes(TGetReplayOpcodes* func, context* ctx) { return func(ctx); }
+// typedef gapil_replay_data* (TGetReplayData) (context*);
+// gapil_replay_data* get_replay_data(TGetReplayData* func, context* ctx) { return func(ctx); }
 import "C"
 
-// Opcodes returns the encoded opcodes from the context
-func Opcodes(env *executor.Env) ([]byte, error) {
-	pfn := env.Executor.FunctionAddress(GetReplayOpcodes)
+func replayData(env *executor.Env) (*C.gapil_replay_data, error) {
+	pfn := env.Executor.FunctionAddress(getReplayData)
 	if pfn == nil {
 		return nil, fmt.Errorf("Program did not export the function to get the replay opcodes")
 	}
 
-	gro := (*C.TGetReplayOpcodes)(pfn)
+	gro := (*C.TGetReplayData)(pfn)
 	ctx := (*C.context)(env.CContext())
 
-	buf := C.get_replay_opcodes(gro, ctx)
+	return C.get_replay_data(gro, ctx), nil
+}
 
-	return slice.Bytes(unsafe.Pointer(buf.data), uint64(buf.size)), nil
+// Build builds the replay payload for execution.
+func Build(env *executor.Env, layout *device.MemoryLayout) (replaysrv.Payload, error) {
+	data, err := replayData(env)
+	if err != nil {
+		return replaysrv.Payload{}, err
+	}
+
+	// The pointer alignment is to support identical output with the legacy
+	// replay builder logic. This should be removed.
+	// See Builder::layout_volatile_memory in builder.cpp.
+	pointerAlignment := 4
+	if layout != nil {
+		pointerAlignment = int(layout.Pointer.Alignment)
+	}
+
+	ctx := (*C.context)(env.CContext())
+	C.gapil_replay_build(ctx, data, (C.uint32_t)(pointerAlignment))
+
+	resources := slice.Cast(
+		slice.Bytes(unsafe.Pointer(data.resources.data), uint64(data.resources.size)),
+		reflect.TypeOf([]C.gapil_replay_resource_info_t{})).([]C.gapil_replay_resource_info_t)
+
+	payload := replaysrv.Payload{
+		Opcodes:   slice.Bytes(unsafe.Pointer(data.stream.data), uint64(data.stream.size)),
+		Resources: make([]*replaysrv.ResourceInfo, len(resources)),
+	}
+
+	for i, r := range resources {
+		id := slice.Bytes(unsafe.Pointer(&r.id[0]), 20)
+		payload.Resources[i] = &replaysrv.ResourceInfo{
+			Id:   string(id),
+			Size: uint32(r.size),
+		}
+	}
+
+	return payload, nil
 }
