@@ -50,7 +50,7 @@ function check() {
 }
 
 function run_clang_format() {
-  find -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" | xargs $CLANG_FORMAT -i -style=Google
+  find . -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" | xargs $CLANG_FORMAT -i -style=Google
 }
 
 function run_buildifier() {
