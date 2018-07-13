@@ -137,7 +137,7 @@ typedef void gapil_get_code_location(context*, char** file, uint32_t* line);
 context* gapil_create_context(arena* arena);
 
 // destroys the context created by gapil_create_context.
-void gapil_destroy_context(context* ctx);
+void gapil_destroy_context(context*);
 
 void gapil_string_reference(string*);
 void gapil_string_release(string*);
@@ -171,6 +171,17 @@ DECL_GAPIL_CB(void*, gapil_realloc, arena*, void* ptr, uint64_t size,
 // frees memory previously allocated with gapil_alloc or gapil_realloc.
 DECL_GAPIL_CB(void, gapil_free, arena*, void* ptr);
 
+// creates a buffer with the given alignment and capacity.
+DECL_GAPIL_CB(void, gapil_create_buffer, arena*, uint64_t capacity,
+              uint64_t alignment, buffer*);
+
+// destroys a buffer previously created with gapil_create_buffer.
+DECL_GAPIL_CB(void, gapil_destroy_buffer, arena*, buffer*);
+
+// appends data to a buffer.
+DECL_GAPIL_CB(void, gapil_append_buffer, arena*, buffer*, const void* data,
+              uint64_t size, uint64_t alignment);
+
 // allocates a new slice and underlying pool with the given size.
 DECL_GAPIL_CB(pool*, gapil_make_pool, context*, uint64_t size);
 
@@ -180,14 +191,13 @@ DECL_GAPIL_CB(void, gapil_free_pool, pool*);
 
 // returns a pointer to the underlying buffer data for the given slice,
 // using gapil_data_resolver if it has been set.
-DECL_GAPIL_CB(void*, gapil_slice_data, context* ctx, slice* sli,
-              gapil_data_access);
+DECL_GAPIL_CB(void*, gapil_slice_data, context*, slice*, gapil_data_access);
 
 // copies N bytes of data from src to dst, where N is min(dst.size, src.size).
-DECL_GAPIL_CB(void, gapil_copy_slice, context* ctx, slice* dst, slice* src);
+DECL_GAPIL_CB(void, gapil_copy_slice, context*, slice* dst, slice* src);
 
 // allocates a new slice and underlying pool filled with the data of string.
-DECL_GAPIL_CB(void, gapil_string_to_slice, context* ctx, string* string,
+DECL_GAPIL_CB(void, gapil_string_to_slice, context*, string* string,
               slice* out);
 
 // allocates a new string with the given data and length.
@@ -204,7 +214,7 @@ DECL_GAPIL_CB(void, gapil_cstring_to_slice, context*, uintptr_t ptr,
 DECL_GAPIL_CB(void, gapil_free_string, string*);
 
 // allocates a new string filled with the data of slice.
-DECL_GAPIL_CB(string*, gapil_slice_to_string, context* ctx, slice* slice);
+DECL_GAPIL_CB(string*, gapil_slice_to_string, context*, slice* slice);
 
 // allocates a new string containing the concatenated data of the two strings.
 DECL_GAPIL_CB(string*, gapil_string_concat, string*, string*);
@@ -214,21 +224,20 @@ DECL_GAPIL_CB(int32_t, gapil_string_compare, string*, string*);
 
 // applys the read observations tagged to the current command into the memory
 // model.
-DECL_GAPIL_CB(void, gapil_apply_reads, context* ctx);
+DECL_GAPIL_CB(void, gapil_apply_reads, context*);
 
 // applys the write observations tagged to the current command into the memory
 // model.
-DECL_GAPIL_CB(void, gapil_apply_writes, context* ctx);
+DECL_GAPIL_CB(void, gapil_apply_writes, context*);
 
 // calls an extern function with the given name and pointer to arguments.
 // If the extern returns a value, this is placed in res.
-DECL_GAPIL_CB(void, gapil_call_extern, context* ctx, string* name, void* args,
+DECL_GAPIL_CB(void, gapil_call_extern, context*, string* name, void* args,
               void* res);
 
 // logs a message to the current logger.
 // fmt is a printf-style message.
-DECL_GAPIL_CB(void, gapil_logf, context* ctx, uint8_t severity, uint8_t* fmt,
-              ...);
+DECL_GAPIL_CB(void, gapil_logf, context*, uint8_t severity, uint8_t* fmt, ...);
 
 #undef DECL_GAPIL_CB
 
