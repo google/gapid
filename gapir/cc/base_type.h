@@ -20,27 +20,11 @@
 #include <stdint.h>
 #include <type_traits>
 
+#include "gapir/replay_service/vm.h"
+
 namespace gapir {
 
-// Unique ID for each supported data type. The ID have to fit into 6 bits (0-63)
-// to fit into the opcode stream and the values have to be consistent with the
-// values on the server side
-enum class BaseType : uint8_t {
-  Bool = 0,
-  Int8 = 1,
-  Int16 = 2,
-  Int32 = 3,
-  Int64 = 4,
-  Uint8 = 5,
-  Uint16 = 6,
-  Uint32 = 7,
-  Uint64 = 8,
-  Float = 9,
-  Double = 10,
-  AbsolutePointer = 11,
-  ConstantPointer = 12,
-  VolatilePointer = 13,
-};
+using BaseType = vm::Type;
 
 // Return the size of the underlying type for the given BaseType
 uint32_t baseTypeSize(BaseType type);

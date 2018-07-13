@@ -34,14 +34,21 @@ go_proto_library(
 
 go_library(
     name = "go_default_library",
+    srcs = ["vm.h"],
     embed = [":replay_service_go_proto"],
     importpath = "github.com/google/gapid/gapir/replay_service",
     visibility = ["//visibility:public"],
 )
 
 cc_grpc_library(
-    name = "replay_service_cc",
+    name = "proto",
     dep_cc_proto_libs = ["//gapis/service/severity:severity_cc_proto"],
     proto = ["replay_service_proto"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "vm",
+    hdrs = ["vm.h"],
     visibility = ["//visibility:public"],
 )
