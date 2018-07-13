@@ -21,6 +21,7 @@
 
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
+using ::testing::Eq;
 
 namespace core {
 
@@ -82,6 +83,36 @@ TEST_F(IntervalListTest, Intersect) {
        }) {
     auto intersection = L().intersect(t.interval.start(), t.interval.end());
     EXPECT_THAT(intersection, ElementsAreArray(t.expected));
+  }
+}
+
+TEST_F(IntervalListTest, IndexOf) {
+  merge(I(0x2, 0x4));  // 0
+  merge(I(0x8, 0x9));  // 1
+  merge(I(0xb, 0xc));  // 2
+
+  struct test {
+    int val;
+    ssize_t expected;
+  };
+  for (auto t : {
+           test{0x0, -1},
+           test{0x1, -1},
+           test{0x2, 0},
+           test{0x3, 0},
+           test{0x4, 0},
+           test{0x5, -1},
+           test{0x6, -1},
+           test{0x7, -1},
+           test{0x8, 1},
+           test{0x9, 1},
+           test{0xa, -1},
+           test{0xb, 2},
+           test{0xc, 2},
+           test{0xd, -1},
+       }) {
+    auto index = L().index_of(t.val);
+    EXPECT_THAT(index, Eq(t.expected));
   }
 }
 
