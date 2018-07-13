@@ -12,25 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//tools/build:rules.bzl", "cc_copts")
 
-go_library(
-    name = "go",
-    srcs = [
-        "callbacks.go",
-        "cloner.go",
-        "plugin.go",
-    ],
-    cdeps = [
-        "//gapil/runtime/cc/cloner:headers",
-    ],
-    cgo = True,
-    clinkopts = [],  # keep
-    importpath = "github.com/google/gapid/gapil/compiler/plugins/cloner",
+cc_library(
+    name = "headers",
+    hdrs = glob(["*.h"]),
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
-        "//core/codegen:go_default_library",
-        "//gapil/compiler:go_default_library",
-        "//gapil/semantic:go_default_library",
+        "//gapil/runtime/cc:headers",
+    ],
+)
+
+cc_library(
+    name = "cc",
+    srcs = [
+        "cloner.cpp",
+    ],
+    hdrs = glob(["*.inc"]),
+    copts = cc_copts(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":headers",
+        "//core/memory/arena/cc",
     ],
 )

@@ -30,21 +30,6 @@ cc_library(
         "runtime.cpp",
         "string.cpp",
     ],
-    hdrs = glob(["*.inc"]),
-    copts = cc_copts(),
-    visibility = ["//visibility:public"],
-    deps = [
-        ":headers",
-        "//core/memory/arena/cc",
-    ],
-)
-
-cc_library(
-    name = "cloner",
-    srcs = [
-        "cloner.cpp",
-    ],
-    hdrs = glob(["*.inc"]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
