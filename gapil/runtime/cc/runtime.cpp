@@ -71,6 +71,7 @@ void default_code_locator(context* ctx, char** file, uint32_t* line) {}
 
 static gapil_pool_data_resolver* pool_data_resolver =
     &default_pool_data_resolver;
+static gapil_database_storer* database_storer = nullptr;
 static gapil_get_code_location* code_locator = &default_code_locator;
 
 }  // anonymous namespace
@@ -79,6 +80,10 @@ extern "C" {
 
 void gapil_set_pool_data_resolver(gapil_pool_data_resolver* cb) {
   pool_data_resolver = cb != nullptr ? cb : &default_pool_data_resolver;
+}
+
+void gapil_set_database_storer(gapil_database_storer* cb) {
+  database_storer = cb;
 }
 
 void gapil_set_code_locator(gapil_get_code_location* cb) {
@@ -349,6 +354,12 @@ int32_t gapil_string_compare(string* a, string* b) {
   return strncmp(reinterpret_cast<const char*>(a->data),
                  reinterpret_cast<const char*>(b->data),
                  std::max(a->length, b->length));
+}
+
+void gapil_store_in_database(context* ctx, void* ptr, uint64_t size,
+                             uint8_t* id_out) {
+  GAPID_ASSERT_MSG(database_storer != nullptr, "No database storer set");
+  database_storer(ctx, ptr, size, id_out);
 }
 
 }  // extern "C"
