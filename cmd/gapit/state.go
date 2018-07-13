@@ -137,7 +137,7 @@ func traverseStateTree(
 
 	nextFilter := filter
 	if len(filter) != 0 &&
-			(filter[0] != n.Name && filter[0] != "*") {
+		(filter[0] != n.Name && filter[0] != "*") {
 		return nil
 	}
 	if len(filter) != 0 {
