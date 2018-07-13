@@ -16,7 +16,10 @@ load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
     name = "headers",
-    hdrs = glob(["*.h"]),
+    hdrs = glob([
+        "*.h",
+        "*.inc",
+    ]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
 )
@@ -56,7 +59,6 @@ cc_library(
         "runtime.cpp",
         "string.cpp",
     ],
-    hdrs = glob(["*.inc"]),
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
