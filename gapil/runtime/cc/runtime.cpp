@@ -134,6 +134,40 @@ void gapil_free(arena_t* a, void* ptr) {
   arena->free(ptr);
 }
 
+void gapil_create_buffer(arena* a, uint64_t capacity, uint64_t alignment,
+                         buffer* buf) {
+  DEBUG_PRINT("gapil_create_buffer(capacity: %" PRId64 ", alignment: %" PRId64
+              ")",
+              capacity, alignment);
+  Arena* arena = reinterpret_cast<Arena*>(a);
+  buf->data = (uint8_t*)arena->allocate(capacity, alignment);
+  buf->size = 0;
+  buf->capacity = capacity;
+}
+
+void gapil_destroy_buffer(arena* a, buffer* buf) {
+  DEBUG_PRINT("gapil_destroy_buffer()");
+  Arena* arena = reinterpret_cast<Arena*>(a);
+  arena->free(buf->data);
+  buf->capacity = 0;
+  buf->size = 0;
+}
+
+void gapil_append_buffer(arena* a, buffer* buf, const void* data, uint64_t size,
+                         uint64_t alignment) {
+  DEBUG_PRINT("gapil_append_buffer(data: %p, size: " PRId64
+              ", alignment: %" PRId64 ")",
+              data, size, alignment);
+  if (buf->size + size > buf->capacity) {
+    Arena* arena = reinterpret_cast<Arena*>(a);
+    buf->capacity *= 2;
+    buf->data =
+        (uint8_t*)arena->reallocate(buf->data, buf->capacity, alignment);
+  }
+  memcpy(buf->data + buf->size, data, size);
+  buf->size = buf->size + size;
+}
+
 pool* gapil_make_pool(context* ctx, uint64_t size) {
   Arena* arena = reinterpret_cast<Arena*>(ctx->arena);
 
