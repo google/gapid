@@ -21,6 +21,8 @@
 #include "stack.h"
 #include "thread_pool.h"
 
+#include "gapir/replay_service/vm.h"
+
 #include "core/cc/crash_handler.h"
 
 #include <stdint.h>
@@ -45,6 +47,8 @@ class Interpreter {
   // return true if the request is fulfilled.
   using ApiRequestCallback = std::function<bool(Interpreter*, uint8_t)>;
 
+  using InstructionCode = vm::Opcode;
+
   enum : uint32_t {
     // The API index to use for global builtin functions.
     GLOBAL_INDEX = 0,
@@ -59,28 +63,6 @@ class Interpreter {
     // Debug function Ids
     PRINT_STACK_FUNCTION_ID = 0xff80,
     // 0xff81..0xffff reserved for synthetic functions
-  };
-
-  // Instruction codes for the different instructions. The codes have to be
-  // consistent with the codes on the server side.
-  enum class InstructionCode : uint8_t {
-    CALL = 0,
-    PUSH_I = 1,
-    LOAD_C = 2,
-    LOAD_V = 3,
-    LOAD = 4,
-    POP = 5,
-    STORE_V = 6,
-    STORE = 7,
-    RESOURCE = 8,
-    POST = 9,
-    COPY = 10,
-    CLONE = 11,
-    STRCPY = 12,
-    EXTEND = 13,
-    ADD = 14,
-    LABEL = 15,
-    SWITCH_THREAD = 16,
   };
 
   // Creates a new interpreter with the specified memory manager (for resolving
