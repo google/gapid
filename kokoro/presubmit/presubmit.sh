@@ -18,6 +18,7 @@ BAZEL=${BAZEL:-bazel}
 BUILDIFIER=${BUILDIFIER:-buildifier}
 BUILDOZER=${BUILDOZER:-buildozer}
 CLANG_FORMAT=${CLANG_FORMAT:-clang-format}
+GOFMT=${GOFMT:-gofmt}
 
 if test -t 1; then
   ncolors=$(tput colors)
@@ -53,6 +54,10 @@ function run_clang_format() {
   find . -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" | xargs $CLANG_FORMAT -i -style=Google
 }
 
+function run_gofmt() {
+  find . -name "*.go" | xargs $GOFMT -w
+}
+
 function run_buildifier() {
   find . -name "*.BUILD" -o -name "BUILD.bazel" | xargs $BUILDIFIER
 }
@@ -74,6 +79,9 @@ check "git workspace must be clean" true
 
 # Check clang-format.
 check clang-format run_clang_format
+
+# Check gofmt.
+check gofmt run_gofmt
 
 # Check buildifier.
 check buildifier run_buildifier
