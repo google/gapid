@@ -103,6 +103,10 @@ type Call struct {
 	FunctionID uint16 // The function identifier to call.
 }
 
+func (c Call) String() string {
+	return fmt.Sprintf("Call(PushReturn: %v, API: %v, Func: %v)", c.PushReturn, c.ApiIndex, c.FunctionID)
+}
+
 func (c Call) Encode(w binary.Writer) error {
 	apiFunction := PackAPIIndexFunctionID(c.ApiIndex, c.FunctionID)
 	w.Uint32(packCX(protocol.OpCall, setBit(apiFunction, 24, c.PushReturn)))
@@ -113,6 +117,10 @@ func (c Call) Encode(w binary.Writer) error {
 type PushI struct {
 	DataType protocol.Type // The value type to push.
 	Value    uint32        // The value to push packed into the low 20 bits.
+}
+
+func (c PushI) String() string {
+	return fmt.Sprintf("PushI(Type: %v, Address: 0x%x)", c.DataType, int(c.Value))
 }
 
 func (c PushI) Encode(w binary.Writer) error {
@@ -126,6 +134,10 @@ type LoadC struct {
 	Address  uint32        // The pointer to the value in constant address-space.
 }
 
+func (c LoadC) String() string {
+	return fmt.Sprintf("LoadC(Type: %v, Address: 0x%x)", c.DataType, c.Address)
+}
+
 func (c LoadC) Encode(w binary.Writer) error {
 	w.Uint32(packCYZ(protocol.OpLoadC, uint32(c.DataType), c.Address))
 	return w.Error()
@@ -135,6 +147,10 @@ func (c LoadC) Encode(w binary.Writer) error {
 type LoadV struct {
 	DataType protocol.Type // The value type to load.
 	Address  uint32        // The pointer to the value in volatile address-space.
+}
+
+func (c LoadV) String() string {
+	return fmt.Sprintf("LoadV(Type: %v, Address: 0x%x)", c.DataType, c.Address)
 }
 
 func (c LoadV) Encode(w binary.Writer) error {
@@ -147,6 +163,8 @@ type Load struct {
 	DataType protocol.Type // The value types to load.
 }
 
+func (c Load) String() string { return fmt.Sprintf("Load(Type: %v)", c.DataType) }
+
 func (c Load) Encode(w binary.Writer) error {
 	w.Uint32(packCYZ(protocol.OpLoad, uint32(c.DataType), 0))
 	return w.Error()
@@ -156,6 +174,8 @@ func (c Load) Encode(w binary.Writer) error {
 type Pop struct {
 	Count uint32 // Number of elements to pop from the top of the stack.
 }
+
+func (c Pop) String() string { return fmt.Sprintf("Pop(Count: %d)", c.Count) }
 
 func (c Pop) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpPop, c.Count))
@@ -167,6 +187,8 @@ type StoreV struct {
 	Address uint32 // Pointer in volatile address-space.
 }
 
+func (c StoreV) String() string { return fmt.Sprintf("StoreV(Address: 0x%x)", c.Address) }
+
 func (c StoreV) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpStoreV, c.Address))
 	return w.Error()
@@ -174,6 +196,8 @@ func (c StoreV) Encode(w binary.Writer) error {
 
 // Store represents the STORE virtual machine opcode.
 type Store struct{}
+
+func (c Store) String() string { return "Store" }
 
 func (c Store) Encode(w binary.Writer) error {
 	w.Uint32(packC(protocol.OpStore))
@@ -185,6 +209,8 @@ type Resource struct {
 	ID uint32 // The index of the resource identifier.
 }
 
+func (c Resource) String() string { return fmt.Sprintf("Resource(ID: 0x%x)", c.ID) }
+
 func (c Resource) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpResource, c.ID))
 	return w.Error()
@@ -192,6 +218,8 @@ func (c Resource) Encode(w binary.Writer) error {
 
 // Post represents the POST virtual machine opcode.
 type Post struct{}
+
+func (c Post) String() string { return "Post" }
 
 func (c Post) Encode(w binary.Writer) error {
 	w.Uint32(packC(protocol.OpPost))
@@ -203,6 +231,8 @@ type Copy struct {
 	Count uint32 // Number of bytes to copy.
 }
 
+func (c Copy) String() string { return fmt.Sprintf("Copy(Count: %d)", c.Count) }
+
 func (c Copy) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpCopy, c.Count))
 	return w.Error()
@@ -212,6 +242,8 @@ func (c Copy) Encode(w binary.Writer) error {
 type Clone struct {
 	Index uint32 // Index of element from top of stack to clone.
 }
+
+func (c Clone) String() string { return fmt.Sprintf("Clone(Index: %v)", c.Index) }
 
 func (c Clone) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpClone, c.Index))
@@ -223,6 +255,8 @@ type Strcpy struct {
 	MaxSize uint32 // Maximum size in bytes to copy.
 }
 
+func (c Strcpy) String() string { return fmt.Sprintf("Strcpy(MaxSize: 0x%x)", c.MaxSize) }
+
 func (c Strcpy) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpStrcpy, c.MaxSize))
 	return w.Error()
@@ -232,6 +266,8 @@ func (c Strcpy) Encode(w binary.Writer) error {
 type Extend struct {
 	Value uint32 // 26 bit value to extend the top of the stack by.
 }
+
+func (c Extend) String() string { return fmt.Sprintf("Extend(Value: 0x%x)", c.Value) }
 
 func (c Extend) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpExtend, c.Value))
@@ -243,6 +279,8 @@ type Add struct {
 	Count uint32 // Number of top value stack elements to pop and sum.
 }
 
+func (c Add) String() string { return fmt.Sprintf("Add(Count: 0x%x)", c.Count) }
+
 func (c Add) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpAdd, c.Count))
 	return w.Error()
@@ -253,6 +291,8 @@ type Label struct {
 	Value uint32 // 26 bit label name.
 }
 
+func (c Label) String() string { return fmt.Sprintf("Label(Value: %d)", c.Value) }
+
 func (c Label) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpLabel, c.Value))
 	return w.Error()
@@ -262,6 +302,8 @@ func (c Label) Encode(w binary.Writer) error {
 type SwitchThread struct {
 	Index uint32 // 26 bit thread index.
 }
+
+func (c SwitchThread) String() string { return fmt.Sprintf("SwitchThread(Index: 0x%x)", c.Index) }
 
 func (c SwitchThread) Encode(w binary.Writer) error {
 	w.Uint32(packCX(protocol.OpSwitchThread, c.Index))

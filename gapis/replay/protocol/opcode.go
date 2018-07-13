@@ -77,6 +77,6 @@ func (t Opcode) String() string {
 	case OpSwitchThread:
 		return "SwitchThread"
 	default:
-		panic(fmt.Errorf("Unknown ValueType %d", uint32(t)))
+		panic(fmt.Errorf("Unknown Opcode %d", uint32(t)))
 	}
 }
