@@ -19,7 +19,7 @@ import "github.com/google/gapid/core/codegen"
 //#define QUOTE(x) #x
 //#define DECL_GAPIL_CLONER_CB(RETURN, NAME, ...) \
 //	const char* NAME##_sig = QUOTE(RETURN NAME(__VA_ARGS__));
-//#include "gapil/runtime/cc/cloner.h"
+//#include "gapil/runtime/cc/cloner/cloner.h"
 import "C"
 
 // callbacks are the runtime functions used to do the cloing.

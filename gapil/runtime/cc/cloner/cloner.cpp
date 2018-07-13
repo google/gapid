@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "cloner.h"
-#include "map.inc"
 
 #include "core/cc/log.h"
 #include "core/memory/arena/cc/arena.h"
+#include "gapil/runtime/cc/map.inc"
 
 #if 0
 #define DEBUG_PRINT(...) GAPID_INFO(__VA_ARGS__)

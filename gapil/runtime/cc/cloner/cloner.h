@@ -15,7 +15,7 @@
 #ifndef __GAPIL_RUNTIME_CLONER_H__
 #define __GAPIL_RUNTIME_CLONER_H__
 
-#include "runtime.h"
+#include "gapil/runtime/cc/runtime.h"
 
 #ifdef __cplusplus
 extern "C" {
