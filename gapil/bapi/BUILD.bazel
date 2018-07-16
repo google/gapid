@@ -40,6 +40,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/data/protoutil:go_default_library",
+        "//core/text/parse/cst:go_default_library",
         "//gapil/ast:go_default_library",
         "//gapil/semantic:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",

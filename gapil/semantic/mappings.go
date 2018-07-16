@@ -15,6 +15,7 @@
 package semantic
 
 import (
+	"github.com/google/gapid/core/data/slice"
 	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 )
@@ -34,6 +35,20 @@ func (m *Mappings) Add(a ast.Node, s Node) {
 	}
 	m.ASTToSemantic[a] = append(m.ASTToSemantic[a], s)
 	m.SemanticToAST[s] = append(m.SemanticToAST[s], a)
+}
+
+// Remove removes the semantic node from the mappings.
+func (m *Mappings) Remove(s Node) {
+	for _, a := range m.SemanticToAST[s] {
+		l := m.ASTToSemantic[a]
+		slice.Remove(&l, s)
+		if len(l) > 0 {
+			m.ASTToSemantic[a] = l
+		} else {
+			delete(m.ASTToSemantic, a)
+		}
+	}
+	delete(m.SemanticToAST, s)
 }
 
 // CST returns the primary CST for the semantic node.

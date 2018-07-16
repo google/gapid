@@ -59,6 +59,7 @@ func type_(rv *resolver, in interface{}) semantic.Type {
 			case *semantic.DefinitionUsage:
 				sizeExpr = ty.Definition
 				e = ty.Expression
+				rv.mappings.Remove(e)
 			case *semantic.EnumEntry:
 				sizeExpr = e
 				e = ty.Value

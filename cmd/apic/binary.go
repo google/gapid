@@ -17,28 +17,36 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"io/ioutil"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/os/file"
-	"github.com/google/gapid/gapil"
+	"github.com/google/gapid/gapil/bapi"
 	"github.com/google/gapid/gapil/resolver"
 	"github.com/google/gapid/gapil/semantic"
 )
 
-func resolve(ctx context.Context, search file.PathList, flags flag.FlagSet, opts resolver.Options) (*semantic.API, *semantic.Mappings, error) {
-	args := flags.Args()
-	if len(args) < 1 {
-		return nil, nil, fmt.Errorf("Missing api file")
+func init() {
+	app.AddVerb(&app.Verb{
+		Name:      "binary",
+		ShortHelp: "Parses and resolves an api file and stores it to a binary file",
+		Action:    &binaryVerb{},
+	})
+}
+
+type binaryVerb struct {
+	Search file.PathList `help:"The set of paths to search for includes"`
+	Output file.Path     `help:"Output file path"`
+}
+
+func (v *binaryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	api, mappings, err := resolve(ctx, v.Search, flags, resolver.Options{})
+	if err != nil {
+		return err
 	}
-	path := args[0]
-	processor := gapil.NewProcessor()
-	if len(search) > 0 {
-		processor.Loader = gapil.NewSearchLoader(search)
+	data, err := bapi.Encode([]*semantic.API{api}, mappings)
+	if err != nil {
+		return err
 	}
-	processor.Options = opts
-	compiled, errs := processor.Resolve(path)
-	if err := gapil.CheckErrors(path, errs, maxErrors); err != nil {
-		return nil, nil, err
-	}
-	return compiled, processor.Mappings, nil
+	return ioutil.WriteFile(v.Output.String(), data, 0666)
 }
