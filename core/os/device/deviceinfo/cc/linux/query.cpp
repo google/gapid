@@ -152,12 +152,7 @@ void createGlContext() {
 
   gContext.mDisplay = fn_XOpenDisplay(nullptr);
   if (gContext.mDisplay == nullptr) {
-    // Default display was not found. This may be because we're executing in
-    // the bazel sandbox. Attempt to connect to the 0'th display instead.
-    gContext.mDisplay = fn_XOpenDisplay(":0");
-    if (gContext.mDisplay == nullptr) {
-      return;
-    }
+    return;
   }
 
   const int visualAttribs[] = {
