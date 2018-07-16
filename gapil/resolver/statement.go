@@ -259,6 +259,7 @@ func iteration(rv *resolver, in *ast.Iteration) semantic.Statement {
 	} else if b.Operator != ast.OpRange {
 		rv.errorf(in, "iterable can only be range operator, got %s\n", b.Operator)
 	}
+	rv.mappings.Remove(b) // The binary op is no longer referenced directly.
 	out := &semantic.Iteration{AST: in, Iterator: v, From: b.LHS, To: b.RHS}
 	v.Type = iterable.ExpressionType()
 	rv.with(semantic.VoidType, func() {

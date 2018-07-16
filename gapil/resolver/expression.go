@@ -137,6 +137,11 @@ func callArguments(rv *resolver, at ast.Node, in []ast.Node, params []*semantic.
 					} else {
 						rv.errorf(a, "Message parameters have to reference a class, got: %T -> %T", arg, arg.Type.To)
 					}
+
+					// The Create node has been substituted with a MessageValue
+					// and is no longer referenced directly.
+					rv.mappings.Remove(arg)
+					rv.mappings.Remove(arg.Initializer)
 					return
 				}
 

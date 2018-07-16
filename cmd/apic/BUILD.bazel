@@ -17,6 +17,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
+        "binary.go",
         "compile.go",
         "format.go",
         "main.go",
@@ -34,6 +35,7 @@ go_library(
         "//core/os/file:go_default_library",
         "//gapil:go_default_library",
         "//gapil/ast:go_default_library",
+        "//gapil/bapi:go_default_library",
         "//gapil/compiler:go_default_library",
         "//gapil/compiler/mangling/c:go_default_library",
         "//gapil/compiler/mangling/ia64:go_default_library",

@@ -27,7 +27,51 @@ func Replace(node Node, visitor func(Node) Node) {
 	switch n := node.(type) {
 	case *Abort:
 	case *API:
-		(*Symbols)(&n.members).Visit(func(_ string, n Node) { visitor(n) })
+		for i, c := range n.Enums {
+			n.Enums[i] = visitor(c).(*Enum)
+		}
+		for i, c := range n.Definitions {
+			n.Definitions[i] = visitor(c).(*Definition)
+		}
+		for i, c := range n.Classes {
+			n.Classes[i] = visitor(c).(*Class)
+		}
+		for i, c := range n.Pseudonyms {
+			n.Pseudonyms[i] = visitor(c).(*Pseudonym)
+		}
+		for i, c := range n.Externs {
+			n.Externs[i] = visitor(c).(*Function)
+		}
+		for i, c := range n.Subroutines {
+			n.Subroutines[i] = visitor(c).(*Function)
+		}
+		for i, c := range n.Functions {
+			n.Functions[i] = visitor(c).(*Function)
+		}
+		for i, c := range n.Methods {
+			n.Methods[i] = visitor(c).(*Function)
+		}
+		for i, c := range n.Globals {
+			n.Globals[i] = visitor(c).(*Global)
+		}
+		for i, c := range n.StaticArrays {
+			n.StaticArrays[i] = visitor(c).(*StaticArray)
+		}
+		for i, c := range n.Maps {
+			n.Maps[i] = visitor(c).(*Map)
+		}
+		for i, c := range n.Pointers {
+			n.Pointers[i] = visitor(c).(*Pointer)
+		}
+		for i, c := range n.Slices {
+			n.Slices[i] = visitor(c).(*Slice)
+		}
+		for i, c := range n.References {
+			n.References[i] = visitor(c).(*Reference)
+		}
+		for i, c := range n.Signatures {
+			n.Signatures[i] = visitor(c).(*Signature)
+		}
 	case *ArrayAssign:
 		n.To = visitor(n.To).(*ArrayIndex)
 		n.Value = visitor(n.Value).(Expression)
@@ -94,6 +138,9 @@ func Replace(node Node, visitor func(Node) Node) {
 		}
 		n.Function = visitor(n.Function).(*Function)
 	case *Case:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		for i, c := range n.Conditions {
 			n.Conditions[i] = visitor(c).(Expression)
 		}
@@ -102,6 +149,9 @@ func Replace(node Node, visitor func(Node) Node) {
 		n.Object = visitor(n.Object).(Expression)
 		n.Type = visitor(n.Type).(Type)
 	case *Class:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		for i, f := range n.Fields {
 			n.Fields[i] = visitor(f).(*Field)
 		}
@@ -113,11 +163,17 @@ func Replace(node Node, visitor func(Node) Node) {
 			n.Fields[i] = visitor(f).(*FieldInitializer)
 		}
 	case *Choice:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		for i, c := range n.Conditions {
 			n.Conditions[i] = visitor(c).(Expression)
 		}
 		n.Expression = visitor(n.Expression).(Expression)
 	case *Definition:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		n.Expression = visitor(n.Expression).(Expression)
 	case *DefinitionUsage:
 		n.Expression = visitor(n.Expression).(Expression)
@@ -129,20 +185,21 @@ func Replace(node Node, visitor func(Node) Node) {
 		}
 	case Documentation:
 	case *Enum:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		for i, e := range n.Entries {
 			n.Entries[i] = visitor(e).(*EnumEntry)
 		}
 	case *EnumEntry:
-	case *Pseudonym:
-		n.To = visitor(n.To).(Type)
-		for i, m := range n.Methods {
-			n.Methods[i] = visitor(m).(*Function)
-		}
 	case *Fence:
 		if n.Statement != nil {
 			n.Statement = visitor(n.Statement).(Statement)
 		}
 	case *Field:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		n.Type = visitor(n.Type).(Type)
 		if n.Default != nil {
 			n.Default = visitor(n.Default).(Expression)
@@ -152,6 +209,9 @@ func Replace(node Node, visitor func(Node) Node) {
 	case Float32Value:
 	case Float64Value:
 	case *Function:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
 		if n.Return != nil {
 			n.Return = visitor(n.Return).(*Parameter)
 		}
@@ -162,13 +222,13 @@ func Replace(node Node, visitor func(Node) Node) {
 			n.Block = visitor(n.Block).(*Block)
 		}
 		n.Signature = visitor(n.Signature).(*Signature)
-	case *Parameter:
+	case *Global:
 		for i, c := range n.Annotations {
 			n.Annotations[i] = visitor(c).(*Annotation)
 		}
-		n.Type = visitor(n.Type).(Type)
-	case *Global:
 	case *StaticArray:
+		n.ValueType = visitor(n.ValueType).(Type)
+		n.SizeExpr = visitor(n.SizeExpr).(Expression)
 	case *Signature:
 	case Int8Value:
 	case Int16Value:
@@ -214,8 +274,21 @@ func Replace(node Node, visitor func(Node) Node) {
 		}
 	case *New:
 		n.Type = visitor(n.Type).(*Reference)
+	case *Parameter:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
+		n.Type = visitor(n.Type).(Type)
 	case *Pointer:
 		n.To = visitor(n.To).(Type)
+	case *Pseudonym:
+		for i, c := range n.Annotations {
+			n.Annotations[i] = visitor(c).(*Annotation)
+		}
+		n.To = visitor(n.To).(Type)
+		for i, m := range n.Methods {
+			n.Methods[i] = visitor(m).(*Function)
+		}
 	case *Return:
 		if n.Value != nil {
 			n.Value = visitor(n.Value).(Expression)
@@ -252,6 +325,7 @@ func Replace(node Node, visitor func(Node) Node) {
 		n.Initializer = visitor(n.Initializer).(*ClassInitializer)
 	case *Ignore:
 	case *Make:
+		n.Type = visitor(n.Type).(*Slice)
 		n.Size = visitor(n.Size).(Expression)
 	case Null:
 	case *PointerRange:

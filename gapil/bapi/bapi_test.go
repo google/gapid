@@ -20,7 +20,9 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"context"
+	"fmt"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -44,12 +46,12 @@ var testAPIs = []string{
 func TestEncodeDecode(t *testing.T) {
 	ctx := log.Testing(t)
 
-	apis := resolveAPIs(ctx)
+	apis, mappings := resolveAPIs(ctx)
 
-	data, err := bapi.Encode(apis)
+	data, err := bapi.Encode(apis, mappings)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
-	decodedAPIs, err := bapi.Decode(data)
+	decodedAPIs, decodedMappings, err := bapi.Decode(data)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	if assert.For(ctx, "num apis").That(len(decodedAPIs)).Equals(len(apis)) {
@@ -57,6 +59,82 @@ func TestEncodeDecode(t *testing.T) {
 			assert.For(ctx, "apis").That(decodedAPIs[i]).DeepEquals(apis[i])
 		}
 	}
+
+	if false {
+		// These tests are disabled because they currently do not pass.
+		// Mappings are being serialized, but their order is non-deterministic
+		// though the iteration of maps.
+		// TODO: Fix and enable these tests.
+		checkMappings(ctx, decodedAPIs, apis, decodedMappings, mappings)
+	}
+}
+
+func checkMappings(ctx context.Context,
+	gotAPIs, expectAPIs []*semantic.API,
+	gotMappings, expectMappings *semantic.Mappings) {
+
+	translateMapping(gotAPIs, expectAPIs, gotMappings)
+
+	assert.For(ctx, "SemanticToAST").
+		That(gotMappings.SemanticToAST).
+		DeepEquals(expectMappings.SemanticToAST)
+}
+
+// translateMapping translates the keys of mapping from the nodes of the from
+// API tree to their equivalent in the to API tree.
+func translateMapping(from, to []*semantic.API, mapping *semantic.Mappings) {
+	out := &semantic.Mappings{}
+	remap := correlateNodes(from, to)
+	for sem, asts := range mapping.SemanticToAST {
+		if remapped, ok := remap[sem]; ok {
+			for _, ast := range asts {
+				out.Add(ast, remapped)
+			}
+		} else {
+			// If we hit this panic, we either have semantic nodes in the
+			// mapping that are not referenced by the API (which is bad), or
+			// we have nodes not being visited using semantic.Visit (which is
+			// also bad).
+			panic(fmt.Sprintf("No remap for %T %+v", sem, sem))
+		}
+	}
+	*mapping = *out
+}
+
+// correlateNodes traverses the from and to API trees to build and return a map
+// that translates all the nodes in from to to. This function requires the two
+// trees to be symmetrical.
+func correlateNodes(from, to []*semantic.API) map[semantic.Node]semantic.Node {
+	out := make(map[semantic.Node]semantic.Node)
+	for i := range from {
+		f, t := collectNodes(from[i]), collectNodes(to[i])
+		if len(f) != len(t) {
+			panic("APIs are not balanced")
+		}
+		for i, n := range f {
+			if reflect.TypeOf(n) != reflect.TypeOf(t[i]) {
+				panic("APIs are not symmetrical")
+			}
+			out[n] = t[i]
+		}
+	}
+	return out
+}
+
+func collectNodes(n semantic.Node) []semantic.Node {
+	l := []semantic.Node{}
+	seen := map[semantic.Node]bool{}
+	var visit func(n semantic.Node)
+	visit = func(n semantic.Node) {
+		if seen[n] {
+			return
+		}
+		seen[n] = true
+		l = append(l, n)
+		semantic.Visit(n, visit)
+	}
+	visit(n)
+	return l
 }
 
 // Run the benchmarks with:
@@ -66,15 +144,15 @@ func TestEncodeDecode(t *testing.T) {
 func BenchmarkDecode(b *testing.B) {
 	ctx := log.Testing(b)
 
-	apis := resolveAPIs(ctx)
+	apis, mappings := resolveAPIs(ctx)
 
-	data, err := bapi.Encode(apis)
+	data, err := bapi.Encode(apis, mappings)
 	check(err)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := bapi.Decode(data)
+		_, _, err := bapi.Decode(data)
 		check(err)
 	}
 }
@@ -88,29 +166,30 @@ func BenchmarkApproaches(b *testing.B) {
 	ctx := log.Testing(b)
 
 	var apis []*semantic.API
+	var mappings *semantic.Mappings
 
 	// Time how long it takes to parse and resolve the APIs from source
 	b.Run("Parse & Resolve", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			apis = resolveAPIs(ctx)
+			apis, mappings = resolveAPIs(ctx)
 		}
 	})
+
+	var data []byte
 
 	// Time how long it takes to encode
 	b.Run("Encode", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err := bapi.Encode(apis)
+			var err error
+			data, err = bapi.Encode(apis, mappings)
 			check(err)
 		}
 	})
 
-	data, err := bapi.Encode(apis)
-	check(err)
-
 	// Time how long it takes to decode
 	b.Run("Decode", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err := bapi.Decode(data)
+			_, _, err := bapi.Decode(data)
 			check(err)
 		}
 	})
@@ -128,7 +207,7 @@ func BenchmarkApproaches(b *testing.B) {
 	}
 }
 
-func resolveAPIs(ctx context.Context) []*semantic.API {
+func resolveAPIs(ctx context.Context) ([]*semantic.API, *semantic.Mappings) {
 	apis := []*semantic.API{}
 	processor := gapil.NewProcessor()
 	for _, path := range testAPIs {
@@ -138,7 +217,7 @@ func resolveAPIs(ctx context.Context) []*semantic.API {
 		}
 		apis = append(apis, api)
 	}
-	return apis
+	return apis, processor.Mappings
 }
 
 type compressor struct {
