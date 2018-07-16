@@ -107,9 +107,10 @@ cmd VkResult vkResetCommandPool(
 ////////////////////
 
 enum RecordingState {
-  NOT_STARTED = 0,
-  RECORDING   = 1,
-  COMPLETED   = 2
+  NOT_STARTED  = 0,
+  RECORDING    = 1,
+  COMPLETED    = 2,
+  TO_BE_RESET  = 3
 }
 
 @internal class CommandBufferBegin {

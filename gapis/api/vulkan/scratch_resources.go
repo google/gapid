@@ -222,18 +222,18 @@ func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize ui
 		allocated = qr.allocated
 		usingTempMem = false
 	}
+	atData := sb.MustReserve(totalAllocationSize)
+	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
+	sb.write(sb.cb.VkMapMemory(
+		dev, deviceMemory, VkDeviceSize(allocated), VkDeviceSize(totalAllocationSize),
+		VkMemoryMapFlags(0), ptrAtData.Ptr(), VkResult_VK_SUCCESS,
+	).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
+	ptrAtData.Free()
+
+	bufBindingOffset := allocated
 	for buf, info := range buffers {
 		sb.write(sb.cb.VkBindBufferMemory(
-			dev, buf, deviceMemory, VkDeviceSize(allocated), VkResult_VK_SUCCESS))
-
-		atData := sb.MustReserve(info.allocationSize)
-		ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
-		sb.write(sb.cb.VkMapMemory(
-			dev, deviceMemory, VkDeviceSize(allocated), VkDeviceSize(info.allocationSize),
-			VkMemoryMapFlags(0), ptrAtData.Ptr(), VkResult_VK_SUCCESS,
-		).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
-		ptrAtData.Free()
-
+			dev, buf, deviceMemory, VkDeviceSize(bufBindingOffset), VkResult_VK_SUCCESS))
 		for _, r := range info.data {
 			var hash id.ID
 			var err error
@@ -245,27 +245,27 @@ func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize ui
 			} else {
 				hash = r.hash
 			}
-			sb.ReadDataAt(hash, atData.Address()+r.rng.First, r.rng.Count)
+			sb.ReadDataAt(hash, atData.Address()+bufBindingOffset-allocated+r.rng.First, r.rng.Count)
 		}
-		sb.write(sb.cb.VkFlushMappedMemoryRanges(
-			dev,
-			1,
-			sb.MustAllocReadData(NewVkMappedMemoryRange(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-				0,                                 // pNext
-				deviceMemory,                      // memory
-				VkDeviceSize(allocated),           // offset
-				VkDeviceSize(info.allocationSize), // size
-			)).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
-
-		sb.write(sb.cb.VkUnmapMemory(dev, deviceMemory))
-		atData.Free()
-		allocated += info.allocationSize
+		bufBindingOffset += info.allocationSize
 	}
+	sb.write(sb.cb.VkFlushMappedMemoryRanges(
+		dev,
+		1,
+		sb.MustAllocReadData(NewVkMappedMemoryRange(sb.ta,
+			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
+			0,                                 // pNext
+			deviceMemory,                      // memory
+			VkDeviceSize(allocated),           // offset
+			VkDeviceSize(totalAllocationSize), // size
+		)).Ptr(),
+		VkResult_VK_SUCCESS,
+	))
+	sb.write(sb.cb.VkUnmapMemory(dev, deviceMemory))
+	atData.Free()
+
 	if !usingTempMem {
-		qr.allocated = allocated
+		qr.allocated += totalAllocationSize
 	}
 	return deviceMemory, usingTempMem
 }
