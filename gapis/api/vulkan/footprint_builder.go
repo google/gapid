@@ -1809,6 +1809,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.addBufferMemBinding(ctx, bh, cmd.Buffer(), cmd.Memory(), 0, size, offset)
 	case *VkCreateBufferView:
 		write(ctx, bh, vkHandle(cmd.PView().MustRead(ctx, cmd, s, nil)))
+		info := cmd.PCreateInfo().MustRead(ctx, cmd, s, nil)
+		buf := info.Buffer()
+		offset := uint64(info.Offset())
+		size := uint64(info.Range())
+		read(ctx, bh, vb.getBufferData(ctx, bh, buf, offset, size)...)
 	case *VkDestroyBufferView:
 		read(ctx, bh, vkHandle(cmd.BufferView()))
 		bh.Alive = true
