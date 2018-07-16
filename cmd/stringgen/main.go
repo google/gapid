@@ -110,7 +110,7 @@ func run(ctx context.Context) error {
 		return log.Err(ctx, ErrNoStringtables, "")
 	}
 
-	log.I(ctx, "Found %d string table file(s)", len(tables))
+	log.D(ctx, "Found %d string table file(s)", len(tables))
 
 	if err := validate(ctx, tables); err != nil {
 		return err
