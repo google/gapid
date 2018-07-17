@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <sstream>
+
 #include "gapii/cc/gles_spy.h"
 #include "gapii/cc/gles_types.h"
 #include "gapii/cc/spy.h"
@@ -179,12 +181,110 @@ TempObject CreateAndBindContext(const GlesImports& imports,
   });
 }
 
-void DrawTexturedQuad(const GlesImports& imports, uint32_t textureTarget,
-                      GLsizei w, GLsizei h) {
+typedef struct {
+  GLint r, g, b, a;
+} swizzle_t;
+
+class Sampler {
+ public:
+  Sampler(uint32_t target) : mTarget(target) {}
+
+  virtual std::string getExtensions() const = 0;
+  virtual std::string getUniform() const = 0;
+  virtual std::string getSamplingExpression() const = 0;
+
+  void bindTexture(const GlesImports& imports, GLint texId) const {
+    imports.glBindTexture(mTarget, texId);
+  }
+
+  void getParams(const GlesImports& imports, swizzle_t* swizzle,
+                 GLint* compMode) const {
+    imports.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_R, &swizzle->r);
+    imports.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_G, &swizzle->g);
+    imports.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_B, &swizzle->b);
+    imports.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_A, &swizzle->a);
+    imports.glGetTexParameteriv(mTarget, GL_TEXTURE_COMPARE_MODE, compMode);
+  }
+
+  void setParams(const GlesImports& imports, swizzle_t swizzle,
+                 GLint compMode) const {
+    imports.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_R, swizzle.r);
+    imports.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_G, swizzle.g);
+    imports.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_B, swizzle.b);
+    imports.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_A, swizzle.a);
+    imports.glTexParameteri(mTarget, GL_TEXTURE_COMPARE_MODE, compMode);
+  }
+
+ private:
+  uint32_t mTarget;
+};
+
+class Sampler2D : public Sampler {
+ public:
+  Sampler2D() : Sampler(GL_TEXTURE_2D) {}
+
+  virtual std::string getExtensions() const { return ""; }
+
+  virtual std::string getUniform() const { return "uniform sampler2D tex;"; }
+
+  virtual std::string getSamplingExpression() const {
+    return "texture2D(tex, texcoord)";
+  }
+
+  static const Sampler& get() {
+    static const Sampler2D instance;
+    return instance;
+  }
+};
+
+class SamplerExternal : public Sampler {
+ public:
+  SamplerExternal() : Sampler(GL_TEXTURE_EXTERNAL_OES) {}
+
+  virtual std::string getExtensions() const {
+    return "#extension GL_OES_EGL_image_external : require\n";
+  }
+
+  virtual std::string getUniform() const {
+    return "uniform samplerExternalOES tex;";
+  }
+
+  virtual std::string getSamplingExpression() const {
+    return "texture2D(tex, texcoord)";
+  }
+
+  static const Sampler& get() {
+    static const SamplerExternal instance;
+    return instance;
+  }
+};
+
+class Sampler3D : public Sampler {
+ public:
+  Sampler3D(float z) : Sampler(GL_TEXTURE_3D), mZ(z) {}
+
+  virtual std::string getExtensions() const {
+    return "#extension GL_OES_texture_3D : require\n";
+  }
+
+  virtual std::string getUniform() const { return "uniform sampler3D tex;"; }
+
+  virtual std::string getSamplingExpression() const {
+    std::ostringstream r;
+    r << "texture3D(tex, vec3(texcoord, " << mZ << "))";
+    return r.str();
+  }
+
+ private:
+  float mZ;
+};
+
+void DrawTexturedQuad(const GlesImports& imports, GLsizei w, GLsizei h,
+                      const Sampler& sampler) {
   GLint err;
 
   if ((err = imports.glGetError()) != 0) {
-    GAPID_FATAL("MEC: Entered DrawTextureQuad in error state: 0x%X", err);
+    GAPID_FATAL("MEC: Entered DrawTexturedQuad in error state: 0x%X", err);
   }
 
   std::string vsSource;
@@ -197,16 +297,12 @@ void DrawTexturedQuad(const GlesImports& imports, uint32_t textureTarget,
   vsSource += "}\n";
 
   std::string fsSource;
-  fsSource += "#extension GL_OES_EGL_image_external : require\n";
+  fsSource += sampler.getExtensions();
   fsSource += "precision highp float;\n";
-  if (textureTarget == GL_TEXTURE_EXTERNAL_OES) {
-    fsSource += "uniform samplerExternalOES tex;\n";
-  } else {
-    fsSource += "uniform sampler2D tex;\n";
-  }
+  fsSource += sampler.getUniform();
   fsSource += "varying vec2 texcoord;\n";
   fsSource += "void main() {\n";
-  fsSource += "  gl_FragColor = texture2D(tex, texcoord);\n";
+  fsSource += "  gl_FragColor = " + sampler.getSamplingExpression() + ";\n";
   fsSource += "}\n";
 
   auto prog = imports.glCreateProgram();
@@ -304,72 +400,98 @@ ImageData ReadPixels(const GlesImports& imports, GLsizei w, GLsizei h) {
   return img;
 }
 
-typedef struct {
-  GLint r, g, b, a;
-} swizzle_t;
+ImageData ReadTextureViaDrawQuad(const GlesImports& imports,
+                                 const Sampler& sampler, GLint texID, GLsizei w,
+                                 GLsizei h, uint32_t format, swizzle_t swizzle);
 
-ImageData ReadTextureViaDrawQuad(const GlesImports& imports, GLint texID,
-                                 GLsizei w, GLsizei h, uint32_t format,
-                                 swizzle_t swizzle);
-
-ImageData ReadOneChannelTextureViaDrawQuad(const GlesImports& imports,
-                                           uint32_t kind, GLint texID,
-                                           GLsizei w, GLsizei h,
-                                           uint32_t format, const char* name,
-                                           uint32_t originalFormat,
-                                           GLint rSwizzle) {
-  if (kind != GL_TEXTURE_2D) {
-    // TODO: Copy the layer/level to temporary 2D texture.
-    GAPID_WARNING(
-        "MEC: Reading of %s data for target 0x%x is not yet supported", name,
-        kind);
-    return ImageData{};
+ImageData ReadOneChannelTextureViaDrawQuad(
+    const GlesImports& imports, uint32_t kind, GLint texID, GLint layer,
+    GLsizei w, GLsizei h, GLsizei d, uint32_t format, const char* name,
+    uint32_t originalFormat, GLint rSwizzle) {
+  ImageData result;
+  switch (kind) {
+    case GL_TEXTURE_2D:
+      result =
+          ReadTextureViaDrawQuad(imports, Sampler2D::get(), texID, w, h, format,
+                                 {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
+      break;
+    case GL_TEXTURE_3D: {
+      Sampler3D sampler(1.0f / (2.0f * d) + (float)layer / d);
+      result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
+                                      {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
+      break;
+    }
+    default:
+      // TODO: Copy the layer/level to temporary 2D texture.
+      GAPID_WARNING(
+          "MEC: Reading of %s data for target 0x%x is not yet supported", name,
+          kind);
+      return result;
   }
-  ImageData result = ReadTextureViaDrawQuad(
-      imports, texID, w, h, format, {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
+
   // Restore original format, so it doesn't show up as GL_RED in the UI.
   result.dataFormat = originalFormat;
   return result;
 }
 
-ImageData ReadTwoChannelTextureViaDrawQuad(const GlesImports& imports,
-                                           uint32_t kind, GLint texID,
-                                           GLsizei w, GLsizei h,
-                                           uint32_t format, const char* name,
-                                           uint32_t originalFormat,
-                                           GLint rSwizzle, GLint gSwizzle) {
-  if (kind != GL_TEXTURE_2D) {
-    // TODO: Copy the layer/level to temporary 2D texture.
-    GAPID_WARNING(
-        "MEC: Reading of %s data for target 0x%x is not yet supported", name,
-        kind);
-    return ImageData{};
+ImageData ReadTwoChannelTextureViaDrawQuad(
+    const GlesImports& imports, uint32_t kind, GLint texID, GLint layer,
+    GLsizei w, GLsizei h, GLsizei d, uint32_t format, const char* name,
+    uint32_t originalFormat, GLint rSwizzle, GLint gSwizzle) {
+  ImageData result;
+  switch (kind) {
+    case GL_TEXTURE_2D:
+      result =
+          ReadTextureViaDrawQuad(imports, Sampler2D::get(), texID, w, h, format,
+                                 {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
+      break;
+    case GL_TEXTURE_3D: {
+      Sampler3D sampler(1.0f / (2.0f * d) + (float)layer / d);
+      result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
+                                      {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
+    }
+    default:
+      // TODO: Copy the layer/level to temporary 2D texture.
+      GAPID_WARNING(
+          "MEC: Reading of %s data for target 0x%x is not yet supported", name,
+          kind);
+      return result;
   }
-  ImageData result = ReadTextureViaDrawQuad(
-      imports, texID, w, h, format, {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
+
   // Restore original format, so it doesn't show up as GL_RG in the UI.
   result.dataFormat = originalFormat;
   return result;
 }
 
 ImageData ReadCompressedTexture(const GlesImports& imports, uint32_t kind,
-                                GLint texID, GLsizei w, GLsizei h,
-                                uint32_t format, swizzle_t swizzle) {
-  if (kind != GL_TEXTURE_2D) {
-    // TODO: Copy the layer/level to temporary 2D texture.
-    GAPID_WARNING(
-        "MEC: Reading of compressed data for target 0x%x is not yet supported",
-        kind);
-    return ImageData{};
+                                GLint texID, GLint layer, GLsizei w, GLsizei h,
+                                GLsizei d, uint32_t format, swizzle_t swizzle) {
+  ImageData result;
+  switch (kind) {
+    case GL_TEXTURE_2D:
+      result = ReadTextureViaDrawQuad(imports, Sampler2D::get(), texID, w, h,
+                                      format, swizzle);
+      break;
+    case GL_TEXTURE_3D: {
+      Sampler3D sampler(1.0f / (2.0f * d) + (float)layer / d);
+      result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
+                                      swizzle);
+      break;
+    }
+    default:
+      // TODO: Copy the layer/level to temporary 2D texture.
+      GAPID_WARNING(
+          "MEC: Reading of compressed data for target 0x%x is not yet "
+          "supported",
+          kind);
+      return result;
   }
-  ImageData result =
-      ReadTextureViaDrawQuad(imports, texID, w, h, format, swizzle);
   result.sizedFormat = format;
   return result;
 }
 
 ImageData ReadTexture(const GlesImports& imports, uint32_t kind, GLint texID,
-                      GLint level, GLint layer, GLsizei w, GLsizei h,
+                      GLint level, GLint layer, GLsizei w, GLsizei h, GLsizei d,
                       uint32_t format) {
   GAPID_DEBUG("MEC: Reading texture %d kind 0x%x %dx%d format 0x%x", texID,
               kind, w, h, format);
@@ -385,48 +507,53 @@ ImageData ReadTexture(const GlesImports& imports, uint32_t kind, GLint texID,
     case GL_DEPTH_COMPONENT16:
     case GL_DEPTH_COMPONENT24:
     case GL_DEPTH_COMPONENT32F:
-      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, w, h,
-                                              GL_R32F, "depth",
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R32F, "depth",
                                               GL_DEPTH_COMPONENT, GL_RED);
     /* alpha and luminance */
     case GL_ALPHA8_EXT:
-      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, w, h, GL_R8,
-                                              "alpha", GL_ALPHA, GL_ALPHA);
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R8, "alpha", GL_ALPHA,
+                                              GL_ALPHA);
     case GL_ALPHA16F_EXT:
-      return ReadOneChannelTextureViaDrawQuad(
-          imports, kind, texID, w, h, GL_R16F_EXT, "alpha", GL_ALPHA, GL_ALPHA);
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R16F_EXT, "alpha", GL_ALPHA,
+                                              GL_ALPHA);
     case GL_ALPHA32F_EXT:
-      return ReadOneChannelTextureViaDrawQuad(
-          imports, kind, texID, w, h, GL_R32F, "alpha", GL_ALPHA, GL_ALPHA);
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R32F, "alpha", GL_ALPHA,
+                                              GL_ALPHA);
     case GL_LUMINANCE8_EXT:
-      return ReadOneChannelTextureViaDrawQuad(
-          imports, kind, texID, w, h, GL_R8, "luminance", GL_LUMINANCE, GL_RED);
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R8, "luminance",
+                                              GL_LUMINANCE, GL_RED);
     case GL_LUMINANCE16F_EXT:
-      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, w, h,
-                                              GL_R16F_EXT, "luminance",
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R16F_EXT, "luminance",
                                               GL_LUMINANCE, GL_RED);
     case GL_LUMINANCE32F_EXT:
-      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, w, h,
-                                              GL_R32F, "luminance",
+      return ReadOneChannelTextureViaDrawQuad(imports, kind, texID, layer, w, h,
+                                              d, GL_R32F, "luminance",
                                               GL_LUMINANCE, GL_RED);
     case GL_LUMINANCE8_ALPHA8_EXT:
       return ReadTwoChannelTextureViaDrawQuad(
-          imports, kind, texID, w, h, GL_RG8, "luminance alpha",
+          imports, kind, texID, layer, w, h, d, GL_RG8, "luminance alpha",
           GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
     case GL_LUMINANCE_ALPHA16F_EXT:
       return ReadTwoChannelTextureViaDrawQuad(
-          imports, kind, texID, w, h, GL_RG16F_EXT, "luminance alpha",
+          imports, kind, texID, layer, w, h, d, GL_RG16F_EXT, "luminance alpha",
           GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
     case GL_LUMINANCE_ALPHA32F_EXT:
       return ReadTwoChannelTextureViaDrawQuad(
-          imports, kind, texID, w, h, GL_RG32F, "luminance alpha",
+          imports, kind, texID, layer, w, h, d, GL_RG32F, "luminance alpha",
           GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
     /* compressed 8bit RGB */
     case GL_COMPRESSED_RGB8_ETC2:
     case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
     case GL_ATC_RGB_AMD:
     case GL_ETC1_RGB8_OES:
-      return ReadCompressedTexture(imports, kind, texID, w, h, GL_RGB8,
+      return ReadCompressedTexture(imports, kind, texID, layer, w, h, d,
+                                   GL_RGB8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
     /* compressed 8bit RGBA */
     case GL_COMPRESSED_RGBA_ASTC_4x4:
@@ -450,11 +577,13 @@ ImageData ReadTexture(const GlesImports& imports, uint32_t kind, GLint texID,
     case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
     case GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:
     case GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:
-      return ReadCompressedTexture(imports, kind, texID, w, h, GL_RGBA8,
+      return ReadCompressedTexture(imports, kind, texID, layer, w, h, d,
+                                   GL_RGBA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
     /* compressed 8bit SRGB */
     case GL_COMPRESSED_SRGB8_ETC2:
-      return ReadCompressedTexture(imports, kind, texID, w, h, GL_SRGB8,
+      return ReadCompressedTexture(imports, kind, texID, layer, w, h, d,
+                                   GL_SRGB8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
     /* compressed 8bit SRGBA */
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4:
@@ -473,17 +602,19 @@ ImageData ReadTexture(const GlesImports& imports, uint32_t kind, GLint texID,
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12:
     case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:
     case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2:
-      return ReadCompressedTexture(imports, kind, texID, w, h, GL_SRGB8_ALPHA8,
+      return ReadCompressedTexture(imports, kind, texID, layer, w, h, d,
+                                   GL_SRGB8_ALPHA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
     /* compressed 11bit R - Half floats have 11bit mantissa. */
     case GL_COMPRESSED_R11_EAC:
     case GL_COMPRESSED_SIGNED_R11_EAC:
-      return ReadCompressedTexture(imports, kind, texID, w, h, GL_R16F,
-                                   {GL_RED, GL_ZERO, GL_ZERO, GL_ONE});
+      return ReadCompressedTexture(imports, kind, texID, layer, w, h, d,
+                                   GL_R16F, {GL_RED, GL_ZERO, GL_ZERO, GL_ONE});
     /* compressed 11 bit RG - Half floats have 11bit mantissa. */
     case GL_COMPRESSED_RG11_EAC:
     case GL_COMPRESSED_SIGNED_RG11_EAC:
-      return ReadCompressedTexture(imports, kind, texID, w, h, GL_RG16F,
+      return ReadCompressedTexture(imports, kind, texID, layer, w, h, d,
+                                   GL_RG16F,
                                    {GL_RED, GL_GREEN, GL_ZERO, GL_ONE});
     /* formats that can be used as render targets */
     default: {
@@ -505,8 +636,9 @@ ImageData ReadTexture(const GlesImports& imports, uint32_t kind, GLint texID,
   return ImageData{};
 }
 
-ImageData ReadTextureViaDrawQuad(const GlesImports& imports, GLint texID,
-                                 GLsizei w, GLsizei h, uint32_t format,
+ImageData ReadTextureViaDrawQuad(const GlesImports& imports,
+                                 const Sampler& sampler, GLint texID, GLsizei w,
+                                 GLsizei h, uint32_t format,
                                  swizzle_t swizzle) {
   GAPID_DEBUG("MEC: Drawing quad to format 0x%x", format);
   GLint err;
@@ -515,59 +647,34 @@ ImageData ReadTextureViaDrawQuad(const GlesImports& imports, GLint texID,
   }
 
   auto drawFb = CreateAndBindFramebuffer(imports, GL_DRAW_FRAMEBUFFER);
-  if ((err = imports.glGetError()) != 0) {
-    GAPID_FATAL("MEC: Failed to create framebuffer1: 0x%X", err);
-  }
   auto tmpTex = CreateAndBindTexture2D(imports, w, h, format);
-  if ((err = imports.glGetError()) != 0) {
-    GAPID_FATAL("MEC: Failed to create framebuffer2: 0x%X", err);
-  }
   imports.glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                tmpTex.id(), 0);
-  if ((err = imports.glGetError()) != 0) {
-    GAPID_FATAL("MEC: Failed to create framebuffer3: 0x%X", err);
-  }
-  imports.glBindTexture(GL_TEXTURE_2D, texID);
+  sampler.bindTexture(imports, texID);
   if ((err = imports.glGetError()) != 0) {
     GAPID_FATAL("MEC: Failed to create framebuffer: 0x%X", err);
   }
 
   GLint oldCompMode = 0;
-  imports.glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
-                              &oldCompMode);
   swizzle_t oldSwizzle;
-  imports.glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R,
-                              &oldSwizzle.r);
-  imports.glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G,
-                              &oldSwizzle.g);
-  imports.glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B,
-                              &oldSwizzle.b);
-  imports.glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A,
-                              &oldSwizzle.a);
+  sampler.getParams(imports, &oldSwizzle, &oldCompMode);
   if ((err = imports.glGetError()) != 0) {
     GAPID_FATAL("MEC: Failed querying texture state: 0x%X", err);
   }
 
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, swizzle.r);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, swizzle.g);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, swizzle.b);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, swizzle.a);
+  sampler.setParams(imports, swizzle, GL_NONE);
   if ((err = imports.glGetError()) != 0) {
     GAPID_FATAL("MEC: Failed setting texture state: 0x%X", err);
   }
 
-  DrawTexturedQuad(imports, GL_TEXTURE_2D, w, h);
+  DrawTexturedQuad(imports, w, h, sampler);
 
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, oldCompMode);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, oldSwizzle.r);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, oldSwizzle.g);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, oldSwizzle.b);
-  imports.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, oldSwizzle.a);
+  sampler.setParams(imports, oldSwizzle, oldCompMode);
   if ((err = imports.glGetError()) != 0) {
     GAPID_FATAL("MEC: Failed restoring texture state: 0x%X", err);
   }
-  return ReadTexture(imports, GL_TEXTURE_2D, tmpTex.id(), 0, 0, w, h, format);
+  return ReadTexture(imports, GL_TEXTURE_2D, tmpTex.id(), 0, 0, w, h, 1,
+                     format);
 }
 
 ImageData ReadRenderbuffer(const GlesImports& imports, Renderbuffer* rb) {
@@ -609,7 +716,8 @@ ImageData ReadRenderbuffer(const GlesImports& imports, Renderbuffer* rb) {
     uint32_t mask =
         GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
     imports.glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, mask, GL_NEAREST);
-    return ReadTexture(imports, GL_TEXTURE_2D, tmpTex.id(), 0, 0, w, h, format);
+    return ReadTexture(imports, GL_TEXTURE_2D, tmpTex.id(), 0, 0, w, h, 1,
+                       format);
   }
 }
 
@@ -621,7 +729,7 @@ ImageData ReadExternal(const GlesImports& imports, EGLImageKHR handle,
   auto fb = CreateAndBindFramebuffer(imports, GL_FRAMEBUFFER);
   imports.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                  GL_TEXTURE_2D, tmpTex.id(), 0);
-  DrawTexturedQuad(imports, GL_TEXTURE_EXTERNAL_OES, w, h);
+  DrawTexturedQuad(imports, w, h, SamplerExternal::get());
   return ReadPixels(imports, w, h);
 }
 
@@ -722,6 +830,7 @@ void GlesSpy::serializeGPUBuffers(StateSerializer* serializer) {
         } else {
           for (auto it : tex->mLevels) {
             auto level = it.first;
+            GLsizei d = it.second.mLayers.count();
             for (auto it2 : it.second.mLayers) {
               auto layer = it2.first;
               auto img = it2.second;
@@ -733,7 +842,7 @@ void GlesSpy::serializeGPUBuffers(StateSerializer* serializer) {
               }
               auto newImg =
                   ReadTexture(mImports, tex->mKind, tex->mID, level, layer,
-                              img->mWidth, img->mHeight, img->mSizedFormat);
+                              img->mWidth, img->mHeight, d, img->mSizedFormat);
               SerializeAndUpdate(serializer, img, newImg);
               GLint err;
               if ((err = mImports.glGetError()) != 0) {
