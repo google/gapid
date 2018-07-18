@@ -67,7 +67,6 @@ func resolve(ctx context.Context, search file.PathList, flags flag.FlagSet, opts
 	}
 	path := args[0]
 	processor := gapil.NewProcessor()
-	fmt.Println("search paths:", search)
 	if len(search) > 0 {
 		processor.Loader = gapil.NewSearchLoader(search)
 	}
