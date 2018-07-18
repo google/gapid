@@ -257,4 +257,11 @@ type (
 		Gapis GapisFlags
 		At    flags.U64Slice `help:"command/subcommand index to get the memory after. Empty for last"`
 	}
+	PipelineFlags struct {
+		Gapis GapisFlags
+		At    flags.U64Slice `help:"command/subcommand index to get the pipeline after. Empty for last"`
+		Print struct {
+			Shaders bool `help:"print the disassembled shaders along with the bound descriptor values"`
+		}
+	}
 )
