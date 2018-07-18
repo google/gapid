@@ -14,7 +14,10 @@
 
 package api
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // IsColor returns true if a is a color attachment.
 func (a FramebufferAttachment) IsColor() bool {
@@ -50,4 +53,8 @@ func (a AspectType) Format(f fmt.State, c rune) {
 	default:
 		fmt.Fprintf(f, "Unknown AspectType %d", int(a))
 	}
+}
+
+func (t StageType) Format(f fmt.State, c rune) {
+	fmt.Fprint(f, strings.Title(strings.ToLower(t.String())))
 }
