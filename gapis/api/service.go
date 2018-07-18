@@ -55,6 +55,10 @@ func (a AspectType) Format(f fmt.State, c rune) {
 	}
 }
 
+func (t Pipeline_Type) Format(f fmt.State, c rune) {
+	fmt.Fprint(f, strings.Title(strings.ToLower(t.String())))
+}
+
 func (t StageType) Format(f fmt.State, c rune) {
 	fmt.Fprint(f, strings.Title(strings.ToLower(t.String())))
 }

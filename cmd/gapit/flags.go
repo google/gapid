@@ -263,5 +263,6 @@ type (
 		Print struct {
 			Shaders bool `help:"print the disassembled shaders along with the bound descriptor values"`
 		}
+		Compute bool `help:"print out the most recently bound compute pipeline instead of graphics pipeline"`
 	}
 )

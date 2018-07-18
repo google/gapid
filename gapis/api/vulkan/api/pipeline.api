@@ -173,6 +173,7 @@ cmd void vkDestroyPipelineLayout(
   @unused map!(u32, VkDynamicState) DynamicStates
 }
 
+@resource
 @internal class GraphicsPipelineObject {
   @unused VkDevice                  Device
   @unused ref!PipelineCacheObject   PipelineCache
@@ -198,6 +199,7 @@ cmd void vkDestroyPipelineLayout(
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
+@resource
 @internal class ComputePipelineObject {
   @unused VkDevice                 Device
   @unused VkPipeline               VulkanHandle

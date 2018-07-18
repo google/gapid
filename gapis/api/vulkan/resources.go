@@ -17,7 +17,10 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"sort"
 
+	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/log"
@@ -841,4 +844,354 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 		newCmd.AddWrite(w.Range, w.ID)
 	}
 	return newCmd
+}
+
+var _ api.Resource = GraphicsPipelineObjectʳ{}
+
+func (p GraphicsPipelineObjectʳ) IsResource() bool {
+	return true
+}
+
+// ResourceHandle returns the UI identity for the resource.
+func (p GraphicsPipelineObjectʳ) ResourceHandle() string {
+	return fmt.Sprintf("GraphicsPipeline<%d>", p.VulkanHandle())
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (p GraphicsPipelineObjectʳ) ResourceLabel() string {
+	if p.DebugInfo().IsNil() {
+		return ""
+	}
+	if p.DebugInfo().ObjectName() != "" {
+		return p.DebugInfo().ObjectName()
+	}
+	return fmt.Sprintf("<%d:%v>", p.DebugInfo().TagName(), p.DebugInfo().Tag())
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (p GraphicsPipelineObjectʳ) Order() uint64 {
+	return uint64(p.VulkanHandle())
+}
+
+// ResourceType returns the type of this resource.
+func (p GraphicsPipelineObjectʳ) ResourceType(ctx context.Context) api.ResourceType {
+	return api.ResourceType_PipelineResource
+}
+
+// ResourceData returns the resource data given the current state.
+func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+	vkState := GetState(s)
+	isBound := false
+	var boundDsets map[uint32]DescriptorSetObjectʳ
+	// Use LastDrawInfos to get bound descriptor set data.
+	// TODO: Ideally we could look at just a specific pipeline/descriptor
+	// set pair.  Maybe we could modify mutate to track which what
+	// descriptor sets were bound to particular pipelines.
+	if !vkState.LastBoundQueue().IsNil() {
+		ldi, ok := vkState.LastDrawInfos().Lookup(vkState.LastBoundQueue().VulkanHandle())
+		if ok {
+			if ldi.GraphicsPipeline() == p {
+				isBound = true
+				// It doesn't make sense to get the descriptor
+				// sets if the pipeline isn't currently bound.
+				boundDsets = ldi.DescriptorSets().All()
+			}
+		}
+	}
+
+	return pipelineResourceData(ctx, s, p.Stages().All(), p.Layout(),
+		boundDsets, isBound, api.Pipeline_GRAPHICS)
+}
+
+// SetResourceData sets resource data in a new capture.
+func (p GraphicsPipelineObjectʳ) SetResourceData(context.Context, *path.Command, *api.ResourceData, api.ResourceMap, api.ReplaceCallback) error {
+	return fmt.Errorf("SetResourceData is not supported on GraphicsPipeline")
+}
+
+var _ api.Resource = ComputePipelineObjectʳ{}
+
+func (p ComputePipelineObjectʳ) IsResource() bool {
+	return true
+}
+
+// ResourceHandle returns the UI identity for the resource.
+func (p ComputePipelineObjectʳ) ResourceHandle() string {
+	return fmt.Sprintf("ComputePipeline<%d>", p.VulkanHandle())
+}
+
+// ResourceLabel returns an optional debug label for the resource.
+func (p ComputePipelineObjectʳ) ResourceLabel() string {
+	if p.DebugInfo().IsNil() {
+		return ""
+	}
+	if p.DebugInfo().ObjectName() != "" {
+		return p.DebugInfo().ObjectName()
+	}
+	return fmt.Sprintf("<%d:%v>", p.DebugInfo().TagName(), p.DebugInfo().Tag())
+}
+
+// Order returns an integer used to sort the resources for presentation.
+func (p ComputePipelineObjectʳ) Order() uint64 {
+	return uint64(p.VulkanHandle())
+}
+
+// ResourceType returns the type of this resource.
+func (p ComputePipelineObjectʳ) ResourceType(ctx context.Context) api.ResourceType {
+	return api.ResourceType_PipelineResource
+}
+
+// ResourceData returns the resource data given the current state.
+func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+	vkState := GetState(s)
+	isBound := false
+	var boundDsets map[uint32]DescriptorSetObjectʳ
+	// Use LastComputeInfos to get bound descriptor set data.
+	// TODO: Ideally we could look at just a specific pipeline/descriptor
+	// set pair.  Maybe we could modify mutate to track which what
+	// descriptor sets were bound to particular pipelines.
+	if !vkState.LastBoundQueue().IsNil() {
+		lci, ok := vkState.LastComputeInfos().Lookup(vkState.LastBoundQueue().VulkanHandle())
+		if ok {
+			if lci.ComputePipeline() == p {
+				isBound = true
+				// It doesn't make sense to get the descriptor
+				// sets if the pipeline isn't currently bound.
+				boundDsets = lci.DescriptorSets().All()
+			}
+		}
+	}
+
+	return pipelineResourceData(ctx, s, map[uint32]StageData{
+		0: p.Stage(),
+	}, p.PipelineLayout(), boundDsets, isBound, api.Pipeline_COMPUTE)
+}
+
+// SetResourceData sets resource data in a new capture.
+func (p ComputePipelineObjectʳ) SetResourceData(context.Context, *path.Command, *api.ResourceData, api.ResourceMap, api.ReplaceCallback) error {
+	return fmt.Errorf("SetResourceData is not supported on ComputePipeline")
+}
+
+func stageType(vkStage VkShaderStageFlagBits) (api.StageType, error) {
+	switch vkStage {
+	case VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT:
+		return api.StageType_VERTEX, nil
+	case VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+		return api.StageType_TESSELLATION_CONTROL, nil
+	case VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+		return api.StageType_TESSELLATION_EVALUATION, nil
+	case VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT:
+		return api.StageType_GEOMETRY, nil
+	case VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT:
+		return api.StageType_FRAGMENT, nil
+	case VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT:
+		return api.StageType_COMPUTE, nil
+	default:
+		return 0, fmt.Errorf("Invalid Vulkan stage: %v", vkStage)
+	}
+}
+
+func typeMatch(sourceType uint32, matchType uint32) bool {
+	// Some pipeline layout descriptor types can match multiple SPIR-V
+	// types, the types we get from shadertools.ParseDescriptorSets don't
+	// have to match exactly in all cases.
+	source := VkDescriptorType(sourceType)
+	match := VkDescriptorType(matchType)
+
+	valid := []VkDescriptorType{match}
+	switch source {
+	case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER,
+		VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		valid = append(valid, VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+	case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		valid = append(valid, VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+	case VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		valid = append(valid, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+	}
+
+	for _, val := range valid {
+		if match == val {
+			return true
+		}
+	}
+	return false
+}
+
+// Bindings are bound by (set, binding) pairs, and are unique for a pipeline layout
+type bindIdx struct {
+	set     uint32
+	binding uint32
+}
+
+func (a *bindIdx) Less(b *bindIdx) bool {
+	if a.set != b.set {
+		return a.set < b.set
+	}
+	return a.binding < b.binding
+}
+
+func pipelineResourceData(ctx context.Context,
+	s *api.GlobalState,
+	stageMap map[uint32]StageData,
+	layout PipelineLayoutObjectʳ,
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	bound bool,
+	pipeType api.Pipeline_Type,
+) (*api.ResourceData, error) {
+	bindings := map[bindIdx]*api.DescriptorBinding{}
+	// Enumerate the bindings from the pipeline layout
+	for set, setData := range layout.SetLayouts().All() {
+		for binding, bindingData := range setData.Bindings().All() {
+			values := make([]*api.BindingValue, bindingData.Count())
+			for i := range values {
+				values[i] = &api.BindingValue{
+					Val: &api.BindingValue_Unbound{
+						Unbound: &api.Unbound{},
+					},
+				}
+			}
+			bindings[bindIdx{set, binding}] = &api.DescriptorBinding{
+				Set:       set,
+				Binding:   binding,
+				Type:      uint32(bindingData.Type()),
+				Values:    values,
+				StageIdxs: []uint32{},
+			}
+		}
+	}
+	moduleShaders := map[VkShaderModule]*api.Shader{}
+	stages := make([]*api.Stage, len(stageMap))
+	for i := 0; i < len(stageMap); i++ {
+		v := stageMap[uint32(i)]
+		moduleHandle := v.Module().VulkanHandle()
+		if _, ok := moduleShaders[moduleHandle]; !ok {
+			res, err := v.Module().ResourceData(ctx, s)
+			if err != nil {
+				return nil, err
+			}
+			moduleShaders[moduleHandle] = protoutil.OneOf(protoutil.OneOf(res)).(*api.Shader)
+		}
+		moduleShader := moduleShaders[moduleHandle]
+		typ, err := stageType(v.Stage())
+		if err != nil {
+			return nil, err
+		}
+		stages[i] = &api.Stage{
+			Type:   typ,
+			Shader: moduleShader,
+		}
+
+		shaderWords := v.Module().Words().MustRead(ctx, nil, s, nil)
+		stageBindings, err := shadertools.ParseDescriptorSets(shaderWords, v.EntryPoint())
+		if err != nil {
+			return nil, err
+		}
+		for set, setBindings := range stageBindings {
+			for _, bindingData := range setBindings {
+				idx := bindIdx{set, bindingData.Binding}
+				binding, ok := bindings[idx]
+				if !ok {
+					// Shader uses binding that isn't included in the pipeline layout.
+					// This is invalid, so don't bother handling it here.
+					return nil, fmt.Errorf(
+						"Shader stage %v uses uniform at %v.%v that isn't defined in the pipeline layout.",
+						v.Stage(), set, bindingData.Binding)
+				}
+				if !typeMatch(bindingData.DescriptorType, binding.Type) {
+					return nil, fmt.Errorf(
+						"Shader stage %v has uniform at %v.%v with descriptor type %v which is incompatible with the pipeline layout type of %v",
+						v.Stage(), set, bindingData.Binding,
+						bindingData.DescriptorType, binding.Type)
+				}
+				if uint32(len(binding.Values)) < bindingData.DescriptorCount {
+					// NOTE(scppurcell): I was unable to find language in the spec disallowing this case,
+					// but it's a validation error.
+					return nil, fmt.Errorf(
+						"Shader stage %v has uniform at %v.%v that expects a descriptorCount of at least %v but the pipeline specifies %v",
+						v.Stage(), set, bindingData.Binding,
+						bindingData.DescriptorCount, len(binding.Values))
+				}
+				binding.StageIdxs = append(binding.StageIdxs, uint32(i))
+			}
+		}
+	}
+	for set, setInfo := range boundDsets {
+		for bindingIdx, bindingInfo := range setInfo.Bindings().All() {
+			idx := bindIdx{set, bindingIdx}
+			binding, ok := bindings[idx]
+			if !ok {
+				continue
+			}
+
+			if binding.Type != uint32(bindingInfo.BindingType()) {
+				return nil, fmt.Errorf(
+					"Pipeline binding type of %v does not match descriptor set binding type of %v",
+					binding.Type,
+					bindingInfo.BindingType)
+			}
+
+			// Only one of these should be populated
+			for i, iInfo := range bindingInfo.ImageBinding().All() {
+				if iInfo.Sampler() == 0 && iInfo.ImageView() == 0 {
+					continue
+				}
+				binding.Values[i] = &api.BindingValue{
+					Val: &api.BindingValue_ImageInfo{
+						ImageInfo: &api.ImageInfo{
+							Sampler:     uint64(iInfo.Sampler()),
+							ImageView:   uint64(iInfo.ImageView()),
+							ImageLayout: uint32(iInfo.ImageLayout()),
+						},
+					},
+				}
+			}
+			for i, bInfo := range bindingInfo.BufferBinding().All() {
+				if bInfo.Buffer() == 0 {
+					continue
+				}
+				binding.Values[i] = &api.BindingValue{
+					Val: &api.BindingValue_BufferInfo{
+						BufferInfo: &api.BufferInfo{
+							Buffer: uint64(bInfo.Buffer()),
+							Offset: uint64(bInfo.Offset()),
+							Range:  uint64(bInfo.Range()),
+						},
+					},
+				}
+			}
+			for i, bufferView := range bindingInfo.BufferViewBindings().All() {
+				if bufferView == 0 {
+					continue
+				}
+				binding.Values[i] = &api.BindingValue{
+					Val: &api.BindingValue_TexelBufferView{
+						uint64(bufferView),
+					},
+				}
+			}
+		}
+	}
+
+	bindingSlice := make([]*api.DescriptorBinding, 0, len(bindings))
+	for _, binding := range bindings {
+		bindingSlice = append(bindingSlice, binding)
+	}
+	sort.Slice(bindingSlice, func(i, j int) bool {
+		a := bindIdx{bindingSlice[i].Set, bindingSlice[i].Binding}
+		b := bindIdx{bindingSlice[j].Set, bindingSlice[j].Binding}
+		return a.Less(&b)
+	})
+
+	return &api.ResourceData{
+		Data: &api.ResourceData_Pipeline{
+			Pipeline: &api.Pipeline{
+				API:      path.NewAPI(id.ID(ID)),
+				Type:     pipeType,
+				Stages:   stages,
+				Bindings: bindingSlice,
+				Bound:    bound,
+				BindingTypeConstantsIndex: int32(VkDescriptorTypeConstants()),
+				ImageLayoutConstantsIndex: int32(VkImageLayoutConstants()),
+			},
+		},
+	}, nil
 }
