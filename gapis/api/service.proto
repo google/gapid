@@ -234,20 +234,27 @@ message CubemapArray {
 message Pipeline {
   // The API ID used for this pipeline belongs to.
   path.API API = 1;
+  // PipelineType is the possible types for a pipeline.
+  enum Type {
+    GRAPHICS = 0;
+    COMPUTE = 1;
+  }
+  // Whether this pipeline is a graphics or compute pipeline
+  Type type = 2;
   // The bound programmable stages of the pipeline.
-  repeated Stage stages = 2;
+  repeated Stage stages = 3;
   // The descriptor bindings used by the shaders in this pipeline.
-  repeated DescriptorBinding bindings = 3;
+  repeated DescriptorBinding bindings = 4;
   // Whether this pipeline is currently bound
-  bool bound = 4;
+  bool bound = 5;
   // The index to get the constants names for `DescriptorBinding.type`, to be
   // fetched with the path.ConstantSet endpoint.  A value of -1 indicates no
   // type names should be fetched.
-  int32 binding_type_constants_index = 5;
+  int32 binding_type_constants_index = 6;
   // The index to get the constants names for `ImageInfo.layout`, to be
   // fetched with the path.ConstantSet endpoint.  A value of -1 indicates no
   // layout names should be fetched.
-  int32 image_layout_constants_index = 6;
+  int32 image_layout_constants_index = 7;
 }
 
 // StageType is all bindable pipeline stage points.

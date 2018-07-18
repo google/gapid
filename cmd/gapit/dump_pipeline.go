@@ -77,7 +77,7 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	cmd := c.Command(verb.At[0], verb.At[1:]...)
-	pipelineData, err := getBoundPipelineResource(ctx, client, cmd)
+	pipelineData, err := verb.getBoundPipelineResource(ctx, client, cmd)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to get bound pipeline resource data")
 	}
@@ -85,10 +85,15 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	return verb.printPipelineData(ctx, client, pipelineData)
 }
 
-func getBoundPipelineResource(ctx context.Context, c client.Client, cmd *path.Command) (*api.Pipeline, error) {
+func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Client, cmd *path.Command) (*api.Pipeline, error) {
 	boxedResources, err := c.Get(ctx, (&path.Resources{Capture: cmd.Capture}).Path())
 	if err != nil {
 		return nil, err
+	}
+
+	targetType := api.Pipeline_GRAPHICS
+	if verb.Compute {
+		targetType = api.Pipeline_COMPUTE
 	}
 
 	resources := boxedResources.(*service.Resources)
@@ -104,12 +109,12 @@ func getBoundPipelineResource(ctx context.Context, c client.Client, cmd *path.Co
 			}
 			resourceData := boxedResourceData.(*api.ResourceData)
 			pipelineData := protoutil.OneOf(protoutil.OneOf(resourceData)).(*api.Pipeline)
-			if pipelineData.Bound {
+			if pipelineData.Bound && pipelineData.Type == targetType {
 				return pipelineData, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("No bound pipeline found")
+	return nil, fmt.Errorf("No bound %v pipeline found", targetType)
 }
 
 func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, data *api.Pipeline) error {
