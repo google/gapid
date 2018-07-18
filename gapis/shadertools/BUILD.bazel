@@ -20,6 +20,7 @@ go_library(
     cdeps = [
         "//gapis/shadertools/cc:cc",
         "@spirv_tools//:spirv-tools",
+        "@spirv_reflect//:spirv-reflect",
     ],
     cgo = True,
     clinkopts = [],  # keep

@@ -18,6 +18,7 @@ package shadertools
 //#cgo LDFLAGS: -lspv -lkhronos -lpthread -lm
 //#include "cc/libmanager.h"
 //#include <stdlib.h>
+//#include <third_party/SPIRV-Reflect/spirv_reflect.h>
 //// Workaround for https://github.com/golang/go/issues/8756 (fixed in go 1.8):
 //#cgo windows LDFLAGS: -Wl,--allow-multiple-definition
 import "C"
@@ -25,6 +26,7 @@ import "C"
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"unsafe"
@@ -316,4 +318,110 @@ func CompileGlsl(source string, o CompileOptions) ([]uint32, error) {
 		msg = append(msg, "Preamble:", text.LineNumber(o.Preamble))
 	}
 	return words, fault.Const(strings.Join(msg, "\n"))
+}
+
+type DescriptorSets map[uint32]DescriptorSet
+type DescriptorSet []DescriptorBinding
+
+type DescriptorBinding struct {
+	Set             uint32
+	Binding         uint32
+	SpirvId         uint32
+	DescriptorType  uint32
+	DescriptorCount uint32
+	ShaderStage     uint32
+}
+
+func descriptorBindingLess(a DescriptorBinding, b DescriptorBinding) bool {
+	if a.Set != b.Set {
+		return a.Set < b.Set
+	}
+	if a.Binding != b.Binding {
+		return a.Binding < b.Binding
+	}
+	// SpirvId is a unique identifier so we don't need to keep comparing after this
+	return a.SpirvId < b.SpirvId
+}
+
+// ParseDescriptorSets determines what descriptor sets are implied by the shader
+func ParseDescriptorSets(shader []uint32, entryPoint string) (DescriptorSets, error) {
+	spvReflectErr := func(res C.SpvReflectResult) error {
+		if res == C.SPV_REFLECT_RESULT_SUCCESS {
+			return nil
+		}
+		return fmt.Errorf("SPIRV-Reflect failed with error code %v\n", res)
+	}
+	module := C.SpvReflectShaderModule{}
+	cEntryPoint := C.CString(entryPoint)
+	defer C.free(unsafe.Pointer(cEntryPoint))
+
+	shaderPtr := unsafe.Pointer(nil)
+	if len(shader) > 0 {
+		shaderPtr = unsafe.Pointer(&shader[0])
+	}
+	if err := spvReflectErr(C.spvReflectCreateShaderModule(
+		C.size_t(len(shader)*4),
+		shaderPtr,
+		&module)); err != nil {
+		return nil, err
+	}
+	defer C.spvReflectDestroyShaderModule(&module)
+
+	entryPointStruct := C.spvReflectGetEntryPoint(
+		&module,
+		cEntryPoint)
+	if entryPointStruct == nil {
+		return nil, fmt.Errorf("Entry point %v not found")
+	}
+
+	setCount := C.uint32_t(0)
+	if err := spvReflectErr(C.spvReflectEnumerateEntryPointDescriptorSets(
+		&module,
+		cEntryPoint,
+		&setCount,
+		nil)); err != nil {
+		return nil, err
+	}
+	sets := make([]*C.SpvReflectDescriptorSet, setCount)
+	setsPtr := unsafe.Pointer(nil)
+	if setCount > 0 {
+		setsPtr = unsafe.Pointer(&sets[0])
+	}
+	if err := spvReflectErr(C.spvReflectEnumerateEntryPointDescriptorSets(
+		&module,
+		cEntryPoint,
+		&setCount,
+		(**C.SpvReflectDescriptorSet)(setsPtr),
+	)); err != nil {
+		return nil, err
+	}
+
+	res := DescriptorSets{}
+	for _, set := range sets {
+		bindings := make(DescriptorSet, set.binding_count)
+		for i := C.uint32_t(0); i < set.binding_count; i++ {
+			bindingPtr := uintptr(unsafe.Pointer(set.bindings)) +
+				uintptr(i)*unsafe.Sizeof(*set.bindings)
+			binding := *(**C.SpvReflectDescriptorBinding)(unsafe.Pointer(bindingPtr))
+			// If it's an array, need to get total descriptor count
+			descriptorCount := C.uint32_t(1)
+			for j := C.uint32_t(0); j < binding.array.dims_count; j++ {
+				descriptorCount *= binding.array.dims[j]
+			}
+			bindings[i] = DescriptorBinding{
+				Set:             uint32(binding.set),
+				Binding:         uint32(binding.binding),
+				SpirvId:         uint32(binding.spirv_id),
+				DescriptorType:  uint32(binding.descriptor_type),
+				DescriptorCount: uint32(descriptorCount),
+				ShaderStage:     uint32(entryPointStruct.shader_stage),
+			}
+		}
+		sort.Slice(bindings, func(i, j int) bool {
+			return descriptorBindingLess(bindings[i], bindings[j])
+		})
+		res[uint32(set.set)] = bindings
+	}
+
+	return res, nil
 }

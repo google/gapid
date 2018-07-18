@@ -160,6 +160,15 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         build_file = "@gapid//tools/build/third_party:spirv-tools.BUILD",
     )
 
+    maybe_repository(github_repository,
+        name = "spirv_reflect",
+        locals = locals,
+        organization = "chaoticbob",
+        project = "SPIRV-Reflect",
+        commit = "5598462f987841f7c1abe9209650ea8d3e727b46",
+        build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
+    )
+
     if java_client:
         maybe_repository(github_repository,
             name = "com_github_grpc_java",
