@@ -131,25 +131,7 @@ func getSimpleType(rv *resolver, in *ast.Identifier) semantic.Type {
 		return semantic.VoidType
 	}
 	rv.mappings.Add(in, out)
-	if a, ok := out.(*semantic.Alias); ok {
-		return resolveAlias(rv, in, a)
-	}
 	return out
-}
-
-func resolveAlias(rv *resolver, at ast.Node, a *semantic.Alias) semantic.Type {
-	if a.To == nil {
-		cyclic := rv.aliasStack.contains(a)
-		rv.aliasStack.push(a)
-		defer rv.aliasStack.pop()
-		if cyclic {
-			rv.errorf(at, "cyclic alias declaration: %v", rv.aliasStack)
-			a.To = semantic.VoidType
-		} else {
-			a.To = type_(rv, a.AST.To)
-		}
-	}
-	return a.To
 }
 
 func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type) *semantic.Map {

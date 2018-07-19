@@ -19,7 +19,7 @@ import (
 	"github.com/google/gapid/gapil/ast"
 )
 
-// { import | extern | enum | alias | pseudonym | class | command | field }
+// { import | extern | enum | pseudonym | class | command | field }
 func (p *parser) requireAPI(b *cst.Branch) *ast.API {
 	api := &ast.API{}
 	p.mappings.Add(api, b)
@@ -33,8 +33,6 @@ func (p *parser) requireAPI(b *cst.Branch) *ast.API {
 			api.Externs = append(api.Externs, e)
 		} else if e := p.enum(b, annotations); e != nil {
 			api.Enums = append(api.Enums, e)
-		} else if a := p.alias(b, annotations); a != nil {
-			api.Aliases = append(api.Aliases, a)
 		} else if pn := p.pseudonym(b, annotations); pn != nil {
 			api.Pseudonyms = append(api.Pseudonyms, pn)
 		} else if c := p.class(b, annotations); c != nil {

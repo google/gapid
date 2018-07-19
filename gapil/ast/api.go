@@ -24,7 +24,6 @@ type API struct {
 	Commands    []*Function   // functions declared with the "cmd" keyword
 	Subroutines []*Function   // functions declared with the "sub" keyword
 	Pseudonyms  []*Pseudonym  // strong type aliases declared with the "type" keyword
-	Aliases     []*Alias      // weak type aliases declared with the "alias" keyword
 	Enums       []*Enum       // enumerated types, declared with the "enum" keyword
 	Classes     []*Class      // class types, declared with the "class" keyword
 	Fields      []*Field      // variables declared at the global scope

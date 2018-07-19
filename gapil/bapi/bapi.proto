@@ -106,54 +106,53 @@ message Instances {
   repeated Write write = 79;
 
   repeated ASTAbort ast_abort = 80;
-  repeated ASTAlias ast_alias = 81;
-  repeated ASTAnnotation ast_annotation = 82;
-  repeated ASTAPI ast_api = 83;
-  repeated ASTAssign ast_assign = 84;
-  repeated ASTBinaryOp ast_binary_op = 85;
-  repeated ASTBlock ast_block = 86;
-  repeated ASTBool ast_bool = 87;
-  repeated ASTBranch ast_branch = 88;
-  repeated ASTCall ast_call = 89;
-  repeated ASTCase ast_case = 90;
-  repeated ASTClass ast_class = 91;
-  repeated ASTDeclareLocal ast_declare_local = 92;
-  repeated ASTDefault ast_default = 93;
-  repeated ASTDefinition ast_definition = 94;
-  repeated ASTDelete ast_delete = 95;
-  repeated ASTEnum ast_enum = 96;
-  repeated ASTEnumEntry ast_enum_entry = 97;
-  repeated ASTFence ast_fence = 98;
-  repeated ASTField ast_field = 99;
-  repeated ASTFunction ast_function = 100;
-  repeated ASTGeneric ast_generic = 101;
-  repeated ASTGroup ast_group = 102;
-  repeated ASTIdentifier ast_identifier = 103;
-  repeated ASTImport ast_import = 104;
-  repeated ASTIndex ast_index = 105;
-  repeated ASTIndexedType ast_indexed_type = 106;
-  repeated ASTIteration ast_iteration = 107;
-  repeated ASTMapIteration ast_map_iteration = 108;
-  repeated ASTMember ast_member = 109;
-  repeated ASTNamedArg ast_named_arg = 110;
-  repeated ASTNode ast_node = 111;
-  repeated ASTNull ast_null = 112;
-  repeated ASTNumber ast_number = 113;
-  repeated ASTParameter ast_parameter = 114;
-  repeated ASTPointerType ast_pointer_type = 115;
-  repeated ASTPreConst ast_pre_const = 116;
-  repeated ASTPseudonym ast_pseudonym = 117;
-  repeated ASTReturn ast_return = 118;
-  repeated ASTString ast_string = 119;
-  repeated ASTSwitch ast_switch = 120;
-  repeated ASTUnaryOp ast_unary_op = 121;
-  repeated ASTUnknown ast_unknown = 122;
+  repeated ASTAnnotation ast_annotation = 81;
+  repeated ASTAPI ast_api = 82;
+  repeated ASTAssign ast_assign = 83;
+  repeated ASTBinaryOp ast_binary_op = 84;
+  repeated ASTBlock ast_block = 85;
+  repeated ASTBool ast_bool = 86;
+  repeated ASTBranch ast_branch = 87;
+  repeated ASTCall ast_call = 88;
+  repeated ASTCase ast_case = 89;
+  repeated ASTClass ast_class = 90;
+  repeated ASTDeclareLocal ast_declare_local = 91;
+  repeated ASTDefault ast_default = 92;
+  repeated ASTDefinition ast_definition = 93;
+  repeated ASTDelete ast_delete = 94;
+  repeated ASTEnum ast_enum = 95;
+  repeated ASTEnumEntry ast_enum_entry = 96;
+  repeated ASTFence ast_fence = 97;
+  repeated ASTField ast_field = 98;
+  repeated ASTFunction ast_function = 99;
+  repeated ASTGeneric ast_generic = 100;
+  repeated ASTGroup ast_group = 101;
+  repeated ASTIdentifier ast_identifier = 102;
+  repeated ASTImport ast_import = 103;
+  repeated ASTIndex ast_index = 104;
+  repeated ASTIndexedType ast_indexed_type = 105;
+  repeated ASTIteration ast_iteration = 106;
+  repeated ASTMapIteration ast_map_iteration = 107;
+  repeated ASTMember ast_member = 108;
+  repeated ASTNamedArg ast_named_arg = 109;
+  repeated ASTNode ast_node = 110;
+  repeated ASTNull ast_null = 111;
+  repeated ASTNumber ast_number = 112;
+  repeated ASTParameter ast_parameter = 113;
+  repeated ASTPointerType ast_pointer_type = 114;
+  repeated ASTPreConst ast_pre_const = 115;
+  repeated ASTPseudonym ast_pseudonym = 116;
+  repeated ASTReturn ast_return = 117;
+  repeated ASTString ast_string = 118;
+  repeated ASTSwitch ast_switch = 119;
+  repeated ASTUnaryOp ast_unary_op = 120;
+  repeated ASTUnknown ast_unknown = 121;
 
-  repeated CSTBranch cst_branch = 123;
-  repeated CSTLeaf cst_leaf = 124;
-  repeated CSTSource cst_source = 125;
+  repeated CSTBranch cst_branch = 122;
+  repeated CSTLeaf cst_leaf = 123;
+  repeated CSTSource cst_source = 124;
 
-  repeated string symbols = 126;
+  repeated string symbols = 125;
 }
 
 message Mappings {
@@ -904,12 +903,6 @@ message Write {
 message ASTAbort {
 }
 
-message ASTAlias {
-  ASTAnnotations annotations = 1;
-  uint64 name = 2;  // ASTIdentifier ID
-  ASTNode to = 3;
-}
-
 message ASTAnnotation {
   uint64 name = 1;  // ASTIdentifier ID
   repeated ASTNode arguments = 2;
@@ -920,17 +913,16 @@ message ASTAnnotations {
 }
 
 message ASTAPI {
-  repeated uint64 imports = 1;       // ASTImport ID
-  repeated uint64 externs = 2;       // ASTFunction ID
-  repeated uint64 commands = 3;      // ASTFunction ID
-  repeated uint64 subroutines = 4;   // ASTFunction ID
-  repeated uint64 pseudonyms = 5;    // ASTPseudonym ID
-  repeated uint64 aliases = 6;       // ASTAlias ID
-  repeated uint64 enums = 7;         // ASTEnum ID
-  repeated uint64 classes = 8;       // ASTClass ID
-  repeated uint64 fields = 9;        // ASTField ID
-  repeated uint64 definitions = 10;  // ASTDefinition ID
-  uint64 index = 11;                 // ASTNumber ID
+  repeated uint64 imports = 1;      // ASTImport ID
+  repeated uint64 externs = 2;      // ASTFunction ID
+  repeated uint64 commands = 3;     // ASTFunction ID
+  repeated uint64 subroutines = 4;  // ASTFunction ID
+  repeated uint64 pseudonyms = 5;   // ASTPseudonym ID
+  repeated uint64 enums = 6;        // ASTEnum ID
+  repeated uint64 classes = 7;      // ASTClass ID
+  repeated uint64 fields = 8;       // ASTField ID
+  repeated uint64 definitions = 9;  // ASTDefinition ID
+  uint64 index = 10;                // ASTNumber ID
 }
 
 message ASTAssign {
@@ -1082,49 +1074,48 @@ message ASTNamedArg {
 message ASTNode {
   oneof ty {
     uint64 abort = 1;           // ASTAbort
-    uint64 alias = 2;           // ASTAlias
-    uint64 annotation = 3;      // ASTAnnotation
-    uint64 api = 4;             // ASTAPI
-    uint64 assign = 5;          // ASTAssign
-    uint64 binary_op = 6;       // ASTBinaryOp
-    uint64 block = 7;           // ASTBlock
-    uint64 bool = 8;            // ASTBool
-    uint64 branch = 9;          // ASTBranch
-    uint64 call = 10;           // ASTCall
-    uint64 case = 11;           // ASTCase
-    uint64 class = 12;          // ASTClass
-    uint64 declare_local = 13;  // ASTDeclareLocal
-    uint64 default = 14;        // ASTDefault
-    uint64 definition = 15;     // ASTDefinition
-    uint64 delete = 16;         // ASTDelete
+    uint64 annotation = 2;      // ASTAnnotation
+    uint64 api = 3;             // ASTAPI
+    uint64 assign = 4;          // ASTAssign
+    uint64 binary_op = 5;       // ASTBinaryOp
+    uint64 block = 6;           // ASTBlock
+    uint64 bool = 7;            // ASTBool
+    uint64 branch = 8;          // ASTBranch
+    uint64 call = 9;            // ASTCall
+    uint64 case = 10;           // ASTCase
+    uint64 class = 11;          // ASTClass
+    uint64 declare_local = 12;  // ASTDeclareLocal
+    uint64 default = 13;        // ASTDefault
+    uint64 definition = 14;     // ASTDefinition
+    uint64 delete = 15;         // ASTDelete
     uint64 enum
-    = 17;                       // ASTEnum
-    uint64 enum_entry = 18;     // ASTEnumEntry
-    uint64 fence = 19;          // ASTFence
-    uint64 field = 20;          // ASTField
-    uint64 function = 21;       // ASTFunction
-    uint64 generic = 22;        // ASTGeneric
-    uint64 group = 23;          // ASTGroup
-    uint64 identifier = 24;     // ASTIdentifier
-    uint64 import = 25;         // ASTImport
-    uint64 index = 26;          // ASTIndex
-    uint64 indexed_type = 27;   // ASTIndexedType
-    uint64 iteration = 28;      // ASTIteration
-    uint64 map_iteration = 29;  // ASTMapIteration
-    uint64 member = 30;         // ASTMember
-    uint64 named_arg = 31;      // ASTNamedArg
-    uint64 node = 32;           // ASTNode
-    uint64 null = 33;           // ASTNull
-    uint64 number = 34;         // ASTNumber
-    uint64 parameter = 35;      // ASTParameter
-    uint64 pointer_type = 36;   // ASTPointerType
-    uint64 pre_const = 37;      // ASTPreConst
-    uint64 pseudonym = 38;      // ASTPseudonym
-    uint64 return = 39;         // ASTReturn
-    uint64 string = 40;         // ASTString
-    uint64 switch = 41;         // ASTSwitch
-    uint64 unary_op = 42;       // ASTUnaryOp
-    uint64 unknown = 43;        // ASTUnknown
+    = 16;                       // ASTEnum
+    uint64 enum_entry = 17;     // ASTEnumEntry
+    uint64 fence = 18;          // ASTFence
+    uint64 field = 19;          // ASTField
+    uint64 function = 20;       // ASTFunction
+    uint64 generic = 21;        // ASTGeneric
+    uint64 group = 22;          // ASTGroup
+    uint64 identifier = 23;     // ASTIdentifier
+    uint64 import = 24;         // ASTImport
+    uint64 index = 25;          // ASTIndex
+    uint64 indexed_type = 26;   // ASTIndexedType
+    uint64 iteration = 27;      // ASTIteration
+    uint64 map_iteration = 28;  // ASTMapIteration
+    uint64 member = 29;         // ASTMember
+    uint64 named_arg = 30;      // ASTNamedArg
+    uint64 node = 31;           // ASTNode
+    uint64 null = 32;           // ASTNull
+    uint64 number = 33;         // ASTNumber
+    uint64 parameter = 34;      // ASTParameter
+    uint64 pointer_type = 35;   // ASTPointerType
+    uint64 pre_const = 36;      // ASTPreConst
+    uint64 pseudonym = 37;      // ASTPseudonym
+    uint64 return = 38;         // ASTReturn
+    uint64 string = 39;         // ASTString
+    uint64 switch = 40;         // ASTSwitch
+    uint64 unary_op = 41;       // ASTUnaryOp
+    uint64 unknown = 42;        // ASTUnknown
   }
 }
 

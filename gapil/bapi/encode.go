@@ -112,7 +112,6 @@ type encoderInstances struct {
 
 	ASTAnnotation   map[*ast.Annotation]uint64
 	ASTAbort        map[*ast.Abort]uint64
-	ASTAlias        map[*ast.Alias]uint64
 	ASTAPI          map[*ast.API]uint64
 	ASTAssign       map[*ast.Assign]uint64
 	ASTBinaryOp     map[*ast.BinaryOp]uint64
@@ -1529,17 +1528,6 @@ func (e *encoder) write(n *semantic.Write) (outID uint64) {
 	return
 }
 
-func (e *encoder) astAlias(n *ast.Alias) (outID uint64) {
-	e.build(&e.instances.AstAlias, e.maps.ASTAlias, n, &outID, func() *ASTAlias {
-		return &ASTAlias{
-			Annotations: e.astAnnotations(n.Annotations),
-			Name:        e.astIdentifier(n.Name),
-			To:          e.astNode(n.To),
-		}
-	})
-	return
-}
-
 func (e *encoder) astAnnotation(n *ast.Annotation) (outID uint64) {
 	e.build(&e.instances.AstAnnotation, e.maps.ASTAnnotation, n, &outID, func() *ASTAnnotation {
 		out := &ASTAnnotation{
@@ -1572,7 +1560,6 @@ func (e *encoder) astAPI(n *ast.API) (outID uint64) {
 		foreach(n.Commands, e.astFunction, &p.Commands)
 		foreach(n.Subroutines, e.astFunction, &p.Subroutines)
 		foreach(n.Pseudonyms, e.astPseudonym, &p.Pseudonyms)
-		foreach(n.Aliases, e.astAlias, &p.Aliases)
 		foreach(n.Enums, e.astEnum, &p.Enums)
 		foreach(n.Classes, e.astClass, &p.Classes)
 		foreach(n.Fields, e.astField, &p.Fields)
