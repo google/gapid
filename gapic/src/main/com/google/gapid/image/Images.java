@@ -52,6 +52,9 @@ public class Images {
   public static final Image.Format FMT_DEPTH_FLOAT = Image.Format.newBuilder()
       .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_DEPTH_FLOAT))
       .build();
+  public static final Image.Format FMT_COUNT_U8 = Image.Format.newBuilder()
+      .setUncompressed(Image.FmtUncompressed.newBuilder().setFormat(Streams.FMT_COUNT_U8))
+      .build();
 
   public static final Set<Stream.Channel> COLOR_CHANNELS = Sets.immutableEnumSet(
       Stream.Channel.Red, Stream.Channel.Green, Stream.Channel.Blue, Stream.Channel.Alpha,
@@ -65,6 +68,9 @@ public class Images {
 
   public static final Set<Stream.Channel> LUMINANCE_CHANNELS = Sets.immutableEnumSet(
       Stream.Channel.Luminance);
+
+  public static final Set<Stream.Channel> COUNT_CHANNELS = Sets.immutableEnumSet(
+      Stream.Channel.Count);
 
   private Images() {
   }
@@ -224,6 +230,22 @@ public class Images {
     return false;
   }
 
+  public static boolean isCountFormat(Image.Format format) {
+    switch (format.getFormatCase()) {
+      case UNCOMPRESSED: return isCountFormat(format.getUncompressed().getFormat());
+      default: return false;
+    }
+  }
+
+  public static boolean isCountFormat(Stream.Format format) {
+    for (Stream.Component c : format.getComponentsList()) {
+      if (COUNT_CHANNELS.contains(c.getChannel())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Image formats handled by the UI.
    */
@@ -262,6 +284,13 @@ public class Images {
           com.google.gapid.image.Image.Key key, int width, int height, int depth, byte[] data) {
         return new ArrayImage.LuminanceFloatImage(key, width, height, depth, data);
       }
+    },
+    Count8(FMT_COUNT_U8, 1 * 1) {
+      @Override
+      protected ArrayImage build(
+          com.google.gapid.image.Image.Key key, int width, int height, int depth, byte[] data) {
+        return new ArrayImage.Count8Image(key, width, height, depth, data);
+      }
     };
 
     public final Image.Format format;
@@ -276,6 +305,9 @@ public class Images {
       boolean color = isColorFormat(format);
       int channels = getChannelCount(format, color ? COLOR_CHANNELS : DEPTH_CHANNELS);
       boolean is8bit = are8BitsEnough(format, color ? COLOR_CHANNELS : DEPTH_CHANNELS);
+      if (isCountFormat(format) && is8bit) {
+        return Count8;
+      }
       if (is8bit) {
         return color ? Color8 : Depth8;
       } else if (channels == 1) {

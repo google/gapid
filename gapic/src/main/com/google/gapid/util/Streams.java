@@ -123,6 +123,13 @@ public class Streams {
           .setSampling(LINEAR))
       .build();
 
+  public static final Stream.Format FMT_COUNT_U8 = Stream.Format.newBuilder()
+      .addComponents(Stream.Component.newBuilder()
+          .setChannel(Stream.Channel.Count)
+          .setDataType(U8)
+          .setSampling(LINEAR))
+      .build();
+
   public static Stream.DataType newInt(boolean signed, int bits) {
     return Stream.DataType.newBuilder()
         .setSigned(signed)

@@ -114,6 +114,8 @@ enum Channel {
   Z = 16;
   // Shared-exponent channel. All other channels are scaled by this.
   SharedExponent = 17;
+  // Count channel.
+  Count = 18;
 }
 
 // Component describes a single repeating element in a stream.

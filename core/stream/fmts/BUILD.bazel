@@ -22,6 +22,7 @@ go_library(
         "argb.go",
         "bgr.go",
         "bgra.go",
+        "count.go",
         "d.go",
         "doc.go",
         "ds.go",

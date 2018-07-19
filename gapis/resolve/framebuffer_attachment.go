@@ -90,7 +90,7 @@ func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interfac
 
 	format := fbInfo.Format
 	if r.Settings.DrawMode == service.DrawMode_OVERDRAW {
-		format = image.NewUncompressed("S8_UINT", fmts.S_U8)
+		format = image.NewUncompressed("Count_U8", fmts.Count_U8)
 	}
 
 	id, err := database.Store(ctx, &FramebufferAttachmentBytesResolvable{

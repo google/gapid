@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,27 +17,11 @@ package fmts
 import "github.com/google/gapid/core/stream"
 
 var (
-	Gray_U8_NORM = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.U8,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Gray,
-		}},
-	}
-
-	Gray_U8 = &stream.Format{
+	Count_U8 = &stream.Format{
 		Components: []*stream.Component{{
 			DataType: &stream.U8,
 			Sampling: stream.Linear,
-			Channel:  stream.Channel_Gray,
-		}},
-	}
-
-	Gray_U16_NORM = &stream.Format{
-		Components: []*stream.Component{{
-			DataType: &stream.U16,
-			Sampling: stream.LinearNormalized,
-			Channel:  stream.Channel_Gray,
+			Channel:  stream.Channel_Count,
 		}},
 	}
 )

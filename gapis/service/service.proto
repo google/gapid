@@ -392,6 +392,7 @@ enum ClientAction {
   ZoomIn = 50;
   ZoomOut = 51;
   VertexSemantics = 52;
+  Overdraw = 53;
 }
 
 message ClientInteraction {
