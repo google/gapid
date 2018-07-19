@@ -189,6 +189,8 @@ class Sampler {
  public:
   Sampler(uint32_t target) : mTarget(target) {}
 
+  virtual bool needsES3() const { return false; }
+
   virtual std::string getExtensions() const = 0;
   virtual std::string getUniform() const = 0;
   virtual std::string getSamplingExpression() const = 0;
@@ -235,6 +237,28 @@ class Sampler2D : public Sampler {
     static const Sampler2D instance;
     return instance;
   }
+};
+
+class Sampler2DArray : public Sampler {
+ public:
+  Sampler2DArray(int layer) : Sampler(GL_TEXTURE_2D_ARRAY), mLayer(layer) {}
+
+  virtual bool needsES3() const { return true; }
+
+  virtual std::string getExtensions() const { return ""; }
+
+  virtual std::string getUniform() const {
+    return "uniform sampler2DArray tex;";
+  }
+
+  virtual std::string getSamplingExpression() const {
+    std::ostringstream r;
+    r << "texture(tex, vec3(texcoord, " << mLayer << ".0))";
+    return r.str();
+  }
+
+ private:
+  GLint mLayer;
 };
 
 class SamplerExternal : public Sampler {
@@ -288,6 +312,11 @@ void DrawTexturedQuad(const GlesImports& imports, GLsizei w, GLsizei h,
   }
 
   std::string vsSource;
+  if (sampler.needsES3()) {
+    vsSource += "#version 300 es\n";
+    vsSource += "#define attribute in\n";
+    vsSource += "#define varying out\n";
+  }
   vsSource += "precision highp float;\n";
   vsSource += "attribute vec2 position;\n";
   vsSource += "varying vec2 texcoord;\n";
@@ -297,12 +326,19 @@ void DrawTexturedQuad(const GlesImports& imports, GLsizei w, GLsizei h,
   vsSource += "}\n";
 
   std::string fsSource;
+  if (sampler.needsES3()) {
+    fsSource += "#version 300 es\n";
+    fsSource += "#define varying in\n";
+    fsSource += "out vec4 fragColor;\n";
+  } else {
+    fsSource += "#define fragColor gl_FragColor\n";
+  }
   fsSource += sampler.getExtensions();
   fsSource += "precision highp float;\n";
   fsSource += sampler.getUniform();
   fsSource += "varying vec2 texcoord;\n";
   fsSource += "void main() {\n";
-  fsSource += "  gl_FragColor = " + sampler.getSamplingExpression() + ";\n";
+  fsSource += "  fragColor = " + sampler.getSamplingExpression() + ";\n";
   fsSource += "}\n";
 
   auto prog = imports.glCreateProgram();
@@ -415,6 +451,12 @@ ImageData ReadOneChannelTextureViaDrawQuad(
           ReadTextureViaDrawQuad(imports, Sampler2D::get(), texID, w, h, format,
                                  {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
       break;
+    case GL_TEXTURE_2D_ARRAY: {
+      Sampler2DArray sampler(layer);
+      result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
+                                      {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
+      break;
+    }
     case GL_TEXTURE_3D: {
       Sampler3D sampler(1.0f / (2.0f * d) + (float)layer / d);
       result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
@@ -445,10 +487,17 @@ ImageData ReadTwoChannelTextureViaDrawQuad(
           ReadTextureViaDrawQuad(imports, Sampler2D::get(), texID, w, h, format,
                                  {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
       break;
+    case GL_TEXTURE_2D_ARRAY: {
+      Sampler2DArray sampler(layer);
+      result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
+                                      {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
+      break;
+    }
     case GL_TEXTURE_3D: {
       Sampler3D sampler(1.0f / (2.0f * d) + (float)layer / d);
       result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
                                       {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
+      break;
     }
     default:
       // TODO: Copy the layer/level to temporary 2D texture.
@@ -472,6 +521,12 @@ ImageData ReadCompressedTexture(const GlesImports& imports, uint32_t kind,
       result = ReadTextureViaDrawQuad(imports, Sampler2D::get(), texID, w, h,
                                       format, swizzle);
       break;
+    case GL_TEXTURE_2D_ARRAY: {
+      Sampler2DArray sampler(layer);
+      result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
+                                      swizzle);
+      break;
+    }
     case GL_TEXTURE_3D: {
       Sampler3D sampler(1.0f / (2.0f * d) + (float)layer / d);
       result = ReadTextureViaDrawQuad(imports, sampler, texID, w, h, format,
