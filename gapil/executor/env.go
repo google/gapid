@@ -128,7 +128,7 @@ func (e *Env) Dispose() {
 type envID uint32
 
 var (
-	envMutex  sync.Mutex
+	envMutex  sync.RWMutex
 	nextEnvID envID
 	envs      = map[envID]*Env{}
 )
@@ -136,9 +136,9 @@ var (
 // env returns the environment for the given context c.
 func env(c *C.context) *Env {
 	id := envID(c.id)
-	envMutex.Lock()
+	envMutex.RLock()
 	out, ok := envs[id]
-	envMutex.Unlock()
+	envMutex.RUnlock()
 	if !ok {
 		panic(fmt.Errorf("Unknown envID %v", id))
 	}
