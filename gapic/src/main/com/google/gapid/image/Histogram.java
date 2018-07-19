@@ -41,10 +41,13 @@ public class Histogram {
   private final Mapper mapper;
   private final Bins bins;
 
-  public Histogram(Image[] images, int numBins, boolean logFit) {
+  private final boolean isCount;
+
+  public Histogram(Image[] images, int numBins, boolean logFit, boolean isCount) {
     this.channels = getChannels(images);
-    this.mapper = Mapper.get(images, logFit);
+    this.mapper = Mapper.get(images, logFit, isCount);
     this.bins = Bins.get(images, mapper, numBins);
+    this.isCount = isCount;
   }
 
   private static Set<Stream.Channel> getChannels(Image[] images) {
@@ -57,6 +60,10 @@ public class Histogram {
    * Returns the a good default starting range to use for tone mapping.
    */
   public Range getInitialRange(double snapThreshold) {
+    // Don't leave data out if it's a count
+    if (isCount) {
+      return new Range(0., mapper.limits.max);
+    }
     if (isLinear()) {
       return Range.IDENTITY;
     }
@@ -80,7 +87,7 @@ public class Histogram {
    * @param high if true, return the upper limit on the percentile's bin, otherwise the lower limit.
    * @return the absolute pixel value at the specified percentile in the histogram.
    */
-  private double getPercentile(int percentile, boolean high) {
+  public double getPercentile(int percentile, boolean high) {
     int bin = bins.getPercentileBin(percentile, channels);
     return (bin < 0) ? mapper.limits.max :
         getValueFromNormalizedX((bin + (high ? 1 : 0)) / (double)bins.count());
@@ -179,9 +186,9 @@ public class Histogram {
     /**
      * Returns a mapper whose range will encompass all values from the given images.
      */
-    public static Mapper get(Image[] images, boolean logFit) {
+    public static Mapper get(Image[] images, boolean logFit, boolean isCount) {
       // Get the limits and average value.
-      double min = Double.POSITIVE_INFINITY;
+      double min = isCount ? 0.0 : Double.POSITIVE_INFINITY;
       double max = Double.NEGATIVE_INFINITY;
       double average = 0.0;
       for (Image image : images) {

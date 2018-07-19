@@ -81,6 +81,11 @@ public interface Image {
   public boolean isHDR();
 
   /**
+   * @return true if this image should be tone-mapped when displayed.
+   */
+  public boolean isCount();
+
+  /**
    * Bins this image's channel data with the given {@link Histogram.Binner}.
    */
   public void bin(Histogram.Binner binner);
@@ -136,6 +141,11 @@ public interface Image {
 
     @Override
     public boolean isHDR() {
+      return false;
+    }
+
+    @Override
+    public boolean isCount() {
       return false;
     }
 

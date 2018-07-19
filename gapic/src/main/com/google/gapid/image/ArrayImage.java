@@ -120,6 +120,11 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     return ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
   }
 
+  @Override
+  public boolean isCount() {
+    return false;
+  }
+
   /**
    * An {@link ArrayImage} builder.
    */
@@ -181,7 +186,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
 
     public RGBA8Image(Image.Key key, int width, int height, int depth, byte[] data) {
       this(width, height, depth, data,
-          getUnchecked(PIXEL_INFO_CACHE, key, () -> IntPixelInfo.compute(data, true)));
+          getUnchecked(PIXEL_INFO_CACHE, key, () -> IntPixelInfo.compute(data, true, true)));
     }
 
     private RGBA8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
@@ -369,7 +374,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
 
     public Luminance8Image(Image.Key key, int width, int height, int depth, byte[] data) {
       this(width, height, depth, data,
-          getUnchecked(PIXEL_INFO_CACHE, key, () -> IntPixelInfo.compute(data, false)));
+          getUnchecked(PIXEL_INFO_CACHE, key, () -> IntPixelInfo.compute(data, false, true)));
     }
 
     private Luminance8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
@@ -546,7 +551,8 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
    */
   public static class Count8Image extends Luminance8Image {
     public Count8Image(Image.Key key, int width, int height, int depth, byte[] data) {
-      super(key, width, height, depth, data);
+      this(width, height, depth, data,
+          getUnchecked(PIXEL_INFO_CACHE, key, () -> IntPixelInfo.compute(data, false, false)));
     }
 
     private Count8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
@@ -575,6 +581,11 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
       }
     }
 
+    @Override
+    public boolean isCount() {
+      return true;
+    }
+
     protected static class Pixel implements PixelValue {
       private final int count;
 
@@ -584,7 +595,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
 
       @Override
       public String toString() {
-        return String.format("Count = %d", count);
+        return "Count = " + count;
       }
 
       @Override
@@ -696,16 +707,18 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
   private static class IntPixelInfo implements PixelInfo {
     private final double min, max, average;
     private final double alphaMin, alphaMax;
+    private final boolean normalized;
 
-    private IntPixelInfo(double min, double max, double average, double alphaMin, double alphaMax) {
+    private IntPixelInfo(double min, double max, double average, double alphaMin, double alphaMax, boolean normalized) {
       this.min = min;
       this.max = max;
       this.average = average;
       this.alphaMin = alphaMin;
       this.alphaMax = alphaMax;
+      this.normalized = normalized;
     }
 
-    public static PixelInfo compute(byte[] data, boolean isRGBA) {
+    public static PixelInfo compute(byte[] data, boolean isRGBA, boolean normalized) {
       if (data.length == 0) {
         return PixelInfo.NULL_INFO;
       }
@@ -746,7 +759,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
         average /= data.length;
       }
       return new IntPixelInfo(
-          min / 255.0, max / 255.0, average / 255.0, alphaMin / 255.0, alphaMax / 255.0);
+          min / 255.0, max / 255.0, average / 255.0, alphaMin / 255.0, alphaMax / 255.0, normalized);
     }
 
     @Override
@@ -776,7 +789,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
 
     @Override
     public boolean isNormalized() {
-      return true;
+      return normalized;
     }
   }
 }
