@@ -26,7 +26,12 @@ func (c *C) mangleInt(size int32, signed bool, name string) mangling.Type {
 			return mangling.Int
 		}
 		return mangling.UInt
-	// Below are fall-back assumptions
+		// Below are fall-back assumptions
+	case 8:
+		if signed {
+			return mangling.Long
+		}
+		return mangling.ULong
 	case 4:
 		if signed {
 			return mangling.Int
@@ -43,7 +48,7 @@ func (c *C) mangleInt(size int32, signed bool, name string) mangling.Type {
 		}
 		return mangling.UChar
 	default:
-		fail("Don't know how to mangle %s", name)
+		fail("Don't know how to mangle %s (size: %d, signed: %v)", name, size, signed)
 		return nil
 	}
 }
@@ -86,6 +91,8 @@ func (c *C) Mangle(ty codegen.Type) mangling.Type {
 		return c.mangleInt(c.T.targetABI.MemoryLayout.Size.Size, false, "size")
 	case c.T.Int:
 		return c.mangleInt(c.T.targetABI.MemoryLayout.Integer.Size, true, "int")
+	case c.T.Uint:
+		return c.mangleInt(c.T.targetABI.MemoryLayout.Integer.Size, false, "uint")
 	}
 	switch ty := ty.(type) {
 	case codegen.Pointer:
