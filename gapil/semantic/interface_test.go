@@ -19,7 +19,6 @@ import "github.com/google/gapid/gapil/semantic"
 var (
 	_ = []semantic.Node{
 		&semantic.Abort{},
-		&semantic.Alias{},
 		&semantic.Annotation{},
 		&semantic.API{},
 		&semantic.ArrayAssign{},
@@ -179,7 +178,6 @@ var (
 	}
 
 	_ = []semantic.Type{
-		&semantic.Alias{},
 		&semantic.Builtin{},
 		&semantic.Class{},
 		&semantic.Enum{},

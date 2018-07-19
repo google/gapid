@@ -287,8 +287,6 @@ func (p *Printer) WriteExpression(n semantic.Expression) *Printer {
 // WriteType appends the string representation of n to the Printer's buffer.
 func (p *Printer) WriteType(n semantic.Type) *Printer {
 	switch n := n.(type) {
-	case *semantic.Alias:
-		p.WriteString(n.Name())
 	case *semantic.Builtin:
 		p.WriteString(n.Name())
 	case *semantic.Class:

@@ -102,7 +102,6 @@ type decoderInstances struct {
 
 	ASTAnnotation   []*ast.Annotation
 	ASTAbort        []*ast.Abort
-	ASTAlias        []*ast.Alias
 	ASTAPI          []*ast.API
 	ASTAssign       []*ast.Assign
 	ASTBinaryOp     []*ast.BinaryOp
@@ -1365,16 +1364,6 @@ func (d *decoder) astAbort(astAbortID uint64) (out *ast.Abort) {
 	return
 }
 
-func (d *decoder) astAlias(astAliasID uint64) (out *ast.Alias) {
-	d.build(d.content.Instances.AstAlias, &d.inst.ASTAlias, astAliasID, &out,
-		func(p *ASTAlias, s *ast.Alias) {
-			s.Annotations = d.astAnnotations(p.Annotations)
-			s.Name = d.astIdentifier(p.Name)
-			s.To = d.astNode(p.To)
-		})
-	return
-}
-
 func (d *decoder) astAnnotation(astAnnotationID uint64) (out *ast.Annotation) {
 	d.build(d.content.Instances.AstAnnotation, &d.inst.ASTAnnotation, astAnnotationID, &out,
 		func(p *ASTAnnotation, s *ast.Annotation) {
@@ -1403,7 +1392,6 @@ func (d *decoder) astAPI(astAPIID uint64) (out *ast.API) {
 			foreach(p.Commands, d.astFunction, &s.Commands)
 			foreach(p.Subroutines, d.astFunction, &s.Subroutines)
 			foreach(p.Pseudonyms, d.astPseudonym, &s.Pseudonyms)
-			foreach(p.Aliases, d.astAlias, &s.Aliases)
 			foreach(p.Enums, d.astEnum, &s.Enums)
 			foreach(p.Classes, d.astClass, &s.Classes)
 			foreach(p.Fields, d.astField, &s.Fields)

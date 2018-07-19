@@ -59,12 +59,6 @@ func TestCyclicDependencies(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range []test{
 		{
-			name: "Cyclic alias declaration",
-			source: `cmd a foo() {}
-alias a b
-alias b a`,
-			errors: err("cyclic alias declaration: a -> b -> a"),
-		}, {
 			name: "Cyclic pseudonym declaration",
 			source: `type c b
 type a c

@@ -82,10 +82,6 @@ func apiNames(rv *resolver, in *ast.API) {
 		rv.api.Globals = append(rv.api.Globals, n)
 		semantic.Add(rv.api, n)
 	}
-	// Add all the alias remaps
-	for _, a := range in.Aliases {
-		rv.addType(&semantic.Alias{AST: a, Named: semantic.Named(a.Name.Value)})
-	}
 	for _, c := range in.Definitions {
 		n := &semantic.Definition{AST: c, Named: semantic.Named(c.Name.Value)}
 		rv.api.Definitions = append(rv.api.Definitions, n)

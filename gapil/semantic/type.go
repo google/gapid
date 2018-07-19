@@ -247,22 +247,6 @@ func (t *Pseudonym) VisitMembers(visitor func(Owned)) {
 
 func (t *Pseudonym) SortMembers() { t.members.sort() }
 
-// Alias is used as a temporary type holder during type resolution.
-// It is not present in the final semantic tree returned, but may be present
-// in the AST -> semantic map.
-type Alias struct {
-	owned
-	noMembers
-	AST *ast.Alias
-	Named
-	To Type
-}
-
-func (*Alias) isNode() {}
-func (*Alias) isType() {}
-
-func (t *Alias) ASTNode() ast.Node { return t.AST }
-
 // StaticArray represents a one-dimension fixed size array type, of the form T[8]
 type StaticArray struct {
 	owned

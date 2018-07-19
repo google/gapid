@@ -122,22 +122,6 @@ func (p *parser) enum(b *cst.Branch, a *ast.Annotations) *ast.Enum {
 	return s
 }
 
-// { annotation } 'alias' type identifier
-func (p *parser) alias(b *cst.Branch, a *ast.Annotations) *ast.Alias {
-	if !p.peekKeyword(ast.KeywordAlias) {
-		return nil
-	}
-	s := &ast.Alias{}
-	consumeAnnotations(&s.Annotations, a)
-	p.ParseBranch(b, func(b *cst.Branch) {
-		p.mappings.Add(s, b)
-		p.requireKeyword(ast.KeywordAlias, b)
-		s.To = p.requireTypeRef(b)
-		s.Name = p.requireIdentifier(b)
-	})
-	return s
-}
-
 // { annotation } 'type' type identifier
 func (p *parser) pseudonym(b *cst.Branch, a *ast.Annotations) *ast.Pseudonym {
 	if !p.peekKeyword(ast.KeywordPseudonym) {

@@ -80,16 +80,6 @@ type PointerType struct {
 
 func (PointerType) isNode() {}
 
-// Alias represents a weak type alias, with structure «"alias" type name».
-// An alias does not declare a new type, just a reusable name for a common type.
-type Alias struct {
-	Annotations Annotations // the annotations applied to the alias
-	Name        *Identifier // the name of the alias
-	To          Node        // the type it is an alias for
-}
-
-func (Alias) isNode() {}
-
 // Pseudonym declares a new type in terms of another type.
 // Has the form «"type" type name»
 // Pseydonyms are proper types, but the underlying type can be discovered.

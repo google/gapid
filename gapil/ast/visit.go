@@ -21,10 +21,6 @@ func Visit(node Node, visitor func(Node)) {
 	switch n := node.(type) {
 	case *Abort:
 
-	case *Alias:
-		visitor(n.Name)
-		visitor(n.To)
-
 	case *Annotation:
 		visitor(n.Name)
 		for _, a := range n.Arguments {
@@ -45,9 +41,6 @@ func Visit(node Node, visitor func(Node)) {
 			visitor(m)
 		}
 		for _, m := range n.Pseudonyms {
-			visitor(m)
-		}
-		for _, m := range n.Aliases {
 			visitor(m)
 		}
 		for _, m := range n.Enums {

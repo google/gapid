@@ -72,10 +72,6 @@ func isNewline(n cst.Node) bool {
 // markup populates the cst.Node maps with information based on the ast tree.
 func (p *printer) markup(n ast.Node) {
 	switch n := n.(type) {
-	case *ast.Alias:
-		p.inject(n.To, afterPrefix, "•")
-		p.inject(n.Name, afterPrefix, "\t•")
-
 	case *ast.Annotation:
 		p.inject(n, beforeSuffix, "•")
 		if len(n.Arguments) > 0 {
