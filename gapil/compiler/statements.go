@@ -225,7 +225,7 @@ func (c *C) expressionAddr(s *S, target semantic.Expression) *codegen.Value {
 	for {
 		switch n := target.(type) {
 		case *semantic.Global:
-			path = append(path, n.Name(), 0)
+			path = append(path, n.Name(), c.CurrentAPI().Name(), 0)
 			revPath()
 			return s.Globals.Index(path...)
 		case *semantic.Local:

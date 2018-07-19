@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/gapil/compiler/plugins/replay"
 	"github.com/google/gapid/gapil/compiler/testutils"
 	"github.com/google/gapid/gapil/executor"
+	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -334,7 +335,7 @@ func (t test) run(ctx context.Context) (succeeded bool) {
 		},
 	}
 
-	program, err := compiler.Compile(a, processor.Mappings, settings)
+	program, err := compiler.Compile([]*semantic.API{a}, processor.Mappings, settings)
 	if !assert.For(ctx, "Compile").ThatError(err).Succeeded() {
 		return false
 	}

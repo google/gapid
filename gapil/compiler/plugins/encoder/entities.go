@@ -60,7 +60,7 @@ type entities struct {
 	funcParams map[*semantic.Function]*entity
 	funcCalls  map[*semantic.Function]*entity
 	slice      *entity
-	state      *entity
+	state      map[*semantic.API]*entity
 }
 
 // isPacked returns true if this entity should be packed together into a single
@@ -182,31 +182,37 @@ func (e *entities) declBuiltins(c *compiler.C) {
 // declEnums creates an entity for each API enum type.
 // declEnums needs to be called after declBuiltins.
 func (e *entities) declEnums(c *compiler.C) {
-	for _, ty := range c.API.Enums {
-		e.types[ty] = e.ty(ty.NumberType)
+	for _, api := range c.APIs {
+		for _, ty := range api.Enums {
+			e.types[ty] = e.ty(ty.NumberType)
+		}
 	}
 }
 
 // declPointers creates an entity for each API pointer type.
 func (e *entities) declPointers(c *compiler.C) {
-	for _, ty := range c.API.Pointers {
-		e.types[ty] = &entity{
-			node:    ty,
-			protoTy: descriptor.FieldDescriptorProto_TYPE_SINT64,
-			wireTy:  proto.WireVarint,
+	for _, api := range c.APIs {
+		for _, ty := range api.Pointers {
+			e.types[ty] = &entity{
+				node:    ty,
+				protoTy: descriptor.FieldDescriptorProto_TYPE_SINT64,
+				wireTy:  proto.WireVarint,
+			}
 		}
 	}
 }
 
 // declPointers stubs an entity for each API reference type.
 func (e *entities) declReferences(c *compiler.C) {
-	for _, ty := range c.API.References {
-		e.types[ty] = &entity{
-			node:    ty,
-			desc:    &descriptor.DescriptorProto{},
-			protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
-			wireTy:  proto.WireBytes,
-			fqn:     fmt.Sprintf("%v.%v", c.API.Name(), serialization.ProtoTypeName(ty)),
+	for _, api := range c.APIs {
+		for _, ty := range api.References {
+			e.types[ty] = &entity{
+				node:    ty,
+				desc:    &descriptor.DescriptorProto{},
+				protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
+				wireTy:  proto.WireBytes,
+				fqn:     fmt.Sprintf("%v.%v", api.Name(), serialization.ProtoTypeName(ty)),
+			}
 		}
 	}
 }
@@ -240,32 +246,38 @@ func (e *entities) declSlices(c *compiler.C) {
 		wireTy:  proto.WireBytes,
 		fqn:     "memory.Slice",
 	}
-	for _, ty := range c.API.Slices {
-		e.types[ty] = e.slice
+	for _, api := range c.APIs {
+		for _, ty := range api.Slices {
+			e.types[ty] = e.slice
+		}
 	}
 }
 
 // declClasses stubs an entity for each API class type.
 func (e *entities) declClasses(c *compiler.C) {
-	for _, ty := range c.API.Classes {
-		e.types[ty] = &entity{
-			node:    ty,
-			desc:    &descriptor.DescriptorProto{},
-			protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
-			wireTy:  proto.WireBytes,
-			fqn:     fmt.Sprintf("%v.%v", c.API.Name(), serialization.ProtoTypeName(ty)),
+	for _, api := range c.APIs {
+		for _, ty := range api.Classes {
+			e.types[ty] = &entity{
+				node:    ty,
+				desc:    &descriptor.DescriptorProto{},
+				protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
+				wireTy:  proto.WireBytes,
+				fqn:     fmt.Sprintf("%v.%v", api.Name(), serialization.ProtoTypeName(ty)),
+			}
 		}
 	}
 }
 
 // declMaps stubs an entity for each API map type.
 func (e *entities) declMaps(c *compiler.C) {
-	for _, ty := range c.API.Maps {
-		e.types[ty] = &entity{
-			node:    ty,
-			protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
-			wireTy:  proto.WireBytes,
-			fqn:     fmt.Sprintf("%v.%v", c.API.Name(), serialization.ProtoTypeName(ty)),
+	for _, api := range c.APIs {
+		for _, ty := range api.Maps {
+			e.types[ty] = &entity{
+				node:    ty,
+				protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
+				wireTy:  proto.WireBytes,
+				fqn:     fmt.Sprintf("%v.%v", api.Name(), serialization.ProtoTypeName(ty)),
+			}
 		}
 	}
 }
@@ -274,20 +286,22 @@ func (e *entities) declMaps(c *compiler.C) {
 // declStaticArrays must be called after all other API types are declared
 // (except for pseudonyms).
 func (e *entities) declStaticArrays(c *compiler.C) {
-	for _, ty := range c.API.StaticArrays {
-		valTi := e.ty(semantic.Underlying(ty.ValueType))
-		ent := &entity{
-			node:    ty,
-			label:   descriptor.FieldDescriptorProto_LABEL_REPEATED,
-			wireTy:  valTi.wireTy,
-			protoTy: valTi.protoTy,
-			desc:    valTi.desc,
-			fqn:     valTi.fqn,
+	for _, api := range c.APIs {
+		for _, ty := range api.StaticArrays {
+			valTi := e.ty(semantic.Underlying(ty.ValueType))
+			ent := &entity{
+				node:    ty,
+				label:   descriptor.FieldDescriptorProto_LABEL_REPEATED,
+				wireTy:  valTi.wireTy,
+				protoTy: valTi.protoTy,
+				desc:    valTi.desc,
+				fqn:     valTi.fqn,
+			}
+			if ent.isPacked() {
+				ent.wireTy = proto.WireBytes
+			}
+			e.types[ty] = ent
 		}
-		if ent.isPacked() {
-			ent.wireTy = proto.WireBytes
-		}
-		e.types[ty] = ent
 	}
 }
 
@@ -295,34 +309,40 @@ func (e *entities) declStaticArrays(c *compiler.C) {
 // API pseudonyms.
 // declPseudonyms must be called after all other API types are declared.
 func (e *entities) declPseudonyms(c *compiler.C) {
-	for _, ty := range c.API.Pseudonyms {
-		if underlying := semantic.Underlying(ty.To); underlying != semantic.VoidType {
-			e.types[ty] = e.ty(underlying)
+	for _, api := range c.APIs {
+		for _, ty := range api.Pseudonyms {
+			if underlying := semantic.Underlying(ty.To); underlying != semantic.VoidType {
+				e.types[ty] = e.ty(underlying)
+			}
 		}
 	}
 }
 
-// declState stubs an entity for the API state object.
+// declState stubs an entity for each API state object.
 // declState must be called after all API types are declared.
 func (e *entities) declState(c *compiler.C) {
-	e.state = &entity{
-		node:    c.API,
-		protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
-		wireTy:  proto.WireBytes,
-		fqn:     fmt.Sprintf("%v.State", c.API.Name()),
+	for _, api := range c.APIs {
+		e.state[api] = &entity{
+			node:    api,
+			protoTy: descriptor.FieldDescriptorProto_TYPE_MESSAGE,
+			wireTy:  proto.WireBytes,
+			fqn:     fmt.Sprintf("%v.State", api.Name()),
+		}
 	}
 }
 
 // buildReferences builds the proto descriptor for every API reference type.
 // buildReferences must be called after all entities are declared.
 func (e *entities) buildReferences(c *compiler.C) {
-	for _, ty := range c.API.References {
-		*e.ty(ty).desc = descriptor.DescriptorProto{
-			Name: proto.String(serialization.ProtoTypeName(ty)),
-			Field: []*descriptor.FieldDescriptorProto{
-				e.ty(semantic.Uint64Type).protoDescField("ReferenceID", serialization.RefRef),
-				e.ty(ty.To).protoDescField("Value", serialization.RefVal),
-			},
+	for _, api := range c.APIs {
+		for _, ty := range api.References {
+			*e.ty(ty).desc = descriptor.DescriptorProto{
+				Name: proto.String(serialization.ProtoTypeName(ty)),
+				Field: []*descriptor.FieldDescriptorProto{
+					e.ty(semantic.Uint64Type).protoDescField("ReferenceID", serialization.RefRef),
+					e.ty(ty.To).protoDescField("Value", serialization.RefVal),
+				},
+			}
 		}
 	}
 }
@@ -330,16 +350,18 @@ func (e *entities) buildReferences(c *compiler.C) {
 // buildClasses builds the proto descriptor for every API class type.
 // buildClasses must be called after all entities are declared.
 func (e *entities) buildClasses(c *compiler.C) {
-	for _, ty := range c.API.Classes {
-		fields := []*descriptor.FieldDescriptorProto{}
-		for i, f := range ty.Fields {
-			fields = append(fields,
-				e.ty(f.Type).protoDescField(f.Name(), serialization.ClassFieldStart+serialization.ProtoFieldID(i)),
-			)
-		}
-		*e.ty(ty).desc = descriptor.DescriptorProto{
-			Name:  proto.String(serialization.ProtoTypeName(ty)),
-			Field: fields,
+	for _, api := range c.APIs {
+		for _, ty := range api.Classes {
+			fields := []*descriptor.FieldDescriptorProto{}
+			for i, f := range ty.Fields {
+				fields = append(fields,
+					e.ty(f.Type).protoDescField(f.Name(), serialization.ClassFieldStart+serialization.ProtoFieldID(i)),
+				)
+			}
+			*e.ty(ty).desc = descriptor.DescriptorProto{
+				Name:  proto.String(serialization.ProtoTypeName(ty)),
+				Field: fields,
+			}
 		}
 	}
 }
@@ -347,18 +369,20 @@ func (e *entities) buildClasses(c *compiler.C) {
 // buildMaps builds the proto descriptor for every API map type.
 // buildMaps must be called after all entities are declared.
 func (e *entities) buildMaps(c *compiler.C) {
-	for _, ty := range c.API.Maps {
-		valTI := *e.ty(ty.ValueType)
-		valTI.label = descriptor.FieldDescriptorProto_LABEL_REPEATED
-		keyTI := *e.ty(ty.KeyType)
-		keyTI.label = descriptor.FieldDescriptorProto_LABEL_REPEATED
-		e.ty(ty).desc = &descriptor.DescriptorProto{
-			Name: proto.String(serialization.ProtoTypeName(ty)),
-			Field: []*descriptor.FieldDescriptorProto{
-				e.ty(semantic.Int64Type).protoDescField("ReferenceID", serialization.MapRef),
-				valTI.protoDescField("Values", serialization.MapVal),
-				keyTI.protoDescField("Keys", serialization.MapKey),
-			},
+	for _, api := range c.APIs {
+		for _, ty := range api.Maps {
+			valTI := *e.ty(ty.ValueType)
+			valTI.label = descriptor.FieldDescriptorProto_LABEL_REPEATED
+			keyTI := *e.ty(ty.KeyType)
+			keyTI.label = descriptor.FieldDescriptorProto_LABEL_REPEATED
+			e.ty(ty).desc = &descriptor.DescriptorProto{
+				Name: proto.String(serialization.ProtoTypeName(ty)),
+				Field: []*descriptor.FieldDescriptorProto{
+					e.ty(semantic.Int64Type).protoDescField("ReferenceID", serialization.MapRef),
+					valTI.protoDescField("Values", serialization.MapVal),
+					keyTI.protoDescField("Keys", serialization.MapKey),
+				},
+			}
 		}
 	}
 }
@@ -366,15 +390,17 @@ func (e *entities) buildMaps(c *compiler.C) {
 // buildState builds the proto descriptor for the API state object.
 // buildState must be called after all entities are declared.
 func (e *entities) buildState(c *compiler.C) {
-	fields := []*descriptor.FieldDescriptorProto{}
-	for i, g := range encodeableGlobals(c.API) {
-		fields = append(fields,
-			e.ty(g.Type).protoDescField(g.Name(), serialization.StateStart+serialization.ProtoFieldID(i)),
-		)
-	}
-	e.state.desc = &descriptor.DescriptorProto{
-		Name:  proto.String("State"),
-		Field: fields,
+	for _, api := range c.APIs {
+		fields := []*descriptor.FieldDescriptorProto{}
+		for i, g := range encodeableGlobals(api) {
+			fields = append(fields,
+				e.ty(g.Type).protoDescField(g.Name(), serialization.StateStart+serialization.ProtoFieldID(i)),
+			)
+		}
+		e.state[api].desc = &descriptor.DescriptorProto{
+			Name:  proto.String("State"),
+			Field: fields,
+		}
 	}
 }
 
@@ -382,41 +408,43 @@ func (e *entities) buildState(c *compiler.C) {
 // call messages.
 // buildFunctions must be called after all entities are declared.
 func (e *entities) buildFunctions(c *compiler.C) {
-	for _, f := range c.API.Functions {
-		{ // Parameters
-			fields := []*descriptor.FieldDescriptorProto{
-				e.ty(semantic.Uint64Type).protoDescField("thread", serialization.CmdThread),
-			}
-			for i, p := range f.CallParameters() {
-				fields = append(fields,
-					e.ty(p.Type).protoDescField(p.Name(), serialization.CmdFieldStart+serialization.ProtoFieldID(i)),
-				)
-			}
-			e.funcParams[f] = &entity{
-				desc: &descriptor.DescriptorProto{
-					Name:  proto.String(f.Name()),
-					Field: fields,
-				},
-				fqn: fmt.Sprintf("%v.%v", c.API.Name(), f.Name()),
-			}
-		}
-		if f.Return.Type != semantic.VoidType {
-			name := f.Name() + "Call"
-			e.funcCalls[f] = &entity{
-				desc: &descriptor.DescriptorProto{
-					Name: &name,
-					Field: []*descriptor.FieldDescriptorProto{
-						e.ty(f.Return.Type).protoDescField("result", serialization.CmdResult),
+	for _, api := range c.APIs {
+		for _, f := range api.Functions {
+			{ // Parameters
+				fields := []*descriptor.FieldDescriptorProto{
+					e.ty(semantic.Uint64Type).protoDescField("thread", serialization.CmdThread),
+				}
+				for i, p := range f.CallParameters() {
+					fields = append(fields,
+						e.ty(p.Type).protoDescField(p.Name(), serialization.CmdFieldStart+serialization.ProtoFieldID(i)),
+					)
+				}
+				e.funcParams[f] = &entity{
+					desc: &descriptor.DescriptorProto{
+						Name:  proto.String(f.Name()),
+						Field: fields,
 					},
-				},
-				fqn: fmt.Sprintf("%v.%v", c.API.Name(), name),
+					fqn: fmt.Sprintf("%v.%v", api.Name(), f.Name()),
+				}
+			}
+			if f.Return.Type != semantic.VoidType {
+				name := f.Name() + "Call"
+				e.funcCalls[f] = &entity{
+					desc: &descriptor.DescriptorProto{
+						Name: &name,
+						Field: []*descriptor.FieldDescriptorProto{
+							e.ty(f.Return.Type).protoDescField("result", serialization.CmdResult),
+						},
+					},
+					fqn: fmt.Sprintf("%v.%v", api.Name(), name),
+				}
 			}
 		}
 	}
 }
 
 // allWithDescriptor returns all the entities that have a proto descriptor.
-func (e *entities) allWithDescriptor() []*entity {
+func (e *entities) allWithDescriptor(apis []*semantic.API) []*entity {
 	out := []*entity{}
 	seen := map[*entity]bool{}
 	add := func(ent *entity) {
@@ -427,7 +455,9 @@ func (e *entities) allWithDescriptor() []*entity {
 			}
 		}
 	}
-	add(e.state)
+	for _, api := range apis {
+		add(e.state[api])
+	}
 	for _, ent := range e.types {
 		add(ent)
 	}
@@ -471,7 +501,7 @@ func (e *entities) createDescriptors(c *compiler.C, l []*entity) (codegen.Global
 		indices = indices[1:]
 	}
 
-	global := c.M.Global(c.API.Name()+"-proto-desc", c.M.Scalar(packed)).
+	global := c.M.Global("proto-descriptors", c.M.Scalar(packed)).
 		LinkPrivate()
 
 	return global, slices
@@ -481,7 +511,7 @@ func (e *entities) createDescriptors(c *compiler.C, l []*entity) (codegen.Global
 // The encode function will declare the entity's type and all transitive
 // entity types.
 func (e *entities) buildEncodeTypeFuncs(c *compiler.C, encodeType *codegen.Function) {
-	l := e.allWithDescriptor()
+	l := e.allWithDescriptor(c.APIs)
 
 	descs, descSlices := e.createDescriptors(c, l)
 

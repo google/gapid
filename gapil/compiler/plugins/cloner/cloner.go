@@ -41,11 +41,13 @@ func (c *cloner) Build(compiler *compiler.C) {
 		cloneImpls: map[semantic.Type]*codegen.Function{},
 	}
 
-	for _, ty := range c.API.References {
-		c.clonableTys = append(c.clonableTys, ty)
-	}
-	for _, ty := range c.API.Maps {
-		c.clonableTys = append(c.clonableTys, ty)
+	for _, api := range c.APIs {
+		for _, ty := range api.References {
+			c.clonableTys = append(c.clonableTys, ty)
+		}
+		for _, ty := range api.Maps {
+			c.clonableTys = append(c.clonableTys, ty)
+		}
 	}
 
 	c.parseCallbacks()
@@ -152,21 +154,23 @@ func (c *cloner) implementClones() {
 		}
 	}
 
-	for _, cmd := range c.API.Functions {
-		params := c.T.CmdParams[cmd]
-		paramsPtr := c.T.Pointer(params)
-		f := c.M.Function(paramsPtr, cmd.Name()+"__clone", paramsPtr, c.T.ArenaPtr, c.T.VoidPtr).LinkOnceODR()
-		c.C.Build(f, func(s *compiler.S) {
-			this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
-			s.Arena = arena
-			clone := c.Alloc(s, s.Scalar(1), params)
-			thread := semantic.BuiltinThreadGlobal.Name()
-			c.cloneTo(s, semantic.Uint64Type, clone.Index(0, thread), this.Index(0, thread).Load(), tracker)
-			for _, p := range cmd.FullParameters {
-				c.cloneTo(s, p.Type, clone.Index(0, p.Name()), this.Index(0, p.Name()).Load(), tracker)
-			}
-			s.Return(clone)
-		})
+	for _, api := range c.APIs {
+		for _, cmd := range api.Functions {
+			params := c.T.CmdParams[cmd]
+			paramsPtr := c.T.Pointer(params)
+			f := c.M.Function(paramsPtr, cmd.Name()+"__clone", paramsPtr, c.T.ArenaPtr, c.T.VoidPtr).LinkOnceODR()
+			c.C.Build(f, func(s *compiler.S) {
+				this, arena, tracker := s.Parameter(0), s.Parameter(1), s.Parameter(2)
+				s.Arena = arena
+				clone := c.Alloc(s, s.Scalar(1), params)
+				thread := semantic.BuiltinThreadGlobal.Name()
+				c.cloneTo(s, semantic.Uint64Type, clone.Index(0, thread), this.Index(0, thread).Load(), tracker)
+				for _, p := range cmd.FullParameters {
+					c.cloneTo(s, p.Type, clone.Index(0, p.Name()), this.Index(0, p.Name()).Load(), tracker)
+				}
+				s.Return(clone)
+			})
+		}
 	}
 }
 

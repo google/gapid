@@ -17,6 +17,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
@@ -109,3 +110,13 @@ func Find(id ID) API {
 
 // CloneContext is used to keep track of references when cloning API objects.
 type CloneContext map[interface{}]interface{}
+
+// All returns all the registered APIs.
+func All() []API {
+	out := make([]API, 0, len(apis))
+	for _, api := range apis {
+		out = append(out, api)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Index() < out[j].Index() })
+	return out
+}

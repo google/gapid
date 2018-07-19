@@ -64,6 +64,7 @@ func (e *encoder) Build(c *compiler.C) {
 			types:      map[semantic.Type]*entity{},
 			funcParams: map[*semantic.Function]*entity{},
 			funcCalls:  map[*semantic.Function]*entity{},
+			state:      map[*semantic.API]*entity{},
 		},
 	}
 
@@ -144,18 +145,20 @@ func (e *encoder) buildEncoderFuncs() {
 // class type.
 // encode_to_buf() encode the class message to a buffer.
 func (e *encoder) buildClassEncodeToBufFuncs() {
-	for _, ty := range e.API.Classes {
-		e.funcs.encodeToBuf[ty] = e.Method(false, e.T.Target(ty), e.T.Void, "encode_to_buf", e.T.CtxPtr, e.T.BufPtr).
-			LinkPrivate()
-	}
-	for _, class := range e.API.Classes {
-		e.C.Build(e.funcs.encodeToBuf[class], func(s *compiler.S) {
-			this, buf := s.Parameter(0), s.Parameter(2)
-			for i, f := range class.Fields {
-				ptr := this.Index(0, f.Name())
-				e.encodeField(s, ptr, buf, serialization.ClassFieldStart+serialization.ProtoFieldID(i), f.Type)
-			}
-		})
+	for _, api := range e.APIs {
+		for _, ty := range api.Classes {
+			e.funcs.encodeToBuf[ty] = e.Method(false, e.T.Target(ty), e.T.Void, "encode_to_buf", e.T.CtxPtr, e.T.BufPtr).
+				LinkPrivate()
+		}
+		for _, class := range api.Classes {
+			e.C.Build(e.funcs.encodeToBuf[class], func(s *compiler.S) {
+				this, buf := s.Parameter(0), s.Parameter(2)
+				for i, f := range class.Fields {
+					ptr := this.Index(0, f.Name())
+					e.encodeField(s, ptr, buf, serialization.ClassFieldStart+serialization.ProtoFieldID(i), f.Type)
+				}
+			})
+		}
 	}
 }
 
@@ -163,104 +166,58 @@ func (e *encoder) buildClassEncodeToBufFuncs() {
 // encode() will call gapil_encode_type() with the class type before encoding
 // the proto message with gapil_encode_object.
 func (e *encoder) buildClassEncodeFuncs() {
-	for _, class := range e.API.Classes {
-		e.C.Build(e.Method(true, e.T.Target(class), e.T.VoidPtr, "encode", e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
-			this, isGroup := s.Parameter(0), s.Parameter(2)
+	for _, api := range e.APIs {
+		for _, class := range api.Classes {
+			e.C.Build(e.Method(true, e.T.Target(class), e.T.VoidPtr, "encode", e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
+				this, isGroup := s.Parameter(0), s.Parameter(2)
 
-			e.debug(s, "encoding class: '"+class.Name()+"' this: %p, ctx: %p", this, s.Ctx)
+				e.debug(s, "encoding class: '"+class.Name()+"' this: %p, ctx: %p", this, s.Ctx)
 
-			typeID := s.Call(e.ent(class).encodeType, s.Ctx)
+				typeID := s.Call(e.ent(class).encodeType, s.Ctx)
 
-			buf, delBuf := e.newBuf(s)
+				buf, delBuf := e.newBuf(s)
 
-			s.Call(e.funcs.encodeToBuf[class], this, s.Ctx, buf)
+				s.Call(e.funcs.encodeToBuf[class], this, s.Ctx, buf)
 
-			bufOffset := buf.Index(0, compiler.BufSize).Load()
-			bufData := buf.Index(0, compiler.BufData).Load()
+				bufOffset := buf.Index(0, compiler.BufSize).Load()
+				bufData := buf.Index(0, compiler.BufData).Load()
 
-			out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
+				out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
 
-			delBuf()
+				delBuf()
 
-			s.Return(out)
-		})
+				s.Return(out)
+			})
+		}
 	}
 }
 
-// buildStateEncodeFunc builds the encode() method for the API state object.
+// buildStateEncodeFunc builds the encode() method for each API state object.
 // encode() will call gapil_encode_type() with the state type before encoding
 // the proto message with gapil_encode_object.
 func (e *encoder) buildStateEncodeFunc() {
-	mgState := &mangling.Class{
-		Parent: e.Root,
-		Name:   cases.Title(e.API.Name()) + "State",
-	}
-	mgEncode := e.mgEncode(mgState)
-	e.C.Build(e.M.Function(
-		e.T.VoidPtr,
-		e.Mangler(mgEncode),
-		e.T.GlobalsPtr, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
-
-		this, isGroup := s.Parameter(0), s.Parameter(2)
-
-		e.debug(s, "encoding state: this: %p, ctx: %p", this, s.Ctx)
-
-		typeID := s.Call(e.entities.state.encodeType, s.Ctx)
-
-		buf, delBuf := e.newBuf(s)
-
-		for i, g := range encodeableGlobals(e.API) {
-			ptr := this.Index(0, g.Name())
-			e.encodeField(s, ptr, buf, serialization.StateStart+serialization.ProtoFieldID(i), g.Type)
+	for _, api := range e.APIs {
+		mgState := &mangling.Class{
+			Parent: e.Root,
+			Name:   cases.Title(api.Name()) + "State",
 		}
-
-		bufOffset := buf.Index(0, compiler.BufSize).Load()
-		bufData := buf.Index(0, compiler.BufData).Load()
-		out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
-
-		delBuf()
-
-		s.Return(out)
-	})
-}
-
-// buildCommandEncodeFuncs builds the encode() method for the each API command
-// and the API command call (if they don't return void).
-// encode() will call gapil_encode_type() with the state type before encoding
-// the proto message with gapil_encode_object.
-func (e *encoder) buildCommandEncodeFuncs() {
-	for _, cmd := range e.API.Functions {
-		mgCmd := &mangling.Namespace{Name: "cmd", Parent: e.Root}
-		mgClass := &mangling.Class{Name: cmd.Name(), Parent: mgCmd}
-		mgEncode := e.mgEncode(mgClass)
-
-		fields := []codegen.Field{
-			codegen.Field{Name: "thread", Type: e.T.Uint64},
-		}
-		for _, p := range cmd.FullParameters {
-			fields = append(fields, codegen.Field{Name: p.Name(), Type: e.T.Target(p.Type)})
-		}
-
-		thisTy := e.T.Pointer(e.T.Struct(cmd.Name()+"_params", fields...))
-
+		mgEncode := e.mgEncode(mgState)
 		e.C.Build(e.M.Function(
 			e.T.VoidPtr,
 			e.Mangler(mgEncode),
-			thisTy, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
+			e.T.GlobalsPtr, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
 
 			this, isGroup := s.Parameter(0), s.Parameter(2)
 
-			e.debug(s, "encoding command: '"+cmd.Name()+"' this: %p, ctx: %p", this, s.Ctx)
+			e.debug(s, "encoding state: this: %p, ctx: %p", this, s.Ctx)
 
-			typeID := s.Call(e.entities.funcParams[cmd].encodeType, s.Ctx)
+			typeID := s.Call(e.entities.state[api].encodeType, s.Ctx)
 
 			buf, delBuf := e.newBuf(s)
 
-			threadPtr := this.Index(0, "thread")
-			e.encodeField(s, threadPtr, buf, serialization.CmdThread, semantic.Uint64Type)
-			for i, p := range cmd.CallParameters() {
-				ptr := this.Index(0, p.Name())
-				e.encodeField(s, ptr, buf, serialization.CmdFieldStart+serialization.ProtoFieldID(i), p.Type)
+			for i, g := range encodeableGlobals(api) {
+				ptr := this.Index(0, api.Name(), g.Name())
+				e.encodeField(s, ptr, buf, serialization.StateStart+serialization.ProtoFieldID(i), g.Type)
 			}
 
 			bufOffset := buf.Index(0, compiler.BufSize).Load()
@@ -271,6 +228,58 @@ func (e *encoder) buildCommandEncodeFuncs() {
 
 			s.Return(out)
 		})
+	}
+}
+
+// buildCommandEncodeFuncs builds the encode() method for the each API command
+// and the API command call (if they don't return void).
+// encode() will call gapil_encode_type() with the state type before encoding
+// the proto message with gapil_encode_object.
+func (e *encoder) buildCommandEncodeFuncs() {
+	for _, api := range e.APIs {
+		for _, cmd := range api.Functions {
+			mgCmd := &mangling.Namespace{Name: "cmd", Parent: e.Root}
+			mgClass := &mangling.Class{Name: cmd.Name(), Parent: mgCmd}
+			mgEncode := e.mgEncode(mgClass)
+
+			fields := []codegen.Field{
+				codegen.Field{Name: "thread", Type: e.T.Uint64},
+			}
+			for _, p := range cmd.FullParameters {
+				fields = append(fields, codegen.Field{Name: p.Name(), Type: e.T.Target(p.Type)})
+			}
+
+			thisTy := e.T.Pointer(e.T.Struct(cmd.Name()+"_params", fields...))
+
+			e.C.Build(e.M.Function(
+				e.T.VoidPtr,
+				e.Mangler(mgEncode),
+				thisTy, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
+
+				this, isGroup := s.Parameter(0), s.Parameter(2)
+
+				e.debug(s, "encoding command: '"+cmd.Name()+"' this: %p, ctx: %p", this, s.Ctx)
+
+				typeID := s.Call(e.entities.funcParams[cmd].encodeType, s.Ctx)
+
+				buf, delBuf := e.newBuf(s)
+
+				threadPtr := this.Index(0, "thread")
+				e.encodeField(s, threadPtr, buf, serialization.CmdThread, semantic.Uint64Type)
+				for i, p := range cmd.CallParameters() {
+					ptr := this.Index(0, p.Name())
+					e.encodeField(s, ptr, buf, serialization.CmdFieldStart+serialization.ProtoFieldID(i), p.Type)
+				}
+
+				bufOffset := buf.Index(0, compiler.BufSize).Load()
+				bufData := buf.Index(0, compiler.BufData).Load()
+				out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
+
+				delBuf()
+
+				s.Return(out)
+			})
+		}
 	}
 }
 
@@ -279,41 +288,43 @@ func (e *encoder) buildCommandEncodeFuncs() {
 // encode() will call gapil_encode_type() with the state type before encoding
 // the proto message with gapil_encode_object.
 func (e *encoder) buildCommandCallEncodeFuncs() {
-	for _, cmd := range e.API.Functions {
-		if cmd.Return.Type == semantic.VoidType {
-			continue
+	for _, api := range e.APIs {
+		for _, cmd := range api.Functions {
+			if cmd.Return.Type == semantic.VoidType {
+				continue
+			}
+			mgCmd := &mangling.Namespace{Name: "cmd", Parent: e.Root}
+			mgClass := &mangling.Class{Name: cmd.Name() + "Call", Parent: mgCmd}
+			mgEncode := e.mgEncode(mgClass)
+
+			fields := []codegen.Field{{Name: "result", Type: e.T.Target(cmd.Return.Type)}}
+			thisTy := e.T.Pointer(e.T.Struct(cmd.Name()+"_call", fields...))
+
+			e.C.Build(e.M.Function(
+				e.T.VoidPtr,
+				e.Mangler(mgEncode),
+				thisTy, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
+
+				this, isGroup := s.Parameter(0), s.Parameter(2)
+
+				e.debug(s, "encoding command call: '"+cmd.Name()+"' this: %p, ctx: %p", this, s.Ctx)
+
+				typeID := s.Call(e.entities.funcCalls[cmd].encodeType, s.Ctx)
+
+				buf, delBuf := e.newBuf(s)
+
+				resultPtr := this.Index(0, "result")
+				e.encodeField(s, resultPtr, buf, serialization.CmdResult, cmd.Return.Type)
+
+				bufOffset := buf.Index(0, compiler.BufSize).Load()
+				bufData := buf.Index(0, compiler.BufData).Load()
+				out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
+
+				delBuf()
+
+				s.Return(out)
+			})
 		}
-		mgCmd := &mangling.Namespace{Name: "cmd", Parent: e.Root}
-		mgClass := &mangling.Class{Name: cmd.Name() + "Call", Parent: mgCmd}
-		mgEncode := e.mgEncode(mgClass)
-
-		fields := []codegen.Field{{Name: "result", Type: e.T.Target(cmd.Return.Type)}}
-		thisTy := e.T.Pointer(e.T.Struct(cmd.Name()+"_call", fields...))
-
-		e.C.Build(e.M.Function(
-			e.T.VoidPtr,
-			e.Mangler(mgEncode),
-			thisTy, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
-
-			this, isGroup := s.Parameter(0), s.Parameter(2)
-
-			e.debug(s, "encoding command call: '"+cmd.Name()+"' this: %p, ctx: %p", this, s.Ctx)
-
-			typeID := s.Call(e.entities.funcCalls[cmd].encodeType, s.Ctx)
-
-			buf, delBuf := e.newBuf(s)
-
-			resultPtr := this.Index(0, "result")
-			e.encodeField(s, resultPtr, buf, serialization.CmdResult, cmd.Return.Type)
-
-			bufOffset := buf.Index(0, compiler.BufSize).Load()
-			bufData := buf.Index(0, compiler.BufData).Load()
-			out := s.Call(e.callbacks.encodeObject, s.Ctx, isGroup.Cast(e.T.Uint8), typeID, bufOffset, bufData)
-
-			delBuf()
-
-			s.Return(out)
-		})
 	}
 }
 

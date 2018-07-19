@@ -87,39 +87,41 @@ func (c *C) declareTypes() {
 	c.T.targetToCapture = map[semantic.Type]*codegen.Function{}
 	c.T.mangled = map[codegen.Type]mangling.Type{}
 
-	// Forward-declare all the class types.
-	for _, t := range c.API.Classes {
-		cgTy := c.T.DeclareStruct("T_" + t.Name())
-		c.T.target[t] = cgTy
-	}
-
-	// Forward-declare all the reference types.
-	for _, t := range c.API.References {
-		cgTy := c.T.DeclareStruct(t.Name())
-		c.T.target[t] = c.T.Pointer(cgTy)
-	}
-
-	// Forward-declare all the map types.
-	for _, t := range c.API.Maps {
-		cgTy := c.T.DeclareStruct(t.Name())
-		mapStrTy := cgTy
-		mapPtrTy := c.T.Pointer(mapStrTy)
-		c.T.target[t] = mapPtrTy
-	}
-
-	// Declare all the slice types.
-	for _, t := range c.API.Slices {
-		c.T.target[t] = c.T.Sli
-	}
-
-	// Declare all the command parameter structs.
-	for _, f := range c.API.Functions {
-		fields := make([]codegen.Field, 0, len(f.FullParameters)+1)
-		fields = append(fields, codegen.Field{Name: semantic.BuiltinThreadGlobal.Name(), Type: c.T.Uint64})
-		for _, p := range f.FullParameters {
-			fields = append(fields, codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)})
+	for _, api := range c.APIs {
+		// Forward-declare all the class types.
+		for _, t := range api.Classes {
+			cgTy := c.T.DeclareStruct("T_" + t.Name())
+			c.T.target[t] = cgTy
 		}
-		c.T.CmdParams[f] = c.T.Struct(f.Name()+"Params", fields...)
+
+		// Forward-declare all the reference types.
+		for _, t := range api.References {
+			cgTy := c.T.DeclareStruct(t.Name())
+			c.T.target[t] = c.T.Pointer(cgTy)
+		}
+
+		// Forward-declare all the map types.
+		for _, t := range api.Maps {
+			cgTy := c.T.DeclareStruct(t.Name())
+			mapStrTy := cgTy
+			mapPtrTy := c.T.Pointer(mapStrTy)
+			c.T.target[t] = mapPtrTy
+		}
+
+		// Declare all the slice types.
+		for _, t := range api.Slices {
+			c.T.target[t] = c.T.Sli
+		}
+
+		// Declare all the command parameter structs.
+		for _, f := range api.Functions {
+			fields := make([]codegen.Field, 0, len(f.FullParameters)+1)
+			fields = append(fields, codegen.Field{Name: semantic.BuiltinThreadGlobal.Name(), Type: c.T.Uint64})
+			for _, p := range f.FullParameters {
+				fields = append(fields, codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)})
+			}
+			c.T.CmdParams[f] = c.T.Struct(f.Name()+"Params", fields...)
+		}
 	}
 
 	c.declareMangling()
@@ -129,67 +131,71 @@ func (c *C) declareTypes() {
 
 func (c *C) declareMangling() {
 	// Declare the mangled types
-	for _, t := range c.API.Classes {
-		c.T.mangled[c.T.Target(t)] = &mangling.Class{
-			Parent: c.Root,
-			Name:   t.Name(),
+	for _, api := range c.APIs {
+		for _, t := range api.Classes {
+			c.T.mangled[c.T.Target(t)] = &mangling.Class{
+				Parent: c.Root,
+				Name:   t.Name(),
+			}
 		}
-	}
-	for _, t := range c.API.References {
-		refTy := c.T.Target(t).(codegen.Pointer).Element
-		c.T.mangled[refTy] = &mangling.Class{
-			Parent: c.Root,
-			Name:   "Ref",
+		for _, t := range api.References {
+			refTy := c.T.Target(t).(codegen.Pointer).Element
+			c.T.mangled[refTy] = &mangling.Class{
+				Parent: c.Root,
+				Name:   "Ref",
+			}
 		}
-	}
-	for _, t := range c.API.Maps {
-		mapTy := c.T.Target(t).(codegen.Pointer).Element
-		c.T.mangled[mapTy] = &mangling.Class{
-			Parent: c.Root,
-			Name:   "Map",
+		for _, t := range api.Maps {
+			mapTy := c.T.Target(t).(codegen.Pointer).Element
+			c.T.mangled[mapTy] = &mangling.Class{
+				Parent: c.Root,
+				Name:   "Map",
+			}
 		}
-	}
 
-	// Add template parameters
-	for _, t := range c.API.References {
-		refTy := c.T.Target(t).(codegen.Pointer).Element
-		c.T.mangled[refTy].(*mangling.Class).TemplateArgs = []mangling.Type{
-			c.Mangle(c.T.Target(t.To)),
+		// Add template parameters
+		for _, t := range api.References {
+			refTy := c.T.Target(t).(codegen.Pointer).Element
+			c.T.mangled[refTy].(*mangling.Class).TemplateArgs = []mangling.Type{
+				c.Mangle(c.T.Target(t.To)),
+			}
 		}
-	}
-	for _, t := range c.API.Maps {
-		mapTy := c.T.Target(t).(codegen.Pointer).Element
-		c.T.mangled[mapTy].(*mangling.Class).TemplateArgs = []mangling.Type{
-			c.Mangle(c.T.Target(t.KeyType)),
-			c.Mangle(c.T.Target(t.ValueType)),
+		for _, t := range api.Maps {
+			mapTy := c.T.Target(t).(codegen.Pointer).Element
+			c.T.mangled[mapTy].(*mangling.Class).TemplateArgs = []mangling.Type{
+				c.Mangle(c.T.Target(t.KeyType)),
+				c.Mangle(c.T.Target(t.ValueType)),
+			}
 		}
 	}
 }
 
 func (c *C) buildTypes() {
-	// Build all the class types.
-	for _, t := range c.API.Classes {
-		fields := make([]codegen.Field, len(t.Fields))
-		for i, f := range t.Fields {
-			fields[i] = codegen.Field{Name: f.Name(), Type: c.T.Target(f.Type)}
+	for _, api := range c.APIs {
+		// Build all the class types.
+		for _, t := range api.Classes {
+			fields := make([]codegen.Field, len(t.Fields))
+			for i, f := range t.Fields {
+				fields[i] = codegen.Field{Name: f.Name(), Type: c.T.Target(f.Type)}
+			}
+			c.T.target[t].(*codegen.Struct).SetBody(false, fields...)
 		}
-		c.T.target[t].(*codegen.Struct).SetBody(false, fields...)
-	}
 
-	// Build all the reference types.
-	for _, t := range c.API.References {
-		// struct ref!T {
-		//      uint32_t ref_count;
-		//      arena*   arena;
-		//      T        value;
-		// }
-		ptr := c.T.target[t].(codegen.Pointer)
-		str := ptr.Element.(*codegen.Struct)
-		str.SetBody(false,
-			codegen.Field{Name: RefRefCount, Type: c.T.Uint32},
-			codegen.Field{Name: RefArena, Type: c.T.ArenaPtr},
-			codegen.Field{Name: RefValue, Type: c.T.Target(t.To)},
-		)
+		// Build all the reference types.
+		for _, t := range api.References {
+			// struct ref!T {
+			//      uint32_t ref_count;
+			//      arena*   arena;
+			//      T        value;
+			// }
+			ptr := c.T.target[t].(codegen.Pointer)
+			str := ptr.Element.(*codegen.Struct)
+			str.SetBody(false,
+				codegen.Field{Name: RefRefCount, Type: c.T.Uint32},
+				codegen.Field{Name: RefArena, Type: c.T.ArenaPtr},
+				codegen.Field{Name: RefValue, Type: c.T.Target(t.To)},
+			)
+		}
 	}
 
 	// Build all the map types.
@@ -197,51 +203,60 @@ func (c *C) buildTypes() {
 
 	c.buildRefRels()
 
-	globalsFields := make([]codegen.Field, len(c.API.Globals))
-	for i, g := range c.API.Globals {
-		globalsFields[i] = codegen.Field{Name: g.Name(), Type: c.T.Target(g.Type)}
+	apiGlobals := make([]codegen.Field, len(c.APIs))
+	for i, api := range c.APIs {
+		fields := make([]codegen.Field, len(api.Globals))
+		for i, g := range api.Globals {
+			fields[i] = codegen.Field{Name: g.Name(), Type: c.T.Target(g.Type)}
+		}
+		apiGlobals[i] = codegen.Field{
+			Name: api.Name(),
+			Type: c.T.Struct(api.Name(), fields...),
+		}
 	}
-	c.T.Globals.SetBody(false, globalsFields...)
+	c.T.Globals.SetBody(false, apiGlobals...)
 
 	// Build storage types for the capture's memory layout.
 	c.T.CaptureTypes = c.StorageTypes(c.Settings.CaptureABI.MemoryLayout, "S_")
 
 	// Build conversion functions between target and capture types.
 	if c.Settings.CaptureABI != c.T.targetABI {
-		for _, t := range c.API.Classes {
-			if !semantic.IsStorageType(t) {
-				continue
+		for _, api := range c.APIs {
+			for _, t := range api.Classes {
+				if !semantic.IsStorageType(t) {
+					continue
+				}
+				captureTypePtr := c.T.Pointer(c.T.Capture(t))
+				targetTypePtr := c.T.Pointer(c.T.Target(t))
+
+				copyToTarget := c.M.Function(c.T.Void, "S_"+t.Name()+"_copy_to_target", c.T.CtxPtr, captureTypePtr, targetTypePtr).
+					LinkOnceODR().
+					Inline()
+
+				c.T.captureToTarget[t] = copyToTarget
+				c.Build(copyToTarget, func(s *S) {
+					src := s.Parameter(1).SetName("src")
+					dst := s.Parameter(2).SetName("dst")
+					for _, f := range t.Fields {
+						firstElem := src.Index(0, f.Name()).LoadUnaligned()
+						dst.Index(0, f.Name()).Store(c.castCaptureToTarget(s, f.Type, firstElem))
+					}
+				})
+
+				copyToCapture := c.M.Function(c.T.Void, "T_"+t.Name()+"_copy_to_capture", c.T.CtxPtr, targetTypePtr, captureTypePtr).
+					LinkOnceODR().
+					Inline()
+
+				c.T.targetToCapture[t] = copyToCapture
+				c.Build(copyToCapture, func(s *S) {
+					src := s.Parameter(1).SetName("src")
+					dst := s.Parameter(2).SetName("dst")
+					for _, f := range t.Fields {
+						firstElem := src.Index(0, f.Name()).Load()
+						dst.Index(0, f.Name()).StoreUnaligned(c.castTargetToCapture(s, f.Type, firstElem))
+					}
+				})
 			}
-			captureTypePtr := c.T.Pointer(c.T.Capture(t))
-			targetTypePtr := c.T.Pointer(c.T.Target(t))
-
-			copyToTarget := c.M.Function(c.T.Void, "S_"+t.Name()+"_copy_to_target", c.T.CtxPtr, captureTypePtr, targetTypePtr).
-				LinkOnceODR().
-				Inline()
-
-			c.T.captureToTarget[t] = copyToTarget
-			c.Build(copyToTarget, func(s *S) {
-				src := s.Parameter(1).SetName("src")
-				dst := s.Parameter(2).SetName("dst")
-				for _, f := range t.Fields {
-					firstElem := src.Index(0, f.Name()).LoadUnaligned()
-					dst.Index(0, f.Name()).Store(c.castCaptureToTarget(s, f.Type, firstElem))
-				}
-			})
-
-			copyToCapture := c.M.Function(c.T.Void, "T_"+t.Name()+"_copy_to_capture", c.T.CtxPtr, targetTypePtr, captureTypePtr).
-				LinkOnceODR().
-				Inline()
-
-			c.T.targetToCapture[t] = copyToCapture
-			c.Build(copyToCapture, func(s *S) {
-				src := s.Parameter(1).SetName("src")
-				dst := s.Parameter(2).SetName("dst")
-				for _, f := range t.Fields {
-					firstElem := src.Index(0, f.Name()).Load()
-					dst.Index(0, f.Name()).StoreUnaligned(c.castTargetToCapture(s, f.Type, firstElem))
-				}
-			})
 		}
 	}
 

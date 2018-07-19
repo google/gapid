@@ -324,7 +324,7 @@ func (c *C) global(s *S, e *semantic.Global) *codegen.Value {
 	if e.Name() == semantic.BuiltinThreadGlobal.Name() {
 		return s.Scalar(uint64(0)) // TODO
 	}
-	return s.Globals.Index(0, e.Name()).Load()
+	return s.Globals.Index(0, c.CurrentAPI().Name(), e.Name()).Load()
 }
 
 func (c *C) ignore(s *S, e *semantic.Ignore) *codegen.Value {

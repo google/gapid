@@ -47,8 +47,8 @@ type C struct {
 	// M is the codegen module for the program.
 	M *codegen.Module
 
-	// API is the api that is being compiled.
-	API *semantic.API
+	// APIs are the apis that are being compiled.
+	APIs []*semantic.API
 
 	// Mangler is the symbol mangler in use.
 	Mangler mangling.Mangler
@@ -76,6 +76,7 @@ type C struct {
 	locationIndex   map[Location]int
 	locations       []Location
 	refRels         refRels
+	currentAPI      *semantic.API
 	currentFunc     *semantic.Function
 	statementStack  []semantic.Statement
 	expressionStack []semantic.Expression
@@ -104,7 +105,7 @@ type C struct {
 
 // Compile compiles the given API semantic tree to a program using the given
 // settings.
-func Compile(api *semantic.API, mappings *semantic.Mappings, s Settings) (*Program, error) {
+func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Program, error) {
 	hostABI := host.Instance(context.Background()).Configuration.ABIs[0]
 	if s.TargetABI == nil {
 		s.TargetABI = hostABI
@@ -121,7 +122,7 @@ func Compile(api *semantic.API, mappings *semantic.Mappings, s Settings) (*Progr
 
 	c := &C{
 		M:        codegen.NewModule("api.executor", s.TargetABI),
-		API:      api,
+		APIs:     apis,
 		Mangler:  s.Mangler,
 		Settings: s,
 
@@ -244,14 +245,17 @@ func (c *C) compile() {
 	c.plugins.foreach(func(p Plugin) { p.Build(c) })
 
 	if c.Settings.EmitExec {
-		for _, f := range c.API.Externs {
-			c.extern(f)
-		}
-		for _, f := range c.API.Subroutines {
-			c.subroutine(f)
-		}
-		for _, f := range c.API.Functions {
-			c.command(f)
+		for _, api := range c.APIs {
+			c.currentAPI = api
+			for _, f := range api.Externs {
+				c.extern(f)
+			}
+			for _, f := range api.Subroutines {
+				c.subroutine(f)
+			}
+			for _, f := range api.Functions {
+				c.command(f)
+			}
 		}
 	}
 }
@@ -411,6 +415,11 @@ func (c *C) StatementStack() []semantic.Statement {
 // ExpressionStack returns the current build stack of expressions.
 func (c *C) ExpressionStack() []semantic.Expression {
 	return append([]semantic.Expression{}, c.expressionStack...)
+}
+
+// CurrentAPI returns the API that is currently being built.
+func (c *C) CurrentAPI() *semantic.API {
+	return c.currentAPI
 }
 
 // CurrentStatement returns the statement that is currently being built.

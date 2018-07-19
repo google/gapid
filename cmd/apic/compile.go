@@ -32,6 +32,7 @@ import (
 	"github.com/google/gapid/gapil/compiler/plugins/encoder"
 	"github.com/google/gapid/gapil/compiler/plugins/replay"
 	"github.com/google/gapid/gapil/resolver"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 func init() {
@@ -137,7 +138,7 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		settings.Mangler = ia64.Mangle
 	}
 
-	prog, err := compiler.Compile(api, mappings, settings)
+	prog, err := compiler.Compile([]*semantic.API{api}, mappings, settings)
 	if err != nil {
 		return err
 	}

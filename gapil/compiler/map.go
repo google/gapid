@@ -78,68 +78,70 @@ func (c *C) defineMapTypes() {
 	// value LLVM types when lowered.
 	impls := map[string]*MapInfo{}
 
-	for _, t := range c.API.Maps {
-		mi := &MapInfo{
-			Key:  c.T.Target(t.KeyType),
-			Val:  c.T.Target(t.ValueType),
-			Type: c.T.target[t].(codegen.Pointer).Element.(*codegen.Struct),
-		}
-
-		mi.Elements = c.T.Struct(fmt.Sprintf("%v…%v", mi.Key.TypeName(), mi.Val.TypeName()),
-			// Used: 0 == empty, 1 == has a key, 2 == doesn't have a key, but
-			//    can't assume your searched key doesn't exist
-			codegen.Field{Name: "used", Type: c.T.Target(semantic.Uint64Type)},
-			codegen.Field{Name: "k", Type: mi.Key},
-			codegen.Field{Name: "v", Type: mi.Val},
-		)
-
-		mi.Type.SetBody(false,
-			codegen.Field{Name: MapRefCount, Type: c.T.Uint32},
-			codegen.Field{Name: MapArena, Type: c.T.ArenaPtr},
-			codegen.Field{Name: MapCount, Type: c.T.Uint64},
-			codegen.Field{Name: MapCapacity, Type: c.T.Uint64},
-			codegen.Field{Name: MapElements, Type: c.T.Pointer(mi.Elements)},
-		)
-
-		valPtrTy := c.T.Pointer(mi.Val)
-
-		name := t.Name()
-		mi.MapMethods = MapMethods{
-			Contains: c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
-			Index:    c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
-			Lookup:   c.M.Function(mi.Val, name+"_lookup", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
-			Remove:   c.M.Function(c.T.Void, name+"_remove", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
-			Clear:    c.M.Function(c.T.Void, name+"_clear", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
-		}
-
-		// Use the mangled name of the map to determine whether the map has
-		// already been declared for the lowered map type.
-		mangled := c.Mangler(c.Mangle(mi.Type))
-		impl, seen := impls[mangled]
-
-		if !seen {
-			// First instance of this lowered map type. Define it.
-			copy := *mi
-			impl = &copy
-			impls[mangled] = impl
-			impl.MapMethods = MapMethods{
-				Contains: c.Method(true, mi.Type, c.T.Bool, "contains", mi.Key).LinkOnceODR(),
-				Index:    c.Method(false, mi.Type, valPtrTy, "index", mi.Key, c.T.Bool).LinkOnceODR(),
-				Lookup:   c.Method(true, mi.Type, mi.Val, "lookup", mi.Key).LinkOnceODR(),
-				Remove:   c.Method(false, mi.Type, c.T.Void, "remove", mi.Key).LinkOnceODR(),
-				Clear:    c.Method(false, mi.Type, c.T.Void, "clear").LinkOnceODR(),
+	for _, api := range c.APIs {
+		for _, t := range api.Maps {
+			mi := &MapInfo{
+				Key:  c.T.Target(t.KeyType),
+				Val:  c.T.Target(t.ValueType),
+				Type: c.T.target[t].(codegen.Pointer).Element.(*codegen.Struct),
 			}
-			c.T.mapImpls = append(c.T.mapImpls, mapImpl{t.KeyType, t.ValueType, impl})
+
+			mi.Elements = c.T.Struct(fmt.Sprintf("%v…%v", mi.Key.TypeName(), mi.Val.TypeName()),
+				// Used: 0 == empty, 1 == has a key, 2 == doesn't have a key, but
+				//    can't assume your searched key doesn't exist
+				codegen.Field{Name: "used", Type: c.T.Target(semantic.Uint64Type)},
+				codegen.Field{Name: "k", Type: mi.Key},
+				codegen.Field{Name: "v", Type: mi.Val},
+			)
+
+			mi.Type.SetBody(false,
+				codegen.Field{Name: MapRefCount, Type: c.T.Uint32},
+				codegen.Field{Name: MapArena, Type: c.T.ArenaPtr},
+				codegen.Field{Name: MapCount, Type: c.T.Uint64},
+				codegen.Field{Name: MapCapacity, Type: c.T.Uint64},
+				codegen.Field{Name: MapElements, Type: c.T.Pointer(mi.Elements)},
+			)
+
+			valPtrTy := c.T.Pointer(mi.Val)
+
+			name := t.Name()
+			mi.MapMethods = MapMethods{
+				Contains: c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+				Index:    c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
+				Lookup:   c.M.Function(mi.Val, name+"_lookup", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+				Remove:   c.M.Function(c.T.Void, name+"_remove", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+				Clear:    c.M.Function(c.T.Void, name+"_clear", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
+			}
+
+			// Use the mangled name of the map to determine whether the map has
+			// already been declared for the lowered map type.
+			mangled := c.Mangler(c.Mangle(mi.Type))
+			impl, seen := impls[mangled]
+
+			if !seen {
+				// First instance of this lowered map type. Define it.
+				copy := *mi
+				impl = &copy
+				impls[mangled] = impl
+				impl.MapMethods = MapMethods{
+					Contains: c.Method(true, mi.Type, c.T.Bool, "contains", mi.Key).LinkOnceODR(),
+					Index:    c.Method(false, mi.Type, valPtrTy, "index", mi.Key, c.T.Bool).LinkOnceODR(),
+					Lookup:   c.Method(true, mi.Type, mi.Val, "lookup", mi.Key).LinkOnceODR(),
+					Remove:   c.Method(false, mi.Type, c.T.Void, "remove", mi.Key).LinkOnceODR(),
+					Clear:    c.Method(false, mi.Type, c.T.Void, "clear").LinkOnceODR(),
+				}
+				c.T.mapImpls = append(c.T.mapImpls, mapImpl{t.KeyType, t.ValueType, impl})
+			}
+
+			// Delegate the methods of this map on to the common implmentation.
+			c.Delegate(mi.Contains, impl.Contains)
+			c.Delegate(mi.Index, impl.Index)
+			c.Delegate(mi.Lookup, impl.Lookup)
+			c.Delegate(mi.Remove, impl.Remove)
+			c.Delegate(mi.Clear, impl.Clear)
+
+			c.T.Maps[t] = mi
 		}
-
-		// Delegate the methods of this map on to the common implmentation.
-		c.Delegate(mi.Contains, impl.Contains)
-		c.Delegate(mi.Index, impl.Index)
-		c.Delegate(mi.Lookup, impl.Lookup)
-		c.Delegate(mi.Remove, impl.Remove)
-		c.Delegate(mi.Clear, impl.Clear)
-
-		c.T.Maps[t] = mi
 	}
 }
 
