@@ -64,6 +64,7 @@ public interface Theme {
   @Icon("lit.png") public Image lit();
   @Icon("logo_128.png") public Image dialogLogo();
   @Icon("normals.png") public Image normals();
+  @Icon("overdraw.png") public Image overdraw();
   @Icon("point_cloud.png") public Image pointCloud();
   @Icon("refresh.png") public Image refresh();
   @Icon("save.png") public Image save();

@@ -168,7 +168,7 @@ public class FramebufferView extends Composite
           renderSettings = RENDER_WIREFRAME;
           updateBuffer();
         }, "Render wireframe geometry"),
-        createToggleToolItem(bar, theme.depthBuffer(), e -> {
+        createToggleToolItem(bar, theme.overdraw(), e -> {
           models.analytics.postInteraction(View.Framebuffer, ClientAction.Overdraw);
           renderSettings = RENDER_OVERDRAW;
           updateBuffer();
