@@ -1343,13 +1343,13 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 	cmdBuffer VkCommandBuffer,
 	srcImageDesc imageDesc,
 	dstImageDesc imageDesc,
+	extent VkExtent3D,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
 ) {
 	srcImageView := srcImageDesc.imageView
 	dstImageView := dstImageDesc.imageView
-	extent := srcImageView.Image().Info().Extent()
 	copyBuffer := s.createDepthCopyBuffer(ctx, cb, gs, st, a, device,
 		srcImageView.Image().Info().Fmt(),
 		extent.Width(), extent.Height(),
@@ -1532,6 +1532,7 @@ func (s *stencilOverdraw) loadExistingDepthValues(ctx context.Context,
 		imageDesc{oldImageView.Get(), oldImageLayout},
 		imageDesc{newImageView.Get(),
 			VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
+		NewVkExtent3D(a, fbInfo.Width(), fbInfo.Height(), 1),
 		alloc, addCleanup, out)
 }
 
@@ -1569,6 +1570,7 @@ func (s *stencilOverdraw) storeNewDepthValues(ctx context.Context,
 		imageDesc{oldImageView.Get(),
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL},
 		imageDesc{newImageView.Get(), newImageLayout},
+		NewVkExtent3D(a, fbInfo.Width(), fbInfo.Height(), 1),
 		alloc, addCleanup, out)
 }
 
