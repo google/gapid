@@ -1,0 +1,7 @@
+import "test_import_1.api"
+import "test_import_2.api"
+
+class AClass {
+  Import1 A
+  Import2 B
+}

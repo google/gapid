@@ -26,68 +26,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/memory"
 )
-
-func CreateTestExtra(a arena.Arena) TestExtra {
-	o := NewTestObjectʳ(a, 42)
-	m := NewU32ːTestObjectᵐ(a).
-		Add(4, NewTestObject(a, 40)).
-		Add(5, NewTestObject(a, 50))
-	cycle := NewTestListʳ(a,
-		1, // value
-		NewTestListʳ(a, // next
-			2,            // value
-			NilTestListʳ, // next
-		),
-	)
-	cycle.Next().SetNext(cycle)
-	return NewTestExtra(a,
-		NewU8ˢ(a, // Data
-			0x1000,           // root
-			0x1000,           // base
-			42,               // size
-			42,               // count
-			memory.PoolID(1), // pool
-		),
-		NewTestObject(a, 10), // Object
-		NewTestObjectː2ᵃ(a, // ObjectArray
-			NewTestObject(a, 20),
-			NewTestObject(a, 30),
-		),
-		o,              // RefObject
-		o,              // RefObjectAlias
-		NilTestObjectʳ, // NilRefObject
-		m,              // Entries
-		m,              // EntriesAlias
-		NewU32ːTestObjectᵐ(a), // NilMap
-		NewU32ːTestObjectʳᵐ(a). // RefEntries
-					Add(0, o).
-					Add(6, NewTestObjectʳ(a, 60)).
-					Add(7, NewTestObjectʳ(a, 70)).
-					Add(9, NilTestObjectʳ),
-		NewStringːu32ᵐ(a). // Strings
-					Add("one", 1).
-					Add("two", 2).
-					Add("three", 3),
-		NewU32ːboolᵐ(a). // BoolMap
-					Add(0, false).
-					Add(1, true),
-		NewTestListʳ(a, // LinkedList
-			1, // value
-			NewTestListʳ(a, // next
-				2,            // value
-				NilTestListʳ, // next
-			),
-		),
-		cycle, // Cycle
-		NewU32ːNestedRefʳᵐ(a). // NestedRefs
-					Add(6, NewNestedRefʳ(a, o)).
-					Add(7, NewNestedRefʳ(a, o)).
-					Add(8, NewNestedRefʳ(a, NilTestObjectʳ)).
-					Add(9, NilNestedRefʳ),
-	)
-}
 
 func TestReferences(t *testing.T) {
 	ctx := log.Testing(t)
@@ -97,11 +36,11 @@ func TestReferences(t *testing.T) {
 	defer a.Dispose()
 
 	ctx = arena.Put(ctx, a)
-	extra := CreateTestExtra(a)
+	complex := BuildComplex(a)
 
-	// extra -> protoA -> decoded -> protoB
+	// complex -> protoA -> decoded -> protoB
 
-	protoA, err := protoconv.ToProto(ctx, extra)
+	protoA, err := protoconv.ToProto(ctx, complex)
 	if !assert.For("ToProtoA").ThatError(err).Succeeded() {
 		return
 	}
@@ -111,7 +50,7 @@ func TestReferences(t *testing.T) {
 		return
 	}
 
-	decoded := decodedObj.(TestExtra)
+	decoded := decodedObj.(Complex)
 
 	assert.For("Object ref").That(decoded.RefObjectAlias()).Equals(decoded.RefObject())
 	assert.For("Map ref").That(decoded.EntriesAlias()).Equals(decoded.Entries())
@@ -142,9 +81,9 @@ func TestEquals(t *testing.T) {
 	defer a.Dispose()
 
 	ctx = arena.Put(ctx, a)
-	extra := CreateTestExtra(a)
+	complex := BuildComplex(a)
 
-	compare(ctx, extra, extra, "equals")
+	compare(ctx, complex, complex, "equals")
 }
 
 func TestCloneReferences(t *testing.T) {
@@ -155,25 +94,25 @@ func TestCloneReferences(t *testing.T) {
 	defer a.Dispose()
 
 	ctx = arena.Put(ctx, a)
-	extra := CreateTestExtra(a)
+	complex := BuildComplex(a)
 
-	cloned := extra.Clone(a, api.CloneContext{})
-	compare(ctx, cloned.Data(), extra.Data(), "Data")
-	compare(ctx, cloned.Object(), extra.Object(), "Object")
-	compare(ctx, cloned.ObjectArray(), extra.ObjectArray(), "ObjectArray")
-	compare(ctx, cloned.RefObject().Value(), extra.RefObject().Value(), "RefObject")
-	compare(ctx, cloned.RefObject().Value(), extra.RefObjectAlias().Value(), "RefObjectAlias")
+	cloned := complex.Clone(a, api.CloneContext{})
+	compare(ctx, cloned.Data(), complex.Data(), "Data")
+	compare(ctx, cloned.Object(), complex.Object(), "Object")
+	compare(ctx, cloned.ObjectArray(), complex.ObjectArray(), "ObjectArray")
+	compare(ctx, cloned.RefObject().Value(), complex.RefObject().Value(), "RefObject")
+	compare(ctx, cloned.RefObject().Value(), complex.RefObjectAlias().Value(), "RefObjectAlias")
 	compare(ctx, cloned.NilRefObject().IsNil(), true, "NilRefObject")
-	compare(ctx, cloned.Entries(), extra.Entries(), "Entries")
-	compare(ctx, cloned.EntriesAlias(), extra.EntriesAlias(), "EntriesAlias")
-	compare(ctx, cloned.NilMap(), extra.NilMap(), "NilMap")
-	compare(ctx, cloned.Strings(), extra.Strings(), "Strings")
-	compare(ctx, cloned.BoolMap(), extra.BoolMap(), "BoolMap")
+	compare(ctx, cloned.Entries(), complex.Entries(), "Entries")
+	compare(ctx, cloned.EntriesAlias(), complex.EntriesAlias(), "EntriesAlias")
+	compare(ctx, cloned.NilMap(), complex.NilMap(), "NilMap")
+	compare(ctx, cloned.Strings(), complex.Strings(), "Strings")
+	compare(ctx, cloned.BoolMap(), complex.BoolMap(), "BoolMap")
 	// RefEntries
-	assert.For("RefEntries.Len").That(cloned.RefEntries().Len()).Equals(extra.RefEntries().Len())
-	for _, k := range extra.RefEntries().Keys() {
+	assert.For("RefEntries.Len").That(cloned.RefEntries().Len()).Equals(complex.RefEntries().Len())
+	for _, k := range complex.RefEntries().Keys() {
 		compare(ctx, cloned.RefEntries().Contains(k), true, "RefEntries[%d]", k)
-		e, a := extra.RefEntries().Get(k), cloned.RefEntries().Get(k)
+		e, a := complex.RefEntries().Get(k), cloned.RefEntries().Get(k)
 		if e.IsNil() {
 			compare(ctx, a.IsNil(), true, "RefEntries[%d]", k)
 		} else {
@@ -181,7 +120,7 @@ func TestCloneReferences(t *testing.T) {
 		}
 	}
 	// LinkedList
-	for i, e, a := 0, extra.LinkedList(), cloned.LinkedList(); !e.IsNil(); i++ {
+	for i, e, a := 0, complex.LinkedList(), cloned.LinkedList(); !e.IsNil(); i++ {
 		compare(ctx, a.IsNil(), false, "LinkedList[%d]", i)
 		compare(ctx, a.Value(), e.Value(), "LinkedList[%d]", i)
 		compare(ctx, a.Next().IsNil(), e.Next().IsNil(), "LinkedList[%d]", i)
@@ -194,10 +133,10 @@ func TestCloneReferences(t *testing.T) {
 	compare(ctx, cloned.Cycle().Next().Value(), uint32(2), "Cycle[1]")
 	compare(ctx, cloned.Cycle().Next().Next(), cloned.Cycle(), "Cycle")
 	// NestedRefs
-	compare(ctx, cloned.NestedRefs().Len(), extra.NestedRefs().Len(), "NestedRefs.Len")
-	for _, k := range extra.NestedRefs().Keys() {
+	compare(ctx, cloned.NestedRefs().Len(), complex.NestedRefs().Len(), "NestedRefs.Len")
+	for _, k := range complex.NestedRefs().Keys() {
 		compare(ctx, cloned.NestedRefs().Contains(k), true, "NestedRefs[%d]", k)
-		e, a := extra.NestedRefs().Get(k), cloned.NestedRefs().Get(k)
+		e, a := complex.NestedRefs().Get(k), cloned.NestedRefs().Get(k)
 		compare(ctx, a.IsNil(), e.IsNil(), "NestedRefs[%d]", k)
 		if !e.IsNil() {
 			compare(ctx, a.Ref().IsNil(), e.Ref().IsNil(), "NestedRefs[%d].ref", k)
