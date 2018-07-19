@@ -19,6 +19,19 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
+// Cmds holds a number of prebuilt example commands that can be used for tests.
+var Cmds struct {
+	A *CmdTypeMix
+	B *CmdTypeMix
+}
+
+func init() {
+	arena := arena.New()
+	cb := CommandBuilder{Arena: arena}
+	Cmds.A = cb.CmdTypeMix(10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, Voidᵖ(0x12345678), 100)
+	Cmds.B = cb.CmdTypeMix(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, false, Voidᵖ(0xabcdef9), 200)
+}
+
 // BuildComplex returns a Complex populated with data.
 func BuildComplex(a arena.Arena) Complex {
 	o := NewTestObjectʳ(a, 42)
