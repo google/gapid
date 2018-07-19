@@ -47,15 +47,17 @@ func (c *C) StorageTypes(layout *device.MemoryLayout, prefix string) *StorageTyp
 
 	toBuild := []*semantic.Class{}
 
-	for _, t := range c.API.Classes {
-		if !semantic.IsStorageType(t) {
-			continue
-		}
-		if matchesTarget {
-			s.classes[t] = c.T.target[t].(*codegen.Struct)
-		} else {
-			s.classes[t] = c.T.DeclarePackedStruct(prefix + t.Name())
-			toBuild = append(toBuild, t)
+	for _, api := range c.APIs {
+		for _, t := range api.Classes {
+			if !semantic.IsStorageType(t) {
+				continue
+			}
+			if matchesTarget {
+				s.classes[t] = c.T.target[t].(*codegen.Struct)
+			} else {
+				s.classes[t] = c.T.DeclarePackedStruct(prefix + t.Name())
+				toBuild = append(toBuild, t)
+			}
 		}
 	}
 

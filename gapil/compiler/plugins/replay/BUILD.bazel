@@ -55,6 +55,7 @@ go_test(
         "//gapil/compiler/plugins/replay:go_default_library",
         "//gapil/compiler/testutils:go_default_library",
         "//gapil/executor:go_default_library",
+        "//gapil/semantic:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",

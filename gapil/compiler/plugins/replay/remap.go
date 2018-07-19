@@ -64,7 +64,7 @@ func (r *replayer) getRemapKeyFunc(s *compiler.S, ty semantic.Type) *codegen.Val
 		return nil
 	}
 	// TODO: Pre-cache these calls!
-	return s.Call(r.callbacks.getRemapFunc, s.Scalar(r.API.Name()), s.Scalar(ty.Name()))
+	return s.Call(r.callbacks.getRemapFunc, s.Scalar(r.CurrentAPI().Name()), s.Scalar(ty.Name()))
 }
 
 func (r *replayer) loadRemap(s *compiler.S, val *codegen.Value, ty semantic.Type,
