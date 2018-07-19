@@ -41,6 +41,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
+        "helpers.go",
         "test.go",
     ],
     embed = [

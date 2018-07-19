@@ -1,0 +1,58 @@
+@replay_remap type u32 remapped
+
+class RemappedStruct {
+  u64      F1
+  remapped Handle
+  u32      F3
+}
+
+class PointerStruct {
+  u64  F2
+  u32  F1
+  u32* Pointer
+}
+
+class NestedStruct {
+  RemappedStruct* RS
+  PointerStruct*  PS
+}
+
+class StringStruct {
+  u32    Count
+  char** Strings
+}
+
+class TestObject {
+  u32 value
+}
+
+class TestList {
+  u32          value
+  ref!TestList next
+}
+
+class NestedRef {
+  ref!TestObject ref
+}
+
+class Complex {
+  u8[]                     Data
+
+  TestObject               Object
+  TestObject[2]            ObjectArray
+
+  ref!TestObject           RefObject
+  ref!TestObject           RefObjectAlias
+  ref!TestObject           NilRefObject
+
+  map!(u32,TestObject)     Entries
+  map!(u32,TestObject)     EntriesAlias
+  map!(u32,TestObject)     NilMap
+  map!(u32,ref!TestObject) RefEntries
+  map!(string,u32)         Strings
+  map!(u32,bool)           BoolMap
+
+  ref!TestList             LinkedList
+  ref!TestList             Cycle
+  map!(u32, ref!NestedRef) NestedRefs
+}

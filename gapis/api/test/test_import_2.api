@@ -12,30 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-@replay_remap type u32 remapped
-
 class Import2 {
   string S
-}
-
-class RemappedStruct {
-  u64      F1
-  remapped Handle
-  u32      F3
-}
-
-class PointerStruct {
-  u64  F2
-  u32  F1
-  u32* Pointer
-}
-
-class NestedStruct {
-  RemappedStruct* RS
-  PointerStruct*  PS
-}
-
-class StringStruct {
-  u32    Count
-  char** Strings
 }

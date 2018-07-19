@@ -1,0 +1,5 @@
+u8[]   u8s
+u16[]  u16s
+u32[]  u32s
+int[]  ints
+string str
