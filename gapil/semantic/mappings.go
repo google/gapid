@@ -27,12 +27,16 @@ type Mappings struct {
 	SemanticToAST map[Node][]ast.Node
 }
 
-// Add creates an association between the AST and semantic nodes.
-func (m *Mappings) Add(a ast.Node, s Node) {
+func (m *Mappings) init() {
 	if m.ASTToSemantic == nil {
 		m.ASTToSemantic = map[ast.Node][]Node{}
 		m.SemanticToAST = map[Node][]ast.Node{}
 	}
+}
+
+// Add creates an association between the AST and semantic nodes.
+func (m *Mappings) Add(a ast.Node, s Node) {
+	m.init()
 	m.ASTToSemantic[a] = append(m.ASTToSemantic[a], s)
 	m.SemanticToAST[s] = append(m.SemanticToAST[s], a)
 }
@@ -64,6 +68,7 @@ func (m *Mappings) CST(sem Node) cst.Node {
 
 // MergeIn merges the mappings in other into m.
 func (m *Mappings) MergeIn(other *Mappings) {
+	m.init()
 	m.AST.MergeIn(&other.AST)
 	for a, s := range other.ASTToSemantic {
 		m.ASTToSemantic[a] = append(m.ASTToSemantic[a], s...)

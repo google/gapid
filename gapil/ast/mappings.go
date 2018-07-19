@@ -22,14 +22,18 @@ type Mappings struct {
 	CSTToAST map[cst.Node]Node
 }
 
-// Add creates an association between the AST and CST nodes.
-func (m *Mappings) Add(a Node, c cst.Node) {
+func (m *Mappings) init() {
 	if m.ASTToCST == nil {
 		*m = Mappings{
 			ASTToCST: map[Node]cst.Node{},
 			CSTToAST: map[cst.Node]Node{},
 		}
 	}
+}
+
+// Add creates an association between the AST and CST nodes.
+func (m *Mappings) Add(a Node, c cst.Node) {
+	m.init()
 	m.ASTToCST[a] = c
 	m.CSTToAST[c] = a
 }
@@ -41,6 +45,7 @@ func (m *Mappings) CST(ast Node) cst.Node {
 
 // MergeIn merges the mappings in other into m.
 func (m *Mappings) MergeIn(other *Mappings) {
+	m.init()
 	for a, c := range other.ASTToCST {
 		m.ASTToCST[a] = c
 	}
