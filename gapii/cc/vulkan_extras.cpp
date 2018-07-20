@@ -753,16 +753,11 @@ uint32_t VulkanSpy::SpyOverride_vkCreateBuffer(
 uint32_t VulkanSpy::SpyOverride_vkCreateImage(
     VkDevice device, const VkImageCreateInfo* pCreateInfo,
     const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
-  if (is_suspended() || is_observing()) {
-    VkImageCreateInfo override_create_info = *pCreateInfo;
-    override_create_info.musage |=
-        VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    return mImports.mVkDeviceFunctions[device].vkCreateImage(
-        device, &override_create_info, pAllocator, pImage);
-  } else {
-    return mImports.mVkDeviceFunctions[device].vkCreateImage(
-        device, pCreateInfo, pAllocator, pImage);
-  }
+  VkImageCreateInfo override_create_info = *pCreateInfo;
+  override_create_info.musage |=
+      VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  return mImports.mVkDeviceFunctions[device].vkCreateImage(
+      device, &override_create_info, pAllocator, pImage);
 }
 
 uint32_t VulkanSpy::SpyOverride_vkCreateSwapchainKHR(

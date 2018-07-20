@@ -109,13 +109,32 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
 		for layer := uint32(0); layer < img.Info().ArrayLayers(); layer++ {
 			for level := uint32(0); level < img.Info().MipLevels(); level++ {
+				inputImageObjects := copyJob.srcAspectsToDsts[aspect].dstImgs
+				inputImages := make([]ipRenderImage, len(inputImageObjects))
+				for i, iimg := range inputImageObjects {
+					layout := iimg.Aspects().Get(
+						VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT).Layers().Get(
+						layer).Levels().Get(
+						level).Layout()
+					inputImages[i] = ipRenderImage{
+						image:         iimg,
+						aspect:        VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+						layer:         layer,
+						level:         level,
+						initialLayout: layout,
+						finalLayout:   layout,
+					}
+				}
 				renderJobs = append(renderJobs, &ipRenderJob{
-					inputAttachmentImages: copyJob.srcAspectsToDsts[aspect].dstImgs,
-					renderTarget:          img,
-					aspect:                aspect,
-					layer:                 layer,
-					level:                 level,
-					finalLayout:           img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(),
+					inputAttachmentImages: inputImages,
+					renderTarget: ipRenderImage{
+						image:         img,
+						aspect:        aspect,
+						layer:         layer,
+						level:         level,
+						initialLayout: VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
+						finalLayout:   img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(),
+					},
 				})
 			}
 		}
@@ -124,7 +143,10 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 		err := p.rh.render(renderJob, renderTsk)
 		if err != nil {
 			log.E(p.sb.ctx, "[Priming image: %v, aspect: %v, layer: %v, level: %v data by rendering] %v",
-				renderJob.renderTarget.VulkanHandle(), renderJob.aspect, renderJob.layer, renderJob.level, err)
+				renderJob.renderTarget.image.VulkanHandle(),
+				renderJob.renderTarget.aspect,
+				renderJob.renderTarget.layer,
+				renderJob.renderTarget.level, err)
 		}
 	}
 
@@ -961,12 +983,17 @@ func (h *ipStoreHandler) getOrCreateShaderModule(info ipStoreShaderInfo) (Shader
 // Input attachment -> image render handler
 
 type ipRenderJob struct {
-	inputAttachmentImages []ImageObjectʳ
-	renderTarget          ImageObjectʳ
-	aspect                VkImageAspectFlagBits
-	layer                 uint32
-	level                 uint32
-	finalLayout           VkImageLayout
+	inputAttachmentImages []ipRenderImage
+	renderTarget          ipRenderImage
+}
+
+type ipRenderImage struct {
+	image         ImageObjectʳ
+	aspect        VkImageAspectFlagBits
+	layer         uint32
+	level         uint32
+	initialLayout VkImageLayout
+	finalLayout   VkImageLayout
 }
 
 const (
@@ -1047,44 +1074,45 @@ func (h *ipRenderHandler) free() {
 	}
 }
 
-func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
-	var outputBarrierAspect VkImageAspectFlags
-	switch job.aspect {
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
-		outputBarrierAspect = VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT)
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
-		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		switch job.renderTarget.Info().Fmt() {
-		case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
-			VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
-			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
-			outputBarrierAspect = VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT |
-				VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT)
-		default:
-			outputBarrierAspect = VkImageAspectFlags(job.aspect)
-		}
-	default:
-		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.aspect)
+func imageBarrierAspectFlags(aspect VkImageAspectFlagBits, fmt VkFormat) VkImageAspectFlags {
+	switch fmt {
+	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
+		VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
+		VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		aspect |= VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT |
+			VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT
 	}
+	return VkImageAspectFlags(aspect)
+}
+
+func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
+	switch job.renderTarget.aspect {
+	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+	default:
+		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.renderTarget.aspect)
+	}
+	outputBarrierAspect := imageBarrierAspectFlags(job.renderTarget.aspect, job.renderTarget.image.Info().Fmt())
 
 	var outputPreRenderLayout VkImageLayout
-	switch job.aspect {
+	switch job.renderTarget.aspect {
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
 		outputPreRenderLayout = VkImageLayout_VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		outputPreRenderLayout = VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	default:
-		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.aspect)
+		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.renderTarget.aspect)
 	}
 
-	dev := job.renderTarget.Device()
+	dev := job.renderTarget.image.Device()
 
 	descSetInfo := ipRenderDescriptorSetInfo{
 		dev:                 dev,
 		numInputAttachments: len(job.inputAttachmentImages),
 	}
-	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+	if job.renderTarget.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 		// If the render target aspect is stencil, an uniform buffer is required
 		// to store the stencil bit index value.
 		descSetInfo.numUniformBuffers = 1
@@ -1112,30 +1140,31 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	inputViews := []ImageViewObjectʳ{}
 	for _, input := range job.inputAttachmentImages {
 		// TODO: support rendering to 3D images if maintenance1 is enabled.
-		if input.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
+		if input.image.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
 			return log.Errf(h.sb.ctx, nil, "rendering to 3D images are not supported yet")
 		}
-		view := h.createImageView(dev, input, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, job.layer, job.level)
+		view := h.createImageView(dev, input.image, input.aspect, input.layer, input.level)
 		inputViews = append(inputViews, view)
 		if !view.IsNil() {
 			tsk.deferUntilExecuted(func() {
 				h.sb.write(h.sb.cb.VkDestroyImageView(dev, view.VulkanHandle(), memory.Nullptr))
 			})
 		} else {
-			return log.Errf(h.sb.ctx, nil, "failed to create image view for input attachment image: %v", input.VulkanHandle())
+			return log.Errf(h.sb.ctx, nil, "failed to create image view for input attachment image: %v", input.image.VulkanHandle())
 		}
 	}
 	// TODO: support rendering to 3D images if maintenance1 is enabled.
-	if job.renderTarget.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
+	if job.renderTarget.image.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
 		return log.Errf(h.sb.ctx, nil, "rendering to 3D images are not supported yet")
 	}
-	outputView := h.createImageView(dev, job.renderTarget, job.aspect, job.layer, job.level)
+	outputView := h.createImageView(dev, job.renderTarget.image, job.renderTarget.aspect, job.renderTarget.layer, job.renderTarget.level)
 	if !outputView.IsNil() {
 		tsk.deferUntilExecuted(func() {
 			h.sb.write(h.sb.cb.VkDestroyImageView(dev, outputView.VulkanHandle(), memory.Nullptr))
 		})
 	} else {
-		return log.Errf(h.sb.ctx, nil, "failed to create image view for rendering target image: %v", job.renderTarget.VulkanHandle())
+		return log.Errf(h.sb.ctx, nil, "failed to create image view for rendering target image: %v",
+			job.renderTarget.image.VulkanHandle())
 	}
 
 	imgInfoList := []VkDescriptorImageInfo{}
@@ -1152,7 +1181,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	})
 
 	var stencilIndexBuf VkBuffer
-	if job.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
+	if job.renderTarget.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 		// write the uniform buffer for rendering stencil value.
 		stencilBitIndices := []uint32{0}
 		var sbic bytes.Buffer
@@ -1181,13 +1210,13 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	renderPassInfo := ipRenderPassInfo{
 		dev:                         dev,
 		numInputAttachments:         len(job.inputAttachmentImages),
-		inputAttachmentImageFormat:  job.inputAttachmentImages[0].Info().Fmt(),
-		inputAttachmentImageSamples: job.inputAttachmentImages[0].Info().Samples(),
-		targetAspect:                job.aspect,
-		targetFormat:                job.renderTarget.Info().Fmt(),
-		targetSamples:               job.renderTarget.Info().Samples(),
+		inputAttachmentImageFormat:  job.inputAttachmentImages[0].image.Info().Fmt(),
+		inputAttachmentImageSamples: job.inputAttachmentImages[0].image.Info().Samples(),
+		targetAspect:                job.renderTarget.aspect,
+		targetFormat:                job.renderTarget.image.Info().Fmt(),
+		targetSamples:               job.renderTarget.image.Info().Samples(),
 	}
-	renderPass := h.createRenderPass(renderPassInfo, job.finalLayout)
+	renderPass := h.createRenderPass(renderPassInfo, job.renderTarget.finalLayout)
 	if !renderPass.IsNil() {
 		tsk.deferUntilExecuted(func() {
 			h.sb.write(h.sb.cb.VkDestroyRenderPass(dev, renderPass.VulkanHandle(), memory.Nullptr))
@@ -1202,7 +1231,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	}
 	allViews = append(allViews, outputView.VulkanHandle())
 
-	targetLevelSize := h.sb.levelSize(job.renderTarget.Info().Extent(), job.renderTarget.Info().Fmt(), job.level, job.aspect)
+	targetLevelSize := h.sb.levelSize(job.renderTarget.image.Info().Extent(),
+		job.renderTarget.image.Info().Fmt(), job.renderTarget.level, job.renderTarget.aspect)
 
 	framebuffer := h.createFramebuffer(dev, renderPass.VulkanHandle(), allViews,
 		uint32(targetLevelSize.width), uint32(targetLevelSize.height))
@@ -1223,8 +1253,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		fragShaderInfo: ipRenderShaderInfo{
 			dev:      dev,
 			isVertex: false,
-			format:   job.renderTarget.Info().Fmt(),
-			aspect:   job.aspect,
+			format:   job.renderTarget.image.Info().Fmt(),
+			aspect:   job.renderTarget.aspect,
 		},
 		pipelineLayout: pipelineLayout.VulkanHandle(),
 		renderPassInfo: renderPassInfo,
@@ -1263,26 +1293,46 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		h.sb.write(h.sb.cb.VkDestroyBuffer(dev, indexBuf, memory.Nullptr))
 	})
 
-	inputBarriers := []VkImageMemoryBarrier{}
+	inputSrcBarriers := []VkImageMemoryBarrier{}
+	dstBarriers := []VkImageMemoryBarrier{}
 	for _, input := range job.inputAttachmentImages {
-		inputLevel := input.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT).Layers().Get(job.layer).Levels().Get(job.level)
-		inputBarriers = append(inputBarriers,
+		aspects := imageBarrierAspectFlags(input.aspect, input.image.Info().Fmt())
+		inputSrcBarriers = append(inputSrcBarriers,
 			NewVkImageMemoryBarrier(h.sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 				0, // pNext
 				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 				VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),                                        // dstAccessMask
-				inputLevel.Layout(),                                                                                        // oldLayout
+				input.initialLayout,                                                                                        // oldLayout
 				VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                     // newLayout
 				queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
 				queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
-				input.VulkanHandle(),                                                                                       // image
+				input.image.VulkanHandle(),                                                                                 // image
 				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-					VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT), // aspectMask
-					0, // baseMipLevel
-					input.Info().MipLevels(), // levelCount
+					aspects, // aspectMask
+					0,       // baseMipLevel
+					input.image.Info().MipLevels(), // levelCount
 					0, // baseArrayLayer
-					input.Info().ArrayLayers(), // layerCount
+					input.image.Info().ArrayLayers(), // layerCount
+				),
+			))
+		dstBarriers = append(dstBarriers,
+			NewVkImageMemoryBarrier(h.sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+				0, // pNext
+				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+				VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),                                        // dstAccessMask
+				VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                     // oldLayout
+				input.finalLayout,                                                                                          // newLayout
+				queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+				queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
+				input.image.VulkanHandle(),                                                                                 // image
+				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+					aspects, // aspectMask
+					0,       // baseMipLevel
+					input.image.Info().MipLevels(), // levelCount
+					0, // baseArrayLayer
+					input.image.Info().ArrayLayers(), // layerCount
 				),
 			))
 	}
@@ -1291,18 +1341,20 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		0, // pNext
 		0, // srcAccessMask
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-		GetState(h.sb.newState).Images().Get(job.renderTarget.VulkanHandle()).Aspects().Get(
-			job.aspect).Layers().Get(job.layer).Levels().Get(job.level).Layout(), // oldLayout
-		outputPreRenderLayout,           // newLayout
-		queueFamilyIgnore,               // srcQueueFamilyIndex
-		queueFamilyIgnore,               // dstQueueFamilyIndex
-		job.renderTarget.VulkanHandle(), // image
+		GetState(h.sb.newState).Images().Get(job.renderTarget.image.VulkanHandle()).Aspects().Get(
+			job.renderTarget.aspect).Layers().Get(
+			job.renderTarget.layer).Levels().Get(
+			job.renderTarget.level).Layout(), // oldLayout
+		outputPreRenderLayout,                 // newLayout
+		queueFamilyIgnore,                     // srcQueueFamilyIndex
+		queueFamilyIgnore,                     // dstQueueFamilyIndex
+		job.renderTarget.image.VulkanHandle(), // image
 		NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
 			outputBarrierAspect, // aspectMask
 			0,                   // baseMipLevel
-			job.renderTarget.Info().MipLevels(), // levelCount
+			job.renderTarget.image.Info().MipLevels(), // levelCount
 			0, // baseArrayLayer
-			job.renderTarget.Info().ArrayLayers(), // layerCount
+			job.renderTarget.image.Info().ArrayLayers(), // layerCount
 		))
 	bufBarriers := []VkBufferMemoryBarrier{
 		NewVkBufferMemoryBarrier(h.sb.ta,
@@ -1339,12 +1391,12 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			memory.Nullptr,
 			uint32(len(bufBarriers)),
 			h.sb.MustAllocReadData(bufBarriers).Ptr(),
-			uint32(len(append(inputBarriers, outputBarrier))),
-			h.sb.MustAllocReadData(append(inputBarriers, outputBarrier)).Ptr(),
+			uint32(len(append(inputSrcBarriers, outputBarrier))),
+			h.sb.MustAllocReadData(append(inputSrcBarriers, outputBarrier)).Ptr(),
 		))
 	})
 
-	switch job.aspect {
+	switch job.renderTarget.aspect {
 	// render color or depth aspect
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
 		drawInfo := ipRenderDrawInfo{
@@ -1356,7 +1408,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			pipeline:         pipeline,
 			vertexBuf:        vertexBuf,
 			indexBuf:         indexBuf,
-			aspect:           job.aspect,
+			aspect:           job.renderTarget.aspect,
 			width:            uint32(targetLevelSize.width),
 			height:           uint32(targetLevelSize.height),
 			stencilWriteMask: 0,
@@ -1401,13 +1453,13 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 							VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // newLayout
 							queueFamilyIgnore,                                                            // srcQueueFamilyIndex
 							queueFamilyIgnore,                                                            // dstQueueFamilyIndex
-							job.renderTarget.VulkanHandle(),                                              // image
+							job.renderTarget.image.VulkanHandle(),                                        // image
 							NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
 								outputBarrierAspect, // aspectMask
 								0,                   // baseMipLevel
-								job.renderTarget.Info().MipLevels(), // levelCount
+								job.renderTarget.image.Info().MipLevels(), // levelCount
 								0, // baseArrayLayer
-								job.renderTarget.Info().ArrayLayers(), // layerCount
+								job.renderTarget.image.Info().ArrayLayers(), // layerCount
 							),
 						)}).Ptr(),
 				))
@@ -1461,41 +1513,41 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			}
 			h.beginRenderPassAndDraw(drawInfo)
 		}
-		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
-			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-				commandBuffer,
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkDependencyFlags(0),
-				0,
-				memory.Nullptr,
-				0,
-				memory.Nullptr,
-				1,
-				h.sb.MustAllocReadData([]VkImageMemoryBarrier{
-					NewVkImageMemoryBarrier(h.sb.ta,
-						VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-						0, // pNext
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // srcAccessMask
-						VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // dstAccessMask
-						VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // oldLayout
-						job.finalLayout,                 // newLayout
-						queueFamilyIgnore,               // srcQueueFamilyIndex
-						queueFamilyIgnore,               // dstQueueFamilyIndex
-						job.renderTarget.VulkanHandle(), // image
-						NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-							outputBarrierAspect, // aspectMask
-							0,                   // baseMipLevel
-							job.renderTarget.Info().MipLevels(), // levelCount
-							0, // baseArrayLayer
-							job.renderTarget.Info().ArrayLayers(), // layerCount
-						),
-					)}).Ptr(),
-			))
-		})
+		dstBarriers = append(dstBarriers, NewVkImageMemoryBarrier(h.sb.ta,
+			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+			0, // pNext
+			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // srcAccessMask
+			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT), // dstAccessMask
+			VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,               // oldLayout
+			job.renderTarget.finalLayout,                                                 // newLayout
+			queueFamilyIgnore,                                                            // srcQueueFamilyIndex
+			queueFamilyIgnore,                                                            // dstQueueFamilyIndex
+			job.renderTarget.image.VulkanHandle(),                                        // image
+			NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+				outputBarrierAspect, // aspectMask
+				0,                   // baseMipLevel
+				job.renderTarget.image.Info().MipLevels(), // levelCount
+				0, // baseArrayLayer
+				job.renderTarget.image.Info().ArrayLayers(), // layerCount
+			),
+		))
 	default:
-		return log.Errf(h.sb.ctx, nil, "invalid aspect: %v to render", job.aspect)
+		return log.Errf(h.sb.ctx, nil, "invalid aspect: %v to render", job.renderTarget.aspect)
 	}
+	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			0,
+			memory.Nullptr,
+			0,
+			memory.Nullptr,
+			1,
+			h.sb.MustAllocReadData(dstBarriers).Ptr(),
+		))
+	})
 
 	return nil
 }
