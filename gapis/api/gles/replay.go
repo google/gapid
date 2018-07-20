@@ -179,7 +179,7 @@ func (a API) Replay(
 			case service.DrawMode_WIREFRAME_OVERLAY:
 				wire = wireframeOverlay(ctx, req.after)
 			case service.DrawMode_OVERDRAW:
-				return fmt.Errorf("Overdraw is not currently supported")
+				return fmt.Errorf("Overdraw is not currently supported for GLES")
 			}
 		}
 	}
