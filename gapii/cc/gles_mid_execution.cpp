@@ -62,6 +62,7 @@ class Sampler {
 
   virtual std::string getExtensions() const = 0;
   virtual std::string getUniform() const = 0;
+  virtual std::string getFragmentPreamble() const { return ""; }
   virtual std::string getSamplingExpression() const = 0;
 
   void bindTexture(const GlesImports& imports, GLint texId) const {
@@ -168,6 +169,44 @@ class Sampler3D : public Sampler {
 
  private:
   float mZ;
+};
+
+class SamplerCube : public Sampler {
+ public:
+  SamplerCube(GLint face) : Sampler(GL_TEXTURE_CUBE_MAP), mFace(face) {}
+
+  virtual std::string getExtensions() const { return ""; }
+
+  virtual std::string getUniform() const { return "uniform samplerCube tex;"; }
+
+  virtual std::string getFragmentPreamble() const {
+    // uv.xy is texcoord expanded to [-1, 1].
+    // uv.zw is -uv.xy.
+    return "vec4 uv = vec4(-1.0 + 2.0 * texcoord, 1.0 - 2.0 * texcoord);";
+  }
+
+  virtual std::string getSamplingExpression() const {
+    switch (mFace) {
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        return "textureCube(tex, vec3(1.0, uv.wz))";
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        return "textureCube(tex, vec3(-1.0, uv.wx))";
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        return "textureCube(tex, vec3(uv.x, 1.0, uv.y))";
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        return "textureCube(tex, vec3(uv.x, -1.0, uv.w))";
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        return "textureCube(tex, vec3(uv.xw, 1.0))";
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        return "textureCube(tex, vec3(uv.xw, 1.0))";
+      default:
+        GAPID_FATAL("MEC: unexpected cube face: 0x%x", mFace);
+        return "";
+    }
+  }
+
+ private:
+  GLint mFace;
 };
 
 typedef struct {
@@ -415,6 +454,7 @@ void Reader::DrawTexturedQuad(const Sampler& sampler, GLsizei w, GLsizei h) {
   fsSource += sampler.getUniform();
   fsSource += "varying vec2 texcoord;\n";
   fsSource += "void main() {\n";
+  fsSource += sampler.getFragmentPreamble();
   fsSource += "  fragColor = " + sampler.getSamplingExpression() + ";\n";
   fsSource += "}\n";
 
@@ -505,6 +545,10 @@ ImageData Reader::ReadTextureViaDrawQuad(const texture_t& tex, GLint layer,
     }
     case GL_TEXTURE_3D: {
       Sampler3D sampler(1.0f / (2.0f * tex.d) + (float)layer / tex.d);
+      return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
+    }
+    case GL_TEXTURE_CUBE_MAP: {
+      SamplerCube sampler(GL_TEXTURE_CUBE_MAP_POSITIVE_X + layer);
       return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
     }
     default:
