@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -36,7 +37,7 @@ type stateBuilder struct {
 	s                     *State
 	oldState              *api.GlobalState
 	newState              *api.GlobalState
-	cmds                  []api.Cmd
+	out                   stateBuilderOutput
 	cb                    CommandBuilder
 	readMemories          []*api.AllocResult
 	writeMemories         []*api.AllocResult
@@ -46,26 +47,90 @@ type stateBuilder struct {
 	scratchResources      map[VkDevice]map[uint32]*queueFamilyScratchResources
 }
 
+type stateBuilderOutput interface {
+	write(ctx context.Context, cmd api.Cmd, id api.CmdID)
+	getOldState() *api.GlobalState
+	getNewState() *api.GlobalState
+}
+
+type initialStateOutput struct {
+	oldState *api.GlobalState
+	newState *api.GlobalState
+	cmds     []api.Cmd
+}
+
+func newInitialStateOutput(oldState *api.GlobalState) *initialStateOutput {
+	return &initialStateOutput{
+		oldState: oldState,
+		newState: api.NewStateWithAllocator(memory.NewBasicAllocator(
+			oldState.Allocator.FreeList()), oldState.MemoryLayout),
+		cmds: []api.Cmd{},
+	}
+}
+
+func (o *initialStateOutput) write(ctx context.Context, cmd api.Cmd, id api.CmdID) {
+	if err := cmd.Mutate(ctx, id, o.newState, nil); err != nil {
+		log.W(ctx, "Initial cmd %v: %v - %v", len(o.cmds), cmd, err)
+	} else {
+		log.D(ctx, "Initial cmd %v: %v", len(o.cmds), cmd)
+	}
+	o.cmds = append(o.cmds, cmd)
+}
+
+func (o *initialStateOutput) getOldState() *api.GlobalState {
+	return o.oldState
+}
+
+func (o *initialStateOutput) getNewState() *api.GlobalState {
+	return o.newState
+}
+
+type transformerOutput struct {
+	out transform.Writer
+}
+
+func newTransformerOutput(out transform.Writer) *transformerOutput {
+	return &transformerOutput{out}
+}
+
+func (o *transformerOutput) write(ctx context.Context, cmd api.Cmd, id api.CmdID) {
+	o.out.MutateAndWrite(ctx, id, cmd)
+}
+
+func (o *transformerOutput) getOldState() *api.GlobalState {
+	return o.out.State()
+}
+
+func (o *transformerOutput) getNewState() *api.GlobalState {
+	return o.out.State()
+}
+
 type idAndRng struct {
 	id  id.ID
 	rng memory.Range
+}
+
+func (s *State) newStateBuilder(ctx context.Context, out stateBuilderOutput) *stateBuilder {
+	newState := out.getNewState()
+	return &stateBuilder{
+		ctx:              ctx,
+		s:                s,
+		oldState:         out.getOldState(),
+		newState:         newState,
+		out:              out,
+		cb:               CommandBuilder{Thread: 0, Arena: newState.Arena},
+		memoryIntervals:  interval.U64RangeList{},
+		ta:               arena.New(),
+		scratchResources: map[VkDevice]map[uint32]*queueFamilyScratchResources{},
+	}
 }
 
 // TODO: wherever possible, use old resources instead of doing full reads on the old pools.
 //       This is especially useful for things that are internal pools, (Shader words for example)
 func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
 	// TODO: Debug Info
-	newState := api.NewStateWithAllocator(memory.NewBasicAllocator(oldState.Allocator.FreeList()), oldState.MemoryLayout)
-	sb := &stateBuilder{
-		ctx:              ctx,
-		s:                s,
-		oldState:         oldState,
-		newState:         newState,
-		cb:               CommandBuilder{Thread: 0, Arena: newState.Arena},
-		memoryIntervals:  interval.U64RangeList{},
-		ta:               arena.New(),
-		scratchResources: map[VkDevice]map[uint32]*queueFamilyScratchResources{},
-	}
+	out := newInitialStateOutput(oldState)
+	sb := s.newStateBuilder(ctx, out)
 
 	defer sb.ta.Dispose()
 
@@ -196,7 +261,7 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	sb.flushAllScratchResources()
 	sb.freeAllScratchResources()
 
-	return sb.cmds, sb.memoryIntervals
+	return out.cmds, sb.memoryIntervals
 }
 
 func getPipelinesInOrder(s *State, compute bool) []VkPipeline {
@@ -348,12 +413,7 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 		cmd.Extras().GetOrAppendObservations().AddWrite(write.Data())
 	}
 
-	if err := cmd.Mutate(sb.ctx, api.CmdNoID, sb.newState, nil); err != nil {
-		log.W(sb.ctx, "Initial cmd %v: %v - %v", len(sb.cmds), cmd, err)
-	} else {
-		log.D(sb.ctx, "Initial cmd %v: %v", len(sb.cmds), cmd)
-	}
-	sb.cmds = append(sb.cmds, cmd)
+	sb.out.write(sb.ctx, cmd, api.CmdNoID)
 	for _, read := range sb.readMemories {
 		read.Free()
 	}

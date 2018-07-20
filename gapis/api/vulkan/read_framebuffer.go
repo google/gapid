@@ -240,6 +240,11 @@ func postImageData(ctx context.Context,
 	}
 
 	queue := imageObject.Aspects().Get(aspect).Layers().Get(0).Levels().Get(0).LastBoundQueue()
+	if queue.IsNil() {
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
+		return
+	}
+
 	vkQueue := queue.VulkanHandle()
 	vkDevice := queue.Device()
 	device := GetState(s).Devices().Get(vkDevice)
@@ -249,10 +254,6 @@ func postImageData(ctx context.Context,
 	requestWidth := reqWidth
 	requestHeight := reqHeight
 
-	if queue.IsNil() {
-		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
-		return
-	}
 	if properties, ok := physicalDevice.QueueFamilyProperties().Lookup(queue.Family()); ok {
 		if properties.QueueFlags()&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) == 0 {
 			if imageObject.Info().Samples() == VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT &&
