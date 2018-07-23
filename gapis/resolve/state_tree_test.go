@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/testcmd"
@@ -196,7 +197,7 @@ func TestStateTreeNode(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	header := capture.Header{ABI: device.AndroidARM64v8a}
-	c, err := capture.New(ctx, "test-capture", &header, []api.Cmd{})
+	c, err := capture.New(ctx, arena.New(), "test-capture", &header, []api.Cmd{})
 	if err != nil {
 		panic(err)
 	}

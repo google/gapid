@@ -26,6 +26,7 @@ go_library(
         "//core/data:go_default_library",
         "//core/data/deep:go_default_library",
         "//core/data/protoconv:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//gapil/constset:go_default_library",
         "//gapis/api:go_default_library",

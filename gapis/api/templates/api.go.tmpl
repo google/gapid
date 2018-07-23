@@ -1510,12 +1510,12 @@ import (
   }
 
 	// CreateCmd constructs and returns a new command with the specified name.
-	func (API) CreateCmd(name string) ϟapi.Cmd {
+	func (API) CreateCmd(a arena.Arena, name string) ϟapi.Cmd {
     switch name {
       {{range $c := AllCommands $}}
         {{if not (GetAnnotation $c "pfn")}}
           case "{{$c.Name}}":
-            return &{{$c | GoCommandName}}{}
+            return &{{$c | GoCommandName}}{arena: a}
         {{end}}
       {{end}}
       default:

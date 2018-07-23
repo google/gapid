@@ -53,7 +53,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	h := &capture.Header{ABI: device.AndroidARMv7a}
 	ml := h.ABI.MemoryLayout
-	capturePath, err := capture.New(ctx, "test", h, []api.Cmd{})
+	capturePath, err := capture.New(ctx, a, "test", h, []api.Cmd{})
 	if err != nil {
 		panic(err)
 	}

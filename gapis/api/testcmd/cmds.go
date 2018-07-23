@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/data"
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/protoconv"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/constset"
 	"github.com/google/gapid/gapis/api"
@@ -241,7 +242,7 @@ func (API) GetFramebufferAttachmentInfo(
 	return api.FramebufferAttachmentInfo{}, nil
 }
 func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
-func (API) CreateCmd(name string) api.Cmd {
+func (API) CreateCmd(a arena.Arena, name string) api.Cmd {
 	switch name {
 	case "X":
 		return &X{}

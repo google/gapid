@@ -34,6 +34,7 @@ go_library(
     deps = [
         "//core/app/benchmark:go_default_library",
         "//core/log:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",

@@ -16,6 +16,7 @@ package resolve
 
 import (
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
@@ -43,10 +44,10 @@ func internalToService(v interface{}) (interface{}, error) {
 	}
 }
 
-func serviceToInternal(v interface{}) (interface{}, error) {
+func serviceToInternal(a arena.Arena, v interface{}) (interface{}, error) {
 	switch v := v.(type) {
 	case *api.Command:
-		return api.ServiceToCmd(v)
+		return api.ServiceToCmd(a, v)
 	case *box.Value:
 		return v.Get(), nil
 	default:

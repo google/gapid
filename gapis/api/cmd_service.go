@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -58,25 +59,26 @@ func CmdToService(c Cmd) (*Command, error) {
 }
 
 // ServiceToCmd returns the command built from c.
-func ServiceToCmd(c *Command) (Cmd, error) {
+func ServiceToCmd(a arena.Arena, c *Command) (Cmd, error) {
 	api := Find(ID(c.GetAPI().GetID().ID()))
 	if api == nil {
 		return nil, fmt.Errorf("Unknown api '%v'", c.GetAPI())
 	}
-	a := api.CreateCmd(c.Name)
-	if a == nil {
+	cmd := api.CreateCmd(a, c.Name)
+	if cmd == nil {
 		return nil, fmt.Errorf("Unknown command '%v.%v'", api.Name(), c.Name)
 	}
 
-	a.SetThread(c.Thread)
+	cmd.SetCaller(CmdNoID) // TODO: Include this in the proto
+	cmd.SetThread(c.Thread)
 
 	for _, s := range c.Parameters {
-		SetParameter(a, s.Name, s.Value.Get())
+		SetParameter(cmd, s.Name, s.Value.Get())
 	}
 
-	if p := a.CmdResult(); p != nil && c.Result != nil {
-		a.CmdResult().Set(c.Result.Value.Get())
+	if p := cmd.CmdResult(); p != nil && c.Result != nil {
+		cmd.CmdResult().Set(c.Result.Value.Get())
 	}
 
-	return a, nil
+	return cmd, nil
 }

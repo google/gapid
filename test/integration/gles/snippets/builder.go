@@ -73,7 +73,7 @@ func (b *Builder) Capture(ctx context.Context, name string) *path.Capture {
 		Device: b.device,
 		ABI:    b.abi,
 	}
-	out, err := capture.New(ctx, name, h, b.Cmds)
+	out, err := capture.New(ctx, b.CB.Arena, name, h, b.Cmds)
 	if err != nil {
 		panic(err)
 	}

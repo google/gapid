@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/constset"
 )
 
@@ -53,7 +54,7 @@ type API interface {
 	Context(state *GlobalState, thread uint64) Context
 
 	// CreateCmd constructs and returns a new command with the specified name.
-	CreateCmd(name string) Cmd
+	CreateCmd(a arena.Arena, name string) Cmd
 }
 
 // FramebufferAttachmentInfo describes a framebuffer at a given point in the trace

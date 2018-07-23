@@ -84,10 +84,11 @@ func init() {
 	)
 }
 
-// New returns a path to a new capture with the given name, header and commands.
+// New returns a path to a new capture with the given name, header and commands,
+// using the arena a for allocations.
 // The new capture is stored in the database.
-func New(ctx context.Context, name string, header *Header, cmds []api.Cmd) (*path.Capture, error) {
-	b := newBuilder()
+func New(ctx context.Context, a arena.Arena, name string, header *Header, cmds []api.Cmd) (*path.Capture, error) {
+	b := newBuilder(a)
 	for _, cmd := range cmds {
 		b.addCmd(ctx, cmd)
 	}
@@ -296,10 +297,12 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 		stopTiming(analytics.Size(size), analytics.Count(count))
 	}()
 
-	d := newDecoder()
+	a := arena.New()
 
 	// Bind the arena used to for all allocations for this capture.
-	ctx = arena.Put(ctx, d.builder.arena)
+	ctx = arena.Put(ctx, a)
+
+	d := newDecoder(a)
 
 	// The decoder implements the ID Remapper interface,
 	// which protoconv functions need to handle resources.
@@ -360,14 +363,14 @@ type builder struct {
 	arena        arena.Arena
 }
 
-func newBuilder() *builder {
+func newBuilder(a arena.Arena) *builder {
 	return &builder{
 		apis:     []api.API{},
 		seenAPIs: map[api.ID]struct{}{},
 		observed: interval.U64RangeList{},
 		cmds:     []api.Cmd{},
 		resIDs:   []id.ID{id.ID{}},
-		arena:    arena.New(),
+		arena:    a,
 	}
 }
 
