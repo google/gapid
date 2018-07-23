@@ -231,7 +231,7 @@ type API struct{}
 
 func (API) Name() string                 { return "foo" }
 func (API) ID() api.ID                   { return APIID }
-func (API) Index() uint8                 { return 15 }
+func (API) Index() uint8                 { return 10 }
 func (API) ConstantSets() *constset.Pack { return nil }
 func (API) GetFramebufferAttachmentInfo(
 	ctx context.Context,
