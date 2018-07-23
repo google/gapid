@@ -76,6 +76,7 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/testcmd:go_default_library",

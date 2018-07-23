@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/deep"
 	"github.com/google/gapid/core/data/dictionary"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -46,19 +47,21 @@ func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		ctx = capture.Put(ctx, c)
 	}
 
-	v, err := serviceToInternal(r.Value.Get())
+	a := arena.New()
+
+	v, err := serviceToInternal(a, r.Value.Get())
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := change(ctx, r.Path.Node(), v)
+	p, err := change(ctx, a, r.Path.Node(), v)
 	if err != nil {
 		return nil, err
 	}
 	return p.Path(), nil
 }
 
-func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error) {
+func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (path.Node, error) {
 	switch p := p.(type) {
 	case *path.Report:
 		return nil, fmt.Errorf("Reports are immutable")
@@ -97,7 +100,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		// Store the new command list
-		c, err := changeCommands(ctx, p.After.Capture, cmds)
+		c, err := changeCommands(ctx, a, p.After.Capture, cmds)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +149,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		}
 
 		// Store the new command list
-		c, err := changeCommands(ctx, p.After.Capture, cmds)
+		c, err := changeCommands(ctx, a, p.After.Capture, cmds)
 		if err != nil {
 			return nil, err
 		}
@@ -197,7 +200,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 		cmds[cmdIdx] = cmd
 
 		// Store the new command list
-		c, err := changeCommands(ctx, p.Capture, cmds)
+		c, err := changeCommands(ctx, a, p.Capture, cmds)
 		if err != nil {
 			return nil, err
 		}
@@ -240,7 +243,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 				return nil, err
 			}
 
-			parent, err := change(ctx, p.Parent(), obj.Interface())
+			parent, err := change(ctx, a, p.Parent(), obj.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -261,14 +264,14 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 				return nil, err
 			}
 
-			parent, err := change(ctx, p.Parent(), obj.Interface())
+			parent, err := change(ctx, a, p.Parent(), obj.Interface())
 			if err != nil {
 				return nil, err
 			}
 			return parent.(*path.Command).Result(), nil
 
 		case *path.Field:
-			parent, err := setField(ctx, obj, reflect.ValueOf(val), p.Name, p)
+			parent, err := setField(ctx, a, obj, reflect.ValueOf(val), p.Name, p)
 			if err != nil {
 				return nil, err
 			}
@@ -277,14 +280,14 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 			return out, nil
 
 		case *path.ArrayIndex:
-			a, ty := obj, obj.Type()
-			switch a.Kind() {
+			arr, ty := obj, obj.Type()
+			switch arr.Kind() {
 			case reflect.Array, reflect.Slice:
 				ty = ty.Elem()
 			case reflect.String:
 			default:
 				return nil, &service.ErrInvalidPath{
-					Reason: messages.ErrTypeNotArrayIndexable(typename(a.Type())),
+					Reason: messages.ErrTypeNotArrayIndexable(typename(arr.Type())),
 					Path:   p.Path(),
 				}
 			}
@@ -293,13 +296,13 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 				return nil, fmt.Errorf("Slice or array at %s has element of type %v, got type %v",
 					p.Parent(), ty, val.Type())
 			}
-			if count := uint64(a.Len()); p.Index >= count {
+			if count := uint64(arr.Len()); p.Index >= count {
 				return nil, errPathOOB(p.Index, "Index", 0, count-1, p)
 			}
-			if err := assign(a.Index(int(p.Index)), val); err != nil {
+			if err := assign(arr.Index(int(p.Index)), val); err != nil {
 				return nil, err
 			}
-			parent, err := change(ctx, p.Parent(), a.Interface())
+			parent, err := change(ctx, a, p.Parent(), arr.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -336,7 +339,7 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 
 			d.Add(key.Interface(), val.Interface())
 
-			parent, err := change(ctx, p.Parent(), obj.Interface())
+			parent, err := change(ctx, a, p.Parent(), obj.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -348,19 +351,19 @@ func change(ctx context.Context, p path.Node, val interface{}) (path.Node, error
 	return nil, fmt.Errorf("Unknown path type %T", p)
 }
 
-func changeCommands(ctx context.Context, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {
+func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {
 	old, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.New(ctx, old.Name+"*", old.Header, newCmds)
+	c, err := capture.New(ctx, a, old.Name+"*", old.Header, newCmds)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func setField(ctx context.Context, str, val reflect.Value, name string, p path.Node) (path.Node, error) {
+func setField(ctx context.Context, a arena.Arena, str, val reflect.Value, name string, p path.Node) (path.Node, error) {
 	dst, err := field(ctx, str, name, p)
 	if err != nil {
 		return nil, err
@@ -368,7 +371,7 @@ func setField(ctx context.Context, str, val reflect.Value, name string, p path.N
 	if err := assign(dst, val); err != nil {
 		return nil, err
 	}
-	return change(ctx, p.Parent(), str.Interface())
+	return change(ctx, a, p.Parent(), str.Interface())
 }
 
 func clone(v reflect.Value) (reflect.Value, error) {

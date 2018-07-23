@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/capture"
@@ -72,7 +73,7 @@ var (
 
 func newPathTest(ctx context.Context, cmds ...api.Cmd) *path.Capture {
 	h := &capture.Header{ABI: device.WindowsX86_64}
-	p, err := capture.New(ctx, "test", h, cmds)
+	p, err := capture.New(ctx, arena.New(), "test", h, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}

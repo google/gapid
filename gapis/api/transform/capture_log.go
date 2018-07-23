@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 )
@@ -57,8 +58,9 @@ func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 }
 
 func (t *captureLog) Flush(ctx context.Context, out Writer) {
-
-	capt, err := capture.New(ctx, "capturelog", t.header, t.cmds)
+	a := arena.New()
+	defer a.Dispose()
+	capt, err := capture.New(ctx, a, "capturelog", t.header, t.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
 		return
