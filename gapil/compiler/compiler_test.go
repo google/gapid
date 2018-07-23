@@ -501,11 +501,11 @@ cmd void BitTest() {
 			src: `
 u64  p
 bool q
-extern u64  test_extern_a(u64 a, f32 b, bool c)
-extern bool test_extern_b(string s)
+extern u64  extern_a(u64 a, f32 b, bool c)
+extern bool extern_b(string s)
 cmd void CallExterns(u64 a, f32 b, bool c) {
-	p = test_extern_a(as!u64(10), 20.0, true)
-	q = test_extern_b("meow")
+	p = extern_a(as!u64(10), 20.0, true)
+	q = extern_b("meow")
 }`,
 			cmds: []cmd{{N: "CallExterns"}},
 			expected: expected{
@@ -1906,7 +1906,7 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 
 	processor := gapil.NewProcessor()
 	processor.Loader = gapil.NewDataLoader([]byte(t.src))
-	a, errs := processor.Resolve(t.name + ".api")
+	a, errs := processor.Resolve("test.api")
 	if !assert.For(ctx, "Resolve").ThatSlice(errs).Equals(parse.ErrorList{}) {
 		return false
 	}

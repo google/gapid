@@ -32,5 +32,6 @@ func (c *C) extern(f *semantic.Function) {
 	for i, p := range params {
 		paramTys[i+1] = c.T.Target(p.Type)
 	}
-	c.functions[f] = c.M.Function(resTy, f.Name(), paramTys...)
+	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
+	c.functions[f] = c.M.Function(resTy, name, paramTys...)
 }

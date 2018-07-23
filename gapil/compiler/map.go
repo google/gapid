@@ -104,7 +104,7 @@ func (c *C) defineMapTypes() {
 
 			valPtrTy := c.T.Pointer(mi.Val)
 
-			name := t.Name()
+			name := fmt.Sprintf("%v_%v", api.Name(), t.Name())
 			mi.MapMethods = MapMethods{
 				Contains: c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
 				Index:    c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
