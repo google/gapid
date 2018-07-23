@@ -577,7 +577,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     @Override
     public void bin(Binner binner) {
       for (int i = 0; i < data.length; i++) {
-        binner.bin(UnsignedBytes.toInt(data[i]) / 255.0f, Stream.Channel.Luminance);
+        binner.bin(UnsignedBytes.toInt(data[i]) / 255.0f, Stream.Channel.Count);
       }
     }
 
