@@ -39,7 +39,7 @@ func (API) Context(*api.GlobalState, uint64) api.Context { return nil }
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.
 func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
-	return nil, nil
+	return p, nil
 }
 
 func (*State) SetupInitialState(ctx context.Context, s *api.GlobalState) {}

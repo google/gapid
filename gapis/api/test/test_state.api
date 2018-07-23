@@ -1,5 +1,9 @@
-u8[]   u8s
-u16[]  u16s
-u32[]  u32s
-int[]  ints
-string str
+u8[]                      U8s
+u16[]                     U16s
+u32[]                     U32s
+int[]                     Ints
+string                    Str
+bool[]                    Sli
+ref!Complex               Ref
+u8*                       Ptr
+map!(string, ref!Complex) Map

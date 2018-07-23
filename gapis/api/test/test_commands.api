@@ -2,31 +2,31 @@
 // Intrinsics
 ////////////////////////////////////////////////////////////////
 cmd void cmdClone(u8* src, u32 cnt) {
-  u8s = clone(src[0:cnt])
+  U8s = clone(src[0:cnt])
 }
 
 cmd void cmdMake(u32 cnt) {
-  u8s = make!u8(cnt)
+  U8s = make!u8(cnt)
 }
 
 cmd void cmdCopy(u8* src, u32 cnt) {
-  u8s = make!u8(cnt)
-  copy(u8s, src[0:cnt])
+  U8s = make!u8(cnt)
+  copy(U8s, src[0:cnt])
 }
 
 cmd void cmdCharsliceToString(char* s, u32 len) {
-  str = as!string(s[0:len])
+  Str = as!string(s[0:len])
 }
 
 cmd void cmdCharptrToString(char* s) {
-  str = as!string(s)
+  Str = as!string(s)
 }
 
 cmd void cmdSliceCasts(u16* s, u32 l) {
-  u8s = as!u8[](s[0:l])
-  u16s = as!u16[](s[0:l])
-  u32s = as!u32[](s[0:l])
-  ints = as!int[](s[0:l])
+  U8s = as!u8[](s[0:l])
+  U16s = as!u16[](s[0:l])
+  U32s = as!u32[](s[0:l])
+  Ints = as!int[](s[0:l])
 }
 
 ////////////////////////////////////////////////////////////////
@@ -37,8 +37,8 @@ sub int subAdd(int a, int b) {
 }
 
 cmd void cmdAdd(int a, int b) {
-  ints = make!int(1)
-  ints[0] = subAdd(a, b)
+  Ints = make!int(1)
+  Ints[0] = subAdd(a, b)
 }
 
 ////////////////////////////////////////////////////////////////
@@ -105,10 +105,10 @@ cmd void cmdVoid3Strings(u32 a, u32 b, u32 c) { }
 // Commands with input arrays
 ////////////////////////////////////////////////////////////////
 cmd void cmdVoid3InArrays(u8* a, u32* b, int* c) {
-  u8s = make!u8(10)
+  U8s = make!u8(10)
   read(b[5:15])
   read(c[5:15])
-  copy(u8s, a[5:25]) // only 10 elements should be copied
+  copy(U8s, a[5:25]) // only 10 elements should be copied
 }
 
 ////////////////////////////////////////////////////////////////
@@ -259,4 +259,25 @@ cmd u32 cmdTypeMix(
     void* Ptr
 ) {
     return 0
+}
+
+////////////////////////////////////////////////////////////////
+// Commands for exercising state
+////////////////////////////////////////////////////////////////
+cmd void primeState(u8* ptr) {
+		Str = "aaa"
+
+    Sli = make!bool(3)
+    Sli[0] = true
+    Sli[1] = false
+    Sli[2] = true
+
+		Ref = new!Complex()
+    Ref.Strings["123"] = 123
+    Ref.RefObject = new!TestObject(value: 555)
+
+    Ptr = ptr
+
+    Map["cat"] = new!Complex(Object: TestObject(100))
+    Map["dog"] = new!Complex(Object: TestObject(200))
 }

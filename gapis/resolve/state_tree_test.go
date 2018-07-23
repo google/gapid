@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/testcmd"
+	"github.com/google/gapid/gapis/api/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -214,7 +214,7 @@ func TestStateTreeNode(t *testing.T) {
 			value: reflect.ValueOf(testState),
 			path:  rootPath,
 		},
-		api:        &path.API{ID: path.NewID(id.ID(testcmd.APIID))},
+		api:        &path.API{ID: path.NewID(id.ID(test.API{}.ID()))},
 		groupLimit: 10,
 	}
 	root := &path.StateTreeNode{Indices: []uint64{}}
