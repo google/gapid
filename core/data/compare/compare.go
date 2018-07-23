@@ -62,7 +62,8 @@ func compare(reference, value interface{}, handler Handler, custom *Custom) {
 	t.Compare(reference, value)
 }
 
-// DeepEqual compares a value against a reference and returns true if they are equal.
+// DeepEqual compares a value against a reference and returns true if they are
+// equal.
 func DeepEqual(reference, value interface{}) bool {
 	var d test
 	Compare(reference, value, d.set)

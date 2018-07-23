@@ -208,21 +208,47 @@ func (a *Assertion) Test(condition bool) bool {
 	return condition
 }
 
-// TestDeepEqual adds the entries for Got and Expect, then tests if they are the same using
-// compare.DeepEqual, commiting if they are not.
-func (a *Assertion) TestDeepEqual(value interface{}, expect interface{}) bool {
+// TestDeepEqual adds the entries for Got and Expect, then tests if they are the
+// same using compare.DeepEqual, commiting if they are not.
+func (a *Assertion) TestDeepEqual(value, expect interface{}) bool {
 	return a.Compare(value, "deep ==", expect).Test(compare.DeepEqual(value, expect))
 }
 
-// TestDeepNotEqual adds the entries for Got and Expect, then tests if they are the same using
-// compare.DeepEqual, commiting if they are.
-func (a *Assertion) TestDeepNotEqual(value interface{}, expect interface{}) bool {
+// TestCustomDeepEqual adds the entries for Got and Expect, then tests if they
+// are the same using c.DeepEqual, commiting if they are not.
+func (a *Assertion) TestCustomDeepEqual(value, expect interface{}, c compare.Custom) bool {
+	return a.Compare(value, "deep ==", expect).Test(c.DeepEqual(value, expect))
+}
+
+// TestDeepNotEqual adds the entries for Got and Expect, then tests if they are
+// the same using compare.DeepEqual, commiting if they are.
+func (a *Assertion) TestDeepNotEqual(value, expect interface{}) bool {
 	return a.Compare(value, "deep !=", expect).Test(!compare.DeepEqual(value, expect))
 }
 
+// TestCustomDeepNotEqual adds the entries for Got and Expect, then tests if
+// they are the same using c.DeepEqual, commiting if they are.
+func (a *Assertion) TestCustomDeepNotEqual(value, expect interface{}, c compare.Custom) bool {
+	return a.Compare(value, "deep !=", expect).Test(!c.DeepEqual(value, expect))
+}
+
 // TestDeepDiff is equivalent to TestDeepEqual except it also prints a diff.
-func (a *Assertion) TestDeepDiff(value interface{}, expect interface{}) bool {
+func (a *Assertion) TestDeepDiff(value, expect interface{}) bool {
 	diff := compare.Diff(value, expect, 10)
+	if len(diff) == 0 {
+		return true
+	}
+	for _, diff := range diff {
+		a.Println(diff)
+	}
+	a.Commit()
+	return false
+}
+
+// TestCustomDeepDiff is equivalent to TestCustomDeepEqual except it also prints
+//  a diff.
+func (a *Assertion) TestCustomDeepDiff(value, expect interface{}, c compare.Custom) bool {
+	diff := c.Diff(value, expect, 10)
 	if len(diff) == 0 {
 		return true
 	}
