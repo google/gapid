@@ -334,6 +334,8 @@ func (t *Types) AlignOf(layout *device.MemoryLayout, ty semantic.Type) uint64 {
 		case semantic.Float64Type:
 			return uint64(layout.F64.Alignment)
 		}
+	case *semantic.Enum:
+		return t.AlignOf(layout, ty.NumberType)
 	case *semantic.StaticArray:
 		return t.AlignOf(layout, ty.ValueType)
 	case *semantic.Pointer:
@@ -388,6 +390,8 @@ func (t *Types) SizeOf(layout *device.MemoryLayout, ty semantic.Type) uint64 {
 		case semantic.Float64Type:
 			return uint64(layout.F64.Size)
 		}
+	case *semantic.Enum:
+		return t.SizeOf(layout, ty.NumberType)
 	case *semantic.StaticArray:
 		return uint64(ty.Size) * t.StrideOf(layout, ty.ValueType)
 	case *semantic.Pointer:
