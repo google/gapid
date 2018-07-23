@@ -542,6 +542,7 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
   img.width = w;
   img.height = h;
   img.data.reset(new std::vector<uint8_t>(size));
+  GAPID_DEBUG("ReadPixels: Reading %d bytes", size);
   imports.glReadnPixels(0, 0, w, h, img.dataFormat, img.dataType,
                         img.data->size(), img.data->data());
   CHECK_GL_ERROR("ReadPixels: Failed to read pixels");
@@ -653,7 +654,8 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
     /* compressed 8bit SRGB */
     case GL_COMPRESSED_SRGB8_ETC2:
-      return ReadCompressedTexture(tex, layer, GL_SRGB8,
+      // GL_SRGB8 (i.e. without alpha) is not color renderable.
+      return ReadCompressedTexture(tex, layer, GL_SRGB8_ALPHA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
     /* compressed 8bit SRGBA */
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4:
@@ -968,7 +970,7 @@ void GlesSpy::serializeGPUBuffers(StateSerializer* serializer) {
     */
   }
 
-  GAPID_DEBUG("MEC: done");
+  GAPID_INFO("MEC: done");
 }
 
 }  // namespace gapii
