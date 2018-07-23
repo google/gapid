@@ -39,6 +39,8 @@ type Configuration struct {
 	// The known_hosts file to use for authentication. Defaults to
 	// ~/.ssh/known_hosts
 	KnownHosts string
+	// Environment variables to set on the connection
+	Env []string
 }
 
 // ReadConfigurations reads a set of configurations from then

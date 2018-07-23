@@ -29,7 +29,23 @@ import (
 
 var portPattern = regexp.MustCompile(`^Bound on port '(\d+)'$`)
 
-type portWatcher struct {
+// NewPortWatcher creates and returns an initialized port watcher
+func NewPortWatcher(portChan chan<- string, opts *StartOptions) *PortWatcher {
+	return &PortWatcher{
+		portChan: portChan,
+		stdout:   opts.Stdout,
+		portFile: opts.PortFile,
+		device:   opts.Device,
+	}
+}
+
+// PortWatcher will wait for the given port to become available
+// on the given device. It will look at the given stdout,
+// for the lines Bound on port <portnum>, and in the given
+// portFile for the same lines. If either is found, the port
+// will be written to portChan. Otherwise an error will be
+// written to the channel.
+type PortWatcher struct {
 	portChan chan<- string
 	stdout   io.Writer
 	fragment string
@@ -38,7 +54,7 @@ type portWatcher struct {
 	device   bind.Device
 }
 
-func (w *portWatcher) getPortFromFile(ctx context.Context) (string, bool) {
+func (w *PortWatcher) getPortFromFile(ctx context.Context) (string, bool) {
 	if contents, err := w.device.FileContents(ctx, w.portFile); err == nil {
 		s := string(contents)
 		match := portPattern.FindStringSubmatch(s)
@@ -50,7 +66,9 @@ func (w *portWatcher) getPortFromFile(ctx context.Context) (string, bool) {
 	return "", false
 }
 
-func (w *portWatcher) waitForFile(ctx context.Context) {
+// Waits until the port file is found, or the context
+// is cancelled
+func (w *PortWatcher) WaitForFile(ctx context.Context) {
 	if w.portFile == "" {
 		return
 	}
@@ -71,7 +89,7 @@ func (w *portWatcher) waitForFile(ctx context.Context) {
 	}
 }
 
-func (w *portWatcher) Write(b []byte) (n int, err error) {
+func (w *PortWatcher) Write(b []byte) (n int, err error) {
 	if stdout := w.stdout; stdout != nil {
 		stdout.Write(b)
 	}
@@ -132,17 +150,12 @@ func StartOnDevice(ctx context.Context, name string, opts StartOptions) (int, er
 	// Append extra environment variable values
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
-	stdout := &portWatcher{
-		portChan: portChan,
-		stdout:   opts.Stdout,
-		portFile: opts.PortFile,
-		device:   opts.Device,
-	}
+	stdout := NewPortWatcher(portChan, &opts)
 
 	c, cancel := task.WithCancel(ctx)
 	defer cancel()
 	crash.Go(func() {
-		stdout.waitForFile(c)
+		stdout.WaitForFile(c)
 	})
 	crash.Go(func() {
 		cmd := opts.Device.Shell(name, opts.Args...).

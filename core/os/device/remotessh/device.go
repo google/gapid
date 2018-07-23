@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/shell"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -53,6 +54,7 @@ type binding struct {
 
 	connection    *ssh.Client
 	configuration *Configuration
+	env           *shell.Env
 	// We duplicate OS here because we need to use it
 	// before we get the rest of the information
 	os device.OSKind
@@ -70,7 +72,7 @@ func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error
 	devices := make([]bind.Device, 0, len(configurations))
 
 	for _, cfg := range configurations {
-		if device, err := getConnectedDevice(ctx, cfg); err == nil {
+		if device, err := GetConnectedDevice(ctx, cfg); err == nil {
 			devices = append(devices, device)
 		}
 	}
@@ -101,12 +103,9 @@ func getPrivateKeyAuth(path string) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(signer), nil
 }
 
-// getConnectedDevice returns a device that matches the given configuration.
-func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
+// GetConnectedDevice returns a device that matches the given configuration.
+func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	auths := []ssh.AuthMethod{}
-	if agent := getSSHAgent(); agent != nil {
-		auths = append(auths, agent)
-	}
 
 	if c.Keyfile != "" {
 		// This returns an SSH auth for the given private key.
@@ -114,6 +113,10 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		if auth, err := getPrivateKeyAuth(c.Keyfile); err == nil {
 			auths = append(auths, auth)
 		}
+	}
+
+	if agent := getSSHAgent(); agent != nil {
+		auths = append(auths, agent)
 	}
 
 	if len(auths) == 0 {
@@ -135,10 +138,16 @@ func getConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	if err != nil {
 		return nil, err
 	}
+	env := shell.NewEnv()
+
+	for _, e := range c.Env {
+		env.Add(e)
+	}
 
 	b := &binding{
 		connection:    connection,
 		configuration: &c,
+		env:           env,
 		Simple: bind.Simple{
 			To: &device.Instance{
 				Serial:        "",

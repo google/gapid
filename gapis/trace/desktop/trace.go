@@ -17,19 +17,19 @@ package desktop
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/vulkan/loader"
 	gapii "github.com/google/gapid/gapii/client"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
-
-// Only update the package list every 30 seconds at most
-var packageUpdateTime = 30.0
 
 type DesktopTracer struct {
 	b bind.Device
@@ -64,6 +64,39 @@ func (t *DesktopTracer) CanUsePortFile() bool {
 	return true
 }
 
+// JoinPath provides a path.Join() for this specific target
+func (t *DesktopTracer) JoinPath(paths []string) string {
+	if len(paths) == 0 {
+		return ""
+	}
+
+	if t.b.Instance().GetConfiguration().GetOS().GetKind() == device.Windows {
+		if paths[0] == "" {
+			return path.Clean(strings.Join(paths[1:], "\\"))
+		}
+		return path.Clean(strings.Join(paths, "\\"))
+	} else {
+		return path.Join(paths...)
+	}
+}
+
+// SplitPath performs a path.Split() operation for this specific target
+func (t *DesktopTracer) SplitPath(p string) (string, string) {
+	if t.b.Instance().GetConfiguration().GetOS().GetKind() == device.Windows {
+		if runtime.GOOS == "windows" {
+			return filepath.Split(p)
+		} else {
+			lastSlash := strings.LastIndex(p, "\\")
+			if lastSlash == -1 {
+				return "", p
+			}
+			return p[0 : lastSlash+1], p[lastSlash+1:]
+		}
+	} else {
+		return path.Split(p)
+	}
+}
+
 func (t *DesktopTracer) APITraceOptions(ctx context.Context) []tracer.APITraceOptions {
 	options := make([]tracer.APITraceOptions, 0, 1)
 	if len(t.b.Instance().Configuration.Drivers.Vulkan.PhysicalDevices) > 0 {
@@ -84,7 +117,7 @@ func (t *DesktopTracer) FindTraceTarget(ctx context.Context, str string) (*trace
 
 	if dir == "" {
 		dir = "."
-		if runtime.GOOS == "windows" {
+		if t.b.Instance().GetConfiguration().GetOS().GetKind() == device.Windows {
 			str = ".\\" + file
 		} else {
 			str = "./" + file
@@ -133,7 +166,7 @@ func (t *DesktopTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 		traceUri = uri
 	}
 
-	dir, file := filepath.Split(uri)
+	dir, file := t.SplitPath(uri)
 	name := file
 	if name == "" {
 		name = dir
@@ -141,10 +174,9 @@ func (t *DesktopTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 
 	children := append(dirs, files...)
 	for i := range children {
-		children[i] = filepath.Join(uri, children[i])
-		// filepath.Join will clean off preceding .
+		children[i] = t.JoinPath([]string{uri, children[i]})
 		if uri == "." {
-			if runtime.GOOS == "windows" {
+			if t.b.Instance().GetConfiguration().GetOS().GetKind() == device.Windows {
 				children[i] = ".\\" + children[i]
 			} else {
 				children[i] = "./" + children[i]
