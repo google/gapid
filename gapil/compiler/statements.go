@@ -60,7 +60,8 @@ func (c *C) command(f *semantic.Function) {
 		return
 	}
 	old := c.setCurrentFunction(f)
-	out := c.M.Function(c.returnType(f), f.Name(), c.T.CtxPtr)
+	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
+	out := c.M.Function(c.returnType(f), name, c.T.CtxPtr)
 	c.Build(out, func(s *S) {
 		c.LoadParameters(s, f)
 
@@ -89,7 +90,8 @@ func (c *C) subroutine(f *semantic.Function) {
 	for i, p := range params {
 		paramTys[i+1] = c.T.Target(p.Type)
 	}
-	out := c.M.Function(resTy, f.Name(), paramTys...)
+	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
+	out := c.M.Function(resTy, name, paramTys...)
 	c.functions[f] = out
 	c.Build(out, func(s *S) {
 		for i, p := range params {

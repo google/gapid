@@ -15,6 +15,8 @@
 package compiler
 
 import (
+	"fmt"
+
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapil/compiler/mangling"
@@ -136,52 +138,66 @@ func (c *C) declareRefRels() {
 	// value LLVM types when lowered.
 	impls := map[string]refRel{}
 
-	for apiTy, cgTy := range c.T.target {
-		apiTy = semantic.Underlying(apiTy)
-		switch apiTy {
-		case semantic.StringType:
-			// Already implemented
-
-		default:
-			switch apiTy := apiTy.(type) {
-			case *semantic.Slice:
-				c.refRels.tys[apiTy] = sli
-
+	for _, api := range c.APIs {
+		declare := func(apiTy semantic.Type) {
+			cgTy := c.T.Target(apiTy)
+			apiTy = semantic.Underlying(apiTy)
+			switch apiTy {
+			case semantic.StringType:
+				// Already implemented
 			default:
-				if isRefTy(apiTy) {
-					name := apiTy.Name()
+				switch apiTy := apiTy.(type) {
+				case *semantic.Slice:
+					c.refRels.tys[apiTy] = sli
 
-					// Use the mangled name of the type to determine whether
-					// the reference and release functions have already been
-					// declared for the lowered type.
-					m := c.Mangle(cgTy)
-					mangled := c.Mangler(m)
-					impl, seen := impls[mangled]
-					if !seen {
-						// First instance of this lowered type. Declare it.
-						ref := c.Mangler(&mangling.Function{
-							Name:       "reference",
-							Parent:     m.(mangling.Scope),
-							Parameters: []mangling.Type{m},
-						})
-						rel := c.Mangler(&mangling.Function{
-							Name:       "release",
-							Parent:     m.(mangling.Scope),
-							Parameters: []mangling.Type{m},
-						})
-						impl.declare(c, name, ref, rel, cgTy)
-						impls[mangled] = impl
-						c.refRels.impls[apiTy] = impl
+				default:
+					if isRefTy(apiTy) {
+						name := fmt.Sprintf("%v_%v", api.Name(), apiTy.Name())
+
+						// Use the mangled name of the type to determine whether
+						// the reference and release functions have already been
+						// declared for the lowered type.
+						m := c.Mangle(cgTy)
+						mangled := c.Mangler(m)
+						impl, seen := impls[mangled]
+						if !seen {
+							// First instance of this lowered type. Declare it.
+							ref := c.Mangler(&mangling.Function{
+								Name:       "reference",
+								Parent:     m.(mangling.Scope),
+								Parameters: []mangling.Type{m},
+							})
+							rel := c.Mangler(&mangling.Function{
+								Name:       "release",
+								Parent:     m.(mangling.Scope),
+								Parameters: []mangling.Type{m},
+							})
+							impl.declare(c, name, ref, rel, cgTy)
+							impls[mangled] = impl
+							c.refRels.impls[apiTy] = impl
+						}
+
+						// Delegate the reference and release functions of this type
+						// on to the common implementation.
+						funcs := refRel{}
+						funcs.declare(c, name, name+"_reference", name+"_release", cgTy)
+						funcs.delegate(c, impl)
+						c.refRels.tys[apiTy] = funcs
 					}
-
-					// Delegate the reference and release functions of this type
-					// on to the common implmentation.
-					funcs := refRel{}
-					funcs.declare(c, name, name+"_reference", name+"_release", cgTy)
-					funcs.delegate(c, impl)
-					c.refRels.tys[apiTy] = funcs
 				}
 			}
+		}
+		for _, ty := range api.Slices {
+			declare(ty)
+		}
+		for _, ty := range api.Maps {
+			declare(ty)
+		}
+		for _, ty := range api.References {
+			declare(ty)
+		}
+		for _, ty := range api.Classes {
+			declare(ty)
 		}
 	}
 }

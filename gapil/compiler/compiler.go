@@ -156,7 +156,7 @@ func (c *C) program(s Settings) (*Program, error) {
 		if a.Subroutine || a.Extern {
 			continue
 		}
-		commands[f.Name] = &CommandInfo{
+		commands[a.Name()] = &CommandInfo{
 			Execute:    f,
 			Parameters: c.T.CmdParams[a].(*codegen.Struct),
 		}
