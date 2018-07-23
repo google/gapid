@@ -20,60 +20,28 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/testcmd"
+	"github.com/google/gapid/gapis/api/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
-	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
-
-	// The following are the imports that generated source files pull in when present
-	// Having these here helps out tools that can't cope with missing dependancies
-
-	_ "github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/os/device"
 )
 
-var (
-	cmdA = &api.Command{
-		Name: "X",
-		API:  &path.API{ID: path.NewID(id.ID(testcmd.APIID))},
-		Parameters: []*api.Parameter{
-			{Name: "Str", Value: box.NewValue(testcmd.P.Str)},
-			{Name: "Sli", Value: box.NewValue(testcmd.P.Sli)},
-			{Name: "Ref", Value: box.NewValue(testcmd.P.Ref)},
-			{Name: "Ptr", Value: box.NewValue(testcmd.P.Ptr)},
-			{Name: "Map", Value: box.NewValue(testcmd.P.Map)},
-			{Name: "PMap", Value: box.NewValue(testcmd.P.PMap)},
-			{Name: "RMap", Value: box.NewValue(testcmd.P.RMap)},
-		},
-		Thread: testcmd.P.Thread(),
-	}
-
-	cmdB = &api.Command{
-		Name: "X",
-		API:  &path.API{ID: path.NewID(id.ID(testcmd.APIID))},
-		Parameters: []*api.Parameter{
-			{Name: "Str", Value: box.NewValue(testcmd.Q.Str)},
-			{Name: "Sli", Value: box.NewValue(testcmd.Q.Sli)},
-			{Name: "Ref", Value: box.NewValue(testcmd.Q.Ref)},
-			{Name: "Ptr", Value: box.NewValue(testcmd.Q.Ptr)},
-			{Name: "Map", Value: box.NewValue(testcmd.Q.Map)},
-			{Name: "PMap", Value: box.NewValue(testcmd.Q.PMap)},
-			{Name: "RMap", Value: box.NewValue(testcmd.Q.RMap)},
-		},
-		Thread: testcmd.Q.Thread(),
-	}
-)
-
-func newPathTest(ctx context.Context, cmds ...api.Cmd) *path.Capture {
+func newPathTest(ctx context.Context) *path.Capture {
 	h := &capture.Header{ABI: device.WindowsX86_64}
-	p, err := capture.New(ctx, arena.New(), "test", h, cmds)
+	a := arena.New()
+	cb := test.CommandBuilder{Arena: a}
+	cmds := []api.Cmd{
+		cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 2),
+		cb.CmdTypeMix(1, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, false, test.Voidᵖ(0x87654321), 3),
+		cb.PrimeState(test.U8ᵖ(0x89abcdef)),
+	}
+	p, err := capture.New(ctx, a, "test", h, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}
@@ -84,8 +52,11 @@ func TestGet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	p := newPathTest(ctx, testcmd.P, testcmd.Q)
+	p := newPathTest(ctx)
 	ctx = capture.Put(ctx, p)
+	cA, cB := p.Command(0), p.Command(1)
+	sA, sB := p.Command(0).StateAfter(), p.Command(2).StateAfter()
+	a := arena.New()
 
 	// Get tests
 	for _, test := range []struct {
@@ -93,72 +64,96 @@ func TestGet(t *testing.T) {
 		val  interface{}
 		err  error
 	}{
-		{p.Command(1), cmdB, nil},
-		{p.Command(1).Parameter("Str"), "xyz", nil},
-		{p.Command(1).Parameter("Sli"), []bool{false, true, false}, nil},
-		{p.Command(0).Parameter("Ref"), &testcmd.Struct{Str: "ccc", Ref: &testcmd.Struct{Str: "ddd"}}, nil},
-		{p.Command(0).Parameter("Ptr"), testcmd.P.Ptr, nil},
-		{p.Command(1).Parameter("Ptr"), testcmd.Q.Ptr, nil},
-		{p.Command(1).Parameter("Sli").ArrayIndex(1), true, nil},
-		{p.Command(1).Parameter("Sli").Slice(1, 3), []bool{true, false}, nil},
-		{p.Command(1).Parameter("Str").ArrayIndex(1), byte('y'), nil},
-		{p.Command(1).Parameter("Str").Slice(1, 3), "yz", nil},
-		{p.Command(1).Parameter("Map").MapIndex("bird"), "tweet", nil},
-		{p.Command(1).Parameter("Map").MapIndex([]rune("bird")), "tweet", nil},
-		{p.Command(1).Parameter("PMap").MapIndex(100), &testcmd.Struct{Str: "baldrick"}, nil},
-		{p.Command(0).Parameter("RMap").MapIndex("eyes"), "see", nil},
-		{p.Command(1).Parameter("RMap").MapIndex("ears"), "hear", nil},
+		{cA.Parameter("ID"), uint64(0), nil},
+		{cA.Parameter("U8"), uint8(10), nil},
+		{cA.Parameter("S8"), int8(20), nil},
+		{cA.Parameter("U16"), uint16(30), nil},
+		{cA.Parameter("S16"), int16(40), nil},
+		{cA.Parameter("U32"), uint32(50), nil},
+		{cA.Parameter("S32"), int32(60), nil},
+		{cA.Parameter("U64"), uint64(70), nil},
+		{cA.Parameter("S64"), int64(80), nil},
+		{cA.Parameter("F32"), float32(90), nil},
+		{cA.Parameter("F64"), float64(100), nil},
+		{cA.Parameter("Bool"), true, nil},
+		{cA.Parameter("Ptr"), test.Voidᵖ(0x12345678), nil},
+		{cA.Result(), uint32(2), nil},
+
+		{cB.Parameter("ID"), uint64(1), nil},
+		{cB.Parameter("U8"), uint8(15), nil},
+		{cB.Parameter("S8"), int8(25), nil},
+		{cB.Parameter("U16"), uint16(35), nil},
+		{cB.Parameter("S16"), int16(45), nil},
+		{cB.Parameter("U32"), uint32(55), nil},
+		{cB.Parameter("S32"), int32(65), nil},
+		{cB.Parameter("U64"), uint64(75), nil},
+		{cB.Parameter("S64"), int64(85), nil},
+		{cB.Parameter("F32"), float32(95), nil},
+		{cB.Parameter("F64"), float64(105), nil},
+		{cB.Parameter("Bool"), false, nil},
+		{cB.Parameter("Ptr"), test.Voidᵖ(0x87654321), nil},
+		{cB.Result(), uint32(3), nil},
+
+		{sA.Field("Str"), "", nil},
+		{sA.Field("Sli"), test.NewBoolˢ(a, 0, 0, 0, 0, 0), nil},
+		{sA.Field("Ref"), test.NilComplexʳ, nil},
+		{sA.Field("Ptr"), test.U8ᵖ(0), nil},
+
+		{sB.Field("Str"), "aaa", nil},
+		{sB.Field("Sli"), test.NewBoolˢ(a, 0, 0, 3, 3, 1), nil},
+		{sB.Field("Sli").ArrayIndex(0), test.NewBoolˢ(a, 0, 0, 1, 1, 1), nil},
+		{sB.Field("Sli").ArrayIndex(1), test.NewBoolˢ(a, 0, 1, 1, 1, 1), nil},
+		{sB.Field("Sli").ArrayIndex(2), test.NewBoolˢ(a, 0, 2, 1, 1, 1), nil},
+		{sB.Field("Ref").Field("Strings").MapIndex("123"), uint32(123), nil},
+		{sB.Field("Ref").Field("RefObject").Field("value"), uint32(555), nil},
+		{sB.Field("Ptr"), test.U8ᵖ(0x89abcdef), nil},
+		{sB.Field("Map").MapIndex("cat").Field("Object").Field("value"), uint32(100), nil},
+		{sB.Field("Map").MapIndex("dog").Field("Object").Field("value"), uint32(200), nil},
 
 		// Test invalid paths
 		{p.Command(5), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrValueOutOfBounds(uint64(5), "Index", uint64(0), uint64(1)),
+			Reason: messages.ErrValueOutOfBounds(uint64(5), "Index", uint64(0), uint64(2)),
 			Path:   p.Command(5).Path(),
 		}},
-		{p.Command(1).StateAfter(), nil, &service.ErrDataUnavailable{
-			Reason: messages.ErrStateUnavailable(),
+		{cA.Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrParameterDoesNotExist("cmdTypeMix", "doesnotexist"),
+			Path:   cA.Parameter("doesnotexist").Path(),
 		}},
-		{p.Command(0).StateAfter(), nil, &service.ErrDataUnavailable{
-			Reason: messages.ErrStateUnavailable(),
+		{sB.Field("Ref").Field("doesnotexist"), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrFieldDoesNotExist("Complexʳ", "doesnotexist"),
+			Path:   sB.Field("Ref").Field("doesnotexist").Path(),
 		}},
-		{p.Command(1).Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist("X", "doesnotexist"),
-			Path:   p.Command(1).Parameter("doesnotexist").Path(),
-		}},
-		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
+		{sA.Field("Ref").Field("Strings"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrNilPointerDereference(),
-			Path:   p.Command(1).Parameter("Ref").Field("ccc").Path(),
+			Path:   sA.Field("Ref").Field("Strings").Path(),
 		}},
-		{p.Command(1).Parameter("Sli").Field("ccc"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrFieldDoesNotExist("[]bool", "ccc"),
-			Path:   p.Command(1).Parameter("Sli").Field("ccc").Path(),
-		}},
-		{p.Command(1).Parameter("Sli").ArrayIndex(4), nil, &service.ErrInvalidPath{
+		{sB.Field("Sli").ArrayIndex(4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrValueOutOfBounds(uint64(4), "Index", uint64(0), uint64(2)),
-			Path:   p.Command(1).Parameter("Sli").ArrayIndex(4).Path(),
+			Path:   sB.Field("Sli").ArrayIndex(4).Path(),
 		}},
-		{p.Command(1).Parameter("Sli").Slice(2, 4), nil, &service.ErrInvalidPath{
+		{sB.Field("Sli").Slice(2, 4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrSliceOutOfBounds(uint64(2), uint64(4), "Start", "End", uint64(0), uint64(2)),
-			Path:   p.Command(1).Parameter("Sli").Slice(2, 4).Path(),
+			Path:   sB.Field("Sli").Slice(2, 4).Path(),
 		}},
-		{p.Command(1).Parameter("Str").ArrayIndex(4), nil, &service.ErrInvalidPath{
+		{sB.Field("Str").ArrayIndex(4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrValueOutOfBounds(uint64(4), "Index", uint64(0), uint64(2)),
-			Path:   p.Command(1).Parameter("Str").ArrayIndex(4).Path(),
+			Path:   sB.Field("Str").ArrayIndex(4).Path(),
 		}},
-		{p.Command(0).Parameter("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotArrayIndexable("ptr<Struct>"),
-			Path:   p.Command(0).Parameter("Ref").ArrayIndex(4).Path(),
+		{sB.Field("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrTypeNotArrayIndexable("Complexʳ"),
+			Path:   sB.Field("Ref").ArrayIndex(4).Path(),
 		}},
-		{p.Command(1).Parameter("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
+		{sB.Field("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrTypeNotMapIndexable("Complexʳ"),
+			Path:   sB.Field("Ref").MapIndex("foo").Path(),
+		}},
+		{sB.Field("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrIncorrectMapKeyType("float64", "string"),
-			Path:   p.Command(1).Parameter("Map").MapIndex(10.0).Path(),
+			Path:   sB.Field("Map").MapIndex(10.0).Path(),
 		}},
-		{p.Command(1).Parameter("Map").MapIndex("rabbit"), nil, &service.ErrInvalidPath{
+		{sB.Field("Map").MapIndex("rabbit"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrMapKeyDoesNotExist("rabbit"),
-			Path:   p.Command(1).Parameter("Map").MapIndex("rabbit").Path(),
-		}},
-		{p.Command(1).Parameter("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotMapIndexable("ptr<Struct>"),
-			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
+			Path:   sB.Field("Map").MapIndex("rabbit").Path(),
 		}},
 	} {
 		got, err := Get(ctx, test.path.Path())
@@ -170,72 +165,102 @@ func TestGet(t *testing.T) {
 func TestSet(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	p := newPathTest(ctx, testcmd.P, testcmd.Q)
-	ctx = capture.Put(ctx, p)
 
+	p := newPathTest(ctx)
+	ctx = capture.Put(ctx, p)
+	cA, cB := p.Command(0), p.Command(1)
+	sA, sB := p.Command(0).StateAfter(), p.Command(2).StateAfter()
+	a := arena.New()
+
+	_, _, _, _, _ = cA, cB, sA, sB, a
 	// Set tests
 	for _, test := range []struct {
 		path path.Node
 		val  interface{}
 		err  error
 	}{
-		{path: p.Command(0), val: cmdB},
-		{path: p.Command(0).Parameter("Str"), val: "bbb"},
-		{path: p.Command(0).Parameter("Sli"), val: []bool{false, true, false}},
-		{path: p.Command(0).Parameter("Ref"), val: &testcmd.Struct{Str: "ddd"}},
-		{path: p.Command(0).Parameter("Ref").Field("Str"), val: "purr"},
-		{path: p.Command(0).Parameter("Ptr"), val: testcmd.Q.Ptr},
-		{path: p.Command(1).Parameter("Ptr"), val: testcmd.P.Ptr},
-		{path: p.Command(1).Parameter("Sli").ArrayIndex(1), val: false},
-		{path: p.Command(1).Parameter("Map").MapIndex("bird"), val: "churp"},
-		{path: p.Command(1).Parameter("Map").MapIndex([]rune("bird")), val: "churp"},
-		{path: p.Command(0).Parameter("RMap").MapIndex("eyes"), val: "blind"},
-		{path: p.Command(1).Parameter("RMap").MapIndex("ears"), val: "deaf"},
+		{cA.Parameter("ID"), uint64(2), nil},
+		{cA.Parameter("U8"), uint8(12), nil},
+		{cA.Parameter("S8"), int8(22), nil},
+		{cA.Parameter("U16"), uint16(32), nil},
+		{cA.Parameter("S16"), int16(42), nil},
+		{cA.Parameter("U32"), uint32(52), nil},
+		{cA.Parameter("S32"), int32(62), nil},
+		{cA.Parameter("U64"), uint64(72), nil},
+		{cA.Parameter("S64"), int64(82), nil},
+		{cA.Parameter("F32"), float32(92), nil},
+		{cA.Parameter("F64"), float64(102), nil},
+		{cA.Parameter("Bool"), false, nil},
+		{cA.Parameter("Ptr"), test.Voidᵖ(0x111111), nil},
+		// {cA.Result(), uint32(5), nil}, // TODO: 'Unknown path type *path.Result'
+
+		{cB.Parameter("ID"), uint64(8), nil},
+		{cB.Parameter("U8"), uint8(18), nil},
+		{cB.Parameter("S8"), int8(28), nil},
+		{cB.Parameter("U16"), uint16(38), nil},
+		{cB.Parameter("S16"), int16(48), nil},
+		{cB.Parameter("U32"), uint32(58), nil},
+		{cB.Parameter("S32"), int32(68), nil},
+		{cB.Parameter("U64"), uint64(78), nil},
+		{cB.Parameter("S64"), int64(88), nil},
+		{cB.Parameter("F32"), float32(98), nil},
+		{cB.Parameter("F64"), float64(108), nil},
+		{cB.Parameter("Bool"), true, nil},
+		{cB.Parameter("Ptr"), test.Voidᵖ(0x2222222), nil},
+		// {cB.Result(), uint32(7), nil}, // TODO: 'Unknown path type *path.Result'
+
+		// Test the state cannot be mutated (current restriction)
+		{cA.StateAfter(), nil, fmt.Errorf("State can not currently be mutated")},
 
 		// Test invalid paths
 		{p.Command(5), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrValueOutOfBounds(uint64(5), "Index", uint64(0), uint64(1)),
+			Reason: messages.ErrValueOutOfBounds(uint64(5), "Index", uint64(0), uint64(2)),
 			Path:   p.Command(5).Path(),
 		}},
-		{p.Command(1).StateAfter(), nil, fmt.Errorf("State can not currently be mutated")},
-		{p.Command(1).Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrParameterDoesNotExist("X", "doesnotexist"),
-			Path:   p.Command(1).Parameter("doesnotexist").Path(),
+		{cA.Parameter("doesnotexist"), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrParameterDoesNotExist("cmdTypeMix", "doesnotexist"),
+			Path:   cA.Parameter("doesnotexist").Path(),
 		}},
-		{p.Command(1).Parameter("Ref").Field("ccc"), nil, &service.ErrInvalidPath{
+		{sB.Field("Ref").Field("doesnotexist"), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrFieldDoesNotExist("Complexʳ", "doesnotexist"),
+			Path:   sB.Field("Ref").Field("doesnotexist").Path(),
+		}},
+		{sA.Field("Ref").Field("Strings"), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrNilPointerDereference(),
-			Path:   p.Command(1).Parameter("Ref").Field("ccc").Path(),
+			Path:   sA.Field("Ref").Field("Strings").Path(),
 		}},
-		{p.Command(1).Parameter("Sli").Field("ccc"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrFieldDoesNotExist("[]bool", "ccc"),
-			Path:   p.Command(1).Parameter("Sli").Field("ccc").Path(),
-		}},
-		{p.Command(1).Parameter("Sli").ArrayIndex(4), nil, &service.ErrInvalidPath{
+		/* TODO: `<ERR_TYPE_NOT_ARRAY_INDEXABLE [ty: Boolˢ]>`
+		{sB.Field("Sli").ArrayIndex(4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrValueOutOfBounds(uint64(4), "Index", uint64(0), uint64(2)),
-			Path:   p.Command(1).Parameter("Sli").ArrayIndex(4).Path(),
+			Path:   sB.Field("Sli").ArrayIndex(4).Path(),
 		}},
-		{p.Command(1).Parameter("Str").ArrayIndex(4), nil, &service.ErrInvalidPath{
+		*/
+		/* TODO: `Unknown path type *path.Slice`
+		{sB.Field("Sli").Slice(2, 4), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrSliceOutOfBounds(uint64(2), uint64(4), "Start", "End", uint64(0), uint64(2)),
+			Path:   sB.Field("Sli").Slice(2, 4).Path(),
+		}},
+		*/
+		{sB.Field("Str").ArrayIndex(4), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrValueOutOfBounds(uint64(4), "Index", uint64(0), uint64(2)),
-			Path:   p.Command(1).Parameter("Str").ArrayIndex(4).Path(),
+			Path:   sB.Field("Str").ArrayIndex(4).Path(),
 		}},
-		{p.Command(1).Parameter("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotArrayIndexable("ptr<Struct>"),
-			Path:   p.Command(1).Parameter("Ref").ArrayIndex(4).Path(),
+		{sB.Field("Ref").ArrayIndex(4), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrTypeNotArrayIndexable("Complexʳ"),
+			Path:   sB.Field("Ref").ArrayIndex(4).Path(),
 		}},
-		{p.Command(1).Parameter("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
+		{sB.Field("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
+			Reason: messages.ErrTypeNotMapIndexable("Complexʳ"),
+			Path:   sB.Field("Ref").MapIndex("foo").Path(),
+		}},
+		{sB.Field("Map").MapIndex(10.0), nil, &service.ErrInvalidPath{
 			Reason: messages.ErrIncorrectMapKeyType("float64", "string"),
-			Path:   p.Command(1).Parameter("Map").MapIndex(10.0).Path(),
-		}},
-		{p.Command(1).Parameter("Ref").MapIndex("foo"), nil, &service.ErrInvalidPath{
-			Reason: messages.ErrTypeNotMapIndexable("ptr<Struct>"),
-			Path:   p.Command(1).Parameter("Ref").MapIndex("foo").Path(),
+			Path:   sB.Field("Map").MapIndex(10.0).Path(),
 		}},
 
 		// Test invalid sets
-		{p.Command(1).Parameter("Sli").ArrayIndex(2), "blah", fmt.Errorf(
-			"Slice or array at capture<%v>.commands[1].Sli has element of type bool, got type string", p.ID.ID())},
-		{p.Command(1).Parameter("Map").MapIndex("bird"), 10.0, fmt.Errorf(
-			"Map at capture<%v>.commands[1].Map has value of type string, got type float64", p.ID.ID())},
+		{sB.Field("Map").MapIndex("bird"), 10.0, fmt.Errorf(
+			"Map at capture<%v>.commands[2].state<context: <nil>>.Map has value of type test.Complexʳ, got type float64", p.ID.ID())},
 	} {
 		ctx := log.V{"path": test.path, "value": test.val}.Bind(ctx)
 

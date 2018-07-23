@@ -121,11 +121,19 @@ func Field(ctx context.Context, p *path.Field) (interface{}, error) {
 
 func field(ctx context.Context, s reflect.Value, name string, p path.Node) (reflect.Value, error) {
 	for {
+		if isNil(s) {
+			return reflect.Value{}, &service.ErrInvalidPath{
+				Reason: messages.ErrNilPointerDereference(),
+				Path:   p.Path(),
+			}
+		}
+
 		if pp, ok := s.Interface().(api.PropertyProvider); ok {
 			if p := pp.Properties().Find(name); p != nil {
 				return reflect.ValueOf(p.Get()), nil
 			}
 		}
+
 		switch s.Kind() {
 		case reflect.Struct:
 			f := s.FieldByName(name)
@@ -137,12 +145,6 @@ func field(ctx context.Context, s reflect.Value, name string, p path.Node) (refl
 			}
 			return f, nil
 		case reflect.Interface, reflect.Ptr:
-			if s.IsNil() {
-				return reflect.Value{}, &service.ErrInvalidPath{
-					Reason: messages.ErrNilPointerDereference(),
-					Path:   p.Path(),
-				}
-			}
 			s = s.Elem()
 		default:
 			return reflect.Value{}, &service.ErrInvalidPath{
