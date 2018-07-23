@@ -26,7 +26,7 @@ import (
 
 func TestInjector(t *testing.T) {
 	ctx := log.Testing(t)
-	inputs := testcmd.List(
+	inputs := NewCmdAndIDList(
 		&testcmd.A{ID: 10},
 		&testcmd.A{ID: 30},
 		&testcmd.A{ID: 50},
@@ -34,7 +34,7 @@ func TestInjector(t *testing.T) {
 		&testcmd.A{ID: 00},
 		&testcmd.A{ID: 60},
 	)
-	expected := testcmd.List(
+	expected := NewCmdAndIDList(
 		&testcmd.A{ID: 10},
 		&testcmd.A{ID: 30},
 		&testcmd.A{ID: api.CmdNoID, Flags: 1},
@@ -60,12 +60,12 @@ func TestInjector(t *testing.T) {
 
 // CheckTransform checks that transfomer emits the expected commands given
 // inputs.
-func CheckTransform(ctx context.Context, t *testing.T, transformer Transformer, inputs, expected testcmd.CmdAndIDList) {
-	mw := &testcmd.Writer{}
+func CheckTransform(ctx context.Context, t *testing.T, transformer Transformer, inputs, expected CmdAndIDList) {
+	r := &Recorder{}
 	for _, in := range inputs {
-		transformer.Transform(ctx, in.Id, in.Cmd, mw)
+		transformer.Transform(ctx, in.ID, in.Cmd, r)
 	}
-	transformer.Flush(ctx, mw)
+	transformer.Flush(ctx, r)
 
-	assert.For(ctx, "CmdsAndIDs").ThatSlice(mw.CmdsAndIDs).DeepEquals(expected)
+	assert.For(ctx, "CmdsAndIDs").ThatSlice(r.CmdsAndIDs).DeepEquals(expected)
 }

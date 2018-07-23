@@ -24,6 +24,7 @@ go_library(
         "early_terminator.go",
         "file_log.go",
         "injector.go",
+        "recorder.go",
         "tasks.go",
         "terminator.go",
         "transformer.go",

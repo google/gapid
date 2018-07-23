@@ -24,7 +24,7 @@ import (
 
 func TestEarlyTerminator(t *testing.T) {
 	ctx := log.Testing(t)
-	inputs := testcmd.List(
+	inputs := NewCmdAndIDList(
 		&testcmd.A{ID: 10},
 		&testcmd.A{ID: 30},
 		&testcmd.A{ID: 20},
@@ -36,7 +36,7 @@ func TestEarlyTerminator(t *testing.T) {
 		&testcmd.A{ID: 60},
 		&testcmd.A{ID: 40},
 	)
-	expected := testcmd.List(
+	expected := NewCmdAndIDList(
 		&testcmd.A{ID: 10},
 		&testcmd.A{ID: 30},
 		&testcmd.A{ID: 20},

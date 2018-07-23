@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/api/testcmd"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -249,12 +248,12 @@ func TestDeadCommandRemoval(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		transform := transform.NewDeadCodeElimination(ctx, dependencyGraph)
+		dce := transform.NewDeadCodeElimination(ctx, dependencyGraph)
 
 		expectedCmds := []api.Cmd{}
 		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 			if isLive[cmd] {
-				transform.Request(id)
+				dce.Request(id)
 			}
 			if !isDead[cmd] {
 				expectedCmds = append(expectedCmds, cmd)
@@ -262,9 +261,8 @@ func TestDeadCommandRemoval(t *testing.T) {
 			return nil
 		})
 
-		w := &testcmd.Writer{}
-		transform.Flush(ctx, w)
-
-		assert.For(ctx, "Test '%v'", name).ThatSlice(w.Cmds).Equals(expectedCmds)
+		r := &transform.Recorder{}
+		dce.Flush(ctx, r)
+		assert.For(ctx, "Test '%v'", name).ThatSlice(r.Cmds).Equals(expectedCmds)
 	}
 }
