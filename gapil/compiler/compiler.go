@@ -99,7 +99,6 @@ type C struct {
 		stringToSlice  *codegen.Function
 		stringConcat   *codegen.Function
 		stringCompare  *codegen.Function
-		callExtern     *codegen.Function
 		logf           *codegen.Function
 	}
 }
@@ -230,7 +229,6 @@ func (c *C) compile() {
 	c.callbacks.stringToSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_string_to_slice_sig))
 	c.callbacks.stringConcat = c.M.ParseFunctionSignature(C.GoString(C.gapil_string_concat_sig))
 	c.callbacks.stringCompare = c.M.ParseFunctionSignature(C.GoString(C.gapil_string_compare_sig))
-	c.callbacks.callExtern = c.M.ParseFunctionSignature(C.GoString(C.gapil_call_extern_sig))
 	c.callbacks.logf = c.M.ParseFunctionSignature(C.GoString(C.gapil_logf_sig))
 
 	c.emptyString = c.M.Global("gapil_empty_string",

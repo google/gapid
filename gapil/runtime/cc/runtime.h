@@ -243,11 +243,6 @@ DECL_GAPIL_CB(void, gapil_apply_reads, context*);
 // model.
 DECL_GAPIL_CB(void, gapil_apply_writes, context*);
 
-// calls an extern function with the given name and pointer to arguments.
-// If the extern returns a value, this is placed in res.
-DECL_GAPIL_CB(void, gapil_call_extern, context*, string* name, void* args,
-              void* res);
-
 // Stores the buffer at ptr of the given size into the database.
 // Writes the 20-byte database identifier of the stored data to id.
 DECL_GAPIL_CB(void, gapil_store_in_database, context* ctx, void* ptr,
