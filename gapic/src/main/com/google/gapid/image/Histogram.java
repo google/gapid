@@ -62,7 +62,8 @@ public class Histogram {
   public Range getInitialRange(double snapThreshold) {
     // Don't leave data out if it's a count
     if (isCount) {
-      return new Range(0., mapper.limits.max);
+      // Limit the upper bound to 10 initially so details can be discerned
+      return new Range(0., Math.min(10.0 / 255.0, mapper.limits.max));
     }
     if (isLinear()) {
       return Range.IDENTITY;
