@@ -83,7 +83,7 @@ func TestEquals(t *testing.T) {
 	ctx = arena.Put(ctx, a)
 	complex := BuildComplex(a)
 
-	compare(ctx, complex, complex, "equals")
+	check(ctx, complex, complex, "equals")
 }
 
 func TestCloneReferences(t *testing.T) {
@@ -97,51 +97,51 @@ func TestCloneReferences(t *testing.T) {
 	complex := BuildComplex(a)
 
 	cloned := complex.Clone(a, api.CloneContext{})
-	compare(ctx, cloned.Data(), complex.Data(), "Data")
-	compare(ctx, cloned.Object(), complex.Object(), "Object")
-	compare(ctx, cloned.ObjectArray(), complex.ObjectArray(), "ObjectArray")
-	compare(ctx, cloned.RefObject().Value(), complex.RefObject().Value(), "RefObject")
-	compare(ctx, cloned.RefObject().Value(), complex.RefObjectAlias().Value(), "RefObjectAlias")
-	compare(ctx, cloned.NilRefObject().IsNil(), true, "NilRefObject")
-	compare(ctx, cloned.Entries(), complex.Entries(), "Entries")
-	compare(ctx, cloned.EntriesAlias(), complex.EntriesAlias(), "EntriesAlias")
-	compare(ctx, cloned.NilMap(), complex.NilMap(), "NilMap")
-	compare(ctx, cloned.Strings(), complex.Strings(), "Strings")
-	compare(ctx, cloned.BoolMap(), complex.BoolMap(), "BoolMap")
+	check(ctx, cloned.Data(), complex.Data(), "Data")
+	check(ctx, cloned.Object(), complex.Object(), "Object")
+	check(ctx, cloned.ObjectArray(), complex.ObjectArray(), "ObjectArray")
+	check(ctx, cloned.RefObject().Value(), complex.RefObject().Value(), "RefObject")
+	check(ctx, cloned.RefObject().Value(), complex.RefObjectAlias().Value(), "RefObjectAlias")
+	check(ctx, cloned.NilRefObject().IsNil(), true, "NilRefObject")
+	check(ctx, cloned.Entries(), complex.Entries(), "Entries")
+	check(ctx, cloned.EntriesAlias(), complex.EntriesAlias(), "EntriesAlias")
+	check(ctx, cloned.NilMap(), complex.NilMap(), "NilMap")
+	check(ctx, cloned.Strings(), complex.Strings(), "Strings")
+	check(ctx, cloned.BoolMap(), complex.BoolMap(), "BoolMap")
 	// RefEntries
 	assert.For("RefEntries.Len").That(cloned.RefEntries().Len()).Equals(complex.RefEntries().Len())
 	for _, k := range complex.RefEntries().Keys() {
-		compare(ctx, cloned.RefEntries().Contains(k), true, "RefEntries[%d]", k)
+		check(ctx, cloned.RefEntries().Contains(k), true, "RefEntries[%d]", k)
 		e, a := complex.RefEntries().Get(k), cloned.RefEntries().Get(k)
 		if e.IsNil() {
-			compare(ctx, a.IsNil(), true, "RefEntries[%d]", k)
+			check(ctx, a.IsNil(), true, "RefEntries[%d]", k)
 		} else {
-			compare(ctx, a.Value(), e.Value(), "RefEntries[%d]", k)
+			check(ctx, a.Value(), e.Value(), "RefEntries[%d]", k)
 		}
 	}
 	// LinkedList
 	for i, e, a := 0, complex.LinkedList(), cloned.LinkedList(); !e.IsNil(); i++ {
-		compare(ctx, a.IsNil(), false, "LinkedList[%d]", i)
-		compare(ctx, a.Value(), e.Value(), "LinkedList[%d]", i)
-		compare(ctx, a.Next().IsNil(), e.Next().IsNil(), "LinkedList[%d]", i)
+		check(ctx, a.IsNil(), false, "LinkedList[%d]", i)
+		check(ctx, a.Value(), e.Value(), "LinkedList[%d]", i)
+		check(ctx, a.Next().IsNil(), e.Next().IsNil(), "LinkedList[%d]", i)
 		e, a = e.Next(), a.Next()
 	}
 	// Cycle
-	compare(ctx, cloned.Cycle().IsNil(), false, "Cycle[0]")
-	compare(ctx, cloned.Cycle().Value(), uint32(1), "Cycle[0]")
-	compare(ctx, cloned.Cycle().Next().IsNil(), false, "Cycle[1]")
-	compare(ctx, cloned.Cycle().Next().Value(), uint32(2), "Cycle[1]")
-	compare(ctx, cloned.Cycle().Next().Next(), cloned.Cycle(), "Cycle")
+	check(ctx, cloned.Cycle().IsNil(), false, "Cycle[0]")
+	check(ctx, cloned.Cycle().Value(), uint32(1), "Cycle[0]")
+	check(ctx, cloned.Cycle().Next().IsNil(), false, "Cycle[1]")
+	check(ctx, cloned.Cycle().Next().Value(), uint32(2), "Cycle[1]")
+	check(ctx, cloned.Cycle().Next().Next(), cloned.Cycle(), "Cycle")
 	// NestedRefs
-	compare(ctx, cloned.NestedRefs().Len(), complex.NestedRefs().Len(), "NestedRefs.Len")
+	check(ctx, cloned.NestedRefs().Len(), complex.NestedRefs().Len(), "NestedRefs.Len")
 	for _, k := range complex.NestedRefs().Keys() {
-		compare(ctx, cloned.NestedRefs().Contains(k), true, "NestedRefs[%d]", k)
+		check(ctx, cloned.NestedRefs().Contains(k), true, "NestedRefs[%d]", k)
 		e, a := complex.NestedRefs().Get(k), cloned.NestedRefs().Get(k)
-		compare(ctx, a.IsNil(), e.IsNil(), "NestedRefs[%d]", k)
+		check(ctx, a.IsNil(), e.IsNil(), "NestedRefs[%d]", k)
 		if !e.IsNil() {
-			compare(ctx, a.Ref().IsNil(), e.Ref().IsNil(), "NestedRefs[%d].ref", k)
+			check(ctx, a.Ref().IsNil(), e.Ref().IsNil(), "NestedRefs[%d].ref", k)
 			if !e.Ref().IsNil() {
-				compare(ctx, a.Ref().Value(), e.Ref().Value(), "NestedRefs[%d].ref", k)
+				check(ctx, a.Ref().Value(), e.Ref().Value(), "NestedRefs[%d].ref", k)
 			}
 		}
 	}
@@ -149,14 +149,14 @@ func TestCloneReferences(t *testing.T) {
 	// Test that all cloned references see changes to their referenced objects.
 	cloned.RefObject().SetValue(55)               // was 42
 	cloned.Entries().Add(4, NewTestObject(a, 33)) // was 50
-	compare(ctx, cloned.RefObjectAlias(), cloned.RefObject(), "Object ref")
-	compare(ctx, cloned.EntriesAlias(), cloned.Entries(), "Map ref")
-	compare(ctx, cloned.RefEntries().Get(0), cloned.RefObject(), "RefEntries")
-	compare(ctx, cloned.NestedRefs().Get(6).Ref(), cloned.RefObject(), "NestedRefs[6]")
-	compare(ctx, cloned.NestedRefs().Get(7).Ref(), cloned.RefObject(), "NestedRefs[7]")
+	check(ctx, cloned.RefObjectAlias(), cloned.RefObject(), "Object ref")
+	check(ctx, cloned.EntriesAlias(), cloned.Entries(), "Map ref")
+	check(ctx, cloned.RefEntries().Get(0), cloned.RefObject(), "RefEntries")
+	check(ctx, cloned.NestedRefs().Get(6).Ref(), cloned.RefObject(), "NestedRefs[6]")
+	check(ctx, cloned.NestedRefs().Get(7).Ref(), cloned.RefObject(), "NestedRefs[7]")
 }
 
-func compare(ctx context.Context, got, expected interface{}, name string, fmt ...interface{}) bool {
+func check(ctx context.Context, got, expected interface{}, name string, fmt ...interface{}) bool {
 	g, e := got, expected
 
 	if g, e := dictionary.From(g), dictionary.From(e); g != nil && e != nil {
@@ -171,7 +171,7 @@ func compare(ctx context.Context, got, expected interface{}, name string, fmt ..
 			if !assert.For(ctx, "%v.Contains(%v)", name, k).That(ok).Equals(true) {
 				return false
 			}
-			if !compare(ctx, g, e, "%v got[%v] == expected[%v]", name, k, k) {
+			if !check(ctx, g, e, "%v got[%v] == expected[%v]", name, k, k) {
 				return false
 			}
 		}
