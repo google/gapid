@@ -14,7 +14,11 @@
 
 package assert
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/google/gapid/core/data/compare"
+)
 
 // OnValue is the result of calling That on an Assertion.
 // It provides generice assertion tests that work for any type.
@@ -66,6 +70,12 @@ func (o OnValue) Equals(expect interface{}) bool {
 // NotEquals asserts that the supplied value is not equal to the test value.
 func (o OnValue) NotEquals(test interface{}) bool {
 	return o.Compare(o.value, "!=", test).Test(o.value != test)
+}
+
+// CustomDeepEquals asserts that the supplied value is equal to the expected
+// value using compare.Diff and the custom comparators.
+func (o OnValue) CustomDeepEquals(expect interface{}, c compare.Custom) bool {
+	return o.TestCustomDeepDiff(o.value, expect, c)
 }
 
 // DeepEquals asserts that the supplied value is equal to the expected value using compare.Diff.

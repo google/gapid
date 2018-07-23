@@ -95,6 +95,14 @@ func (c *Custom) Compare(reference, value interface{}, handler Handler) {
 	compare(reference, value, handler, c)
 }
 
+// DeepEqual compares a value against a reference using the custom comparators
+// and returns true if they are equal.
+func (c *Custom) DeepEqual(reference, value interface{}) bool {
+	var d test
+	c.Compare(reference, value, d.set)
+	return !bool(d)
+}
+
 // Diff returns the differences between the reference and the value.
 // Diff uses the list of custom comparison handlers registered with
 // Custom.Register(), falling back to the default comparison method for the type
