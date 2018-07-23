@@ -43,6 +43,9 @@ var (
 	CleanupTimeout = time.Second * 10
 
 	events = task.Events{}
+
+	interruptHandlers = make(map[int]func())
+	lastInterrupt = int(0)
 )
 
 // AddCleanup calls f when the context is cancelled.
@@ -70,6 +73,17 @@ func WaitForCleanup(ctx context.Context) bool {
 	return events.TryWait(ctx, CleanupTimeout)
 }
 
+// AddInterruptHandler adds a function that will be called on the next interrupt.
+// It returns a function that can be called to remove the value from the list
+func AddInterruptHandler(f func()) func() {
+	li := lastInterrupt
+	lastInterrupt++
+	interruptHandlers[li] = f
+	return func() {
+		delete(interruptHandlers, li)
+	}
+}
+
 func handleAbortSignals(cancel task.CancelFunc) {
 	// register a signal handler for exits
 	sigchan := make(chan os.Signal)
@@ -79,7 +93,15 @@ func handleAbortSignals(cancel task.CancelFunc) {
 	// Run a goroutine that calls the cancel func if the signal is received
 	crash.Go(func() {
 		<-sigchan
-		cancel()
+		handled := false
+		for _, v := range interruptHandlers {
+			handled = true
+			v()
+		}
+		interruptHandlers = make(map[int]func())
+		if !handled {
+			cancel()
+		}
 	})
 }
 
