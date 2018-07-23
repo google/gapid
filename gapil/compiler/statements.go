@@ -267,11 +267,12 @@ func (c *C) expressionAddr(s *S, target semantic.Expression) *codegen.Value {
 func (c *C) branch(s *S, n *semantic.Branch) {
 	cond := c.expression(s, n.Condition)
 	onTrue := func(s *S) { c.block(s, n.True) }
-	onFalse := func(s *S) { c.block(s, n.False) }
 	if n.False == nil {
-		onFalse = nil
-	}
+		s.If(cond, onTrue)
+	} else {
+		onFalse := func(s *S) { c.block(s, n.False) }
 	s.IfElse(cond, onTrue, onFalse)
+}
 }
 
 func (c *C) copy(s *S, n *semantic.Copy) {
