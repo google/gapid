@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
-	"github.com/google/gapid/gapis/api/testcmd"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -71,7 +71,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		log.E(ctx, "%v %v: %v", id, cmd, err)
 	}
 
-	transform, err := compat(ctx, dev, onCompatError)
+	ct, err := compat(ctx, dev, onCompatError)
 	if err != nil {
 		log.E(ctx, "Error creating compatability transform: %v", err)
 		return
@@ -79,7 +79,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 	indices := []uint16{0, 1, 2, 1, 2, 3}
-	mw := &testcmd.Writer{S: newState(ctx)}
+	r := &transform.Recorder{S: newState(ctx)}
 	ctxHandle, displayHandle, surfaceHandle := p(1), p(2), p(3)
 	cb := gles.CommandBuilder{Thread: 0, Arena: a}
 	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
@@ -93,14 +93,14 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
 			AddRead(memory.Store(ctx, ml, p(0x200000), indices)),
 	}, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		transform.Transform(ctx, api.CmdNoID, cmd, mw)
+		ct.Transform(ctx, api.CmdNoID, cmd, r)
 		return nil
 	})
 
 	// Find glDrawElements and check it is using a buffer instead of client's memory now
 	s := newState(ctx)
 	var found bool
-	err = api.ForeachCmd(ctx, mw.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, r.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, s, nil); err != nil {
 			return err
 		}

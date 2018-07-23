@@ -181,7 +181,6 @@ go_test(
         "//core/os/device/bind:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/gles:go_default_library",
-        "//gapis/api/testcmd:go_default_library",
         "//gapis/api/transform:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",
