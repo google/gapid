@@ -271,8 +271,8 @@ func (c *C) branch(s *S, n *semantic.Branch) {
 		s.If(cond, onTrue)
 	} else {
 		onFalse := func(s *S) { c.block(s, n.False) }
-	s.IfElse(cond, onTrue, onFalse)
-}
+		s.IfElse(cond, onTrue, onFalse)
+	}
 }
 
 func (c *C) copy(s *S, n *semantic.Copy) {
@@ -386,16 +386,20 @@ func (c *C) read(s *S, n *semantic.Read) {
 func (c *C) return_(s *S, n *semantic.Return) {
 	var val *codegen.Value
 	var ty semantic.Type
-	if n.Value != nil {
+	switch {
+	case n.Value != nil:
 		val = c.expression(s, n.Value)
 		ty = n.Value.ExpressionType()
-	} else if c.currentFunc.Signature.Return != semantic.VoidType {
+	case c.currentFunc.Signature.Return != semantic.VoidType:
 		val = c.initialValue(s, c.currentFunc.Signature.Return)
 		ty = c.currentFunc.Signature.Return
-	} else {
+	default:
 		s.Return(nil)
 		return
 	}
+
+	val = val.Cast(c.T.Target(n.Function.Return.Type))
+
 	c.reference(s, val, ty)
 	retTy := c.returnType(c.currentFunc) // <error, value>
 	ret := s.Zero(retTy).Insert(retValue, val)
