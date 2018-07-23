@@ -12,43 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform
+package transform_test
 
 import (
 	"testing"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/testcmd"
+	"github.com/google/gapid/gapis/api/test"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
 func TestEarlyTerminator(t *testing.T) {
 	ctx := log.Testing(t)
-	inputs := NewCmdAndIDList(
-		&testcmd.A{ID: 10},
-		&testcmd.A{ID: 30},
-		&testcmd.A{ID: 20},
-		&testcmd.A{ID: 50},
-		&testcmd.A{ID: 90},
-		&testcmd.A{ID: 70},
-		&testcmd.A{ID: 80},
-		&testcmd.A{ID: 00},
-		&testcmd.A{ID: 60},
-		&testcmd.A{ID: 40},
+
+	cb := test.CommandBuilder{Arena: test.Cmds.Arena}
+	newCmd := func(id api.CmdID) api.Cmd {
+		return cb.CmdTypeMix(uint64(id), 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, test.Voidᵖ(0x12345678), 100)
+	}
+
+	inputs := transform.NewCmdAndIDList(
+		newCmd(10),
+		newCmd(30),
+		newCmd(20),
+		newCmd(50),
+		newCmd(90),
+		newCmd(70),
+		newCmd(80),
+		newCmd(00),
+		newCmd(60),
+		newCmd(40),
 	)
-	expected := NewCmdAndIDList(
-		&testcmd.A{ID: 10},
-		&testcmd.A{ID: 30},
-		&testcmd.A{ID: 20},
-		&testcmd.A{ID: 50},
-		&testcmd.A{ID: 90},
-		&testcmd.A{ID: 70},
+	expected := transform.NewCmdAndIDList(
+		newCmd(10),
+		newCmd(30),
+		newCmd(20),
+		newCmd(50),
+		newCmd(90),
+		newCmd(70),
 	)
 
-	transform := NewEarlyTerminator(api.ID{})
-	transform.Add(ctx, 0, 20, []uint64{0})
-	transform.Add(ctx, 0, 50, []uint64{})
-	transform.Add(ctx, 0, 70, []uint64{1})
+	et := transform.NewEarlyTerminator(test.API{}.ID())
+	et.Add(ctx, 0, 20, []uint64{0})
+	et.Add(ctx, 0, 50, []uint64{})
+	et.Add(ctx, 0, 70, []uint64{1})
 
-	CheckTransform(ctx, t, transform, inputs, expected)
+	CheckTransform(ctx, t, et, inputs, expected)
 }

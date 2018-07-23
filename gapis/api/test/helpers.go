@@ -22,8 +22,9 @@ import (
 
 // Cmds holds a number of prebuilt example commands that can be used for tests.
 var Cmds struct {
-	A *CmdTypeMix
-	B *CmdTypeMix
+	Arena arena.Arena
+	A     *CmdTypeMix
+	B     *CmdTypeMix
 
 	// IgnoreArena is a custom compare rule for excluding the arena in command
 	// tests.
@@ -31,10 +32,10 @@ var Cmds struct {
 }
 
 func init() {
-	arena := arena.New()
-	cb := CommandBuilder{Arena: arena}
-	Cmds.A = cb.CmdTypeMix(10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, Voidᵖ(0x12345678), 100)
-	Cmds.B = cb.CmdTypeMix(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, false, Voidᵖ(0xabcdef9), 200)
+	Cmds.Arena = arena.New()
+	cb := CommandBuilder{Arena: Cmds.Arena}
+	Cmds.A = cb.CmdTypeMix(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, Voidᵖ(0x12345678), 100)
+	Cmds.B = cb.CmdTypeMix(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, false, Voidᵖ(0xabcdef9), 200)
 
 	Cmds.IgnoreArena.Register(func(c compare.Comparator, reference, value *CmdTypeMix) {
 		c.With(c.Path.Member("Caller", reference, value)).Compare(reference.Caller(), value.Caller())

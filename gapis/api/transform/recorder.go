@@ -17,6 +17,7 @@ package transform
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/google/gapid/gapis/api"
 )
@@ -70,11 +71,11 @@ func NewCmdAndIDList(cmds ...interface{}) CmdAndIDList {
 			if err != nil {
 				panic(fmt.Errorf("Command %v does not have ID property: %v", a.CmdName(), err))
 			}
-			id, ok := p.(api.CmdID)
-			if !ok {
+			v := reflect.ValueOf(p)
+			if v.Kind() != reflect.Uint64 {
 				panic(fmt.Errorf("Command %v has unexpected ID property type: %T", a.CmdName(), p))
 			}
-			l = append(l, CmdAndID{a, id})
+			l = append(l, CmdAndID{a, api.CmdID(v.Uint())})
 		case CmdAndID:
 			l = append(l, a)
 		default:

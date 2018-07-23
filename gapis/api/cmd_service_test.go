@@ -29,7 +29,7 @@ func TestToServiceToCmd(t *testing.T) {
 		if !assert.For(ctx, "CmdToService(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
-		g, err := api.ServiceToCmd(test.Cmds.A.Arena(), s)
+		g, err := api.ServiceToCmd(test.Cmds.Arena, s)
 		if !assert.For(ctx, "ServiceToCmd(%v)", n).ThatError(err).Succeeded() {
 			continue
 		}
