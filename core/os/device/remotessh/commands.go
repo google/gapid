@@ -112,7 +112,15 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 		}
 	}
 
-	if err := session.Start(prefix + cmd.Name + " " + strings.Join(cmd.Args, " ")); err != nil {
+	for _, e := range t.b.env.Keys() {
+		if e != "" {
+			val := text.Quote([]string{t.b.env.Get(e)})[0]
+			prefix = prefix + strings.TrimSpace(e) + "=" + val + " "
+		}
+	}
+
+	val := prefix + cmd.Name + " " + strings.Join(cmd.Args, " ")
+	if err := session.Start(val); err != nil {
 		return nil, err
 	}
 

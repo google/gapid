@@ -20,6 +20,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/trace/desktop",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/os/process:go_default_library",
         "//core/vulkan/loader:go_default_library",
