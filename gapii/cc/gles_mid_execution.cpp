@@ -42,10 +42,25 @@ class TempObject {
  public:
   TempObject(uint64_t id, const std::function<void()>& deleteId)
       : mId(id), mDeleteId(deleteId) {}
+
+  TempObject(TempObject&& other) {
+    mId = other.mId;
+    mDeleteId = other.mDeleteId;
+    other.mDeleteId = nullptr;
+  }
+
+  ~TempObject() {
+    if (mDeleteId) {
+      mDeleteId();
+    }
+  }
+
   uint64_t id() { return mId; }
-  ~TempObject() { mDeleteId(); }
 
  private:
+  TempObject(const TempObject&) = delete;
+  TempObject& operator=(const TempObject&) = delete;
+
   uint64_t mId;
   std::function<void()> mDeleteId;
 };
