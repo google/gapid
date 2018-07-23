@@ -50,6 +50,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/api/test",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/compare:go_default_library",
         "//core/data/protoconv:go_default_library",  # keep
         "//core/event/task:go_default_library",  # keep
         "//core/math/interval:go_default_library",

@@ -15,6 +15,7 @@
 package test
 
 import (
+	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -23,6 +24,10 @@ import (
 var Cmds struct {
 	A *CmdTypeMix
 	B *CmdTypeMix
+
+	// IgnoreArena is a custom compare rule for excluding the arena in command
+	// tests.
+	IgnoreArena compare.Custom
 }
 
 func init() {
@@ -30,6 +35,26 @@ func init() {
 	cb := CommandBuilder{Arena: arena}
 	Cmds.A = cb.CmdTypeMix(10, 20, 30, 40, 50, 60, 70, 80, 90, 100, true, Voidᵖ(0x12345678), 100)
 	Cmds.B = cb.CmdTypeMix(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, false, Voidᵖ(0xabcdef9), 200)
+
+	Cmds.IgnoreArena.Register(func(c compare.Comparator, reference, value *CmdTypeMix) {
+		c.With(c.Path.Member("Caller", reference, value)).Compare(reference.Caller(), value.Caller())
+		c.With(c.Path.Member("Thread", reference, value)).Compare(reference.Thread(), value.Thread())
+		c.With(c.Path.Member("CmdName", reference, value)).Compare(reference.CmdName(), value.CmdName())
+		c.With(c.Path.Member("Extras", reference, value)).Compare(reference.Extras(), value.Extras())
+
+		c.With(c.Path.Member("U8", reference, value)).Compare(reference.U8(), value.U8())
+		c.With(c.Path.Member("S8", reference, value)).Compare(reference.S8(), value.S8())
+		c.With(c.Path.Member("U16", reference, value)).Compare(reference.U16(), value.U16())
+		c.With(c.Path.Member("S16", reference, value)).Compare(reference.S16(), value.S16())
+		c.With(c.Path.Member("U32", reference, value)).Compare(reference.U32(), value.U32())
+		c.With(c.Path.Member("S32", reference, value)).Compare(reference.S32(), value.S32())
+		c.With(c.Path.Member("U64", reference, value)).Compare(reference.U64(), value.U64())
+		c.With(c.Path.Member("S64", reference, value)).Compare(reference.S64(), value.S64())
+		c.With(c.Path.Member("F32", reference, value)).Compare(reference.F32(), value.F32())
+		c.With(c.Path.Member("F64", reference, value)).Compare(reference.F64(), value.F64())
+		c.With(c.Path.Member("Bool", reference, value)).Compare(reference.Bool(), value.Bool())
+		c.With(c.Path.Member("Ptr", reference, value)).Compare(reference.Ptr(), value.Ptr())
+	})
 }
 
 // BuildComplex returns a Complex populated with data.

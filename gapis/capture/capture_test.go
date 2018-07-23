@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/testcmd"
+	"github.com/google/gapid/gapis/api/test"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 )
@@ -32,7 +32,7 @@ func TestCaptureExportImport(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	header := &capture.Header{ABI: device.WindowsX86_64}
-	cmds := []api.Cmd{testcmd.P, testcmd.Q}
+	cmds := []api.Cmd{test.Cmds.A, test.Cmds.B}
 	p, err := capture.New(ctx, arena.New(), "test", header, cmds)
 	if !assert.For(ctx, "capture.New").ThatError(err).Succeeded() {
 		return
@@ -55,5 +55,5 @@ func TestCaptureExportImport(t *testing.T) {
 		return
 	}
 
-	assert.For(ctx, "got").That(ic.Commands).DeepEquals(cmds)
+	assert.For(ctx, "got").That(ic.Commands).CustomDeepEquals(cmds, test.Cmds.IgnoreArena)
 }
