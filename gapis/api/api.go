@@ -85,22 +85,22 @@ type APIObject interface {
 }
 
 var apis = map[ID]API{}
-var indices = map[uint8]bool{}
+var indices = map[uint8]API{}
 
 // Register adds an api to the understood set.
 // It is illegal to register the same name twice.
 func Register(api API) {
 	id := api.ID()
-	if _, present := apis[id]; present {
-		panic(fmt.Errorf("API %s registered more than once", id))
+	if existing, present := apis[id]; present {
+		panic(fmt.Errorf("API %s registered more than once. First: %T, Second: %T", id, existing, api))
 	}
 	apis[id] = api
 
 	index := api.Index()
-	if _, present := indices[index]; present {
-		panic(fmt.Errorf("API %s used an occupied index %d", id, index))
+	if existing, present := indices[index]; present {
+		panic(fmt.Errorf("API %s used an occupied index %d. First: %T, Second: %T", id, index, existing, api))
 	}
-	indices[index] = true
+	indices[index] = api
 }
 
 // Find looks up a graphics API by identifier.
