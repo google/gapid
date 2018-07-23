@@ -103,7 +103,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
 // See https://en.wikipedia.org/wiki/Live_variable_analysis
 func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 	isLive := make([]bool, t.depGraph.NumInitialCommands+int(t.lastRequest)+1)
-	state := newLivenessTree(t.depGraph.GetHierarchyStateMap())
+	state := NewLivenessTree(t.depGraph.GetHierarchyStateMap())
 	for i := len(isLive) - 1; i >= 0; i-- {
 		b := t.depGraph.Behaviours[i]
 		isLive[i] = b.KeepAlive
@@ -183,9 +183,9 @@ func (t *DeadCodeElimination) propagateLiveness(ctx context.Context) []bool {
 	return isLive
 }
 
-// livenessTree assigns boolean value to each state (live or dead).
+// LivenessTree assigns boolean value to each state (live or dead).
 // Think of each node as memory range, with children being sub-ranges.
-type livenessTree struct {
+type LivenessTree struct {
 	nodes []livenessNode // indexed by StateAddress
 	time  int            // current time used for time-stamps
 }
@@ -203,21 +203,21 @@ type livenessNode struct {
 	parent *livenessNode
 }
 
-// newLivenessTree creates a new tree.
+// NewLivenessTree creates a new tree.
 // The parent map defines parent for each node,
 // and it must be continuous with no gaps.
-func newLivenessTree(parents map[dependencygraph.StateAddress]dependencygraph.StateAddress) livenessTree {
+func NewLivenessTree(parents map[dependencygraph.StateAddress]dependencygraph.StateAddress) LivenessTree {
 	nodes := make([]livenessNode, len(parents))
 	for address, parent := range parents {
 		if parent != dependencygraph.NullStateAddress {
 			nodes[address].parent = &nodes[parent]
 		}
 	}
-	return livenessTree{nodes: nodes, time: 1}
+	return LivenessTree{nodes: nodes, time: 1}
 }
 
 // IsLive returns true if the state, or any of its descendants, are live.
-func (l *livenessTree) IsLive(address dependencygraph.StateAddress) bool {
+func (l *LivenessTree) IsLive(address dependencygraph.StateAddress) bool {
 	node := &l.nodes[address]
 	live := node.anyLive // Check descendants as well.
 	for p := node.parent; p != nil; p = p.parent {
@@ -230,7 +230,7 @@ func (l *livenessTree) IsLive(address dependencygraph.StateAddress) bool {
 }
 
 // MarkDead makes the given state, and all of its descendants, dead.
-func (l *livenessTree) MarkDead(address dependencygraph.StateAddress) {
+func (l *LivenessTree) MarkDead(address dependencygraph.StateAddress) {
 	node := &l.nodes[address]
 	node.live = false
 	node.anyLive = false
@@ -239,7 +239,7 @@ func (l *livenessTree) MarkDead(address dependencygraph.StateAddress) {
 }
 
 // MarkLive makes the given state, and all of its descendants, live.
-func (l *livenessTree) MarkLive(address dependencygraph.StateAddress) {
+func (l *LivenessTree) MarkLive(address dependencygraph.StateAddress) {
 	node := &l.nodes[address]
 	node.live = true
 	node.anyLive = true

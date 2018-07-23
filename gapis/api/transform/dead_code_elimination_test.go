@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform
+package transform_test
 
 import (
 	"testing"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
@@ -39,7 +40,7 @@ func TestLivenessTree(t *testing.T) {
 	child2 := dependencygraph.StateAddress(3)
 	childA := dependencygraph.StateAddress(4)
 	childB := dependencygraph.StateAddress(5)
-	tree := newLivenessTree(map[dependencygraph.StateAddress]dependencygraph.StateAddress{
+	tree := transform.NewLivenessTree(map[dependencygraph.StateAddress]dependencygraph.StateAddress{
 		dependencygraph.NullStateAddress: dependencygraph.NullStateAddress,
 		root:   dependencygraph.NullStateAddress,
 		child1: root,

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform
+package transform_test
 
 import (
 	"testing"
@@ -20,6 +20,7 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
@@ -108,15 +109,15 @@ func TestDCE(t *testing.T) {
 	behave([]uint64{3, 0, 1, 0}, []dummyDefUseVar{8, 9}, []dummyDefUseVar{10})
 	behave([]uint64{4}, []dummyDefUseVar{10}, []dummyDefUseVar{})
 
-	dce := NewDCE(ctx, ft)
-	expectedLiveness := func(alivedCommands *commandIndicesSet, fci api.SubCmdIdx, expected bool) {
+	dce := transform.NewDCE(ctx, ft)
+	expectedLiveness := func(aliveCommands *transform.CommandIndicesSet, fci api.SubCmdIdx, expected bool) {
 		assert.For(ctx, "Liveness of command with full command index: %v should be %v",
-			fci, expected).That(alivedCommands.contains(fci)).Equals(expected)
+			fci, expected).That(aliveCommands.Contains(fci)).Equals(expected)
 	}
 
 	// Case: Request: 4, Dead: 0
 	dce.Request(ctx, []uint64{4})
-	_, alived := dce.backPropagate(ctx)
+	_, alived := dce.BackPropagate(ctx)
 	expectedLiveness(alived, []uint64{0}, false)
 	expectedLiveness(alived, []uint64{1}, true)
 	expectedLiveness(alived, []uint64{2}, true)
@@ -128,13 +129,11 @@ func TestDCE(t *testing.T) {
 	expectedLiveness(alived, []uint64{3, 0, 1, 0}, true)
 	expectedLiveness(alived, []uint64{4}, true)
 
-	dce.requests = newCommandIndicesSet()
-	dce.endBehaviorIndex = uint64(0)
-	dce.requests.count = uint64(0)
+	dce = transform.NewDCE(ctx, ft)
 
 	// Case: Request: 3-0-0-1, Dead: 3-0-0-0, 2, 0, and all after 3-0-0-1
 	dce.Request(ctx, []uint64{3, 0, 0, 1})
-	_, alived = dce.backPropagate(ctx)
+	_, alived = dce.BackPropagate(ctx)
 	expectedLiveness(alived, []uint64{0}, false)
 	expectedLiveness(alived, []uint64{1}, true)
 	expectedLiveness(alived, []uint64{2}, false)

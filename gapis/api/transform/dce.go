@@ -34,23 +34,22 @@ var (
 	dCEDataLiveCounter = benchmark.Integer("DCE.data.live")
 )
 
-type commandIndicesSet struct {
+// CommandIndicesSet holds a set of unique command indices.
+type CommandIndicesSet struct {
 	api.SubCmdIdxTrie
 	count uint64
 }
 
-func newCommandIndicesSet() *commandIndicesSet {
-	return &commandIndicesSet{api.SubCmdIdxTrie{}, uint64(0)}
-}
-
-func (s *commandIndicesSet) insert(fci api.SubCmdIdx) {
+// Insert adds the command index fci to the set.
+func (s *CommandIndicesSet) Insert(fci api.SubCmdIdx) {
 	if v := s.Value(fci); v != nil {
 		s.count++
 	}
 	s.SetValue(fci, true)
 }
 
-func (s *commandIndicesSet) contains(fci api.SubCmdIdx) bool {
+// Contains returns true if fci is part of the set.
+func (s *CommandIndicesSet) Contains(fci api.SubCmdIdx) bool {
 	v := s.Value(fci)
 	if v != nil {
 		if bv, ok := v.(bool); ok {
@@ -61,7 +60,7 @@ func (s *commandIndicesSet) contains(fci api.SubCmdIdx) bool {
 	return false
 }
 
-// DCE contains an execution footprint built from a list of commands, and a
+// DCE Contains an execution footprint built from a list of commands, and a
 // list of requested command indices. It drives the back-propagation to drop
 // commands which are not contributing to the final state at the requested
 // commands.
@@ -69,7 +68,7 @@ type DCE struct {
 	footprint        *dependencygraph.Footprint
 	endBehaviorIndex uint64
 	endCmdIndex      api.CmdID
-	requests         *commandIndicesSet
+	requests         *CommandIndicesSet
 }
 
 // NewDCE constructs a new DCE instance and returns a pointer to the created
@@ -77,14 +76,14 @@ type DCE struct {
 func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
 	return &DCE{
 		footprint: footprint,
-		requests:  newCommandIndicesSet(),
+		requests:  &CommandIndicesSet{},
 	}
 }
 
 // Request added a requsted command or subcommand, represented by its full
 // command index, to the DCE.
 func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
-	t.requests.insert(fci)
+	t.requests.Insert(fci)
 	bi := t.footprint.BehaviorIndex(ctx, fci)
 	if bi > t.endBehaviorIndex {
 		t.endBehaviorIndex = bi
@@ -118,9 +117,9 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 		return
 	}
 	t0 := dCECounter.Start()
-	livenessBoard, aliveCmds := t.backPropagate(ctx)
+	livenessBoard, aliveCmds := t.BackPropagate(ctx)
 	dCECounter.Stop(t0)
-	flushedCommands := newCommandIndicesSet()
+	flushedCommands := &CommandIndicesSet{}
 
 	numCmd, numDead, numDeadDraws, numLive, numLiveDraws := 0, 0, 0, 0, 0
 	deadMem, liveMem := uint64(0), uint64(0)
@@ -135,8 +134,8 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 		bh := t.footprint.Behaviors[bi]
 		fci := bh.Owner
 
-		if livenessBoard[bi] && len(fci) == 1 && !flushedCommands.contains(fci) {
-			flushedCommands.insert(fci)
+		if livenessBoard[bi] && len(fci) == 1 && !flushedCommands.Contains(fci) {
+			flushedCommands.Insert(fci)
 			aliveCmd := t.footprint.Commands[fci[0]]
 
 			// Logging the DCE result of alive commands
@@ -153,7 +152,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 
 			out.MutateAndWrite(ctx, api.CmdID(fci[0]), aliveCmd)
 		} else {
-			if len(fci) == 1 && !aliveCmds.contains(fci) {
+			if len(fci) == 1 && !aliveCmds.Contains(fci) {
 				// logging the DCE result of dead commands
 				deadCmd := t.footprint.Commands[fci[0]]
 				numCmd++
@@ -180,10 +179,12 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 		100*numLive/numCmd, numLive, liveMem/1024/1024, numLiveDraws)
 }
 
-func (t *DCE) backPropagate(ctx context.Context) (
-	[]bool, *commandIndicesSet) {
+// BackPropagate calculates and returns the liveness of the commands using back
+// propagation. BackPropagate is automatically called by Flush() and is only
+// public so it can be tested.
+func (t *DCE) BackPropagate(ctx context.Context) ([]bool, *CommandIndicesSet) {
 	livenessBoard := make([]bool, t.endBehaviorIndex+1)
-	aliveCommands := newCommandIndicesSet()
+	aliveCommands := &CommandIndicesSet{}
 	usedMachines := map[dependencygraph.BackPropagationMachine]struct{}{}
 	fbRequested := map[api.CmdID]struct{}{}
 	for bi := int64(t.endBehaviorIndex); bi >= 0; bi-- {
@@ -195,7 +196,7 @@ func (t *DCE) backPropagate(ctx context.Context) (
 			continue
 		}
 
-		if t.requests.contains(fci) || t.requests.contains(api.SubCmdIdx{fci[0]}) {
+		if t.requests.Contains(fci) || t.requests.Contains(api.SubCmdIdx{fci[0]}) {
 			bh.Alive = true
 			if _, ok := fbRequested[api.CmdID(fci[0])]; !ok {
 				machine.FramebufferRequest(api.CmdID(fci[0]), t.footprint)
@@ -210,7 +211,7 @@ func (t *DCE) backPropagate(ctx context.Context) (
 			for _, aliveBI := range alivedBehaviorIndices {
 				if aliveBI < t.endBehaviorIndex+1 {
 					livenessBoard[aliveBI] = true
-					aliveCommands.insert(t.footprint.Behaviors[aliveBI].Owner)
+					aliveCommands.Insert(t.footprint.Behaviors[aliveBI].Owner)
 				}
 			}
 		}
