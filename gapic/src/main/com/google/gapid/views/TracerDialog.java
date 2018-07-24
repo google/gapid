@@ -248,9 +248,12 @@ public class TracerDialog {
       private Label pcsWarning;
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
+      protected boolean userHasChangedTarget = false;
 
       public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
+        this.friendlyName = models.settings.traceFriendlyName;
+
         setLayout(new GridLayout(2, false));
 
         createLabel(this, "Device:");
@@ -285,16 +288,18 @@ public class TracerDialog {
                   new TraceTargetPickerDialog(getShell(), models, dev.targets, widgets);
               if (dialog.open() == Window.OK) {
                 TraceTargets.Node node = dialog.getSelected();
-                if (node == null) {
-                  return null;
-                }
-                TraceTargetTreeNode data = node.getData();
-                if (data != null && !userHasChangedOutputFile) {
-                  file.setText(formatTraceName(data.getFriendlyApplication()));
+                TraceTargetTreeNode data = (node == null) ? null : node.getData();
+                if (data != null) {
                   friendlyName = data.getFriendlyApplication();
-                  userHasChangedOutputFile = false; // cancel the modify event from set call.
+                  if (!userHasChangedOutputFile) {
+                    file.setText(formatTraceName(friendlyName));
+                    userHasChangedOutputFile = false; // cancel the modify event from set call.
+                  }
+
+                  // Setting the text ourselves so we cancel the event.
+                  setText(data.getTraceUri());
+                  userHasChangedTarget = false; // cancel the modify event from set call.
                 }
-                return (data == null) ? null : data.getTraceUri();
               }
             }
             return null;
@@ -360,8 +365,8 @@ public class TracerDialog {
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "File Name:");
-        file = withLayoutData(
-            createTextbox(this, ""), new GridData(SWT.FILL, SWT.FILL, true, false));
+        file = withLayoutData(createTextbox(this, formatTraceName(friendlyName)),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "");
         pcsWarning = withLayoutData(
@@ -389,13 +394,17 @@ public class TracerDialog {
         disablePcs.addListener(
             SWT.Selection, e -> pcsWarning.setVisible(!disablePcs.getSelection()));
 
+        traceTarget.addBoxListener(SWT.Modify, e -> {
+          userHasChangedTarget = true;
+        });
         file.addListener(SWT.Modify, e -> {
           userHasChangedOutputFile = true;
-          friendlyName = "";
+          if (userHasChangedTarget) {
+            // The user has both manually changed the trace target and the output file.
+            // Clearly the suggested friendly name is no good.
+            friendlyName = "";
+          }
         });
-        if (!models.settings.traceFriendlyName.isEmpty()) {
-          file.setText(formatTraceName(models.settings.traceFriendlyName));
-        }
 
         updateDevicesDropDown(models.settings);
       }
