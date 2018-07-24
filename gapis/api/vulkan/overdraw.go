@@ -1729,10 +1729,13 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 				newArgs.SetRenderPass(renderInfo.renderPass)
 				newArgs.SetFramebuffer(renderInfo.framebuffer)
 
-				clearCount := uint32(newArgs.ClearValues().Len())
+				rpInfo := st.RenderPasses().Get(renderInfo.renderPass)
+				attachmentIdx := uint32(rpInfo.AttachmentDescriptions().Len()) - 1
 				newClear := NewU32ː4ᵃ(a)
 
-				if renderInfo.depthIdx != ^uint32(0) {
+				if renderInfo.depthIdx != ^uint32(0) &&
+					rpInfo.AttachmentDescriptions().Get(renderInfo.depthIdx).LoadOp() ==
+						VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR {
 					newClear.Set(0, newArgs.
 						ClearValues().
 						Get(renderInfo.depthIdx).
@@ -1740,8 +1743,13 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 						Uint32().
 						Get(0))
 				}
+				for j := uint32(0); j < attachmentIdx; j++ {
+					if !newArgs.ClearValues().Contains(j) {
+						newArgs.ClearValues().Add(j, NilVkClearValue)
+					}
+				}
 				// 0 initialize the stencil buffer
-				newArgs.ClearValues().Add(clearCount,
+				newArgs.ClearValues().Add(attachmentIdx,
 					// Use VkClearColorValue instead of
 					// VkClearDepthValue because it doesn't
 					// seem like the union is set up in the
