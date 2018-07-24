@@ -116,6 +116,10 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
     // It is likely that this will cause a failure in the future, as we will miss any state
     // that is modified by this function, but we avoid modifying the application.
     if (!f && device) {
+        if (mHideUnknownExtensions) {
+            GAPID_WARNING("Function %s was hidden from the application, as GAPID does not support it", pName);
+            return nullptr;
+        }
         f = mImports.mVkDeviceFunctions[device].vkGetDeviceProcAddr(device, pName);
         if (f) {
             GAPID_ERROR("Unknown function %s resolved, it may be called but will not be tracked", pName);

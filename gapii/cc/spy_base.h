@@ -185,6 +185,9 @@ class SpyBase {
   track_memory::MemoryTracker mMemoryTracker;
 #endif  // TARGET_OS
 
+  // If true, we will hide unknown extensions from the application
+  bool mHideUnknownExtensions;
+
  private:
   template <class T>
   bool shouldObserve(const gapil::Slice<T>& slice) const;

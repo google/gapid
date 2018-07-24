@@ -239,6 +239,7 @@ public class TracerDialog {
       private Spinner frameCount;
       private Button fromBeginning;
       private Button withoutBuffering;
+      private Button hideUnknownExtensions;
       private Button clearCache;
       private Button disablePcs;
       private final FileTextbox.Directory directory;
@@ -338,6 +339,11 @@ public class TracerDialog {
             createCheckbox(this, "Clear package cache", models.settings.traceClearCache),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         clearCache.setEnabled(false);
+
+        createLabel(this, "");
+        hideUnknownExtensions = withLayoutData(
+            createCheckbox(this, "Hide Unknown Extensions", models.settings.traceHideUnknownExtensions),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
 
         createLabel(this, "");
         disablePcs = withLayoutData(
@@ -513,6 +519,7 @@ public class TracerDialog {
         settings.traceArguments = arguments.getText();
         settings.traceFrameCount = frameCount.getSelection();
         settings.traceWithoutBuffering = withoutBuffering.getSelection();
+        settings.traceHideUnknownExtensions = hideUnknownExtensions.getSelection();
         settings.traceOutDir = directory.getText();
         settings.traceFriendlyName = friendlyName;
 
@@ -523,6 +530,7 @@ public class TracerDialog {
             .setAdditionalCommandLineArgs(arguments.getText())
             .setFramesToCapture(frameCount.getSelection())
             .setNoBuffer(withoutBuffering.getSelection())
+            .setHideUnknownExtensions(hideUnknownExtensions.getSelection())
             .setServerLocalSavePath(output.getAbsolutePath());
 
         if (dev.config.getCanSpecifyCwd()) {

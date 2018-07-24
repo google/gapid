@@ -430,6 +430,7 @@ func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
 		RecordErrorState:      opts.RecordErrorState,
 		DeferStart:            opts.DeferStart,
 		NoBuffer:              opts.NoBuffer,
+		HideUnknownExtensions: opts.HideUnknownExtensions,
 	}
 }
 

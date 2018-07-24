@@ -974,8 +974,10 @@ message TraceOptions {
   bool no_buffer = 16;
   // Clear the application cache
   bool clear_cache = 17;
+  // Hide unknown extensions
+  bool hide_unknown_extensions = 18;
   // Where should we save the capture file.
-  string server_local_save_path = 18;
+  string server_local_save_path = 19;
 }
 
 enum TraceEvent {

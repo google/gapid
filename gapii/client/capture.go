@@ -48,6 +48,9 @@ const (
 	// NoBuffer causes the trace to not buffer any data. This will allow
 	// more data to be preserved if an application may crash.
 	NoBuffer Flags = 0x00000020
+	// HideUnkownExtensions will prevent any unknown extensions from being
+	// seen by the application
+	HideUnknownExtensions Flags = 0x00000040
 
 	// GlesAPI is hard-coded bit mask for GLES API, it needs to be kept in sync
 	// with the api_index in the gles.api file.

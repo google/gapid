@@ -676,6 +676,7 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
       return next_layer_result;
     }
   }
+
   bool has_debug_marker_ext = false;
   for (VkExtensionProperties& ext : properties) {
     // TODO: Check the spec version and emit warning if not match.
@@ -693,18 +694,29 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
     properties.emplace_back(VkExtensionProperties{debug_marker_extension_name,
                                                   debug_marker_spec_version});
   }
+
+  auto extension = subSupportedDeviceExtensions(nullptr, nullptr);
+  std::vector<VkExtensionProperties> all_properties;
+  for (VkExtensionProperties& ext : properties) {
+    gapil::String name(arena(), &ext.mextensionName[0]);
+    if (!mHideUnknownExtensions || (extension->mExtensionNames.find(name) !=
+                                    extension->mExtensionNames.end())) {
+      all_properties.push_back(ext);
+    }
+  }
+
   if (pProperties == NULL) {
-    *pCount = properties.size();
+    *pCount = all_properties.size();
     return VkResult::VK_SUCCESS;
   }
   uint32_t copy_count =
-      properties.size() < *pCount ? properties.size() : *pCount;
-  memcpy(pProperties, properties.data(),
+      all_properties.size() < *pCount ? all_properties.size() : *pCount;
+  memcpy(pProperties, all_properties.data(),
          copy_count * sizeof(VkExtensionProperties));
-  if (*pCount < properties.size()) {
+  if (*pCount < all_properties.size()) {
     return VkResult::VK_INCOMPLETE;
   }
-  *pCount = properties.size();
+  *pCount = all_properties.size();
   return VkResult::VK_SUCCESS;
 }
 
