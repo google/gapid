@@ -25,13 +25,16 @@ func (c *C) extern(f *semantic.Function) {
 	if _, ok := c.functions[f]; ok {
 		panic(fmt.Errorf("Duplicate extern '%v'", f.Name()))
 	}
-	resTy := c.T.Target(f.Return.Type)
-	params := f.CallParameters()
-	paramTys := make([]codegen.Type, len(params)+1)
+	callParams := f.CallParameters()
+	paramTys := make([]codegen.Type, 1, len(callParams)+2)
 	paramTys[0] = c.T.CtxPtr
-	for i, p := range params {
-		paramTys[i+1] = c.T.Target(p.Type)
+	for _, p := range callParams {
+		paramTys = append(paramTys, c.T.Target(p.Type))
+	}
+	if f.Return.Type != semantic.VoidType {
+		resTy := c.T.Target(f.Return.Type)
+		paramTys = append(paramTys, c.T.Pointer(resTy))
 	}
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
-	c.functions[f] = c.M.Function(resTy, name, paramTys...)
+	c.functions[f] = c.M.Function(c.T.Void, name, paramTys...)
 }
