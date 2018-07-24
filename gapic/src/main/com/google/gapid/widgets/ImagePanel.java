@@ -520,7 +520,7 @@ public class ImagePanel extends Composite implements Loadable {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
 
       Histogram histogram = getUnchecked(HISTOGRAM_CACHE, image.getLevelKey(level),
-          () -> new Histogram(images, NUM_HISTOGRAM_BINS, isHDR(images), isCount(images)));
+          () -> new Histogram(images, NUM_HISTOGRAM_BINS));
       return new LevelData(images, histogram);
     });
 
@@ -549,24 +549,6 @@ public class ImagePanel extends Composite implements Loadable {
         showMessage(message);
       }
     });
-  }
-
-  private static boolean isHDR(Image[] images) {
-    for (Image i : images) {
-      if (i.isHDR()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static boolean isCount(Image[] images) {
-    for (Image i : images) {
-      if (!i.isCount()) {
-        return false;
-      }
-    }
-    return true;
   }
 
   protected void updateLayers(LevelData data) {

@@ -43,11 +43,13 @@ public class Histogram {
 
   private final boolean isCount;
 
-  public Histogram(Image[] images, int numBins, boolean logFit, boolean isCount) {
+  public Histogram(Image[] images, int numBins) {
+    boolean logFit = stream(images).anyMatch(i -> i.getType() == Image.ImageType.HDR);
+    this.isCount = stream(images).allMatch(i -> i.getType() == Image.ImageType.COUNT);
+
     this.channels = getChannels(images);
-    this.mapper = Mapper.get(images, logFit, isCount);
+    this.mapper = Mapper.get(images, logFit);
     this.bins = Bins.get(images, mapper, numBins);
-    this.isCount = isCount;
   }
 
   private static Set<Stream.Channel> getChannels(Image[] images) {
@@ -88,7 +90,7 @@ public class Histogram {
    * @param high if true, return the upper limit on the percentile's bin, otherwise the lower limit.
    * @return the absolute pixel value at the specified percentile in the histogram.
    */
-  public double getPercentile(int percentile, boolean high) {
+  private double getPercentile(int percentile, boolean high) {
     int bin = bins.getPercentileBin(percentile, channels);
     return (bin < 0) ? mapper.limits.max :
         getValueFromNormalizedX((bin + (high ? 1 : 0)) / (double)bins.count());
@@ -187,19 +189,26 @@ public class Histogram {
     /**
      * Returns a mapper whose range will encompass all values from the given images.
      */
-    public static Mapper get(Image[] images, boolean logFit, boolean isCount) {
+    public static Mapper get(Image[] images, boolean logFit) {
       // Get the limits and average value.
-      double min = isCount ? 0.0 : Double.POSITIVE_INFINITY;
+      double min = Double.POSITIVE_INFINITY;
       double max = Double.NEGATIVE_INFINITY;
       double average = 0.0;
       for (Image image : images) {
         PixelInfo info = image.getInfo();
-        if (info.isNormalized()) {
+        switch (image.getType()) {
+        case LDR:
           min = Math.min(0.0, min);
           max = Math.max(1.0, max);
-        } else {
+          break;
+        case HDR:
           min = Math.min(info.getMin(), min);
           max = Math.max(info.getMax(), max);
+          break;
+        case COUNT:
+          min = Math.min(0.0, min);
+          max = Math.max(info.getMax(), max);
+          break;
         }
         average += info.getAverage();
       }

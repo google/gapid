@@ -131,16 +131,15 @@ public class Images {
   }
 
   public static Image.Format getFormatToRequest(Image.Format format) {
-    boolean color = isColorFormat(format);
-    int channels = getChannelCount(format, color ? COLOR_CHANNELS : DEPTH_CHANNELS);
-    boolean is8bit = are8BitsEnough(format, color ? COLOR_CHANNELS : DEPTH_CHANNELS);
-    if (is8bit) {
-      return color ? FMT_RGBA_U8_NORM : FMT_DEPTH_U8_NORM;
-    } else if (channels == 1) {
-      return color ? FMT_LUMINANCE_FLOAT : FMT_DEPTH_FLOAT;
-    } else {
-      return FMT_RGBA_FLOAT;
-    }
+      if (isColorFormat(format)) {
+        return are8BitsEnough(format, COLOR_CHANNELS) ? FMT_RGBA_U8_NORM :
+            (getChannelCount(format, COLOR_CHANNELS) == 1 ? FMT_LUMINANCE_FLOAT : FMT_RGBA_FLOAT);
+      } else if (isCountFormat(format)) {
+        // Currently only one count format
+        return FMT_COUNT_U8;
+      } else {
+        return are8BitsEnough(format, DEPTH_CHANNELS) ? FMT_DEPTH_U8_NORM : FMT_DEPTH_FLOAT;
+      }
   }
 
   public static int getChannelCount(Image.Format format, Set<Stream.Channel> interestedChannels) {
@@ -302,18 +301,14 @@ public class Images {
     }
 
     public static Format from(Image.Format format) {
-      boolean color = isColorFormat(format);
-      int channels = getChannelCount(format, color ? COLOR_CHANNELS : DEPTH_CHANNELS);
-      boolean is8bit = are8BitsEnough(format, color ? COLOR_CHANNELS : DEPTH_CHANNELS);
-      if (isCountFormat(format) && is8bit) {
+      if (isColorFormat(format)) {
+        return are8BitsEnough(format, COLOR_CHANNELS) ? Color8 :
+            (getChannelCount(format, COLOR_CHANNELS) == 1 ? LuminanceFloat : ColorFloat);
+      } else if (isCountFormat(format)) {
+        // Currently only one count format
         return Count8;
-      }
-      if (is8bit) {
-        return color ? Color8 : Depth8;
-      } else if (channels == 1) {
-        return color ? LuminanceFloat : DepthFloat;
       } else {
-        return ColorFloat;
+        return are8BitsEnough(format, DEPTH_CHANNELS) ? Depth8 : DepthFloat;
       }
     }
 
