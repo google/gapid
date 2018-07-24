@@ -235,9 +235,12 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 		panic(fmt.Errorf("Couldn't resolve call target %v", tf.Name()))
 	}
 
-	res := s.Call(f, args...)
+	var res *codegen.Value
 
-	if tf.Subroutine {
+	switch {
+	case tf.Subroutine:
+		res = s.Call(f, args...)
+
 		// Subroutines return a <error, value> pair.
 		// Check the error.
 		err := res.Extract(retError)
@@ -250,6 +253,22 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 		}
 		// Return the value.
 		res = res.Extract(retValue)
+
+	case tf.Extern:
+		// Result is passed back by pointer via the last argument.
+		// This is done to avoid complexities of ABI calling conventions of
+		// aggregate types.
+		if tf.Return.Type != semantic.VoidType {
+			resPtr := s.LocalInit("call-res", s.Zero(c.T.Target(tf.Return.Type)))
+			args = append(args, resPtr)
+			s.Call(f, args...)
+			res = resPtr.Load()
+		} else {
+			s.Call(f, args...)
+		}
+
+	default:
+		res = s.Call(f, args...)
 	}
 
 	c.deferRelease(s, res, tf.Return.Type)
