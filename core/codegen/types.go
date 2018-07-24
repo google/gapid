@@ -330,12 +330,24 @@ func (t *Struct) String() string {
 func (t *Struct) sizeInBits() int   { return 0 }
 func (t *Struct) llvmTy() llvm.Type { return t.llvm }
 
+// Field returns the field with the given name.
+// Field panics if the struct does not contain the given field.
 func (t *Struct) Field(name string) Field {
 	f, ok := t.fieldIndices[name]
 	if !ok {
 		panic(fmt.Errorf("Struct '%v' does not have field with name '%v'", t.Name, name))
 	}
 	return t.Fields[f]
+}
+
+// FieldIndex returns the index of the field with the given name, or -1 if the
+// struct does not have a field with the given name.
+func (t *Struct) FieldIndex(name string) int {
+	f, ok := t.fieldIndices[name]
+	if !ok {
+		return -1
+	}
+	return f
 }
 
 // IsStruct returns true if ty is a struct type.
