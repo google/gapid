@@ -21,12 +21,16 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/codegen"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 // Program is the output of a compilation.
 type Program struct {
 	// Settings used to compile the program.
 	Settings Settings
+
+	// APIs compiled for this program.
+	APIs []*semantic.API
 
 	// Commands is a map of command name to CommandInfo.
 	Commands map[string]*CommandInfo

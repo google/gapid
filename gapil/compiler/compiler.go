@@ -185,6 +185,7 @@ func (c *C) program(s Settings) (*Program, error) {
 
 	return &Program{
 		Settings:       c.Settings,
+		APIs:           c.APIs,
 		Commands:       commands,
 		Structs:        structs,
 		Globals:        globals,
