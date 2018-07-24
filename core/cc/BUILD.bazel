@@ -63,6 +63,7 @@ cc_test(
     name = "tests",
     size = "small",
     srcs = [
+        "async_buffer_test.cpp",
         "connection_test.cpp",
         "crash_handler_test.cpp",
         "interval_list_test.cpp",

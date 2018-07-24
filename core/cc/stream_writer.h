@@ -24,6 +24,8 @@ namespace core {
 // StreamWriter is a pure-virtual interface used to write data streams.
 class StreamWriter {
  public:
+  virtual ~StreamWriter() {}
+
   // write attempts to write size bytes from data to the stream, blocking
   // until all data is written. Returns the number of bytes successfully
   // written, which may be less than size if the stream was closed or there
@@ -35,9 +37,6 @@ class StreamWriter {
   // Note: T must be a plain-old-data type.
   template <typename T>
   inline bool write(const T& s);
-
- protected:
-  virtual ~StreamWriter() {}
 };
 
 template <typename T>
