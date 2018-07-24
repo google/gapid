@@ -1074,7 +1074,7 @@ func (h *ipRenderHandler) free() {
 	}
 }
 
-func imageBarrierAspectFlags(aspect VkImageAspectFlagBits, fmt VkFormat) VkImageAspectFlags {
+func ipImageBarrierAspectFlags(aspect VkImageAspectFlagBits, fmt VkFormat) VkImageAspectFlags {
 	switch fmt {
 	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
 		VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
@@ -1093,7 +1093,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	default:
 		return log.Errf(h.sb.ctx, nil, "unsupported aspect: %v", job.renderTarget.aspect)
 	}
-	outputBarrierAspect := imageBarrierAspectFlags(job.renderTarget.aspect, job.renderTarget.image.Info().Fmt())
+	outputBarrierAspect := ipImageBarrierAspectFlags(job.renderTarget.aspect, job.renderTarget.image.Info().Fmt())
 
 	var outputPreRenderLayout VkImageLayout
 	switch job.renderTarget.aspect {
@@ -1296,7 +1296,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	inputSrcBarriers := []VkImageMemoryBarrier{}
 	dstBarriers := []VkImageMemoryBarrier{}
 	for _, input := range job.inputAttachmentImages {
-		aspects := imageBarrierAspectFlags(input.aspect, input.image.Info().Fmt())
+		aspects := ipImageBarrierAspectFlags(input.aspect, input.image.Info().Fmt())
 		inputSrcBarriers = append(inputSrcBarriers,
 			NewVkImageMemoryBarrier(h.sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
@@ -1316,25 +1316,27 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 					input.image.Info().ArrayLayers(), // layerCount
 				),
 			))
-		dstBarriers = append(dstBarriers,
-			NewVkImageMemoryBarrier(h.sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-				0, // pNext
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-				VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),                                        // dstAccessMask
-				VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                     // oldLayout
-				input.finalLayout,                                                                                          // newLayout
-				queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
-				queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
-				input.image.VulkanHandle(),                                                                                 // image
-				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-					aspects, // aspectMask
-					0,       // baseMipLevel
-					input.image.Info().MipLevels(), // levelCount
-					0, // baseArrayLayer
-					input.image.Info().ArrayLayers(), // layerCount
-				),
-			))
+		if input.finalLayout != VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL {
+			dstBarriers = append(dstBarriers,
+				NewVkImageMemoryBarrier(h.sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+					0, // pNext
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),                                        // dstAccessMask
+					VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                                                     // oldLayout
+					input.finalLayout,                                                                                          // newLayout
+					queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+					queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
+					input.image.VulkanHandle(),                                                                                 // image
+					NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+						aspects, // aspectMask
+						0,       // baseMipLevel
+						input.image.Info().MipLevels(), // levelCount
+						0, // baseArrayLayer
+						input.image.Info().ArrayLayers(), // layerCount
+					),
+				))
+		}
 	}
 	outputBarrier := NewVkImageMemoryBarrier(h.sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
@@ -1544,7 +1546,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			memory.Nullptr,
 			0,
 			memory.Nullptr,
-			1,
+			uint32(len(dstBarriers)),
 			h.sb.MustAllocReadData(dstBarriers).Ptr(),
 		))
 	})
