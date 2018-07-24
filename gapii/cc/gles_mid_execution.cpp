@@ -80,26 +80,6 @@ class Sampler {
   virtual std::string getFragmentPreamble() const { return ""; }
   virtual std::string getSamplingExpression() const = 0;
 
-  void bindTexture(const GlesImports& imports, GLint texId) const {
-    imports.glBindTexture(mTarget, texId);
-  }
-
-  void getParams(const GlesImports& i, swizzle_t* swizzle, GLint* comp) const {
-    i.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_R, &swizzle->r);
-    i.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_G, &swizzle->g);
-    i.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_B, &swizzle->b);
-    i.glGetTexParameteriv(mTarget, GL_TEXTURE_SWIZZLE_A, &swizzle->a);
-    i.glGetTexParameteriv(mTarget, GL_TEXTURE_COMPARE_MODE, comp);
-  }
-
-  void setParams(const GlesImports& i, swizzle_t swizzle, GLint comp) const {
-    i.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_R, swizzle.r);
-    i.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_G, swizzle.g);
-    i.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_B, swizzle.b);
-    i.glTexParameteri(mTarget, GL_TEXTURE_SWIZZLE_A, swizzle.a);
-    i.glTexParameteri(mTarget, GL_TEXTURE_COMPARE_MODE, comp);
-  }
-
  private:
   uint32_t mTarget;
 };
@@ -225,9 +205,53 @@ class SamplerCube : public Sampler {
 };
 
 typedef struct {
+  swizzle_t swizzle;
+  GLint compMode;
+  GLint minFilter, magFilter;
+} texture_state_t;
+
+typedef struct {
   uint64_t id;
   uint32_t kind;
   GLsizei w, h, d;
+
+  void bind(const GlesImports& i) const { i.glBindTexture(kind, id); }
+
+  // Gets the current state of the texture.
+  texture_state_t getState(const GlesImports& i) const {
+    texture_state_t r;
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_R, &r.swizzle.r);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_G, &r.swizzle.g);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_B, &r.swizzle.b);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_A, &r.swizzle.a);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_COMPARE_MODE, &r.compMode);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_MIN_FILTER, &r.minFilter);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_MAG_FILTER, &r.magFilter);
+    return r;
+  }
+
+  // Modifes the texture's state so it can be savely used to read from. Make
+  // sure to call setState() after, with a previously saved state.
+  void prepareToRead(const GlesImports& i, swizzle_t swizzle) const {
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_R, swizzle.r);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_G, swizzle.g);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_B, swizzle.b);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_A, swizzle.a);
+    i.glTexParameteri(kind, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+    i.glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    i.glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+
+  // Modifies the texture's state to match the given state.
+  void setState(const GlesImports& i, const texture_state_t& state) const {
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_R, state.swizzle.r);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_G, state.swizzle.g);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_B, state.swizzle.b);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_A, state.swizzle.a);
+    i.glTexParameteri(kind, GL_TEXTURE_COMPARE_MODE, state.compMode);
+    i.glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, state.minFilter);
+    i.glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, state.magFilter);
+  }
 } texture_t;
 
 class Reader {
@@ -716,20 +740,18 @@ ImageData Reader::ReadTextureViaDrawQuad(const Sampler& sampler,
   auto tmpTex = CreateAndBindTexture2D(tex.w, tex.h, format);
   imports.glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                tmpTex.id(), 0);
-  sampler.bindTexture(imports, tex.id);
+  tex.bind(imports);
   CHECK_GL_ERROR("MEC: Failed to create framebuffer");
 
-  GLint oldCompMode = 0;
-  swizzle_t oldSwizzle;
-  sampler.getParams(imports, &oldSwizzle, &oldCompMode);
+  auto savedState = tex.getState(imports);
   CHECK_GL_ERROR("MEC: Failed querying texture state");
 
-  sampler.setParams(imports, swizzle, GL_NONE);
+  tex.prepareToRead(imports, swizzle);
   CHECK_GL_ERROR("MEC: Failed setting texture state");
 
   DrawTexturedQuad(sampler, tex.w, tex.h);
 
-  sampler.setParams(imports, oldSwizzle, oldCompMode);
+  tex.setState(imports, savedState);
   CHECK_GL_ERROR("MEC: Failed restoring texture state", err);
 
   texture_t res = {
