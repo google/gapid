@@ -46,6 +46,8 @@ class ConnectionHeader {
   static const uint32_t FLAG_DEFER_START = 0x00000010;
   // Disables buffering of the output stream
   static const uint32_t FLAG_NO_BUFFER = 0x00000020;
+  // Hides unknown extensions from applications
+  static const uint32_t FLAG_HIDE_UNKNOWN_EXTENSIONS = 0x00000040;
 
   // read reads the ConnectionHeader from the provided stream, returning true
   // on success or false on error.

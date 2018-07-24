@@ -64,6 +64,7 @@ type TraceOptions struct {
 	RecordErrorState      bool    // Should we record the driver error state after each command
 	DeferStart            bool    // Should we record extra error state
 	NoBuffer              bool    // Disable buffering.
+	HideUnknownExtensions bool    // Hide unknown extensions from the application.
 }
 
 // Tracer is an option interface that a bind.Device can implement.
@@ -124,6 +125,9 @@ func (o TraceOptions) GapiiOptions() gapii.Options {
 	}
 	if o.NoBuffer {
 		flags |= gapii.NoBuffer
+	}
+	if o.HideUnknownExtensions {
+		flags |= gapii.HideUnknownExtensions
 	}
 
 	return gapii.Options{

@@ -75,6 +75,7 @@ public class Settings {
   public int traceFrameCount = 0;
   public boolean traceMidExecution = false;
   public boolean traceWithoutBuffering = false;
+  public boolean traceHideUnknownExtensions = false;
   public boolean traceClearCache = false;
   public boolean traceDisablePcs = true;
   public String traceOutDir = "";
@@ -213,6 +214,7 @@ public class Settings {
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
     traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
     traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
+    traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
     traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
     traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
@@ -255,6 +257,7 @@ public class Settings {
     properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
     properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
     properties.setProperty("trace.withoutBuffering", Boolean.toString(traceWithoutBuffering));
+    properties.setProperty("trace.hideUnknownExtensions", Boolean.toString(traceHideUnknownExtensions));
     properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("trace.dir", traceOutDir);

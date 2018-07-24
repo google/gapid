@@ -158,6 +158,8 @@ Spy::Spy()
       (header.mFlags & ConnectionHeader::FLAG_DISABLE_PRECOMPILED_SHADERS) != 0;
   mRecordGLErrorState =
       (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
+  SpyBase::mHideUnknownExtensions =
+      (header.mFlags & ConnectionHeader::FLAG_HIDE_UNKNOWN_EXTENSIONS) != 0;
   // This will be over-written if we also set the header flags
   mSuspendCaptureFrames = header.mStartFrame;
   mCaptureFrames = header.mNumFrames;
@@ -173,6 +175,8 @@ Spy::Spy()
   GAPID_INFO("Observe framebuffer every %d draws", mObserveDrawFrequency);
   GAPID_INFO("Disable precompiled shaders: %s",
              mDisablePrecompiledShaders ? "true" : "false");
+  GAPID_INFO("Hide unknown extensions: %s",
+             mHideUnknownExtensions ? "true" : "false");
 
   mEncoder = gapii::PackEncoder::create(
       mConnection, header.mFlags & ConnectionHeader::FLAG_NO_BUFFER);

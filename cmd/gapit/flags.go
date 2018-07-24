@@ -188,7 +188,10 @@ type (
 			Draws  uint `help:"capture the framebuffer every n draws (0 to disable)"`
 		}
 		Disable struct {
-			PCS bool `help:"disable pre-compiled shaders"`
+			PCS     bool `help:"disable pre-compiled shaders"`
+			Unknown struct {
+				Extensions bool `help:"Hide unknown extensions from the application."`
+			}
 		}
 		Record struct {
 			Errors bool `help:"_record device error state"`
