@@ -733,10 +733,12 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
             imageBinding := binding.ImageBinding[as!u32(k)]
             _ = Samplers[imageBinding.Sampler]
             if (imageBinding.ImageView != as!VkImageView(0)) {
-              imageViewObj := ImageViews[imageBinding.ImageView]
-              imageObj := imageViewObj.Image
-              rng := imageViewObj.SubresourceRange
-              readImageSubresource(imageObj, rng, imageBinding.ImageLayout)
+              if imageBinding.ImageView in ImageViews {
+                imageViewObj := ImageViews[imageBinding.ImageView]
+                imageObj := imageViewObj.Image
+                rng := imageViewObj.SubresourceRange
+                readImageSubresource(imageObj, rng, imageBinding.ImageLayout)
+              }
             }
           }
         }

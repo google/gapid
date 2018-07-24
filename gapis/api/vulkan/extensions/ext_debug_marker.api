@@ -237,91 +237,143 @@ sub void setDebugMarkerObjectTag(VkDebugMarkerObjectTagInfoEXT tagInfo) {
   obj := tagInfo.object
   switch objTy {
     case VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT:
-      Instances[as!VkInstance(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Instances[as!VkInstance(obj)].DebugInfo, tagInfo)
+      if (as!VkInstance(obj) in Instances) {
+        Instances[as!VkInstance(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Instances[as!VkInstance(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT:
-      PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo, tagInfo)
+      if (as!VkPhysicalDevice(obj) in PhysicalDevices) {
+        PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT:
-      Devices[as!VkDevice(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Devices[as!VkDevice(obj)].DebugInfo, tagInfo)
+      if (as!VkDevice(obj) in Devices) {
+        Devices[as!VkDevice(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Devices[as!VkDevice(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
-      Queues[as!VkQueue(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Queues[as!VkQueue(obj)].DebugInfo, tagInfo)
+      if (as!VkQueue(obj) in Queues) {
+        Queues[as!VkQueue(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Queues[as!VkQueue(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT:
-      Semaphores[as!VkSemaphore(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Semaphores[as!VkSemaphore(obj)].DebugInfo, tagInfo)
+      if (as!VkSemaphore(obj) in Semaphores) {
+        Semaphores[as!VkSemaphore(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Semaphores[as!VkSemaphore(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
-      CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo, tagInfo)
+      if (as!VkCommandBuffer(obj) in CommandBuffers) {
+        CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT:
-      Fences[as!VkFence(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Fences[as!VkFence(obj)].DebugInfo, tagInfo)
+      if (as!VkFence(obj) in Fences) {
+        Fences[as!VkFence(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Fences[as!VkFence(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT:
-      DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo, tagInfo)
+      if (as!VkDeviceMemory(obj) in DeviceMemories) {
+        DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT:
-      Buffers[as!VkBuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Buffers[as!VkBuffer(obj)].DebugInfo, tagInfo)
+      if (as!VkBuffer(obj) in Buffers) {
+        Buffers[as!VkBuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Buffers[as!VkBuffer(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT:
-      Images[as!VkImage(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Images[as!VkImage(obj)].DebugInfo, tagInfo)
+      if (as!VkImage(obj) in Images) {
+        Images[as!VkImage(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Images[as!VkImage(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT:
-      Events[as!VkEvent(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Events[as!VkEvent(obj)].DebugInfo, tagInfo)
+      if (as!VkEvent(obj) in Events) {
+        Events[as!VkEvent(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Events[as!VkEvent(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT:
-      QueryPools[as!VkQueryPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        QueryPools[as!VkQueryPool(obj)].DebugInfo, tagInfo)
+      if (as!VkQueryPool(obj) in QueryPools) {
+        QueryPools[as!VkQueryPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          QueryPools[as!VkQueryPool(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT:
-      BufferViews[as!VkBufferView(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        BufferViews[as!VkBufferView(obj)].DebugInfo, tagInfo)
+      if (as!VkBufferView(obj) in BufferViews) {
+        BufferViews[as!VkBufferView(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          BufferViews[as!VkBufferView(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT:
-      ImageViews[as!VkImageView(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        ImageViews[as!VkImageView(obj)].DebugInfo, tagInfo)
+      if (as!VkImageView(obj) in ImageViews) {
+        ImageViews[as!VkImageView(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          ImageViews[as!VkImageView(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT:
-      ShaderModules[as!VkShaderModule(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        ShaderModules[as!VkShaderModule(obj)].DebugInfo, tagInfo)
+      if (as!VkShaderModule(obj) in ShaderModules) {
+        ShaderModules[as!VkShaderModule(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          ShaderModules[as!VkShaderModule(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT:
-      PipelineCaches[as!VkPipelineCache(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        PipelineCaches[as!VkPipelineCache(obj)].DebugInfo, tagInfo)
+      if (as!VkPipelineCache(obj) in PipelineCaches) {
+        PipelineCaches[as!VkPipelineCache(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          PipelineCaches[as!VkPipelineCache(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT:
-      PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo, tagInfo)
+      if (as!VkPipelineLayout(obj) in PipelineLayouts) {
+        PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT:
-      RenderPasses[as!VkRenderPass(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        RenderPasses[as!VkRenderPass(obj)].DebugInfo, tagInfo)
+      if (as!VkRenderPass(obj) in RenderPasses) {
+        RenderPasses[as!VkRenderPass(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          RenderPasses[as!VkRenderPass(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT:
       if (as!VkPipeline(obj) in GraphicsPipelines) {
         GraphicsPipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectTag(
           GraphicsPipelines[as!VkPipeline(obj)].DebugInfo, tagInfo)
       } else if (as!VkPipeline(obj) in ComputePipelines) {
-          ComputePipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectTag(
-            ComputePipelines[as!VkPipeline(obj)].DebugInfo, tagInfo)
-        }
+        ComputePipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          ComputePipelines[as!VkPipeline(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
-      DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo, tagInfo)
+      if (as!VkDescriptorSetLayout(obj) in DescriptorSetLayouts) {
+        DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT:
-      Samplers[as!VkSampler(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Samplers[as!VkSampler(obj)].DebugInfo, tagInfo)
+      if (as!VkSampler(obj) in Samplers) {
+        Samplers[as!VkSampler(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Samplers[as!VkSampler(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT:
-      DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo, tagInfo)
+      if (as!VkDescriptorPool(obj) in DescriptorPools) {
+        DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
-      DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo, tagInfo)
+      if (as!VkDescriptorSet(obj) in DescriptorSets) {
+        DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT:
-      Framebuffers[as!VkFramebuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Framebuffers[as!VkFramebuffer(obj)].DebugInfo, tagInfo)
+      if (as!VkFramebuffer(obj) in Framebuffers) {
+        Framebuffers[as!VkFramebuffer(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Framebuffers[as!VkFramebuffer(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT:
-      CommandPools[as!VkCommandPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        CommandPools[as!VkCommandPool(obj)].DebugInfo, tagInfo)
+      if (as!VkCommandPool(obj) in CommandPools) {
+        CommandPools[as!VkCommandPool(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          CommandPools[as!VkCommandPool(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT:
-      Surfaces[as!VkSurfaceKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Surfaces[as!VkSurfaceKHR(obj)].DebugInfo, tagInfo)
+      if (as!VkSurfaceKHR(obj) in Surfaces) {
+        Surfaces[as!VkSurfaceKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Surfaces[as!VkSurfaceKHR(obj)].DebugInfo, tagInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT:
-      Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
-        Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, tagInfo)
+      if (as!VkSwapchainKHR(obj) in Swapchains) {
+        Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectTag(
+          Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, tagInfo)
+      }
   }
 }
 
@@ -330,59 +382,95 @@ sub void setDebugMarkerObjectName(VkDebugMarkerObjectNameInfoEXT nameInfo) {
   obj := nameInfo.object
   switch objTy {
     case VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT:
-      Instances[as!VkInstance(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Instances[as!VkInstance(obj)].DebugInfo, nameInfo)
+      if (as!VkInstance(obj) in Instances) {
+        Instances[as!VkInstance(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Instances[as!VkInstance(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT:
-      PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo = updateDebugMarkerObjectName(
-        PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo, nameInfo)
+      if (as!VkPhysicalDevice(obj) in PhysicalDevices) {
+        PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo = updateDebugMarkerObjectName(
+          PhysicalDevices[as!VkPhysicalDevice(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT:
-      Devices[as!VkDevice(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Devices[as!VkDevice(obj)].DebugInfo, nameInfo)
+      if (as!VkDevice(obj) in Devices) {
+        Devices[as!VkDevice(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Devices[as!VkDevice(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT:
-      Queues[as!VkQueue(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Queues[as!VkQueue(obj)].DebugInfo, nameInfo)
+      if (as!VkQueue(obj) in Queues) {
+        Queues[as!VkQueue(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Queues[as!VkQueue(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT:
-      Semaphores[as!VkSemaphore(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Semaphores[as!VkSemaphore(obj)].DebugInfo, nameInfo)
+      if (as!VkSemaphore(obj) in Semaphores) {
+        Semaphores[as!VkSemaphore(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Semaphores[as!VkSemaphore(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT:
-      CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
-        CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo, nameInfo)
+      if (as!VkCommandBuffer(obj) in CommandBuffers) {
+        CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
+          CommandBuffers[as!VkCommandBuffer(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT:
-      Fences[as!VkFence(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Fences[as!VkFence(obj)].DebugInfo, nameInfo)
+      if (as!VkFence(obj) in Fences) {
+        Fences[as!VkFence(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Fences[as!VkFence(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT:
-      DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo = updateDebugMarkerObjectName(
-        DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo, nameInfo)
+      if (as!VkDeviceMemory(obj) in DeviceMemories) {
+        DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DeviceMemories[as!VkDeviceMemory(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT:
-      Buffers[as!VkBuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Buffers[as!VkBuffer(obj)].DebugInfo, nameInfo)
+      if (as!VkBuffer(obj) in Buffers) {
+        Buffers[as!VkBuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Buffers[as!VkBuffer(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT:
-      Images[as!VkImage(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Images[as!VkImage(obj)].DebugInfo, nameInfo)
+      if (as!VkImage(obj) in Images) {
+        Images[as!VkImage(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Images[as!VkImage(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT:
-      Events[as!VkEvent(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Events[as!VkEvent(obj)].DebugInfo, nameInfo)
+      if (as!VkEvent(obj) in Events) {
+        Events[as!VkEvent(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Events[as!VkEvent(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT:
-      QueryPools[as!VkQueryPool(obj)].DebugInfo = updateDebugMarkerObjectName(
-        QueryPools[as!VkQueryPool(obj)].DebugInfo, nameInfo)
+      if (as!VkQueryPool(obj) in QueryPools) {
+        QueryPools[as!VkQueryPool(obj)].DebugInfo = updateDebugMarkerObjectName(
+          QueryPools[as!VkQueryPool(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT:
-      BufferViews[as!VkBufferView(obj)].DebugInfo = updateDebugMarkerObjectName(
-        BufferViews[as!VkBufferView(obj)].DebugInfo, nameInfo)
+      if (as!VkBufferView(obj) in BufferViews) {
+        BufferViews[as!VkBufferView(obj)].DebugInfo = updateDebugMarkerObjectName(
+          BufferViews[as!VkBufferView(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT:
-      ImageViews[as!VkImageView(obj)].DebugInfo = updateDebugMarkerObjectName(
-        ImageViews[as!VkImageView(obj)].DebugInfo, nameInfo)
+      if (as!VkImageView(obj) in ImageViews) {
+        ImageViews[as!VkImageView(obj)].DebugInfo = updateDebugMarkerObjectName(
+          ImageViews[as!VkImageView(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT:
-      ShaderModules[as!VkShaderModule(obj)].DebugInfo = updateDebugMarkerObjectName(
-        ShaderModules[as!VkShaderModule(obj)].DebugInfo, nameInfo)
+      if (as!VkShaderModule(obj) in ShaderModules) {
+        ShaderModules[as!VkShaderModule(obj)].DebugInfo = updateDebugMarkerObjectName(
+          ShaderModules[as!VkShaderModule(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT:
-      PipelineCaches[as!VkPipelineCache(obj)].DebugInfo = updateDebugMarkerObjectName(
-        PipelineCaches[as!VkPipelineCache(obj)].DebugInfo, nameInfo)
+      if (as!VkPipelineCache(obj) in PipelineCaches) {
+        PipelineCaches[as!VkPipelineCache(obj)].DebugInfo = updateDebugMarkerObjectName(
+          PipelineCaches[as!VkPipelineCache(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT:
-      PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
-        PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo, nameInfo)
+      if (as!VkPipelineLayout(obj) in PipelineLayouts) {
+        PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
+          PipelineLayouts[as!VkPipelineLayout(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT:
-      RenderPasses[as!VkRenderPass(obj)].DebugInfo = updateDebugMarkerObjectName(
-        RenderPasses[as!VkRenderPass(obj)].DebugInfo, nameInfo)
+      if (as!VkRenderPass(obj) in RenderPasses) {
+        RenderPasses[as!VkRenderPass(obj)].DebugInfo = updateDebugMarkerObjectName(
+          RenderPasses[as!VkRenderPass(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT:
       if (as!VkPipeline(obj) in GraphicsPipelines) {
         GraphicsPipelines[as!VkPipeline(obj)].DebugInfo = updateDebugMarkerObjectName(
@@ -392,29 +480,45 @@ sub void setDebugMarkerObjectName(VkDebugMarkerObjectNameInfoEXT nameInfo) {
             ComputePipelines[as!VkPipeline(obj)].DebugInfo, nameInfo)
         }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT:
-      DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
-        DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo, nameInfo)
+      if (as!VkDescriptorSetLayout(obj) in DescriptorSetLayouts) {
+        DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DescriptorSetLayouts[as!VkDescriptorSetLayout(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT:
-      Samplers[as!VkSampler(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Samplers[as!VkSampler(obj)].DebugInfo, nameInfo)
+      if (as!VkSampler(obj) in Samplers) {
+        Samplers[as!VkSampler(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Samplers[as!VkSampler(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT:
-      DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo = updateDebugMarkerObjectName(
-        DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo, nameInfo)
+      if (as!VkDescriptorPool(obj) in DescriptorPools) {
+        DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DescriptorPools[as!VkDescriptorPool(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT:
-      DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo = updateDebugMarkerObjectName(
-        DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo, nameInfo)
+      if (as!VkDescriptorSet(obj) in DescriptorSets) {
+        DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo = updateDebugMarkerObjectName(
+          DescriptorSets[as!VkDescriptorSet(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT:
-      Framebuffers[as!VkFramebuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Framebuffers[as!VkFramebuffer(obj)].DebugInfo, nameInfo)
+      if (as!VkFramebuffer(obj) in Framebuffers) {
+        Framebuffers[as!VkFramebuffer(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Framebuffers[as!VkFramebuffer(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT:
-      CommandPools[as!VkCommandPool(obj)].DebugInfo = updateDebugMarkerObjectName(
-        CommandPools[as!VkCommandPool(obj)].DebugInfo, nameInfo)
+      if (as!VkCommandPool(obj) in CommandPools) {
+        CommandPools[as!VkCommandPool(obj)].DebugInfo = updateDebugMarkerObjectName(
+          CommandPools[as!VkCommandPool(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT:
-      Surfaces[as!VkSurfaceKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Surfaces[as!VkSurfaceKHR(obj)].DebugInfo, nameInfo)
+      if (as!VkSurfaceKHR(obj) in Surfaces) {
+        Surfaces[as!VkSurfaceKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Surfaces[as!VkSurfaceKHR(obj)].DebugInfo, nameInfo)
+      }
     case VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT:
-      Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
-        Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, nameInfo)
+      if (as!VkSwapchainKHR(obj) in Swapchains) {
+        Swapchains[as!VkSwapchainKHR(obj)].DebugInfo = updateDebugMarkerObjectName(
+          Swapchains[as!VkSwapchainKHR(obj)].DebugInfo, nameInfo)
+      }
   }
 }
 

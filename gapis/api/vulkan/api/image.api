@@ -281,6 +281,7 @@ cmd void vkDestroyImage(
     VkImage             image,
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(image in Images) { vkErrorInvalidImage(image) }
   if (image != as!VkImage(0)) {
     imageObject := Images[image]
     if (imageObject.BoundMemory != null) {
