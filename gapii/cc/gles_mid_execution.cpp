@@ -645,6 +645,14 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
     case GL_LUMINANCE_ALPHA32F_EXT:
       return ReadTextureViaDrawQuad(tex, layer, GL_RG32F, "luminance alpha",
                                     GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
+    /* SRGB */
+    case GL_SRGB8: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_SRGB8_ALPHA8, "srgb",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_SRGB8_ALPHA8;
+      return r;
+    }
     /* compressed 8bit RGB */
     case GL_COMPRESSED_RGB8_ETC2:
     case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
