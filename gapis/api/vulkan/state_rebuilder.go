@@ -2405,11 +2405,12 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 	descSetHandles := make([]VkDescriptorSet, 0, dp.DescriptorSets().Len())
 	descSetLayoutHandles := make([]VkDescriptorSetLayout, 0, dp.DescriptorSets().Len())
 	for vkDescSet, descSetObj := range dp.DescriptorSets().All() {
-		if sb.s.DescriptorSets().Contains(vkDescSet) {
+		if vkDescSet != VkDescriptorSet(0) && sb.s.DescriptorSets().Contains(vkDescSet) && sb.s.DescriptorSetLayouts().Contains(descSetObj.Layout().VulkanHandle()) {
 			descSetHandles = append(descSetHandles, vkDescSet)
 			descSetLayoutHandles = append(descSetLayoutHandles, descSetObj.Layout().VulkanHandle())
 		}
 	}
+
 	if len(descSetHandles) != 0 && len(descSetLayoutHandles) != 0 {
 		sb.write(sb.cb.VkAllocateDescriptorSets(
 			dp.Device(),
@@ -2502,11 +2503,9 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 					continue
 				}
 				if im.Sampler() != 0 && !ns.Samplers().Contains(im.Sampler()) {
-					log.W(sb.ctx, "Sampler %v is invalid, this descriptor[%v] will remain empty", im.Sampler(), ds.VulkanHandle())
 					continue
 				}
 				if im.ImageView() != 0 && !ns.ImageViews().Contains(im.ImageView()) {
-					log.W(sb.ctx, "ImageView %v is invalid, this descriptor[%v] will remain empty", im.Sampler(), ds.VulkanHandle())
 					continue
 				}
 
@@ -2535,7 +2534,6 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 					continue
 				}
 				if buff.Buffer() != 0 && !ns.Buffers().Contains(buff.Buffer()) {
-					log.W(sb.ctx, "Buffer %v is invalid, this descriptor[%v] will remain empty", buff.Buffer(), ds.VulkanHandle())
 					continue
 				}
 				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,
@@ -2561,7 +2559,6 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 					continue
 				}
 				if bv != 0 && !ns.BufferViews().Contains(bv) {
-					log.W(sb.ctx, "BufferView %v is invalid, this descriptor[%v] will remain empty", bv, ds.VulkanHandle())
 					continue
 				}
 				writes = append(writes, NewVkWriteDescriptorSet(sb.ta,

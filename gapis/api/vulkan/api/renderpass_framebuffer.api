@@ -79,8 +79,10 @@ cmd VkResult vkCreateFramebuffer(
   Framebuffers[handle] = framebufferObject
 
   for _, i, viewObj in framebufferObject.ImageAttachments {
-    viewObj.FramebufferUsers[handle][
-      as!u32(len(viewObj.FramebufferUsers[handle]))] = i
+    if viewObj != null {
+      viewObj.FramebufferUsers[handle][
+        as!u32(len(viewObj.FramebufferUsers[handle]))] = i
+    }
   }
 
   return ?

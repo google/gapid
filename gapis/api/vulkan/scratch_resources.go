@@ -472,6 +472,13 @@ func (t *scratchTask) newBuffer(subRngs []bufferSubRangeFillInfo, usages ...VkBu
 	))
 	allocSize := bufferAllocationSize(size)
 
+	sb.write(sb.cb.VkGetBufferMemoryRequirements(
+		dev,
+		buffer,
+		sb.MustAllocWriteData(NewVkMemoryRequirements(sb.ta,
+			VkDeviceSize(allocSize), VkDeviceSize(256), 0xFFFFFFFF)).Ptr(),
+	))
+
 	t.buffers[buffer] = scratchBufferInfo{data: subRngs, size: size, allocationSize: allocSize}
 	t.totalAllocationSize += allocSize
 	return buffer

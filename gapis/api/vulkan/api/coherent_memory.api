@@ -96,10 +96,12 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
     if v.ImageView != as!VkImageView(0) {
-      imageViewObj := ImageViews[v.ImageView]
-      imageObj := imageViewObj.Image
-      rng := imageViewObj.SubresourceRange
-      readImageSubresource(imageObj, rng, v.ImageLayout)
+      if (v.ImageView in ImageViews) {
+        imageViewObj := ImageViews[v.ImageView]
+        imageObj := imageViewObj.Image
+        rng := imageViewObj.SubresourceRange
+        readImageSubresource(imageObj, rng, v.ImageLayout)
+      }
     }
   }
 }
