@@ -423,6 +423,10 @@ cmd VkResult vkCreateImageView(
     Components:             image_view_create_info.components,
     SubresourceRange:       image_view_create_info.subresourceRange
   )
+  if ((0xFFFFFFFF - as!u32(imageViewObject.Image.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
+    vkErrorInvalidImageAspect(imageViewObject.Image.VulkanHandle,
+    	as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
+  }
   if pView == null { vkErrorNullPointer("VkImageView") }
   pView[0] = handle
   ImageViews[handle] = imageViewObject
