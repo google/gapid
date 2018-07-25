@@ -248,44 +248,46 @@ cmd VkResult vkAllocateDescriptorSets(
   for i in (0 .. count) {
     handle := ?
     sets[i] = handle
-    object := new!DescriptorSetObject(device, handle,
-      info.descriptorPool)
-    pool := DescriptorPools[info.descriptorPool]
-    pool.DescriptorSets[handle] = object
-    object.Layout = DescriptorSetLayouts[layouts[i]]
-    for j in (0 .. object.Layout.MaximumBinding + 1) {
-      if j in object.Layout.Bindings {
-        binding := object.Layout.Bindings[j]
-        descriptorBinding := DescriptorBinding(
-          BindingType: binding.Type)
-        imageInfos := descriptorBinding.ImageBinding
-        bufferInfos := descriptorBinding.BufferBinding
-        bufferViews := descriptorBinding.BufferViewBindings
-        for k in (0 .. binding.Count) {
-          switch binding.Type {
-            case VK_DESCRIPTOR_TYPE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-              imageInfos[k] = new!VkDescriptorImageInfo()
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-              bufferViews[k] = as!VkBufferView(0)
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-              bufferInfos[k] = new!VkDescriptorBufferInfo()
+    if (handle != as!VkDescriptorSet(0)) {
+      object := new!DescriptorSetObject(device, handle,
+        info.descriptorPool)
+      pool := DescriptorPools[info.descriptorPool]
+      pool.DescriptorSets[handle] = object
+      object.Layout = DescriptorSetLayouts[layouts[i]]
+      for j in (0 .. object.Layout.MaximumBinding + 1) {
+        if j in object.Layout.Bindings {
+          binding := object.Layout.Bindings[j]
+          descriptorBinding := DescriptorBinding(
+            BindingType: binding.Type)
+          imageInfos := descriptorBinding.ImageBinding
+          bufferInfos := descriptorBinding.BufferBinding
+          bufferViews := descriptorBinding.BufferViewBindings
+          for k in (0 .. binding.Count) {
+            switch binding.Type {
+              case VK_DESCRIPTOR_TYPE_SAMPLER,
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                  VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+                imageInfos[k] = new!VkDescriptorImageInfo()
+              case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                  VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+                bufferViews[k] = as!VkBufferView(0)
+              case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                bufferInfos[k] = new!VkDescriptorBufferInfo()
+            }
           }
+          descriptorBinding.ImageBinding = imageInfos
+          descriptorBinding.BufferBinding = bufferInfos
+          descriptorBinding.BufferViewBindings = bufferViews
+          object.Bindings[j] = descriptorBinding
         }
-        descriptorBinding.ImageBinding = imageInfos
-        descriptorBinding.BufferBinding = bufferInfos
-        descriptorBinding.BufferViewBindings = bufferViews
-        object.Bindings[j] = descriptorBinding
       }
+      DescriptorSets[handle] = object
     }
-    DescriptorSets[handle] = object
   }
 
   return ?
