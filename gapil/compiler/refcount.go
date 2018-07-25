@@ -275,21 +275,21 @@ func (c *C) buildRefRels() {
 			case *semantic.Class:
 				refFields := []*semantic.Field{}
 				for _, f := range apiTy.Fields {
-					if _, ok := r[f.Type]; ok {
+					if _, ok := c.refRels.tys[f.Type]; ok {
 						refFields = append(refFields, f)
 					}
 				}
 
 				c.Build(funcs.reference, func(s *S) {
-					ptr := s.Parameter(0)
+					val := s.Parameter(0)
 					for _, f := range refFields {
-						c.reference(s, ptr.Extract(f.Name()), f.Type)
+						c.reference(s, val.Extract(f.Name()), f.Type)
 					}
 				})
 				c.Build(funcs.release, func(s *S) {
-					ptr := s.Parameter(0)
+					val := s.Parameter(0)
 					for _, f := range refFields {
-						c.release(s, ptr.Extract(f.Name()), f.Type)
+						c.release(s, val.Extract(f.Name()), f.Type)
 					}
 				})
 			default:
