@@ -115,9 +115,9 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 	// there's no application waiting for the connection. Treat errors as
 	// another waiting-for-connection case.
 	return task.Retry(ctx, 0, 500*time.Millisecond, func(ctx context.Context) (retry bool, err error) {
-		conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", p.Port))
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", p.Port), time.Second)
 		if err != nil {
-			return true, log.Err(ctx, err, "Dial failed")
+			return false, log.Err(ctx, err, "Dial failed")
 		}
 		r := bufio.NewReader(conn)
 		conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
