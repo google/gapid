@@ -135,6 +135,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 						initialLayout: VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
 						finalLayout:   img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(),
 					},
+					inputFormat: img.Info().Fmt(),
 				})
 			}
 		}
@@ -985,6 +986,7 @@ func (h *ipStoreHandler) getOrCreateShaderModule(info ipStoreShaderInfo) (Shader
 type ipRenderJob struct {
 	inputAttachmentImages []ipRenderImage
 	renderTarget          ipRenderImage
+	inputFormat           VkFormat
 }
 
 type ipRenderImage struct {
@@ -1253,7 +1255,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		fragShaderInfo: ipRenderShaderInfo{
 			dev:      dev,
 			isVertex: false,
-			format:   job.renderTarget.image.Info().Fmt(),
+			format:   job.inputFormat,
 			aspect:   job.renderTarget.aspect,
 		},
 		pipelineLayout: pipelineLayout.VulkanHandle(),
