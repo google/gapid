@@ -221,6 +221,18 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits enum helper methods
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareEnumMethods"}}
+  {{AssertType $ "Enum"}}
+
+  const gapil::Slice<const {{Template "C++.Type" $.NumberType}}> values();
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits an enum declaration as a number of integer constants in a namespace.
 -------------------------------------------------------------------------------
 */}}
@@ -229,6 +241,7 @@
 
   namespace {{Template "C++.EnumName" $}} {
     {{Template "DeclareEnumEntries" $}}
+    {{Template "DeclareEnumMethods" $}}
   }
 {{end}}
 

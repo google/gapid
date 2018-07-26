@@ -34,6 +34,9 @@
   {{range $c := $.Classes}}
     {{Template "DefineClassMethods" $c}}
   {{end}}
+  {{range $c := $.Enums}}
+    {{Template "DefineEnumMethods" $c}}
+  {{end}}
   {{Template "DeclareState" $}}
 ¶
   »} // namespace gapii
@@ -68,6 +71,27 @@
       {{if $a}}: {{$a}}{{end}}
       ««§•{}
   {{end}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the definition of helper methods of a class.
+-------------------------------------------------------------------------------
+*/}}
+{{define "DefineEnumMethods"}}
+  {{AssertType $ "Enum"}}
+  {{$type := Macro "C++.Type" $.NumberType}}
+  namespace {{Template "C++.EnumName" $}} {
+    const static {{$type}} allValues[] = {
+      {{range $entry := $.Entries}}
+        {{Template "C++.EnumEntryName" $entry}},
+      {{end}}
+    };
+    const gapil::Slice<const {{$type}}> values() {
+      return gapil::Slice<const {{$type}}>(allValues, {{len $.Entries}});
+    }
+  }
 {{end}}
 
 
