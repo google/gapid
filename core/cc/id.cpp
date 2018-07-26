@@ -28,11 +28,10 @@ namespace {
 
 void hash(const void* ptr, uint64_t size, core::Id& out) {
   auto buf = reinterpret_cast<const char*>(ptr);
-  auto len = static_cast<size_t>(size);
-  auto hash128 = CityHash128(buf, len);
-  auto hash32 = CityHash32(buf, len);
-  memcpy(&out.data[0], &hash128, 16);
-  memcpy(&out.data[16], &hash32, 4);
+  auto hash = CityHash128(buf, static_cast<size_t>(size));
+  memcpy(&out.data[0], &hash, 16);
+  auto len = static_cast<uint32_t>(size);
+  memcpy(&out.data[16], &len, 4);
 }
 
 }  // anonymous namespace
