@@ -478,6 +478,13 @@ cmd void StringConcat() { i = len(" 3 " + "four") }`,
 			cmds:     []cmd{{N: "StringConcat"}},
 			expected: expected{data: D(uint32(7))},
 		}, { /////////////////////////////////////////////////////
+			name: "Expressions.BinaryOp.NullStringConcat",
+			src: `
+u32 i
+cmd void NullStringConcat() { i = len(as!string(null) + "four") }`,
+			cmds:     []cmd{{N: "NullStringConcat"}},
+			expected: expected{data: D(uint32(4))},
+		}, { /////////////////////////////////////////////////////
 			name: "Expressions.BitTest",
 			src: `
 bitfield B {
@@ -800,25 +807,22 @@ cmd void member() {
 			src: `
 class C { u8 i }
 u8*    p
-string s
 ref!C  r
 u32    i
 f32    f
 cmd void null_vals(u8* ptr) {
 	p = ptr
-	s = "meow"
 	r = new!C()
 	i = 10
 	f = 11
 
 	p = null
-	s = null
 	r = null
 	i = null
 	f = null
 }`,
 			cmds:     []cmd{{N: "null_vals", D: D(ptrA)}},
-			expected: expected{data: D(uintptr(0), uintptr(0), uintptr(0), uint32(0), float32(0))},
+			expected: expected{data: D(uint64(0), uintptr(0), uint32(0), float32(0))},
 		}, { /////////////////////////////////////////////////////
 			name: "Expressions.Observed/Unknown",
 			src: `

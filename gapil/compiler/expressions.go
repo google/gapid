@@ -439,7 +439,7 @@ func (c *C) message(s *S, e *semantic.MessageValue) *codegen.Value {
 }
 
 func (c *C) null(s *S, e semantic.Null) *codegen.Value {
-	return s.Zero(c.T.Target(e.Type))
+	return c.initialValue(s, e.Type)
 }
 
 func (c *C) observed(s *S, e *semantic.Observed) *codegen.Value {
