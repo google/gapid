@@ -318,7 +318,7 @@ func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 	}
 
 	attachDesc, depthIdx, err :=
-		s.getStencilAttachmentDescription(st, a, oldRpInfo)
+		s.getStencilAttachmentDescription(ctx, st, a, oldRpInfo)
 	if err != nil {
 		return renderInfo{}, err
 	}
@@ -349,7 +349,8 @@ func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 	return renderInfo{renderPass, depthIdx, framebuffer, image, imageView}, nil
 }
 
-func (s *stencilOverdraw) getStencilAttachmentDescription(st *State,
+func (s *stencilOverdraw) getStencilAttachmentDescription(ctx context.Context,
+	st *State,
 	a arena.Arena,
 	rpInfo RenderPassObjectʳ,
 ) (VkAttachmentDescription, uint32, error) {
@@ -361,25 +362,26 @@ func (s *stencilOverdraw) getStencilAttachmentDescription(st *State,
 
 	// Clone it, but with a stencil-friendly format
 	var stencilDesc VkAttachmentDescription
+	var prefFmt VkFormat
 	if idx != ^uint32(0) {
 		stencilDesc = depthDesc.Clone(a, api.CloneContext{})
 
-		format, err := depthToStencilFormat(depthDesc.Fmt())
+		prefFmt, err = s.depthToStencilFormat(depthDesc.Fmt())
 		if err != nil {
 			return NilVkAttachmentDescription, idx, err
 		}
-		stencilDesc.SetFmt(format)
 	} else {
 		stencilDesc = MakeVkAttachmentDescription(a)
-		// Use this format because it is the most commonly supported.
-		// TODO: Ideally we would be able to do
-		// VkGetPhysicalDeviceImageFormatProperties to determine what
-		// we can use, but for now assume this is available.
-		stencilDesc.SetFmt(VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT)
+		prefFmt = 0xFFFFFFFF // defer to preference order
 		stencilDesc.SetSamples(VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT)
 		stencilDesc.SetLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_DONT_CARE)
 		stencilDesc.SetStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_DONT_CARE)
 	}
+	format, err := s.getBestStencilFormat(ctx, st, rpInfo.Device(), prefFmt)
+	if err != nil {
+		return NilVkAttachmentDescription, idx, err
+	}
+	stencilDesc.SetFmt(format)
 	stencilDesc.SetStencilLoadOp(VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_CLEAR)
 	stencilDesc.SetStencilStoreOp(VkAttachmentStoreOp_VK_ATTACHMENT_STORE_OP_STORE)
 	stencilDesc.SetInitialLayout(VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
@@ -432,7 +434,63 @@ func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
 	return attachmentDesc, attachment0.Attachment(), nil
 }
 
-func depthToStencilFormat(depthFormat VkFormat) (VkFormat, error) {
+func (s *stencilOverdraw) getBestStencilFormat(ctx context.Context,
+	st *State,
+	device VkDevice,
+	preferred VkFormat,
+) (VkFormat, error) {
+	deviceInfo := st.Devices().Get(device)
+	physicalDeviceInfo := st.PhysicalDevices().Get(deviceInfo.PhysicalDevice())
+	formatProps := physicalDeviceInfo.FormatProperties()
+	// It should have an entry for every format
+	if !formatProps.Contains(VkFormat_VK_FORMAT_UNDEFINED) {
+		if preferred == 0xFFFFFFFF {
+			// Most likely to be supported
+			preferred = VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT
+		}
+		log.W(ctx, "Format support information not available, assuming %v is ok.", preferred)
+		return preferred, nil
+	}
+
+	supported := func(fmt VkFormat) bool {
+		return (formatProps.Get(fmt).OptimalTilingFeatures() &
+			VkFormatFeatureFlags(VkFormatFeatureFlagBits_VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
+	}
+
+	if supported(preferred) {
+		return preferred, nil
+	}
+
+	var order []VkFormat
+	if isDepthFormat(preferred) {
+		// Use as many depth bits as we can
+		order = []VkFormat{
+			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT,
+			VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
+			VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
+		}
+	} else {
+		// Use as little space as possible
+		order = []VkFormat{
+			VkFormat_VK_FORMAT_S8_UINT,
+			VkFormat_VK_FORMAT_D16_UNORM_S8_UINT,
+			VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
+			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT,
+		}
+	}
+
+	for _, fmt := range order {
+		if supported(fmt) {
+			if isDepthFormat(preferred) {
+				log.W(ctx, "Format %v not supported, using %v instead.  Depth buffer may not act exactly as original.", preferred, fmt)
+			}
+			return fmt, nil
+		}
+	}
+	return 0, fmt.Errorf("No depth/stencil formats supported")
+}
+
+func (s *stencilOverdraw) depthToStencilFormat(depthFormat VkFormat) (VkFormat, error) {
 	switch depthFormat {
 	case VkFormat_VK_FORMAT_D16_UNORM:
 		return VkFormat_VK_FORMAT_D16_UNORM_S8_UINT, nil
@@ -451,22 +509,53 @@ func depthToStencilFormat(depthFormat VkFormat) (VkFormat, error) {
 	}
 }
 
-func isDepthFormat(depthFormat VkFormat) bool {
+func (s *stencilOverdraw) depthStencilToDepthFormat(depthStencilFormat VkFormat) (VkFormat, error) {
+	switch depthStencilFormat {
+	case VkFormat_VK_FORMAT_D16_UNORM,
+		VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+		return VkFormat_VK_FORMAT_D16_UNORM, nil
+	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32,
+		VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
+		return VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32, nil
+	case VkFormat_VK_FORMAT_D32_SFLOAT,
+		VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		return VkFormat_VK_FORMAT_D32_SFLOAT, nil
+	default:
+		return 0, fmt.Errorf("Unrecognized depth/stencil format %v",
+			depthStencilFormat)
+	}
+}
+
+func (s *stencilOverdraw) depthToStageFormat(depthFormat VkFormat) (VkFormat, error) {
 	switch depthFormat {
 	case VkFormat_VK_FORMAT_D16_UNORM:
-		return true
-	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
-		return true
-	case VkFormat_VK_FORMAT_D32_SFLOAT:
-		return true
-	case VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
-		return true
-	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
-		return true
-	case VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
-		return true
+		return VkFormat_VK_FORMAT_R16_UINT, nil
+	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32,
+		VkFormat_VK_FORMAT_D32_SFLOAT:
+		return VkFormat_VK_FORMAT_R32_UINT, nil
 	default:
-		return false
+		return 0, fmt.Errorf("Unrecognized depth format %v",
+			depthFormat)
+	}
+}
+
+func isDepthFormat(depthFormat VkFormat) bool {
+	return depthBits(depthFormat) != 0
+}
+
+func depthBits(depthFormat VkFormat) int {
+	switch depthFormat {
+	case VkFormat_VK_FORMAT_D16_UNORM,
+		VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+		return 16
+	case VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32,
+		VkFormat_VK_FORMAT_D24_UNORM_S8_UINT:
+		return 24
+	case VkFormat_VK_FORMAT_D32_SFLOAT,
+		VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		return 32
+	default:
+		return 0
 	}
 }
 
@@ -1334,31 +1423,35 @@ func (*stencilOverdraw) createDepthCopyBuffer(ctx context.Context,
 }
 
 type imageDesc struct {
-	imageView ImageViewObject
-	layout    VkImageLayout
+	image       ImageObjectʳ
+	subresource VkImageSubresourceRange
+	layout      VkImageLayout
+	// This might not be the same as subresource.aspectMask if we only want
+	// to copy one aspect
+	aspect VkImageAspectFlagBits
 }
 
 // Facilitate copying the depth aspect of an image from one image to another,
 // either for going from the original depth buffer to our depth buffer,
 // or copying back the new depth buffer to the original depth buffer.
-func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
+func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 	cb CommandBuilder,
 	gs *api.GlobalState,
 	st *State,
 	a arena.Arena,
 	device VkDevice,
 	cmdBuffer VkCommandBuffer,
-	srcImageDesc imageDesc,
-	dstImageDesc imageDesc,
+	srcImgDesc imageDesc,
+	dstImgDesc imageDesc,
 	extent VkExtent3D,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
 ) {
-	srcImageView := srcImageDesc.imageView
-	dstImageView := dstImageDesc.imageView
+	srcImg := srcImgDesc.image
+	dstImg := dstImgDesc.image
 	copyBuffer := s.createDepthCopyBuffer(ctx, cb, gs, st, a, device,
-		srcImageView.Image().Info().Fmt(),
+		srcImg.Info().Fmt(),
 		extent.Width(), extent.Height(),
 		alloc, addCleanup, out)
 
@@ -1376,14 +1469,14 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 		0,                                                           // pNext
 		allMemoryAccess,                                             // srcAccessMask
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // dstAccessMask
-		srcImageDesc.layout,                                         // oldLayout
+		srcImgDesc.layout,                                           // oldLayout
 		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,          // newLayout
-		^uint32(0),                          // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
-		^uint32(0),                          // dstQueueFamilyIndex
-		srcImageView.Image().VulkanHandle(), // image
-		srcImageView.SubresourceRange(),     // subresourceRange
+		^uint32(0),             // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
+		^uint32(0),             // dstQueueFamilyIndex
+		srcImg.VulkanHandle(),  // image
+		srcImgDesc.subresource, // subresourceRange
 	)
-	srcFinalLayout := srcImageDesc.layout
+	srcFinalLayout := srcImgDesc.layout
 	if srcFinalLayout == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED ||
 		srcFinalLayout == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED {
 		srcFinalLayout = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
@@ -1397,8 +1490,8 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 		srcFinalLayout,                                              // newLayout
 		^uint32(0),                                                  // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
 		^uint32(0),                                                  // dstQueueFamilyIndex
-		srcImageView.Image().VulkanHandle(),                         // image
-		srcImageView.SubresourceRange(),                             // subresourceRange
+		srcImg.VulkanHandle(),                                       // image
+		srcImgDesc.subresource,                                      // subresourceRange
 	)
 
 	// Transition the new image in and out of its required layouts
@@ -1407,15 +1500,15 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 		0,               // pNext
 		allMemoryAccess, // srcAccessMask
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // dstAccessMask
-		dstImageDesc.layout,                                          // oldLayout
+		dstImgDesc.layout,                                            // oldLayout
 		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,           // newLayout
-		^uint32(0),                          // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
-		^uint32(0),                          // dstQueueFamilyIndex
-		dstImageView.Image().VulkanHandle(), // image
-		dstImageView.SubresourceRange(),     // subresourceRange
+		^uint32(0),             // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
+		^uint32(0),             // dstQueueFamilyIndex
+		dstImg.VulkanHandle(),  // image
+		dstImgDesc.subresource, // subresourceRange
 	)
 
-	dstFinalLayout := dstImageDesc.layout
+	dstFinalLayout := dstImgDesc.layout
 	if dstFinalLayout == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED ||
 		dstFinalLayout == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED {
 		dstFinalLayout = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
@@ -1429,8 +1522,8 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 		dstFinalLayout,                                     // newLayout
 		^uint32(0),                                         // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
 		^uint32(0),                                         // dstQueueFamilyIndex
-		dstImageView.Image().VulkanHandle(),                // image
-		dstImageView.SubresourceRange(),                    // subresourceRange
+		dstImg.VulkanHandle(),                              // image
+		dstImgDesc.subresource,                             // subresourceRange
 	)
 
 	bufBarrier := NewVkBufferMemoryBarrier(a,
@@ -1445,14 +1538,28 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 		^VkDeviceSize(0), // size: VK_WHOLE_SIZE
 	)
 
+	ibCopy := NewVkBufferImageCopy(a,
+		0, // bufferOffset
+		0, // bufferRowLength
+		0, // bufferImageHeight
+		NewVkImageSubresourceLayers(a,
+			VkImageAspectFlags(srcImgDesc.aspect),   // aspectMask
+			srcImgDesc.subresource.BaseMipLevel(),   // mipLevel
+			srcImgDesc.subresource.BaseArrayLayer(), // baseArrayLayer
+			1, // layerCount
+		), // srcSubresource
+		NewVkOffset3D(a, 0, 0, 0),                            // offset
+		NewVkExtent3D(a, extent.Width(), extent.Height(), 1), // extent
+	)
+
 	biCopy := NewVkBufferImageCopy(a,
 		0, // bufferOffset
 		0, // bufferRowLength
 		0, // bufferImageHeight
 		NewVkImageSubresourceLayers(a,
-			VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT), // aspectMask
-			srcImageView.SubresourceRange().BaseMipLevel(),                      // mipLevel
-			srcImageView.SubresourceRange().BaseArrayLayer(),                    // baseArrayLayer
+			VkImageAspectFlags(dstImgDesc.aspect),   // aspectMask
+			dstImgDesc.subresource.BaseMipLevel(),   // mipLevel
+			dstImgDesc.subresource.BaseArrayLayer(), // baseArrayLayer
 			1, // layerCount
 		), // srcSubresource
 		NewVkOffset3D(a, 0, 0, 0),                            // offset
@@ -1460,8 +1567,9 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 	)
 
 	imgBarriers0Data := alloc(imgBarriers0)
-	biCopyData := alloc(biCopy)
+	ibCopyData := alloc(ibCopy)
 	bufBarrierData := alloc(bufBarrier)
+	biCopyData := alloc(biCopy)
 	imgBarriers1Data := alloc(imgBarriers1)
 
 	writeEach(ctx, out,
@@ -1477,12 +1585,12 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 			imgBarriers0Data.Ptr(), // pImageMemoryBarriers
 		).AddRead(imgBarriers0Data.Data()),
 		cb.VkCmdCopyImageToBuffer(cmdBuffer,
-			srcImageView.Image().VulkanHandle(),                // srcImage
+			srcImg.VulkanHandle(),                              // srcImage
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // srcImageLayout
 			copyBuffer,       // dstBuffer
 			1,                // regionCount
-			biCopyData.Ptr(), // pRegions
-		).AddRead(biCopyData.Data()),
+			ibCopyData.Ptr(), // pRegions
+		).AddRead(ibCopyData.Data()),
 		cb.VkCmdPipelineBarrier(cmdBuffer,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_TRANSFER_BIT), // srcStageMask
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_TRANSFER_BIT), // dstStageMask
@@ -1496,8 +1604,8 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 		).AddRead(bufBarrierData.Data()),
 		cb.VkCmdCopyBufferToImage(cmdBuffer,
 			copyBuffer,                                         // srcBuffer
-			dstImageView.Image().VulkanHandle(),                // dstImage
-			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // dstImage
+			dstImg.VulkanHandle(),                              // dstImage
+			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // dstImageLayout
 			1,                // regionCount
 			biCopyData.Ptr(), // pRegions
 		).AddRead(biCopyData.Data()),
@@ -1515,6 +1623,129 @@ func (s *stencilOverdraw) copyImageDepthAspect(ctx context.Context,
 	)
 }
 
+func (s *stencilOverdraw) renderAspect(ctx context.Context,
+	cb CommandBuilder,
+	gs *api.GlobalState,
+	st *State,
+	a arena.Arena,
+	device VkDevice,
+	queue VkQueue,
+	cmdBuffer VkCommandBuffer,
+	srcImg imageDesc,
+	dstImg imageDesc,
+	inputFormat VkFormat,
+	addCleanup func(func()),
+	out transform.Writer,
+) error {
+	sb := st.newStateBuilder(ctx, newTransformerOutput(out))
+	ip := newImagePrimer(sb)
+	queueScratch := sb.getQueueFamilyScratchResources(queue)
+	queueScratch.commandBuffers[queue] = cmdBuffer
+	scratchTask := sb.newScratchTaskOnQueue(queue)
+
+	renderJob := &ipRenderJob{
+		inputAttachmentImages: []ipRenderImage{
+			ipRenderImage{
+				image:         srcImg.image,
+				aspect:        srcImg.aspect,
+				layer:         srcImg.subresource.BaseArrayLayer(),
+				level:         srcImg.subresource.BaseMipLevel(),
+				initialLayout: srcImg.layout,
+				finalLayout:   srcImg.layout,
+			},
+		},
+		renderTarget: ipRenderImage{
+			image:         dstImg.image,
+			aspect:        dstImg.aspect,
+			layer:         dstImg.subresource.BaseArrayLayer(),
+			level:         dstImg.subresource.BaseMipLevel(),
+			initialLayout: dstImg.layout,
+			finalLayout:   dstImg.layout,
+		},
+		inputFormat: inputFormat,
+	}
+
+	err := ip.rh.render(renderJob, scratchTask)
+	if err != nil {
+		return err
+	}
+	// Make sure it doesn't use temporary memory as that would cause a flush of the scratch resources
+	queueScratch.memorySize = scratchTask.totalAllocationSize
+
+	scratchTask.commit()
+	addCleanup(func() {
+		ip.free()
+		writeEach(ctx, out, cb.VkFreeMemory(device, queueScratch.memory, memory.Nullptr))
+	})
+
+	cleanup := queueScratch.postExecuted[queue]
+	// Make sure the cleanups are executed in the right order
+	for i := len(cleanup) - 1; i >= 0; i-- {
+		addCleanup(cleanup[i])
+	}
+
+	return nil
+}
+
+func (s *stencilOverdraw) transferDepthValues(ctx context.Context,
+	cb CommandBuilder,
+	gs *api.GlobalState,
+	st *State,
+	a arena.Arena,
+	device VkDevice,
+	queue VkQueue,
+	cmdBuffer VkCommandBuffer,
+	width uint32,
+	height uint32,
+	srcImgDesc imageDesc,
+	dstImgDesc imageDesc,
+	alloc func(v ...interface{}) api.AllocResult,
+	addCleanup func(func()),
+	out transform.Writer,
+) error {
+	srcFmt := srcImgDesc.image.Info().Fmt()
+	dstFmt := dstImgDesc.image.Info().Fmt()
+	if depthBits(srcFmt) == depthBits(dstFmt) {
+		s.copyImageAspect(ctx, cb, gs, st, a, device, cmdBuffer,
+			srcImgDesc,
+			dstImgDesc,
+			NewVkExtent3D(a, width, height, 1),
+			alloc, addCleanup, out)
+		return nil
+	} else {
+		// This would have errored previously if it was going to error now
+		depthFmt, _ := s.depthStencilToDepthFormat(srcFmt)
+		stageFmt, _ := s.depthToStageFormat(depthFmt)
+		stageImgInfo, err := s.createImage(ctx, cb, st, a, device,
+			stageFmt, width, height, alloc, addCleanup,
+			out)
+		if err != nil {
+			return err
+		}
+		stageImg := st.Images().Get(stageImgInfo.handle)
+		stageImgDesc := imageDesc{
+			stageImg,
+			NewVkImageSubresourceRange(a,
+				VkImageAspectFlags(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT),
+				0,
+				1,
+				0,
+				1,
+			),
+			VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, // this will be transitioned to general
+			VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+		}
+		s.copyImageAspect(ctx, cb, gs, st, a, device, cmdBuffer,
+			srcImgDesc,
+			stageImgDesc,
+			NewVkExtent3D(a, width, height, 1),
+			alloc, addCleanup, out)
+		stageImgDesc.layout = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
+		return s.renderAspect(ctx, cb, gs, st, a, device, queue,
+			cmdBuffer, stageImgDesc, dstImgDesc, srcFmt, addCleanup, out)
+	}
+}
+
 // If the depth attachment is in "load" mode we need to copy the depth values
 // over to the depth aspect of our new depth/stencil buffer.
 func (s *stencilOverdraw) loadExistingDepthValues(ctx context.Context,
@@ -1523,33 +1754,45 @@ func (s *stencilOverdraw) loadExistingDepthValues(ctx context.Context,
 	st *State,
 	a arena.Arena,
 	device VkDevice,
+	queue VkQueue,
 	cmdBuffer VkCommandBuffer,
 	renderInfo renderInfo,
 	alloc func(v ...interface{}) api.AllocResult,
 	addCleanup func(func()),
 	out transform.Writer,
-) {
+) error {
 	if renderInfo.depthIdx == ^uint32(0) {
-		return
+		return nil
 	}
 	rpInfo := st.RenderPasses().Get(renderInfo.renderPass)
 	daInfo := rpInfo.AttachmentDescriptions().Get(renderInfo.depthIdx)
 
 	if daInfo.LoadOp() != VkAttachmentLoadOp_VK_ATTACHMENT_LOAD_OP_LOAD {
-		return
+		return nil
 	}
 
 	fbInfo := st.Framebuffers().Get(renderInfo.framebuffer)
 
 	oldImageView := fbInfo.ImageAttachments().Get(renderInfo.depthIdx)
-	oldImageLayout := daInfo.InitialLayout()
 	newImageView := fbInfo.ImageAttachments().Get(uint32(fbInfo.ImageAttachments().Len() - 1))
 
-	s.copyImageDepthAspect(ctx, cb, gs, st, a, device, cmdBuffer,
-		imageDesc{oldImageView.Get(), oldImageLayout},
-		imageDesc{newImageView.Get(),
-			VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
-		NewVkExtent3D(a, fbInfo.Width(), fbInfo.Height(), 1),
+	oldImageDesc := imageDesc{
+		oldImageView.Image(),
+		oldImageView.SubresourceRange(),
+		daInfo.InitialLayout(),
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+	}
+	newImageDesc := imageDesc{
+		newImageView.Image(),
+		newImageView.SubresourceRange(),
+		VkImageLayout_VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
+	}
+
+	return s.transferDepthValues(ctx, cb, gs, st, a,
+		device, queue, cmdBuffer,
+		fbInfo.Width(), fbInfo.Height(),
+		oldImageDesc, newImageDesc,
 		alloc, addCleanup, out)
 }
 
@@ -1581,58 +1824,25 @@ func (s *stencilOverdraw) storeNewDepthValues(ctx context.Context,
 	fbInfo := st.Framebuffers().Get(renderInfo.framebuffer)
 
 	oldImageView := fbInfo.ImageAttachments().Get(uint32(fbInfo.ImageAttachments().Len() - 1))
-	oldImageSubresource := oldImageView.SubresourceRange()
-	oldImageLayout := rpInfo.AttachmentDescriptions().Get(uint32(fbInfo.ImageAttachments().Len() - 1)).FinalLayout()
 	newImageView := fbInfo.ImageAttachments().Get(renderInfo.depthIdx)
-	newImageSubresource := newImageView.SubresourceRange()
-	newImageLayout := daInfo.FinalLayout()
 
-	sb := st.newStateBuilder(ctx, newTransformerOutput(out))
-	ip := newImagePrimer(sb)
-	queueScratch := sb.getQueueFamilyScratchResources(queue)
-	queueScratch.commandBuffers[queue] = cmdBuffer
-	scratchTask := sb.newScratchTaskOnQueue(queue)
-
-	renderJob := &ipRenderJob{
-		inputAttachmentImages: []ipRenderImage{
-			ipRenderImage{
-				image:         oldImageView.Image(),
-				aspect:        VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
-				layer:         oldImageSubresource.BaseArrayLayer(),
-				level:         oldImageSubresource.BaseMipLevel(),
-				initialLayout: oldImageLayout,
-				finalLayout:   oldImageLayout,
-			},
-		},
-		renderTarget: ipRenderImage{
-			image:         newImageView.Image(),
-			aspect:        VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
-			layer:         newImageSubresource.BaseArrayLayer(),
-			level:         newImageSubresource.BaseMipLevel(),
-			initialLayout: newImageLayout,
-			finalLayout:   newImageLayout,
-		},
+	oldImageDesc := imageDesc{
+		oldImageView.Image(),
+		oldImageView.SubresourceRange(),
+		rpInfo.AttachmentDescriptions().Get(uint32(fbInfo.ImageAttachments().Len() - 1)).FinalLayout(),
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 	}
-
-	err := ip.rh.render(renderJob, scratchTask)
-	if err != nil {
-		return err
+	newImageDesc := imageDesc{
+		newImageView.Image(),
+		newImageView.SubresourceRange(),
+		daInfo.FinalLayout(),
+		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 	}
-	// Make sure it doesn't use temporary memory as that would cause a flush of the scratch resources
-	queueScratch.memorySize = scratchTask.totalAllocationSize
-
-	scratchTask.commit()
-	addCleanup(func() {
-		writeEach(ctx, out, cb.VkFreeMemory(device, queueScratch.memory, memory.Nullptr))
-	})
-
-	cleanup := queueScratch.postExecuted[queue]
-	// Make sure the cleanups are executed in the right order
-	for i := len(cleanup) - 1; i >= 0; i-- {
-		addCleanup(cleanup[i])
-	}
-
-	return nil
+	return s.transferDepthValues(ctx, cb, gs, st, a,
+		device, queue, cmdBuffer,
+		fbInfo.Width(), fbInfo.Height(),
+		oldImageDesc, newImageDesc,
+		alloc, addCleanup, out)
 }
 
 func (s *stencilOverdraw) transitionStencilImage(ctx context.Context,
@@ -1721,9 +1931,11 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 					newCmdBuffer, renderInfo, alloc, out)
 				// Add commands to handle copying the old depth
 				// values if necessary
-				s.loadExistingDepthValues(ctx, cb, gs, st, a,
-					device, newCmdBuffer, renderInfo, alloc,
-					addCleanup, out)
+				if err := s.loadExistingDepthValues(ctx, cb,
+					gs, st, a, device, queue, newCmdBuffer,
+					renderInfo, alloc, addCleanup, out); err != nil {
+					return 0, err
+				}
 
 				newArgs := ar.Clone(a, api.CloneContext{})
 				newArgs.SetRenderPass(renderInfo.renderPass)
