@@ -1377,6 +1377,18 @@ cmd void StringInState(char* str) {
 			}},
 			expected: expected{numAllocs: 1},
 		}, { /////////////////////////////////////////////////////
+			name: "RefCount.StringConcat",
+			src: `
+string s
+cmd void StringConcat() {
+	s += "a string"
+	s += " with some"
+	s += " text appended"
+}
+`,
+			cmds:     []cmd{{N: "StringConcat"}},
+			expected: expected{numAllocs: 1},
+		}, { /////////////////////////////////////////////////////
 			name: "RefCount.StringFromSubroutine",
 			src: `
 sub string ReturnAString() { return "A string" }
