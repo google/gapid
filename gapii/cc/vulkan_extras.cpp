@@ -526,6 +526,23 @@ VulkanSpy::fetchPhysicalDeviceQueueFamilyProperties(
   return all_props;
 }
 
+gapil::Ref<PhysicalDevicesFormatProperties>
+VulkanSpy::fetchPhysicalDeviceFormatProperties(
+    CallObserver* observer, VkInstance instance,
+    gapil::Slice<VkPhysicalDevice> devs) {
+  auto props = gapil::Ref<PhysicalDevicesFormatProperties>::create(arena());
+  for (VkPhysicalDevice dev : devs) {
+    for (uint32_t format : VkFormat::values()) {
+      VkFormatProperties prop(arena());
+      mImports.mVkInstanceFunctions[instance]
+          .vkGetPhysicalDeviceFormatProperties(dev, format, &prop);
+      props->mPhyDevToFormatProperties[dev][format] = prop;
+    }
+  }
+  observer->encode(*props.get());
+  return props;
+}
+
 gapil::Ref<ImageMemoryRequirements> VulkanSpy::fetchImageMemoryRequirements(
     CallObserver* observer, VkDevice device, VkImage image, bool hasSparseBit) {
   auto reqs = gapil::Ref<ImageMemoryRequirements>::create(arena());
