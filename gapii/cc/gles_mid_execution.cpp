@@ -645,6 +645,28 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
     case GL_LUMINANCE_ALPHA32F_EXT:
       return ReadTextureViaDrawQuad(tex, layer, GL_RG32F, "luminance alpha",
                                     GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
+    /* RGB */
+    case GL_RGB32F: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA32F, "RGB32F",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA32F;
+      return r;
+    }
+    case GL_RGB16F: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGB16F",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA16F;
+      return r;
+    }
+    case GL_RGB9_E5: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGB9_E5",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA16F;
+      return r;
+    }
     /* SRGB */
     case GL_SRGB8: {
       ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_SRGB8_ALPHA8, "srgb",
