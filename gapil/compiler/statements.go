@@ -183,7 +183,7 @@ func (c *C) arrayAssign(s *S, n *semantic.ArrayAssign) {
 
 func (c *C) assert(s *S, e *semantic.Assert) {
 	cond := c.expression(s, e.Condition).SetName("assert_cond")
-	s.If(cond, func(s *S) {
+	s.If(s.Not(cond), func(s *S) {
 		c.Log(s, log.Fatal, "assert: "+fmt.Sprint(e.AST.Arguments[0]))
 	})
 }
