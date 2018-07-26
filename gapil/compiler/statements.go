@@ -178,8 +178,7 @@ func (c *C) arrayAssign(s *S, n *semantic.ArrayAssign) {
 	if n.Operator != ast.OpAssign {
 		fail("Unsupported ArrayAssign operator '%s'", n.Operator)
 	}
-	val := c.expression(s, n.Value)
-	c.assignTo(s, n.Operator, n.To, val)
+	c.doAssign(s, n.Operator, n.To, n.Value)
 }
 
 func (c *C) assert(s *S, e *semantic.Assert) {
@@ -190,27 +189,32 @@ func (c *C) assert(s *S, e *semantic.Assert) {
 }
 
 func (c *C) assign(s *S, n *semantic.Assign) {
-	c.assignTo(s, n.Operator, n.LHS, c.expression(s, n.RHS))
+	c.doAssign(s, n.Operator, n.LHS, n.RHS)
 }
 
-func (c *C) assignTo(s *S, op string, target semantic.Expression, val *codegen.Value) {
-	if _, isIgnore := target.(*semantic.Ignore); isIgnore {
+func (c *C) doAssign(s *S, op string, lhs, rhs semantic.Expression) {
+	val := c.expression(s, rhs)
+
+	if _, isIgnore := lhs.(*semantic.Ignore); isIgnore {
 		return
 	}
 
-	dst := c.expressionAddr(s, target)
+	dst := c.expressionAddr(s, lhs)
 	switch op {
 	case ast.OpAssign:
-		if ty := target.ExpressionType(); c.isRefCounted(ty) {
-			c.reference(s, val, ty)
-			c.release(s, dst.Load(), ty)
-		}
+		c.reference(s, val, rhs.ExpressionType())
+		c.release(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	case ast.OpAssignPlus:
-		// TODO: Ref counting for strings?!
-		dst.Store(c.doBinaryOp(s, ast.OpPlus, dst.Load(), val))
+		val := c.doBinaryOp(s, ast.OpPlus, dst.Load(), val)
+		c.reference(s, val, rhs.ExpressionType())
+		c.release(s, dst.Load(), lhs.ExpressionType())
+		dst.Store(val)
 	case ast.OpAssignMinus:
-		dst.Store(c.doBinaryOp(s, ast.OpMinus, dst.Load(), val))
+		val := c.doBinaryOp(s, ast.OpMinus, dst.Load(), val)
+		c.reference(s, val, rhs.ExpressionType())
+		c.release(s, dst.Load(), lhs.ExpressionType())
+		dst.Store(val)
 	default:
 		fail("Unsupported composite assignment operator '%s'", op)
 	}
