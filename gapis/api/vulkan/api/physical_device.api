@@ -45,6 +45,7 @@
   @unused map!(u32, VkQueueFamilyProperties) QueueFamilyProperties
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
   @unused VkPhysicalDeviceProperties         PhysicalDeviceProperties
+  @hidden @unused map!(VkFormat, VkFormatProperties) FormatProperties
 }
 
 @internal class PhysicalDevicesAndProperties {
@@ -57,6 +58,10 @@
 
 @internal class PhysicalDevicesAndQueueFamilyProperties {
   map!(VkPhysicalDevice, map!(u32, VkQueueFamilyProperties)) PhyDevToQueueFamilyProperties
+}
+
+@internal class PhysicalDevicesFormatProperties {
+  map!(VkPhysicalDevice, map!(VkFormat, VkFormatProperties)) PhyDevToFormatProperties
 }
 
 @threadSafety("system")
@@ -83,6 +88,7 @@ cmd VkResult vkEnumeratePhysicalDevices(
     props := fetchPhysicalDeviceProperties(instance, devices)
     memProps := fetchPhysicalDeviceMemoryProperties(instance, devices)
     queueProps := fetchPhysicalDeviceQueueFamilyProperties(instance, devices)
+    formatProps := fetchPhysicalDeviceFormatProperties(instance, devices)
     for i in (0 .. count) {
       if (PhysicalDevices[devices[i]] == null) {
         object := new!PhysicalDeviceObject()
@@ -99,6 +105,9 @@ cmd VkResult vkEnumeratePhysicalDevices(
         if queueProps != null {
           object.QueueFamilyProperties = queueProps.PhyDevToQueueFamilyProperties[devices[i]]
         }
+	if formatProps != null {
+          object.FormatProperties = formatProps.PhyDevToFormatProperties[devices[i]]
+	}
         PhysicalDevices[devices[i]] = object
       }
     }

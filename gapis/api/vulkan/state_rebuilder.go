@@ -472,9 +472,11 @@ func (sb *stateBuilder) createPhysicalDevices(Map VkPhysicalDeviceːPhysicalDevi
 			VkResult_VK_SUCCESS,
 		))
 		props := MakePhysicalDevicesAndProperties(sb.newState.Arena)
+		formatProps := MakePhysicalDevicesFormatProperties(sb.newState.Arena)
 		for _, dev := range devs {
 			v := Map.Get(dev)
 			props.PhyDevToProperties().Add(dev, v.PhysicalDeviceProperties())
+			formatProps.PhyDevToFormatProperties().Add(dev, v.FormatProperties())
 		}
 		enumerateWithProps := sb.cb.VkEnumeratePhysicalDevices(
 			i,
@@ -483,6 +485,7 @@ func (sb *stateBuilder) createPhysicalDevices(Map VkPhysicalDeviceːPhysicalDevi
 			VkResult_VK_SUCCESS,
 		)
 		enumerateWithProps.Extras().Add(props)
+		enumerateWithProps.Extras().Add(formatProps)
 		sb.write(enumerateWithProps)
 
 		for _, device := range devs {

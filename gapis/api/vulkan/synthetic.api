@@ -135,6 +135,7 @@ cmd VkResult replayEnumeratePhysicalDevices(
   }
   props := fetchPhysicalDeviceProperties(instance, devices)
   memProps := fetchPhysicalDeviceMemoryProperties(instance, devices)
+  formatProps := fetchPhysicalDeviceFormatProperties(instance, devices)
   for i in (0 .. count) {
     object := switch (PhysicalDevices[devices[i]] == null) {
       case true:
@@ -150,6 +151,9 @@ cmd VkResult replayEnumeratePhysicalDevices(
     }
     if props != null {
       object.PhysicalDeviceProperties = props.PhyDevToProperties[devices[i]]
+    }
+    if formatProps != null {
+      object.FormatProperties = formatProps.PhyDevToFormatProperties[devices[i]]
     }
     PhysicalDevices[devices[i]] = object
   }
