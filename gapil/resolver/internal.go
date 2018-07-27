@@ -68,7 +68,8 @@ func assert(rv *resolver, in *ast.Call, g *ast.Generic) semantic.Statement {
 	if !equal(t, semantic.BoolType) {
 		rv.errorf(in, "assert expression must be a bool, got %s", typename(t))
 	}
-	out := &semantic.Assert{AST: in, Condition: condition}
+	msg := rv.mappings.AST.CST(in).Tok().String()
+	out := &semantic.Assert{AST: in, Condition: condition, Message: msg}
 	rv.mappings.Add(in, out)
 	return out
 }

@@ -235,6 +235,7 @@ message ArrayIndex {
 message Assert {
   uint64 ast = 1;        // ASTCall ID
   uint64 condition = 2;  // Expression ID
+  uint64 message = 3;    // String ID
 }
 
 message Assign {

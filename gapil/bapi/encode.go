@@ -479,6 +479,7 @@ func (e *encoder) assert(n *semantic.Assert) (outID uint64) {
 		return &Assert{
 			Ast:       e.astCall(n.AST),
 			Condition: e.expr(n.Condition),
+			Message:   e.str(n.Message),
 		}
 	})
 	return
