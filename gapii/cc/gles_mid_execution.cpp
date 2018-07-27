@@ -667,6 +667,48 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
       r.sizedFormat = GL_RGBA16F;
       return r;
     }
+    case GL_RGB8I: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA8I, "RGB8I",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA8I;
+      return r;
+    }
+    case GL_RGB8UI: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA8UI, "RGB8UI",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA8UI;
+      return r;
+    }
+    case GL_RGB16I: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16I, "RGB16I",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA16I;
+      return r;
+    }
+    case GL_RGB16UI: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16UI, "RGB16UI",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA16UI;
+      return r;
+    }
+    case GL_RGB32I: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16I, "RGB32I",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA32I;
+      return r;
+    }
+    case GL_RGB32UI: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16UI, "RGB32UI",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA32UI;
+      return r;
+    }
     /* SRGB */
     case GL_SRGB8: {
       ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_SRGB8_ALPHA8, "srgb",
