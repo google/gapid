@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
@@ -370,9 +371,11 @@ func (c *C) Log(s *S, severity log.Severity, msg string, args ...interface{}) {
 	if ctx == nil {
 		ctx = s.Zero(c.T.CtxPtr)
 	}
+	loc := c.SourceLocation()
 	fullArgs := []*codegen.Value{
-		ctx,
 		s.Scalar(uint8(severity)),
+		s.Scalar(loc.File),
+		s.Scalar(uint32(loc.Line)),
 		s.Scalar(msg),
 	}
 	for _, arg := range args {
@@ -382,8 +385,12 @@ func (c *C) Log(s *S, severity log.Severity, msg string, args ...interface{}) {
 			fullArgs = append(fullArgs, s.Scalar(arg))
 		}
 	}
-	c.updateCodeLocation(s)
 	s.Call(c.callbacks.logf, fullArgs...)
+}
+
+// LogI is short hand for Log(s, log.Info, msg, args...)
+func (c *C) LogI(s *S, msg string, args ...interface{}) {
+	c.Log(s, log.Info, msg, args...)
 }
 
 // Fail is used to immediately terminate compilation due to an internal
@@ -437,6 +444,61 @@ func (c *C) CurrentExpression() semantic.Expression {
 		return nil
 	}
 	return c.expressionStack[len(c.expressionStack)-1]
+}
+
+// SourceLocation associates a semantic node with its location in a source file.
+type SourceLocation struct {
+	Node   semantic.Node
+	File   string
+	Line   int
+	Column int
+}
+
+func (l SourceLocation) String() string {
+	parts := []string{}
+	if l.Node != nil {
+		parts = append(parts, fmt.Sprintf("%T", l.Node))
+	}
+	if l.File != "" {
+		parts = append(parts, l.File)
+	} else {
+		parts = append(parts, "<unknown>")
+	}
+	if l.Line != 0 {
+		parts = append(parts, fmt.Sprint(l.Line))
+	}
+	if l.Column != 0 {
+		parts = append(parts, fmt.Sprint(l.Column))
+	}
+	return strings.Join(parts, ":")
+}
+
+// SourceLocationFor returns a string describing the source location of the
+// given semantic node.
+func (c *C) SourceLocationFor(n semantic.Node) SourceLocation {
+	if cst := c.mappings.CST(n); cst != nil {
+		tok := cst.Tok()
+		line, col := tok.Cursor()
+		file := tok.Source.Filename
+		if i := strings.LastIndex(file, "gapid/"); i > 0 {
+			file = file[i+6:]
+		}
+		return SourceLocation{n, file, line, col}
+	}
+	return SourceLocation{Node: n}
+}
+
+// SourceLocation returns the SoureLocation for the currently built expression,
+// statement or function.
+func (c *C) SourceLocation() SourceLocation {
+	if e := c.CurrentExpression(); e != nil {
+		return c.SourceLocationFor(e)
+	} else if s := c.CurrentStatement(); s != nil {
+		return c.SourceLocationFor(s)
+	} else if f := c.currentFunc; f != nil {
+		return c.SourceLocationFor(f)
+	}
+	return SourceLocation{}
 }
 
 func (c *C) setCodeLocation(s *S, t cst.Token) {
@@ -499,29 +561,5 @@ func (c *C) augmentPanics() {
 	if r == nil {
 		return
 	}
-
-	loc := func(n semantic.Node) string {
-		for _, ast := range c.mappings.SemanticToAST[n] {
-			if cst := c.mappings.AST.CST(ast); cst != nil {
-				tok := cst.Tok()
-				line, col := tok.Cursor()
-				file := tok.Source.Filename
-				return fmt.Sprintf("%v:%v:%v\n%s", file, line, col, tok.String())
-			}
-			return "nil node"
-		}
-		// return "no mapping"
-		return fmt.Sprintf("%T %+v", n, n)
-	}
-
-	what, where := "<unknown>", "<unknown source location>"
-	if e := c.CurrentExpression(); e != nil {
-		what, where = "expression", loc(e)
-	} else if s := c.CurrentStatement(); s != nil {
-		what, where = "statement", loc(s)
-	} else if c.currentFunc != nil {
-		where = fmt.Sprintf("%v()\n%v", c.currentFunc.Name(), where)
-	}
-
-	panic(fmt.Errorf("Internal compiler error processing %v at:\n%v\n%v", what, where, r))
+	panic(fmt.Errorf("Internal compiler error processing %v\n%v", c.SourceLocation(), r))
 }

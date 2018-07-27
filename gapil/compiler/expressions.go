@@ -27,6 +27,12 @@ func (c *C) expression(s *S, e semantic.Expression) *codegen.Value {
 	c.pushExpression(s, e)
 	defer c.popExpression(s)
 
+	if debugExpressions {
+		msg := fmt.Sprintf("%T %+v", e, e)
+		c.LogI(s, msg)
+		defer c.LogI(s, msg+" -- done")
+	}
+
 	switch e := e.(type) {
 	case *semantic.ArrayIndex:
 		return c.arrayIndex(s, e)

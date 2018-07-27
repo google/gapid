@@ -63,6 +63,10 @@ func (c *C) command(f *semantic.Function) {
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
 	out := c.M.Function(c.returnType(f), name, c.T.CtxPtr)
 	c.Build(out, func(s *S) {
+		if debugFunctionCalls {
+			c.LogI(s, f.Name())
+		}
+
 		c.LoadParameters(s, f)
 
 		c.plugins.foreach(func(p OnBeginCommandListener) { p.OnBeginCommand(s, f) })
@@ -94,6 +98,9 @@ func (c *C) subroutine(f *semantic.Function) {
 	out := c.M.Function(resTy, name, paramTys...)
 	c.functions[f] = out
 	c.Build(out, func(s *S) {
+		if debugFunctionCalls {
+			c.LogI(s, f.Name())
+		}
 		for i, p := range params {
 			s.Parameters[p] = s.Parameter(i + 1).SetName(p.Name())
 		}
@@ -115,6 +122,10 @@ func (c *C) block(s *S, n *semantic.Block) {
 func (c *C) statement(s *S, n semantic.Statement) bool {
 	c.pushStatement(s, n)
 	defer c.popStatement(s)
+
+	if debugStatements {
+		c.LogI(s, fmt.Sprintf("%T %+v", n, n))
+	}
 
 	switch n := n.(type) {
 	case *semantic.Assert:

@@ -31,7 +31,7 @@
 #endif
 
 #define SLICE_FMT \
-  "[pool: %p, root: %" PRIx64 ", base: %" PRIx64 ", size: 0x%" PRIx64 "]"
+  "[pool: %p, root: 0x%" PRIx64 ", base: 0x%" PRIx64 ", size: 0x%" PRIx64 "]"
 #define SLICE_ARGS(sli) sli->pool, sli->root, sli->base, sli->size
 
 using namespace gapir::vm;

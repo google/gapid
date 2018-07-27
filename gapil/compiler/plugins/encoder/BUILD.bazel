@@ -32,7 +32,6 @@ go_library(
     deps = [
         "//core/codegen:go_default_library",
         "//core/data:go_default_library",
-        "//core/log:go_default_library",
         "//core/text/cases:go_default_library",
         "//gapil/compiler:go_default_library",
         "//gapil/compiler/mangling:go_default_library",

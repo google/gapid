@@ -39,7 +39,7 @@
 #endif
 
 #define SLICE_FMT \
-  "[pool: %p, root: %" PRIx64 ", base: %" PRIx64 ", size: 0x%" PRIx64 "]"
+  "[pool: %p, root: 0x%" PRIx64 ", base: 0x%" PRIx64 ", size: 0x%" PRIx64 "]"
 #define SLICE_ARGS(sli) sli->pool, sli->root, sli->base, sli->size
 
 using core::Arena;
@@ -90,27 +90,23 @@ void gapil_set_code_locator(gapil_get_code_location* cb) {
   code_locator = cb != nullptr ? cb : &default_code_locator;
 }
 
-void gapil_logf(context* ctx, uint8_t severity, uint8_t* fmt, ...) {
+void gapil_logf(uint8_t severity, uint8_t* file, uint32_t line, uint8_t* fmt,
+                ...) {
   // core/log/severity.go is in reverse order to log.h! :(
   severity = 5 - severity;
   if (GAPID_SHOULD_LOG(severity)) {
     va_list args;
     va_start(args, fmt);
-    char* file = nullptr;
-    uint32_t line = 0;
-    code_locator(ctx, &file, &line);
+    auto f =
+        (file != nullptr) ? reinterpret_cast<const char*>(file) : "<unknown>";
 #if TARGET_OS == GAPID_OS_ANDROID
     char buf[2048];
-    snprintf(buf, sizeof(buf), "[%s:%u] %s", file ? file : "<unknown>", line,
-             fmt);
+    snprintf(buf, sizeof(buf), "[%s:%" PRIu32 "] %s", f, line, fmt);
     __android_log_vprint(severity, "GAPID", buf, args);
 #else
-    ::core::Logger::instance().vlogf(severity, file ? file : "<unknown>", line,
+    ::core::Logger::instance().vlogf(severity, f, line,
                                      reinterpret_cast<const char*>(fmt), args);
 #endif  // TARGET_OS
-    if (file != nullptr) {
-      free(file);
-    }
     va_end(args);
   }
 }
