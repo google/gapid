@@ -470,6 +470,7 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 }
 
 func (c *C) initialValue(s *S, t semantic.Type) *codegen.Value {
+	t = semantic.Underlying(t)
 	switch t {
 	case semantic.StringType:
 		return c.emptyString.Value(s.Builder)
