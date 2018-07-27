@@ -80,6 +80,10 @@ public class FramebufferView extends Composite
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
       .setDrawMode(Service.DrawMode.WIREFRAME_ALL)
       .build();
+  private static final Service.RenderSettings RENDER_OVERDRAW = Service.RenderSettings.newBuilder()
+      .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
+      .setDrawMode(Service.DrawMode.OVERDRAW)
+      .build();
   private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
       .setPrimary(true)
       .build();
@@ -163,7 +167,12 @@ public class FramebufferView extends Composite
           models.analytics.postInteraction(View.Framebuffer, ClientAction.Wireframe);
           renderSettings = RENDER_WIREFRAME;
           updateBuffer();
-        }, "Render wireframe geometry"));
+        }, "Render wireframe geometry"),
+        createToggleToolItem(bar, theme.overdraw(), e -> {
+          models.analytics.postInteraction(View.Framebuffer, ClientAction.Overdraw);
+          renderSettings = RENDER_OVERDRAW;
+          updateBuffer();
+        }, "Render overdraw"));
     createSeparator(bar);
     return bar;
   }

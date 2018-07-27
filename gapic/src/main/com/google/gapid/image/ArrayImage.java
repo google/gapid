@@ -223,8 +223,8 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     }
 
     @Override
-    public boolean isHDR() {
-      return false;
+    public Image.ImageType getType() {
+      return Image.ImageType.LDR;
     }
 
     @Override
@@ -310,8 +310,8 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     }
 
     @Override
-    public boolean isHDR() {
-      return true;
+    public Image.ImageType getType() {
+      return Image.ImageType.HDR;
     }
 
     @Override
@@ -394,8 +394,8 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     }
 
     @Override
-    public boolean isHDR() {
-      return false;
+    public Image.ImageType getType() {
+      return Image.ImageType.LDR;
     }
 
     @Override
@@ -484,8 +484,8 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     }
 
     @Override
-    public boolean isHDR() {
-      return true;
+    public Image.ImageType getType() {
+      return Image.ImageType.HDR;
     }
 
     @Override
@@ -537,6 +537,91 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
       @Override
       public boolean isDark() {
         return luminance < DARK_LUMINANCE_THRESHOLD;
+      }
+    }
+  }
+
+  /**
+   * An {@link ArrayImage} that represents an 8bit count image.
+   */
+  public static class Count8Image extends ArrayImage {
+    private final PixelInfo info;
+
+    public Count8Image(Image.Key key, int width, int height, int depth, byte[] data) {
+      this(width, height, depth, data,
+          getUnchecked(PIXEL_INFO_CACHE, key, () -> IntPixelInfo.compute(data, false)));
+    }
+
+    private Count8Image(int width, int height, int depth, byte[] data, PixelInfo info) {
+      super(width, height, depth, 1, data, GL11.GL_RGB8, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE);
+      this.info = info;
+    }
+
+    @Override
+    protected Image create(int w, int h, int d, byte[] pixels) {
+      return new Count8Image(w, h, d, pixels, getInfo());
+    }
+
+    @Override
+    public void uploadToTexture(Texture texture) {
+      super.uploadToTexture(texture);
+      texture.setSwizzle(GL11.GL_RED, GL11.GL_RED, GL11.GL_RED, GL11.GL_ONE);
+    }
+
+    @Override
+    public Set<Stream.Channel> getChannels() {
+      return Images.COUNT_CHANNELS;
+    }
+    @Override
+    public Image.ImageType getType() {
+      return Image.ImageType.COUNT;
+    }
+
+    @Override
+    public void bin(Binner binner) {
+      for (int i = 0; i < data.length; i++) {
+        binner.bin(UnsignedBytes.toInt(data[i]) / 255.0f, Stream.Channel.Count);
+      }
+    }
+
+    @Override
+    protected void convert2D(byte[] src, byte[] dst, byte[] alpha, int stride) {
+      for (int row = 0, di = 0, si = (height - 1) * width, ai = 0; row < height;
+          row++, si -= width, di += stride) {
+        for (int col = 0, s = si, d = di; col < width; col++, s++, d += 3, ai++) {
+          dst[d + 0] = src[s];
+          dst[d + 1] = src[s];
+          dst[d + 2] = src[s];
+          alpha[ai] = -1;
+        }
+      }
+    }
+
+    @Override
+    protected PixelValue getPixel(int x, int y) {
+      return new Pixel(data[y * width + x]);
+    }
+
+    @Override
+    public PixelInfo getInfo() {
+      return info;
+    }
+
+    private static class Pixel implements PixelValue {
+      private final int count;
+
+      public Pixel(byte count) {
+        this.count = UnsignedBytes.toInt(count);
+      }
+
+      @Override
+      public String toString() {
+        return "Count = " + count;
+      }
+
+      @Override
+      public boolean isDark() {
+        return count < DARK_LUMINANCE8_THRESHOLD;
       }
     }
   }
@@ -633,11 +718,6 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     public double getAlphaMax() {
       return alphaMax;
     }
-
-    @Override
-    public boolean isNormalized() {
-      return false;
-    }
   }
 
   private static class IntPixelInfo implements PixelInfo {
@@ -719,11 +799,6 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
     @Override
     public double getAlphaMax() {
       return alphaMax;
-    }
-
-    @Override
-    public boolean isNormalized() {
-      return true;
     }
   }
 }

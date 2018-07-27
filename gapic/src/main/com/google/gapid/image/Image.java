@@ -75,10 +75,16 @@ public interface Image {
    */
   public Set<Stream.Channel> getChannels();
 
+  public enum ImageType {
+    LDR, // Regular image, no high-dynamic-range
+    HDR, // An image with high-dynamic-range data
+    COUNT, // An image representing integer count values
+  }
+
   /**
-   * @return true if this image contains high-dynamic-range data.
+   * @return the type of this image
    */
-  public boolean isHDR();
+  public ImageType getType();
 
   /**
    * Bins this image's channel data with the given {@link Histogram.Binner}.
@@ -135,8 +141,8 @@ public interface Image {
     }
 
     @Override
-    public boolean isHDR() {
-      return false;
+    public ImageType getType() {
+      return ImageType.LDR;
     }
 
     @Override
@@ -207,11 +213,6 @@ public interface Image {
       public double getAlphaMax() {
         return 1;
       }
-
-      @Override
-      public boolean isNormalized() {
-        return true;
-      }
     };
 
     /**
@@ -238,11 +239,6 @@ public interface Image {
      * @return the maximum alpha value of the image data.
      */
     public double getAlphaMax();
-
-    /**
-     * Returns true if all values are between [0, 1].
-     */
-    public boolean isNormalized();
   }
 
   /**

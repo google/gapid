@@ -41,7 +41,12 @@ public class Histogram {
   private final Mapper mapper;
   private final Bins bins;
 
-  public Histogram(Image[] images, int numBins, boolean logFit) {
+  private final boolean isCount;
+
+  public Histogram(Image[] images, int numBins) {
+    boolean logFit = stream(images).anyMatch(i -> i.getType() == Image.ImageType.HDR);
+    this.isCount = stream(images).allMatch(i -> i.getType() == Image.ImageType.COUNT);
+
     this.channels = getChannels(images);
     this.mapper = Mapper.get(images, logFit);
     this.bins = Bins.get(images, mapper, numBins);
@@ -57,6 +62,11 @@ public class Histogram {
    * Returns the a good default starting range to use for tone mapping.
    */
   public Range getInitialRange(double snapThreshold) {
+    // Don't leave data out if it's a count
+    if (isCount) {
+      // Limit the upper bound to 10 initially so details can be discerned
+      return new Range(0., Math.min(10.0 / 255.0, mapper.limits.max));
+    }
     if (isLinear()) {
       return Range.IDENTITY;
     }
@@ -186,12 +196,19 @@ public class Histogram {
       double average = 0.0;
       for (Image image : images) {
         PixelInfo info = image.getInfo();
-        if (info.isNormalized()) {
+        switch (image.getType()) {
+        case LDR:
           min = Math.min(0.0, min);
           max = Math.max(1.0, max);
-        } else {
+          break;
+        case HDR:
           min = Math.min(info.getMin(), min);
           max = Math.max(info.getMax(), max);
+          break;
+        case COUNT:
+          min = Math.min(0.0, min);
+          max = Math.max(info.getMax(), max);
+          break;
         }
         average += info.getAverage();
       }

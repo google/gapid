@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
+	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -147,6 +148,9 @@ func (s *stencilOverdraw) Transform(ctx context.Context, id api.CmdID, cmd api.C
 				break
 			}
 		}
+		// Even though the image comes from a stencil, content-wise
+		// it's a gray image.
+		img.Format = image.NewUncompressed("Count_U8", fmts.Count_U8)
 		return nil
 	}
 	postImageData(ctx, cb, gs,
