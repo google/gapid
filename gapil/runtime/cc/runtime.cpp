@@ -67,12 +67,9 @@ void* default_pool_data_resolver(context*, pool* pool, uint64_t ptr,
   return reinterpret_cast<void*>(ptr);
 }
 
-void default_code_locator(context* ctx, char** file, uint32_t* line) {}
-
 static gapil_pool_data_resolver* pool_data_resolver =
     &default_pool_data_resolver;
 static gapil_database_storer* database_storer = nullptr;
-static gapil_get_code_location* code_locator = &default_code_locator;
 
 }  // anonymous namespace
 
@@ -84,10 +81,6 @@ void gapil_set_pool_data_resolver(gapil_pool_data_resolver* cb) {
 
 void gapil_set_database_storer(gapil_database_storer* cb) {
   database_storer = cb;
-}
-
-void gapil_set_code_locator(gapil_get_code_location* cb) {
-  code_locator = cb != nullptr ? cb : &default_code_locator;
 }
 
 void gapil_logf(uint8_t severity, uint8_t* file, uint32_t line, uint8_t* fmt,
