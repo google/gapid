@@ -41,12 +41,10 @@ import (
 //
 // // Implemented below.
 // extern void* pool_data_resolver(context*, pool*, uint64_t ptr, gapil_data_access, uint64_t* len);
-// extern void  get_code_location(context* ctx, char** file, uint32_t* line);
 // extern void  database_storer(context* ctx, void* ptr, uint64_t size, uint8_t* id_out);
 //
 // static void set_callbacks() {
 //   gapil_set_pool_data_resolver(&pool_data_resolver);
-//   gapil_set_code_locator(&get_code_location);
 //   gapil_set_database_storer(&database_storer);
 // }
 import "C"
@@ -288,17 +286,6 @@ func pool_data_resolver(c *C.context, pool *C.pool, ptr C.uint64_t, access C.gap
 		*len = (C.uint64_t)(b.rng.Size - offset)
 	}
 	return (unsafe.Pointer)(uintptr(b.alloc) + uintptr(offset))
-}
-
-//export get_code_location
-func get_code_location(c *C.context, file **C.char, line *C.uint32_t) {
-	e := env(c)
-	l := compiler.Location{File: "<unknown>"}
-	if loc := int(e.cCtx.location); loc < len(e.Executor.program.Locations) {
-		l = e.Executor.program.Locations[loc]
-	}
-	*file = C.CString(l.File)
-	*line = (C.uint32_t)(l.Line)
 }
 
 //export database_storer

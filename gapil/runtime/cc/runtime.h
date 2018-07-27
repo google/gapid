@@ -130,10 +130,6 @@ typedef void* gapil_pool_data_resolver(context*, pool*, uint64_t ptr,
 typedef void* gapil_database_storer(context* ctx, void* ptr, uint64_t size,
                                     uint8_t* id_out);
 
-// assigns to file and line the current source location within the .api file.
-// if there is no current source location then file and line are unassigned.
-typedef void gapil_get_code_location(context*, char** file, uint32_t* line);
-
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented by the compiler                                    //
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,10 +155,6 @@ void gapil_set_pool_data_resolver(gapil_pool_data_resolver*);
 
 // sets the callback used to store data into the database.
 void gapil_set_database_storer(gapil_database_storer*);
-
-// sets the callback used to fetch the file and line location for the current
-// source location within the .api file.
-void gapil_set_code_locator(gapil_get_code_location*);
 
 #ifndef DECL_GAPIL_CB
 #define DECL_GAPIL_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
