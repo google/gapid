@@ -22,6 +22,7 @@ go_library(
         "cast.go",
         "compiler.go",
         "context.go",
+        "debug.go",
         "errors.go",
         "expressions.go",
         "externs.go",

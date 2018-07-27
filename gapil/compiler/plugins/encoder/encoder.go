@@ -21,7 +21,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/codegen"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/text/cases"
 	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapil/compiler/mangling"
@@ -644,6 +643,6 @@ func encodeableGlobals(api *semantic.API) []*semantic.Global {
 func (e *encoder) debug(s *compiler.S, msg string, args ...interface{}) {
 	const enabled = false
 	if enabled {
-		e.Log(s, log.Info, msg, args...)
+		e.LogI(s, msg, args...)
 	}
 }

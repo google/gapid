@@ -23,8 +23,6 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-const debugLogRefCounts = false
-
 type refRel struct {
 	name      string
 	reference *codegen.Function // void T_reference(T)
@@ -59,8 +57,8 @@ func (f *refRel) build(
 			c.Log(s, log.Fatal, "Attempting to reference released "+f.name)
 		})
 		newCount := s.Add(oldCount, s.Scalar(uint32(1)))
-		if debugLogRefCounts {
-			c.Log(s, log.Info, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
+		if debugRefCounts {
+			c.LogI(s, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
 		}
 		refPtr.Store(newCount)
 	})
@@ -76,8 +74,8 @@ func (f *refRel) build(
 			c.Log(s, log.Fatal, "Attempting to release "+f.name+" with no remaining references!")
 		})
 		newCount := s.Sub(oldCount, s.Scalar(uint32(1)))
-		if debugLogRefCounts {
-			c.Log(s, log.Info, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
+		if debugRefCounts {
+			c.LogI(s, f.name+" %p ref_count: %d -> %d", refPtr, oldCount, newCount)
 		}
 		refPtr.Store(newCount)
 		s.If(s.Equal(newCount, s.Scalar(uint32(0))), func(s *S) {
@@ -313,6 +311,9 @@ func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
 }
 
 func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
+	if debugRefCounts {
+		c.LogI(s, "deferRelease("+fmt.Sprintf("%T", ty)+": %p)", val)
+	}
 	s.onExit(func() {
 		if s.IsBlockTerminated() {
 			// The last instruction written to the current block was a

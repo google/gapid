@@ -230,6 +230,11 @@ DECL_GAPIL_CB(string*, gapil_string_concat, string*, string*);
 // compares two strings lexicographically, using the same rules as strcmp.
 DECL_GAPIL_CB(int32_t, gapil_string_compare, string*, string*);
 
+// logs a message to the current logger.
+// fmt is a printf-style message.
+DECL_GAPIL_CB(void, gapil_logf, uint8_t severity, uint8_t* file, uint32_t line,
+              uint8_t* fmt, ...);
+
 // applys the read observations tagged to the current command into the memory
 // model.
 DECL_GAPIL_CB(void, gapil_apply_reads, context*);
@@ -242,10 +247,6 @@ DECL_GAPIL_CB(void, gapil_apply_writes, context*);
 // If the extern returns a value, this is placed in res.
 DECL_GAPIL_CB(void, gapil_call_extern, context*, string* name, void* args,
               void* res);
-
-// logs a message to the current logger.
-// fmt is a printf-style message.
-DECL_GAPIL_CB(void, gapil_logf, context*, uint8_t severity, uint8_t* fmt, ...);
 
 // Stores the buffer at ptr of the given size into the database.
 // Writes the 20-byte database identifier of the stored data to id.
