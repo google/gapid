@@ -754,7 +754,7 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
     case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
     case GL_ATC_RGB_AMD:
     case GL_ETC1_RGB8_OES:
-      return ReadCompressedTexture(tex, layer, GL_RGB8,
+      return ReadCompressedTexture(tex, layer, GL_RGBA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
     /* compressed 8bit RGBA */
     case GL_COMPRESSED_RGBA_ASTC_4x4:
