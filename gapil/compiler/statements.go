@@ -355,10 +355,8 @@ func (c *C) mapAssign(s *S, n *semantic.MapAssign) {
 	k := c.expression(s, n.To.Index)
 	v := c.expression(s, n.Value)
 	dst := s.Call(c.T.Maps[ty].Index, m, k, s.Scalar(true))
-	if ty := n.To.Type.ValueType; c.isRefCounted(ty) {
-		c.reference(s, v, ty)
-		c.release(s, dst.Load(), ty)
-	}
+	c.reference(s, v, ty.ValueType)
+	c.release(s, dst.Load(), ty.ValueType)
 	dst.Store(v)
 }
 

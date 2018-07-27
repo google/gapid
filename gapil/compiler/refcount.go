@@ -275,7 +275,8 @@ func (c *C) buildRefRels() {
 			case *semantic.Class:
 				refFields := []*semantic.Field{}
 				for _, f := range apiTy.Fields {
-					if _, ok := c.refRels.tys[f.Type]; ok {
+					ty := semantic.Underlying(f.Type)
+					if _, ok := c.refRels.tys[ty]; ok {
 						refFields = append(refFields, f)
 					}
 				}
