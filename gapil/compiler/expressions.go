@@ -268,7 +268,9 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 		res = s.Call(f, args...)
 	}
 
-	c.deferRelease(s, res, tf.Return.Type)
+	if res != nil {
+		c.deferRelease(s, res, tf.Return.Type)
+	}
 
 	return res
 }
