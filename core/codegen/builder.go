@@ -16,6 +16,7 @@ package codegen
 
 import (
 	"fmt"
+	"strings"
 
 	"llvm/bindings/go/llvm"
 )
@@ -291,6 +292,52 @@ func (b *Builder) GlobalString(s string) *Value {
 // FuncAddr returns the pointer to the given function.
 func (b *Builder) FuncAddr(f *Function) *Value {
 	return b.val(b.m.Types.Pointer(f.Type), f.llvm)
+}
+
+// PrintfSpecifier returns the string and values that can be used to print v
+// with printf.
+func (b *Builder) PrintfSpecifier(v *Value) (string, []*Value) {
+	t := v.Type()
+	switch t {
+	case b.m.Types.Bool:
+		v = b.Select(v, b.Scalar("true"), b.Scalar("false"))
+		return "%s", []*Value{v}
+	case b.m.Types.Float32:
+		return "%f", []*Value{v}
+	case b.m.Types.Float64:
+		return "%d", []*Value{v}
+	case b.m.Types.Int, b.m.Types.Int8, b.m.Types.Int16, b.m.Types.Int32, b.m.Types.Int64:
+		return "%lld", []*Value{v.Cast(b.m.Types.Int64)}
+	case b.m.Types.Uint, b.m.Types.Uint8, b.m.Types.Uint16, b.m.Types.Uint32, b.m.Types.Uint64:
+		return "%llu", []*Value{v.Cast(b.m.Types.Int64)}
+	case b.m.Types.Uintptr:
+		return "%p", []*Value{v.Cast(b.m.Types.Int64)}
+	case b.m.Types.Size:
+		return "%z", []*Value{v.Cast(b.m.Types.Int64)}
+	case b.m.Types.Float32:
+		return "%f", []*Value{v}
+	case b.m.Types.Float64:
+		return "%d", []*Value{v}
+	}
+	switch t := t.(type) {
+	case Pointer:
+		return "%p", []*Value{v}
+	case *Struct:
+		vals := []*Value{}
+		sb := strings.Builder{}
+		sb.WriteString(t.Name)
+		sb.WriteString("{ ")
+		for i, f := range t.Fields {
+			fmt, val := b.PrintfSpecifier(v.Extract(i))
+			sb.WriteString(f.Name)
+			sb.WriteString(": ")
+			sb.WriteString(fmt)
+			vals = append(vals, val...)
+		}
+		sb.WriteString(" }")
+		return sb.String(), vals
+	}
+	panic(fmt.Errorf("Cannot print type %v", v.Type()))
 }
 
 // block calls f to appends instructions to the specified block.
