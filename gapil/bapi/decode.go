@@ -247,6 +247,7 @@ func (d *decoder) assert(assertID uint64) (out *semantic.Assert) {
 		func(p *Assert, s *semantic.Assert) {
 			s.AST = d.astCall(p.Ast)
 			s.Condition = d.expr(p.Condition)
+			s.Message = d.str(p.Message)
 		})
 	return
 }

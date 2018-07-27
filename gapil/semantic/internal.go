@@ -36,6 +36,7 @@ func (l *Length) ExpressionType() Type { return l.Type }
 type Assert struct {
 	AST       *ast.Call  // the underlying syntax node this was built from
 	Condition Expression // the condition is being asserted must be true
+	Message   string
 }
 
 func (*Assert) isNode()      {}
