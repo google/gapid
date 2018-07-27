@@ -717,6 +717,38 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
       r.sizedFormat = GL_SRGB8_ALPHA8;
       return r;
     }
+    /* signed normalized */
+    // TODO: Draw to a regular R/RG/RGB/RGBA 8bit texture with a shader that
+    // will map [-1, 1] to the correct values.
+    case GL_R8_SNORM: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_R16F, "R8_SNORM",
+                                           {GL_RED, GL_ZERO, GL_ZERO, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_R16F;
+      return r;
+    }
+    case GL_RG8_SNORM: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RG16F, "RG8_SNORM",
+                                           {GL_RED, GL_GREEN, GL_ZERO, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RG16F;
+      return r;
+    }
+    case GL_RGB8_SNORM: {
+      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGB8_SNORM",
+                                           {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA16F;
+      return r;
+    }
+    case GL_RGBA8_SNORM: {
+      ImageData r =
+          ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGBGBA8_SNORM",
+                                 {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_RGBA16F;
+      return r;
+    }
     /* compressed 8bit RGB */
     case GL_COMPRESSED_RGB8_ETC2:
     case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
