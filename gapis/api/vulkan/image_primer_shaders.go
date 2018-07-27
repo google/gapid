@@ -362,13 +362,17 @@ void main() {
 		case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
 			VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
 			return shadertools.CompileGlsl(
+				// When doing a buffer-image copy for these
+				// formats, the 8 MSBs of the 32 bits are
+				// undefined, so in case those values came from
+				// such a source, mask them out.
 				`#version 450
 precision highp int;
 precision highp float;
 out float gl_FragDepth;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_depth;
 void main() {
-	gl_FragDepth = subpassLoad(in_depth).r / 16777215.0;
+	gl_FragDepth = (subpassLoad(in_depth).r & 0x00FFFFFF) / 16777215.0;
 }`,
 				shadertools.CompileOptions{
 					ShaderType: shadertools.TypeFragment,
