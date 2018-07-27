@@ -47,7 +47,7 @@ type Call struct {
 
 func (Call) isNode() {}
 
-// NamedArg represents a «name = value» expressionas a function argument.
+// NamedArg represents a «name = value» expression as a function argument.
 type NamedArg struct {
 	Name  *Identifier // the name of the parameter this value is for
 	Value Node        // the value to use for that parameter
