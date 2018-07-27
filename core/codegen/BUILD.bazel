@@ -33,6 +33,7 @@ go_library(
     importpath = "github.com/google/gapid/core/codegen",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/linker:go_default_library",
         "//core/os/device:go_default_library",
         "@llvm//:go",  # keep
     ],

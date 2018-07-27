@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"unsafe"
 
+	"github.com/google/gapid/core/app/linker"
 	"github.com/google/gapid/core/os/device"
 
 	"llvm/bindings/go/llvm"
@@ -138,6 +140,21 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 	engine, err := llvm.NewMCJITCompiler(m.llvm, opts)
 	if err != nil {
 		return nil, err
+	}
+
+	var unresolved []string
+	for _, f := range m.funcs {
+		if f.built || strings.HasPrefix(f.Name, "llvm.") {
+			continue
+		}
+		if linker.ProcAddress(f.Name) == 0 {
+			unresolved = append(unresolved, fmt.Sprint(f))
+		}
+	}
+	if len(unresolved) > 0 {
+		sort.Strings(unresolved)
+		msg := fmt.Sprintf("Unresolved external functions:\n%v", strings.Join(unresolved, "\n"))
+		fail(msg)
 	}
 
 	return &Executor{
