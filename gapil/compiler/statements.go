@@ -16,6 +16,7 @@ package compiler
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
@@ -195,7 +196,44 @@ func (c *C) arrayAssign(s *S, n *semantic.ArrayAssign) {
 func (c *C) assert(s *S, e *semantic.Assert) {
 	cond := c.expression(s, e.Condition).SetName("assert_cond")
 	s.If(s.Not(cond), func(s *S) {
-		c.Log(s, log.Fatal, "assert: "+fmt.Sprint(e.AST.Arguments[0]))
+		// Gather all the named expressions that we can print.
+		type namedVal struct {
+			name string
+			val  semantic.Expression
+		}
+		vals := []namedVal{}
+		var gather func(semantic.Node)
+		gather = func(n semantic.Node) {
+			switch n := n.(type) {
+			case *semantic.BinaryOp, *semantic.UnaryOp:
+				semantic.Visit(n, gather)
+			case *semantic.Member:
+				vals = append(vals, namedVal{n.Field.Name(), n})
+			case *semantic.Field:
+				vals = append(vals, namedVal{n.Name(), n})
+			case *semantic.Global:
+				vals = append(vals, namedVal{n.Name(), n})
+			case *semantic.Local:
+				vals = append(vals, namedVal{n.Name(), n})
+			}
+		}
+		semantic.Visit(e.Condition, gather)
+
+		msg := strings.Builder{}
+		msg.WriteString(e.Message)
+		msg.WriteString(" ")
+
+		args := []interface{}{}
+		for _, nv := range vals {
+			f, v := s.PrintfSpecifier(c.expression(s, nv.val))
+			msg.WriteString(nv.name)
+			msg.WriteString(": ")
+			msg.WriteString(f)
+			for _, v := range v {
+				args = append(args, v)
+			}
+		}
+		c.Log(s, log.Fatal, msg.String(), args...)
 	})
 }
 
