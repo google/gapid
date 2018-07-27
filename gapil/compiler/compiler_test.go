@@ -607,7 +607,7 @@ cmd void clone_slice(u8* ptr) {
 			cmds: []cmd{{
 				N: "clone_slice",
 				D: D(ptrA),
-				E: R(ptrA, 20, resHelloWorld),
+				E: R(ptrA, 12, resHelloWorld),
 			}},
 			expected: expected{data: D(byte('r'))},
 		}, { /////////////////////////////////////////////////////
@@ -1260,7 +1260,7 @@ cmd void SliceAssignAppPoolWritesDisabled(u16* ptr) {
 			cmds: []cmd{{
 				N: "SliceAssignAppPoolWritesDisabled",
 				D: D(ptrA),
-				E: R(ptrA, 4, res0x1234),
+				E: R(ptrA, 2, res0x1234),
 			}},
 			expected: expected{data: D(uint16(0x1234))},
 			settings: compiler.Settings{WriteToApplicationPool: false},
@@ -1884,7 +1884,8 @@ cmd void Read(StructInStruct* input) {
 			cmds: []cmd{{
 				N: "Read",
 				D: D(ptrA),
-				E: R(ptrA, 32, resPointerTo500).R(ptrA+500, 10, resPointee),
+				E: R(ptrA, 4, resPointerTo500).
+					R(ptrA+500, 10, resPointee),
 			}},
 			expected: expected{
 				data: D(
