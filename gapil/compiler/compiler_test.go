@@ -1357,6 +1357,29 @@ cmd void EmptyString() {
 }`,
 			cmds:     []cmd{{N: "EmptyString"}},
 			expected: expected{data: D(uint32(0))},
+		}, { /////////////////////////////////////////////////////
+			name: "Misc.MapsOfStructsOfMaps",
+			src: `
+u32 i
+
+class SA { u32 i }
+type map!(u32, SA) MA
+class SB { MA m }
+type map!(u32, SB) MB
+class SC { MB m }
+
+cmd void MapsOfStructsOfMaps() {
+	c := SC()
+
+	tmp := c.m[10]
+	tmp.m[20] = SA(42)
+	c.m[10] = tmp
+
+	i = c.m[10].m[20].i
+}
+`,
+			cmds:     []cmd{{N: "MapsOfStructsOfMaps"}},
+			expected: expected{data: D(uint32(42))},
 		},
 		////////////////////////////////////////////////////////
 		// Reference Counting                                 //

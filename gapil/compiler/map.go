@@ -389,7 +389,9 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 
 		ptr := s.Call(mi.Index, m, k, s.Scalar(false))
 		s.If(ptr.IsNull(), func(s *S) {
-			s.Return(c.initialValue(s, valTy))
+			v := c.initialValue(s, valTy)
+			c.reference(s, v, valTy)
+			s.Return(v)
 		})
 		v := ptr.Load()
 		c.reference(s, v, valTy)

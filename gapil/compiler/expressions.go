@@ -417,9 +417,7 @@ func (c *C) mapContains(s *S, e *semantic.MapContains) *codegen.Value {
 func (c *C) mapIndex(s *S, e *semantic.MapIndex) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Index)
-	c.LogI(s, "MapLookup - map: %p", m)
 	res := s.Call(c.T.Maps[e.Type].Lookup, m, k).SetName("map_lookup")
-	c.LogI(s, "MapLookup -- done")
 	c.deferRelease(s, res, e.Type.ValueType)
 	return res
 }
