@@ -219,6 +219,10 @@ func (c *C) boolValue(s *S, e semantic.BoolValue) *codegen.Value {
 
 func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 	tf := e.Target.Function
+	if tf.Extern {
+		return c.callExtern(s, e)
+	}
+
 	args := make([]*codegen.Value, len(e.Arguments)+1)
 	args[0] = s.Ctx
 	for i, a := range e.Arguments {
@@ -253,19 +257,6 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 		}
 		// Return the value.
 		res = res.Extract(retValue)
-
-	case tf.Extern:
-		// Result is passed back by pointer via the last argument.
-		// This is done to avoid complexities of ABI calling conventions of
-		// aggregate types.
-		if tf.Return.Type != semantic.VoidType {
-			resPtr := s.LocalInit("call-res", s.Zero(c.T.Target(tf.Return.Type)))
-			args = append(args, resPtr)
-			s.Call(f, args...)
-			res = resPtr.Load()
-		} else {
-			s.Call(f, args...)
-		}
 
 	default:
 		res = s.Call(f, args...)

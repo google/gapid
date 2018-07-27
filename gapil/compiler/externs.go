@@ -29,7 +29,12 @@ func (c *C) extern(f *semantic.Function) {
 	paramTys := make([]codegen.Type, 1, len(callParams)+2)
 	paramTys[0] = c.T.CtxPtr
 	for _, p := range callParams {
-		paramTys = append(paramTys, c.T.Target(p.Type))
+		ty := c.T.Target(p.Type)
+		if codegen.IsStruct(ty) {
+			// Aggregate types need to be passed by pointer
+			ty = c.T.Pointer(ty)
+		}
+		paramTys = append(paramTys, ty)
 	}
 	if f.Return.Type != semantic.VoidType {
 		resTy := c.T.Target(f.Return.Type)
@@ -37,4 +42,43 @@ func (c *C) extern(f *semantic.Function) {
 	}
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
 	c.functions[f] = c.M.Function(c.T.Void, name, paramTys...)
+}
+
+func (c *C) callExtern(s *S, e *semantic.Call) *codegen.Value {
+	tf := e.Target.Function
+	args := make([]*codegen.Value, len(e.Arguments)+1)
+	args[0] = s.Ctx
+	for i, a := range e.Arguments {
+		if codegen.IsStruct(c.T.Target(a.ExpressionType())) {
+			// Aggregate types need to be passed by pointer
+			args[i+1] = c.expressionAddr(s, a).SetName(tf.FullParameters[i].Name())
+		} else {
+			args[i+1] = c.expression(s, a).SetName(tf.FullParameters[i].Name())
+		}
+	}
+
+	f, ok := c.functions[tf]
+	if !ok {
+		panic(fmt.Errorf("Couldn't resolve extern call target %v", tf.Name()))
+	}
+
+	var res *codegen.Value
+
+	// Result is passed back by pointer via the last argument.
+	// This is done to avoid complexities of ABI calling conventions of
+	// aggregate types.
+	if tf.Return.Type != semantic.VoidType {
+		resPtr := s.LocalInit("call-res", s.Zero(c.T.Target(tf.Return.Type)))
+		args = append(args, resPtr)
+		s.Call(f, args...)
+		res = resPtr.Load()
+	} else {
+		s.Call(f, args...)
+	}
+
+	if res != nil {
+		c.deferRelease(s, res, tf.Return.Type)
+	}
+
+	return res
 }
