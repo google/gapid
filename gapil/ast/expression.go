@@ -115,7 +115,7 @@ type Return struct {
 
 func (Return) isNode() {}
 
-// Member represents an expressions that access members of objects.
+// Member represents an expression that access members of objects.
 // Always of the form «object.name» where object is an expression.
 type Member struct {
 	Object Node        // the object to get a member of
