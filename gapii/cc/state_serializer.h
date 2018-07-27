@@ -56,7 +56,7 @@ class StateSerializer {
 
  private:
   void prepareForState(std::function<void(StateSerializer*)> serialize_buffers);
-  pool_t* createPool(
+  gapil_pool_t* createPool(
       uint64_t pool_size,
       std::function<void(memory::Observation*)> init_observation);
 
@@ -80,8 +80,8 @@ template <typename T>
 inline void StateSerializer::encodeBuffer(
     uint64_t pool_size, gapil::Slice<T>* dest,
     std::function<void(memory::Observation*)> init_observation) {
-  *dest =
-      gapil::Slice<T>::create(createPool(pool_size, init_observation), false);
+  *dest = gapil::Slice<T>::create(createPool(pool_size, init_observation),
+                                  pool_size, false);
   mCleanup.push_back(
       std::function<void()>([dest]() { *dest = gapil::Slice<T>(); }));
 }

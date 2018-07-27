@@ -162,7 +162,7 @@
         {{end}}
 
         {{if and 0 (eq (Global "API") "gles")}} {{/* Enable for debugging */}}
-          const Gles::GLenum err = mFunctionStubs.glGetError();
+          auto err = mFunctionStubs.glGetError();
           if (err != Gles::GLenum::GL_NO_ERROR) {
             GAPID_ERROR({{Template "C++.PrintfCommandCall" $}});
             GAPID_ERROR("{{$name}} returned error: 0x%x", err);

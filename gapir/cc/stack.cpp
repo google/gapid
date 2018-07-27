@@ -31,7 +31,7 @@ bool Stack::pushCheck(const char* what) {
     return false;
   }
 
-  if (mTop > mStack.size() - 1) {
+  if (mTop >= mStack.size()) {
     mValid = false;
     GAPID_WARNING("%s with invalid stack head, offset: %d", what, mTop);
     return false;

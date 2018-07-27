@@ -17,6 +17,7 @@
 
 #include "core/cc/id.h"
 #include "core/cc/interval_list.h"
+#include "gapil/runtime/cc/buffer.inc"
 
 #include <unordered_map>
 #include <vector>
@@ -52,14 +53,19 @@ class StackAllocator {
   T min_alignment;
 };
 
-class MemoryRange : public core::Interval<uint64_t> {
+class MemoryAllocation : public core::Interval<uint64_t> {
  public:
-  MemoryRange(uint64_t start, uint64_t end, uint32_t alignment)
+  MemoryAllocation(uint64_t start, uint64_t end, uint32_t alignment)
       : core::Interval<uint64_t>{start, end}, mAlignment(alignment) {}
   uint32_t mAlignment;
 };
 
-typedef core::CustomIntervalList<MemoryRange> MemoryRanges;
+class MemoryMapping : public core::Interval<uint64_t> {
+ public:
+  MemoryMapping(uint64_t start, uint64_t end, uint64_t target)
+      : core::Interval<uint64_t>{start, end}, mTarget(target) {}
+  uint64_t mTarget;
+};
 
 struct DataEx {
   typedef uint32_t Namespace;
@@ -68,16 +74,23 @@ struct DataEx {
   typedef uint64_t VolatileAddr;
   typedef uint64_t ConstantAddr;
 
+  typedef core::CustomIntervalList<MemoryAllocation> MemoryAllocations;
+  typedef core::CustomIntervalList<MemoryMapping> MemoryMappings;
+
   struct ResourceInfo {
     uint32_t index;
     uint32_t size;
   };
 
+  inline DataEx(arena* arena) : constants(arena) {}
+
   StackAllocator<VolatileAddr> allocated;
-  std::unordered_map<Namespace, MemoryRanges> reserved;
+  std::unordered_map<Namespace, MemoryAllocations> reserved;
+  MemoryMappings mapped_memory;
   std::unordered_map<core::Id, ResourceInfo> resources;
   std::unordered_map<RemapKey, VolatileAddr> remappings;
   std::unordered_map<core::Id, uint32_t> constant_offsets;
+  gapil::Buffer constants;
 };
 
 }  // namespace replay

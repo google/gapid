@@ -304,7 +304,7 @@ func (c *C) classInitializer(s *S, e *semantic.ClassInitializer) *codegen.Value 
 		} else {
 			val = c.initialValue(s, f.Type)
 		}
-		c.reference(s, val, f.Type)
+		c.Reference(s, val, f.Type)
 		class = class.Insert(f.Name(), val)
 	}
 	c.deferRelease(s, class, e.Class)
@@ -318,7 +318,7 @@ func (c *C) create(s *S, e *semantic.Create) *codegen.Value {
 	ptr.Index(0, RefRefCount).Store(s.Scalar(uint32(1)))
 	ptr.Index(0, RefArena).Store(s.Arena)
 	class := c.classInitializer(s, e.Initializer)
-	c.reference(s, class, e.Type.To)
+	c.Reference(s, class, e.Type.To)
 	ptr.Index(0, RefValue).Store(class)
 	c.deferRelease(s, ptr, e.Type)
 	return ptr
@@ -433,11 +433,11 @@ func (c *C) mapIndex(s *S, e *semantic.MapIndex) *codegen.Value {
 	ptr := s.Call(c.T.Maps[e.Type].Index, m, k, s.Scalar(false))
 	s.IfElse(ptr.IsNull(), func(s *S) {
 		val := c.initialValue(s, e.Type.ValueType)
-		c.reference(s, val, e.Type.ValueType)
+		c.Reference(s, val, e.Type.ValueType)
 		res.Store(val)
 	}, func(s *S) {
 		val := ptr.Load()
-		c.reference(s, val, e.Type.ValueType)
+		c.Reference(s, val, e.Type.ValueType)
 		res.Store(val)
 	})
 
@@ -453,7 +453,7 @@ func (c *C) member(s *S, e *semantic.Member) *codegen.Value {
 		return obj.Extract(e.Field.Name())
 	case *semantic.Reference:
 		val := obj.Index(0, RefValue, e.Field.Name()).Load()
-		c.reference(s, val, e.Field.Type)
+		c.Reference(s, val, e.Field.Type)
 		c.deferRelease(s, val, e.Field.Type)
 		return val
 	default:
@@ -466,9 +466,11 @@ func (c *C) message(s *S, e *semantic.MessageValue) *codegen.Value {
 	args := c.Alloc(s, s.Scalar(len(e.Arguments)+1), c.T.MsgArg)
 	for i, a := range e.Arguments {
 		val := c.expression(s, a.Value)
-		c.reference(s, val, a.Field.Type)
+		c.Reference(s, val, a.Field.Type)
+		any := c.packAny(s, a.Field.Type, val)
+		c.Reference(s, any, semantic.AnyType)
 		args.Index(i, MsgArgName).Store(s.Scalar(a.Field.Name()))
-		args.Index(i, MsgArgValue).Store(c.packAny(s, a.Field.Type, val))
+		args.Index(i, MsgArgValue).Store(any)
 	}
 	args.Index(len(e.Arguments)).Store(s.Zero(c.T.MsgArg))
 
@@ -538,7 +540,7 @@ func (c *C) select_(s *S, e *semantic.Select) *codegen.Value {
 			},
 			Block: func(s *S) {
 				val := c.expression(s, choice.Expression)
-				c.reference(s, val, e.Type)
+				c.Reference(s, val, e.Type)
 				res.Store(val)
 			},
 		}
@@ -548,7 +550,7 @@ func (c *C) select_(s *S, e *semantic.Select) *codegen.Value {
 	if e.Default != nil {
 		def = func(s *S) {
 			val := c.expression(s, e.Default)
-			c.reference(s, val, e.Type)
+			c.Reference(s, val, e.Type)
 			res.Store(val)
 		}
 	}

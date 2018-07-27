@@ -45,6 +45,9 @@ func drawCallMesh(ctx context.Context, dc drawCall, p *path.Mesh, r *path.Resolv
 	}
 
 	c := GetContext(s, dc.Thread())
+	if c.IsNil() {
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoContextBound(dc.Thread())}
+	}
 
 	noData := p.GetOptions().GetExcludeData()
 

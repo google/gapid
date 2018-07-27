@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -52,12 +53,17 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	defer analytics.SendTiming("resolve", "memory")(analytics.Count(len(cmds)))
 
-	s, err := capture.NewState(ctx)
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	env := c.Env().InitState().Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
 	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+		cmd.Mutate(ctx, id, env.State, nil, nil)
 		return nil
 	})
 	if err != nil {
@@ -66,7 +72,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	r := memory.Range{Base: p.Address, Size: p.Size}
 	var reads, writes, observed memory.RangeList
-	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
+	env.State.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
 		if id == memory.PoolID(p.Pool) {
 			pool.OnRead = func(rng memory.Range) {
 				if rng.Overlaps(r) {
@@ -82,10 +88,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	})
 
 	lastCmd := cmds[len(cmds)-1]
-	api.MutateCmds(ctx, s, nil, nil, lastCmd)
+	api.MutateCmds(ctx, env.State, nil, nil, lastCmd)
 
 	// Check whether the requested pool was ever created.
-	pool, err := s.Memory.Get(memory.PoolID(p.Pool))
+	pool, err := env.State.Memory.Get(memory.PoolID(p.Pool))
 	if err != nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrInvalidMemoryPool(p.Pool)}
 	}

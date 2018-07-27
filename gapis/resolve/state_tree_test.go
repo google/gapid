@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/test"
 	"github.com/google/gapid/gapis/capture"
@@ -203,12 +204,18 @@ func TestStateTreeNode(t *testing.T) {
 	}
 	ctx = capture.Put(ctx, c)
 	rootPath := c.Command(0).StateAfter()
-	gs, err := capture.NewState(ctx)
+
+	rc, err := capture.Resolve(ctx)
 	if err != nil {
 		panic(err)
 	}
+
+	env := rc.Env().InitState().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
 	tree := &stateTree{
-		globalState: gs,
+		globalState: env.State,
 		root: &stn{
 			name:  "root",
 			value: reflect.ValueOf(testState),
@@ -220,7 +227,7 @@ func TestStateTreeNode(t *testing.T) {
 	root := &path.StateTreeNode{Indices: []uint64{}}
 
 	// Write some data to 0x1000.
-	e := gs.MemoryEncoder(memory.ApplicationPool, memory.Range{Base: 0x1000, Size: 0x8000})
+	e := env.State.MemoryEncoder(memory.ApplicationPool, memory.Range{Base: 0x1000, Size: 0x8000})
 	for i := 0; i < 0x1000; i++ {
 		e.I64(int64(i * 10))
 	}

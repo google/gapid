@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -46,8 +47,9 @@ func InitialCommands(ctx context.Context, c *path.Capture) ([]api.Cmd, interval.
 
 // Resolve returns the resolved initialCommandData.
 func (r *InitialCmdsResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, r.Capture)
+	ctx = capture.Put(ctx, r.Capture)
 
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +58,19 @@ func (r *InitialCmdsResolvable) Resolve(ctx context.Context) (interface{}, error
 	cmds := []api.Cmd{}
 
 	if c.InitialState != nil {
-		s := c.NewState(ctx)
+		// Build a non-execution environment so we can grab the capture's
+		// serialized state.
+		oldEnv := c.Env().InitState().Build(ctx)
+		defer oldEnv.Dispose()
+
+		// Build an execution environment so we can rebuild the state from a
+		// clean slate.
+		newEnv := c.Env().Execute().Build(ctx)
+		defer newEnv.AutoDispose()
+		ctx := executor.PutEnv(ctx, newEnv)
+
 		for _, api := range c.APIs {
-			c, r := api.RebuildState(ctx, s)
+			c, r := api.RebuildState(ctx, oldEnv.State)
 			cmds = append(cmds, c...)
 			ranges = append(ranges, r...)
 		}

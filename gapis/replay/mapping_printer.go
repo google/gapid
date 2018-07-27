@@ -53,7 +53,7 @@ func (m *mappingPrinter) Transform(ctx context.Context, id api.CmdID, cmd api.Cm
 
 func (m *mappingPrinter) Flush(ctx context.Context, out transform.Writer) {
 	out.MutateAndWrite(ctx, api.CmdNoID, Custom{m.thread,
-		func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 			var ret error
 
 			total := 0
@@ -67,7 +67,7 @@ func (m *mappingPrinter) Flush(ctx context.Context, out transform.Writer) {
 				m.file.Close()
 			}
 
-			for k, v := range b.Remappings {
+			for k, v := range b.Remappings() {
 				typ := reflect.TypeOf(k)
 				var size uint64
 				if t, ok := k.(memory.SizedTy); ok {

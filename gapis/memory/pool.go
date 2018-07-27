@@ -27,6 +27,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PoolID is an identifier of a Pool.
+type PoolID uint32
+
+const (
+	// ApplicationPool is the PoolID of Pool representing the application's memory
+	// address space.
+	ApplicationPool = PoolID(PoolNames_Application)
+)
+
 // Pool represents an unbounded and isolated memory space. Pool can be used
 // to represent the application address space, or hidden GPU Pool.
 //
@@ -41,9 +50,6 @@ type Pool struct {
 	OnWrite func(Range)
 }
 
-// PoolID is an identifier of a Pool.
-type PoolID uint32
-
 // Pools contains a collection of Pools identified by PoolIDs.
 type Pools struct {
 	pools      map[PoolID]*Pool
@@ -55,12 +61,6 @@ type poolSlice struct {
 	rng    Range         // The memory range of the slice.
 	writes poolWriteList // The list of writes to the pool when this slice was created.
 }
-
-const (
-	// ApplicationPool is the PoolID of Pool representing the application's memory
-	// address space.
-	ApplicationPool = PoolID(PoolNames_Application)
-)
 
 // NewPools creates and returns a new Pools instance.
 func NewPools() Pools {
@@ -178,7 +178,7 @@ func (m *Pools) New() (id PoolID, p *Pool) {
 // NewAt creates and returns a new Pool with a specific ID, fails if it cannot
 func (m *Pools) NewAt(id PoolID) *Pool {
 	if _, ok := m.pools[id]; ok {
-		panic("Could not create given pool")
+		panic(fmt.Errorf("Pool with id %v already exists", id))
 	}
 	p := &Pool{}
 	m.pools[id] = p
@@ -197,15 +197,20 @@ func (m *Pools) Get(id PoolID) (*Pool, error) {
 	if p, ok := m.pools[id]; ok {
 		return p, nil
 	}
-	return nil, fmt.Errorf("Pool %v not found", id)
+	l := interval.U64RangeList{}
+	for id := range m.pools {
+		interval.Merge(&l, interval.U64Span{Start: uint64(id), End: uint64(id) + 1}, true)
+	}
+	return nil, fmt.Errorf("Pool %v not found. Pools: %v", id, l)
 }
 
 // MustGet returns the Pool with the given id, or panics if it's not found.
 func (m *Pools) MustGet(id PoolID) *Pool {
-	if p, ok := m.pools[id]; ok {
-		return p
+	p, err := m.Get(id)
+	if err != nil {
+		panic(err)
 	}
-	panic(fmt.Errorf("Pool %v not found", id))
+	return p
 }
 
 // ApplicationPool returns the application memory pool.

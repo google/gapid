@@ -254,7 +254,7 @@ func (b *DCEBuilder) processLiveCmd(ctx context.Context, a arena.Arena, id api.C
 	cloneCmd := func() {
 		if !isCloned {
 			isCloned = true
-			cmd = cmd.Clone(a)
+			cmd = cmd.Clone(ctx)
 		}
 	}
 

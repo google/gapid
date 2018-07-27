@@ -52,22 +52,26 @@ std::unordered_map<std::string, gapil_replay_remap_func*> remap_funcs;
 
 extern "C" {
 
-void gapil_replay_init_data(context* ctx, gapil_replay_data* data) {
-  auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
-  data->data_ex = arena->create<DataEx>();
-  data->resources = buffer{.arena = ctx->arena};
-  data->constants = buffer{.arena = ctx->arena};
+void gapil_replay_free_payload(gapil_replay_payload* payload) {
+  gapil_destroy_buffer(&payload->opcodes);
+  gapil_destroy_buffer(&payload->resources);
+  gapil_destroy_buffer(&payload->constants);
 }
 
-void gapil_replay_term_data(context* ctx, gapil_replay_data* data) {
+void gapil_replay_init_data(gapil_context* ctx, gapil_replay_data* data) {
+  auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
+  data->data_ex = arena->create<DataEx>(ctx->arena);
+  data->instructions = gapil_buffer{.arena = ctx->arena};
+}
+
+void gapil_replay_term_data(gapil_context* ctx, gapil_replay_data* data) {
   auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
   arena->destroy(reinterpret_cast<DataEx*>(data->data_ex));
-  gapil_destroy_buffer(&data->resources);
-  gapil_destroy_buffer(&data->constants);
 }
 
-uint64_t gapil_replay_allocate_memory(context* ctx, gapil_replay_data* data,
-                                      uint64_t size, uint64_t alignment) {
+uint64_t gapil_replay_allocate_memory(gapil_context* ctx,
+                                      gapil_replay_data* data, uint64_t size,
+                                      uint64_t alignment) {
   auto ex = reinterpret_cast<DataEx*>(data->data_ex);
   auto res = ex->allocated.alloc(size, alignment);
   DEBUG_PRINT("gapil_replay_allocate_memory(size: 0x%" PRIx64
@@ -76,8 +80,9 @@ uint64_t gapil_replay_allocate_memory(context* ctx, gapil_replay_data* data,
   return res;
 }
 
-void gapil_replay_reserve_memory(context* ctx, gapil_replay_data* data,
-                                 slice* sli, uint32_t ns, uint32_t alignment) {
+void gapil_replay_reserve_memory(gapil_context* ctx, gapil_replay_data* data,
+                                 gapil_slice* sli, uint32_t ns,
+                                 uint32_t alignment) {
   DEBUG_PRINT("gapil_replay_reserve_memory(sli:" SLICE_FMT
               ", ns: %d, alignment: %d)",
               SLICE_ARGS(sli), ns, alignment);
@@ -88,31 +93,44 @@ void gapil_replay_reserve_memory(context* ctx, gapil_replay_data* data,
   for (auto block : reserved.intersect(start, end)) {
     alignment = std::max(alignment, block.mAlignment);
   }
-  reserved.merge(MemoryRange(start, end, alignment));
+  reserved.merge(MemoryAllocation(start, end, alignment));
 }
 
-uint32_t gapil_replay_add_resource(context* ctx, gapil_replay_data* data,
-                                   slice* sli) {
-  DEBUG_PRINT("gapil_replay_add_resource(" SLICE_FMT ")", SLICE_ARGS(sli));
-  auto ex = reinterpret_cast<DataEx*>(data->data_ex);
+uint32_t gapil_replay_add_resource_by_slice(gapil_context* ctx,
+                                            gapil_replay_data* data,
+                                            gapil_slice* sli) {
+  DEBUG_PRINT("gapil_replay_add_resource_by_slice(" SLICE_FMT ")",
+              SLICE_ARGS(sli));
 
   auto ptr = gapil_slice_data(ctx, sli, GAPIL_READ);
   core::Id id;
   gapil_store_in_database(ctx, ptr, sli->size, id.data);
+  return gapil_replay_add_resource_by_id(ctx, data, id.data, sli->size);
+}
 
-  auto it = ex->resources.find(id);
+uint32_t gapil_replay_add_resource_by_id(gapil_context* ctx,
+                                         gapil_replay_data* data, uint8_t* id,
+                                         uint64_t size) {
+  core::Id cid;
+  memcpy(cid.data, id, sizeof(cid.data));
+
+  DEBUG_PRINT("gapil_replay_add_resource_by_id(id: %s, size: %" PRId64 ")",
+              cid.string().c_str(), size);
+  auto ex = reinterpret_cast<DataEx*>(data->data_ex);
+
+  auto it = ex->resources.find(cid);
   if (it != ex->resources.end()) {
     return it->second.index;
   }
 
   DataEx::ResourceInfo info;
   info.index = ex->resources.size();
-  info.size = sli->size;
-  ex->resources[id] = info;
+  info.size = size;
+  ex->resources[cid] = info;
   return info.index;
 }
 
-uint32_t gapil_replay_add_constant(context* ctx, gapil_replay_data* data,
+uint32_t gapil_replay_add_constant(gapil_context* ctx, gapil_replay_data* data,
                                    void* buf, uint32_t size,
                                    uint32_t alignment) {
   DEBUG_PRINT("gapil_replay_add_constant(buf: %p, size: %" PRIu32 ")", buf,
@@ -129,23 +147,20 @@ uint32_t gapil_replay_add_constant(context* ctx, gapil_replay_data* data,
     return it->second;
   }
 
-  auto& consts = data->constants;
+  auto& consts = ex->constants;
 
   // grow the constants buffer to fit the data with the specified alignment.
-  auto offset = align<size_t>(consts.size, alignment);
+  auto offset = align<size_t>(consts.size(), alignment);
   auto new_size = offset + size;
-  if (new_size > consts.capacity) {
-    auto arena = reinterpret_cast<core::Arena*>(consts.arena);
-    consts.capacity = std::max<uint32_t>(new_size, consts.capacity * 2);
-    consts.data = (uint8_t*)arena->reallocate(consts.data, consts.capacity,
-                                              consts.alignment);
+  if (new_size > consts.capacity()) {
+    consts.reserve(std::max<uint32_t>(new_size, consts.capacity() * 2));
   }
-  // clear the alignment padding to 0
-  memset(consts.data + consts.size, 0, offset - consts.size);
-  consts.size = new_size;
+
+  // append alignment padding.
+  consts.append_zeros(offset - consts.size());
 
   // append the data.
-  memcpy(consts.data + offset, buf, size);
+  consts.append(buf, size);
 
   // add the id to the constants_offsets map so that this data can be shared.
   ex->constant_offsets[id] = offset;
@@ -170,7 +185,7 @@ void gapil_replay_register_remap_func(const char* api, const char* type,
   remap_funcs[name] = func;
 }
 
-void gapil_replay_add_remapping(context* ctx, gapil_replay_data* data,
+void gapil_replay_add_remapping(gapil_context* ctx, gapil_replay_data* data,
                                 uint64_t addr, uint64_t key) {
   DEBUG_PRINT("gapil_replay_add_remapping(addr: 0x%" PRIx64 ", key: 0x%" PRIx64
               ")",
@@ -179,8 +194,8 @@ void gapil_replay_add_remapping(context* ctx, gapil_replay_data* data,
   ex->remappings[key] = addr;
 }
 
-uint64_t gapil_replay_lookup_remapping(context* ctx, gapil_replay_data* data,
-                                       uint64_t key) {
+uint64_t gapil_replay_lookup_remapping(gapil_context* ctx,
+                                       gapil_replay_data* data, uint64_t key) {
   auto ex = reinterpret_cast<DataEx*>(data->data_ex);
   auto it = ex->remappings.find(key);
   if (it == ex->remappings.end()) {

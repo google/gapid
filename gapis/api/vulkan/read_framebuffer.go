@@ -239,7 +239,10 @@ func postImageData(ctx context.Context,
 		return
 	}
 
-	queue := imageObject.Aspects().Get(aspect).Layers().Get(0).Levels().Get(0).LastBoundQueue()
+	queue := imageObject.Aspects().Get(aspect).
+		Layers().Get(0).
+		Levels().Get(0).
+		LastBoundQueue()
 	if queue.IsNil() {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
 		return
@@ -590,9 +593,13 @@ func postImageData(ctx context.Context,
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT,
 		),
-		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT),                        // dstAccessMask
-		imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(), // oldLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                                 // newLayout
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // dstAccessMask
+		imageObject.
+			Aspects().Get(aspect).
+			Layers().Get(layer).
+			Levels().Get(level).
+			Layout(), // oldLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // newLayout
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
@@ -616,8 +623,11 @@ func postImageData(ctx context.Context,
 				VkAccessFlagBits_VK_ACCESS_SHADER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT),
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                                 // oldLayout
-		imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(), // newLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldLayout
+		imageObject.Aspects().Get(aspect).
+			Layers().Get(layer).
+			Levels().Get(level).
+			Layout(), // newLayout
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
@@ -1035,7 +1045,7 @@ func postImageData(ctx context.Context,
 
 	// Add post command
 	writeEach(ctx, out,
-		cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 			b.Post(value.ObservedPointer(at.Address()), uint64(bufferSize), func(r binary.Reader, err error) {
 				var bytes []byte
 				if err == nil {

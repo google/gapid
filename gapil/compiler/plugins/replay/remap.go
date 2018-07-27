@@ -119,7 +119,8 @@ func (r *replayer) storeRemap(s *compiler.S, val *codegen.Value, ty semantic.Typ
 			// First time we've seen this remap key.
 			// Allocate memory to hold the replay remapped value.
 			addr := s.Call(r.callbacks.allocateMemory, s.Ctx, s.Ctx.Index(0, data),
-				s.SizeOf(r.T.Replay(ty)), s.AlignOf(r.T.Replay(ty)))
+				s.Scalar(r.T.ReplayTypes.SizeOf(ty)),
+				s.Scalar(r.T.ReplayTypes.AlignOf(ty)))
 			// Bind the remapping address to the key so it can be looked up.
 			s.Call(r.callbacks.addRemapping, s.Ctx, s.Ctx.Index(0, data), addr, key)
 			// Push the value.

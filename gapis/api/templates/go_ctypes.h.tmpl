@@ -43,6 +43,7 @@
   {{ForEach $.Classes    "DeclareType" | JoinWith "\n"}}¶
 
   {{ForEach (AllCommands $) "DeclareCommand" | JoinWith "\n"}}¶
+  {{ForEach $.Externs       "DeclareExtern" | JoinWith "\n"}}¶
 ¶
   {{Template "DeclareState" $}}
 ¶
@@ -170,7 +171,7 @@
     void       {{$mangled}}__clear(void* map);
     void       {{$mangled}}__reference(void* map);
     void       {{$mangled}}__release(void* map);
-    void*      {{$mangled}}__clone(void* map, arena* arena, void* tracker);
+    void*      {{$mangled}}__clone(void* map, gapil_context* ctx, void* tracker);
   {{end}}
 ¶
 {{end}}
@@ -210,7 +211,7 @@
   } {{Template "C.TypeName" $}};
 ¶
   {{$mangled := Macro "C.Mangle" $}}
-  {{$name}}* {{$mangled}}__clone({{$name}}* object, arena* arena, void* tracker);
+  {{$name}}* {{$mangled}}__clone({{$name}}* object, gapil_context* ctx, void* tracker);
   void       {{$mangled}}__reference(void* object);
   void       {{$mangled}}__release(void* object);
 {{end}}
@@ -238,13 +239,34 @@
   {{end}}
 
   typedef struct {{$.Name}} {
-    uint64_t thread_id;
     {{range $p := $.FullParameters}}
       {{Template "C.Type" $p}} {{$p.Name | CFieldName}};
     {{end}}
   } {{$.Name}};
 
-  {{$.Name}}* {{$.Name}}__clone({{$.Name}}* object, arena* arena, void* tracker);
+  {{$.Name}}* {{$.Name}}__clone({{$.Name}}* object, gapil_context* ctx, void* tracker);
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C declaration of the Extern
+-------------------------------------------------------------------------------
+*/}}
+{{define "DeclareExtern"}}
+  {{range $p := $.FullParameters}}
+    {{Template "DeclareType" $p.Type}}
+  {{end}}
+
+  typedef struct {{$.Name}}_args {
+    {{range $p := $.CallParameters}}
+      {{Template "C.Type" $p}} {{$p.Name | CFieldName}};
+    {{end}}
+  } {{$.Name}}_args;
+
+  {{if not (IsVoid $.Return.Type)}}
+    typedef {{Template "C.Type" $.Return.Type}} {{$.Name}}_res;
+  {{end}}
 {{end}}
 
 

@@ -55,10 +55,10 @@
   {{else if IsU64         $}}uint64_t
   {{else if IsS64         $}}int64_t
   {{else if IsEnum        $}}{{$.Name}}
-  {{else if IsString      $}}string*
+  {{else if IsString      $}}gapil_string*
   {{else if IsPointer     $}}uintptr_t
   {{else if IsStaticArray $}}{{Template "C.TypeName" $}}
-  {{else if IsSlice       $}}slice
+  {{else if IsSlice       $}}gapil_slice
   {{else if IsReference   $}}{{Template "C.TypeName" $}}*
   {{else if IsMap         $}}{{Template "C.TypeName" $}}*
   {{else if IsPseudonym   $}}{{Template "C.TypeName" $}}
@@ -96,7 +96,7 @@
   {{else if IsS64         $}}S64
   {{else if IsString      $}}String
   {{else if IsMessage     $}}const char*
-  {{else if IsSlice       $}}slice
+  {{else if IsSlice       $}}gapil_slice
   {{else if IsStaticArray $}}{{Template "C.TypeName" $.ValueType}}__{{$.Size}}__A
   {{else if IsReference   $}}{{Template "C.TypeName" $.To}}__R
   {{else if IsPointer     $}}{{Template "C.TypeName" $.To}}__{{if $.Const}}C{{end}}P
@@ -130,9 +130,9 @@
   {{else if IsMap         $}}Map_{{Template "C.Mangle" $.KeyType}}_{{Template "C.Mangle" $.ValueType}}
   {{else if IsVoid        $}}void
   {{else if IsBool        $}}bool
-  {{else if IsInt         $}}int
-  {{else if IsUint        $}}uint
-  {{else if IsSize        $}}uint
+  {{else if IsInt         $}}long
+  {{else if IsUint        $}}ulong
+  {{else if IsSize        $}}ulong
   {{else if IsChar        $}}char
   {{else if IsU8          $}}uchar
   {{else if IsS8          $}}schar
@@ -147,7 +147,7 @@
   {{else if IsString      $}}string
   {{else if IsStaticArray $}}{{Template "C.Mangle" $.ValueType}}__{{$.Size}}__A
   {{else if IsReference   $}}Ref_{{Template "C.Mangle" $.To}}
-  {{else if IsPointer     $}}uint
+  {{else if IsPointer     $}}ulong
   {{else}}{{Error "C.Mangle passed unsupported type (%T): %s" $ $.Name}}
   {{end}}
 {{end}}

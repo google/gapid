@@ -133,6 +133,10 @@ Spy::Spy()
       mNestedFrameStart(0),
       mNestedFrameEnd(0),
       mFrameNumber(0) {
+  // Bind all the gapil callbacks.
+  // Must be done before any compiler logic is executed.
+  register_runtime_callbacks();
+
 #if TARGET_OS == GAPID_OS_ANDROID
   // Use a "localabstract" pipe on Android to prevent depending on the traced
   // application having the INTERNET permission set, required for opening and

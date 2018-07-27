@@ -146,6 +146,8 @@ class Arena {
   // protected_ is true when the memory in this allocator has been
   // protected.
   bool protected_;
+  // a token used to detect use-after-delete of the arena.
+  uint32_t alive_marker_;
 };
 
 template <typename T, typename... ARGS>

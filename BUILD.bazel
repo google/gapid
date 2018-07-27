@@ -172,6 +172,7 @@ test_suite(
         "//gapil/compiler:go_default_test",
         "//gapil/compiler/mangling/c:go_default_test",
         "//gapil/compiler/mangling/ia64:go_default_test",
+        "//gapil/compiler/plugins/cloner/test:go_default_test",
         "//gapil/compiler/plugins/encoder/test:go_default_test",
         "//gapil/compiler/plugins/replay:go_default_test",
         "//gapil/fuzz:go_default_test",

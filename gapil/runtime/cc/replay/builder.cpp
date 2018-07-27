@@ -16,9 +16,9 @@
 #include "dataex.h"
 #include "replay.h"
 
+#include "core/cc/assert.h"
 #include "core/cc/log.h"
 #include "core/memory/arena/cc/arena.h"
-#include "gapil/runtime/cc/buffer.inc"
 #include "gapir/replay_service/vm.h"
 
 #define __STDC_FORMAT_MACROS
@@ -93,6 +93,8 @@ const char* asm_type_str(gapil_replay_asm_type ty) {
       return "CONSTANT_POINTER";
     case GAPIL_REPLAY_ASM_TYPE_VOLATILE_POINTER:
       return "VOLATILE_POINTER";
+    case GAPIL_REPLAY_ASM_TYPE_VOID:
+      return "VOID";
     case GAPIL_REPLAY_ASM_TYPE_OBSERVED_POINTER_NAMESPACE_0:
       return "OBSERVED_POINTER_NAMESPACE_0";
   }
@@ -109,7 +111,7 @@ const char* asm_type_str(gapil_replay_asm_type ty) {
 #endif  // #if ENABLE_DEBUG_INST
 
 template <typename T>
-const core::Range<T> to_range(const buffer& buf) {
+const core::Range<T> to_range(const gapil_buffer& buf) {
   return core::Range<T>(reinterpret_cast<T*>(buf.data), buf.size / sizeof(T));
 }
 
@@ -121,11 +123,13 @@ class Builder {
  public:
   Builder(::arena* a, gapil_replay_data* d);
 
-  void layout_volatile_memory();
-  void generate_opcodes();
-  void build_resources();
+  void build(gapil_replay_payload* payload);
 
  private:
+  void layout_volatile_memory(gapil_replay_payload* payload);
+  void generate_opcodes(gapil_replay_payload* payload);
+  void build_resources(gapil_replay_payload* payload);
+
   // Various bit-masks used by this class.
   // Many opcodes can fit values into the opcode itself.
   // These masks are used to determine which values fit.
@@ -136,22 +140,27 @@ class Builder {
   static const uint64_t mask46 = 0x3fffffffffff;
   static const uint64_t mask52 = 0xfffffffffffff;
 
-  gapil_replay_asm_value remap(gapil_replay_asm_value v);
+  gapil_replay_asm_value remap(gapil_replay_asm_value v,
+                               gapil::Buffer* opcodes);
 
-  void push(gapil_replay_asm_value val);
-  void load(gapil_replay_asm_value val, gapil_replay_asm_type ty);
-  void store(gapil_replay_asm_value dst);
+  void add(uint32_t count, gapil::Buffer* opcodes);
+  void push(gapil_replay_asm_value val, gapil::Buffer* opcodes);
+  void load(gapil_replay_asm_value val, gapil_replay_asm_type ty,
+            gapil::Buffer* opcodes);
+  void store(gapil_replay_asm_value dst, gapil::Buffer* opcodes);
 
-  inline void pushi(uint32_t ty, uint32_t v) {
-    opcodes_.append(packCYZ(Opcode::PUSH_I, ty, v));
+  inline void pushi(uint32_t ty, uint32_t v, gapil::Buffer* b) {
+    b->append(packCYZ(Opcode::PUSH_I, ty, v));
   }
 
-  inline void extend(uint32_t v) { CX(Opcode::EXTEND, v); }
+  inline void extend(uint32_t v, gapil::Buffer* b) { CX(Opcode::EXTEND, v, b); }
 
-  inline void C(Opcode c) { opcodes_.append(packC(c)); }
-  inline void CX(Opcode c, uint32_t x) { opcodes_.append(packCX(c, x)); }
-  inline void CYZ(Opcode c, uint32_t y, uint32_t z) {
-    opcodes_.append(packCYZ(c, y, z));
+  inline void C(Opcode c, gapil::Buffer* b) { b->append(packC(c)); }
+  inline void CX(Opcode c, uint32_t x, gapil::Buffer* b) {
+    b->append(packCX(c, x));
+  }
+  inline void CYZ(Opcode c, uint32_t y, uint32_t z, gapil::Buffer* b) {
+    b->append(packCYZ(c, y, z));
   }
 
   // clang-format off
@@ -216,15 +225,24 @@ class Builder {
 
   arena* arena_;
   gapil_replay_data* data_;
-  gapil::Buffer opcodes_;
   std::unordered_map<DataEx::Namespace, std::vector<DataEx::VolatileAddr>>
       reserved_base_offsets_;
 };
 
 Builder::Builder(arena* arena, gapil_replay_data* data)
-    : arena_(arena), data_(data), opcodes_(arena) {}
+    : arena_(arena), data_(data) {}
 
-void Builder::layout_volatile_memory() {
+void Builder::build(gapil_replay_payload* payload) {
+  auto ex = reinterpret_cast<DataEx*>(data_->data_ex);
+  payload->stack_size = 256;  // TODO
+  payload->constants = ex->constants.release_ownership();
+
+  layout_volatile_memory(payload);
+  generate_opcodes(payload);
+  build_resources(payload);
+}
+
+void Builder::layout_volatile_memory(gapil_replay_payload* payload) {
   DEBUG_PRINT("Builder::layout_volatile_memory()");
 
   auto ex = reinterpret_cast<DataEx*>(data_->data_ex);
@@ -260,12 +278,17 @@ void Builder::layout_volatile_memory() {
       offsets.push_back(addr);
     }
   }
+
+  payload->volatile_size = volatile_mem.size();
 }
 
-void Builder::generate_opcodes() {
+void Builder::generate_opcodes(gapil_replay_payload* payload) {
   DEBUG_PRINT("Builder::generate_opcodes()");
 
-  gapil::Buffer::Reader reader(&data_->stream);
+  auto ex = reinterpret_cast<DataEx*>(data_->data_ex);
+
+  gapil::Buffer opcodes(arena_);
+  gapil::Buffer::Reader reader(&data_->instructions);
 
   while (true) {
     uint8_t ty;
@@ -274,6 +297,17 @@ void Builder::generate_opcodes() {
     }
 
     switch (gapil_replay_asm_inst(ty)) {
+      case GAPIL_REPLAY_ASM_INST_BEGIN_COMMAND: {
+        gapil_replay_asm_begincommand inst;
+        if (reader.read(&inst)) {
+          DEBUG_PRINT_INST(
+              "GAPIL_REPLAY_ASM_INST_BEGIN_COMMAND(cmd_id: %" PRIu64 ")",
+              inst.cmd_id);
+          auto label = std::min<uint32_t>(0x3ffffff, inst.cmd_id);
+          CX(Opcode::LABEL, label, &opcodes);
+        }
+        break;
+      }
       case GAPIL_REPLAY_ASM_INST_CALL: {
         gapil_replay_asm_call inst;
         if (reader.read(&inst)) {
@@ -284,7 +318,7 @@ void Builder::generate_opcodes() {
           auto packed = (uint32_t(inst.api_index & 0xf) << 16) |
                         uint32_t(inst.function_id);
           packed = set_bit(packed, 24, inst.push_return);
-          CX(Opcode::CALL, packed);
+          CX(Opcode::CALL, packed, &opcodes);
         }
         break;
       }
@@ -293,7 +327,7 @@ void Builder::generate_opcodes() {
         if (reader.read(&inst)) {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_PUSH(value: " ASM_VAL_FMT ")",
                            ASM_VAL_ARGS(inst.value));
-          push(remap(inst.value));
+          push(remap(inst.value, &opcodes), &opcodes);
         }
         break;
       }
@@ -302,7 +336,7 @@ void Builder::generate_opcodes() {
         if (reader.read(&inst)) {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_POP(count: %" PRIu32 ")",
                            inst.count);
-          CX(Opcode::POP, inst.count);
+          CX(Opcode::POP, inst.count, &opcodes);
         }
         break;
       }
@@ -311,7 +345,7 @@ void Builder::generate_opcodes() {
         if (reader.read(&inst)) {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_COPY(count: %" PRIu32 ")",
                            inst.count);
-          CX(Opcode::COPY, inst.count);
+          CX(Opcode::COPY, inst.count, &opcodes);
         }
         break;
       }
@@ -320,7 +354,7 @@ void Builder::generate_opcodes() {
         if (reader.read(&inst)) {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_CLONE(n: %" PRIu32 ")",
                            inst.n);
-          CX(Opcode::CLONE, inst.n);
+          CX(Opcode::CLONE, inst.n, &opcodes);
         }
         break;
       }
@@ -330,7 +364,7 @@ void Builder::generate_opcodes() {
           DEBUG_PRINT_INST(
               "GAPIL_REPLAY_ASM_INST_LOAD(type: %s, src: " ASM_VAL_FMT ")",
               asm_type_str(inst.data_type), ASM_VAL_ARGS(inst.source));
-          load(remap(inst.source), inst.data_type);
+          load(remap(inst.source, &opcodes), inst.data_type, &opcodes);
         }
         break;
       }
@@ -339,7 +373,7 @@ void Builder::generate_opcodes() {
         if (reader.read(&inst)) {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_STORE(dst: " ASM_VAL_FMT ")",
                            ASM_VAL_ARGS(inst.dst));
-          store(remap(inst.dst));
+          store(remap(inst.dst, &opcodes), &opcodes);
         }
         break;
       }
@@ -349,7 +383,7 @@ void Builder::generate_opcodes() {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_STRCPY(max_count: %" PRIu64
                            ")",
                            inst.max_count);
-          CX(Opcode::STRCPY, inst.max_count);
+          CX(Opcode::STRCPY, inst.max_count, &opcodes);
         }
         break;
       }
@@ -359,8 +393,8 @@ void Builder::generate_opcodes() {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_RESOURCE(index: %" PRIu32
                            ", dst: " ASM_VAL_FMT ")",
                            inst.index, ASM_VAL_ARGS(inst.dest));
-          push(remap(inst.dest));
-          CX(Opcode::RESOURCE, inst.index);
+          push(remap(inst.dest, &opcodes), &opcodes);
+          CX(Opcode::RESOURCE, inst.index, &opcodes);
         }
         break;
       }
@@ -370,8 +404,10 @@ void Builder::generate_opcodes() {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_POST(src: " ASM_VAL_FMT
                            ", size: 0x%" PRIx64 ")",
                            ASM_VAL_ARGS(inst.source), inst.size);
-          push(remap(inst.source));
-          C(Opcode::POST);
+          push(remap(inst.source, &opcodes), &opcodes);
+          push(gapil_replay_asm_value{inst.size, GAPIL_REPLAY_ASM_TYPE_UINT32},
+               &opcodes);
+          C(Opcode::POST, &opcodes);
         }
         break;
       }
@@ -380,16 +416,7 @@ void Builder::generate_opcodes() {
         if (reader.read(&inst)) {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_ADD(count: %" PRIu32 ")",
                            inst.count);
-          CX(Opcode::RESOURCE, inst.count);
-        }
-        break;
-      }
-      case GAPIL_REPLAY_ASM_INST_LABEL: {
-        gapil_replay_asm_label inst;
-        if (reader.read(&inst)) {
-          DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_LABEL(count: %" PRIu32 ")",
-                           inst.value);
-          CX(Opcode::LABEL, inst.value);
+          CX(Opcode::RESOURCE, inst.count, &opcodes);
         }
         break;
       }
@@ -399,21 +426,44 @@ void Builder::generate_opcodes() {
           DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_SWITCHTHREAD(index: %" PRIu32
                            ")",
                            inst.index);
-          CX(Opcode::SWITCH_THREAD, inst.index);
+          CX(Opcode::SWITCH_THREAD, inst.index, &opcodes);
         }
         break;
+      }
+      case GAPIL_REPLAY_ASM_INST_MAPMEMORY: {
+        gapil_replay_asm_mapmemory inst;
+        if (reader.read(&inst)) {
+          DEBUG_PRINT_INST("GAPIL_REPLAY_ASM_INST_MAPMEMORY(dst_pp: %" PRIx64
+                           ", src_base: %" PRIx64 ", size: %" PRIx64 ")",
+                           inst.target_addr, inst.src_base, inst.size);
+          GAPID_ASSERT_MSG(
+              ex->mapped_memory
+                      .intersect(inst.src_base, inst.src_base + inst.size)
+                      .size() == 0,
+              "gapil_replay_map_memory called with src range that intercets "
+              "existing mapping. base: 0x" PRIx64 ", size: 0x" PRIx64,
+              inst.src_base, inst.size);
+          ex->mapped_memory.replace(MemoryMapping(
+              inst.src_base, inst.src_base + inst.size, inst.dst_pp));
+        }
+      }
+      case GAPIL_REPLAY_ASM_INST_UNMAPMEMORY: {
+        gapil_replay_asm_unmapmemory inst;
+        if (reader.read(&inst)) {
+          DEBUG_PRINT_INST(
+              "GAPIL_REPLAY_ASM_INST_UNMAPMEMORY(src_base: %" PRIx64
+              ", size: %" PRIx64 ")",
+              src_base, size);
+          ex->mapped_memory.remove(inst.src_base, inst.src_base + inst.size);
+        }
       }
     }
   }
 
-  // Free the instructions as they are now no longer needed.
-  gapil_free(arena_, data_->stream.data);
-
-  // The stream is now a stream of opcodes.
-  data_->stream = opcodes_.release_ownership();
+  payload->opcodes = opcodes.release_ownership();
 }
 
-void Builder::build_resources() {
+void Builder::build_resources(gapil_replay_payload* payload) {
   auto ex = reinterpret_cast<DataEx*>(data_->data_ex);
   auto count = ex->resources.size();
   auto size = count * sizeof(gapil_replay_resource_info);
@@ -425,15 +475,42 @@ void Builder::build_resources() {
     info.size = it.second.size;
     resources.write(it.second.index * sizeof(gapil_replay_resource_info), info);
   }
-  data_->resources = resources.release_ownership();
+  payload->resources = resources.release_ownership();
 }
 
-gapil_replay_asm_value Builder::remap(gapil_replay_asm_value v) {
+gapil_replay_asm_value Builder::remap(gapil_replay_asm_value v,
+                                      gapil::Buffer* opcodes) {
   auto ex = reinterpret_cast<DataEx*>(data_->data_ex);
 
   if (v.data_type >= GAPIL_REPLAY_ASM_TYPE_OBSERVED_POINTER_NAMESPACE_0) {
     auto ns = DataEx::Namespace(
         v.data_type - GAPIL_REPLAY_ASM_TYPE_OBSERVED_POINTER_NAMESPACE_0);
+    if (ns == 0) {
+      auto mapped_idx = ex->mapped_memory.index_of(v.data);
+      if (mapped_idx >= 0) {
+        // Pointer is memory mapped.
+        const auto& remapping = ex->mapped_memory[mapped_idx];
+
+        // Load the replay-dynamic remap target base.
+        // This will load and resolve into an absolute address.
+        load(gapil_replay_asm_value{remapping.mTarget,
+                                    GAPIL_REPLAY_ASM_TYPE_VOLATILE_POINTER},
+             GAPIL_REPLAY_ASM_TYPE_VOLATILE_POINTER, opcodes);
+
+        // push relative offset from target address
+        push(gapil_replay_asm_value{v.data - remapping.mStart,
+                                    GAPIL_REPLAY_ASM_TYPE_ABSOLUTE_POINTER},
+             opcodes);
+
+        // apply offset (target base + relative offset)
+        add(2, opcodes);
+
+        // remapped value now lives as an absolute pointer on the top of the
+        // stack.
+        return gapil_replay_asm_value{
+            0, GAPIL_REPLAY_ASM_TYPE_ABSOLUTE_STACK_POINTER};
+      }
+    }
     const auto& reserved = ex->reserved[ns];
     auto idx = reserved.index_of(v.data);
 
@@ -451,23 +528,30 @@ gapil_replay_asm_value Builder::remap(gapil_replay_asm_value v) {
   return v;
 }
 
-void Builder::push(gapil_replay_asm_value val) {
+void Builder::add(uint32_t count, gapil::Buffer* opcodes) {
+  CX(Opcode::ADD, count, opcodes);
+}
+
+void Builder::push(gapil_replay_asm_value val, gapil::Buffer* opcodes) {
   auto v = val.data;
   auto t = val.data_type;
   switch (t) {
+    case GAPIL_REPLAY_ASM_TYPE_ABSOLUTE_STACK_POINTER:
+      // pushing a value that already is on the stack.
+      break;
     case GAPIL_REPLAY_ASM_TYPE_FLOAT: {
-      pushi(GAPIL_REPLAY_ASM_TYPE_FLOAT, v >> 23);
+      pushi(GAPIL_REPLAY_ASM_TYPE_FLOAT, v >> 23, opcodes);
       if ((v & 0x7fffff) != 0) {
-        extend(v & 0x7fffff);
+        extend(v & 0x7fffff, opcodes);
       }
       break;
     }
     case GAPIL_REPLAY_ASM_TYPE_DOUBLE: {
-      pushi(t, v >> 52);
+      pushi(t, v >> 52, opcodes);
       v = v & mask52;
       if (v != 0) {
-        extend(v >> 26);
-        extend(v & mask26);
+        extend(v >> 26, opcodes);
+        extend(v & mask26, opcodes);
       }
       break;
     }
@@ -479,27 +563,27 @@ void Builder::push(gapil_replay_asm_value val) {
       if ((v & ~mask19) == 0) {
         // ○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //                                            ▕      PUSHI 20     ▕
-        pushi(t, v);
+        pushi(t, v, opcodes);
       } else if ((v & ~mask19) == ~mask19) {
         // ●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //                                            ▕      PUSHI 20     ▕
-        pushi(t, v & mask20);
+        pushi(t, v & mask20, opcodes);
       } else if ((v & ~mask45) == 0) {
         // ○○○○○○○○○○○○○○○○○○○◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //                  ▕      PUSHI 20     ▕         EXTEND 26       ▕
-        pushi(t, v >> 26);
-        extend(v & mask26);
+        pushi(t, v >> 26, opcodes);
+        extend(v & mask26, opcodes);
       } else if ((v & ~mask45) == ~mask45) {
         // ●●●●●●●●●●●●●●●●●●●◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //                  ▕      PUSHI 20     ▕         EXTEND 26       ▕
-        pushi(t, (v >> 26) & mask20);
-        extend(v & mask26);
+        pushi(t, (v >> 26) & mask20, opcodes);
+        extend(v & mask26, opcodes);
       } else {
         // ◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //▕  PUSHI 12 ▕         EXTEND 26       ▕         EXTEND 26       ▕
-        pushi(t, v >> 52);
-        extend((v >> 26) & mask26);
-        extend(v & mask26);
+        pushi(t, v >> 52, opcodes);
+        extend((v >> 26) & mask26, opcodes);
+        extend(v & mask26, opcodes);
       }
       break;
     }
@@ -514,18 +598,18 @@ void Builder::push(gapil_replay_asm_value val) {
       if ((v & ~mask20) == 0) {
         // ○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○○◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //                                            ▕      PUSHI 20     ▕
-        pushi(t, v);
+        pushi(t, v, opcodes);
       } else if ((v & ~mask46) == 0) {
         // ○○○○○○○○○○○○○○○○○○◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //                  ▕      PUSHI 20     ▕         EXTEND 26       ▕
-        pushi(t, v >> 26);
-        extend(v & mask26);
+        pushi(t, v >> 26, opcodes);
+        extend(v & mask26, opcodes);
       } else {
         // ◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒◒
         //▕  PUSHI 12 ▕         EXTEND 26       ▕         EXTEND 26       ▕
-        pushi(t, v >> 52);
-        extend((v >> 26) & mask26);
-        extend(v & mask26);
+        pushi(t, v >> 52, opcodes);
+        extend((v >> 26) & mask26, opcodes);
+        extend(v & mask26, opcodes);
       }
       break;
     }
@@ -534,38 +618,38 @@ void Builder::push(gapil_replay_asm_value val) {
   }
 }
 
-void Builder::load(gapil_replay_asm_value val, gapil_replay_asm_type ty) {
+void Builder::load(gapil_replay_asm_value val, gapil_replay_asm_type ty,
+                   gapil::Buffer* opcodes) {
   if ((val.data & ~mask20) == 0) {
     switch (val.data_type) {
       case GAPIL_REPLAY_ASM_TYPE_CONSTANT_POINTER:
-        CYZ(Opcode::LOAD_C, ty, val.data);
+        CYZ(Opcode::LOAD_C, ty, val.data, opcodes);
         return;
       case GAPIL_REPLAY_ASM_TYPE_VOLATILE_POINTER:
-        CYZ(Opcode::LOAD_V, ty, val.data);
+        CYZ(Opcode::LOAD_V, ty, val.data, opcodes);
         return;
       default:
         break;
     }
   }
-  push(val);
-  CX(Opcode::LOAD, ty);
+  push(val, opcodes);
+  CX(Opcode::LOAD, ty, opcodes);
 }
 
-void Builder::store(gapil_replay_asm_value dst) {
+void Builder::store(gapil_replay_asm_value dst, gapil::Buffer* opcodes) {
   if ((dst.data & ~mask20) == 0 &&
       dst.data_type == GAPIL_REPLAY_ASM_TYPE_VOLATILE_POINTER) {
-    CX(Opcode::STORE_V, dst.data);
+    CX(Opcode::STORE_V, dst.data, opcodes);
   } else {
-    push(dst);
-    C(Opcode::STORE);
+    push(dst, opcodes);
+    C(Opcode::STORE, opcodes);
   }
 }
 
 }  // anonymous namespace
 
-void gapil_replay_build(context* ctx, gapil_replay_data* data) {
+void gapil_replay_build(gapil_context* ctx, gapil_replay_data* data,
+                        gapil_replay_payload* payload) {
   Builder builder(ctx->arena, data);
-  builder.layout_volatile_memory();
-  builder.generate_opcodes();
-  builder.build_resources();
+  builder.build(payload);
 }

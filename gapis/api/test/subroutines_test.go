@@ -19,8 +19,8 @@ import (
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -29,12 +29,15 @@ import (
 func TestSubAdd(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
-	a := arena.New()
-	defer a.Dispose()
-	cb := CommandBuilder{Thread: 0, Arena: a}
-	s := api.NewStateWithEmptyAllocator(device.Little32)
-	api.MutateCmds(ctx, s, nil, nil, cb.CmdAdd(10, 20))
-	got, err := GetState(s).Ints().Read(ctx, nil, s, nil)
+	env := executor.NewEnv(ctx, executor.Config{
+		CaptureABI: device.AndroidARMv7a,
+		Execute:    true,
+	})
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+	cb := CommandBuilder{Thread: 0, Arena: env.State.Arena}
+	api.MutateCmds(ctx, env.State, nil, nil, cb.CmdAdd(10, 20))
+	got, err := GetState(env.State).Ints().Read(ctx, nil, env.State, nil)
 	expected := []memory.Int{30}
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
 		assert.For(ctx, "got").ThatSlice(got).Equals(expected)

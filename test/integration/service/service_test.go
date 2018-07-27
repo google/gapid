@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	gapis "github.com/google/gapid/gapis/client"
@@ -125,6 +126,9 @@ func init() {
 	cfg.DeviceScanDone = deviceScanDone
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	env := executor.NewEnv(ctx, executor.Config{})
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
 	dev := host.Instance(ctx)
 
 	b := snippets.NewBuilder(ctx, dev)

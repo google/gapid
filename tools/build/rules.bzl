@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build/rules:android.bzl", "android_native_app_glue", "android_native")
-load("//tools/build/rules:apic.bzl", "apic_compile", "apic_template")
+load("//tools/build/rules:android.bzl", "android_native", "android_native_app_glue")
+load("//tools/build/rules:apic.bzl", "apic_binary", "apic_compile", "apic_template")
 load("//tools/build/rules:cc.bzl", "cc_copts", "cc_stripped_binary", "strip")
-load("//tools/build/rules:common.bzl", "generate", "copy", "copy_to", "copy_tree")
+load("//tools/build/rules:common.bzl", "copy", "copy_to", "copy_tree", "generate")
 load("//tools/build/rules:dynlib.bzl", "android_dynamic_library", "cc_dynamic_library")
 load("//tools/build/rules:embed.bzl", "embed")
 load("//tools/build/rules:filehash.bzl", "filehash")

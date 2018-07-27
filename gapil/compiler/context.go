@@ -20,7 +20,7 @@ import "github.com/google/gapid/core/codegen"
 import "C"
 
 func (c *C) declareContextType() {
-	fields := c.T.FieldsOf(C.context{})
+	fields := c.T.FieldsOf(C.gapil_context{})
 
 	c.plugins.foreach(func(p ContextDataPlugin) {
 		p.OnPreBuildContext(c)
@@ -60,11 +60,7 @@ func (c *C) buildContextFuncs() {
 
 		s.Memzero(s.Ctx.Cast(c.T.VoidPtr), s.SizeOf(c.T.Ctx).Cast(c.T.Uint32))
 
-		nextPoolID := c.Alloc(s, s.Scalar(1), c.T.Uint32).SetName("next_pool_id")
-		nextPoolID.Store(s.Scalar(uint32(1)))
-
 		s.Ctx.Index(0, ContextArena).Store(s.Arena)
-		s.Ctx.Index(0, ContextNextPoolID).Store(nextPoolID)
 		s.Ctx.Index(0, ContextThread).Store(s.Scalar(uint64(0)))
 
 		// Initialize custom plugin context fields
@@ -95,7 +91,7 @@ func (c *C) buildContextFuncs() {
 						val = c.initialValue(s, g.Type)
 					}
 					val.SetName(g.Name())
-					c.reference(s, val, g.Type)
+					c.Reference(s, val, g.Type)
 					globals.Index(0, api.Name(), g.Name()).Store(val)
 				}
 			}
@@ -115,7 +111,6 @@ func (c *C) buildContextFuncs() {
 			}
 		}
 
-		c.Free(s, s.Ctx.Index(0, ContextNextPoolID).Load())
 		if c.Settings.EmitExec {
 			c.Free(s, s.Ctx.Index(0, ContextGlobals).Load())
 		}

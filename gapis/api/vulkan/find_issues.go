@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -63,7 +64,7 @@ func isValidationLayer(n string) bool {
 // closed.
 // NOTE: right now this transform is just used to close chans passed in requests.
 type findIssues struct {
-	state           *api.GlobalState
+	env             *executor.Env
 	numInitialCmds  int
 	issues          []replay.Issue
 	res             []replay.Result
@@ -72,11 +73,11 @@ type findIssues struct {
 
 func newFindIssues(ctx context.Context, c *capture.Capture, numInitialCmds int) *findIssues {
 	t := &findIssues{
-		state:           c.NewState(ctx),
+		env:             c.Env().InitState().Execute().Build(ctx),
 		numInitialCmds:  numInitialCmds,
 		reportCallbacks: map[VkInstance]VkDebugReportCallbackEXT{},
 	}
-	t.state.OnError = func(err interface{}) {
+	t.env.State.OnError = func(err interface{}) {
 		if issue, ok := err.(replay.Issue); ok {
 			t.issues = append(t.issues, issue)
 		}
@@ -90,7 +91,7 @@ func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
 
-	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */, nil /* no watcher */)
+	mutateErr := cmd.Mutate(executor.PutEnv(ctx, t.env), id, t.env.State, nil /* no builder */, nil /* no watcher */)
 	if mutateErr != nil {
 		// Ignore since downstream transform layers can only consume valid commands
 		return
@@ -275,7 +276,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		// It is safe to delete keys in loop in Go
 		delete(t.reportCallbacks, inst)
 	}
-	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 		b.RegisterNotificationReader(func(n gapir.Notification) {
 			vkApi := API{}
 			if uint8(n.GetApiIndex()) != vkApi.Index() {
@@ -304,8 +305,10 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last
 		// Post had occurred, which may not be anywhere near the end of the stream.
 		code := uint32(0xe11de11d)
+		eosPtr := b.AllocateTemporaryMemory(4)
 		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
+		b.Store(eosPtr)
+		b.Post(eosPtr, 4, func(r binary.Reader, err error) {
 			for _, res := range t.res {
 				res.Do(func() (interface{}, error) {
 					if err != nil {
@@ -320,4 +323,5 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		})
 		return nil
 	}))
+	t.env.Dispose()
 }

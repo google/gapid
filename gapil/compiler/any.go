@@ -120,7 +120,7 @@ func (c *C) rtti(ty semantic.Type) codegen.Global {
 }
 
 func (c *C) packAny(s *S, ty semantic.Type, v *codegen.Value) *codegen.Value {
-	c.reference(s, v, ty)
+	c.Reference(s, v, ty)
 
 	var any *codegen.Value
 	if codegen.IsPointer(c.T.Target(ty)) {
@@ -170,7 +170,7 @@ func (c *C) unpackAny(s *S, ty semantic.Type, any *codegen.Value) *codegen.Value
 		out = any.Index(0, AnyValue).Load().Cast(c.T.Pointer(target)).Load()
 	}
 
-	c.reference(s, out, ty)
+	c.Reference(s, out, ty)
 	c.deferRelease(s, out, ty)
 
 	return out

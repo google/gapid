@@ -34,7 +34,7 @@ func Put(ctx context.Context, c *path.Capture) context.Context {
 func Get(ctx context.Context) *path.Capture {
 	val := ctx.Value(contextKey)
 	if val == nil {
-		panic(contextKey + " not present")
+		panic(string(contextKey) + " not present")
 	}
 	return val.(*path.Capture)
 }

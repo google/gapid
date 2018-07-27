@@ -17,6 +17,7 @@ package gvr
 import (
 	"context"
 
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/capture"
@@ -58,12 +59,16 @@ func getFrameBindings(ctx context.Context, c *path.Capture) (*frameBindings, err
 func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
 
-	cmds, err := resolve.Cmds(ctx, r.Capture)
+	c, err := capture.Resolve(ctx)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	s, err := capture.NewState(ctx)
+	env := c.Env().InitState().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
+	cmds, err := resolve.Cmds(ctx, r.Capture)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +84,8 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 			// Annoyingly gvr_frame_submit takes a pointer to the frame pointer,
 			// just so it can be nullified before returning. To avoid another
 			// state mutation just to get the pointer, cache them here.
-			cmd.extras.Observations().ApplyReads(s.Memory.ApplicationPool())
-			frame, err := cmd.Frame().Read(ctx, cmd, s, nil)
+			cmd.extras.Observations().ApplyReads(env.State.Memory.ApplicationPool())
+			frame, err := cmd.Frame().Read(ctx, cmd, env.State, nil)
 			if err != nil {
 				return err
 			}
@@ -97,7 +102,7 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 				}
 			}
 		}
-		cmd.Mutate(ctx, id, s, nil, nil)
+		cmd.Mutate(ctx, id, env.State, nil, nil)
 		return nil
 	})
 

@@ -14,9 +14,15 @@
 
 #include "gapil/runtime/cc/runtime.h"
 
-void applyReads(context*);
-void applyWrites(context*);
-void* resolvePoolData(context*, pool*, uint64_t ptr, gapil_data_access,
-                      uint64_t* size);
-void callExtern(context*, uint8_t* name, void* args, void* res);
-void storeInDatabase(context*, void* ptr, uint64_t size, uint8_t* id_out);
+void applyReads(gapil_context*);
+void applyWrites(gapil_context*);
+void* resolvePoolData(gapil_context*, gapil_pool*, uint64_t ptr,
+                      gapil_data_access, uint64_t size);
+void callExtern(gapil_context*, uint8_t* name, void* args, void* res);
+void copySlice(gapil_context*, gapil_slice* dst, gapil_slice* src);
+void cstringToSlice(gapil_context*, uint64_t ptr, gapil_slice* out);
+void storeInDatabase(gapil_context*, void* ptr, uint64_t size, uint8_t* id_out);
+gapil_pool* makePool(gapil_context*, uint64_t size);
+void freePool(gapil_pool*);
+
+void cloneSlice(gapil_context*, gapil_slice* dst, gapil_slice* src);

@@ -21,7 +21,6 @@ go_library(
         "callbacks.go",
         "remap.go",
         "replay.go",
-        "runtime.go",
     ],
     cdeps = [
         "//gapil/runtime/cc/replay:headers",
@@ -32,12 +31,10 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/codegen:go_default_library",
-        "//core/data/slice:go_default_library",
         "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
         "//gapil/compiler:go_default_library",
-        "//gapil/executor:go_default_library",
         "//gapil/semantic:go_default_library",
-        "//gapir/replay_service:go_default_library",
     ],
 )
 
@@ -49,6 +46,7 @@ go_test(
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
         "//core/text/parse:go_default_library",
         "//gapil:go_default_library",
         "//gapil/compiler:go_default_library",
@@ -56,7 +54,6 @@ go_test(
         "//gapil/executor:go_default_library",
         "//gapil/semantic:go_default_library",
         "//gapis/api:go_default_library",
-        "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/replay/opcode:go_default_library",
         "//gapis/replay/protocol:go_default_library",

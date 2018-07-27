@@ -35,6 +35,7 @@ type Module struct {
 	triple     Triple
 	name       string
 	funcs      map[string]*Function
+	externs    map[string]Global
 	strings    map[string]llvm.Value
 	memcpy     *Function
 	memset     *Function
@@ -98,6 +99,7 @@ func NewModule(name string, target *device.ABI) *Module {
 		triple:  triple,
 		name:    name,
 		funcs:   map[string]*Function{},
+		externs: map[string]Global{},
 		strings: map[string]llvm.Value{},
 	}
 	m.Types.emptyStructField = Field{"empty-struct", m.Types.Int8}
@@ -192,8 +194,19 @@ func (m *Module) ParseFunctionSignature(sig string) *Function {
 	}
 	ret := m.parseType(parts[1])
 	name := parts[2]
-	args := m.parseTypes(strings.Split(parts[3], ","))
+	args := m.parseTypes(trimSpace(strings.Split(parts[3], ",")))
 	return m.Function(ret, name, args...)
+}
+
+func trimSpace(l []string) []string {
+	out := make([]string, 0, len(l))
+	for _, s := range l {
+		s := strings.TrimSpace(s)
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func (m *Module) parseTypes(l []string) []Type {
@@ -294,7 +307,7 @@ func (m *Module) Ctor(priority int32, cb func(*Builder)) {
 	}, false)
 
 	entries := []llvm.Value{
-		llvm.ConstStruct([]llvm.Value{
+		m.ctx.ConstStruct([]llvm.Value{
 			m.Scalar(priority).llvm,
 			ctor.llvm,
 		}, false),
@@ -309,6 +322,7 @@ func (m *Module) Ctor(priority int32, cb func(*Builder)) {
 // Global is a global value.
 type Global struct {
 	Type Type
+	Name string
 	llvm llvm.Value
 }
 
@@ -341,7 +355,7 @@ func (m *Module) ZeroGlobal(name string, ty Type) Global {
 	v := llvm.AddGlobal(m.llvm, ty.llvmTy(), name)
 	v.SetInitializer(llvm.ConstNull(ty.llvmTy()))
 	v.SetLinkage(llvm.PrivateLinkage)
-	return Global{m.Types.Pointer(ty), v}
+	return Global{m.Types.Pointer(ty), name, v}
 }
 
 // Global returns a new global variable intiailized with the specified constant
@@ -350,14 +364,17 @@ func (m *Module) Global(name string, val Const) Global {
 	v := llvm.AddGlobal(m.llvm, val.Type.llvmTy(), name)
 	v.SetInitializer(val.llvm)
 	v.SetLinkage(llvm.PrivateLinkage)
-	return Global{m.Types.Pointer(val.Type), v}
+	return Global{m.Types.Pointer(val.Type), name, v}
 }
 
 // Extern returns a global variable declared externally with the given name and
 // type.
 func (m *Module) Extern(name string, ty Type) Global {
 	v := llvm.AddGlobal(m.llvm, ty.llvmTy(), name)
-	return Global{m.Types.Pointer(ty), v}
+	v.SetLinkage(llvm.ExternalLinkage)
+	out := Global{m.Types.Pointer(ty), name, v}
+	m.externs[name] = out
+	return out
 }
 
 // Const is an immutable value.
@@ -444,7 +461,7 @@ func (m *Module) ScalarOfType(v interface{}, ty Type) Const {
 			var ok bool
 			val, ok = m.strings[s]
 			if !ok {
-				arr := llvm.ConstString(s, true)
+				arr := m.ctx.ConstString(s, true)
 				buf := llvm.AddGlobal(m.llvm, arr.Type(), "str")
 				buf.SetInitializer(arr)
 				buf.SetLinkage(llvm.PrivateLinkage)

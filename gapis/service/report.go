@@ -74,7 +74,7 @@ func NewReportBuilder() *ReportBuilder {
 
 // Add processes tags, adds references to item and adds item to report.
 func (b *ReportBuilder) Add(ctx context.Context, element *ReportItemRaw) {
-	if err := b.processMessages(element.Item, element.Message, element.Tags); err == nil {
+	if err := b.processMessages(ctx, element.Item, element.Message, element.Tags); err == nil {
 		b.report.Items = append(b.report.Items, element.Item)
 	} else {
 		log.E(ctx, "Error %v during adding an item to a report", err)
@@ -101,14 +101,19 @@ func WrapReportItem(item *ReportItem, m *stringtable.Msg) *ReportItemRaw {
 // processMessages checks if message's and tags' identifier and arguments
 // are unique and treat them appropriately. It also adds message references
 // to report item.
-func (b *ReportBuilder) processMessages(item *ReportItem, message *stringtable.Msg, tags []*stringtable.Msg) error {
-	ref, err := b.processMessage(message)
+func (b *ReportBuilder) processMessages(
+	ctx context.Context,
+	item *ReportItem,
+	message *stringtable.Msg,
+	tags []*stringtable.Msg) error {
+
+	ref, err := b.processMessage(ctx, message)
 	if err != nil {
 		return err
 	}
 	item.Message = ref
 	for _, m := range tags {
-		ref, err = b.processMessage(m)
+		ref, err = b.processMessage(ctx, m)
 		if err != nil {
 			return err
 		}
@@ -127,7 +132,7 @@ func (b *ReportBuilder) getOrAddString(s string) uint32 {
 	return i
 }
 
-func (b *ReportBuilder) getOrAddValue(v *stringtable.Value) uint32 {
+func (b *ReportBuilder) getOrAddValue(ctx context.Context, v *stringtable.Value) uint32 {
 	key := v.Unpack()
 	i, ok := b.values[key]
 	if !ok {
@@ -138,7 +143,7 @@ func (b *ReportBuilder) getOrAddValue(v *stringtable.Value) uint32 {
 	return i
 }
 
-func (b *ReportBuilder) processMessage(msg *stringtable.Msg) (*MsgRef, error) {
+func (b *ReportBuilder) processMessage(ctx context.Context, msg *stringtable.Msg) (*MsgRef, error) {
 	ref := &MsgRef{
 		Identifier: b.getOrAddString(msg.Identifier),
 		Arguments:  make([]*MsgRefArgument, 0, len(msg.Arguments)),
@@ -146,7 +151,7 @@ func (b *ReportBuilder) processMessage(msg *stringtable.Msg) (*MsgRef, error) {
 	for k, v := range msg.Arguments {
 		ref.Arguments = append(ref.Arguments, &MsgRefArgument{
 			Key:   b.getOrAddString(k),
-			Value: b.getOrAddValue(v),
+			Value: b.getOrAddValue(ctx, v),
 		})
 	}
 	return ref, nil

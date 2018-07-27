@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/transform"
@@ -35,14 +36,6 @@ var compat = gles.VisibleForTestingCompat
 const OpenGL_3_0 = "3.0"
 
 var p = memory.BytePtr
-
-func newState(ctx context.Context) *api.GlobalState {
-	s, err := capture.NewState(ctx)
-	if err != nil {
-		panic(err)
-	}
-	return s
-}
 
 func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	ctx := log.Testing(t)
@@ -59,6 +52,16 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	}
 
 	ctx = capture.Put(ctx, capturePath)
+
+	c, err := capture.Resolve(ctx)
+	if err != nil {
+		panic(err)
+	}
+
+	env := c.Env().InitState().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
 	ctx = gles.PutUnusedIDMap(ctx)
 
 	dev := &device.Instance{Configuration: &device.Configuration{
@@ -79,7 +82,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 
 	positions := []float32{-1., -1., 1., -1., -1., 1., 1., 1.}
 	indices := []uint16{0, 1, 2, 1, 2, 3}
-	r := &transform.Recorder{S: newState(ctx)}
+	r := &transform.Recorder{S: env.State}
 	ctxHandle, displayHandle, surfaceHandle := p(1), p(2), p(3)
 	cb := gles.CommandBuilder{Thread: 0, Arena: a}
 	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
@@ -98,16 +101,15 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	})
 
 	// Find glDrawElements and check it is using a buffer instead of client's memory now
-	s := newState(ctx)
 	var found bool
 	err = api.ForeachCmd(ctx, r.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+		if err := cmd.Mutate(ctx, id, env.State, nil, nil); err != nil {
 			return err
 		}
 
 		if _, ok := cmd.(*gles.GlDrawElements); ok {
-			ctx := gles.GetContext(s, cmd.Thread())
-			vao := ctx.Bound().VertexArray()
+			c := gles.GetContext(env.State, cmd.Thread())
+			vao := c.Bound().VertexArray()
 			array := vao.VertexAttributeArrays().Get(0)
 			binding := array.Binding()
 			if !binding.Buffer().IsNil() && array.Pointer() == 0 {

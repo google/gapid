@@ -50,17 +50,16 @@ func init() {
 	}
 }
 
-// Field names for the context_t runtime type.
+// Field names for the gapil_context_t runtime type.
 const (
-	ContextGlobals    = "globals"
-	ContextArena      = "arena"
-	ContextThread     = "thread"
-	ContextCmdID      = "cmd_id"
-	ContextCmdArgs    = "cmd_args"
-	ContextNextPoolID = "next_pool_id"
+	ContextGlobals = "globals"
+	ContextArena   = "arena"
+	ContextThread  = "thread"
+	ContextCmdID   = "cmd_id"
+	ContextCmdArgs = "cmd_args"
 )
 
-// Field names for the slice_t runtime type.
+// Field names for the gapil_slice_t runtime type.
 const (
 	SlicePool  = "pool"
 	SliceRoot  = "root"
@@ -101,15 +100,13 @@ const (
 	MsgArgs       = "args"
 )
 
-// Field names for the pool_t runtime type.
+// Field names for the gapil_pool_t runtime type.
 const (
 	PoolRefCount = "ref_count"
 	PoolID       = "id"
-	PoolSize     = "size"
-	PoolBuffer   = "buffer"
 )
 
-// Field names for the map_t runtime type.
+// Field names for the gapil_map_t runtime type.
 const (
 	MapRefCount = "ref_count"
 	MapArena    = "arena"
@@ -118,7 +115,7 @@ const (
 	MapElements = "elements"
 )
 
-// Field names for the string_t runtime type.
+// Field names for the gapil_string_t runtime type.
 const (
 	StringRefCount = "ref_count"
 	StringArena    = "arena"
@@ -126,14 +123,14 @@ const (
 	StringData     = "data"
 )
 
-// Field names for the ref_t runtime type.
+// Field names for the gapil_ref_t runtime type.
 const (
 	RefRefCount = "ref_count"
 	RefArena    = "arena"
 	RefValue    = "value"
 )
 
-// Field names for the buffer_t runtime type.
+// Field names for the gapil_buffer_t runtime type.
 const (
 	BufArena = "arena"
 	BufData  = "data"

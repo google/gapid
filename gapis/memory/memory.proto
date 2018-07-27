@@ -30,10 +30,3 @@ enum PoolNames {
 message ID {
   bytes data = 1;
 }
-
-// Internal to GAPIS.
-message SubsliceResolvable {
-  ID slice = 1;
-  uint64 first = 2;
-  uint64 count = 3;
-}

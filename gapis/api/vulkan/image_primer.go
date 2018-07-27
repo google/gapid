@@ -112,10 +112,10 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 				inputImageObjects := copyJob.srcAspectsToDsts[aspect].dstImgs
 				inputImages := make([]ipRenderImage, len(inputImageObjects))
 				for i, iimg := range inputImageObjects {
-					layout := iimg.Aspects().Get(
-						VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT).Layers().Get(
-						layer).Levels().Get(
-						level).Layout()
+					layout := iimg.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT).
+						Layers().Get(layer).
+						Levels().Get(level).
+						Layout()
 					inputImages[i] = ipRenderImage{
 						image:         iimg,
 						aspect:        VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
@@ -345,7 +345,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, stagingImgFormat)
 	stagingElementSize := stagingElementInfo.ElementSize()
 
-	stagingInfo := img.Info().Clone(p.sb.newState.Arena, api.CloneContext{})
+	stagingInfo := img.Info().Clone(p.sb.ctx)
 	stagingInfo.SetDedicatedAllocationNV(NilDedicatedAllocationBufferImageCreateInfoNVʳ)
 	stagingInfo.SetFmt(stagingImgFormat)
 	stagingInfo.SetUsage(VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT))
@@ -2311,7 +2311,6 @@ func (h *ipBufferCopySession) collectCopiesFromSparseImageBindings() {
 }
 
 func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
-
 	if h.totalSize == 0 || len(h.copies) == 0 || len(h.content) == 0 {
 		return log.Errf(h.sb.ctx, nil, "no content for buf->img copy")
 	}

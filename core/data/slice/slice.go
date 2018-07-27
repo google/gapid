@@ -105,6 +105,9 @@ func Reverse(s interface{}) {
 // Bytes returns a byte-slice from the given unsafe pointer of the given
 // size in bytes.
 func Bytes(ptr unsafe.Pointer, size uint64) []byte {
+	if ptr == nil {
+		return nil
+	}
 	return ((*[1 << 30]byte)(ptr))[:size]
 }
 

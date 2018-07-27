@@ -30,6 +30,9 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
+	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -103,7 +106,16 @@ func New(ctx context.Context, a arena.Arena, name string, header *Header, initia
 	for _, cmd := range cmds {
 		b.addCmd(ctx, cmd)
 	}
-	hdr := *header
+	var hdr Header
+	if header != nil {
+		hdr = *header
+	} else {
+		h := host.Instance(ctx)
+		hdr = Header{
+			Device: h,
+			ABI:    h.Configuration.ABIs[0],
+		}
+	}
 	hdr.Version = CurrentCaptureVersion
 	c := b.build(name, &hdr)
 
@@ -119,54 +131,94 @@ func New(ctx context.Context, a arena.Arena, name string, header *Header, initia
 	return &path.Capture{ID: path.NewID(id)}, nil
 }
 
-// NewState returns a new, default-initialized State object built for the
-// capture held by the context.
-func NewState(ctx context.Context) (*api.GlobalState, error) {
-	c, err := Resolve(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return c.NewState(ctx), nil
+// EnvBuilder is a builder of executor environments, returned by Capture.Env().
+type EnvBuilder struct {
+	c *Capture
+	executor.Config
+	allocator memory.Allocator
+	initState bool
 }
 
-// NewUninitializedState returns a new, uninitialized GlobalState built for the
-// capture c. The returned state does not contain the capture's mid-execution
-// state.
-func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
-	freeList := memory.InvertMemoryRanges(c.Observed)
-	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
-	s := api.NewStateWithAllocator(
-		memory.NewBasicAllocator(freeList),
-		c.Header.ABI.MemoryLayout,
-	)
-	return s
+// Execute will include execution logic in the build environment.
+func (b *EnvBuilder) Execute() *EnvBuilder {
+	b.Config.Execute = true
+	return b
 }
 
-// NewState returns a new, initialized GlobalState object built for the capture
-// c. If the capture contains a mid-execution state, then this will be copied
-// into the returned state.
-func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
-	out := c.NewUninitializedState(ctx)
-	if c.InitialState != nil {
-		ctx = status.Start(ctx, "BuildInitialCommands")
+// Replay will include replay building logic in the build environment for the
+// given replay device ABI.
+func (b *EnvBuilder) Replay(abi *device.ABI) *EnvBuilder {
+	b.Config.ReplayABI = abi
+	return b
+}
+
+// InitState will prime the built executor's state with the capture's
+// serialized state.
+func (b *EnvBuilder) InitState() *EnvBuilder {
+	b.initState = true
+	return b
+}
+
+// ReserveMemory will pre-reserve the given memory ranges in the built
+// executor's memory allocator.
+func (b *EnvBuilder) ReserveMemory(ranges interval.U64RangeList) *EnvBuilder {
+	b.allocator.ReserveRanges(ranges)
+	return b
+}
+
+// Build builds a new environment using the builder's settings.
+func (b *EnvBuilder) Build(ctx context.Context) *executor.Env {
+	env := executor.NewEnv(ctx, b.Config)
+	env.State.MemoryLayout = b.c.Header.ABI.MemoryLayout
+	env.State.Arena = arena.New()
+	env.State.Memory = memory.NewPools()
+	env.State.Allocator = b.allocator
+
+	if b.initState && b.c.InitialState != nil {
+		ctx = status.Start(ctx, "Setup Initial State")
 		defer status.Finish(ctx)
 
+		ctx = executor.PutEnv(ctx, env)
 		// Rebuild all the writes into the memory pools.
-		for _, m := range c.InitialState.Memory {
-			pool, _ := out.Memory.Get(memory.PoolID(m.Pool))
-			if pool == nil {
-				pool = out.Memory.NewAt(memory.PoolID(m.Pool))
-			}
+		for _, m := range b.c.InitialState.Memory {
+			env.GetOrMakePool(memory.PoolID(m.Pool))
+			pool := env.State.Memory.MustGet(memory.PoolID(m.Pool))
 			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
 		}
 		// Clone serialized state, and initialize it for use.
-		for k, v := range c.InitialState.APIs {
-			s := v.Clone(out.Arena)
+		for k, v := range b.c.InitialState.APIs {
+			s := v.Clone(ctx)
 			s.SetupInitialState(ctx)
-			out.APIs[k.ID()] = s
+			if e, ok := env.State.APIs[k.ID()]; ok {
+				// Any default-initialized values will leak here
+				// until the arena is freed.
+				e.Set(s)
+			} else {
+				// If there was no executor set on the config
+				// then we won't have any States in the context.
+				// Set up the initial states here.
+				env.State.APIs[k.ID()] = s
+			}
 		}
 	}
-	return out
+
+	return env
+}
+
+// Env returns a new execution environment builder.
+func (c *Capture) Env() *EnvBuilder {
+	cfg := executor.Config{
+		Optimize:   true,
+		CaptureABI: c.Header.ABI,
+		APIs:       c.APIs,
+	}
+	allocator := memory.NewBasicAllocator(value.ValidMemoryRanges)
+	allocator.ReserveRanges(c.Observed)
+	return &EnvBuilder{
+		c:         c,
+		Config:    cfg,
+		allocator: allocator,
+	}
 }
 
 // Service returns the service.Capture description for this capture.
@@ -338,6 +390,10 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 
 	// Bind the arena used to for all allocations for this capture.
 	ctx = arena.Put(ctx, a)
+
+	env := executor.NewEnv(ctx, executor.Config{Optimize: true})
+	defer env.AutoDispose()
+	ctx = executor.PutEnv(ctx, env)
 
 	d := newDecoder(a)
 

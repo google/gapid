@@ -17,11 +17,11 @@ package compiler_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/text/parse"
 	"github.com/google/gapid/gapil"
@@ -30,7 +30,6 @@ import (
 	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapil/semantic"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -53,11 +52,6 @@ func TestExecutor(t *testing.T) {
 	// represent addresses in the ARM abi
 	ptrA := uint64(0x0000000004030000)
 
-	c := &capture.Capture{
-		Observed: interval.U64RangeList{
-			{First: ptrA, Count: 0x10000},
-		},
-	}
 	u32Data := [1024]uint32{}
 	for i := range u32Data {
 		u32Data[i] = uint32(i)
@@ -1042,7 +1036,7 @@ cmd void AbortInCmd() {
 			cmds: []cmd{{N: "AbortInCmd"}},
 			expected: expected{
 				data: D(uint32(5)),
-				err:  api.ErrCmdAborted{},
+				err:  &api.ErrCmdAborted{},
 			},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Abort.InSub",
@@ -1057,7 +1051,7 @@ cmd void AbortInSub() {
 			cmds: []cmd{{N: "AbortInSub"}},
 			expected: expected{
 				data: D(uint32(5)),
-				err:  api.ErrCmdAborted{},
+				err:  &api.ErrCmdAborted{},
 			},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Abort.InCmd.Cleanup",
@@ -1067,7 +1061,7 @@ cmd void AbortInCmdCleanup() {
 	abort
 }`,
 			cmds:     []cmd{{N: "AbortInCmdCleanup"}},
-			expected: expected{err: api.ErrCmdAborted{}},
+			expected: expected{err: &api.ErrCmdAborted{}},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Abort.InSub.Cleanup",
 			src: `
@@ -1077,7 +1071,7 @@ cmd void AbortInSubCleanup() {
 	call_abort()
 }`,
 			cmds:     []cmd{{N: "AbortInSubCleanup"}},
-			expected: expected{err: api.ErrCmdAborted{}},
+			expected: expected{err: &api.ErrCmdAborted{}},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.ArrayAssign",
 			src: `
@@ -2020,9 +2014,17 @@ cmd void Read(StructInStruct* input) {
 			},
 		},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			test.run(log.SubTest(ctx, t), c)
-		})
+		for _, optimize := range []bool{false, true} {
+			name := test.name
+			if optimize {
+				name += " opt"
+			}
+			test, optimize := test, optimize
+			t.Run(test.name, func(t *testing.T) {
+				t.Parallel()
+				test.run(log.SubTest(ctx, t), optimize)
+			})
+		}
 	}
 }
 
@@ -2055,7 +2057,25 @@ type test struct {
 	settings compiler.Settings
 }
 
-func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
+var externCalls = map[*executor.Env][]interface{}{}
+var externMutex = sync.RWMutex{}
+
+func init() {
+	testutils.ExternA = func(env *executor.Env, i uint64, f float32, b bool) uint64 {
+		externMutex.Lock()
+		defer externMutex.Unlock()
+		externCalls[env] = append(externCalls[env], externA{i, f, b})
+		return i + uint64(f)
+	}
+	testutils.ExternB = func(env *executor.Env, s string) bool {
+		externMutex.Lock()
+		defer externMutex.Unlock()
+		externCalls[env] = append(externCalls[env], externB{s})
+		return s == "meow"
+	}
+}
+
+func (t test) run(ctx context.Context, optimize bool) (succeeded bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			panic(fmt.Errorf("Panic in test '%v':\n%v", t.name, r))
@@ -2078,13 +2098,20 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 		return false
 	}
 
-	exec := executor.New(program, false)
-	env := exec.NewEnv(ctx, c)
-	defer env.Dispose()
-
 	if t.dump {
 		fmt.Println(program.Dump())
 	}
+
+	e, err := program.Codegen.Executor(optimize)
+	if !assert.For(ctx, "Executor(%v)", optimize).ThatError(err).Succeeded() {
+		return false
+	}
+
+	module := e.GlobalAddress(program.Module)
+
+	exec := executor.New(ctx, executor.Config{}, module)
+	env := exec.NewEnv(ctx)
+	defer env.Dispose()
 
 	defer func() {
 		if !succeeded {
@@ -2092,19 +2119,22 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 		}
 	}()
 
-	externCalls := []interface{}{}
-
 	for i, cmd := range t.cmds {
 		fmt.Printf("    > %s\n", cmd.N)
-		testutils.ExternA = func(env *executor.Env, i uint64, f float32, b bool) uint64 {
-			externCalls = append(externCalls, externA{i, f, b})
-			return i + uint64(f)
+
+		cmd.I = -1
+		for i, f := range a.Functions {
+			if f.Name() == cmd.N {
+				cmd.I = i
+				break
+			}
 		}
-		testutils.ExternB = func(env *executor.Env, s string) bool {
-			externCalls = append(externCalls, externB{s})
-			return s == "meow"
+		if cmd.I == -1 {
+			log.E(ctx, "No command found with name '%v'", cmd.N)
+			continue
 		}
-		err = env.Execute(ctx, &cmd, api.CmdID(0x1000+i))
+
+		err = env.Execute(ctx, api.CmdID(0x1000+i), &cmd)
 		if !assert.For(ctx, "Execute(%v, %v)", i, cmd.N).ThatError(err).DeepEquals(t.expected.err) {
 			return false
 		}
@@ -2117,25 +2147,30 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	}
 
 	if t.expected.externCalls != nil {
-		if !assert.For(ctx, "ExternCalls").ThatSlice(externCalls).Equals(t.expected.externCalls) {
+		externMutex.RLock()
+		calls := externCalls[env]
+		externMutex.RUnlock()
+		if !assert.For(ctx, "ExternCalls").ThatSlice(calls).Equals(t.expected.externCalls) {
 			return false
 		}
 	}
 
 	for k, v := range t.expected.buffers {
 		rng := memory.Range{k, uint64(len(v))}
-		storedBytes := env.GetBytes(rng)
+		storedBytes := make([]byte, len(v))
+		err := env.State.Memory.ApplicationPool().Slice(rng).Get(ctx, 0, storedBytes)
+		if !assert.For(ctx, "Slice(%v).Get", rng).ThatError(err).Succeeded() {
+			return false
+		}
 
 		if !assert.For(ctx, "Buffers").ThatSlice(storedBytes).Equals(v) {
 			return false
 		}
 	}
 
-	stats := env.Arena.Stats()
-	numContextAllocs := 3               // gapil_create_context: context, next_pool_id, globals
-	numMemBlocks := c.Observed.Length() // observation allocations
-	numOtherAllocs := numMemBlocks + numContextAllocs
-	if !assert.For(ctx, "Allocations").That(stats.NumAllocations - numOtherAllocs).Equals(t.expected.numAllocs) {
+	stats := env.State.Arena.Stats()
+	numContextAllocs := 2 // gapil_create_context: context, globals
+	if !assert.For(ctx, "Allocations").That(stats.NumAllocations - numContextAllocs).Equals(t.expected.numAllocs) {
 		log.I(ctx, "Allocations: %v\n", stats)
 		return false
 	}

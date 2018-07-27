@@ -25,7 +25,7 @@ type S struct {
 	// The scope can emit any instructions into the current scope block.
 	*codegen.Builder
 
-	// Ctx is a pointer to the active context (context_t*).
+	// Ctx is a pointer to the active context (gapil_context_t*).
 	Ctx *codegen.Value
 
 	// Location is a pointer to the current source code location (uint32_t*).

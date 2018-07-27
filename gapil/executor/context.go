@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compiler
+package executor
 
 import (
-	"fmt"
+	"context"
 
-	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/core/context/keys"
 )
 
-var errAborted error = api.ErrCmdAborted{}
+type contextEnvKeyTy string
 
-func (c ErrorCode) Err() error {
-	switch c {
-	case ErrSuccess:
-		return nil
-	case ErrAborted:
-		return errAborted
-	default:
-		return fmt.Errorf("Unknown error code %v", c)
+const contextEnvKey = contextEnvKeyTy("env")
+
+// PutEnv attaches a Env to a Context.
+func PutEnv(ctx context.Context, e *Env) context.Context {
+	return keys.WithValue(ctx, contextEnvKey, e)
+}
+
+// GetEnv retrieves the Env from a context previously annotated by PutEnv.
+func GetEnv(ctx context.Context) *Env {
+	val := ctx.Value(contextEnvKey)
+	if val == nil {
+		panic(string(contextEnvKey) + " not present")
 	}
+	return val.(*Env)
 }

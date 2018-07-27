@@ -14,12 +14,14 @@
 
 package api
 
-// MemoryBreakdown is the type implemented by APIs that can report the memory
-// layout of their state.
+import "context"
+
+// MemoryBreakdownProvider is the type implemented by APIs that can report the
+// memory layout of their state.
 type MemoryBreakdownProvider interface {
 	// MemoryBreakdown stores an overview of the state's memory layout into
 	// a MemoryBreakdown object.  The layout includes data on memory types,
 	// allocations, and which resources are bound to which locations in
 	// memory.
-	MemoryBreakdown(*GlobalState) (*MemoryBreakdown, error)
+	MemoryBreakdown(context.Context, *GlobalState) (*MemoryBreakdown, error)
 }

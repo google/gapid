@@ -43,7 +43,7 @@ func (r *replayer) parseCallbacks() {
 	r.callbacks.termData = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_term_data_sig))
 	r.callbacks.reserveMemory = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_reserve_memory_sig))
 	r.callbacks.allocateMemory = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_allocate_memory_sig))
-	r.callbacks.addResource = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_add_resource_sig))
+	r.callbacks.addResource = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_add_resource_by_slice_sig))
 	r.callbacks.addConstant = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_add_constant_sig))
 	r.callbacks.getRemapFunc = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_get_remap_func_sig))
 	r.callbacks.addRemapping = r.M.ParseFunctionSignature(C.GoString(C.gapil_replay_add_remapping_sig))

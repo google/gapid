@@ -18,17 +18,22 @@ import (
 	"testing"
 
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
 
 func TestCallReflectedCommand(t *testing.T) {
 	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	env := executor.NewEnv(ctx, executor.Config{})
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
+	a := env.State.Arena
 	s := api.NewStateWithEmptyAllocator(device.Little32)
-	a := arena.New()
-	defer a.Dispose()
 	cb := CommandBuilder{Arena: a}
 	cmd := cb.VkCreateBuffer(
 		VkDevice(0),

@@ -13,13 +13,69 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//tools/build:rules.bzl", "apic_compile")
+
+apic_compile(
+    name = "prebuilt-host",
+    apis = [
+        "//gapis/api/gles:api",
+        "//gapis/api/vulkan:api",
+        "//gapis/api/gvr:api",
+    ],
+    emit = [
+        "context",
+        "exec",
+    ],
+    module = "prebuilt_host",
+    optimize = True,
+    symbols = "c",
+    widen_types = True,
+)
+
+apic_compile(
+    name = "prebuilt-armv7a",
+    apis = [
+        "//gapis/api/gles:api",
+        "//gapis/api/vulkan:api",
+        "//gapis/api/gvr:api",
+    ],
+    capture = "armeabi-v7a",
+    emit = [
+        "context",
+        "exec",
+    ],
+    module = "prebuilt_armv7a",
+    optimize = True,
+    symbols = "c",
+    widen_types = True,
+)
+
+# Needed because apic_compile, can't (yet) return a cc provider.
+# :api_compiled produces a .o file, so this doesn't actually compile anything.
+cc_library(
+    name = "api_lib",
+    srcs = [
+        ":prebuilt-armv7a",
+        ":prebuilt-host",
+    ],
+)
 
 go_library(
     name = "go_default_library",
-    srcs = ["all.go"],
+    srcs = [
+        "all.go",
+        "prebuilts.go",
+    ],
+    cdeps = [
+        ":api_lib",
+        "//gapil/runtime/cc",
+    ],
+    cgo = True,
     importpath = "github.com/google/gapid/gapis/api/all",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/os/device:go_default_library",
+        "//gapil/executor:go_default_library",
         "//gapis/api/gles:go_default_library",
         "//gapis/api/gvr:go_default_library",
         "//gapis/api/vulkan:go_default_library",

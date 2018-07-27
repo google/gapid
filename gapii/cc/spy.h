@@ -96,6 +96,9 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
  private:
   Spy();
 
+  // registers the gapil runtime callbacks.
+  void register_runtime_callbacks();
+
   // observeFramebuffer captures the currently bound framebuffer's color
   // buffer, and writes it to a FramebufferObservation message.
   void observeFramebuffer(CallObserver* observer, uint8_t api);

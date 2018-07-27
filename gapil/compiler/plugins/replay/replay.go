@@ -17,8 +17,11 @@
 package replay
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapil/semantic"
 )
@@ -35,13 +38,13 @@ const (
 	// unlikely to be a valid pointer.
 	observableAddressStart = 0x1000
 
-	initialStreamCap = 64 << 10
+	initialInstructionsCap = 64 << 10
 
 	data = "replay_data" // Additional context field.
 
 	// Fields of gapil_replay_data:
-	stream = "stream"
-	call   = "call" // void (*call)(context*)
+	instructions = "instructions"
+	call         = "call" // void (*call)(gapil_context*)
 
 	// Fields of pointer_fixup:
 	offset = "offset"
@@ -74,6 +77,10 @@ func (t *types) Replay(ty semantic.Type) codegen.Type {
 
 // Plugin is the replay plugin for the gapil compiler.
 func Plugin(replayLayout *device.MemoryLayout) compiler.Plugin {
+	if replayLayout == nil {
+		hostABI := host.Instance(context.Background()).Configuration.ABIs[0]
+		replayLayout = hostABI.MemoryLayout
+	}
 	return &replayer{replayLayout: replayLayout}
 }
 
@@ -125,7 +132,7 @@ func (r *replayer) ContextData(c *compiler.C) []compiler.ContextField {
 			Name: data,
 			Type: r.T.replayData,
 			Init: func(s *compiler.S, dataPtr *codegen.Value) {
-				c.InitBuffer(s, dataPtr.Index(0, stream), s.Scalar(uint32(initialStreamCap)))
+				c.InitBuffer(s, dataPtr.Index(0, instructions), s.Scalar(uint32(initialInstructionsCap)))
 				s.Call(r.callbacks.initData, s.Ctx, dataPtr)
 
 				// The pointer alignment field is to support identical output
@@ -136,7 +143,7 @@ func (r *replayer) ContextData(c *compiler.C) []compiler.ContextField {
 			},
 			Term: func(s *compiler.S, dataPtr *codegen.Value) {
 				s.Call(r.callbacks.termData, s.Ctx, dataPtr)
-				c.TermBuffer(s, dataPtr.Index(0, stream))
+				c.TermBuffer(s, dataPtr.Index(0, instructions))
 			},
 		},
 	}
@@ -151,7 +158,7 @@ func (r *replayer) Functions() map[string]*codegen.Function {
 func (r *replayer) OnBeginCommand(s *compiler.S, cmd *semantic.Function) {
 	callFunc := r.buildCall(cmd)
 	s.Ctx.Index(0, data, call).Store(s.FuncAddr(callFunc))
-	r.emitLabel(s)
+	r.emitBeginCommand(s)
 }
 
 func (r *replayer) OnFence(s *compiler.S) {
@@ -297,9 +304,9 @@ func (r *replayer) emitCall(s *compiler.S) {
 	s.CallIndirect(callFunc, s.Ctx)
 }
 
-func (r *replayer) emitLabel(s *compiler.S) {
-	cmdID := s.Ctx.Index(0, compiler.ContextCmdID).Load().Cast(r.T.Uint32)
-	r.asmLabel(s, cmdID)
+func (r *replayer) emitBeginCommand(s *compiler.S) {
+	cmdID := s.Ctx.Index(0, compiler.ContextCmdID).Load()
+	r.asmBeginCommand(s, cmdID)
 }
 
 func (r *replayer) reserve(s *compiler.S, slice *codegen.Value, ty *semantic.Slice) {
@@ -363,6 +370,8 @@ func (r *replayer) value(s *compiler.S, val *codegen.Value, ty semantic.Type) *c
 			r.Fail("Static array parameters of remapped types currently not supported")
 		}
 		return r.addConstant(s, val, ty)
+	case *semantic.Enum:
+		return r.value(s, val, ty.NumberType)
 	}
 	r.Fail("Unhandled type %v", ty.Name())
 	return nil

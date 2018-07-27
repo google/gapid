@@ -21,7 +21,7 @@
 
 namespace gapil {
 
-string_t String::EMPTY = {1, nullptr, 0, {0}};
+gapil_string_t String::EMPTY = {1, nullptr, 0, {0}};
 
 String::String() {
   ptr = &EMPTY;
@@ -60,7 +60,7 @@ String::String(core::Arena* arena, const char* s, size_t len) {
                           const_cast<char*>(s));
 }
 
-String::String(string_t* p) : ptr(p) {}
+String::String(gapil_string_t* p) : ptr(p) {}
 
 String::~String() {
   if (ptr != nullptr) {  // note: nullptr is only valid in the case of a move

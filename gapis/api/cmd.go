@@ -16,9 +16,9 @@ package api
 
 import (
 	"context"
+	"unsafe"
 
 	"github.com/google/gapid/core/fault"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -26,6 +26,10 @@ import (
 type Cmd interface {
 	// All commands belong to an API
 	APIObject
+
+	// ExecData returns a pointer to the command parameter and return value
+	// data used by the command executor.
+	ExecData() unsafe.Pointer
 
 	// Caller returns the identifier of the command that called this command,
 	// or CmdNoID if the command has no caller.
@@ -39,6 +43,9 @@ type Cmd interface {
 
 	// SetThread changes the thread index.
 	SetThread(uint64)
+
+	// CmdIndex returns the unique index for this command in the API.
+	CmdIndex() int
 
 	// CmdName returns the name of the command.
 	CmdName() string
@@ -58,10 +65,10 @@ type Cmd interface {
 
 	// Mutate mutates the State using the command. If the builder argument is
 	// not nil then it will call the replay function on the builder.
-	Mutate(context.Context, CmdID, *GlobalState, *builder.Builder, StateWatcher) error
+	Mutate(context.Context, CmdID, *GlobalState, builder.Builder, StateWatcher) error
 
 	// Clone makes a shallow copy of this command.
-	Clone(arena.Arena) Cmd
+	Clone(context.Context) Cmd
 
 	// Alive returns true if this command should be marked alive for DCE
 	Alive() bool

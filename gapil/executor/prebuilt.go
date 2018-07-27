@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,21 +15,13 @@
 package executor
 
 import (
-	"fmt"
-
-	"github.com/google/gapid/gapis/api"
+	"context"
+	"unsafe"
 )
 
-type Encodable interface {
-	Encode([]byte) bool
-}
-
-func encodeCommand(cmd api.Cmd, buf []byte) {
-	e, ok := cmd.(Encodable)
-	if !ok {
-		panic(fmt.Errorf("Command '%v' is not encodable", cmd.CmdName()))
-	}
-	if !e.Encode(buf) {
-		panic(fmt.Errorf("Failed to encode command '%v'", cmd.CmdName()))
-	}
+func RegisterPrebuilt(cfg Config, module unsafe.Pointer) {
+	exec := New(context.Background(), cfg, module)
+	ready := make(chan struct{})
+	cache.Store(cfg.key(), &apiExec{exec: exec, ready: ready})
+	close(ready)
 }

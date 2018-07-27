@@ -37,10 +37,10 @@ type encoder struct {
 	backrefs  map[unsafe.Pointer]int64
 }
 
-var encoders = map[*C.context]*encoder{}
+var encoders = map[*C.gapil_context]*encoder{}
 
 //export gapil_encode_type
-func gapil_encode_type(ctx *C.context, name *C.uint8_t, descSize C.uint32_t, descPtr unsafe.Pointer) C.int64_t {
+func gapil_encode_type(ctx *C.gapil_context, name *C.uint8_t, descSize C.uint32_t, descPtr unsafe.Pointer) C.int64_t {
 	desc := &descriptor.DescriptorProto{}
 	err := proto.Unmarshal(C.GoBytes(descPtr, (C.int)(descSize)), desc)
 	if err != nil {
@@ -62,7 +62,7 @@ func gapil_encode_type(ctx *C.context, name *C.uint8_t, descSize C.uint32_t, des
 }
 
 //export gapil_encode_object
-func gapil_encode_object(ctx *C.context, isGroup uint8, ty uint32, dataSize uint32, dataPtr unsafe.Pointer) unsafe.Pointer {
+func gapil_encode_object(ctx *C.gapil_context, isGroup uint8, ty uint32, dataSize uint32, dataPtr unsafe.Pointer) unsafe.Pointer {
 	e := encoders[ctx]
 	e.callbacks = append(e.callbacks, cbEncodeObject{
 		IsGroup: isGroup != 0,
@@ -73,13 +73,13 @@ func gapil_encode_object(ctx *C.context, isGroup uint8, ty uint32, dataSize uint
 }
 
 //export gapil_slice_encoded
-func gapil_slice_encoded(ctx *C.context, slice *C.slice) {
+func gapil_slice_encoded(ctx *C.gapil_context, slice *C.gapil_slice) {
 	e := encoders[ctx]
 	e.callbacks = append(e.callbacks, cbSliceEncoded{Size: int(slice.size)})
 }
 
 //export gapil_encode_backref
-func gapil_encode_backref(ctx *C.context, object unsafe.Pointer) C.int64_t {
+func gapil_encode_backref(ctx *C.gapil_context, object unsafe.Pointer) C.int64_t {
 	e := encoders[ctx]
 	id, ok := e.backrefs[object]
 	if !ok {
@@ -109,7 +109,7 @@ type cbBackref struct {
 	ID int64
 }
 
-func withEncoder(f func(ctx *C.context)) callbacks {
+func withEncoder(f func(ctx *C.gapil_context)) callbacks {
 	a := arena.New()
 	ctx := C.create_context((*C.arena)(a.Pointer))
 	defer func() {
@@ -142,7 +142,7 @@ func encodeCmdInts(cmd *pb.CmdInts, isGroup bool) callbacks {
 		h:      (C.int64_t)(cmd.H),
 	}
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.cmd__cmd_ints__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -150,7 +150,7 @@ func encodeCmdInts(cmd *pb.CmdInts, isGroup bool) callbacks {
 func encodeCmdIntsCall(call *pb.CmdIntsCall, isGroup bool) callbacks {
 	s := C.cmd_intsCall{result: (C.int64_t)(call.Result)}
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.cmd__cmd_intsCall__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -161,7 +161,7 @@ func encodeCmdFloats(cmd *pb.CmdFloats, isGroup bool) callbacks {
 		a:      (C.float)(cmd.A),
 		b:      (C.double)(cmd.B),
 	}
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.cmd__cmd_floats__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -172,7 +172,7 @@ func encodeCmdEnums(cmd *pb.CmdEnums, isGroup bool) callbacks {
 		e:      (C.uint32_t)(cmd.E),
 		e_s64:  (C.int64_t)(cmd.ES64),
 	}
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.cmd__cmd_enums__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -184,7 +184,7 @@ func encodeCmdArrays(cmd *pb.CmdArrays, isGroup bool) callbacks {
 		b:      [2]C.int32_t{(C.int32_t)(cmd.B[0]), (C.int32_t)(cmd.B[1])},
 		c:      [3]C.float{(C.float)(cmd.C[0]), (C.float)(cmd.C[1]), (C.float)(cmd.C[2])},
 	}
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.cmd__cmd_arrays__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -196,7 +196,7 @@ func encodeCmdPointers(cmd *pb.CmdPointers, isGroup bool) callbacks {
 		b:      (*C.int32_t)((unsafe.Pointer)(uintptr(cmd.B))),
 		c:      (*C.float)((unsafe.Pointer)(uintptr(cmd.C))),
 	}
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.cmd__cmd_pointers__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -238,7 +238,7 @@ func encodeBasicTypes(class *pb.BasicTypes, isGroup bool) callbacks {
 	dispose := convBasicTypes(class, &s)
 	defer dispose()
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.basic_types__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -249,7 +249,7 @@ func encodeNestedClasses(class *pb.NestedClasses, isGroup bool) callbacks {
 	dispose := convNestedClasses(class, &s)
 	defer dispose()
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.nested_classes__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -272,7 +272,7 @@ func encodeMapTypes(maps *pb.MapTypes, isGroup bool) callbacks {
 	s.c = s.a
 	s.d = s.b
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.map_types__encode(&s, ctx, toUint8(isGroup))
 	})
 }
@@ -295,12 +295,12 @@ func encodeRefTypes(refs *pb.RefTypes, isGroup bool) callbacks {
 	s.c = s.a
 	s.d = s.b
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.ref_types__encode(&s, ctx, toUint8(isGroup))
 	})
 }
 
-func convSlice(in *memory_pb.Slice, out *C.slice) {
+func convSlice(in *memory_pb.Slice, out *C.gapil_slice) {
 	out.root = C.uint64_t(in.Root)
 	out.base = C.uint64_t(in.Base)
 	out.size = C.uint64_t(in.Size)
@@ -315,7 +315,7 @@ func encodeSliceTypes(slices *pb.SliceTypes, isGroup bool) callbacks {
 	convSlice(slices.B, &s.b)
 	convSlice(slices.C, &s.c)
 
-	return withEncoder(func(ctx *C.context) {
+	return withEncoder(func(ctx *C.gapil_context) {
 		C.slice_types__encode(&s, ctx, toUint8(isGroup))
 	})
 }

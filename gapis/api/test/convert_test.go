@@ -25,18 +25,21 @@ import (
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
-	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapil/executor"
+	"github.com/google/gapid/gapis/database"
 )
 
 func TestReferences(t *testing.T) {
 	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	ctx = executor.PutEnv(ctx, executor.NewEnv(ctx, executor.Config{}))
 	assert := assert.To(t)
 
 	a := arena.New()
 	defer a.Dispose()
 
 	ctx = arena.Put(ctx, a)
-	complex := BuildComplex(a)
+	complex := BuildComplex(ctx)
 
 	// complex -> protoA -> decoded -> protoB
 
@@ -76,27 +79,31 @@ func TestReferences(t *testing.T) {
 
 func TestEquals(t *testing.T) {
 	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	ctx = executor.PutEnv(ctx, executor.NewEnv(ctx, executor.Config{}))
 
 	a := arena.New()
 	defer a.Dispose()
 
 	ctx = arena.Put(ctx, a)
-	complex := BuildComplex(a)
+	complex := BuildComplex(ctx)
 
 	check(ctx, complex, complex, "equals")
 }
 
 func TestCloneReferences(t *testing.T) {
 	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	ctx = executor.PutEnv(ctx, executor.NewEnv(ctx, executor.Config{}))
 	assert := assert.To(t)
 
 	a := arena.New()
 	defer a.Dispose()
 
 	ctx = arena.Put(ctx, a)
-	complex := BuildComplex(a)
+	complex := BuildComplex(ctx)
 
-	cloned := complex.Clone(a, api.CloneContext{})
+	cloned := complex.Clone(ctx)
 	check(ctx, cloned.Data(), complex.Data(), "Data")
 	check(ctx, cloned.Object(), complex.Object(), "Object")
 	check(ctx, cloned.ObjectArray(), complex.ObjectArray(), "ObjectArray")

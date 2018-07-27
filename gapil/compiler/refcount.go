@@ -32,8 +32,8 @@ type refRel struct {
 }
 
 func (f *refRel) declare(c *C, name, ref, rel string, ty codegen.Type) {
-	f.reference = c.M.Function(c.T.Void, ref, ty).LinkOnceODR().Inline()
-	f.release = c.M.Function(c.T.Void, rel, ty).LinkOnceODR().Inline()
+	f.reference = c.M.Function(c.T.Void, ref, ty).LinkPrivate().Inline()
+	f.release = c.M.Function(c.T.Void, rel, ty).LinkPrivate().Inline()
 	f.name = name
 }
 
@@ -102,12 +102,12 @@ func (c *C) declareRefRels() {
 	}
 
 	sli := refRel{}
-	sli.declare(c, "slice", "gapil_slice_reference", "gapil_slice_release", c.T.Sli)
+	sli.declare(c, "slice", "slice_reference", "slice_release", c.T.Sli)
 	c.refRels.tys[slicePrototype] = sli
 	c.refRels.impls[slicePrototype] = sli
 
 	str := refRel{}
-	str.declare(c, "string", "gapil_string_reference", "gapil_string_release", c.T.StrPtr)
+	str.declare(c, "string", "string_reference", "string_release", c.T.StrPtr)
 	c.refRels.tys[semantic.StringType] = str
 	c.refRels.impls[semantic.StringType] = str
 
@@ -319,9 +319,11 @@ func caller() string {
 	return strings.Join(locs, " ")
 }
 
-func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
+// Reference adds a reference to the given value. If the given type
+// is not a reference type, then this is a no-op.
+func (c *C) Reference(s *S, val *codegen.Value, ty semantic.Type) {
 	if got, expect := val.Type(), c.T.Target(ty); got != expect {
-		fail("reference() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
+		fail("Reference() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
 	}
 	if !c.isRefCounted(semantic.Underlying(ty)) {
 		return
@@ -339,9 +341,12 @@ func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
 	}
 }
 
-func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
+// Release removes a reference to the given value. If the given type
+// is not a reference type, then this is a no-op. If the number of
+// references hits 0, then the value is freed.
+func (c *C) Release(s *S, val *codegen.Value, ty semantic.Type) {
 	if got, expect := val.Type(), c.T.Target(ty); got != expect {
-		fail("release() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
+		fail("Release() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
 	}
 	if !c.isRefCounted(semantic.Underlying(ty)) {
 		return

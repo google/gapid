@@ -21,6 +21,13 @@
 extern "C" {
 #endif  // __cplusplus
 
+typedef struct gapil_cloner_callbacks_t {
+  // gapil_clone_slice clones the slice at src to dst.
+  void (*clone_slice)(gapil_context* ctx, gapil_slice* dst, gapil_slice* src);
+} gapil_cloner_callbacks;
+
+void gapil_set_cloner_callbacks(gapil_cloner_callbacks*);
+
 #ifndef DECL_GAPIL_CLONER_CB
 #define DECL_GAPIL_CLONER_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
 #endif
@@ -42,6 +49,10 @@ DECL_GAPIL_CLONER_CB(void*, gapil_clone_tracker_lookup, void* tracker,
 // version.
 DECL_GAPIL_CLONER_CB(void, gapil_clone_tracker_track, void* tracker,
                      void* original, void* cloned);
+
+// gapil_clone_slice clones the slice at src to dst.
+DECL_GAPIL_CLONER_CB(void, gapil_clone_slice, gapil_context* ctx,
+                     gapil_slice* dst, gapil_slice* src);
 
 #undef DECL_GAPIL_CLONER_CB
 

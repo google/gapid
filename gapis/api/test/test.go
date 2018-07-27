@@ -57,7 +57,3 @@ func (*State) SetupInitialState(ctx context.Context) {}
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
-
-func (i Remapped) remap(cmd api.Cmd, s *api.GlobalState) (interface{}, bool) {
-	return i, true
-}

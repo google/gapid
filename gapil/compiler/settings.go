@@ -31,6 +31,13 @@ type Settings struct {
 	// CaptureABI is the ABI of the device used to generate the capture data.
 	CaptureABI *device.ABI
 
+	// WidenTypes widens all target-variable-length types to the largest
+	// supported size across all targets.
+	// For example:
+	// If WidenTypes is false, a semantic.Int translate to a natural target
+	// sized integer, otherwise it will translate to a int64.
+	WidenTypes bool
+
 	// The mangler used for global functions and types.
 	Mangler mangling.Mangler
 

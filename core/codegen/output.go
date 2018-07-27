@@ -184,13 +184,24 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 		if f.built || strings.HasPrefix(f.Name, "llvm.") {
 			continue
 		}
-		if linker.ProcAddress(f.Name) == 0 {
+		if addr := linker.ProcAddress(f.Name); addr != 0 {
+			// RTDyldMemoryManager::getSymbolAddressInProcess likes to screw
+			// with symbol names that start with '_' on macOS. To avoid this
+			// and to prevent re-resolving everything again, set the mappings
+			// here.
+			engine.AddGlobalMapping(f.llvm, unsafe.Pointer(addr))
+		} else {
 			unresolved = append(unresolved, fmt.Sprint(f))
+		}
+	}
+	for _, e := range m.externs {
+		if linker.ProcAddress(e.Name) == 0 {
+			unresolved = append(unresolved, fmt.Sprint(e))
 		}
 	}
 	if len(unresolved) > 0 {
 		sort.Strings(unresolved)
-		msg := fmt.Sprintf("Unresolved external functions:\n%v", strings.Join(unresolved, "\n"))
+		msg := fmt.Sprintf("Unresolved external symbols:\n%v", strings.Join(unresolved, "\n"))
 		fail(msg)
 	}
 

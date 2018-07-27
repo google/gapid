@@ -18,7 +18,9 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/app/analytics"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -38,10 +40,10 @@ func Report(ctx context.Context, p *path.Report, r *path.ResolveConfig) (*servic
 	return obj.(*service.Report), nil
 }
 
-func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtable.Msg) *service.ReportItemRaw {
+func (r *ReportResolvable) newReportItem(s log.Severity, id api.CmdID, m *stringtable.Msg) *service.ReportItemRaw {
 	var cmd *path.Command
-	if c != uint64(api.CmdNoID) {
-		cmd = r.Path.Capture.Command(c)
+	if id != api.CmdNoID {
+		cmd = r.Path.Capture.Command(uint64(id))
 	}
 	return service.WrapReportItem(&service.ReportItem{
 		Severity: service.Severity(s),
@@ -51,12 +53,19 @@ func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtabl
 
 // Resolve implements the database.Resolver interface.
 func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
+	ctx = status.Start(ctx, "Report")
+	defer status.Finish(ctx)
+
 	ctx = SetupContext(ctx, r.Path.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	env := c.Env().InitState().Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
 
 	defer analytics.SendTiming("resolve", "report")(analytics.Size(len(c.Commands)))
 
@@ -72,18 +81,22 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	builder := service.NewReportBuilder()
 
-	var currentCmd uint64
-	items := []*service.ReportItemRaw{}
-	state := c.NewState(ctx)
+	cmdItems := map[api.CmdID][]*service.ReportItemRaw{}
+	cmdIssues := map[api.CmdID][]replay.Issue{}
+
+	state := env.State
 	state.NewMessage = func(s log.Severity, m *stringtable.Msg) uint32 {
-		items = append(items, r.newReportItem(s, currentCmd, m))
+		cmdID := env.CmdID()
+		items := cmdItems[cmdID]
+		items = append(items, r.newReportItem(s, cmdID, m))
+		cmdItems[cmdID] = items
 		return uint32(len(items) - 1)
 	}
 	state.AddTag = func(i uint32, t *stringtable.Msg) {
+		cmdID := env.CmdID()
+		items := cmdItems[cmdID]
 		items[i].Tags = append(items[i].Tags, t)
 	}
-
-	issues := map[api.CmdID][]replay.Issue{}
 
 	if r.Path.Device != nil {
 		// Request is for a replay report too.
@@ -107,47 +120,52 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 						Severity: service.Severity_ErrorLevel,
 						Error:    err,
 					}
-					issues[api.CmdNoID] = append(issues[api.CmdNoID], issue)
+					cmdIssues[api.CmdNoID] = append(cmdIssues[api.CmdNoID], issue)
 					continue
 				}
 				for _, issue := range apiIssues {
-					issues[issue.Command] = append(issues[issue.Command], issue)
+					cmdIssues[issue.Command] = append(cmdIssues[issue.Command], issue)
 				}
 			}
 		}
 	}
 
+	ctx = status.Start(ctx, "Execute")
+	defer status.Finish(ctx)
+
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
+	errs := env.ExecuteN(ctx, 0, c.Commands)
+
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		items, currentCmd = items[:0], uint64(id)
+		if !filter(id, cmd, state) {
+			return nil
+		}
+
+		items, issues := cmdItems[id], cmdIssues[id]
 
 		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {
-			items = append(items, r.newReportItem(log.Fatal, uint64(id),
-				messages.ErrTraceAssert(as.Reason)))
+			items = append(items, r.newReportItem(log.Fatal, id, messages.ErrTraceAssert(as.Reason)))
 		}
 
-		if err := cmd.Mutate(ctx, id, state, nil /* builder */, nil /* watcher */); err != nil {
-			if !api.IsErrCmdAborted(err) {
-				items = append(items, r.newReportItem(log.Error, uint64(id),
-					messages.ErrInternalError(err.Error())))
-			}
+		if err := errs[id]; err != nil && !api.IsErrCmdAborted(err) {
+			items = append(items, r.newReportItem(log.Error, id, messages.ErrInternalError(err.Error())))
 		}
 
-		if filter(id, cmd, state) {
-			for _, item := range items {
-				item.Tags = append(item.Tags, getCommandNameTag(cmd))
-				builder.Add(ctx, item)
-			}
-			for _, issue := range issues[id] {
-				item := r.newReportItem(log.Severity(issue.Severity), uint64(issue.Command),
-					messages.ErrReplayDriver(issue.Error.Error()))
-				if int(issue.Command) < len(c.Commands) {
-					item.Tags = append(item.Tags, getCommandNameTag(c.Commands[issue.Command]))
-				}
-				builder.Add(ctx, item)
-			}
+		for _, item := range items {
+			item.Tags = append(item.Tags, getCommandNameTag(cmd))
+			builder.Add(ctx, item)
 		}
+
+		for _, issue := range issues {
+			item := r.newReportItem(log.Severity(issue.Severity), issue.Command,
+				messages.ErrReplayDriver(issue.Error.Error()))
+			if int(issue.Command) < len(c.Commands) {
+				item.Tags = append(item.Tags, getCommandNameTag(c.Commands[issue.Command]))
+			}
+			builder.Add(ctx, item)
+		}
+
 		return nil
 	})
 

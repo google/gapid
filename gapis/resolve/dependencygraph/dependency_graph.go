@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -187,7 +188,10 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 		},
 	}
 
-	s := c.NewUninitializedState(ctx).ReserveMemory(ranges)
+	env := c.Env().ReserveMemory(ranges).Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+	s := env.State
 
 	dependencyGraphBuildCounter.Time(func() {
 		api.ForeachCmd(ctx, cmds, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {

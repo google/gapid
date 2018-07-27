@@ -199,7 +199,7 @@ func (*stencilOverdraw) rewriteImageCreate(ctx context.Context,
 		return
 	}
 
-	newCreateInfo := createInfo.Clone(a, api.CloneContext{})
+	newCreateInfo := createInfo.Clone(ctx)
 
 	if !newCreateInfo.PQueueFamilyIndices().IsNullptr() {
 		indices := newCreateInfo.PQueueFamilyIndices().Slice(0,
@@ -353,7 +353,8 @@ func (s *stencilOverdraw) createNewRenderPassFramebuffer(ctx context.Context,
 	return renderInfo{renderPass, depthIdx, framebuffer, image, imageView}, nil
 }
 
-func (s *stencilOverdraw) getStencilAttachmentDescription(ctx context.Context,
+func (s *stencilOverdraw) getStencilAttachmentDescription(
+	ctx context.Context,
 	st *State,
 	a arena.Arena,
 	rpInfo RenderPassObjectʳ,
@@ -368,7 +369,7 @@ func (s *stencilOverdraw) getStencilAttachmentDescription(ctx context.Context,
 	var stencilDesc VkAttachmentDescription
 	var prefFmt VkFormat
 	if idx != ^uint32(0) {
-		stencilDesc = depthDesc.Clone(a, api.CloneContext{})
+		stencilDesc = depthDesc.Clone(ctx)
 
 		prefFmt, err = s.depthToStencilFormat(depthDesc.Fmt())
 		if err != nil {
@@ -394,9 +395,11 @@ func (s *stencilOverdraw) getStencilAttachmentDescription(ctx context.Context,
 }
 
 // TODO: see if we can use the existing depth attachment in place
-func (s *stencilOverdraw) getDepthAttachment(a arena.Arena,
+func (s *stencilOverdraw) getDepthAttachment(
+	a arena.Arena,
 	rpInfo RenderPassObjectʳ,
 ) (VkAttachmentDescription, uint32, error) {
+
 	if rpInfo.SubpassDescriptions().Len() == 0 {
 		return NilVkAttachmentDescription, 0,
 			fmt.Errorf("RenderPass %v has no subpasses",
@@ -744,10 +747,10 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 	}
 
 	attachments := rpInfo.AttachmentDescriptions().All()
-	newAttachments := rpInfo.AttachmentDescriptions().Clone(a, api.CloneContext{})
+	newAttachments := rpInfo.AttachmentDescriptions().Clone(ctx)
 	newAttachments.Add(uint32(newAttachments.Len()), stencilAttachment)
-	newAttachmentsData, newAttachmentsLen := unpackMapWithAllocator(allocAndRead,
-		newAttachments)
+	newAttachmentsData, newAttachmentsLen :=
+		unpackMapWithAllocator(allocAndRead, newAttachments)
 
 	stencilAttachmentReference := NewVkAttachmentReference(a,
 		uint32(len(attachments)),
@@ -763,8 +766,8 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 	}
 	subpassesData := allocAndRead(subpasses)
 
-	subpassDependenciesData, subpassDependenciesLen := unpackMapWithAllocator(allocAndRead,
-		rpInfo.SubpassDependencies())
+	subpassDependenciesData, subpassDependenciesLen :=
+		unpackMapWithAllocator(allocAndRead, rpInfo.SubpassDependencies())
 
 	renderPassCreateInfo := NewVkRenderPassCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
@@ -811,11 +814,13 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 	return newRenderPass
 }
 
-func subpassToSubpassDescription(a arena.Arena,
+func subpassToSubpassDescription(
+	a arena.Arena,
 	subpass SubpassDescription,
 	attachRefPtr memory.Pointer,
 	allocAndRead func(v ...interface{}) api.AllocResult,
 ) VkSubpassDescription {
+
 	unpackMapMaybeEmpty := func(m interface{}) (memory.Pointer, uint32) {
 		type HasLen interface {
 			Len() int
@@ -1352,9 +1357,8 @@ func (*stencilOverdraw) createDepthCopyBuffer(ctx context.Context,
 	bufferInfoData := alloc(bufferInfo)
 
 	bufferMemoryTypeIndex := uint32(0)
-	physicalDevice := st.PhysicalDevices().Get(
-		st.Devices().Get(device).PhysicalDevice(),
-	)
+	physicalDevice := st.PhysicalDevices().
+		Get(st.Devices().Get(device).PhysicalDevice())
 	for i := uint32(0); i < physicalDevice.MemoryProperties().MemoryTypeCount(); i++ {
 		t := physicalDevice.MemoryProperties().MemoryTypes().Get(int(i))
 		if 0 != (t.PropertyFlags() & VkMemoryPropertyFlags(
@@ -1752,7 +1756,8 @@ func (s *stencilOverdraw) transferDepthValues(ctx context.Context,
 
 // If the depth attachment is in "load" mode we need to copy the depth values
 // over to the depth aspect of our new depth/stencil buffer.
-func (s *stencilOverdraw) loadExistingDepthValues(ctx context.Context,
+func (s *stencilOverdraw) loadExistingDepthValues(
+	ctx context.Context,
 	cb CommandBuilder,
 	gs *api.GlobalState,
 	st *State,
@@ -1802,7 +1807,8 @@ func (s *stencilOverdraw) loadExistingDepthValues(ctx context.Context,
 
 // If the depth attachment is in "store" mode we need to copy the depth values
 // over from the depth aspect of our new depth/stencil buffer.
-func (s *stencilOverdraw) storeNewDepthValues(ctx context.Context,
+func (s *stencilOverdraw) storeNewDepthValues(
+	ctx context.Context,
 	cb CommandBuilder,
 	gs *api.GlobalState,
 	st *State,
@@ -1849,7 +1855,8 @@ func (s *stencilOverdraw) storeNewDepthValues(ctx context.Context,
 		alloc, addCleanup, out)
 }
 
-func (s *stencilOverdraw) transitionStencilImage(ctx context.Context,
+func (s *stencilOverdraw) transitionStencilImage(
+	ctx context.Context,
 	cb CommandBuilder,
 	gs *api.GlobalState,
 	st *State,
@@ -1894,7 +1901,8 @@ func (s *stencilOverdraw) transitionStencilImage(ctx context.Context,
 	)
 }
 
-func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
+func (s *stencilOverdraw) createCommandBuffer(
+	ctx context.Context,
 	cb CommandBuilder,
 	gs *api.GlobalState,
 	st *State,
@@ -1941,7 +1949,7 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 					return 0, err
 				}
 
-				newArgs := ar.Clone(a, api.CloneContext{})
+				newArgs := ar.Clone(ctx)
 				newArgs.SetRenderPass(renderInfo.renderPass)
 				newArgs.SetFramebuffer(renderInfo.framebuffer)
 
@@ -1979,7 +1987,7 @@ func (s *stencilOverdraw) createCommandBuffer(ctx context.Context,
 				newArgs := ar
 				if ar.PipelineBindPoint() ==
 					VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS {
-					newArgs = ar.Clone(a, api.CloneContext{})
+					newArgs = ar.Clone(ctx)
 
 					pipe := ar.Pipeline()
 					newPipe, ok := pipelines[pipe]

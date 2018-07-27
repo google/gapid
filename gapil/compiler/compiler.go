@@ -83,6 +83,7 @@ type C struct {
 	expressionStack []semantic.Expression
 	isFence         bool // If true, a fence should be emitted for the given statement
 	callbacks       struct {
+		abort          *codegen.Function
 		alloc          *codegen.Function
 		anyReference   *codegen.Function
 		anyRelease     *codegen.Function
@@ -243,6 +244,7 @@ func (c *C) compile() {
 }
 
 func (c *C) declareCallbacks() {
+	c.callbacks.abort = c.M.ParseFunctionSignature(C.GoString(C.gapil_abort_sig))
 	c.callbacks.alloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_alloc_sig))
 	c.callbacks.anyReference = c.M.ParseFunctionSignature(C.GoString(C.gapil_any_reference_sig))
 	c.callbacks.anyRelease = c.M.ParseFunctionSignature(C.GoString(C.gapil_any_release_sig))
@@ -269,8 +271,8 @@ func (c *C) declareCallbacks() {
 
 // Build implements the function f by creating a new scope and calling do to
 // emit the function body.
-// If the function has a parameter of type context_t* then the Ctx, Globals and
-// Arena scope fields are automatically assigned.
+// If the function has a parameter of type gapil_context_t* then the Ctx,
+// Globals and Arena scope fields are automatically assigned.
 func (c *C) Build(f *codegen.Function, do func(*S)) {
 	err(f.Build(func(b *codegen.Builder) {
 		s := &S{
@@ -306,20 +308,17 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 
 // MakeSlice creates a new slice of the given size in bytes.
 func (c *C) MakeSlice(s *S, size, count *codegen.Value) *codegen.Value {
-	slice := s.Local("slice", c.T.Sli)
-	c.MakeSliceAt(s, size, count, slice)
-	return slice.Load()
+	return s.Undef(c.T.Sli).
+		Insert(SlicePool, c.MakePool(s, size)).
+		Insert(SliceRoot, s.Scalar(uint64(0))).
+		Insert(SliceBase, s.Scalar(uint64(0))).
+		Insert(SliceSize, size).
+		Insert(SliceCount, count)
 }
 
-// MakeSliceAt creates a new slice of the given size in bytes at the given
-// slice pointer.
-func (c *C) MakeSliceAt(s *S, size, count, slice *codegen.Value) {
-	pool := s.Call(c.callbacks.makePool, s.Ctx, size)
-	slice.Index(0, SlicePool).Store(pool)
-	slice.Index(0, SliceRoot).Store(s.Scalar(uint64(0)))
-	slice.Index(0, SliceBase).Store(s.Scalar(uint64(0)))
-	slice.Index(0, SliceSize).Store(size)
-	slice.Index(0, SliceCount).Store(count)
+// MakePool creates and returns a pointer to a new pool of the given size.
+func (c *C) MakePool(s *S, size *codegen.Value) *codegen.Value {
+	return s.Call(c.callbacks.makePool, s.Ctx, size)
 }
 
 // CopySlice copies the contents of slice src to dst.

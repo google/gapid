@@ -32,12 +32,12 @@ func TestCommitCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range []struct {
 		name     string
-		f        func(*Builder)
+		f        func(Builder)
 		expected []asm.Instruction
 	}{
 		{
 			"Call with used return value",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 1})
@@ -53,7 +53,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Call with unused return value",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
@@ -67,7 +67,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Remove unused push",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U32(12))
 				b.CommitCommand()
@@ -78,7 +78,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Unused pushes",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U32(12))
 				b.Push(value.U32(34))
@@ -91,7 +91,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Unused clone",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
@@ -105,7 +105,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Unused clone",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
@@ -121,7 +121,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Unused clone of return value",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Clone(0)
@@ -136,7 +136,7 @@ func TestCommitCommand(t *testing.T) {
 		},
 		{
 			"Use one of three return values",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
 				b.Call(FunctionInfo{0, 123, protocol.Type_Uint8, 0})
@@ -157,7 +157,8 @@ func TestCommitCommand(t *testing.T) {
 	} {
 		b := New(device.Little32)
 		test.f(b)
-		assert.For(ctx, test.name).ThatSlice(b.instructions).Equals(test.expected)
+		instructions := b.(*builder).instructions
+		assert.For(ctx, test.name).ThatSlice(instructions).Equals(test.expected)
 	}
 }
 
@@ -165,12 +166,12 @@ func TestRevertCommand(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range []struct {
 		name     string
-		f        func(*Builder)
+		f        func(Builder)
 		expected []asm.Instruction
 	}{
 		{
 			"Revert command",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
@@ -181,7 +182,7 @@ func TestRevertCommand(t *testing.T) {
 		},
 		{
 			"Commit command, revert command",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.U8(1))
 				b.Call(FunctionInfo{1, 123, protocol.Type_Uint8, 1})
@@ -203,8 +204,8 @@ func TestRevertCommand(t *testing.T) {
 	} {
 		b := New(device.Little32)
 		test.f(b)
-
-		assert.For(ctx, test.name).ThatSlice(b.instructions).Equals(test.expected)
+		instructions := b.(*builder).instructions
+		assert.For(ctx, test.name).ThatSlice(instructions).Equals(test.expected)
 	}
 }
 
@@ -219,12 +220,12 @@ func TestRevertPostbackCommand(t *testing.T) {
 
 	for _, test := range []struct {
 		name     string
-		f        func(*Builder)
+		f        func(Builder)
 		expected []asm.Instruction
 	}{
 		{
 			"Revert postback command",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Post(value.AbsolutePointer(0x10000), 100, postback)
 				b.RevertCommand(expectedErr)
@@ -235,7 +236,8 @@ func TestRevertPostbackCommand(t *testing.T) {
 		ctx := log.Enter(ctx, test.name)
 		b := New(device.Little32)
 		test.f(b)
-		assert.For(ctx, "inst").ThatSlice(b.instructions).Equals(test.expected)
+		instructions := b.(*builder).instructions
+		assert.For(ctx, "inst").ThatSlice(instructions).Equals(test.expected)
 	}
 	assert.For(ctx, "Postback was not informed of RevertCommand").ThatError(postbackErr).Equals(expectedErr)
 }
@@ -244,12 +246,12 @@ func TestMapMemory(t *testing.T) {
 	ctx := log.Testing(t)
 	for _, test := range []struct {
 		name     string
-		f        func(*Builder)
+		f        func(Builder)
 		expected []asm.Instruction
 	}{
 		{
 			"No mapping",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Push(value.ObservedPointer(0x100004))
 				b.Call(FunctionInfo{0, 123, protocol.Type_VolatilePointer, 1})
@@ -263,7 +265,7 @@ func TestMapMemory(t *testing.T) {
 		},
 		{
 			"MapMemory",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 100, protocol.Type_AbsolutePointer, 0})
 				b.MapMemory(memory.Range{Base: 0x100000, Size: 0x10})
@@ -288,7 +290,7 @@ func TestMapMemory(t *testing.T) {
 		},
 		{
 			"UnmapMemory",
-			func(b *Builder) {
+			func(b Builder) {
 				b.BeginCommand(10, 0)
 				b.Call(FunctionInfo{0, 100, protocol.Type_AbsolutePointer, 0})
 				b.MapMemory(memory.Range{Base: 0x100000, Size: 0x10})
@@ -319,6 +321,7 @@ func TestMapMemory(t *testing.T) {
 		ctx := log.Enter(ctx, test.name)
 		b := New(device.Little32)
 		test.f(b)
-		assert.For(ctx, "inst").ThatSlice(b.instructions).Equals(test.expected)
+		instructions := b.(*builder).instructions
+		assert.For(ctx, "inst").ThatSlice(instructions).Equals(test.expected)
 	}
 }

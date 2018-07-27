@@ -42,16 +42,16 @@ class Slice {
   inline Slice(T* base, uint64_t count);
 
   // Constructs a new slice given the full explicit parameters.
-  inline Slice(pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
+  inline Slice(gapil_pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
                uint64_t count, bool add_ref = true);
 
   // Creates and returns a new slice wrapping the given pool.
   // If add_ref is true then the pool's reference count will be incremented.
-  inline static Slice create(pool_t* pool, bool add_ref);
+  inline static Slice create(gapil_pool_t* pool, uint64_t size, bool add_ref);
 
   // Creates and returns a new slice and pool sized to the given number of
   // elements.
-  inline static Slice create(context_t* ctx, uint64_t count);
+  inline static Slice create(gapil_context_t* ctx, uint64_t count);
 
   inline Slice(Slice<T>&&);
   inline ~Slice();
@@ -75,7 +75,7 @@ class Slice {
   inline uint32_t pool_id() const;
 
   // Returns the underlying pool.
-  inline const pool_t* pool() const;
+  inline const gapil_pool_t* pool() const;
 
   // Returns true if the slice contains the specified value.
   inline bool contains(const T& value) const;
@@ -103,13 +103,13 @@ class Slice {
   inline T* end() const;
 
  private:
-  void init(pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
+  void init(gapil_pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
             uint64_t count, bool add_ref = true);
 
   void reference() const;
   void release();
 
-  slice_t data;
+  gapil_slice_t data;
 };
 
 }  // namespace gapil

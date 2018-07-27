@@ -16,8 +16,8 @@ package replay
 
 import (
 	"context"
+	"unsafe"
 
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -29,11 +29,11 @@ var _ = api.Cmd(Custom{})
 // upon Replay().
 type Custom struct {
 	T uint64 // The thread ID
-	F func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error
+	F func(ctx context.Context, s *api.GlobalState, b builder.Builder) error
 }
 
 func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState,
-	b *builder.Builder, w api.StateWatcher) error {
+	b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return nil
 	}
@@ -41,15 +41,17 @@ func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState,
 }
 
 // api.Cmd compliance
+func (Custom) ExecData() unsafe.Pointer                                           { return nil }
 func (Custom) Caller() api.CmdID                                                  { return api.CmdNoID }
 func (Custom) SetCaller(api.CmdID)                                                {}
 func (cmd Custom) Thread() uint64                                                 { return cmd.T }
 func (cmd Custom) SetThread(t uint64)                                             { cmd.T = t }
 func (Custom) CmdName() string                                                    { return "<Custom>" }
+func (Custom) CmdIndex() int                                                      { return -1 }
 func (Custom) API() api.API                                                       { return nil }
 func (Custom) CmdParams() api.Properties                                          { return nil }
 func (Custom) CmdResult() *api.Property                                           { return nil }
 func (Custom) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (Custom) Extras() *api.CmdExtras                                             { return nil }
-func (cmd Custom) Clone(arena.Arena) api.Cmd                                      { return Custom{cmd.T, cmd.F} }
+func (cmd Custom) Clone(context.Context) api.Cmd                                  { return Custom{cmd.T, cmd.F} }
 func (Custom) Alive() bool                                                        { return false }

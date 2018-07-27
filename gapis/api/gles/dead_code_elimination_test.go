@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/api/transform"
@@ -34,9 +35,12 @@ import (
 )
 
 func TestDeadCommandRemoval(t *testing.T) {
+	abi := device.WindowsX86_64
+
 	ctx := log.Testing(t)
 	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	ctx = executor.PutEnv(ctx, executor.NewEnv(ctx, executor.Config{CaptureABI: abi}))
 
 	a := arena.New()
 	defer a.Dispose()
@@ -224,18 +228,25 @@ func TestDeadCommandRemoval(t *testing.T) {
 	for name, testCmds := range tests {
 		cmds := append(prologue, testCmds...)
 
-		h := &capture.Header{ABI: device.WindowsX86_64}
+		h := &capture.Header{ABI: abi}
 		capturePath, err := capture.New(ctx, a, name, h, nil, cmds)
 		if err != nil {
 			panic(err)
 		}
-		ctx = capture.Put(ctx, capturePath)
+		ctx := capture.Put(ctx, capturePath)
+
+		c, err := capture.Resolve(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		env := c.Env().InitState().Build(ctx)
+		defer env.Dispose()
+		ctx = executor.PutEnv(ctx, env)
 
 		// First verify the commands mutate without errors
-		c, _ := capture.Resolve(ctx)
-		s := c.NewState(ctx)
 		err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-			if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+			if err := cmd.Mutate(ctx, id, env.State, nil, nil); err != nil {
 				return fmt.Errorf("%v: %v: %v", id, cmd, err)
 			}
 			return nil

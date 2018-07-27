@@ -105,6 +105,7 @@ def _apic_compile_impl(ctx):
                         outputs[0].path,
                         "--optimize=%s" % ctx.attr.optimize,
                         "--dump=%s" % ctx.attr.dump,
+                        "--widentypes=%s" % ctx.attr.widen_types,
                         "--namespace",
                         ctx.attr.namespace,
                         "--symbols",
@@ -136,6 +137,7 @@ apic_compile = rule(
         ),
         "optimize": attr.bool(default = False),
         "dump": attr.bool(default = False),
+        "widen_types": attr.bool(default = False),
         "emit": attr.string_list(
             allow_empty = True,
             mandatory = True,

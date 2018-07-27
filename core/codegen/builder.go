@@ -105,11 +105,6 @@ func (b *Builder) Invoke(f *Function, cleanup func(), args ...*Value) *Value {
 	return res
 }
 
-// Throw throws an exception with the given value.
-func (b *Builder) Throw(v *Value) {
-	b.m.exceptions.throw(b, v)
-}
-
 func (b *Builder) callArgs(sig Signature, name string, args []*Value) []llvm.Value {
 	if sig.Variadic {
 		if g, e := len(args), len(sig.Parameters); g < e {

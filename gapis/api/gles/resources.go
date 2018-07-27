@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -353,7 +354,7 @@ func (s Shaderʳ) SetResourceData(
 }
 
 func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
-	state := c.NewState(ctx)
+	state := executor.GetEnv(ctx).State
 	shader := data.GetShader()
 	source := shader.Source
 	src := state.AllocDataOrPanic(ctx, source)

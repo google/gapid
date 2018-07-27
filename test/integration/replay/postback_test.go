@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func doReplay(t *testing.T, f func(*builder.Builder)) error {
+func doReplay(t *testing.T, f func(builder.Builder)) error {
 	ctx := log.Testing(t)
 
 	r := bind.NewRegistry()
@@ -84,7 +84,7 @@ func TestPostbackString(t *testing.T) {
 
 	done := make(chan struct{})
 
-	if doReplay(t, func(b *builder.Builder) {
+	if doReplay(t, func(b builder.Builder) {
 		ptr := b.String(expected)
 		b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) {
 			defer close(done)
@@ -111,7 +111,7 @@ func TestPostbackString(t *testing.T) {
 func TestMultiPostback(t *testing.T) {
 	done := make(chan struct{})
 
-	if doReplay(t, func(b *builder.Builder) {
+	if doReplay(t, func(b builder.Builder) {
 		ptr := b.AllocateTemporaryMemory(8)
 		b.Push(value.Bool(false))
 		b.Store(ptr)

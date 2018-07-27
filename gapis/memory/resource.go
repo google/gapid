@@ -125,11 +125,11 @@ func (r resourceSlice) NewReader(ctx context.Context) io.Reader {
 }
 
 func (s resourceSlice) ResourceID(ctx context.Context) (id.ID, error) {
-	return database.Store(ctx, &SubsliceResolvable{
-		Slice: NewID(s.src.resID),
-		First: s.rng.Base,
-		Count: s.rng.Size,
-	})
+	bytes := make([]byte, s.Size())
+	if err := s.Get(ctx, 0, bytes); err != nil {
+		return id.ID{}, err
+	}
+	return database.Store(ctx, bytes)
 }
 
 func (s resourceSlice) Size() uint64 {

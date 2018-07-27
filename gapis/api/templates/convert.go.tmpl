@@ -48,13 +48,13 @@
         {{$p := print (Global "Store") "." ($c.Name | ProtoGoName)}}
         {{$o := $c.Name | GoCommandName}}
         protoconv.Register(»¶
-          func(ctx context.Context, in *{{$o}}) (*{{$p}}, error) {»¶
+          func(ϟctx context.Context, in *{{$o}}) (*{{$p}}, error) {»¶
             ϟrefs := &protoconv.ToProtoContext{}¶
-            return in.ToProto(ϟrefs), nil¶
+            return in.ToProto(ϟctx, ϟrefs), nil¶
           «},¶
-          func(ctx context.Context, in *{{$p}}) (*{{$o}}, error) {»¶
+          func(ϟctx context.Context, in *{{$p}}) (*{{$o}}, error) {»¶
             ϟrefs := &protoconv.FromProtoContext{}¶
-            return {{$o}}From(ctx, in, ϟrefs), nil¶
+            return {{$o}}From(ϟctx, in, ϟrefs), nil¶
           «},¶
         «)¶
       {{end}}
@@ -64,13 +64,13 @@
         {{$p := print (Global "Store") "." (Macro "Convert.StorageTypeName" $c)}}
         {{$o := Macro "Go.Type" $c}}
         protoconv.Register(»¶
-          func(ctx context.Context, in {{$o}}) (*{{$p}}, error) {»¶
+          func(ϟctx context.Context, in {{$o}}) (*{{$p}}, error) {»¶
             ϟrefs := &protoconv.ToProtoContext{}¶
-            return in.ToProto(ϟrefs), nil¶
+            return in.ToProto(ϟctx, ϟrefs), nil¶
           «},¶
-          func(ctx context.Context, in *{{$p}}) ({{$o}}, error) {»¶
+          func(ϟctx context.Context, in *{{$p}}) ({{$o}}, error) {»¶
             ϟrefs := &protoconv.FromProtoContext{}¶
-            v := {{$o}}From(ctx, in, ϟrefs);¶
+            v := {{$o}}From(ϟctx, in, ϟrefs);¶
             return v, nil¶
           «},¶
         «)¶
@@ -81,13 +81,13 @@
         {{$p := print (Global "Store") "." (Macro "Convert.StorageTypeName" $r)}}
         {{$o := Macro "Go.Type" $r}}
         protoconv.Register(»¶
-          func(ctx context.Context, in {{$o}}) (*{{$p}}, error) {»¶
+          func(ϟctx context.Context, in {{$o}}) (*{{$p}}, error) {»¶
             ϟrefs := &protoconv.ToProtoContext{}¶
-            return in.ToProto(ϟrefs), nil¶
+            return in.ToProto(ϟctx, ϟrefs), nil¶
           «},¶
-          func(ctx context.Context, in *{{$p}}) ({{$o}}, error) {»¶
+          func(ϟctx context.Context, in *{{$p}}) ({{$o}}, error) {»¶
             ϟrefs := &protoconv.FromProtoContext{}¶
-            v := {{$o}}From(ctx, in, ϟrefs);¶
+            v := {{$o}}From(ϟctx, in, ϟrefs);¶
             return v, nil¶
           «},¶
         «)¶
@@ -133,7 +133,7 @@
   {{$p := print (Global "Store") "." $proto}}
   ¶
   // ToProto returns the primary storage proto of the {{$name}} command.¶
-  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
+  func (ϟc {{$name}}) ToProto(ϟctx context.Context, ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
     to := &{{$p}}{Thread: int64(ϟc.Thread())}¶
     {{range $v := $.CallParameters}}
       {{Template "Convert.To" "Field" $v}}
@@ -142,8 +142,8 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *{{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
+  func {{$name}}From(ϟctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *{{$name}} {»¶
+    ϟa := arena.Get(ϟctx)¶
     cb := CommandBuilder{uint64(from.GetThread()), ϟa}¶
     {{range $p := $.CallParameters}}
       {{$proto := $p.Name | ProtoGoName}}
@@ -171,7 +171,7 @@
     var _ api.CmdWithResult = (*{{$name}})(nil)¶
 ¶
     // CallResult returns the result value for this command.¶
-    func (ϟc *{{$name}}) CallResult() proto.Message {»¶
+    func (ϟc *{{$name}}) CallResult(ϟctx context.Context) proto.Message {»¶
       ϟrefs := &protoconv.ToProtoContext{}¶
       _ = ϟrefs¶
       to := &{{Global "OutputDir"}}_pb.{{$proto}}Call{}¶
@@ -180,7 +180,7 @@
     «}¶
 ¶
     // SetCallResult changes the result value.¶
-    func (ϟc *{{$name}}) SetCallResult(ctx context.Context, v proto.Message) error {»¶
+    func (ϟc *{{$name}}) SetCallResult(ϟctx context.Context, v proto.Message) error {»¶
       ϟrefs := &protoconv.FromProtoContext{}¶
       _ = ϟrefs¶
       from, ok := v.(*{{Global "OutputDir"}}_pb.{{$proto}}Call)¶
@@ -204,7 +204,7 @@
   {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
   ¶
   // ToProto returns the storage form of the {{$name}}.¶
-  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+  func (ϟc {{$name}}) ToProto(ϟctx context.Context, ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
     to := &{{$proto}}{}¶
     {{range $v := $.Fields}}
       {{Template "Convert.To" "Field" $v}}
@@ -213,8 +213,8 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
+  func {{$name}}From(ϟctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+    ϟa := arena.Get(ϟctx)¶
     ϟc := Make{{$name}}(ϟa)¶
     {{range $v := $.Fields}}
       {{Template "Convert.From" "Field" $v}}
@@ -234,7 +234,7 @@
   {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
 
    // ToProto returns the storage form of the {{$name}}.¶
-  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+  func (ϟc {{$name}}) ToProto(ϟctx context.Context, ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
     ϟobj := &{{$proto}}{}¶
     if ϟc.IsNil() {¶
       return ϟobj¶
@@ -248,9 +248,9 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+  func {{$name}}From(ϟctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
     return ϟrefs.GetReferencedObject(from.GetReferenceID(), Nil{{$name}}, func() (interface{}, func()) {»¶
-      ϟa := arena.Get(ctx)¶
+      ϟa := arena.Get(ϟctx)¶
       ϟobj := Make{{$name}}(ϟa)¶
       return ϟobj, func() {
         ϟobj.Set({{Template "Convert.FromProto" "Type" $.To "Value" "from.Value"}})¶
@@ -273,7 +273,7 @@
   {{$proto := print (Global "Store") "." (Macro "Convert.StorageTypeName" $)}}
 
   // ToProto returns the storage form of the {{$name}}.¶
-  func (ϟc {{$name}}) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
+  func (ϟc {{$name}}) ToProto(ϟctx context.Context, ϟrefs *protoconv.ToProtoContext) *{{$proto}} {»¶
     if ϟc.Len() == 0 {¶
       return &{{$proto}}{}¶
     }¶
@@ -292,8 +292,8 @@
   «}¶
   ¶
   // {{$name}}From builds a {{$name}} from the storage form.¶
-  func {{$name}}From(ctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
-    ϟa := arena.Get(ctx)¶
+  func {{$name}}From(ϟctx context.Context, from *{{$proto}}, ϟrefs *protoconv.FromProtoContext) {{$name}} {»¶
+    ϟa := arena.Get(ϟctx)¶
     ϟobj := New{{$name}}(ϟa)¶
     if from.GetReferenceID() == 0 {»¶
       return ϟobj¶

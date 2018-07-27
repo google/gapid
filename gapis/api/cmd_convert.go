@@ -26,7 +26,7 @@ type CmdWithResult interface {
 	Cmd
 
 	// CallResult returns the result value for this command.
-	CallResult() proto.Message
+	CallResult(context.Context) proto.Message
 
 	// SetCallResult changes the result value. Returns an error if the result
 	// proto type does not match this command.
@@ -34,9 +34,9 @@ type CmdWithResult interface {
 }
 
 // CmdCallFor returns the proto message type for the call result of cmd.
-func CmdCallFor(cmd Cmd) proto.Message {
+func CmdCallFor(ctx context.Context, cmd Cmd) proto.Message {
 	if cmd, ok := cmd.(CmdWithResult); ok {
-		return cmd.CallResult()
+		return cmd.CallResult(ctx)
 	}
 	return &CmdCall{}
 }

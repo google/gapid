@@ -53,7 +53,7 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 	}
 	for thread, context := range s.Contexts().All() {
 		if c.ID == context.ID() {
-			return s.contextRoot(p.After, thread), nil
+			return s.contextRoot(ctx, p.After, thread), nil
 		}
 	}
 	return nil, nil
@@ -80,12 +80,12 @@ func (s *State) SetupInitialState(ctx context.Context) {
 	}
 }
 
-func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
-	return path.NewField("Contexts", resolve.APIStateAfter(p, ID)).MapIndex(thread)
+func (s *State) contextRoot(ctx context.Context, p *path.Command, thread uint64) *path.MapIndex {
+	return path.NewField("Contexts", resolve.APIStateAfter(ctx, p, ID)).MapIndex(thread)
 }
 
-func (s *State) objectsRoot(p *path.Command, thread uint64) *path.Field {
-	return s.contextRoot(p, thread).Field("Objects")
+func (s *State) objectsRoot(ctx context.Context, p *path.Command, thread uint64) *path.Field {
+	return s.contextRoot(ctx, p, thread).Field("Objects")
 }
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
@@ -200,13 +200,14 @@ func (API) GetFramebufferAttachmentInfo(
 	thread uint64,
 	attachment api.FramebufferAttachment) (inf api.FramebufferAttachmentInfo, err error) {
 
-	return GetFramebufferAttachmentInfoByID(state, thread, attachment, 0)
+	return GetFramebufferAttachmentInfoByID(ctx, state, thread, attachment, 0)
 }
 
 // GetFramebufferAttachmentInfoByID returns the width, height and format of the
 // specified attachment of the framebuffer with the given id.
 // If fb is 0 then the currently bound framebuffer is used.
 func GetFramebufferAttachmentInfoByID(
+	ctx context.Context,
 	state *api.GlobalState,
 	thread uint64,
 	attachment api.FramebufferAttachment,

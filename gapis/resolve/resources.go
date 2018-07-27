@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -56,7 +57,12 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	state := c.NewUninitializedState(ctx).ReserveMemory(ranges)
+
+	env := c.Env().ReserveMemory(ranges).Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
+	state := env.State
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
 		seen[r] = len(seen)

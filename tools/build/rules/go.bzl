@@ -34,9 +34,10 @@ def go_stripped_binary(name, **kwargs):
 
     copy_exec(
         name = name,
-        srcs = select({
-            "@gapid//tools/build:debug": [name + "_unstripped"],
-            "//conditions:default": [name + "_stripped"],
-        }),
+        srcs = [name + "_unstripped"],
+        # select({
+        #     "@gapid//tools/build:debug": [name + "_unstripped"],
+        #     "//conditions:default": [name + "_stripped"],
+        # }),
         visibility = visibility,
     )

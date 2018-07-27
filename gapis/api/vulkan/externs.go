@@ -33,7 +33,7 @@ type externs struct {
 	cmd   api.Cmd
 	cmdID api.CmdID
 	s     *api.GlobalState
-	b     *rb.Builder
+	b     rb.Builder
 	w     api.StateWatcher
 }
 
@@ -67,7 +67,7 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 }
 
 // CallReflectedCommand unpacks the given subcommand and arguments, and calls the method
-func CallReflectedCommand(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b *rb.Builder, w api.StateWatcher, sub, data interface{}) {
+func CallReflectedCommand(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, b rb.Builder, w api.StateWatcher, sub, data interface{}) {
 	reflect.ValueOf(sub).Call([]reflect.Value{
 		reflect.ValueOf(ctx),
 		reflect.ValueOf(cmd),
@@ -76,7 +76,7 @@ func CallReflectedCommand(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api
 		reflect.ValueOf(s),
 		reflect.ValueOf(GetState(s)),
 		reflect.ValueOf(cmd.Thread()),
-		reflect.ValueOf(b),
+		reflect.ValueOf(&b).Elem(),
 		reflect.ValueOf(&w).Elem(),
 		reflect.ValueOf(data),
 	})
@@ -329,7 +329,7 @@ func bindSparse(ctx context.Context, w api.StateWatcher, a api.Cmd, id api.CmdID
 func (e externs) fetchPhysicalDeviceProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndProperties); ok {
-			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesAndPropertiesʳ(e.s.Arena).Set(p).Clone(e.ctx)
 		}
 	}
 	return NilPhysicalDevicesAndPropertiesʳ
@@ -347,7 +347,7 @@ func (e externs) fetchPhysicalDeviceMemoryProperties(inst VkInstance, devs VkPhy
 func (e externs) fetchPhysicalDeviceQueueFamilyProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesAndQueueFamilyPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesAndQueueFamilyProperties); ok {
-			return MakePhysicalDevicesAndQueueFamilyPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesAndQueueFamilyPropertiesʳ(e.s.Arena).Set(p).Clone(e.ctx)
 		}
 	}
 	return NilPhysicalDevicesAndQueueFamilyPropertiesʳ
@@ -356,7 +356,7 @@ func (e externs) fetchPhysicalDeviceQueueFamilyProperties(inst VkInstance, devs 
 func (e externs) fetchPhysicalDeviceFormatProperties(inst VkInstance, devs VkPhysicalDeviceˢ) PhysicalDevicesFormatPropertiesʳ {
 	for _, ee := range e.cmd.Extras().All() {
 		if p, ok := ee.(PhysicalDevicesFormatProperties); ok {
-			return MakePhysicalDevicesFormatPropertiesʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+			return MakePhysicalDevicesFormatPropertiesʳ(e.s.Arena).Set(p).Clone(e.ctx)
 		}
 	}
 	return NilPhysicalDevicesFormatPropertiesʳ
@@ -370,7 +370,7 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSpar
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(ImageMemoryRequirements); ok {
-			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
+			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.ctx)
 		}
 	}
 	return NilImageMemoryRequirementsʳ
@@ -384,7 +384,7 @@ func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMem
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(VkMemoryRequirements); ok {
-			return r.Clone(e.s.Arena, api.CloneContext{})
+			return r.Clone(e.ctx)
 		}
 	}
 	return MakeVkMemoryRequirements(e.s.Arena)
@@ -398,7 +398,7 @@ func (e externs) fetchLinearImageSubresourceLayouts(dev VkDevice, img ImageObjec
 	}
 	for _, ee := range e.cmd.Extras().All() {
 		if r, ok := ee.(LinearImageLayouts); ok {
-			return MakeLinearImageLayoutsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
+			return MakeLinearImageLayoutsʳ(e.s.Arena).Set(r).Clone(e.ctx)
 		}
 	}
 	return NilLinearImageLayoutsʳ

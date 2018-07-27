@@ -25,12 +25,10 @@ var _ = []database.Resolvable{
 	(*FramebufferAttachmentResolvable)(nil),
 	(*FramebufferChangesResolvable)(nil),
 	(*GetResolvable)(nil),
-	(*GlobalStateResolvable)(nil),
 	(*IndexLimitsResolvable)(nil),
 	(*ReportResolvable)(nil),
 	(*ResourceDataResolvable)(nil),
 	(*ResourceMetaResolvable)(nil),
 	(*ResourcesResolvable)(nil),
 	(*SetResolvable)(nil),
-	(*StateResolvable)(nil),
 }

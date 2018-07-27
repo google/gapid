@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -30,8 +31,8 @@ var (
 
 type sparseBindingMap map[VkDeviceMemory][]*api.MemoryBinding
 
-// Implements api.MemoryBreakdownProvider
-func (a API) MemoryBreakdown(st *api.GlobalState) (*api.MemoryBreakdown, error) {
+// MemoryBreakdown implements api.MemoryBreakdownProvider
+func (a API) MemoryBreakdown(ctx context.Context, st *api.GlobalState) (*api.MemoryBreakdown, error) {
 	s := GetState(st)
 
 	// Iterate over images and buffers looking for sparsely-bound objects.

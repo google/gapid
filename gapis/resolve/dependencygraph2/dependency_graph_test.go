@@ -17,9 +17,9 @@ package dependencygraph2
 import (
 	"context"
 	"testing"
+	"unsafe"
 
 	"github.com/google/gapid/core/assert"
-	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
@@ -29,20 +29,22 @@ import (
 type TestCmd struct{}
 
 func (TestCmd) API() api.API                                                       { return nil }
+func (TestCmd) ExecData() unsafe.Pointer                                           { return nil }
 func (TestCmd) Caller() api.CmdID                                                  { return 0 }
 func (TestCmd) SetCaller(api.CmdID)                                                {}
 func (TestCmd) Thread() uint64                                                     { return 0 }
 func (TestCmd) SetThread(uint64)                                                   {}
 func (TestCmd) CmdName() string                                                    { return "TestCmd" }
+func (TestCmd) CmdIndex() int                                                      { return -1 }
 func (TestCmd) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (TestCmd) Extras() *api.CmdExtras                                             { return &api.CmdExtras{} }
-func (TestCmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder, api.StateWatcher) error {
+func (TestCmd) Mutate(context.Context, api.CmdID, *api.GlobalState, builder.Builder, api.StateWatcher) error {
 	return nil
 }
-func (TestCmd) Clone(arena.Arena) api.Cmd { return TestCmd{} }
-func (TestCmd) Alive() bool               { return false }
-func (TestCmd) CmdParams() api.Properties { return api.Properties{} }
-func (TestCmd) CmdResult() *api.Property  { return nil }
+func (TestCmd) Clone(context.Context) api.Cmd { return TestCmd{} }
+func (TestCmd) Alive() bool                   { return false }
+func (TestCmd) CmdParams() api.Properties     { return api.Properties{} }
+func (TestCmd) CmdResult() *api.Property      { return nil }
 
 type TestRef struct {
 	refID api.RefID

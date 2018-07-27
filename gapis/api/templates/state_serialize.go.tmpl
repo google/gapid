@@ -44,20 +44,20 @@
   {{$p := print (Global "Store") ".State"}}
   func init() {»¶
     protoconv.Register(»¶
-      func(ctx context.Context, in *State) (*{{$p}}, error) {»¶
+      func(ϟctx context.Context, in *State) (*{{$p}}, error) {»¶
         ϟrefs := &protoconv.ToProtoContext{}¶
-        return in.ToProto(ϟrefs), nil¶
+        return in.ToProto(ϟctx, ϟrefs), nil¶
       «},¶
-      func(ctx context.Context, in *{{$p}}) (*State, error) {»¶
+      func(ϟctx context.Context, in *{{$p}}) (*State, error) {»¶
         ϟrefs := &protoconv.FromProtoContext{}¶
-        return StateFrom(ctx, in, ϟrefs), nil¶
+        return StateFrom(ϟctx, in, ϟrefs), nil¶
       «},¶
     «)¶
   «}¶
   ¶
 
   // ToProto returns the storage form of the State.¶
-  func (ϟc *State) ToProto(ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
+  func (ϟc *State) ToProto(ϟctx context.Context, ϟrefs *protoconv.ToProtoContext) *{{$p}} {»¶
     to := &{{$p}}{}¶
     {{range $g := $.Globals}}
       {{if (GetAnnotation $g "serialize")}}
@@ -68,8 +68,8 @@
   «}¶
   ¶
   // StateFrom builds a State from the storage form.¶
-  func StateFrom(ctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
-    ϟc := NewState(arena.Get(ctx))¶
+  func StateFrom(ϟctx context.Context, from *{{$p}}, ϟrefs *protoconv.FromProtoContext) *State {»¶
+    ϟc := NewState(arena.Get(ϟctx))¶
     ϟa := ϟc.Arena(); _ = ϟa¶
     {{range $g := $.Globals}}
       {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}

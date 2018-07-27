@@ -19,6 +19,7 @@
 
 #include "abort_exception.h"
 #include "pack_encoder.h"
+#include "pool.h"
 
 #include "gapil/runtime/cc/runtime.h"
 #include "gapil/runtime/cc/slice.inc"
@@ -41,13 +42,13 @@ class SpyBase;
 // CallObserver collects observation data in API function calls. It is supposed
 // to be created at the beginning of each intercepted API function call and
 // deleted at the end.
-class CallObserver : public context_t {
+class CallObserver : public gapil_context_t {
  public:
   template <class T>
   using enable_if_encodable = typename std::enable_if<
       std::is_member_function_pointer<decltype(&T::encode)>::value>::type;
 
-  typedef std::function<void(slice_t*)> OnSliceEncodedCallback;
+  typedef std::function<void(gapil_slice_t*)> OnSliceEncodedCallback;
 
   CallObserver(SpyBase* spy_p, CallObserver* parent, uint8_t api);
 
@@ -87,7 +88,7 @@ class CallObserver : public context_t {
   }
 
   // slice_encoded should be called whenever a slice is encoded.
-  inline void slice_encoded(slice_t* slice) {
+  inline void slice_encoded(gapil_slice_t* slice) {
     if (mOnSliceEncoded) {
       mOnSliceEncoded(slice);
     }
@@ -180,6 +181,12 @@ class CallObserver : public context_t {
 
   // observeTimestamp encodes a timestamp extra in the trace
   void observeTimestamp();
+
+  // create_pool returns a new pool with a ref-count of 1.
+  Pool* create_pool(uint64_t size);
+
+  // allocate_pool_id allocates and returns a unique pool identifier.
+  uint64_t allocate_pool_id();
 
  private:
   // shouldObserve returns true if the given slice is located in application

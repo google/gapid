@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -52,10 +53,15 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 		return err
 	}
 
-	st, err := capture.NewState(ctx)
+	c, err := capture.ResolveFromPath(ctx, capt)
 	if err != nil {
 		return err
 	}
+
+	env := c.Env().InitState().Execute().Build(ctx)
+	env.AutoDispose()
+	ctx = executor.PutEnv(ctx, env)
+
 	flags := make([]api.CmdFlags, len(cmds))
 
 	// Get the present calls
@@ -126,11 +132,11 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 
 	processCmd := func(idx uint64) error {
 		cmd := cmds[idx]
-		err := cmd.Mutate(ctx, api.CmdID(idx), st, nil, nil)
+		err := cmd.Mutate(ctx, api.CmdID(idx), env.State, nil, nil)
 		if err != nil {
 			return err
 		}
-		flags[idx] = cmd.CmdFlags(ctx, api.CmdID(idx), st)
+		flags[idx] = cmd.CmdFlags(ctx, api.CmdID(idx), env.State)
 
 		// If the command wasn't included in the dependency graph,
 		// assume its a synchronous command (e.g. glDraw)

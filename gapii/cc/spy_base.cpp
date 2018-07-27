@@ -108,4 +108,23 @@ bool SpyBase::writeHeader() {
   return false;
 }
 
+Pool* SpyBase::create_pool(uint64_t size) {
+  auto id = mNextPoolId++;
+  auto pool = mArena.create<Pool>();
+  pool->ref_count = 1;
+  pool->spy = this;
+  pool->id = id;
+  pool->size = size;
+  pool->buffer = size > 0  // zero size pools are used as 'virtual pools'.
+                     ? reinterpret_cast<uint8_t*>(mArena.allocate(size, 16))
+                     : nullptr;
+  return pool;
+}
+
+void SpyBase::destroy_pool(Pool* pool) {
+  GAPID_ASSERT(pool->ref_count == 0);
+  mArena.destroy(pool->buffer);
+  mPools.erase(pool->id);
+}
+
 }  // namespace gapii

@@ -146,9 +146,9 @@
     {{$source := Macro "Convert.LiveType" $.Type}}
     {{$target := Macro "Convert.StorageType" $.Type}}
     {{$underlying := Underlying $.Type}}
-    {{     if IsClass     $underlying}}{{$.Value}}.ToProto(ϟrefs)
-    {{else if IsMap       $underlying}}{{$.Value}}.ToProto(ϟrefs)
-    {{else if IsReference $underlying}}{{$.Value}}.ToProto(ϟrefs)
+    {{     if IsClass     $underlying}}{{$.Value}}.ToProto(ϟctx, ϟrefs)
+    {{else if IsMap       $underlying}}{{$.Value}}.ToProto(ϟctx, ϟrefs)
+    {{else if IsReference $underlying}}{{$.Value}}.ToProto(ϟctx, ϟrefs)
     {{else if IsPointer   $underlying}}{{$target}}({{$.Value}}.Address())
     {{else if IsBool      $underlying}}func(v bool) {{$target}} { if v { return 1 } else { return 0 } } ({{$.Value}})
     {{else if IsSlice     $underlying}}&{{$target}}{»¶
@@ -173,12 +173,12 @@
     {{$source := Macro "Convert.StorageType" $.Type}}
     {{$target := Macro "Convert.LiveType" $.Type}}
     {{$underlying := Underlying $.Type}}
-    {{     if IsClass     $underlying}}{{Template "Go.Type" $.Type}}From(ctx, {{$.Value}}, ϟrefs)
-    {{else if IsMap       $underlying}}{{Template "Go.Type" $.Type}}From(ctx, {{$.Value}}, ϟrefs)
-    {{else if IsReference $underlying}}{{Template "Go.Type" $.Type}}From(ctx, {{$.Value}}, ϟrefs)
+    {{     if IsClass     $underlying}}{{Template "Go.Type" $.Type}}From(ϟctx, {{$.Value}}, ϟrefs)
+    {{else if IsMap       $underlying}}{{Template "Go.Type" $.Type}}From(ϟctx, {{$.Value}}, ϟrefs)
+    {{else if IsReference $underlying}}{{Template "Go.Type" $.Type}}From(ϟctx, {{$.Value}}, ϟrefs)
     {{else if IsPointer   $underlying}}{{$target}}({{$.Value}})
     {{else if IsBool      $underlying}}({{$.Value}} != 0)
-    {{else if IsSlice     $underlying}}New{{$target}}(ϟa, {{$.Value}}.Root, {{$.Value}}.Base, {{$.Value}}.Size, {{$.Value}}.Count, ϟmem.PoolID({{$.Value}}.Pool))
+    {{else if IsSlice     $underlying}}New{{$target}}(ϟctx, {{$.Value}}.Root, {{$.Value}}.Base, {{$.Value}}.Size, {{$.Value}}.Count, ϟmem.PoolID({{$.Value}}.Pool))
     {{else if eq $source $target}}{{$.Value}}
     {{else}}({{$target}})({{$.Value}})
     {{end}}

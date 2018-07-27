@@ -37,7 +37,7 @@ type externs struct {
 	cmd   api.Cmd
 	cmdID api.CmdID
 	s     *api.GlobalState
-	b     *rb.Builder
+	b     rb.Builder
 	w     api.StateWatcher
 }
 
@@ -62,15 +62,15 @@ func (e externs) unmapMemory(slice memory.Slice) {
 }
 
 func (e externs) GetEGLStaticContextState(EGLDisplay, EGLContext) StaticContextStateʳ {
-	return FindStaticContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
+	return FindStaticContextState(e.s.Arena, e.cmd.Extras()).Clone(e.ctx)
 }
 
 func (e externs) GetEGLDynamicContextState(EGLDisplay, EGLSurface, EGLContext) DynamicContextStateʳ {
-	return FindDynamicContextState(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
+	return FindDynamicContextState(e.s.Arena, e.cmd.Extras()).Clone(e.ctx)
 }
 
 func (e externs) GetAndroidNativeBufferExtra(Voidᵖ) AndroidNativeBufferExtraʳ {
-	return FindAndroidNativeBufferExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
+	return FindAndroidNativeBufferExtra(e.s.Arena, e.cmd.Extras()).Clone(e.ctx)
 }
 
 func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
@@ -78,9 +78,9 @@ func (e externs) GetEGLImageData(id EGLImageKHR, _ GLsizei, _ GLsizei) {
 		if GetState(e.s).EGLImages().Contains(id) {
 			ei := GetState(e.s).EGLImages().Get(id)
 			for _, img := range ei.Images().All() {
-				poolID, pool := e.s.Memory.New()
+				data := MakeU8ˢ(e.ctx, d.Size)
+				pool := e.s.Memory.MustGet(data.Pool())
 				pool.Write(0, memory.Resource(d.ID, d.Size))
-				data := NewU8ˢ(e.s.Arena, 0, 0, d.Size, d.Size, poolID)
 				img.SetWidth(GLsizei(d.Width))
 				img.SetHeight(GLsizei(d.Height))
 				img.SetData(data)
@@ -117,19 +117,19 @@ func (e externs) substr(str string, start, end int32) string {
 }
 
 func (e externs) GetCompileShaderExtra(ctx Contextʳ, obj Shaderʳ, bin BinaryExtraʳ) CompileShaderExtraʳ {
-	return FindCompileShaderExtra(e.s.Arena, e.cmd.Extras(), obj).Clone(e.s.Arena, api.CloneContext{})
+	return FindCompileShaderExtra(e.s.Arena, e.cmd.Extras(), obj).Clone(e.ctx)
 }
 
 func (e externs) GetLinkProgramExtra(ctx Contextʳ, obj Programʳ, bin BinaryExtraʳ) LinkProgramExtraʳ {
-	return FindLinkProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
+	return FindLinkProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.ctx)
 }
 
 func (e externs) GetValidateProgramExtra(ctx Contextʳ, obj Programʳ) ValidateProgramExtraʳ {
-	return FindValidateProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
+	return FindValidateProgramExtra(e.s.Arena, e.cmd.Extras()).Clone(e.ctx)
 }
 
 func (e externs) GetValidateProgramPipelineExtra(ctx Contextʳ, obj Pipelineʳ) ValidateProgramPipelineExtraʳ {
-	return FindValidateProgramPipelineExtra(e.s.Arena, e.cmd.Extras()).Clone(e.s.Arena, api.CloneContext{})
+	return FindValidateProgramPipelineExtra(e.s.Arena, e.cmd.Extras()).Clone(e.ctx)
 }
 
 func (e externs) onGlError(err GLenum) {
@@ -173,7 +173,6 @@ func (e externs) addTag(msgID uint32, message *stringtable.Msg) {
 }
 
 func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ {
-	poolID, dst := e.s.Memory.New()
 	img := texture.Levels().Get(level).Layers().Get(layer)
 	dataFormat, dataType := img.getUnsizedFormatAndType()
 	format, err := getImageFormat(dataFormat, dataType)
@@ -184,7 +183,7 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 	device := replay.GetDevice(e.ctx)
 	if device == nil {
 		log.W(e.ctx, "No device bound for GPU texture read")
-		return NewU8ˢ(e.s.Arena, 0, 0, uint64(size), uint64(size), poolID)
+		return MakeU8ˢ(e.ctx, uint64(size))
 	}
 	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
 		Capture:    path.NewCapture(capture.Get(e.ctx).ID.ID()),
@@ -200,7 +199,9 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 	if err != nil {
 		panic(err)
 	}
+	slice := MakeU8ˢ(e.ctx, uint64(size))
 	data := memory.Resource(dataID, uint64(size))
+	dst := e.s.Memory.MustGet(slice.Pool())
 	dst.Write(0, data)
-	return NewU8ˢ(e.s.Arena, 0, 0, uint64(size), uint64(size), poolID)
+	return slice
 }

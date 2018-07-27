@@ -15,9 +15,11 @@
 package test
 
 import (
+	"context"
+
 	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/memory/arena"
-	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapil/executor"
 )
 
 // Cmds holds a number of prebuilt example commands that can be used for tests.
@@ -59,7 +61,8 @@ func init() {
 }
 
 // BuildComplex returns a Complex populated with data.
-func BuildComplex(a arena.Arena) Complex {
+func BuildComplex(ctx context.Context) Complex {
+	a := executor.GetEnv(ctx).State.Arena
 	o := NewTestObjectʳ(a, 42)
 	m := NewU32ːTestObjectᵐ(a).
 		Add(4, NewTestObject(a, 40)).
@@ -73,13 +76,7 @@ func BuildComplex(a arena.Arena) Complex {
 	)
 	cycle.Next().SetNext(cycle)
 	return NewComplex(a,
-		NewU8ˢ(a, // Data
-			0x1000,           // root
-			0x1000,           // base
-			42,               // size
-			42,               // count
-			memory.PoolID(1), // pool
-		),
+		MakeU8ˢ(ctx, 42),
 		NewTestObject(a, 10), // Object
 		NewTestObjectː2ᵃ(a, // ObjectArray
 			NewTestObject(a, 20),

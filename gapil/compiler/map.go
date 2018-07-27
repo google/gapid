@@ -384,8 +384,8 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 			valPtr.Store(v)
 			countPtr.Store(s.AddS(count, uint64(1)))
 
-			c.reference(s, v, valTy)
-			c.reference(s, k, keyTy)
+			c.Reference(s, v, valTy)
+			c.Reference(s, k, keyTy)
 
 			s.Return(valPtr)
 		})
@@ -413,10 +413,10 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 					elPtr := elements.Index(check)
 					// Release references to el
 					if c.isRefCounted(keyTy) {
-						c.release(s, elPtr.Index(0, "k").Load(), keyTy)
+						c.Release(s, elPtr.Index(0, "k").Load(), keyTy)
 					}
 					if c.isRefCounted(valTy) {
-						c.release(s, elPtr.Index(0, "v").Load(), valTy)
+						c.Release(s, elPtr.Index(0, "v").Load(), valTy)
 					}
 					// Replace element with last
 					elPtr.Index(0, "used").Store(s.Scalar(mapElementUsed))
@@ -443,10 +443,10 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 				valid := elements.Index(it, "used").Load()
 				s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
 					if c.isRefCounted(keyTy) {
-						c.release(s, elements.Index(it, "k").Load(), keyTy)
+						c.Release(s, elements.Index(it, "k").Load(), keyTy)
 					}
 					if c.isRefCounted(valTy) {
-						c.release(s, elements.Index(it, "v").Load(), valTy)
+						c.Release(s, elements.Index(it, "v").Load(), valTy)
 					}
 				})
 				return nil

@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -248,12 +249,14 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	}
 
 	// Walk the list of unfiltered commands to build the groups.
-	s := c.NewState(ctx)
+	env := c.Env().InitState().Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
-		if filter(id, cmd, s) {
+		cmd.Mutate(ctx, id, env.State, nil, nil)
+		if filter(id, cmd, env.State) {
 			for _, g := range groupers {
-				g.Process(ctx, id, cmd, s)
+				g.Process(ctx, id, cmd, env.State)
 			}
 		}
 		return nil
@@ -303,11 +306,13 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	drawOrClearCmds := api.Spans{} // All the spans will have length 1
 
 	// Now we have all the groups, we finally need to add the filtered commands.
-	s = c.NewState(ctx)
+	env = c.Env().InitState().Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+		cmd.Mutate(ctx, id, env.State, nil, nil)
 
-		if !filter(id, cmd, s) {
+		if !filter(id, cmd, env.State) {
 			return nil
 		}
 
@@ -332,7 +337,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 		out.root.AddCommand(id)
 
-		if flags := cmd.CmdFlags(ctx, id, s); flags.IsDrawCall() || flags.IsClear() {
+		if flags := cmd.CmdFlags(ctx, id, env.State); flags.IsDrawCall() || flags.IsClear() {
 			drawOrClearCmds = append(drawOrClearCmds, &api.CmdIDRange{
 				Start: id, End: id + 1,
 			})

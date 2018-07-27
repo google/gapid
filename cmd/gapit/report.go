@@ -115,8 +115,8 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	report := boxedReport.(*service.Report)
 	for _, e := range report.Items {
 		where := ""
-		if e.Command != nil {
-			where = fmt.Sprintf("%v %v ", e.Command.Indices, commands[e.Command.Indices[0]]) // TODO: Subcommands
+		if indices := e.GetCommand().GetIndices(); len(indices) > 0 && int(indices[0]) < len(commands) {
+			where = fmt.Sprintf("%v %v ", indices, commands[indices[0]]) // TODO: Subcommands
 		}
 		msg := report.Msg(e.Message).Text(stringTable)
 		fmt.Fprintln(reportWriter, fmt.Sprintf("[%s] %s%s", e.Severity.String(), where, msg))

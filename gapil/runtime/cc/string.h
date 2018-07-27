@@ -72,14 +72,14 @@ class String {
   inline core::Arena* arena() const;
 
  private:
-  static string_t EMPTY;
+  static gapil_string_t EMPTY;
 
-  String(string_t*);
+  String(gapil_string_t*);
 
   void reference();
   void release();
 
-  string_t* ptr;
+  gapil_string_t* ptr;
 };
 
 inline core::Arena* String::arena() const {

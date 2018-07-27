@@ -151,7 +151,7 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 					return err
 				}
 			}
-			if err := e.w.ChildObject(ctx, api.CmdCallFor(cmd), cmdID); err != nil {
+			if err := e.w.ChildObject(ctx, api.CmdCallFor(ctx, cmd), cmdID); err != nil {
 				return err
 			}
 			handledCall = true
@@ -168,7 +168,7 @@ func (e *encoder) extras(ctx context.Context, cmd api.Cmd, cmdID uint64) error {
 	}
 
 	if !handledCall {
-		if err := e.w.ChildObject(ctx, api.CmdCallFor(cmd), cmdID); err != nil {
+		if err := e.w.ChildObject(ctx, api.CmdCallFor(ctx, cmd), cmdID); err != nil {
 			return err
 		}
 	}

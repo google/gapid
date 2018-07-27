@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
@@ -286,12 +287,14 @@ func (b *dependencyGraphBuilder) addDependency(write WriteEffect, read ReadEffec
 func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 	c *capture.Capture, initialCmds []api.Cmd, initialRanges interval.U64RangeList) (DependencyGraph, error) {
 	builder := newDependencyGraphBuilder(ctx, config, c, initialCmds)
-	var state *api.GlobalState
+	var env *executor.Env
 	if config.IncludeInitialCommands {
-		state = c.NewUninitializedState(ctx).ReserveMemory(initialRanges)
+		env = c.Env().ReserveMemory(initialRanges).Execute().Build(ctx)
 	} else {
-		state = c.NewState(ctx)
+		env = c.Env().InitState().Execute().Build(ctx)
 	}
+	defer env.Dispose()
+	state := env.State
 	err := builder.graph.ForeachCmd(ctx, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		return cmd.Mutate(ctx, id, state, nil, builder)
 	})

@@ -194,7 +194,7 @@ func postFBData(ctx context.Context,
 
 	if hasColor {
 		if c.Bound().DrawFramebuffer() == c.Objects().Default().Framebuffer() {
-			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+			out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 				// TODO: We assume here that the default framebuffer is
 				//       single-buffered. Once we support double-buffering we
 				//       need to decide whether to read from GL_FRONT or GL_BACK.
@@ -302,7 +302,7 @@ func postFBData(ctx context.Context,
 	tmp := s.AllocOrPanic(ctx, uint64(bufferSize))
 	defer tmp.Free()
 
-	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 		b.ReserveMemory(tmp.Range())
 
 		if needFBQuery {

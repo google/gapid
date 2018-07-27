@@ -47,9 +47,9 @@ type encoder struct {
 
 // encoder generated functions.
 type funcs struct {
-	writeVarint *codegen.Function                     // void write_varint(buffer*, u64 val)
-	writeZigzag *codegen.Function                     // void write_zigzag(buffer*, u64 val)
-	encodeToBuf map[*semantic.Class]*codegen.Function // void(context*, buffer*)
+	writeVarint *codegen.Function                     // void write_varint(gapil_buffer*, u64 val)
+	writeZigzag *codegen.Function                     // void write_zigzag(gapil_buffer*, u64 val)
+	encodeToBuf map[*semantic.Class]*codegen.Function // void(gapil_context*, gapil_buffer*)
 }
 
 // Build implements the compiler.Plugin interface.

@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -52,7 +53,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
 	cmdIdx := p.Indices[0]
 
-	capture, err := capture.Resolve(ctx)
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +76,13 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
-	state := capture.NewUninitializedState(ctx).ReserveMemory(ranges)
+
+	env := c.Env().ReserveMemory(ranges).Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
+	state := env.State
+
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 	idMap := api.ResourceMap{}

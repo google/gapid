@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/stream/fmts"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/memory"
@@ -536,7 +537,10 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		l := t.Aspects().Get(VkImageAspectFlagBits(t.ImageAspect())).Layers().Get(layer).Levels().Get(level)
+		l := t.
+			Aspects().Get(VkImageAspectFlagBits(t.ImageAspect())).
+			Layers().Get(layer).
+			Levels().Get(level)
 		if l.Data().Size() == 0 {
 			return nil
 		}
@@ -582,9 +586,15 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 		return info
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		depthLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
+		depthLevel := t.
+			Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).
+			Layers().Get(layer).
+			Levels().Get(level)
 		depthData := depthLevel.Data().MustRead(ctx, nil, s, nil)
-		stencilLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers().Get(layer).Levels().Get(level)
+		stencilLevel := t.
+			Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).
+			Layers().Get(layer).
+			Levels().Get(level)
 		stencilData := stencilLevel.Data().MustRead(ctx, nil, s, nil)
 		dsData := make([]uint8, len(depthData)+len(stencilData))
 
@@ -836,8 +846,9 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 
 func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: c.Arena} // TODO: We probably should have a new arena passed in here!
-	state := c.NewState(ctx)
+	env := executor.GetEnv(ctx)
+	state := env.State
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: state.Arena} // TODO: We probably should have a new arena passed in here!
 	cmd.Mutate(ctx, api.CmdNoID, state, nil, nil)
 
 	shader := data.GetShader()

@@ -52,11 +52,10 @@ CallObserver::CallObserver(SpyBase* spy, CallObserver* parent, uint8_t api)
       mApi(api),
       mShouldTrace(false),
       mCurrentThread(core::Thread::current().id()) {
-  // context_t initialization.
-  this->context_t::id = 0;
-  this->context_t::next_pool_id = &spy->next_pool_id();
-  this->context_t::globals = nullptr;
-  this->context_t::arena = reinterpret_cast<arena_t*>(spy->arena());
+  // gapil_context_t initialization.
+  this->gapil_context_t::id = 0;
+  this->gapil_context_t::globals = nullptr;
+  this->gapil_context_t::arena = reinterpret_cast<arena_t*>(spy->arena());
   mShouldTrace = mSpy->should_trace(mApi);
 
   if (parent) {
@@ -117,6 +116,12 @@ void CallObserver::observeTimestamp() {
   timestamp->set_nanoseconds(core::GetNanoseconds());
   encodeAndDelete(timestamp);
 }
+
+Pool* CallObserver::create_pool(uint64_t size) {
+  return mSpy->create_pool(size);
+}
+
+uint64_t CallObserver::allocate_pool_id() { return mSpy->allocate_pool_id(); }
 
 void CallObserver::enter(const ::google::protobuf::Message* cmd) {
   if (!mShouldTrace) {

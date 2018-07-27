@@ -28,6 +28,7 @@ type callbacks struct {
 	destroyCloneTracker *codegen.Function
 	cloneTrackerLookup  *codegen.Function
 	cloneTrackerTrack   *codegen.Function
+	cloneSlice          *codegen.Function
 }
 
 func (c *cloner) parseCallbacks() {
@@ -35,4 +36,5 @@ func (c *cloner) parseCallbacks() {
 	c.callbacks.destroyCloneTracker = c.M.ParseFunctionSignature(C.GoString(C.gapil_destroy_clone_tracker_sig))
 	c.callbacks.cloneTrackerLookup = c.M.ParseFunctionSignature(C.GoString(C.gapil_clone_tracker_lookup_sig))
 	c.callbacks.cloneTrackerTrack = c.M.ParseFunctionSignature(C.GoString(C.gapil_clone_tracker_track_sig))
+	c.callbacks.cloneSlice = c.M.ParseFunctionSignature(C.GoString(C.gapil_clone_slice_sig))
 }

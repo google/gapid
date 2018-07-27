@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/app/analytics"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
@@ -48,9 +49,15 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	cmdIdx := r.Path.After.Indices[0]
 	allCmds, err := Cmds(ctx, r.Path.After.Capture)
+
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	env := c.Env().InitState().Execute().Build(ctx)
+	env.AutoDispose()
+	ctx = executor.PutEnv(ctx, env)
 
 	sd, err := SyncData(ctx, r.Path.After.Capture)
 	if err != nil {
@@ -63,19 +70,14 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	defer analytics.SendTiming("resolve", "global-state")(analytics.Count(len(cmds)))
 
-	s, err := capture.NewState(ctx)
-	if err != nil {
-		return nil, err
+	errs := env.ExecuteN(ctx, 0, cmds)
+	for _, e := range errs {
+		if e != nil {
+			return nil, e
+		}
 	}
 
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
+	return env.State, nil
 }
 
 // Resolve implements the database.Resolver interface.
@@ -119,7 +121,7 @@ func state(ctx context.Context, p *path.State, r *path.ResolveConfig) (interface
 	abs := path.Transform(root, func(n path.Node) path.Node {
 		switch n := n.(type) {
 		case *path.State:
-			return APIStateAfter(p.After, a.ID())
+			return APIStateAfter(ctx, p.After, a.ID())
 		default:
 			return n
 		}
@@ -134,7 +136,7 @@ func state(ctx context.Context, p *path.State, r *path.ResolveConfig) (interface
 }
 
 // APIStateAfter returns an absolute path to the API state after c.
-func APIStateAfter(c *path.Command, a api.ID) path.Node {
+func APIStateAfter(ctx context.Context, c *path.Command, a api.ID) path.Node {
 	p := &path.GlobalState{After: c}
 	return p.Field("APIs").MapIndex(a)
 }

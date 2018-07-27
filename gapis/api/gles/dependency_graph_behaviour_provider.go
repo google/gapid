@@ -316,7 +316,7 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 		if target == GLenum_GL_NONE {
 			continue // Not a sampler type
 		}
-		units := AsU32ˢ(s.Arena, uniform.Values(), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+		units := AsU32ˢ(ctx, uniform.Values()).MustRead(ctx, cmd, s, nil)
 		for _, unit := range units {
 			if tu := c.Objects().TextureUnits().Get(TextureUnitId(unit)); !tu.IsNil() {
 				tex, err := subGetBoundTextureForUnit(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, nil, tu, target)

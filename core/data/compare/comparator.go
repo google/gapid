@@ -17,6 +17,7 @@ package compare
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"unicode"
 	"unicode/utf8"
 	"unsafe"
@@ -156,6 +157,9 @@ func (t Comparator) compareValues(v1, v2 reflect.Value, ptr bool) {
 		t1 := v1.Type()
 		for i, n := 0, t1.NumField(); i < n; i++ {
 			f := t1.Field(i)
+			if ignore, _ := strconv.ParseBool(f.Tag.Get("nocompare")); ignore {
+				return
+			}
 			if r, _ := utf8.DecodeRuneInString(f.Name); unicode.IsUpper(r) {
 				t.With(t.Path.Member(f.Name, toValue(v1, ptr), toValue(v2, ptr))).compareValues(v1.Field(i), v2.Field(i), false)
 			} else {

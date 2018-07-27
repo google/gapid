@@ -103,7 +103,7 @@ func (API) GetFramebufferAttachmentInfo(
 	if err != nil {
 		return api.FramebufferAttachmentInfo{}, err
 	}
-	return gles.GetFramebufferAttachmentInfoByID(state, thread, attachment, fb)
+	return gles.GetFramebufferAttachmentInfoByID(ctx, state, thread, attachment, fb)
 }
 
 // Context returns the active context for the given state and thread.

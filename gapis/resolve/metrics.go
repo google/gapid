@@ -52,7 +52,7 @@ func memoryBreakdown(ctx context.Context, c *path.Command, r *path.ResolveConfig
 		return nil, err
 	}
 	if ml, ok := a.(api.MemoryBreakdownProvider); ok {
-		return ml.MemoryBreakdown(state)
+		return ml.MemoryBreakdown(ctx, state)
 	}
 	return nil, fmt.Errorf("Memory breakdown not supported for API %v", a.Name())
 

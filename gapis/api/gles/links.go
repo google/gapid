@@ -40,7 +40,7 @@ func objects(ctx context.Context, p path.Node, r *path.ResolveConfig) (*path.Fie
 		if !ok {
 			return nil, NilContextʳ, nil
 		}
-		return state.objectsRoot(cmdPath, thread), context, nil
+		return state.objectsRoot(ctx, cmdPath, thread), context, nil
 	}
 	return nil, NilContextʳ, nil
 }

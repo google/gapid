@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/text"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -39,7 +40,7 @@ import (
 // the slice out. Once the last issue is sent (if any) all the chans in out are
 // closed.
 type findIssues struct {
-	state         *api.GlobalState
+	env           *executor.Env
 	device        *device.Instance
 	targetVersion *Version
 	issues        []replay.Issue
@@ -49,12 +50,14 @@ type findIssues struct {
 
 func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Instance) *findIssues {
 	targetVersion, _ := ParseVersion(device.Configuration.Drivers.Opengl.Version)
+
 	transform := &findIssues{
-		state:         c.NewState(ctx),
+		env:           c.Env().InitState().Execute().Build(ctx),
 		device:        device,
 		targetVersion: targetVersion,
 	}
-	transform.state.OnError = func(err interface{}) {
+	transform.env.AutoDispose()
+	transform.env.State.OnError = func(err interface{}) {
 		if glenum, ok := err.(GLenum); ok {
 			transform.lastGlError = glenum
 		}
@@ -72,8 +75,8 @@ func (t *findIssues) onIssue(cmd api.Cmd, id api.CmdID, s service.Severity, e er
 	t.issues = append(t.issues, replay.Issue{Command: id, Severity: s, Error: e})
 }
 
-// The value 0 is used for many enums - prefer GL_NO_ERROR in this case.
 func (e GLenum) ErrorString() string {
+	// The value 0 is used for many enums - prefer GL_NO_ERROR in this case.
 	if e == GLenum_GL_NO_ERROR {
 		return "GL_NO_ERROR"
 	}
@@ -92,9 +95,9 @@ func (e ErrUnexpectedDriverTraceError) Error() string {
 
 func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.state.Arena}
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.env.State.Arena}
 	t.lastGlError = GLenum_GL_NO_ERROR
-	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */, nil /* no watcher */)
+	mutateErr := cmd.Mutate(executor.PutEnv(ctx, t.env), id, t.env.State, nil /* no builder */, nil /* no watcher */)
 
 	mutatorsGlError := t.lastGlError
 	if e := FindErrorState(cmd.Extras()); e != nil {
@@ -121,14 +124,14 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	out.MutateAndWrite(ctx, id, cmd)
 
 	dID := id.Derived()
-	s := GetState(t.state)
+	s := GetState(t.env.State)
 	c := s.GetContext(cmd.Thread())
 	if c.IsNil() {
 		return
 	}
 
 	// Check the result of glGetError after every command.
-	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 		ptr := b.AllocateTemporaryMemory(4)
 		b.Call(funcInfoGlGetError)
 		b.Store(ptr)
@@ -185,11 +188,11 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		}
 
 		const buflen = 8192
-		tmp := t.state.AllocOrPanic(ctx, buflen)
+		tmp := t.env.State.AllocOrPanic(ctx, buflen)
 
 		infoLog := make([]byte, buflen)
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderInfoLog(cmd.Shader(), buflen, memory.Nullptr, tmp.Ptr()))
-		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
 				if err != nil {
@@ -206,7 +209,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 		source := make([]byte, buflen)
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderSource(cmd.Shader(), buflen, memory.Nullptr, tmp.Ptr()))
-		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
 				if err != nil {
@@ -222,7 +225,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 		}))
 
 		out.MutateAndWrite(ctx, dID, cb.GlGetShaderiv(cmd.Shader(), GLenum_GL_COMPILE_STATUS, tmp.Ptr()))
-		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4, func(r binary.Reader, err error) {
 				if err != nil {
@@ -247,10 +250,10 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 
 	case *GlLinkProgram:
 		const buflen = 2048
-		tmp := t.state.AllocOrPanic(ctx, 4+buflen)
+		tmp := t.env.State.AllocOrPanic(ctx, 4+buflen)
 		out.MutateAndWrite(ctx, dID, cb.GlGetProgramiv(cmd.Program(), GLenum_GL_LINK_STATUS, tmp.Ptr()))
 		out.MutateAndWrite(ctx, dID, cb.GlGetProgramInfoLog(cmd.Program(), buflen, memory.Nullptr, tmp.Offset(4)))
-		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 			b.ReserveMemory(tmp.Range())
 			b.Post(value.ObservedPointer(tmp.Address()), 4+buflen, func(r binary.Reader, err error) {
 				if err != nil {
@@ -294,15 +297,17 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
-	cb := CommandBuilder{Thread: 0, Arena: t.state.Arena}
-	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+	cb := CommandBuilder{Thread: 0, Arena: t.env.State.Arena}
+	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b builder.Builder) error {
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,
 		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
 		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last
 		// Post had occurred, which may not be anywhere near the end of the stream.
 		code := uint32(0xbeefcace)
+		eosPtr := b.AllocateTemporaryMemory(4)
 		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
+		b.Store(eosPtr)
+		b.Post(eosPtr, 4, func(r binary.Reader, err error) {
 			for _, res := range t.res {
 				res.Do(func() (interface{}, error) {
 					if err != nil {
@@ -317,4 +322,5 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		})
 		return nil
 	}))
+	t.env.Dispose()
 }

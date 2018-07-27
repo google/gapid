@@ -189,7 +189,7 @@ func (c *C) abort(s *S, n *semantic.Abort) {
 	for s := s; s != nil; s = s.parent {
 		s.exit()
 	}
-	s.Throw(s.Scalar(ErrAborted))
+	s.Call(c.callbacks.abort)
 }
 
 func (c *C) applyReads(s *S) {
@@ -267,17 +267,17 @@ func (c *C) doAssign(s *S, op string, lhs, rhs semantic.Expression) {
 	dst := c.expressionAddr(s, lhs)
 	switch op {
 	case ast.OpAssign:
-		c.reference(s, val, lhs.ExpressionType())
+		c.Reference(s, val, lhs.ExpressionType())
 		c.deferRelease(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	case ast.OpAssignPlus:
 		val := c.doBinaryOp(s, ast.OpPlus, dst.Load(), val)
-		c.reference(s, val, lhs.ExpressionType())
+		c.Reference(s, val, lhs.ExpressionType())
 		c.deferRelease(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	case ast.OpAssignMinus:
 		val := c.doBinaryOp(s, ast.OpMinus, dst.Load(), val)
-		c.reference(s, val, lhs.ExpressionType())
+		c.Reference(s, val, lhs.ExpressionType())
 		c.deferRelease(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	default:
@@ -432,8 +432,8 @@ func (c *C) mapAssign(s *S, n *semantic.MapAssign) {
 	k := c.expression(s, n.To.Index)
 	v := c.expression(s, n.Value)
 	dst := s.Call(c.T.Maps[ty].Index, m, k, s.Scalar(true))
-	c.reference(s, v, ty.ValueType)
-	c.release(s, dst.Load(), ty.ValueType)
+	c.Reference(s, v, ty.ValueType)
+	c.Release(s, dst.Load(), ty.ValueType)
 	dst.Store(v)
 }
 
@@ -481,7 +481,7 @@ func (c *C) return_(s *S, n *semantic.Return) {
 
 		val = val.Cast(c.T.Target(n.Function.Return.Type))
 
-		c.reference(s, val, ty)
+		c.Reference(s, val, ty)
 		s.Return(val)
 
 	default:

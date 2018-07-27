@@ -16,18 +16,32 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif  // __cplusplus
+#endif
 
-typedef context*(TCreateContext)(arena*);
-typedef void(TDestroyContext)(context*);
-typedef uint32_t(TFunc)(void* ctx);
-typedef void gapil_extern(context*, void* args, void* res);
+#define CMD_FLAGS_HAS_READS 1
+#define CMD_FLAGS_HAS_WRITES 2
 
-// Implemented in env.cpp
-context* create_context(TCreateContext* func, arena* a);
-void destroy_context(TDestroyContext* func, context* ctx);
-uint32_t call(context* ctx, TFunc* func);
+typedef struct pool_t {
+  gapil_pool base;
+  uint32_t env;  // env identifier that owns this pool.
+} pool;
 
+typedef struct cmd_data_t {
+  uint32_t api_idx;
+  uint32_t cmd_idx;
+  void* args;
+  uint64_t id;
+  uint64_t flags;
+  uint64_t thread;
+} cmd_data;
+
+typedef void gapil_extern(gapil_context*, void* args, void* res);
+
+gapil_context* create_context(gapil_module*, arena*);
+void destroy_context(gapil_module*, gapil_context*);
+void call(gapil_context*, gapil_module*, cmd_data* cmds, uint64_t count,
+          uint64_t* res);
+gapil_api_module* get_api_module(gapil_module*, uint32_t api_idx);
 void register_c_extern(const char* name, gapil_extern* fn);
 
 typedef struct callbacks_t {
@@ -35,7 +49,13 @@ typedef struct callbacks_t {
   void* apply_writes;
   void* resolve_pool_data;
   void* call_extern;
+  void* copy_slice;
+  void* cstring_to_slice;
   void* store_in_database;
+  void* make_pool;
+  void* free_pool;
+
+  void* clone_slice;
 } callbacks;
 
 void set_callbacks(callbacks*);

@@ -22,216 +22,208 @@
 namespace gapil {
 
 template <typename T>
-void Slice<T>::init(pool_t* pool, uint64_t root, uint64_t base, uint64_t size, uint64_t count, bool add_ref /* = true */) {
-    data.pool = pool;
-    data.root = root;
-    data.base = base;
-    data.size = size;
-    data.count = count;
+void Slice<T>::init(gapil_pool_t* pool, uint64_t root, uint64_t base,
+                    uint64_t size, uint64_t count, bool add_ref /* = true */) {
+  data.pool = pool;
+  data.root = root;
+  data.base = base;
+  data.size = size;
+  data.count = count;
 
-    if (add_ref && pool != nullptr) {
-        reference();
-    }
+  if (add_ref && pool != nullptr) {
+    reference();
+  }
 }
 
 template <typename T>
 Slice<T>::Slice() {
-    init(nullptr, 0, 0, 0, 0);
+  init(nullptr, 0, 0, 0, 0);
 }
 
 template <typename T>
 Slice<T>::Slice(const Slice<T>& other) {
-    init(other.data.pool,
-         other.data.root,
-         other.data.base,
-         other.data.size,
-         other.data.count);
+  init(other.data.pool, other.data.root, other.data.base, other.data.size,
+       other.data.count);
 }
 
 template <typename T>
 Slice<T>::Slice(Slice<T>&& other) {
-    init(other.data.pool,
-         other.data.root,
-         other.data.base,
-         other.data.size,
-         other.data.count);
+  init(other.data.pool, other.data.root, other.data.base, other.data.size,
+       other.data.count);
 
-    other.data.pool = nullptr;
+  other.data.pool = nullptr;
 }
 
 template <typename T>
 Slice<T>::Slice(T* base, uint64_t count) {
-    auto ptr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(base));
-    init(/* pool */  nullptr,
-         /* root */  ptr,
-         /* base */  ptr,
-         /* size */  count * sizeof(T),
-         /* count */ count);
+  auto ptr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(base));
+  init(/* pool */ nullptr,
+       /* root */ ptr,
+       /* base */ ptr,
+       /* size */ count * sizeof(T),
+       /* count */ count);
 }
 
 template <typename T>
-Slice<T>::Slice(pool_t* pool, uint64_t root, uint64_t base, uint64_t size, uint64_t count, bool add_ref /* = true */) {
-    init(pool, root, base, size, count, add_ref);
+Slice<T>::Slice(gapil_pool_t* pool, uint64_t root, uint64_t base, uint64_t size,
+                uint64_t count, bool add_ref /* = true */) {
+  init(pool, root, base, size, count, add_ref);
 }
 
 template <typename T>
 Slice<T>::~Slice() {
-    if (data.pool != nullptr) {
-        release();
-    }
+  if (data.pool != nullptr) {
+    release();
+  }
 }
 
 template <typename T>
-Slice<T> Slice<T>::create(pool_t* pool, bool add_ref) {
-    return Slice<T>(/* pool */ pool,
-                    /* root */ 0,
-                    /* base */ 0,
-                    /* size */ pool->size,
-                    /* count */ pool->size / sizeof(T),
-                    /* add_ref */ add_ref);
+Slice<T> Slice<T>::create(gapil_pool_t* pool, uint64_t size, bool add_ref) {
+  return Slice<T>(/* pool */ pool,
+                  /* root */ 0,
+                  /* base */ 0,
+                  /* size */ size,
+                  /* count */ size / sizeof(T),
+                  /* add_ref */ add_ref);
 }
 
 template <typename T>
-Slice<T> Slice<T>::create(context_t* ctx, uint64_t count) {
-    auto size = count * sizeof(T);
-    auto pool = gapil_make_pool(ctx, size);
-    return Slice<T>(/* pool */ pool,
-                    /* root */ 0,
-                    /* base */ 0,
-                    /* size */ pool->size,
-                    /* count */ count,
-                    /* add_ref */ false);
+Slice<T> Slice<T>::create(gapil_context_t* ctx, uint64_t count) {
+  auto size = count * sizeof(T);
+  auto pool = gapil_make_pool(ctx, size);
+  return Slice<T>(/* pool */ pool,
+                  /* root */ 0,
+                  /* base */ 0,
+                  /* size */ size,
+                  /* count */ count,
+                  /* add_ref */ false);
 }
 
 template <typename T>
-Slice<T>& Slice<T>::operator = (const Slice<T>& other) {
-    if (data.pool != nullptr) {
-        release();
-    }
-    init(other.data.pool,
-         other.data.root,
-         other.data.base,
-         other.data.size,
-         other.data.count);
-    return *this;
+Slice<T>& Slice<T>::operator=(const Slice<T>& other) {
+  if (data.pool != nullptr) {
+    release();
+  }
+  init(other.data.pool, other.data.root, other.data.base, other.data.size,
+       other.data.count);
+  return *this;
 }
 
 template <typename T>
-bool Slice<T>::operator == (const Slice<T>& other) const {
-    return data.pool == other.data.pool &&
-           data.root == other.data.root &&
-           data.base == other.data.base &&
-           data.size == other.data.size &&
-           data.count == other.data.count;
+bool Slice<T>::operator==(const Slice<T>& other) const {
+  return data.pool == other.data.pool && data.root == other.data.root &&
+         data.base == other.data.base && data.size == other.data.size &&
+         data.count == other.data.count;
 }
 
 template <typename T>
 uint64_t Slice<T>::count() const {
-    return data.count;
+  return data.count;
 }
 
 template <typename T>
 uint64_t Slice<T>::size() const {
-    return data.size;
+  return data.size;
 }
 
 template <typename T>
 bool Slice<T>::is_app_pool() const {
-    return data.pool == nullptr;
+  return data.pool == nullptr;
 }
 
 template <typename T>
 uint32_t Slice<T>::pool_id() const {
-    return (data.pool != nullptr) ? data.pool->id : 0;
+  return (data.pool != nullptr) ? data.pool->id : 0;
 }
 
 template <typename T>
-const pool_t* Slice<T>::pool() const {
-    return data.pool;
+const gapil_pool_t* Slice<T>::pool() const {
+  return data.pool;
 }
 
 template <typename T>
 bool Slice<T>::contains(const T& value) const {
-    for (auto el : *this) {
-        if (el == value) {
-            return true;
-        }
+  for (auto el : *this) {
+    if (el == value) {
+      return true;
     }
-    return false;
+  }
+  return false;
 }
 
 template <typename T>
 Slice<T> Slice<T>::operator()(uint64_t start, uint64_t end) const {
-    GAPID_ASSERT_MSG(start <= end, "slice start is after end");
-    GAPID_ASSERT_MSG(end <= count(), "slice index out of bounds");
-    auto count = end - start;
-    Slice<T> out;
-    out.data.pool = data.pool;
-    out.data.root = data.root;
-    out.data.base = data.base + start * sizeof(T);
-    out.data.size = count * sizeof(T);
-    out.data.count = count;
-    if (data.pool != nullptr) {
-        reference();
-    }
-    return out;
+  GAPID_ASSERT_MSG(start <= end, "slice start is after end");
+  GAPID_ASSERT_MSG(end <= count(), "slice index out of bounds");
+  auto count = end - start;
+  Slice<T> out;
+  out.data.pool = data.pool;
+  out.data.root = data.root;
+  out.data.base = data.base + start * sizeof(T);
+  out.data.size = count * sizeof(T);
+  out.data.count = count;
+  if (data.pool != nullptr) {
+    reference();
+  }
+  return out;
 }
 
 template <typename T>
 T& Slice<T>::operator[](uint64_t index) const {
-    GAPID_ASSERT_MSG(index < count(), "slice index out of bounds");
-    return begin()[index];
+  GAPID_ASSERT_MSG(index < count(), "slice index out of bounds");
+  return begin()[index];
 }
 
 template <typename T>
-void Slice<T>::copy(const Slice<T>& dst, uint64_t start, uint64_t count, uint64_t dstStart) const {
-    if (count == 0) {
-        return;
-    }
-    for(size_t i = 0; i < count; ++i) {
-        dst[dstStart + i] = (*this)[start + i];
-    }
+void Slice<T>::copy(const Slice<T>& dst, uint64_t start, uint64_t count,
+                    uint64_t dstStart) const {
+  if (count == 0) {
+    return;
+  }
+  for (size_t i = 0; i < count; ++i) {
+    dst[dstStart + i] = (*this)[start + i];
+  }
 }
 
 template <typename T>
 template <typename U>
 Slice<U> Slice<T>::as() const {
-    auto count = data.size / sizeof(U);
-    return Slice<U>(/* pool */  data.pool,
-                    /* root */  data.root,
-                    /* base */  data.base,
-                    /* size */  count * sizeof(U),
-                    /* count */ count);
+  auto count = data.size / sizeof(U);
+  return Slice<U>(/* pool */ data.pool,
+                  /* root */ data.root,
+                  /* base */ data.base,
+                  /* size */ count * sizeof(U),
+                  /* count */ count);
 }
 
 template <typename T>
 T* Slice<T>::begin() const {
-    uint64_t pool_base = 0;
-    if (data.pool != nullptr) {
-        pool_base = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(data.pool->buffer));
-    }
-    return reinterpret_cast<T*>(pool_base + data.base);
+  auto ptr = gapil_resolve_pool_data(nullptr, data.pool, data.base, GAPIL_READ,
+                                     data.size);
+  return reinterpret_cast<T*>(ptr);
 }
 
 template <typename T>
 T* Slice<T>::end() const {
-    return begin() + count();
+  return begin() + count();
 }
 
 template <typename T>
 void Slice<T>::release() {
-    GAPID_ASSERT_MSG(data.pool->ref_count > 0, "attempting to release freed pool");
-    data.pool->ref_count--;
-    if (data.pool->ref_count == 0) {
-        gapil_free_pool(data.pool);
-    }
-    data.pool = nullptr;
+  GAPID_ASSERT_MSG(data.pool->ref_count > 0,
+                   "attempting to release freed pool");
+  data.pool->ref_count--;
+  if (data.pool->ref_count == 0) {
+    gapil_free_pool(data.pool);
+  }
+  data.pool = nullptr;
 }
 
 template <typename T>
 void Slice<T>::reference() const {
-    GAPID_ASSERT_MSG(data.pool->ref_count > 0, "attempting to reference freed pool");
-    data.pool->ref_count++;
+  GAPID_ASSERT_MSG(data.pool->ref_count > 0,
+                   "attempting to reference freed pool");
+  data.pool->ref_count++;
 }
 
 }  // namespace gapil

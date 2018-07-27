@@ -20,11 +20,11 @@ import (
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
+	exec "github.com/google/gapid/gapil/executor"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
-	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -88,9 +88,11 @@ func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Pa
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	b := builder.New(replayABI.MemoryLayout)
+	env := c.Env().InitState().Execute().Replay(replayABI).Build(ctx)
+	defer env.Dispose()
+	ctx = exec.PutEnv(ctx, env)
 
-	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
+	b := builder.New(replayABI.MemoryLayout)
 
 	generatorReplayTimer.Time(func() {
 		ctx := status.Start(ctx, "Generate")
@@ -103,10 +105,8 @@ func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Pa
 			requests,
 			d.Instance(),
 			c,
-			&adapter{
-				state:   c.NewUninitializedState(ctx).ReserveMemory(ranges),
-				builder: b,
-			})
+			&adapter{env: env, builder: b},
+		)
 	})
 
 	if err != nil {

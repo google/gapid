@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package memory
+#ifndef GAPIS_MEMORY_POOL_H
+#define GAPIS_MEMORY_POOL_H
 
-import (
-	"context"
+#include "gapil/runtime/cc/runtime.h"
 
-	"github.com/google/gapid/gapis/database"
-)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// Resolve implements the database.Resolver interface.
-func (s *SubsliceResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	slice, err := database.Resolve(ctx, s.Slice.ID())
-	if err != nil {
-		return nil, err
-	}
-	return slice.([]byte)[s.First : s.First+s.Count], nil
-}
+struct memory;
+
+memory* memory_create(arena*);
+void memory_destroy(memory*);
+
+void* memory_read(memory*, gapil_slice* sli);
+void memory_write(memory*, gapil_slice* sli, const void* data);
+void memory_copy(memory*, gapil_slice* dst, gapil_slice* src);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
+#endif  // GAPIS_MEMORY_POOL_H

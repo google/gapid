@@ -49,7 +49,7 @@
   )
 
   type callable interface {
-    Call(context.Context, *api.GlobalState, *builder.Builder)
+    Call(context.Context, *api.GlobalState, builder.Builder)
   }
 
   // GetState returns the {{$.Name}} state from the api.State.
@@ -64,15 +64,15 @@
     }
   }
 
-  func loadRemap(ϟb *builder.Builder, key interface{}, ty protocol.Type, val value.Value) {
-    if ptr, found := ϟb.Remappings[key]; found {
+  func loadRemap(ϟb builder.Builder, key interface{}, ty protocol.Type, val value.Value) {
+    if ptr, found := ϟb.Remappings()[key]; found {
       ϟb.Load(ty, ptr)
     } else {
       ptr = ϟb.AllocateMemory(uint64(ty.Size(ϟb.MemoryLayout().GetPointer().GetSize())))
       ϟb.Push(val) // We have an input to an unknown id, use the unmapped value.
       ϟb.Clone(0)
       ϟb.Store(ptr)
-      ϟb.Remappings[key] = ptr
+      ϟb.Remappings()[key] = ptr
     }
   }
 
@@ -102,7 +102,7 @@
       ϟg *api.GlobalState, §
       ϟs *State, §
       ϟt uint64, §
-      ϟb *builder.Builder, §
+      ϟb builder.Builder, §
       ϟw api.StateWatcher, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
@@ -149,7 +149,7 @@
       {{end}}
       func (ϟc *{{$name}}) Mutate(§
     {{end}}
-        ϟctx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb *builder.Builder, ϟw api.StateWatcher) error {
+        ϟctx context.Context, ϟi api.CmdID, ϟg *api.GlobalState, ϟb builder.Builder, ϟw api.StateWatcher) error {
 
       {{if not $r}}ϟb = nil // @no_replay{{end}}
 
@@ -164,16 +164,8 @@
 
       {{Global "CurrentFunction" $}}
 
-      if ϟw != nil {
-        ϟw.OnBeginCmd(ϟctx, ϟi, ϟc)
-        defer ϟw.OnEndCmd(ϟctx, ϟi, ϟc)
-      }
-
       {{/* simulate the call */}}
       ϟo.ApplyReads(ϟg.Memory.ApplicationPool())
-      if ϟo != nil && ϟw != nil {
-        ϟw.OnReadObs(ϟctx, ϟo.Reads)
-      }
       {{Template "Block" $.Block}}
 
       return task.StopReason(ϟctx)
@@ -183,7 +175,7 @@
       // Call builds the replay instructions to push the arguments to the stack and invoke {{$.Name}}().
       // Unlike Mutate(), Call() does not perform any state-mutation or memory observations to ϟg.{{if not (IsVoid $.Return.Type)}}
       // The {{$.Name}}() return value will be stored on the stack.{{end}}
-      func (ϟc *{{$name}}) Call(ϟctx context.Context, ϟg *api.GlobalState, ϟb *builder.Builder) {
+      func (ϟc *{{$name}}) Call(ϟctx context.Context, ϟg *api.GlobalState, ϟb builder.Builder) {
         ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
 
         {{/* Push all the parameters on the stack */}}
@@ -200,10 +192,10 @@
         {{$rty := TypeOf $.Return}}
         {{if (GetAnnotation $rty "replay_remap")}}
           if key, remap := ϟc.Result().remap(ϟc, ϟg); remap {
-          ptr, found := ϟb.Remappings[key]
+          ptr, found := ϟb.Remappings()[key]
           if !found {
             ptr = ϟb.AllocateMemory({{Template "Go.SizeOf" $rty}})
-            ϟb.Remappings[key] = ptr
+            ϟb.Remappings()[key] = ptr
           }
           ϟb.Clone(0)
           ϟb.Store(ptr)
@@ -258,7 +250,7 @@
   {{$u := $ | TypeOf | Underlying}}
   {{if IsNumericType $u}}
     {{if not (GetAnnotation $ "replay_custom_value")}}
-      func (c {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟc api.Cmd, ϟg *api.GlobalState) value.Value {
+      func (c {{Template "Go.Type" $}}) value(ϟb builder.Builder, ϟc api.Cmd, ϟg *api.GlobalState) value.Value {
         {{if IsSize $.To}}
           if ϟg.MemoryLayout.GetPointer().GetSize() == 4 {
             return value.U32(uint32(c))
@@ -348,8 +340,8 @@
   {{else if IsIteration    $}}{{Template "Iteration" $}}
   {{else if IsMapIteration $}}{{Template "MapIteration" $}}
   {{else if IsCall         $}}{{Template "Go.Call" $}}
-  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnReadʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
-  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWriteʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
+  {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnRead(ϟctx, ϟc, ϟg, ϟb)
+  {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWrite(ϟctx, ϟc, ϟg, ϟb)
   {{else if IsFence        $}}{{Template "Fence" $}}
   {{else if IsBranch       $}}{{Template "Branch" $}}
   {{else if IsSwitch       $}}{{Template "Switch" $}}
@@ -422,8 +414,7 @@
 
   {
     {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}} := int32(0){{end}}
-    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.All§
-      {{if Macro "IsUntrackedMap" $.Map}}(){{else}}ʷ(ϟctx, ϟw){{end}} {
+    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.All() {
       {{Template "Block" $.Block}}
       {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}}++{{end}}
     }
@@ -500,7 +491,7 @@
     {{if $call.Target.Function.Subroutine}}
       {{/* Transform: v := sub() -> v, err := sub() */}}
       {{$args := ForEach $call.Arguments "Go.Read" | JoinWith ", "}}
-      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, ϟw, {{$args}})
+      {{$.Local.Name}}, ϟerr := {{Template "Go.Subroutine" $call.Target.Function}}(ϟctx, ϟc, ϟi, ϟo, ϟg, ϟs, ϟt, ϟb, nil, {{$args}})
       if ϟerr != nil {
         {{Template "Go.ReturnErr" "ϟerr"}}
       }
@@ -524,20 +515,14 @@
     _ = {{Template "Go.Read" $.RHS}}
   {{else}}
     {{     if IsMember $.LHS}}{{Template "Go.Read" $.LHS.Object}}.Set{{$.LHS.Field | GoPublicName}}§
-      {{if GetAnnotation $.LHS.Field "untracked"}}(§
-      {{else}}ʷ(ϟctx, ϟw, §
-      {{end}}
     {{else if IsGlobal $.LHS}}ϟs.Set{{$.LHS.Name | GoPublicName}}§
-      {{if GetAnnotation $.LHS "untracked"}}(§
-      {{else}}ʷ(ϟctx, ϟw, §
-      {{end}}
     {{else                  }}{{Error "Unhandled assign to %v" $.LHS}}
     {{end}}
 
     {{if eq $.Operator "="}}
-      {{Template "Go.Read" $.RHS}})
+      ({{Template "Go.Read" $.RHS}})
     {{else}}
-      {{Template "Go.Read" $.LHS}} {{$.Operator | TrimRight "="}} {{Template "Go.Read" $.RHS}})
+      ({{Template "Go.Read" $.LHS}} {{$.Operator | TrimRight "="}} {{Template "Go.Read" $.RHS}})
     {{end}}
   {{end}}
 {{end}}
@@ -552,7 +537,7 @@
   {{AssertType $ "ArrayAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Array}}.Setʷ(ϟctx, ϟw, int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Array}}.Set(int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported ArrayAssign operator %s" $.Operator}}
   {{end}}
@@ -568,15 +553,7 @@
   {{AssertType $ "MapAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Map}}.§
-    {{if GetAnnotation $.To.Map "handleMap"}}
-      CreateHandleʷ(ϟctx, ϟw, ϟg, §
-    {{else if Macro "IsUntrackedMap" $.To.Map}}
-      Add(§
-    {{else}}§
-      Addʷ(ϟctx, ϟw, §
-    {{end}}
-    {{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Map}}.Add({{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported MapAssign operator %s" $.Operator}}
   {{end}}
@@ -591,15 +568,7 @@
 {{define "MapRemove"}}
   {{AssertType $ "MapRemove"}}
 
-  {{Template "Go.Read" $.Map}}.§
-  {{if GetAnnotation $.Map "handleMap"}}
-    DestroyHandleʷ(ϟctx, ϟw, ϟg, §
-  {{else if Macro "IsUntrackedMap" $.Map}}
-    Remove(§
-  {{else}}
-    Removeʷ(ϟctx, ϟw, §
-  {{end}}
-  {{Template "Go.Read" $.Key}})
+  {{Template "Go.Read" $.Map}}.Remove({{Template "Go.Read" $.Key}})
 {{end}}
 
 
@@ -612,7 +581,7 @@
   {{AssertType $ "SliceAssign"}}
 
   {{if ne $.Operator "="}}{{Error "Compound assignments to pointers are not supported (%s)" $.Operator}}{{end}}
-  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWriteʷ(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟc, ϟg, ϟb, ϟw)
+  {{Template "Go.Read" $.To.Slice}}.Index({{Template "Go.Read" $.To.Index}}).MustWrite(ϟctx, []{{Template "Go.Type" $.To}}{ {{Template "Go.Read" $.Value}} }, ϟc, ϟg, ϟb)
 {{end}}
 
 
@@ -645,7 +614,7 @@
         ϟdst, ϟgsrc := {{Template "Go.Read" $.Statement.Dst}}, {{Template "Go.Read" $.Statement.Src}}
         ϟcount := u64.Min(ϟdst.Count(), ϟgsrc.Count())
         ϟdst, ϟgsrc = ϟdst.Slice(0, ϟcount), ϟgsrc.Slice(0, ϟcount)
-        ϟgsrcElems := ϟgsrc.MustReadʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
+        ϟgsrcElems := ϟgsrc.MustRead(ϟctx, ϟc, ϟg, ϟb)
       {{end}}
 
       {{/* Perform the call */}}
@@ -653,7 +622,7 @@
 
       {{if IsCopy $.Statement}}
         {{/* Apply the fenced-copy write */}}
-        ϟdst.MustWriteʷ(ϟctx, ϟgsrcElems, ϟc, ϟg, ϟb, ϟw)
+        ϟdst.MustWrite(ϟctx, ϟgsrcElems, ϟc, ϟg, ϟb)
       {{end}}
     }
     {{if IsCopy $.Statement}}
@@ -674,9 +643,6 @@
 
   {{/* Merge the observed writes into the application pool */}}
   ϟo.ApplyWrites(ϟg.Memory.ApplicationPool())
-  if ϟo != nil && ϟw != nil {
-    ϟw.OnWriteObs(ϟctx, ϟo.Writes)
-  }
 {{end}}
 
 

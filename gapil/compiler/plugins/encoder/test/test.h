@@ -62,13 +62,16 @@ typedef struct cmd_pointers_t {
   float* c;
 } cmd_pointers;
 
-void cmd__cmd_ints__encode(cmd_ints* cmd, context* ctx, uint8_t is_group);
-void cmd__cmd_intsCall__encode(cmd_intsCall* cmd, context* ctx,
+void cmd__cmd_ints__encode(cmd_ints* cmd, gapil_context* ctx, uint8_t is_group);
+void cmd__cmd_intsCall__encode(cmd_intsCall* cmd, gapil_context* ctx,
                                uint8_t is_group);
-void cmd__cmd_floats__encode(cmd_floats* cmd, context* ctx, uint8_t is_group);
-void cmd__cmd_enums__encode(cmd_enums* cmd, context* ctx, uint8_t is_group);
-void cmd__cmd_arrays__encode(cmd_arrays* cmd, context* ctx, uint8_t is_group);
-void cmd__cmd_pointers__encode(cmd_pointers* cmd, context* ctx,
+void cmd__cmd_floats__encode(cmd_floats* cmd, gapil_context* ctx,
+                             uint8_t is_group);
+void cmd__cmd_enums__encode(cmd_enums* cmd, gapil_context* ctx,
+                            uint8_t is_group);
+void cmd__cmd_arrays__encode(cmd_arrays* cmd, gapil_context* ctx,
+                             uint8_t is_group);
+void cmd__cmd_pointers__encode(cmd_pointers* cmd, gapil_context* ctx,
                                uint8_t is_group);
 
 typedef struct int_types_t {
@@ -96,7 +99,7 @@ typedef struct basic_types_t {
   uint8_t k;
   uint32_t l;
   uint32_t* m;
-  string* n;
+  gapil_string* n;
 } basic_types;
 
 typedef struct inner_class_t {
@@ -108,42 +111,43 @@ typedef struct nested_classes_t {
 } nested_classes;
 
 typedef struct map_types_t {
-  map* a;
-  map* b;
-  map* c;
-  map* d;
+  gapil_map* a;
+  gapil_map* b;
+  gapil_map* c;
+  gapil_map* d;
 } map_types;
 
 typedef struct ref_types_t {
-  ref* a;
-  ref* b;
-  ref* c;
-  ref* d;
+  gapil_ref* a;
+  gapil_ref* b;
+  gapil_ref* c;
+  gapil_ref* d;
 } ref_types;
 
 typedef struct slice_types_t {
-  slice a;
-  slice b;
-  slice c;
+  gapil_slice a;
+  gapil_slice b;
+  gapil_slice c;
 } slice_types;
 
-void basic_types__encode(basic_types* c, context* ctx, uint8_t is_group);
-void nested_classes__encode(nested_classes* c, context* ctx, uint8_t is_group);
-void map_types__encode(map_types* c, context* ctx, uint8_t is_group);
-void ref_types__encode(ref_types* c, context* ctx, uint8_t is_group);
-void slice_types__encode(slice_types* c, context* ctx, uint8_t is_group);
+void basic_types__encode(basic_types* c, gapil_context* ctx, uint8_t is_group);
+void nested_classes__encode(nested_classes* c, gapil_context* ctx,
+                            uint8_t is_group);
+void map_types__encode(map_types* c, gapil_context* ctx, uint8_t is_group);
+void ref_types__encode(ref_types* c, gapil_context* ctx, uint8_t is_group);
+void slice_types__encode(slice_types* c, gapil_context* ctx, uint8_t is_group);
 
 // Test helper functions.
-void create_map_u32(arena*, map**);
-void insert_map_u32(map* m, uint32_t k, uint32_t v);
-void create_map_string(arena*, map**);
-void insert_map_string(map* m, const char* k, const char* v);
+void create_map_u32(arena*, gapil_map**);
+void insert_map_u32(gapil_map* m, uint32_t k, uint32_t v);
+void create_map_string(arena*, gapil_map**);
+void insert_map_string(gapil_map* m, const char* k, const char* v);
 
-basic_types* create_basic_types_ref(arena*, ref**);
-inner_class* create_inner_class_ref(arena*, ref**);
+basic_types* create_basic_types_ref(arena*, gapil_ref**);
+inner_class* create_inner_class_ref(arena*, gapil_ref**);
 
-context* create_context(arena* arena);
-void destroy_context(context* ctx);
+gapil_context* create_context(arena* arena);
+void destroy_context(gapil_context* ctx);
 
 #ifdef __cplusplus
 }  // extern "C"

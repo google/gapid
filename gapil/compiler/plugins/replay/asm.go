@@ -25,6 +25,7 @@ import (
 
 // asm holds the types used to build the replay instructions.
 type asm struct {
+	begincommand codegen.Type
 	value        codegen.Type
 	call         codegen.Type
 	push         codegen.Type
@@ -37,7 +38,6 @@ type asm struct {
 	resource     codegen.Type
 	post         codegen.Type
 	add          codegen.Type
-	label        codegen.Type
 	switchthread codegen.Type
 }
 
@@ -45,6 +45,7 @@ func (r *replayer) parseAsmTypes() {
 	r.T.asm.value = r.T.TypeOf(C.gapil_replay_asm_value{})
 
 	// instructions
+	r.T.asm.begincommand = r.T.TypeOf(C.gapil_replay_asm_begincommand{})
 	r.T.asm.call = r.T.TypeOf(C.gapil_replay_asm_call{})
 	r.T.asm.push = r.T.TypeOf(C.gapil_replay_asm_push{})
 	r.T.asm.pop = r.T.TypeOf(C.gapil_replay_asm_pop{})
@@ -56,7 +57,6 @@ func (r *replayer) parseAsmTypes() {
 	r.T.asm.resource = r.T.TypeOf(C.gapil_replay_asm_resource{})
 	r.T.asm.post = r.T.TypeOf(C.gapil_replay_asm_post{})
 	r.T.asm.add = r.T.TypeOf(C.gapil_replay_asm_add{})
-	r.T.asm.label = r.T.TypeOf(C.gapil_replay_asm_label{})
 	r.T.asm.switchthread = r.T.TypeOf(C.gapil_replay_asm_switchthread{})
 }
 
@@ -90,6 +90,7 @@ type asmNamespace uint32
 type asmInst uint8
 
 const (
+	asmInstBeginCommand = asmInst(C.GAPIL_REPLAY_ASM_INST_BEGIN_COMMAND)
 	asmInstCall         = asmInst(C.GAPIL_REPLAY_ASM_INST_CALL)
 	asmInstPush         = asmInst(C.GAPIL_REPLAY_ASM_INST_PUSH)
 	asmInstPop          = asmInst(C.GAPIL_REPLAY_ASM_INST_POP)
@@ -101,12 +102,11 @@ const (
 	asmInstResource     = asmInst(C.GAPIL_REPLAY_ASM_INST_RESOURCE)
 	asmInstPost         = asmInst(C.GAPIL_REPLAY_ASM_INST_POST)
 	asmInstAdd          = asmInst(C.GAPIL_REPLAY_ASM_INST_ADD)
-	asmInstLabel        = asmInst(C.GAPIL_REPLAY_ASM_INST_LABEL)
 	asmInstSwitchthread = asmInst(C.GAPIL_REPLAY_ASM_INST_SWITCHTHREAD)
 )
 
 func (r *replayer) asmWrite(s *compiler.S, v *codegen.Value) {
-	bufPtr := s.Ctx.Index(0, data, stream)
+	bufPtr := s.Ctx.Index(0, data, instructions)
 	r.AppendBufferData(s, bufPtr, s.LocalInit("write", v))
 }
 
@@ -156,10 +156,10 @@ func (r *replayer) asmCall(s *compiler.S, apiIdx, funcID int, pushReturn bool) {
 			Insert("function_id", s.Scalar(uint16(funcID))))
 }
 
-func (r *replayer) asmLabel(s *compiler.S, label *codegen.Value) {
-	r.asmWriteInst(s, asmInstLabel,
-		s.Zero(r.T.asm.label).
-			Insert("value", label))
+func (r *replayer) asmBeginCommand(s *compiler.S, cmdID *codegen.Value) {
+	r.asmWriteInst(s, asmInstBeginCommand,
+		s.Zero(r.T.asm.begincommand).
+			Insert("cmd_id", cmdID))
 }
 
 func (r *replayer) asmClone(s *compiler.S, n *codegen.Value) {

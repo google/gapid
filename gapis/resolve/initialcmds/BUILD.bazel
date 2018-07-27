@@ -25,6 +25,7 @@ go_library(
     deps = [
         "//core/app/benchmark:go_default_library",
         "//core/math/interval:go_default_library",
+        "//gapil/executor:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",

@@ -20,6 +20,7 @@
 #include "abort_exception.h"
 #include "call_observer.h"
 #include "pack_encoder.h"
+#include "pool.h"
 
 #include "core/cc/assert.h"
 #include "core/cc/id.h"
@@ -74,8 +75,18 @@ class SpyBase {
   // returns the spy's memory arena.
   inline core::Arena* arena() { return &mArena; }
 
-  // returns a handle to the identifier of the next pool to be allocated.
-  inline uint32_t& next_pool_id() { return mNextPoolId; }
+  // create_pool returns a new pool with a ref-count of 1.
+  Pool* create_pool(uint64_t size);
+
+  // destroy_pool frees the given pool. The pool must have no remaining
+  // references.
+  void destroy_pool(Pool* pool);
+
+  // allocate_pool_id allocates and returns a unique pool identifier.
+  uint64_t allocate_pool_id() { return mNextPoolId++; }
+
+  // get_pool returns the pool with the given ID.
+  inline Pool* get_pool(uint64_t id) { return mPools[id]; }
 
   // Returns the transimission encoder.
   // TODO(qining): To support multithreaded uses, mutex is required to manage
@@ -136,12 +147,12 @@ class SpyBase {
                                      uint64_t e) const;
   inline gapil::Slice<uint8_t> slice(void* src, uint64_t s, uint64_t e) const;
 
-  // slice returns a gapil::Slice<char>, backed by a new pool, holding a copy of
-  // the string src. src is observed as a read operation.
+  // slice returns a gapil::Slice<char>, backed by a new pool, holding a copy
+  // of the string src. src is observed as a read operation.
   inline gapil::Slice<char> slice(CallObserver* cb, const std::string& src);
 
-  // slice returns a sub-slice of src, starting at elements s and ending at one
-  // element before e.
+  // slice returns a sub-slice of src, starting at elements s and ending at
+  // one element before e.
   template <typename T>
   inline gapil::Slice<T> slice(const gapil::Slice<T>& src, uint64_t s,
                                uint64_t e) const;
@@ -197,7 +208,10 @@ class SpyBase {
   core::Arena mArena;
 
   // The identifier of the next pool to be allocated.
-  uint32_t mNextPoolId;
+  uint64_t mNextPoolId;
+
+  // Map of pool identifiers to pools.
+  std::unordered_map<uint64_t, Pool*> mPools;
 
   // The stream encoder that does nothing.
   PackEncoder::SPtr mNullEncoder;
@@ -210,14 +224,15 @@ class SpyBase {
   std::unordered_map<core::Id, int64_t> mResources;
   std::mutex mResourcesMutex;
 
-  // The mutex that should be locked for the duration of each of the intercepted
-  // commands.
+  // The mutex that should be locked for the duration of each of the
+  // intercepted commands.
   std::recursive_mutex mMutex;
 
   // True if we should observe the application pool.
   bool mObserveApplicationPool;
 
-  // True if we should not be currently tracing, false if we should be tracing.
+  // True if we should not be currently tracing, false if we should be
+  // tracing.
   bool mIsSuspended;
 
   // This is the list of all Apis that are considered for tracing. This is a

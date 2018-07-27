@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/extensions"
@@ -30,6 +31,10 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 	if err != nil {
 		return nil, err
 	}
+
+	env := c.Env().InitState().Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
 
 	sd, err := SyncData(ctx, p.Capture)
 	if err != nil {
@@ -64,7 +69,6 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 
 	events := []*service.Event{}
 
-	s := c.NewState(ctx)
 	lastCmd := api.CmdID(0)
 	var pending []service.EventKind
 
@@ -80,10 +84,10 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		return 0
 	}
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil, nil)
+		cmd.Mutate(ctx, id, env.State, nil, nil)
 
 		// TODO: Add event generation to the API files.
-		if !filter(id, cmd, s) {
+		if !filter(id, cmd, env.State) {
 			return nil
 		}
 
@@ -98,7 +102,7 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		// spot to ensure the ordering is maintained.
 		var epFirstInFrame, epNormal, epLastInFrame []*service.Event
 		for _, ep := range eps {
-			for _, event := range ep(ctx, id, cmd, s) {
+			for _, event := range ep(ctx, id, cmd, env.State) {
 				switch event.Kind {
 				case service.EventKind_FirstInFrame:
 					epFirstInFrame = append(epFirstInFrame, event)
@@ -110,7 +114,7 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 			}
 		}
 
-		f := cmd.CmdFlags(ctx, id, s)
+		f := cmd.CmdFlags(ctx, id, env.State)
 
 		// Add LastInFrame event of a previous command first.
 		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {

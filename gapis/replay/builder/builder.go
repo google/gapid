@@ -78,7 +78,132 @@ type Postback func(d binary.Reader, err error)
 // Builder is used to build the Payload to send to the replay virtual machine.
 // The builder has a number of methods for mutating the virtual machine stack,
 // invoking functions and posting back data.
-type Builder struct {
+type Builder interface {
+	// MemoryLayout returns the memory layout for the target replay device.
+	MemoryLayout() *device.MemoryLayout
+
+	// AllocateMemory allocates and returns a pointer to a block of memory in
+	// the volatile address-space big enough to hold size bytes. The memory will
+	// be allocated for the entire replay duration and cannot be freed.
+	AllocateMemory(size uint64) value.Pointer
+
+	// AllocateTemporaryMemory allocates and returns a pointer to a block of
+	// memory in the temporary volatile address-space big enough to hold size
+	// bytes. The memory block will be freed on the next call to CommitCommand /
+	// AbortCommand, upon which reading or writing to this memory will result in
+	// undefined behavior.
+	// TODO: REMOVE
+	AllocateTemporaryMemory(size uint64) value.Pointer
+
+	// BeginCommand should be called before building any replay instructions.
+	BeginCommand(cmdID, threadID uint64)
+
+	// CommitCommand should be called after emitting the commands to replay a
+	// single command.
+	// CommitCommand frees all temporary allocated memory and clears the stack.
+	CommitCommand()
+
+	// RevertCommand reverts all the instructions since the last call to
+	// BeginCommand. Any postbacks issued since the last call to BeginCommand
+	// will be called with the error err and a nil decoder.
+	RevertCommand(err error)
+
+	// Buffer returns a pointer to a block of memory in holding the count number
+	// of previously pushed values.
+	// If all the values are constant, then the buffer will be held in the
+	// constant address-space, otherwise the buffer will be built in the
+	// temporary address-space.
+	Buffer(count int) value.Pointer
+
+	// String returns a pointer to a block of memory in the constant
+	// address-space holding the string s. The string will be stored with a
+	// null-terminating byte.
+	String(s string) value.Pointer
+
+	// Call will invoke the function f, popping all parameter values previously
+	// pushed to the stack with Push, starting with the first parameter. If f
+	// has a non-void return type, after invoking the function the return value
+	// of the function will be pushed on to the stack.
+	Call(f FunctionInfo)
+
+	// Copy pops the target address and then the source address from the top of
+	// the stack, and then copies Count bytes from source to target.
+	Copy(size uint64)
+
+	// Clone makes a copy of the n-th element from the top of the stack and
+	// pushes the copy to the top of the stack.
+	Clone(index int)
+
+	// Load loads the value of type ty from addr and then pushes the loaded
+	// value to the top of the stack.
+	Load(ty protocol.Type, addr value.Pointer)
+
+	// Store pops the value from the top of the stack and writes the value to
+	// addr.
+	Store(addr value.Pointer)
+
+	// StorePointer writes ptr to the target pointer index.
+	// Pointers are stored in a separate address space and can only be loaded
+	// using PointerIndex values.
+	StorePointer(idx value.PointerIndex, ptr value.Pointer)
+
+	// Strcpy pops the source address then the target address from the top of
+	// the stack, and then copies at most maxCount-1 bytes from source to
+	// target. If maxCount is greater than the source string length, then the
+	// target will be padded with 0s. The destination buffer will always be
+	// 0-terminated.
+	Strcpy(maxCount uint64)
+
+	// Post posts size bytes from addr to the decoder d. The decoder d must
+	// consume all size bytes before returning; failure to do this will corrupt
+	// all subsequent postbacks.
+	Post(addr value.Pointer, size uint64, p Postback)
+
+	// Push pushes val to the top of the stack.
+	Push(val value.Value)
+
+	// Pop removes the top count values from the top of the stack.
+	Pop(count uint32)
+
+	// ReserveMemory adds rng as a memory range that needs allocating for
+	// replay.
+	ReserveMemory(rng memory.Range)
+
+	// MapMemory maps the memory range rng relative to the absolute pointer that
+	// is on the top of the stack. Any ObservedPointers that are used while the
+	// pointer is mapped will be automatically adjusted to the remapped address.
+	// The mapped memory range can be unmapped with a call to UnmapMemory.
+	MapMemory(rng memory.Range)
+
+	// UnmapMemory unmaps the memory range rng that was previously mapped with a
+	// call to MapMemory. If the memory range is not exactly a range previously
+	// mapped with a call to MapMemory then this function panics.
+	UnmapMemory(rng memory.Range)
+
+	// Write fills the memory range in capture address-space rng with the data
+	// of resourceID.
+	Write(rng memory.Range, resourceID id.ID)
+
+	// Remappings returns a map of a arbitrary keys to pointers. Typically, this
+	// is used as a map of observed values to values that are only known at
+	// replay execution time, such as driver generated handles.
+	// Remappings are not accessed by the Builder and can be used in any way the
+	// developer requires.
+	Remappings() map[interface{}]value.Pointer
+
+	RegisterNotificationReader(reader NotificationReader)
+
+	// Export compiles the replay instructions, returning a Payload that can be
+	// sent to the replay virtual-machine.
+	Export(ctx context.Context) (gapir.Payload, error)
+
+	// Build compiles the replay instructions, returning a Payload that can be
+	// sent to the replay virtual-machine and a PostDataHandler for interpreting
+	// the responses.
+	Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, error)
+}
+
+type builder struct {
 	constantMemory      *constantEncoder
 	heap, temp          allocator
 	resourceIDToIdx     map[id.ID]uint32
@@ -98,20 +223,14 @@ type Builder struct {
 	cmdStart            int    // index of current commands's first instruction
 	pendingLabel        uint64 // label passed to BeginCommand written
 	lastLabel           uint64 // label of last CommitCommand written
-
-	// Remappings is a map of a arbitrary keys to pointers. Typically, this is
-	// used as a map of observed values to values that are only known at replay
-	// execution time, such as driver generated handles.
-	// The Remappings field is not accessed by the Builder and can be used in any
-	// way the developer requires.
-	Remappings map[interface{}]value.Pointer
+	remappings          map[interface{}]value.Pointer
 }
 
 // New returns a newly constructed Builder configured to replay on a target
 // with the specified MemoryLayout.
-func New(memoryLayout *device.MemoryLayout) *Builder {
+func New(memoryLayout *device.MemoryLayout) Builder {
 	ptrAlignment := uint64(memoryLayout.GetPointer().GetAlignment())
-	return &Builder{
+	return &builder{
 		constantMemory:  newConstantEncoder(memoryLayout),
 		heap:            allocator{alignment: ptrAlignment},
 		temp:            allocator{alignment: ptrAlignment},
@@ -124,36 +243,36 @@ func New(memoryLayout *device.MemoryLayout) *Builder {
 		instructions:    []asm.Instruction{},
 		memoryLayout:    memoryLayout,
 		lastLabel:       ^uint64(0),
-		Remappings:      make(map[interface{}]value.Pointer),
+		remappings:      make(map[interface{}]value.Pointer),
 	}
 }
 
-func (b *Builder) pushStack(t protocol.Type) {
+func (b *builder) pushStack(t protocol.Type) {
 	b.stack = append(b.stack, stackItem{t, len(b.instructions)})
 }
 
-func (b *Builder) popStack() {
+func (b *builder) popStack() {
 	if len(b.stack) == 0 {
 		panic("Stack underflow")
 	}
 	b.stack = b.stack[:len(b.stack)-1]
 }
 
-func (b *Builder) popStackMulti(count int) {
+func (b *builder) popStackMulti(count int) {
 	if len(b.stack) < count {
 		panic("Stack underflow")
 	}
 	b.stack = b.stack[:len(b.stack)-count]
 }
 
-func (b *Builder) peekStack() stackItem {
+func (b *builder) peekStack() stackItem {
 	if len(b.stack) == 0 {
 		panic("Stack underflow")
 	}
 	return b.stack[len(b.stack)-1]
 }
 
-func (b *Builder) removeInstruction(at int) {
+func (b *builder) removeInstruction(at int) {
 	if at == len(b.instructions)-1 {
 		b.instructions = b.instructions[:at]
 	} else {
@@ -161,7 +280,7 @@ func (b *Builder) removeInstruction(at int) {
 	}
 }
 
-func (b *Builder) remap(ptr value.Pointer) value.Pointer {
+func (b *builder) remap(ptr value.Pointer) value.Pointer {
 	p, ok := ptr.(value.ObservedPointer)
 	if !ok {
 		return ptr
@@ -185,30 +304,19 @@ func (b *Builder) remap(ptr value.Pointer) value.Pointer {
 	return value.AbsoluteStackPointer{}
 }
 
-// MemoryLayout returns the memory layout for the target replay device.
-func (b *Builder) MemoryLayout() *device.MemoryLayout {
+func (b *builder) MemoryLayout() *device.MemoryLayout {
 	return b.memoryLayout
 }
 
-// AllocateMemory allocates and returns a pointer to a block of memory in the
-// volatile address-space big enough to hold size bytes. The memory will be
-// allocated for the entire replay duration and cannot be freed.
-func (b *Builder) AllocateMemory(size uint64) value.Pointer {
+func (b *builder) AllocateMemory(size uint64) value.Pointer {
 	return value.VolatilePointer(b.heap.alloc(size))
 }
 
-// AllocateTemporaryMemory allocates and returns a pointer to a block of memory
-// in the temporary volatile address-space big enough to hold size bytes. The
-// memory block will be freed on the next call to CommitCommand/AbortCommand,
-// upon which reading or writing to this memory will result in undefined
-// behavior.
-// TODO: REMOVE
-func (b *Builder) AllocateTemporaryMemory(size uint64) value.Pointer {
+func (b *builder) AllocateTemporaryMemory(size uint64) value.Pointer {
 	return value.TemporaryPointer(b.temp.alloc(size))
 }
 
-// BeginCommand should be called before building any replay instructions.
-func (b *Builder) BeginCommand(cmdID, threadID uint64) {
+func (b *builder) BeginCommand(cmdID, threadID uint64) {
 	if b.inCmd {
 		panic("BeginCommand called while already building a command")
 	}
@@ -232,10 +340,7 @@ func (b *Builder) BeginCommand(cmdID, threadID uint64) {
 	}
 }
 
-// CommitCommand should be called after emitting the commands to replay a single
-// command.
-// CommitCommand frees all temporary allocated memory and clears the stack.
-func (b *Builder) CommitCommand() {
+func (b *builder) CommitCommand() {
 	if !b.inCmd {
 		panic("CommitCommand called without a call to BeginCommand")
 	}
@@ -274,10 +379,7 @@ func (b *Builder) CommitCommand() {
 	b.stack = b.stack[:0]
 }
 
-// RevertCommand reverts all the instructions since the last call to
-// BeginCommand. Any postbacks issued since the last call to BeginCommand will
-// be called with the error err and a nil decoder.
-func (b *Builder) RevertCommand(err error) {
+func (b *builder) RevertCommand(err error) {
 	if !b.inCmd {
 		panic("RevertCommand called without a call to BeginCommand")
 	}
@@ -300,12 +402,7 @@ func (b *Builder) RevertCommand(err error) {
 	}
 }
 
-// Buffer returns a pointer to a block of memory in holding the count number of
-// previously pushed values.
-// If all the values are constant, then the buffer will be held in the constant
-// address-space, otherwise the buffer will be built in the temporary
-// address-space.
-func (b *Builder) Buffer(count int) value.Pointer {
+func (b *builder) Buffer(count int) value.Pointer {
 	pointerSize := b.memoryLayout.GetPointer().GetSize()
 	dynamic := false
 	size := 0
@@ -354,17 +451,11 @@ func (b *Builder) Buffer(count int) value.Pointer {
 	return b.constantMemory.writeValues(values...)
 }
 
-// String returns a pointer to a block of memory in the constant address-space
-// holding the string s. The string will be stored with a null-terminating byte.
-func (b *Builder) String(s string) value.Pointer {
+func (b *builder) String(s string) value.Pointer {
 	return b.constantMemory.writeString(s)
 }
 
-// Call will invoke the function f, popping all parameter values previously
-// pushed to the stack with Push, starting with the first parameter. If f has
-// a non-void return type, after invoking the function the return value of the
-// function will be pushed on to the stack.
-func (b *Builder) Call(f FunctionInfo) {
+func (b *builder) Call(f FunctionInfo) {
 	b.popStackMulti(f.Parameters)
 	push := f.ReturnType != protocol.Type_Void
 	if push {
@@ -377,18 +468,14 @@ func (b *Builder) Call(f FunctionInfo) {
 	})
 }
 
-// Copy pops the target address and then the source address from the top of the
-// stack, and then copies Count bytes from source to target.
-func (b *Builder) Copy(size uint64) {
+func (b *builder) Copy(size uint64) {
 	b.popStackMulti(2)
 	b.instructions = append(b.instructions, asm.Copy{
 		Count: size,
 	})
 }
 
-// Clone makes a copy of the n-th element from the top of the stack and pushes
-// the copy to the top of the stack.
-func (b *Builder) Clone(index int) {
+func (b *builder) Clone(index int) {
 	sidx := len(b.stack) - 1 - index
 	// Change ownership of the top stack value to the clone instruction.
 	b.stack[sidx].idx = len(b.instructions)
@@ -398,9 +485,7 @@ func (b *Builder) Clone(index int) {
 	})
 }
 
-// Load loads the value of type ty from addr and then pushes the loaded value to
-// the top of the stack.
-func (b *Builder) Load(ty protocol.Type, addr value.Pointer) {
+func (b *builder) Load(ty protocol.Type, addr value.Pointer) {
 	if !addr.IsValid() {
 		panic(fmt.Errorf("Pointer address %v is not valid", addr))
 	}
@@ -411,8 +496,7 @@ func (b *Builder) Load(ty protocol.Type, addr value.Pointer) {
 	})
 }
 
-// Store pops the value from the top of the stack and writes the value to addr.
-func (b *Builder) Store(addr value.Pointer) {
+func (b *builder) Store(addr value.Pointer) {
 	if !addr.IsValid() {
 		panic(fmt.Errorf("Pointer address %v is not valid", addr))
 	}
@@ -422,10 +506,7 @@ func (b *Builder) Store(addr value.Pointer) {
 	})
 }
 
-// StorePointer writes ptr to the target pointer index.
-// Pointers are stored in a separate address space and can only be loaded using
-// PointerIndex values.
-func (b *Builder) StorePointer(idx value.PointerIndex, ptr value.Pointer) {
+func (b *builder) StorePointer(idx value.PointerIndex, ptr value.Pointer) {
 	b.instructions = append(b.instructions,
 		asm.Push{Value: ptr},
 		asm.Store{Destination: idx},
@@ -437,21 +518,14 @@ func (b *Builder) StorePointer(idx value.PointerIndex, ptr value.Pointer) {
 	interval.Merge(&b.pointerMemory, rng.Span(), true)
 }
 
-// Strcpy pops the source address then the target address from the top of the
-// stack, and then copies at most maxCount-1 bytes from source to target. If
-// maxCount is greater than the source string length, then the target will be
-// padded with 0s. The destination buffer will always be 0-terminated.
-func (b *Builder) Strcpy(maxCount uint64) {
+func (b *builder) Strcpy(maxCount uint64) {
 	b.popStackMulti(2)
 	b.instructions = append(b.instructions, asm.Strcpy{
 		MaxCount: maxCount,
 	})
 }
 
-// Post posts size bytes from addr to the decoder d. The decoder d must consume
-// all size bytes before returning; failure to do this will corrupt all
-// subsequent postbacks.
-func (b *Builder) Post(addr value.Pointer, size uint64, p Postback) {
+func (b *builder) Post(addr value.Pointer, size uint64, p Postback) {
 	if !addr.IsValid() {
 		panic(fmt.Errorf("Pointer address %v is not valid", addr))
 	}
@@ -465,8 +539,7 @@ func (b *Builder) Post(addr value.Pointer, size uint64, p Postback) {
 	})
 }
 
-// Push pushes val to the top of the stack.
-func (b *Builder) Push(val value.Value) {
+func (b *builder) Push(val value.Value) {
 	if p, ok := val.(value.Pointer); ok {
 		val = b.remap(p)
 	}
@@ -484,24 +557,18 @@ func (b *Builder) Push(val value.Value) {
 	}
 }
 
-// Pop removes the top count values from the top of the stack.
-func (b *Builder) Pop(count uint32) {
+func (b *builder) Pop(count uint32) {
 	b.popStackMulti(int(count))
 	b.instructions = append(b.instructions, asm.Pop{
 		Count: count,
 	})
 }
 
-// ReserveMemory adds rng as a memory range that needs allocating for replay.
-func (b *Builder) ReserveMemory(rng memory.Range) {
+func (b *builder) ReserveMemory(rng memory.Range) {
 	interval.Merge(&b.reservedMemory, rng.Span(), true)
 }
 
-// MapMemory maps the memory range rng relative to the absolute pointer that is
-// on the top of the stack. Any ObservedPointers that are used while the pointer
-// is mapped will be automatically adjusted to the remapped address.
-// The mapped memory range can be unmapped with a call to UnmapMemory.
-func (b *Builder) MapMemory(rng memory.Range) {
+func (b *builder) MapMemory(rng memory.Range) {
 	if ty := b.peekStack().ty; ty != protocol.Type_AbsolutePointer {
 		panic(fmt.Errorf("MapMemory can only map to absolute pointers. Got type: %v", ty))
 	}
@@ -520,10 +587,7 @@ func (b *Builder) MapMemory(rng memory.Range) {
 	b.mappedMemory[i].Target = target
 }
 
-// UnmapMemory unmaps the memory range rng that was previously mapped with a
-// call to MapMemory. If the memory range is not exactly a range previously
-// mapped with a call to MapMemory then this function panics.
-func (b *Builder) UnmapMemory(rng memory.Range) {
+func (b *builder) UnmapMemory(rng memory.Range) {
 	i := interval.IndexOf(&b.mappedMemory, rng.Base)
 	if i < 0 {
 		panic(fmt.Errorf("Range (%v) was not mapped", rng))
@@ -535,9 +599,7 @@ func (b *Builder) UnmapMemory(rng memory.Range) {
 	interval.Remove(&b.mappedMemory, rng.Span())
 }
 
-// Write fills the memory range in capture address-space rng with the data
-// of resourceID.
-func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
+func (b *builder) Write(rng memory.Range, resourceID id.ID) {
 	if rng.Size > 0 {
 		idx, found := b.resourceIDToIdx[resourceID]
 		if !found {
@@ -556,13 +618,15 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 	b.ReserveMemory(rng)
 }
 
-func (b *Builder) RegisterNotificationReader(reader NotificationReader) {
+func (b *builder) Remappings() map[interface{}]value.Pointer {
+	return b.remappings
+}
+
+func (b *builder) RegisterNotificationReader(reader NotificationReader) {
 	b.notificationReaders = append(b.notificationReaders, reader)
 }
 
-// Export compiles the replay instructions, returning a Payload that can be
-// sent to the replay virtual-machine.
-func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
+func (b *builder) Export(ctx context.Context) (gapir.Payload, error) {
 	ctx = status.Start(ctx, "Export")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Export")
@@ -580,10 +644,7 @@ func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
 	return payload, err
 }
 
-// Build compiles the replay instructions, returning a Payload that can be
-// sent to the replay virtual-machine and a PostDataHandler for interpreting
-// the responses.
-func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, error) {
+func (b *builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, error) {
 	ctx = status.Start(ctx, "Build")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Build")
@@ -677,7 +738,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 
 const ErrInvalidResource = fault.Const("Invaid resource")
 
-func (b *Builder) assertResourceSizesAreAsExpected(ctx context.Context) {
+func (b *builder) assertResourceSizesAreAsExpected(ctx context.Context) {
 	for _, r := range b.resources {
 		ctx := log.V{"resource-id": r.Id}.Bind(ctx)
 		id, err := id.Parse(r.Id)
@@ -698,7 +759,7 @@ func (b *Builder) assertResourceSizesAreAsExpected(ctx context.Context) {
 	}
 }
 
-func (b *Builder) layoutVolatileMemory(ctx context.Context, w binary.Writer) *volatileMemoryLayout {
+func (b *builder) layoutVolatileMemory(ctx context.Context, w binary.Writer) *volatileMemoryLayout {
 	// Volatile memory layout:
 	//
 	//  low ┌──────────────────┐

@@ -115,6 +115,7 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line,
   }
 
   if (level == LOG_LEVEL_FATAL) {
+    __builtin_trap();
     exit(EXIT_FAILURE);
   }
 }

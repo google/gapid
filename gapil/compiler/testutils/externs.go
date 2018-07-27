@@ -29,7 +29,7 @@ import (
 // } extern_a_args;
 //
 // typedef struct extern_b_args_t {
-//   string* s;
+//   gapil_string* s;
 // } extern_b_args;
 import "C"
 

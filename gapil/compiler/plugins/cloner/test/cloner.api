@@ -1,0 +1,87 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+api_index 7
+
+enum E {
+    ONE = 1
+    TWO = 2
+    THREE = 3
+}
+
+class basic_types {
+    u8     a
+    s8     b
+    u16    c
+    s16    d
+    f32    e
+    u32    f
+    s32    g
+    f64    h
+    u64    i
+    s64    j
+    bool   k
+    E      l
+}
+
+class nested {
+    basic_types class
+}
+
+class ptrs {
+    u8*          u8_ptr
+    f32*         f32_ptr
+    basic_types* class_ptr
+}
+
+class refs {
+    ref!basic_types basic_ref
+    ref!refs        cyclic_ref
+}
+
+class maps {
+    map!(u8, u8)                  a
+    map!(string, ref!basic_types) b
+}
+
+class slices {
+    u8[]  u8s
+    s32[] s32s
+    f32[] f32s
+    int[] ints
+}
+
+class arrays {
+    u8[4]          a
+    basic_types[4] b
+}
+
+class strings {
+    string a
+    string b
+    string c
+}
+
+ref!nested  declare_a_ref_of_nested
+ref!ptrs    declare_a_ref_of_ptrs
+ref!refs    declare_a_ref_of_refs
+ref!maps    declare_a_ref_of_maps
+ref!slices  declare_a_ref_of_slices
+ref!arrays  declare_a_ref_of_arrays
+ref!strings declare_a_ref_of_strings
+
+
+cmd int foo(u8* a, f32 b, bool c) {
+    return as!int(1)
+}

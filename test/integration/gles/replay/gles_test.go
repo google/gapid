@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/gles"
 	"github.com/google/gapid/gapis/capture"
@@ -40,7 +41,7 @@ import (
 	"github.com/google/gapid/test/integration/gles/snippets"
 )
 
-const replayTimeout = time.Second * 5
+const replayTimeout = time.Second * 30
 
 var (
 	triangleVertices = []float32{
@@ -75,6 +76,7 @@ func setup(ctx context.Context) (context.Context, *device.Instance) {
 	m := replay.New(ctx)
 	ctx = replay.PutManager(ctx, m)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	ctx = executor.PutEnv(ctx, executor.NewEnv(ctx, executor.Config{}))
 	bind.GetRegistry(ctx).AddDevice(ctx, bind.Host(ctx))
 	return ctx, r.DefaultDevice().Instance()
 }

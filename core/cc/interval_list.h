@@ -76,6 +76,9 @@ class CustomIntervalList {
   // there is no interval containing v.
   inline ssize_t index_of(interval_unit_type v) const;
 
+  // remove cuts any intervals within the given start-end interval.
+  inline void remove(interval_unit_type start, interval_unit_type end);
+
   // replace removes and/or trims any intervals overlapping i and then adds i
   // to this list. No merging is performed.
   inline void replace(const T& i);
@@ -84,7 +87,8 @@ class CustomIntervalList {
   inline void merge(const T& i);
 
   // setMergeThreshold sets the edge-distance threshold for merging intervals
-  // when calling merge(). Intervals will merge if: edge-distance < threshold.
+  // when calling merge() or replace(). Intervals will merge if:
+  // edge-distance < threshold.
   // Examples:
   // • A threshold of 0 will require intervals to overlap before they are
   //   merged.
@@ -113,6 +117,11 @@ class CustomIntervalList {
   inline const T& operator[](size_t pos) const;
 
  protected:
+  // remove trims any intervals between [start,end), returning the index in
+  // mIntervals where a replacement can be inserted.
+  ssize_t remove(interval_unit_type start, interval_unit_type end,
+                 interval_unit_type bias);
+
   // rangeFirst returns the index of the first interval + bias that touches or
   // exceeds start.
   inline ssize_t rangeFirst(interval_unit_type start,
@@ -152,50 +161,67 @@ inline ssize_t CustomIntervalList<T>::index_of(interval_unit_type v) const {
 
 template <typename T>
 inline void CustomIntervalList<T>::replace(const T& i) {
-  auto first = rangeFirst(i.start(), mMergeBias);
-  auto last = rangeLast(i.end(), mMergeBias);
-
-  if (first <= last) {
-    bool trimTail = mIntervals[first].start() < i.start();
-    bool trimHead = mIntervals[last].end() > i.end();
-
-    if (first == last && trimTail && trimHead) {
-      // i sits within a single interval. Split it into two.
-      //           ┏━━━━━━━━━━━━━━┓
-      //           ┗━━━━━━━━━━━━━━┛
-      //━━━━━━━━━━━┳═─═─═─═─═─═─═─┳━━━━━━━━━━━
-      //━━━━━━━━━━━┻─═─═─═─═─═─═─═┻━━━━━━━━━━━
-      auto interval = mIntervals.begin() + first;
-      mIntervals.insert(interval, *interval);
-      last++;
-    }
-    if (trimTail) {
-      // Trim end of first interval.
-      //           ┏━━━━━━━━━━━━━━━━
-      //           ┗━━━━━━━━━━━━━━━━
-      //━━━━━━━━━━━┳═─═─╗
-      //━━━━━━━━━━━┻─═─═┘
-      auto interval = mIntervals.begin() + first;
-      interval->adjust(interval->start(), i.start());
-      first++;  // Don't erase the first interval.
-    }
-    if (trimHead) {
-      // Trim front of last interval.
-      //━━━━━━━━━━━━━━━━┓
-      //━━━━━━━━━━━━━━━━┛
-      //           ┌═─═─┳━━━━━━━━━━━
-      //           ╚─═─═┻━━━━━━━━━━━
-      auto interval = mIntervals.begin() + last;
-      interval->adjust(i.end(), interval->end());
-      last--;  // Don't erase the last interval.
-    }
-    if (first <= last) {
-      auto from = mIntervals.begin() + first;
-      auto to = mIntervals.begin() + last + 1;
-      mIntervals.erase(from, to);
-    }
-  }
+  auto first = remove(i.start(), i.end(), mMergeBias);
   mIntervals.insert(mIntervals.begin() + first, i);
+}
+
+template <typename T>
+inline void CustomIntervalList<T>::remove(interval_unit_type start,
+                                          interval_unit_type end) {
+  remove(start, end, 0);
+}
+
+template <typename T>
+inline ssize_t CustomIntervalList<T>::remove(interval_unit_type start,
+                                             interval_unit_type end,
+                                             interval_unit_type bias) {
+  auto first = rangeFirst(start, bias);
+  auto last = rangeLast(end, bias);
+
+  if (first > last) {
+    return first;
+  }
+
+  bool trimTail = mIntervals[first].start() < start;
+  bool trimHead = mIntervals[last].end() > end;
+
+  if (first == last && trimTail && trimHead) {
+    // i sits within a single interval. Split it into two.
+    //           ┏━━━━━━━━━━━━━━┓
+    //           ┗━━━━━━━━━━━━━━┛
+    //━━━━━━━━━━━┳═─═─═─═─═─═─═─┳━━━━━━━━━━━
+    //━━━━━━━━━━━┻─═─═─═─═─═─═─═┻━━━━━━━━━━━
+    auto interval = mIntervals.begin() + first;
+    mIntervals.insert(interval, *interval);
+    last++;
+  }
+  if (trimTail) {
+    // Trim end of first interval.
+    //           ┏━━━━━━━━━━━━━━━━
+    //           ┗━━━━━━━━━━━━━━━━
+    //━━━━━━━━━━━┳═─═─╗
+    //━━━━━━━━━━━┻─═─═┘
+    auto interval = mIntervals.begin() + first;
+    interval->adjust(interval->start(), start);
+    first++;  // Don't erase the first interval.
+  }
+  if (trimHead) {
+    // Trim front of last interval.
+    //━━━━━━━━━━━━━━━━┓
+    //━━━━━━━━━━━━━━━━┛
+    //           ┌═─═─┳━━━━━━━━━━━
+    //           ╚─═─═┻━━━━━━━━━━━
+    auto interval = mIntervals.begin() + last;
+    interval->adjust(end, interval->end());
+    last--;  // Don't erase the last interval.
+  }
+  if (first <= last) {
+    auto from = mIntervals.begin() + first;
+    auto to = mIntervals.begin() + last + 1;
+    mIntervals.erase(from, to);
+  }
+
+  return first;
 }
 
 template <typename T>

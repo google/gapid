@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/database"
@@ -57,15 +58,6 @@ type initialStateOutput struct {
 	oldState *api.GlobalState
 	newState *api.GlobalState
 	cmds     []api.Cmd
-}
-
-func newInitialStateOutput(oldState *api.GlobalState) *initialStateOutput {
-	return &initialStateOutput{
-		oldState: oldState,
-		newState: api.NewStateWithAllocator(memory.NewBasicAllocator(
-			oldState.Allocator.FreeList()), oldState.MemoryLayout),
-		cmds: []api.Cmd{},
-	}
 }
 
 func (o *initialStateOutput) write(ctx context.Context, cmd api.Cmd, id api.CmdID) {
@@ -140,7 +132,15 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	// pools, (Shader words for example)
 
 	// TODO: Debug Info
-	out := newInitialStateOutput(oldState)
+
+	env := executor.GetEnv(ctx)
+	env.State.ReserveMemory(oldState.Allocator.AllocList())
+
+	out := &initialStateOutput{
+		oldState: oldState,
+		newState: env.State,
+		cmds:     []api.Cmd{},
+	}
 	sb := s.newStateBuilder(ctx, out)
 	defer sb.ta.Dispose()
 
@@ -2130,7 +2130,7 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 	var temporaryShaderModule ShaderModuleObjectʳ
 	if !isShaderModuleInState(cp.Stage().Module(), sb.oldState) {
 		// This is a previously deleted shader module, recreate it, then clear it
-		temporaryShaderModule = cp.Stage().Module().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryShaderModule = cp.Stage().Module().Clone(sb.ctx)
 		temporaryShaderModule.SetVulkanHandle(
 			VkShaderModule(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).ShaderModules().Contains(VkShaderModule(x))
@@ -2144,7 +2144,7 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 	var temporaryPipelineLayout PipelineLayoutObjectʳ
 	if !isPipelineLayoutInState(cp.PipelineLayout(), sb.oldState) {
 		// create temporary pipeline layout for the pipeline to be created.
-		temporaryPipelineLayout = cp.PipelineLayout().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryPipelineLayout = cp.PipelineLayout().Clone(sb.ctx)
 		temporaryPipelineLayout.SetVulkanHandle(
 			VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
@@ -2229,7 +2229,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 		s := gp.Stages().Get(ss)
 		if !isShaderModuleInState(s.Module(), sb.oldState) {
 			// create temporary shader module the pipeline to be created.
-			temporaryShaderModule := s.Module().Clone(sb.newState.Arena, api.CloneContext{})
+			temporaryShaderModule := s.Module().Clone(sb.ctx)
 			temporaryShaderModule.SetVulkanHandle(
 				VkShaderModule(newUnusedID(true, func(x uint64) bool {
 					return GetState(sb.newState).ShaderModules().Contains(VkShaderModule(x))
@@ -2244,7 +2244,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 	var temporaryPipelineLayout PipelineLayoutObjectʳ
 	if !isPipelineLayoutInState(gp.Layout(), sb.oldState) {
 		// create temporary pipeline layout for the pipeline to be created.
-		temporaryPipelineLayout = gp.Layout().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryPipelineLayout = gp.Layout().Clone(sb.ctx)
 		temporaryPipelineLayout.SetVulkanHandle(
 			VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
@@ -2257,7 +2257,7 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 	var temporaryRenderPass RenderPassObjectʳ
 	if !isRenderPassInState(gp.RenderPass(), sb.oldState) {
 		// create temporary renderpass for the pipeline to be created.
-		temporaryRenderPass = gp.RenderPass().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryRenderPass = gp.RenderPass().Clone(sb.ctx)
 		temporaryRenderPass.SetVulkanHandle(
 			VkRenderPass(newUnusedID(true, func(x uint64) bool {
 				return GetState(sb.newState).RenderPasses().Contains(VkRenderPass(x))

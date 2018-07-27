@@ -112,7 +112,7 @@ func (*Global) isExpression() {}
 func (g *Global) ExpressionType() Type { return g.Type }
 
 // CommandIndex returns the index of the given command, or -1 if the function
-// is not a command of the API.
+// does not belong to the API.
 func (a *API) CommandIndex(cmd *Function) int {
 	for i, f := range a.Functions {
 		if f == cmd {

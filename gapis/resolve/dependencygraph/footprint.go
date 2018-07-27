@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -197,7 +198,10 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	ft := NewFootprint(ctx, cmds, numInitialCmds)
 
-	s := c.NewUninitializedState(ctx).ReserveMemory(ranges)
+	env := c.Env().ReserveMemory(ranges).Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
 	t0 := footprintBuildCounter.Start()
 	defer footprintBuildCounter.Stop(t0)
 	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
@@ -214,7 +218,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 				// execution footprint info, we still need to mutate it in the new
 				// state, because following commands in other APIs may depends on the
 				// side effect of the this command.
-				if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
+				if err := cmd.Mutate(ctx, id, env.State, nil, nil); err != nil {
 					bh.Aborted = true
 					// Continue the footprint building even if errors are found. It is
 					// following mutate calls, which are to build the replay
@@ -225,7 +229,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 				return nil
 			}
 		}
-		builders[a].BuildFootprint(ctx, s, ft, id, cmd)
+		builders[a].BuildFootprint(ctx, env.State, ft, id, cmd)
 		return nil
 	})
 	return ft, nil

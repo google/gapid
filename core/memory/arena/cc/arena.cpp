@@ -106,11 +106,16 @@ void unprotect_range(void* val, uint32_t size) {
 #endif
 }
 
+const uint32_t ALIVE_MARKER = 0x6c697665;
+
 }  // anonymous namespace
 
 namespace core {
 
-Arena::Arena() : lock_(0), protected_(false) {
+#define CHECK_ALIVE() \
+  GAPID_ASSERT_MSG(alive_marker_ == ALIVE_MARKER, "Arena used after delete");
+
+Arena::Arena() : lock_(0), protected_(false), alive_marker_(ALIVE_MARKER) {
 #if (TARGET_OS == GAPID_OS_LINUX) || (TARGET_OS == GAPID_OS_ANDROID) || \
     (TARGET_OS == GAPID_OS_OSX)
   page_size_ = getpagesize();
@@ -131,9 +136,11 @@ Arena::~Arena() {
   for (auto chunk : chunks_) {
     free_aligned(chunk);
   }
+  alive_marker_ = 0;
 }
 
 void* Arena::allocate(uint32_t size, uint32_t align) {
+  CHECK_ALIVE();
   size = std::max(size, kMinBlockSize);
   void* allocation = nullptr;
   if (size > kMaxBlockSize) {
@@ -195,6 +202,7 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
 }
 
 void* Arena::reallocate(void* ptr, uint32_t size, uint32_t align) {
+  CHECK_ALIVE();
   if (ptr == nullptr) {
     return allocate(size, align);
   }
@@ -228,6 +236,7 @@ void* Arena::reallocate(void* ptr, uint32_t size, uint32_t align) {
 }
 
 void Arena::free(void* ptr) {
+  CHECK_ALIVE();
   if (!ptr) {
     return;
   }
@@ -252,6 +261,7 @@ void Arena::free(void* ptr) {
 }
 
 size_t Arena::num_allocations() const {
+  CHECK_ALIVE();
   lock();
   size_t alloc_count = dedicated_allocations_.size();
   for (auto chunk : chunks_) {
@@ -262,6 +272,7 @@ size_t Arena::num_allocations() const {
 }
 
 size_t Arena::num_bytes_allocated() const {
+  CHECK_ALIVE();
   lock();
   size_t alloc_amount = 0;
   for (auto& it : dedicated_allocations_) {
@@ -275,6 +286,7 @@ size_t Arena::num_bytes_allocated() const {
 }
 
 void Arena::dump_allocator_stats() const {
+  CHECK_ALIVE();
   uint32_t total_chunk_memory = chunks_.size() * kChunkSize;
   uint32_t total_dedicated_memory = 0;
   uint32_t total_used_dedicated_memory = 0;
@@ -330,6 +342,7 @@ void Arena::dump_allocator_stats() const {
 }
 
 void Arena::protect() {
+  CHECK_ALIVE();
   for (auto& it : dedicated_allocations_) {
     protect_range(it.first, round_up_to(it.second, page_size_));
   }
@@ -340,6 +353,7 @@ void Arena::protect() {
 }
 
 void Arena::unprotect() {
+  CHECK_ALIVE();
   for (auto& it : dedicated_allocations_) {
     unprotect_range(it.first, round_up_to(it.second, page_size_));
   }

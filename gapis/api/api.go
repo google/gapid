@@ -18,16 +18,24 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"unsafe"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/constset"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 // API is the common interface to a graphics programming api.
 type API interface {
+	// Definition returns the API's semantic definition.
+	Definition() Definition
+
+	// State returns a Go state object for the native state at p.
+	State(a arena.Arena, p unsafe.Pointer) State
+
 	// Name returns the official name of the api.
 	Name() string
 
@@ -62,6 +70,15 @@ type API interface {
 	// The segments of memory that were used to create these commands are
 	// returned in the rangeList.
 	RebuildState(ctx context.Context, s *GlobalState) ([]Cmd, interval.U64RangeList)
+}
+
+// Definition holds the data from the semantic tree of the API definition.
+type Definition struct {
+	// Semantic is the API's semantic tree.
+	Semantic *semantic.API
+	// Mappings are the API's mappings between the semantic, abstract and
+	// concrete trees.
+	Mappings *semantic.Mappings
 }
 
 // FramebufferAttachmentInfo describes a framebuffer at a given point in the trace
@@ -115,9 +132,6 @@ func Register(api API) {
 func Find(id ID) API {
 	return apis[id]
 }
-
-// CloneContext is used to keep track of references when cloning API objects.
-type CloneContext map[interface{}]interface{}
 
 // All returns all the registered APIs.
 func All() []API {

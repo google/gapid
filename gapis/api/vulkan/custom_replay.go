@@ -237,7 +237,7 @@ func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.GlobalState) (key interfac
 	return
 }
 
-func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
 
@@ -260,7 +260,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 	return cb.ReplayRegisterVkInstance(instance).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Call the underlying vkDestroyInstance() and do the observation.
 	err := a.mutate(ctx, id, s, b, w)
@@ -276,7 +276,7 @@ func EnterRecreate(ctx context.Context, s *api.GlobalState) func() {
 	return func() { GetState(s).SetIsRebuilding(false) }
 }
 
-func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	// Hijack VkCreateDevice's Mutate() method entirely with our
 	// ReplayCreateVkDevice's Mutate(). Similar to VkCreateInstance's Mutate()
 	// above.
@@ -331,7 +331,7 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 	return a.mutate(ctx, id, s, b, w)
 }
 
-func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	// Call the underlying vkDestroyDevice() and do the observation.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b, w)
@@ -342,7 +342,7 @@ func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	return cb.ReplayUnregisterVkDevice(a.Device()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	// Call the underlying vkAllocateCommandBuffers() and do the observation.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b, w)
@@ -354,7 +354,7 @@ func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *
 	return cb.ReplayRegisterVkCommandBuffers(a.Device(), count, a.PCommandBuffers()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	// Call the underlying vkFreeCommandBuffers() and do the observation.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b, w)
@@ -366,7 +366,7 @@ func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return cb.ReplayUnregisterVkCommandBuffers(count, a.PCommandBuffers()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return a.mutate(ctx, id, s, b, w)
 	}
@@ -408,7 +408,7 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 	return err
 }
 
-func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	// Do the mutation, including applying memory write observations, before having the replay device call the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	// Note that this is only necessary for building replay instructions
@@ -451,7 +451,7 @@ func insertVirtualSwapchainPNext(ctx context.Context, cmd api.Cmd, id api.CmdID,
 	return newInfoData, pNextData
 }
 
-func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -498,7 +498,7 @@ func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *ap
 	return nil
 }
 
-func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -546,7 +546,7 @@ func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 	return nil
 }
 
-func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -593,7 +593,7 @@ func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	return nil
 }
 
-func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -640,7 +640,7 @@ func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 	return nil
 }
 
-func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -687,7 +687,7 @@ func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *a
 	return nil
 }
 
-func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -734,7 +734,7 @@ func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	return nil
 }
 
-func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -765,7 +765,7 @@ func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id ap
 	return nil
 }
 
-func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return c.mutate(ctx, id, g, b, w)
 	}
@@ -791,7 +791,7 @@ func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, 
 	return nil
 }
 
-func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
@@ -801,7 +801,7 @@ func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 	return cb.ReplayGetFenceStatus(a.Device(), a.Fence(), a.Result(), a.Result()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
@@ -820,7 +820,7 @@ func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 	return cb.ReplayGetEventStatus(a.Device(), a.Event(), a.Result(), wait, a.Result()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b builder.Builder, w api.StateWatcher) error {
 	if err := a.mutate(ctx, id, s, b, w); err != nil {
 		return err
 	}
@@ -842,7 +842,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		0, // MappedSize
 		0, // MappedLocation
 		0, // MemoryTypeIndex
-		MakeU8ˢ(uint64(imageSize), s),     // Data
+		MakeU8ˢ(ctx, uint64(imageSize)),   // Data
 		NilVulkanDebugMarkerInfoʳ,         // DebugInfo
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationNV
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationKHR
@@ -853,7 +853,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	return err
 }
 
-func (i AllocationCallbacks) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
+func (i AllocationCallbacks) value(b builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
 	// Return 0 (nullptr) here. We don't have an allocator set up for replay. Since we cannot use the
 	// application's allocator. If we pass in null for all allocator calls, then it will use the default
 	// allocator.

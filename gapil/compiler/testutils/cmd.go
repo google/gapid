@@ -15,13 +15,10 @@
 package testutils
 
 import (
-	"bytes"
 	"context"
+	"unsafe"
 
-	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/memory/arena"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -30,16 +27,26 @@ import (
 // Cmd is a custom implementation of the api.Cmd interface that simplifies
 // testing compiler generated commands.
 type Cmd struct {
-	N string  // Command name
-	D []byte  // Encoded command used by the compiler generated execute function
-	E *Extras // Command extras
-	T uint64  // Command thread
+	N  string  // Command name
+	I  int     // Command index
+	AI int     // API index
+	D  []byte  // Encoded command used by the compiler generated execute function
+	E  *Extras // Command extras
+	T  uint64  // Command thread
 }
 
 var _ api.Cmd = &Cmd{}
 
 // API stubs the api.Cmd interface.
-func (c *Cmd) API() api.API { return nil }
+func (c *Cmd) API() api.API { return API{c.AI} }
+
+// ExecData stubs the api.Cmd interface.
+func (c *Cmd) ExecData() unsafe.Pointer {
+	if len(c.D) == 0 {
+		return nil
+	}
+	return (unsafe.Pointer)(&c.D[0])
+}
 
 // Caller stubs the api.Cmd interface.
 func (c *Cmd) Caller() api.CmdID { return 0 }
@@ -55,6 +62,9 @@ func (c *Cmd) SetThread(thread uint64) { c.T = thread }
 
 // CmdName stubs the api.Cmd interface.
 func (c *Cmd) CmdName() string { return c.N }
+
+// CmdIndex stubs the api.Cmd interface.
+func (c *Cmd) CmdIndex() int { return c.I }
 
 // CmdParams stubs the api.Cmd interface.
 func (c *Cmd) CmdParams() api.Properties { return nil }
@@ -74,21 +84,12 @@ func (c *Cmd) Extras() *api.CmdExtras {
 }
 
 // Mutate stubs the api.Cmd interface.
-func (c *Cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder, api.StateWatcher) error {
+func (c *Cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, builder.Builder, api.StateWatcher) error {
 	return nil
 }
 
-// Encode implements the executor.Encodable interface to encode the command to
-// a buffer used by the compiler generated execute function.
-func (c Cmd) Encode(out []byte) bool {
-	w := endian.Writer(bytes.NewBuffer(out), device.LittleEndian)
-	w.Uint64(c.T)
-	copy(out[8:], c.D)
-	return true
-}
-
 // Clone makes a shallow copy of this command.
-func (c *Cmd) Clone(arena.Arena) api.Cmd {
+func (c *Cmd) Clone(context.Context) api.Cmd {
 	clone := *c
 	return &clone
 }

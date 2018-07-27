@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/gapil/executor"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
@@ -90,6 +91,10 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
+	env := c.Env().InitState().Execute().Build(ctx)
+	defer env.Dispose()
+	ctx = executor.PutEnv(ctx, env)
+
 	type ctxInfo struct {
 		ctx  api.Context
 		cnts map[reflect.Type]int
@@ -99,16 +104,15 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	seen := map[api.ContextID]int{}
 	contexts := []*ctxInfo{}
 
-	s := c.NewState(ctx)
 	err = api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, i, s, nil, nil)
+		cmd.Mutate(ctx, i, env.State, nil, nil)
 
 		api := cmd.API()
 		if api == nil {
 			return nil
 		}
 
-		context := api.Context(ctx, s, cmd.Thread())
+		context := api.Context(ctx, env.State, cmd.Thread())
 		if context == nil {
 			return nil
 		}
