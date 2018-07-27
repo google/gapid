@@ -292,10 +292,11 @@ func (c *C) classInitializer(s *S, e *semantic.ClassInitializer) *codegen.Value 
 func (c *C) classInitializerNoRelease(s *S, e *semantic.ClassInitializer) *codegen.Value {
 	class := s.Undef(c.T.Target(e.ExpressionType()))
 	for i, iv := range e.InitialValues() {
+		f := e.Class.Fields[i]
 		if iv != nil {
-			class = class.Insert(i, c.expression(s, iv))
+			class = class.Insert(f.Name(), c.expression(s, iv))
 		} else {
-			class = class.Insert(i, c.initialValue(s, e.Class.Fields[i].Type))
+			class = class.Insert(f.Name(), c.initialValue(s, f.Type))
 		}
 	}
 	c.reference(s, class, e.Class) // references all referencable fields.
@@ -416,7 +417,9 @@ func (c *C) mapContains(s *S, e *semantic.MapContains) *codegen.Value {
 func (c *C) mapIndex(s *S, e *semantic.MapIndex) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Index)
+	c.LogI(s, "MapLookup - map: %p", m)
 	res := s.Call(c.T.Maps[e.Type].Lookup, m, k).SetName("map_lookup")
+	c.LogI(s, "MapLookup -- done")
 	c.deferRelease(s, res, e.Type.ValueType)
 	return res
 }
