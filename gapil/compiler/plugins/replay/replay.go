@@ -353,7 +353,7 @@ func (r *replayer) value(s *compiler.S, val *codegen.Value, ty semantic.Type) *c
 
 // observed returns returns val adjusted to an approriate replay equivalent
 // value when used as an observation value, along with the value's namespace.
-// Namespaces are used to seperate address ranges that might overlap due to ABI
+// Namespaces are used to separate address ranges that might overlap due to ABI
 // differences between the capture device and replay device.
 // For example, a pointer may be a different size between the capture and replay
 // devices. To prevent a wider pointer overlapping neighbouring data when being

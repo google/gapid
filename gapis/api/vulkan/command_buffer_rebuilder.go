@@ -65,7 +65,7 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 	modelCmdBuf VkCommandBuffer,
 	s *api.GlobalState) (VkCommandBuffer, []api.Cmd, []func()) {
 
-	a := s.Arena // TODO: Should this be a seperate temporary arena?
+	a := s.Arena // TODO: Should this be a separate temporary arena?
 
 	x := make([]api.Cmd, 0)
 	cleanup := make([]func(), 0)
