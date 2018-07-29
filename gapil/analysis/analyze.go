@@ -333,7 +333,7 @@ func (s *scope) considerTrue(n semantic.Expression) {
 
 		case ast.OpOr:
 			// LHS or RHS can be true.
-			// Evaluate each in seperate scopes and then set this scope to the
+			// Evaluate each in separate scopes and then set this scope to the
 			// union of both possibilities.
 			lhs, _ := s.push()
 			rhs, _ := s.push()

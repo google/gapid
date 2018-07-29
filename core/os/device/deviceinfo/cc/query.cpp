@@ -184,7 +184,7 @@ namespace query {
 device::Instance* getDeviceInstance(const Option& opt, void* platform_data) {
   device::Instance* instance = nullptr;
 
-  // buildDeviceInstance on a seperate thread to avoid EGL screwing with the
+  // buildDeviceInstance on a separate thread to avoid EGL screwing with the
   // currently bound context.
   std::thread thread(buildDeviceInstance, opt, platform_data, &instance);
   thread.join();
