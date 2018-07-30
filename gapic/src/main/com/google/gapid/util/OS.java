@@ -24,6 +24,7 @@ public class OS {
   public static final boolean isWindows, isMac, isLinux;
   public static final String userHomeDir;
   public static final String exeExtension;
+  public static final String cwd;
 
   static {
     name = System.getProperty("os.name", "").toLowerCase();
@@ -33,6 +34,7 @@ public class OS {
     isLinux = name.indexOf("nux") >= 0;
     userHomeDir = System.getProperty("user.home", ".");
     exeExtension = isWindows ? ".exe" : "";
+    cwd = java.nio.file.Paths.get(".").toAbsolutePath().toString();
   }
 
   public static void openFileInSystemExplorer(File file) throws IOException {
