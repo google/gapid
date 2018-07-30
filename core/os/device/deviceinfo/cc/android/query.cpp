@@ -302,12 +302,25 @@ bool createContext(void* platform_data) {
       return false;
   }
 
+  std::string manufacturer;
+  std::string model;
+
   Class build(env, "android/os/Build");
   CHECK(build.get_field("SUPPORTED_ABIS", gContext.mSupportedABIs));
   CHECK(build.get_field("HOST", gContext.mHost));
   CHECK(build.get_field("SERIAL", gContext.mSerial));
+  CHECK(build.get_field("MANUFACTURER", manufacturer));
+  CHECK(build.get_field("MODEL", model));
   CHECK(build.get_field("HARDWARE", gContext.mHardware));
   CHECK(build.get_field("DISPLAY", gContext.mOSBuild));
+
+  if (model != "") {
+    if (manufacturer != "") {
+      gContext.mHardware = manufacturer + " " + model;
+    } else {
+      gContext.mHardware = model;
+    }
+  }
 
   Class version(env, "android/os/Build$VERSION");
   CHECK(version.get_field("RELEASE", gContext.mOSName));
