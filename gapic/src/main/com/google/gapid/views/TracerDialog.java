@@ -125,9 +125,7 @@ public class TracerDialog {
           shell, models.analytics, input.getValue(), widgets.theme);
       Tracer.Trace trace = Tracer.trace(client, shell, input.getValue(), progress);
       progress.setTrace(trace);
-      progress.open();
-
-      if (progress.successful()) {
+      if (progress.open() == Window.OK && progress.successful()) {
         models.capture.loadCapture(input.getValue().output);
       }
     }
@@ -637,7 +635,7 @@ public class TracerDialog {
     }
 
     public boolean successful() {
-      return error == null;
+      return error == null && status != null && status.getStatus() == Service.TraceStatus.Done;
     }
 
     @Override
@@ -697,7 +695,7 @@ public class TracerDialog {
       }
 
       if (status != null) {
-        statusLabel.setText(status.getStatus().name());
+        statusLabel.setText(getStatusLabel(status.getStatus()));
         long bytes = status.getBytesCaptured();
         if (bytes < 1024 + 512) {
           bytesLabel.setText(bytes + " Bytes");
@@ -708,16 +706,9 @@ public class TracerDialog {
         } else {
           bytesLabel.setText(String.format("%.2f GBytes", bytes / 1024.0 / 1024.0 / 1024.0));
         }
-
-        if (status.getStatus() == Service.TraceStatus.Done) {
-          Button button = getButton(IDialogConstants.OK_ID);
-          if (button != null) {
-            button.setText("Done");
-          }
-        }
       }
       if (error != null) {
-        statusLabel.setText("Failed");
+        statusLabel.setText("Failed.");
         errorText.setText(getErrorMessage());
         errorText.setVisible(true);
         errorButton.setVisible(true);
@@ -729,6 +720,54 @@ public class TracerDialog {
           getShell().setSize(new Point(curr.x, want.y));
         }
       }
+
+      updateButton();
+    }
+
+    private static String getStatusLabel(Service.TraceStatus status) {
+      switch (status) {
+        case Uninitialized:
+          return "Sending request...";
+        case Initializing:
+          return "Initializing...";
+        case WaitingToStart:
+          return "Press 'Start' to begin capture";
+        case Capturing:
+          return "Capturing...";
+        case Done:
+          return "Done.";
+        default:
+          return "Unknown.";
+      }
+    }
+
+    private void updateButton() {
+      Button button = getButton(IDialogConstants.OK_ID);
+      if (button == null) {
+        return;
+      }
+      button.setEnabled(true);
+
+      if (error != null) {
+        button.setText("Close");
+      } else if (status == null) {
+        button.setText("Cancel");
+      } else {
+        switch (status.getStatus()) {
+          case WaitingToStart:
+            button.setText("Start");
+            break;
+          case Capturing:
+            button.setText("Stop");
+            break;
+          case Done:
+            button.setText("Open Trace");
+            break;
+          default:
+            button.setText("Cancel");
+            break;
+        }
+      }
     }
 
     private String getErrorMessage() {
@@ -738,24 +777,31 @@ public class TracerDialog {
 
     @Override
     protected void createButtonsForButtonBar(Composite parent) {
-      createButton(parent, IDialogConstants.OK_ID, request.isMec() ? "Start" : "Stop", true);
+      createButton(parent, IDialogConstants.OK_ID, "Cancel", true);
     }
 
     @Override
     protected void buttonPressed(int buttonId) {
       if (IDialogConstants.OK_ID == buttonId) {
         Button button = getButton(buttonId);
-        switch (button.getText()) {
-          case "Start":
-            button.setText("Stop");
-            trace.start();
-            break;
-          case "Stop":
-            button.setText("Done");
-            trace.stop();
-            break;
-          default:
-            super.buttonPressed(buttonId);
+        if (error != null || status == null) {
+          cancelPressed();
+        } else {
+          switch (status.getStatus()) {
+            case WaitingToStart:
+              button.setEnabled(false);
+              trace.start();
+              break;
+            case Capturing:
+              button.setEnabled(false);
+              trace.stop();
+              break;
+            case Done:
+              okPressed();
+              break;
+            default:
+              cancelPressed();
+          }
         }
       }
     }
