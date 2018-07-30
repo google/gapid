@@ -40,11 +40,11 @@ import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.DeviceAPITraceConfiguration;
 import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
 import com.google.gapid.proto.service.Service.StatusResponse;
-import com.google.gapid.proto.service.Service.TraceTargetTreeNode;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.widgets.ActionTextbox;
 import com.google.gapid.widgets.DialogBase;
@@ -281,22 +281,17 @@ public class TracerDialog {
           protected String createAndShowDialog(String current) {
             DeviceCaptureInfo dev = getSelectedDevice();
             if (dev != null) {
-              TraceTargetPickerDialog dialog =
-                  new TraceTargetPickerDialog(getShell(), models, dev.targets, widgets);
-              if (dialog.open() == Window.OK) {
-                TraceTargets.Node node = dialog.getSelected();
-                TraceTargetTreeNode data = (node == null) ? null : node.getData();
-                if (data != null) {
-                  friendlyName = data.getFriendlyApplication();
-                  if (!userHasChangedOutputFile) {
-                    file.setText(formatTraceName(friendlyName));
-                    userHasChangedOutputFile = false; // cancel the modify event from set call.
-                  }
-
-                  // Setting the text ourselves so we cancel the event.
-                  setText(data.getTraceUri());
-                  userHasChangedTarget = false; // cancel the modify event from set call.
+              TraceTarget target = showTraceTargetPicker(dev, current, getShell(), models, widgets);
+              if (target != null) {
+                friendlyName = target.friendlyName;
+                if (!userHasChangedOutputFile) {
+                  file.setText(formatTraceName(friendlyName));
+                  userHasChangedOutputFile = false; // cancel the modify event from set call.
                 }
+
+                // Setting the text ourselves so we cancel the event.
+                setText(target.uri);
+                userHasChangedTarget = false; // cancel the modify event from set call.
               }
             }
             return null;
@@ -483,6 +478,54 @@ public class TracerDialog {
         }
       }
 
+      protected static TraceTarget showTraceTargetPicker(
+          DeviceCaptureInfo dev, String current, Shell shell, Models models, Widgets widgets) {
+        if (dev.config.getServerLocalPath()) {
+          // We are local, show a system file browser dialog.
+          FileDialog dialog = new FileDialog(shell);
+          if (!setDialogPath(dialog, current) &&
+              !setDialogPath(dialog, dev.config.getPreferredRootUri()) &&
+              !setDialogPath(dialog, OS.userHomeDir)) {
+            dialog.setFilterPath(OS.cwd);
+          }
+          dialog.setText(Messages.CAPTURE_EXECUTABLE);
+          String exe = dialog.open();
+          if (exe != null) {
+            return new TraceTarget(exe, new File(exe).getName());
+          }
+        } else {
+          // Use the server to query the trace target tree.
+          TraceTargetPickerDialog dialog =
+              new TraceTargetPickerDialog(shell, models, dev.targets, widgets);
+          if (dialog.open() == Window.OK) {
+            TraceTargets.Node node = dialog.getSelected();
+            Service.TraceTargetTreeNode data = (node == null) ? null : node.getData();
+            if (data != null) {
+              return new TraceTarget(data.getUri(), data.getFriendlyApplication());
+            }
+          }
+        }
+        return null;
+      }
+
+      private static boolean setDialogPath(FileDialog dialog, String path) {
+        if (path == null || path.isEmpty()) {
+          return false;
+        }
+
+        File file = new File(path).getAbsoluteFile();
+        if (!file.exists()) {
+          return false;
+        }
+        if (file.isDirectory()) {
+          dialog.setFilterPath(file.getPath());
+        } else {
+          dialog.setFilterPath(file.getParent());
+          dialog.setFileName(file.getName());
+        }
+        return true;
+      }
+
       protected String formatTraceName(String name) {
         return (name.isEmpty() ? DEFAULT_TRACE_FILE : name) + date + TRACE_EXTENSION;
       }
@@ -601,6 +644,16 @@ public class TracerDialog {
         }
         String dir = directory.getText();
         return dir.isEmpty() ? new File(name) : new File(dir, name);
+      }
+    }
+
+    private static class TraceTarget {
+      public final String uri;
+      public final String friendlyName;
+
+      public TraceTarget(String uri, String friendlyName) {
+        this.uri = uri;
+        this.friendlyName = friendlyName;
       }
     }
   }
