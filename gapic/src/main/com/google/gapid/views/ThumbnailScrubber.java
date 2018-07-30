@@ -56,8 +56,8 @@ import java.util.List;
 /**
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
-public class ThumbnailScrubber extends Composite
-    implements Tab, Capture.Listener, CommandStream.Listener, ApiContext.Listener, Timeline.Listener {
+public class ThumbnailScrubber extends Composite implements Tab, Capture.Listener,
+    CommandStream.Listener, ApiContext.Listener, Timeline.Listener, Thumbnails.Listener {
   private final Models models;
   private final LoadablePanel<Carousel> loading;
   private final Carousel carousel;
@@ -84,12 +84,14 @@ public class ThumbnailScrubber extends Composite
     models.contexts.addListener(this);
     models.timeline.addListener(this);
     models.commands.addListener(this);
+    models.thumbs.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.contexts.removeListener(this);
       models.timeline.removeListener(this);
       models.commands.removeListener(this);
-      carousel.dispose();
+      models.thumbs.removeListener(this);
+      carousel.reset();
     });
   }
 
@@ -149,6 +151,11 @@ public class ThumbnailScrubber extends Composite
   @Override
   public void onCommandsSelected(CommandIndex range) {
     carousel.selectFrame(range);
+  }
+
+  @Override
+  public void onThumbnailsChanged() {
+    carousel.updateImages();
   }
 
   private void updateScrubber() {
@@ -227,8 +234,7 @@ public class ThumbnailScrubber extends Composite
   /**
    * Renders the frame thumbnails.
    */
-  private static class Carousel extends HorizontalList
-      implements LoadingIndicator.Repaintable, Thumbnails.Listener {
+  private static class Carousel extends HorizontalList implements LoadingIndicator.Repaintable {
     private static final int MIN_SIZE = 80;
 
     private final Thumbnails thumbs;
@@ -240,8 +246,6 @@ public class ThumbnailScrubber extends Composite
       super(parent);
       this.thumbs = thumbs;
       this.widgets = widgets;
-
-      thumbs.addListener(this);
     }
 
     @Override
@@ -299,14 +303,12 @@ public class ThumbnailScrubber extends Composite
     }
 
     public void setData(List<Data> newDatas) {
-      dispose();
+      reset();
       datas = Lists.newArrayList(newDatas);
       setItemCount(datas.size(), THUMB_SIZE, THUMB_SIZE);
     }
 
-    @Override
-    public void dispose() {
-      thumbs.removeListener(this);
+    public void reset() {
       for (Data data : datas) {
         data.dispose();
       }
@@ -315,8 +317,7 @@ public class ThumbnailScrubber extends Composite
       setItemCount(0, THUMB_SIZE, THUMB_SIZE);
     }
 
-    @Override
-    public void onThumbnailsChanged() {
+    public void updateImages() {
       for (Data data : datas) {
         if (data.image != null) {
           data.image.dispose();
