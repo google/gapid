@@ -463,9 +463,7 @@ func (r *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusRe
 	}()
 
 	stat := service.TraceStatus_Initializing
-	if opts.DeferStart {
-		stat = service.TraceStatus_WaitingToStart
-	} else {
+	if !opts.DeferStart {
 		r.started = true
 	}
 
