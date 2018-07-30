@@ -35,7 +35,6 @@ import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
-import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.DeviceAPITraceConfiguration;
@@ -415,15 +414,7 @@ public class TracerDialog {
         combo.setLabelProvider(new LabelProvider() {
           @Override
           public String getText(Object element) {
-            Device.Instance info = ((DeviceCaptureInfo)element).device;
-            StringBuilder sb = new StringBuilder();
-            if (!info.getName().isEmpty()) {
-              sb.append(info.getName()).append(" - ");
-            }
-            if (!info.getConfiguration().getOS().getName().isEmpty()) {
-              sb.append(info.getConfiguration().getOS().getName()).append(" - ");
-            }
-            return sb.append(info.getSerial()).toString();
+            return Devices.getLabel(((DeviceCaptureInfo)element).device);
           }
         });
         return combo;

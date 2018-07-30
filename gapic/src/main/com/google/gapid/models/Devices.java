@@ -180,6 +180,48 @@ public class Devices {
     listeners.removeListener(listener);
   }
 
+  public static String getLabel(Device.Instance dev) {
+    StringBuilder sb = new StringBuilder();
+    if (!dev.getName().isEmpty()) {
+      sb.append(dev.getName()).append(" - ");
+    }
+
+    appendOsLabel(sb, dev.getConfiguration().getOS());
+    appendGpuLabel(sb, dev.getConfiguration().getHardware().getGPU());
+
+    if (!dev.getSerial().isEmpty()) {
+      sb.append(" - ").append(dev.getSerial());
+    }
+
+    return sb.toString();
+  }
+
+  private static StringBuilder appendOsLabel(StringBuilder sb, Device.OS os) {
+    switch (os.getKind()) {
+      case Android: sb.append("Android"); break;
+      case Linux: sb.append("Linux"); break;
+      case Windows: sb.append("Windows"); break;
+      case OSX: sb.append("MacOS"); break;
+      default: sb.append("Unknown OS"); break;
+    }
+    if (!os.getName().isEmpty()) {
+      sb.append(" ").append(os.getName());
+    }
+    return sb;
+  }
+
+  private static StringBuilder appendGpuLabel(StringBuilder sb, Device.GPU gpu) {
+    if (!gpu.getVendor().isEmpty()) {
+      sb.append(" - ").append(gpu.getVendor());
+      if (!gpu.getName().isEmpty()) {
+        sb.append(" ").append(gpu.getName());
+      }
+    } else if (!gpu.getName().isEmpty()) {
+      sb.append(" - ").append(gpu.getName());
+    }
+    return sb;
+  }
+
   public static interface Listener extends Events.Listener {
     /**
      * Event indicating that the selected replay device has changed.
