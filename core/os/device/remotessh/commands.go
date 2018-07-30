@@ -22,6 +22,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -185,8 +186,16 @@ func (b binding) PushFile(ctx context.Context, source, dest string) error {
 	if err != nil {
 		return err
 	}
+	mode := permission.Mode()
+	// If we are on windows pushing to Linux, we lose the executable
+	// bit, get it back.
+	if (b.os == device.Linux ||
+		b.os == device.OSX) &&
+		runtime.GOOS == "windows" {
+		mode |= 0550
+	}
 
-	return b.WriteFile(ctx, infile, permission.Mode(), dest)
+	return b.WriteFile(ctx, infile, mode, dest)
 }
 
 // doTunnel tunnels a single connection through the SSH connection.
@@ -287,7 +296,7 @@ func (b binding) GetEnv(ctx context.Context) (*shell.Env, error) {
 // ListExecutables returns the executables in a particular directory as given by path
 func (b binding) ListExecutables(ctx context.Context, inPath string) ([]string, error) {
 	if inPath == "" {
-		inPath = "."
+		inPath = b.GetURIRoot()
 	}
 	files, err := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "f", "-executable", "-printf", `%f\\n`).Call(ctx)
 	if err != nil {
@@ -305,7 +314,7 @@ func (b binding) ListExecutables(ctx context.Context, inPath string) ([]string, 
 // ListDirectories returns a list of directories rooted at a particular path
 func (b binding) ListDirectories(ctx context.Context, inPath string) ([]string, error) {
 	if inPath == "" {
-		inPath = "."
+		inPath = b.GetURIRoot()
 	}
 	dirs, err := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "d", "-printf", `%f\\n`).Call(ctx)
 	if err != nil {
@@ -345,4 +354,8 @@ func (b binding) IsDirectory(ctx context.Context, inPath string) (bool, error) {
 // GetWorkingDirectory returns the directory that this device considers CWD
 func (b binding) GetWorkingDirectory(ctx context.Context) (string, error) {
 	return b.Shell("pwd").Call(ctx)
+}
+
+func (b binding) GetURIRoot() string {
+	return "/"
 }

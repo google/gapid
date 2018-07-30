@@ -26,6 +26,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
@@ -196,11 +197,19 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		return nil, err
 	}
 
-	devInfo, err := b.Shell("./device-info").In(dir).Call(ctx)
+	stderr := bytes.Buffer{}
+	stdout := bytes.Buffer{}
+
+	err = b.Shell("./device-info").In(dir).Capture(&stdout, &stderr).Run(ctx)
 
 	if err != nil {
 		return nil, err
 	}
+
+	if stderr.String() != "" {
+		log.W(ctx, "Deviceinfo succeeded, but returned error string %s", stderr.String())
+	}
+	devInfo := stdout.String()
 
 	var device device.Instance
 
