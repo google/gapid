@@ -88,15 +88,15 @@ public class Thumbnails {
     size = DPIUtil.autoScaleUp(size);
     if (image.width >= image.height) {
       if (image.width > size) {
-        return image.scaledTo(size, (image.height * size) / image.width);
+        return image.scaledTo(size, Math.max(1, (image.height * size) / image.width));
       } else if (image.width < MIN_SIZE) {
-        return image.scaledTo(MIN_SIZE, (image.height * MIN_SIZE) / image.width);
+        return image.scaledTo(MIN_SIZE, Math.max(1, (image.height * MIN_SIZE) / image.width));
       }
     } else {
       if (image.height > size) {
-        return image.scaledTo((image.width * size) / image.height, size);
+        return image.scaledTo(Math.max(1, (image.width * size) / image.height), size);
       } else if (image.height < MIN_SIZE) {
-        return image.scaledTo((image.width * MIN_SIZE) / image.height, MIN_SIZE);
+        return image.scaledTo(Math.max(1, (image.width * MIN_SIZE) / image.height), MIN_SIZE);
       }
     }
     return image;
