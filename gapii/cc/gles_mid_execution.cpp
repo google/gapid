@@ -65,13 +65,13 @@ class TempObject {
   std::function<void()> mDeleteId;
 };
 
-typedef struct {
+struct swizzle {
   GLint r, g, b, a;
-} swizzle_t;
+};
 
 class Sampler {
  public:
-  Sampler(uint32_t target) : mTarget(target) {}
+  Sampler() {}
 
   virtual bool needsES3() const { return false; }
 
@@ -79,14 +79,11 @@ class Sampler {
   virtual std::string getUniform() const = 0;
   virtual std::string getFragmentPreamble() const { return ""; }
   virtual std::string getSamplingExpression() const = 0;
-
- private:
-  uint32_t mTarget;
 };
 
 class Sampler2D : public Sampler {
  public:
-  Sampler2D() : Sampler(GL_TEXTURE_2D) {}
+  Sampler2D() {}
 
   virtual std::string getExtensions() const { return ""; }
 
@@ -104,7 +101,7 @@ class Sampler2D : public Sampler {
 
 class Sampler2DArray : public Sampler {
  public:
-  Sampler2DArray(int layer) : Sampler(GL_TEXTURE_2D_ARRAY), mLayer(layer) {}
+  Sampler2DArray(int layer) : mLayer(layer) {}
 
   virtual bool needsES3() const { return true; }
 
@@ -126,7 +123,7 @@ class Sampler2DArray : public Sampler {
 
 class SamplerExternal : public Sampler {
  public:
-  SamplerExternal() : Sampler(GL_TEXTURE_EXTERNAL_OES) {}
+  SamplerExternal() {}
 
   virtual std::string getExtensions() const {
     return "#extension GL_OES_EGL_image_external : require\n";
@@ -148,7 +145,7 @@ class SamplerExternal : public Sampler {
 
 class Sampler3D : public Sampler {
  public:
-  Sampler3D(float z) : Sampler(GL_TEXTURE_3D), mZ(z) {}
+  Sampler3D(float z) : mZ(z) {}
 
   virtual std::string getExtensions() const {
     return "#extension GL_OES_texture_3D : require\n";
@@ -168,7 +165,7 @@ class Sampler3D : public Sampler {
 
 class SamplerCube : public Sampler {
  public:
-  SamplerCube(GLint face) : Sampler(GL_TEXTURE_CUBE_MAP), mFace(face) {}
+  SamplerCube(GLint face) : mFace(face) {}
 
   virtual std::string getExtensions() const { return ""; }
 
@@ -204,13 +201,13 @@ class SamplerCube : public Sampler {
   GLint mFace;
 };
 
-typedef struct {
-  swizzle_t swizzle;
+struct texture_state {
+  swizzle swiz;
   GLint compMode;
   GLint minFilter, magFilter;
-} texture_state_t;
+};
 
-typedef struct {
+struct texture {
   uint64_t id;
   uint32_t kind;
   GLsizei w, h, d;
@@ -218,12 +215,12 @@ typedef struct {
   void bind(const GlesImports& i) const { i.glBindTexture(kind, id); }
 
   // Gets the current state of the texture.
-  texture_state_t getState(const GlesImports& i) const {
-    texture_state_t r;
-    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_R, &r.swizzle.r);
-    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_G, &r.swizzle.g);
-    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_B, &r.swizzle.b);
-    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_A, &r.swizzle.a);
+  texture_state getState(const GlesImports& i) const {
+    texture_state r;
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_R, &r.swiz.r);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_G, &r.swiz.g);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_B, &r.swiz.b);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_SWIZZLE_A, &r.swiz.a);
     i.glGetTexParameteriv(kind, GL_TEXTURE_COMPARE_MODE, &r.compMode);
     i.glGetTexParameteriv(kind, GL_TEXTURE_MIN_FILTER, &r.minFilter);
     i.glGetTexParameteriv(kind, GL_TEXTURE_MAG_FILTER, &r.magFilter);
@@ -232,7 +229,7 @@ typedef struct {
 
   // Modifes the texture's state so it can be savely used to read from. Make
   // sure to call setState() after, with a previously saved state.
-  void prepareToRead(const GlesImports& i, swizzle_t swizzle) const {
+  void prepareToRead(const GlesImports& i, swizzle swizzle) const {
     i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_R, swizzle.r);
     i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_G, swizzle.g);
     i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_B, swizzle.b);
@@ -243,16 +240,16 @@ typedef struct {
   }
 
   // Modifies the texture's state to match the given state.
-  void setState(const GlesImports& i, const texture_state_t& state) const {
-    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_R, state.swizzle.r);
-    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_G, state.swizzle.g);
-    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_B, state.swizzle.b);
-    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_A, state.swizzle.a);
+  void setState(const GlesImports& i, const texture_state& state) const {
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_R, state.swiz.r);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_G, state.swiz.g);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_B, state.swiz.b);
+    i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_A, state.swiz.a);
     i.glTexParameteri(kind, GL_TEXTURE_COMPARE_MODE, state.compMode);
     i.glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, state.minFilter);
     i.glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, state.magFilter);
   }
-} texture_t;
+};
 
 class Reader {
  public:
@@ -263,19 +260,19 @@ class Reader {
   TempObject CreateAndBindTextureExternal(EGLImageKHR handle);
   TempObject CreateAndBindContext(EGLContext sharedContext, EGLint version);
 
-  ImageData ReadTexture(const texture_t& tex, GLint level, GLint layer,
+  ImageData ReadTexture(const texture& tex, GLint level, GLint layer,
                         uint32_t format);
   ImageData ReadRenderbuffer(Renderbuffer* rb);
   ImageData ReadExternal(EGLImageKHR handle, GLsizei w, GLsizei h);
 
  private:
-  ImageData ReadTextureViaDrawQuad(const texture_t& tex, GLint layer,
+  ImageData ReadTextureViaDrawQuad(const texture& tex, GLint layer,
                                    uint32_t format, const char* name,
-                                   swizzle_t swizzle);
-  ImageData ReadTextureViaDrawQuad(const Sampler& sampler, const texture_t& tex,
-                                   uint32_t format, swizzle_t swizzle);
+                                   swizzle swizzle);
+  ImageData ReadTextureViaDrawQuad(const Sampler& sampler, const texture& tex,
+                                   uint32_t format, swizzle swizzle);
 
-  inline ImageData ReadTextureViaDrawQuad(const texture_t& tex, GLint layer,
+  inline ImageData ReadTextureViaDrawQuad(const texture& tex, GLint layer,
                                           uint32_t format, const char* name,
                                           uint32_t originalFormat,
                                           GLint rSwizzle) {
@@ -286,7 +283,7 @@ class Reader {
     return result;
   }
 
-  inline ImageData ReadTextureViaDrawQuad(const texture_t& tex, GLint layer,
+  inline ImageData ReadTextureViaDrawQuad(const texture& tex, GLint layer,
                                           uint32_t format, const char* name,
                                           uint32_t originalFormat,
                                           GLint rSwizzle, GLint gSwizzle) {
@@ -297,8 +294,8 @@ class Reader {
     return result;
   }
 
-  inline ImageData ReadCompressedTexture(const texture_t& tex, GLint layer,
-                                         uint32_t format, swizzle_t swizzle) {
+  inline ImageData ReadCompressedTexture(const texture& tex, GLint layer,
+                                         uint32_t format, swizzle swizzle) {
     ImageData result =
         ReadTextureViaDrawQuad(tex, layer, format, "compressed", swizzle);
     // Override the internal format to the uncompressed format of the data.
@@ -573,9 +570,9 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
   return img;
 }
 
-ImageData Reader::ReadTextureViaDrawQuad(const texture_t& tex, GLint layer,
+ImageData Reader::ReadTextureViaDrawQuad(const texture& tex, GLint layer,
                                          uint32_t format, const char* name,
-                                         swizzle_t swizzle) {
+                                         swizzle swizzle) {
   switch (tex.kind) {
     case GL_TEXTURE_2D:
       return ReadTextureViaDrawQuad(Sampler2D::get(), tex, format, swizzle);
@@ -599,7 +596,7 @@ ImageData Reader::ReadTextureViaDrawQuad(const texture_t& tex, GLint layer,
   }
 }
 
-ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
+ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
                               uint32_t format) {
   GAPID_DEBUG("MEC: Reading texture %" PRIu64 " kind 0x%x %dx%d format 0x%x",
               tex.id, tex.kind, tex.w, tex.h, format);
@@ -835,8 +832,8 @@ ImageData Reader::ReadTexture(const texture_t& tex, GLint level, GLint layer,
 }
 
 ImageData Reader::ReadTextureViaDrawQuad(const Sampler& sampler,
-                                         const texture_t& tex, uint32_t format,
-                                         swizzle_t swizzle) {
+                                         const texture& tex, uint32_t format,
+                                         swizzle swizzle) {
   GAPID_DEBUG("MEC: Drawing quad to format 0x%x", format);
   CHECK_GL_ERROR("MEC: Entered ReadTextureViaDrawQuad in error state");
 
@@ -858,7 +855,7 @@ ImageData Reader::ReadTextureViaDrawQuad(const Sampler& sampler,
   tex.setState(imports, savedState);
   CHECK_GL_ERROR("MEC: Failed restoring texture state", err);
 
-  texture_t res = {
+  texture res = {
       .id = tmpTex.id(),
       .kind = GL_TEXTURE_2D,
       .w = tex.w,
@@ -905,7 +902,7 @@ ImageData Reader::ReadRenderbuffer(Renderbuffer* rb) {
         GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
     imports.glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, mask, GL_NEAREST);
 
-    texture_t res = {
+    texture res = {
         .id = tmpTex.id(),
         .kind = GL_TEXTURE_2D,
         .w = w,
@@ -955,7 +952,7 @@ void SerializeRenderBuffer(Reader& r, StateSerializer* serializer,
 
 void SerializeTexture(Reader& r, StateSerializer* serializer,
                       gapil::Ref<gapii::Texture> tex) {
-  texture_t out{
+  texture out{
       .id = tex->mID,
       .kind = tex->mKind,
   };
