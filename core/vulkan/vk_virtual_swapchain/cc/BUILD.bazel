@@ -43,6 +43,24 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "headers",
+    srcs = glob([
+        "*.h",
+    ]),
+    copts = cc_copts() + select({
+        "//tools/build:linux": ["-DVK_USE_PLATFORM_XCB_KHR"],
+        "//tools/build:darwin": [],
+        "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
+        # Android
+        "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/vulkan/cc/include/vulkan",
+    ],
+)
+
 cc_dynamic_library(
     name = "libVkLayer_VirtualSwapchain",
     visibility = ["//visibility:public"],
