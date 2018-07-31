@@ -30,7 +30,7 @@ func TestParseDevices(t_ *testing.T) {
 	defer func() { devices.Handlers[0] = validDevices }()
 	expected := &device.Instance{
 		Serial: "production_device",
-		Name:   "",
+		Name:   "hammerhead",
 		Configuration: &device.Configuration{
 			OS: &device.OS{
 				Kind:         device.Android,
