@@ -25,12 +25,12 @@ import (
 )
 
 // Mesh resolves and returns the Mesh from the path p.
-func Mesh(ctx context.Context, p *path.Mesh) (*api.Mesh, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func Mesh(ctx context.Context, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}
-	mesh, err := meshFor(ctx, obj, p)
+	mesh, err := meshFor(ctx, obj, p, r)
 	switch {
 	case err != nil:
 		return nil, err
@@ -41,12 +41,12 @@ func Mesh(ctx context.Context, p *path.Mesh) (*api.Mesh, error) {
 	}
 }
 
-func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error) {
+func meshFor(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	switch o := o.(type) {
 	case api.APIObject:
 		if a := o.API(); a != nil {
 			if mp, ok := a.(api.MeshProvider); ok {
-				return mp.Mesh(ctx, o, p)
+				return mp.Mesh(ctx, o, p, r)
 			}
 		}
 
@@ -64,7 +64,7 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error
 			s, e := o.Commands.From[0], o.Commands.To[0]
 			for i := e; int64(i) >= int64(s); i-- {
 				p := o.Commands.Capture.Command(i).Mesh(p.Options)
-				if mesh, err := meshFor(ctx, cmds[i], p); mesh != nil || err != nil {
+				if mesh, err := meshFor(ctx, cmds[i], p, r); mesh != nil || err != nil {
 					return mesh, err
 				}
 			}
@@ -80,7 +80,7 @@ func meshFor(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error
 				cmd := append([]uint64{}, o.Commands.From[1:]...)
 				cmd[lastSubcommand-1] = i
 				p := o.Commands.Capture.Command(o.Commands.From[0], cmd...).Mesh(p.Options)
-				if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p); mesh != nil || err != nil {
+				if mesh, err := meshFor(ctx, cmds[o.Commands.From[0]], p, r); mesh != nil || err != nil {
 					return mesh, err
 				}
 			}

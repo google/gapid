@@ -40,14 +40,20 @@ func (l CommandFilters) All(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool 
 	return true
 }
 
-func buildFilter(ctx context.Context, p *path.Capture, f *path.CommandFilter, sd *sync.Data) (CommandFilter, error) {
+func buildFilter(
+	ctx context.Context,
+	p *path.Capture,
+	f *path.CommandFilter,
+	sd *sync.Data,
+	r *path.ResolveConfig) (CommandFilter, error) {
+
 	filters := CommandFilters{
 		func(id api.CmdID, cmd api.Cmd, s *api.GlobalState) bool {
 			return !sd.Hidden.Contains(id)
 		},
 	}
 	if f := f.GetContext(); f.IsValid() {
-		c, err := Context(ctx, p.Context(f.ID()))
+		c, err := Context(ctx, p.Context(f.ID()), r)
 		if err != nil {
 			return nil, err
 		}

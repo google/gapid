@@ -46,7 +46,13 @@ type Resource interface {
 	ResourceData(ctx context.Context, s *GlobalState) (*ResourceData, error)
 
 	// SetResourceData sets resource data in a new capture.
-	SetResourceData(ctx context.Context, at *path.Command, data *ResourceData, resources ResourceMap, edits ReplaceCallback) error
+	SetResourceData(
+		ctx context.Context,
+		at *path.Command,
+		data *ResourceData,
+		resources ResourceMap,
+		edits ReplaceCallback,
+		r *path.ResolveConfig) error
 }
 
 // ResourceMeta represents resource with a state information obtained during building.

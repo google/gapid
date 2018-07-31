@@ -33,7 +33,7 @@ var _ = replay.QueryFramebufferAttachment(API{})
 // Root returns the path to the root of the state to display. It can vary based
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.
-func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
+func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (path.Node, error) {
 	return nil, nil
 }
 
@@ -106,7 +106,7 @@ func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 }
 
 // Mesh implements the api.MeshProvider interface.
-func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error) {
+func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	return nil, nil
 }
 

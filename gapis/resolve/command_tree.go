@@ -39,8 +39,8 @@ type CmdGroupData struct {
 }
 
 // CommandTree resolves the specified command tree path.
-func CommandTree(ctx context.Context, c *path.CommandTree) (*service.CommandTree, error) {
-	id, err := database.Store(ctx, &CommandTreeResolvable{Path: c})
+func CommandTree(ctx context.Context, c *path.CommandTree, r *path.ResolveConfig) (*service.CommandTree, error) {
+	id, err := database.Store(ctx, &CommandTreeResolvable{Path: c, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (t *commandTree) indices(id api.CmdID) []uint64 {
 }
 
 // CommandTreeNode resolves the specified command tree node path.
-func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.CommandTreeNode, error) {
+func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode, r *path.ResolveConfig) (*service.CommandTreeNode, error) {
 	boxed, err := database.Resolve(ctx, c.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func CommandTreeNode(ctx context.Context, c *path.CommandTreeNode) (*service.Com
 
 // CommandTreeNodeForCommand returns the path to the CommandTreeNode that
 // represents the specified command.
-func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCommand) (*path.CommandTreeNode, error) {
+func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCommand, r *path.ResolveConfig) (*path.CommandTreeNode, error) {
 	boxed, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 // Resolve implements the database.Resolver interface.
 func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	p := r.Path
-	ctx = capture.Put(ctx, p.Capture)
+	ctx = setupContext(ctx, p.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {
@@ -192,7 +192,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, p.Capture, p.Filter, snc)
+	filter, err := buildFilter(ctx, p.Capture, p.Filter, snc, r.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if p.IncludeNoContextGroups {
 			noContextID = api.ContextID{}
 		}
-		ctxs, err := ContextsByID(ctx, p.Capture.Contexts())
+		ctxs, err := ContextsByID(ctx, p.Capture.Contexts(), r.Config)
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +244,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	// Add any extension groupers
 	for _, e := range extensions.Get() {
-		groupers = append(groupers, e.CmdGroupers(ctx, p)...)
+		groupers = append(groupers, e.CmdGroupers(ctx, p, r.Config)...)
 	}
 
 	// Walk the list of unfiltered commands to build the groups.
@@ -283,7 +283,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			TransformFeedbacks: true,
 			FirstInFrame:       true,
 			LastInFrame:        true,
-		})
+		}, r.Config)
 		if err != nil {
 			return nil, log.Errf(ctx, err, "Couldn't get events")
 		}

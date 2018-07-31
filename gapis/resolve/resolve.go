@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/messages"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
@@ -35,7 +36,7 @@ import (
 )
 
 // Capture resolves and returns the capture from the path p.
-func Capture(ctx context.Context, p *path.Capture) (*service.Capture, error) {
+func Capture(ctx context.Context, p *path.Capture, r *path.ResolveConfig) (*service.Capture, error) {
 	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return nil, err
@@ -44,7 +45,7 @@ func Capture(ctx context.Context, p *path.Capture) (*service.Capture, error) {
 }
 
 // Device resolves and returns the device from the path p.
-func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
+func Device(ctx context.Context, p *path.Device, r *path.ResolveConfig) (*device.Instance, error) {
 	device := bind.GetRegistry(ctx).Device(p.ID.ID())
 	if device == nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrUnknownDevice()}
@@ -53,7 +54,7 @@ func Device(ctx context.Context, p *path.Device) (*device.Instance, error) {
 }
 
 // DeviceTraceConfiguration resolves and returns the trace config for a device.
-func DeviceTraceConfiguration(ctx context.Context, p *path.DeviceTraceConfiguration) (*service.DeviceTraceConfiguration, error) {
+func DeviceTraceConfiguration(ctx context.Context, p *path.DeviceTraceConfiguration, r *path.ResolveConfig) (*service.DeviceTraceConfiguration, error) {
 	c, err := trace.TraceConfiguration(ctx, p.Device)
 
 	if err != nil {
@@ -81,7 +82,7 @@ func DeviceTraceConfiguration(ctx context.Context, p *path.DeviceTraceConfigurat
 }
 
 // ImageInfo resolves and returns the ImageInfo from the path p.
-func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info, error) {
+func ImageInfo(ctx context.Context, p *path.ImageInfo, r *path.ResolveConfig) (*image.Info, error) {
 	obj, err := database.Resolve(ctx, p.ID.ID())
 	if err != nil {
 		return nil, err
@@ -94,7 +95,7 @@ func ImageInfo(ctx context.Context, p *path.ImageInfo) (*image.Info, error) {
 }
 
 // Blob resolves and returns the byte slice from the path p.
-func Blob(ctx context.Context, p *path.Blob) ([]byte, error) {
+func Blob(ctx context.Context, p *path.Blob, r *path.ResolveConfig) ([]byte, error) {
 	obj, err := database.Resolve(ctx, p.ID.ID())
 	if err != nil {
 		return nil, err
@@ -107,8 +108,8 @@ func Blob(ctx context.Context, p *path.Blob) ([]byte, error) {
 }
 
 // Field resolves and returns the field from the path p.
-func Field(ctx context.Context, p *path.Field) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func Field(ctx context.Context, p *path.Field, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +157,8 @@ func field(ctx context.Context, s reflect.Value, name string, p path.Node) (refl
 }
 
 // ArrayIndex resolves and returns the array or slice element from the path p.
-func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func ArrayIndex(ctx context.Context, p *path.ArrayIndex, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}
@@ -189,8 +190,8 @@ func ArrayIndex(ctx context.Context, p *path.ArrayIndex) (interface{}, error) {
 }
 
 // Slice resolves and returns the subslice from the path p.
-func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func Slice(ctx context.Context, p *path.Slice, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}
@@ -221,8 +222,8 @@ func Slice(ctx context.Context, p *path.Slice) (interface{}, error) {
 }
 
 // MapIndex resolves and returns the map value from the path p.
-func MapIndex(ctx context.Context, p *path.MapIndex) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func MapIndex(ctx context.Context, p *path.MapIndex, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}
@@ -272,8 +273,8 @@ func memoryLayout(ctx context.Context, p path.Node) (*device.MemoryLayout, error
 
 // ResolveService resolves and returns the object, value or memory at the path p,
 // converting the final result to the service representation.
-func ResolveService(ctx context.Context, p path.Node) (interface{}, error) {
-	v, err := ResolveInternal(ctx, p)
+func ResolveService(ctx context.Context, p path.Node, r *path.ResolveConfig) (interface{}, error) {
+	v, err := ResolveInternal(ctx, p, r)
 	if err != nil {
 		return nil, err
 	}
@@ -283,78 +284,78 @@ func ResolveService(ctx context.Context, p path.Node) (interface{}, error) {
 // ResolveInternal resolves and returns the object, value or memory at the path
 // p without converting the potentially internal result to a service
 // representation.
-func ResolveInternal(ctx context.Context, p path.Node) (interface{}, error) {
+func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (interface{}, error) {
 	switch p := p.(type) {
 	case *path.ArrayIndex:
-		return ArrayIndex(ctx, p)
+		return ArrayIndex(ctx, p, r)
 	case *path.As:
-		return As(ctx, p)
+		return As(ctx, p, r)
 	case *path.Blob:
-		return Blob(ctx, p)
+		return Blob(ctx, p, r)
 	case *path.Capture:
-		return Capture(ctx, p)
+		return Capture(ctx, p, r)
 	case *path.Command:
-		return Cmd(ctx, p)
+		return Cmd(ctx, p, r)
 	case *path.Commands:
-		return Commands(ctx, p)
+		return Commands(ctx, p, r)
 	case *path.CommandTree:
-		return CommandTree(ctx, p)
+		return CommandTree(ctx, p, r)
 	case *path.CommandTreeNode:
-		return CommandTreeNode(ctx, p)
+		return CommandTreeNode(ctx, p, r)
 	case *path.CommandTreeNodeForCommand:
-		return CommandTreeNodeForCommand(ctx, p)
+		return CommandTreeNodeForCommand(ctx, p, r)
 	case *path.ConstantSet:
-		return ConstantSet(ctx, p)
+		return ConstantSet(ctx, p, r)
 	case *path.Context:
-		return Context(ctx, p)
+		return Context(ctx, p, r)
 	case *path.Contexts:
-		return Contexts(ctx, p)
+		return Contexts(ctx, p, r)
 	case *path.Device:
-		return Device(ctx, p)
+		return Device(ctx, p, r)
 	case *path.DeviceTraceConfiguration:
-		return DeviceTraceConfiguration(ctx, p)
+		return DeviceTraceConfiguration(ctx, p, r)
 	case *path.Events:
-		return Events(ctx, p)
+		return Events(ctx, p, r)
 	case *path.FramebufferObservation:
-		return FramebufferObservation(ctx, p)
+		return FramebufferObservation(ctx, p, r)
 	case *path.Field:
-		return Field(ctx, p)
+		return Field(ctx, p, r)
 	case *path.GlobalState:
-		return GlobalState(ctx, p)
+		return GlobalState(ctx, p, r)
 	case *path.ImageInfo:
-		return ImageInfo(ctx, p)
+		return ImageInfo(ctx, p, r)
 	case *path.MapIndex:
-		return MapIndex(ctx, p)
+		return MapIndex(ctx, p, r)
 	case *path.Memory:
-		return Memory(ctx, p)
+		return Memory(ctx, p, r)
 	case *path.Metrics:
-		return Metrics(ctx, p)
+		return Metrics(ctx, p, r)
 	case *path.Mesh:
-		return Mesh(ctx, p)
+		return Mesh(ctx, p, r)
 	case *path.Parameter:
-		return Parameter(ctx, p)
+		return Parameter(ctx, p, r)
 	case *path.Report:
-		return Report(ctx, p)
+		return Report(ctx, p, r)
 	case *path.ResourceData:
-		return ResourceData(ctx, p)
+		return ResourceData(ctx, p, r)
 	case *path.Resources:
-		return Resources(ctx, p.Capture)
+		return Resources(ctx, p.Capture, r)
 	case *path.Result:
-		return Result(ctx, p)
+		return Result(ctx, p, r)
 	case *path.Slice:
-		return Slice(ctx, p)
+		return Slice(ctx, p, r)
 	case *path.State:
-		return State(ctx, p)
+		return State(ctx, p, r)
 	case *path.StateTree:
-		return StateTree(ctx, p)
+		return StateTree(ctx, p, r)
 	case *path.StateTreeNode:
-		return StateTreeNode(ctx, p)
+		return StateTreeNode(ctx, p, r)
 	case *path.StateTreeNodeForPath:
-		return StateTreeNodeForPath(ctx, p)
+		return StateTreeNodeForPath(ctx, p, r)
 	case *path.Thumbnail:
-		return Thumbnail(ctx, p)
+		return Thumbnail(ctx, p, r)
 	case *path.Stats:
-		return Stats(ctx, p)
+		return Stats(ctx, p, r)
 	default:
 		return nil, fmt.Errorf("Unknown path type %T", p)
 	}
@@ -400,4 +401,21 @@ func convert(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
 		}
 	}
 	return val, false
+}
+
+func setupContext(ctx context.Context, c *path.Capture, r *path.ResolveConfig) context.Context {
+	if c != nil {
+		ctx = capture.Put(ctx, c)
+	}
+
+	if d := r.GetReplayDevice(); d != nil {
+		ctx = replay.PutDevice(ctx, d)
+	} else {
+		registry := bind.GetRegistry(ctx)
+		if d := registry.DefaultDevice(); d != nil {
+			ctx = replay.PutDevice(ctx, path.NewDevice(d.Instance().ID.ID()))
+		}
+	}
+
+	return ctx
 }

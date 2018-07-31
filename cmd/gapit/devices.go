@@ -52,7 +52,7 @@ func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	stdout := os.Stdout
 	for i, p := range devices {
 		fmt.Fprintf(stdout, "-- Device %v: %v --\n", i, p.ID.ID())
-		o, err := client.Get(ctx, p.Path())
+		o, err := client.Get(ctx, p.Path(), nil)
 		if err != nil {
 			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
 			continue

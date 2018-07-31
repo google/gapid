@@ -39,7 +39,9 @@ func FramebufferAttachment(
 	attachment api.FramebufferAttachment,
 	settings *service.RenderSettings,
 	hints *service.UsageHints,
+	config *path.ResolveConfig,
 ) (*path.ImageInfo, error) {
+
 	if replaySettings.Device == nil {
 		devices, err := devices.ForReplay(ctx, after.Capture)
 		if err != nil {
@@ -53,7 +55,7 @@ func FramebufferAttachment(
 
 	// Check the command is valid. If we don't do it here, we'll likely get an
 	// error deep in the bowels of the framebuffer data resolve.
-	if _, err := Cmd(ctx, after); err != nil {
+	if _, err := Cmd(ctx, after, config); err != nil {
 		return nil, err
 	}
 
@@ -63,6 +65,7 @@ func FramebufferAttachment(
 		Attachment:     attachment,
 		Settings:       settings,
 		Hints:          hints,
+		Config:         config,
 	})
 
 	if err != nil {
@@ -73,7 +76,7 @@ func FramebufferAttachment(
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferAttachmentResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	changes, err := FramebufferChanges(ctx, r.After.Capture)
+	changes, err := FramebufferChanges(ctx, r.After.Capture, r.Config)
 	if err != nil {
 		return FramebufferAttachmentInfo{}, err
 	}

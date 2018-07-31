@@ -74,7 +74,7 @@ func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 // Root returns the path to the root of the state to display. It can vary based
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.
-func (*State) Root(ctx context.Context, p *path.State) (path.Node, error) {
+func (*State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (path.Node, error) {
 	return p, nil
 }
 
@@ -125,10 +125,10 @@ func (API) GetFramebufferAttachmentInfo(
 }
 
 // Mesh implements the api.MeshProvider interface
-func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error) {
+func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	switch dc := o.(type) {
 	case *VkQueueSubmit:
-		return drawCallMesh(ctx, dc, p)
+		return drawCallMesh(ctx, dc, p, r)
 	}
 	return nil, &service.ErrDataUnavailable{Reason: messages.ErrMeshNotAvailable()}
 }

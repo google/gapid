@@ -72,11 +72,11 @@ func findContextByCommand(ctxs []*api.ContextInfo, ty reflect.Type) *api.Context
 	return best
 }
 
-func isReprojectionContext(ctx context.Context, p *path.Context) bool {
+func isReprojectionContext(ctx context.Context, p *path.Context, r *path.ResolveConfig) bool {
 	if p == nil {
 		return false
 	}
-	c, err := resolve.Context(ctx, p)
+	c, err := resolve.Context(ctx, p, r)
 	if c == nil || err != nil {
 		return false
 	}
@@ -84,11 +84,11 @@ func isReprojectionContext(ctx context.Context, p *path.Context) bool {
 	return ok
 }
 
-func getRenderContextID(ctx context.Context, p *path.Contexts) *api.ContextID {
+func getRenderContextID(ctx context.Context, p *path.Contexts, r *path.ResolveConfig) *api.ContextID {
 	if p == nil {
 		return nil
 	}
-	ctxs, err := resolve.Contexts(ctx, p)
+	ctxs, err := resolve.Contexts(ctx, p, r)
 	if err != nil {
 		return nil
 	}
@@ -100,8 +100,8 @@ func getRenderContextID(ctx context.Context, p *path.Contexts) *api.ContextID {
 	return nil
 }
 
-func newReprojectionGroupers(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper {
-	if !isReprojectionContext(ctx, p.Capture.Context(p.GetFilter().GetContext().ID())) {
+func newReprojectionGroupers(ctx context.Context, p *path.CommandTree, r *path.ResolveConfig) []cmdgrouper.Grouper {
+	if !isReprojectionContext(ctx, p.Capture.Context(p.GetFilter().GetContext().ID()), r) {
 		return nil
 	}
 	glFenceSync := func(cond gles.GLenum) func(cmd, prev api.Cmd) bool {
@@ -187,8 +187,8 @@ func (n noSubFrameEventGrouper) Build(end api.CmdID) []cmdgrouper.Group {
 	return out
 }
 
-func newReprojectionEvents(ctx context.Context, p *path.Events) extensions.EventProvider {
-	if !isReprojectionContext(ctx, p.Capture.Context(p.GetFilter().GetContext().ID())) {
+func newReprojectionEvents(ctx context.Context, p *path.Events, r *path.ResolveConfig) extensions.EventProvider {
+	if !isReprojectionContext(ctx, p.Capture.Context(p.GetFilter().GetContext().ID()), r) {
 		return nil
 	}
 
@@ -217,8 +217,8 @@ func newReprojectionEvents(ctx context.Context, p *path.Events) extensions.Event
 	}
 }
 
-func eventFilter(ctx context.Context, p *path.Events) extensions.EventFilter {
-	renderCtxID := getRenderContextID(ctx, p.Capture.Contexts())
+func eventFilter(ctx context.Context, p *path.Events, r *path.ResolveConfig) extensions.EventFilter {
+	renderCtxID := getRenderContextID(ctx, p.Capture.Contexts(), r)
 	if renderCtxID == nil {
 		return nil
 	}

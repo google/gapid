@@ -25,7 +25,7 @@ import (
 )
 
 // Events resolves and returns the event list from the path p.
-func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
+func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*service.Events, error) {
 	c, err := capture.ResolveFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, p.Capture, p.Filter, sd)
+	filter, err := buildFilter(ctx, p.Capture, p.Filter, sd, r)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	filters := CommandFilters{filter}
 	for _, e := range extensions.Get() {
 		if f := e.EventFilter; f != nil {
-			if filter := CommandFilter(f(ctx, p)); filter != nil {
+			if filter := CommandFilter(f(ctx, p, r)); filter != nil {
 				filters = append(filters, filter)
 			}
 		}
@@ -56,7 +56,7 @@ func Events(ctx context.Context, p *path.Events) (*service.Events, error) {
 	eps := []extensions.EventProvider{}
 	for _, e := range extensions.Get() {
 		if e.Events != nil {
-			if ep := e.Events(ctx, p); ep != nil {
+			if ep := e.Events(ctx, p, r); ep != nil {
 				eps = append(eps, ep)
 			}
 		}

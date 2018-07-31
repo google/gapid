@@ -337,12 +337,12 @@ func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, d
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed at %v", cmd)
 	}
-	iio, err := client.Get(ctx, iip.Path())
+	iio, err := client.Get(ctx, iip.Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image.Info failed at %v", cmd)
 	}
 	ii := iio.(*img.Info)
-	dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
+	dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image data failed at %v", cmd)
 	}

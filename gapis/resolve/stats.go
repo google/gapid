@@ -25,10 +25,10 @@ import (
 )
 
 // Stats resolves and returns the stats list from the path p.
-func Stats(ctx context.Context, p *path.Stats) (*service.Stats, error) {
+func Stats(ctx context.Context, p *path.Stats, r *path.ResolveConfig) (*service.Stats, error) {
 	stats := &service.Stats{}
 	if p.DrawCall {
-		err := drawCallStats(ctx, p.Capture, stats)
+		err := drawCallStats(ctx, p.Capture, stats, r)
 		if err != nil {
 			return nil, err
 		}
@@ -36,7 +36,7 @@ func Stats(ctx context.Context, p *path.Stats) (*service.Stats, error) {
 	return stats, nil
 }
 
-func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats) error {
+func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats, r *path.ResolveConfig) error {
 	d, err := SyncData(ctx, capt)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 	events, err := Events(ctx, &path.Events{
 		Capture:     capt,
 		LastInFrame: true,
-	})
+	}, r)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 			cmd, err := Cmd(ctx, &path.Command{
 				Capture: capt,
 				Indices: []uint64(idx),
-			})
+			}, r)
 			if err != nil {
 				return err
 			}
