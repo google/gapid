@@ -129,7 +129,7 @@ func (verb *videoVerb) regularVideoSource(
 	for i, e := range eofEvents {
 		i, e := i, e
 		executor(ctx, func(ctx context.Context) error {
-			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, e.Command, device, client, verb.NoOpt); err == nil {
+			if frame, err := getFrame(ctx, verb.Max.Width, verb.Max.Height, e.Command, device, client, verb.NoOpt, verb.DisplayToSurface); err == nil {
 				rendered[i] = flipImg(frame)
 			} else {
 				errors[i] = err
@@ -327,12 +327,13 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 	return nil
 }
 
-func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, device *path.Device, client service.Service, noOpt bool) (*image.NRGBA, error) {
+func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, device *path.Device, client service.Service, noOpt bool, display bool) (*image.NRGBA, error) {
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight)}
 	iip, err := client.GetFramebufferAttachment(ctx, &service.ReplaySettings{
 		Device: device,
 		DisableReplayOptimization: noOpt,
+		DisplayToSurface:          display,
 	}, cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed at %v", cmd)

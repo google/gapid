@@ -100,9 +100,10 @@ type (
 		DeviceFlags
 	}
 	ReportFlags struct {
-		Gapis GapisFlags
-		Gapir GapirFlags
-		Out   string `help:"output report path"`
+		Gapis            GapisFlags
+		Gapir            GapirFlags
+		Out              string `help:"output report path"`
+		DisplayToSurface bool   `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
 	}
 	VideoFlags struct {
@@ -122,7 +123,8 @@ type (
 			Count   int `help:"number of frames after Start to capture: -1 for all frames"`
 			Minimum int `help:"_return error when less than this number of frames is found"`
 		}
-		NoOpt bool `help:"disables optimization of the replay stream"`
+		NoOpt            bool `help:"disables optimization of the replay stream"`
+		DisplayToSurface bool `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
 	}
 	DumpShadersFlags struct {
@@ -235,6 +237,7 @@ type (
 		Max        struct {
 			Overdraw int `help:"the amount of overdraw to map to white in the output"`
 		}
+		DisplayToSurface bool `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
 	}
 	UnpackFlags struct {

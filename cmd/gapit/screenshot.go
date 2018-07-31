@@ -122,6 +122,7 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 		&service.ReplaySettings{
 			Device: device,
 			DisableReplayOptimization: verb.NoOpt,
+			DisplayToSurface:          verb.DisplayToSurface,
 		},
 		cmd, attachment, settings, nil)
 	if err != nil {
