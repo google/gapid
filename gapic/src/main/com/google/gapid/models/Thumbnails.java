@@ -16,7 +16,6 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.image.FetchedImage.loadThumbnail;
-import static com.google.gapid.util.Paths.thumbnail;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -25,6 +24,7 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
+import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.internal.DPIUtil;
@@ -74,15 +74,34 @@ public class Thumbnails {
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.Command command, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(command, THUMB_PIXELS, settings.disableReplayOptimization), onInfo),
+    return Futures.transform(loadThumbnail(client, thumbnail(command), onInfo),
         image -> processImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.CommandTreeNode node, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(node, THUMB_PIXELS, settings.disableReplayOptimization), onInfo),
+    return Futures.transform(loadThumbnail(client, thumbnail(node), onInfo),
         image -> processImage(image, size));
   }
+
+  public ListenableFuture<ImageData> getThumbnail(
+      Path.ResourceData resource, int size, Consumer<Image.Info> onInfo) {
+    return Futures.transform(loadThumbnail(client, thumbnail(resource), onInfo),
+        image -> processImage(image, size));
+  }
+
+  private Path.Thumbnail thumbnail(Path.Command command) {
+    return Paths.thumbnail(command, THUMB_PIXELS, settings.disableReplayOptimization);
+  }
+
+  private Path.Thumbnail thumbnail(Path.CommandTreeNode node) {
+    return Paths.thumbnail(node, THUMB_PIXELS, settings.disableReplayOptimization);
+  }
+
+  private Path.Thumbnail thumbnail(Path.ResourceData resource) {
+    return Paths.thumbnail(resource, THUMB_PIXELS, settings.disableReplayOptimization);
+  }
+
 
   private static ImageData processImage(ImageData image, int size) {
     size = DPIUtil.autoScaleUp(size);
