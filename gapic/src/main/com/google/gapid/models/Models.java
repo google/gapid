@@ -34,11 +34,12 @@ public class Models {
   public final Reports reports;
   public final Thumbnails thumbs;
   public final ConstantSets constants;
+  public final Geometries geos;
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
       Devices devices, CommandStream commands, ApiContext contexts, Timeline timeline,
       Resources resources, ApiState state, Reports reports, Thumbnails thumbs,
-      ConstantSets constants) {
+      ConstantSets constants, Geometries geos) {
     this.settings = settings;
     this.analytics = analytics;
     this.follower = follower;
@@ -52,6 +53,7 @@ public class Models {
     this.reports = reports;
     this.thumbs = thumbs;
     this.constants = constants;
+    this.geos = geos;
   }
 
   public static Models create(
@@ -68,8 +70,9 @@ public class Models {
     ApiState state = new ApiState(shell, analytics, client, follower, commands, contexts, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);
+    Geometries geometries = new Geometries(shell, analytics, client, commands);
     return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
-        resources, state, reports, thumbs, constants);
+        resources, state, reports, thumbs, constants, geometries);
   }
 
   public void dispose() {

@@ -15,10 +15,8 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.glviewer.Geometry.isPolygon;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.Paths.meshAfter;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -27,14 +25,9 @@ import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.createToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 import static com.google.gapid.widgets.Widgets.withMargin;
-import static java.util.Collections.emptyList;
 import static java.util.logging.Level.WARNING;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.Uninterruptibles;
+import com.google.common.base.Supplier;
 import com.google.gapid.glviewer.Geometry;
 import com.google.gapid.glviewer.GeometryScene;
 import com.google.gapid.glviewer.camera.CylindricalCameraModel;
@@ -45,29 +38,19 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.Geometries;
+import com.google.gapid.models.Geometries.VertexSemantics;
 import com.google.gapid.models.Models;
-import com.google.gapid.models.Strings;
 import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.proto.service.api.API;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.service.vertex.Vertex;
-import com.google.gapid.proto.stringtable.Stringtable;
-import com.google.gapid.rpc.Rpc;
-import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.SingleInFlight;
-import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.server.Client;
-import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.Loadable.Message;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.Paths;
-import com.google.gapid.util.Streams;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.ScenePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
-import com.google.protobuf.ByteString;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.window.Window;
@@ -86,41 +69,17 @@ import org.eclipse.swt.widgets.ToolItem;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 /**
  * View that displays the 3D geometry of the last draw call within the current selection.
  */
-public class GeometryView extends Composite implements Tab, Capture.Listener, CommandStream.Listener {
+public class GeometryView extends Composite
+    implements Tab, Capture.Listener, CommandStream.Listener, Geometries.Listener {
   private static final Logger LOG = Logger.getLogger(GeometryView.class.getName());
-  private static final Vertex.Semantic POSITION_0 = Vertex.Semantic.newBuilder()
-      .setType(Vertex.Semantic.Type.Position)
-      .setIndex(0)
-      .build();
-  private static final Vertex.Semantic NORMAL_0 = Vertex.Semantic.newBuilder()
-      .setType(Vertex.Semantic.Type.Normal)
-      .setIndex(0)
-      .build();
-  protected static final Vertex.BufferFormat POS_NORM_XYZ_F32 = Vertex.BufferFormat.newBuilder()
-      .addStreams(Vertex.StreamFormat.newBuilder()
-          .setSemantic(POSITION_0)
-          .setFormat(Streams.FMT_XYZ_F32))
-      .addStreams(Vertex.StreamFormat.newBuilder()
-          .setSemantic(NORMAL_0)
-          .setFormat(Streams.FMT_XYZ_F32))
-      .build();
-  private static final Stringtable.Msg NO_MESH_ERR = Strings.create("ERR_MESH_NOT_AVAILABLE");
 
-  private final Client client;
   private final Models models;
-  private final SingleInFlight rpcController = new SingleInFlight();
   protected final LoadablePanel<ScenePanel<GeometryScene.Data>> loading;
   protected final ScenePanel<GeometryScene.Data> canvas;
   private final Label statusBar;
@@ -128,16 +87,13 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
   private final IsoSurfaceCameraModel camera =
       new IsoSurfaceCameraModel(new CylindricalCameraModel());
   private ToolItem originalModelItem, facetedModelItem;
-  private VertexSemantics vertexSemantics;
-  private Model originalModel, facetedModel;
   private Geometry.DisplayMode displayMode = Geometry.DisplayMode.TRIANGLES;
   private Geometry.DisplayMode desiredDisplayMode = Geometry.DisplayMode.TRIANGLES;
   private ToolItem renderAsTriangles, renderAsLines, renderAsPoints;
   private ToolItem configureItem, saveItem;
 
-  public GeometryView(Composite parent, Client client, Models models, Widgets widgets) {
+  public GeometryView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.client = client;
     this.models = models;
 
     setLayout(new GridLayout(2, false));
@@ -158,14 +114,16 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
 
     models.capture.addListener(this);
     models.commands.addListener(this);
+    models.geos.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
+      models.geos.removeListener(this);
     });
 
+    configureItem.setEnabled(false);
     originalModelItem.setEnabled(false);
     facetedModelItem.setEnabled(false);
-    configureItem.setEnabled(false);
     saveItem.setEnabled(false);
 
     checkOpenGLAndShowMessage(null, null);
@@ -188,8 +146,9 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
     }, "Toggle triangle winding");
     configureItem = createToolItem(bar, theme.settings(), e -> {
       models.analytics.postInteraction(View.Geometry, ClientAction.VertexSemantics);
-      if (new SemanticsDialog(getShell(), theme, vertexSemantics).open() == Window.OK) {
-        updateModels(false);
+      SemanticsDialog dialog = new SemanticsDialog(getShell(), theme, models.geos.getSemantics());
+      if (dialog.open() == Window.OK) {
+        models.geos.updateSemantics(dialog.getSemantics());
       }
     }, "Configure vertex attributes");
     createSeparator(bar);
@@ -213,11 +172,11 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
     exclusiveSelection(
         originalModelItem = createToggleToolItem(bar, theme.smooth(), e -> {
           models.analytics.postInteraction(View.Geometry, ClientAction.Smooth);
-          setModel(originalModel);
+          setModel(models.geos.getData().original);
         }, "Use original normals"),
         facetedModelItem = createToggleToolItem(bar, theme.faceted(), e -> {
           models.analytics.postInteraction(View.Geometry, ClientAction.Faceted);
-          setModel(facetedModel);
+          setModel(models.geos.getData().faceted);
         }, "Use computed per-face normals"));
     createSeparator(bar);
     createToolItem(bar, theme.cullingDisabled(), e -> {
@@ -251,8 +210,9 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
       dialog.setOverwrite(true);
       String objFile = dialog.open();
       if (objFile != null) {
+        Geometries.Data mesh = models.geos.getData();
         try (Writer out = new FileWriter(objFile)) {
-          ObjWriter.write(out, originalModelItem.getSelection() ? originalModel : facetedModel);
+          ObjWriter.write(out, originalModelItem.getSelection() ? mesh.original : mesh.faceted);
         } catch (IOException ex) {
           LOG.log(WARNING, "Failed to save model as OBJ", e);
           showErrorDialog(getShell(), models.analytics,
@@ -270,12 +230,21 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
 
   @Override
   public void reinitialize() {
-    updateModels(false);
+    onCaptureLoadingStart(false);
+    if (models.capture.isLoaded() && models.commands.isLoaded()) {
+      onCommandsLoaded();
+      if (models.commands.getSelectedCommands() != null) {
+        onGeometryLoadingStart();
+        if (models.geos.isLoaded()) {
+          onGeometryLoaded(null);
+        }
+      }
+    }
   }
 
   @Override
   public void onCaptureLoadingStart(boolean maintainState) {
-    updateModels(true);
+    checkOpenGLAndShowMessage(Info, Messages.LOADING_CAPTURE);
   }
 
   @Override
@@ -287,161 +256,61 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
 
   @Override
   public void onCommandsLoaded() {
-    vertexSemantics = null;
-    updateModels(false);
+    if (!models.commands.isLoaded()) {
+      checkOpenGLAndShowMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+    } else if (models.commands.getSelectedCommands() == null) {
+      checkOpenGLAndShowMessage(Info, Messages.SELECT_DRAW_CALL);
+    }
   }
 
   @Override
-  public void onCommandsSelected(CommandIndex range) {
-    vertexSemantics = null;
-    updateModels(false);
+  public void onCommandsSelected(CommandIndex path) {
+    if (path == null) {
+      checkOpenGLAndShowMessage(Info, Messages.SELECT_DRAW_CALL);
+    }
   }
 
-  private void updateModels(boolean assumeLoading) {
-    statusBar.setText("");
-    if (!assumeLoading && models.commands.isLoaded()) {
-      CommandIndex command = models.commands.getSelectedCommands();
-      if (command == null) {
-        checkOpenGLAndShowMessage(Info, Messages.SELECT_DRAW_CALL);
-        configureItem.setEnabled(false);
-        saveItem.setEnabled(false);
-      } else {
-        fetchMeshes(command);
-      }
-    } else {
-      checkOpenGLAndShowMessage(Info, Messages.LOADING_CAPTURE);
+  @Override
+  public void onGeometryLoadingStart() {
+    if (canvas.isOpenGL()) {
+      loading.startLoading();
+
       configureItem.setEnabled(false);
+      originalModelItem.setEnabled(false);
+      facetedModelItem.setEnabled(false);
       saveItem.setEnabled(false);
     }
   }
 
-  private void fetchMeshes(CommandIndex command) {
+  @Override
+  public void onGeometryLoaded(Message error) {
     if (!canvas.isOpenGL()) {
       return;
-    }
-
-    loading.startLoading();
-
-    rpcController.start().listen(Futures.transformAsync(fetchMeshMetadata(command, vertexSemantics),
-        semantics -> {
-          ListenableFuture<Model> originalFuture = fetchModel(
-              meshAfter(command, semantics.getOptions().build(), POS_NORM_XYZ_F32));
-          ListenableFuture<Model> facetedFuture = fetchModel(meshAfter(
-              command, semantics.getOptions().setFaceted(true).build(), POS_NORM_XYZ_F32));
-          return Futures.transform(Futures.successfulAsList(originalFuture, facetedFuture),
-              modelList -> new ModelLoadResult(semantics, modelList, originalFuture));
-        }), new UiErrorCallback<ModelLoadResult, ModelLoadResult, String>(this, LOG) {
-      @Override
-      protected ResultOrError<ModelLoadResult, String> onRpcThread(Rpc.Result<ModelLoadResult> result)
-          throws RpcException, ExecutionException {
-        ModelLoadResult loadResult = result.get();
-        List<Model> modelList = loadResult.models;
-        if (modelList.get(0) == null && modelList.get(1) == null) {
-          // Both failed, so get the error from the original model's call.
-          try {
-            Uninterruptibles.getUninterruptibly(loadResult.originalFuture);
-          } catch (ExecutionException e) {
-            if (e.getCause() instanceof DataUnavailableException) {
-              // TODO: don't assume that it's because of not selecting a draw call.
-              return success(loadResult.withoutModels());
-            } else {
-              throw e;
-            }
-          }
-          // Should not get here, the future cannot both fail and succeed.
-          throw new AssertionError("Future both failed and succeeded");
-        } else if (modelList.get(0) != null && modelList.get(0).getNormals() == null) {
-          // The original model has no normals, but the geometry doesn't support faceted normals.
-          return success(loadResult.clearNthModel(0));
-        } else if (modelList.get(0) != null && !isPolygon(modelList.get(0).getPrimitive())) {
-          // TODO: if gapis returns an error for the faceted request, this is not needed.
-          return success(loadResult.clearNthModel(1));
-        } else {
-          return success(loadResult);
-        }
-      }
-
-      @Override
-      protected void onUiThreadSuccess(ModelLoadResult result) {
-        update(result.semantics, result.models);
-      }
-
-      @Override
-      protected void onUiThreadError(String error) {
-        loading.showMessage(Error, error);
-      }
-    });
-  }
-
-  private ListenableFuture<VertexSemantics> fetchMeshMetadata(
-      CommandIndex command, VertexSemantics currentSemantics) {
-    return Futures.transform(client.get(meshAfter(command, Paths.NODATA_MESH_OPTIONS)),
-        value -> new VertexSemantics(value.getMesh(), currentSemantics));
-  }
-
-  private ListenableFuture<Model> fetchModel(Path.Any path) {
-    return Futures.transformAsync(client.get(path), value -> fetchModel(value.getMesh()));
-  }
-
-  private static ListenableFuture<Model> fetchModel(API.Mesh mesh) {
-    Vertex.Buffer vb = mesh.getVertexBuffer();
-    float[] positions = null;
-    float[] normals = null;
-
-    for (Vertex.Stream stream : vb.getStreamsList()) {
-      switch (stream.getSemantic().getType()) {
-        case Position:
-          positions = byteStringToFloatArray(stream.getData());
-          break;
-        case Normal:
-          normals = byteStringToFloatArray(stream.getData());
-          break;
-        default:
-          // Ignore.
-      }
-    }
-
-    API.DrawPrimitive primitive = mesh.getDrawPrimitive();
-    if (positions == null || (normals == null && isPolygon(primitive))) {
-      return Futures.immediateFailedFuture(
-          new DataUnavailableException(NO_MESH_ERR, new Client.Stack(() -> "")));
-    }
-
-    int[] indices = mesh.getIndexBuffer().getIndicesList().stream().mapToInt(x -> x).toArray();
-    Model model = new Model(primitive, mesh.getStats(), positions, normals, indices);
-    return Futures.immediateFuture(model);
-  }
-
-  private static float[] byteStringToFloatArray(ByteString bytes) {
-    byte[] data = bytes.toByteArray();
-    FloatBuffer buffer = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
-    float[] out = new float[data.length / 4];
-    buffer.get(out);
-    return out;
-  }
-
-  protected void update(VertexSemantics semantics, List<Model> modelList) {
-    this.vertexSemantics = semantics;
-    this.configureItem.setEnabled(semantics.shouldShowUi());
-
-    if (modelList.isEmpty()) {
-      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
-      saveItem.setEnabled(false);
+    } else if (error != null) {
+      loading.showMessage(error);
       return;
     }
 
-    originalModel = modelList.get(0);
-    facetedModel = modelList.get(1);
+    Geometries.Data meshes = models.geos.getData();
+    if (!meshes.hasFaceted()) {
+      loading.showMessage(Info, Messages.SELECT_DRAW_CALL);
+      // ?? saveItem.setEnabled(false);
+      return;
+    }
+
     loading.stopLoading();
-    originalModelItem.setEnabled(originalModel != null);
-    facetedModelItem.setEnabled(facetedModel != null);
+
+    configureItem.setEnabled(SemanticsDialog.shouldShowUi(meshes.semantics));
+    originalModelItem.setEnabled(meshes.hasOriginal());
+    facetedModelItem.setEnabled(meshes.hasFaceted());
     saveItem.setEnabled(true);
-    if (originalModel != null) {
-      setModel(originalModel);
+
+    if (meshes.hasOriginal()) {
+      setModel(meshes.original);
       originalModelItem.setSelection(true);
       facetedModelItem.setSelection(false);
     } else {
-      setModel(facetedModel);
+      setModel(meshes.faceted);
       originalModelItem.setSelection(false);
       facetedModelItem.setSelection(true);
     }
@@ -500,81 +369,69 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
     }
   }
 
-  private static class ModelLoadResult {
-    public final VertexSemantics semantics;
-    public final List<Model> models;
-    public final ListenableFuture<Model> originalFuture;
-
-    public ModelLoadResult(
-        VertexSemantics semantics, List<Model> models, ListenableFuture<Model> originalFuture) {
-      this.semantics = semantics;
-      this.models = models;
-      this.originalFuture = originalFuture;
-    }
-
-    public ModelLoadResult withoutModels() {
-      return new ModelLoadResult(semantics, emptyList(), originalFuture);
-    }
-
-    public ModelLoadResult clearNthModel(int n) {
-      List<Model> newModels = Lists.newArrayList(models);
-      newModels.set(n, null);
-      return new ModelLoadResult(semantics, newModels, originalFuture);
-    }
-  }
-
-  private static class VertexSemantics {
+  private static class SemanticsDialog extends DialogBase {
     private static final String[] SEMANTIC_NAMES = Arrays.stream(Vertex.Semantic.Type.values())
         .filter(t -> t != Vertex.Semantic.Type.UNRECOGNIZED)
         .map(t -> (t == Vertex.Semantic.Type.Unknown ? "Other" : t.name()))
         .toArray(String[]::new);
 
-    private final Element[] elements;
+    private VertexSemantics semantics;
+    private Supplier<VertexSemantics> onOk;
 
-    public VertexSemantics(API.Mesh mesh, VertexSemantics current) {
-      Map<String, Vertex.Semantic.Type> assigned = Maps.newHashMap();
-      if (current != null) {
-        for (Element e : current.elements) {
-          assigned.put(e.name, e.assigned);
-        }
+    public SemanticsDialog(Shell parent, Theme theme, VertexSemantics semantics) {
+      super(parent, theme);
+      this.semantics = semantics;
+    }
+
+    public static boolean shouldShowUi(VertexSemantics semantics) {
+      return semantics.elements.length > 0;
+    }
+
+    public VertexSemantics getSemantics() {
+      return semantics;
+    }
+
+    @Override
+    public String getTitle() {
+      return Messages.GEO_SEMANTICS_TITLE;
+    }
+
+    @Override
+    protected Control createDialogArea(Composite parent) {
+      Composite area = (Composite)super.createDialogArea(parent);
+      onOk = createUi(area, semantics);
+      return area;
+    }
+
+    @Override
+    protected void createButtonsForButtonBar(Composite parent) {
+      createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
+      createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
+    }
+
+    @Override
+    protected void buttonPressed(int buttonId) {
+      if (onOk != null && buttonId == IDialogConstants.OK_ID) {
+        semantics = onOk.get();
       }
-
-      this.elements = new Element[mesh.getVertexBuffer().getStreamsCount()];
-      for (int i = 0; i < elements.length; i++) {
-        elements[i] = Element.get(mesh.getVertexBuffer().getStreams(i), assigned);
-      }
-      Arrays.sort(elements, (e1, e2) -> e1.name.compareTo(e2.name));
+      super.buttonPressed(buttonId);
     }
 
-    public Path.MeshOptions.Builder getOptions() {
-      Path.MeshOptions.Builder r = Path.MeshOptions.newBuilder();
-      Arrays.stream(elements)
-          .forEach(e -> r.addVertexSemantics(Path.MeshOptions.SemanticHint.newBuilder()
-              .setName(e.name)
-              .setType(e.assigned)));
-      return r;
-    }
-
-    public boolean shouldShowUi() {
-      return elements.length > 0;
-    }
-
-    // Returns the callback to be invoked when the OK button is clicked.
     @SuppressWarnings("ProtocolBufferOrdinal")
-    public Runnable createUi(Composite parent) {
+    private static Supplier<VertexSemantics> createUi(Composite parent, VertexSemantics semantics) {
       createLabel(parent, Messages.GEO_SEMANTICS_HINT);
 
       Composite panel = createComposite(parent, withMargin(new GridLayout(3, false), 10, 5));
       panel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-      Combo[] inputs = new Combo[elements.length];
-      for (int i = 0; i < elements.length; i++) {
+      Combo[] inputs = new Combo[semantics.elements.length];
+      for (int i = 0; i < semantics.elements.length; i++) {
         int idx = i;
-        createLabel(panel, elements[i].name);
-        createLabel(panel, elements[i].type);
+        createLabel(panel, semantics.elements[i].name);
+        createLabel(panel, semantics.elements[i].type);
         inputs[i] = Widgets.createDropDown(panel);
         inputs[i].setItems(SEMANTIC_NAMES);
-        inputs[i].select(elements[i].assigned.ordinal());
+        inputs[i].select(semantics.elements[i].semantic.ordinal());
         inputs[i].addListener(SWT.Selection, e -> {
           int sel = inputs[idx].getSelectionIndex();
           if (sel > 0) {
@@ -589,72 +446,18 @@ public class GeometryView extends Composite implements Tab, Capture.Listener, Co
       }
 
       return () -> {
+        VertexSemantics result = semantics.copy();
         for (int i = 0; i < inputs.length; i++) {
           int sel = inputs[i].getSelectionIndex();
           // The last enum element is "UNRECOGNIZED", which is invalid.
           if (sel < 0 || sel >= Vertex.Semantic.Type.values().length - 1) {
-            elements[i].assigned = Vertex.Semantic.Type.Unknown;
+            result.assign(i, Vertex.Semantic.Type.Unknown);
           } else {
-            elements[i].assigned = Vertex.Semantic.Type.values()[sel];
+            result.assign(i, Vertex.Semantic.Type.values()[sel]);
           }
         }
+        return result;
       };
-    }
-
-    private static class Element {
-      public final String name;
-      public final String type;
-      public Vertex.Semantic.Type assigned;
-
-      public Element(String name, String type, Vertex.Semantic.Type guessed) {
-        this.name = name;
-        this.type = type;
-        this.assigned = guessed;
-      }
-
-      public static Element get(Vertex.Stream s, Map<String, Vertex.Semantic.Type> assigned) {
-        Vertex.Semantic.Type type = assigned.get(s.getName());
-        if (type == null) {
-          type = s.getSemantic().getType();
-        }
-        return new Element(s.getName(), Streams.toString(s.getFormat()), type);
-      }
-    }
-  }
-
-  private static class SemanticsDialog extends DialogBase {
-    private final VertexSemantics semantics;
-    private Runnable onOk;
-
-    public SemanticsDialog(Shell parent, Theme theme, VertexSemantics semantics) {
-      super(parent, theme);
-      this.semantics = semantics;
-    }
-
-    @Override
-    public String getTitle() {
-      return Messages.GEO_SEMANTICS_TITLE;
-    }
-
-    @Override
-    protected Control createDialogArea(Composite parent) {
-      Composite area = (Composite)super.createDialogArea(parent);
-      onOk = semantics.createUi(area);
-      return area;
-    }
-
-    @Override
-    protected void createButtonsForButtonBar(Composite parent) {
-      createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
-      createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
-    }
-
-    @Override
-    protected void buttonPressed(int buttonId) {
-      if (onOk != null && buttonId == IDialogConstants.OK_ID) {
-        onOk.run();
-      }
-      super.buttonPressed(buttonId);
     }
   }
 }
