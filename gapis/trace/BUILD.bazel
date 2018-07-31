@@ -31,6 +31,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//gapii/client:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/trace/android:go_default_library",
         "//gapis/trace/desktop:go_default_library",

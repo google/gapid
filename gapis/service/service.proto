@@ -946,39 +946,41 @@ message TraceOptions {
     string uri = 2;
     // The application to upload and trace
     bytes upload_application = 3;
+    // The server port that should be connected to for tracing
+    uint32 port = 4;
   }
   // What APIs should we trace
-  repeated string apis = 4;
+  repeated string apis = 5;
   // Any additional command-line args to pass to the app
-  string additional_command_line_args = 5;
+  string additional_command_line_args = 6;
   // What directory should be used for tracing
-  string cwd = 6;
+  string cwd = 7;
   // Additional environment variables to add in the form 'X=Y'
-  repeated string environment = 7;
+  repeated string environment = 8;
   // How long should we trace for
-  float duration = 8;
+  float duration = 9;
   // What frames should we insert into the trace
-  uint32 observe_frame_frequency = 9;
+  uint32 observe_frame_frequency = 10;
   // What draw calls should we insert into the trace
-  uint32 observe_draw_frequency = 10;
+  uint32 observe_draw_frequency = 11;
   // What frame should we start tracing.
-  uint32 start_frame = 11;
+  uint32 start_frame = 12;
   // How many frames should we capture
-  uint32 frames_to_capture = 12;
+  uint32 frames_to_capture = 13;
   // Disable disable pre-compiled shaders.
-  bool disable_pcs = 13;
+  bool disable_pcs = 14;
   // Insert extra commands to record error state
-  bool record_error_state = 14;
+  bool record_error_state = 15;
   // Wait for an event to start tracing
-  bool defer_start = 15;
+  bool defer_start = 16;
   // Disable buffering. (In case of a crash)
-  bool no_buffer = 16;
+  bool no_buffer = 17;
   // Clear the application cache
-  bool clear_cache = 17;
+  bool clear_cache = 18;
   // Hide unknown extensions
-  bool hide_unknown_extensions = 18;
+  bool hide_unknown_extensions = 19;
   // Where should we save the capture file.
-  string server_local_save_path = 19;
+  string server_local_save_path = 20;
 }
 
 enum TraceEvent {

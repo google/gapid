@@ -54,7 +54,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	traceURI := verb.URI
 
-	if traceURI == "" {
+	if traceURI == "" && verb.Local.Port == 0 {
 		if flags.NArg() != 1 {
 			app.Usage(ctx, "Expected application name")
 			return nil
@@ -62,72 +62,87 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		traceURI = flags.Arg(0)
 	}
 
-	uris := []string{}
-	traceDevices := []string{}
 	var traceDevice *path.Device
-	names := []string{}
-	// Find the actual trace URI from all of the devices
+	out := "capture.gfxtrace"
+	var port uint32
+	var uri string
 
-	devices, err := filterDevices(ctx, &verb.DeviceFlags, client)
-	if err != nil {
-		return err
-	}
-
-	if len(devices) == 0 {
-		return fmt.Errorf("Could not find matching device")
-	}
-
-	for _, dev := range devices {
-		tttn, err := client.FindTraceTarget(ctx, &service.FindTraceTargetRequest{
-			Device: dev,
-			Uri:    traceURI,
-		})
-		if err != nil {
-			continue
-		}
-
-		dd, err := client.Get(ctx, dev.Path())
+	if verb.Local.Port != 0 {
+		serverInfo, err := client.GetServerInfo(ctx)
 		if err != nil {
 			return err
 		}
-		d := dd.(*device.Instance)
-
-		uris = append(uris, tttn.Uri)
-		traceDevices = append(traceDevices, d.Name)
-		traceDevice = dev
-		if tttn.FriendlyApplication != "" {
-			names = append(names, tttn.FriendlyApplication)
-		} else if tttn.FriendlyExecutable != "" {
-			names = append(names, tttn.FriendlyExecutable)
-		} else {
-			names = append(names, tttn.Name)
+		traceDevice = serverInfo.GetServerLocalDevice()
+		if traceDevice.GetID() == nil {
+			return fmt.Errorf("The server was not started with a local device for tracing")
 		}
-	}
+		port = uint32(verb.Local.Port)
+	} else {
+		uris := []string{}
+		traceDevices := []string{}
+		names := []string{}
+		// Find the actual trace URI from all of the devices
 
-	if len(uris) == 0 {
-		return fmt.Errorf("Could not find %+v to trace on any device", traceURI)
-	}
-
-	if len(uris) > 1 {
-		output := fmt.Sprintf("Found %+v on multiple devices: \n", traceURI)
-		for i := range uris {
-			output += fmt.Sprintf("    %+v: %+v\n", traceDevices[i], uris[i])
+		devices, err := filterDevices(ctx, &verb.DeviceFlags, client)
+		if err != nil {
+			return err
 		}
-		return fmt.Errorf("%s", output)
+
+		if len(devices) == 0 {
+			return fmt.Errorf("Could not find matching device")
+		}
+
+		for _, dev := range devices {
+			tttn, err := client.FindTraceTarget(ctx, &service.FindTraceTargetRequest{
+				Device: dev,
+				Uri:    traceURI,
+			})
+			if err != nil {
+				continue
+			}
+
+			dd, err := client.Get(ctx, dev.Path())
+			if err != nil {
+				return err
+			}
+			d := dd.(*device.Instance)
+
+			uris = append(uris, tttn.Uri)
+			traceDevices = append(traceDevices, d.Name)
+			traceDevice = dev
+			if tttn.FriendlyApplication != "" {
+				names = append(names, tttn.FriendlyApplication)
+			} else if tttn.FriendlyExecutable != "" {
+				names = append(names, tttn.FriendlyExecutable)
+			} else {
+				names = append(names, tttn.Name)
+			}
+		}
+
+		if len(uris) == 0 {
+			return fmt.Errorf("Could not find %+v to trace on any device", traceURI)
+		}
+
+		if len(uris) > 1 {
+			output := fmt.Sprintf("Found %+v on multiple devices: \n", traceURI)
+			for i := range uris {
+				output += fmt.Sprintf("    %+v: %+v\n", traceDevices[i], uris[i])
+			}
+			return fmt.Errorf("%s", output)
+		}
+
+		fmt.Printf("Tracing %+v", uris)
+		out = names[0] + ".gfxtrace"
+		uri = uris[0]
 	}
 
-	fmt.Printf("Tracing %+v", uris)
-	out := names[0] + ".gfxtrace"
 	if verb.Out != "" {
 		out = verb.Out
 	}
 
 	options := &service.TraceOptions{
 		Device: traceDevice,
-		App: &service.TraceOptions_Uri{
-			uris[0],
-		},
-		Apis: []string{},
+		Apis:   []string{},
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
 		Cwd:                   verb.WorkingDir,
 		Environment:           verb.Env,
@@ -143,6 +158,16 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		HideUnknownExtensions: verb.Disable.Unknown.Extensions,
 		ClearCache:            verb.Clear.Cache,
 		ServerLocalSavePath:   out,
+	}
+
+	if uri != "" {
+		options.App = &service.TraceOptions_Uri{
+			uri,
+		}
+	} else {
+		options.App = &service.TraceOptions_Port{
+			port,
+		}
 	}
 
 	switch verb.API {

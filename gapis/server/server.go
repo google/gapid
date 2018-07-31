@@ -415,6 +415,7 @@ func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
 	return tracer.TraceOptions{
 		URI:                   opts.GetUri(),
 		UploadApplication:     opts.GetUploadApplication(),
+		Port:                  opts.GetPort(),
 		ClearCache:            opts.ClearCache,
 		APIs:                  opts.Apis,
 		WriteFile:             opts.ServerLocalSavePath,

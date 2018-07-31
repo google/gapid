@@ -17,6 +17,7 @@ package tracer
 import (
 	"context"
 
+	"github.com/google/gapid/core/os/device/bind"
 	gapii "github.com/google/gapid/gapii/client"
 	"github.com/google/gapid/gapis/service"
 )
@@ -47,6 +48,7 @@ type TraceTargetTreeNode struct {
 type TraceOptions struct {
 	URI               string   // What application should be traced
 	UploadApplication []byte   // This application should be uploaded and traced
+	Port              uint32   // Connect to a local port instead of launching anything
 	ClearCache        bool     // Should the cache be cleared on the device
 	PortFile          string   // What port file should be written to
 	APIs              []string // What apis should be traced
@@ -97,6 +99,9 @@ type Tracer interface {
 	// for the trace to be started. It returns the process that was created, as
 	// well as a function that can be used to clean up the device
 	SetupTrace(ctx context.Context, o *TraceOptions) (*gapii.Process, func(), error)
+
+	// GetDevice returns the device associated with this tracer
+	GetDevice() bind.Device
 }
 
 // GapiiOptions converts the given TraceOptions to gapii.Options.

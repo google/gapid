@@ -22,11 +22,15 @@ import (
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	gapii "github.com/google/gapid/gapii/client"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
 func Trace(ctx context.Context, device *path.Device, start task.Signal, options *tracer.TraceOptions, written *int64) error {
+	var process *gapii.Process
+	cleanup := func() {}
+	var err error
 	mgr := GetManager(ctx)
 	if device == nil {
 		return log.Errf(ctx, nil, "Invalid device path")
@@ -36,7 +40,15 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 		return log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
 	}
 
-	process, cleanup, err := tracer.SetupTrace(ctx, options)
+	if options.Port != 0 {
+		if !tracer.IsServerLocal() {
+			return log.Errf(ctx, nil, "Cannot attach to a remote device by port")
+		}
+		process = &gapii.Process{Port: int(options.Port), Device: tracer.GetDevice(), Options: options.GapiiOptions()}
+	} else {
+		process, cleanup, err = tracer.SetupTrace(ctx, options)
+	}
+
 	if err != nil {
 		return log.Errf(ctx, err, "Could not start trace")
 	}
