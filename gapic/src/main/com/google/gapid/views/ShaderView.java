@@ -22,7 +22,6 @@ import static com.google.gapid.util.Colors.getLuminance;
 import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
@@ -33,6 +32,7 @@ import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.FINE;
+import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -47,15 +47,12 @@ import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.Paths;
 import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
@@ -98,7 +95,6 @@ public class ShaderView extends Composite
     implements Tab, Capture.Listener, CommandStream.Listener, Resources.Listener {
   protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
 
-  private final Client client;
   protected final Models models;
   private final Widgets widgets;
   private final SingleInFlight shaderRpcController = new SingleInFlight();
@@ -106,9 +102,8 @@ public class ShaderView extends Composite
   private final LoadablePanel<Composite> loading;
   private boolean uiBuiltWithPrograms;
 
-  public ShaderView(Composite parent, Client client, Models models, Widgets widgets) {
+  public ShaderView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.client = client;
     this.models = models;
     this.widgets = widgets;
 
@@ -133,25 +128,10 @@ public class ShaderView extends Composite
       API.Shader shader = (data == null) ? null : (API.Shader)data.resource;
       if (shader != null) {
         models.analytics.postInteraction(View.Shaders, ClientAction.Edit);
-        Service.Value value = Service.Value.newBuilder()
-            .setResourceData(API.ResourceData.newBuilder()
-                .setShader(shader.toBuilder()
-                    .setSource(src)))
-            .build();
-        Rpc.listen(client.set(data.getPath(models.commands), value),
-            new UiCallback<Path.Any, Path.Capture>(this, LOG) {
-          @Override
-          protected Path.Capture onRpcThread(Rpc.Result<Path.Any> result)
-              throws RpcException, ExecutionException {
-            // TODO this should probably be able to handle any path.
-            return result.get().getResourceData().getAfter().getCapture();
-          }
-
-          @Override
-          protected void onUiThread(Path.Capture result) {
-            models.capture.updateCapture(result, null);
-          }
-        });
+        models.resources.updateResource(data.info, API.ResourceData.newBuilder()
+            .setShader(shader.toBuilder()
+                .setSource(src))
+            .build());
       }
     }));
     panel.addListener(SWT.Selection, e -> {
@@ -181,12 +161,12 @@ public class ShaderView extends Composite
   }
 
   private void getShaderSource(Data data, Consumer<ShaderPanel.Source[]> callback) {
-    shaderRpcController.start().listen(client.get(data.getPath(models.commands)),
-        new UiCallback<Service.Value, ShaderPanel.Source>(this, LOG) {
+    shaderRpcController.start().listen(models.resources.loadResource(data.info),
+        new UiCallback<API.ResourceData, ShaderPanel.Source>(this, LOG) {
       @Override
-      protected ShaderPanel.Source onRpcThread(Rpc.Result<Service.Value> result)
+      protected ShaderPanel.Source onRpcThread(Rpc.Result<API.ResourceData> result)
           throws RpcException, ExecutionException {
-        API.Shader shader = result.get().getResourceData().getShader();
+        API.Shader shader = result.get().getShader();
         data.resource = shader;
         return ShaderPanel.Source.of(shader);
       }
@@ -200,12 +180,12 @@ public class ShaderView extends Composite
 
   private void getProgramSource(
       Data data, Consumer<API.Program> onProgramLoaded, Consumer<ShaderPanel.Source[]> callback) {
-    programRpcController.start().listen(client.get(data.getPath(models.commands)),
-        new UiCallback<Service.Value, ShaderPanel.Source[]>(this, LOG) {
+    programRpcController.start().listen(models.resources.loadResource(data.info),
+        new UiCallback<API.ResourceData, ShaderPanel.Source[]>(this, LOG) {
       @Override
-      protected ShaderPanel.Source[] onRpcThread(Rpc.Result<Service.Value> result)
+      protected ShaderPanel.Source[] onRpcThread(Rpc.Result<API.ResourceData> result)
           throws RpcException, ExecutionException {
-        API.Program program = result.get().getResourceData().getProgram();
+        API.Program program = result.get().getProgram();
         data.resource = program;
         onProgramLoaded.accept(program);
         return ShaderPanel.Source.of(program);
@@ -418,36 +398,25 @@ public class ShaderView extends Composite
 
     private void updateShaders() {
       if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
-        List<Data> newShaders = Lists.newArrayList();
-        CommandIndex range = models.commands.getSelectedCommands();
-        boolean skippedAnyShaders = false;
-        for (Service.ResourcesByType bundle : models.resources.getResources()) {
-          if (bundle.getType() == type.type) {
-            for (Service.Resource info : bundle.getResourcesList()) {
-              if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
-                if (newShaders.isEmpty()) {
-                  newShaders.add(new Data(null) {
-                    @Override
-                    public String toString() {
-                      return type.selectMessage;
-                    }
-                  });
-                }
-                newShaders.add(new Data(info));
-              } else {
-                // This shader has not been created yet at this point in the trace, so we don't
-                // show it. Remember that we've skipped a shader and the UI list is incomplete.
-                skippedAnyShaders = true;
-              }
-            }
-          }
-        }
+        Resources.ResourceList resources = models.resources.getResources(type.type);
 
         // If we previously had created the dropdown with all the shaders and didn't skip any
         // this time, the dropdown does not need to change.
-        if (!lastUpdateContainedAllShaders || skippedAnyShaders) {
-          shaders = newShaders;
-          lastUpdateContainedAllShaders = !skippedAnyShaders;
+        if (!lastUpdateContainedAllShaders || !resources.complete) {
+          if (resources.isEmpty()) {
+            shaders = Collections.emptyList();
+          } else {
+            shaders = Lists.newArrayList(new Data(null) {
+              @Override
+              public String toString() {
+                return type.selectMessage;
+              }
+            });
+            resources.stream()
+                .map(Data::new)
+                .collect(toCollection(() -> shaders));
+          }
+          lastUpdateContainedAllShaders = resources.complete;
 
           int selection = shaderCombo.getCombo().getSelectionIndex();
           shaderCombo.setInput(shaders);
@@ -466,10 +435,6 @@ public class ShaderView extends Composite
 
         updateSelection();
       }
-    }
-
-    private static Path.Command firstAccess(Service.Resource info) {
-      return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
     }
 
     private void updateSelection() {
@@ -665,10 +630,6 @@ public class ShaderView extends Composite
 
     public Data(Service.Resource info) {
       this.info = info;
-    }
-
-    public Path.Any getPath(CommandStream commands) {
-      return resourceAfter(commands.getSelectedCommands(), info.getID());
     }
 
     @Override
