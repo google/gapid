@@ -159,6 +159,10 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
+	if d.To.Configuration == nil ||
+		d.To.Configuration.Hardware == nil {
+		return nil, log.Errf(ctx, nil, "Cannot get device information")
+	}
 	d.Instance().Name = d.To.Configuration.Hardware.Name
 	if i := d.Instance(); i.ID == nil || allZero(i.ID.Data) {
 		// Generate an identifier for the device based on it's details.

@@ -121,10 +121,10 @@ func (t *androidTracer) PreferredRootUri(ctx context.Context) (string, error) {
 
 func (t *androidTracer) APITraceOptions(ctx context.Context) []tracer.APITraceOptions {
 	options := make([]tracer.APITraceOptions, 0, 2)
-	if t.b.Instance().Configuration.Drivers.Opengl.Version != "" {
+	if t.b.Instance().GetConfiguration().GetDrivers().GetOpengl().GetVersion() != "" {
 		options = append(options, tracer.GLESTraceOptions())
 	}
-	if len(t.b.Instance().Configuration.Drivers.Vulkan.PhysicalDevices) > 0 {
+	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
 		options = append(options, tracer.VulkanTraceOptions())
 	}
 	return options
