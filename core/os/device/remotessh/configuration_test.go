@@ -85,6 +85,6 @@ func TestReadConfiguration(t *testing.T) {
 			KnownHosts: "someFile",
 		},
 	} {
-		assert.For(ctx, "configs[%v]", i).That(configs[i]).Equals(test)
+		assert.For(ctx, "configs[%v]", i).That(configs[i]).DeepEquals(test)
 	}
 }
