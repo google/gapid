@@ -31,6 +31,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
+import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
@@ -208,7 +209,7 @@ public class FramebufferView extends Composite
   }
 
   @Override
-  public void onReplayDeviceChanged() {
+  public void onReplayDeviceChanged(Device.Instance dev) {
     updateBuffer();
   }
 
