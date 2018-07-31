@@ -21,6 +21,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
@@ -63,7 +64,7 @@ public class ImagesModel {
 
     devices.addListener(new Devices.Listener() {
       @Override
-      public void onReplayDeviceChanged() {
+      public void onReplayDeviceChanged(Device.Instance dev) {
         update();
       }
     });
@@ -82,7 +83,7 @@ public class ImagesModel {
   public ListenableFuture<FetchedImage> getFramebuffer(CommandIndex command,
       API.FramebufferAttachment attachment, Service.RenderSettings renderSettings) {
     return FetchedImage.load(client, client.getFramebufferAttachment(
-        devices.getReplayDevice(), command.getCommand(), attachment, renderSettings,
+        devices.getReplayDevicePath(), command.getCommand(), attachment, renderSettings,
         FB_HINTS, settings.disableReplayOptimization));
   }
 

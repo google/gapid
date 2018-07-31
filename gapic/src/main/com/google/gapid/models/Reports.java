@@ -18,6 +18,7 @@ package com.google.gapid.models;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
+import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
@@ -42,7 +43,7 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
 
     devices.addListener(new Devices.Listener() {
       @Override
-      public void onReplayDeviceChanged() {
+      public void onReplayDeviceChanged(Device.Instance dev) {
         if (context.isLoaded()) {
           load(getPath(capture.getData(), context.getSelectedContext()), false);
         }
@@ -69,7 +70,7 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
     return Path.Any.newBuilder()
         .setReport(context.report(Path.Report.newBuilder())
             .setCapture(capturePath)
-            .setDevice(devices.getReplayDevice()))
+            .setDevice(devices.getReplayDevicePath()))
         .build();
   }
 

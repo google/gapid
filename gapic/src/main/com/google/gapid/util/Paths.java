@@ -20,6 +20,7 @@ import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
@@ -52,6 +53,13 @@ public class Paths {
   public static Path.Command lastCommand(Path.Commands commands) {
     return Path.Command.newBuilder().setCapture(commands.getCapture())
         .addAllIndices(commands.getToList()).build();
+  }
+
+  public static Path.Device device(Device.ID device) {
+    return Path.Device.newBuilder()
+        .setID(Path.ID.newBuilder()
+            .setData(device.getData()))
+        .build();
   }
 
   public static Path.Any commandTree(Path.Capture capture, FilteringContext context) {
@@ -239,9 +247,15 @@ public class Paths {
         .setBlob(Path.Blob.newBuilder().setID(Path.ID.newBuilder().setData(id.getData()))).build();
   }
 
-  public static Path.Any traceInfo(Path.Device node) {
+  public static Path.Any device(Path.Device device) {
     return Path.Any.newBuilder()
-        .setTraceConfig(Path.DeviceTraceConfiguration.newBuilder().setDevice(node)).build();
+        .setDevice(device)
+        .build();
+  }
+
+  public static Path.Any traceInfo(Path.Device device) {
+    return Path.Any.newBuilder()
+        .setTraceConfig(Path.DeviceTraceConfiguration.newBuilder().setDevice(device)).build();
   }
 
   /**

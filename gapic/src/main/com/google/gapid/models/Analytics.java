@@ -35,7 +35,7 @@ public class Analytics implements ExceptionHandler {
     About, GotoCommand, GotoMemory, Licenses, Settings, Trace, Welcome,
     // See MainWindow.MainTab.Type
     Commands, Framebuffer, Textures, Geometry, Shaders, Report, Log, State, Memory,
-    ContextSelector;
+    ContextSelector, ReplayDeviceSelector;
   }
 
   private final Client client;
