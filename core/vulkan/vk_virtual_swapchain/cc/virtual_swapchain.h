@@ -94,7 +94,17 @@ class VirtualSwapchain {
       return VK_SUCCESS;
     }
 
-    return base_swapchain_->PresentFrom(queue, image_data_[i].image_);
+    return base_swapchain_->PresentFrom(queue, i, image_data_[i].image_);
+  }
+
+  // If we have a real base swapchain we need it to be done with its blit before
+  // we can acquire it again.
+  VkSemaphore GetAcquireWaitSemaphore(size_t i) {
+    if (!base_swapchain_) {
+      return VK_NULL_HANDLE;
+    }
+
+    return base_swapchain_->BlitWaitSemaphore(i);
   }
 
   // When the commands associated with an image have been submitted to
