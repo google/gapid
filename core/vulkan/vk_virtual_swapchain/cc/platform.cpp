@@ -21,7 +21,7 @@ namespace swapchain {
 void CreateSurface(const InstanceData* functions, VkInstance instance,
                    const void* data, const VkAllocationCallbacks* pAllocator,
                    VkSurfaceKHR* pSurface) {
-#ifdef VK_USE_PLATFORM_ANDROID_KHR
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
   {
     auto pCreateInfo = static_cast<const VkAndroidSurfaceCreateInfoKHR*>(data);
     if (pCreateInfo->sType ==
