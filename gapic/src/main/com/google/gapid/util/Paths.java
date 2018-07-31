@@ -191,21 +191,34 @@ public class Paths {
         .setAs(Path.As.newBuilder().setResourceData(resource).setImageFormat(format)).build();
   }
 
-  public static Path.Thumbnail thumbnail(Path.ResourceData resource, int size, boolean disableOptimization) {
-    return Path.Thumbnail.newBuilder().setResource(resource)
-        .setDesiredFormat(Images.FMT_RGBA_U8_NORM).setDesiredMaxHeight(size)
-        .setDesiredMaxWidth(size).setDisableOptimization(disableOptimization).build();
+  public static Path.Thumbnail thumbnail(Path.Command command, int size, boolean disableOpt) {
+    return Path.Thumbnail.newBuilder()
+        .setCommand(command)
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .setDisableOptimization(disableOpt)
+        .build();
   }
 
-  public static Path.Thumbnail thumbnail(Path.Command command, int size, boolean disableOptimization) {
-    return Path.Thumbnail.newBuilder().setCommand(command).setDesiredFormat(Images.FMT_RGBA_U8_NORM)
-        .setDesiredMaxHeight(size).setDesiredMaxWidth(size).setDisableOptimization(disableOptimization).build();
+  public static Path.Thumbnail thumbnail(Path.CommandTreeNode node, int size, boolean disableOpt) {
+    return Path.Thumbnail.newBuilder()
+        .setCommandTreeNode(node)
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .setDisableOptimization(disableOpt)
+        .build();
   }
 
-  public static Path.Thumbnail thumbnail(Path.CommandTreeNode node, int size, boolean disableOptimization) {
-    return Path.Thumbnail.newBuilder().setCommandTreeNode(node)
-        .setDesiredFormat(Images.FMT_RGBA_U8_NORM).setDesiredMaxHeight(size)
-        .setDesiredMaxWidth(size).setDisableOptimization(disableOptimization).build();
+  public static Path.Thumbnail thumbnail(Path.ResourceData resource, int size, boolean disableOpt) {
+    return Path.Thumbnail.newBuilder()
+        .setResource(resource)
+        .setDesiredFormat(Images.FMT_RGBA_U8_NORM)
+        .setDesiredMaxHeight(size)
+        .setDesiredMaxWidth(size)
+        .setDisableOptimization(disableOpt)
+        .build();
   }
 
   public static Path.Any thumbnail(Path.Thumbnail thumb) {

@@ -104,10 +104,6 @@ public class FetchedImage implements MultiLayerAndLevelImage {
             Math.min(level, image.getLevelCount() - 1)), (l) -> l.getImageData()));
   }
 
-  public static ListenableFuture<ImageData> loadThumbnail(Client client, Path.Thumbnail path) {
-    return loadThumbnail(client, path, i -> {/* do nothing */});
-  }
-
   public static ListenableFuture<ImageData> loadThumbnail(
       Client client, Path.Thumbnail path, Consumer<Info> onInfo) {
     return loadImage(Futures.transform(client.get(thumbnail(path)), value -> {

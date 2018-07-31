@@ -15,12 +15,12 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.proto.service.api.API.ResourceType.TextureResource;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Paths.resourceAfter;
-import static com.google.gapid.util.Paths.thumbnail;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
@@ -42,6 +42,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.models.Thumbnails;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -95,8 +96,8 @@ import java.util.logging.Logger;
 /**
  * View that displays the texture resources of the current capture.
  */
-public class TextureView extends Composite
-    implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener {
+public class TextureView extends Composite implements Tab, Capture.Listener, Resources.Listener,
+    CommandStream.Listener, Thumbnails.Listener  {
   protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
   private final Client client;
@@ -117,7 +118,7 @@ public class TextureView extends Composite
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
     textureTable = createTableViewer(splitter, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
-    imageProvider = new ImageProvider(client, textureTable, widgets.loading);
+    imageProvider = new ImageProvider(models.thumbs, textureTable, widgets.loading);
     initTextureSelector(textureTable, imageProvider);
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
@@ -136,10 +137,12 @@ public class TextureView extends Composite
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.resources.addListener(this);
+    models.thumbs.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.resources.removeListener(this);
+      models.thumbs.removeListener(this);
       gotoAction.dispose();
       imageProvider.reset();
     });
@@ -209,6 +212,12 @@ public class TextureView extends Composite
   @Override
   public void onCommandsSelected(CommandIndex path) {
     updateTextures(false);
+  }
+
+  @Override
+  public void onThumbnailsChanged() {
+    imageProvider.reset();
+    textureTable.refresh();
   }
 
   private void updateTextures(boolean resourcesChanged) {
@@ -298,7 +307,7 @@ public class TextureView extends Composite
     Widgets.Refresher refresher = withAsyncRefresh(textureTable);
     for (Service.Resource info : resources.getResourcesList()) {
       if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
-        Data data = new Data(resourceAfter(range, info.getID()), info, models.settings.disableReplayOptimization);
+        Data data = new Data(resourceAfter(range, info.getID()), info);
         textures.add(data);
         data.load(client, textureTable.getTable(), refresher);
       }
@@ -315,13 +324,11 @@ public class TextureView extends Composite
   private static class Data {
     public final Path.Any path;
     public final Service.Resource info;
-    public final boolean disableReplayOptimization;
     protected AdditionalInfo imageInfo;
 
-    public Data(Path.Any path, Service.Resource info, boolean disableReplayOptimization) {
+    public Data(Path.Any path, Service.Resource info) {
       this.path = path;
       this.info = info;
-      this.disableReplayOptimization = disableReplayOptimization;
       this.imageInfo = AdditionalInfo.NULL;
     }
 
@@ -626,13 +633,13 @@ public class TextureView extends Composite
   private static class ImageProvider implements LoadingIndicator.Repaintable {
     private static final int SIZE = DPIUtil.autoScaleUp(18);
 
-    private final Client client;
+    private final Thumbnails thumbs;
     private final TableViewer viewer;
     private final LoadingIndicator loading;
     private final Map<Data, LoadableImage> images = Maps.newIdentityHashMap();
 
-    public ImageProvider(Client client, TableViewer viewer, LoadingIndicator loading) {
-      this.client = client;
+    public ImageProvider(Thumbnails thumbs, TableViewer viewer, LoadingIndicator loading) {
+      this.thumbs = thumbs;
       this.viewer = viewer;
       this.loading = loading;
     }
@@ -674,8 +681,7 @@ public class TextureView extends Composite
     }
 
     private ListenableFuture<ImageData> loadImage(Data data) {
-      return FetchedImage.loadThumbnail(
-          client, thumbnail(data.path.getResourceData(), SIZE, data.disableReplayOptimization));
+      return noAlpha(thumbs.getThumbnail(data.path.getResourceData(), SIZE, i -> { /* noop */ }));
     }
 
     public void reset() {
