@@ -64,14 +64,14 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 		return log.Errf(ctx, err, "Failed to load the capture file '%v'", filepath)
 	}
 
-	boxedResources, err := client.Get(ctx, capture.Resources().Path())
+	boxedResources, err := client.Get(ctx, capture.Resources().Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Could not find the capture's resources")
 	}
 	resources := boxedResources.(*service.Resources)
 
 	if verb.At == -1 {
-		boxedCapture, err := client.Get(ctx, capture.Path())
+		boxedCapture, err := client.Get(ctx, capture.Path(), nil)
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
@@ -86,7 +86,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 					continue
 				}
 				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.ID)
-				resourceData, err := client.Get(ctx, resourcePath.Path())
+				resourceData, err := client.Get(ctx, resourcePath.Path(), nil)
 				if err != nil {
 					log.E(ctx, "Could not get data for shader: %v %v", v, err)
 					continue

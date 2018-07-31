@@ -61,14 +61,14 @@ func (verb *packagesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	for _, p := range devices {
-		o, err := client.Get(ctx, p.Path())
+		o, err := client.Get(ctx, p.Path(), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
 			continue
 		}
 		d := o.(*device.Instance)
 
-		cfg, err := client.Get(ctx, (&path.DeviceTraceConfiguration{Device: p}).Path())
+		cfg, err := client.Get(ctx, (&path.DeviceTraceConfiguration{Device: p}).Path(), nil)
 		if err != nil {
 			fmt.Fprintf(os.Stdout, "%v\n", log.Err(ctx, err, "Couldn't get device config"))
 			return err

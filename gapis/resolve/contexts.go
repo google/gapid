@@ -31,8 +31,8 @@ import (
 )
 
 // Contexts resolves the list of contexts belonging to a capture.
-func Contexts(ctx context.Context, p *path.Contexts) ([]*api.ContextInfo, error) {
-	obj, err := database.Build(ctx, &ContextListResolvable{Capture: p.Capture})
+func Contexts(ctx context.Context, p *path.Contexts, r *path.ResolveConfig) ([]*api.ContextInfo, error) {
+	obj, err := database.Build(ctx, &ContextListResolvable{Capture: p.Capture, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +40,8 @@ func Contexts(ctx context.Context, p *path.Contexts) ([]*api.ContextInfo, error)
 }
 
 // ContextsByID resolves the list of contexts belonging to a capture.
-func ContextsByID(ctx context.Context, p *path.Contexts) (map[api.ContextID]*api.ContextInfo, error) {
-	ctxs, err := Contexts(ctx, p)
+func ContextsByID(ctx context.Context, p *path.Contexts, r *path.ResolveConfig) (map[api.ContextID]*api.ContextInfo, error) {
+	ctxs, err := Contexts(ctx, p, r)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +53,8 @@ func ContextsByID(ctx context.Context, p *path.Contexts) (map[api.ContextID]*api
 }
 
 // Context resolves the single context.
-func Context(ctx context.Context, p *path.Context) (*api.ContextInfo, error) {
-	contexts, err := Contexts(ctx, p.Capture.Contexts())
+func Context(ctx context.Context, p *path.Context, r *path.ResolveConfig) (*api.ContextInfo, error) {
+	contexts, err := Contexts(ctx, p.Capture.Contexts(), r)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ type Named interface {
 
 // Resolve implements the database.Resolver interface.
 func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Capture)
+	ctx = setupContext(ctx, r.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

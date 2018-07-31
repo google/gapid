@@ -23,15 +23,15 @@ import (
 
 // objects returns the path to the Objects field of the currently bound
 // context, and the context at p.
-func objects(ctx context.Context, p path.Node) (*path.Field, Contextʳ, error) {
+func objects(ctx context.Context, p path.Node, r *path.ResolveConfig) (*path.Field, Contextʳ, error) {
 	if cmdPath := path.FindCommand(p); cmdPath != nil {
-		cmd, err := resolve.Cmd(ctx, cmdPath)
+		cmd, err := resolve.Cmd(ctx, cmdPath, r)
 		if err != nil {
 			return nil, NilContextʳ, err
 		}
 		thread := cmd.Thread()
 
-		stateObj, err := resolve.State(ctx, cmdPath.StateAfter())
+		stateObj, err := resolve.State(ctx, cmdPath.StateAfter(), r)
 		if err != nil {
 			return nil, NilContextʳ, err
 		}
@@ -47,8 +47,8 @@ func objects(ctx context.Context, p path.Node) (*path.Field, Contextʳ, error) {
 
 // Link returns the link to the attribute vertex array in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o AttributeLocation) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil {
 		return nil, err
 	}
@@ -64,8 +64,8 @@ func (o AttributeLocation) Link(ctx context.Context, p path.Node) (path.Node, er
 
 // Link returns the link to the buffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o BufferId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Buffers().Contains(o) {
 		return nil, err
 	}
@@ -74,8 +74,8 @@ func (o BufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the framebuffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o FramebufferId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Framebuffers().Contains(o) {
 		return nil, err
 	}
@@ -84,8 +84,8 @@ func (o FramebufferId) Link(ctx context.Context, p path.Node) (path.Node, error)
 
 // Link returns the link to the program in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o ProgramId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Programs().Contains(o) {
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func (o ProgramId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the query object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o QueryId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Queries().Contains(o) {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func (o QueryId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the renderbuffer object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o RenderbufferId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Renderbuffers().Contains(o) {
 		return nil, err
 	}
@@ -114,8 +114,8 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node) (path.Node, error
 
 // Link returns the link to the shader object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o ShaderId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Shaders().Contains(o) {
 		return nil, err
 	}
@@ -124,8 +124,8 @@ func (o ShaderId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the texture object in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o TextureId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().Textures().Contains(o) {
 		return nil, err
 	}
@@ -134,13 +134,13 @@ func (o TextureId) Link(ctx context.Context, p path.Node) (path.Node, error) {
 
 // Link returns the link to the uniform in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o UniformIndex) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o UniformIndex) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil {
 		return nil, err
 	}
 
-	cmd, err := resolve.Cmd(ctx, path.FindCommand(p))
+	cmd, err := resolve.Cmd(ctx, path.FindCommand(p), r)
 	if err != nil {
 		return nil, err
 	}
@@ -170,13 +170,13 @@ func (o UniformIndex) Link(ctx context.Context, p path.Node) (path.Node, error) 
 
 // Link returns the link to the uniform in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o UniformLocation) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil {
 		return nil, err
 	}
 
-	cmd, err := resolve.Cmd(ctx, path.FindCommand(p))
+	cmd, err := resolve.Cmd(ctx, path.FindCommand(p), r)
 	if err != nil {
 		return nil, err
 	}
@@ -205,8 +205,8 @@ func (o UniformLocation) Link(ctx context.Context, p path.Node) (path.Node, erro
 
 // Link returns the link to the vertex array in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o VertexArrayId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().VertexArrays().Contains(o) {
 		return nil, err
 	}
@@ -215,8 +215,8 @@ func (o VertexArrayId) Link(ctx context.Context, p path.Node) (path.Node, error)
 
 // Link returns the link to the transform feedback in the state block.
 // If nil, nil is returned then the path cannot be followed.
-func (o TransformFeedbackId) Link(ctx context.Context, p path.Node) (path.Node, error) {
-	i, c, err := objects(ctx, p)
+func (o TransformFeedbackId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
 	if i == nil || !c.Objects().TransformFeedbacks().Contains(o) {
 		return nil, err
 	}

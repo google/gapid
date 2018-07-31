@@ -79,7 +79,7 @@ type State interface {
 	// Root returns the path to the root of the state to display. It can vary
 	// based on filtering mode. Returning nil, nil indicates there is no state
 	// to show at this point in the capture.
-	Root(ctx context.Context, p *path.State) (path.Node, error)
+	Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (path.Node, error)
 
 	// SetupInitialState sanitizes deserialized state to make it valid.
 	// It can fill in any derived data which we choose not to serialize,

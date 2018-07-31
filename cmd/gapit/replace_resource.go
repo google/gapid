@@ -79,14 +79,14 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 		return log.Errf(ctx, err, "Failed to load the capture file '%v'", captureFilepath)
 	}
 
-	boxedResources, err := client.Get(ctx, capture.Resources().Path())
+	boxedResources, err := client.Get(ctx, capture.Resources().Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Could not find the capture's resources")
 	}
 	resources := boxedResources.(*service.Resources)
 
 	if verb.At == -1 {
-		boxedCapture, err := client.Get(ctx, capture.Path())
+		boxedCapture, err := client.Get(ctx, capture.Path(), nil)
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
@@ -119,7 +119,7 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 		for i, v := range shaderResources {
 			ids[i] = v.ID
 			resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.ID)
-			rd, err := client.Get(ctx, resourcePath.Path())
+			rd, err := client.Get(ctx, resourcePath.Path(), nil)
 			if err != nil {
 				log.Errf(ctx, err, "Could not get data for shader: %v", v)
 				return err
@@ -135,7 +135,7 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 		resourcePath = capture.Command(uint64(verb.At)).ResourcesAfter(ids).Path()
 	}
 
-	newResourcePath, err := client.Set(ctx, resourcePath, resourceData)
+	newResourcePath, err := client.Set(ctx, resourcePath, resourceData, nil)
 	if err != nil {
 		return log.Errf(ctx, err, "Could not update resource data: %v", resourcePath)
 	}

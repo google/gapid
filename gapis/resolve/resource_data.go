@@ -39,7 +39,8 @@ type ResolvedResources struct {
 // Resolve builds a ResolvedResources object for all of the resources
 // at the path r.After
 func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.After.Capture)
+	ctx = setupContext(ctx, r.After.Capture, r.Config)
+
 	resources, err := buildResources(ctx, r.After)
 
 	if err != nil {
@@ -118,8 +119,8 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 
 // ResourceData resolves the data of the specified resource at the specified
 // point in the capture.
-func ResourceData(ctx context.Context, p *path.ResourceData) (interface{}, error) {
-	obj, err := database.Build(ctx, &ResourceDataResolvable{Path: p})
+func ResourceData(ctx context.Context, p *path.ResourceData, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := database.Build(ctx, &ResourceDataResolvable{Path: p, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +129,7 @@ func ResourceData(ctx context.Context, p *path.ResourceData) (interface{}, error
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.Path.After})
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.Path.After, Config: r.Config})
 	if err != nil {
 		return nil, err
 	}

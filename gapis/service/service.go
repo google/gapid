@@ -106,16 +106,16 @@ type Service interface {
 		hints *UsageHints) (*path.ImageInfo, error)
 
 	// Get resolves and returns the object, value or memory at the path p.
-	Get(ctx context.Context, p *path.Any) (interface{}, error)
+	Get(ctx context.Context, p *path.Any, c *path.ResolveConfig) (interface{}, error)
 
 	// Set creates a copy of the capture referenced by p, but with the object, value
 	// or memory at p replaced with v. The path returned is identical to p, but with
 	// the base changed to refer to the new capture.
-	Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error)
+	Set(ctx context.Context, p *path.Any, v interface{}, c *path.ResolveConfig) (*path.Any, error)
 
 	// Follow returns the path to the object that the value at p links to.
 	// If the value at p does not link to anything then nil is returned.
-	Follow(ctx context.Context, p *path.Any) (*path.Any, error)
+	Follow(ctx context.Context, p *path.Any, c *path.ResolveConfig) (*path.Any, error)
 
 	// BeginCPUProfile starts CPU self-profiling of the server.
 	// If the CPU is already being profiled then this function will return an

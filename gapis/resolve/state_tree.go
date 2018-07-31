@@ -32,8 +32,12 @@ import (
 )
 
 // StateTree resolves the specified state tree path.
-func StateTree(ctx context.Context, c *path.StateTree) (*service.StateTree, error) {
-	id, err := database.Store(ctx, &StateTreeResolvable{Path: c.State, ArrayGroupSize: c.ArrayGroupSize})
+func StateTree(ctx context.Context, c *path.StateTree, r *path.ResolveConfig) (*service.StateTree, error) {
+	id, err := database.Store(ctx, &StateTreeResolvable{
+		Path:           c.State,
+		ArrayGroupSize: c.ArrayGroupSize,
+		Config:         r,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +97,7 @@ func deref(v reflect.Value) reflect.Value {
 }
 
 // StateTreeNode resolves the specified command tree node path.
-func StateTreeNode(ctx context.Context, p *path.StateTreeNode) (*service.StateTreeNode, error) {
+func StateTreeNode(ctx context.Context, p *path.StateTreeNode, r *path.ResolveConfig) (*service.StateTreeNode, error) {
 	boxed, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -103,7 +107,7 @@ func StateTreeNode(ctx context.Context, p *path.StateTreeNode) (*service.StateTr
 
 // StateTreeNodeForPath returns the path to the StateTreeNode representing the
 // path p.
-func StateTreeNodeForPath(ctx context.Context, p *path.StateTreeNodeForPath) (*path.StateTreeNode, error) {
+func StateTreeNodeForPath(ctx context.Context, p *path.StateTreeNodeForPath, r *path.ResolveConfig) (*path.StateTreeNode, error) {
 	boxed, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -367,12 +371,12 @@ func stateValuePreview(v reflect.Value) (*box.Value, bool) {
 // Resolve builds and returns a *StateTree for the path.StateTreeNode.
 // Resolve implements the database.Resolver interface.
 func (r *StateTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	globalState, err := GlobalState(ctx, r.Path.After.GlobalStateAfter())
+	globalState, err := GlobalState(ctx, r.Path.After.GlobalStateAfter(), r.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	rootObj, rootPath, apiID, err := state(ctx, r.Path)
+	rootObj, rootPath, apiID, err := state(ctx, r.Path, r.Config)
 	if err != nil {
 		return nil, err
 	}

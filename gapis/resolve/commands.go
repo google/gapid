@@ -29,7 +29,7 @@ import (
 )
 
 // Commands resolves and returns the command list from the path p.
-func Commands(ctx context.Context, p *path.Commands) (*service.Commands, error) {
+func Commands(ctx context.Context, p *path.Commands, r *path.ResolveConfig) (*service.Commands, error) {
 	c, err := capture.ResolveFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func NCmds(ctx context.Context, p *path.Capture, n uint64) ([]api.Cmd, error) {
 }
 
 // Cmd resolves and returns the command from the path p.
-func Cmd(ctx context.Context, p *path.Command) (api.Cmd, error) {
+func Cmd(ctx context.Context, p *path.Command, r *path.ResolveConfig) (api.Cmd, error) {
 	cmdIdx := p.Indices[0]
 	if len(p.Indices) > 1 {
 		snc, err := SyncData(ctx, p.Capture)
@@ -132,8 +132,8 @@ func Cmd(ctx context.Context, p *path.Command) (api.Cmd, error) {
 }
 
 // Parameter resolves and returns the parameter from the path p.
-func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func Parameter(ctx context.Context, p *path.Parameter, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +153,8 @@ func Parameter(ctx context.Context, p *path.Parameter) (interface{}, error) {
 }
 
 // Result resolves and returns the command's result from the path p.
-func Result(ctx context.Context, p *path.Result) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, p.Parent())
+func Result(ctx context.Context, p *path.Result, r *path.ResolveConfig) (interface{}, error) {
+	obj, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}

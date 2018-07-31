@@ -29,8 +29,8 @@ import (
 )
 
 // Memory resolves and returns the memory from the path p.
-func Memory(ctx context.Context, p *path.Memory) (*service.Memory, error) {
-	ctx = capture.Put(ctx, path.FindCapture(p))
+func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*service.Memory, error) {
+	ctx = setupContext(ctx, path.FindCapture(p), rc)
 
 	cmdIdx := p.After.Indices[0]
 	fullCmdIdx := p.After.Indices

@@ -17,7 +17,6 @@ package replay
 import (
 	"context"
 	"sync"
-
 	"time"
 
 	"github.com/google/gapid/core/data/id"
