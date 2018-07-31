@@ -844,7 +844,7 @@ import (
   // Link returns a path which can be used to view memory which is referenced
   // by the slice s.
   // If nil, nil is returned then the path cannot be followed.
-  func (s {{$slice_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
+  func (s {{$slice_ty}}) Link(ϟctx context.Context, ϟp path.Node, ϟr *path.ResolveConfig) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
       return cmd.MemoryAfter(uint32(s.Pool()), s.Base(), s.Size()), nil
     }
@@ -992,7 +992,7 @@ import (
   // is a path to the command and resulting path is a path to an object
   // identified by p. Once resolved the command will return a representation
   // of the value of the instance after the command has executed.
-  func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node) (path.Node, error) {
+  func (p {{$ptr_ty}}) Link(ϟctx context.Context, ϟp path.Node, ϟr *path.ResolveConfig) (path.Node, error) {
     if cmd := path.FindCommand(ϟp); cmd != nil {
       return cmd.MemoryAfter(uint32(ϟmem.ApplicationPool), uint64(p), 0), nil
     }

@@ -64,7 +64,7 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if len(verb.At) == 0 {
-		boxedCapture, err := client.Get(ctx, capture.Path())
+		boxedCapture, err := client.Get(ctx, capture.Path(), nil)
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
@@ -74,7 +74,7 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	boxedVal, err := client.Get(ctx, (&path.Metrics{
 		Command:         capture.Command(verb.At[0], verb.At[1:]...),
 		MemoryBreakdown: true,
-	}).Path())
+	}).Path(), nil)
 	if err != nil {
 		return log.Errf(ctx, err, "Failed to load metrics")
 	}
@@ -89,7 +89,7 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		boxedConstants, err := client.Get(ctx, (&path.ConstantSet{
 			API:   mem.API,
 			Index: uint32(mem.AllocationFlagsIndex),
-		}).Path())
+		}).Path(), nil)
 		if err != nil {
 			return log.Errf(ctx, err, "Failed to load allocation flag names")
 		}

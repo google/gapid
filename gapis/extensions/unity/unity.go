@@ -26,7 +26,7 @@ import (
 func init() {
 	extensions.Register(extensions.Extension{
 		Name: "Unity",
-		CmdGroupers: func(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper {
+		CmdGroupers: func(ctx context.Context, p *path.CommandTree, r *path.ResolveConfig) []cmdgrouper.Grouper {
 			return []cmdgrouper.Grouper{
 				newStateResetGrouper(),
 			}

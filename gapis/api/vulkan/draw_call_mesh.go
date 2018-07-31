@@ -28,14 +28,14 @@ import (
 )
 
 // drawCallMesh builds a mesh for dc at p.
-func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh) (*api.Mesh, error) {
+func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	cmdPath := path.FindCommand(p)
 	if cmdPath == nil {
 		log.W(ctx, "Couldn't find command at path '%v'", p)
 		return nil, nil
 	}
 
-	s, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter())
+	s, err := resolve.GlobalState(ctx, cmdPath.GlobalStateAfter(), r)
 	if err != nil {
 		return nil, err
 	}

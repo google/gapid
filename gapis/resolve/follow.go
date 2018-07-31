@@ -25,8 +25,8 @@ import (
 
 // Follow resolves the path to the object that the value at Path links to.
 // If the value at Path does not link to anything then nil is returned.
-func Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
-	obj, err := database.Build(ctx, &FollowResolvable{Path: p})
+func Follow(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
+	obj, err := database.Build(ctx, &FollowResolvable{Path: p, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 
 // Resolve implements the database.Resolver interface.
 func (r *FollowResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	obj, err := ResolveInternal(ctx, r.Path.Node())
+	obj, err := ResolveInternal(ctx, r.Path.Node(), r.Config)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (r *FollowResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		return nil, &service.ErrPathNotFollowable{Path: r.Path}
 	}
 
-	link, err := linker.Link(ctx, r.Path.Node())
+	link, err := linker.Link(ctx, r.Path.Node(), r.Config)
 	if err != nil {
 		return link, err
 	}

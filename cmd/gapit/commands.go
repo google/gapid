@@ -86,7 +86,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	treePath.MaxChildren = int32(verb.MaxChildren)
 
-	boxedTree, err := client.Get(ctx, treePath.Path())
+	boxedTree, err := client.Get(ctx, treePath.Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the command tree")
 	}
@@ -101,7 +101,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		client.Find(ctx, req, func(r *service.FindResponse) error {
 			p := r.GetCommandTreeNode()
-			boxedNode, err := client.Get(ctx, p.Path())
+			boxedNode, err := client.Get(ctx, p.Path(), nil)
 			if err != nil {
 				return err
 			}
@@ -138,7 +138,7 @@ func traverseCommandTree(
 		return task.StopReason(ctx)
 	}
 
-	boxedNode, err := c.Get(ctx, p.Path())
+	boxedNode, err := c.Get(ctx, p.Path(), nil)
 	if err != nil {
 		return log.Errf(ctx, err, "Failed to load the node at: %v", p)
 	}

@@ -20,5 +20,5 @@ import "context"
 type Linker interface {
 	// Link returns the link to the pointee of this object at p.
 	// If nil, nil is returned then the path cannot be followed.
-	Link(ctx context.Context, p Node) (Node, error)
+	Link(ctx context.Context, p Node, r *ResolveConfig) (Node, error)
 }

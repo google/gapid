@@ -41,11 +41,11 @@ func (s *State) GetContext(thread uint64) Contextʳ {
 // Root returns the path to the root of the state to display. It can vary based
 // on filtering mode. Returning nil, nil indicates there is no state to show at
 // this point in the capture.
-func (s *State) Root(ctx context.Context, p *path.State) (path.Node, error) {
+func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (path.Node, error) {
 	if p.Context == nil || !p.Context.IsValid() {
 		return p, nil
 	}
-	c, err := resolve.Context(ctx, p.After.Capture.Context(p.Context.ID()))
+	c, err := resolve.Context(ctx, p.After.Capture.Context(p.Context.ID()), r)
 	if err != nil {
 		return nil, err
 	}
@@ -257,9 +257,9 @@ func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 }
 
 // Mesh implements the api.MeshProvider interface.
-func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*api.Mesh, error) {
+func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	if dc, ok := o.(drawCall); ok {
-		return drawCallMesh(ctx, dc, p)
+		return drawCallMesh(ctx, dc, p, r)
 	}
 	return nil, nil
 }

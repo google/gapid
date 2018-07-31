@@ -30,8 +30,8 @@ import (
 )
 
 // Report resolves the report for the given path.
-func Report(ctx context.Context, p *path.Report) (*service.Report, error) {
-	obj, err := database.Build(ctx, &ReportResolvable{Path: p})
+func Report(ctx context.Context, p *path.Report, r *path.ResolveConfig) (*service.Report, error) {
+	obj, err := database.Build(ctx, &ReportResolvable{Path: p, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtabl
 
 // Resolve implements the database.Resolver interface.
 func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.Capture)
+	ctx = setupContext(ctx, r.Path.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter, sd)
+	filter, err := buildFilter(ctx, r.Path.Capture, r.Path.Filter, sd, r.Config)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/context/keys"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type contextMgrKeyTy string
@@ -37,4 +38,23 @@ func GetManager(ctx context.Context) *Manager {
 		panic(string(contextMgrKey + " not present"))
 	}
 	return val.(*Manager)
+}
+
+type contextDeviceKeyTy string
+
+const contextDeviceKey = contextDeviceKeyTy("replayDeviceID")
+
+// PutDevice attaches a target replay device to a Context.
+func PutDevice(ctx context.Context, m *path.Device) context.Context {
+	return keys.WithValue(ctx, contextDeviceKey, m)
+}
+
+// GetDevice retrieves the target replay device from a context previously
+// annotated by PutDevice.
+func GetDevice(ctx context.Context) *path.Device {
+	val := ctx.Value(contextDeviceKey)
+	if val == nil {
+		return nil
+	}
+	return val.(*path.Device)
 }

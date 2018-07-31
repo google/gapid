@@ -127,12 +127,12 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 	if err != nil {
 		return nil, log.Errf(ctx, err, "GetFramebufferAttachment failed")
 	}
-	iio, err := client.Get(ctx, iip.Path())
+	iio, err := client.Get(ctx, iip.Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image.Info failed")
 	}
 	ii := iio.(*img.Info)
-	dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
+	dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Get frame image data failed")
 	}

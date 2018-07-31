@@ -119,7 +119,7 @@ func (verb *infoVerb) drawCallStats(ctx context.Context, client client.Client, c
 	boxedVal, err := client.Get(ctx, (&path.Stats{
 		Capture:  c,
 		DrawCall: true,
-	}).Path())
+	}).Path(), nil)
 	if err != nil {
 		return 0, sint.HistogramStats{}, err
 	}

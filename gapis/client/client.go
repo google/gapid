@@ -82,8 +82,11 @@ func (c *client) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 	return res.GetRelease(), nil
 }
 
-func (c *client) Get(ctx context.Context, p *path.Any) (interface{}, error) {
-	res, err := c.client.Get(ctx, &service.GetRequest{Path: p})
+func (c *client) Get(ctx context.Context, p *path.Any, r *path.ResolveConfig) (interface{}, error) {
+	res, err := c.client.Get(ctx, &service.GetRequest{
+		Path:   p,
+		Config: r,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +96,11 @@ func (c *client) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 	return res.GetValue().Get(), nil
 }
 
-func (c *client) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
+func (c *client) Set(ctx context.Context, p *path.Any, v interface{}, r *path.ResolveConfig) (*path.Any, error) {
 	res, err := c.client.Set(ctx, &service.SetRequest{
-		Path:  p,
-		Value: service.NewValue(v),
+		Path:   p,
+		Value:  service.NewValue(v),
+		Config: r,
 	})
 	if err != nil {
 		return nil, err
@@ -104,8 +108,11 @@ func (c *client) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any
 	return res.GetPath(), nil
 }
 
-func (c *client) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
-	res, err := c.client.Follow(ctx, &service.FollowRequest{Path: p})
+func (c *client) Follow(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
+	res, err := c.client.Follow(ctx, &service.FollowRequest{
+		Path:   p,
+		Config: r,
+	})
 	if err != nil {
 		return nil, err
 	}

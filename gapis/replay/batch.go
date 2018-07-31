@@ -55,6 +55,8 @@ func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
 func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b scheduler.Batch) {
 	batch := b.Key.(batchKey)
 
+	ctx = PutDevice(ctx, path.NewDevice(batch.device))
+
 	d := bind.GetRegistry(ctx).Device(batch.device)
 
 	requests := make([]RequestAndResult, len(e))

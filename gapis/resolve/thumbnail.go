@@ -27,21 +27,28 @@ import (
 )
 
 // Thumbnail resolves and returns the thumbnail from the path p.
-func Thumbnail(ctx context.Context, p *path.Thumbnail) (*image.Info, error) {
+func Thumbnail(ctx context.Context, p *path.Thumbnail, r *path.ResolveConfig) (*image.Info, error) {
 	switch parent := p.Parent().(type) {
 	case *path.Command:
-		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent)
+		return CommandThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent, r)
 	case *path.CommandTreeNode:
-		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent)
+		return CommandTreeNodeThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, p.DisableOptimization, parent, r)
 	case *path.ResourceData:
-		return ResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent)
+		return ResourceDataThumbnail(ctx, p.DesiredMaxWidth, p.DesiredMaxHeight, p.DesiredFormat, parent, r)
 	default:
 		return nil, fmt.Errorf("Unexpected Thumbnail parent %T", parent)
 	}
 }
 
 // CommandThumbnail resolves and returns the thumbnail for the framebuffer at p.
-func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt bool, p *path.Command) (*image.Info, error) {
+func CommandThumbnail(
+	ctx context.Context,
+	w, h uint32,
+	f *image.Format,
+	noOpt bool,
+	p *path.Command,
+	r *path.ResolveConfig) (*image.Info, error) {
+
 	imageInfoPath, err := FramebufferAttachment(ctx,
 		&service.ReplaySettings{DisableReplayOptimization: noOpt},
 		p,
@@ -54,6 +61,7 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt b
 		&service.UsageHints{
 			Preview: true,
 		},
+		r,
 	)
 	if err != nil {
 		return nil, err
@@ -61,9 +69,9 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt b
 
 	var boxedImageInfo interface{}
 	if f != nil {
-		boxedImageInfo, err = Get(ctx, imageInfoPath.As(f).Path())
+		boxedImageInfo, err = Get(ctx, imageInfoPath.As(f).Path(), r)
 	} else {
-		boxedImageInfo, err = Get(ctx, imageInfoPath.Path())
+		boxedImageInfo, err = Get(ctx, imageInfoPath.Path(), r)
 	}
 	if err != nil {
 		return nil, err
@@ -73,7 +81,14 @@ func CommandThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt b
 }
 
 // CommandTreeNodeThumbnail resolves and returns the thumbnail for the framebuffer at p.
-func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format, noOpt bool, p *path.CommandTreeNode) (*image.Info, error) {
+func CommandTreeNodeThumbnail(
+	ctx context.Context,
+	w, h uint32,
+	f *image.Format,
+	noOpt bool,
+	p *path.CommandTreeNode,
+	r *path.ResolveConfig) (*image.Info, error) {
+
 	boxedCmdTree, err := database.Resolve(ctx, p.Tree.ID())
 	if err != nil {
 		return nil, err
@@ -88,19 +103,19 @@ func CommandTreeNodeThumbnail(ctx context.Context, w, h uint32, f *image.Format,
 		if userData, ok := item.UserData.(*CmdGroupData); ok {
 			thumbnail = userData.Representation
 		}
-		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(thumbnail)))
+		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(thumbnail)), r)
 	case api.SubCmdIdx:
-		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(item[0]), item[1:]...))
+		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(item[0]), item[1:]...), r)
 	case api.SubCmdRoot:
-		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(item.Id[0]), item.Id[1:]...))
+		return CommandThumbnail(ctx, w, h, f, noOpt, cmdTree.path.Capture.Command(uint64(item.Id[0]), item.Id[1:]...), r)
 	default:
 		panic(fmt.Errorf("Unexpected type: %T", item))
 	}
 }
 
 // ResourceDataThumbnail resolves and returns the thumbnail for the resource at p.
-func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.ResourceData) (*image.Info, error) {
-	obj, err := ResolveInternal(ctx, p)
+func ResourceDataThumbnail(ctx context.Context, w, h uint32, f *image.Format, p *path.ResourceData, r *path.ResolveConfig) (*image.Info, error) {
+	obj, err := ResolveInternal(ctx, p, r)
 	if err != nil {
 		return nil, err
 	}

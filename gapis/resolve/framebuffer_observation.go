@@ -26,8 +26,8 @@ import (
 
 // FramebufferObservation returns the framebuffer observation for the given
 // command.
-func FramebufferObservation(ctx context.Context, p *path.FramebufferObservation) (*image.Info, error) {
-	obj, err := database.Build(ctx, &FramebufferObservationResolvable{Path: p})
+func FramebufferObservation(ctx context.Context, p *path.FramebufferObservation, r *path.ResolveConfig) (*image.Info, error) {
+	obj, err := database.Build(ctx, &FramebufferObservationResolvable{Path: p, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func FramebufferObservation(ctx context.Context, p *path.FramebufferObservation)
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferObservationResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	cmd, err := Cmd(ctx, r.Path.Command)
+	cmd, err := Cmd(ctx, r.Path.Command, r.Config)
 	if err != nil {
 		return nil, err
 	}
