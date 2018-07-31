@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-
 #include "platform.h"
 
 namespace swapchain {
 
-void CreateSurface(const InstanceData* functions, VkInstance instance, const void* data, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+void CreateSurface(const InstanceData* functions, VkInstance instance,
+                   const void* data, const VkAllocationCallbacks* pAllocator,
+                   VkSurfaceKHR* pSurface) {
 #ifdef VK_USE_PLATFORM_ANDROID_KHR
   {
     auto pCreateInfo = static_cast<const VkAndroidSurfaceCreateInfoKHR*>(data);
-    if (pCreateInfo->sType == VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR) {
+    if (pCreateInfo->sType ==
+        VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR) {
       // Attempt to create android surface
-      if (functions->vkCreateAndroidSurfaceKHR(instance, pCreateInfo, pAllocator, pSurface) != VK_SUCCESS) {
+      if (functions->vkCreateAndroidSurfaceKHR(
+              instance, pCreateInfo, pAllocator, pSurface) != VK_SUCCESS) {
         *pSurface = 0;
       }
     }
@@ -35,4 +38,4 @@ void CreateSurface(const InstanceData* functions, VkInstance instance, const voi
 #endif
 }
 
-}
+}  // namespace swapchain

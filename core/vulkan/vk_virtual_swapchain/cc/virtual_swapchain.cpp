@@ -396,16 +396,11 @@ uint32_t VirtualSwapchain::ImageByteSize() const {
   return width_ * height_ * 4;
 }
 
-void VirtualSwapchain::CreateBaseSwapchain(VkInstance instance,
-                                           const InstanceData *instance_functions,
-                                           const VkAllocationCallbacks *pAllocator,
-                                           const void *platform_info) {
-  base_swapchain_ = std::unique_ptr<BaseSwapchain>(
-      new BaseSwapchain(instance, device_, queue_,
-                        command_pool_, num_images_,
-                        instance_functions, functions_,
-                        &swapchain_info_,
-                        pAllocator,
-                        platform_info));
+void VirtualSwapchain::CreateBaseSwapchain(
+    VkInstance instance, const InstanceData *instance_functions,
+    const VkAllocationCallbacks *pAllocator, const void *platform_info) {
+  base_swapchain_ = std::unique_ptr<BaseSwapchain>(new BaseSwapchain(
+      instance, device_, queue_, command_pool_, num_images_, instance_functions,
+      functions_, &swapchain_info_, pAllocator, platform_info));
 }
 }  // namespace swapchain

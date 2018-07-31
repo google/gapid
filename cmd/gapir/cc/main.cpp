@@ -134,8 +134,8 @@ void android_process(struct android_app* app, int32_t cmd) {
   switch (cmd) {
     case APP_CMD_INIT_WINDOW: {
       gapir::android_window = app->window;
-      __android_log_print(ANDROID_LOG_DEBUG, "GAPIR",
-                          "Received window: %p\n", gapir::android_window);
+      __android_log_print(ANDROID_LOG_DEBUG, "GAPIR", "Received window: %p\n",
+                          gapir::android_window);
       break;
     }
   }

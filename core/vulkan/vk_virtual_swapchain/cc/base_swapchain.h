@@ -36,6 +36,7 @@ class BaseSwapchain {
   void Destroy(const VkAllocationCallbacks *pAllocator);
   VkResult PresentFrom(VkQueue queue, size_t index, VkImage image);
   VkSemaphore BlitWaitSemaphore(size_t index);
+
  private:
   VkInstance instance_;
   VkDevice device_;
@@ -66,6 +67,6 @@ class BaseSwapchain {
   std::vector<VkCommandBuffer> command_buffers_;
 };
 
-}
+}  // namespace swapchain
 
-#endif // VK_BASE_SWAPCHAIN_VIRTUAL_SWAPCHAIN_H_
+#endif  // VK_BASE_SWAPCHAIN_VIRTUAL_SWAPCHAIN_H_
