@@ -26,7 +26,6 @@ namespace swapchain {
 void CreateSurface(const InstanceData* functions, VkInstance instance,
                    const void* data, const VkAllocationCallbacks* pAllocator,
                    VkSurfaceKHR* pSurface);
-
 }
 
 #endif  // VK_VIRTUAL_SWAPCHAIN_PLATFORM_H_
