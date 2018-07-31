@@ -210,8 +210,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
     if (pNext->sType == VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
       swp->SetAlwaysGetAcquiredImage(true);
       if (pNext->surfaceCreateInfo) {
-        swp->CreateBaseSwapchain(pdd.instance_, &inst_dat,
-                                 pAllocator, pNext->surfaceCreateInfo);
+        swp->CreateBaseSwapchain(pdd.instance_, &inst_dat, pAllocator,
+                                 pNext->surfaceCreateInfo);
       }
       break;
     }
@@ -298,15 +298,16 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
   VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
   bool has_wait_semaphore = wait_semaphore != VK_NULL_HANDLE;
 
-  VkSubmitInfo info{VK_STRUCTURE_TYPE_SUBMIT_INFO,  // sType
-                    nullptr,                        // pNext
-                    (has_wait_semaphore ? 1u : 0u), // waitSemaphoreCount
-                    (has_wait_semaphore ? &wait_semaphore : nullptr), // pWaitSemaphores
-                    (has_wait_semaphore ? &wait_stage : nullptr), // pWaitDstStageMask
-                    0,                              // commandBufferCount
-                    nullptr,                        // pCommandBuffers
-                    (has_semaphore ? 1u : 0u),      // semaphoreCount
-                    (has_semaphore ? &semaphore : nullptr)};  // pSemaphores
+  VkSubmitInfo info{
+      VK_STRUCTURE_TYPE_SUBMIT_INFO,                     // sType
+      nullptr,                                           // pNext
+      (has_wait_semaphore ? 1u : 0u),                    // waitSemaphoreCount
+      (has_wait_semaphore ? &wait_semaphore : nullptr),  // pWaitSemaphores
+      (has_wait_semaphore ? &wait_stage : nullptr),      // pWaitDstStageMask
+      0,                                                 // commandBufferCount
+      nullptr,                                           // pCommandBuffers
+      (has_semaphore ? 1u : 0u),                         // semaphoreCount
+      (has_semaphore ? &semaphore : nullptr)};           // pSemaphores
   return swapchain::vkQueueSubmit(q, 1, &info, fence);
 }
 
