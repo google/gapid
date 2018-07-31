@@ -22,6 +22,7 @@
 #include "gapir/cc/resource_in_memory_cache.h"
 #include "gapir/cc/resource_requester.h"
 #include "gapir/cc/server.h"
+#include "gapir/cc/surface.h"
 
 #include "core/cc/crash_handler.h"
 #include "core/cc/debugger.h"
@@ -133,6 +134,17 @@ const char* pipeName() {
 #endif
 }
 
+void android_process(struct android_app* app, int32_t cmd) {
+  switch (cmd) {
+    case APP_CMD_INIT_WINDOW: {
+      gapir::android_window = app->window;
+      __android_log_print(ANDROID_LOG_DEBUG, "GAPIR",
+                          "Received window: %p\n", gapir::android_window);
+      break;
+    }
+  }
+}
+
 // Main function for android
 void android_main(struct android_app* app) {
   MemoryManager memoryManager(memorySizes);
@@ -159,6 +171,8 @@ void android_main(struct android_app* app) {
   if (chmod(socket_file_path.c_str(), S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH)) {
     GAPID_ERROR("Chmod failed!");
   }
+
+  app->onAppCmd = android_process;
 
   bool alive = true;
   while (alive) {

@@ -110,6 +110,7 @@ cc_library(
         "//gapir/replay_service:proto",
         "//gapir/replay_service:vm",
         "@com_github_grpc_grpc//:grpc++",
+        "//core/vulkan/vk_virtual_swapchain/cc:headers",
     ] + select({
         "//tools/build:darwin": [":darwin_renderer"],
         "//conditions:default": [],

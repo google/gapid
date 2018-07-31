@@ -32,11 +32,14 @@
   #include "gapir/cc/vulkan_gfx_api.h"
 ¶
   #include "gapir/cc/interpreter.h"
-  #include "gapir/cc/stack.h"
   #include "gapir/cc/renderer.h"
+  #include "gapir/cc/stack.h"
+  #include "gapir/cc/surface.h"
 ¶
   #include "core/cc/get_vulkan_proc_address.h"
   #include "core/cc/log.h"
+¶
+  #include "core/vulkan/vk_virtual_swapchain/cc/swapchain.h"
 ¶
   #include <algorithm>
   #include <iterator>
@@ -330,8 +333,6 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     }
   }
 ¶
-  static const uint32_t VIRTUAL_SWAPCHAIN_CREATE_PNEXT = 0xFFFFFFAA;
-
   bool Vulkan::replayCreateSwapchain(Stack* stack, bool pushReturn) {
     auto pSwapchain = stack->pop<VkSwapchainKHR*>();
     auto pAllocator = stack->pop<VkAllocationCallbacks*>();
@@ -339,11 +340,34 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     auto device = stack->pop<VkDevice>();
     auto newCreateInfo = *pCreateInfo;
 
-    struct {
-      uint32_t sType;
-      const void* pNext;
-    } pNextStruct = {VIRTUAL_SWAPCHAIN_CREATE_PNEXT, pCreateInfo->pNext};
-    newCreateInfo.pNext = &pNextStruct;
+    swapchain::CreateNext vsPNext;
+#if TARGET_OS == GAPID_OS_ANDROID
+    VkAndroidSurfaceCreateInfoKHR surfaceInfo = {};
+#endif
+    for (auto pNext = static_cast<const swapchain::CreateNext*>(newCreateInfo.pNext);
+         pNext != nullptr;
+	 pNext = static_cast<const swapchain::CreateNext*>(pNext->pNext)) {
+      if (pNext->sType == swapchain::VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
+        if (pNext->surfaceCreateInfo) {
+	  // Copy any extra fields
+          vsPNext = *pNext;
+
+	  void* data = SurfaceInfo();
+	  void* createInfo = nullptr;
+	  if (data != nullptr) {
+#if TARGET_OS == GAPID_OS_ANDROID
+            createInfo = &surfaceInfo;
+            surfaceInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+	    surfaceInfo.window = (ANativeWindow*)data;
+#endif
+	  }
+	  vsPNext.surfaceCreateInfo = createInfo;
+	  vsPNext.pNext = newCreateInfo.pNext;
+	  newCreateInfo.pNext = &vsPNext;
+	}
+	break;
+      }
+    }
 
     stack->push(device);
     stack->push(&newCreateInfo);
