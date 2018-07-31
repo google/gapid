@@ -38,7 +38,6 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Paths;
@@ -80,7 +79,7 @@ public class StateView extends Composite
   protected List<Path.Any> scheduledExpandedPaths;
   protected Point scheduledScrollPos;
 
-  public StateView(Composite parent, Client client, Models models, Widgets widgets) {
+  public StateView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
 
@@ -128,12 +127,12 @@ public class StateView extends Composite
         }
 
         TextViewer.showViewTextPopup(getShell(), widgets, data.getName() + ":",
-            Futures.transform(client.get(data.getValuePath()),
+            Futures.transform(models.state.loadValue(node),
                 // Formatter.toString(<string value>) formats the string as "<string>". This makes
                 // sense in all but this context, so we simply strip them here rather than
                 // complicate the formatting code.
                 v -> stripQuotes(Formatter.toString(
-                    v.getBox(),  models.constants.getConstants(data.getConstants()), false))));
+                    v, models.constants.getConstants(data.getConstants()), false))));
       }
     });
     tree.setPopupMenu(popup, StateView::canShowPopup);

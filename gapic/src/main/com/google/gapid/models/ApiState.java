@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -162,6 +163,10 @@ public class ApiState
 
     return Futures.transform(client.get(Paths.stateTree(((RootNode)getData()).tree, path)),
         value -> value.getPath().getStateTreeNode());
+  }
+
+  public ListenableFuture<Box.Value> loadValue(Node node) {
+    return Futures.transform(client.get(node.getData().getValuePath()), Service.Value::getBox);
   }
 
   public static class Node {
