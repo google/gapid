@@ -21,7 +21,9 @@
 #include <atomic>
 #include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
+#include "base_swapchain.h"
 #include "layer.h"
 
 namespace swapchain {
@@ -79,6 +81,22 @@ class VirtualSwapchain {
   VkCommandBuffer &GetCommandBuffer(size_t i) {
     return image_data_[i].command_buffer_;
   }
+
+  // If we have create info, create a surface to render to.
+  void CreateBaseSwapchain(VkInstance instance,
+                           const InstanceData *instance_functions_,
+                           const VkAllocationCallbacks *pAllocator,
+                           const void *platform_info);
+
+  // If we have a base surface, blit and present the image to that.
+  VkResult PresentToSurface(VkQueue queue, size_t i) {
+    if (!base_swapchain_) {
+      return VK_SUCCESS;
+    }
+
+    return base_swapchain_->PresentFrom(queue, image_data_[i].image_);
+  }
+
   // When the commands associated with an image have been submitted to
   // a VkQueue, NotifySubmitted must be called to inform the swapchain
   // that the image in question is no longer needed.
@@ -178,7 +196,7 @@ class VirtualSwapchain {
   // This is how many milliseconds we should wait for an image before waking up
   // and seeing if we should shut down.
   const uint32_t pending_image_timeout_in_milliseconds_;
-  // A flag to indicate whether GetImage() always wasit for the acquired image
+  // A flag to indicate whether GetImage() always waits for the acquired image
   // specified with the value pointed by the index pointer.  When set to true,
   // GetImage() will wait until the acquired image is ready to use. When set to
   // false, GetImage() will write the index of a randomly free image to the
@@ -186,6 +204,9 @@ class VirtualSwapchain {
   bool always_get_acquired_image_;
   // Function to build swapchain images
   std::function<SwapchainImageData()> build_swapchain_image_data_;
+
+  // The actual surface and swapchain if we're using one.
+  std::unique_ptr<BaseSwapchain> base_swapchain_;
 };
 }  // namespace swapchain
 

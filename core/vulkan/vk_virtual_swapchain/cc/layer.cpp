@@ -135,6 +135,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   GET_PROC(vkGetPhysicalDeviceProperties);
   GET_PROC(vkGetPhysicalDeviceMemoryProperties);
 
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+  GET_PROC(vkCreateAndroidSurfaceKHR);
+#endif
+  GET_PROC(vkDestroySurfaceKHR);
+
 #undef GET_PROC
   // Add this instance, along with the vkGetInstanceProcAddr to our
   // map. This way when someone calls vkGetInstanceProcAddr, we can forward
@@ -217,6 +222,8 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
   GET_PROC(vkUnmapMemory);
   GET_PROC(vkInvalidateMappedMemoryRanges);
 
+  GET_PROC(vkCreateSemaphore);
+  GET_PROC(vkDestroySemaphore);
   GET_PROC(vkCreateFence);
   GET_PROC(vkGetFenceStatus);
   GET_PROC(vkWaitForFences);
@@ -240,14 +247,22 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
 
   GET_PROC(vkBeginCommandBuffer);
   GET_PROC(vkEndCommandBuffer);
+  GET_PROC(vkResetCommandBuffer);
 
   GET_PROC(vkCmdCopyImageToBuffer);
+  GET_PROC(vkCmdBlitImage);
   GET_PROC(vkCmdPipelineBarrier);
   GET_PROC(vkCmdWaitEvents);
   GET_PROC(vkCreateRenderPass);
 
   GET_PROC(vkQueueSubmit);
   GET_PROC(vkDestroyDevice);
+
+  GET_PROC(vkCreateSwapchainKHR);
+  GET_PROC(vkGetSwapchainImagesKHR);
+  GET_PROC(vkAcquireNextImageKHR);
+  GET_PROC(vkQueuePresentKHR);
+  GET_PROC(vkDestroySwapchainKHR);
 
 #undef GET_PROC
 
@@ -272,7 +287,7 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
             *pDevice, pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex, j,
             &q);
         set_dispatch_from_parent(q, *pDevice);
-        (*queue_map)[q] = {*pDevice, data.vkQueueSubmit};
+        (*queue_map)[q] = {*pDevice, data.vkQueueSubmit, data.vkQueuePresentKHR};
       }
     }
   }

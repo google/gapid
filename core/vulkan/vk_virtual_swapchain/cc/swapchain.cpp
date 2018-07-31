@@ -209,6 +209,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
        pNext = static_cast<const CreateNext *>(pNext->pNext)) {
     if (pNext->sType == VIRTUAL_SWAPCHAIN_CREATE_PNEXT) {
       swp->SetAlwaysGetAcquiredImage(true);
+      if (pNext->surfaceCreateInfo) {
+        swp->CreateBaseSwapchain(pdd.instance_, &inst_dat,
+                                 pAllocator, pNext->surfaceCreateInfo);
+      }
+      break;
     }
   }
 
@@ -328,6 +333,7 @@ vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
 
     res |= GetGlobalContext().GetQueueData(queue)->vkQueueSubmit(
         queue, 1, &submitInfo, swp->GetFence(image_index));
+    res |= swp->PresentToSurface(queue, image_index);
     swp->NotifySubmitted(image_index);
   }
 

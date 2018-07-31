@@ -49,6 +49,11 @@ struct InstanceData {
   PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties;
   PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
 
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+  PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR;
+#endif
+  PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
+
   // All of the physical devices associated with this instance.
   std::vector<VkPhysicalDevice> physical_devices_;
 };
@@ -81,6 +86,8 @@ struct DeviceData {
   PFN_vkUnmapMemory vkUnmapMemory;
   PFN_vkInvalidateMappedMemoryRanges vkInvalidateMappedMemoryRanges;
 
+  PFN_vkCreateSemaphore vkCreateSemaphore;
+  PFN_vkDestroySemaphore vkDestroySemaphore;
   PFN_vkCreateFence vkCreateFence;
   PFN_vkGetFenceStatus vkGetFenceStatus;
   PFN_vkWaitForFences vkWaitForFences;
@@ -104,19 +111,28 @@ struct DeviceData {
 
   PFN_vkBeginCommandBuffer vkBeginCommandBuffer;
   PFN_vkEndCommandBuffer vkEndCommandBuffer;
+  PFN_vkResetCommandBuffer vkResetCommandBuffer;
 
   PFN_vkCmdCopyImageToBuffer vkCmdCopyImageToBuffer;
+  PFN_vkCmdBlitImage vkCmdBlitImage;
   PFN_vkCmdPipelineBarrier vkCmdPipelineBarrier;
   PFN_vkCmdWaitEvents vkCmdWaitEvents;
   PFN_vkCreateRenderPass vkCreateRenderPass;
 
   PFN_vkQueueSubmit vkQueueSubmit;
+  PFN_vkQueuePresentKHR vkQueuePresentKHR;
   PFN_vkDestroyDevice vkDestroyDevice;
+
+  PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
+  PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
+  PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR;
+  PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR;
 };
 
 struct QueueData {
   VkDevice device_;
   PFN_vkQueueSubmit vkQueueSubmit;
+  PFN_vkQueuePresentKHR vkQueuePresentKHR;
 };
 
 // All context functions return a context token.

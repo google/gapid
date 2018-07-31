@@ -67,7 +67,8 @@ VirtualSwapchain::VirtualSwapchain(
       functions_(functions),
       pending_image_timeout_in_milliseconds_(
           pending_image_timeout_in_milliseconds),
-      always_get_acquired_image_(always_get_acquired_image) {
+      always_get_acquired_image_(always_get_acquired_image),
+      base_swapchain_(nullptr) {
   VkPhysicalDeviceMemoryProperties properties = *memory_properties;
   build_swapchain_image_data_ = [this, properties, pAllocator]() {
     SwapchainImageData image_data;
@@ -286,6 +287,10 @@ void VirtualSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
     functions_->vkDestroyFence(device_, image_data_[i].fence_, pAllocator);
   }
 
+  if (base_swapchain_) {
+    base_swapchain_->Destroy(pAllocator);
+  }
+
   functions_->vkDestroyCommandPool(device_, command_pool_, pAllocator);
 }
 
@@ -389,5 +394,18 @@ uint32_t VirtualSwapchain::ImageByteSize() const {
   // TODO(awoloszyn): Once we support more than RGBA8, have this be
   // more dynamic.
   return width_ * height_ * 4;
+}
+
+void VirtualSwapchain::CreateBaseSwapchain(VkInstance instance,
+                                           const InstanceData *instance_functions,
+                                           const VkAllocationCallbacks *pAllocator,
+                                           const void *platform_info) {
+  base_swapchain_ = std::unique_ptr<BaseSwapchain>(
+      new BaseSwapchain(instance, device_, queue_,
+                        command_pool_, num_images_,
+                        instance_functions, functions_,
+                        &swapchain_info_,
+                        pAllocator,
+                        platform_info));
 }
 }  // namespace swapchain
