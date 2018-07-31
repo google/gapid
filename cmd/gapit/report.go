@@ -97,7 +97,8 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	commands := boxedCommands.(*service.Commands).List
 
-	boxedReport, err := client.Get(ctx, capturePath.Report(device, filter).Path())
+	boxedReport, err := client.Get(ctx, capturePath.Report(device, filter,
+		verb.DisplayToSurface).Path())
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's report")
 	}
