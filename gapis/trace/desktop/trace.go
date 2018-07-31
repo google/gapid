@@ -39,6 +39,10 @@ func NewTracer(dev bind.Device) *DesktopTracer {
 	return &DesktopTracer{dev.(bind.Device)}
 }
 
+func (t *DesktopTracer) GetDevice() bind.Device {
+	return t.b
+}
+
 // IsServerLocal returns true if all paths on this device can be server-local
 func (t *DesktopTracer) IsServerLocal() bool {
 	return true

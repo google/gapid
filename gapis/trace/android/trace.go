@@ -47,6 +47,10 @@ type androidTracer struct {
 	lastPackageUpdate    time.Time
 }
 
+func (t *androidTracer) GetDevice() bind.Device {
+	return t.b
+}
+
 func (t *androidTracer) GetPackages(ctx context.Context, isRoot bool, iconDensityScale float32) (*pkginfo.PackageList, error) {
 	refresh := time.Since(t.lastPackageUpdate).Seconds() > packageUpdateTime ||
 		t.lastIconDensityScale != iconDensityScale
