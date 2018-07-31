@@ -201,9 +201,9 @@ VkResult BaseSwapchain::PresentFrom(VkQueue queue, size_t index,
     return res;
   }
 
-  // The source image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC, we need to
-  // transition our image between VK_IMAGE_LAYOUT_TRANSFER_DST and
-  // VK_IMAGE_LAYOUT_SHADER_PRESENT_KHR
+  // The source image is already in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, we
+  // need to transition our image between VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+  // and VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
   VkImageMemoryBarrier initialBarrier = {
       VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
       nullptr,                                 // pNext
@@ -265,7 +265,7 @@ VkResult BaseSwapchain::PresentFrom(VkQueue queue, size_t index,
       image,                                 // srcImage
       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,  // srcImageLayout
       images_[base_index],                   // dstImage
-      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,       // dstImageLayout
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,  // dstImageLayout
       1,                                     // regionCount
       &blit,                                 // pRegions
       VK_FILTER_NEAREST                      // filter
