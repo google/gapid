@@ -20,7 +20,6 @@ import static com.google.gapid.proto.service.api.API.ResourceType.TextureResourc
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.Paths.resourceAfter;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
@@ -118,7 +117,7 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
     textureTable = createTableViewer(splitter, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
-    imageProvider = new ImageProvider(models.thumbs, textureTable, widgets.loading);
+    imageProvider = new ImageProvider(models, textureTable, widgets.loading);
     initTextureSelector(textureTable, imageProvider);
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
@@ -223,10 +222,15 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
   private void updateTextures(boolean resourcesChanged) {
     if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
       imageProvider.reset();
+
+      Widgets.Refresher refresher = withAsyncRefresh(textureTable);
       List<Data> textures = Lists.newArrayList();
-      for (Service.ResourcesByType resources : models.resources.getResources()) {
-        addTextures(textures, resources);
-      }
+      models.resources.getResources(TextureResource).stream()
+          .map(Data::new)
+          .forEach(data -> {
+            textures.add(data);
+            data.load(models.resources, textureTable.getTable(), refresher);
+          });
 
       ViewerComparator comparator = textureTable.getComparator();
       textureTable.setComparator(null);
@@ -266,7 +270,8 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
     } else {
       imagePanel.startLoading();
       Data data = (Data)textureTable.getElementAt(selection);
-      rpcController.start().listen(FetchedImage.load(client, data.path.getResourceData()),
+      Path.ResourceData path = models.resources.getResourcePath(data.info);
+      rpcController.start().listen(FetchedImage.load(client, path),
           new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
         @Override
         protected ResultOrError<FetchedImage, String> onRpcThread(Rpc.Result<FetchedImage> result)
@@ -289,45 +294,19 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
           imagePanel.showMessage(Info, error);
         }
       });
-      gotoAction.setCommandIds(data.info.getAccessesList(), data.path.getResourceData().getAfter());
+      gotoAction.setCommandIds(data.info.getAccessesList(), path.getAfter());
     }
   }
 
-  private void addTextures(List<Data> textures, Service.ResourcesByType resources) {
-    if (resources == null || resources.getResourcesList().size() == 0) {
-      return;
-    }
-
-    if (resources.getType() != TextureResource) {
-      // Ignore non-texture resources (and unknown texture types).
-      return;
-    }
-
-    CommandIndex range = models.commands.getSelectedCommands();
-    Widgets.Refresher refresher = withAsyncRefresh(textureTable);
-    for (Service.Resource info : resources.getResourcesList()) {
-      if (Paths.compare(firstAccess(info), range.getCommand()) <= 0) {
-        Data data = new Data(resourceAfter(range, info.getID()), info);
-        textures.add(data);
-        data.load(client, textureTable.getTable(), refresher);
-      }
-    }
-  }
-
-  private static Path.Command firstAccess(Service.Resource info) {
-    return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
-  }
 
   /**
    * Texture metadata.
    */
   private static class Data {
-    public final Path.Any path;
     public final Service.Resource info;
     protected AdditionalInfo imageInfo;
 
-    public Data(Path.Any path, Service.Resource info) {
-      this.path = path;
+    public Data(Service.Resource info) {
       this.info = info;
       this.imageInfo = AdditionalInfo.NULL;
     }
@@ -392,10 +371,11 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
       return imageInfo.getFormat();
     }
 
-    public void load(Client client, Widget widget, Widgets.Refresher refresher) {
-      Rpc.listen(client.get(path), new UiCallback<Service.Value, AdditionalInfo>(widget, LOG) {
+    public void load(Resources resources, Widget widget, Widgets.Refresher refresher) {
+      Rpc.listen(resources.loadResource(info),
+          new UiCallback<API.ResourceData, AdditionalInfo>(widget, LOG) {
         @Override
-        protected AdditionalInfo onRpcThread(Rpc.Result<Service.Value> result)
+        protected AdditionalInfo onRpcThread(Rpc.Result<API.ResourceData> result)
             throws RpcException, ExecutionException {
           try {
             return AdditionalInfo.from(result.get());
@@ -447,8 +427,7 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
         this.typeLabel = typeLabel;
       }
 
-      public static AdditionalInfo from(Service.Value value) {
-        API.ResourceData data = value.getResourceData();
+      public static AdditionalInfo from(API.ResourceData data) {
         API.Texture texture = data.getTexture();
         switch (texture.getTypeCase()) {
           case TEXTURE_1D: {
@@ -633,13 +612,13 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
   private static class ImageProvider implements LoadingIndicator.Repaintable {
     private static final int SIZE = DPIUtil.autoScaleUp(18);
 
-    private final Thumbnails thumbs;
+    private final Models models;
     private final TableViewer viewer;
     private final LoadingIndicator loading;
     private final Map<Data, LoadableImage> images = Maps.newIdentityHashMap();
 
-    public ImageProvider(Thumbnails thumbs, TableViewer viewer, LoadingIndicator loading) {
-      this.thumbs = thumbs;
+    public ImageProvider(Models models, TableViewer viewer, LoadingIndicator loading) {
+      this.models = models;
       this.viewer = viewer;
       this.loading = loading;
     }
@@ -681,7 +660,8 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
     }
 
     private ListenableFuture<ImageData> loadImage(Data data) {
-      return noAlpha(thumbs.getThumbnail(data.path.getResourceData(), SIZE, i -> { /* noop */ }));
+      return noAlpha(models.thumbs.getThumbnail(
+          models.resources.getResourcePath(data.info), SIZE, i -> { /* noop */ }));
     }
 
     public void reset() {

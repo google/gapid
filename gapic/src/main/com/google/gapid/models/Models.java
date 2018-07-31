@@ -66,7 +66,7 @@ public class Models {
     ApiContext contexts = new ApiContext(shell, analytics, client, capture);
     Timeline timeline = new Timeline(shell, analytics, client, capture, contexts);
     CommandStream commands = new CommandStream(shell, analytics, client, capture, contexts, constants);
-    Resources resources = new Resources(shell, analytics, client, capture);
+    Resources resources = new Resources(shell, analytics, client, capture, commands);
     ApiState state = new ApiState(shell, analytics, client, follower, commands, contexts, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);

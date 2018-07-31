@@ -567,7 +567,7 @@ public class MainWindow extends ApplicationWindow {
       Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
       Textures(Location.Center, View.Textures, "Textures", TextureView::new),
       Geometry(Location.Center, View.Geometry, "Geometry", (p, c, m, w) -> new GeometryView(p, m, w)),
-      Shaders(Location.Center, View.Shaders, "Shaders", ShaderView::new),
+      Shaders(Location.Center, View.Shaders, "Shaders", (p, c, m, w) -> new ShaderView(p, m, w)),
       Report(Location.Center, View.Report, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
       Log(Location.Center, View.Log, "Log", (p, c, m, w) -> new LogView(p, w)),
 
