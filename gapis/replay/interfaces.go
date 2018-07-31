@@ -44,6 +44,7 @@ type QueryIssues interface {
 		ctx context.Context,
 		intent Intent,
 		mgr *Manager,
+		displayToSurface bool,
 		hints *service.UsageHints) ([]Issue, error)
 }
 
@@ -61,6 +62,7 @@ type QueryFramebufferAttachment interface {
 		framebufferIndex uint32,
 		drawMode service.DrawMode,
 		disableReplayOptimization bool,
+		displayToSurface bool,
 		hints *service.UsageHints) (*image.Data, error)
 }
 

@@ -249,6 +249,7 @@ func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
+	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
 	c, r := issuesConfig{}, issuesRequest{}
@@ -269,6 +270,7 @@ func (a API) QueryFramebufferAttachment(
 	framebufferIndex uint32,
 	drawMode service.DrawMode,
 	disableReplayOptimization bool,
+	displayToSurface bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
 	if len(after) > 1 {

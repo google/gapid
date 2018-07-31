@@ -65,6 +65,7 @@ func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (int
 		r.FramebufferIndex,
 		r.DrawMode,
 		r.ReplaySettings.DisableReplayOptimization,
+		r.ReplaySettings.DisplayToSurface,
 		r.Hints,
 	)
 	if err != nil {

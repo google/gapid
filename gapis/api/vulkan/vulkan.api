@@ -76,6 +76,7 @@ import "extensions/khr_get_surface_capabilities2.api"
 import "extensions/khr_surface.api"
 import "extensions/khr_swapchain.api"
 import "extensions/nv_dedicated_allocation.api"
+import "extensions/virtual_swapchain.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"

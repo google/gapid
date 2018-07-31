@@ -18,6 +18,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -373,6 +374,31 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	hijack := cb.ReplayCreateSwapchain(a.Device(), a.PCreateInfo(), a.PAllocator(), a.PSwapchain(), a.Result())
 	hijack.Extras().MustClone(a.Extras().All()...)
+
+	a.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+	info := a.PCreateInfo().MustRead(ctx, a, s, nil)
+	pNext := NewVirtualSwapchainPNext(s.Arena,
+		VkStructureType_VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT, // sType
+		info.PNext(), // pNext
+		0,            // surfaceCreateInfo
+	)
+	for _, extra := range a.Extras().All() {
+		if _, ok := extra.(*DisplayToSurface); ok {
+			log.D(ctx, "Activating display to surface")
+			pNext.SetSurfaceCreateInfo(1)
+		}
+	}
+	pNextData := s.AllocDataOrPanic(ctx, pNext)
+	defer pNextData.Free()
+
+	info.SetPNext(NewVoidᶜᵖ(pNextData.Ptr()))
+	infoData := s.AllocDataOrPanic(ctx, info)
+	defer infoData.Free()
+	hijack.SetPCreateInfo(NewVkSwapchainCreateInfoKHRᶜᵖ(infoData.Ptr()))
+
+	hijack.AddRead(pNextData.Data())
+	hijack.AddRead(infoData.Data())
+
 	err := hijack.Mutate(ctx, id, s, b)
 
 	return err

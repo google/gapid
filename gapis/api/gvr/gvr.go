@@ -61,6 +61,7 @@ func (API) QueryFramebufferAttachment(
 	framebufferIndex uint32,
 	drawMode service.DrawMode,
 	disableReplayOptimization bool,
+	displayToSurface bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
 	if framebufferIndex == 0 {
@@ -80,6 +81,7 @@ func (API) QueryFramebufferAttachment(
 		framebufferIndex,
 		drawMode,
 		disableReplayOptimization,
+		displayToSurface,
 		hints,
 	)
 }
