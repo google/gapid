@@ -52,12 +52,12 @@ type videoFrame struct {
 
 // getFBO fetches the framebuffer observation of the command.
 func getFBO(ctx context.Context, client service.Service, a *path.Command) (*img.Data, error) {
-	obj, err := client.Get(ctx, a.FramebufferObservation().Path())
+	obj, err := client.Get(ctx, a.FramebufferObservation().Path(), nil)
 	if err != nil {
 		return nil, err
 	}
 	ii := obj.(*img.Info)
-	obj, err = client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path())
+	obj, err = client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), nil)
 	if err != nil {
 		return nil, err
 	}

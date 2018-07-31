@@ -33,7 +33,7 @@ import (
 type MeshProvider interface {
 	// Mesh returns the mesh representation of the object o.
 	// If nil, nil then the object cannot be represented as a mesh.
-	Mesh(ctx context.Context, o interface{}, p *path.Mesh) (*Mesh, error)
+	Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*Mesh, error)
 }
 
 // Faceted returns a new mesh with each shared vertex split, and each normal set

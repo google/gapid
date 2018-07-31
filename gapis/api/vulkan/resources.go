@@ -738,8 +738,14 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 	}
 }
 
-func (t ImageObjectʳ) SetResourceData(ctx context.Context, at *path.Command,
-	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
+func (t ImageObjectʳ) SetResourceData(
+	ctx context.Context,
+	at *path.Command,
+	data *api.ResourceData,
+	resources api.ResourceMap,
+	edits api.ReplaceCallback,
+	r *path.ResolveConfig) error {
+
 	return fmt.Errorf("SetResourceData is not supported for ImageObject")
 }
 
@@ -787,14 +793,15 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 	at *path.Command,
 	data *api.ResourceData,
 	resourceIDs api.ResourceMap,
-	edits api.ReplaceCallback) error {
+	edits api.ReplaceCallback,
+	r *path.ResolveConfig) error {
 
 	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
 
 	cmdIdx := at.Indices[0]
 
 	// Dirty. TODO: Make separate type for getting info for a single resource.
-	resources, err := resolve.Resources(ctx, at.Capture)
+	resources, err := resolve.Resources(ctx, at.Capture, r)
 	if err != nil {
 		return err
 	}

@@ -216,8 +216,14 @@ func (t Textureʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.R
 	return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 }
 
-func (t Textureʳ) SetResourceData(ctx context.Context, at *path.Command,
-	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
+func (t Textureʳ) SetResourceData(
+	ctx context.Context,
+	at *path.Command,
+	data *api.ResourceData,
+	resources api.ResourceMap,
+	edits api.ReplaceCallback,
+	r *path.ResolveConfig) error {
+
 	return fmt.Errorf("SetResourceData is not supported for Texture")
 }
 
@@ -306,7 +312,8 @@ func (s Shaderʳ) SetResourceData(
 	at *path.Command,
 	data *api.ResourceData,
 	resourceIDs api.ResourceMap,
-	edits api.ReplaceCallback) error {
+	edits api.ReplaceCallback,
+	r *path.ResolveConfig) error {
 
 	cmdIdx := at.Indices[0]
 	if len(at.Indices) > 1 {
@@ -315,7 +322,7 @@ func (s Shaderʳ) SetResourceData(
 
 	// Dirty. TODO: Make separate type for getting info for a single resource.
 	capturePath := at.Capture
-	resources, err := resolve.Resources(ctx, capturePath)
+	resources, err := resolve.Resources(ctx, capturePath, r)
 	if err != nil {
 		return err
 	}
@@ -599,7 +606,13 @@ func uniformValue(ctx context.Context, s *api.GlobalState, kind api.UniformType,
 	}
 }
 
-func (p Programʳ) SetResourceData(ctx context.Context, at *path.Command,
-	data *api.ResourceData, resources api.ResourceMap, edits api.ReplaceCallback) error {
+func (p Programʳ) SetResourceData(
+	ctx context.Context,
+	at *path.Command,
+	data *api.ResourceData,
+	resources api.ResourceMap,
+	edits api.ReplaceCallback,
+	r *path.ResolveConfig) error {
+
 	return fmt.Errorf("SetResourceData is not supported for Program")
 }

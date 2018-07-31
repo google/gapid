@@ -25,8 +25,8 @@ import (
 )
 
 // As resolves and returns the object at p transformed to the requested type.
-func As(ctx context.Context, p *path.As) (interface{}, error) {
-	o, err := ResolveInternal(ctx, p.Parent())
+func As(ctx context.Context, p *path.As, r *path.ResolveConfig) (interface{}, error) {
+	o, err := ResolveInternal(ctx, p.Parent(), r)
 	if err != nil {
 		return nil, err
 	}

@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/test"
 	"github.com/google/gapid/gapis/capture"
@@ -50,6 +51,7 @@ func newPathTest(ctx context.Context) *path.Capture {
 
 func TestGet(t *testing.T) {
 	ctx := log.Testing(t)
+	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	p := newPathTest(ctx)
@@ -156,7 +158,7 @@ func TestGet(t *testing.T) {
 			Path:   sB.Field("Map").MapIndex("rabbit").Path(),
 		}},
 	} {
-		got, err := Get(ctx, test.path.Path())
+		got, err := Get(ctx, test.path.Path(), nil)
 		assert.For(ctx, "Get(%v) value", test.path).That(got).DeepEquals(test.val)
 		assert.For(ctx, "Get(%v) error", test.path).ThatError(err).DeepEquals(test.err)
 	}
@@ -164,6 +166,7 @@ func TestGet(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	ctx := log.Testing(t)
+	ctx = bind.PutRegistry(ctx, bind.NewRegistry())
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	p := newPathTest(ctx)
@@ -264,7 +267,7 @@ func TestSet(t *testing.T) {
 	} {
 		ctx := log.V{"path": test.path, "value": test.val}.Bind(ctx)
 
-		path, err := Set(ctx, test.path.Path(), test.val)
+		path, err := Set(ctx, test.path.Path(), test.val, nil)
 		assert.For(ctx, "Set").ThatError(err).DeepEquals(test.err)
 
 		if (path == nil) == (err == nil) {
@@ -278,7 +281,7 @@ func TestSet(t *testing.T) {
 			ctx := log.V{"changed_path": path}.Bind(ctx)
 
 			// Get the changed value
-			got, err := Get(ctx, path)
+			got, err := Get(ctx, path, nil)
 			assert.For(ctx, "Get(changed_path) error").ThatError(err).Succeeded()
 			ctx = log.V{"got": got}.Bind(ctx)
 

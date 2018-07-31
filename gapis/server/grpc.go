@@ -165,7 +165,7 @@ func (s *grpcServer) CheckForUpdates(ctx xctx.Context, req *service.CheckForUpda
 
 func (s *grpcServer) Get(ctx xctx.Context, req *service.GetRequest) (*service.GetResponse, error) {
 	defer s.inRPC()()
-	res, err := s.handler.Get(s.bindCtx(ctx), req.Path)
+	res, err := s.handler.Get(s.bindCtx(ctx), req.Path, req.Config)
 	if err := service.NewError(err); err != nil {
 		return &service.GetResponse{Res: &service.GetResponse_Error{Error: err}}, nil
 	}
@@ -175,7 +175,7 @@ func (s *grpcServer) Get(ctx xctx.Context, req *service.GetRequest) (*service.Ge
 
 func (s *grpcServer) Set(ctx xctx.Context, req *service.SetRequest) (*service.SetResponse, error) {
 	defer s.inRPC()()
-	res, err := s.handler.Set(s.bindCtx(ctx), req.Path, req.Value.Get())
+	res, err := s.handler.Set(s.bindCtx(ctx), req.Path, req.Value.Get(), req.Config)
 	if err := service.NewError(err); err != nil {
 		return &service.SetResponse{Res: &service.SetResponse_Error{Error: err}}, nil
 	}
@@ -184,7 +184,7 @@ func (s *grpcServer) Set(ctx xctx.Context, req *service.SetRequest) (*service.Se
 
 func (s *grpcServer) Follow(ctx xctx.Context, req *service.FollowRequest) (*service.FollowResponse, error) {
 	defer s.inRPC()()
-	res, err := s.handler.Follow(s.bindCtx(ctx), req.Path)
+	res, err := s.handler.Follow(s.bindCtx(ctx), req.Path, req.Config)
 	if err := service.NewError(err); err != nil {
 		return &service.FollowResponse{Res: &service.FollowResponse_Error{Error: err}}, nil
 	}

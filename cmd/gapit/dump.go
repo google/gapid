@@ -60,13 +60,13 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	boxedCapture, err := client.Get(ctx, cp.Path())
+	boxedCapture, err := client.Get(ctx, cp.Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the capture")
 	}
 	c := boxedCapture.(*service.Capture)
 
-	boxedCommands, err := client.Get(ctx, cp.Commands().Path())
+	boxedCommands, err := client.Get(ctx, cp.Commands().Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to acquire the capture's commands")
 	}

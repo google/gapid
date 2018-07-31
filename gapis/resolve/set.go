@@ -33,8 +33,8 @@ import (
 // Set creates a copy of the capture referenced by the request's path, but
 // with the object, value or memory at p replaced with v. The path returned is
 // identical to p, but with the base changed to refer to the new capture.
-func Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
-	obj, err := database.Build(ctx, &SetResolvable{Path: p, Value: service.NewValue(v)})
+func Set(ctx context.Context, p *path.Any, v interface{}, r *path.ResolveConfig) (*path.Any, error) {
+	obj, err := database.Build(ctx, &SetResolvable{Path: p, Value: service.NewValue(v), Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -43,9 +43,7 @@ func Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
 
 // Resolve implements the database.Resolver interface.
 func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	if c := path.FindCapture(r.Path.Node()); c != nil {
-		ctx = capture.Put(ctx, c)
-	}
+	ctx = setupContext(ctx, path.FindCapture(r.Path.Node()), r.Config)
 
 	a := arena.New()
 
@@ -54,20 +52,20 @@ func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		return nil, err
 	}
 
-	p, err := change(ctx, a, r.Path.Node(), v)
+	p, err := change(ctx, a, r.Path.Node(), v, r.Config)
 	if err != nil {
 		return nil, err
 	}
 	return p.Path(), nil
 }
 
-func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (path.Node, error) {
+func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r *path.ResolveConfig) (path.Node, error) {
 	switch p := p.(type) {
 	case *path.Report:
 		return nil, fmt.Errorf("Reports are immutable")
 
 	case *path.MultiResourceData:
-		meta, err := ResourceMeta(ctx, p.IDs, p.After)
+		meta, err := ResourceMeta(ctx, p.IDs, p.After, r)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +92,13 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 		}
 
 		for i, resource := range meta.Resources {
-			if err := resource.SetResourceData(ctx, p.After, data.Resources[i], meta.IDMap, replaceCommands); err != nil {
+			if err := resource.SetResourceData(
+				ctx,
+				p.After,
+				data.Resources[i],
+				meta.IDMap,
+				replaceCommands,
+				r); err != nil {
 				return nil, err
 			}
 		}
@@ -114,7 +118,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 		}, nil
 
 	case *path.ResourceData:
-		meta, err := ResourceMeta(ctx, []*path.ID{p.ID}, p.After)
+		meta, err := ResourceMeta(ctx, []*path.ID{p.ID}, p.After, r)
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +148,13 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 			return nil, fmt.Errorf("Expected a single resource, got %d", len(meta.Resources))
 		}
 
-		if err := meta.Resources[0].SetResourceData(ctx, p.After, data, meta.IDMap, replaceCommands); err != nil {
+		if err := meta.Resources[0].SetResourceData(
+			ctx,
+			p.After,
+			data,
+			meta.IDMap,
+			replaceCommands,
+			r); err != nil {
 			return nil, err
 		}
 
@@ -217,7 +227,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 		return nil, fmt.Errorf("State can not currently be mutated")
 
 	case *path.Field, *path.Parameter, *path.ArrayIndex, *path.MapIndex:
-		oldObj, err := ResolveInternal(ctx, p.Parent())
+		oldObj, err := ResolveInternal(ctx, p.Parent(), r)
 		if err != nil {
 			return nil, err
 		}
@@ -243,7 +253,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 				return nil, err
 			}
 
-			parent, err := change(ctx, a, p.Parent(), obj.Interface())
+			parent, err := change(ctx, a, p.Parent(), obj.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
@@ -264,14 +274,14 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 				return nil, err
 			}
 
-			parent, err := change(ctx, a, p.Parent(), obj.Interface())
+			parent, err := change(ctx, a, p.Parent(), obj.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
 			return parent.(*path.Command).Result(), nil
 
 		case *path.Field:
-			parent, err := setField(ctx, a, obj, reflect.ValueOf(val), p.Name, p)
+			parent, err := setField(ctx, a, obj, reflect.ValueOf(val), p.Name, p, r)
 			if err != nil {
 				return nil, err
 			}
@@ -302,7 +312,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 			if err := assign(arr.Index(int(p.Index)), val); err != nil {
 				return nil, err
 			}
-			parent, err := change(ctx, a, p.Parent(), arr.Interface())
+			parent, err := change(ctx, a, p.Parent(), arr.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
@@ -339,7 +349,7 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}) (p
 
 			d.Add(key.Interface(), val.Interface())
 
-			parent, err := change(ctx, a, p.Parent(), obj.Interface())
+			parent, err := change(ctx, a, p.Parent(), obj.Interface(), r)
 			if err != nil {
 				return nil, err
 			}
@@ -363,7 +373,15 @@ func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds
 	return c, nil
 }
 
-func setField(ctx context.Context, a arena.Arena, str, val reflect.Value, name string, p path.Node) (path.Node, error) {
+func setField(
+	ctx context.Context,
+	a arena.Arena,
+	str,
+	val reflect.Value,
+	name string,
+	p path.Node,
+	r *path.ResolveConfig) (path.Node, error) {
+
 	dst, err := field(ctx, str, name, p)
 	if err != nil {
 		return nil, err
@@ -371,7 +389,7 @@ func setField(ctx context.Context, a arena.Arena, str, val reflect.Value, name s
 	if err := assign(dst, val); err != nil {
 		return nil, err
 	}
-	return change(ctx, a, p.Parent(), str.Interface())
+	return change(ctx, a, p.Parent(), str.Interface(), r)
 }
 
 func clone(v reflect.Value) (reflect.Value, error) {

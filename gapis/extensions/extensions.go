@@ -51,11 +51,11 @@ type Extension struct {
 	// contexts.
 	AdjustContexts func(context.Context, []*api.ContextInfo)
 	// Custom command groupers.
-	CmdGroupers func(ctx context.Context, p *path.CommandTree) []cmdgrouper.Grouper
+	CmdGroupers func(ctx context.Context, p *path.CommandTree, r *path.ResolveConfig) []cmdgrouper.Grouper
 	// Custom events provider.
-	Events func(ctx context.Context, p *path.Events) EventProvider
+	Events func(ctx context.Context, p *path.Events, r *path.ResolveConfig) EventProvider
 	// Custom events filters.
-	EventFilter func(ctx context.Context, p *path.Events) EventFilter
+	EventFilter func(ctx context.Context, p *path.Events, r *path.ResolveConfig) EventFilter
 }
 
 // Register registers the extension e.

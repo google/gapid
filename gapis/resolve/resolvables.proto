@@ -24,10 +24,12 @@ import "gapis/service/service.proto";
 
 message ContextListResolvable {
   path.Capture capture = 1;
+  path.ResolveConfig config = 2;
 }
 
 message CommandTreeResolvable {
   path.CommandTree path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message EventsResolvable {
@@ -36,6 +38,7 @@ message EventsResolvable {
 
 message FollowResolvable {
   path.Any path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message FramebufferAttachmentResolvable {
@@ -44,10 +47,12 @@ message FramebufferAttachmentResolvable {
   api.FramebufferAttachment attachment = 3;
   service.RenderSettings settings = 4;
   service.UsageHints hints = 5;
+  path.ResolveConfig config = 6;
 }
 
 message FramebufferChangesResolvable {
   path.Capture capture = 1;
+  path.ResolveConfig config = 2;
 }
 
 message FramebufferAttachmentBytesResolvable {
@@ -60,11 +65,13 @@ message FramebufferAttachmentBytesResolvable {
   service.UsageHints hints = 7;
   image.Format image_format = 8;
   uint32 framebuffer_index = 9;
+  path.ResolveConfig config = 10;
 }
 
 // Get resolves the object, value or memory at Path.
 message GetResolvable {
   path.Any path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message IndexLimitsResolvable {
@@ -76,31 +83,38 @@ message IndexLimitsResolvable {
 
 message ReportResolvable {
   path.Report path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message ResourcesResolvable {
   path.Capture capture = 1;
+  path.ResolveConfig config = 2;
 }
 
 message ResourceDataResolvable {
   path.ResourceData path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message AllResourceDataResolvable {
   path.Command after = 1;
+  path.ResolveConfig config = 2;
 }
 
 message ResourceMetaResolvable {
   repeated path.ID IDs = 1;
   path.Command after = 2;
+  path.ResolveConfig config = 3;
 }
 
 message GlobalStateResolvable {
   path.GlobalState path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message StateResolvable {
   path.State path = 1;
+  path.ResolveConfig config = 2;
 }
 
 message SynchronizationResolvable {
@@ -110,13 +124,16 @@ message SynchronizationResolvable {
 message StateTreeResolvable {
   path.State path = 1;
   int32 array_group_size = 2;
+  path.ResolveConfig config = 3;
 }
 
 message SetResolvable {
   path.Any path = 1;
   service.Value value = 2;
+  path.ResolveConfig config = 3;
 }
 
 message FramebufferObservationResolvable {
   path.FramebufferObservation path = 1;
+  path.ResolveConfig config = 2;
 }

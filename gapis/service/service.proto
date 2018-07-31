@@ -146,6 +146,8 @@ message Release {
 
 message GetRequest {
   path.Any path = 1;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 2;
 }
 
 message GetResponse {
@@ -158,6 +160,8 @@ message GetResponse {
 message SetRequest {
   path.Any path = 1;
   Value value = 2;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 3;
 }
 
 message SetResponse {
@@ -169,6 +173,8 @@ message SetResponse {
 
 message FollowRequest {
   path.Any path = 1;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 2;
 }
 
 message FollowResponse {
@@ -332,6 +338,8 @@ message FindRequest {
   bool is_case_sensitive = 7;
   // If true, the search will wrap.
   bool wrap = 8;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 9;
 }
 
 message FindResponse {

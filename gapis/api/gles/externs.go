@@ -20,11 +20,11 @@ import (
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/replay"
 	rb "github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/service/path"
@@ -173,7 +173,6 @@ func (e externs) addTag(msgID uint32, message *stringtable.Msg) {
 
 func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ {
 	poolID, dst := e.s.Memory.New()
-	registry := bind.GetRegistry(e.ctx)
 	img := texture.Levels().Get(level).Layers().Get(layer)
 	dataFormat, dataType := img.getUnsizedFormatAndType()
 	format, err := getImageFormat(dataFormat, dataType)
@@ -181,14 +180,14 @@ func (e externs) ReadGPUTextureData(texture Textureʳ, level, layer GLint) U8ˢ 
 		panic(err)
 	}
 	size := format.Size(int(img.Width()), int(img.Height()), 1)
-	device := registry.DefaultDevice() // TODO: Device selection.
+	device := replay.GetDevice(e.ctx)
 	if device == nil {
-		log.W(e.ctx, "No device found for GPU texture read")
+		log.W(e.ctx, "No device bound for GPU texture read")
 		return NewU8ˢ(e.s.Arena, 0, 0, uint64(size), uint64(size), poolID)
 	}
 	dataID, err := database.Store(e.ctx, &ReadGPUTextureDataResolveable{
 		Capture:    path.NewCapture(capture.Get(e.ctx).ID.ID()),
-		Device:     path.NewDevice(device.Instance().ID.ID()),
+		Device:     device,
 		After:      uint64(e.cmdID),
 		Thread:     e.cmd.Thread(),
 		Texture:    uint32(texture.ID()),

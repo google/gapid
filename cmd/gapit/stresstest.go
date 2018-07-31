@@ -64,7 +64,7 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	boxedCapture, err := client.Get(ctx, c.Path())
+	boxedCapture, err := client.Get(ctx, c.Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load the capture")
 	}
@@ -91,14 +91,14 @@ func (verb *stresstestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 				switch method {
 				case getStateAfter:
-					boxedTree, err := client.Get(ctx, c.Command(at).StateAfter().Tree().Path())
+					boxedTree, err := client.Get(ctx, c.Command(at).StateAfter().Tree().Path(), nil)
 					if err == nil {
 						tree := boxedTree.(*service.StateTree)
-						client.Get(ctx, tree.Root.Path())
+						client.Get(ctx, tree.Root.Path(), nil)
 					}
 
 				case getMesh:
-					boxedMesh, err := client.Get(ctx, c.Command(at).Mesh(path.NewMeshOptions(true)).Path())
+					boxedMesh, err := client.Get(ctx, c.Command(at).Mesh(path.NewMeshOptions(true)).Path(), nil)
 					if err == nil {
 						mesh := boxedMesh.(*api.Mesh)
 						_ = mesh

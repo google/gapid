@@ -101,7 +101,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				continue
 			}
 
-			dd, err := client.Get(ctx, dev.Path())
+			dd, err := client.Get(ctx, dev.Path(), nil)
 			if err != nil {
 				return err
 			}

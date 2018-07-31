@@ -288,41 +288,44 @@ func (s *server) GetFramebufferAttachment(
 	if err := after.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", after)
 	}
-	return resolve.FramebufferAttachment(ctx, replaySettings, after, attachment, settings, hints)
+	r := &path.ResolveConfig{
+		ReplayDevice: replaySettings.Device,
+	}
+	return resolve.FramebufferAttachment(ctx, replaySettings, after, attachment, settings, hints, r)
 }
 
-func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
+func (s *server) Get(ctx context.Context, p *path.Any, c *path.ResolveConfig) (interface{}, error) {
 	ctx = log.Enter(ctx, "Get")
 	ctx = status.Start(ctx, "Get")
 	defer status.Finish(ctx)
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
-	v, err := resolve.Get(ctx, p)
+	v, err := resolve.Get(ctx, p, c)
 	if err != nil {
 		return nil, err
 	}
 	return v, nil
 }
 
-func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
+func (s *server) Set(ctx context.Context, p *path.Any, v interface{}, r *path.ResolveConfig) (*path.Any, error) {
 	ctx = log.Enter(ctx, "Set")
 	ctx = status.Start(ctx, "Set")
 	defer status.Finish(ctx)
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
-	return resolve.Set(ctx, p, v)
+	return resolve.Set(ctx, p, v, r)
 }
 
-func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
+func (s *server) Follow(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
 	ctx = log.Enter(ctx, "Follow")
 	ctx = status.Start(ctx, "Follow")
 	defer status.Finish(ctx)
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
-	return resolve.Follow(ctx, p)
+	return resolve.Follow(ctx, p, r)
 }
 
 func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {

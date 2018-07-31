@@ -481,3 +481,8 @@ message Thumbnail {
 
   bool disable_optimization = 7;
 }
+
+message ResolveConfig {
+  // The device to use for any replays when resolving paths.
+  path.Device replay_device = 1;
+}

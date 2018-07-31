@@ -29,8 +29,8 @@ import (
 
 // GlobalState resolves the global *api.GlobalState at a requested point in a
 // capture.
-func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, error) {
-	obj, err := database.Build(ctx, &GlobalStateResolvable{Path: p})
+func GlobalState(ctx context.Context, p *path.GlobalState, r *path.ResolveConfig) (*api.GlobalState, error) {
+	obj, err := database.Build(ctx, &GlobalStateResolvable{Path: p, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +38,14 @@ func GlobalState(ctx context.Context, p *path.GlobalState) (*api.GlobalState, er
 }
 
 // State resolves the specific API state at a requested point in a capture.
-func State(ctx context.Context, p *path.State) (interface{}, error) {
-	return database.Build(ctx, &StateResolvable{Path: p})
+func State(ctx context.Context, p *path.State, r *path.ResolveConfig) (interface{}, error) {
+	return database.Build(ctx, &StateResolvable{Path: p, Config: r})
 }
 
 // Resolve implements the database.Resolver interface.
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.After.Capture)
+	ctx = setupContext(ctx, r.Path.After.Capture, r.Config)
+
 	cmdIdx := r.Path.After.Indices[0]
 	allCmds, err := Cmds(ctx, r.Path.After.Capture)
 	if err != nil {
@@ -79,13 +80,13 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 
 // Resolve implements the database.Resolver interface.
 func (r *StateResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Path.After.Capture)
-	obj, _, _, err := state(ctx, r.Path)
+	ctx = setupContext(ctx, r.Path.After.Capture, r.Config)
+	obj, _, _, err := state(ctx, r.Path, r.Config)
 	return obj, err
 }
 
-func state(ctx context.Context, p *path.State) (interface{}, path.Node, api.ID, error) {
-	cmd, err := Cmd(ctx, p.After)
+func state(ctx context.Context, p *path.State, r *path.ResolveConfig) (interface{}, path.Node, api.ID, error) {
+	cmd, err := Cmd(ctx, p.After, r)
 	if err != nil {
 		return nil, nil, api.ID{}, err
 	}
@@ -95,7 +96,7 @@ func state(ctx context.Context, p *path.State) (interface{}, path.Node, api.ID, 
 		return nil, nil, api.ID{}, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 
-	g, err := GlobalState(ctx, p.After.GlobalStateAfter())
+	g, err := GlobalState(ctx, p.After.GlobalStateAfter(), r)
 	if err != nil {
 		return nil, nil, api.ID{}, err
 	}
@@ -105,7 +106,7 @@ func state(ctx context.Context, p *path.State) (interface{}, path.Node, api.ID, 
 		return nil, nil, api.ID{}, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 
-	root, err := state.Root(ctx, p)
+	root, err := state.Root(ctx, p, r)
 	if err != nil {
 		return nil, nil, api.ID{}, err
 	}
@@ -124,7 +125,7 @@ func state(ctx context.Context, p *path.State) (interface{}, path.Node, api.ID, 
 		}
 	})
 
-	obj, err := Get(ctx, abs.Path())
+	obj, err := Get(ctx, abs.Path(), r)
 	if err != nil {
 		return nil, nil, api.ID{}, err
 	}

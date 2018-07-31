@@ -30,8 +30,8 @@ import (
 
 // FramebufferChanges returns the list of attachment changes over the span of
 // the entire capture.
-func FramebufferChanges(ctx context.Context, c *path.Capture) (*AttachmentFramebufferChanges, error) {
-	obj, err := database.Build(ctx, &FramebufferChangesResolvable{Capture: c})
+func FramebufferChanges(ctx context.Context, c *path.Capture, r *path.ResolveConfig) (*AttachmentFramebufferChanges, error) {
+	obj, err := database.Build(ctx, &FramebufferChangesResolvable{Capture: c, Config: r})
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ const errNoAPI = fault.Const("Command has no API")
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Capture)
+	ctx = setupContext(ctx, r.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

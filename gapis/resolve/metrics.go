@@ -25,10 +25,10 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-func Metrics(ctx context.Context, p *path.Metrics) (*api.Metrics, error) {
+func Metrics(ctx context.Context, p *path.Metrics, r *path.ResolveConfig) (*api.Metrics, error) {
 	res := api.Metrics{}
 	if p.MemoryBreakdown {
-		breakdown, err := memoryBreakdown(ctx, p.Command)
+		breakdown, err := memoryBreakdown(ctx, p.Command, r)
 		if err != nil {
 			return nil, log.Errf(ctx, err, "Failed to get memory breakdown")
 		}
@@ -37,8 +37,8 @@ func Metrics(ctx context.Context, p *path.Metrics) (*api.Metrics, error) {
 	return &res, nil
 }
 
-func memoryBreakdown(ctx context.Context, c *path.Command) (*api.MemoryBreakdown, error) {
-	cmd, err := Cmd(ctx, c)
+func memoryBreakdown(ctx context.Context, c *path.Command, r *path.ResolveConfig) (*api.MemoryBreakdown, error) {
+	cmd, err := Cmd(ctx, c, r)
 	if err != nil {
 		return nil, err
 	}
@@ -47,13 +47,13 @@ func memoryBreakdown(ctx context.Context, c *path.Command) (*api.MemoryBreakdown
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrStateUnavailable()}
 	}
 
-	state, err := GlobalState(ctx, c.GlobalStateAfter())
+	state, err := GlobalState(ctx, c.GlobalStateAfter(), r)
 	if err != nil {
 		return nil, err
 	}
 	if ml, ok := a.(api.MemoryBreakdownProvider); ok {
 		return ml.MemoryBreakdown(state)
-	} else {
-		return nil, fmt.Errorf("Memory breakdown not supported for API %v", a.Name())
 	}
+	return nil, fmt.Errorf("Memory breakdown not supported for API %v", a.Name())
+
 }

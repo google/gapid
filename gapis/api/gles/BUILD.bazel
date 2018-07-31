@@ -113,7 +113,6 @@ go_library(
         "//core/math/u64:go_default_library",
         "//core/memory/arena:go_default_library",  # keep
         "//core/os/device:go_default_library",
-        "//core/os/device/bind:go_default_library",
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
         "//core/text:go_default_library",

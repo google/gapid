@@ -42,7 +42,7 @@ import (
 func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Service, p *path.Capture) (*path.CommandFilter, error) {
 	filter := &path.CommandFilter{}
 	if f.Context >= 0 {
-		contexts, err := client.Get(ctx, p.Contexts().Path())
+		contexts, err := client.Get(ctx, p.Contexts().Path(), nil)
 		if err != nil {
 			return nil, log.Err(ctx, err, "Failed to load the contexts")
 		}
@@ -128,7 +128,7 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 	}
 	for i := 0; i < len(paths); i++ {
 		p := paths[i]
-		o, err := client.Get(ctx, p.Path())
+		o, err := client.Get(ctx, p.Path(), nil)
 		if err != nil {
 			return nil, log.Err(ctx, err, "Couldn't resolve device")
 		}
@@ -250,7 +250,7 @@ func getADBDevice(ctx context.Context, pattern string) (adb.Device, error) {
 }
 
 func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*service.Event, error) {
-	b, err := client.Get(ctx, p.Path())
+	b, err := client.Get(ctx, p.Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Couldn't get events at: %v", p)
 	}
@@ -258,7 +258,7 @@ func getEvents(ctx context.Context, client service.Service, p *path.Events) ([]*
 }
 
 func getCommand(ctx context.Context, client service.Service, p *path.Command) (*api.Command, error) {
-	boxedCmd, err := client.Get(ctx, p.Path())
+	boxedCmd, err := client.Get(ctx, p.Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Couldn't load command at: %v", p)
 	}
@@ -272,7 +272,7 @@ func getConstantSet(ctx context.Context, client service.Service, p *path.Constan
 	if cs, ok := constantSetCache[key]; ok {
 		return cs, nil
 	}
-	boxedConstants, err := client.Get(ctx, p.Path())
+	boxedConstants, err := client.Get(ctx, p.Path(), nil)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Couldn't local constant set at: %v", p)
 	}
@@ -318,7 +318,7 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 		mp := p.MemoryAfter(0, 0, math.MaxUint64)
 		mp.ExcludeData = true
 		mp.ExcludeObserved = true
-		boxedMemory, err := client.Get(ctx, mp.Path())
+		boxedMemory, err := client.Get(ctx, mp.Path(), nil)
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't fetch memory observations")
 		}
@@ -346,7 +346,7 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 func printMemoryData(ctx context.Context, client service.Service, p *path.Command, rng *service.MemoryRange) error {
 	mp := p.MemoryAfter(0, rng.Base, rng.Size)
 	mp.ExcludeObserved = true
-	boxedMemory, err := client.Get(ctx, mp.Path())
+	boxedMemory, err := client.Get(ctx, mp.Path(), nil)
 	if err != nil {
 		return log.Err(ctx, err, "Couldn't fetch memory observations")
 	}
@@ -383,7 +383,7 @@ func filterDevices(ctx context.Context, flags *DeviceFlags, gapis client.Client)
 
 	out := []*path.Device{}
 	for _, dev := range devices {
-		dd, err := gapis.Get(ctx, dev.Path())
+		dd, err := gapis.Get(ctx, dev.Path(), nil)
 		if err != nil {
 			return nil, err
 		}
