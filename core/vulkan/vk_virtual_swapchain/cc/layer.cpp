@@ -135,7 +135,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   GET_PROC(vkGetPhysicalDeviceProperties);
   GET_PROC(vkGetPhysicalDeviceMemoryProperties);
 
-#ifdef VK_USE_PLATFORM_ANDROID_KHR
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
   GET_PROC(vkCreateAndroidSurfaceKHR);
 #endif
   GET_PROC(vkDestroySurfaceKHR);
