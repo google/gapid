@@ -287,7 +287,8 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
             *pDevice, pCreateInfo->pQueueCreateInfos[i].queueFamilyIndex, j,
             &q);
         set_dispatch_from_parent(q, *pDevice);
-        (*queue_map)[q] = {*pDevice, data.vkQueueSubmit, data.vkQueuePresentKHR};
+        (*queue_map)[q] = {*pDevice, data.vkQueueSubmit,
+                           data.vkQueuePresentKHR};
       }
     }
   }

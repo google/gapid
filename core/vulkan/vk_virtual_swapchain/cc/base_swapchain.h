@@ -19,7 +19,6 @@
 
 #include <vulkan/vulkan.h>
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 #include "layer.h"
 
@@ -35,7 +34,8 @@ class BaseSwapchain {
                 const VkAllocationCallbacks *pAllocator,
                 const void *platform_info);
   void Destroy(const VkAllocationCallbacks *pAllocator);
-  VkResult PresentFrom(VkQueue queue, VkImage image);
+  VkResult PresentFrom(VkQueue queue, size_t index, VkImage image);
+  VkSemaphore BlitWaitSemaphore(size_t index);
  private:
   VkInstance instance_;
   VkDevice device_;
@@ -54,12 +54,16 @@ class BaseSwapchain {
   // The semaphores to signal when the acquire is completed.
   VkSemaphore acquire_semaphore_;
   // The semaphores to signal when the blit is completed.
-  VkSemaphore blit_semaphore_;
-  // The fence to signal when the blit is completed, so the host can return.
-  VkFence blit_fence_;
+  std::vector<VkSemaphore> blit_semaphores_;
+  // The semaphores that will be signaled when the blit is complete and will be
+  // waited on by the queue present
+  std::vector<VkSemaphore> present_semaphores_;
+  // Whether the semaphores at a given index are currently pending and should
+  // have their blit semaphore waited on before acquiring.
+  std::vector<bool> is_pending_;
   // The command buffers to use to blit.  We need several in case someone
   // submits while a previous one is still pending.
-  VkCommandBuffer command_buffer_;
+  std::vector<VkCommandBuffer> command_buffers_;
 };
 
 }
