@@ -130,7 +130,10 @@ go_library(
 
 proto_library(
     name = "vulkan_proto",
-    srcs = ["resolvables.proto"],
+    srcs = [
+        "replay.proto",
+        "resolvables.proto",
+    ],
     visibility = ["//visibility:public"],
 )
 

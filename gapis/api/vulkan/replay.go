@@ -120,6 +120,7 @@ type framebufferRequest struct {
 	framebufferIndex uint32
 	out              chan imgRes
 	wireframeOverlay bool
+	displayToSurface bool
 }
 
 type deadCodeEliminationInfo struct {
@@ -440,12 +441,32 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 }
 
+// DisplayToSurface is a transformation that enables rendering during replay to
+// the original surface.
+func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	if c, ok := cmd.(*VkCreateSwapchainKHR); ok {
+		newCmd := c.Clone(out.State().Arena)
+		newCmd.extras = api.CmdExtras{}
+		// Add an extra to indicate to custom_replay to add a flag to
+		// the virtual swapchain pNext
+		newCmd.extras = append(api.CmdExtras{t}, cmd.Extras().All()...)
+		out.MutateAndWrite(ctx, id, newCmd)
+	} else {
+		out.MutateAndWrite(ctx, id, cmd)
+	}
+}
+
+func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) {
+}
+
 // issuesConfig is a replay.Config used by issuesRequests.
-type issuesConfig struct{}
+type issuesConfig struct {
+}
 
 // issuesRequest requests all issues found during replay to be reported to out.
 type issuesRequest struct {
-	out chan<- replay.Issue
+	out              chan<- replay.Issue
+	displayToSurface bool
 }
 
 func (a API) Replay(
@@ -519,6 +540,7 @@ func (a API) Replay(
 	}
 
 	wire := false
+	doDisplayToSurface := false
 	var overdraw *stencilOverdraw
 
 	for _, rr := range rrs {
@@ -533,6 +555,9 @@ func (a API) Replay(
 			}
 			issues.reportTo(rr.Result)
 			optimize = false
+			if req.displayToSurface {
+				doDisplayToSurface = true
+			}
 
 		case framebufferRequest:
 
@@ -584,6 +609,9 @@ func (a API) Replay(
 					readFramebuffer.Color(after, req.width, req.height, req.framebufferIndex, rr.Result)
 				}
 			}
+			if req.displayToSurface {
+				doDisplayToSurface = true
+			}
 		}
 	}
 
@@ -599,6 +627,10 @@ func (a API) Replay(
 
 	if wire {
 		transforms.Add(wireframe(ctx))
+	}
+
+	if doDisplayToSurface {
+		transforms.Add(&DisplayToSurface{})
 	}
 
 	if issues != nil {
@@ -659,6 +691,7 @@ func (a API) QueryFramebufferAttachment(
 	framebufferIndex uint32,
 	drawMode service.DrawMode,
 	disableReplayOptimization bool,
+	displayToSurface bool,
 	hints *service.UsageHints) (*image.Data, error) {
 
 	s, err := resolve.SyncData(ctx, intent.Capture)
@@ -695,7 +728,7 @@ func (a API) QueryFramebufferAttachment(
 
 	c := drawConfig{beginIndex, endIndex, subcommand, drawMode, disableReplayOptimization}
 	out := make(chan imgRes, 1)
-	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out}
+	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out, displayToSurface: displayToSurface}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err
@@ -707,9 +740,10 @@ func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr *replay.Manager,
+	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
-	c, r := issuesConfig{}, issuesRequest{}
+	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return nil, err

@@ -164,6 +164,22 @@ cmd VkResult ReplayCreateSwapchain(
     VkSwapchainKHR*                 pSwapchain) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
+  // Handle pNext
+  createInfo := pCreateInfo[0]
+  if createInfo.pNext != null {
+    numPNext := numberOfPNext(createInfo.pNext)
+    next := MutableVoidPtr(as!void*(createInfo.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT: {
+	  ext := as!VirtualSwapchainPNext*(next.Ptr)[0:1][0]
+	  _ = ext.surfaceCreateInfo
+	}
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   create_info := pCreateInfo[0]
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
 

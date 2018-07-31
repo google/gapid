@@ -371,6 +371,8 @@ message Report {
   Device device = 2;
   // The optional filter to apply to the report items.
   CommandFilter filter = 3;
+  // Whether to display the replay to the original surface while in progress.
+  bool display_to_surface = 4;
 }
 
 // Resources is a path to a list of resources used in a capture.

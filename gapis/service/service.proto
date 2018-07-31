@@ -293,6 +293,7 @@ message GetDevicesForReplayResponse {
 message ReplaySettings {
   path.Device device = 1;
   bool disable_replay_optimization = 2;
+  bool display_to_surface = 3;
 }
 
 message GetFramebufferAttachmentRequest {

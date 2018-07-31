@@ -100,7 +100,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 		hints := &service.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if qi, ok := a.(replay.QueryIssues); ok {
-				apiIssues, err := qi.QueryIssues(ctx, intent, mgr, hints)
+				apiIssues, err := qi.QueryIssues(ctx, intent, mgr, r.Path.DisplayToSurface, hints)
 				if err != nil {
 					issue := replay.Issue{
 						Command:  api.CmdNoID,
