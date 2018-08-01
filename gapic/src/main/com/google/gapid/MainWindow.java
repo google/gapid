@@ -572,7 +572,7 @@ public class MainWindow extends ApplicationWindow {
       Log(Location.Center, View.Log, "Log", (p, c, m, w) -> new LogView(p, w)),
 
       ApiState(Location.Right, View.State, "State", (p, c, m, w) -> new StateView(p, m, w)),
-      Memory(Location.Right, View.Memory, "Memory", MemoryView::new);
+      Memory(Location.Right, View.Memory, "Memory", (p, c, m, w) -> new MemoryView(p, m, w));
 
       public final Location defaultLocation;
       public final View view;

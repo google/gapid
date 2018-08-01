@@ -19,6 +19,7 @@ import static com.google.gapid.proto.service.memory.Memory.PoolNames.Application
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
+import static com.google.gapid.util.Ranges.merge;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.FINE;
 
@@ -42,6 +43,7 @@ import com.google.gapid.util.Ranges;
 
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -203,13 +205,15 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
 
   public ListenableFuture<Observation[]> getObservations(CommandIndex index) {
     return Futures.transform(client.get(observationsAfter(index, Application_VALUE)), v -> {
-      Service.Memory mem = v.getMemory();
-      Observation[] obs = new Observation[mem.getReadsCount() + mem.getWritesCount()];
+      List<Service.MemoryRange> reads = merge(v.getMemory().getReadsList());
+      List<Service.MemoryRange> writes = merge(v.getMemory().getWritesList());
+
+      Observation[] obs = new Observation[reads.size() + writes.size()];
       int idx = 0;
-      for (Service.MemoryRange read : mem.getReadsList()) {
+      for (Service.MemoryRange read : reads) {
         obs[idx++] = new Observation(index, true, read);
       }
-      for (Service.MemoryRange write : mem.getWritesList()) {
+      for (Service.MemoryRange write : writes) {
         obs[idx++] = new Observation(index, false, write);
       }
       return obs;
