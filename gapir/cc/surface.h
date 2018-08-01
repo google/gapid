@@ -17,20 +17,29 @@
 #ifndef GAPIR_SURFACE_H
 #define GAPIR_SURFACE_H
 
+#include <cstdint>
+
 #include "core/cc/target.h"
 
 #if TARGET_OS == GAPID_OS_ANDROID
 class ANativeWindow;
-#endif  // TARGET_OS == GAPID_OS_ANDROID
+#elif TARGET_OS == GAPID_OS_LINUX
+#include <xcb/xcb.h>
+#endif
 
 namespace gapir {
 
 #if TARGET_OS == GAPID_OS_ANDROID
 extern ANativeWindow* android_window;
-#endif  // TARGET_OS == GAPID_OS_ANDROID
+#elif TARGET_OS == GAPID_OS_LINUX
+struct XcbWindowInfo {
+  xcb_connection_t* connection;
+  xcb_window_t window;
+};
+#endif
 
 // Get the platform-specific data pointer to create the surface
-void* SurfaceInfo();
+void* CreateSurface(uint32_t width, uint32_t height);
 
 }  // namespace gapir
 

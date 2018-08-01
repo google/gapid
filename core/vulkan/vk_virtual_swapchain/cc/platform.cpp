@@ -33,6 +33,17 @@ void CreateSurface(const InstanceData* functions, VkInstance instance,
       }
     }
   }
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+  {
+    auto pCreateInfo = static_cast<const VkXcbSurfaceCreateInfoKHR*>(data);
+    if (pCreateInfo->sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR) {
+      // Attempt to create Xcb surface
+      if (functions->vkCreateXcbSurfaceKHR(instance, pCreateInfo, pAllocator,
+                                           pSurface) != VK_SUCCESS) {
+        *pSurface = 0;
+      }
+    }
+  }
 #else
   *pSurface = 0;
 #endif
