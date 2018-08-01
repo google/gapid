@@ -249,7 +249,7 @@ public class MainWindow extends ApplicationWindow {
 
           @Override
           public FolderInfo[] restore() {
-            return MainTab.getFolders(client, models(), widgets(), hiddenTabs);
+            return MainTab.getFolders(models(), widgets(), hiddenTabs);
           }
         }, models().analytics);
         tabs.setLeftVisible(!models().settings.hideLeft);
@@ -410,7 +410,7 @@ public class MainWindow extends ApplicationWindow {
             type.view, shown ? ClientAction.Enable : ClientAction.Disable);
         if (shown) {
           tabs.addNewTabToCenter(new MainTab(type, parent -> {
-            Tab tab = type.factory.create(parent, client, models(), widgets());
+            Tab tab = type.factory.create(parent, models(), widgets());
             tab.reinitialize();
             return tab.getControl();
           }));
@@ -483,27 +483,26 @@ public class MainWindow extends ApplicationWindow {
       super(type, type.view, type.label, contentFactory);
     }
 
-    public static FolderInfo[] getFolders(
-        Client client, Models models, Widgets widgets, Set<Type> hidden) {
+    public static FolderInfo[] getFolders(Models models, Widgets widgets, Set<Type> hidden) {
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
       allTabs.removeAll(hidden);
-      List<TabInfo> left = getTabs(models.settings.leftTabs, allTabs, client, models, widgets);
-      List<TabInfo> center = getTabs(models.settings.centerTabs, allTabs, client, models, widgets);
-      List<TabInfo> right = getTabs(models.settings.rightTabs, allTabs, client, models, widgets);
+      List<TabInfo> left = getTabs(models.settings.leftTabs, allTabs, models, widgets);
+      List<TabInfo> center = getTabs(models.settings.centerTabs, allTabs, models, widgets);
+      List<TabInfo> right = getTabs(models.settings.rightTabs, allTabs, models, widgets);
 
       for (Type missing : allTabs) {
         switch (missing.defaultLocation) {
           case Left:
             left.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, client, models, widgets).getControl()));
+                parent -> missing.factory.create(parent, models, widgets).getControl()));
             break;
           case Center:
             center.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, client, models, widgets).getControl()));
+                parent -> missing.factory.create(parent, models, widgets).getControl()));
             break;
           case Right:
             right.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, client, models, widgets).getControl()));
+                parent -> missing.factory.create(parent, models, widgets).getControl()));
             break;
           default:
             throw new AssertionError();
@@ -534,7 +533,7 @@ public class MainWindow extends ApplicationWindow {
     }
 
     private static List<TabInfo> getTabs(
-        String[] names, Set<Type> left, Client client, Models models, Widgets widgets) {
+        String[] names, Set<Type> left, Models models, Widgets widgets) {
 
       List<TabInfo> result = Lists.newArrayList();
       for (String name : names) {
@@ -542,7 +541,7 @@ public class MainWindow extends ApplicationWindow {
           Type type = Type.valueOf(name);
           if (left.remove(type)) {
             result.add(new MainTab(type,
-                parent -> type.factory.create(parent, client, models, widgets).getControl()));
+                parent -> type.factory.create(parent, models, widgets).getControl()));
           }
         } catch (IllegalArgumentException e) {
           // Ignore incorrect names in the properties.
@@ -562,17 +561,17 @@ public class MainWindow extends ApplicationWindow {
      * Information about the available tabs.
      */
     public static enum Type {
-      ApiCalls(Location.Left, View.Commands, "Commands", (p, c, m, w) -> new CommandTree(p, m, w)),
+      ApiCalls(Location.Left, View.Commands, "Commands", CommandTree::new),
 
-      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", (p, c, m, w) -> new FramebufferView(p, m, w)),
-      Textures(Location.Center, View.Textures, "Textures", (p, c, m, w) -> new TextureView(p, m, w)),
-      Geometry(Location.Center, View.Geometry, "Geometry", (p, c, m, w) -> new GeometryView(p, m, w)),
-      Shaders(Location.Center, View.Shaders, "Shaders", (p, c, m, w) -> new ShaderView(p, m, w)),
-      Report(Location.Center, View.Report, "Report", (p, c, m, w) -> new ReportView(p, m, w)),
-      Log(Location.Center, View.Log, "Log", (p, c, m, w) -> new LogView(p, w)),
+      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
+      Textures(Location.Center, View.Textures, "Textures", TextureView::new),
+      Geometry(Location.Center, View.Geometry, "Geometry", GeometryView::new),
+      Shaders(Location.Center, View.Shaders, "Shaders", ShaderView::new),
+      Report(Location.Center, View.Report, "Report", ReportView::new),
+      Log(Location.Center, View.Log, "Log", (p, m, w) -> new LogView(p, w)),
 
-      ApiState(Location.Right, View.State, "State", (p, c, m, w) -> new StateView(p, m, w)),
-      Memory(Location.Right, View.Memory, "Memory", (p, c, m, w) -> new MemoryView(p, m, w));
+      ApiState(Location.Right, View.State, "State", StateView::new),
+      Memory(Location.Right, View.Memory, "Memory", MemoryView::new);
 
       public final Location defaultLocation;
       public final View view;
@@ -603,7 +602,7 @@ public class MainWindow extends ApplicationWindow {
      * Factory to create the UI components of a tab.
      */
     public static interface TabFactory {
-      public Tab create(Composite parent, Client client, Models models, Widgets widgets);
+      public Tab create(Composite parent, Models models, Widgets widgets);
     }
   }
 
