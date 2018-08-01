@@ -62,7 +62,7 @@ Click the `Capture Trace...` text in the welcome screen, or click the `File` &ra
 1. If you wish to automatically stop tracing after N frames, then use a non-zero number for `Stop After`.
 
 1. If you wish to start tracing as soon as the application is launched, enable the `Trace From Beginning` option. If this option is **NOT** set, then in the tracing dialog, you must press `Start` to start the capture.
-<span class="info">Tracing OpenGL ES calls currently requires recording from the very start of the application. If the part of the application you want to debug takes a significant time to reach from the application startup, consider creating a separate Activity that launches straight into the part of the application you care about.</span>
+<span class="info">Tracing OpenGL ES calls at the middle of the execution of an Android Activity (not from the beginning of the application by disabling this option) is currently an experimental feature. </span>
 
 1. `Disable Buffering` disables the bufferring of the capture data on the tracing device which will slow down the tracing process. But in case of crashing, users will get everything before the crash traced.
 
