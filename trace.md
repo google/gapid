@@ -55,16 +55,16 @@ Click the `Capture Trace...` text in the welcome screen, or click the `File` &ra
 
 1. Add any command-line `Arguments` that are necessary for your program.
 
-1. Select the `Working Directory` for your program, only valid for tracing Vulkan calls on Windows/Linux machines.
+1. Select the `Working Directory` for your program, only valid for tracing on Windows/Linux machines.
 
-1. Set the `Environment Variables` for tracing your program, only valid for tracing Vulkan calls on Windows/Linux machines.
+1. Set the `Environment Variables` for tracing your program, only valid for tracing on Windows/Linux machines.
 
 1. If you wish to automatically stop tracing after N frames, then use a non-zero number for `Stop After`.
 
 1. If you wish to start tracing as soon as the application is launched, enable the `Trace From Beginning` option. If this option is **NOT** set, then in the tracing dialog, you must press `Start` to start the capture.
 <span class="info">Tracing OpenGL ES calls at the middle of the execution of an Android Activity (not from the beginning of the application by disabling this option) is currently an experimental feature. </span>
 
-1. `Disable Buffering` disables the bufferring of the capture data on the tracing device which will slow down the tracing process. But in case of crashing, users will get everything before the crash traced.
+1. `Disable Buffering` disables the bufferring of the capture data on the tracing device which will slow down the tracing process. But in case of a crash, more the most recent data will be provided.
 
 1. If you would like to erase the package cache before taking the trace, enable the `Clear package cache` option.
 
