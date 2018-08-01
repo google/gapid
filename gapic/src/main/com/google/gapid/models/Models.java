@@ -35,11 +35,12 @@ public class Models {
   public final Thumbnails thumbs;
   public final ConstantSets constants;
   public final Geometries geos;
+  public final Memory memory;
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
       Devices devices, CommandStream commands, ApiContext contexts, Timeline timeline,
       Resources resources, ApiState state, Reports reports, Thumbnails thumbs,
-      ConstantSets constants, Geometries geos) {
+      ConstantSets constants, Geometries geos, Memory memory) {
     this.settings = settings;
     this.analytics = analytics;
     this.follower = follower;
@@ -54,6 +55,7 @@ public class Models {
     this.thumbs = thumbs;
     this.constants = constants;
     this.geos = geos;
+    this.memory = memory;
   }
 
   public static Models create(
@@ -71,8 +73,9 @@ public class Models {
     Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
     Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);
     Geometries geometries = new Geometries(shell, analytics, client, commands);
+    Memory memory = new Memory(shell, analytics, client, commands);
     return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
-        resources, state, reports, thumbs, constants, geometries);
+        resources, state, reports, thumbs, constants, geometries, memory);
   }
 
   public void dispose() {

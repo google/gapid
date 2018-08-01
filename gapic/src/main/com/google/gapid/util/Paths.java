@@ -99,12 +99,16 @@ public class Paths {
         Path.StateTreeNodeForPath.newBuilder().setTree(tree).setMember(statePath)).build();
   }
 
-  public static Path.Any memoryAfter(Path.Command after, int pool, long address, long size) {
-    if (after == null) {
+  public static Path.Any memoryAfter(CommandIndex index, int pool, long address, long size) {
+    if (index == null) {
       return null;
     }
-    return Path.Any.newBuilder().setMemory(
-        Path.Memory.newBuilder().setAfter(after).setPool(pool).setAddress(address).setSize(size))
+    return Path.Any.newBuilder()
+        .setMemory(Path.Memory.newBuilder()
+            .setAfter(index.getCommand())
+            .setPool(pool)
+            .setAddress(address)
+            .setSize(size))
         .build();
   }
 
@@ -112,8 +116,13 @@ public class Paths {
     if (index == null || range == null) {
       return null;
     }
-    return Path.Any.newBuilder().setMemory(Path.Memory.newBuilder().setAfter(index.getCommand())
-        .setPool(pool).setAddress(range.getBase()).setSize(range.getSize())).build();
+    return Path.Any.newBuilder()
+        .setMemory(Path.Memory.newBuilder()
+            .setAfter(index.getCommand())
+            .setPool(pool)
+            .setAddress(range.getBase())
+            .setSize(range.getSize()))
+        .build();
   }
 
   public static Path.Any observationsAfter(CommandIndex index, int pool) {
