@@ -48,12 +48,16 @@ using namespace gapir;
 
 namespace {
 
-std::vector<uint32_t> memorySizes{
-    2 * 1024 * 1024 * 1024U,  // 2GB
-    1 * 1024 * 1024 * 1024U,  // 1GB
-    512 * 1024 * 1024U,       // 512MB
-    256 * 1024 * 1024U,       // 256MB
-    128 * 1024 * 1024U,       // 128MB
+std::vector<uint32_t> memorySizes {
+// If we are on desktop, we can try more memory
+#if TARGET_OS != GAPID_OS_ANDROID
+  3 * 1024 * 1024 * 1024U,  // 3GB
+#endif
+      2 * 1024 * 1024 * 1024U,  // 2GB
+      1 * 1024 * 1024 * 1024U,  // 1GB
+      512 * 1024 * 1024U,       // 512MB
+      256 * 1024 * 1024U,       // 256MB
+      128 * 1024 * 1024U,       // 128MB
 };
 
 // createResourceProvider constructs and returns a ResourceInMemoryCache.
