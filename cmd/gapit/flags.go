@@ -124,7 +124,6 @@ type (
 			Minimum int `help:"_return error when less than this number of frames is found"`
 		}
 		NoOpt            bool `help:"disables optimization of the replay stream"`
-		DisplayToSurface bool `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
 	}
 	DumpShadersFlags struct {
