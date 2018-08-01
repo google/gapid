@@ -27,6 +27,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
@@ -146,6 +147,12 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
         }
       });
     }
+  }
+
+  public ListenableFuture<Service.FindResponse> search(Service.FindRequest request) {
+    SettableFuture<Service.FindResponse> result = SettableFuture.create();
+    client.streamSearch(request, result::set);
+    return result;
   }
 
   @Override

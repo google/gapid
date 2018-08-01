@@ -27,7 +27,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.ApiContext;
 import com.google.gapid.models.ApiContext.FilteringContext;
@@ -36,8 +35,8 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.models.Follower;
-import com.google.gapid.models.Models;
 import com.google.gapid.models.ImagesModel;
+import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
@@ -46,7 +45,6 @@ import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
@@ -86,16 +84,14 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
     ApiContext.Listener, ImagesModel.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
 
-  private final Client client;
   private final Models models;
   private final LoadablePanel<Tree> loading;
   protected final Tree tree;
   private final SelectionHandler<Control> selectionHandler;
   private final SingleInFlight searchController = new SingleInFlight();
 
-  public CommandTree(Composite parent, Client client, Models models, Widgets widgets) {
+  public CommandTree(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.client = client;
     this.models = models;
 
     setLayout(new GridLayout(1, false));
@@ -182,7 +178,7 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
         parent = selection;
       }
       searchController.start().listen(
-          Futures.transformAsync(search(searchRequest(parent, text, regex)),
+          Futures.transformAsync(models.commands.search(searchRequest(parent, text, regex)),
               r -> getTreePath(models.commands.getData(), Lists.newArrayList(),
                   r.getCommandTreeNode().getIndicesList().iterator())),
           new UiCallback<TreePath, TreePath>(tree, LOG) {
@@ -209,12 +205,6 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
         .setMaxItems(1)
         .setWrap(true)
         .build();
-  }
-
-  private ListenableFuture<Service.FindResponse> search(Service.FindRequest request) {
-    SettableFuture<Service.FindResponse> result = SettableFuture.create();
-    client.streamSearch(request, result::set);
-    return result;
   }
 
   protected void select(TreePath path) {
