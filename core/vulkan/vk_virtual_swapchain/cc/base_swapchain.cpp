@@ -180,7 +180,7 @@ VkResult BaseSwapchain::PresentFrom(VkQueue queue, size_t index,
   // TODO: the error return values here aren't necessarily valid return values
   // for VkQueueSubmit
   if ((res = device_functions_->vkAcquireNextImageKHR(
-           device_, swapchain_, 0, acquire_semaphore_, VK_NULL_HANDLE,
+           device_, swapchain_, UINT64_MAX, acquire_semaphore_, VK_NULL_HANDLE,
            &base_index)) != VK_SUCCESS) {
     return res;
   }
