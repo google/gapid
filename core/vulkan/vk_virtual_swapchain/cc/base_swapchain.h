@@ -34,6 +34,8 @@ class BaseSwapchain {
                 const VkAllocationCallbacks *pAllocator,
                 const void *platform_info);
   void Destroy(const VkAllocationCallbacks *pAllocator);
+  bool Valid() const;
+
   VkResult PresentFrom(VkQueue queue, size_t index, VkImage image);
   VkSemaphore BlitWaitSemaphore(size_t index);
 
@@ -65,6 +67,8 @@ class BaseSwapchain {
   // The command buffers to use to blit.  We need several in case someone
   // submits while a previous one is still pending.
   std::vector<VkCommandBuffer> command_buffers_;
+  // Whether we completed construction successfully
+  bool valid_;
 };
 
 }  // namespace swapchain

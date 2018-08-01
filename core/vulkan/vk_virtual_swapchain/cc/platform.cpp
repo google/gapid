@@ -21,6 +21,7 @@ namespace swapchain {
 void CreateSurface(const InstanceData* functions, VkInstance instance,
                    const void* data, const VkAllocationCallbacks* pAllocator,
                    VkSurfaceKHR* pSurface) {
+  *pSurface = 0;
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
   {
     auto pCreateInfo = static_cast<const VkAndroidSurfaceCreateInfoKHR*>(data);
@@ -44,8 +45,17 @@ void CreateSurface(const InstanceData* functions, VkInstance instance,
       }
     }
   }
-#else
-  *pSurface = 0;
+#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+  {
+    auto pCreateInfo = static_cast<const VkWin32SurfaceCreateInfoKHR*>(data);
+    if (pCreateInfo->sType == VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR) {
+      // Attempt to create Win32 surface
+      if (functions->vkCreateWin32SurfaceKHR(instance, pCreateInfo, pAllocator,
+                                             pSurface) != VK_SUCCESS) {
+        *pSurface = 0;
+      }
+    }
+  }
 #endif
 }
 

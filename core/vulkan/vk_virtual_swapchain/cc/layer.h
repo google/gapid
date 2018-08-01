@@ -53,6 +53,8 @@ struct InstanceData {
   PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR;
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
   PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR;
+#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+  PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
 #endif
   PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
 

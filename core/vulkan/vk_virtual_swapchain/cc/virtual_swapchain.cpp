@@ -402,5 +402,10 @@ void VirtualSwapchain::CreateBaseSwapchain(
   base_swapchain_ = std::unique_ptr<BaseSwapchain>(new BaseSwapchain(
       instance, device_, queue_, command_pool_, num_images_, instance_functions,
       functions_, &swapchain_info_, pAllocator, platform_info));
+  if (!base_swapchain_->Valid()) {
+    // Failed to create some aspect of the base surface
+    base_swapchain_->Destroy(pAllocator);
+    base_swapchain_.reset();
+  }
 }
 }  // namespace swapchain

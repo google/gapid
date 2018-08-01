@@ -328,6 +328,8 @@ int main(int argc, const char* argv[]) {
   fflush(stdout);
 
   server->wait();
+
+  gapir::WaitForWindowClose();
   return EXIT_SUCCESS;
 }
 
