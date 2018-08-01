@@ -25,6 +25,8 @@
 class ANativeWindow;
 #elif TARGET_OS == GAPID_OS_LINUX
 #include <xcb/xcb.h>
+#elif TARGET_OS == GAPID_OS_WINDOWS
+#include <Windows.h>
 #endif
 
 namespace gapir {
@@ -36,10 +38,17 @@ struct XcbWindowInfo {
   xcb_connection_t* connection;
   xcb_window_t window;
 };
+#elif TARGET_OS == GAPID_OS_WINDOWS
+struct Win32WindowInfo {
+  HINSTANCE instance;
+  HWND window;
+};
 #endif
 
 // Get the platform-specific data pointer to create the surface
 void* CreateSurface(uint32_t width, uint32_t height);
+
+void WaitForWindowClose();
 
 }  // namespace gapir
 

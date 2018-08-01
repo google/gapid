@@ -68,7 +68,8 @@ BaseSwapchain::BaseSwapchain(VkInstance instance, VkDevice device,
       device_(device),
       instance_functions_(instance_functions),
       device_functions_(device_functions),
-      swapchain_info_(*swapchain_info) {
+      swapchain_info_(*swapchain_info),
+      valid_(false) {
   if (platform_info == nullptr) {
     return;
   }
@@ -149,6 +150,8 @@ BaseSwapchain::BaseSwapchain(VkInstance instance, VkDevice device,
   }
 
   is_pending_.resize(num_images);
+
+  valid_ = true;
 }
 
 void BaseSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
@@ -171,6 +174,8 @@ void BaseSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
   is_pending_.clear();
   command_buffers_.clear();
 }
+
+bool BaseSwapchain::Valid() const { return valid_; }
 
 VkResult BaseSwapchain::PresentFrom(VkQueue queue, size_t index,
                                     VkImage image) {

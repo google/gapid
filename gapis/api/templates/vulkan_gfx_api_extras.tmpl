@@ -345,6 +345,8 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     VkAndroidSurfaceCreateInfoKHR surfaceInfo = {};
 #elif TARGET_OS == GAPID_OS_LINUX
     VkXcbSurfaceCreateInfoKHR surfaceInfo = {};
+#elif TARGET_OS == GAPID_OS_WINDOWS
+    VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
 #endif
     for (auto pNext = static_cast<const swapchain::CreateNext*>(newCreateInfo.pNext);
          pNext != nullptr;
@@ -368,6 +370,12 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
 	    surfaceInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
 	    surfaceInfo.connection = info->connection;
 	    surfaceInfo.window = info->window;
+#elif TARGET_OS == GAPID_OS_WINDOWS
+            createInfo = &surfaceInfo;
+            auto info = (Win32WindowInfo*)data;
+            surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+            surfaceInfo.hinstance = (HINSTANCE)info->instance;
+            surfaceInfo.hwnd = (HWND)info->window;
 #endif
 	  }
 	  vsPNext.surfaceCreateInfo = createInfo;
