@@ -123,7 +123,7 @@ type (
 			Count   int `help:"number of frames after Start to capture: -1 for all frames"`
 			Minimum int `help:"_return error when less than this number of frames is found"`
 		}
-		NoOpt            bool `help:"disables optimization of the replay stream"`
+		NoOpt bool `help:"disables optimization of the replay stream"`
 		CommandFilterFlags
 	}
 	DumpShadersFlags struct {
