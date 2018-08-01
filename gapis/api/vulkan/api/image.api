@@ -366,7 +366,7 @@ cmd VkResult vkBindImageMemory(
             (level.LinearLayout != null) {
           loffset := as!u64(memoryOffset + level.LinearLayout.offset)
           lsize := as!u64(level.LinearLayout.size)
-          level.Data = imageObject.BoundMemory.Data[loffset:lsize]
+          level.Data = imageObject.BoundMemory.Data[loffset:loffset + lsize]
         } else {
           level.Data = make!u8(size)
         }
