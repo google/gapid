@@ -15,7 +15,7 @@
  */
 package com.google.gapid.widgets;
 
-import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
 import static com.google.gapid.util.GeoUtils.vertCenter;
 
 import com.google.common.collect.Maps;

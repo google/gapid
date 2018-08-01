@@ -564,8 +564,8 @@ public class MainWindow extends ApplicationWindow {
     public static enum Type {
       ApiCalls(Location.Left, View.Commands, "Commands", CommandTree::new),
 
-      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
-      Textures(Location.Center, View.Textures, "Textures", TextureView::new),
+      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", (p, c, m, w) -> new FramebufferView(p, m, w)),
+      Textures(Location.Center, View.Textures, "Textures", (p, c, m, w) -> new TextureView(p, m, w)),
       Geometry(Location.Center, View.Geometry, "Geometry", (p, c, m, w) -> new GeometryView(p, m, w)),
       Shaders(Location.Center, View.Shaders, "Shaders", (p, c, m, w) -> new ShaderView(p, m, w)),
       Report(Location.Center, View.Report, "Report", (p, c, m, w) -> new ReportView(p, m, w)),

@@ -17,7 +17,7 @@ package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
 import static com.google.gapid.models.Follower.nullPrefetcher;
-import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
 import static com.google.gapid.util.Loadable.MessageType.Error;
@@ -37,7 +37,7 @@ import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
-import com.google.gapid.models.Thumbnails;
+import com.google.gapid.models.ImagesModel;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
@@ -83,7 +83,7 @@ import java.util.logging.Logger;
  * API command view displaying the commands with their hierarchy grouping in a tree.
  */
 public class CommandTree extends Composite implements Tab, Capture.Listener, CommandStream.Listener,
-    ApiContext.Listener, Thumbnails.Listener {
+    ApiContext.Listener, ImagesModel.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
 
   private final Client client;
@@ -110,12 +110,12 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.contexts.addListener(this);
-    models.thumbs.addListener(this);
+    models.images.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.contexts.removeListener(this);
-      models.thumbs.removeListener(this);
+      models.images.removeListener(this);
     });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
@@ -424,13 +424,13 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
 
     @Override
     protected boolean shouldShowImage(CommandStream.Node node) {
-      return models.thumbs.isReady() &&
+      return models.images.isReady() &&
           node.getData() != null && !node.getData().getGroup().isEmpty();
     }
 
     @Override
     protected ListenableFuture<ImageData> loadImage(CommandStream.Node node, int size) {
-      return noAlpha(models.thumbs.getThumbnail(
+      return noAlpha(models.images.getThumbnail(
           node.getPath(Path.CommandTreeNode.newBuilder()).build(), size, i -> { /*noop*/ }));
     }
 
