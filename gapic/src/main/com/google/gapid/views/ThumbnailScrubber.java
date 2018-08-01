@@ -16,7 +16,7 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
-import static com.google.gapid.models.Thumbnails.THUMB_SIZE;
+import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
@@ -28,7 +28,7 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
-import com.google.gapid.models.Thumbnails;
+import com.google.gapid.models.ImagesModel;
 import com.google.gapid.models.Timeline;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.util.Loadable;
@@ -57,7 +57,7 @@ import java.util.List;
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
 public class ThumbnailScrubber extends Composite implements Tab, Capture.Listener,
-    CommandStream.Listener, ApiContext.Listener, Timeline.Listener, Thumbnails.Listener {
+    CommandStream.Listener, ApiContext.Listener, Timeline.Listener, ImagesModel.Listener {
   private final Models models;
   private final LoadablePanel<Carousel> loading;
   private final Carousel carousel;
@@ -69,7 +69,7 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
     setLayout(new FillLayout(SWT.VERTICAL));
 
     loading = new LoadablePanel<Carousel>(this, widgets,
-        panel -> new Carousel(panel, models.thumbs, widgets));
+        panel -> new Carousel(panel, models.images, widgets));
     carousel = loading.getContents();
 
     carousel.addContentListener(SWT.MouseDown, e -> {
@@ -84,13 +84,13 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
     models.contexts.addListener(this);
     models.timeline.addListener(this);
     models.commands.addListener(this);
-    models.thumbs.addListener(this);
+    models.images.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.contexts.removeListener(this);
       models.timeline.removeListener(this);
       models.commands.removeListener(this);
-      models.thumbs.removeListener(this);
+      models.images.removeListener(this);
       carousel.reset();
     });
   }
@@ -237,12 +237,12 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
   private static class Carousel extends HorizontalList implements LoadingIndicator.Repaintable {
     private static final int MIN_SIZE = 80;
 
-    private final Thumbnails thumbs;
+    private final ImagesModel thumbs;
     private final Widgets widgets;
     private List<Data> datas = Collections.emptyList();
     private int selectedIndex = -1;
 
-    public Carousel(Composite parent, Thumbnails thumbs, Widgets widgets) {
+    public Carousel(Composite parent, ImagesModel thumbs, Widgets widgets) {
       super(parent);
       this.thumbs = thumbs;
       this.widgets = widgets;

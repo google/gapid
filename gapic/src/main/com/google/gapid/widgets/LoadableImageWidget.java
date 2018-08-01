@@ -15,7 +15,7 @@
  */
 package com.google.gapid.widgets;
 
-import com.google.gapid.models.Thumbnails;
+import com.google.gapid.models.ImagesModel;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.GC;
@@ -34,7 +34,7 @@ public class LoadableImageWidget extends Canvas {
   private LoadableImageWidget(Composite parent) {
     super(parent, SWT.BORDER);
 
-    setSize(Thumbnails.THUMB_SIZE, Thumbnails.THUMB_SIZE);
+    setSize(ImagesModel.THUMB_SIZE, ImagesModel.THUMB_SIZE);
     addListener(SWT.Paint, e -> paint(e.gc));
     addListener(SWT.Dispose, e -> image.dispose());
   }

@@ -32,14 +32,14 @@ public class Models {
   public final Resources resources;
   public final ApiState state;
   public final Reports reports;
-  public final Thumbnails thumbs;
+  public final ImagesModel images;
   public final ConstantSets constants;
   public final Geometries geos;
   public final Memory memory;
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
       Devices devices, CommandStream commands, ApiContext contexts, Timeline timeline,
-      Resources resources, ApiState state, Reports reports, Thumbnails thumbs,
+      Resources resources, ApiState state, Reports reports, ImagesModel images,
       ConstantSets constants, Geometries geos, Memory memory) {
     this.settings = settings;
     this.analytics = analytics;
@@ -52,7 +52,7 @@ public class Models {
     this.resources = resources;
     this.state = state;
     this.reports = reports;
-    this.thumbs = thumbs;
+    this.images = images;
     this.constants = constants;
     this.geos = geos;
     this.memory = memory;
@@ -71,11 +71,11 @@ public class Models {
     Resources resources = new Resources(shell, analytics, client, capture, commands);
     ApiState state = new ApiState(shell, analytics, client, follower, commands, contexts, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
-    Thumbnails thumbs = new Thumbnails(client, devices, capture, settings);
+    ImagesModel images = new ImagesModel(client, devices, capture, settings);
     Geometries geometries = new Geometries(shell, analytics, client, commands);
     Memory memory = new Memory(shell, analytics, client, commands);
     return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
-        resources, state, reports, thumbs, constants, geometries, memory);
+        resources, state, reports, images, constants, geometries, memory);
   }
 
   public void dispose() {

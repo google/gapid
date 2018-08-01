@@ -19,7 +19,11 @@ import static com.google.gapid.image.FetchedImage.loadThumbnail;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.image.FetchedImage;
+import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.image.Image;
+import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -33,14 +37,17 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
- * Manages the loading of thumbnail previews.
+ * Manages the loading of thumbnail previews and texture and framebuffer images.
  */
-public class Thumbnails {
-  protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
+public class ImagesModel {
+  protected static final Logger LOG = Logger.getLogger(ImagesModel.class.getName());
 
   public static final int THUMB_SIZE = 192;
   private static final int MIN_SIZE = DPIUtil.autoScaleUp(18);
   private static final int THUMB_PIXELS = DPIUtil.autoScaleUp(THUMB_SIZE);
+  private static final Service.UsageHints FB_HINTS = Service.UsageHints.newBuilder()
+      .setPrimary(true)
+      .build();
 
   private final Client client;
   private final Devices devices;
@@ -48,7 +55,7 @@ public class Thumbnails {
   private final Settings settings;
   private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
-  public Thumbnails(Client client, Devices devices, Capture capture, Settings settings) {
+  public ImagesModel(Client client, Devices devices, Capture capture, Settings settings) {
     this.client = client;
     this.devices = devices;
     this.capture = capture;
@@ -70,6 +77,17 @@ public class Thumbnails {
 
   public boolean isReady() {
     return devices.hasReplayDevice() && capture.isLoaded();
+  }
+
+  public ListenableFuture<FetchedImage> getFramebuffer(CommandIndex command,
+      API.FramebufferAttachment attachment, Service.RenderSettings renderSettings) {
+    return FetchedImage.load(client, client.getFramebufferAttachment(
+        devices.getReplayDevice(), command.getCommand(), attachment, renderSettings,
+        FB_HINTS, settings.disableReplayOptimization));
+  }
+
+  public ListenableFuture<FetchedImage> getResource(Path.ResourceData path) {
+    return FetchedImage.load(client, path);
   }
 
   public ListenableFuture<ImageData> getThumbnail(

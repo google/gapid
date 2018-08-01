@@ -23,7 +23,6 @@ import static com.google.gapid.widgets.Widgets.createSeparator;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.image.MultiLayerAndLevelImage;
 import com.google.gapid.models.Analytics.View;
@@ -35,12 +34,10 @@ import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.api.API;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
@@ -84,11 +81,7 @@ public class FramebufferView extends Composite
       .setMaxHeight(MAX_SIZE).setMaxWidth(MAX_SIZE)
       .setDrawMode(Service.DrawMode.OVERDRAW)
       .build();
-  private static final Service.UsageHints HINTS = Service.UsageHints.newBuilder()
-      .setPrimary(true)
-      .build();
 
-  private final Client client;
   private final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
   protected final ImagePanel imagePanel;
@@ -96,9 +89,8 @@ public class FramebufferView extends Composite
   private API.FramebufferAttachment target = API.FramebufferAttachment.Color0;
   private ToolItem targetItem;
 
-  public FramebufferView(Composite parent, Client client, Models models, Widgets widgets) {
+  public FramebufferView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.client = client;
     this.models = models;
 
     setLayout(new GridLayout(2, false));
@@ -227,15 +219,14 @@ public class FramebufferView extends Composite
   }
 
   private void updateBuffer() {
-    CommandIndex commandPath = models.commands.getSelectedCommands();
-    if (commandPath == null) {
+    CommandIndex command = models.commands.getSelectedCommands();
+    if (command == null) {
       imagePanel.showMessage(Info, Messages.SELECT_COMMAND);
     } else if (!models.devices.hasReplayDevice()) {
       imagePanel.showMessage(Error, Messages.NO_REPLAY_DEVICE);
     } else {
       imagePanel.startLoading();
-      rpcController.start().listen(
-          FetchedImage.load(client, getImageInfoPath(commandPath.getCommand())),
+      rpcController.start().listen(models.images.getFramebuffer(command, target, renderSettings),
           new UiErrorCallback<FetchedImage, MultiLayerAndLevelImage, Loadable.Message>(this, LOG) {
         @Override
         protected ResultOrError<MultiLayerAndLevelImage, Loadable.Message> onRpcThread(
@@ -260,11 +251,5 @@ public class FramebufferView extends Composite
         }
       });
     }
-  }
-
-  private ListenableFuture<Path.ImageInfo> getImageInfoPath(Path.Command commandPath) {
-    return client.getFramebufferAttachment(
-        models.devices.getReplayDevice(), commandPath, target, renderSettings, HINTS,
-          models.settings.disableReplayOptimization);
   }
 }

@@ -39,9 +39,9 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.ImagesModel;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
-import com.google.gapid.models.Thumbnails;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -52,7 +52,6 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.rpc.UiErrorCallback;
-import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
@@ -96,10 +95,9 @@ import java.util.logging.Logger;
  * View that displays the texture resources of the current capture.
  */
 public class TextureView extends Composite implements Tab, Capture.Listener, Resources.Listener,
-    CommandStream.Listener, Thumbnails.Listener  {
+    CommandStream.Listener, ImagesModel.Listener  {
   protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
-  private final Client client;
   private final Models models;
   private final SingleInFlight rpcController = new SingleInFlight();
   private final GotoAction gotoAction;
@@ -107,9 +105,8 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
   private final ImageProvider imageProvider;
   protected final ImagePanel imagePanel;
 
-  public TextureView(Composite parent, Client client, Models models, Widgets widgets) {
+  public TextureView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
-    this.client = client;
     this.models = models;
     this.gotoAction = new GotoAction(this, models, widgets.theme,
         a -> models.commands.selectCommands(CommandIndex.forCommand(a), true));
@@ -136,12 +133,12 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.resources.addListener(this);
-    models.thumbs.addListener(this);
+    models.images.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.resources.removeListener(this);
-      models.thumbs.removeListener(this);
+      models.images.removeListener(this);
       gotoAction.dispose();
       imageProvider.reset();
     });
@@ -271,7 +268,7 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
       imagePanel.startLoading();
       Data data = (Data)textureTable.getElementAt(selection);
       Path.ResourceData path = models.resources.getResourcePath(data.info);
-      rpcController.start().listen(FetchedImage.load(client, path),
+      rpcController.start().listen(models.images.getResource(path),
           new UiErrorCallback<FetchedImage, FetchedImage, String>(this, LOG) {
         @Override
         protected ResultOrError<FetchedImage, String> onRpcThread(Rpc.Result<FetchedImage> result)
@@ -660,7 +657,7 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
     }
 
     private ListenableFuture<ImageData> loadImage(Data data) {
-      return noAlpha(models.thumbs.getThumbnail(
+      return noAlpha(models.images.getThumbnail(
           models.resources.getResourcePath(data.info), SIZE, i -> { /* noop */ }));
     }
 
