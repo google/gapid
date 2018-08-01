@@ -86,7 +86,9 @@ cc_library(
     ],
     copts = cc_copts(),
     linkopts = select({
-        "//tools/build:linux": [],
+        "//tools/build:linux": [
+            "-lxcb",
+        ],
         "//tools/build:darwin": [
             "-framework Cocoa",
             "-framework OpenGL",

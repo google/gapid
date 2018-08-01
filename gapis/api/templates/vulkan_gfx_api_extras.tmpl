@@ -343,6 +343,8 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
     swapchain::CreateNext vsPNext;
 #if TARGET_OS == GAPID_OS_ANDROID
     VkAndroidSurfaceCreateInfoKHR surfaceInfo = {};
+#elif TARGET_OS == GAPID_OS_LINUX
+    VkXcbSurfaceCreateInfoKHR surfaceInfo = {};
 #endif
     for (auto pNext = static_cast<const swapchain::CreateNext*>(newCreateInfo.pNext);
          pNext != nullptr;
@@ -352,13 +354,20 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
 	  // Copy any extra fields
           vsPNext = *pNext;
 
-	  void* data = SurfaceInfo();
+	  void* data = CreateSurface(newCreateInfo.imageExtent.Width,
+	      newCreateInfo.imageExtent.Height);
 	  void* createInfo = nullptr;
 	  if (data != nullptr) {
 #if TARGET_OS == GAPID_OS_ANDROID
             createInfo = &surfaceInfo;
             surfaceInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
 	    surfaceInfo.window = (ANativeWindow*)data;
+#elif TARGET_OS == GAPID_OS_LINUX
+            createInfo = &surfaceInfo;
+	    auto info = (XcbWindowInfo*)data;
+	    surfaceInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+	    surfaceInfo.connection = info->connection;
+	    surfaceInfo.window = info->window;
 #endif
 	  }
 	  vsPNext.surfaceCreateInfo = createInfo;

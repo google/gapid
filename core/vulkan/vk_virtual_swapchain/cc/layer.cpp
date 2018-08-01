@@ -137,6 +137,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
   GET_PROC(vkCreateAndroidSurfaceKHR);
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+  GET_PROC(vkCreateXcbSurfaceKHR);
 #endif
   GET_PROC(vkDestroySurfaceKHR);
 
