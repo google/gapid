@@ -441,19 +441,50 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 }
 
+func newDisplayToSurface() *DisplayToSurface {
+	return &DisplayToSurface{
+		SurfaceTypes: map[uint64]uint32{},
+	}
+}
+
 // DisplayToSurface is a transformation that enables rendering during replay to
 // the original surface.
 func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	if c, ok := cmd.(*VkCreateSwapchainKHR); ok {
+	switch c := cmd.(type) {
+	case *VkCreateSwapchainKHR:
 		newCmd := c.Clone(out.State().Arena)
 		newCmd.extras = api.CmdExtras{}
 		// Add an extra to indicate to custom_replay to add a flag to
 		// the virtual swapchain pNext
 		newCmd.extras = append(api.CmdExtras{t}, cmd.Extras().All()...)
 		out.MutateAndWrite(ctx, id, newCmd)
-	} else {
-		out.MutateAndWrite(ctx, id, cmd)
+		return
+	case *VkCreateAndroidSurfaceKHR:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateMirSurfaceKHR:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateWaylandSurfaceKHR:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateWin32SurfaceKHR:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateXcbSurfaceKHR:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateXlibSurfaceKHR:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR)
 	}
+	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) {
@@ -630,7 +661,7 @@ func (a API) Replay(
 	}
 
 	if doDisplayToSurface {
-		transforms.Add(&DisplayToSurface{})
+		transforms.Add(newDisplayToSurface())
 	}
 
 	if issues != nil {

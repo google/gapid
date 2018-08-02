@@ -383,9 +383,13 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 		0,            // surfaceCreateInfo
 	)
 	for _, extra := range a.Extras().All() {
-		if _, ok := extra.(*DisplayToSurface); ok {
+		if d, ok := extra.(*DisplayToSurface); ok {
 			log.D(ctx, "Activating display to surface")
-			pNext.SetSurfaceCreateInfo(1)
+			sType, _ := d.SurfaceTypes[uint64(info.Surface())]
+			sTypeData := s.AllocDataOrPanic(ctx, sType)
+			defer sTypeData.Free()
+			pNext.SetSurfaceCreateInfo(NewVoidᶜᵖ(sTypeData.Ptr()))
+			hijack.AddRead(sTypeData.Data())
 		}
 	}
 	pNextData := s.AllocDataOrPanic(ctx, pNext)
