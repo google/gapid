@@ -31,6 +31,7 @@
 #include "core/cc/supported_abis.h"
 #include "core/cc/target.h"
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -271,6 +272,11 @@ int main(int argc, const char* argv[]) {
       GAPID_FATAL("Unknown argument: %s", argv[i]);
     }
   }
+
+#if TARGET_OS == GAPID_OS_LINUX
+  // Ignore SIGPIPE so we can log after gapis closes.
+  signal(SIGPIPE, SIG_IGN);
+#endif
 
   if (wait_for_debugger) {
     GAPID_INFO("Waiting for debugger to attach");
