@@ -183,15 +183,27 @@ void* createWin32Window(uint32_t width, uint32_t height) {
 }
 #endif
 
-void* CreateSurface(uint32_t width, uint32_t height) {
+const void* CreateSurface(uint32_t width, uint32_t height, SurfaceType& type) {
+  switch (type) {
 #if TARGET_OS == GAPID_OS_ANDROID
-  return (void*)android_window;
+    case SurfaceType::Android:
+    case SurfaceType::Unknown:
+      type = SurfaceType::Android;
+      return (void*)android_window;
 #elif TARGET_OS == GAPID_OS_LINUX
-  return createXcbWindow(width, height);
+    case SurfaceType::Xcb:
+    case SurfaceType::Unknown:
+      type = SurfaceType::Xcb;
+      return createXcbWindow(width, height);
 #elif TARGET_OS == GAPID_OS_WINDOWS
-  return createWin32Window(width, height);
+    case SurfaceType::Win32:
+    case SurfaceType::Unknown:
+      type = SurfaceType::Win32;
+      return createWin32Window(width, height);
 #endif
-  return nullptr;
+    default:
+      return nullptr;
+  }
 }
 
 void WaitForWindowClose() {

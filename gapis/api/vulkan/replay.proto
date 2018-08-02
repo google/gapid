@@ -20,4 +20,5 @@ option go_package = "github.com/google/gapid/gapis/api/vulkan";
 // DisplayToSurface is an extra added to VkCreateSwapchainKHR to indicate the
 // replay should display to the original surface.
 message DisplayToSurface {
+  map<uint64, uint32> surface_types = 1;
 }

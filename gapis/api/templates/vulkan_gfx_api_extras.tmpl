@@ -356,27 +356,57 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
 	  // Copy any extra fields
           vsPNext = *pNext;
 
-	  void* data = CreateSurface(newCreateInfo.imageExtent.Width,
-	      newCreateInfo.imageExtent.Height);
+          gapir::SurfaceType target = gapir::SurfaceType::Unknown;
+	  switch (*(uint32_t*)pNext->surfaceCreateInfo) {
+          case VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR:
+	    target = gapir::SurfaceType::Android;
+	    break;
+	  // These are all linux, so just make an Xcb surface
+          case VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR:
+          case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
+          case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
+          case VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR:
+	    target = gapir::SurfaceType::Xcb;
+	    break;
+          case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
+	    target = gapir::SurfaceType::Win32;
+	  }
+
+	  const void* data = CreateSurface(newCreateInfo.imageExtent.Width,
+	      newCreateInfo.imageExtent.Height, target);
 	  void* createInfo = nullptr;
 	  if (data != nullptr) {
+	    switch (target) {
 #if TARGET_OS == GAPID_OS_ANDROID
-            createInfo = &surfaceInfo;
-            surfaceInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-	    surfaceInfo.window = (ANativeWindow*)data;
+	    case gapir::SurfaceType::Android:
+              createInfo = &surfaceInfo;
+              surfaceInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+	      surfaceInfo.window = (ANativeWindow*)data;
+              break;
 #elif TARGET_OS == GAPID_OS_LINUX
-            createInfo = &surfaceInfo;
-	    auto info = (XcbWindowInfo*)data;
-	    surfaceInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-	    surfaceInfo.connection = info->connection;
-	    surfaceInfo.window = info->window;
+	    case gapir::SurfaceType::Xcb:
+              createInfo = &surfaceInfo;
+	      {
+	        auto info = (XcbWindowInfo*)data;
+	        surfaceInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+	        surfaceInfo.connection = info->connection;
+	        surfaceInfo.window = info->window;
+	      }
+	      break;
 #elif TARGET_OS == GAPID_OS_WINDOWS
-            createInfo = &surfaceInfo;
-            auto info = (Win32WindowInfo*)data;
-            surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-            surfaceInfo.hinstance = (HINSTANCE)info->instance;
-            surfaceInfo.hwnd = (HWND)info->window;
+            case gapir::SurfaceType::Win32:
+	      createInfo = &surfaceInfo;
+	      {
+                auto info = (Win32WindowInfo*)data;
+                surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+                surfaceInfo.hinstance = (HINSTANCE)info->instance;
+                surfaceInfo.hwnd = (HWND)info->window;
+	      }
+	      break;
 #endif
+            default:
+	      break;
+	    }
 	  }
 	  vsPNext.surfaceCreateInfo = createInfo;
 	  vsPNext.pNext = newCreateInfo.pNext;
