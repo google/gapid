@@ -14,35 +14,63 @@
  * limitations under the License.
  */
 
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
 #include "core/cc/target.h"
 
 #include "surface.h"
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include <Windows.h>
-
-#include <condition_variable>
-#include <mutex>
-#include <thread>
 #endif
 
 namespace gapir {
+
+namespace {
+class Flag {
+ public:
+  Flag() : set_(false) {}
+
+  void Set() {
+    std::unique_lock<std::mutex> guard(mutex_);
+    set_ = true;
+    condition_.notify_all();
+  }
+
+  void Wait() {
+    std::unique_lock<std::mutex> guard(mutex_);
+    while (!set_) {
+      condition_.wait(guard);
+    }
+  }
+
+ private:
+  bool set_;
+  std::mutex mutex_;
+  std::condition_variable condition_;
+};
+}  // namespace
 
 #if TARGET_OS == GAPID_OS_ANDROID
 ANativeWindow* android_window;
 #elif TARGET_OS == GAPID_OS_LINUX
 static XcbWindowInfo window_info;
 
-void* createXcbWindow(uint32_t width, uint32_t height) {
+static Flag window_create_flag;
+static std::thread window_thread;
+
+bool createWindow(uint32_t width, uint32_t height) {
   window_info.connection = xcb_connect(nullptr, nullptr);
   if (!window_info.connection) {
-    return nullptr;
+    return false;
   }
 
   xcb_screen_t* screen =
       xcb_setup_roots_iterator(xcb_get_setup(window_info.connection)).data;
   if (!screen) {
-    return nullptr;
+    return false;
   }
 
   window_info.window = xcb_generate_id(window_info.connection);
@@ -54,16 +82,42 @@ void* createXcbWindow(uint32_t width, uint32_t height) {
   xcb_map_window(window_info.connection, window_info.window);
   xcb_flush(window_info.connection);
 
-  return (void*)&window_info;
+  return true;
+}
+
+void handleWindow(uint32_t width, uint32_t height) {
+  bool res = createWindow(width, height);
+  window_create_flag.Set();
+  if (!res) {
+    return;
+  }
+
+  xcb_intern_atom_cookie_t delete_cookie =
+      xcb_intern_atom(window_info.connection, 0, 16, "WM_DELETE_WINDOW");
+  xcb_intern_atom_reply_t* delete_reply =
+      xcb_intern_atom_reply(window_info.connection, delete_cookie, 0);
+
+  xcb_generic_event_t* event;
+  while ((event = xcb_wait_for_event(window_info.connection))) {
+    if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE) {
+      auto message = (xcb_client_message_event_t*)event;
+      if (message->data.data32[0] == delete_reply->atom) {
+        break;
+      }
+    }
+  }
+}
+
+void* createXcbWindow(uint32_t width, uint32_t height) {
+  window_thread = std::thread(handleWindow, width, height);
+  window_create_flag.Wait();
+  return window_info.window ? (void*)&window_info : nullptr;
 }
 #elif TARGET_OS == GAPID_OS_WINDOWS
 static Win32WindowInfo window_info;
 
-static HANDLE window_create_sem;
-static std::mutex quit_lock;
-static std::condition_variable quit_condition;
-static bool quit;
-static HANDLE thread;
+static Flag window_create_flag;
+static HANDLE window_thread;
 
 LRESULT windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch (uMsg) {
@@ -107,7 +161,7 @@ bool createWindow(uint32_t width, uint32_t height) {
 DWORD handleWindow(void* data) {
   auto extent = (const uint32_t*)data;
   bool res = createWindow(extent[0], extent[1]);
-  ReleaseSemaphore(window_create_sem, 1, nullptr);
+  window_create_flag.Set();
   if (!res) {
     return 1;
   }
@@ -117,20 +171,14 @@ DWORD handleWindow(void* data) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
-  {
-    std::unique_lock<std::mutex> guard(quit_lock);
-    quit = true;
-    quit_condition.notify_all();
-  }
   return 0;
 }
 
 void* createWin32Window(uint32_t width, uint32_t height) {
-  window_create_sem = CreateSemaphore(NULL, 0, 1, NULL);
-
   uint32_t extent[] = {width, height};
-  thread = CreateThread(NULL, 0, handleWindow, (void*)extent, 0, nullptr);
-  WaitForSingleObject(window_create_sem, INFINITE);
+  window_thread =
+      CreateThread(NULL, 0, handleWindow, (void*)extent, 0, nullptr);
+  window_create_flag.Wait();
   return window_info.window ? (void*)&window_info : nullptr;
 }
 #endif
@@ -148,11 +196,13 @@ void* CreateSurface(uint32_t width, uint32_t height) {
 
 void WaitForWindowClose() {
 #if TARGET_OS == GAPID_OS_WINDOWS
-  {
-    std::unique_lock<std::mutex> guard(quit_lock);
-    while (!quit) {
-      quit_condition.wait(guard);
-    }
+  if (window_thread) {
+    WaitForSingleObject(window_thread, INFINITE);
+  }
+#endif
+#if TARGET_OS == GAPID_OS_LINUX
+  if (window_thread.joinable()) {
+    window_thread.join();
   }
 #endif
 }
