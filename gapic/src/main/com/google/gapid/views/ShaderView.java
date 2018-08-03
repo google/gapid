@@ -32,7 +32,6 @@ import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.logging.Level.FINE;
-import static java.util.stream.Collectors.toCollection;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -414,7 +413,7 @@ public class ShaderView extends Composite
             });
             resources.stream()
                 .map(Data::new)
-                .collect(toCollection(() -> shaders));
+                .forEach(shaders::add);
           }
           lastUpdateContainedAllShaders = resources.complete;
 
