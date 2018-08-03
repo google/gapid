@@ -342,11 +342,11 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
 
     swapchain::CreateNext vsPNext;
 #if TARGET_OS == GAPID_OS_ANDROID
-    VkAndroidSurfaceCreateInfoKHR surfaceInfo = {};
+    VkAndroidSurfaceCreateInfoKHR androidInfo = {};
 #elif TARGET_OS == GAPID_OS_LINUX
-    VkXcbSurfaceCreateInfoKHR surfaceInfo = {};
+    VkXcbSurfaceCreateInfoKHR xcbInfo = {};
 #elif TARGET_OS == GAPID_OS_WINDOWS
-    VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
+    VkWin32SurfaceCreateInfoKHR win32Info = {};
 #endif
     for (auto pNext = static_cast<const swapchain::CreateNext*>(newCreateInfo.pNext);
          pNext != nullptr;
@@ -379,28 +379,28 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
 	    switch (target) {
 #if TARGET_OS == GAPID_OS_ANDROID
 	    case gapir::SurfaceType::Android:
-              createInfo = &surfaceInfo;
-              surfaceInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-	      surfaceInfo.window = (ANativeWindow*)data;
+              createInfo = &androidInfo;
+              androidInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+	      androidInfo.window = (ANativeWindow*)data;
               break;
 #elif TARGET_OS == GAPID_OS_LINUX
 	    case gapir::SurfaceType::Xcb:
-              createInfo = &surfaceInfo;
+              createInfo = &xcbInfo;
 	      {
 	        auto info = (XcbWindowInfo*)data;
-	        surfaceInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-	        surfaceInfo.connection = info->connection;
-	        surfaceInfo.window = info->window;
+	        xcbInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+	        xcbInfo.connection = info->connection;
+	        xcbInfo.window = info->window;
 	      }
 	      break;
 #elif TARGET_OS == GAPID_OS_WINDOWS
             case gapir::SurfaceType::Win32:
-	      createInfo = &surfaceInfo;
+	      createInfo = &win32Info;
 	      {
                 auto info = (Win32WindowInfo*)data;
-                surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-                surfaceInfo.hinstance = (HINSTANCE)info->instance;
-                surfaceInfo.hwnd = (HWND)info->window;
+                win32Info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+                win32Info.hinstance = (HINSTANCE)info->instance;
+                win32Info.hwnd = (HWND)info->window;
 	      }
 	      break;
 #endif
