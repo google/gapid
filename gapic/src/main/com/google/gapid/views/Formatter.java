@@ -359,12 +359,16 @@ public class Formatter {
     string.append(String.valueOf(slice.getCount()), style);
     string.append("]", string.structureStyle());
 
-    if (slice.getPool() != Memory.PoolNames.Application_VALUE ||
-        slice.getBase().getAddress() != 0) {
-      string.append(" (", string.structureStyle());
-      format(slice.getBase(), string, style);
-      string.append(")", string.structureStyle());
+    string.append(" (*", string.structureStyle());
+    if (slice.getPool() != Memory.PoolNames.Application_VALUE) {
+      string.append("p" + slice.getPool(), style);
+      string.append("[", string.structureStyle());
+      string.append(toPointerString(slice.getBase().getAddress()), style);
+      string.append("]", string.structureStyle());
+    } else {
+      string.append(toPointerString(slice.getBase().getAddress()), style);
     }
+    string.append(")", string.structureStyle());
   }
 
   private static String toPointerString(long pointer) {
