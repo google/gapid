@@ -214,6 +214,7 @@ public class MemoryView extends Composite
   @Override
   public void onMemoryFollowed(Path.Memory path) {
     uiState.update(path);
+    models.memory.setPool(path.getPool());
     updateUi();
   }
 
