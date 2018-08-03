@@ -135,11 +135,13 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   GET_PROC(vkGetPhysicalDeviceProperties);
   GET_PROC(vkGetPhysicalDeviceMemoryProperties);
 
-#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
   GET_PROC(vkCreateAndroidSurfaceKHR);
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
+#endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
   GET_PROC(vkCreateXcbSurfaceKHR);
-#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+#endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
   GET_PROC(vkCreateWin32SurfaceKHR);
 #endif
   GET_PROC(vkDestroySurfaceKHR);

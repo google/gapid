@@ -22,7 +22,7 @@ void CreateSurface(const InstanceData* functions, VkInstance instance,
                    const void* data, const VkAllocationCallbacks* pAllocator,
                    VkSurfaceKHR* pSurface) {
   *pSurface = 0;
-#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
   {
     auto pCreateInfo = static_cast<const VkAndroidSurfaceCreateInfoKHR*>(data);
     if (pCreateInfo->sType ==
@@ -34,7 +34,8 @@ void CreateSurface(const InstanceData* functions, VkInstance instance,
       }
     }
   }
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
+#endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
   {
     auto pCreateInfo = static_cast<const VkXcbSurfaceCreateInfoKHR*>(data);
     if (pCreateInfo->sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR) {
@@ -45,7 +46,8 @@ void CreateSurface(const InstanceData* functions, VkInstance instance,
       }
     }
   }
-#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+#endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
   {
     auto pCreateInfo = static_cast<const VkWin32SurfaceCreateInfoKHR*>(data);
     if (pCreateInfo->sType == VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR) {

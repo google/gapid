@@ -49,11 +49,13 @@ struct InstanceData {
   PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties;
   PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
 
-#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
   PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR;
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
+#endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
   PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR;
-#elif defined(VK_USE_PLATFORM_WIN32_KHR)
+#endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
   PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
 #endif
   PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
