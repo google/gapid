@@ -523,10 +523,12 @@ func setCubemapFace(img *image.Info, cubeMap *api.CubemapLevel, layerIndex uint3
 	return true
 }
 
-func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, format *image.Format, layer, level uint32) *image.Info {
+func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt VkFormat, layer, level uint32) *image.Info {
 	if t.Info().ArrayLayers() <= layer || t.Info().MipLevels() <= level {
 		return nil
 	}
+	format, _ := getImageFormatFromVulkanFormat(vkFmt)
+
 	switch VkImageAspectFlagBits(t.ImageAspect()) {
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -535,13 +537,46 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, format
 		if l.Data().Size() == 0 {
 			return nil
 		}
-		return &image.Info{
+		ll := l.LinearLayout()
+		expectedSize := format.Size(int(l.Width()), int(l.Height()), int(l.Depth()))
+		if ll.IsNil() || ll.Size() == VkDeviceSize(expectedSize) {
+			return &image.Info{
+				Format: format,
+				Width:  l.Width(),
+				Height: l.Height(),
+				Depth:  l.Depth(),
+				Bytes:  image.NewID(l.Data().ResourceID(ctx, s)),
+			}
+		}
+		elementAndTexelBlockSize, err := subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, vkFmt)
+		if err != nil {
+			log.Errf(ctx, err, "[Trim linear image data for image: %v]", t.VulkanHandle())
+			return nil
+		}
+		texelHeight := elementAndTexelBlockSize.TexelBlockSize().Height()
+		heightInBlocks, _ := subRoundUpTo(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, l.Height(), texelHeight)
+		colorData := make([]uint8, 0, expectedSize)
+		colorRawSize := uint64(format.Size(int(l.Width()), 1, 1))
+		levelData := l.Data().MustRead(ctx, nil, s, nil)
+		for z := uint64(0); z < uint64(l.Depth()); z++ {
+			for y := uint64(0); y < uint64(heightInBlocks); y++ {
+				offset := z*uint64(ll.DepthPitch()) + y*uint64(ll.RowPitch())
+				colorData = append(colorData, levelData[offset:offset+colorRawSize]...)
+			}
+		}
+		imgData := &image.Data{
 			Format: format,
 			Width:  l.Width(),
 			Height: l.Height(),
 			Depth:  l.Depth(),
-			Bytes:  image.NewID(l.Data().ResourceID(ctx, s)),
+			Bytes:  colorData[:],
 		}
+		info, err := imgData.NewInfo(ctx)
+		if err != nil {
+			log.Errf(ctx, err, "[Trim linear image data for image: %v]", t.VulkanHandle())
+			return nil
+		}
+		return info
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		depthLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
@@ -601,7 +636,7 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, format
 func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
 	vkFmt := t.Info().Fmt()
-	format, err := getImageFormatFromVulkanFormat(vkFmt)
+	_, err := getImageFormatFromVulkanFormat(vkFmt)
 	if err != nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 	}
@@ -617,7 +652,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 			}
 			for layer := uint32(0); layer < t.Info().ArrayLayers(); layer++ {
 				for level := uint32(0); level < t.Info().MipLevels(); level++ {
-					info := t.imageInfo(ctx, s, format, layer, level)
+					info := t.imageInfo(ctx, s, vkFmt, layer, level)
 					if info == nil {
 						continue
 					}
@@ -636,7 +671,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 			for layer := uint32(0); layer < t.Info().ArrayLayers(); layer++ {
 				levels := make([]*image.Info, t.Info().MipLevels())
 				for level := uint32(0); level < t.Info().MipLevels(); level++ {
-					info := t.imageInfo(ctx, s, format, layer, level)
+					info := t.imageInfo(ctx, s, vkFmt, layer, level)
 					if info == nil {
 						continue
 					}
@@ -650,7 +685,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 		// Single layer 2D texture
 		levels := make([]*image.Info, t.Info().MipLevels())
 		for level := uint32(0); level < t.Info().MipLevels(); level++ {
-			info := t.imageInfo(ctx, s, format, 0, level)
+			info := t.imageInfo(ctx, s, vkFmt, 0, level)
 			if info == nil {
 				continue
 			}
@@ -662,7 +697,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 		// 3D images can have only one layer
 		levels := make([]*image.Info, t.Info().MipLevels())
 		for level := uint32(0); level < t.Info().MipLevels(); level++ {
-			info := t.imageInfo(ctx, s, format, 0, level)
+			info := t.imageInfo(ctx, s, vkFmt, 0, level)
 			if info == nil {
 				continue
 			}
@@ -677,7 +712,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 			for layer := uint32(0); layer < t.Info().ArrayLayers(); layer++ {
 				levels := make([]*image.Info, t.Info().MipLevels())
 				for level := uint32(0); level < t.Info().MipLevels(); level++ {
-					info := t.imageInfo(ctx, s, format, layer, level)
+					info := t.imageInfo(ctx, s, vkFmt, layer, level)
 					if info == nil {
 						continue
 					}
@@ -690,7 +725,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 		// Single layer 1D texture
 		levels := make([]*image.Info, t.Info().MipLevels())
 		for level := uint32(0); level < t.Info().MipLevels(); level++ {
-			info := t.imageInfo(ctx, s, format, 0, level)
+			info := t.imageInfo(ctx, s, vkFmt, 0, level)
 			if info == nil {
 				continue
 			}
