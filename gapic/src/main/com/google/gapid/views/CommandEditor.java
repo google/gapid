@@ -15,6 +15,8 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.Paths.command;
+import static com.google.gapid.util.Values.value;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
@@ -36,10 +38,8 @@ import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
-import com.google.gapid.util.Paths;
 import com.google.gapid.util.Pods;
 import com.google.gapid.util.PrefixTree;
-import com.google.gapid.util.Values;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
@@ -94,12 +94,13 @@ public class CommandEditor {
     return command.getParametersCount() > 0;
   }
 
-  public void showEditPopup(Shell parent, Path.Command path, API.Command command) {
+  public void showEditPopup(
+      Shell parent, Path.Command path, API.Command command, Path.Device device) {
     models.analytics.postInteraction(View.Commands, ClientAction.ShowEdit);
     EditDialog dialog = new EditDialog(parent, models, theme, command);
     if (dialog.open() == Window.OK) {
       models.analytics.postInteraction(View.Commands, ClientAction.Edit);
-      Rpc.listen(client.set(Paths.toAny(path), Values.value(dialog.newCommand)),
+      Rpc.listen(client.set(command(path), device, value(dialog.newCommand)),
           new UiCallback<Path.Any, Path.Any>(parent, LOG) {
         @Override
         protected Path.Any onRpcThread(Rpc.Result<Path.Any> result)
