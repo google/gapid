@@ -174,7 +174,7 @@ public class CommandTree extends Composite
         parent = selection;
       }
       searchController.start().listen(
-          Futures.transformAsync(models.commands.search(searchRequest(parent, text, regex)),
+          Futures.transformAsync(models.commands.search(parent, text, regex),
               r -> getTreePath(models.commands.getData(), Lists.newArrayList(),
                   r.getCommandTreeNode().getIndicesList().iterator())),
           new UiCallback<TreePath, TreePath>(tree, LOG) {
@@ -190,17 +190,6 @@ public class CommandTree extends Composite
         }
       });
     }
-  }
-
-  private static Service.FindRequest searchRequest(
-      CommandStream.Node parent, String text, boolean regex) {
-    return Service.FindRequest.newBuilder()
-        .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
-        .setText(text)
-        .setIsRegex(regex)
-        .setMaxItems(1)
-        .setWrap(true)
-        .build();
   }
 
   protected void select(TreePath path) {
