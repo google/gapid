@@ -100,12 +100,15 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getValue(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Path.Any> set(Path.Any path, Service.Value value) {
+  public ListenableFuture<Path.Any> set(Path.Any path, Path.Device device, Service.Value value) {
     return call(
-        () -> String.format("RPC->set(%s, %s)", shortDebugString(path), shortDebugString(value)),
+        () -> String.format("RPC->set(%s, %s, %s)",
+            shortDebugString(path), shortDebugString(device), shortDebugString(value)),
         stack -> Futures.transformAsync(
             client.set(SetRequest.newBuilder()
                 .setPath(path)
+                .setConfig(Path.ResolveConfig.newBuilder()
+                    .setReplayDevice(device))
                 .setValue(value)
                 .build()),
             in -> immediateFuture(throwIfError(in.getPath(), in.getError(), stack))));

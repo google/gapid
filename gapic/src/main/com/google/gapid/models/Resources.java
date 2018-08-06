@@ -118,9 +118,12 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
       return;
     }
 
-    Rpc.listen(client.set(resourceAfter(after, resource.getID()), Service.Value.newBuilder()
-        .setResourceData(data)
-        .build()), new UiCallback<Path.Any, Path.Capture>(shell, LOG) {
+ // TODO: don't get the device via getData
+    Rpc.listen(client.set(
+        resourceAfter(after, resource.getID()), getData().device, Service.Value.newBuilder()
+            .setResourceData(data)
+            .build()),
+        new UiCallback<Path.Any, Path.Capture>(shell, LOG) {
       @Override
       protected Path.Capture onRpcThread(Result<Path.Any> result)
           throws RpcException, ExecutionException {

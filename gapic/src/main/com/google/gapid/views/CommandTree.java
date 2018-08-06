@@ -134,7 +134,7 @@ public class CommandTree extends Composite
       CommandStream.Node node = tree.getSelection();
       if (node != null && node.getData() != null && node.getCommand() != null) {
         widgets.editor.showEditPopup(getShell(), lastCommand(node.getData().getCommands()),
-            node.getCommand());
+            node.getCommand(), node.device);
       }
     });
     tree.setPopupMenu(popup, node ->
