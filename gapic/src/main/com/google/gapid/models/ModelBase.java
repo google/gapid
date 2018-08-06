@@ -64,6 +64,10 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
 
   protected void load(S source, boolean force) {
     if (sourceStore.updateIfNotNull(source) || force) {
+      if (!isSourceComplete(source)) {
+        return;
+      }
+
       data = null;
       fireLoadStartEvent();
       rpcController.start().listen(doLoad(source), new UiErrorCallback<T, T, E>(shell, log) {
@@ -83,6 +87,13 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
         }
       });
     }
+  }
+
+  /**
+   * @param source the source currently being loaded.
+   */
+  protected boolean isSourceComplete(S source) {
+    return true;
   }
 
   protected ResultOrError<T, E> processResult(Rpc.Result<T> result) {

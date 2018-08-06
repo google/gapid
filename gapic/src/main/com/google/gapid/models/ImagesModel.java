@@ -21,14 +21,11 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
-import com.google.gapid.util.Events;
-import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.graphics.ImageData;
@@ -54,26 +51,12 @@ public class ImagesModel {
   private final Devices devices;
   private final Capture capture;
   private final Settings settings;
-  private final ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
   public ImagesModel(Client client, Devices devices, Capture capture, Settings settings) {
     this.client = client;
     this.devices = devices;
     this.capture = capture;
     this.settings = settings;
-
-    devices.addListener(new Devices.Listener() {
-      @Override
-      public void onReplayDeviceChanged(Device.Instance dev) {
-        update();
-      }
-    });
-  }
-
-  protected void update() {
-    if (isReady()) {
-      listeners.fire().onThumbnailsChanged();
-    }
   }
 
   public boolean isReady() {
@@ -82,30 +65,30 @@ public class ImagesModel {
 
   public ListenableFuture<FetchedImage> getFramebuffer(CommandIndex command,
       API.FramebufferAttachment attachment, Service.RenderSettings renderSettings) {
-    return FetchedImage.load(client, client.getFramebufferAttachment(
-        devices.getReplayDevicePath(), command.getCommand(), attachment, renderSettings,
+    return FetchedImage.load(client, getReplayDevice(), client.getFramebufferAttachment(
+        getReplayDevice(), command.getCommand(), attachment, renderSettings,
         FB_HINTS, settings.disableReplayOptimization));
   }
 
   public ListenableFuture<FetchedImage> getResource(Path.ResourceData path) {
-    return FetchedImage.load(client, path);
+    return FetchedImage.load(client, getReplayDevice(), path);
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.Command command, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(command), onInfo),
+    return Futures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(command), onInfo),
         image -> processImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.CommandTreeNode node, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(node), onInfo),
+    return Futures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(node), onInfo),
         image -> processImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.ResourceData resource, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, thumbnail(resource), onInfo),
+    return Futures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(resource), onInfo),
         image -> processImage(image, size));
   }
 
@@ -121,6 +104,9 @@ public class ImagesModel {
     return Paths.thumbnail(resource, THUMB_PIXELS, settings.disableReplayOptimization);
   }
 
+  private Path.Device getReplayDevice() {
+    return devices.getReplayDevicePath();
+  }
 
   private static ImageData processImage(ImageData image, int size) {
     size = DPIUtil.autoScaleUp(size);
@@ -138,20 +124,5 @@ public class ImagesModel {
       }
     }
     return image;
-  }
-
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
-  }
-
-  public static interface Listener extends Events.Listener {
-    /**
-     * Event indicating that render settings have changed an thumbnails need to be updated.
-     */
-    public default void onThumbnailsChanged() { /* empty */ }
   }
 }

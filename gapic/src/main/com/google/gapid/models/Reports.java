@@ -18,8 +18,8 @@ package com.google.gapid.models;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
-import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.Service.Report;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
@@ -31,24 +31,15 @@ import java.util.logging.Logger;
 /**
  * Model containing the report details of the current capture.
  */
-public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Listener> {
+public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Reports.Listener> {
   private static final Logger LOG = Logger.getLogger(Reports.class.getName());
 
   private final Devices devices;
 
   public Reports(Shell shell, Analytics analytics, Client client, Capture capture,
       Devices devices, ApiContext context) {
-    super(LOG, shell, analytics, client, Listener.class);
+    super(LOG, shell, analytics, client, Listener.class, devices);
     this.devices = devices;
-
-    devices.addListener(new Devices.Listener() {
-      @Override
-      public void onReplayDeviceChanged(Device.Instance dev) {
-        if (context.isLoaded()) {
-          load(getPath(capture.getData(), context.getSelectedContext()), false);
-        }
-      }
-    });
 
     context.addListener(new ApiContext.Listener() {
       @Override
@@ -64,6 +55,7 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
   }
 
   protected Path.Any getPath(Path.Capture capturePath, FilteringContext context) {
+    // TODO: the device is now duplicated.
     if (!devices.hasReplayDevice()) {
       return null;
     }
@@ -75,8 +67,8 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
   }
 
   @Override
-  protected ListenableFuture<Service.Report> doLoad(Path.Any source) {
-    return Futures.transform(client.get(source), Service.Value::getReport);
+  protected ListenableFuture<Data> doLoad(Path.Any source, Path.Device device) {
+    return Futures.transform(client.get(source, device), val -> new Data(device, val.getReport()));
   }
 
   @Override
@@ -87,6 +79,15 @@ public class Reports extends ModelBase.ForPath<Service.Report, Void, Reports.Lis
   @Override
   protected void fireLoadedEvent() {
     listeners.fire().onReportLoaded();
+  }
+
+  public static class Data extends DeviceDependentModel.Data {
+    public final Service.Report report;
+
+    public Data(Path.Device device, Report report) {
+      super(device);
+      this.report = report;
+    }
   }
 
   public static interface Listener extends Events.Listener {

@@ -95,7 +95,7 @@ public class ContextSelector extends Composite implements ApiContext.Listener, D
       return;
     }
 
-    contextCombo.setInput(models.contexts.getData());
+    contextCombo.setInput(models.contexts.getData().contexts);
     contextCombo.refresh();
 
     onContextSelected(models.contexts.getSelectedContext());

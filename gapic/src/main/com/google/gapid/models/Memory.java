@@ -15,6 +15,7 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.models.DeviceDependentModel.Source.withSource;
 import static com.google.gapid.util.Paths.memoryAfter;
 import static com.google.gapid.util.Ranges.memory;
 import static com.google.gapid.util.Ranges.merge;
@@ -28,6 +29,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.CommandStream.Observation;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Ranges;
@@ -46,39 +48,37 @@ import java.util.logging.Logger;
  * Model responsible for loading memory pool data. This model requests segments as equally sized
  * pages and maintains a cache of fetched pages.
  */
-public class Memory extends ModelBase<Memory.Data, Memory.Source, Void, Memory.Listener> {
+public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Void, Memory.Listener> {
   private static final Logger LOG = Logger.getLogger(Memory.class.getName());
 
   private final CommandStream commands;
 
-  public Memory(Shell shell, Analytics analytics, Client client, CommandStream commands) {
-    super(LOG, shell, analytics, client, Listener.class);
+  public Memory(
+      Shell shell, Analytics analytics, Client client, Devices devices, CommandStream commands) {
+    super(LOG, shell, analytics, client, Listener.class, devices);
     this.commands = commands;
 
     commands.addListener(new CommandStream.Listener() {
       @Override
       public void onCommandsSelected(CommandIndex selection) {
-        load(new Source(selection, getPool()), false);
+        load(withSource(getSource(), new Source(selection, getPool())), false);
       }
     });
   }
 
   public int getPool() {
-    Source source = getSource();
-    return (source == null) ? 0 : source.pool;
+    DeviceDependentModel.Source<Source> source = getSource();
+    return (source == null || source.source == null) ? 0 : source.source.pool;
   }
 
   public void setPool(int pool) {
-    Source source = getSource();
-    if (source != null) {
-      load(source.withPool(pool), false);
-    }
+    load(Source.withPool(getSource(), pool), false);
   }
 
   @Override
-  protected ListenableFuture<Data> doLoad(Source source) {
-    return Futures.transform(commands.getObservations(source.command),
-        obs -> new Data(client, source, obs));
+  protected ListenableFuture<Data> doLoad(Source source, Path.Device device) {
+    return Futures.transform(commands.getObservations(device, source.command),
+        obs -> new Data(device, client, source, obs));
   }
 
   @Override
@@ -101,8 +101,11 @@ public class Memory extends ModelBase<Memory.Data, Memory.Source, Void, Memory.L
       this.pool = pool;
     }
 
-    public Source withPool(int newPool) {
-      return new Source(command, newPool);
+    public static DeviceDependentModel.Source<Source> withPool(
+        DeviceDependentModel.Source<Source> src, int newPool) {
+      Source me = (src == null) ? null : src.source;
+      return new DeviceDependentModel.Source<Source>((src == null) ? null : src.device,
+          new Source((me == null) ? null : me.command, newPool));
     }
 
     @Override
@@ -122,7 +125,7 @@ public class Memory extends ModelBase<Memory.Data, Memory.Source, Void, Memory.L
     }
   }
 
-  public static class Data {
+  public static class Data extends DeviceDependentModel.Data {
     private static final long MAX_ADDR = -1;
     private static final int PAGE_SIZE = 0x10000;
 
@@ -131,7 +134,8 @@ public class Memory extends ModelBase<Memory.Data, Memory.Source, Void, Memory.L
     private final Observation[] observations;
     private final Map<Long, SoftReference<Segment>> cache = Maps.newHashMap();
 
-    public Data(Client client, Source src, Observation[] observations) {
+    public Data(Path.Device device, Client client, Source src, Observation[] observations) {
+      super(device);
       this.client = client;
       this.src = src;
       this.observations = observations;
@@ -203,7 +207,7 @@ public class Memory extends ModelBase<Memory.Data, Memory.Source, Void, Memory.L
 
     private ListenableFuture<Segment> getFromServer(long page) {
       return Futures.transform(
-          client.get(memoryAfter(src.command, src.pool, getOffsetForPage(page), PAGE_SIZE)),
+          client.get(memoryAfter(src.command, src.pool, getOffsetForPage(page), PAGE_SIZE), device),
           Segment::new);
     }
 

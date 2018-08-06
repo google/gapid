@@ -61,19 +61,21 @@ public class Models {
   public static Models create(
       Shell shell, Settings settings, ExceptionHandler handler, Client client) {
     Analytics analytics = new Analytics(client, settings, handler);
-    ConstantSets constants = new ConstantSets(client);
     Follower follower = new Follower(shell, client);
     Capture capture = new Capture(shell, analytics, client, settings);
     Devices devices = new Devices(shell, analytics, client, capture);
-    ApiContext contexts = new ApiContext(shell, analytics, client, capture);
-    Timeline timeline = new Timeline(shell, analytics, client, capture, contexts);
-    CommandStream commands = new CommandStream(shell, analytics, client, capture, contexts, constants);
-    Resources resources = new Resources(shell, analytics, client, capture, commands);
-    ApiState state = new ApiState(shell, analytics, client, follower, commands, contexts, constants);
+    ConstantSets constants = new ConstantSets(client, devices);
+    ApiContext contexts = new ApiContext(shell, analytics, client, capture, devices);
+    Timeline timeline = new Timeline(shell, analytics, client, capture, devices, contexts);
+    CommandStream commands = new CommandStream(
+        shell, analytics, client, capture, devices, contexts, constants);
+    Resources resources = new Resources(shell, analytics, client, capture, devices, commands);
+    ApiState state = new ApiState(
+        shell, analytics, client, devices, follower, commands, contexts, constants);
     Reports reports = new Reports(shell, analytics, client, capture, devices, contexts);
     ImagesModel images = new ImagesModel(client, devices, capture, settings);
-    Geometries geometries = new Geometries(shell, analytics, client, commands);
-    Memory memory = new Memory(shell, analytics, client, commands);
+    Geometries geometries = new Geometries(shell, analytics, client, devices, commands);
+    Memory memory = new Memory(shell, analytics, client, devices, commands);
     return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
         resources, state, reports, images, constants, geometries, memory);
   }

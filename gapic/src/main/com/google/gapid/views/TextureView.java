@@ -39,7 +39,6 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.ImagesModel;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
 import com.google.gapid.proto.image.Image;
@@ -94,8 +93,8 @@ import java.util.logging.Logger;
 /**
  * View that displays the texture resources of the current capture.
  */
-public class TextureView extends Composite implements Tab, Capture.Listener, Resources.Listener,
-    CommandStream.Listener, ImagesModel.Listener  {
+public class TextureView extends Composite
+    implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener {
   protected static final Logger LOG = Logger.getLogger(TextureView.class.getName());
 
   private final Models models;
@@ -133,12 +132,10 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.resources.addListener(this);
-    models.images.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.resources.removeListener(this);
-      models.images.removeListener(this);
       gotoAction.dispose();
       imageProvider.reset();
     });
@@ -208,12 +205,6 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
   @Override
   public void onCommandsSelected(CommandIndex path) {
     updateTextures(false);
-  }
-
-  @Override
-  public void onThumbnailsChanged() {
-    imageProvider.reset();
-    textureTable.refresh();
   }
 
   private void updateTextures(boolean resourcesChanged) {
@@ -526,7 +517,7 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
         models.analytics.postInteraction(View.Textures, ClientAction.ShowReferences);
         popupMenu.setLocation(bar.toDisplay(bottomLeft(((ToolItem)e.widget).getBounds())));
         popupMenu.setVisible(true);
-        loadAllCommands();
+        loadAllCommands(models.devices.getReplayDevicePath());
       }, "Jump to texture reference");
       item.setEnabled(!commandIds.isEmpty());
       return item;
@@ -579,11 +570,11 @@ public class TextureView extends Composite implements Tab, Capture.Listener, Res
       item.setEnabled(!commandIds.isEmpty());
     }
 
-    private void loadAllCommands() {
+    private void loadAllCommands(Path.Device device) {
       for (MenuItem child : popupMenu.getItems()) {
         if (child.getData() instanceof Path.Command) {
           Path.Command path = (Path.Command)child.getData();
-          Rpc.listen(models.commands.loadCommand(path),
+          Rpc.listen(models.commands.loadCommand(path, device),
               new UiCallback<API.Command, String>(child, LOG) {
             @Override
             protected String onRpcThread(Rpc.Result<API.Command> result)

@@ -16,6 +16,7 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.proto.service.memory.Memory.PoolNames.Application_VALUE;
+import static com.google.gapid.util.Paths.command;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
@@ -29,6 +30,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.ApiContext.FilteringContext;
+import com.google.gapid.proto.device.Device.Instance;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
@@ -53,8 +55,9 @@ import java.util.logging.Logger;
 /**
  * Model containing the API commands of the capture.
  */
-public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, CommandStream.Listener>
-    implements ApiContext.Listener, Capture.Listener {
+public class CommandStream
+    extends DeviceDependentModel.ForPath<CommandStream.Node, Void, CommandStream.Listener>
+    implements ApiContext.Listener, Capture.Listener, Devices.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandStream.class.getName());
 
   private final Capture capture;
@@ -63,13 +66,14 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
   private CommandIndex selection;
 
   public CommandStream(Shell shell, Analytics analytics, Client client, Capture capture,
-      ApiContext context, ConstantSets constants) {
-    super(LOG, shell, analytics, client, Listener.class);
+      Devices devices, ApiContext context, ConstantSets constants) {
+    super(LOG, shell, analytics, client, Listener.class, devices);
     this.capture = capture;
     this.context = context;
     this.constants = constants;
 
     capture.addListener(this);
+    devices.addListener(this);
     context.addListener(this);
   }
 
@@ -92,6 +96,14 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
   }
 
   @Override
+  public void onReplayDeviceChanged(Instance dev) {
+    if (selection != null && selection.getNode() != null) {
+      // Clear the node, so the selection will be re-resolved once the context has updated.
+      selection = selection.withNode(null);
+    }
+  }
+
+  @Override
   public void onContextsLoaded() {
     onContextSelected(context.getSelectedContext());
   }
@@ -106,27 +118,28 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
   }
 
   @Override
-  protected ListenableFuture<Node> doLoad(Path.Any path) {
-    return Futures.transformAsync(client.get(path),
-        tree -> Futures.transform(client.get(Paths.toAny(tree.getCommandTree().getRoot())),
+  protected ListenableFuture<Node> doLoad(Path.Any path, Path.Device device) {
+    return Futures.transformAsync(client.get(path, device),
+        tree -> Futures.transform(client.get(commandTree(tree.getCommandTree().getRoot()), device),
             val -> new RootNode(
-                tree.getCommandTree().getRoot().getTree(), val.getCommandTreeNode())));
+                device, tree.getCommandTree().getRoot().getTree(), val.getCommandTreeNode())));
   }
 
   public ListenableFuture<Node> load(Node node) {
     return node.load(shell, () -> Futures.transformAsync(
-        client.get(Paths.toAny(node.getPath(Path.CommandTreeNode.newBuilder()))), v1 -> {
+        client.get(commandTree(node.getPath(Path.CommandTreeNode.newBuilder())), node.device),
+        v1 -> {
           Service.CommandTreeNode data = v1.getCommandTreeNode();
           if (data.getGroup().isEmpty() && data.hasCommands()) {
-            return Futures.transform(
-                loadCommand(lastCommand(data.getCommands())), cmd -> new NodeData(data, cmd));
+            return Futures.transform(loadCommand(lastCommand(data.getCommands()), node.device),
+                cmd -> new NodeData(data, cmd));
           }
           return Futures.immediateFuture(new NodeData(data, null));
         }));
   }
 
-  public ListenableFuture<API.Command> loadCommand(Path.Command path) {
-    return Futures.transformAsync(client.get(Paths.toAny(path)), value ->
+  public ListenableFuture<API.Command> loadCommand(Path.Command path, Path.Device device) {
+    return Futures.transformAsync(client.get(command(path), device), value ->
         Futures.transform(constants.loadConstants(value.getCommand()), ignore ->
             value.getCommand()));
   }
@@ -193,7 +206,8 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
   }
 
   private void resolve(Path.Command command, Consumer<Path.CommandTreeNode> cb) {
-    Rpc.listen(client.get(commandTree(((RootNode)getData()).tree, command)),
+    RootNode root = (RootNode)getData();
+    Rpc.listen(client.get(commandTree(root.tree, command), root.device),
         new UiCallback<Service.Value, Path.CommandTreeNode>(shell, LOG) {
       @Override
       protected Path.CommandTreeNode onRpcThread(Rpc.Result<Service.Value> result)
@@ -210,21 +224,22 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
     });
   }
 
-  public ListenableFuture<Observation[]> getObservations(CommandIndex index) {
-    return Futures.transform(client.get(observationsAfter(index, Application_VALUE)), v -> {
-      List<Service.MemoryRange> reads = merge(v.getMemory().getReadsList());
-      List<Service.MemoryRange> writes = merge(v.getMemory().getWritesList());
+  public ListenableFuture<Observation[]> getObservations(Path.Device device, CommandIndex index) {
+    return Futures.transform(
+        client.get(observationsAfter(index, Application_VALUE), device), v -> {
+          List<Service.MemoryRange> reads = merge(v.getMemory().getReadsList());
+          List<Service.MemoryRange> writes = merge(v.getMemory().getWritesList());
 
-      Observation[] obs = new Observation[reads.size() + writes.size()];
-      int idx = 0;
-      for (Service.MemoryRange read : reads) {
-        obs[idx++] = new Observation(index, true, read);
-      }
-      for (Service.MemoryRange write : writes) {
-        obs[idx++] = new Observation(index, false, write);
-      }
-      return obs;
-    });
+          Observation[] obs = new Observation[reads.size() + writes.size()];
+          int idx = 0;
+          for (Service.MemoryRange read : reads) {
+            obs[idx++] = new Observation(index, true, read);
+          }
+          for (Service.MemoryRange write : writes) {
+            obs[idx++] = new Observation(index, false, write);
+          }
+          return obs;
+        });
   }
 
   /**
@@ -352,7 +367,7 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
     }
   }
 
-  public static class Node {
+  public static class Node extends DeviceDependentModel.Data {
     private final Node parent;
     private final int index;
     private Node[] children;
@@ -360,12 +375,15 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
     private API.Command command;
     private ListenableFuture<Node> loadFuture;
 
-    public Node(Service.CommandTreeNode data) {
-      this(null, 0);
+    public Node(Path.Device device, Service.CommandTreeNode data) {
+      super(device);
+      this.parent = null;
+      this.index = 0;
       this.data = data;
     }
 
     public Node(Node parent, int index) {
+      super(parent.device);
       this.parent = parent;
       this.index = index;
     }
@@ -461,8 +479,8 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
   private static class RootNode extends Node {
     public final Path.ID tree;
 
-    public RootNode(Path.ID tree, Service.CommandTreeNode data) {
-      super(data);
+    public RootNode(Path.Device device, Path.ID tree, Service.CommandTreeNode data) {
+      super(device, data);
       this.tree = tree;
     }
 
@@ -483,12 +501,13 @@ public class CommandStream extends ModelBase.ForPath<CommandStream.Node, Void, C
       } else if (!(obj instanceof RootNode)) {
         return false;
       }
-      return tree.equals(((RootNode)obj).tree);
+      RootNode n = (RootNode)obj;
+      return device.equals(n.device) && tree.equals(n.tree);
     }
 
     @Override
     public int hashCode() {
-      return tree.hashCode();
+      return device.hashCode() * 31 + tree.hashCode();
     }
   }
 

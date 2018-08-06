@@ -88,11 +88,14 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getRelease(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Value> get(Path.Any path) {
-    return call(() -> String.format("RPC->get(%s)", shortDebugString(path)),
+  public ListenableFuture<Value> get(Path.Any path, Path.Device device) {
+    return call(
+        () -> String.format("RPC->get(%s, %s)", shortDebugString(path), shortDebugString(device)),
         stack -> Futures.transformAsync(
             client.get(GetRequest.newBuilder()
                 .setPath(path)
+                .setConfig(Path.ResolveConfig.newBuilder()
+                    .setReplayDevice(device))
                 .build()),
             in -> immediateFuture(throwIfError(in.getValue(), in.getError(), stack))));
   }

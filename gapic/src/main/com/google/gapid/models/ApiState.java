@@ -50,15 +50,15 @@ import java.util.logging.Logger;
  * Model managing the API state object of the currently selected command.
  */
 public class ApiState
-    extends ModelBase.ForPath<ApiState.Node, Loadable.Message, ApiState.Listener> {
+    extends DeviceDependentModel.ForPath<ApiState.Node, Loadable.Message, ApiState.Listener> {
   protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   private final ConstantSets constants;
   private final ObjectStore<Path.Any> selection = ObjectStore.create();
 
-  public ApiState(Shell shell, Analytics analytics, Client client, Follower follower,
-      CommandStream commands, ApiContext contexts, ConstantSets constants) {
-    super(LOG, shell, analytics, client, Listener.class);
+  public ApiState(Shell shell, Analytics analytics, Client client, Devices devices,
+      Follower follower, CommandStream commands, ApiContext contexts, ConstantSets constants) {
+    super(LOG, shell, analytics, client, Listener.class, devices);
     this.constants = constants;
 
     commands.addListener(new CommandStream.Listener() {
@@ -76,17 +76,16 @@ public class ApiState
   }
 
   @Override
-  protected ListenableFuture<Node> doLoad(Path.Any path) {
-    return Futures.transformAsync(client.get(path),
-        tree -> Futures.transform(client.get(Paths.toAny(tree.getStateTree().getRoot())),
-            val -> new RootNode(
-                tree.getStateTree().getRoot().getTree(), val.getStateTreeNode())));
+  protected ListenableFuture<Node> doLoad(Path.Any path, Path.Device device) {
+    return Futures.transformAsync(client.get(path, device),
+        tree -> Futures.transform(client.get(stateTree(tree.getStateTree().getRoot()), device),
+            val -> new RootNode(device, tree.getStateTree().getRoot().getTree(), val.getStateTreeNode())));
   }
 
   @Override
-  protected ResultOrError<Node, Loadable.Message> processResult(Rpc.Result<Node> result) {
+  protected ResultOrError<Node, Loadable.Message> processResult(Rpc.Result<Node> r) {
     try {
-      return success(result.get());
+      return success(r.get());
     } catch (DataUnavailableException e) {
       return error(Loadable.Message.info(e));
     } catch (RpcException e) {
@@ -117,7 +116,7 @@ public class ApiState
 
   public ListenableFuture<Node> load(Node node) {
     return node.load(shell, () -> Futures.transformAsync(
-        client.get(Paths.toAny(node.getPath(Path.StateTreeNode.newBuilder()))),
+        client.get(Paths.stateTree(node.getPath(Path.StateTreeNode.newBuilder())), node.device),
         value -> Futures.transform(constants.loadConstants(value.getStateTreeNode()),
             ignore -> new NodeData(value.getStateTreeNode()))));
   }
@@ -161,27 +160,32 @@ public class ApiState
       return Futures.immediateFuture(path.getStateTreeNode());
     }
 
-    return Futures.transform(client.get(Paths.stateTree(((RootNode)getData()).tree, path)),
+    RootNode root = (RootNode)getData();
+    return Futures.transform(client.get(stateTree(root.tree, path), root.device),
         value -> value.getPath().getStateTreeNode());
   }
 
   public ListenableFuture<Box.Value> loadValue(Node node) {
-    return Futures.transform(client.get(node.getData().getValuePath()), Service.Value::getBox);
+    return Futures.transform(
+        client.get(node.getData().getValuePath(), node.device), Service.Value::getBox);
   }
 
-  public static class Node {
+  public static class Node extends DeviceDependentModel.Data {
     private final Node parent;
     private final int index;
     private Node[] children;
     private Service.StateTreeNode data;
     private ListenableFuture<Node> loadFuture;
 
-    public Node(Service.StateTreeNode data) {
-      this(null, 0);
+    public Node(Path.Device device, Service.StateTreeNode data) {
+      super(device);
+      this.parent = null;
+      this.index = 0;
       this.data = data;
     }
 
     public Node(Node parent, int index) {
+      super(parent.device);
       this.parent = parent;
       this.index = index;
     }
@@ -262,8 +266,8 @@ public class ApiState
   private static class RootNode extends Node {
     public final Path.ID tree;
 
-    public RootNode(Path.ID tree, Service.StateTreeNode data) {
-      super(data);
+    public RootNode(Path.Device device, Path.ID tree, Service.StateTreeNode data) {
+      super(device, data);
       this.tree = tree;
     }
 
@@ -284,12 +288,13 @@ public class ApiState
       } else if (!(obj instanceof RootNode)) {
         return false;
       }
-      return tree.equals(((RootNode)obj).tree);
+      RootNode n = (RootNode)obj;
+      return device.equals(n.device) && tree.equals(n.tree);
     }
 
     @Override
     public int hashCode() {
-      return tree.hashCode();
+      return device.hashCode() * 31 + tree.hashCode();
     }
   }
 

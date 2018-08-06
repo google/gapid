@@ -85,7 +85,7 @@ public class Devices {
   protected void loadReplayDevices(Path.Capture capturePath) {
     rpcController.start().listen(Futures.transformAsync(client.getDevicesForReplay(capturePath),
         devs -> Futures.allAsList(devs.stream()
-            .map(dev -> client.get(Paths.device(dev)))
+            .map(dev -> client.get(Paths.device(dev), dev))
             .collect(toList()))),
         new UiErrorCallback<List<Service.Value>, List<Device.Instance>, Void>(shell, LOG) {
       @Override
@@ -116,7 +116,7 @@ public class Devices {
 
   protected void updateReplayDevices(List<Device.Instance> devs) {
     replayDevices = devs;
-    selectedReplayDevice = (devs == null) ? null :devs.get(0);
+    selectedReplayDevice = (devs == null) ? null : devs.get(0);
     listeners.fire().onReplayDevicesLoaded();
   }
 
@@ -145,8 +145,8 @@ public class Devices {
     rpcController.start().listen(Futures.transformAsync(client.getDevices(), paths -> {
       List<ListenableFuture<DeviceCaptureInfo>> results = Lists.newArrayList();
       for (Path.Device path : paths) {
-        ListenableFuture<Service.Value> dev = client.get(Paths.toAny(path));
-        ListenableFuture<Service.Value> props = client.get(Paths.traceInfo(path));
+        ListenableFuture<Service.Value> dev = client.get(Paths.device(path), path);
+        ListenableFuture<Service.Value> props = client.get(Paths.traceInfo(path), path);
         results.add(Futures.transform(Futures.allAsList(dev, props), l -> {
           return new DeviceCaptureInfo(path, l.get(0).getDevice(), l.get(1).getTraceConfig(),
               new TraceTargets(shell, analytics, client, path));

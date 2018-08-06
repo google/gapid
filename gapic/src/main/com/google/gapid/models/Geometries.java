@@ -16,6 +16,7 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.glviewer.Geometry.isPolygon;
+import static com.google.gapid.models.DeviceDependentModel.Source.withSource;
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
@@ -58,7 +59,7 @@ import java.util.logging.Logger;
  * Model responsible for loading draw call geometry data.
  */
 public class Geometries
-    extends ModelBase<Geometries.Data, Geometries.Source, Loadable.Message, Geometries.Listener> {
+    extends DeviceDependentModel<Geometries.Data, Geometries.Source, Loadable.Message, Geometries.Listener> {
   private static final Logger LOG = Logger.getLogger(ApiState.class.getName());
 
   private static final Stringtable.Msg NO_MESH_ERR = Strings.create("ERR_MESH_NOT_AVAILABLE");
@@ -75,13 +76,14 @@ public class Geometries
           .setFormat(Streams.FMT_XYZ_F32))
       .build();
 
-  public Geometries(Shell shell, Analytics analytics, Client client, CommandStream commands) {
-    super(LOG, shell, analytics, client, Listener.class);
+  public Geometries(
+      Shell shell, Analytics analytics, Client client, Devices devices, CommandStream commands) {
+    super(LOG, shell, analytics, client, Listener.class, devices);
 
     commands.addListener(new CommandStream.Listener() {
       @Override
       public void onCommandsSelected(CommandIndex selection) {
-        load(new Source(selection, null), false);
+        load(withSource(getSource(), new Source(selection, null)), false);
       }
     });
   }
@@ -91,22 +93,28 @@ public class Geometries
    * selected or if the semantics haven't changed.
    */
   public void updateSemantics(VertexSemantics semantics) {
-    Source src = getSource();
-    if (src != null) {
-      load(src.withSemantics(semantics), false);
-    }
+    load(Source.withSemantics(getSource(), semantics), false);
   }
 
   public VertexSemantics getSemantics() {
-    return (isLoaded()) ? getData().semantics : getSource().semantics;
+    if (isLoaded()) {
+      return getData().semantics;
+    }
+    DeviceDependentModel.Source<Source> src = getSource();
+    return (src == null || src.source == null) ? null : src.source.semantics;
   }
 
   @Override
-  protected ListenableFuture<Data> doLoad(Source s) {
-    return Futures.transformAsync(fetchMeshMetadata(s.command, s.semantics), semantics -> {
-      ListenableFuture<Model> originalFuture = fetchModel(meshAfter(
+  protected boolean isSourceComplete(DeviceDependentModel.Source<Source> source) {
+    return super.isSourceComplete(source) && source.source.command != null;
+  }
+
+  @Override
+  protected ListenableFuture<Data> doLoad(Source s, Path.Device device) {
+    return Futures.transformAsync(fetchMeshMetadata(device, s.command, s.semantics), semantics -> {
+      ListenableFuture<Model> originalFuture = fetchModel(device, meshAfter(
           s.command, semantics.getOptions().build(), POS_NORM_XYZ_F32));
-      ListenableFuture<Model> facetedFuture = fetchModel(meshAfter(
+      ListenableFuture<Model> facetedFuture = fetchModel(device, meshAfter(
           s.command, semantics.getOptions().setFaceted(true).build(), POS_NORM_XYZ_F32));
       return MoreFutures.combine(Arrays.asList(originalFuture, facetedFuture), models -> {
         MoreFutures.Result<Model> original = models.get(0);
@@ -116,12 +124,12 @@ public class Geometries
           throw original.error;
         } else if (original.succeeded() && original.result.getNormals() == null) {
           // The original model has no normals, but the geometry doesn't support faceted normals.
-          return new Data(semantics, null, faceted.result);
+          return new Data(device, semantics, null, faceted.result);
         } else if (original.succeeded() && !isPolygon(original.result.getPrimitive())) {
           // TODO: if gapis returns an error for the faceted request, this is not needed.
-          return new Data(semantics, null, original.result);
+          return new Data(device, semantics, null, original.result);
         } else {
-          return new Data(semantics, original.result, faceted.result);
+          return new Data(device, semantics, original.result, faceted.result);
         }
       });
     });
@@ -132,8 +140,9 @@ public class Geometries
     try {
       return success(result.get());
     } catch (DataUnavailableException e) {
+      DeviceDependentModel.Source<Source> s = getSource();
       // TODO: don't assume that it's because of not selecting a draw call.
-      return success(new Data(getSource().semantics, null, null));
+      return success(new Data(s.device, s.source.semantics, null, null));
     } catch (RpcException e) {
       LOG.log(WARNING, "Failed to load the geometry", e);
       return error(Loadable.Message.error(e));
@@ -161,13 +170,13 @@ public class Geometries
   }
 
   private ListenableFuture<VertexSemantics> fetchMeshMetadata(
-      CommandIndex command, VertexSemantics currentSemantics) {
-    return Futures.transform(client.get(meshAfter(command, Paths.NODATA_MESH_OPTIONS)),
+      Path.Device device, CommandIndex command, VertexSemantics currentSemantics) {
+    return Futures.transform(client.get(meshAfter(command, Paths.NODATA_MESH_OPTIONS), device),
         value -> new VertexSemantics(value.getMesh(), currentSemantics));
   }
 
-  private ListenableFuture<Model> fetchModel(Path.Any path) {
-    return Futures.transformAsync(client.get(path), value -> fetchModel(value.getMesh()));
+  private ListenableFuture<Model> fetchModel(Path.Device device, Path.Any path) {
+    return Futures.transformAsync(client.get(path, device), value -> fetchModel(value.getMesh()));
   }
 
   private static ListenableFuture<Model> fetchModel(API.Mesh mesh) {
@@ -216,8 +225,11 @@ public class Geometries
       this.semantics = semantics;
     }
 
-    public Source withSemantics(VertexSemantics newSemantics) {
-      return new Source(command, newSemantics);
+    public static DeviceDependentModel.Source<Source> withSemantics(
+        DeviceDependentModel.Source<Source> src, VertexSemantics newSemantics) {
+      Source me = (src == null) ? null : src.source;
+      return new DeviceDependentModel.Source<Source>((src == null) ? null : src.device,
+          new Source((me == null) ? null : me.command, newSemantics));
     }
 
     @Override
@@ -237,12 +249,13 @@ public class Geometries
     }
   }
 
-  public static class Data {
+  public static class Data extends DeviceDependentModel.Data {
     public final VertexSemantics semantics;
     public final Model original;
     public final Model faceted;
 
-    public Data(VertexSemantics semantics, Model original, Model faceted) {
+    public Data(Path.Device device, VertexSemantics semantics, Model original, Model faceted) {
+      super(device);
       this.semantics = semantics;
       this.original = original;
       this.faceted = faceted;

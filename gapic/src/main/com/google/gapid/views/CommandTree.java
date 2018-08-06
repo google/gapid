@@ -35,7 +35,6 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.CommandStream.Node;
 import com.google.gapid.models.Follower;
-import com.google.gapid.models.ImagesModel;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -80,8 +79,8 @@ import java.util.logging.Logger;
 /**
  * API command view displaying the commands with their hierarchy grouping in a tree.
  */
-public class CommandTree extends Composite implements Tab, Capture.Listener, CommandStream.Listener,
-    ApiContext.Listener, ImagesModel.Listener {
+public class CommandTree extends Composite
+    implements Tab, Capture.Listener, CommandStream.Listener, ApiContext.Listener {
   protected static final Logger LOG = Logger.getLogger(CommandTree.class.getName());
 
   private final Models models;
@@ -106,12 +105,10 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
     models.capture.addListener(this);
     models.commands.addListener(this);
     models.contexts.addListener(this);
-    models.images.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.commands.removeListener(this);
       models.contexts.removeListener(this);
-      models.images.removeListener(this);
     });
 
     search.addListener(Events.Search, e -> search(e.text, (e.detail & Events.REGEX) != 0));
@@ -251,11 +248,6 @@ public class CommandTree extends Composite implements Tab, Capture.Listener, Com
   @Override
   public void onContextSelected(FilteringContext context) {
     updateTree(false);
-  }
-
-  @Override
-  public void onThumbnailsChanged() {
-    tree.refreshImages();
   }
 
   private void updateTree(boolean assumeLoading) {

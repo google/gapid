@@ -27,8 +27,8 @@ import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.Models;
 import com.google.gapid.models.ImagesModel;
+import com.google.gapid.models.Models;
 import com.google.gapid.models.Timeline;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.util.Loadable;
@@ -57,7 +57,7 @@ import java.util.List;
  * Scrubber view displaying thumbnails of the frames in the current capture.
  */
 public class ThumbnailScrubber extends Composite implements Tab, Capture.Listener,
-    CommandStream.Listener, ApiContext.Listener, Timeline.Listener, ImagesModel.Listener {
+    CommandStream.Listener, ApiContext.Listener, Timeline.Listener {
   private final Models models;
   private final LoadablePanel<Carousel> loading;
   private final Carousel carousel;
@@ -84,13 +84,11 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
     models.contexts.addListener(this);
     models.timeline.addListener(this);
     models.commands.addListener(this);
-    models.images.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.contexts.removeListener(this);
       models.timeline.removeListener(this);
       models.commands.removeListener(this);
-      models.images.removeListener(this);
       carousel.reset();
     });
   }
@@ -151,11 +149,6 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
   @Override
   public void onCommandsSelected(CommandIndex range) {
     carousel.selectFrame(range);
-  }
-
-  @Override
-  public void onThumbnailsChanged() {
-    carousel.updateImages();
   }
 
   private void updateScrubber() {
@@ -315,16 +308,6 @@ public class ThumbnailScrubber extends Composite implements Tab, Capture.Listene
       datas = Collections.emptyList();
       selectedIndex = -1;
       setItemCount(0, THUMB_SIZE, THUMB_SIZE);
-    }
-
-    public void updateImages() {
-      for (Data data : datas) {
-        if (data.image != null) {
-          data.image.dispose();
-          data.image = null;
-        }
-      }
-      repaint();
     }
 
     private void selectAndScroll(int index) {
