@@ -16,7 +16,6 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.image.Images.noAlpha;
-import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.models.ImagesModel.THUMB_SIZE;
 import static com.google.gapid.util.Colors.getRandomColor;
 import static com.google.gapid.util.Colors.lerp;
@@ -443,8 +442,7 @@ public class CommandTree extends Composite
 
     @Override
     protected Follower.Prefetcher<String> prepareFollower(CommandStream.Node node, Runnable cb) {
-      return (node.getData() == null || node.getCommand() == null) ? nullPrefetcher() :
-          models.follower.prepare(lastCommand(node.getData().getCommands()), node.getCommand(), cb);
+      return models.follower.prepare(node, cb);
     }
 
     @Override
