@@ -15,6 +15,7 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.util.Paths.lastCommand;
 import static java.util.logging.Level.FINE;
 import static java.util.logging.Level.WARNING;
 
@@ -36,13 +37,15 @@ import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
+
+import org.eclipse.swt.widgets.Shell;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.eclipse.swt.widgets.Shell;
 
 /**
  * Model handling link following throughout the UI.
@@ -66,21 +69,28 @@ public class Follower {
   }
 
   /**
-   * Prefetches all the follow paths for the given command.
+   * Prefetches all the follow paths for the given command tree node.
    */
-  public Prefetcher<String> prepare(Path.Command path, API.Command command, Runnable onResult) {
+  public Prefetcher<String> prepare(CommandStream.Node node, Runnable onResult) {
+    if (node.getData() == null || node.getCommand() == null) {
+      return nullPrefetcher();
+    }
+
+    Path.Command path = lastCommand(node.getData().getCommands());
+    API.Command command = node.getCommand();
+
     LazyMap<String, Path.Any> paths = new LazyMap<String, Path.Any>();
     List<ListenableFuture<Path.Any>> futures = Lists.newArrayList();
     for (API.Parameter p : command.getParametersList()) {
       Path.Any follow = Paths.commandField(path, p.getName());
-      ListenableFuture<Path.Any> future = client.follow(follow);
+      ListenableFuture<Path.Any> future = client.follow(follow, node.device);
       Futures.addCallback(future, callback(follow, v -> paths.put(p.getName(), v), onResult));
       futures.add(future);
     }
 
     if (command.hasResult()) {
       Path.Any follow = Paths.commandResult(path);
-      ListenableFuture<Path.Any> future = client.follow(follow);
+      ListenableFuture<Path.Any> future = client.follow(follow, node.device);
       Futures.addCallback(future, callback(follow, v -> paths.put(RESULT_NAME, v), onResult));
       futures.add(future);
     }
@@ -99,11 +109,17 @@ public class Follower {
   }
 
   /**
-   * Prefetches the follow path for the path.
+   * Prefetches the follow path for the given API state node.
    */
-  public Prefetcher<Void> prepare(Path.Any path, Runnable onResult) {
+  public Prefetcher<Void> prepare(ApiState.Node node, Runnable onResult) {
+    if (node.getData() == null || !node.getData().hasValuePath()) {
+      return nullPrefetcher();
+    }
+
+    Path.Any path = node.getData().getValuePath();
+
     ObjectStore<Path.Any> result = ObjectStore.create();
-    ListenableFuture<Path.Any> future = client.follow(path);
+    ListenableFuture<Path.Any> future = client.follow(path, node.device);
     Futures.addCallback(future, callback(path, v -> {
       synchronized(result) {
         result.update(v);
@@ -159,13 +175,13 @@ public class Follower {
   /**
    * Requests to follow the given path and update the UI selection.
    */
-  public void follow(Path.Any path) {
+  public void follow(Path.Any path, Path.Device device) {
     if (path == null) {
       return;
     }
 
     long started = System.currentTimeMillis();
-    Rpc.listen(client.follow(path), new UiCallback<Path.Any, Path.Any>(shell, LOG) {
+    Rpc.listen(client.follow(path, device), new UiCallback<Path.Any, Path.Any>(shell, LOG) {
       @Override
       protected Path.Any onRpcThread(Rpc.Result<Path.Any> result) {
         try {

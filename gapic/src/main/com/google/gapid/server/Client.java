@@ -114,11 +114,15 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getPath(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Path.Any> follow(Path.Any path) {
-    return call(() -> String.format("RPC->follow(%s)", shortDebugString(path)),
+  public ListenableFuture<Path.Any> follow(Path.Any path, Path.Device device) {
+    return call(
+        () -> String.format("RPC->follow(%s, %s)",
+            shortDebugString(path), shortDebugString(device)),
         stack -> Futures.transformAsync(
             client.follow(FollowRequest.newBuilder()
                 .setPath(path)
+                .setConfig(Path.ResolveConfig.newBuilder()
+                    .setReplayDevice(device))
                 .build()),
             in -> immediateFuture(throwIfError(in.getPath(), in.getError(), stack))));
   }

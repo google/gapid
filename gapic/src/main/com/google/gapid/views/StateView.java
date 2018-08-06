@@ -15,7 +15,6 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.models.Follower.nullPrefetcher;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.Strings.stripQuotes;
@@ -394,8 +393,7 @@ public class StateView extends Composite
 
     @Override
     protected Follower.Prefetcher<Void> prepareFollower(ApiState.Node node, Runnable callback) {
-      return node.getData() == null || !node.getData().hasValuePath() ? nullPrefetcher() :
-        models.follower.prepare(node.getData().getValuePath(), callback);
+      return models.follower.prepare(node, callback);
     }
 
     @Override
