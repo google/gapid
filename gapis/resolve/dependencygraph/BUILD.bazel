@@ -18,6 +18,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "dce.go",
+        "dead_code_elimination.go",
         "dependency_graph.go",
         "doc.go",
         "footprint.go",
@@ -29,7 +31,9 @@ go_library(
         "//core/app/benchmark:go_default_library",
         "//core/log:go_default_library",
         "//gapis/api:go_default_library",
+        "//gapis/api/transform:go_default_library",
         "//gapis/capture:go_default_library",
+        "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service/path:go_default_library",
@@ -53,11 +57,17 @@ go_proto_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["footprint_test.go"],
+    srcs = [
+        "dce_test.go",
+        "dead_code_elimination_test.go",
+        "footprint_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
         "//gapis/api:go_default_library",
+        "//gapis/database:go_default_library",
+        "//gapis/resolve/dependencygraph:go_default_library",
     ],
 )

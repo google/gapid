@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform
+package dependencygraph
 
 import (
 	"context"
@@ -21,8 +21,8 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/config"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
 const (
@@ -46,7 +46,7 @@ var (
 // Construct with NewDeadCodeElimination, do not build directly.
 type DeadCodeElimination struct {
 	KeepAllAlive bool
-	depGraph     *dependencygraph.DependencyGraph
+	depGraph     *DependencyGraph
 	requests     api.CmdIDSet
 	lastRequest  api.CmdID
 }
@@ -56,7 +56,7 @@ type DeadCodeElimination struct {
 //
 // The transform generates commands from the given depGraph, it does not take
 // inputs.
-func NewDeadCodeElimination(ctx context.Context, depGraph *dependencygraph.DependencyGraph) *DeadCodeElimination {
+func NewDeadCodeElimination(ctx context.Context, depGraph *DependencyGraph) *DeadCodeElimination {
 	return &DeadCodeElimination{
 		depGraph: depGraph,
 		requests: make(api.CmdIDSet),
@@ -74,11 +74,11 @@ func (t *DeadCodeElimination) Request(id api.CmdID) {
 	}
 }
 
-func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out Writer) {
+func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api.Cmd, out transform.Writer) {
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
-func (t *DeadCodeElimination) Flush(ctx context.Context, out Writer) {
+func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	if t.KeepAllAlive {
 		api.ForeachCmd(ctx, t.depGraph.Commands, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 			out.MutateAndWrite(ctx, t.depGraph.GetCmdID(int(index)), cmd)
@@ -206,10 +206,10 @@ type livenessNode struct {
 // NewLivenessTree creates a new tree.
 // The parent map defines parent for each node,
 // and it must be continuous with no gaps.
-func NewLivenessTree(parents map[dependencygraph.StateAddress]dependencygraph.StateAddress) LivenessTree {
+func NewLivenessTree(parents map[StateAddress]StateAddress) LivenessTree {
 	nodes := make([]livenessNode, len(parents))
 	for address, parent := range parents {
-		if parent != dependencygraph.NullStateAddress {
+		if parent != NullStateAddress {
 			nodes[address].parent = &nodes[parent]
 		}
 	}
@@ -217,7 +217,7 @@ func NewLivenessTree(parents map[dependencygraph.StateAddress]dependencygraph.St
 }
 
 // IsLive returns true if the state, or any of its descendants, are live.
-func (l *LivenessTree) IsLive(address dependencygraph.StateAddress) bool {
+func (l *LivenessTree) IsLive(address StateAddress) bool {
 	node := &l.nodes[address]
 	live := node.anyLive // Check descendants as well.
 	for p := node.parent; p != nil; p = p.parent {
@@ -230,7 +230,7 @@ func (l *LivenessTree) IsLive(address dependencygraph.StateAddress) bool {
 }
 
 // MarkDead makes the given state, and all of its descendants, dead.
-func (l *LivenessTree) MarkDead(address dependencygraph.StateAddress) {
+func (l *LivenessTree) MarkDead(address StateAddress) {
 	node := &l.nodes[address]
 	node.live = false
 	node.anyLive = false
@@ -239,7 +239,7 @@ func (l *LivenessTree) MarkDead(address dependencygraph.StateAddress) {
 }
 
 // MarkLive makes the given state, and all of its descendants, live.
-func (l *LivenessTree) MarkLive(address dependencygraph.StateAddress) {
+func (l *LivenessTree) MarkLive(address StateAddress) {
 	node := &l.nodes[address]
 	node.live = true
 	node.anyLive = true

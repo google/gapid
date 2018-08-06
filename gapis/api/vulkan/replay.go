@@ -125,12 +125,12 @@ type framebufferRequest struct {
 
 type deadCodeEliminationInfo struct {
 	dependencyGraph     *dependencygraph.DependencyGraph
-	deadCodeElimination *transform.DeadCodeElimination
+	deadCodeElimination *dependencygraph.DeadCodeElimination
 }
 
 type dCEInfo struct {
 	ft  *dependencygraph.Footprint
-	dce *transform.DCE
+	dce *dependencygraph.DCE
 }
 
 // color/depth/stencil attachment bit.
@@ -552,7 +552,7 @@ func (a API) Replay(
 					return 0, err
 				}
 				dceInfo.ft = ft
-				dceInfo.dce = transform.NewDCE(ctx, dceInfo.ft)
+				dceInfo.dce = dependencygraph.NewDCE(ctx, dceInfo.ft)
 			}
 			cmds = []api.Cmd{}
 			numInitialCmdWithOpt = dceInfo.ft.NumInitialCommands

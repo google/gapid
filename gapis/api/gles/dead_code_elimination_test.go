@@ -248,7 +248,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
-		dce := transform.NewDeadCodeElimination(ctx, dependencyGraph)
+		dce := dependencygraph.NewDeadCodeElimination(ctx, dependencyGraph)
 
 		expectedCmds := []api.Cmd{}
 		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

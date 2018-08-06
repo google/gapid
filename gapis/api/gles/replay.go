@@ -117,7 +117,7 @@ func (a API) Replay(
 	}
 
 	// Skip unnecessary commands.
-	deadCodeElimination := transform.NewDeadCodeElimination(ctx, dependencyGraph)
+	deadCodeElimination := dependencygraph.NewDeadCodeElimination(ctx, dependencyGraph)
 	deadCodeElimination.KeepAllAlive = config.DisableDeadCodeElimination
 
 	var rf *readFramebuffer // Transform for all framebuffer reads.

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform
+package dependencygraph
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 	"github.com/google/gapid/core/app/benchmark"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
+	"github.com/google/gapid/gapis/api/transform"
 )
 
 var (
@@ -65,7 +65,7 @@ func (s *CommandIndicesSet) Contains(fci api.SubCmdIdx) bool {
 // commands which are not contributing to the final state at the requested
 // commands.
 type DCE struct {
-	footprint        *dependencygraph.Footprint
+	footprint        *Footprint
 	endBehaviorIndex uint64
 	endCmdIndex      api.CmdID
 	requests         *CommandIndicesSet
@@ -73,7 +73,7 @@ type DCE struct {
 
 // NewDCE constructs a new DCE instance and returns a pointer to the created
 // DCE instance.
-func NewDCE(ctx context.Context, footprint *dependencygraph.Footprint) *DCE {
+func NewDCE(ctx context.Context, footprint *Footprint) *DCE {
 	return &DCE{
 		footprint: footprint,
 		requests:  &CommandIndicesSet{},
@@ -96,7 +96,7 @@ func (t *DCE) Request(ctx context.Context, fci api.SubCmdIdx) {
 // Transform is to comform the interface of Transformer, but does not accept
 // any input.
 func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
-	out Writer) {
+	out transform.Writer) {
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
@@ -106,7 +106,7 @@ func (t *DCE) Transform(ctx context.Context, id api.CmdID, c api.Cmd,
 // last in the order of time) to get a list of alive commands. Then it sends
 // the alive commands to the following transforms to mutate them and write them
 // to build instructions for replay.
-func (t *DCE) Flush(ctx context.Context, out Writer) {
+func (t *DCE) Flush(ctx context.Context, out transform.Writer) {
 	if t.endBehaviorIndex >= uint64(len(t.footprint.Behaviors)) {
 		log.E(ctx, "DCE: Cannot backpropagate through def-use chain from behavior index: %v, "+
 			"with length of behavior list: %v.", t.endBehaviorIndex, len(t.footprint.Behaviors))
@@ -185,7 +185,7 @@ func (t *DCE) Flush(ctx context.Context, out Writer) {
 func (t *DCE) BackPropagate(ctx context.Context) ([]bool, *CommandIndicesSet) {
 	livenessBoard := make([]bool, t.endBehaviorIndex+1)
 	aliveCommands := &CommandIndicesSet{}
-	usedMachines := map[dependencygraph.BackPropagationMachine]struct{}{}
+	usedMachines := map[BackPropagationMachine]struct{}{}
 	fbRequested := map[api.CmdID]struct{}{}
 	for bi := int64(t.endBehaviorIndex); bi >= 0; bi-- {
 		bh := t.footprint.Behaviors[bi]

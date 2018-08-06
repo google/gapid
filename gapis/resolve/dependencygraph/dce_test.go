@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transform_test
+package dependencygraph_test
 
 import (
 	"testing"
@@ -20,7 +20,6 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
@@ -109,8 +108,8 @@ func TestDCE(t *testing.T) {
 	behave([]uint64{3, 0, 1, 0}, []dummyDefUseVar{8, 9}, []dummyDefUseVar{10})
 	behave([]uint64{4}, []dummyDefUseVar{10}, []dummyDefUseVar{})
 
-	dce := transform.NewDCE(ctx, ft)
-	expectedLiveness := func(aliveCommands *transform.CommandIndicesSet, fci api.SubCmdIdx, expected bool) {
+	dce := dependencygraph.NewDCE(ctx, ft)
+	expectedLiveness := func(aliveCommands *dependencygraph.CommandIndicesSet, fci api.SubCmdIdx, expected bool) {
 		assert.For(ctx, "Liveness of command with full command index: %v should be %v",
 			fci, expected).That(aliveCommands.Contains(fci)).Equals(expected)
 	}
@@ -129,7 +128,7 @@ func TestDCE(t *testing.T) {
 	expectedLiveness(alived, []uint64{3, 0, 1, 0}, true)
 	expectedLiveness(alived, []uint64{4}, true)
 
-	dce = transform.NewDCE(ctx, ft)
+	dce = dependencygraph.NewDCE(ctx, ft)
 
 	// Case: Request: 3-0-0-1, Dead: 3-0-0-0, 2, 0, and all after 3-0-0-1
 	dce.Request(ctx, []uint64{3, 0, 0, 1})

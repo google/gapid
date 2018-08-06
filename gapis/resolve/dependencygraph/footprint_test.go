@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dependencygraph
+package dependencygraph_test
 
 import (
 	"testing"
@@ -20,27 +20,28 @@ import (
 	"github.com/google/gapid/core/assert"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
 func TestFootprintAddAndGetBehavior(t *testing.T) {
 	ctx := log.Testing(t)
-	ft := NewEmptyFootprint(ctx)
-	behaviors := []*Behavior{
-		NewBehavior(api.SubCmdIdx{0}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{1}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{2}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{3}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 3}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 4}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 7}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 8}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 6}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{5}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 7}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4, 1, 2, 8}, &dummyMachine{}),
-		NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}), // overwrites the previous one
-		NewBehavior(api.SubCmdIdx{6}, &dummyMachine{}),
+	ft := dependencygraph.NewEmptyFootprint(ctx)
+	behaviors := []*dependencygraph.Behavior{
+		dependencygraph.NewBehavior(api.SubCmdIdx{0}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{1}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{2}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{3}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 3}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 4}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 7}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 8}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 6}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{5}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 7}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 8}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}), // overwrites the previous one
+		dependencygraph.NewBehavior(api.SubCmdIdx{6}, &dummyMachine{}),
 	}
 	for _, b := range behaviors {
 		ft.AddBehavior(ctx, b)
