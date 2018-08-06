@@ -15,6 +15,7 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.util.Paths.context;
 import static java.util.Arrays.stream;
 import static java.util.Comparator.comparingInt;
 
@@ -36,13 +37,14 @@ import java.util.logging.Logger;
  * Model containing the different API contexts of a capture.
  */
 public class ApiContext
-    extends CaptureDependentModel<ApiContext.FilteringContext[], ApiContext.Listener> {
+    extends CaptureDependentModel<ApiContext.Contexts, ApiContext.Listener> {
   private static final Logger LOG = Logger.getLogger(ApiContext.class.getName());
 
   private FilteringContext selectedContext = null;
 
-  public ApiContext(Shell shell, Analytics analytics, Client client, Capture capture) {
-    super(LOG, shell, analytics, client, Listener.class, capture);
+  public ApiContext(
+      Shell shell, Analytics analytics, Client client, Capture capture, Devices devices) {
+    super(LOG, shell, analytics, client, Listener.class, capture, devices);
   }
 
   @Override
@@ -62,18 +64,18 @@ public class ApiContext
   }
 
   @Override
-  protected ListenableFuture<FilteringContext[]> doLoad(Path.Any path) {
-    return Futures.transform(Futures.transformAsync(client.get(path), val -> {
+  protected ListenableFuture<Contexts> doLoad(Path.Any path, Path.Device device) {
+    return Futures.transform(Futures.transformAsync(client.get(path, device), val -> {
       List<ListenableFuture<ApiContext.IdAndContext>> contexts = Lists.newArrayList();
       for (Path.Context ctx : val.getContexts().getListList()) {
-        contexts.add(Futures.transform(client.get(Path.Any.newBuilder().setContext(ctx).build()),
+        contexts.add(Futures.transform(client.get(context(ctx), device),
             value -> new IdAndContext(ctx, value.getContext())));
       }
       return Futures.allAsList(contexts);
-    }), this::unbox);
+    }), ctxList -> new Contexts(device, unbox(ctxList)));
   }
 
-  private FilteringContext[] unbox(List<IdAndContext> contexts) {
+  private static FilteringContext[] unbox(List<IdAndContext> contexts) {
     if (contexts.isEmpty()) {
       return new FilteringContext[0];
     } else if (contexts.size() == 1) {
@@ -96,9 +98,9 @@ public class ApiContext
   @Override
   protected void fireLoadedEvent() {
     if (count() == 1) {
-      selectedContext = getData()[0];
+      selectedContext = getData().contexts[0];
     } else if (selectedContext != null) {
-      selectedContext = stream(getData())
+      selectedContext = stream(getData().contexts)
           .filter(c -> c.equals(selectedContext))
           .findFirst()
           .orElseGet(this::highestPriorityContext);
@@ -109,13 +111,13 @@ public class ApiContext
   }
 
   private FilteringContext highestPriorityContext() {
-    return stream(getData())
+    return stream(getData().contexts)
         .max(comparingInt(FilteringContext::getPriority))
         .orElse(FilteringContext.ALL);
   }
 
   public int count() {
-    return isLoaded() ? getData().length : 0;
+    return isLoaded() ? getData().contexts.length : 0;
   }
 
   public FilteringContext getSelectedContext() {
@@ -126,6 +128,15 @@ public class ApiContext
     if (!Objects.equals(context, selectedContext)) {
       selectedContext = context;
       listeners.fire().onContextSelected(context);
+    }
+  }
+
+  public static class Contexts extends DeviceDependentModel.Data {
+    public final FilteringContext[] contexts;
+
+    public Contexts(Path.Device device, FilteringContext[] contexts) {
+      super(device);
+      this.contexts = contexts;
     }
   }
 

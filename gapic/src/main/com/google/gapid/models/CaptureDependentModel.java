@@ -31,11 +31,12 @@ import java.util.logging.Logger;
  * Base class for models that depend on a capture. I.e. models that will trigger a load whenever
  * the capture changes and require a capture to be loaded.
  */
-abstract class CaptureDependentModel<T, L extends Events.Listener>
-    extends ModelBase.ForPath<T, Void, L> {
+abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L extends Events.Listener>
+    extends DeviceDependentModel.ForPath<T, Void, L> {
+
   public CaptureDependentModel(Logger log, Shell shell, Analytics analytics, Client client,
-      Class<L> listenerClass, Capture capture) {
-    super(log, shell, analytics, client, listenerClass);
+      Class<L> listenerClass, Capture capture, Devices devices) {
+    super(log, shell, analytics, client, listenerClass, devices);
 
     capture.addListener(new Capture.Listener() {
       @Override
@@ -63,18 +64,18 @@ abstract class CaptureDependentModel<T, L extends Events.Listener>
     reset();
   }
 
-  public abstract static class ForValue<T, L extends Events.Listener>
+  public abstract static class ForValue<T extends Data, L extends Events.Listener>
       extends CaptureDependentModel<T, L> {
     public ForValue(Logger log, Shell shell, Analytics analytics, Client client,
-        Class<L> listenerClass, Capture capture) {
-      super(log, shell, analytics, client, listenerClass, capture);
+        Class<L> listenerClass, Capture capture, Devices devices) {
+      super(log, shell, analytics, client, listenerClass, capture, devices);
     }
 
     @Override
-    protected ListenableFuture<T> doLoad(Path.Any path) {
-      return Futures.transform(client.get(path), this::unbox);
+    protected ListenableFuture<T> doLoad(Path.Any path, Path.Device device) {
+      return Futures.transform(client.get(path, device), val -> unbox(val, device));
     }
 
-    protected abstract T unbox(Service.Value value);
+    protected abstract T unbox(Service.Value value, Path.Device device);
   }
 }

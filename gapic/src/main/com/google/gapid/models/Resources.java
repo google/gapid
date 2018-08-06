@@ -45,16 +45,15 @@ import java.util.stream.Stream;
 /**
  * Model containing the capture resources (textures, shaders, etc.) metadata.
  */
-public class Resources
-    extends CaptureDependentModel.ForValue<Service.Resources, Resources.Listener> {
+public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Resources.Listener> {
   private static final Logger LOG = Logger.getLogger(Resources.class.getName());
 
   protected final Capture capture;
   private final CommandStream commands;
 
-  public Resources(
-      Shell shell, Analytics analytics, Client client, Capture capture, CommandStream commands) {
-    super(LOG, shell, analytics, client, Listener.class, capture);
+  public Resources(Shell shell, Analytics analytics, Client client, Capture capture,
+      Devices devices, CommandStream commands) {
+    super(LOG, shell, analytics, client, Listener.class, capture, devices);
     this.capture = capture;
     this.commands = commands;
   }
@@ -68,8 +67,8 @@ public class Resources
   }
 
   @Override
-  protected Service.Resources unbox(Service.Value value) {
-    return value.getResources();
+  protected Data unbox(Service.Value value, Path.Device device) {
+    return new Data(device, value.getResources());
   }
 
   @Override
@@ -83,31 +82,14 @@ public class Resources
   }
 
   public List<Service.ResourcesByType> getResources() {
-    return getData().getTypesList();
+    return getData().resources.getTypesList();
   }
 
   public ResourceList getResources(API.ResourceType type) {
     if (!isLoaded() || commands.getSelectedCommands() == null) {
       return new ResourceList(type, emptyList(), false);
     }
-
-    Path.Command after = commands.getSelectedCommands().getCommand();
-    List<Service.Resource> resources = Lists.newArrayList();
-    boolean complete = true;
-    for (Service.ResourcesByType rs : getData().getTypesList()) {
-      if (rs.getType() != type) {
-        continue;
-      }
-
-      for (Service.Resource r : rs.getResourcesList()) {
-        if (Paths.compare(firstAccess(r), after) <= 0) {
-          resources.add(r);
-        } else {
-          complete = false;
-        }
-      }
-    }
-    return new ResourceList(type, resources, complete);
+    return getData().getResources(commands.getSelectedCommands().getCommand(), type);
   }
 
   public Path.ResourceData getResourcePath(Service.Resource resource) {
@@ -124,8 +106,10 @@ public class Resources
       return Futures.immediateFailedFuture(new RuntimeException("No command selected"));
     }
 
+    // TODO: don't get the device via getData
     return Futures.transform(
-        client.get(resourceAfter(after, resource.getID())), Service.Value::getResourceData);
+        client.get(resourceAfter(after, resource.getID()), getData().device),
+        Service.Value::getResourceData);
   }
 
   public void updateResource(Service.Resource resource, API.ResourceData data) {
@@ -151,8 +135,36 @@ public class Resources
     });
   }
 
-  private static Path.Command firstAccess(Service.Resource info) {
-    return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
+  public static class Data extends DeviceDependentModel.Data {
+    public final Service.Resources resources;
+
+    public Data(Path.Device device, Service.Resources resources) {
+      super(device);
+      this.resources = resources;
+    }
+
+    public ResourceList getResources(Path.Command after, API.ResourceType type) {
+      List<Service.Resource> list = Lists.newArrayList();
+      boolean complete = true;
+      for (Service.ResourcesByType rs : resources.getTypesList()) {
+        if (rs.getType() != type) {
+          continue;
+        }
+
+        for (Service.Resource r : rs.getResourcesList()) {
+          if (Paths.compare(firstAccess(r), after) <= 0) {
+            list.add(r);
+          } else {
+            complete = false;
+          }
+        }
+      }
+      return new ResourceList(type, list, complete);
+    }
+
+    private static Path.Command firstAccess(Service.Resource info) {
+      return (info.getAccessesCount() == 0) ? null : info.getAccesses(0);
+    }
   }
 
   public static class ResourceList {

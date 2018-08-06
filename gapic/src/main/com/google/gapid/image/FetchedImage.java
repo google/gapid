@@ -46,30 +46,39 @@ public class FetchedImage implements MultiLayerAndLevelImage {
   private final Layer[] layers;
 
   public static ListenableFuture<FetchedImage> load(
-      Client client, ListenableFuture<Path.ImageInfo> imageInfo) {
-    return Futures.transformAsync(imageInfo, imageInfoPath -> load(client, imageInfoPath));
+      Client client, Path.Device device, ListenableFuture<Path.ImageInfo> imageInfo) {
+    return Futures.transformAsync(imageInfo, imageInfoPath -> load(client, device, imageInfoPath));
   }
 
-  public static ListenableFuture<FetchedImage> load(Client client, Path.ImageInfo imagePath) {
-    return Futures.transformAsync(client.get(imageInfo(imagePath)), value -> {
+  public static ListenableFuture<FetchedImage> load(
+      Client client, Path.Device device, Path.ImageInfo imagePath) {
+    return Futures.transformAsync(client.get(imageInfo(imagePath), device), value -> {
       Images.Format format = getFormat(value.getImageInfo());
-      return Futures.transform(client.get(imageData(imagePath, format.format)),
-          pixelValue -> new FetchedImage(client, format, pixelValue.getImageInfo()));
+      return Futures.transform(client.get(imageData(imagePath, format.format), device),
+          pixelValue -> new FetchedImage(client, device, format, pixelValue.getImageInfo()));
     });
   }
 
-  public static ListenableFuture<FetchedImage> load(Client client, Path.ResourceData imagePath) {
-    return Futures.transformAsync(client.get(resourceInfo(imagePath)), value -> {
+  public static ListenableFuture<FetchedImage> load(
+      Client client, Path.Device device, Path.ResourceData imagePath) {
+    return Futures.transformAsync(client.get(resourceInfo(imagePath), device), value -> {
       API.ResourceData data = value.getResourceData();
       API.Texture texture = data.getTexture();
       switch (texture.getTypeCase()) {
-        case TEXTURE_1D: return load(client, imagePath, getFormat(texture.getTexture1D()));
-        case TEXTURE_1D_ARRAY: return load(client, imagePath, getFormat(texture.getTexture1DArray()));
-        case TEXTURE_2D: return load(client, imagePath, getFormat(texture.getTexture2D()));
-        case TEXTURE_2D_ARRAY: return load(client, imagePath, getFormat(texture.getTexture2DArray()));
-        case TEXTURE_3D: return load(client, imagePath, getFormat(texture.getTexture3D()));
-        case CUBEMAP: return load(client, imagePath, getFormat(texture.getCubemap()));
-        case CUBEMAP_ARRAY: return load(client, imagePath, getFormat(texture.getCubemapArray()));
+        case TEXTURE_1D:
+          return load(client, device, imagePath, getFormat(texture.getTexture1D()));
+        case TEXTURE_1D_ARRAY:
+          return load(client, device, imagePath, getFormat(texture.getTexture1DArray()));
+        case TEXTURE_2D:
+          return load(client, device, imagePath, getFormat(texture.getTexture2D()));
+        case TEXTURE_2D_ARRAY:
+          return load(client, device, imagePath, getFormat(texture.getTexture2DArray()));
+        case TEXTURE_3D:
+          return load(client, device, imagePath, getFormat(texture.getTexture3D()));
+        case CUBEMAP:
+          return load(client, device, imagePath, getFormat(texture.getCubemap()));
+        case CUBEMAP_ARRAY:
+          return load(client, device, imagePath, getFormat(texture.getCubemapArray()));
         default:
           throw new UnsupportedOperationException("Unexpected resource type: " + value);
       }
@@ -77,17 +86,23 @@ public class FetchedImage implements MultiLayerAndLevelImage {
   }
 
   public static ListenableFuture<FetchedImage> load(
-      Client client, Path.ResourceData imagePath, Images.Format format) {
-    return Futures.transform(client.get(imageData(imagePath, format.format)), value -> {
+      Client client, Path.Device device, Path.ResourceData imagePath, Images.Format format) {
+    return Futures.transform(client.get(imageData(imagePath, format.format), device), value -> {
       API.ResourceData data = value.getResourceData();
       API.Texture texture = data.getTexture();
       switch (texture.getTypeCase()) {
-        case TEXTURE_1D: return new FetchedImage(client, format, texture.getTexture1D());
-        case TEXTURE_1D_ARRAY: return new FetchedImage(client, format, texture.getTexture1DArray());
-        case TEXTURE_2D: return new FetchedImage(client, format, texture.getTexture2D());
-        case TEXTURE_2D_ARRAY: return new FetchedImage(client, format, texture.getTexture2DArray());
-        case TEXTURE_3D: return new FetchedImage(client, format, texture.getTexture3D());
-        case CUBEMAP: return new FetchedImage(client, format, texture.getCubemap());
+        case TEXTURE_1D:
+          return new FetchedImage(client, device, format, texture.getTexture1D());
+        case TEXTURE_1D_ARRAY:
+          return new FetchedImage(client, device, format, texture.getTexture1DArray());
+        case TEXTURE_2D:
+          return new FetchedImage(client, device, format, texture.getTexture2D());
+        case TEXTURE_2D_ARRAY:
+          return new FetchedImage(client, device, format, texture.getTexture2DArray());
+        case TEXTURE_3D:
+          return new FetchedImage(client, device, format, texture.getTexture3D());
+        case CUBEMAP:
+          return new FetchedImage(client, device, format, texture.getCubemap());
         case CUBEMAP_ARRAY:
           throw new UnsupportedOperationException("Cubemap Array images not yet implemented");
         default:
@@ -105,10 +120,10 @@ public class FetchedImage implements MultiLayerAndLevelImage {
   }
 
   public static ListenableFuture<ImageData> loadThumbnail(
-      Client client, Path.Thumbnail path, Consumer<Info> onInfo) {
-    return loadImage(Futures.transform(client.get(thumbnail(path)), value -> {
+      Client client, Path.Device device, Path.Thumbnail path, Consumer<Info> onInfo) {
+    return loadImage(Futures.transform(client.get(thumbnail(path), device), value -> {
       onInfo.accept(value.getImageInfo());
-      return new FetchedImage(client, Images.Format.Color8, value.getImageInfo());
+      return new FetchedImage(client, device, Images.Format.Color8, value.getImageInfo());
     }), 0, 0);
   }
 
@@ -149,68 +164,74 @@ public class FetchedImage implements MultiLayerAndLevelImage {
   }
 
 
-  public FetchedImage(Client client, Images.Format format, Info imageInfo) {
+  public FetchedImage(Client client, Path.Device device, Images.Format format, Info imageInfo) {
     layers = new Layer[] {
-        new Layer(new SingleFacedLevel(client, format, imageInfo))
+        new Layer(new SingleFacedLevel(client, device, format, imageInfo))
     };
   }
 
-  public FetchedImage(Client client, Images.Format format, API.Texture1D texture) {
+  public FetchedImage(
+      Client client, Path.Device device, Images.Format format, API.Texture1D texture) {
     List<Info> infos = texture.getLevelsList();
     Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
-      levels[i] = new SingleFacedLevel(client, format, infos.get(i));
+      levels[i] = new SingleFacedLevel(client, device, format, infos.get(i));
     }
     layers = new Layer[] { new Layer(levels) };
   }
 
-  public FetchedImage(Client client, Images.Format format, API.Texture1DArray texture) {
+  public FetchedImage(
+      Client client, Path.Device device, Images.Format format, API.Texture1DArray texture) {
     layers = new Layer[texture.getLayersCount()];
     for (int i = 0; i < layers.length; i++) {
       List<Info> infos = texture.getLayers(i).getLevelsList();
       Level[] levels = new Level[infos.size()];
       for (int j = 0; j < infos.size(); j++) {
-        levels[j] = new SingleFacedLevel(client, format, infos.get(j));
+        levels[j] = new SingleFacedLevel(client, device, format, infos.get(j));
       }
       layers[i] = new Layer(levels);
     }
   }
 
-  public FetchedImage(Client client, Images.Format format, API.Texture2D texture) {
+  public FetchedImage(
+      Client client, Path.Device device, Images.Format format, API.Texture2D texture) {
     List<Info> infos = texture.getLevelsList();
     Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
-      levels[i] = new SingleFacedLevel(client, format, infos.get(i));
+      levels[i] = new SingleFacedLevel(client, device, format, infos.get(i));
     }
     layers = new Layer[] { new Layer(levels) };
   }
 
-  public FetchedImage(Client client, Images.Format format, API.Texture2DArray texture) {
+  public FetchedImage(
+      Client client, Path.Device device, Images.Format format, API.Texture2DArray texture) {
     layers = new Layer[texture.getLayersCount()];
     for (int i = 0; i < layers.length; i++) {
       List<Info> infos = texture.getLayers(i).getLevelsList();
       Level[] levels = new Level[infos.size()];
       for (int j = 0; j < infos.size(); j++) {
-        levels[j] = new SingleFacedLevel(client, format, infos.get(j));
+        levels[j] = new SingleFacedLevel(client, device, format, infos.get(j));
       }
       layers[i] = new Layer(levels);
     }
   }
 
-  public FetchedImage(Client client, Images.Format format, API.Texture3D texture) {
+  public FetchedImage(
+      Client client, Path.Device device, Images.Format format, API.Texture3D texture) {
     List<Info> infos = texture.getLevelsList();
     Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
-      levels[i] = new SingleFacedLevel(client, format, infos.get(i));
+      levels[i] = new SingleFacedLevel(client, device, format, infos.get(i));
     }
     layers = new Layer[] { new Layer(levels) };
   }
 
-  public FetchedImage(Client client, Images.Format format, API.Cubemap cubemap) {
+  public FetchedImage(
+      Client client, Path.Device device, Images.Format format, API.Cubemap cubemap) {
     List<API.CubemapLevel> infos = cubemap.getLevelsList();
     Level[] levels = new Level[infos.size()];
     for (int i = 0; i < infos.size(); i++) {
-      levels[i] = new SixFacedLevel(client, format, infos.get(i));
+      levels[i] = new SixFacedLevel(client, device, format, infos.get(i));
     }
     layers = new Layer[] { new Layer(levels) };
   }
@@ -357,17 +378,20 @@ public class FetchedImage implements MultiLayerAndLevelImage {
    */
   private static class SingleFacedLevel extends Level {
     private final Client client;
+    private final Path.Device device;
     protected final Info imageInfo;
 
-    public SingleFacedLevel(Client client, Images.Format format, Info imageInfo) {
+    public SingleFacedLevel(
+        Client client, Path.Device device, Images.Format format, Info imageInfo) {
       super(format);
       this.client = client;
+      this.device = device;
       this.imageInfo = imageInfo;
     }
 
     @Override
     protected ListenableFuture<Image> doLoad() {
-      return Futures.transform(client.get(blob(imageInfo.getBytes())), data ->
+      return Futures.transform(client.get(blob(imageInfo.getBytes()), device), data ->
         convertImage(imageInfo, format, Values.getBytes(data)));
     }
 
@@ -382,10 +406,13 @@ public class FetchedImage implements MultiLayerAndLevelImage {
    */
   private static class SixFacedLevel extends Level {
     private final Client client;
+    private final Path.Device device;
     protected final Info[] imageInfos;
 
-    public SixFacedLevel(Client client, Images.Format format, API.CubemapLevel level) {
+    public SixFacedLevel(
+        Client client, Path.Device device, Images.Format format, API.CubemapLevel level) {
       super(format);
+      this.device = device;
       this.client = client;
       this.imageInfos = new Info[] {
         level.getNegativeX(), level.getPositiveX(),
@@ -399,7 +426,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       @SuppressWarnings("unchecked")
       ListenableFuture<Service.Value>[] futures = new ListenableFuture[imageInfos.length];
       for (int i = 0; i < imageInfos.length; i++) {
-        futures[i] = client.get(blob(imageInfos[i].getBytes()));
+        futures[i] = client.get(blob(imageInfos[i].getBytes()), device);
       }
       return Futures.transform(Futures.allAsList(futures), values -> {
         byte[][] data = new byte[values.size()][];

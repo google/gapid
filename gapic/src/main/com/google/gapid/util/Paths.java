@@ -42,23 +42,42 @@ public class Paths {
     if (capture == null) {
       return null;
     }
-    return Path.Command.newBuilder().setCapture(capture).addIndices(index).build();
+    return Path.Command.newBuilder()
+        .setCapture(capture)
+        .addIndices(index)
+        .build();
   }
 
   public static Path.Command firstCommand(Path.Commands commands) {
-    return Path.Command.newBuilder().setCapture(commands.getCapture())
-        .addAllIndices(commands.getFromList()).build();
+    return Path.Command.newBuilder()
+        .setCapture(commands.getCapture())
+        .addAllIndices(commands.getFromList())
+        .build();
   }
 
   public static Path.Command lastCommand(Path.Commands commands) {
-    return Path.Command.newBuilder().setCapture(commands.getCapture())
-        .addAllIndices(commands.getToList()).build();
+    return Path.Command.newBuilder()
+        .setCapture(commands.getCapture())
+        .addAllIndices(commands.getToList())
+        .build();
   }
 
   public static Path.Device device(Device.ID device) {
     return Path.Device.newBuilder()
         .setID(Path.ID.newBuilder()
             .setData(device.getData()))
+        .build();
+  }
+
+  public static Path.Any context(Path.Context ctx) {
+    return Path.Any.newBuilder()
+        .setContext(ctx)
+        .build();
+  }
+
+  public static Path.Any command(Path.Command command) {
+    return Path.Any.newBuilder()
+        .setCommand(command)
         .build();
   }
 
@@ -73,21 +92,39 @@ public class Paths {
 
   public static Path.Any events(Path.Capture capture, FilteringContext context) {
     return Path.Any.newBuilder()
-        .setEvents(
-            context.events(Path.Events.newBuilder()).setCapture(capture).setLastInFrame(true))
+        .setEvents(context.events(Path.Events.newBuilder())
+            .setCapture(capture)
+            .setLastInFrame(true))
+        .build();
+  }
+
+  public static Path.Any commandTree(Path.CommandTreeNode node) {
+    return Path.Any.newBuilder()
+        .setCommandTreeNode(node)
+        .build();
+  }
+
+  public static Path.Any commandTree(Path.CommandTreeNode.Builder node) {
+    return Path.Any.newBuilder()
+        .setCommandTreeNode(node)
         .build();
   }
 
   public static Path.Any commandTree(Path.ID tree, Path.Command command) {
-    return Path.Any.newBuilder().setCommandTreeNodeForCommand(
-        Path.CommandTreeNodeForCommand.newBuilder().setTree(tree).setCommand(command)).build();
+    return Path.Any.newBuilder()
+        .setCommandTreeNodeForCommand(Path.CommandTreeNodeForCommand.newBuilder()
+            .setTree(tree)
+            .setCommand(command))
+        .build();
   }
 
   public static Path.State stateAfter(Path.Command command) {
     if (command == null) {
       return null;
     }
-    return Path.State.newBuilder().setAfter(command).build();
+    return Path.State.newBuilder()
+        .setAfter(command)
+        .build();
   }
 
   public static Path.Any stateTree(CommandIndex command, FilteringContext context) {
@@ -95,16 +132,30 @@ public class Paths {
       return null;
     }
     return Path.Any.newBuilder()
-        .setStateTree(
-            context.stateTree(
-                Path.StateTree.newBuilder()
-                    .setState(stateAfter(command.getCommand()))
-                    .setArrayGroupSize(2000))).build();
+        .setStateTree(context.stateTree(Path.StateTree.newBuilder()
+            .setState(stateAfter(command.getCommand()))
+            .setArrayGroupSize(2000)))
+        .build();
   }
 
   public static Path.Any stateTree(Path.ID tree, Path.Any statePath) {
-    return Path.Any.newBuilder().setStateTreeNodeForPath(
-        Path.StateTreeNodeForPath.newBuilder().setTree(tree).setMember(statePath)).build();
+    return Path.Any.newBuilder()
+        .setStateTreeNodeForPath(Path.StateTreeNodeForPath.newBuilder()
+            .setTree(tree)
+            .setMember(statePath))
+        .build();
+  }
+
+  public static Path.Any stateTree(Path.StateTreeNode node) {
+    return Path.Any.newBuilder()
+        .setStateTreeNode(node)
+        .build();
+  }
+
+  public static Path.Any stateTree(Path.StateTreeNode.Builder node) {
+    return Path.Any.newBuilder()
+        .setStateTreeNode(node)
+        .build();
   }
 
   public static Path.Any memoryAfter(CommandIndex index, int pool, long address, long size) {
@@ -138,8 +189,13 @@ public class Paths {
       return null;
     }
     return Path.Any.newBuilder()
-        .setMemory(Path.Memory.newBuilder().setAfter(index.getCommand()).setPool(pool).setAddress(0)
-            .setSize(UnsignedLongs.MAX_VALUE).setExcludeData(true).setExcludeObserved(true))
+        .setMemory(Path.Memory.newBuilder()
+            .setAfter(index.getCommand())
+            .setPool(pool)
+            .setAddress(0)
+            .setSize(UnsignedLongs.MAX_VALUE)
+            .setExcludeData(true)
+            .setExcludeObserved(true))
         .build();
   }
 
@@ -148,7 +204,9 @@ public class Paths {
       return null;
     }
     return Path.Any.newBuilder()
-        .setResourceData(Path.ResourceData.newBuilder().setAfter(command.getCommand()).setID(id))
+        .setResourceData(Path.ResourceData.newBuilder()
+            .setAfter(command.getCommand())
+            .setID(id))
         .build();
   }
 
@@ -180,32 +238,54 @@ public class Paths {
       return null;
     }
     return Path.Any.newBuilder()
-        .setParameter(Path.Parameter.newBuilder().setCommand(command).setName(field)).build();
+        .setParameter(Path.Parameter.newBuilder()
+            .setCommand(command)
+            .setName(field))
+        .build();
   }
 
   public static Path.Any commandResult(Path.Command command) {
     if (command == null) {
       return null;
     }
-    return Path.Any.newBuilder().setResult(Path.Result.newBuilder().setCommand(command)).build();
+    return Path.Any.newBuilder()
+        .setResult(Path.Result.newBuilder()
+            .setCommand(command))
+        .build();
+  }
+
+  public static Path.Any constantSet(Path.ConstantSet set) {
+    return Path.Any.newBuilder()
+        .setConstantSet(set)
+        .build();
   }
 
   public static Path.Any imageInfo(Path.ImageInfo image) {
-    return Path.Any.newBuilder().setImageInfo(image).build();
+    return Path.Any.newBuilder()
+        .setImageInfo(image)
+        .build();
   }
 
   public static Path.Any resourceInfo(Path.ResourceData resource) {
-    return Path.Any.newBuilder().setResourceData(resource).build();
+    return Path.Any.newBuilder()
+        .setResourceData(resource)
+        .build();
   }
 
   public static Path.Any imageData(Path.ImageInfo image, Image.Format format) {
     return Path.Any.newBuilder()
-        .setAs(Path.As.newBuilder().setImageInfo(image).setImageFormat(format)).build();
+        .setAs(Path.As.newBuilder()
+            .setImageInfo(image)
+            .setImageFormat(format))
+        .build();
   }
 
   public static Path.Any imageData(Path.ResourceData resource, Image.Format format) {
     return Path.Any.newBuilder()
-        .setAs(Path.As.newBuilder().setResourceData(resource).setImageFormat(format)).build();
+        .setAs(Path.As.newBuilder()
+            .setResourceData(resource)
+            .setImageFormat(format))
+        .build();
   }
 
   public static Path.Thumbnail thumbnail(Path.Command command, int size, boolean disableOpt) {
@@ -239,12 +319,17 @@ public class Paths {
   }
 
   public static Path.Any thumbnail(Path.Thumbnail thumb) {
-    return Path.Any.newBuilder().setThumbnail(thumb).build();
+    return Path.Any.newBuilder()
+        .setThumbnail(thumb)
+        .build();
   }
 
   public static Path.Any blob(Image.ID id) {
     return Path.Any.newBuilder()
-        .setBlob(Path.Blob.newBuilder().setID(Path.ID.newBuilder().setData(id.getData()))).build();
+        .setBlob(Path.Blob.newBuilder()
+            .setID(Path.ID.newBuilder()
+                .setData(id.getData())))
+        .build();
   }
 
   public static Path.Any device(Path.Device device) {
@@ -255,7 +340,9 @@ public class Paths {
 
   public static Path.Any traceInfo(Path.Device device) {
     return Path.Any.newBuilder()
-        .setTraceConfig(Path.DeviceTraceConfiguration.newBuilder().setDevice(device)).build();
+        .setTraceConfig(Path.DeviceTraceConfiguration.newBuilder()
+            .setDevice(device))
+        .build();
   }
 
   /**

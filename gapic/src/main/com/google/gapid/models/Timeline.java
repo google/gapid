@@ -31,16 +31,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class Timeline extends CaptureDependentModel<List<Service.Event>, Timeline.Listener>
+public class Timeline extends CaptureDependentModel<Timeline.Data, Timeline.Listener>
     implements ApiContext.Listener {
   private static final Logger LOG = Logger.getLogger(Timeline.class.getName());
 
   private final Capture capture;
   private final ApiContext context;
 
-  public Timeline(
-      Shell shell, Analytics analytics, Client client, Capture capture, ApiContext context) {
-    super(LOG, shell, analytics, client, Listener.class, capture);
+  public Timeline(Shell shell, Analytics analytics, Client client, Capture capture,
+      Devices devices, ApiContext context) {
+    super(LOG, shell, analytics, client, Listener.class, capture, devices);
     this.capture = capture;
     this.context = context;
 
@@ -64,8 +64,9 @@ public class Timeline extends CaptureDependentModel<List<Service.Event>, Timelin
   }
 
   @Override
-  protected ListenableFuture<List<Service.Event>> doLoad(Path.Any path) {
-    return Futures.transform(client.get(path), v -> v.getEvents().getListList());
+  protected ListenableFuture<Data> doLoad(Path.Any path, Path.Device device) {
+    return Futures.transform(
+        client.get(path, device), v -> new Data(device, v.getEvents().getListList()));
   }
 
   @Override
@@ -79,9 +80,18 @@ public class Timeline extends CaptureDependentModel<List<Service.Event>, Timelin
   }
 
   public Iterator<Service.Event> getEndOfFrames() {
-    return getData().stream()
+    return getData().events.stream()
         .filter(e -> e.getKind() == Service.EventKind.LastInFrame)
         .iterator();
+  }
+
+  public static class Data extends DeviceDependentModel.Data {
+    public final List<Service.Event> events;
+
+    public Data(Path.Device device, List<Service.Event> events) {
+      super(device);
+      this.events = events;
+    }
   }
 
   public static interface Listener extends Events.Listener {

@@ -66,5 +66,9 @@ public class FutureCache<K, V> {
   public V getIfPresent(K key) {
     return cache.getIfPresent(key);
   }
+
+  public void clear() {
+    cache.invalidateAll();
+  }
 }
 
