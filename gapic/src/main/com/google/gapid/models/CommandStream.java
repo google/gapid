@@ -162,10 +162,24 @@ public class CommandStream
     }
   }
 
-  public ListenableFuture<Service.FindResponse> search(Service.FindRequest request) {
+  public ListenableFuture<Service.FindResponse> search(
+      CommandStream.Node parent, String text, boolean regex) {
     SettableFuture<Service.FindResponse> result = SettableFuture.create();
-    client.streamSearch(request, result::set);
+    client.streamSearch(searchRequest(parent, text, regex), result::set);
     return result;
+  }
+
+  private static Service.FindRequest searchRequest(
+      CommandStream.Node parent, String text, boolean regex) {
+    return Service.FindRequest.newBuilder()
+        .setCommandTreeNode(parent.getPath(Path.CommandTreeNode.newBuilder()))
+        .setText(text)
+        .setIsRegex(regex)
+        .setMaxItems(1)
+        .setWrap(true)
+        .setConfig(Path.ResolveConfig.newBuilder()
+            .setReplayDevice(parent.device))
+        .build();
   }
 
   @Override
