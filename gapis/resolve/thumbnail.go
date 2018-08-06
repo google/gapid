@@ -50,7 +50,10 @@ func CommandThumbnail(
 	r *path.ResolveConfig) (*image.Info, error) {
 
 	imageInfoPath, err := FramebufferAttachment(ctx,
-		&service.ReplaySettings{DisableReplayOptimization: noOpt},
+		&service.ReplaySettings{
+			DisableReplayOptimization: noOpt,
+			Device: r.GetReplayDevice(),
+		},
 		p,
 		api.FramebufferAttachment_Color0,
 		&service.RenderSettings{
