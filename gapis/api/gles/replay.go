@@ -82,11 +82,39 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 
 	switch {
 	case v.AtLeastES(3, 0):
-		return 2 // GLES 3.0+ on-device replay is WIP.
+		traceDev := h.GetDevice()
+		devHardware, traceHardware := i.GetConfiguration().GetHardware(), traceDev.GetConfiguration().GetHardware()
+		devOS, traceOS := i.GetConfiguration().GetOS(), traceDev.GetConfiguration().GetOS()
+
+		if s1, s2 := i.GetSerial(), traceDev.GetSerial(); s1 != "" && s1 == s2 {
+			return 1 // Serial matches that of device the trace was captured on.
+		}
+		if h1, h2 := devHardware.GetName(), traceHardware.GetName(); h1 != "" && h1 == h2 {
+			return 2 // Same hardware device name.
+		}
+
+		for _, abi := range i.GetConfiguration().GetABIs() {
+			if abi.SameAs(h.GetABI()) {
+				if b1, b2 := devOS.GetBuild(), traceOS.GetBuild(); b1 != "" && b1 == b2 {
+					return 3 // Same OS build.
+				}
+				switch devOS.CompareVersions(traceOS) {
+				case device.CompleteMatch:
+					return 4 // Same OS version
+				case device.MajorAndMinorMatch:
+					return 5 // Same major.minor OS version.
+				case device.MajorMatch:
+					return 6 // Same major OS version.
+				default:
+					return 7 // Different major version.
+				}
+			}
+		}
+		return 0 // Device does not support capture ABI.
 	case v.IsES:
 		return 0 // Can't replay on this version of an ES device.
 	default:
-		return 1 // Desktop GL can be used with heavy use of compat.
+		return 8 // Desktop GL can be used with heavy use of compat.
 	}
 }
 
