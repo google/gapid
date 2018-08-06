@@ -547,7 +547,7 @@ func (a API) Replay(
 		if opt {
 			// If we have not set up the dependency graph, do it now.
 			if dceInfo.ft == nil {
-				ft, err := dependencygraph.GetFootprint(ctx)
+				ft, err := dependencygraph.GetFootprint(ctx, intent.Device)
 				if err != nil {
 					return 0, err
 				}

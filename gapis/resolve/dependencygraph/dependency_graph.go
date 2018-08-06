@@ -23,7 +23,9 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 // The following are the imports that generated source files pull in when present
@@ -146,8 +148,11 @@ type BehaviourProvider interface {
 	GetBehaviourForCommand(context.Context, *api.GlobalState, api.CmdID, api.Cmd, *DependencyGraph) CmdBehaviour
 }
 
-func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
-	r, err := database.Build(ctx, &DependencyGraphResolvable{Capture: capture.Get(ctx)})
+func GetDependencyGraph(ctx context.Context, device *path.Device) (*DependencyGraph, error) {
+	r, err := database.Build(ctx, &DependencyGraphResolvable{
+		Capture: capture.Get(ctx),
+		Device:  device,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("Could not calculate dependency graph: %v", err)
 	}
@@ -156,6 +161,10 @@ func GetDependencyGraph(ctx context.Context) (*DependencyGraph, error) {
 
 func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = capture.Put(ctx, r.Capture)
+	if d := r.Device; d != nil {
+		ctx = replay.PutDevice(ctx, d)
+	}
+
 	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err

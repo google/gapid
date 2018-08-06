@@ -23,7 +23,9 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 var footprintBuildCounter = benchmark.Duration("footprint.build")
@@ -194,8 +196,11 @@ type FootprintBuilder interface {
 }
 
 // GetFootprint returns a pointer to the resolved Footprint.
-func GetFootprint(ctx context.Context) (*Footprint, error) {
-	r, err := database.Build(ctx, &FootprintResolvable{Capture: capture.Get(ctx)})
+func GetFootprint(ctx context.Context, device *path.Device) (*Footprint, error) {
+	r, err := database.Build(ctx, &FootprintResolvable{
+		Capture: capture.Get(ctx),
+		Device:  device,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("Counld not get execution foot print: %v", err)
 	}
@@ -204,7 +209,12 @@ func GetFootprint(ctx context.Context) (*Footprint, error) {
 
 // Resolve implements the database.Resolver interface.
 func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, r.Capture)
+	ctx = capture.Put(ctx, r.Capture)
+	if d := r.Device; d != nil {
+		ctx = replay.PutDevice(ctx, d)
+	}
+
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
