@@ -244,7 +244,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 			continue
 		}
 
-		dependencyGraph, err := dependencygraph.GetDependencyGraph(ctx)
+		dependencyGraph, err := dependencygraph.GetDependencyGraph(ctx, nil)
 		if err != nil {
 			t.Fatalf("%v", err)
 		}

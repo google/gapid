@@ -111,7 +111,7 @@ func (a API) Replay(
 	var issues *findIssues
 
 	// Prepare data for dead-code-elimination.
-	dependencyGraph, err := dependencygraph.GetDependencyGraph(ctx)
+	dependencyGraph, err := dependencygraph.GetDependencyGraph(ctx, intent.Device)
 	if err != nil {
 		return err
 	}
