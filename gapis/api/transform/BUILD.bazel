@@ -18,8 +18,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "capture_log.go",
-        "dce.go",
-        "dead_code_elimination.go",
         "doc.go",
         "early_terminator.go",
         "file_log.go",
@@ -33,21 +31,17 @@ go_library(
     importpath = "github.com/google/gapid/gapis/api/transform",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/app/benchmark:go_default_library",
         "//core/log:go_default_library",
         "//core/memory/arena:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
-        "//gapis/resolve/dependencygraph:go_default_library",
     ],
 )
 
 go_test(
     name = "go_default_test",
     srcs = [
-        "dce_test.go",
-        "dead_code_elimination_test.go",
         "early_terminator_test.go",
         "injector_test.go",
     ],
@@ -58,7 +52,5 @@ go_test(
         "//gapis/api:go_default_library",
         "//gapis/api/test:go_default_library",
         "//gapis/api/transform:go_default_library",
-        "//gapis/database:go_default_library",
-        "//gapis/resolve/dependencygraph:go_default_library",
     ],
 )
