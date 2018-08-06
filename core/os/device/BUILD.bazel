@@ -29,6 +29,7 @@ go_library(
         "id.go",
         "instance.go",
         "linux.go",
+        "os.go",
         "osx.go",
     ],
     embed = [":device_go_proto"],
