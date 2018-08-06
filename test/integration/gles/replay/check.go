@@ -65,7 +65,7 @@ func checkIssues(ctx context.Context, c *path.Capture, d *device.Instance, expec
 		Capture: c,
 		Device:  path.NewDevice(d.ID.ID()),
 	}
-	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, nil)
+	issues, err := gles.API{}.QueryIssues(ctx, intent, mgr, false, nil)
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
 		assert.For(ctx, "issues").ThatSlice(issues).DeepEquals(expected)
 	}
@@ -76,7 +76,7 @@ func checkReport(ctx context.Context, c *path.Capture, d *device.Instance, cmds 
 		defer done.Done()
 	}
 
-	report, err := resolve.Report(ctx, c.Report(path.NewDevice(d.ID.ID()), nil))
+	report, err := resolve.Report(ctx, c.Report(path.NewDevice(d.ID.ID()), nil, false))
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	got := []string{}
@@ -103,7 +103,7 @@ func checkColorBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, service.DrawMode_NORMAL, false, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Color0, 0, service.DrawMode_NORMAL, false, false, nil)
 	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}
@@ -172,7 +172,7 @@ func checkDepthBuffer(ctx context.Context, c *path.Capture, d *device.Instance, 
 		Device:  path.NewDevice(d.ID.ID()),
 	}
 	img, err := gles.API{}.QueryFramebufferAttachment(
-		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, service.DrawMode_NORMAL, false, nil)
+		ctx, intent, mgr, []uint64{uint64(after)}, w, h, api.FramebufferAttachment_Depth, 0, service.DrawMode_NORMAL, false, false, nil)
 	if !assert.For(ctx, "err").ThatError(err).Succeeded() {
 		return
 	}
