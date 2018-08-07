@@ -59,6 +59,15 @@ func (r *blob) ValidRanges() RangeList {
 	return RangeList{Range{Size: r.Size()}}
 }
 
+func (r *blob) Strlen(ctx context.Context) (int, error) {
+	for i, b := range r.data {
+		if b == 0 {
+			return i, nil
+		}
+	}
+	return -1, nil
+}
+
 func (r *blob) String() string {
 	return fmt.Sprintf("Blob[% x]", r.data)
 }

@@ -49,4 +49,9 @@ type Data interface {
 	// ValidRanges returns the list of slice-relative memory ranges that contain
 	// valid (non-zero) data that can be read with Get.
 	ValidRanges() RangeList
+
+	// Strlen returns the number of bytes before the first zero byte in the
+	// data.
+	// If the Data does not contain a zero byte, then -1 is returned.
+	Strlen(ctx context.Context) (int, error)
 }
