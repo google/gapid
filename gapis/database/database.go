@@ -32,6 +32,9 @@ type Database interface {
 	Resolve(context.Context, id.ID) (interface{}, error)
 	// Contains returns true if the database has an entry for the specified id.
 	Contains(context.Context, id.ID) bool
+	// Deletes returns true if the database has an entry for the specified id
+	// and the entry is deleted successfully.
+	Deletes(context.Context, id.ID) bool
 }
 
 // Store stores v to the database held by the context.
@@ -42,6 +45,12 @@ func Store(ctx context.Context, v interface{}) (id.ID, error) {
 // Resolve resolves id with the database held by the context.
 func Resolve(ctx context.Context, id id.ID) (interface{}, error) {
 	return Get(ctx).Resolve(ctx, id)
+}
+
+// Delete deletes the record of the given id and returns true if the record
+// exists. Otherwise returns false.
+func Delete(ctx context.Context, id id.ID) bool {
+	return Get(ctx).Deletes(ctx, id)
 }
 
 // Build stores resolvable into d, and then resolves and returns the resolved

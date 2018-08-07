@@ -664,6 +664,19 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		})
 	}
 
+	// Clear the builder.
+	defer func() {
+		b.resourceIDToIdx = nil
+		b.threadIDToIdx = nil
+		b.resources = nil
+		b.reservedMemory = memory.RangeList{}
+		b.pointerMemory = memory.RangeList{}
+		b.mappedMemory = mappedMemoryRangeList{}
+		b.instructions = nil
+		b.stack = nil
+		b.Remappings = nil
+	}()
+
 	return payload, handlePost, handleNotification, nil
 }
 

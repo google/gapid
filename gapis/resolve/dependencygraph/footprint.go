@@ -36,7 +36,6 @@ type Footprint struct {
 	Commands           []api.Cmd
 	NumInitialCommands int
 	Behaviors          []*Behavior
-	BehaviorIndices    map[*Behavior]uint64
 	cmdIdxToBehavior   api.SubCmdIdxTrie
 }
 
@@ -46,7 +45,6 @@ func NewEmptyFootprint(ctx context.Context) *Footprint {
 	return &Footprint{
 		Commands:         []api.Cmd{},
 		Behaviors:        []*Behavior{},
-		BehaviorIndices:  map[*Behavior]uint64{},
 		cmdIdxToBehavior: api.SubCmdIdxTrie{},
 	}
 }
@@ -58,16 +56,19 @@ func NewFootprint(ctx context.Context, cmds []api.Cmd, numInitialCommands int) *
 		Commands:           cmds,
 		NumInitialCommands: numInitialCommands,
 		Behaviors:          make([]*Behavior, 0, len(cmds)),
-		BehaviorIndices:    map[*Behavior]uint64{},
-		cmdIdxToBehavior:   api.SubCmdIdxTrie{},
+		// BehaviorIndices:    map[*Behavior]uint64{},
+		cmdIdxToBehavior: api.SubCmdIdxTrie{},
 	}
 }
+
+const NotInFootprint = uint64(0xFFFFFFFFFFFFFFFF)
 
 // Behavior contains a set of read and write operations as side effect of
 // executing the command to whom it belongs. Behavior also contains a
 // reference to the back-propagation machine which should be used to process
 // the Behavior to determine its liveness for dead code elimination.
 type Behavior struct {
+	Index   uint64
 	Reads   []DefUseVariable
 	Writes  []DefUseVariable
 	Owner   api.SubCmdIdx
@@ -81,6 +82,7 @@ type Behavior struct {
 // machine. Returns a pointer to the created Behavior.
 func NewBehavior(fullCommandIndex api.SubCmdIdx, m BackPropagationMachine) *Behavior {
 	return &Behavior{
+		Index:   NotInFootprint,
 		Owner:   fullCommandIndex,
 		Machine: m,
 	}
@@ -181,7 +183,8 @@ func (f *Footprint) AddBehavior(ctx context.Context, b *Behavior) bool {
 	fci := b.Owner
 	f.cmdIdxToBehavior.SetValue(fci, bi)
 	f.Behaviors = append(f.Behaviors, b)
-	f.BehaviorIndices[b] = bi
+	// f.BehaviorIndices[b] = bi
+	b.Index = bi
 	return true
 }
 

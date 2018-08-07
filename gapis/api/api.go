@@ -53,6 +53,9 @@ type API interface {
 	// Context returns the active context for the given state.
 	Context(state *GlobalState, thread uint64) Context
 
+	// MultipleContexts returns true the API is legal to have multiple contexts.
+	MultipleContexts() bool
+
 	// CreateCmd constructs and returns a new command with the specified name.
 	CreateCmd(a arena.Arena, name string) Cmd
 }

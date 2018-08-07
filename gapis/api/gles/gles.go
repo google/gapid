@@ -256,6 +256,11 @@ func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	return nil
 }
 
+// MultipleContexts implements the API interface.
+func (API) MultipleContexts() bool {
+	return true
+}
+
 // Mesh implements the api.MeshProvider interface.
 func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	if dc, ok := o.(drawCall); ok {

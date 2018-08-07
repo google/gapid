@@ -68,8 +68,14 @@ func (VulkanContext) API() api.API {
 	return API{}
 }
 
+// Context implements the API interface. For Vulkan there is only one context.
 func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	return VulkanContext{}
+}
+
+// MultipleContexts implements the API interface.
+func (API) MultipleContexts() bool {
+	return false
 }
 
 // Root returns the path to the root of the state to display. It can vary based

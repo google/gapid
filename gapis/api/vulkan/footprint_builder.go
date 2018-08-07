@@ -167,7 +167,9 @@ func (m *vulkanMachine) RecordBehaviorEffects(behaviorIndex uint64,
 	for _, w := range bh.Writes {
 		extraAliveBehaviors := m.def(w)
 		for _, eb := range extraAliveBehaviors {
-			aliveIndices = append(aliveIndices, ft.BehaviorIndices[eb])
+			if eb.Index != dependencygraph.NotInFootprint {
+				aliveIndices = append(aliveIndices, eb.Index)
+			}
 		}
 	}
 	for _, r := range bh.Reads {
@@ -278,7 +280,7 @@ func (m *vulkanMachine) def(c dependencygraph.DefUseVariable) []*dependencygraph
 		// vkCmdBeginRenderPass should be kept alive, then the paird
 		// vkCmdEndRenderPass must also be kept alive, no matter whether the
 		// rendering output of the last subpass is used or not.
-		alivePairedBehaviors := []*dependencygraph.Behavior{}
+		alivePairedBehaviors := make([]*dependencygraph.Behavior, 0, len(c.labelReadBehaviors))
 		alivePairedBehaviors = append(alivePairedBehaviors, c.labelReadBehaviors...)
 		delete(m.forwardPairedLabels, c)
 		return alivePairedBehaviors
@@ -592,14 +594,14 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 	read(ctx, bh, vkHandle(rp.VulkanHandle()))
 	read(ctx, bh, vkHandle(fb.VulkanHandle()))
 	qei.framebuffer = fb
-	qei.subpasses = []subpassInfo{}
+	qei.subpasses = make([]subpassInfo, 0, rp.SubpassDescriptions().Len())
 
 	// Record which subpass that loads or stores the attachments. A subpass loads
 	// an attachment if the attachment is first used in that subpass. A subpass
 	// stores an attachment if the subpass is the last use of that attachment.
-	attLoadSubpass := map[uint32]uint32{}
-	attStoreSubpass := map[uint32]uint32{}
-	attStoreAttInfo := map[uint32]*subpassAttachmentInfo{}
+	attLoadSubpass := make(map[uint32]uint32, fb.ImageAttachments().Len())
+	attStoreSubpass := make(map[uint32]uint32, fb.ImageAttachments().Len())
+	attStoreAttInfo := make(map[uint32]*subpassAttachmentInfo, fb.ImageAttachments().Len())
 	recordAttachment := func(ai, si uint32) *subpassAttachmentInfo {
 		viewObj := fb.ImageAttachments().Get(ai)
 		imgObj := viewObj.Image()
@@ -639,14 +641,9 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 
 	for _, subpass := range rp.SubpassDescriptions().Keys() {
 		desc := rp.SubpassDescriptions().Get(subpass)
-		qei.subpasses = append(qei.subpasses, subpassInfo{})
-		if subpass != uint32(len(qei.subpasses)-1) {
-			log.E(ctx, "FootprintBuilder: Cannot get subpass info, subpass: %v, length of info: %v",
-				subpass, uint32(len(qei.subpasses)))
-		}
-		colorAs := map[uint32]struct{}{}
-		resolveAs := map[uint32]struct{}{}
-		inputAs := map[uint32]struct{}{}
+		colorAs := make(map[uint32]struct{}, desc.ColorAttachments().Len())
+		resolveAs := make(map[uint32]struct{}, desc.ResolveAttachments().Len())
+		inputAs := make(map[uint32]struct{}, desc.InputAttachments().Len())
 
 		for _, ref := range desc.ColorAttachments().All() {
 			if ref.Attachment() != vkAttachmentUnused {
@@ -662,6 +659,15 @@ func (qei *queueExecutionState) beginRenderPass(ctx context.Context,
 			if ref.Attachment() != vkAttachmentUnused {
 				inputAs[ref.Attachment()] = struct{}{}
 			}
+		}
+		qei.subpasses = append(qei.subpasses, subpassInfo{
+			colorAttachments:   make([]*subpassAttachmentInfo, 0, len(colorAs)),
+			resolveAttachments: make([]*subpassAttachmentInfo, 0, len(resolveAs)),
+			inputAttachments:   make([]*subpassAttachmentInfo, 0, len(inputAs)),
+		})
+		if subpass != uint32(len(qei.subpasses)-1) {
+			log.E(ctx, "FootprintBuilder: Cannot get subpass info, subpass: %v, length of info: %v",
+				subpass, uint32(len(qei.subpasses)))
 		}
 		// TODO: handle preserveAttachments
 
@@ -825,7 +831,7 @@ func (*resBinding) DefUseVariable() {}
 type resBindingList memBindingList
 
 func (rl resBindingList) resBindings() []*resBinding {
-	ret := []*resBinding{}
+	ret := make([]*resBinding, 0, len(rl))
 	for _, b := range rl {
 		if rb, ok := b.(*resBinding); ok {
 			ret = append(ret, rb)
@@ -893,6 +899,16 @@ func (l resBindingList) getBoundData(ctx context.Context,
 		}
 		data = append(data, b.backingData)
 	}
+	// for _, b := range bindingList {
+	// 	if b == nil {
+	// 		continue
+	// 	}
+	// 	d, ok := b.(dependencygraph.DefUseVariable)
+	// 	if !ok {
+	// 		continue
+	// 	}
+	// 	data = append(data, d)
+	// }
 	return data
 }
 
@@ -1918,8 +1934,10 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCreateQueryPool:
 		vkQp := cmd.PQueryPool().MustRead(ctx, cmd, s, nil)
 		write(ctx, bh, vkHandle(vkQp))
-		vb.querypools[vkQp] = &queryPool{}
 		count := uint64(cmd.PCreateInfo().MustRead(ctx, cmd, s, nil).QueryCount())
+		vb.querypools[vkQp] = &queryPool{
+			queries: make([]*query, 0, count),
+		}
 		for i := uint64(0); i < count; i++ {
 			vb.querypools[vkQp].queries = append(vb.querypools[vkQp].queries, newQuery())
 		}
@@ -2359,7 +2377,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	case *VkCmdBindDescriptorSets:
 		read(ctx, bh, vkHandle(cmd.Layout()))
 		count := uint64(cmd.DescriptorSetCount())
-		dss := []*descriptorSet{}
+		dss := make([]*descriptorSet, 0, count)
 		for _, vkSet := range cmd.PDescriptorSets().Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkSet))
 			dss = append(dss, vb.descriptorSets[vkSet])
@@ -2506,9 +2524,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	// clear attachments
 	case *VkCmdClearAttachments:
 		attCount := uint64(cmd.AttachmentCount())
-		atts := []VkClearAttachment{}
+		atts := make([]VkClearAttachment, 0, attCount)
 		rectCount := uint64(cmd.RectCount())
-		rects := []VkClearRect{}
+		rects := make([]VkClearRect, 0, rectCount)
 		for _, att := range cmd.PAttachments().Slice(0, attCount, l).MustRead(ctx, cmd, s, nil) {
 			atts = append(atts, att)
 		}
@@ -2594,8 +2612,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		vb.recordReadsWritesModifies(ctx, ft, bh, cmd.CommandBuffer(), emptyDefUseVars,
 			[]dependencygraph.DefUseVariable{vb.events[cmd.Event()].unsignal}, emptyDefUseVars)
 	case *VkCmdWaitEvents:
-		eventLabels := []dependencygraph.DefUseVariable{}
 		evCount := uint64(cmd.EventCount())
+		eventLabels := make([]dependencygraph.DefUseVariable, 0, evCount*uint64(2))
 		for _, vkEv := range cmd.PEvents().Slice(0, evCount, l).MustRead(ctx, cmd, s, nil) {
 			read(ctx, bh, vkHandle(vkEv))
 			eventLabels = append(eventLabels, vb.events[vkEv].signal,
@@ -2663,15 +2681,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				}
 			}
 			waitSemaphoreCount := uint64(submit.WaitSemaphoreCount())
-			for _, vkSp := range submit.PWaitSemaphores().Slice(0, waitSemaphoreCount, l).MustRead(ctx, cmd, s, nil) {
-				vb.submitInfos[id].waitSemaphores = append(
-					vb.submitInfos[id].waitSemaphores, vkSp)
-			}
+			waitVkSps := submit.PWaitSemaphores().Slice(0, waitSemaphoreCount, l).MustRead(ctx, cmd, s, nil)
+			vb.submitInfos[id].waitSemaphores = append(vb.submitInfos[id].waitSemaphores, waitVkSps...)
 			signalSemaphoreCount := uint64(submit.SignalSemaphoreCount())
-			for _, vkSp := range submit.PSignalSemaphores().Slice(0, signalSemaphoreCount, l).MustRead(ctx, cmd, s, nil) {
-				vb.submitInfos[id].signalSemaphores = append(
-					vb.submitInfos[id].signalSemaphores, vkSp)
-			}
+			signalVkSps := submit.PSignalSemaphores().Slice(0, signalSemaphoreCount, l).MustRead(ctx, cmd, s, nil)
+			vb.submitInfos[id].signalSemaphores = append(vb.submitInfos[id].signalSemaphores, signalVkSps...)
 		}
 		vb.submitInfos[id].signalFence = cmd.Fence()
 
