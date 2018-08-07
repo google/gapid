@@ -185,39 +185,20 @@ func (t *DCE) Flush(ctx context.Context, out transform.Writer) {
 func (t *DCE) BackPropagate(ctx context.Context) ([]bool, *CommandIndicesSet) {
 	livenessBoard := make([]bool, t.endBehaviorIndex+1)
 	aliveCommands := &CommandIndicesSet{}
-	usedMachines := map[BackPropagationMachine]struct{}{}
-	fbRequested := map[api.CmdID]struct{}{}
 	for bi := int64(t.endBehaviorIndex); bi >= 0; bi-- {
 		bh := t.footprint.Behaviors[bi]
 		fci := bh.Owner
-		machine := bh.Machine
-		usedMachines[machine] = struct{}{}
 		if bh.Aborted {
 			continue
 		}
 
-		if t.requests.Contains(fci) || t.requests.Contains(api.SubCmdIdx{fci[0]}) {
-			bh.Alive = true
-			if _, ok := fbRequested[api.CmdID(fci[0])]; !ok {
-				machine.FramebufferRequest(api.CmdID(fci[0]), t.footprint)
-				fbRequested[api.CmdID(fci[0])] = struct{}{}
+		if t.requests.Contains(fci) || t.requests.Contains(api.SubCmdIdx{fci[0]}) || livenessBoard[bi] || bh.Alive {
+			livenessBoard[bi] = true
+			aliveCommands.Insert(fci)
+			for d := range bh.DependsOn {
+				livenessBoard[d.Index] = true
 			}
 		}
-
-		if bh.Alive || machine.IsAlive(uint64(bi), t.footprint) {
-			alivedBehaviorIndices := machine.RecordBehaviorEffects(uint64(bi), t.footprint)
-			// TODO: Theoretically, we should re-back-propagation from the alive
-			// behaviors other than |bi|.
-			for _, aliveBI := range alivedBehaviorIndices {
-				if aliveBI < t.endBehaviorIndex+1 {
-					livenessBoard[aliveBI] = true
-					aliveCommands.Insert(t.footprint.Behaviors[aliveBI].Owner)
-				}
-			}
-		}
-	}
-	for m := range usedMachines {
-		m.Clear()
 	}
 	return livenessBoard, aliveCommands
 }

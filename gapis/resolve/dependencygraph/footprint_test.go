@@ -27,21 +27,21 @@ func TestFootprintAddAndGetBehavior(t *testing.T) {
 	ctx := log.Testing(t)
 	ft := dependencygraph.NewEmptyFootprint(ctx)
 	behaviors := []*dependencygraph.Behavior{
-		dependencygraph.NewBehavior(api.SubCmdIdx{0}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{1}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{2}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{3}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 3}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 4}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 7}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 8}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 6}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{5}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 7}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 8}, &dummyMachine{}),
-		dependencygraph.NewBehavior(api.SubCmdIdx{4}, &dummyMachine{}), // overwrites the previous one
-		dependencygraph.NewBehavior(api.SubCmdIdx{6}, &dummyMachine{}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{0}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{1}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{2}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{3}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 3}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 4}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 7}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 5, 6, 8}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 6}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{5}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 7}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4, 1, 2, 8}),
+		dependencygraph.NewBehavior(api.SubCmdIdx{4}), // overwrites the previous one
+		dependencygraph.NewBehavior(api.SubCmdIdx{6}),
 	}
 	for _, b := range behaviors {
 		ft.AddBehavior(ctx, b)
