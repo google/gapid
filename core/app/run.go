@@ -20,10 +20,12 @@ import (
 	"os"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/crash/reporting"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -206,6 +208,10 @@ func Run(main task.Task) {
 
 	if Flags.CrashReport {
 		reporting.Enable(ctx, Name, Version.String())
+	}
+
+	if Flags.Log.Status {
+		status.RegisterLogger(time.Second)
 	}
 
 	// Defer the shutdown code

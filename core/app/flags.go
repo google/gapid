@@ -32,6 +32,7 @@ type (
 		Style  log.Style    `help:"_The style to use when printing the log"`
 		Stacks bool         `help:"_If true, stack traces are logged for all errors"`
 		File   string       `help:"_The file to store the logs in"`
+		Status bool         `help:"_Log status updates as they happen"`
 	}
 	ProfileFlags struct {
 		CPU string `help:"_write cpu profile to file"`
