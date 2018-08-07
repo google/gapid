@@ -69,6 +69,9 @@ BaseSwapchain::BaseSwapchain(VkInstance instance, VkDevice device,
       instance_functions_(instance_functions),
       device_functions_(device_functions),
       swapchain_info_(*swapchain_info),
+      surface_(VK_NULL_HANDLE),
+      swapchain_(VK_NULL_HANDLE),
+      acquire_semaphore_(VK_NULL_HANDLE),
       valid_(false) {
   if (platform_info == nullptr) {
     return;
