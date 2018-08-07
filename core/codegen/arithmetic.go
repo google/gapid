@@ -318,7 +318,12 @@ func (b *Builder) Scalar(v interface{}) *Value {
 	ty := b.m.Types.TypeOf(v)
 	switch {
 	case rty.Kind() == reflect.String:
-		val := b.llvm.CreateGlobalStringPtr(reflect.ValueOf(v).String(), "str")
+		str := reflect.ValueOf(v).String()
+		val, existing := b.m.strings[str]
+		if !existing {
+			val = b.llvm.CreateGlobalStringPtr(str, "str")
+			b.m.strings[str] = val
+		}
 		return b.val(ty, val)
 
 	case IsStruct(ty):

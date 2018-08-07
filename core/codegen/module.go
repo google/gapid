@@ -35,6 +35,7 @@ type Module struct {
 	triple  Triple
 	name    string
 	funcs   map[string]*Function
+	strings map[string]llvm.Value
 	llvmDbg *llvm.DIBuilder
 	memcpy  *Function
 	memset  *Function
@@ -81,12 +82,13 @@ func NewModule(name string, target *device.ABI) *Module {
 			aliases:       map[string]Alias{},
 			named:         map[string]Type{},
 		},
-		llvm:   module,
-		ctx:    ctx,
-		target: target,
-		triple: triple,
-		name:   name,
-		funcs:  map[string]*Function{},
+		llvm:    module,
+		ctx:     ctx,
+		target:  target,
+		triple:  triple,
+		name:    name,
+		funcs:   map[string]*Function{},
+		strings: map[string]llvm.Value{},
 	}
 
 	voidPtr := m.Types.Pointer(m.Types.Void)
