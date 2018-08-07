@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "context.go",
+        "listener.go",
+        "logger.go",
+        "status.go",
+        "task.go",
+    ],
+    importpath = "github.com/google/gapid/core/app/status",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/context/keys:go_default_library",
+        "//core/log:go_default_library",
+    ],
+)
