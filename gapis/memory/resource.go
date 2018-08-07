@@ -74,6 +74,19 @@ func (r resource) ValidRanges() RangeList {
 	return RangeList{Range{Size: r.Size()}}
 }
 
+func (r resource) Strlen(ctx context.Context) (int, error) {
+	data, err := r.getData(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for i, b := range data {
+		if b == 0 {
+			return i, nil
+		}
+	}
+	return -1, nil
+}
+
 func (r resource) String() string {
 	return fmt.Sprintf("Resource[%v]", r.resID)
 }
@@ -129,6 +142,19 @@ func (s resourceSlice) Slice(rng Range) Data {
 
 func (s resourceSlice) ValidRanges() RangeList {
 	return RangeList{Range{Size: s.rng.Size}}
+}
+
+func (s resourceSlice) Strlen(ctx context.Context) (int, error) {
+	data := make([]byte, s.Size())
+	if err := s.Get(ctx, 0, data); err != nil {
+		return 0, err
+	}
+	for i, b := range data {
+		if b == 0 {
+			return i, nil
+		}
+	}
+	return -1, nil
 }
 
 func (s resourceSlice) String() string {

@@ -123,6 +123,30 @@ func (m *Pool) Write(dst uint64, src Data) {
 	m.writes[i].src = src
 }
 
+// Strlen returns the run length of bytes starting from ptr before a 0 byte is
+// reached.
+func (m *Pool) Strlen(ctx context.Context, ptr uint64) (uint64, error) {
+	first := interval.IndexOf(&m.writes, ptr)
+	if first < 0 {
+		return 0, nil
+	}
+	count := uint64(0)
+	for i, w := range m.writes[first:] {
+		if i > 0 && m.writes[i-1].dst.End() != w.dst.Base {
+			return count, nil // Gap between writes holds 0
+		}
+		v, err := w.src.Strlen(ctx)
+		if err != nil {
+			return 0, err
+		}
+		if v >= 0 {
+			return count + uint64(v), nil
+		}
+		count += w.dst.Size
+	}
+	return count, nil
+}
+
 // String returns the full history of writes performed to this pool.
 func (m *Pool) String() string {
 	l := make([]string, len(m.writes)+1)
@@ -253,6 +277,24 @@ func (m poolSlice) ValidRanges() RangeList {
 		valid[i] = Range{Base: s - m.rng.Base, Size: e - s}
 	}
 	return valid
+}
+
+func (m poolSlice) Strlen(ctx context.Context) (int, error) {
+	count := 0
+	for i, w := range m.writes {
+		if i > 0 && m.writes[i-1].dst.End() != w.dst.Base {
+			return count, nil // Gap between writes holds 0
+		}
+		v, err := w.src.Strlen(ctx)
+		if err != nil {
+			return 0, err
+		}
+		if v >= 0 {
+			return count + v, nil
+		}
+		count += int(w.dst.Size)
+	}
+	return -1, nil
 }
 
 func (m poolSlice) Size() uint64 {
