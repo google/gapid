@@ -690,8 +690,11 @@ func (a API) Replay(
 		transforms.Add(overdraw)
 	}
 
+	if issues == nil {
+		transforms.Add(readFramebuffer, injector)
+	}
+
 	// Cleanup
-	transforms.Add(readFramebuffer, injector)
 	transforms.Add(&destroyResourcesAtEOS{})
 
 	if config.DebugReplay {
