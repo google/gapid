@@ -236,6 +236,15 @@ func Import(ctx context.Context, name string, data []byte) (*path.Capture, error
 	captures = append(captures, id)
 	capturesLock.Unlock()
 
+	p := &path.Capture{ID: path.NewID(id)}
+
+	// Ensure the capture can be read by resolving it now, and drop the raw
+	// data to save memory.
+	if _, err = ResolveFromPath(ctx, p); err != nil {
+		return nil, err
+	}
+	database.Delete(ctx, dataID)
+
 	return &path.Capture{ID: path.NewID(id)}, nil
 }
 
