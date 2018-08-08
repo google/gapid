@@ -146,7 +146,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
 		Cwd:                   verb.WorkingDir,
 		Environment:           verb.Env,
-		Duration:              float32(verb.For * time.Second),
+		Duration:              float32(verb.For.Seconds()),
 		ObserveFrameFrequency: uint32(verb.Observe.Frames),
 		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
 		StartFrame:            uint32(verb.Start.At.Frame),
