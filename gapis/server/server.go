@@ -33,6 +33,7 @@ import (
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/benchmark"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
@@ -96,6 +97,8 @@ func (s *server) Ping(ctx context.Context) error {
 
 func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error) {
 	ctx = log.Enter(ctx, "GetServerInfo")
+	ctx = status.Start(ctx, "GetServerInfo")
+	defer status.Finish(ctx)
 	return s.info, nil
 }
 
@@ -105,6 +108,8 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 		githubRepo = "gapid"
 	)
 	ctx = log.Enter(ctx, "CheckForUpdates")
+	ctx = status.Start(ctx, "CheckForUpdates")
+	defer status.Finish(ctx)
 	client := github.NewClient(nil)
 	options := &github.ListOptions{}
 	releases, _, err := client.Repositories.ListReleases(ctx, githubOrg, githubRepo, options)
@@ -142,6 +147,8 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 
 func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error) {
 	ctx = log.Enter(ctx, "GetAvailableStringTables")
+	ctx = status.Start(ctx, "GetAvailableStringTables")
+	defer status.Finish(ctx)
 	infos := make([]*stringtable.Info, len(s.stbs))
 	for i, table := range s.stbs {
 		infos[i] = table.Info
@@ -151,6 +158,8 @@ func (s *server) GetAvailableStringTables(ctx context.Context) ([]*stringtable.I
 
 func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*stringtable.StringTable, error) {
 	ctx = log.Enter(ctx, "GetStringTable")
+	ctx = status.Start(ctx, "GetStringTable")
+	defer status.Finish(ctx)
 	for _, table := range s.stbs {
 		if table.Info.CultureCode == info.CultureCode {
 			return table, nil
@@ -161,6 +170,8 @@ func (s *server) GetStringTable(ctx context.Context, info *stringtable.Info) (*s
 
 func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (*path.Capture, error) {
 	ctx = log.Enter(ctx, "ImportCapture")
+	ctx = status.Start(ctx, "ImportCapture")
+	defer status.Finish(ctx)
 	p, err := capture.Import(ctx, name, data)
 	if err != nil {
 		return nil, err
@@ -174,6 +185,8 @@ func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (
 
 func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, error) {
 	ctx = log.Enter(ctx, "ExportCapture")
+	ctx = status.Start(ctx, "ExportCapture")
+	defer status.Finish(ctx)
 	b := bytes.Buffer{}
 	if err := capture.Export(ctx, c, &b); err != nil {
 		return nil, err
@@ -183,6 +196,8 @@ func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, er
 
 func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	ctx = log.Enter(ctx, "LoadCapture")
+	ctx = status.Start(ctx, "LoadCapture")
+	defer status.Finish(ctx)
 	if !s.enableLocalFiles {
 		return nil, fmt.Errorf("Server not configured to allow reading of local files")
 	}
@@ -204,6 +219,8 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 
 func (s *server) SaveCapture(ctx context.Context, c *path.Capture, path string) error {
 	ctx = log.Enter(ctx, "SaveCapture")
+	ctx = status.Start(ctx, "SaveCapture")
+	defer status.Finish(ctx)
 	if !s.enableLocalFiles {
 		return fmt.Errorf("Server not configured to allow writing of local files")
 	}
@@ -217,6 +234,8 @@ func (s *server) SaveCapture(ctx context.Context, c *path.Capture, path string) 
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	ctx = log.Enter(ctx, "GetDevices")
+	ctx = status.Start(ctx, "GetDevices")
+	defer status.Finish(ctx)
 	s.deviceScanDone.Wait(ctx)
 	devices := bind.GetRegistry(ctx).Devices()
 	paths := make([]*path.Device, len(devices))
@@ -245,6 +264,8 @@ func (p prioritizedDevices) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func (s *server) GetDevicesForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
 	ctx = log.Enter(ctx, "GetDevicesForReplay")
+	ctx = status.Start(ctx, "GetDevicesForReplay")
+	defer status.Finish(ctx)
 	s.deviceScanDone.Wait(ctx)
 	return devices.ForReplay(ctx, p)
 }
@@ -259,6 +280,8 @@ func (s *server) GetFramebufferAttachment(
 ) (*path.ImageInfo, error) {
 
 	ctx = log.Enter(ctx, "GetFramebufferAttachment")
+	ctx = status.Start(ctx, "GetFramebufferAttachment")
+	defer status.Finish(ctx)
 	if err := replaySettings.Device.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", replaySettings.Device)
 	}
@@ -270,6 +293,8 @@ func (s *server) GetFramebufferAttachment(
 
 func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 	ctx = log.Enter(ctx, "Get")
+	ctx = status.Start(ctx, "Get")
+	defer status.Finish(ctx)
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
@@ -282,6 +307,8 @@ func (s *server) Get(ctx context.Context, p *path.Any) (interface{}, error) {
 
 func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any, error) {
 	ctx = log.Enter(ctx, "Set")
+	ctx = status.Start(ctx, "Set")
+	defer status.Finish(ctx)
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
@@ -290,6 +317,8 @@ func (s *server) Set(ctx context.Context, p *path.Any, v interface{}) (*path.Any
 
 func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 	ctx = log.Enter(ctx, "Follow")
+	ctx = status.Start(ctx, "Follow")
+	defer status.Finish(ctx)
 	if err := p.Validate(); err != nil {
 		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
 	}
@@ -298,6 +327,8 @@ func (s *server) Follow(ctx context.Context, p *path.Any) (*path.Any, error) {
 
 func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
 	ctx = log.Enter(ctx, "GetLogStream")
+	ctx = status.Start(ctx, "GetLogStream")
+	defer status.Finish(ctx)
 	closed := make(chan struct{})
 	handler = log.OnClosed(handler, func() { close(closed) })
 	handler = log.Channel(handler, 64)
@@ -314,28 +345,38 @@ func (s *server) GetLogStream(ctx context.Context, handler log.Handler) error {
 
 func (s *server) Find(ctx context.Context, req *service.FindRequest, handler service.FindHandler) error {
 	ctx = log.Enter(ctx, "Find")
+	ctx = status.Start(ctx, "Find")
+	defer status.Finish(ctx)
 	return resolve.Find(ctx, req, handler)
 }
 
 func (s *server) BeginCPUProfile(ctx context.Context) error {
 	ctx = log.Enter(ctx, "BeginCPUProfile")
+	ctx = status.Start(ctx, "BeginCPUProfile")
+	defer status.Finish(ctx)
 	s.profile.Reset()
 	return pprof.StartCPUProfile(&s.profile)
 }
 
 func (s *server) EndCPUProfile(ctx context.Context) ([]byte, error) {
 	ctx = log.Enter(ctx, "EndCPUProfile")
+	ctx = status.Start(ctx, "EndCPUProfile")
+	defer status.Finish(ctx)
 	pprof.StopCPUProfile()
 	return s.profile.Bytes(), nil
 }
 
 func (s *server) GetPerformanceCounters(ctx context.Context) (string, error) {
 	ctx = log.Enter(ctx, "GetPerformanceCounters")
+	ctx = status.Start(ctx, "GetPerformanceCounters")
+	defer status.Finish(ctx)
 	return fmt.Sprintf("%+v", benchmark.GlobalCounters.All()), nil
 }
 
 func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]byte, error) {
 	ctx = log.Enter(ctx, "GetProfile")
+	ctx = status.Start(ctx, "GetProfile")
+	defer status.Finish(ctx)
 	p := pprof.Lookup(name)
 	if p == nil {
 		return []byte{}, fmt.Errorf("Profile not found: %s", name)
