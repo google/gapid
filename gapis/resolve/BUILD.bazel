@@ -56,6 +56,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/analytics:go_default_library",
+        "//core/app/status:go_default_library",
         "//core/data/deep:go_default_library",
         "//core/data/dictionary:go_default_library",
         "//core/data/endian:go_default_library",

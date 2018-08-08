@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/app/analytics"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
@@ -280,6 +281,9 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 }
 
 func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
+	ctx = status.Start(ctx, "Loading capture '%v'", r.Name)
+	defer status.Finish(ctx)
+
 	var dataID id.ID
 	copy(dataID[:], r.Data)
 	data, err := database.Resolve(ctx, dataID)
