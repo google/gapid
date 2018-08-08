@@ -452,17 +452,60 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     };
 
     struct pitch {
-      uint32_t height_pitch;
-      uint32_t depth_pitch;
+      size_t row_pitch;
+      size_t depth_pitch;
+      size_t linear_layout_row_pitch;
+      size_t linear_layout_depth_pitch;
       uint32_t texel_width;
       uint32_t texel_height;
       uint32_t element_size;
     };
 
-    // block pitch is calculated with the in-image element size.
-    auto block_pitch = [this, &get_element_size](
-                           const VkExtent3D &extent, uint32_t format,
-                           uint32_t mip_level, uint32_t aspect_bit) -> pitch {
+    auto level_pitch = [this, &get_element_size](
+                           gapil::Ref<gapii::ImageObject> img,
+                           uint32_t aspect_bit, uint32_t layer,
+                           uint32_t level) -> pitch {
+      auto &info = img->mInfo;
+      auto &lev = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+      const bool has_linear_layout =
+          (lev->mLinearLayout != nullptr) && (lev->mLinearLayout->msize != 0);
+      auto elementAndTexelBlockSize =
+          subGetElementAndTexelBlockSize(nullptr, nullptr, info.mFormat);
+      const uint32_t texel_width =
+          elementAndTexelBlockSize.mTexelBlockSize.mWidth;
+      const uint32_t texel_height =
+          elementAndTexelBlockSize.mTexelBlockSize.mHeight;
+
+      const uint32_t width =
+          subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, level);
+      const uint32_t height =
+          subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, level);
+      const uint32_t width_in_blocks =
+          subRoundUpTo(nullptr, nullptr, width, texel_width);
+      const uint32_t height_in_blocks =
+          subRoundUpTo(nullptr, nullptr, height, texel_height);
+      const uint32_t element_size =
+          get_element_size(info.mFormat, aspect_bit, false);
+      const size_t row_pitch = width_in_blocks * element_size;
+      const size_t depth_pitch =
+          width_in_blocks * height_in_blocks * element_size;
+      pitch p{row_pitch,   depth_pitch,  0,           0,
+              texel_width, texel_height, element_size};
+      if (has_linear_layout) {
+        if (lev->mLinearLayout->mdepthPitch != 0) {
+          p.linear_layout_depth_pitch = lev->mLinearLayout->mdepthPitch;
+        }
+        if (lev->mLinearLayout->mrowPitch != 0) {
+          p.linear_layout_row_pitch = lev->mLinearLayout->mrowPitch;
+        }
+      }
+      return p;
+    };
+
+    // extent pitch is calculated with the in-image element size.
+    auto extent_pitch = [this, &get_element_size](
+                            const VkExtent3D &extent, uint32_t format,
+                            uint32_t aspect_bit) -> pitch {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
       const uint32_t texel_width =
@@ -470,20 +513,15 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       const uint32_t texel_height =
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
 
-      const uint32_t width =
-          subGetMipSize(nullptr, nullptr, extent.mWidth, mip_level);
-      const uint32_t height =
-          subGetMipSize(nullptr, nullptr, extent.mHeight, mip_level);
       const uint32_t width_in_blocks =
-          subRoundUpTo(nullptr, nullptr, width, texel_width);
+          subRoundUpTo(nullptr, nullptr, extent.mWidth, texel_width);
       const uint32_t height_in_blocks =
-          subRoundUpTo(nullptr, nullptr, height, texel_height);
+          subRoundUpTo(nullptr, nullptr, extent.mHeight, texel_height);
       const uint32_t element_size = get_element_size(format, aspect_bit, false);
-      const size_t size = width_in_blocks * height_in_blocks * element_size;
 
       return pitch{
           uint32_t(width_in_blocks * element_size),
-          uint32_t(size),
+          uint32_t(width_in_blocks * height_in_blocks * element_size),
           uint32_t(elementAndTexelBlockSize.mTexelBlockSize.mWidth),
           uint32_t(elementAndTexelBlockSize.mTexelBlockSize.mHeight),
           uint32_t(element_size),
@@ -552,8 +590,12 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
               img->mAspects[aspect]->mLayers[layer]->mLevels[level];
           level_sizes[img_level.get()] =
               level_size(img->mInfo.mExtent, img->mInfo.mFormat, level, aspect);
-          serializer->encodeBuffer(level_sizes[img_level.get()].level_size,
-                                   &img_level->mData, nullptr);
+          uint64_t pool_size = level_sizes[img_level.get()].level_size;
+          if (img_level->mLinearLayout != nullptr &&
+              img_level->mLinearLayout->msize > pool_size) {
+            pool_size = img_level->mLinearLayout->msize;
+          }
+          serializer->encodeBuffer(pool_size, &img_level->mData, nullptr);
         });
 
     if (img->mIsSwapchainImage) {
@@ -777,29 +819,33 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
                                 this](
                                    const std::vector<VkBufferImageCopy> &copies,
                                    gapil::Ref<QueueObject> queue) {
+        const uint32_t queue_family = queue->mFamily;
         StagingCommandBuffer commandBuffer(device_functions, img->mDevice,
-                                           queue->mFamily);
+                                           queue_family);
         std::vector<VkImageMemoryBarrier> img_barriers;
         std::vector<uint32_t> old_layouts;
         walkImageSubRng(
             img, img_whole_rng,
-            [&img, &img_barriers, &old_layouts](
+            [&img, &img_barriers, &old_layouts, queue_family](
                 uint32_t aspect_bit, uint32_t layer, uint32_t level) {
               auto &img_level =
                   img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
-              img_barriers.push_back(VkImageMemoryBarrier{
-                  VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                  nullptr,
-                  (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
-                  VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
-                  img_level->mLayout,
-                  VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                  kQueueFamilyIgnore,
-                  kQueueFamilyIgnore,
-                  img->mVulkanHandle,
-                  {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
-              });
-              old_layouts.push_back(img_level->mLayout);
+              if (img_level->mLastBoundQueue != nullptr &&
+                  img_level->mLastBoundQueue->mFamily == queue_family) {
+                img_barriers.push_back(VkImageMemoryBarrier{
+                    VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    nullptr,
+                    (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1,
+                    VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+                    img_level->mLayout,
+                    VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    kQueueFamilyIgnore,
+                    kQueueFamilyIgnore,
+                    img->mVulkanHandle,
+                    {VkImageAspectFlags(aspect_bit), level, 1, layer, 1},
+                });
+                old_layouts.push_back(img_level->mLayout);
+              }
             });
         device_functions.vkCmdPipelineBarrier(
             commandBuffer.GetBuffer(),
@@ -838,19 +884,10 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
                                  : copies_in_order[i + 1].mbufferOffset;
         const uint32_t aspect_bit =
             (uint32_t)copy.mimageSubresource.maspectMask;
+        const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
+        const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
         byte_size_and_extent e =
             level_size(copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
-        auto bp = block_pitch(copy.mimageExtent, image_info.mFormat,
-                              copy.mimageSubresource.mmipLevel, aspect_bit);
-
-        if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
-            (copy.mimageOffset.my % bp.texel_height != 0)) {
-          // We cannot place partial blocks
-          return;
-        }
-        uint32_t x = (copy.mimageOffset.mx / bp.texel_width) * bp.element_size;
-        uint32_t y = (copy.mimageOffset.my / bp.texel_height) * bp.height_pitch;
-        uint32_t z = copy.mimageOffset.mz * bp.depth_pitch;
 
         if ((image_info.mFormat == VkFormat::VK_FORMAT_X8_D24_UNORM_PACK32 ||
              image_info.mFormat == VkFormat::VK_FORMAT_D24_UNORM_S8_UINT) &&
@@ -881,16 +918,56 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           }
         }
 
-        memory::Observation observation;
-        const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
-        const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
-        observation.set_base(x + y + z);
-        observation.set_pool(img->mAspects[aspect_bit]
-                                 ->mLayers[array_layer]
-                                 ->mLevels[mip_level]
-                                 ->mData.pool_id());
-        serializer->sendData(&observation, true, pData + new_offset,
-                             e.level_size);
+        auto bp = level_pitch(img, aspect_bit, array_layer, mip_level);
+        if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
+            (copy.mimageOffset.my % bp.texel_height != 0)) {
+          // We cannot place partial blocks
+          return;
+        }
+        auto &img_level =
+            img->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level];
+        // If the image has linear layout and its row pitch and depth pitch is
+        // larger than the piches for tightly packed image, we need to set the
+        // observation row by row. Otherwise, we can use just one observation
+        // for the extent of this copy.
+        if (bp.linear_layout_depth_pitch <= bp.depth_pitch &&
+            bp.linear_layout_row_pitch <= bp.row_pitch) {
+          uint32_t x =
+              (copy.mimageOffset.mx / bp.texel_width) * bp.element_size;
+          uint32_t y = (copy.mimageOffset.my / bp.texel_height) * bp.row_pitch;
+          uint32_t z = copy.mimageOffset.mz * bp.depth_pitch;
+          memory::Observation observation;
+          observation.set_base(x + y + z);
+          observation.set_pool(img_level->mData.pool_id());
+          serializer->sendData(&observation, true, pData + new_offset,
+                               e.level_size);
+
+        } else {
+          // Need to set base row by row for linear layout images which have
+          // larger row pitch and depth pitch
+          pitch ep =
+              extent_pitch(copy.mimageExtent, img->mInfo.mFormat, aspect_bit);
+          for (uint32_t zd = 0; zd < copy.mimageExtent.mDepth; zd++) {
+            for (uint32_t yd = 0;
+                 yd < subRoundUpTo(nullptr, nullptr, copy.mimageExtent.mHeight,
+                                   bp.texel_height);
+                 yd++) {
+              uint32_t x =
+                  (copy.mimageOffset.mx / bp.texel_width) * bp.element_size;
+              uint32_t y = ((copy.mimageOffset.my / bp.texel_height) + yd) *
+                           bp.linear_layout_row_pitch;
+              uint32_t z =
+                  (copy.mimageOffset.mz + zd) * bp.linear_layout_depth_pitch;
+              uint32_t mem_row_offset =
+                  zd * ep.depth_pitch + yd * ep.row_pitch + new_offset;
+              memory::Observation observation;
+              observation.set_base(x + y + z);
+              observation.set_pool(img_level->mData.pool_id());
+              serializer->sendData(&observation, true, pData + mem_row_offset,
+                                   ep.row_pitch);
+            }
+          }
+        }
         new_offset = next_offset;
       }
     }
