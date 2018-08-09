@@ -71,9 +71,10 @@ struct swizzle {
 
 class Sampler {
  public:
+  enum ESVersion { ES20, ES30, ES31 };
   Sampler() {}
 
-  virtual bool needsES3() const { return false; }
+  virtual ESVersion getESVersion() const { return ES20; }
 
   virtual std::string getExtensions() const = 0;
   virtual std::string getUniform() const = 0;
@@ -103,7 +104,7 @@ class Sampler2DArray : public Sampler {
  public:
   Sampler2DArray(int layer) : mLayer(layer) {}
 
-  virtual bool needsES3() const { return true; }
+  virtual ESVersion getESVersion() const { return ES30; }
 
   virtual std::string getExtensions() const { return ""; }
 
@@ -198,6 +199,63 @@ class SamplerCube : public Sampler {
   }
 
  private:
+  GLint mFace;
+};
+
+class SamplerCubeArray : public Sampler {
+ public:
+  SamplerCubeArray(int layer, GLint face) : mLayer(layer), mFace(face) {}
+
+  virtual ESVersion getESVersion() const { return ES31; }
+
+  virtual std::string getExtensions() const {
+    return "#extension GL_EXT_texture_cube_map_array : require\n";
+  }
+
+  virtual std::string getUniform() const {
+    return "uniform samplerCubeArray tex;";
+  }
+
+  virtual std::string getFragmentPreamble() const {
+    // uv.xy is texcoord expanded to [-1, 1].
+    // uv.zw is -uv.xy.
+    return "vec4 uv = vec4(-1.0 + 2.0 * texcoord, 1.0 - 2.0 * texcoord);";
+  }
+
+  virtual std::string getSamplingExpression() const {
+    std::ostringstream r;
+    r << "texture(tex, vec4(";
+
+    switch (mFace) {
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        r << "1.0, uv.wz";
+        break;
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        r << "-1.0, uv.wx";
+        break;
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        r << "uv.x, 1.0, uv.y";
+        break;
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        r << "uv.x, -1.0, uv.w";
+        break;
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        r << "uv.xw, 1.0";
+        break;
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        r << "uv.xw, 1.0";
+        break;
+      default:
+        GAPID_FATAL("MEC: unexpected cube face: 0x%x", mFace);
+        return "";
+    }
+
+    r << ", " << mLayer << ".0))";
+    return r.str();
+  }
+
+ private:
+  int mLayer;
   GLint mFace;
 };
 
@@ -459,13 +517,19 @@ TempObject Reader::CreateAndBindContext(EGLContext share, EGLint version) {
   });
 }
 
+#define GLSL_VERSION(version) \
+  (version == Sampler::ES30   \
+       ? "#version 300 es\n"  \
+       : version == Sampler::ES31 ? "#version 310 es\n" : "")
+
 void Reader::DrawTexturedQuad(const Sampler& sampler, GLsizei w, GLsizei h) {
   CHECK_GL_ERROR("MEC: Entered DrawTexturedQuad in error state");
   CHECK_FB_COMPLETE(GL_DRAW_FRAMEBUFFER, "MEC: Draw framebuffer incomplete");
 
+  Sampler::ESVersion version = sampler.getESVersion();
   std::string vsSource;
-  if (sampler.needsES3()) {
-    vsSource += "#version 300 es\n";
+  if (version != Sampler::ES20) {
+    vsSource += GLSL_VERSION(version);
     vsSource += "#define attribute in\n";
     vsSource += "#define varying out\n";
   }
@@ -478,15 +542,15 @@ void Reader::DrawTexturedQuad(const Sampler& sampler, GLsizei w, GLsizei h) {
   vsSource += "}\n";
 
   std::string fsSource;
-  if (sampler.needsES3()) {
-    fsSource += "#version 300 es\n";
+  fsSource += GLSL_VERSION(version);
+  fsSource += sampler.getExtensions();
+  fsSource += "precision highp float;\n";
+  if (version != Sampler::ES20) {
     fsSource += "#define varying in\n";
     fsSource += "out vec4 fragColor;\n";
   } else {
     fsSource += "#define fragColor gl_FragColor\n";
   }
-  fsSource += sampler.getExtensions();
-  fsSource += "precision highp float;\n";
   fsSource += sampler.getUniform();
   fsSource += "varying vec2 texcoord;\n";
   fsSource += "void main() {\n";
@@ -517,6 +581,8 @@ void Reader::DrawTexturedQuad(const Sampler& sampler, GLsizei w, GLsizei h) {
   if (linkStatus == 0) {
     char log[1024];
     imports.glGetProgramInfoLog(prog, sizeof(log), nullptr, log);
+    GAPID_ERROR("Vertex Shader:\n%s\n\nFragment Shader:\n%s", vsSource.c_str(),
+                fsSource.c_str());
     GAPID_FATAL("MEC: Failed to compile program:\n%s", log);
   }
 
@@ -570,6 +636,8 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
   return img;
 }
 
+#define CUBE_FACE(layer) (GL_TEXTURE_CUBE_MAP_POSITIVE_X + (layer))
+
 ImageData Reader::ReadTextureViaDrawQuad(const texture& tex, GLint layer,
                                          uint32_t format, const char* name,
                                          swizzle swizzle) {
@@ -585,7 +653,11 @@ ImageData Reader::ReadTextureViaDrawQuad(const texture& tex, GLint layer,
       return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
     }
     case GL_TEXTURE_CUBE_MAP: {
-      SamplerCube sampler(GL_TEXTURE_CUBE_MAP_POSITIVE_X + layer);
+      SamplerCube sampler(CUBE_FACE(layer));
+      return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
+    }
+    case GL_TEXTURE_CUBE_MAP_ARRAY: {
+      SamplerCubeArray sampler(layer / 6, CUBE_FACE(layer % 6));
       return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
     }
     default:
