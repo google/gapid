@@ -153,105 +153,102 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 		return r, nil
 	}
 
-	requestedPkg := uri
-
-	intent := ""
-	if strings.Contains(requestedPkg, ":") {
-		intent = requestedPkg[0:strings.Index(requestedPkg, ":")]
-		requestedPkg = requestedPkg[strings.Index(requestedPkg, ":")+1:]
+	pkgName := uri
+	actionName := ""
+	if strings.Contains(pkgName, ":") {
+		actionName = pkgName[0:strings.Index(pkgName, ":")]
+		pkgName = pkgName[strings.Index(pkgName, ":")+1:]
 	}
 
-	activity := ""
-	pkg := ""
-	if strings.Contains(requestedPkg, "/") {
-		ap := strings.SplitN(requestedPkg, "/", 2)
-		pkg = ap[0]
-		activity = ap[1]
-	} else {
-		pkg = requestedPkg
+	activityName := ""
+	if strings.Contains(pkgName, "/") {
+		ap := strings.SplitN(pkgName, "/", 2)
+		pkgName = ap[0]
+		activityName = ap[1]
 	}
 
-	instPkg := packages.FindByName(pkg)
-	if instPkg == nil {
-		return nil, log.Errf(ctx, nil, "Could not find package %s", pkg)
+	pkg := packages.FindByName(pkgName)
+	if pkg == nil {
+		return nil, log.Errf(ctx, nil, "Could not find package %s", pkgName)
 	}
 
-	if activity != "" {
-		var act *pkginfo.Activity
-		for _, a := range instPkg.Activities {
-			if a.Name == activity {
-				act = a
+	if activityName != "" {
+		var activity *pkginfo.Activity
+		for _, a := range pkg.Activities {
+			if a.Name == activityName {
+				activity = a
 				break
 			}
 		}
-		if act == nil {
-			return nil, log.Errf(ctx, nil, "Could not find activity %s, in package %s", activity, pkg)
+		if activity == nil {
+			return nil, log.Errf(ctx, nil, "Could not find activity %s, in package %s", activityName, pkgName)
 		}
 
-		if intent != "" {
-			for _, i := range act.Actions {
-				if i.Name == intent {
+		if actionName != "" {
+			for _, a := range activity.Actions {
+				if a.Name == actionName {
 					return &tracer.TraceTargetTreeNode{
-						intent,
-						packages.GetIcon(instPkg),
-						fmt.Sprintf("%s:%s/%s", intent, pkg, activity),
-						fmt.Sprintf("%s:%s/%s", intent, pkg, activity),
+						actionName,
+						packages.GetIcon(pkg),
+						fmt.Sprintf("%s:%s/%s", actionName, pkgName, activityName),
+						fmt.Sprintf("%s:%s/%s", actionName, pkgName, activityName),
 						[]string{},
-						fmt.Sprintf("%s/%s", pkg, activity),
-						pkg,
+						fmt.Sprintf("%s/%s", pkgName, activityName),
+						pkgName,
 						"",
 					}, nil
 				}
 			}
-			return nil, log.Errf(ctx, nil, "Could not find Intent %s, in package %s/%s", intent, pkg, activity)
+			return nil, log.Errf(ctx, nil, "Could not find Intent %s, in package %s/%s", actionName, pkgName, activityName)
 		}
+
 		r := &tracer.TraceTargetTreeNode{
-			activity,
-			packages.GetIcon(instPkg),
-			fmt.Sprintf("%s/%s", pkg, activity),
+			activityName,
+			packages.GetIcon(pkg),
+			fmt.Sprintf("%s/%s", pkgName, activityName),
 			"",
 			[]string{},
-			pkg,
-			pkg,
+			pkgName,
+			pkgName,
 			"",
 		}
-		for _, i := range act.Actions {
-			r.Children = append(r.Children, fmt.Sprintf("%s:%s/%s", i.Name, pkg, activity))
+		for _, a := range activity.Actions {
+			r.Children = append(r.Children, fmt.Sprintf("%s:%s/%s", a.Name, pkgName, activityName))
 		}
-		if a := findBestAction(act.Actions); a != nil {
-			r.TraceURI = fmt.Sprintf("%s:%s/%s", a.Name, pkg, activity)
+		if a := findBestAction(activity.Actions); a != nil {
+			r.TraceURI = fmt.Sprintf("%s:%s/%s", a.Name, pkgName, activityName)
 		}
 		return r, nil
 	}
 
 	r := &tracer.TraceTargetTreeNode{
-		pkg,
-		packages.GetIcon(instPkg),
-		pkg,
+		pkgName,
+		packages.GetIcon(pkg),
+		pkgName,
 		"",
 		[]string{},
 		"",
-		pkg,
+		pkgName,
 		"",
 	}
 
 	var firstActivity *pkginfo.Activity
 	var defaultAction string
-	for _, a := range instPkg.Activities {
-		if len(a.Actions) > 0 {
-			r.Children = append(r.Children, fmt.Sprintf("%s/%s", pkg, a.Name))
-			if act := findBestAction(a.Actions); act != nil && act.IsLaunch {
-				defaultAction = fmt.Sprintf("%s:%s/%s", act.Name, pkg, a.Name)
+	for _, activity := range pkg.Activities {
+		if len(activity.Actions) > 0 {
+			r.Children = append(r.Children, fmt.Sprintf("%s/%s", pkgName, activity.Name))
+			if action := findBestAction(activity.Actions); action != nil && action.IsLaunch {
+				defaultAction = fmt.Sprintf("%s:%s/%s", action.Name, pkgName, activity.Name)
 			}
 			if firstActivity == nil {
-				firstActivity = a
+				firstActivity = activity
 			}
 		}
 	}
 
 	if defaultAction == "" && len(r.Children) == 1 {
-		if act := findBestAction(firstActivity.Actions); act != nil {
-			defaultAction = fmt.Sprintf("%s:%s/%s", act.Name, pkg, firstActivity.Name)
+		if action := findBestAction(firstActivity.Actions); action != nil {
+			defaultAction = fmt.Sprintf("%s:%s/%s", action.Name, pkgName, firstActivity.Name)
 		}
 	}
 	r.TraceURI = defaultAction
