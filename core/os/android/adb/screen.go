@@ -28,18 +28,26 @@ const (
 	ErrLockScreenState = fault.Const("Couldn't get lockscreen state")
 )
 
-var screenOnRegex = regexp.MustCompile("mScreenOnFully=(true|false)")
+var displayOnRegex = regexp.MustCompile("Display Power: state=(ON|DOZE|OFF)")
+var displayReadyRegex = regexp.MustCompile("mDisplayReady=(true|false)")
 
 // IsScreenOn returns true if the device's screen is currently on.
 func (b *binding) IsScreenOn(ctx context.Context) (bool, error) {
-	res, err := b.Shell("dumpsys", "window", "policy").Call(ctx)
+	res, err := b.Shell("dumpsys", "power").Call(ctx)
 	if err != nil {
 		return false, err
 	}
-	switch screenOnRegex.FindString(res) {
-	case "mScreenOnFully=true":
-		return true, nil
-	case "mScreenOnFully=false":
+	switch displayOnRegex.FindString(res) {
+	case "Display Power: state=ON":
+		switch displayReadyRegex.FindString(res) {
+		case "mDisplayReady=true":
+			return true, nil
+		case "mDisplayReady=false":
+			return false, nil
+		}
+	case "Display Power: state=DOZE":
+		return false, nil
+	case "Display Power: state=OFF":
 		return false, nil
 	}
 	return false, log.Err(ctx, ErrScreenOnState, "")
@@ -61,18 +69,18 @@ func (b *binding) TurnScreenOff(ctx context.Context) error {
 	return b.KeyEvent(ctx, android.KeyCode_Power)
 }
 
-var lockscreenRegex = regexp.MustCompile("mShowingLockscreen=(true|false)")
+var keyguardRegex = regexp.MustCompile("mKeyguardShowing=(true|false)")
 
 // IsShowingLockscreen returns true if the device's lockscreen is currently showing.
 func (b *binding) IsShowingLockscreen(ctx context.Context) (bool, error) {
-	res, err := b.Shell("dumpsys", "window", "policy").Call(ctx)
+	res, err := b.Shell("dumpsys", "activity", "activities").Call(ctx)
 	if err != nil {
 		return false, err
 	}
-	switch lockscreenRegex.FindString(res) {
-	case "mShowingLockscreen=true":
+	switch keyguardRegex.FindString(res) {
+	case "mKeyguardShowing=true":
 		return true, nil
-	case "mShowingLockscreen=false":
+	case "mKeyguardShowing=false":
 		return false, nil
 	}
 	return false, log.Err(ctx, ErrLockScreenState, "")

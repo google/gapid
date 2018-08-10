@@ -31,6 +31,20 @@ func TestScreenState(t_ *testing.T) {
 	err = d.TurnScreenOn(ctx)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
+	d = mustConnect(ctx, "screen_doze_device")
+	res, err = d.IsScreenOn(ctx)
+	assert.For(ctx, "ScreenOn").That(res).Equals(false)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	err = d.TurnScreenOn(ctx)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+
+	d = mustConnect(ctx, "screen_unready_device")
+	res, err = d.IsScreenOn(ctx)
+	assert.For(ctx, "ScreenOn").That(res).Equals(false)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+	err = d.TurnScreenOn(ctx)
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+
 	d = mustConnect(ctx, "screen_on_device")
 	res, err = d.IsScreenOn(ctx)
 	assert.For(ctx, "ScreenOn").That(res).Equals(true)
