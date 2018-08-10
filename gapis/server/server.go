@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
@@ -194,6 +194,24 @@ func (s *server) ExportCapture(ctx context.Context, c *path.Capture) ([]byte, er
 	return b.Bytes(), nil
 }
 
+// ReadFile exists because ioutil.ReadFile is broken on Windows.
+// https://github.com/golang/go/issues/26923
+func ReadFile(f *os.File) ([]byte, error) {
+	in := []byte{}
+	buff := [1024 * 1024 * 1024]byte{}
+	for {
+		n, err := f.Read(buff[:])
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		in = append(in, buff[:n]...)
+		if err == io.EOF {
+			break
+		}
+	}
+	return in, nil
+}
+
 func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, error) {
 	ctx = log.Enter(ctx, "LoadCapture")
 	ctx = status.Start(ctx, "LoadCapture")
@@ -202,10 +220,18 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 		return nil, fmt.Errorf("Server not configured to allow reading of local files")
 	}
 	name := filepath.Base(path)
-	in, err := ioutil.ReadFile(path)
+
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+
+	in, err := ReadFile(f)
+	if err != nil {
+		return nil, err
+	}
+
 	p, err := capture.Import(ctx, name, in)
 	if err != nil {
 		return nil, err
