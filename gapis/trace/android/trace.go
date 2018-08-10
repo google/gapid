@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -150,6 +151,7 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 		for _, x := range packages.Packages {
 			r.Children = append(r.Children, x.Name)
 		}
+		sort.Strings(r.Children)
 		return r, nil
 	}
 
@@ -212,6 +214,7 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 			pkgName,
 			"",
 		}
+		sort.Sort(actions(activity.Actions))
 		for _, a := range activity.Actions {
 			r.Children = append(r.Children, fmt.Sprintf("%s:%s/%s", a.Name, pkgName, activityName))
 		}
@@ -234,6 +237,7 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 
 	var firstActivity *pkginfo.Activity
 	var defaultAction string
+	sort.Sort(activities(pkg.Activities))
 	for _, activity := range pkg.Activities {
 		if len(activity.Actions) > 0 {
 			r.Children = append(r.Children, fmt.Sprintf("%s/%s", pkgName, activity.Name))
@@ -254,6 +258,18 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 	r.TraceURI = defaultAction
 	return r, nil
 }
+
+type activities []*pkginfo.Activity
+
+func (a activities) Len() int           { return len(a) }
+func (a activities) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a activities) Less(i, j int) bool { return a[i].Name < a[j].Name }
+
+type actions []*pkginfo.Action
+
+func (a actions) Len() int           { return len(a) }
+func (a actions) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a actions) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
 // findBestAction returns the best action candidate for tracing from the given
 // list. It is either the launch action, the "main" action if no launch action
