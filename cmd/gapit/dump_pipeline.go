@@ -69,7 +69,7 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if len(verb.At) == 0 {
-		boxedCapture, err := client.Get(ctx, c.Path())
+		boxedCapture, err := client.Get(ctx, c.Path(), nil)
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
@@ -86,7 +86,7 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 }
 
 func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Client, cmd *path.Command) (*api.Pipeline, error) {
-	boxedResources, err := c.Get(ctx, (&path.Resources{Capture: cmd.Capture}).Path())
+	boxedResources, err := c.Get(ctx, (&path.Resources{Capture: cmd.Capture}).Path(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 		}
 
 		for _, resource := range typ.Resources {
-			boxedResourceData, err := c.Get(ctx, cmd.ResourceAfter(resource.ID).Path())
+			boxedResourceData, err := c.Get(ctx, cmd.ResourceAfter(resource.ID).Path(), nil)
 			if err != nil {
 				return nil, log.Err(ctx, err, "Failed to load the pipeline resource")
 			}
@@ -202,7 +202,7 @@ func getConstantSetMap(ctx context.Context, c client.Client, api *path.API, inde
 		boxedConstants, err := c.Get(ctx, (&path.ConstantSet{
 			API:   api,
 			Index: uint32(index),
-		}).Path())
+		}).Path(), nil)
 		if err != nil {
 			return nil, log.Errf(ctx, err, "Failed to load constant set (%v, %v)", api, index)
 		}

@@ -946,7 +946,13 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 }
 
 // SetResourceData sets resource data in a new capture.
-func (p GraphicsPipelineObjectʳ) SetResourceData(context.Context, *path.Command, *api.ResourceData, api.ResourceMap, api.ReplaceCallback) error {
+func (p GraphicsPipelineObjectʳ) SetResourceData(
+	context.Context,
+	*path.Command,
+	*api.ResourceData,
+	api.ResourceMap,
+	api.ReplaceCallback,
+	*path.ResolveConfig) error {
 	return fmt.Errorf("SetResourceData is not supported on GraphicsPipeline")
 }
 
@@ -1009,7 +1015,13 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 }
 
 // SetResourceData sets resource data in a new capture.
-func (p ComputePipelineObjectʳ) SetResourceData(context.Context, *path.Command, *api.ResourceData, api.ResourceMap, api.ReplaceCallback) error {
+func (p ComputePipelineObjectʳ) SetResourceData(
+	context.Context,
+	*path.Command,
+	*api.ResourceData,
+	api.ResourceMap,
+	api.ReplaceCallback,
+	*path.ResolveConfig) error {
 	return fmt.Errorf("SetResourceData is not supported on ComputePipeline")
 }
 
