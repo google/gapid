@@ -52,6 +52,8 @@ push_device              device
 rooted_device            unauthorized
 run_device               unknown
 screen_off_device        offline
+screen_doze_device       offline
+screen_unready_device    offline
 screen_on_device         device
 `)
 	emptyDevices = stub.RespondTo(adbPath.System()+` devices`, `
@@ -106,35 +108,45 @@ Packages:
     flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
 `),
 
-		// Screen on / off queries.
-		stub.RespondTo(adbPath.System()+` -s screen_off_device shell dumpsys window policy`, `
-WINDOW MANAGER POLICY STATE (dumpsys window policy)
-    mSafeMode=false mSystemReady=true mSystemBooted=true
-    mAwake=false
-    mScreenOnEarly=false mScreenOnFully=false
-    mKeyguardDrawComplete=false mWindowManagerDrawComplete=false
-    mOrientationSensorEnabled=false`),
-		stub.RespondTo(adbPath.System()+` -s screen_on_device shell dumpsys window policy`, `
-WINDOW MANAGER POLICY STATE (dumpsys window policy)
-    mSafeMode=false mSystemReady=true mSystemBooted=true
-    mAwake=true
-    mScreenOnEarly=true mScreenOnFully=true
-    mKeyguardDrawComplete=false mWindowManagerDrawComplete=false
-    mOrientationSensorEnabled=false`),
+		// Screen on / off / doze / unready queries.
+		stub.RespondTo(adbPath.System()+` -s screen_off_device shell dumpsys power`, `
+POWER MANAGER (dumpsys power)
+  mScreenBrightnessBoostInProgress=false
+  mDisplayReady=true
+  mHoldingWakeLockSuspendBlocker=false
+Display Power: state=OFF`),
+		stub.RespondTo(adbPath.System()+` -s screen_doze_device shell dumpsys power`, `
+POWER MANAGER (dumpsys power)
+  mScreenBrightnessBoostInProgress=false
+  mDisplayReady=true
+  mHoldingWakeLockSuspendBlocker=false
+Display Power: state=DOZE`),
+		stub.RespondTo(adbPath.System()+` -s screen_unready_device shell dumpsys power`, `
+POWER MANAGER (dumpsys power)
+  mScreenBrightnessBoostInProgress=false
+  mDisplayReady=false
+  mHoldingWakeLockSuspendBlocker=false
+Display Power: state=ON`),
+		stub.RespondTo(adbPath.System()+` -s screen_on_device shell dumpsys power`, `
+POWER MANAGER (dumpsys power)
+  mScreenBrightnessBoostInProgress=false
+  mDisplayReady=true
+  mHoldingWakeLockSuspendBlocker=false
+Display Power: state=ON`),
 
 		// Lockscreen on / off queries.
-		stub.RespondTo(adbPath.System()+` -s lockscreen_off_device shell dumpsys window policy`, `
-WINDOW MANAGER POLICY STATE (dumpsys window policy)
-    mSafeMode=false mSystemReady=true mSystemBooted=true
-    mDockLayer=268435456 mStatusBarLayer=151000
-    mShowingLockscreen=false mShowingDream=false mDreamingLockscreen=false
-    mStatusBar=Window{5aa43c7 u0 StatusBar}`),
-		stub.RespondTo(adbPath.System()+` -s lockscreen_on_device shell dumpsys window policy`, `
-WINDOW MANAGER POLICY STATE (dumpsys window policy)
-    mSafeMode=false mSystemReady=true mSystemBooted=true
-    mDockLayer=268435456 mStatusBarLayer=151000
-    mShowingLockscreen=true mShowingDream=false mDreamingLockscreen=true
-    mStatusBar=Window{5aa43c7 u0 StatusBar}`),
+		stub.RespondTo(adbPath.System()+` -s lockscreen_off_device shell dumpsys activity activities`, `
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+  isHomeRecentsComponent=true  KeyguardController:
+    mKeyguardShowing=false
+    mAodShowing=false
+    mKeyguardGoingAway=false`),
+		stub.RespondTo(adbPath.System()+` -s lockscreen_on_device shell dumpsys activity activities`, `
+ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
+  isHomeRecentsComponent=true  KeyguardController:
+    mKeyguardShowing=true
+    mAodShowing=false
+    mKeyguardGoingAway=false`),
 
 		// Pid queries.
 		stub.Regex(`adb -s ok_pgrep_\S*device shell pgrep .* com.google.foo`, stub.Respond("")),
