@@ -281,7 +281,8 @@ public class TracerDialog {
           protected String createAndShowDialog(String current) {
             DeviceCaptureInfo dev = getSelectedDevice();
             if (dev != null) {
-              TraceTarget target = showTraceTargetPicker(dev, current, getShell(), models, widgets);
+              TraceTargets.Target target =
+                  showTraceTargetPicker(dev, current, getShell(), models, widgets);
               if (target != null) {
                 friendlyName = target.friendlyName;
                 if (!userHasChangedOutputFile) {
@@ -290,7 +291,7 @@ public class TracerDialog {
                 }
 
                 // Setting the text ourselves so we cancel the event.
-                setText(target.uri);
+                setText(target.url);
                 userHasChangedTarget = false; // cancel the modify event from set call.
               }
             }
@@ -478,7 +479,7 @@ public class TracerDialog {
         }
       }
 
-      protected static TraceTarget showTraceTargetPicker(
+      protected static TraceTargets.Target showTraceTargetPicker(
           DeviceCaptureInfo dev, String current, Shell shell, Models models, Widgets widgets) {
         if (dev.config.getServerLocalPath()) {
           // We are local, show a system file browser dialog.
@@ -491,7 +492,7 @@ public class TracerDialog {
           dialog.setText(Messages.CAPTURE_EXECUTABLE);
           String exe = dialog.open();
           if (exe != null) {
-            return new TraceTarget(exe, new File(exe).getName());
+            return new TraceTargets.Target(exe, new File(exe).getName());
           }
         } else {
           // Use the server to query the trace target tree.
@@ -499,10 +500,7 @@ public class TracerDialog {
               new TraceTargetPickerDialog(shell, models, dev.targets, widgets);
           if (dialog.open() == Window.OK) {
             TraceTargets.Node node = dialog.getSelected();
-            Service.TraceTargetTreeNode data = (node == null) ? null : node.getData();
-            if (data != null) {
-              return new TraceTarget(data.getUri(), data.getFriendlyApplication());
-            }
+            return (node == null) ? null : node.getTraceTarget();
           }
         }
         return null;
@@ -644,16 +642,6 @@ public class TracerDialog {
         }
         String dir = directory.getText();
         return dir.isEmpty() ? new File(name) : new File(dir, name);
-      }
-    }
-
-    private static class TraceTarget {
-      public final String uri;
-      public final String friendlyName;
-
-      public TraceTarget(String uri, String friendlyName) {
-        this.uri = uri;
-        this.friendlyName = friendlyName;
       }
     }
   }
