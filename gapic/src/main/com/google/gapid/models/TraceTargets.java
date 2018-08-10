@@ -128,6 +128,7 @@ public class TraceTargets
   public static class Node {
     private final Node parent;
     private final String uri;
+    private final int depth;
     private Node[] children;
     private Service.TraceTargetTreeNode data;
     private ListenableFuture<Node> loadFuture;
@@ -140,6 +141,7 @@ public class TraceTargets
     public Node(Node parent, String uri) {
       this.parent = parent;
       this.uri = uri;
+      this.depth = (parent == null) ? 0 : parent.depth + 1;
     }
 
     public Node getParent() {
@@ -148,6 +150,10 @@ public class TraceTargets
 
     public String getUri() {
       return uri;
+    }
+
+    public int getDepth() {
+      return depth;
     }
 
     public int getChildCount() {
