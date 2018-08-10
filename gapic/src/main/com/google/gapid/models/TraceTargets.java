@@ -177,6 +177,14 @@ public class TraceTargets
       return data;
     }
 
+    public boolean isTraceable() {
+      return data != null && !data.getTraceUri().isEmpty();
+    }
+
+    public Target getTraceTarget() {
+      return isTraceable() ? new Target(data.getTraceUri(), data.getFriendlyApplication()) : null;
+    }
+
     public ListenableFuture<Node> load(
         Shell shell, Supplier<ListenableFuture<Service.TraceTargetTreeNode>> loader) {
       if (data != null) {
@@ -213,6 +221,16 @@ public class TraceTargets
     @Override
     public String toString() {
       return parent + "/" + uri + (data == null ? "" : " " + data.getName());
+    }
+  }
+
+  public static class Target {
+    public final String url;
+    public final String friendlyName;
+
+    public Target(String url, String friendlyName) {
+      this.url = url;
+      this.friendlyName = friendlyName;
     }
   }
 

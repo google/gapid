@@ -198,6 +198,10 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
 
     tree.getTree().addListener(SWT.Selection, e -> {
       selected = cast(((TreeItem)e.item).getData());
+      Button ok = getButton(IDialogConstants.OK_ID);
+      if (ok != null) {
+        ok.setEnabled(selected != null && selected.isTraceable());
+      }
     });
 
     if (lastLoadError != null) {
@@ -216,9 +220,7 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
   protected void createButtonsForButtonBar(Composite parent) {
     Button ok = createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
     createButton(parent, IDialogConstants.CANCEL_ID, IDialogConstants.CANCEL_LABEL, false);
-
     ok.setEnabled(false);
-    tree.getTree().addListener(SWT.Selection, e -> ok.setEnabled(selected != null));
   }
 
   protected static TraceTargets.Node cast(Object element) {
