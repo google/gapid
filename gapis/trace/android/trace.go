@@ -215,23 +215,15 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 			pkg,
 			"",
 		}
-		var defaultAction *pkginfo.Action
 		for _, i := range act.Actions {
 			r.Children = append(r.Children, fmt.Sprintf("%s:%s/%s", i.Name, pkg, activity))
-			if i.IsLaunch {
-				defaultAction = i
-			}
 		}
-		if len(act.Actions) == 1 {
-			defaultAction = act.Actions[0]
-		}
-		if defaultAction != nil {
-			r.TraceURI = fmt.Sprintf("%s:%s/%s", defaultAction.Name, pkg, activity)
+		if a := findBestAction(act.Actions); a != nil {
+			r.TraceURI = fmt.Sprintf("%s:%s/%s", a.Name, pkg, activity)
 		}
 		return r, nil
 	}
 
-	defaultAction := ""
 	r := &tracer.TraceTargetTreeNode{
 		pkg,
 		packages.GetIcon(instPkg),
@@ -242,24 +234,47 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 		pkg,
 		"",
 	}
+
+	var firstActivity *pkginfo.Activity
+	var defaultAction string
 	for _, a := range instPkg.Activities {
 		if len(a.Actions) > 0 {
 			r.Children = append(r.Children, fmt.Sprintf("%s/%s", pkg, a.Name))
-			for _, act := range a.Actions {
-				if act.IsLaunch {
-					defaultAction = fmt.Sprintf("%s:%s/%s", act.Name, pkg, a.Name)
-				}
+			if act := findBestAction(a.Actions); act != nil && act.IsLaunch {
+				defaultAction = fmt.Sprintf("%s:%s/%s", act.Name, pkg, a.Name)
+			}
+			if firstActivity == nil {
+				firstActivity = a
 			}
 		}
 	}
 
-	if len(instPkg.Activities) == 1 {
-		if len(instPkg.Activities[0].Actions) == 1 {
-			defaultAction = fmt.Sprintf("%s:%s/%s", instPkg.Activities[0].Actions[0].Name, pkg, instPkg.Activities[0].Name)
+	if defaultAction == "" && len(r.Children) == 1 {
+		if act := findBestAction(firstActivity.Actions); act != nil {
+			defaultAction = fmt.Sprintf("%s:%s/%s", act.Name, pkg, firstActivity.Name)
 		}
 	}
 	r.TraceURI = defaultAction
 	return r, nil
+}
+
+// findBestAction returns the best action candidate for tracing from the given
+// list. It is either the launch action, the "main" action if no launch action
+// was found, the first-and-only action in the list, or nil.
+func findBestAction(l []*pkginfo.Action) *pkginfo.Action {
+	if len(l) == 1 {
+		return l[0]
+	}
+	var main *pkginfo.Action
+	for _, a := range l {
+		if a.IsLaunch {
+			return a
+		}
+		if a.Name == "android.intent.action.MAIN" {
+			main = a
+		}
+	}
+	return main
 }
 
 // InstallPackage installs the given package onto the android device.
