@@ -17,14 +17,17 @@ package com.google.gapid.views;
 
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTreeForViewer;
+import static java.util.stream.StreamSupport.stream;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
 import com.google.common.collect.Maps;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.TraceTargets;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.proto.service.Service.TraceTargetTreeNode;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Loadable.Message;
 import com.google.gapid.util.Messages;
@@ -38,6 +41,8 @@ import org.eclipse.jface.resource.LocalResourceManager;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
@@ -50,6 +55,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 
@@ -61,6 +67,10 @@ import java.util.Map;
 public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.Listener {
   private static final int ICON_SIZE_DIP = 24;
   private static final int INITIAL_HEIGHT = 600;
+  private static final CharMatcher SEARCH_SEPARATOR = CharMatcher.anyOf("/\\");
+  private static final Splitter SEARCH_SPLITTER = Splitter.on(SEARCH_SEPARATOR)
+      .trimResults()
+      .omitEmptyStrings();
 
   private final Models models;
   private final Widgets widgets;
@@ -135,6 +145,9 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
     Composite container = createComposite(area, new GridLayout(1, false));
     container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
+    Text search = new Text(container, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH | SWT.ICON_CANCEL);
+    search.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+
     loading = LoadablePanel.create(container, widgets, p -> createTreeForViewer(p, SWT.BORDER));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     tree = Widgets.createTreeViewer(loading.getContents());
@@ -166,7 +179,7 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
       @Override
       public String getText(Object element) {
         TraceTargets.Node node = cast(element);
-        TraceTargetTreeNode data = node.getData();
+        Service.TraceTargetTreeNode data = node.getData();
         if (data == null) {
           targets.load(node, refresher::refresh);
           return "Loading...";
@@ -179,7 +192,7 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
       public Image getImage(Object element) {
         TraceTargets.Node node = cast(element);
         if (!images.containsKey(node)) {
-          TraceTargetTreeNode data = node.getData();
+          Service.TraceTargetTreeNode data = node.getData();
           if (data != null) {
             Image image = null;
             if (!data.getIcon().isEmpty()) {
@@ -203,6 +216,56 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
         ok.setEnabled(selected != null && selected.isTraceable());
       }
     });
+
+    search.addListener(SWT.Modify, e -> {
+      String query = search.getText().trim();
+      if (query.isEmpty()) {
+        tree.resetFilters();
+        return;
+      }
+
+      String[] parts = stream(SEARCH_SPLITTER.split(query).spliterator(), false)
+          .map(String::toLowerCase)
+          .toArray(String[]::new);
+      boolean lastWasSeparator = SEARCH_SEPARATOR.matches(query.charAt(query.length() - 1));
+
+      tree.setFilters(new ViewerFilter() {
+        @Override
+        public boolean select(Viewer viewer, Object parentElement, Object element) {
+          return matches(cast(element));
+        }
+
+        private boolean matches(TraceTargets.Node node) {
+          Service.TraceTargetTreeNode data = node.getData();
+          int depth = node.getDepth();
+          if (depth > parts.length) {
+            return true;
+          } else if (data == null) {
+            targets.load(node, refresher::refresh);
+            return true;
+          } else if (!data.getName().toLowerCase().contains(parts[depth - 1])) {
+            return false;
+          } else if (depth == parts.length) {
+            if (lastWasSeparator && !tree.getExpandedState(node)) {
+              tree.setExpandedState(node, true);
+            }
+            return true;
+          } else if (node.getChildCount() == 0) {
+            return false;
+          }
+          if (!tree.getExpandedState(node)) {
+            tree.setExpandedState(node, true);
+          }
+          for (int i = 0; i < node.getChildCount(); i++) {
+            if (matches(node.getChild(i))) {
+              return true;
+            }
+          }
+          return false;
+        }
+      });
+    });
+
 
     if (lastLoadError != null) {
       loading.showMessage(lastLoadError);
