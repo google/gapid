@@ -138,16 +138,7 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 		return nil, err
 	}
 	if uri == "" {
-		r := &tracer.TraceTargetTreeNode{
-			"",
-			[]byte{},
-			"",
-			"",
-			[]string{},
-			"",
-			"",
-			"",
-		}
+		r := &tracer.TraceTargetTreeNode{}
 		for _, x := range packages.Packages {
 			r.Children = append(r.Children, x.Name)
 		}
@@ -190,14 +181,12 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 			for _, a := range activity.Actions {
 				if a.Name == actionName {
 					return &tracer.TraceTargetTreeNode{
-						actionName,
-						packages.GetIcon(pkg),
-						fmt.Sprintf("%s:%s/%s", actionName, pkgName, activityName),
-						fmt.Sprintf("%s:%s/%s", actionName, pkgName, activityName),
-						[]string{},
-						fmt.Sprintf("%s/%s", pkgName, activityName),
-						pkgName,
-						"",
+						Name:            actionName,
+						Icon:            packages.GetIcon(pkg),
+						URI:             fmt.Sprintf("%s:%s/%s", actionName, pkgName, activityName),
+						TraceURI:        fmt.Sprintf("%s:%s/%s", actionName, pkgName, activityName),
+						Parent:          fmt.Sprintf("%s/%s", pkgName, activityName),
+						ApplicationName: pkgName,
 					}, nil
 				}
 			}
@@ -205,16 +194,13 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 		}
 
 		r := &tracer.TraceTargetTreeNode{
-			activityName,
-			packages.GetIcon(pkg),
-			fmt.Sprintf("%s/%s", pkgName, activityName),
-			"",
-			[]string{},
-			pkgName,
-			pkgName,
-			"",
+			Name:            activityName,
+			Icon:            packages.GetIcon(pkg),
+			URI:             fmt.Sprintf("%s/%s", pkgName, activityName),
+			Parent:          pkgName,
+			ApplicationName: pkgName,
 		}
-		sort.Sort(actions(activity.Actions))
+		sort.Slice(activity.Actions, func(i, j int) bool { return activity.Actions[i].Name < activity.Actions[j].Name })
 		for _, a := range activity.Actions {
 			r.Children = append(r.Children, fmt.Sprintf("%s:%s/%s", a.Name, pkgName, activityName))
 		}
@@ -225,19 +211,15 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 	}
 
 	r := &tracer.TraceTargetTreeNode{
-		pkgName,
-		packages.GetIcon(pkg),
-		pkgName,
-		"",
-		[]string{},
-		"",
-		pkgName,
-		"",
+		Name:            pkgName,
+		Icon:            packages.GetIcon(pkg),
+		URI:             pkgName,
+		ApplicationName: pkgName,
 	}
 
 	var firstActivity *pkginfo.Activity
 	var defaultAction string
-	sort.Sort(activities(pkg.Activities))
+	sort.Slice(pkg.Activities, func(i, j int) bool { return pkg.Activities[i].Name < pkg.Activities[j].Name })
 	for _, activity := range pkg.Activities {
 		if len(activity.Actions) > 0 {
 			r.Children = append(r.Children, fmt.Sprintf("%s/%s", pkgName, activity.Name))
@@ -258,18 +240,6 @@ func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 	r.TraceURI = defaultAction
 	return r, nil
 }
-
-type activities []*pkginfo.Activity
-
-func (a activities) Len() int           { return len(a) }
-func (a activities) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a activities) Less(i, j int) bool { return a[i].Name < a[j].Name }
-
-type actions []*pkginfo.Action
-
-func (a actions) Len() int           { return len(a) }
-func (a actions) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a actions) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
 // findBestAction returns the best action candidate for tracing from the given
 // list. It is either the launch action, the "main" action if no launch action
