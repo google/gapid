@@ -13,6 +13,9 @@
 /* Define to 1 to enable crash overrides, and to 0 otherwise. */
 #define ENABLE_CRASH_OVERRIDES 1
 
+/* Define to 1 to enable crash memory dumps, and to 0 otherwise. */
+#define LLVM_ENABLE_CRASH_DUMPS 0
+
 /* Define to 1 if you have the `backtrace' function. */
 #define HAVE_BACKTRACE TRUE
 

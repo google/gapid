@@ -76,11 +76,8 @@ class CodeGenerator {
   std::unique_ptr<llvm::MCSubtargetInfo> sti_;
   std::unique_ptr<llvm::MCInstrInfo> mii_;
   std::unique_ptr<llvm::MCInstPrinter> ipr_;
-  std::unique_ptr<llvm::MCAsmBackend> asmb_;
   std::unique_ptr<llvm::MCAsmInfo> asmi_;
   std::unique_ptr<llvm::MCContext> ctx_;
-  std::unique_ptr<llvm::MCCodeEmitter> codegen_;
-  std::unique_ptr<llvm::MCObjectWriter> writer_;
   std::unique_ptr<llvm::MCAssembler> asm_;
 
   std::vector<llvm::MCInst> instructions_;

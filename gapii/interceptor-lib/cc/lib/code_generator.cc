@@ -35,7 +35,7 @@ CodeGenerator *CodeGenerator::Create(const llvm::Triple &triple,
 void CodeGenerator::AddInstruction(const llvm::MCInst &inst) {
   size_t offset = code_.size();
   llvm::SmallVector<llvm::MCFixup, 4> new_fixups;
-  codegen_->encodeInstruction(inst, code_stream_, new_fixups, *sti_);
+  asm_->getEmitter().encodeInstruction(inst, code_stream_, new_fixups, *sti_);
 
   // We have to offset the fixups with the offset of the generated instruction
   // in the data stream because encodeInstruction emits them as if it is
@@ -63,12 +63,17 @@ bool CodeGenerator::Initialize() {
   if (!mii_) return false;
 
   llvm::MCTargetOptions options;
-  asmb_.reset(target->createMCAsmBackend(*sti_, *mri_, options));
-  if (!asmb_) return false;
+
+  auto asmb = std::unique_ptr<llvm::MCAsmBackend>(
+      target->createMCAsmBackend(*sti_, *mri_, options));
+  if (!asmb) return false;
 
   ctx_.reset(new llvm::MCContext(nullptr, mri_.get(), nullptr));
-  codegen_.reset(target->createMCCodeEmitter(*mii_, *mri_, *ctx_));
-  if (!codegen_) return false;
+  if (!ctx_) return false;
+
+  auto codegen = std::unique_ptr<llvm::MCCodeEmitter>(
+      target->createMCCodeEmitter(*mii_, *mri_, *ctx_));
+  if (!codegen) return false;
 
   // These are used only for logging and error reporting. Don't fail if we
   // haven't managed to create them.
@@ -78,10 +83,11 @@ bool CodeGenerator::Initialize() {
                                            *mii_, *mri_));
   }
 
-  writer_ = asmb_->createObjectWriter(code_stream_);
-  if (!writer_) return false;
+  auto writer = asmb->createObjectWriter(code_stream_);
+  if (!writer) return false;
 
-  asm_.reset(new llvm::MCAssembler(*ctx_, *asmb_, *codegen_, *writer_));
+  asm_.reset(new llvm::MCAssembler(*ctx_, std::move(asmb), std::move(codegen),
+                                   std::move(writer)));
   if (!asm_) return false;
 
   return true;
@@ -106,7 +112,8 @@ Error CodeGenerator::LinkCode(uintptr_t location) {
       return Error("Failed to evalue the value of an MCFixup");
     value = mc_value.getConstant();
 
-    int flags = asmb_->getFixupKindInfo(fixup.getKind()).Flags;
+    auto &asmb = asm_->getBackend();
+    int flags = asmb.getFixupKindInfo(fixup.getKind()).Flags;
     bool pc_rel = flags & llvm::MCFixupKindInfo::FKF_IsPCRel;
     bool align_pc = flags & llvm::MCFixupKindInfo::FKF_IsAlignedDownTo32Bits;
     if (pc_rel) {
@@ -116,8 +123,9 @@ Error CodeGenerator::LinkCode(uintptr_t location) {
       value -= location;
     }
 
-    asmb_->applyFixup(*asm_, fixup, mc_value,
-        llvm::makeMutableArrayRef(code_.data(), code_.size()), value, pc_rel);
+    asmb.applyFixup(*asm_, fixup, mc_value,
+                    llvm::makeMutableArrayRef(code_.data(), code_.size()),
+                    value, pc_rel, sti_.get());
   }
 
   if (start_alignment_ != 0)

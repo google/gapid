@@ -125,7 +125,7 @@ def llvm_auto_libs(**kwargs):
   llvmLibrary(
     name="OrcJIT",
     path="lib/ExecutionEngine/Orc",
-    deps=[":Core", ":ExecutionEngine", ":Object", ":RuntimeDyld", ":Support", ":TransformUtils"],
+    deps=[":Core", ":ExecutionEngine", ":MC", ":Object", ":RuntimeDyld", ":Support", ":Target", ":TransformUtils"],
     **kwargs
   )
   llvmLibrary(
@@ -173,7 +173,7 @@ def llvm_auto_libs(**kwargs):
   llvmLibrary(
     name="MC",
     path="lib/MC",
-    deps=[":DebugInfoCodeView", ":Support"],
+    deps=[":BinaryFormat", ":DebugInfoCodeView", ":Support"],
     **kwargs
   )
   llvmLibrary(
@@ -371,7 +371,7 @@ def llvm_auto_libs(**kwargs):
   llvmLibrary(
     name="ARMCodeGen",
     path="lib/Target/ARM",
-    deps=[":ARMAsmPrinter", ":ARMDesc", ":ARMInfo", ":ARMUtils", ":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":GlobalISel", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target"],
+    deps=[":ARMAsmPrinter", ":ARMDesc", ":ARMInfo", ":ARMUtils", ":Analysis", ":AsmPrinter", ":CodeGen", ":Core", ":GlobalISel", ":MC", ":Scalar", ":SelectionDAG", ":Support", ":Target", ":TransformUtils"],
     **kwargs
   )
   llvmLibrary(
@@ -981,9 +981,27 @@ def llvm_auto_libs(**kwargs):
     **kwargs
   )
   llvmLibrary(
+    name="ExegesisAArch64",
+    path="tools/llvm-exegesis/lib/AArch64",
+    deps=[":AArch64"],
+    **kwargs
+  )
+  llvmLibrary(
     name="Exegesis",
     path="tools/llvm-exegesis/lib",
-    deps=[":CodeGen", ":ExecutionEngine", ":MC", ":MCJIT", ":Object", ":Support"],
+    deps=[":CodeGen", ":ExecutionEngine", ":MC", ":MCDisassembler", ":MCJIT", ":Object", ":ObjectYAML", ":Support"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="ExegesisX86",
+    path="tools/llvm-exegesis/lib/X86",
+    deps=[":X86"],
+    **kwargs
+  )
+  llvmLibrary(
+    name="MCA",
+    path="tools/llvm-mca/lib",
+    deps=[":CodeGen", ":MC", ":Support"],
     **kwargs
   )
   llvmLibrary(
