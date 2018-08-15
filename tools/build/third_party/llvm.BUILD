@@ -28,7 +28,7 @@ tablegen(
     name = "Attributes",
     rules = [
         [
-            "include/llvm/IR/Attributes.gen",
+            "include/llvm/IR/Attributes.inc",
             "-gen-attrs",
         ],
     ],
@@ -38,11 +38,28 @@ tablegen(
 )
 
 tablegen(
+    name = "InstCombineTables",
+    rules = [
+        [
+            "lib/Transforms/InstCombine/InstCombineTables.inc",
+            "-gen-searchable-tables",
+        ],
+    ],
+    strip_include_prefix = "lib/Transforms/InstCombine",
+    table = "lib/Transforms/InstCombine/InstCombineTables.td",
+    deps = [":table_includes"] + glob(["lib/Transforms/InstCombine/*.td"]),
+)
+
+tablegen(
     name = "Intrinsics",
     rules = [
         [
-            "include/llvm/IR/Intrinsics.gen",
-            "-gen-intrinsic",
+            "include/llvm/IR/IntrinsicEnums.inc",
+            "-gen-intrinsic-enums",
+        ],
+        [
+            "include/llvm/IR/IntrinsicImpl.inc",
+            "-gen-intrinsic-impl",
         ],
     ],
     strip_include_prefix = "include",
@@ -351,6 +368,7 @@ llvm_auto_libs(
         "ARMInfo": [":headers-ARM"],
         "ARMUtils": [":headers-ARM"],
         "LibDriver": [":LibDriver/Options"],
+        "InstCombine": [":InstCombineTables"],
         "MC": [
             ":Intrinsics",
             ":Attributes",
@@ -401,6 +419,7 @@ cc_library(
         ":ARMDesc",
         ":ARMInfo",
         ":ARMAsmPrinter",
+        ":Coroutines",
         ":X86CodeGen",
         ":GlobalISel",
         ":SelectionDAG",
