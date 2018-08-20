@@ -159,10 +159,11 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
 
   private void updateReport() {
     loading.stopLoading();
-    if (models.reports.getData().report.getGroupsCount() == 0) {
+    Service.Report report = models.reports.getData().report;
+    if (report.getGroupsCount() == 0) {
       loading.showMessage(smile("Rock on! No issues found in this trace."));
     } else {
-      viewer.setInput(models.reports.getData());
+      viewer.setInput(report);
       viewer.setSelection(
           new TreeSelection(new TreePath(new Object[] { viewer.getInput() })), true);
     }
