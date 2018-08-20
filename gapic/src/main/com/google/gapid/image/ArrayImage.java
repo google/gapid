@@ -15,6 +15,7 @@
  */
 package com.google.gapid.image;
 
+import static com.google.gapid.util.Buffers.nativeBuffer;
 import static com.google.gapid.util.Caches.getUnchecked;
 import static com.google.gapid.util.Caches.softCache;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE8_THRESHOLD;
@@ -29,7 +30,6 @@ import com.google.gapid.proto.stream.Stream;
 import com.google.gapid.util.Colors;
 
 import org.eclipse.swt.graphics.ImageData;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -91,10 +91,7 @@ public abstract class ArrayImage implements com.google.gapid.image.Image {
 
   @Override
   public void uploadToTexture(Texture texture) {
-    ByteBuffer buffer = (ByteBuffer)BufferUtils.createByteBuffer(data.length)
-        .put(data)
-        .flip();
-    texture.loadData(width, height, internalFormat, format, type, buffer);
+    texture.loadData(width, height, internalFormat, format, type, nativeBuffer(data));
   }
 
   @Override

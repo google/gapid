@@ -35,6 +35,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.linux.X11;
 import org.lwjgl.system.linux.XVisualInfo;
 
+import java.nio.Buffer;
 import java.nio.IntBuffer;
 import java.util.logging.Logger;
 
@@ -131,7 +132,7 @@ public abstract class GlCanvas extends Canvas {
       }
       set(attr, X11.None, X11.None);
 
-      attr.flip();
+      ((Buffer)attr).flip(); // cast is there to work with JDK9.
       PointerBuffer configs = GLX13.glXChooseFBConfig(display, X11.XDefaultScreen(display), attr);
       if (configs == null || configs.capacity() < 1) {
         LOG.log(SEVERE, "glXChooseFBConfig returned no matching configs");
