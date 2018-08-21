@@ -70,7 +70,6 @@ sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
 
 sub void vkErrorCommandBufferIncomplete(VkCommandBuffer cmdbuf) {
   vkErrCommandBufferIncomplete(cmdbuf)
-  abort
 }
 
 sub void vkErrorInvalidDeviceMemory(VkDeviceMemory mem) {

@@ -86,4 +86,8 @@ uint64_t Timer::Stop() {
   return platformDurationToNanosecods(endTime - mStartTime);
 }
 
+uint64_t GetNanoseconds() {
+  return platformDurationToNanosecods(platformGetTime());
+}
+
 }  // namespace core

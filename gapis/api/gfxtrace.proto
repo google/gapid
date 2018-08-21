@@ -32,3 +32,8 @@ message ErrCmdAborted {
 // return value.
 message CmdCall {
 }
+
+// Timestamp is a nanosecond counter
+message TimeStamp {
+  uint64 nanoseconds = 1;
+}

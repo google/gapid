@@ -63,14 +63,16 @@ sub void execPendingCommands(VkQueue queue) {
         }
       } else if (cmd.SemaphoreUpdate == Unsignal) {
           semaphore := Semaphores[cmd.Semaphore]
-          if !semaphore.Signaled {
-            semaphore.WaitingQueue = queue
-            q.PendingSemaphores[cmd.Semaphore] = semaphore
-            onDeferSubcommand(cmd)
-            newCmds[len(newCmds)] = cmd
-            processSubcommand.b = false
-          } else {
-            Semaphores[cmd.Semaphore].Signaled = false
+          if semaphore != null {
+            if !semaphore.Signaled {
+              semaphore.WaitingQueue = queue
+              q.PendingSemaphores[cmd.Semaphore] = semaphore
+              onDeferSubcommand(cmd)
+              newCmds[len(newCmds)] = cmd
+              processSubcommand.b = false
+            } else {
+              semaphore.Signaled = false
+            }
           }
       } else if (cmd.SignalFence != as!VkFence(0)) {
         fenceObj := Fences[cmd.SignalFence]

@@ -33,6 +33,12 @@ func Stats(ctx context.Context, p *path.Stats, r *path.ResolveConfig) (*service.
 			return nil, err
 		}
 	}
+	c, err := capture.ResolveFromPath(ctx, p.Capture)
+	if err != nil {
+		return nil, err
+	}
+	stats.TraceStart = c.Header.StartTime
+
 	return stats, nil
 }
 

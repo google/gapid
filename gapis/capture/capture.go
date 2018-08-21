@@ -66,6 +66,7 @@ type Capture struct {
 	Observed     interval.U64RangeList
 	InitialState *InitialState
 	Arena        arena.Arena
+	Messages     []*TraceMessage
 }
 
 type InitialState struct {
@@ -365,6 +366,7 @@ type builder struct {
 	resIDs       []id.ID
 	initialState *InitialState
 	arena        arena.Arena
+	messages     []*TraceMessage
 }
 
 func newBuilder(a arena.Arena) *builder {
@@ -375,6 +377,7 @@ func newBuilder(a arena.Arena) *builder {
 		cmds:     []api.Cmd{},
 		resIDs:   []id.ID{id.ID{}},
 		arena:    a,
+		messages: []*TraceMessage{},
 	}
 }
 
@@ -391,6 +394,10 @@ func (b *builder) addCmd(ctx context.Context, cmd api.Cmd) api.CmdID {
 	id := api.CmdID(len(b.cmds))
 	b.cmds = append(b.cmds, cmd)
 	return id
+}
+
+func (b *builder) addMessage(ctx context.Context, t *TraceMessage) {
+	b.messages = append(b.messages, &TraceMessage{Timestamp: t.Timestamp, Message: t.Message})
 }
 
 func (b *builder) addAPI(ctx context.Context, api api.API) {
@@ -449,5 +456,6 @@ func (b *builder) build(name string, header *Header) *Capture {
 		APIs:         b.apis,
 		InitialState: b.initialState,
 		Arena:        b.arena,
+		Messages:     b.messages,
 	}
 }

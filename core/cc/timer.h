@@ -35,6 +35,8 @@ class Timer {
   uint64_t mStartTime;  // Units dependent on platform.
 };
 
+uint64_t GetNanoseconds();
+
 }  // namespace core
 
 #endif  // CORE_TIMER_H

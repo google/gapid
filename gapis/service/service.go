@@ -239,6 +239,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_Report{v}}
 	case *Resources:
 		return &Value{Val: &Value_Resources{v}}
+	case *Messages:
+		return &Value{Val: &Value_Messages{v}}
 	case *StateTree:
 		return &Value{Val: &Value_StateTree{v}}
 	case *StateTreeNode:

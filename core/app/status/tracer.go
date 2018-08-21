@@ -34,7 +34,7 @@ const (
 
 type traceEvent struct {
 	Name      string                 `json:"name,omitempty"`
-	ProcessID uint64                 `json:"processID"`
+	ProcessID uint64                 `json:"pid"`
 	TaskID    uint64                 `json:"tid"`
 	EventType string                 `json:"ph"`
 	Timestamp int64                  `json:"ts"`

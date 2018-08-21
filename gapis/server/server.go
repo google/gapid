@@ -527,6 +527,7 @@ func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
 		DeferStart:            opts.DeferStart,
 		NoBuffer:              opts.NoBuffer,
 		HideUnknownExtensions: opts.HideUnknownExtensions,
+		StoreTimestamps:       opts.RecordTraceTimes,
 	}
 }
 

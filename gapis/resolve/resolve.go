@@ -121,6 +121,21 @@ func Field(ctx context.Context, p *path.Field, r *path.ResolveConfig) (interface
 	return v.Interface(), nil
 }
 
+func Messages(ctx context.Context, p *path.Messages) (interface{}, error) {
+	c, err := capture.ResolveFromPath(ctx, p.Capture)
+	if err != nil {
+		return nil, err
+	}
+	m := &service.Messages{List: []*service.Message{}}
+	for _, message := range c.Messages {
+		m.List = append(m.List, &service.Message{
+			Timestamp: message.Timestamp,
+			Message:   message.Message,
+		})
+	}
+	return m, nil
+}
+
 func field(ctx context.Context, s reflect.Value, name string, p path.Node) (reflect.Value, error) {
 	for {
 		if isNil(s) {
@@ -336,6 +351,8 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return Metrics(ctx, p, r)
 	case *path.Mesh:
 		return Mesh(ctx, p, r)
+	case *path.Messages:
+		return Messages(ctx, p)
 	case *path.Parameter:
 		return Parameter(ctx, p, r)
 	case *path.Report:

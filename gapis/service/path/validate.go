@@ -229,6 +229,11 @@ func (n *Mesh) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *Messages) Validate() error {
+	return checkNotNilAndValidate(n, n.Capture, "capture")
+}
+
+// Validate checks the path is valid.
 func (n *Metrics) Validate() error {
 	return checkNotNilAndValidate(n, n.Command, "command")
 }

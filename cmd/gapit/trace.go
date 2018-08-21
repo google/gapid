@@ -173,6 +173,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		DeferStart:                verb.Start.Defer,
 		NoBuffer:                  verb.No.Buffer,
 		HideUnknownExtensions:     verb.Disable.Unknown.Extensions,
+		RecordTraceTimes:          verb.Record.TraceTimes,
 		ClearCache:                verb.Clear.Cache,
 		ServerLocalSavePath:       out,
 	}

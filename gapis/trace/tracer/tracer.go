@@ -67,6 +67,7 @@ type TraceOptions struct {
 	DeferStart            bool    // Should we record extra error state
 	NoBuffer              bool    // Disable buffering.
 	HideUnknownExtensions bool    // Hide unknown extensions from the application.
+	StoreTimestamps       bool    // Record trace timings into the capture.
 }
 
 // Tracer is an option interface that a bind.Device can implement.
@@ -133,6 +134,9 @@ func (o TraceOptions) GapiiOptions() gapii.Options {
 	}
 	if o.HideUnknownExtensions {
 		flags |= gapii.HideUnknownExtensions
+	}
+	if o.StoreTimestamps {
+		flags |= gapii.StoreTimestamps
 	}
 
 	return gapii.Options{

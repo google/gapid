@@ -17,6 +17,7 @@
 #include "spy_base.h"
 
 #include "core/cc/log.h"
+#include "core/cc/timer.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -41,7 +42,8 @@ SpyBase::SpyBase()
       mResources{{core::Id{{0}}, 0}},
       mObserveApplicationPool(true),
       mWatchedApis(0xFFFFFFFF),
-      mIsRecordingState(false) {
+      mIsRecordingState(false),
+      mRecordTimestamps(false) {
 }
 
 void SpyBase::init(CallObserver* observer) {
@@ -98,6 +100,7 @@ bool SpyBase::writeHeader() {
     device::ABI* t = new device::ABI(*current_abi());
     file_header.set_allocated_abi(t);
   }
+  file_header.set_start_time(core::GetNanoseconds());
   if (mEncoder != nullptr && mEncoder != mNullEncoder) {
     mEncoder->object(&file_header);
     return true;
