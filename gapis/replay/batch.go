@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/benchmark"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -107,6 +108,9 @@ func (m *Manager) execute(
 	generator Generator,
 	requests []RequestAndResult) error {
 
+	ctx = status.Start(ctx, "Replay")
+	defer status.Finish(ctx)
+
 	executeCounter.Increment()
 
 	capturePath := path.NewCapture(captureID)
@@ -148,6 +152,9 @@ func (m *Manager) execute(
 	}
 
 	generatorReplayTimer.Time(func() {
+		ctx := status.Start(ctx, "Generate")
+		defer status.Finish(ctx)
+
 		err = generator.Replay(
 			ctx,
 			intent,
@@ -168,7 +175,12 @@ func (m *Manager) execute(
 	var payload gapir.Payload
 	var handlePost builder.PostDataHandler
 	var handleNotification builder.NotificationHandler
-	builderBuildTimer.Time(func() { payload, handlePost, handleNotification, err = b.Build(ctx) })
+	builderBuildTimer.Time(func() {
+		ctx := status.Start(ctx, "Build")
+		defer status.Finish(ctx)
+
+		payload, handlePost, handleNotification, err = b.Build(ctx)
+	})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
@@ -188,6 +200,9 @@ func (m *Manager) execute(
 	}
 
 	executeTimer.Time(func() {
+		ctx := status.Start(ctx, "Execute")
+		defer status.Finish(ctx)
+
 		err = executor.Execute(
 			ctx,
 			payload,

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -149,6 +150,9 @@ type markerInfo struct {
 }
 
 func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Capture) error {
+	ctx = status.Start(ctx, "vulkan.ResolveSynchronization")
+	defer status.Finish(ctx)
+
 	ctx = capture.Put(ctx, c)
 	st, err := capture.NewState(ctx)
 	if err != nil {

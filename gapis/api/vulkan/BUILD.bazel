@@ -86,6 +86,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/api/vulkan",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app/status:go_default_library",
         "//core/data/binary:go_default_library",
         "//core/data/dictionary:go_default_library",
         "//core/data/id:go_default_library",
