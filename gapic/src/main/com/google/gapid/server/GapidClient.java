@@ -61,8 +61,8 @@ public interface GapidClient {
       Service.EnableAnalyticsRequest request);
   public ListenableFuture<Service.ClientEventResponse> postClientEvent(
       Service.ClientEventRequest request);
-  public ListenableFuture<Service.TraceTargetTreeResponse> getTraceTargetTreeNode(
-      Service.TraceTargetTreeRequest request);
+  public ListenableFuture<Service.TraceTargetTreeNodeResponse> getTraceTargetTreeNode(
+      Service.TraceTargetTreeNodeRequest request);
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult);

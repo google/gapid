@@ -445,7 +445,7 @@ func (s *server) ClientEvent(ctx context.Context, req *service.ClientEventReques
 	return nil
 }
 
-func (s *server) TraceTargetTreeNode(ctx context.Context, req *service.TraceTargetTreeRequest) (*service.TraceTargetTreeNode, error) {
+func (s *server) TraceTargetTreeNode(ctx context.Context, req *service.TraceTargetTreeNodeRequest) (*service.TraceTargetTreeNode, error) {
 	tttn, err := trace.TraceTargetTreeNode(ctx, *req.Device, req.Uri, req.Density)
 	if err != nil {
 		return nil, err
@@ -463,22 +463,25 @@ func (s *server) TraceTargetTreeNode(ctx context.Context, req *service.TraceTarg
 	}, nil
 }
 
-func (s *server) FindTraceTarget(ctx context.Context, req *service.FindTraceTargetRequest) (*service.TraceTargetTreeNode, error) {
-	tttn, err := trace.FindTraceTarget(ctx, *req.Device, req.Uri)
+func (s *server) FindTraceTargets(ctx context.Context, req *service.FindTraceTargetsRequest) ([]*service.TraceTargetTreeNode, error) {
+	nodes, err := trace.FindTraceTargets(ctx, *req.Device, req.Uri)
 	if err != nil {
 		return nil, err
 	}
-
-	return &service.TraceTargetTreeNode{
-		Name:                tttn.Name,
-		Icon:                tttn.Icon,
-		Uri:                 tttn.URI,
-		ParentUri:           tttn.Parent,
-		ChildrenUris:        tttn.Children,
-		TraceUri:            tttn.TraceURI,
-		FriendlyApplication: tttn.ApplicationName,
-		FriendlyExecutable:  tttn.ExecutableName,
-	}, nil
+	out := make([]*service.TraceTargetTreeNode, len(nodes))
+	for i, n := range nodes {
+		out[i] = &service.TraceTargetTreeNode{
+			Name:                n.Name,
+			Icon:                n.Icon,
+			Uri:                 n.URI,
+			ParentUri:           n.Parent,
+			ChildrenUris:        n.Children,
+			TraceUri:            n.TraceURI,
+			FriendlyApplication: n.ApplicationName,
+			FriendlyExecutable:  n.ExecutableName,
+		}
+	}
+	return out, nil
 }
 
 func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {

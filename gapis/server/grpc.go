@@ -367,22 +367,28 @@ func (s *grpcServer) ClientEvent(ctx xctx.Context, req *service.ClientEventReque
 	return &service.ClientEventResponse{}, nil
 }
 
-func (s *grpcServer) TraceTargetTreeNode(ctx xctx.Context, req *service.TraceTargetTreeRequest) (*service.TraceTargetTreeResponse, error) {
+func (s *grpcServer) TraceTargetTreeNode(ctx xctx.Context, req *service.TraceTargetTreeNodeRequest) (*service.TraceTargetTreeNodeResponse, error) {
 	defer s.inRPC()()
 	res, err := s.handler.TraceTargetTreeNode(s.bindCtx(ctx), req)
 	if err := service.NewError(err); err != nil {
-		return &service.TraceTargetTreeResponse{Val: &service.TraceTargetTreeResponse_Error{Error: err}}, nil
+		return &service.TraceTargetTreeNodeResponse{Val: &service.TraceTargetTreeNodeResponse_Error{Error: err}}, nil
 	}
-	return &service.TraceTargetTreeResponse{Val: &service.TraceTargetTreeResponse_Node{Node: res}}, nil
+	return &service.TraceTargetTreeNodeResponse{Val: &service.TraceTargetTreeNodeResponse_Node{Node: res}}, nil
 }
 
-func (s *grpcServer) FindTraceTarget(ctx xctx.Context, req *service.FindTraceTargetRequest) (*service.TraceTargetTreeResponse, error) {
+func (s *grpcServer) FindTraceTargets(ctx xctx.Context, req *service.FindTraceTargetsRequest) (*service.FindTraceTargetsResponse, error) {
 	defer s.inRPC()()
-	res, err := s.handler.FindTraceTarget(s.bindCtx(ctx), req)
+	res, err := s.handler.FindTraceTargets(s.bindCtx(ctx), req)
 	if err := service.NewError(err); err != nil {
-		return &service.TraceTargetTreeResponse{Val: &service.TraceTargetTreeResponse_Error{Error: err}}, nil
+		return &service.FindTraceTargetsResponse{Val: &service.FindTraceTargetsResponse_Error{Error: err}}, nil
 	}
-	return &service.TraceTargetTreeResponse{Val: &service.TraceTargetTreeResponse_Node{Node: res}}, nil
+	return &service.FindTraceTargetsResponse{
+		Val: &service.FindTraceTargetsResponse_Nodes{
+			Nodes: &service.TraceTargetTreeNodes{
+				Nodes: res,
+			},
+		},
+	}, nil
 }
 
 func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {

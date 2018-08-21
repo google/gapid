@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/gapid/core/app"
@@ -78,9 +79,14 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		port = uint32(verb.Local.Port)
 	} else {
-		uris := []string{}
-		traceDevices := []string{}
-		names := []string{}
+		type info struct {
+			uri        string
+			device     *path.Device
+			deviceName string
+			name       string
+		}
+		var found []info
+
 		// Find the actual trace URI from all of the devices
 
 		devices, err := filterDevices(ctx, &verb.DeviceFlags, client)
@@ -93,7 +99,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 
 		for _, dev := range devices {
-			tttn, err := client.FindTraceTarget(ctx, &service.FindTraceTargetRequest{
+			targets, err := client.FindTraceTargets(ctx, &service.FindTraceTargetsRequest{
 				Device: dev,
 				Uri:    traceURI,
 			})
@@ -107,33 +113,43 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			}
 			d := dd.(*device.Instance)
 
-			uris = append(uris, tttn.Uri)
-			traceDevices = append(traceDevices, d.Name)
-			traceDevice = dev
-			if tttn.FriendlyApplication != "" {
-				names = append(names, tttn.FriendlyApplication)
-			} else if tttn.FriendlyExecutable != "" {
-				names = append(names, tttn.FriendlyExecutable)
-			} else {
-				names = append(names, tttn.Name)
+			for _, target := range targets {
+				name := target.Name
+				switch {
+				case target.FriendlyApplication != "":
+					name = target.FriendlyApplication
+				case target.FriendlyExecutable != "":
+					name = target.FriendlyExecutable
+				}
+
+				found = append(found, info{
+					uri:        target.Uri,
+					deviceName: d.Name,
+					device:     dev,
+					name:       name,
+				})
 			}
 		}
 
-		if len(uris) == 0 {
+		if len(found) == 0 {
 			return fmt.Errorf("Could not find %+v to trace on any device", traceURI)
 		}
 
-		if len(uris) > 1 {
-			output := fmt.Sprintf("Found %+v on multiple devices: \n", traceURI)
-			for i := range uris {
-				output += fmt.Sprintf("    %+v: %+v\n", traceDevices[i], uris[i])
+		if len(found) > 1 {
+			sb := strings.Builder{}
+			fmt.Fprintf(&sb, "Found %v candidates: \n", traceURI)
+			for i, f := range found {
+				if i == 0 || found[i-1].deviceName != f.deviceName {
+					fmt.Fprintf(&sb, "  %v:\n", f.deviceName)
+				}
+				fmt.Fprintf(&sb, "    %v\n", f.uri)
 			}
-			return fmt.Errorf("%s", output)
+			return log.Errf(ctx, nil, "%v", sb.String())
 		}
 
-		fmt.Printf("Tracing %+v", uris)
-		out = names[0] + ".gfxtrace"
-		uri = uris[0]
+		fmt.Printf("Tracing %+v", found[0].uri)
+		out = found[0].name + ".gfxtrace"
+		uri = found[0].uri
 	}
 
 	if verb.Out != "" {

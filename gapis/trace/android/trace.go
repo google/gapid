@@ -366,14 +366,14 @@ func (t *androidTracer) InstallPackage(ctx context.Context, o *tracer.TraceOptio
 	return pkg, cleanup, nil
 }
 
-func (t *androidTracer) getAction(ctx context.Context, pattern string) (string, error) {
+func (t *androidTracer) getActions(ctx context.Context, pattern string) ([]string, error) {
 	re := regexp.MustCompile("(?i)" + pattern)
 	packages, err := t.GetPackages(ctx, pattern == "", t.lastIconDensityScale)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(packages.Packages) == 0 {
-		return "", fmt.Errorf("No packages found")
+		return nil, fmt.Errorf("No packages found")
 	}
 	matchingActions := []string{}
 	for _, p := range packages.Packages {
@@ -387,25 +387,26 @@ func (t *androidTracer) getAction(ctx context.Context, pattern string) (string, 
 		}
 	}
 	if len(matchingActions) == 0 {
-		return "", fmt.Errorf("No actions matching %s found", pattern)
-	} else if len(matchingActions) > 1 {
-		pkgs := fmt.Sprintf("Matching actions:\n")
-		for _, test := range matchingActions {
-			pkgs += fmt.Sprintf("    ")
-			pkgs += fmt.Sprintf("%s\n", test)
-		}
-		return "", fmt.Errorf("Multiple actions matching %q found: \n%s", pattern, pkgs)
+		return nil, fmt.Errorf("No actions matching %s found", pattern)
 	}
-	return matchingActions[0], nil
+	return matchingActions, nil
 }
 
-func (t *androidTracer) FindTraceTarget(ctx context.Context, str string) (*tracer.TraceTargetTreeNode, error) {
-	uri, err := t.getAction(ctx, str)
+func (t *androidTracer) FindTraceTargets(ctx context.Context, str string) ([]*tracer.TraceTargetTreeNode, error) {
+	uris, err := t.getActions(ctx, str)
 	if err != nil {
 		return nil, err
 	}
 
-	return t.GetTraceTargetNode(ctx, uri, t.lastIconDensityScale)
+	nodes := make([]*tracer.TraceTargetTreeNode, len(uris))
+	for i, uri := range uris {
+		n, err := t.GetTraceTargetNode(ctx, uri, t.lastIconDensityScale)
+		if err != nil {
+			return nil, err
+		}
+		nodes[i] = n
+	}
+	return nodes, nil
 }
 
 func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (*gapii.Process, func(), error) {

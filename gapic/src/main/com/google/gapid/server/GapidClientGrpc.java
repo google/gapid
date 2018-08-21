@@ -30,8 +30,8 @@ import com.google.gapid.proto.service.Service.EnableAnalyticsResponse;
 import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
 import com.google.gapid.proto.service.Service.EnableCrashReportingResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
-import com.google.gapid.proto.service.Service.TraceTargetTreeRequest;
-import com.google.gapid.proto.service.Service.TraceTargetTreeResponse;
+import com.google.gapid.proto.service.Service.TraceTargetTreeNodeRequest;
+import com.google.gapid.proto.service.Service.TraceTargetTreeNodeResponse;
 
 import java.util.function.Consumer;
 
@@ -170,8 +170,8 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
-  public ListenableFuture<TraceTargetTreeResponse> getTraceTargetTreeNode(
-      TraceTargetTreeRequest request) {
+  public ListenableFuture<TraceTargetTreeNodeResponse> getTraceTargetTreeNode(
+      TraceTargetTreeNodeRequest request) {
     return client.traceTargetTreeNode(request);
   }
 

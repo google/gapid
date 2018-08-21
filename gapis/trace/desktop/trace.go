@@ -109,7 +109,7 @@ func (t *DesktopTracer) APITraceOptions(ctx context.Context) []tracer.APITraceOp
 	return options
 }
 
-func (t *DesktopTracer) FindTraceTarget(ctx context.Context, str string) (*tracer.TraceTargetTreeNode, error) {
+func (t *DesktopTracer) FindTraceTargets(ctx context.Context, str string) ([]*tracer.TraceTargetTreeNode, error) {
 	isFile, err := t.b.IsFile(ctx, str)
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (t *DesktopTracer) FindTraceTarget(ctx context.Context, str string) (*trace
 		}
 	}
 
-	tttn := &tracer.TraceTargetTreeNode{
+	node := &tracer.TraceTargetTreeNode{
 		Name:            file,
 		Icon:            nil,
 		URI:             str,
@@ -139,7 +139,7 @@ func (t *DesktopTracer) FindTraceTarget(ctx context.Context, str string) (*trace
 		ExecutableName:  file,
 	}
 
-	return tttn, nil
+	return []*tracer.TraceTargetTreeNode{node}, nil
 }
 
 func (t *DesktopTracer) GetTraceTargetNode(ctx context.Context, uri string, iconDensity float32) (*tracer.TraceTargetTreeNode, error) {
