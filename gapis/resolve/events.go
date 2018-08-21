@@ -67,6 +67,18 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 	s := c.NewState(ctx)
 	lastCmd := api.CmdID(0)
 	var pending []service.EventKind
+
+	getTime := func(cmd api.Cmd) uint64 {
+		if !p.IncludeTiming {
+			return 0
+		}
+		for _, e := range cmd.Extras().All() {
+			if t, ok := e.(*api.TimeStamp); ok {
+				return t.Nanoseconds
+			}
+		}
+		return 0
+	}
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil)
 
@@ -103,16 +115,18 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		// Add LastInFrame event of a previous command first.
 		if p.LastInFrame && f.IsStartOfFrame() && lastCmd > 0 {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_LastInFrame,
-				Command: p.Capture.Command(uint64(lastCmd)),
+				Kind:      service.EventKind_LastInFrame,
+				Command:   p.Capture.Command(uint64(lastCmd)),
+				Timestamp: getTime(c.Commands[lastCmd]),
 			})
 		}
 
 		// Add any pending events (currently only FirstInFrame events).
 		for _, kind := range pending {
 			events = append(events, &service.Event{
-				Kind:    kind,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      kind,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		pending = nil
@@ -120,8 +134,9 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		// Add all first in frame events
 		if p.FirstInFrame && (f.IsStartOfFrame() || id == 0) {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_FirstInFrame,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_FirstInFrame,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.FirstInFrame {
@@ -132,53 +147,61 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		}
 		if p.Clears && f.IsClear() {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_Clear,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_Clear,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		// Add all non-special event types
 		events = append(events, epNormal...)
 		if p.DrawCalls && f.IsDrawCall() {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_DrawCall,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_DrawCall,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.TransformFeedbacks && f.IsTransformFeedback() {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_TransformFeedback,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_TransformFeedback,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.UserMarkers && f.IsUserMarker() {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_UserMarker,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_UserMarker,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.PushUserMarkers && f.IsPushUserMarker() {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_PushUserMarker,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_PushUserMarker,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.PopUserMarkers && f.IsPopUserMarker() {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_PopUserMarker,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_PopUserMarker,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.AllCommands {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_AllCommands,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_AllCommands,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		// Add LastInFrame events after other events for a given command
 		if p.LastInFrame && f.IsEndOfFrame() && id > 0 {
 			events = append(events, &service.Event{
-				Kind:    service.EventKind_LastInFrame,
-				Command: p.Capture.Command(uint64(id)),
+				Kind:      service.EventKind_LastInFrame,
+				Command:   p.Capture.Command(uint64(id)),
+				Timestamp: getTime(cmd),
 			})
 		}
 		if p.LastInFrame {
@@ -190,8 +213,9 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 			for _, e := range cmd.Extras().All() {
 				if _, ok := e.(*capture.FramebufferObservation); ok {
 					events = append(events, &service.Event{
-						Kind:    service.EventKind_FramebufferObservation,
-						Command: p.Capture.Command(uint64(id)),
+						Kind:      service.EventKind_FramebufferObservation,
+						Command:   p.Capture.Command(uint64(id)),
+						Timestamp: getTime(cmd),
 					})
 				}
 			}

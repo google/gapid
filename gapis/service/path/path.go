@@ -84,6 +84,7 @@ func (n *Metrics) Path() *Any                   { return &Any{Path: &Any_Metrics
 func (n *Parameter) Path() *Any                 { return &Any{Path: &Any_Parameter{n}} }
 func (n *Report) Path() *Any                    { return &Any{Path: &Any_Report{n}} }
 func (n *ResourceData) Path() *Any              { return &Any{Path: &Any_ResourceData{n}} }
+func (n *Messages) Path() *Any                  { return &Any{Path: &Any_Messages{n}} }
 func (n *MultiResourceData) Path() *Any         { return &Any{Path: &Any_MultiResourceData{n}} }
 func (n *Resources) Path() *Any                 { return &Any{Path: &Any_Resources{n}} }
 func (n *Result) Path() *Any                    { return &Any{Path: &Any_Result{n}} }
@@ -119,6 +120,7 @@ func (n MapIndex) Parent() Node                  { return oneOfNode(n.Map) }
 func (n Memory) Parent() Node                    { return n.After }
 func (n Mesh) Parent() Node                      { return oneOfNode(n.Object) }
 func (n Metrics) Parent() Node                   { return n.Command }
+func (n Messages) Parent() Node                  { return n.Capture }
 func (n Parameter) Parent() Node                 { return n.Command }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
@@ -152,6 +154,7 @@ func (n *GlobalState) SetParent(p Node)               { n.After, _ = p.(*Command
 func (n *ImageInfo) SetParent(p Node)                 {}
 func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command) }
 func (n *Metrics) SetParent(p Node)                   { n.Command, _ = p.(*Command) }
+func (n *Messages) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
@@ -237,6 +240,9 @@ func (n MapIndex) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v[%x]", n.Paren
 
 // Format implements fmt.Formatter to print the version.
 func (n Memory) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.memory-after", n.Parent()) }
+
+// Format implements fmt.Formatter to print the message path.
+func (n Messages) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.messages", n.Parent()) }
 
 // Format implements fmt.Formatter to print the version.
 func (n Mesh) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.mesh", n.Parent()) }
@@ -540,6 +546,11 @@ func (n *Capture) Report(d *Device, f *CommandFilter, display bool) *Report {
 // Contexts returns the path node to the capture's contexts.
 func (n *Capture) Contexts() *Contexts {
 	return &Contexts{Capture: n}
+}
+
+// Messages returns the path node to the capture's messages.
+func (n *Capture) Messages() *Messages {
+	return &Messages{Capture: n}
 }
 
 // Commands returns the path node to the capture's commands.

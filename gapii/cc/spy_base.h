@@ -109,6 +109,9 @@ class SpyBase {
   bool is_recording_state() const { return mIsRecordingState; }
   void set_recording_state(bool recording) { mIsRecordingState = recording; }
 
+  void set_record_timestamps(bool record) { mRecordTimestamps = record; }
+  bool should_record_timestamps() const { return mRecordTimestamps; }
+
  protected:
   // lock begins the interception of a single command. It must be called
   // before invoking any command on the spy. Blocks if any other thread
@@ -233,6 +236,9 @@ class SpyBase {
   // the commands should still be recorded, but the underlying functions
   // should not be called.
   bool mIsRecordingState;
+
+  // This is true if we should record timestamps and add them to the trace
+  bool mRecordTimestamps;
 };
 
 template <class T>

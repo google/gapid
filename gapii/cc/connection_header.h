@@ -48,6 +48,8 @@ class ConnectionHeader {
   static const uint32_t FLAG_NO_BUFFER = 0x00000020;
   // Hides unknown extensions from applications
   static const uint32_t FLAG_HIDE_UNKNOWN_EXTENSIONS = 0x00000040;
+  // Requests timestamps to be stored in the capture
+  static const uint32_t FLAG_STORE_TIMESTAMPS = 0x00000080;
 
   // read reads the ConnectionHeader from the provided stream, returning true
   // on success or false on error.

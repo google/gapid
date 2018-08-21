@@ -18,6 +18,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
+        "benchmark.go",
         "commands.go",
         "common.go",
         "devices.go",
@@ -47,6 +48,7 @@ go_library(
         "//core/app/auth:go_default_library",
         "//core/app/crash:go_default_library",
         "//core/app/flags:go_default_library",
+        "//core/app/status:go_default_library",
         "//core/data/pack:go_default_library",
         "//core/data/protoutil:go_default_library",
         "//core/event/task:go_default_library",

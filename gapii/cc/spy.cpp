@@ -28,6 +28,7 @@
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
 #include "core/cc/target.h"
+#include "core/cc/timer.h"
 #include "core/os/device/deviceinfo/cc/query.h"
 
 #include "gapis/api/gles/gles_pb/extras.pb.h"
@@ -160,6 +161,9 @@ Spy::Spy()
       (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
   SpyBase::mHideUnknownExtensions =
       (header.mFlags & ConnectionHeader::FLAG_HIDE_UNKNOWN_EXTENSIONS) != 0;
+  set_record_timestamps(
+      0 != (header.mFlags & ConnectionHeader::FLAG_STORE_TIMESTAMPS));
+
   // This will be over-written if we also set the header flags
   mSuspendCaptureFrames = header.mStartFrame;
   mCaptureFrames = header.mNumFrames;
@@ -472,8 +476,21 @@ void Spy::saveInitialState() {
   GAPID_INFO("Saving initial state");
 
   set_recording_state(true);
+  if (should_record_timestamps()) {
+    capture::TraceMessage timestamp;
+    timestamp.set_timestamp(core::GetNanoseconds());
+    timestamp.set_message("State serialization started");
+    mEncoder->object(&timestamp);
+  }
+
   saveInitialStateForApi<GlesSpy>("gles-initial-state");
   saveInitialStateForApi<VulkanSpy>("vulkan-initial-state");
+  if (should_record_timestamps()) {
+    capture::TraceMessage timestamp;
+    timestamp.set_timestamp(core::GetNanoseconds());
+    timestamp.set_message("State serialization finished");
+    mEncoder->object(&timestamp);
+  }
   set_recording_state(false);
 }
 

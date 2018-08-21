@@ -52,7 +52,7 @@ func (b *Simple) Status() Status { return b.LastStatus }
 
 // Shell implements the Device interface returning commands that will error if run.
 func (b *Simple) Shell(name string, args ...string) shell.Cmd {
-	return shell.Command(name, args...).On(simpleTarget{})
+	return shell.Command(name, args...).On(simpleTarget{}).Verbose()
 }
 
 // TempFile creates a temporary file on the given Device. It returns the

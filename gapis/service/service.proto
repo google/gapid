@@ -87,14 +87,15 @@ message Value {
     Event event = 8;
     Events events = 9;
     Memory memory = 10;
-    path.Any path = 11;
-    Report report = 12;
-    Resources resources = 13;
-    StateTree state_tree = 14;
-    StateTreeNode state_tree_node = 15;
-    Stats stats = 16;
-    Thread thread = 17;
-    Threads threads = 18;
+    Messages messages = 11;
+    path.Any path = 12;
+    Report report = 13;
+    Resources resources = 14;
+    StateTree state_tree = 15;
+    StateTreeNode state_tree_node = 16;
+    Stats stats = 17;
+    Thread thread = 18;
+    Threads threads = 19;
 
     device.Instance device = 20;
     DeviceTraceConfiguration traceConfig = 21;
@@ -237,6 +238,15 @@ message GetStringTableResponse {
     stringtable.StringTable table = 1;
     Error error = 2;
   }
+}
+
+message Message {
+  uint64 timestamp = 1;
+  string message = 2;
+}
+
+message Messages {
+  repeated Message list = 1;
 }
 
 message ImportCaptureRequest {
@@ -692,6 +702,7 @@ message ReportItem {
 message Stats {
   // The draw calls per frame, if requested in the path.Stats.
   repeated uint64 draw_calls = 1;
+  uint64 trace_start = 2;
 }
 
 // Thread represents a single thread in the capture.
@@ -855,6 +866,7 @@ message Constant {
 message Event {
   EventKind kind = 1;
   path.Command command = 2;
+  uint64 timestamp = 3;
 }
 
 enum EventKind {
@@ -993,8 +1005,10 @@ message TraceOptions {
   bool clear_cache = 18;
   // Hide unknown extensions
   bool hide_unknown_extensions = 19;
+  // Record trace timing
+  bool record_trace_times = 20;
   // Where should we save the capture file.
-  string server_local_save_path = 20;
+  string server_local_save_path = 21;
 }
 
 enum TraceEvent {

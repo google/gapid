@@ -199,7 +199,8 @@ type (
 			}
 		}
 		Record struct {
-			Errors bool `help:"_record device error state"`
+			Errors     bool `help:"_record device error state"`
+			TraceTimes bool `help:"record trace timing into the capture"`
 		}
 		Clear struct {
 			Cache bool `help:"clear package data before running it"`
@@ -220,6 +221,17 @@ type (
 		Local struct {
 			Port int `help:"connect to an application already running on the server using this port"`
 		}
+	}
+	BenchmarkFlags struct {
+		DeviceFlags
+		NumFrames      int    `help:"how many frames to capture"`
+		AdditionalArgs string `help:"additional arguments to pass to the application"`
+		WorkingDir     string `help:"working directory for the application"`
+		URI            string `help:"uri of the application to trace"`
+		API            string `help:"only capture the given API valid options are gles and vulkan"`
+		DumpTrace      string `help:"dump a systrace of gapis"`
+		StartFrame     int    `help:"perform a MEC trace starting at this frame"`
+		NoOpt          bool   `help:"disables optimization of the replay stream"`
 	}
 
 	PackagesFlags struct {

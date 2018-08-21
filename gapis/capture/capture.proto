@@ -38,6 +38,8 @@ message Header {
   // Version is incremented on breaking changes to the capture or command
   // format.
   sint32 version = 3;
+  // What time the capture was started (in local units)
+  uint64 start_time = 4;
 }
 
 // Resource is the storage type for some data keyed by an identifer.
@@ -69,4 +71,10 @@ message FramebufferObservation {
 // GlobalState is the object that denotes all of the API-specific initial states
 // in pack files. If present it will be right after the header.
 message GlobalState {
+}
+
+// TraceMessage is a message that was inserted into the trace file
+message TraceMessage {
+  uint64 timestamp = 1;
+  string message = 2;
 }

@@ -210,6 +210,7 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 	cleanup, portFile, err := loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
 	if err != nil {
 		cleanup(ctx)
+		panic(err)
 		return nil, nil, err
 	}
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
@@ -229,6 +230,7 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 
 	if err != nil {
 		cleanup(ctx)
+		panic(err)
 		return nil, nil, err
 	}
 	process := &gapii.Process{Port: boundPort, Device: t.b, Options: o.GapiiOptions()}

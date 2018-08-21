@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/analytics"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -51,6 +52,8 @@ const (
 	// HideUnkownExtensions will prevent any unknown extensions from being
 	// seen by the application
 	HideUnknownExtensions Flags = 0x00000040
+	// StoreTimestamps requests that the capture contain timestamps
+	StoreTimestamps Flags = 0x00000080
 
 	// GlesAPI is hard-coded bit mask for GLES API, it needs to be kept in sync
 	// with the api_index in the gles.api file.
@@ -163,6 +166,7 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer, writt
 			return 0, err
 		}
 	}
+	status.Event(ctx, status.ProcessScope, "Trace Connected")
 
 	conn := p.conn
 	defer conn.Close()

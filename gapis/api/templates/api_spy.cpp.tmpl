@@ -225,6 +225,9 @@
         {{end}}
 
         observer->observePending();
+        if (should_record_timestamps()) {
+          observer->observeTimestamp();
+        }
 
         {{if (GetAnnotation $ "blocking")}}
           unlock();

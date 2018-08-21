@@ -18,10 +18,17 @@
 #include "spy_base.h"
 
 #include "core/cc/thread.h"
+#include "core/cc/timer.h"
 
+#include "gapis/api/gfxtrace.pb.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
 
 #include <tuple>
+#if TARGET_OS == GAPID_OS_WINDOWS
+#include <windows.h>
+#else
+#include <time.h>
+#endif
 
 using core::Interval;
 
@@ -100,6 +107,16 @@ void CallObserver::observePending() {
     encodeAndDelete(observation);
   }
   mPendingObservations.clear();
+}
+
+void CallObserver::observeTimestamp() {
+  if (!mShouldTrace) {
+    return;
+  }
+  // Get time
+  auto timestamp = new api::TimeStamp();
+  timestamp->set_nanoseconds(core::GetNanoseconds());
+  encodeAndDelete(timestamp);
 }
 
 void CallObserver::enter(const ::google::protobuf::Message* cmd) {

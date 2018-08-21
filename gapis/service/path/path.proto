@@ -50,19 +50,20 @@ message Any {
     Memory memory = 22;
     Mesh mesh = 23;
     Metrics metrics = 24;
-    MultiResourceData multi_resource_data = 25;
-    Parameter parameter = 26;
-    Report report = 27;
-    ResourceData resource_data = 28;
-    Resources resources = 29;
-    Result result = 30;
-    Slice slice = 31;
-    State state = 32;
-    StateTree state_tree = 33;
-    StateTreeNode state_tree_node = 34;
-    StateTreeNodeForPath state_tree_node_for_path = 35;
-    Stats stats = 36;
-    Thumbnail thumbnail = 37;
+    Messages messages = 25;
+    MultiResourceData multi_resource_data = 26;
+    Parameter parameter = 27;
+    Report report = 28;
+    ResourceData resource_data = 29;
+    Resources resources = 30;
+    Result result = 31;
+    Slice slice = 32;
+    State state = 33;
+    StateTree state_tree = 34;
+    StateTreeNode state_tree_node = 35;
+    StateTreeNodeForPath state_tree_node_for_path = 36;
+    Stats stats = 37;
+    Thumbnail thumbnail = 38;
   }
 }
 
@@ -161,6 +162,7 @@ message Events {
   bool pop_user_markers = 10;
   bool framebuffer_observations = 11;
   bool all_commands = 12;
+  bool include_timing = 13;
 }
 
 // Parameter is the path to a single parameter on a command.
@@ -183,6 +185,11 @@ message Threads {
 message Thread {
   Capture capture = 1;
   uint64 ID = 2;
+}
+
+// Messages is path to a list of messages stored in the capture
+message Messages {
+  Capture capture = 1;
 }
 
 // Contexts is path to a list of contexts in a capture.
