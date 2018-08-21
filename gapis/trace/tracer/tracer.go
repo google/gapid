@@ -91,9 +91,9 @@ type Tracer interface {
 	// GetTraceTargetNode returns a TraceTargetTreeNode for the given URI
 	// on the device
 	GetTraceTargetNode(ctx context.Context, uri string, iconDensity float32) (*TraceTargetTreeNode, error)
-	// FindTraceTarget finds and returns a unique TraceTargetTreenode for a given
-	// search string on the device
-	FindTraceTarget(ctx context.Context, uri string) (*TraceTargetTreeNode, error)
+	// FindTraceTargets finds TraceTargetTreeNodes for a given search string on
+	// the device
+	FindTraceTargets(ctx context.Context, uri string) ([]*TraceTargetTreeNode, error)
 
 	// SetupTrace starts the application on the device, and causes it to wait
 	// for the trace to be started. It returns the process that was created, as

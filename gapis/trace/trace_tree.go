@@ -32,12 +32,12 @@ func TraceTargetTreeNode(ctx context.Context, device path.Device, uri string, de
 	return tracer.GetTraceTargetNode(ctx, uri, density)
 }
 
-// FindTraceTarget finds returns a unique trace target tree node if it exists
-func FindTraceTarget(ctx context.Context, device path.Device, uri string) (*tracer.TraceTargetTreeNode, error) {
+// FindTraceTargets returns trace targets matching the given search parameters.
+func FindTraceTargets(ctx context.Context, device path.Device, uri string) ([]*tracer.TraceTargetTreeNode, error) {
 	mgr := GetManager(ctx)
 	tracer, ok := mgr.tracers[device.ID.ID()]
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
 	}
-	return tracer.FindTraceTarget(ctx, uri)
+	return tracer.FindTraceTargets(ctx, uri)
 }

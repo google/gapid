@@ -96,7 +96,7 @@ func (verb *packagesVerb) traversePackageTree(
 		return task.StopReason(ctx)
 	}
 
-	node, err := c.TraceTargetTreeNode(ctx, &service.TraceTargetTreeRequest{
+	node, err := c.TraceTargetTreeNode(ctx, &service.TraceTargetTreeNodeRequest{
 		Device:  d,
 		Uri:     uri,
 		Density: float32(verb.IconDensity),

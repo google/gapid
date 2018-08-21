@@ -338,7 +338,7 @@ func (c *client) ClientEvent(ctx context.Context, req *service.ClientEventReques
 }
 
 // TraceTargetTreeNode returns a node in the trace target tree for the given device
-func (c *client) TraceTargetTreeNode(ctx context.Context, req *service.TraceTargetTreeRequest) (*service.TraceTargetTreeNode, error) {
+func (c *client) TraceTargetTreeNode(ctx context.Context, req *service.TraceTargetTreeNodeRequest) (*service.TraceTargetTreeNode, error) {
 	res, err := c.client.TraceTargetTreeNode(ctx, req)
 	if err != nil {
 		return nil, err
@@ -349,9 +349,9 @@ func (c *client) TraceTargetTreeNode(ctx context.Context, req *service.TraceTarg
 	return res.GetNode(), nil
 }
 
-// FindTraceTarget returns a node in the trace target tree for the given device
-func (c *client) FindTraceTarget(ctx context.Context, req *service.FindTraceTargetRequest) (*service.TraceTargetTreeNode, error) {
-	res, err := c.client.FindTraceTarget(ctx, req)
+// FindTraceTargets returns trace targets matching the given search parameters.
+func (c *client) FindTraceTargets(ctx context.Context, req *service.FindTraceTargetsRequest) ([]*service.TraceTargetTreeNode, error) {
+	res, err := c.client.FindTraceTargets(ctx, req)
 
 	if err != nil {
 		return nil, err
@@ -359,7 +359,7 @@ func (c *client) FindTraceTarget(ctx context.Context, req *service.FindTraceTarg
 	if err := res.GetError(); err != nil {
 		return nil, err.Get()
 	}
-	return res.GetNode(), nil
+	return res.GetNodes().GetNodes(), nil
 }
 
 type traceHandler struct {

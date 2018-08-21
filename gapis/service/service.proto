@@ -554,15 +554,15 @@ service Gapid {
   rpc ClientEvent(ClientEventRequest) returns (ClientEventResponse) {
   }
 
-  // FindTraceTarget returns a trace target node if there is a single
-  // unique option.
-  rpc FindTraceTarget(FindTraceTargetRequest)
-      returns (TraceTargetTreeResponse) {
+  // FindTraceTargets returns trace targets matching the given search
+  // parameters.
+  rpc FindTraceTargets(FindTraceTargetsRequest)
+      returns (FindTraceTargetsResponse) {
   }
 
   // TraceTargetTreeNode returns information about the trace target
-  rpc TraceTargetTreeNode(TraceTargetTreeRequest)
-      returns (TraceTargetTreeResponse) {
+  rpc TraceTargetTreeNode(TraceTargetTreeNodeRequest)
+      returns (TraceTargetTreeNodeResponse) {
   }
 
   // Trace returns a steam that can be used to start and stop
@@ -929,20 +929,31 @@ message TraceTargetTreeNode {
   string friendly_executable = 8;
 }
 
-message TraceTargetTreeRequest {
+message TraceTargetTreeNodes {
+  repeated TraceTargetTreeNode nodes = 1;
+}
+
+message TraceTargetTreeNodeRequest {
   path.Device device = 1;
   string uri = 2;
   float density = 3;
 }
 
-message FindTraceTargetRequest {
+message TraceTargetTreeNodeResponse {
+  oneof val {
+    TraceTargetTreeNode node = 1;
+    Error error = 2;
+  }
+}
+
+message FindTraceTargetsRequest {
   path.Device device = 1;
   string uri = 2;
 }
 
-message TraceTargetTreeResponse {
+message FindTraceTargetsResponse {
   oneof val {
-    TraceTargetTreeNode node = 1;
+    TraceTargetTreeNodes nodes = 1;
     Error error = 2;
   }
 }

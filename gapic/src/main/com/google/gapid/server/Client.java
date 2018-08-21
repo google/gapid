@@ -242,7 +242,7 @@ public class Client {
     return call(() -> String.format(
         "RPC->traceTargetTreeNode(%s, %s, %g)", shortDebugString(device), uri, density),
         stack -> Futures.transformAsync(
-            client.getTraceTargetTreeNode(Service.TraceTargetTreeRequest.newBuilder()
+            client.getTraceTargetTreeNode(Service.TraceTargetTreeNodeRequest.newBuilder()
                 .setDevice(device)
                 .setUri(uri)
                 .setDensity(density)

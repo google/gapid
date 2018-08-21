@@ -151,11 +151,11 @@ type Service interface {
 	// If the user has not opted-in for analytics then this call does nothing.
 	ClientEvent(ctx context.Context, req *ClientEventRequest) error
 
-	// FindTraceTarget returns a node that can be used by searching the given string
-	FindTraceTarget(ctx context.Context, req *FindTraceTargetRequest) (*TraceTargetTreeNode, error)
+	// FindTraceTargets returns trace targets matching the given search parameters.
+	FindTraceTargets(ctx context.Context, req *FindTraceTargetsRequest) ([]*TraceTargetTreeNode, error)
 
 	// TraceTargetTreeNode returns a node in the trace target tree for the given device
-	TraceTargetTreeNode(ctx context.Context, req *TraceTargetTreeRequest) (*TraceTargetTreeNode, error)
+	TraceTargetTreeNode(ctx context.Context, req *TraceTargetTreeNodeRequest) (*TraceTargetTreeNode, error)
 
 	// Trace controls setting up, starting and ending a trace
 	Trace(ctx context.Context) (TraceHandler, error)
