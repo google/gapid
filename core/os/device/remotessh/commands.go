@@ -344,7 +344,7 @@ func (b binding) IsFile(ctx context.Context, inPath string) (bool, error) {
 
 // IsDirectory returns true if the given path is a directory
 func (b binding) IsDirectory(ctx context.Context, inPath string) (bool, error) {
-	_, err := b.Shell("cd", `\`+inPath+`\`).Call(ctx)
+	_, err := b.Shell("cd", `"`+inPath+`"`).Call(ctx)
 	if err != nil {
 		return false, nil
 	}
