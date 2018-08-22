@@ -14,7 +14,12 @@
 
 package device
 
-import "github.com/google/gapid/core/data/id"
+import (
+	"encoding/hex"
+	"fmt"
+
+	"github.com/google/gapid/core/data/id"
+)
 
 // ID returns the identifier as a id.ID.
 func (i *ID) ID() id.ID {
@@ -30,4 +35,9 @@ func NewID(i id.ID) *ID {
 	data := make([]byte, 20)
 	copy(data, i[:])
 	return &ID{Data: data}
+}
+
+// Format implements fmt.Formatter to print id to f.
+func (i *ID) Format(f fmt.State, r rune) {
+	f.Write([]byte(hex.EncodeToString(i.Data)))
 }
