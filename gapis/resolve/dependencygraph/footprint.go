@@ -56,8 +56,7 @@ func NewFootprint(ctx context.Context, cmds []api.Cmd, numInitialCommands int) *
 		Commands:           cmds,
 		NumInitialCommands: numInitialCommands,
 		Behaviors:          make([]*Behavior, 0, len(cmds)),
-		// BehaviorIndices:    map[*Behavior]uint64{},
-		cmdIdxToBehavior: api.SubCmdIdxTrie{},
+		cmdIdxToBehavior:   api.SubCmdIdxTrie{},
 	}
 }
 
@@ -183,7 +182,6 @@ func (f *Footprint) AddBehavior(ctx context.Context, b *Behavior) bool {
 	fci := b.Owner
 	f.cmdIdxToBehavior.SetValue(fci, bi)
 	f.Behaviors = append(f.Behaviors, b)
-	// f.BehaviorIndices[b] = bi
 	b.Index = bi
 	return true
 }

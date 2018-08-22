@@ -161,6 +161,5 @@ func (e executor) HandleResourceRequest(ctx context.Context, req *gapir.Resource
 	if err := conn.SendResources(ctx, response); err != nil {
 		log.Errf(ctx, err, "Failed to send resources")
 	}
-	log.W(ctx, "Total resource size: %d, count: %d", totalReturnedSize, len(ids))
 	return nil
 }

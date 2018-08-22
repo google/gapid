@@ -899,16 +899,6 @@ func (l resBindingList) getBoundData(ctx context.Context,
 		}
 		data = append(data, b.backingData)
 	}
-	// for _, b := range bindingList {
-	// 	if b == nil {
-	// 		continue
-	// 	}
-	// 	d, ok := b.(dependencygraph.DefUseVariable)
-	// 	if !ok {
-	// 		continue
-	// 	}
-	// 	data = append(data, d)
-	// }
 	return data
 }
 
