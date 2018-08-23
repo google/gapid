@@ -16,8 +16,10 @@ package client
 
 import (
 	"context"
+	"io"
 
 	"github.com/google/gapid/core/event"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
@@ -25,6 +27,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -122,26 +125,59 @@ func (c *client) Follow(ctx context.Context, p *path.Any, r *path.ResolveConfig)
 	return res.GetPath(), nil
 }
 
-func (c *client) BeginCPUProfile(ctx context.Context) error {
-	res, err := c.client.BeginCPUProfile(ctx, &service.BeginCPUProfileRequest{})
-	if err != nil {
-		return err
-	}
-	if err := res.GetError(); err != nil {
-		return err.Get()
-	}
-	return nil
-}
+func (c *client) Profile(
+	ctx context.Context,
+	pprof, trace io.Writer,
+	memorySnapshotInterval uint32,
+) (stop func() error, err error) {
 
-func (c *client) EndCPUProfile(ctx context.Context) ([]byte, error) {
-	res, err := c.client.EndCPUProfile(ctx, &service.EndCPUProfileRequest{})
+	stream, err := c.client.Profile(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err := res.GetError(); err != nil {
-		return nil, err.Get()
+
+	req := &service.ProfileRequest{MemorySnapshotInterval: memorySnapshotInterval}
+	if pprof != nil {
+		req.Pprof = true
 	}
-	return res.GetData(), nil
+	if trace != nil {
+		req.Trace = true
+	}
+
+	if err := stream.Send(req); err != nil {
+		return nil, err
+	}
+
+	waitForEOF := task.Async(ctx, func(ctx context.Context) error {
+		for {
+			r, err := stream.Recv()
+			if err != nil {
+				if errors.Cause(err) == io.EOF {
+					return nil
+				}
+				return err
+			}
+			if err := r.GetError(); err != nil {
+				return err.Get()
+			}
+			if len(r.Pprof) > 0 && pprof != nil {
+				pprof.Write(r.Pprof)
+			}
+			if len(r.Trace) > 0 && trace != nil {
+				trace.Write(r.Trace)
+			}
+		}
+	})
+
+	stop = func() error {
+		// Tell the server we want to stop profiling.
+		if err := stream.Send(&service.ProfileRequest{}); err != nil {
+			return err
+		}
+		return waitForEOF()
+	}
+
+	return stop, nil
 }
 
 func (c *client) GetPerformanceCounters(ctx context.Context) (string, error) {

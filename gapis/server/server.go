@@ -78,7 +78,6 @@ func New(ctx context.Context, cfg Config) Server {
 		cfg.EnableLocalFiles,
 		cfg.DeviceScanDone,
 		cfg.LogBroadcaster,
-		bytes.Buffer{},
 	}
 }
 
@@ -88,7 +87,6 @@ type server struct {
 	enableLocalFiles bool
 	deviceScanDone   task.Signal
 	logBroadcaster   *log.Broadcaster
-	profile          bytes.Buffer
 }
 
 func (s *server) Ping(ctx context.Context) error {
@@ -379,19 +377,44 @@ func (s *server) Find(ctx context.Context, req *service.FindRequest, handler ser
 	return resolve.Find(ctx, req, handler)
 }
 
-func (s *server) BeginCPUProfile(ctx context.Context) error {
-	ctx = status.Start(ctx, "RPC BeginCPUProfile")
+func (s *server) Profile(ctx context.Context, pprofW, traceW io.Writer, memorySnapshotInterval uint32) (stop func() error, err error) {
+	ctx = status.Start(ctx, "RPC Profile")
 	defer status.Finish(ctx)
-	ctx = log.Enter(ctx, "BeginCPUProfile")
-	s.profile.Reset()
-	return pprof.StartCPUProfile(&s.profile)
-}
+	ctx = log.Enter(ctx, "Profile")
 
-func (s *server) EndCPUProfile(ctx context.Context) ([]byte, error) {
-	ctx = status.Start(ctx, "RPC EndCPUProfile")
-	defer status.Finish(ctx)
-	ctx = log.Enter(ctx, "EndCPUProfile")
-	return s.profile.Bytes(), nil
+	stop = task.Async(ctx, func(ctx context.Context) error {
+		// flush is a list of functions that need to be called once the function
+		// returns.
+		flush := []func(){}
+		defer func() {
+			for _, f := range flush {
+				f()
+			}
+		}()
+
+		if pprofW != nil {
+			// Pprof CPU profiling requested.
+			if err := pprof.StartCPUProfile(pprofW); err != nil {
+				return err
+			}
+			flush = append(flush, pprof.StopCPUProfile)
+		}
+
+		if traceW != nil {
+			// Chrome trace data requested.
+			stop := status.RegisterTracer(traceW)
+			flush = append(flush, stop)
+		}
+
+		// Poll the memory. This will block until the context is cancelled.
+		msi := time.Second * time.Duration(memorySnapshotInterval)
+		return task.Poll(ctx, msi, func(ctx context.Context) error {
+			status.SnapshotMemory(ctx)
+			return nil
+		})
+	})
+
+	return stop, nil
 }
 
 func (s *server) GetPerformanceCounters(ctx context.Context) (string, error) {

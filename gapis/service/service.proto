@@ -184,19 +184,20 @@ message FollowResponse {
   }
 }
 
-message BeginCPUProfileRequest {
-}
-message BeginCPUProfileResponse {
-  Error error = 1;
+message ProfileRequest {
+  // Settings for what profile data the client wants.
+  // Set all to false to flush any pending data and disable profiling.
+  bool pprof = 1;  // Enable pprof profiling?
+  bool trace = 2;  // Enable trace data?
+
+  // Time in seconds between memory snapshots
+  uint32 memory_snapshot_interval = 3;
 }
 
-message EndCPUProfileRequest {
-}
-message EndCPUProfileResponse {
-  oneof res {
-    bytes data = 1;
-    Error error = 2;
-  }
+message ProfileResponse {
+  bytes pprof = 1;  // Streamed pprof data.
+  bytes trace = 2;  // Streamed trace data.
+  Error error = 3;
 }
 
 message GetPerformanceCountersRequest {
@@ -574,15 +575,8 @@ service Gapid {
   // Below are debugging APIs which may be removed in the future.
   ///////////////////////////////////////////////////////////////
 
-  // BeginCPUProfile starts CPU self-profiling of the server.
-  // If the CPU is already being profiled then this function will return an
-  // error.
-  rpc BeginCPUProfile(BeginCPUProfileRequest)
-      returns (BeginCPUProfileResponse) {
-  }
-
-  // EndCPUProfile ends the CPU profile, returning the pprof samples.
-  rpc EndCPUProfile(EndCPUProfileRequest) returns (EndCPUProfileResponse) {
+  // Profile starts self-profiling the server.
+  rpc Profile(stream ProfileRequest) returns (stream ProfileResponse) {
   }
 
   // GetPerformanceCounters returns the values of all global counters as
