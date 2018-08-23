@@ -278,6 +278,15 @@ message SaveCaptureResponse {
   Error error = 1;
 }
 
+message ExportReplayRequest {
+  path.Capture capture = 1;
+  string path = 2;
+  path.Device device = 3;
+}
+message ExportReplayResponse {
+  Error error = 1;
+}
+
 message GetDevicesRequest {
 }
 message GetDevicesResponse {
@@ -503,6 +512,10 @@ service Gapid {
 
   // SaveCapture saves capture to a file.
   rpc SaveCapture(SaveCaptureRequest) returns (SaveCaptureResponse) {
+  }
+
+  // ExportReplay saves replay commands and assets to file.
+  rpc ExportReplay(ExportReplayRequest) returns (ExportReplayResponse) {
   }
 
   // GetDevices returns the full list of replay devices avaliable to the server.

@@ -17,6 +17,8 @@
 #ifndef CORE_ARCHIVE_H
 #define CORE_ARCHIVE_H
 
+#ifdef __cplusplus
+
 #include "id.h"
 
 #include <string>
@@ -56,5 +58,15 @@ class Archive {
 };
 
 }  // namespace core
+
+extern "C" {
+#endif
+typedef struct archive_t archive;
+archive* archive_create(const char* archiveName);
+void archive_destroy(archive* a);
+int archive_write(archive* a, const char* id, const void* buffer, size_t size);
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #endif  // CORE_ARCHIVE_H

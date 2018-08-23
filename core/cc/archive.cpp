@@ -129,3 +129,17 @@ bool Archive::write(const std::string& id, const void* buffer, uint32_t size) {
 }
 
 }  // namespace core
+
+extern "C" {
+
+archive* archive_create(const char* archiveName) {
+  return reinterpret_cast<archive*>(new core::Archive(archiveName));
+}
+
+void archive_destroy(archive* a) { delete reinterpret_cast<core::Archive*>(a); }
+
+int archive_write(archive* a, const char* id, const void* buffer, size_t size) {
+  return reinterpret_cast<core::Archive*>(a)->write(id, buffer, size) ? 1 : 0;
+}
+
+}  // extern "C"

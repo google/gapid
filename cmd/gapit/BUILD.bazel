@@ -24,6 +24,7 @@ go_library(
         "dump.go",
         "dump_pipeline.go",
         "dump_shaders.go",
+        "export_replay.go",
         "flags.go",
         "inputs.go",
         "main.go",

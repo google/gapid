@@ -17,6 +17,7 @@
 #include "gapir/cc/context.h"
 #include "gapir/cc/crash_uploader.h"
 #include "gapir/cc/memory_manager.h"
+#include "gapir/cc/replay_archive.h"
 #include "gapir/cc/replay_connection.h"
 #include "gapir/cc/resource_disk_cache.h"
 #include "gapir/cc/resource_in_memory_cache.h"
@@ -210,9 +211,12 @@ int main(int argc, const char* argv[]) {
   const char* portArgStr = "0";
   const char* authTokenFile = nullptr;
   int idleTimeoutSec = 0;
+  const char* replayArchive = nullptr;
 
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--auth-token-file") == 0) {
+    if (strcmp(argv[i], "--replay-archive") == 0) {
+      replayArchive = argv[++i];
+    } else if (strcmp(argv[i], "--auth-token-file") == 0) {
       if (i + 1 >= argc) {
         GAPID_FATAL("Usage: --auth-token-file <token-string>");
       }
@@ -281,6 +285,24 @@ int main(int argc, const char* argv[]) {
   if (wait_for_debugger) {
     GAPID_INFO("Waiting for debugger to attach");
     core::Debugger::waitForAttach();
+  }
+
+  if (replayArchive) {
+    core::CrashHandler crashHandler;
+    GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
+    MemoryManager memoryManager(memorySizes);
+    std::string payloadPath = std::string(replayArchive) + "/payload.bin";
+    gapir::ReplayArchive conn(payloadPath);
+    std::unique_ptr<ResourceProvider> resourceProvider =
+        ResourceDiskCache::create(nullptr, replayArchive);
+    std::unique_ptr<Context> context = Context::create(
+        &conn, crashHandler, resourceProvider.get(), &memoryManager);
+
+    GAPID_INFO("Replay started");
+    bool ok = context->interpret();
+    GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
+
+    return ok ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
   core::CrashHandler crashHandler;
