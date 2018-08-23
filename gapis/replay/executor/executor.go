@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash/reporting"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
@@ -52,6 +53,9 @@ func Execute(
 	memoryLayout *device.MemoryLayout,
 	os *device.OS) error {
 
+	ctx = status.Start(ctx, "Execute")
+	defer status.Finish(ctx)
+
 	// The memoryLayout is specific to the ABI of the requested capture,
 	// while the OS is not. Thus a device.Configuration is not applicable here.
 	return executor{
@@ -81,11 +85,17 @@ func (e executor) execute(ctx context.Context, connection *gapir.Connection) err
 
 // HandlePayloadRequest implements gapir.ReplayResponseHandler interface.
 func (e executor) HandlePayloadRequest(ctx context.Context, conn *gapir.Connection) error {
+	ctx = status.Start(ctx, "Payload Request")
+	defer status.Finish(ctx)
+
 	return conn.SendPayload(ctx, e.payload)
 }
 
 // HandlePostData implements gapir.ReplayResponseHandler interface.
 func (e executor) HandlePostData(ctx context.Context, postData *gapir.PostData, conn *gapir.Connection) error {
+	ctx = status.Start(ctx, "Post Data (count: %d)", len(postData.PostDataPieces))
+	defer status.Finish(ctx)
+
 	e.handlePost(postData)
 	return nil
 }
@@ -120,6 +130,9 @@ func (e executor) HandleCrashDump(ctx context.Context, dump *gapir.CrashDump, co
 
 // HandleResourceRequest implements gapir.ReplayResponseHandler interface.
 func (e executor) HandleResourceRequest(ctx context.Context, req *gapir.ResourceRequest, conn *gapir.Connection) error {
+	ctx = status.Start(ctx, "Resources Request (count: %d)", len(req.GetIds()))
+	defer status.Finish(ctx)
+
 	ctx = log.Enter(ctx, "handleResourceRequest")
 	if req == nil {
 		return log.Err(ctx, nil, "Cannot handle nil resource request")

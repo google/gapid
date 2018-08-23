@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -50,6 +51,9 @@ type deviceArch struct {
 
 // Connect opens a connection to the replay device.
 func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (*Connection, error) {
+	ctx = status.Start(ctx, "Connect")
+	defer status.Finish(ctx)
+
 	s, isNew, err := c.getOrCreateSession(ctx, d, abi)
 	if err != nil {
 		return nil, err

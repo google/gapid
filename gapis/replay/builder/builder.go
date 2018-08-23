@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
@@ -583,7 +584,10 @@ func (b *Builder) RegisterNotificationReader(reader NotificationReader) {
 // sent to the replay virtual-machine and a PostDataHandler for interpreting
 // the responses.
 func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, NotificationHandler, error) {
+	ctx = status.Start(ctx, "Build")
+	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Build")
+
 	if config.DebugReplayBuilder {
 		log.I(ctx, "Instruction count: %d", len(b.instructions))
 		b.assertResourceSizesAreAsExpected(ctx)

@@ -23,6 +23,7 @@ package sync
 import (
 	"context"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -145,6 +146,10 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	postCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
 	preSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd),
 	postSubCmdCb func(*api.GlobalState, api.SubCmdIdx, api.Cmd)) error {
+
+	ctx = status.Start(ctx, "Sync.MutateWithSubcommands")
+	defer status.Finish(ctx)
+
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
