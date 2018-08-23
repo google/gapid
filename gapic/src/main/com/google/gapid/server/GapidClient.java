@@ -33,10 +33,8 @@ public interface GapidClient {
   public ListenableFuture<Service.GetResponse> get(Service.GetRequest request);
   public ListenableFuture<Service.SetResponse> set(Service.SetRequest request);
   public ListenableFuture<Service.FollowResponse> follow(Service.FollowRequest request);
-  public ListenableFuture<Service.BeginCPUProfileResponse> beginCPUProfile(
-      Service.BeginCPUProfileRequest request);
-  public ListenableFuture<Service.EndCPUProfileResponse> endCPUProfile(
-      Service.EndCPUProfileRequest request);
+  public StreamSender<Service.ProfileRequest> profile(
+      StreamConsumer<Service.ProfileResponse> response);
   public ListenableFuture<Service.GetPerformanceCountersResponse> getPerformanceCounters(
       Service.GetPerformanceCountersRequest request);
   public ListenableFuture<Service.GetProfileResponse> getProfile(Service.GetProfileRequest request);

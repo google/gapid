@@ -51,6 +51,18 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 	return filter, nil
 }
 
+type clientCloser struct {
+	client.Client
+	preClose []func()
+}
+
+func (c clientCloser) Close() error {
+	for i := range c.preClose { // Close in reverse order to append
+		c.preClose[len(c.preClose)-i-1]()
+	}
+	return c.Client.Close()
+}
+
 func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags) (client.Client, error) {
 	args := strings.Fields(gapisFlags.Args)
 
@@ -63,9 +75,6 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 		// Pass the arguments for gapir further to gapis. Add flag to tag the
 		// gapir argument string for gapis.
 		args = append(args, "--gapir-args", gapirFlags.Args)
-	}
-	if gapisFlags.Profile != "" {
-		args = append(args, "-cpuprofile", gapisFlags.Profile)
 	}
 	args = append(args, "--idle-timeout", "1m")
 
@@ -82,6 +91,42 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	})
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
+	}
+
+	close := []func(){}
+
+	openFile := func(path string) (*os.File, error) {
+		if path == "" {
+			return nil, nil
+		}
+		file, err := os.Create(path)
+		if err != nil {
+			return nil, log.Errf(ctx, err, "Failed to open file at '%v'", path)
+		}
+		close = append(close, func() { file.Close() })
+		return file, nil
+	}
+
+	var pprof, trace *os.File
+	if gapisFlags.Profile.Pprof != "" {
+		pprof, err = openFile(gapisFlags.Profile.Pprof)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if gapisFlags.Profile.Trace != "" {
+		trace, err = openFile(gapisFlags.Profile.Trace)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if pprof != nil || trace != nil {
+		stop, err := client.Profile(ctx, pprof, trace, 1)
+		if err != nil {
+			log.E(ctx, "Profile failed: %v", err)
+			return nil, err
+		}
+		close = append(close, func() { stop() })
 	}
 
 	// We start this goroutine to send a heartbeat to gapis.
@@ -105,7 +150,7 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 		crash.Go(func() { client.GetLogStream(ctx, h) })
 	}
 
-	return client, nil
+	return clientCloser{client, close}, nil
 }
 
 func getDevice(ctx context.Context, client client.Client, capture *path.Capture, flags GapirFlags) (*path.Device, error) {

@@ -82,15 +82,10 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
-  public ListenableFuture<Service.BeginCPUProfileResponse> beginCPUProfile(
-      Service.BeginCPUProfileRequest request) {
-    return client.beginCPUProfile(request);
-  }
-
-  @Override
-  public ListenableFuture<Service.EndCPUProfileResponse> endCPUProfile(
-      Service.EndCPUProfileRequest request) {
-    return client.endCPUProfile(request);
+  public GapidClient.StreamSender<Service.ProfileRequest> profile(
+      StreamConsumer<Service.ProfileResponse> response) {
+    StreamHandler<Service.ProfileResponse> handler = StreamHandler.wrap(response);
+    return Sender.wrap(handler.future, stub.profile(handler));
   }
 
   @Override

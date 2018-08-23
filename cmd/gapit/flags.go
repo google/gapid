@@ -86,8 +86,12 @@ type (
 	DevicesFlags struct {
 		Gapis GapisFlags
 	}
+	ProfileFlags struct {
+		Pprof string `help:"_produce a pprof file"`
+		Trace string `help:"_produce a trace file"`
+	}
 	GapisFlags struct {
-		Profile string `help:"_produce a pprof file from gapis"`
+		Profile ProfileFlags
 		Port    int    `help:"gapis tcp port to connect to, 0 means start new instance."`
 		Args    string `help:"_The arguments to be passed to gapis"`
 		Token   string `help:"_The auth token to use when connecting to an existing server."`

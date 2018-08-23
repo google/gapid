@@ -19,6 +19,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/assert"
@@ -249,14 +250,20 @@ func TestFollow(t *testing.T) {
 	// TODO
 }
 
-func TestCPUProfile(t *testing.T) {
+func TestProfile(t *testing.T) {
 	ctx, server, shutdown := setup(t)
 	defer shutdown()
-	err := server.BeginCPUProfile(ctx)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	data, err := server.EndCPUProfile(ctx)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	assert.For(ctx, "data").That(data).IsNotNil()
+	pprof := &bytes.Buffer{}
+	trace := &bytes.Buffer{}
+	stop, err := server.Profile(ctx, pprof, trace, 1)
+	if assert.For(ctx, "Profile").ThatError(err).Succeeded() {
+		time.Sleep(time.Second)
+		err := stop()
+		if assert.For(ctx, "stop").ThatError(err).Succeeded() {
+			assert.For(ctx, "pprof").That(pprof.Len()).NotEquals(0)
+			assert.For(ctx, "trace").That(trace.Len()).NotEquals(0)
+		}
+	}
 }
 
 func TestGetPerformanceCounters(t *testing.T) {

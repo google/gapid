@@ -17,6 +17,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoutil"
@@ -117,15 +118,13 @@ type Service interface {
 	// If the value at p does not link to anything then nil is returned.
 	Follow(ctx context.Context, p *path.Any, c *path.ResolveConfig) (*path.Any, error)
 
-	// BeginCPUProfile starts CPU self-profiling of the server.
-	// If the CPU is already being profiled then this function will return an
-	// error.
+	// Profile starts self-profiling of the server.
+	// If pprof is not nil then CPU pprof data will be written to this writer
+	// until stop is called.
+	// If trace is not nil then chrome trace data will be written to this writer
+	// until stop is called.
 	// This is a debug API, and may be removed in the future.
-	BeginCPUProfile(ctx context.Context) error
-
-	// EndCPUProfile ends the CPU profile, returning the pprof samples.
-	// This is a debug API, and may be removed in the future.
-	EndCPUProfile(ctx context.Context) ([]byte, error)
+	Profile(ctx context.Context, pprof, trace io.Writer, memorySnapshotInterval uint32) (stop func() error, err error)
 
 	// GetPerformanceCounters returns the values of all global counters as
 	// a string.

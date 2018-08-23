@@ -15,10 +15,12 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -191,22 +193,114 @@ func (s *grpcServer) Follow(ctx xctx.Context, req *service.FollowRequest) (*serv
 	return &service.FollowResponse{Res: &service.FollowResponse_Path{Path: res}}, nil
 }
 
-func (s *grpcServer) BeginCPUProfile(ctx xctx.Context, req *service.BeginCPUProfileRequest) (*service.BeginCPUProfileResponse, error) {
-	defer s.inRPC()()
-	err := s.handler.BeginCPUProfile(s.bindCtx(ctx))
-	if err := service.NewError(err); err != nil {
-		return &service.BeginCPUProfileResponse{Error: err}, nil
-	}
-	return &service.BeginCPUProfileResponse{}, nil
+type syncBuffer struct {
+	bytes.Buffer
+	sync.Mutex
 }
 
-func (s *grpcServer) EndCPUProfile(ctx xctx.Context, req *service.EndCPUProfileRequest) (*service.EndCPUProfileResponse, error) {
+func (b *syncBuffer) Write(p []byte) (n int, err error) {
+	b.Lock()
+	defer b.Unlock()
+	return b.Buffer.Write(p)
+}
+
+func (s *grpcServer) Profile(stream service.Gapid_ProfileServer) error {
 	defer s.inRPC()()
-	data, err := s.handler.EndCPUProfile(s.bindCtx(ctx))
-	if err := service.NewError(err); err != nil {
-		return &service.EndCPUProfileResponse{Res: &service.EndCPUProfileResponse_Error{Error: err}}, nil
+	ctx := s.bindCtx(stream.Context())
+
+	// stop stops any running profiles, waiting for them to complete.
+	var stop func() error
+
+	// flush writes out any pending data to pprofBuf and traceBuf.
+	var pprofBuf, traceBuf syncBuffer
+	flush := func() error {
+		pprofBuf.Lock()
+		traceBuf.Lock()
+		defer pprofBuf.Unlock()
+		defer traceBuf.Unlock()
+
+		if len(pprofBuf.Bytes()) == 0 && len(traceBuf.Bytes()) == 0 {
+			return nil // Nothing to send.
+		}
+
+		err := stream.Send(&service.ProfileResponse{
+			Pprof: pprofBuf.Bytes(),
+			Trace: traceBuf.Bytes(),
+		})
+		if err != nil {
+			return log.Err(ctx, err, "stream.Send")
+		}
+		pprofBuf.Reset()
+		traceBuf.Reset()
+		return nil
 	}
-	return &service.EndCPUProfileResponse{Res: &service.EndCPUProfileResponse_Data{Data: data}}, nil
+
+	// Flush the pending data every second.
+	stopPolling := task.Async(ctx, func(ctx context.Context) error {
+		return task.Poll(ctx, time.Second, func(context.Context) error { return flush() })
+	})
+	defer stopPolling()
+
+	// sendErr attempts to send the err as a response. If succesfully sent, then
+	// sendErr returns nil, otherwise err.
+	sendErr := func(err error) error {
+		if err == nil {
+			return nil
+		}
+		if err := service.NewError(err); err != nil {
+			if err2 := stream.Send(&service.ProfileResponse{Error: err}); err2 == nil {
+				return nil
+			}
+		}
+		return err
+	}
+
+	// stopAndFlush stops any running profile, and flushes any pending data.
+	stopAndFlush := func() error {
+		if stop != nil {
+			if err := stop(); err != nil && err != context.Canceled {
+				return log.Err(ctx, err, "profile stop")
+			}
+			stop = nil
+		}
+		if err := flush(); err != nil {
+			return log.Err(ctx, err, "profile flush")
+		}
+		return nil
+	}
+	defer stopAndFlush()
+
+	for {
+		// Grab an incoming request.
+		req, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		// Stop and flush any existing profiles.
+		if err := stopAndFlush(); err != nil {
+			return sendErr(err)
+		}
+
+		// If there are no profile modes in the request, then the RPC can finish.
+		if !req.Pprof && !req.Trace {
+			return sendErr(stopAndFlush())
+		}
+
+		var pprof, trace io.Writer
+		if req.Pprof {
+			pprof = &pprofBuf
+		}
+		if req.Trace {
+			trace = &traceBuf
+		}
+
+		// Start the profile.
+		stop, err = s.handler.Profile(ctx, pprof, trace, req.MemorySnapshotInterval)
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func (s *grpcServer) GetPerformanceCounters(ctx xctx.Context, req *service.GetPerformanceCountersRequest) (*service.GetPerformanceCountersResponse, error) {
