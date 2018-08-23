@@ -149,3 +149,11 @@ func Event(ctx context.Context, scope EventScope, name string, args ...interface
 	t := GetTask(ctx)
 	onEvent(ctx, t, scope, name, args)
 }
+
+// Traverse calls cb for all descendant tasks.
+func (t *Task) Traverse(cb func(*Task)) {
+	for _, c := range t.SubTasks() {
+		cb(c)
+		c.Traverse(cb)
+	}
+}
