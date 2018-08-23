@@ -6,6 +6,7 @@ go_library(
         "context.go",
         "listener.go",
         "logger.go",
+        "memory.go",
         "status.go",
         "task.go",
     ],

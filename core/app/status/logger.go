@@ -16,6 +16,7 @@ package status
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/google/gapid/core/log"
@@ -51,4 +52,16 @@ func (l statusLogger) OnTaskProgress(ctx context.Context, t *Task) {
 func (l statusLogger) OnTaskFinish(ctx context.Context, t *Task) {
 	log.I(ctx, "%v Finished in %v", t, t.TimeSinceStart())
 	delete(l.lastProgressUpdate, t)
+}
+
+func (l statusLogger) OnEvent(ctx context.Context, t *Task, n string, s EventScope) {
+	if s == TaskScope {
+		log.I(ctx, "%v Event: %v %v after start", t, n, t.TimeSinceStart())
+	} else {
+		log.I(ctx, "%v Event: %v %v", s, n, time.Now())
+	}
+}
+
+func (l statusLogger) OnMemorySnapshot(ctx context.Context, stats runtime.MemStats) {
+	log.I(ctx, "Memory %+v bytes", stats.Alloc)
 }
