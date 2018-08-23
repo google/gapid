@@ -106,7 +106,7 @@ func (t *Task) SubTasks() []*Task {
 // End() must be called with the returned context once the task has been
 // finished.
 func Start(ctx context.Context, name string, args ...interface{}) context.Context {
-	parent := get(ctx)
+	parent := GetTask(ctx)
 	if parent == nil {
 		parent = &app
 	}
@@ -119,13 +119,13 @@ func Start(ctx context.Context, name string, args ...interface{}) context.Contex
 	}
 	parent.add(t)
 	onTaskStart(ctx, t)
-	return put(ctx, t)
+	return PutTask(ctx, t)
 }
 
 // UpdateProgress updates the progress of the task started with Start().
 // n is the number of units of completion, which ranges from [0, outof).
 func UpdateProgress(ctx context.Context, n, outof int) {
-	t := get(ctx)
+	t := GetTask(ctx)
 	if t == nil {
 		panic("status.UpdateProgress called with no corresponding status.Start")
 	}
@@ -135,10 +135,11 @@ func UpdateProgress(ctx context.Context, n, outof int) {
 
 // Finish marks the task started with Start() as finished.
 func Finish(ctx context.Context) {
-	t := get(ctx)
+	t := GetTask(ctx)
 	if t == nil {
 		panic("status.Finish called with no corresponding status.Start")
 	}
 	onTaskFinish(ctx, t)
 	t.parent.remove(t)
 }
+

@@ -24,13 +24,13 @@ type taskKeyTy string
 
 const taskKey = taskKeyTy("task")
 
-// put attaches a task to a Context.
-func put(ctx context.Context, t *Task) context.Context {
+// PutTask attaches a task to a Context.
+func PutTask(ctx context.Context, t *Task) context.Context {
 	return keys.WithValue(ctx, taskKey, t)
 }
 
-// get retrieves the task from a context previously annotated by Put.
-func get(ctx context.Context) *Task {
+// GetTask retrieves the task from a context previously annotated by PutTask.
+func GetTask(ctx context.Context) *Task {
 	val := ctx.Value(taskKey)
 	if val == nil {
 		return nil
