@@ -18,6 +18,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/google/gapid/core/app/crash"
 )
 
 // Task is the unit of work used in the task system.
@@ -56,5 +58,34 @@ func Retry(ctx context.Context, maxAttempts int, retryDelay time.Duration, f fun
 			return StopReason(ctx)
 		case <-time.After(retryDelay):
 		}
+	}
+}
+
+// Poll blocks, calling f at regular intervals of i until the context is
+// cancelled or f returns an error.
+func Poll(ctx context.Context, i time.Duration, f func(context.Context) error) error {
+	for {
+		if err := f(ctx); err != nil {
+			return err
+		}
+		select {
+		case <-ShouldStop(ctx):
+			return StopReason(ctx)
+		case <-time.After(i):
+		}
+	}
+}
+
+// Async runs the task t on a new go-routine, retuning a function that cancels
+// the task's context, and blocks until the task completes.
+func Async(ctx context.Context, t Task) (stop func() error) {
+	err := make(chan error, 1)
+	ctx, cancel := WithCancel(ctx)
+	crash.Go(func() {
+		err <- t(ctx)
+	})
+	return func() error {
+		cancel()
+		return <-err
 	}
 }
