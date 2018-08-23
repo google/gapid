@@ -9,6 +9,7 @@ go_library(
         "memory.go",
         "status.go",
         "task.go",
+        "tracer.go",
     ],
     importpath = "github.com/google/gapid/core/app/status",
     visibility = ["//visibility:public"],
