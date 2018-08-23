@@ -108,7 +108,7 @@ func (m *Manager) execute(
 	generator Generator,
 	requests []RequestAndResult) error {
 
-	ctx = status.Start(ctx, "Replay")
+	ctx = status.Start(ctx, "Batch (%d x config: %T%+v)", len(requests), cfg, cfg)
 	defer status.Finish(ctx)
 
 	executeCounter.Increment()
@@ -176,9 +176,6 @@ func (m *Manager) execute(
 	var handlePost builder.PostDataHandler
 	var handleNotification builder.NotificationHandler
 	builderBuildTimer.Time(func() {
-		ctx := status.Start(ctx, "Build")
-		defer status.Finish(ctx)
-
 		payload, handlePost, handleNotification, err = b.Build(ctx)
 	})
 	if err != nil {
@@ -200,9 +197,6 @@ func (m *Manager) execute(
 	}
 
 	executeTimer.Time(func() {
-		ctx := status.Start(ctx, "Execute")
-		defer status.Finish(ctx)
-
 		err = executor.Execute(
 			ctx,
 			payload,

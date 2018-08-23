@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/app/benchmark"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
@@ -79,6 +80,9 @@ func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api
 }
 
 func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
+	ctx = status.Start(ctx, "DCE Flush")
+	defer status.Finish(ctx)
+
 	if t.KeepAllAlive {
 		api.ForeachCmd(ctx, t.depGraph.Commands, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 			out.MutateAndWrite(ctx, t.depGraph.GetCmdID(int(index)), cmd)

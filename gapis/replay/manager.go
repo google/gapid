@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
@@ -74,6 +75,9 @@ func (m *Manager) Replay(
 	req Request,
 	generator Generator,
 	hints *service.UsageHints) (val interface{}, err error) {
+
+	ctx = status.Start(ctx, "Replay Request")
+	defer status.Finish(ctx)
 
 	log.D(ctx, "Replay request")
 	s, err := m.scheduler(ctx, intent.Device.ID.ID())

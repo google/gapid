@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/gapis/replay/builder"
@@ -32,6 +33,9 @@ import (
 // If cb panics, the error will be annotated with the panicing command index and
 // command.
 func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID, Cmd) error) error {
+	ctx = status.Start(ctx, "ForeachCmd<count: %v>", len(cmds))
+	defer status.Finish(ctx)
+
 	var idx CmdID
 	var cmd Cmd
 	defer func() {

@@ -29,6 +29,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/benchmark:go_default_library",
+        "//core/app/status:go_default_library",
         "//core/log:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/transform:go_default_library",

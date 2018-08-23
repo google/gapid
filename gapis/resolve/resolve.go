@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/dictionary"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/math/sint"
@@ -285,6 +286,9 @@ func ResolveService(ctx context.Context, p path.Node, r *path.ResolveConfig) (in
 // p without converting the potentially internal result to a service
 // representation.
 func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (interface{}, error) {
+	ctx = status.Start(ctx, "Resolve<%v>", p)
+	defer status.Finish(ctx)
+
 	switch p := p.(type) {
 	case *path.ArrayIndex:
 		return ArrayIndex(ctx, p, r)
