@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/event/task"
@@ -124,6 +125,8 @@ func (r *record) resolve(ctx context.Context) error {
 		if !isResolvable {
 			return nil
 		}
+		ctx = status.Start(ctx, "DB Resolve<%T> %p", resolvable, r.resolveState)
+		defer status.Finish(ctx)
 		resolved, err := resolvable.Resolve(ctx)
 		if err != nil {
 			return err
@@ -189,7 +192,8 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 	}
 
 	rs := r.resolveState
-	if rs == nil {
+	build := rs == nil
+	if build {
 		// First request for this resolvable.
 
 		// Grab the resolve chain from the caller's context.
@@ -208,8 +212,12 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 		r.resolveState = rs
 
 		// Build the resolvable on a separate go-routine.
-		ctx := rs.ctx
+		ctx := ctx // Don't let changes to ctx leak into this go-routine.
 		crash.Go(func() {
+			// Propagate the status, so that resolve tasks appear under the
+			// context that first triggered the resolve.
+			ctx := status.PutTask(rs.ctx, status.GetTask(ctx))
+
 			defer d.resolvePanicHandler(ctx)
 			err := r.resolve(ctx)
 
@@ -222,6 +230,11 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 	}
 
 	if finished := rs.finished; finished != nil {
+		if !build {
+			ctx = status.Start(ctx, "Wait DB Resolve<%T> %p", r.object, rs)
+			defer status.Finish(ctx)
+		}
+
 		// Buildable has not yet finished.
 		// Increment the waiting go-routine counter.
 		rs.waiting++
