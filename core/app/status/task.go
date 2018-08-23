@@ -143,3 +143,9 @@ func Finish(ctx context.Context) {
 	t.parent.remove(t)
 }
 
+// Event causes an event to be recorded.
+// If EventScope == Task then the the currently executing task will get the scope
+func Event(ctx context.Context, scope EventScope, name string, args ...interface{}) {
+	t := GetTask(ctx)
+	onEvent(ctx, t, scope, name, args)
+}

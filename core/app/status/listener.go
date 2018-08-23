@@ -16,6 +16,8 @@ package status
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 	"sync"
 )
 
@@ -23,12 +25,39 @@ var listeners = map[int]Listener{}
 var listenerMutex sync.RWMutex
 var nextListenerID int
 
+// EventScope defines the scope for a particular event
+type EventScope int
+
+const (
+	// TaskScope is an event that applies to the current task
+	TaskScope EventScope = iota
+	// ProcessScope is an event that only applies to this process
+	ProcessScope
+	// GlobalScope is an event that applies globally
+	GlobalScope
+)
+
+func (s EventScope) String() string {
+	switch s {
+	case TaskScope:
+		return "Task"
+	case ProcessScope:
+		return "Process"
+	case GlobalScope:
+		return "Global"
+	default:
+		return "Unknown"
+	}
+}
+
 // Listener is the interface implemented by types that want to listen to
 // application status messages.
 type Listener interface {
 	OnTaskStart(context.Context, *Task)
 	OnTaskProgress(context.Context, *Task)
 	OnTaskFinish(context.Context, *Task)
+	OnEvent(context.Context, *Task, string, EventScope)
+	OnMemorySnapshot(context.Context, runtime.MemStats)
 }
 
 // Unregister is the function returned by RegisterListener and is used to
@@ -70,5 +99,24 @@ func onTaskFinish(ctx context.Context, t *Task) {
 	defer listenerMutex.RUnlock()
 	for _, l := range listeners {
 		l.OnTaskFinish(ctx, t)
+	}
+}
+
+func onEvent(ctx context.Context, t *Task, scope EventScope, name string, args []interface{}) {
+	listenerMutex.RLock()
+	defer listenerMutex.RUnlock()
+	if len(listeners) > 0 {
+		msg := fmt.Sprintf(name, args...)
+		for _, l := range listeners {
+			l.OnEvent(ctx, t, msg, scope)
+		}
+	}
+}
+
+func onMemorySnapshot(ctx context.Context, snapshot runtime.MemStats) {
+	listenerMutex.RLock()
+	defer listenerMutex.RUnlock()
+	for _, l := range listeners {
+		l.OnMemorySnapshot(ctx, snapshot)
 	}
 }
