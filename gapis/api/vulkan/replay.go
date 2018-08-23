@@ -781,3 +781,8 @@ func (a API) QueryIssues(
 	}
 	return res.([]replay.Issue), nil
 }
+
+// ExportReplayRequest returns request type for standalone replay.
+func (a API) ExportReplayRequest() replay.Request {
+	return issuesRequest{}
+}

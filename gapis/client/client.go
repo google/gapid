@@ -283,6 +283,21 @@ func (c *client) SaveCapture(ctx context.Context, capture *path.Capture, path st
 	return nil
 }
 
+func (c *client) ExportReplay(ctx context.Context, capture *path.Capture, device *path.Device, path string) error {
+	res, err := c.client.ExportReplay(ctx, &service.ExportReplayRequest{
+		Capture: capture,
+		Path:    path,
+		Device:  device,
+	})
+	if err != nil {
+		return err
+	}
+	if err := res.GetError(); err != nil {
+		return err.Get()
+	}
+	return nil
+}
+
 func (c *client) GetDevices(ctx context.Context) ([]*path.Device, error) {
 	res, err := c.client.GetDevices(ctx, &service.GetDevicesRequest{})
 	if err != nil {

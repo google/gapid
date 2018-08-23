@@ -379,6 +379,15 @@ func (s *grpcServer) SaveCapture(ctx xctx.Context, req *service.SaveCaptureReque
 	return &service.SaveCaptureResponse{}, nil
 }
 
+func (s *grpcServer) ExportReplay(ctx xctx.Context, req *service.ExportReplayRequest) (*service.ExportReplayResponse, error) {
+	defer s.inRPC()()
+	err := s.handler.ExportReplay(s.bindCtx(ctx), req.Capture, req.Device, req.Path)
+	if err := service.NewError(err); err != nil {
+		return &service.ExportReplayResponse{Error: err}, nil
+	}
+	return &service.ExportReplayResponse{}, nil
+}
+
 func (s *grpcServer) GetDevices(ctx xctx.Context, req *service.GetDevicesRequest) (*service.GetDevicesResponse, error) {
 	defer s.inRPC()()
 	devices, err := s.handler.GetDevices(s.bindCtx(ctx))

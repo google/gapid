@@ -88,6 +88,9 @@ bool ResourceCache::Batch::flush(ResourceCache& cache, ReplayConnection* conn) {
   if (count == 0) {
     return true;
   }
+  if (!cache.mFallbackProvider) {
+    return false;
+  }
   if (!cache.mFallbackProvider->get(mResources.data(), count, conn, ptr,
                                     mSize)) {
     return false;

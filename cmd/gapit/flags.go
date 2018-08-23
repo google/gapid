@@ -110,6 +110,11 @@ type (
 		DisplayToSurface bool   `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
 	}
+	ExportReplayFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"output directory for commands and assets"`
+	}
 	VideoFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
