@@ -214,6 +214,16 @@ func Run(main task.Task) {
 		status.RegisterLogger(time.Second)
 	}
 
+	if Flags.Profile.Trace != "" {
+		f, err := os.Create(Flags.Profile.Trace)
+		if err != nil {
+			log.E(ctx, "Could not start trace profiling")
+		} else {
+			status.RegisterTracer(f)
+			defer f.Close()
+		}
+	}
+
 	// Defer the shutdown code
 	shutdownOnce := sync.Once{}
 	shutdown := func() {
