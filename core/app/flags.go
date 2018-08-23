@@ -35,7 +35,8 @@ type (
 		Status bool         `help:"_Log status updates as they happen"`
 	}
 	ProfileFlags struct {
-		CPU string `help:"_write cpu profile to file"`
-		Mem string `help:"_write mem profile to file"`
+		CPU   string `help:"_write cpu profile to file"`
+		Mem   string `help:"_write mem profile to file"`
+		Trace string `help:"_write a trace to file"`
 	}
 )
