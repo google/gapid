@@ -55,7 +55,7 @@ func Enable(ctx context.Context, appName, appVersion string) {
 			if h := host.Instance(ctx); h != nil {
 				if os := h.GetConfiguration().GetOS(); os != nil {
 					osName = os.GetName()
-					osVersion = fmt.Sprintf("%v %v.%v.%v", os.GetBuild(), os.GetMajor(), os.GetMinor(), os.GetPoint())
+					osVersion = fmt.Sprintf("%v %v.%v.%v", os.GetBuild(), os.GetMajorVersion(), os.GetMinorVersion(), os.GetPointVersion())
 				}
 			}
 			res, err := Reporter{
