@@ -16,6 +16,9 @@ build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
 # linker when building the dynamic library, which leads to over-bloated libs.
 build --nolegacy_whole_archive
 
+# Sets the go +build tags to use during compilation.
+build --define gotags=analytics,crashreporting
+
 # Config used by the build servers to dump symbols.
 build:symbols --copt="-g"
 

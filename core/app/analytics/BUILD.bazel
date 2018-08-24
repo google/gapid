@@ -17,12 +17,28 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "analytics.go",
+        "batcher.go",
+        "crash_reporter.go",
+        "encoder.go",
+        "endpoint.go",
         "errors.go",
+        "helpers.go",
         "limits.go",
-        "stubs.go",
+        "payloads.go",
+        "stubs.go",  # keep
     ],
     importpath = "github.com/google/gapid/core/app/analytics",
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/app/analytics/param:go_default_library",
+        "//core/app/crash:go_default_library",
+        "//core/fault/stacktrace:go_default_library",
+        "//core/fault/stacktrace/crunch:go_default_library",
+        "//core/net:go_default_library",
+        "//core/os/device:go_default_library",
+        "//core/os/device/host:go_default_library",
+    ],
 )
 
 go_test(
