@@ -81,7 +81,6 @@ go_test(
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/test:go_default_library",
-        "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",
     ],
 )

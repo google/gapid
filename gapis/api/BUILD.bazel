@@ -98,7 +98,6 @@ go_test(
         "//core/data/slice:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
-        "//gapis/api:go_default_library",
         "//gapis/api/test:go_default_library",
     ],
 )

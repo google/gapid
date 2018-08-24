@@ -54,6 +54,5 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//core/stream:go_default_library",
-        "//core/stream/fmts:go_default_library",
     ],
 )

@@ -30,5 +30,4 @@ go_test(
     size = "small",
     srcs = ["fault_test.go"],
     embed = [":go_default_library"],
-    deps = ["//core/fault:go_default_library"],
 )

@@ -72,7 +72,6 @@ go_test(
         "//core/log:go_default_library",
         "//core/net/grpcutil:go_default_library",
         "//test/robot/stash:go_default_library",
-        "//test/robot/stash/grpc:go_default_library",
         "//test/robot/stash/local:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
     ],

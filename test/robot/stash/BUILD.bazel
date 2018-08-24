@@ -32,7 +32,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/file:go_default_library",
         "//test/robot/search:go_default_library",
-        "@com_github_golang_protobuf//ptypes:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@com_github_pkg_errors//:go_default_library",
     ],
 )

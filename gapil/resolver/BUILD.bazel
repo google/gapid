@@ -56,7 +56,6 @@ go_test(
         "//core/text/parse:go_default_library",
         "//gapil/ast:go_default_library",
         "//gapil/parser:go_default_library",
-        "//gapil/resolver:go_default_library",
         "//gapil/semantic:go_default_library",
         "//gapil/semantic/printer:go_default_library",
     ],

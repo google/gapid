@@ -34,8 +34,5 @@ go_test(
         "vec4_test.go",
     ],
     embed = [":go_default_library"],
-    deps = [
-        "//core/assert:go_default_library",
-        "//core/math/f32:go_default_library",
-    ],
+    deps = ["//core/assert:go_default_library"],
 )

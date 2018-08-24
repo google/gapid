@@ -31,8 +31,5 @@ go_test(
     size = "small",
     srcs = ["id_test.go"],
     embed = [":go_default_library"],
-    deps = [
-        "//core/assert:go_default_library",
-        "//core/data/id:go_default_library",
-    ],
+    deps = ["//core/assert:go_default_library"],
 )

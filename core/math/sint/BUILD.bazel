@@ -29,5 +29,4 @@ go_test(
     name = "go_default_test",
     srcs = ["sint_test.go"],
     embed = [":go_default_library"],
-    deps = ["//core/math/sint:go_default_library"],
 )

@@ -44,7 +44,6 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
-        "//core/data/pack:go_default_library",
         "//core/data/protoutil/testprotos:go_default_library",
         "//core/log:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",

@@ -64,6 +64,5 @@ go_test(
         "//core/data:go_default_library",
         "//core/data/deep:go_default_library",
         "//gapis/memory:go_default_library",
-        "//gapis/service/box:go_default_library",
     ],
 )

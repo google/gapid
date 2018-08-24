@@ -51,6 +51,5 @@ go_test(
         "//core/log:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/test:go_default_library",
-        "//gapis/api/transform:go_default_library",
     ],
 )

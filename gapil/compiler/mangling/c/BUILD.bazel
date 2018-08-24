@@ -33,6 +33,5 @@ go_test(
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
         "//gapil/compiler/mangling:go_default_library",
-        "//gapil/compiler/mangling/c:go_default_library",
     ],
 )

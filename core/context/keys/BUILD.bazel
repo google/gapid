@@ -30,5 +30,4 @@ go_test(
     size = "small",
     srcs = ["keys_test.go"],
     embed = [":go_default_library"],
-    deps = ["//core/context/keys:go_default_library"],
 )

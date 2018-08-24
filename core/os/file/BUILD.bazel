@@ -42,8 +42,5 @@ go_test(
         "windows_test.go",
     ],
     embed = [":go_default_library"],
-    deps = [
-        "//core/assert:go_default_library",
-        "//core/os/file:go_default_library",
-    ],
+    deps = ["//core/assert:go_default_library"],
 )

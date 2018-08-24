@@ -66,7 +66,6 @@ go_test(
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/os/android:go_default_library",
-        "//core/os/android/adb:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/shell:go_default_library",

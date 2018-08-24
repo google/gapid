@@ -44,6 +44,5 @@ go_test(
         "//core/assert:go_default_library",
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
-        "//core/net/grpcutil:go_default_library",
     ],
 )

@@ -44,5 +44,4 @@ go_test(
     size = "small",
     srcs = ["interface_test.go"],
     embed = [":go_default_library"],
-    deps = ["//gapil/semantic:go_default_library"],
 )

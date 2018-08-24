@@ -32,6 +32,6 @@ go_library(
         "//test/robot/search/eval:go_default_library",
         "//test/robot/stash:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
-        "@com_github_golang_protobuf//ptypes:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
     ],
 )

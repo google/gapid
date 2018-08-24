@@ -47,7 +47,6 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
-        "//core/codegen:go_default_library",
         "//core/codegen/call:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",

@@ -62,7 +62,6 @@ go_test(
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
         "//gapil:go_default_library",
-        "//gapil/analysis:go_default_library",
         "//gapil/ast:go_default_library",
         "//gapil/parser:go_default_library",
         "//gapil/resolver:go_default_library",

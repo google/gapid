@@ -70,7 +70,6 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
-        "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
     ],
 )
