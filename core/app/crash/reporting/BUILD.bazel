@@ -20,10 +20,17 @@ go_library(
         "encoder.go",
         "filter_stack.go",
         "reporter.go",
-        "stubs.go",
+        "reporting.go",
+        "stubs.go",  # keep
     ],
     importpath = "github.com/google/gapid/core/app/crash/reporting",
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/app/crash:go_default_library",
+        "//core/fault/stacktrace:go_default_library",
+        "//core/log:go_default_library",
+        "//core/os/device/host:go_default_library",
+    ],
 )
 
 go_test(
@@ -31,10 +38,12 @@ go_test(
     srcs = [
         "encoder_test.go",
         "filter_stack_test.go",
+        "reporting_test.go",
     ],
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
+        "//core/fault/stacktrace:go_default_library",
         "//core/log:go_default_library",
     ],
 )

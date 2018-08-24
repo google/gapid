@@ -19,6 +19,10 @@ load("//tools/build:rules.bzl", "copy_to")
 
 gazelle(
     name = "gazelle",
+    build_tags = [
+        "analytics",
+        "crashreporting",
+    ],
     mode = "fix",
 )
 
