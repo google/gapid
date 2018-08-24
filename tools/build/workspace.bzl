@@ -37,7 +37,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "bazelbuild",
         project = "rules_go",
-        commit = "01c7b1ba59c7a1819f1003cf58400cb3d4f7d22e",
+        commit = "43f31988275463369244ce1704b2e9fb95689e44", # 0.15.0 + patches
     )
 
     maybe_repository(github_repository,
@@ -45,7 +45,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "bazelbuild",
         project = "bazel-gazelle",
-        commit = "84ec09c308035853493731ef1401ec4812f9674f",
+        commit = "6a1b93cc9b1c7e55e7d05a6d324bcf9d87ea3ab1", # 0.14.0
     )
 
     maybe_repository(github_repository,
