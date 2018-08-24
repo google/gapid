@@ -89,7 +89,7 @@ func Disable() {
 func getOSAndGPU(cfg *device.Configuration) (os string, gpu string) {
 	os, gpu = "<unknown>", "<unknown>"
 	if o := cfg.GetOS(); o != nil {
-		os = fmt.Sprintf("%v %v.%v.%v", o.Name, o.Major, o.Minor, o.Point)
+		os = fmt.Sprintf("%v %v.%v.%v", o.Name, o.MajorVersion, o.MinorVersion, o.PointVersion)
 	}
 	if g := cfg.GetHardware().GetGPU().GetName(); g != "" {
 		gpu = g
