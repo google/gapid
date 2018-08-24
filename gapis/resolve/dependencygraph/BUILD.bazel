@@ -70,6 +70,5 @@ go_test(
         "//core/log:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/database:go_default_library",
-        "//gapis/resolve/dependencygraph:go_default_library",
     ],
 )

@@ -35,7 +35,7 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//core/os/flock:go_default_library",
         "//gapidapk/pkginfo:go_default_library",
-        "@com_github_golang_protobuf//jsonpb:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )

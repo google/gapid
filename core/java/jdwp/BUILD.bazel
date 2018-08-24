@@ -71,7 +71,6 @@ go_test(
     tags = ["integration"],
     deps = [
         "//core/assert:go_default_library",
-        "//core/java/jdwp:go_default_library",
         "//core/java/jdwp/test:go_default_library",
         "//core/log:go_default_library",
     ],

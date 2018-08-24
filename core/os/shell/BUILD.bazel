@@ -43,7 +43,6 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
-        "//core/os/shell:go_default_library",
     ] + select({
         "@io_bazel_rules_go//go/platform:darwin": [
             "//core/event/task:go_default_library",

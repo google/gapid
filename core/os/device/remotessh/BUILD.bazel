@@ -32,7 +32,7 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//core/os/shell:go_default_library",
         "//core/text:go_default_library",
-        "@com_github_golang_protobuf//jsonpb:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
         "@org_golang_x_crypto//ssh:go_default_library",
         "@org_golang_x_crypto//ssh/agent:go_default_library",
         "@org_golang_x_crypto//ssh/knownhosts:go_default_library",
@@ -47,6 +47,5 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
-        "//core/os/device/remotessh:go_default_library",
     ],
 )

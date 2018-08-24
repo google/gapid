@@ -59,6 +59,5 @@ go_test(
         "//core/log:go_default_library",
         "//core/stream:go_default_library",
         "//core/stream/fmts:go_default_library",
-        "//gapis/vertex:go_default_library",
     ],
 )

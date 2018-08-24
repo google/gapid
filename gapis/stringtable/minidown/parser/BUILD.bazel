@@ -35,6 +35,5 @@ go_test(
     deps = [
         "//core/assert:go_default_library",
         "//gapis/stringtable/minidown/node:go_default_library",
-        "//gapis/stringtable/minidown/parser:go_default_library",
     ],
 )

@@ -29,5 +29,4 @@ go_test(
     size = "small",
     srcs = ["float16_test.go"],
     embed = [":go_default_library"],
-    deps = ["//core/math/f16:go_default_library"],
 )
