@@ -107,6 +107,7 @@ test_suite(
     name = "tests",
     # bazel query --output label 'kind(".*_test rule", //...)'
     tests = [
+        # __BEGIN_TESTS
         "//core/app/analytics:go_default_test",
         "//core/app/auth:go_default_test",
         "//core/app/benchmark:go_default_test",
@@ -199,5 +200,6 @@ test_suite(
         "//test/integration/replay:go_default_test",
         "//test/integration/service:go_default_test",
         "//test/robot/stash/grpc:go_default_test",
+        # __END_TESTS
     ],
 )

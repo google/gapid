@@ -69,6 +69,13 @@ function run_buildozer() {
   [ $r -eq 3 ] && return 0 || return $r
 }
 
+function run_enumerate_tests() {
+  TARGETS="$(bazel query --output label 'kind(".*_test rule", //...)' | sort -t: -k1,1 | awk '{print "        \""$0"\","}')"
+  OUT=$(mktemp)
+  cp BUILD.bazel $OUT
+  cat $OUT | awk -v targets="$TARGETS" 'begin {a=0} /__END_TESTS/ {a=0} { if (a==0) print $0;} /__BEGIN_TESTS/ { a=1; print targets }' > BUILD.bazel
+}
+
 function run_gazelle() {
   echo # TODO: figure out a way to make bazel not print anything.
   $BAZEL run gazelle
@@ -88,6 +95,9 @@ check buildifier run_buildifier
 
 # Check bazel style.
 check "buildozer fix" run_buildozer
+
+# Check that the //:tests target contains all tests.
+check "//:tests contains all tests" run_enumerate_tests
 
 # Check gazelle.
 check "gazelle" run_gazelle
