@@ -151,12 +151,16 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer, writt
 	stopTiming := analytics.SendTiming("trace", "duration")
 	defer func() {
 		stopTiming(analytics.Size(size))
+		var label string
+		if (p.Options.Flags & DeferStart) != 0 {
+			label = "mec"
+		}
 		if err != nil {
-			analytics.SendEvent("trace", "failed", "", analytics.Size(size),
+			analytics.SendEvent("trace", "failed", label, analytics.Size(size),
 				analytics.TargetDevice(p.Device.Instance().GetConfiguration()))
 
 		} else {
-			analytics.SendEvent("trace", "succeeded", "", analytics.Size(size),
+			analytics.SendEvent("trace", "succeeded", label, analytics.Size(size),
 				analytics.TargetDevice(p.Device.Instance().GetConfiguration()))
 		}
 	}()
