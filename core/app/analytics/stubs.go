@@ -18,9 +18,6 @@ package analytics
 
 // This file contains stub implementations of the analytics package (used when
 // the analytics build tag is omitted).
-//
-// As cmd/do references this package, be very careful not to pull in imports
-// that cannot be built with do. For example anything that uses protobufs.
 
 import (
 	"context"
