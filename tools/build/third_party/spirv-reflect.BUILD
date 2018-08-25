@@ -21,6 +21,7 @@ cc_library(
     ],
     hdrs = [
         "spirv_reflect.h",
+        "include/spirv/unified1/spirv.h",
     ],
     copts = ["-std=c99"],
     include_prefix = "third_party/SPIRV-Reflect/",
