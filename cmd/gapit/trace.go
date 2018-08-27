@@ -128,6 +128,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 					device:     dev,
 					name:       name,
 				})
+				traceDevice = dev
 			}
 		}
 
@@ -157,23 +158,23 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	options := &service.TraceOptions{
-		Device: traceDevice,
-		Apis:   []string{},
+		Device:                    traceDevice,
+		Apis:                      []string{},
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
-		Cwd:                   verb.WorkingDir,
-		Environment:           verb.Env,
-		Duration:              float32(verb.For.Seconds()),
-		ObserveFrameFrequency: uint32(verb.Observe.Frames),
-		ObserveDrawFrequency:  uint32(verb.Observe.Draws),
-		StartFrame:            uint32(verb.Start.At.Frame),
-		FramesToCapture:       uint32(verb.Capture.Frames),
-		DisablePcs:            verb.Disable.PCS,
-		RecordErrorState:      verb.Record.Errors,
-		DeferStart:            verb.Start.Defer,
-		NoBuffer:              verb.No.Buffer,
-		HideUnknownExtensions: verb.Disable.Unknown.Extensions,
-		ClearCache:            verb.Clear.Cache,
-		ServerLocalSavePath:   out,
+		Cwd:                       verb.WorkingDir,
+		Environment:               verb.Env,
+		Duration:                  float32(verb.For.Seconds()),
+		ObserveFrameFrequency:     uint32(verb.Observe.Frames),
+		ObserveDrawFrequency:      uint32(verb.Observe.Draws),
+		StartFrame:                uint32(verb.Start.At.Frame),
+		FramesToCapture:           uint32(verb.Capture.Frames),
+		DisablePcs:                verb.Disable.PCS,
+		RecordErrorState:          verb.Record.Errors,
+		DeferStart:                verb.Start.Defer,
+		NoBuffer:                  verb.No.Buffer,
+		HideUnknownExtensions:     verb.Disable.Unknown.Extensions,
+		ClearCache:                verb.Clear.Cache,
+		ServerLocalSavePath:       out,
 	}
 
 	if uri != "" {
