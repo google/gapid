@@ -2,11 +2,6 @@
 build --verbose_failures
 test --test_output=errors
 query --nohost_deps --noimplicit_deps
-run --direct_run
-
-# To workaround Windowds MAX_PATH when compiling gRPC++
-# TODO: Figure out a more reliable solution, like the mingw wrapper
-build --experimental_shortened_obj_file_path=true
 
 # Adding in c11 compiling, this really should be done in the android toolchains
 build --cxxopt="-std=c++11"
