@@ -553,22 +553,38 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	// Convert nanoseconds to milliseconds
 	frameTime := float64(frameCaptureTime / uint64(len(events)))
 	stateTime := float64(stateBuildTime)
+	traceMaxMemory := int64(0)
 
 	ctx = oldCtx
-	w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
-	fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive\tCaching Done\tInteraction")
-	fmt.Fprintln(w, "----------\t----------\t------------\t-------------------\t----------------\t-----------\t------------\t-----------")
-	fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\t%v\t%v\n",
-		verb.traceDoneTime.Sub(verb.beforeStartTraceTime),
-		verb.traceSizeInBytes,
-		verb.traceFrames,
-		time.Duration(stateTime)*time.Nanosecond,
-		time.Duration(frameTime)*time.Nanosecond,
-		verb.gapisInteractiveTime.Sub(verb.traceDoneTime),
-		verb.gapisCachingDoneTime.Sub(verb.traceDoneTime),
-		verb.interactionDoneTime.Sub(verb.interactionStartTime),
-	)
-	w.Flush()
+	writeOutput := func() {
+		w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
+		fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive")
+		fmt.Fprintln(w, "----------\t----------\t------------\t-------------------\t----------------\t-----------")
+		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
+			verb.traceDoneTime.Sub(verb.beforeStartTraceTime),
+			verb.traceSizeInBytes,
+			verb.traceFrames,
+			time.Duration(stateTime)*time.Nanosecond,
+			time.Duration(frameTime)*time.Nanosecond,
+			verb.gapisInteractiveTime.Sub(verb.traceDoneTime),
+		)
+		w.Flush()
+		preMecFramerate := float64(stateBuildStartTime - traceStartTimestamp)
+		if verb.StartFrame > 0 {
+			preMecFramerate = preMecFramerate / float64(verb.StartFrame)
+		}
+		fmt.Fprintln(os.Stdout, "")
+		w = tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
+		fmt.Fprintln(w, "Caching Done\tInteraction\tMax Memory\tBefore MEC Frame Time")
+		fmt.Fprintln(w, "------------\t-----------\t----------\t--------------------")
+		fmt.Fprintf(w, "%+v\t%+v\t%+v\t%+v\n",
+			verb.gapisCachingDoneTime.Sub(verb.traceDoneTime),
+			verb.interactionDoneTime.Sub(verb.interactionStartTime),
+			traceMaxMemory,
+			time.Duration(preMecFramerate)*time.Nanosecond,
+		)
+		w.Flush()
+	}
 
 	writeTrace = func(path string, gapisTrace, gapitTrace *bytes.Buffer) error {
 		f, err := os.Create(path)
@@ -586,7 +602,6 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if err != nil {
 			return err
 		}
-		maxMemorySize := int64(0)
 		// This is the entire profile except for what happened on the trace device.
 		// This is now stored in the trace file.
 		// We have all of the timing information for the trace file,
@@ -612,8 +627,8 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 								d = d["process_totals"].(map[string]interface{})
 								m := d["heap_in_use"].(string)
 								b, _ := strconv.ParseInt("0x"+m, 0, 64)
-								if b > maxMemorySize {
-									maxMemorySize = b
+								if b > traceMaxMemory {
+									traceMaxMemory = b
 								}
 							}
 						}
@@ -623,7 +638,6 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		} else {
 			panic(fmt.Sprintf("Could not read profile data: %+v", err))
 		}
-		fmt.Printf("Max memory used: %+v\n", maxMemorySize)
 		traceStartTimestampInMicroseconds := (traceStartTimestamp / 1000)
 		timeOffsetInMicroseconds = int64(traceStartTimestampInMicroseconds) - timeOffsetInMicroseconds
 		// Manually write out some profiling data for the trace
@@ -683,9 +697,14 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		f.Write([]byte("\n"))
 		f.Write(b)
 		f.Write([]byte("]"))
+
+		writeOutput()
 		return nil
 	}
 
+	if verb.DumpTrace == "" {
+		writeOutput()
+	}
 	return nil
 }
 
@@ -803,10 +822,9 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 	case "vulkan":
 		options.Apis = []string{"Vulkan"}
 	case "gles":
-		// TODO: Separate these two out once we can trace Vulkan with OpenGL ES.
 		options.Apis = []string{"OpenGLES", "GVR"}
 	case "":
-		options.Apis = []string{"Vulkan", "OpenGLES", "GVR"}
+		return fmt.Errorf("Please specify one of vulkan or gles for an api")
 	default:
 		return fmt.Errorf("Unknown API %s", verb.API)
 	}
