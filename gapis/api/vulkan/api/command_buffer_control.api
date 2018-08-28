@@ -254,7 +254,7 @@ enum SemaphoreUpdate {
   @unused VkCommandBuffer                 VulkanHandle
   @unused VkCommandPool                   Pool
   @unused VkCommandBufferLevel            Level
-  @unused map!(u32, ref!CommandReference) CommandReferences
+  @unused dense_map!(u32, ref!CommandReference) CommandReferences
   @unused BufferCommands                  BufferCommands
   @unused ref!CommandBufferBegin          BeginInfo
   @unused ref!VulkanDebugMarkerInfo       DebugInfo
@@ -398,7 +398,7 @@ sub void resetCommandBuffer(ref!CommandBufferObject obj) {
 
 @internal
 class vkCmdExecuteCommandsArgs {
-  map!(u32, VkCommandBuffer) CommandBuffers
+  dense_map!(u32, VkCommandBuffer) CommandBuffers
 }
 
 sub void dovkCmdExecuteCommands(ref!vkCmdExecuteCommandsArgs cmds) {

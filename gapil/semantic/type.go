@@ -286,6 +286,7 @@ type Map struct {
 	Named          // the full type name
 	KeyType   Type // the type used as an indexing key
 	ValueType Type // the type stored in the map
+	Dense     bool // Is this a dense map
 }
 
 func (m Map) String() string { return fmt.Sprintf("Map!(%v, %v)", m.KeyType, m.ValueType) }

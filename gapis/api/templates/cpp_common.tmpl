@@ -74,7 +74,7 @@
   {{else if IsPseudonym   $}}{{$.Name}}
   {{else if IsClass       $}}{{Global "prefix"}}{{$.Name}}
   {{else if IsEnum        $}}{{Global "prefix"}}{{$.Name}}
-  {{else if IsMap         $}}{{Template "C++.TypeName" $.KeyType}}To{{Template "C++.TypeName" $.ValueType}}
+  {{else if IsMap         $}}{{Template "C++.TypeName" $.KeyType}}To{{Template "C++.TypeName" $.ValueType}}{{if $.Dense}}_Dense{{end}}
   {{else if IsVoid        $}}Void
   {{else if IsBool        $}}Bool
   {{else if IsInt         $}}Int

@@ -273,7 +273,7 @@
   {{Template "DeclareType" $.KeyType}}
   {{Template "DeclareType" $.ValueType}}
 
-  typedef gapil::Map<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}> {{Template "C++.Type" $}};
+  typedef gapil::Map<{{Template "C++.Type" $.KeyType}}, {{Template "C++.Type" $.ValueType}}, {{if $.Dense}}true{{else}}false{{end}}> {{Template "C++.Type" $}};
 {{end}}
 
 
