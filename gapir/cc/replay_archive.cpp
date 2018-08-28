@@ -15,6 +15,7 @@
  */
 
 #include "replay_archive.h"
+#include "core/cc/log.h"
 
 #include <grpc++/grpc++.h>
 #include <fstream>
@@ -24,20 +25,21 @@
 
 namespace gapir {
 
-std::unique_ptr<ReplayArchive::Payload> ReplayArchive::getPayload() {
+std::unique_ptr<ReplayConnection::Payload> ReplayArchive::getPayload() {
   std::fstream input(mFileprefix, std::ios::in | std::ios::binary);
   std::unique_ptr<replay_service::Payload> payload(new replay_service::Payload);
   payload->ParseFromIstream(&input);
   return std::unique_ptr<Payload>(new Payload(std::move(payload)));
 }
 
-std::unique_ptr<ReplayArchive::Resources> ReplayArchive::getResources(
+std::unique_ptr<ReplayConnection::Resources> ReplayArchive::getResources(
     std::unique_ptr<ResourceRequest> req) {
   return nullptr;
 }
 bool ReplayArchive::sendReplayFinished() { return true; }
 bool ReplayArchive::sendCrashDump(const std::string& filepath,
                                   const void* crash_data, uint32_t crash_size) {
+  GAPID_INFO("Crash dump saved at: %s", filepath.c_str());
   return true;
 }
 bool ReplayArchive::sendPostData(std::unique_ptr<Posts> posts) { return true; }

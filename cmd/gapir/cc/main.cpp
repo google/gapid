@@ -201,8 +201,9 @@ void android_main(struct android_app* app) {
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
 
-// Main function for PC
-int main(int argc, const char* argv[]) {
+namespace {
+
+struct Options {
   int logLevel = LOG_LEVEL;
   const char* logPath = "logs/gapir.log";
 
@@ -212,120 +213,124 @@ int main(int argc, const char* argv[]) {
   const char* authTokenFile = nullptr;
   int idleTimeoutSec = 0;
   const char* replayArchive = nullptr;
+  bool version = false;
 
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--replay-archive") == 0) {
-      replayArchive = argv[++i];
-    } else if (strcmp(argv[i], "--auth-token-file") == 0) {
-      if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --auth-token-file <token-string>");
-      }
-      authTokenFile = argv[++i];
-    } else if (strcmp(argv[i], "--cache") == 0) {
-      if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --cache <cache-directory>");
-      }
-      cachePath = argv[++i];
-    } else if (strcmp(argv[i], "--port") == 0) {
-      if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --port <port_num>");
-      }
-      portArgStr = argv[++i];
-    } else if (strcmp(argv[i], "--log-level") == 0) {
-      if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
-      }
-      switch (argv[++i][0]) {
-        case 'F':
-          logLevel = LOG_LEVEL_FATAL;
-          break;
-        case 'E':
-          logLevel = LOG_LEVEL_ERROR;
-          break;
-        case 'W':
-          logLevel = LOG_LEVEL_WARNING;
-          break;
-        case 'I':
-          logLevel = LOG_LEVEL_INFO;
-          break;
-        case 'D':
-          logLevel = LOG_LEVEL_DEBUG;
-          break;
-        case 'V':
-          logLevel = LOG_LEVEL_VERBOSE;
-          break;
-        default:
+  static Options Parse(int argc, const char* argv[]) {
+    Options opts;
+
+    for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "--replay-archive") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --replay-archive <archive-dir>");
+        }
+        opts.replayArchive = argv[++i];
+      } else if (strcmp(argv[i], "--auth-token-file") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --auth-token-file <token-string>");
+        }
+        opts.authTokenFile = argv[++i];
+      } else if (strcmp(argv[i], "--cache") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --cache <cache-directory>");
+        }
+        opts.cachePath = argv[++i];
+      } else if (strcmp(argv[i], "--port") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --port <port_num>");
+        }
+        opts.portArgStr = argv[++i];
+      } else if (strcmp(argv[i], "--log-level") == 0) {
+        if (i + 1 >= argc) {
           GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
+        }
+        switch (argv[++i][0]) {
+          case 'F':
+            opts.logLevel = LOG_LEVEL_FATAL;
+            break;
+          case 'E':
+            opts.logLevel = LOG_LEVEL_ERROR;
+            break;
+          case 'W':
+            opts.logLevel = LOG_LEVEL_WARNING;
+            break;
+          case 'I':
+            opts.logLevel = LOG_LEVEL_INFO;
+            break;
+          case 'D':
+            opts.logLevel = LOG_LEVEL_DEBUG;
+            break;
+          case 'V':
+            opts.logLevel = LOG_LEVEL_VERBOSE;
+            break;
+          default:
+            GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
+        }
+      } else if (strcmp(argv[i], "--log") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --log <log-file-path>");
+        }
+        opts.logPath = argv[++i];
+      } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
+        }
+        opts.idleTimeoutSec = atoi(argv[++i]);
+      } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
+        opts.wait_for_debugger = true;
+      } else if (strcmp(argv[i], "--version") == 0) {
+        opts.version = true;
+      } else {
+        GAPID_FATAL("Unknown argument: %s", argv[i]);
       }
-    } else if (strcmp(argv[i], "--log") == 0) {
-      if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --log <log-file-path>");
-      }
-      logPath = argv[++i];
-    } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
-      if (i + 1 >= argc) {
-        GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
-      }
-      idleTimeoutSec = atoi(argv[++i]);
-    } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
-      wait_for_debugger = true;
-    } else if (strcmp(argv[i], "--version") == 0) {
-      printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
-      return 0;
-    } else {
-      GAPID_FATAL("Unknown argument: %s", argv[i]);
     }
+    return opts;
   }
+};
 
-#if TARGET_OS == GAPID_OS_LINUX
-  // Ignore SIGPIPE so we can log after gapis closes.
-  signal(SIGPIPE, SIG_IGN);
-#endif
+}  // namespace
 
-  if (wait_for_debugger) {
-    GAPID_INFO("Waiting for debugger to attach");
-    core::Debugger::waitForAttach();
-  }
+static int replayArchive(Options opts) {
+  // The directory consists an archive(resources.{index,data}) and payload.bin.
+  core::CrashHandler crashHandler;
+  GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
+  MemoryManager memoryManager(memorySizes);
+  std::string payloadPath = std::string(opts.replayArchive) + "/payload.bin";
+  gapir::ReplayArchive conn(payloadPath);
+  std::unique_ptr<ResourceProvider> resourceProvider =
+      ResourceDiskCache::create(nullptr, opts.replayArchive);
+  std::unique_ptr<Context> context = Context::create(
+      &conn, crashHandler, resourceProvider.get(), &memoryManager);
 
-  if (replayArchive) {
-    core::CrashHandler crashHandler;
-    GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
-    MemoryManager memoryManager(memorySizes);
-    std::string payloadPath = std::string(replayArchive) + "/payload.bin";
-    gapir::ReplayArchive conn(payloadPath);
-    std::unique_ptr<ResourceProvider> resourceProvider =
-        ResourceDiskCache::create(nullptr, replayArchive);
-    std::unique_ptr<Context> context = Context::create(
-        &conn, crashHandler, resourceProvider.get(), &memoryManager);
+  GAPID_INFO("Replay started");
+  bool ok = context->interpret();
+  GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
 
-    GAPID_INFO("Replay started");
-    bool ok = context->interpret();
-    GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+}
 
-    return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-  }
-
+static int startServer(Options opts) {
   core::CrashHandler crashHandler;
 
-  GAPID_LOGGER_INIT(logLevel, "gapir", logPath);
+  GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
 
   // Read the auth-token.
   // Note: This must come before the socket is created as the auth token
   // file is deleted by GAPIS as soon as the port is written to stdout.
   std::vector<char> authToken;
-  if (authTokenFile != nullptr) {
-    FILE* file = fopen(authTokenFile, "rb");
+  if (opts.authTokenFile != nullptr) {
+    FILE* file = fopen(opts.authTokenFile, "rb");
     if (file == nullptr) {
-      GAPID_FATAL("Unable to open auth-token file: %s", authTokenFile);
+      GAPID_FATAL("Unable to open auth-token file: %s", opts.authTokenFile);
     }
     if (fseek(file, 0, SEEK_END) != 0) {
-      GAPID_FATAL("Unable to get length of auth-token file: %s", authTokenFile);
+      GAPID_FATAL("Unable to get length of auth-token file: %s",
+                  opts.authTokenFile);
     }
     size_t size = ftell(file);
     fseek(file, 0, SEEK_SET);
     authToken.resize(size + 1, 0);
     if (fread(&authToken[0], 1, size, file) != size) {
-      GAPID_FATAL("Unable to read auth-token file: %s", authTokenFile);
+      GAPID_FATAL("Unable to read auth-token file: %s", opts.authTokenFile);
     }
     fclose(file);
   }
@@ -334,7 +339,7 @@ int main(int argc, const char* argv[]) {
 
   // If the user does not assign a port to use, get a free TCP port from OS.
   const char local_host_name[] = "127.0.0.1";
-  std::string portStr(portArgStr);
+  std::string portStr(opts.portArgStr);
   if (portStr == "0") {
     uint32_t port = SocketConnection::getFreePort(local_host_name);
     if (port == 0) {
@@ -349,7 +354,8 @@ int main(int argc, const char* argv[]) {
   std::mutex lock;
   std::unique_ptr<Server> server =
       Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
-            cachePath, idleTimeoutSec, &crashHandler, &memoryManager, &lock);
+            opts.cachePath, opts.idleTimeoutSec, &crashHandler, &memoryManager,
+            &lock);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());
@@ -359,6 +365,29 @@ int main(int argc, const char* argv[]) {
 
   gapir::WaitForWindowClose();
   return EXIT_SUCCESS;
+}
+
+// Main function for PC
+int main(int argc, const char* argv[]) {
+  Options opts = Options::Parse(argc, argv);
+
+#if TARGET_OS == GAPID_OS_LINUX
+  // Ignore SIGPIPE so we can log after gapis closes.
+  signal(SIGPIPE, SIG_IGN);
+#endif
+
+  if (opts.wait_for_debugger) {
+    GAPID_INFO("Waiting for debugger to attach");
+    core::Debugger::waitForAttach();
+  }
+  if (opts.version) {
+    printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
+    return EXIT_SUCCESS;
+  } else if (opts.replayArchive) {
+    return replayArchive(opts);
+  } else {
+    return startServer(opts);
+  }
 }
 
 #endif  // TARGET_OS == GAPID_OS_ANDROID

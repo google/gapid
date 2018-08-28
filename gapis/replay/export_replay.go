@@ -64,8 +64,6 @@ func ExportReplay(ctx context.Context, pCapture *path.Capture, pDevice *path.Dev
 		return log.Errf(ctx, nil, "Unknown device %v", pDevice.ID.ID())
 	}
 
-	// executeCounter.Increment()
-
 	ctx = log.V{
 		"capture": pCapture.ID.ID(),
 		"device":  d.Instance().GetName(),

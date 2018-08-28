@@ -31,7 +31,7 @@ func New(name string) Archive {
 	return C.archive_create(cstr)
 }
 
-// Dispose flush and close the underlying archive.
+// Dispose flushes and closes the underlying archive.
 func (a Archive) Dispose() {
 	C.archive_destroy(a)
 }
