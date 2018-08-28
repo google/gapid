@@ -101,11 +101,15 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	s := c.NewState(ctx)
 	err = api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, i, s, nil)
-
 		api := cmd.API()
 		if api == nil {
 			return nil
+		}
+
+		// For APIs that support multiple contexts, the current context depends
+		// on the current state.
+		if api.MultipleContexts() {
+			cmd.Mutate(ctx, i, s, nil)
 		}
 
 		context := api.Context(s, cmd.Thread())

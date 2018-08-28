@@ -275,3 +275,14 @@ func (d *memory) Contains(ctx context.Context, id id.ID) (res bool) {
 	_, got := d.records[id]
 	return got
 }
+
+// Implements Database
+func (d *memory) Deletes(ctx context.Context, id id.ID) bool {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	if _, got := d.records[id]; got {
+		delete(d.records, id)
+		return true
+	}
+	return false
+}

@@ -107,6 +107,11 @@ func (API) Context(s *api.GlobalState, thread uint64) api.Context {
 	return gles.API{}.Context(s, thread)
 }
 
+// MultipleContexts implements the API interface.
+func (API) MultipleContexts() bool {
+	return true
+}
+
 // Mesh implements the api.MeshProvider interface.
 func (API) Mesh(ctx context.Context, o interface{}, p *path.Mesh, r *path.ResolveConfig) (*api.Mesh, error) {
 	return nil, nil
