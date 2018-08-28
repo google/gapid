@@ -22,44 +22,49 @@
 #include "core/memory/arena/cc/arena.h"
 
 #include <unordered_map>
+#include <type_traits>
 
 static_assert((GAPIL_MIN_MAP_SIZE & (GAPIL_MIN_MAP_SIZE - 1)) == 0, "Map size must be a power of 2");
 static_assert((GAPIL_MAP_GROW_MULTIPLIER & (GAPIL_MAP_GROW_MULTIPLIER - 1)) == 0, "Map size must be a power of 2");
 
 namespace gapil {
 
-template<typename K, typename V>
-Map<K, V>::Map(core::Arena* a) {
+template<typename K, typename V, bool DENSE>
+Map<K, V, DENSE>::Map(core::Arena* a) {
     GAPID_ASSERT_MSG(a != nullptr, "arena must not be null");
-    ptr = a->create<Map<K, V>::Allocation>();
+    auto buf = a->allocate(sizeof(Map<K, V, DENSE>::SVOAllocation), alignof(Map<K, V, DENSE>::SVOAllocation));
+    memset(buf, 0, sizeof(Map<K, V, DENSE>::SVOAllocation));
+    new(buf) Map<K, V, DENSE>::Allocation();
+    Map<K, V, DENSE>::SVOAllocation* svo = static_cast<Map<K, V, DENSE>::SVOAllocation*>(buf);
+    ptr = static_cast<Map<K, V, DENSE>::Allocation*>(buf);
     ptr->arena = reinterpret_cast<arena_t*>(a);
-    ptr->capacity = 0;
+    ptr->capacity = GAPIL_MIN_MAP_SIZE;
     ptr->count = 0;
-    ptr->elements = nullptr;
+    ptr->elements = &svo->els;
     ptr->ref_count = 1;
 }
 
-template<typename K, typename V>
-Map<K, V>::Map(const Map<K, V>& s) {
+template<typename K, typename V, bool DENSE>
+Map<K, V, DENSE>::Map(const Map<K, V, DENSE>& s) {
     ptr = s.ptr;
     ptr->ref_count++;
 }
 
-template<typename K, typename V>
-Map<K, V>::Map(Map<K, V>&& s) {
+template<typename K, typename V, bool DENSE>
+Map<K, V, DENSE>::Map(Map<K, V, DENSE>&& s) {
     ptr = s.ptr;
     s.ptr = nullptr;
 }
 
-template<typename K, typename V>
-Map<K, V>::~Map() {
+template<typename K, typename V, bool DENSE>
+Map<K, V, DENSE>::~Map() {
     if (ptr != nullptr) { // note: nullptr is only valid in the case of a move
         ptr->release();
     }
 }
 
-template<typename K, typename V>
-Map<K, V> Map<K, V>::clone() const {
+template<typename K, typename V, bool DENSE>
+Map<K, V, DENSE> Map<K, V, DENSE>::clone() const {
     auto out = Map(arena());
     for (auto it : *this) {
         out[it.first] = it.second;
@@ -67,8 +72,8 @@ Map<K, V> Map<K, V>::clone() const {
     return out;
 }
 
-template<typename K, typename V>
-Map<K, V>& Map<K, V>::operator = (const Map<K, V>& other) {
+template<typename K, typename V, bool DENSE>
+Map<K, V, DENSE>& Map<K, V, DENSE>::operator = (const Map<K, V, DENSE>& other) {
     GAPID_ASSERT_MSG(other.ptr->ref_count > 0, "attempting to reference freed map");
     if (ptr != other.ptr) {
         ptr->release();
@@ -78,14 +83,14 @@ Map<K, V>& Map<K, V>::operator = (const Map<K, V>& other) {
     return *this;
 }
 
-template<typename K, typename V>
-inline void Map<K, V>::Allocation::reference() {
+template<typename K, typename V, bool DENSE>
+inline void Map<K, V, DENSE>::Allocation::reference() {
     GAPID_ASSERT_MSG(ref_count > 0, "Attempting to reference deleted map");
     ref_count++;
 }
 
-template<typename K, typename V>
-inline void Map<K, V>::Allocation::release() {
+template<typename K, typename V, bool DENSE>
+inline void Map<K, V, DENSE>::Allocation::release() {
     GAPID_ASSERT_MSG(ref_count > 0, "Attempting to release deleted map");
     ref_count--;
     if (ref_count > 0) {
@@ -98,13 +103,84 @@ inline void Map<K, V>::Allocation::release() {
     arena->free(this);
 }
 
-template<typename K, typename V>
-bool Map<K, V>::Allocation::contains(K key) {
+template<typename K, typename V, bool DENSE>
+bool Map<K, V, DENSE>::Allocation::contains(K key) {
     return index(key, false) != nullptr;
 }
 
-template<typename K, typename V>
-V* Map<K, V>::Allocation::index(K key, bool insert) {
+template<typename T, bool DENSE>
+typename std::enable_if<std::is_integral<T>::value, uint64_t>::type dense_hash(const T& t) {
+    return static_cast<uint64_t>(t);
+}
+
+
+template<typename T, bool DENSE>
+typename std::enable_if<!std::is_integral<T>::value, uint64_t>::type dense_hash(const T& t) {
+    return 0;
+}
+
+template<typename K, typename V, bool DENSE>
+V* Map<K, V, DENSE>::Allocation::index(K key, bool insert) {
+    // TODO(awoloszyn): Template tricks to move this to compile-time
+    if (DENSE) {
+        uint64_t hash = dense_hash<K, DENSE>(key);
+        if (hash >= capacity) {
+            if (insert) {
+                if (elements == nullptr) {
+                    // Start the dense map larger
+                    capacity = GAPIL_MIN_MAP_SIZE * 16;
+                    // Capacity may be less than hash, but it still must be a power of 2
+                    while(capacity < hash) {
+                        capacity >>= 1;
+                    }
+                    elements = gapil_alloc(arena, sizeof(element) * capacity, alignof(V));
+                    for (uint64_t i = 0; i < capacity; ++i) {
+                        this->els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
+                    }
+                } else {
+                    auto oldElements = this->els();
+                    auto oldCapacity = capacity;
+                    capacity = capacity * GAPIL_MAP_GROW_MULTIPLIER * 2;
+                    // Capacity may be less than hash, but it still must be a power of 2
+                    // Grow the dense map faster, we probably don't have to create quite as many
+                    while(capacity < hash) {
+                        capacity >>= 1;
+                    }
+                    elements = gapil_alloc(arena, sizeof(element) * capacity, alignof(V));
+                    for (uint64_t i = 0; i < capacity; ++i) {
+                        els()[i].used = GAPIL_MAP_ELEMENT_EMPTY;
+                    }
+                    auto new_elements = els();
+                    for (uint64_t i = 0; i < oldCapacity; ++i) {
+                        if (oldElements[i].used == GAPIL_MAP_ELEMENT_FULL) {
+                            new(&new_elements[i].second) V(std::move(oldElements[i].second));
+                            new(&new_elements[i].first) K(std::move(oldElements[i].first));
+                            new_elements[i].used = GAPIL_MAP_ELEMENT_FULL;
+                            oldElements[i].second.~V();
+                            oldElements[i].first.~K();
+                        }
+                    }
+                    if (oldCapacity != GAPIL_MIN_MAP_SIZE) {
+                        gapil_free(arena, oldElements);
+                    }
+                }
+            } else {
+                return nullptr;
+            }
+        }
+        auto elems = els();
+        if (elems[hash].used == GAPIL_MAP_ELEMENT_FULL) {
+            return &elems[hash].second;
+        } else if (insert) {
+            count++;
+            auto a = reinterpret_cast<core::Arena*>(arena);
+            inplace_new(&elems[hash].second, a);
+            inplace_new(&elems[hash].first, a, key);
+            elems[hash].used = GAPIL_MAP_ELEMENT_FULL;
+            return &elems[hash].second;
+        }
+        return nullptr;
+    }
     auto hasher = gapil::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
@@ -174,7 +250,9 @@ V* Map<K, V>::Allocation::index(K key, bool insert) {
                         oldElements[i].first.~K();
                      }
                  }
-                 gapil_free(arena, oldElements);
+                 if (oldCapacity != GAPIL_MIN_MAP_SIZE) {
+                    gapil_free(arena, oldElements);
+                 }
              }
         }
 
@@ -191,14 +269,27 @@ V* Map<K, V>::Allocation::index(K key, bool insert) {
     return nullptr;
 }
 
-template<typename K, typename V>
-V Map<K, V>::Allocation::lookup(K key) {
+template<typename K, typename V, bool DENSE>
+V Map<K, V, DENSE>::Allocation::lookup(K key) {
     V* v = index(key, false);
     return *v;
 }
 
-template<typename K, typename V>
-void Map<K, V>::Allocation::remove(K key) {
+template<typename K, typename V, bool DENSE>
+void Map<K, V, DENSE>::Allocation::remove(K key) {
+    // TODO(awoloszyn): Template tricks to move this to compile-time
+    if (DENSE) {
+        uint64_t hash = dense_hash<K, DENSE>(key);
+        auto elems = els();
+        if (hash < capacity &&
+                elems[hash].used == GAPIL_MAP_ELEMENT_FULL) {
+            elems[hash].used = GAPIL_MAP_ELEMENT_EMPTY;
+            elems[hash].first.~K();
+            elems[hash].second.~V();
+            --count;
+        }
+        return;
+    }
     auto hasher = gapil::hash<K>{};
     auto eq = std::equal_to<K>{};
     uint64_t hash = hasher(key);
@@ -223,8 +314,8 @@ void Map<K, V>::Allocation::remove(K key) {
     }
 }
 
-template<typename K, typename V>
-void Map<K, V>::Allocation::clear() {
+template<typename K, typename V, bool DENSE>
+void Map<K, V, DENSE>::Allocation::clear() {
     auto elems = els();
     for (uint64_t i = 0; i < capacity; ++i) {
         switch(elems[i].used) {
@@ -237,10 +328,12 @@ void Map<K, V>::Allocation::clear() {
                 --count;
         }
     }
-    gapil_free(arena, elements);
+    if (capacity != GAPIL_MIN_MAP_SIZE) {
+        gapil_free(arena, elements);
+        capacity = 0;
+        elements = nullptr;
+    }
     count = 0;
-    capacity = 0;
-    elements = nullptr;
 }
 
 }  // namespace gapil

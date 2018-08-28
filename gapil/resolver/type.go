@@ -106,7 +106,15 @@ func genericType(rv *resolver, in *ast.Generic) semantic.Type {
 		}
 		kt := type_(rv, in.Arguments[0])
 		vt := type_(rv, in.Arguments[1])
-		return getMapType(rv, in, kt, vt)
+		return getMapType(rv, in, kt, vt, false)
+	case "dense_map":
+		if len(in.Arguments) != 2 {
+			rv.errorf(in, "Map requires 2 args, got %d", len(in.Arguments))
+			return semantic.VoidType
+		}
+		kt := type_(rv, in.Arguments[0])
+		vt := type_(rv, in.Arguments[1])
+		return getMapType(rv, in, kt, vt, true)
 	case "ref":
 		if len(in.Arguments) != 1 {
 			rv.errorf(in, "Ref requires 1 arg, got %d", len(in.Arguments))
@@ -134,7 +142,7 @@ func getSimpleType(rv *resolver, in *ast.Identifier) semantic.Type {
 	return out
 }
 
-func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type) *semantic.Map {
+func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type, isDense bool) *semantic.Map {
 	name := fmt.Sprintf("%s%s%s%s", strings.Title(kt.Name()), TypeInfix, vt.Name(), MapSuffix)
 	for _, m := range rv.api.Maps {
 		if equal(kt, m.KeyType) && equal(vt, m.ValueType) {
@@ -146,6 +154,7 @@ func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type) *semantic.Map {
 		Named:     semantic.Named(name),
 		KeyType:   kt,
 		ValueType: vt,
+		Dense:     isDense,
 	}
 	rv.api.Maps = append(rv.api.Maps, out)
 	rv.mappings.Add(at, out)

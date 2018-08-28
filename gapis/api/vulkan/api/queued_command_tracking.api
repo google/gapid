@@ -37,7 +37,7 @@
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
 @internal class queueMap {
-  map!(u32, VkQueue) m
+  dense_map!(u32, VkQueue) m
 }
 
 sub void execPendingCommands(VkQueue queue) {
