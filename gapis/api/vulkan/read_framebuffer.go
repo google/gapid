@@ -477,11 +477,12 @@ func postImageData(ctx context.Context,
 		VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
 	)
 	mappedMemoryRangeData := MustAllocData(ctx, s, mappedMemoryRange)
-	at, err := s.Allocator.Alloc(bufferSize, 8)
+	at, err := s.Alloc(ctx, bufferSize)
 	if err != nil {
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("Device Memory -> Host mapping failed")})
 	}
-	mappedPointer := MustAllocData(ctx, s, at)
+	allocated = append(allocated, &at)
+	mappedPointer := MustAllocData(ctx, s, at.Address())
 
 	barrierAspectMask := VkImageAspectFlags(aspect)
 	depthStencilMask := VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT |
@@ -1035,7 +1036,7 @@ func postImageData(ctx context.Context,
 	// Add post command
 	writeEach(ctx, out,
 		cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-			b.Post(value.ObservedPointer(at), uint64(bufferSize), func(r binary.Reader, err error) {
+			b.Post(value.ObservedPointer(at.Address()), uint64(bufferSize), func(r binary.Reader, err error) {
 				var bytes []byte
 				if err == nil {
 					bytes = make([]byte, bufferSize)
