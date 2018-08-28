@@ -97,13 +97,6 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	}
 
 	s := out.State()
-	if s.OnError == nil {
-		s.OnError = func(err interface{}) {
-			if issue, ok := err.(replay.Issue); ok {
-				t.issues = append(t.issues, issue)
-			}
-		}
-	}
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
 	l := s.MemoryLayout
 	allocated := []api.AllocResult{}
