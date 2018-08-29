@@ -91,13 +91,29 @@ bool ResourceCache::Batch::flush(ResourceCache& cache, ReplayConnection* conn) {
   if (!cache.mFallbackProvider) {
     return false;
   }
-  if (!cache.mFallbackProvider->get(mResources.data(), count, conn, ptr,
-                                    mSize)) {
-    return false;
-  }
-  for (auto resource : mResources) {
-    cache.putCache(resource, ptr);
-    ptr += resource.size;
+  size_t one_req_limit =
+      100 * 1024 * 1024;  // limit 100MB unless there is only resource
+  size_t i = 0;
+  size_t j = 0;
+  size_t one_req_size = 0;
+  while (i < count) {
+    if (((i != j) && (one_req_size + mResources[j].size > one_req_limit)) ||
+        (j == mResources.size())) {
+      if (!cache.mFallbackProvider->get(&mResources[i], j - i, conn, ptr,
+                                        one_req_size)) {
+        return false;
+      }
+      while (i < j) {
+        cache.putCache(mResources[i], ptr);
+        ptr += mResources[i].size;
+        i++;
+      }
+      one_req_size = 0;
+    }
+    if (j < mResources.size()) {
+      one_req_size += mResources[j].size;
+      j++;
+    }
   }
   return true;
 }
