@@ -100,7 +100,7 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
         imageViewObj := ImageViews[v.ImageView]
         imageObj := imageViewObj.Image
         rng := imageViewObj.SubresourceRange
-        readImageSubresource(imageObj, rng, v.ImageLayout)
+        readImageSubresource(imageObj, rng)
       }
     }
   }
@@ -187,7 +187,7 @@ sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBi
       imageViewObj := ImageViews[v.ImageView]
       imageObj := imageViewObj.Image
       rng := imageViewObj.SubresourceRange
-      writeImageSubresource(imageObj, rng, v.ImageLayout)
+      writeImageSubresource(imageObj, rng)
     }
   }
 }
@@ -212,6 +212,7 @@ sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!
     }
   }
 }
+
 
 sub void readWriteMemoryInBoundDescriptorSets(
     ref!PipelineLayoutObject pipelineLayout,

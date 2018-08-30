@@ -560,7 +560,7 @@ gapil::Ref<ImageMemoryRequirements> VulkanSpy::fetchImageMemoryRequirements(
     for (VkSparseImageMemoryRequirements& req : sparse_mem_reqs) {
       auto aspect_map = subUnpackImageAspectFlags(
           nullptr, nullptr, req.mformatProperties.maspectMask);
-      for (auto aspect : aspect_map->mBits) {
+      for (auto aspect : aspect_map) {
         reqs->mAspectBitsToSparseMemoryRequirements[aspect.second] = req;
       }
     }
@@ -854,7 +854,7 @@ void VulkanSpy::walkImageSubRng(
       subImageSubresourceLevelCount(nullptr, nullptr, img, rng);
   auto aspect_map =
       subUnpackImageAspectFlags(nullptr, nullptr, rng.maspectMask);
-  for (auto b : aspect_map->mBits) {
+  for (auto b : aspect_map) {
     auto ai = img->mAspects.find(b.second);
     if (ai == img->mAspects.end()) {
       continue;

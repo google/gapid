@@ -286,7 +286,7 @@ cmd VkResult vkQueuePresentKHR(
         baseMipLevel:    0,
         levelCount:      image.Info.MipLevels,
         baseArrayLayer:  0,
-        layerCount:      image.Info.ArrayLayers), VK_IMAGE_LAYOUT_UNDEFINED)
+        layerCount:      image.Info.ArrayLayers))
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
     image
     LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1

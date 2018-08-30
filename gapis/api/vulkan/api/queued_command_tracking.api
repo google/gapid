@@ -120,7 +120,7 @@ sub void execPendingCommands(VkQueue queue) {
             // and preinitialized images, we also create individual pool here.
             // TODO: Redirect to bound memories for the data of linear preinitialized
             // images.
-            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect).Bits {
+            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect) {
               aspect := image.Aspects[aspectBit]
               for lay in (0 .. image.Info.ArrayLayers) {
                 for lev in (0 .. image.Info.MipLevels) {
@@ -159,7 +159,7 @@ sub void execPendingCommands(VkQueue queue) {
             // and preinitialized images, we also create individual pool here.
             // TODO: Redirect to bound memories for the data of linear preinitialized
             // images.
-            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect).Bits {
+            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect) {
               aspect := image.Aspects[aspectBit]
               for lay in (0 .. image.Info.ArrayLayers) {
                 for lev in (0 .. image.Info.MipLevels) {
