@@ -589,8 +589,8 @@
   {
     {{Template "C++.Type" $.IndexIterator}} {{$i}} = 0;
     for ({{Template "C++.Type" $.Map}}::iterator it = {{Template "C++.Read" $.Map}}.begin(); it != {{Template "C++.Read" $.Map}}.end(); ++it, ++{{$i}}) {
-      {{Template "C++.Type" $.KeyIterator}} {{$k}} = it->first;
-      {{Template "C++.Type" $.ValueIterator}} {{$v}} = it->second;
+      {{Template "C++.Type" $.KeyIterator}}& {{$k}} = it->first;
+      {{Template "C++.Type" $.ValueIterator}}& {{$v}} = it->second;
       {{Template "C++.Block" $.Block}}
     }
   }
