@@ -418,7 +418,7 @@ sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
     image := Images[v.image]
     transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
     if v.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED {
-      writeImageSubresource(image, v.subresourceRange, v.newLayout)
+      writeImageSubresource(image, v.subresourceRange)
     }
   }
 }

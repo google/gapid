@@ -340,10 +340,10 @@ sub void loadImageAttachment(u32 attachmentID) {
     if attachment.Image != null {
       switch desc.loadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD:
-          readImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+          readImageSubresource(attachment.Image, attachment.SubresourceRange)
         default:
           // write to the attachment image, to prevent any dependencies on previous writes
-          writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.initialLayout)
+          writeImageSubresource(attachment.Image, attachment.SubresourceRange)
       }
     }
   }
@@ -360,7 +360,7 @@ sub void storeImageAttachment(u32 attachmentID) {
       }
       switch desc.storeOp {
         case VK_ATTACHMENT_STORE_OP_STORE:
-          writeImageSubresource(attachment.Image, attachment.SubresourceRange, desc.finalLayout)
+          writeImageSubresource(attachment.Image, attachment.SubresourceRange)
         default: {
           // do nothing
         }

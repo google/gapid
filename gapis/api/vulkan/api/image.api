@@ -77,11 +77,11 @@
 }
 
 @internal class ImageAspect {
-  map!(u32, ref!ImageLayer) Layers
+  dense_map!(u32, ref!ImageLayer) Layers
 }
 
 @internal class ImageLayer {
-  map!(u32, ref!ImageLevel) Levels
+  dense_map!(u32, ref!ImageLevel) Levels
 }
 
 @internal class ImageLevel {
@@ -217,7 +217,7 @@ cmd VkResult vkCreateImage(
     ImageAspect:       imageAspect,
   )
 
-  for _ , _ , aspectBit in unpackImageAspectFlags(imageAspect).Bits {
+  for _ , _ , aspectBit in unpackImageAspectFlags(imageAspect) {
     object.Aspects[aspectBit] = new!ImageAspect()
     aspect := object.Aspects[aspectBit]
     for j in (0 .. info.arrayLayers) {
@@ -333,7 +333,7 @@ cmd VkResult vkBindImageMemory(
   imageObject.BoundMemoryOffset = memoryOffset
   DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
 
-  for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect).Bits {
+  for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
     aspect := imageObject.Aspects[aspectBit]
     for j in (0 .. imageObject.Info.ArrayLayers) {
       for i in (0 .. imageObject.Info.MipLevels) {
@@ -578,26 +578,27 @@ cmd void vkDestroySampler(
   }
 }
 
-sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
+sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
-    aspect := image.Aspects[aspectBit]
-    for layerIndex in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
-      layer := aspect.Layers[layerIndex]
-      for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
-        level := layer.Levels[mipLevel]
-        read(level.Data)
-        level.LastBoundQueue = LastBoundQueue
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+    for _, i, layer in image.Aspects[aspectBit].Layers {
+      if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
+        for _, k, level in layer.Levels {
+          if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
+            read(level.Data)
+            level.LastBoundQueue = LastBoundQueue
+          }
+        }
       }
     }
   }
 }
 
-sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, VkImageLayout layout) {
+sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
     aspect := image.Aspects[aspectBit]
     for layerIndex in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
       layer := aspect.Layers[layerIndex]
@@ -643,7 +644,7 @@ sub u32 imageSubresourceLevelCount(ref!ImageObject image, VkImageSubresourceRang
 sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng, VkImageLayout oldLayout, VkImageLayout newLayout) {
   layerCount := imageSubresourceLayerCount(img, rng)
   levelCount := imageSubresourceLevelCount(img, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask).Bits {
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
     if (aspectBit in img.Aspects) {
       for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
         if (layer in img.Aspects[aspectBit].Layers) {

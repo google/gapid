@@ -763,8 +763,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
       if (sparseResidency) {
         for (auto &aspect_i :
-             subUnpackImageAspectFlags(nullptr, nullptr, img->mImageAspect)
-                 ->mBits) {
+             subUnpackImageAspectFlags(nullptr, nullptr, img->mImageAspect)) {
           uint32_t aspect_bit = aspect_i.second;
           if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
               img->mSparseImageMemoryBindings.end()) {

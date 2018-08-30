@@ -131,7 +131,6 @@ func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]
 	// TODO: Debug Info
 	out := newInitialStateOutput(oldState)
 	sb := s.newStateBuilder(ctx, out)
-
 	defer sb.ta.Dispose()
 
 	sb.newState.Memory.NewAt(sb.oldState.Memory.NextPoolID())
@@ -1362,8 +1361,8 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 
 func (sb *stateBuilder) imageAspectFlagBits(flag VkImageAspectFlags) []VkImageAspectFlagBits {
 	bits := []VkImageAspectFlagBits{}
-	b, _ := subUnpackImageAspectFlags(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, flag)
-	for _, bit := range b.Bits().All() {
+	b, _ := subUnpackImageAspectFlags(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, flag)
+	for _, bit := range b.All() {
 		bits = append(bits, bit)
 	}
 	return bits

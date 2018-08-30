@@ -234,7 +234,7 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
     srcMipLevel := region.srcSubresource.mipLevel
     dstMipLevel := region.dstSubresource.mipLevel
 
-    for _ , _ , aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask).Bits {
+    for _ , _ , aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask) {
       srcElementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
           as!u64(srcElementAndTexelBlockSize.ElementSize)
@@ -412,7 +412,7 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
     rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
     imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
     // The VkImageSubresourceLayer used for buffer image copy should specify only one aspect bit.
-    for _ , _ , aspectBit in unpackImageAspectFlags(region.imageSubresource.aspectMask).Bits {
+    for _ , _ , aspectBit in unpackImageAspectFlags(region.imageSubresource.aspectMask) {
       elementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
           as!u64(elementAndTexelBlockSize.ElementSize)
@@ -784,8 +784,8 @@ sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
       1,
       r.dstSubresource.baseArrayLayer,
       r.dstSubresource.layerCount)
-    readImageSubresource(Images[args.SrcImage], srcRange, args.SrcImageLayout)
-    writeImageSubresource(Images[args.DstImage], dstRange, args.DstImageLayout)
+    readImageSubresource(Images[args.SrcImage], srcRange)
+    writeImageSubresource(Images[args.DstImage], dstRange)
   }
 }
 
