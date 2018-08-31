@@ -16,5 +16,4 @@
 
 package host
 
-// #cgo LDFLAGS: -ldl
 import "C"

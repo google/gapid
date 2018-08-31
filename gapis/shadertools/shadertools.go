@@ -15,12 +15,9 @@
 // Package shadertools wraps around external C code for manipulating shaders.
 package shadertools
 
-//#cgo LDFLAGS: -lspv -lkhronos -lpthread -lm
 //#include "cc/libmanager.h"
 //#include <stdlib.h>
 //#include <third_party/SPIRV-Reflect/spirv_reflect.h>
-//// Workaround for https://github.com/golang/go/issues/8756 (fixed in go 1.8):
-//#cgo windows LDFLAGS: -Wl,--allow-multiple-definition
 import "C"
 
 import (
