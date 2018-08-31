@@ -627,6 +627,8 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
 
+	decoders := make([]postBackDecoder, len(b.decoders))
+	copy(decoders, b.decoders)
 	handlePost := func(pd *gapir.PostData) {
 		// TODO: should we skip it instead of return error?
 		ctx = log.Enter(ctx, "PostDataHandler")
@@ -637,20 +639,22 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 			for _, p := range pd.GetPostDataPieces() {
 				id := p.GetID()
 				data := p.GetData()
-				if id >= uint64(len(b.decoders)) {
+				if id >= uint64(len(decoders)) {
 					log.E(ctx, "No valid decoder found for %v'th post data", id)
 				}
 				// Check that each Postback consumes its expected number of bytes.
 				var err error
-				if len(data) != b.decoders[id].expectedSize {
-					err = fmt.Errorf("%d'th post size mismatch, actual size: %d, expected size: %d", id, len(data), b.decoders[id].expectedSize)
+				if len(data) != decoders[id].expectedSize {
+					err = fmt.Errorf("%d'th post size mismatch, actual size: %d, expected size: %d", id, len(data), decoders[id].expectedSize)
 				}
 				r := endian.Reader(bytes.NewReader(data), byteOrder)
-				b.decoders[id].decode(r, err)
+				decoders[id].decode(r, err)
 			}
 		})
 	}
 
+	readers := make([]NotificationReader, len(b.notificationReaders))
+	copy(readers, b.notificationReaders)
 	handleNotification := func(n *gapir.Notification) {
 		ctx = log.Enter(ctx, "NotificationHandler")
 		if n == nil {
@@ -658,24 +662,11 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 			return
 		}
 		crash.Go(func() {
-			for _, r := range b.notificationReaders {
+			for _, r := range readers {
 				r(*n)
 			}
 		})
 	}
-
-	// Clear the builder.
-	defer func() {
-		b.resourceIDToIdx = nil
-		b.threadIDToIdx = nil
-		b.resources = nil
-		b.reservedMemory = memory.RangeList{}
-		b.pointerMemory = memory.RangeList{}
-		b.mappedMemory = mappedMemoryRangeList{}
-		b.instructions = nil
-		b.stack = nil
-		b.Remappings = nil
-	}()
 
 	return payload, handlePost, handleNotification, nil
 }
