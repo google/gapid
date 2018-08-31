@@ -37,13 +37,8 @@ toolchain {
   cxx_flag: "-D_WIN32_WINNT=0x0600"
 
   linker_flag: "-static"
-  #linker_flag: "-LC:/tools/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.3.0"
-  #linker_flag: "-l:libgcc.a"
-  #linker_flag: "-l:libgcc_eh.a"
-  #linker_flag: "-l:libpthread.a"
-  #linker_flag: "-l:libstdc++.a"
-  linker_flag: "-lstdc++"
   linker_flag: "-Wl,--build-id"
+  linker_flag: "-lstdc++"
 
   objcopy_embed_flag: "-I"
   objcopy_embed_flag: "binary"
@@ -94,5 +89,11 @@ toolchain {
         value: "%{BINDIR}"
       }
     }
+  }
+
+  artifact_name_pattern {
+    category_name: "executable"
+    prefix: ""
+    extension: ".exe"
   }
 }
