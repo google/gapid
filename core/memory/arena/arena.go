@@ -23,8 +23,6 @@ import (
 	"github.com/google/gapid/core/context/keys"
 )
 
-// #cgo LDFLAGS: -lcc-core -lcc-arena
-//
 // #include "core/memory/arena/cc/arena.h"
 import "C"
 

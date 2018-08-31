@@ -16,5 +16,4 @@
 
 package host
 
-// #cgo LDFLAGS: -lgdi32
 import "C"
