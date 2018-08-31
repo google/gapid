@@ -627,8 +627,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
 
-	decoders := make([]postBackDecoder, len(b.decoders))
-	copy(decoders, b.decoders)
+	decoders := b.decoders
 	handlePost := func(pd *gapir.PostData) {
 		// TODO: should we skip it instead of return error?
 		ctx = log.Enter(ctx, "PostDataHandler")
@@ -653,8 +652,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		})
 	}
 
-	readers := make([]NotificationReader, len(b.notificationReaders))
-	copy(readers, b.notificationReaders)
+	readers := b.notificationReaders
 	handleNotification := func(n *gapir.Notification) {
 		ctx = log.Enter(ctx, "NotificationHandler")
 		if n == nil {
