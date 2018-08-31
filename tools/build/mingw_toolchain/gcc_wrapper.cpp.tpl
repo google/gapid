@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   FileCollector files("gcc");
   ArgumentCollector arguments("gcc");
 
-  bool fixup = false, output = false;
+  bool fixup = false, output = false, libstdc = false;
   for (int i = 1; i < argc; i++) {
     std::string arg(argv[i]);
 
@@ -42,11 +42,19 @@ int main(int argc, char** argv) {
       }
     } else if (arg.compare(0, 5, "-Wl,@") == 0) {
       arguments.Push("-Wl,@" + files.ProcessParamsFile(arg.substr(5), FileCollector::GCC));
+    } else if (arg == "-lstdc++") {
+      // Move any -lstdc++ to the end. This is to work around how rules_go/golang calls us.
+      // Ugly, dirty, and I hate it, but it works.
+      libstdc = true;
     } else {
       arguments.Push(arg);
       output = arg == "-o";
       fixup = output || arg == "-MF";
     }
+  }
+
+  if (libstdc) {
+    arguments.Push("-lstdc++");
   }
 
   return arguments.Execute("%{CC}", &files);
