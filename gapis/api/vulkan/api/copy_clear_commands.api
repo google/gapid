@@ -784,7 +784,10 @@ sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
       1,
       r.dstSubresource.baseArrayLayer,
       r.dstSubresource.layerCount)
+
+    updateImageQueue(Images[args.SrcImage], srcRange)
     readImageSubresource(Images[args.SrcImage], srcRange)
+    updateImageQueue(Images[args.DstImage], dstRange)
     writeImageSubresource(Images[args.DstImage], dstRange)
   }
 }
