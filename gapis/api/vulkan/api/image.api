@@ -74,6 +74,9 @@
   VkMemoryRequirements                         MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements)   SparseMemoryRequirements
   ref!DedicatedRequirementsKHR                 DedicatedRequirementsKHR
+  // If ever layer/level is set to the same queue, then set it here instead.
+  // This can save expensive looping through Aspects/Layers/Levels
+  @unused ref!QueueObject                      LastBoundQueue
 }
 
 @internal class ImageAspect {
@@ -578,6 +581,44 @@ cmd void vkDestroySampler(
   }
 }
 
+sub bool isEntireSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
+  layerCount := imageSubresourceLayerCount(image, rng)
+  levelCount := imageSubresourceLevelCount(image, rng)
+  return ((as!u32(image.ImageAspect) & as!u32(rng.aspectMask)) == as!u32(image.ImageAspect)) &&
+          (rng.baseArrayLayer == 0) && (rng.baseMipLevel == 0) &&
+          (layerCount == image.Info.ArrayLayers) && (levelCount == image.Info.MipLevels)
+}
+
+sub void updateImageQueue(ref!ImageObject image, VkImageSubresourceRange rng) {
+  if (image.LastBoundQueue != LastBoundQueue) {
+    if (isEntireSubresource(image, rng)) {
+      image.LastBoundQueue = LastBoundQueue
+      setQueueInRange(image, rng, LastBoundQueue)
+    } else {
+      setQueueInRange(image, rng, LastBoundQueue)
+      image.LastBoundQueue = null
+    }
+  }
+}
+
+sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng, 
+    ref!QueueObject queue) {
+  layerCount := imageSubresourceLayerCount(image, rng)
+  levelCount := imageSubresourceLevelCount(image, rng)
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+    for _, i, layer in image.Aspects[aspectBit].Layers {
+      if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
+        for _, k, level in layer.Levels {
+          if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
+            level.LastBoundQueue = queue
+          }
+        }
+      }
+    }
+  }
+}
+
+@spy_disabled
 sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
@@ -587,7 +628,6 @@ sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng
         for _, k, level in layer.Levels {
           if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
             read(level.Data)
-            level.LastBoundQueue = LastBoundQueue
           }
         }
       }
@@ -595,6 +635,7 @@ sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng
   }
 }
 
+@spy_disabled
 sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
@@ -605,7 +646,6 @@ sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rn
       for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
         level := layer.Levels[mipLevel]
         write(level.Data)
-        level.LastBoundQueue = LastBoundQueue
       }
     }
   }

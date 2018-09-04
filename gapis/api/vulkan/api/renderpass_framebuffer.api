@@ -339,11 +339,15 @@ sub void loadImageAttachment(u32 attachmentID) {
     desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       switch desc.loadOp {
-        case VK_ATTACHMENT_LOAD_OP_LOAD:
+        case VK_ATTACHMENT_LOAD_OP_LOAD: {
           readImageSubresource(attachment.Image, attachment.SubresourceRange)
-        default:
+          updateImageQueue(attachment.Image, attachment.SubresourceRange)
+        }
+        default: {
           // write to the attachment image, to prevent any dependencies on previous writes
+          updateImageQueue(attachment.Image, attachment.SubresourceRange)
           writeImageSubresource(attachment.Image, attachment.SubresourceRange)
+        }
       }
     }
   }
@@ -359,8 +363,10 @@ sub void storeImageAttachment(u32 attachmentID) {
         transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
       }
       switch desc.storeOp {
-        case VK_ATTACHMENT_STORE_OP_STORE:
+        case VK_ATTACHMENT_STORE_OP_STORE: {
           writeImageSubresource(attachment.Image, attachment.SubresourceRange)
+          updateImageQueue(attachment.Image, attachment.SubresourceRange)
+        }
         default: {
           // do nothing
         }
