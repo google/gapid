@@ -20,6 +20,15 @@ option go_package = "github.com/google/gapid/gapis/capture";
 
 import "core/os/device/device.proto";
 
+message Source {
+  oneof src {
+    // Path of the capture file.
+    string file_path = 1;
+    // The capture data in blob data form.
+    bytes raw_bytes = 2;
+  }
+}
+
 // Record holds all the data for an entire capture.
 message Record {
   // Name of the capture.

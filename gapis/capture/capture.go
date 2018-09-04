@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/google/gapid/core/app/analytics"
@@ -219,10 +220,10 @@ func ResolveFromPath(ctx context.Context, p *path.Capture) (*Capture, error) {
 }
 
 // Import imports the capture by name and data, and stores it in the database.
-func Import(ctx context.Context, name string, data []byte) (*path.Capture, error) {
-	dataID, err := database.Store(ctx, data)
+func Import(ctx context.Context, name string, src *Source) (*path.Capture, error) {
+	dataID, err := database.Store(ctx, src)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to store capture data: %v", err)
+		return nil, fmt.Errorf("Unable to store capture data source: %v", err)
 	}
 	id, err := database.Store(ctx, &Record{
 		Name: name,
@@ -289,7 +290,11 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	copy(dataID[:], r.Data)
 	data, err := database.Resolve(ctx, dataID)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to load capture data: %v", err)
+		return nil, fmt.Errorf("Unable to load capture data source: %v", err)
+	}
+	dataSrc, ok := data.(*Source)
+	if !ok {
+		return nil, fmt.Errorf("Unable to load capture data source: Failed to resolve capture.Source")
 	}
 
 	stopTiming := analytics.SendTiming("capture", "deserialize")
@@ -313,7 +318,26 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	// which protoconv functions need to handle resources.
 	ctx = id.PutRemapper(ctx, d)
 
-	if err := pack.Read(ctx, bytes.NewReader(data.([]byte)), d, false); err != nil {
+	var reader io.Reader
+	switch dataSrc.GetSrc().(type) {
+	case *Source_FilePath:
+		f, err := os.Open(dataSrc.GetFilePath())
+		if err != nil {
+			return nil, &service.ErrUnsupportedVersion{
+				Reason: messages.ErrFileCannotBeRead(),
+			}
+		}
+		defer f.Close()
+		reader = f
+	case *Source_RawBytes:
+		reader = bytes.NewReader(dataSrc.GetRawBytes())
+	default:
+		return nil, &service.ErrDataUnavailable{
+			Reason: messages.ErrFileCannotBeRead(),
+		}
+	}
+
+	if err := pack.Read(ctx, reader, d, false); err != nil {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
 			log.E(ctx, "%v", err)
