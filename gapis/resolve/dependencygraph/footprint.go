@@ -36,7 +36,6 @@ type Footprint struct {
 	Commands           []api.Cmd
 	NumInitialCommands int
 	Behaviors          []*Behavior
-	BehaviorIndices    map[*Behavior]uint64
 	cmdIdxToBehavior   api.SubCmdIdxTrie
 }
 
@@ -46,7 +45,6 @@ func NewEmptyFootprint(ctx context.Context) *Footprint {
 	return &Footprint{
 		Commands:         []api.Cmd{},
 		Behaviors:        []*Behavior{},
-		BehaviorIndices:  map[*Behavior]uint64{},
 		cmdIdxToBehavior: api.SubCmdIdxTrie{},
 	}
 }
@@ -58,42 +56,48 @@ func NewFootprint(ctx context.Context, cmds []api.Cmd, numInitialCommands int) *
 		Commands:           cmds,
 		NumInitialCommands: numInitialCommands,
 		Behaviors:          make([]*Behavior, 0, len(cmds)),
-		BehaviorIndices:    map[*Behavior]uint64{},
 		cmdIdxToBehavior:   api.SubCmdIdxTrie{},
 	}
 }
+
+const NotInFootprint = uint64(0xFFFFFFFFFFFFFFFF)
 
 // Behavior contains a set of read and write operations as side effect of
 // executing the command to whom it belongs. Behavior also contains a
 // reference to the back-propagation machine which should be used to process
 // the Behavior to determine its liveness for dead code elimination.
 type Behavior struct {
-	Reads   []DefUseVariable
-	Writes  []DefUseVariable
-	Owner   api.SubCmdIdx
-	Alive   bool
-	Aborted bool
-	Machine BackPropagationMachine
+	Index     uint64
+	DependsOn map[*Behavior]struct{}
+	Owner     api.SubCmdIdx
+	Alive     bool
+	Aborted   bool
 }
 
 // NewBehavior creates a new Behavior which belongs to the command indexed by
-// the given SubCmdIdx and shall be process by the given back-propagation
-// machine. Returns a pointer to the created Behavior.
-func NewBehavior(fullCommandIndex api.SubCmdIdx, m BackPropagationMachine) *Behavior {
+// the given SubCmdIdx. Returns a pointer to the created Behavior.
+func NewBehavior(fullCommandIndex api.SubCmdIdx) *Behavior {
 	return &Behavior{
-		Owner:   fullCommandIndex,
-		Machine: m,
+		Index:     NotInFootprint,
+		DependsOn: map[*Behavior]struct{}{},
+		Owner:     fullCommandIndex,
 	}
 }
 
-// Read records a read operation of the given DefUseVariable to the Behavior
+// Read records a dependency that the current Behavior depends on the behavior
+// which writes to the given DefUseVariable fore.
 func (b *Behavior) Read(c DefUseVariable) {
-	b.Reads = append(b.Reads, c)
+	if c.GetDefBehavior() == nil {
+		return
+	}
+	if _, ok := b.DependsOn[c.GetDefBehavior()]; !ok {
+		b.DependsOn[c.GetDefBehavior()] = struct{}{}
+	}
 }
 
-// Write records a write operation of the given DefUseVariable to the Behavior
+// Write labels the given DefUseVariable written by the Behavior
 func (b *Behavior) Write(c DefUseVariable) {
-	b.Writes = append(b.Writes, c)
+	c.SetDefBehavior(b)
 }
 
 // Modify records a read and a write operation of the given DefUseVariable to the
@@ -111,49 +115,12 @@ func (b *Behavior) Modify(c DefUseVariable) {
 // be used for the liveness analysis, should be tagged as DefUseVariable.
 // In the context of GAPID, any pieces of the whole API state can be tagged as
 // DefUseVariable, e.g. a piece of memory, a handle, an object state, etc.
-// But eventually those DefUseVariables wiil be handed in the
-// BackPropagationMachine, which is referred in the Behavior that records
-// read or write operations of the DefUseVariables. So the corresponding
-// BackPropagationMachine must be able to handle the concrete type of those
-// DefUseVariables.
+// Each DefUseVariable can be defined by a behavior. To set and get the defining
+// behavior, SetDefBehavior() and GetDefBehavior() can be used.
 type DefUseVariable interface {
-	DefUseVariable()
+	GetDefBehavior() *Behavior
+	SetDefBehavior(*Behavior)
 }
-
-// BackPropagationMachine determines the liveness of Behaviors along the
-// back propagation of the operations recorded in Footprint's Behaviors.
-type BackPropagationMachine interface {
-	// IsAlive checks whether a given behavior, which is specified by its index
-	// and the footprint to which it belongs, should be kept alive. It should
-	// takes the written DefUseVariable of the given behavior, check every of
-	// them with its internal state to determine the liveness of the Behavior.
-	// Returns true if the behavior should be kept alive, otherwise returns
-	// false.
-	IsAlive(behaviorIndex uint64, ft *Footprint) bool
-	// RecordBehaviorEffects records the read/write operations of the given
-	// behavior specified by its index in the given footprint, and returns the
-	// indices of the alive behaviors that should be kept alive due to recording
-	// of the given behavior.
-	RecordBehaviorEffects(behaviorIndex uint64, ft *Footprint) []uint64
-	// Clear clears the internal state of the BackPropagationMachine.
-	Clear()
-	// FramebufferRequest finds the framebuffer data at the given command index
-	// and records a read to the framebuffer data, so the dependencies of the
-	// data will be kept alive for backpropagation.
-	FramebufferRequest(id api.CmdID, ft *Footprint)
-}
-
-// dummyMachine does nothing but marks all the incoming Behaviors as alive.
-type dummyMachine struct{}
-
-func (m *dummyMachine) IsAlive(uint64, *Footprint) bool { return true }
-func (m *dummyMachine) RecordBehaviorEffects(behaviorIndex uint64,
-	ft *Footprint) []uint64 {
-	return []uint64{behaviorIndex}
-}
-
-func (m *dummyMachine) Clear()                                   {}
-func (m *dummyMachine) FramebufferRequest(api.CmdID, *Footprint) {}
 
 // BehaviorIndex returns the index of the last Behavior in the Footprint
 // which belongs to the command or subcomand indexed by the given SubCmdIdx. In
@@ -181,7 +148,7 @@ func (f *Footprint) AddBehavior(ctx context.Context, b *Behavior) bool {
 	fci := b.Owner
 	f.cmdIdxToBehavior.SetValue(fci, bi)
 	f.Behaviors = append(f.Behaviors, b)
-	f.BehaviorIndices[b] = bi
+	b.Index = bi
 	return true
 }
 
@@ -245,7 +212,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			} else {
 				// API does not provide execution footprint info, always keep commands
 				// from such APIs alive.
-				bh := NewBehavior(api.SubCmdIdx{uint64(id)}, &dummyMachine{})
+				bh := NewBehavior(api.SubCmdIdx{uint64(id)})
 				bh.Alive = true
 				// Even if the command does not belong to an API that provides
 				// execution footprint info, we still need to mutate it in the new

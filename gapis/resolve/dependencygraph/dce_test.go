@@ -23,66 +23,37 @@ import (
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
-type dummyDefUseVar uint64
-
-func (dummyDefUseVar) DefUseVariable() {}
-
-type dummyMachine struct {
-	undefined map[dummyDefUseVar]struct{}
+type dummyDefUseVar struct {
+	b *dependencygraph.Behavior
 }
 
-func (m *dummyMachine) IsAlive(behaviorIndex uint64,
-	ft *dependencygraph.Footprint) bool {
-	bh := ft.Behaviors[behaviorIndex]
-	for _, w := range bh.Writes {
-		if u, ok := w.(dummyDefUseVar); ok {
-			_, contains := m.undefined[u]
-			if contains {
-				return true
-			}
-		}
-	}
-	return false
+func (v *dummyDefUseVar) GetDefBehavior() *dependencygraph.Behavior {
+	return v.b
 }
 
-func (m *dummyMachine) RecordBehaviorEffects(behaviorIndex uint64,
-	ft *dependencygraph.Footprint) []uint64 {
-	alive := []uint64{behaviorIndex}
-	bh := ft.Behaviors[behaviorIndex]
-	for _, w := range bh.Writes {
-		if u, ok := w.(dummyDefUseVar); ok {
-			delete(m.undefined, u)
-		}
-	}
-	for _, r := range bh.Reads {
-		if u, ok := r.(dummyDefUseVar); ok {
-			m.undefined[u] = struct{}{}
-		}
-	}
-	return alive
+func (v *dummyDefUseVar) SetDefBehavior(b *dependencygraph.Behavior) {
+	v.b = b
 }
-
-func (m *dummyMachine) Clear() {
-	m.undefined = map[dummyDefUseVar]struct{}{}
-}
-
-func (m *dummyMachine) FramebufferRequest(api.CmdID, *dependencygraph.Footprint) {}
 
 func TestDCE(t *testing.T) {
 	ctx := log.Testing(t)
 	ft := dependencygraph.NewEmptyFootprint(ctx)
-	machine := &dummyMachine{undefined: map[dummyDefUseVar]struct{}{}}
+	nodes := map[int]*dummyDefUseVar{}
 
 	behave := func(fci api.SubCmdIdx,
-		reads, writes []dummyDefUseVar) {
-		b := dependencygraph.NewBehavior(fci, machine)
+		reads, writes []int) {
+		b := dependencygraph.NewBehavior(fci)
 		for _, r := range reads {
-			b.Read(r)
+			if rv, ok := nodes[r]; ok {
+				b.Read(rv)
+			}
 		}
 		for _, w := range writes {
-			b.Write(w)
+			if _, ok := nodes[w]; !ok {
+				nodes[w] = &dummyDefUseVar{}
+			}
+			b.Write(nodes[w])
 		}
-		b.Machine = machine
 		ft.AddBehavior(ctx, b)
 	}
 
@@ -97,16 +68,16 @@ func TestDCE(t *testing.T) {
 	// 3-0-0-4: R[8], W[9]
 	// 3-0-1-0: R[8, 9], W[10]
 	// 4: R[10], W[]
-	behave([]uint64{0}, []dummyDefUseVar{}, []dummyDefUseVar{1, 2, 3})
-	behave([]uint64{1}, []dummyDefUseVar{}, []dummyDefUseVar{2, 3})
-	behave([]uint64{2}, []dummyDefUseVar{}, []dummyDefUseVar{4})
-	behave([]uint64{3, 0, 0, 0}, []dummyDefUseVar{2}, []dummyDefUseVar{5})
-	behave([]uint64{3, 0, 0, 1}, []dummyDefUseVar{3}, []dummyDefUseVar{6})
-	behave([]uint64{3, 0, 0, 2}, []dummyDefUseVar{4}, []dummyDefUseVar{7})
-	behave([]uint64{3, 0, 0, 3}, []dummyDefUseVar{5, 6, 7}, []dummyDefUseVar{8})
-	behave([]uint64{3, 0, 0, 4}, []dummyDefUseVar{8}, []dummyDefUseVar{9})
-	behave([]uint64{3, 0, 1, 0}, []dummyDefUseVar{8, 9}, []dummyDefUseVar{10})
-	behave([]uint64{4}, []dummyDefUseVar{10}, []dummyDefUseVar{})
+	behave([]uint64{0}, []int{}, []int{1, 2, 3})
+	behave([]uint64{1}, []int{}, []int{2, 3})
+	behave([]uint64{2}, []int{}, []int{4})
+	behave([]uint64{3, 0, 0, 0}, []int{2}, []int{5})
+	behave([]uint64{3, 0, 0, 1}, []int{3}, []int{6})
+	behave([]uint64{3, 0, 0, 2}, []int{4}, []int{7})
+	behave([]uint64{3, 0, 0, 3}, []int{5, 6, 7}, []int{8})
+	behave([]uint64{3, 0, 0, 4}, []int{8}, []int{9})
+	behave([]uint64{3, 0, 1, 0}, []int{8, 9}, []int{10})
+	behave([]uint64{4}, []int{10}, []int{})
 
 	dce := dependencygraph.NewDCE(ctx, ft)
 	expectedLiveness := func(aliveCommands *dependencygraph.CommandIndicesSet, fci api.SubCmdIdx, expected bool) {
