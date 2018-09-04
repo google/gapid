@@ -174,7 +174,8 @@ func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (
 	ctx = status.Start(ctx, "RPC ImportCapture")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "ImportCapture")
-	p, err := capture.Import(ctx, name, data)
+	src := &capture.Blob{Data: data}
+	p, err := capture.Import(ctx, name, src)
 	if err != nil {
 		return nil, err
 	}
@@ -223,18 +224,8 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	}
 	name := filepath.Base(path)
 
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	in, err := ReadFile(f)
-	if err != nil {
-		return nil, err
-	}
-
-	p, err := capture.Import(ctx, name, in)
+	src := &capture.File{Path: path}
+	p, err := capture.Import(ctx, name, src)
 	if err != nil {
 		return nil, err
 	}
