@@ -351,7 +351,7 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
   map!(VkImageAspectFlags, dense_map!(u32, VkImageAspectFlagBits)) allBits
 }
 
-@serialize
+@hidden @serialize
 AllBits allBits
 
 @internal class unpackedImageAspectFlagBits {
