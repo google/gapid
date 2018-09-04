@@ -89,7 +89,6 @@ func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: t.state.Arena}
 
 	mutateErr := cmd.Mutate(ctx, id, t.state, nil /* no builder */)
 	if mutateErr != nil {
@@ -98,6 +97,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 	}
 
 	s := out.State()
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
 	l := s.MemoryLayout
 	allocated := []api.AllocResult{}
 	defer func() {
@@ -269,7 +269,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 }
 
 func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
-	cb := CommandBuilder{Thread: 0, Arena: t.state.Arena}
+	cb := CommandBuilder{Thread: 0, Arena: out.State().Arena}
 	for inst, ch := range t.reportCallbacks {
 		out.MutateAndWrite(ctx, api.CmdNoID, cb.ReplayDestroyVkDebugReportCallback(inst, ch))
 		// It is safe to delete keys in loop in Go
