@@ -20,7 +20,7 @@ if [ $# -ne 1 ]; then
 	exit
 fi
 
-cp -r $(/usr/libexec/java_home)/jre/ $1/
+cp -r $(/usr/libexec/java_home -v 1.8)/jre/ $1/
 
 # Remove unnecessary files.
 # See http://www.oracle.com/technetwork/java/javase/jre-8-readme-2095710.html
