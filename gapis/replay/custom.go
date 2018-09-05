@@ -17,6 +17,7 @@ package replay
 import (
 	"context"
 
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/replay/builder"
 )
@@ -49,3 +50,4 @@ func (Custom) CmdParams() api.Properties                                        
 func (Custom) CmdResult() *api.Property                                           { return nil }
 func (Custom) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlags { return 0 }
 func (Custom) Extras() *api.CmdExtras                                             { return nil }
+func (cmd Custom) Clone(arena.Arena) api.Cmd                                      { return Custom{cmd.T, cmd.F} }

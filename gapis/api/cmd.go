@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/google/gapid/core/fault"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/replay/builder"
 )
 
@@ -58,6 +59,9 @@ type Cmd interface {
 	// Mutate mutates the State using the command. If the builder argument is
 	// not nil then it will call the replay function on the builder.
 	Mutate(context.Context, CmdID, *GlobalState, *builder.Builder) error
+
+	// Clone makes a shallow copy of this command.
+	Clone(arena.Arena) Cmd
 }
 
 const (
