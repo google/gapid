@@ -23,7 +23,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -163,10 +162,9 @@ type FootprintBuilder interface {
 }
 
 // GetFootprint returns a pointer to the resolved Footprint.
-func GetFootprint(ctx context.Context, device *path.Device) (*Footprint, error) {
+func GetFootprint(ctx context.Context, c *path.Capture) (*Footprint, error) {
 	r, err := database.Build(ctx, &FootprintResolvable{
-		Capture: capture.Get(ctx),
-		Device:  device,
+		Capture: c,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Counld not get execution foot print: %v", err)
@@ -176,18 +174,12 @@ func GetFootprint(ctx context.Context, device *path.Device) (*Footprint, error) 
 
 // Resolve implements the database.Resolver interface.
 func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Capture)
-	if d := r.Device; d != nil {
-		ctx = replay.PutDevice(ctx, d)
-	}
-
-	c, err := capture.Resolve(ctx)
+	c, err := capture.ResolveFromPath(ctx, r.Capture)
 	if err != nil {
 		return nil, err
 	}
 	cmds := c.Commands
 	// If the capture contains initial state, prepend the commands to build the state.
-
 	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
 	if err != nil {
 		return nil, err
