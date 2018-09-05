@@ -209,7 +209,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// TODO(dsrbecky): This might make some commands valid for replay which were invalid on trace.
 			scs := FindStaticContextState(s.Arena, cmd.Extras())
 			if !scs.IsNil() && !version.IsES && scs.Constants().MajorVersion() < 3 {
-				clone := cmd.Clone(s.Arena)
+				clone := cmd.clone(s.Arena)
 				clone.Extras().MustClone(cmd.Extras().All()...)
 				for _, e := range clone.Extras().All() {
 					if cs, ok := e.(*StaticContextState); ok {
@@ -290,7 +290,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlBindTexture:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				if cmd.Texture() != 0 && !c.Objects().GeneratedNames().Textures().Get(cmd.Texture()) {
 					// glGenTextures() was not used to generate the texture. Legal in GLES 2.
 					tmp := s.AllocDataOrPanic(ctx, cmd.Texture())
@@ -540,7 +540,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		// TODO: Handle glTextureStorage family of functions - those use direct state access, not the bound texture.
 		case *GlTexStorage1DEXT:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
@@ -553,7 +553,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexStorage2D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				out.MutateAndWrite(ctx, id, cmd)
@@ -561,7 +561,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexStorage2DEXT:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
@@ -575,7 +575,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlTexStorage2DMultisample:
 			if version.IsES || version.AtLeastGL(4, 3) {
 				// glTexStorage2DMultisample is supported by replay device.
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				out.MutateAndWrite(ctx, id, cmd)
@@ -590,7 +590,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			return
 		case *GlTexStorage3D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				out.MutateAndWrite(ctx, id, cmd)
@@ -598,7 +598,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexStorage3DEXT:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
@@ -611,7 +611,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexStorage3DMultisample:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				out.MutateAndWrite(ctx, id, cmd)
@@ -619,7 +619,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexStorage3DMultisampleOES:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				if !version.IsES { // Strip suffix on desktop.
@@ -632,7 +632,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexImage2D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{
 					func() GLenum { return GLenum(cmd.Internalformat()) },
 					func(fmt GLenum) { cmd.SetInternalformat(GLint(fmt)) },
@@ -645,7 +645,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexImage3D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{
 					func() GLenum { return GLenum(cmd.Internalformat()) },
 					func(fmt GLenum) { cmd.SetInternalformat(GLint(fmt)) },
@@ -658,7 +658,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexImage3DOES:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
@@ -675,7 +675,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexSubImage2D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), nil, fmt, ty, out, id, cmd)
@@ -684,7 +684,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexSubImage3D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), nil, fmt, ty, out, id, cmd)
@@ -693,7 +693,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexSubImage3DOES:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				fmt := &glenumProperty{cmd.Fmt, cmd.SetFmt}
 				ty := &glenumProperty{cmd.Type, cmd.SetType}
 				textureCompat.convertFormat(ctx, cmd.Target(), nil, fmt, ty, out, id, cmd)
@@ -709,7 +709,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlCopyTexImage2D:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				internalFormat := &glenumProperty{cmd.Internalformat, cmd.SetInternalformat}
 				textureCompat.convertFormat(ctx, cmd.Target(), internalFormat, nil, nil, out, id, cmd)
 				out.MutateAndWrite(ctx, id, cmd)
@@ -718,7 +718,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlTexParameterIivOES:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -726,7 +726,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterIuivOES:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -734,7 +734,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterIiv:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -742,7 +742,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterIuiv:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -750,7 +750,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterf:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Parameter(), out, id, cmd)
@@ -758,7 +758,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterfv:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -766,7 +766,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameteri:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Parameter(), out, id, cmd)
@@ -774,7 +774,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameteriv:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -782,7 +782,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterIivEXT:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -790,7 +790,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			}
 		case *GlTexParameterIuivEXT:
 			{
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, id, cmd)
 				textureCompat.postTexParameter(ctx, cmd.Target(), cmd.Pname(), out, id, cmd)
@@ -1147,7 +1147,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					onError(ctx, id, cmd, fmt.Errorf("Unknown EGLImage target: %v", eglImage.Target()))
 				}
 
-				cmd := cmd.Clone(s.Arena)
+				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate

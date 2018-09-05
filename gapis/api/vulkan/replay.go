@@ -452,7 +452,7 @@ func newDisplayToSurface() *DisplayToSurface {
 func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	switch c := cmd.(type) {
 	case *VkCreateSwapchainKHR:
-		newCmd := c.Clone(out.State().Arena)
+		newCmd := c.clone(out.State().Arena)
 		newCmd.extras = api.CmdExtras{}
 		// Add an extra to indicate to custom_replay to add a flag to
 		// the virtual swapchain pNext
