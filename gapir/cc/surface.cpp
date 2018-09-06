@@ -18,6 +18,7 @@
 #include <mutex>
 #include <thread>
 
+#include "core/cc/dl_loader.h"
 #include "core/cc/target.h"
 
 #include "surface.h"
@@ -56,49 +57,108 @@ class Flag {
 #if TARGET_OS == GAPID_OS_ANDROID
 ANativeWindow* android_window;
 #elif TARGET_OS == GAPID_OS_LINUX
+typedef xcb_connection_t* (*pfn_xcb_connect)(const char*, int*);
+typedef xcb_screen_iterator_t (*pfn_xcb_setup_roots_iterator)(
+    const xcb_setup_t*);
+typedef const struct xcb_setup_t* (*pfn_xcb_get_setup)(xcb_connection_t*);
+typedef uint32_t (*pfn_xcb_generate_id)(xcb_connection_t*);
+typedef xcb_void_cookie_t (*pfn_xcb_create_window)(xcb_connection_t*, uint8_t,
+                                                   xcb_window_t, xcb_window_t,
+                                                   int16_t, int16_t, uint16_t,
+                                                   uint16_t, uint16_t, uint16_t,
+                                                   xcb_visualid_t, uint32_t,
+                                                   const uint32_t*);
+typedef xcb_void_cookie_t (*pfn_xcb_map_window)(xcb_connection_t*,
+                                                xcb_window_t);
+typedef int (*pfn_xcb_flush)(xcb_connection_t* c);
+
 static XcbWindowInfo window_info;
 
 static Flag window_create_flag;
 static std::thread window_thread;
 
 bool createWindow(uint32_t width, uint32_t height) {
-  window_info.connection = xcb_connect(nullptr, nullptr);
+  const char* lib_xcb = "libxcb.so.1";
+  if (!core::DlLoader::can_load(lib_xcb)) {
+    lib_xcb = "libxcb.so";
+    if (!core::DlLoader::can_load(lib_xcb)) {
+      return false;
+    }
+  }
+  core::DlLoader xcb(lib_xcb);
+  pfn_xcb_connect _connect = (pfn_xcb_connect)xcb.lookup("xcb_connect");
+
+  window_info.connection = _connect(nullptr, nullptr);
   if (!window_info.connection) {
     return false;
   }
 
+  pfn_xcb_setup_roots_iterator _setup_roots_iterator =
+      (pfn_xcb_setup_roots_iterator)xcb.lookup("xcb_setup_roots_iterator");
+  pfn_xcb_get_setup _get_setup = (pfn_xcb_get_setup)xcb.lookup("xcb_get_setup");
+
   xcb_screen_t* screen =
-      xcb_setup_roots_iterator(xcb_get_setup(window_info.connection)).data;
+      _setup_roots_iterator(_get_setup(window_info.connection)).data;
   if (!screen) {
     return false;
   }
 
-  window_info.window = xcb_generate_id(window_info.connection);
+  pfn_xcb_generate_id _generate_id =
+      (pfn_xcb_generate_id)xcb.lookup("xcb_generate_id");
+  window_info.window = _generate_id(window_info.connection);
 
-  xcb_create_window(window_info.connection, XCB_COPY_FROM_PARENT,
-                    window_info.window, screen->root, 0, 0, width, height, 1,
-                    XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
-                    nullptr);
-  xcb_map_window(window_info.connection, window_info.window);
-  xcb_flush(window_info.connection);
+  pfn_xcb_create_window _create_window =
+      (pfn_xcb_create_window)xcb.lookup("xcb_create_window");
+  _create_window(window_info.connection, XCB_COPY_FROM_PARENT,
+                 window_info.window, screen->root, 0, 0, width, height, 1,
+                 XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, 0,
+                 nullptr);
+
+  pfn_xcb_map_window _map_window =
+      (pfn_xcb_map_window)xcb.lookup("xcb_map_window");
+  _map_window(window_info.connection, window_info.window);
+  pfn_xcb_flush _flush = (pfn_xcb_flush)xcb.lookup("xcb_flush");
+  _flush(window_info.connection);
 
   return true;
 }
 
+typedef xcb_intern_atom_cookie_t (*pfn_xcb_intern_atom)(xcb_connection_t*,
+                                                        uint8_t, uint16_t,
+                                                        const char*);
+typedef xcb_intern_atom_reply_t* (*pfn_xcb_intern_atom_reply)(
+    xcb_connection_t*, xcb_intern_atom_cookie_t, xcb_generic_error_t**);
+typedef xcb_generic_event_t* (*pfn_xcb_wait_for_event)(xcb_connection_t*);
+
 void handleWindow(uint32_t width, uint32_t height) {
+  const char* lib_xcb = "libxcb.so.1";
+  if (!core::DlLoader::can_load(lib_xcb)) {
+    lib_xcb = "libxcb.so";
+    if (!core::DlLoader::can_load(lib_xcb)) {
+      return;
+    }
+  }
+  core::DlLoader xcb(lib_xcb);
+
   bool res = createWindow(width, height);
   window_create_flag.Set();
   if (!res) {
     return;
   }
 
+  pfn_xcb_intern_atom _intern_atom =
+      (pfn_xcb_intern_atom)xcb.lookup("xcb_intern_atom");
   xcb_intern_atom_cookie_t delete_cookie =
-      xcb_intern_atom(window_info.connection, 0, 16, "WM_DELETE_WINDOW");
+      _intern_atom(window_info.connection, 0, 16, "WM_DELETE_WINDOW");
+  pfn_xcb_intern_atom_reply _intern_atom_reply =
+      (pfn_xcb_intern_atom_reply)xcb.lookup("xcb_intern_atom_reply");
   xcb_intern_atom_reply_t* delete_reply =
-      xcb_intern_atom_reply(window_info.connection, delete_cookie, 0);
+      _intern_atom_reply(window_info.connection, delete_cookie, 0);
 
+  pfn_xcb_wait_for_event _wait_for_event =
+      (pfn_xcb_wait_for_event)xcb.lookup("xcb_wait_for_event");
   xcb_generic_event_t* event;
-  while ((event = xcb_wait_for_event(window_info.connection))) {
+  while ((event = _wait_for_event(window_info.connection))) {
     if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE) {
       auto message = (xcb_client_message_event_t*)event;
       if (message->data.data32[0] == delete_reply->atom) {
