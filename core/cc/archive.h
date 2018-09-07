@@ -20,12 +20,19 @@
 #ifdef __cplusplus
 
 #include "id.h"
+#include "target.h"
 
 #include <string>
 #include <unordered_map>
 
 #include <stdint.h>
 #include <stdio.h>
+
+#if TARGET_OS == GAPID_OS_LINUX
+#define GAPID_ARCHIVE_USE_MMAP 1
+#else
+#define GAPID_ARCHIVE_USE_MMAP 0
+#endif
 
 namespace core {
 
@@ -52,7 +59,32 @@ class Archive {
     uint32_t size;
   };
 
-  FILE* mDataFile;
+  struct RecordFile {
+    RecordFile();
+    bool open(const std::string& filename);
+    void close();
+    bool read(uint64_t offset, void* buf, size_t size);
+    bool append(const void* buf, size_t size);
+    uint64_t size();
+    bool resize(uint64_t size);
+
+   private:
+#if GAPID_ARCHIVE_USE_MMAP
+    bool reserve(uint64_t requiredCapacity);
+    bool unmap();
+    bool map();
+    void* at(uint64_t offset) { return static_cast<char*>(base) + offset; }
+
+    int fd;
+    void* base;
+    uint64_t end;
+    uint64_t capacity;
+#else
+    FILE* fp;
+#endif
+  };
+
+  RecordFile mDataFile;
   FILE* mIndexFile;
   std::unordered_map<std::string, ArchiveRecord> mRecords;
 };

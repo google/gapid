@@ -29,6 +29,15 @@
 #include <unistd.h>
 #endif
 
+#if GAPID_ARCHIVE_USE_MMAP
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#endif  //  GAPID_ARCHIVE_USE_MMAP
+
 namespace {
 
 void must_truncate(int fd, off_t length) {
@@ -41,10 +50,152 @@ void must_truncate(int fd, off_t length) {
 
 namespace core {
 
+// Use mmap-ed data file if it is available.
+// fseek+fread might fail on some driver.
+#if GAPID_ARCHIVE_USE_MMAP
+
+Archive::RecordFile::RecordFile()
+    : fd(-1), base(nullptr), end(0), capacity(0) {}
+
+bool Archive::RecordFile::open(const std::string& filename) {
+  fd = ::open(filename.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+  if (fd == -1) {
+    return false;
+  }
+  struct stat st;
+  ::fstat(fd, &st);
+  end = st.st_size;
+  capacity = end;
+  return map();
+}
+
+void Archive::RecordFile::close() {
+  if (fd == -1) return;
+  if (!unmap()) {
+    GAPID_FATAL("Unable to unmap archive file.");
+  }
+  // Set the proper file size when we close the file.
+  if (::ftruncate(fd, end)) {
+    GAPID_FATAL("Unable to truncate archive file.");
+  }
+  ::close(fd);
+}
+
+bool Archive::RecordFile::read(uint64_t offset, void* buf, size_t size) {
+  if (offset + size > end) {
+    return false;
+  }
+  memcpy(buf, at(offset), size);
+  return true;
+}
+
+bool Archive::RecordFile::append(const void* buf, size_t size) {
+  if (!reserve(end + size)) {
+    return false;
+  }
+  memcpy(at(end), buf, size);
+  end += size;
+  return true;
+}
+
+uint64_t Archive::RecordFile::size() { return end; }
+
+bool Archive::RecordFile::resize(uint64_t size) {
+  if (size > capacity) {
+    if (!reserve(size)) {
+      return false;
+    }
+  }
+  end = size;
+  return true;
+}
+
+bool Archive::RecordFile::reserve(uint64_t requiredCapacity) {
+  if (requiredCapacity <= capacity) {
+    return true;
+  }
+
+  if (!unmap()) {
+    GAPID_FATAL("Unable to unmap archive file.");
+  }
+
+  // Reserve at least 1.5 time the size.
+  if (requiredCapacity < end * 3 / 2) {
+    requiredCapacity = end * 3 / 2;
+  }
+
+  // Align to the next 4k boundary, not necessary but good to have.
+  requiredCapacity = (requiredCapacity + 0xfff) & ~(uint64_t)0xfff;
+
+  if (::ftruncate(fd, requiredCapacity)) {
+    GAPID_FATAL("Unable to ftruncate(grow) archive file.");
+  }
+
+  capacity = requiredCapacity;
+
+  if (!map()) {
+    GAPID_FATAL("Unable to map archive file.");
+  }
+
+  return true;
+}
+
+bool Archive::RecordFile::unmap() {
+  if (!base) return true;
+  if (::munmap(base, capacity)) {
+    return false;
+  }
+  base = nullptr;
+  return true;
+}
+
+bool Archive::RecordFile::map() {
+  if (base || capacity == 0) {
+    return true;  // Already mapped or don't need to map.
+  }
+  base = ::mmap(nullptr, capacity, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  return base != nullptr;
+}
+
+#else  // #if GAPID_ARCHIVE_USE_MMAP
+
+Archive::RecordFile::RecordFile() : fp(nullptr) {}
+
+bool Archive::RecordFile::open(const std::string& filename) {
+  fp = fopen(filename.c_str(), "ab+");
+  return fp;
+}
+
+void Archive::RecordFile::close() {
+  if (fp) fclose(fp);
+}
+
+bool Archive::RecordFile::read(uint64_t offset, void* buf, size_t size) {
+  fseek(fp, offset, SEEK_SET);
+  return fread(buf, size, 1, fp) == 1;
+}
+
+bool Archive::RecordFile::append(const void* buf, size_t size) {
+  fseek(fp, 0, SEEK_END);
+  return fwrite(buf, size, 1, fp) == 1;
+}
+
+uint64_t Archive::RecordFile::size() {
+  fseek(fp, 0, SEEK_END);
+  return ftell(fp);
+}
+
+bool Archive::RecordFile::resize(uint64_t size) {
+  must_truncate(fileno(fp), size);
+  return true;
+}
+
+#endif  //  GAPID_ARCHIVE_USE_MMAP
+
 Archive::Archive(const std::string& archiveName) {
   // Open or create the archive data file in binary read/write mode.
   const std::string dataFilename(archiveName + ".data");
-  if (!(mDataFile = fopen(dataFilename.c_str(), "ab+"))) {
+  if (!mDataFile.open(dataFilename)) {
     GAPID_FATAL("Unable to open archive data file %s", dataFilename.c_str());
   }
 
@@ -76,7 +227,7 @@ Archive::Archive(const std::string& archiveName) {
 }
 
 Archive::~Archive() {
-  if (mDataFile) fclose(mDataFile);
+  mDataFile.close();
   if (mIndexFile) fclose(mIndexFile);
 }
 
@@ -88,8 +239,7 @@ bool Archive::read(const std::string& id, void* buffer, uint32_t size) {
   const auto r = mRecords.find(id);
   if (r == mRecords.end() || r->second.size != size) return false;
 
-  fseek(mDataFile, r->second.offset, SEEK_SET);
-  return fread(buffer, size, 1, mDataFile) == 1;
+  return mDataFile.read(r->second.offset, buffer, size);
 }
 
 bool Archive::write(const std::string& id, const void* buffer, uint32_t size) {
@@ -99,12 +249,10 @@ bool Archive::write(const std::string& id, const void* buffer, uint32_t size) {
   }
 
   // Update the archive data file.
-  fseek(mDataFile, 0, SEEK_END);
-  const uint64_t dataOffset = ftell(mDataFile);
-  if (!fwrite(buffer, size, 1, mDataFile)) {
+  const uint64_t dataOffset = mDataFile.size();
+  if (!mDataFile.append(buffer, size)) {
     GAPID_WARNING("Couldn't write '%s' to the archive data file, dropping it.",
                   id.c_str());
-    must_truncate(fileno(mDataFile), dataOffset);
     return false;
   }
 
@@ -117,7 +265,7 @@ bool Archive::write(const std::string& id, const void* buffer, uint32_t size) {
       !fwrite(&size, sizeof(size), 1, mIndexFile)) {
     GAPID_WARNING("Couldn't write '%s' to the archive index file, dropping it.",
                   id.c_str());
-    must_truncate(fileno(mDataFile), dataOffset);
+    mDataFile.resize(dataOffset);
     must_truncate(fileno(mIndexFile), indexOffset);
     fseek(mIndexFile, 0, SEEK_END);
     return false;
