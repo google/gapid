@@ -208,8 +208,31 @@ func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) e
 
 	wg := sync.WaitGroup{}
 
-	copy := func(writer io.Writer, reader io.Reader) {
-		_, err := io.Copy(writer, reader)
+	copy := func(writer net.Conn, reader net.Conn) {
+		// Use the same buffer size used in io.Copy
+		buf := make([]byte, 32*1024)
+		var err error
+		for {
+			nr, er := reader.Read(buf)
+			if nr > 0 {
+				nw, ew := writer.Write(buf[0:nr])
+				if ew != nil {
+					err = ew
+					break
+				}
+				if nr != nw {
+					err = fmt.Errorf("short write")
+					break
+				}
+			}
+			if er != nil {
+				if er != io.EOF {
+					err = er
+				}
+				break
+			}
+		}
+		writer.Close()
 		if err != nil {
 			log.E(ctx, "Copy Error %s", err)
 		}
