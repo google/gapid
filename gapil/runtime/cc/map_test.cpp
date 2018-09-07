@@ -31,9 +31,9 @@ class MapTest : public ::testing::Test {
   core::Arena arena;
 };
 
-using MapTestTypes = ::testing::Types<gapil::Map<uint32_t, uint32_t>,
-                                      gapil::Map<uint16_t, uint32_t>,
-                                      gapil::Map<uint32_t, uint64_t>>;
+using MapTestTypes = ::testing::Types<gapil::Map<uint32_t, uint32_t, false>,
+                                      gapil::Map<uint16_t, uint32_t, false>,
+                                      gapil::Map<uint32_t, uint64_t, false>>;
 
 TYPED_TEST_CASE(MapTest, MapTestTypes);
 
@@ -150,7 +150,7 @@ class CppMapTest : public ::testing::Test {
 };
 
 TEST_F(CppMapTest, string_as_value) {
-  auto map = gapil::Map<uint32_t, gapil::String>(&arena);
+  auto map = gapil::Map<uint32_t, gapil::String, false>(&arena);
 
   EXPECT_EQ(0, map.count());
 
@@ -204,7 +204,7 @@ class non_movable_object {
 };
 
 TEST_F(CppMapTest, non_movable_object) {
-  auto map = gapil::Map<uint32_t, non_movable_object>(&arena);
+  auto map = gapil::Map<uint32_t, non_movable_object, false>(&arena);
 
   auto a = reinterpret_cast<arena_t*>(&arena);
 
@@ -259,7 +259,7 @@ class movable_object {
 };
 
 TEST_F(CppMapTest, movable_object) {
-  auto map = gapil::Map<uint32_t, movable_object>(&arena);
+  auto map = gapil::Map<uint32_t, movable_object, false>(&arena);
 
   auto a = reinterpret_cast<arena_t*>(&arena);
 

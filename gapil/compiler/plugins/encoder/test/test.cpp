@@ -43,20 +43,21 @@ T* create_ref(arena* arena, ref** p) {
 extern "C" {
 
 void create_map_u32(arena* arena, map** p) {
-  create_map<gapil::Map<uint32_t, uint32_t> >(arena, p);
+  create_map<gapil::Map<uint32_t, uint32_t, false> >(arena, p);
 }
 
 void insert_map_u32(map* m, uint32_t k, uint32_t v) {
-  auto& map = *reinterpret_cast<gapil::Map<uint32_t, uint32_t>*>(&m);
+  auto& map = *reinterpret_cast<gapil::Map<uint32_t, uint32_t, false>*>(&m);
   map[k] = v;
 }
 
 void create_map_string(arena* arena, map** p) {
-  create_map<gapil::Map<string_t, string_t> >(arena, p);
+  create_map<gapil::Map<string_t, string_t, false> >(arena, p);
 }
 
 void insert_map_string(map* m, const char* k, const char* v) {
-  auto& map = *reinterpret_cast<gapil::Map<gapil::String, gapil::String>*>(&m);
+  auto& map =
+      *reinterpret_cast<gapil::Map<gapil::String, gapil::String, false>*>(&m);
   map[gapil::String(map.arena(), k)] = gapil::String(map.arena(), v);
 }
 

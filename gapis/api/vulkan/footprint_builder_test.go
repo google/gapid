@@ -33,8 +33,8 @@ func TestSubBinding(t *testing.T) {
 	ctx := log.Testing(t)
 	resSize := uint64(2048)
 	memOffset := uint64(1024)
-	span := memorySpan{
-		span:   interval.U64Span{Start: memOffset, End: memOffset + resSize},
+	span := &memorySpan{
+		sp:     interval.U64Span{Start: memOffset, End: memOffset + resSize},
 		memory: VkDeviceMemory(0xabcd),
 	}
 	newSubBindingForTest := func(ctx context.Context, base *resBinding, offset, size uint64) *resBinding {
@@ -67,15 +67,15 @@ func TestSubBinding(t *testing.T) {
 
 	validSubBoundData(0, 2048, spanBase, spanBase)
 	validSubBoundData(0, vkWholeSize, spanBase, spanBase)
-	validSubBoundData(1024, 512, spanBase, newResBinding(ctx, nil, 1024, 512, memorySpan{
-		span: interval.U64Span{
+	validSubBoundData(1024, 512, spanBase, newResBinding(ctx, nil, 1024, 512, &memorySpan{
+		sp: interval.U64Span{
 			Start: memOffset + uint64(1024),
 			End:   memOffset + uint64(1024) + uint64(512),
 		},
 		memory: VkDeviceMemory(0xabcd),
 	}))
-	validSubBoundData(512, vkWholeSize, spanBase, newResBinding(ctx, nil, 512, 1536, memorySpan{
-		span: interval.U64Span{
+	validSubBoundData(512, vkWholeSize, spanBase, newResBinding(ctx, nil, 512, 1536, &memorySpan{
+		sp: interval.U64Span{
 			Start: memOffset + uint64(512),
 			End:   memOffset + resSize,
 		},
