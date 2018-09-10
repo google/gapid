@@ -604,19 +604,7 @@ sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   bufPieces := getBufferBoundMemoryPiecesInRange(buf, args.DstOffset, args.Size)
   for _ , _ , p in bufPieces {
     if as!VkDeviceSize(len(p.DeviceMemory.Data)) >= (p.MemoryOffset + p.Size) {
-      for i in (0 .. p.Size) {
-        offset := as!VkDeviceSize(p.ResourceOffset + i)
-        p.DeviceMemory.Data[p.MemoryOffset + i] = switch (offset - ((offset / 4) * 4)) {
-          case as!VkDeviceSize(0):
-            as!u8(args.Data & 0xFF)
-          case as!VkDeviceSize(1):
-            as!u8((args.Data >> 8) & 0xFF)
-          case as!VkDeviceSize(2):
-            as!u8((args.Data >> 16) & 0xFF)
-          case as!VkDeviceSize(3):
-            as!u8((args.Data >> 24) & 0xFF)
-        }
-      }
+      write(p.DeviceMemory.Data[p.MemoryOffset: p.MemoryOffset + p.Size])
     }
   }
 }
