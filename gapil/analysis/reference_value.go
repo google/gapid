@@ -171,8 +171,10 @@ func (v *ReferenceValue) Clone() Value {
 func (v *ReferenceValue) field(s *scope, name string) Value {
 	candidates := make([]Value, 0, len(v.Assignments))
 	for a := range v.Assignments {
-		field := s.getInstance(a).(fieldHolder).field(s, name)
-		candidates = append(candidates, field)
+		if fh, ok := s.getInstance(a).(fieldHolder); ok {
+			field := fh.field(s, name)
+			candidates = append(candidates, field)
+		}
 	}
 	if len(candidates) == 0 {
 		return v.Unknown.(fieldHolder).field(s, name)
@@ -184,7 +186,9 @@ func (v *ReferenceValue) field(s *scope, name string) Value {
 // in the scope's instances map.
 func (v *ReferenceValue) setField(s *scope, name string, val Value) Value {
 	for a := range v.Assignments {
-		s.instances[a] = s.getInstance(a).(fieldHolder).setField(s, name, val)
+		if fh, ok := s.getInstance(a).(fieldHolder); ok {
+			s.instances[a] = fh.setField(s, name, val)
+		}
 	}
 	return v
 }
