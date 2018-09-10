@@ -337,7 +337,113 @@ class vkCmdBlitImageArgs {
   VkFilter               Filter
 }
 
-sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs dispatch) {
+sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
+  srcImageObject := Images[args.SrcImage]
+  dstImageObject := Images[args.DstImage]
+
+  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
+  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
+  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
+  // the changes in coherent memory to the UI's texture view.
+  readCoherentMemoryInImage(srcImageObject)
+
+  srcFormat := srcImageObject.Info.Format
+  srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
+  srcDepthElementSize := getDepthElementSize(srcFormat, false)
+  dstFormat := dstImageObject.Info.Format
+  dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
+  dstDepthElementSize := getDepthElementSize(dstFormat, false)
+  for r in (0 .. len(args.Regions)) {
+    // TODO: (qining) Handle the apsect mask
+    region := args.Regions[as!u32(r)]
+    srcBaseLayer := region.srcSubresource.baseArrayLayer
+    dstBaseLayer := region.srcSubresource.baseArrayLayer
+    srcMipLevel := region.srcSubresource.mipLevel
+    dstMipLevel := region.dstSubresource.mipLevel
+
+    for _ , _ , aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask) {
+      srcElementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(srcElementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(srcDepthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      srcBlockWidth := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Width)
+      srcBlockHeight := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Height)
+
+      dstElementSize := switch (aspectBit) {
+        case VK_IMAGE_ASPECT_COLOR_BIT:
+          as!u64(dstElementAndTexelBlockSize.ElementSize)
+        case VK_IMAGE_ASPECT_DEPTH_BIT:
+          as!u64(dstDepthElementSize)
+        case VK_IMAGE_ASPECT_STENCIL_BIT:
+          as!u64(1)
+      }
+      dstBlockWidth := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Width)
+      dstBlockHeight := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Height)
+
+      srcOffsetX := min!s32(region.srcOffsets[0].x, region.srcOffsets[1].x)
+      srcExtentX := max!s32(region.srcOffsets[0].x, region.srcOffsets[1].x) - srcOffsetX
+      srcOffsetY := min!s32(region.srcOffsets[0].y, region.srcOffsets[1].y)
+      srcExtentY := max!s32(region.srcOffsets[0].y, region.srcOffsets[1].y) - srcOffsetY
+      srcOffsetZ := min!s32(region.srcOffsets[0].z, region.srcOffsets[1].z)
+      srcExtentZ := max!s32(region.srcOffsets[0].z, region.srcOffsets[1].z) - srcOffsetZ
+
+      dstOffsetX := min!s32(region.dstOffsets[0].x, region.dstOffsets[1].x)
+      dstExtentX := max!s32(region.dstOffsets[0].x, region.dstOffsets[1].x) - dstOffsetX
+      dstOffsetY := min!s32(region.dstOffsets[0].y, region.dstOffsets[1].y)
+      dstExtentY := max!s32(region.dstOffsets[0].y, region.dstOffsets[1].y) - dstOffsetY
+      dstOffsetZ := min!s32(region.dstOffsets[0].z, region.dstOffsets[1].z)
+      dstExtentZ := max!s32(region.dstOffsets[0].z, region.dstOffsets[1].z) - dstOffsetZ
+
+      srcXStartInBlocks := as!u64(srcOffsetX) / srcBlockWidth
+      srcYStartInBlocks := as!u64(srcOffsetY) / srcBlockHeight
+      srcZStart := as!u64(srcOffsetZ)
+      dstXStartInBlocks := as!u64(dstOffsetX) / dstBlockWidth
+      dstYStartInBlocks := as!u64(dstOffsetY) / dstBlockHeight
+      dstZStart := as!u64(dstOffsetZ)
+
+      srcExtentXInBlocks := roundUpTo(as!u32(srcExtentX), as!u32(srcBlockWidth))
+      srcExtentYInBlocks := roundUpTo(as!u32(srcExtentY), as!u32(srcBlockHeight))
+      dstExtentXInBlocks := roundUpTo(as!u32(dstExtentX), as!u32(dstBlockWidth))
+      dstExtentYInBlocks := roundUpTo(as!u32(dstExtentY), as!u32(dstBlockHeight))
+
+      for l in (0 .. region.srcSubresource.layerCount) {
+        srcImageLevel := srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
+        dstImageLevel := dstImageObject.Aspects[aspectBit].Layers[dstBaseLayer + l].Levels[dstMipLevel]
+
+        srcImageLevelWidthInBlocks := as!u64(roundUpTo(srcImageLevel.Width, as!u32(srcBlockWidth)))
+        srcImageLevelHeightInBlocks := as!u64(roundUpTo(srcImageLevel.Height, as!u32(srcBlockHeight)))
+        dstImageLevelWidthInBlocks := as!u64(roundUpTo(dstImageLevel.Width, as!u32(dstBlockWidth)))
+        dstImageLevelHeightInBlocks := as!u64(roundUpTo(dstImageLevel.Height, as!u32(dstBlockHeight)))
+
+        for z in (0 .. srcExtentZ) {
+          for y in (0 .. srcExtentYInBlocks) {
+            copySize := as!u64(srcExtentXInBlocks) * srcElementSize
+            srcY := srcYStartInBlocks + as!u64(y)
+            srcZ := srcZStart + as!u64(z)
+            srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
+            if len(srcImageLevel.Data) > 0 {
+              read(srcImageLevel.Data[srcStart:srcStart+copySize])
+            }
+          }
+        }
+        for z in (0 .. dstExtentZ) {
+          for y in (0 .. dstExtentYInBlocks) {
+            copySize := as!u64(dstExtentXInBlocks) * dstElementSize
+            dstY := dstYStartInBlocks + as!u64(y)
+            dstZ := dstZStart + as!u64(z)
+            dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
+            if len(dstImageLevel.Data) > 0 {
+              write(dstImageLevel.Data[dstStart:dstStart+copySize])
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 @threadSafety("app")
