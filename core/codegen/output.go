@@ -144,10 +144,6 @@ func (m *Module) Optimize() {
 
 // Executor constructs an executor.
 func (m *Module) Executor(optimize bool) (*Executor, error) {
-	if dbg := m.llvmDbg; dbg != nil {
-		dbg.Finalize() // TODO: Needed?
-	}
-
 	if err := m.Verify(); err != nil {
 		return nil, err
 	}

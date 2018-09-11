@@ -22,6 +22,7 @@ go_library(
         "builder.go",
         "cast.go",
         "doc.go",
+        "exceptions.go",
         "function.go",
         "intrinsics.go",
         "module.go",
