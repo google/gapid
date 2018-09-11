@@ -63,7 +63,7 @@ func (v *Value) SetNameIfUnset(name string) *Value {
 // Load loads the element from the pointer value.
 func (v *Value) Load() *Value {
 	if !IsPointer(v.ty) {
-		fail("Load must be from a pointer. Got %v", v.Type)
+		fail("Load must be from a pointer. Got %v", v.Type())
 	}
 	elTy := v.Type().(Pointer).Element
 	return v.b.val(elTy, v.b.llvm.CreateLoad(v.llvm, v.name))
@@ -164,7 +164,7 @@ func (b *Builder) path(rootTy Type, rootName string, path ...ValueIndexOrName) (
 					}
 					indices[i] = p.llvm
 				default:
-					fail("Tried to index pointer with %T.%v", p, err(i))
+					fail("Tried to index pointer with %T (%v).%v", p, err(i))
 				}
 				target = t.Element
 			} else {

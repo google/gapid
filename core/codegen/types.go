@@ -624,7 +624,8 @@ func (t *Types) TypeOf(v interface{}) Type {
 		}
 		return s
 	default:
-		panic(fmt.Errorf("Unsupported kind %v", ty.Kind()))
+		fail("Unsupported kind %v", ty.Kind())
+		return nil
 	}
 }
 
@@ -636,7 +637,7 @@ func (t *Types) FieldsOf(v interface{}) []Field {
 		ty = reflect.TypeOf(v)
 	}
 	if ty.Kind() != reflect.Struct {
-		panic(fmt.Errorf("FieldsOf must be passed a struct type. Got %v", ty))
+		fail("FieldsOf must be passed a struct type. Got %v", ty)
 	}
 	c := ty.NumField()
 	fields := make([]Field, 0, c)
