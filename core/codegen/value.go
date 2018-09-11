@@ -52,14 +52,6 @@ func (v *Value) SetName(name string) *Value {
 	return v
 }
 
-// SetNameIfUnset assigns a name to the value if it isn't already set.
-func (v *Value) SetNameIfUnset(name string) *Value {
-	if v.Name() == "" {
-		v.SetName(name)
-	}
-	return v
-}
-
 // Load loads the element from the pointer value.
 func (v *Value) Load() *Value {
 	if !IsPointer(v.ty) {
