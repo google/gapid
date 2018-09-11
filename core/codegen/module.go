@@ -264,6 +264,30 @@ func (m *Module) Function(resTy Type, name string, paramTys ...Type) *Function {
 	return out
 }
 
+// Ctor creates and builds a new module constructor.
+func (m *Module) Ctor(priority int32, cb func(*Builder)) {
+	ctor := m.Function(m.Types.Void, "ctor")
+	ctor.Build(cb)
+
+	// TODO: Glob together multiple calls into a single table.
+	entryTy := m.ctx.StructType([]llvm.Type{
+		m.Types.Int32.llvmTy(),
+		llvm.PointerType(llvm.FunctionType(m.Types.Void.llvmTy(), []llvm.Type{}, false), 0),
+	}, false)
+
+	entries := []llvm.Value{
+		llvm.ConstStruct([]llvm.Value{
+			m.Scalar(priority).llvm,
+			ctor.llvm,
+		}, false),
+	}
+
+	table := llvm.ConstArray(entryTy, entries)
+	g := llvm.AddGlobal(m.llvm, table.Type(), "llvm.global_ctors")
+	g.SetInitializer(table)
+	g.SetLinkage(llvm.AppendingLinkage)
+}
+
 // Global is a global value.
 type Global struct {
 	Type Type
