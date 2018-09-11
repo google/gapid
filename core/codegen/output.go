@@ -200,6 +200,7 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 	}, nil
 }
 
+// FunctionAddress returns the address of the function f.
 func (e *Executor) FunctionAddress(f *Function) unsafe.Pointer {
 	ptr, ok := e.funcPtrs[f.Name]
 	if !ok {
@@ -207,6 +208,11 @@ func (e *Executor) FunctionAddress(f *Function) unsafe.Pointer {
 		e.funcPtrs[f.Name] = ptr
 	}
 	return ptr
+}
+
+// GlobalAddress returns the address of the global g.
+func (e *Executor) GlobalAddress(g Global) unsafe.Pointer {
+	return e.llvm.PointerToGlobal(g.llvm)
 }
 
 // SizeOf returns the offset in bytes between successive objects of the
