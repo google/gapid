@@ -69,6 +69,10 @@ struct swizzle {
   GLint r, g, b, a;
 };
 
+struct index {
+  GLint level, layer;
+};
+
 class Sampler {
  public:
   enum ESVersion { ES20, ES30, ES31 };
@@ -263,6 +267,8 @@ struct texture_state {
   swizzle swiz;
   GLint compMode;
   GLint minFilter, magFilter;
+  GLint baseLevel, maxLevel;
+  GLfloat minLod, maxLod;
 };
 
 struct texture {
@@ -282,12 +288,16 @@ struct texture {
     i.glGetTexParameteriv(kind, GL_TEXTURE_COMPARE_MODE, &r.compMode);
     i.glGetTexParameteriv(kind, GL_TEXTURE_MIN_FILTER, &r.minFilter);
     i.glGetTexParameteriv(kind, GL_TEXTURE_MAG_FILTER, &r.magFilter);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_BASE_LEVEL, &r.baseLevel);
+    i.glGetTexParameteriv(kind, GL_TEXTURE_MAX_LEVEL, &r.maxLevel);
+    i.glGetTexParameterfv(kind, GL_TEXTURE_MIN_LOD, &r.minLod);
+    i.glGetTexParameterfv(kind, GL_TEXTURE_MAX_LOD, &r.maxLod);
     return r;
   }
 
   // Modifes the texture's state so it can be savely used to read from. Make
   // sure to call setState() after, with a previously saved state.
-  void prepareToRead(const GlesImports& i, swizzle swizzle) const {
+  void prepareToRead(const GlesImports& i, GLint level, swizzle swizzle) const {
     i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_R, swizzle.r);
     i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_G, swizzle.g);
     i.glTexParameteri(kind, GL_TEXTURE_SWIZZLE_B, swizzle.b);
@@ -295,6 +305,10 @@ struct texture {
     i.glTexParameteri(kind, GL_TEXTURE_COMPARE_MODE, GL_NONE);
     i.glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     i.glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    i.glTexParameteri(kind, GL_TEXTURE_BASE_LEVEL, level);
+    i.glTexParameteri(kind, GL_TEXTURE_MAX_LEVEL, level);
+    i.glTexParameterf(kind, GL_TEXTURE_MIN_LOD, -1000.0f);
+    i.glTexParameterf(kind, GL_TEXTURE_MAX_LOD, 1000.0f);
   }
 
   // Modifies the texture's state to match the given state.
@@ -306,6 +320,10 @@ struct texture {
     i.glTexParameteri(kind, GL_TEXTURE_COMPARE_MODE, state.compMode);
     i.glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, state.minFilter);
     i.glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, state.magFilter);
+    i.glTexParameteri(kind, GL_TEXTURE_BASE_LEVEL, state.baseLevel);
+    i.glTexParameteri(kind, GL_TEXTURE_MAX_LEVEL, state.maxLevel);
+    i.glTexParameterf(kind, GL_TEXTURE_MIN_LOD, state.minLod);
+    i.glTexParameterf(kind, GL_TEXTURE_MAX_LOD, state.maxLod);
   }
 };
 
@@ -318,44 +336,44 @@ class Reader {
   TempObject CreateAndBindTextureExternal(EGLImageKHR handle);
   TempObject CreateAndBindContext(EGLContext sharedContext, EGLint version);
 
-  ImageData ReadTexture(const texture& tex, GLint level, GLint layer,
-                        uint32_t format);
+  ImageData ReadTexture(const texture& tex, index index, uint32_t format);
   ImageData ReadRenderbuffer(Renderbuffer* rb);
   ImageData ReadExternal(EGLImageKHR handle, GLsizei w, GLsizei h);
 
  private:
-  ImageData ReadTextureViaDrawQuad(const texture& tex, GLint layer,
+  ImageData ReadTextureViaDrawQuad(const texture& tex, index index,
                                    uint32_t format, const char* name,
                                    swizzle swizzle);
   ImageData ReadTextureViaDrawQuad(const Sampler& sampler, const texture& tex,
-                                   uint32_t format, swizzle swizzle);
+                                   index index, uint32_t format,
+                                   swizzle swizzle);
 
-  inline ImageData ReadTextureViaDrawQuad(const texture& tex, GLint layer,
+  inline ImageData ReadTextureViaDrawQuad(const texture& tex, index index,
                                           uint32_t format, const char* name,
                                           uint32_t originalFormat,
                                           GLint rSwizzle) {
     ImageData result = ReadTextureViaDrawQuad(
-        tex, layer, format, name, {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
+        tex, index, format, name, {rSwizzle, GL_ZERO, GL_ZERO, GL_ONE});
     // Restore original format, so it doesn't show up as GL_RED in the UI.
     result.dataFormat = originalFormat;
     return result;
   }
 
-  inline ImageData ReadTextureViaDrawQuad(const texture& tex, GLint layer,
+  inline ImageData ReadTextureViaDrawQuad(const texture& tex, index index,
                                           uint32_t format, const char* name,
                                           uint32_t originalFormat,
                                           GLint rSwizzle, GLint gSwizzle) {
     ImageData result = ReadTextureViaDrawQuad(
-        tex, layer, format, name, {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
+        tex, index, format, name, {rSwizzle, gSwizzle, GL_ZERO, GL_ONE});
     // Restore original format, so it doesn't show up as GL_RG in the UI.
     result.dataFormat = originalFormat;
     return result;
   }
 
-  inline ImageData ReadCompressedTexture(const texture& tex, GLint layer,
+  inline ImageData ReadCompressedTexture(const texture& tex, index index,
                                          uint32_t format, swizzle swizzle) {
     ImageData result =
-        ReadTextureViaDrawQuad(tex, layer, format, "compressed", swizzle);
+        ReadTextureViaDrawQuad(tex, index, format, "compressed", swizzle);
     // Override the internal format to the uncompressed format of the data.
     result.sizedFormat = format;
     return result;
@@ -638,27 +656,28 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
 
 #define CUBE_FACE(layer) (GL_TEXTURE_CUBE_MAP_POSITIVE_X + (layer))
 
-ImageData Reader::ReadTextureViaDrawQuad(const texture& tex, GLint layer,
+ImageData Reader::ReadTextureViaDrawQuad(const texture& tex, index idx,
                                          uint32_t format, const char* name,
                                          swizzle swizzle) {
   switch (tex.kind) {
     case GL_TEXTURE_2D:
-      return ReadTextureViaDrawQuad(Sampler2D::get(), tex, format, swizzle);
+      return ReadTextureViaDrawQuad(Sampler2D::get(), tex, idx, format,
+                                    swizzle);
     case GL_TEXTURE_2D_ARRAY: {
-      Sampler2DArray sampler(layer);
-      return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
+      Sampler2DArray sampler(idx.layer);
+      return ReadTextureViaDrawQuad(sampler, tex, idx, format, swizzle);
     }
     case GL_TEXTURE_3D: {
-      Sampler3D sampler(1.0f / (2.0f * tex.d) + (float)layer / tex.d);
-      return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
+      Sampler3D sampler(1.0f / (2.0f * tex.d) + (float)idx.layer / tex.d);
+      return ReadTextureViaDrawQuad(sampler, tex, idx, format, swizzle);
     }
     case GL_TEXTURE_CUBE_MAP: {
-      SamplerCube sampler(CUBE_FACE(layer));
-      return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
+      SamplerCube sampler(CUBE_FACE(idx.layer));
+      return ReadTextureViaDrawQuad(sampler, tex, idx, format, swizzle);
     }
     case GL_TEXTURE_CUBE_MAP_ARRAY: {
-      SamplerCubeArray sampler(layer / 6, CUBE_FACE(layer % 6));
-      return ReadTextureViaDrawQuad(sampler, tex, format, swizzle);
+      SamplerCubeArray sampler(idx.layer / 6, CUBE_FACE(idx.layer % 6));
+      return ReadTextureViaDrawQuad(sampler, tex, idx, format, swizzle);
     }
     default:
       // TODO: Copy the layer/level to temporary 2D texture.
@@ -668,8 +687,7 @@ ImageData Reader::ReadTextureViaDrawQuad(const texture& tex, GLint layer,
   }
 }
 
-ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
-                              uint32_t format) {
+ImageData Reader::ReadTexture(const texture& tex, index idx, uint32_t format) {
   GAPID_DEBUG("MEC: Reading texture %" PRIu64 " kind 0x%x %dx%d format 0x%x",
               tex.id, tex.kind, tex.w, tex.h, format);
   switch (format) {
@@ -684,95 +702,95 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     case GL_DEPTH_COMPONENT16:
     case GL_DEPTH_COMPONENT24:
     case GL_DEPTH_COMPONENT32F:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R32F, "depth",
+      return ReadTextureViaDrawQuad(tex, idx, GL_R32F, "depth",
                                     GL_DEPTH_COMPONENT, GL_RED);
     /* alpha and luminance */
     case GL_ALPHA8_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R8, "alpha", GL_ALPHA,
+      return ReadTextureViaDrawQuad(tex, idx, GL_R8, "alpha", GL_ALPHA,
                                     GL_ALPHA);
     case GL_ALPHA16F_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R16F_EXT, "alpha", GL_ALPHA,
+      return ReadTextureViaDrawQuad(tex, idx, GL_R16F_EXT, "alpha", GL_ALPHA,
                                     GL_ALPHA);
     case GL_ALPHA32F_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R32F, "alpha", GL_ALPHA,
+      return ReadTextureViaDrawQuad(tex, idx, GL_R32F, "alpha", GL_ALPHA,
                                     GL_ALPHA);
     case GL_LUMINANCE8_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R8, "luminance",
-                                    GL_LUMINANCE, GL_RED);
+      return ReadTextureViaDrawQuad(tex, idx, GL_R8, "luminance", GL_LUMINANCE,
+                                    GL_RED);
     case GL_LUMINANCE16F_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R16F_EXT, "luminance",
+      return ReadTextureViaDrawQuad(tex, idx, GL_R16F_EXT, "luminance",
                                     GL_LUMINANCE, GL_RED);
     case GL_LUMINANCE32F_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_R32F, "luminance",
+      return ReadTextureViaDrawQuad(tex, idx, GL_R32F, "luminance",
                                     GL_LUMINANCE, GL_RED);
     case GL_LUMINANCE8_ALPHA8_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_RG8, "luminance alpha",
+      return ReadTextureViaDrawQuad(tex, idx, GL_RG8, "luminance alpha",
                                     GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
     case GL_LUMINANCE_ALPHA16F_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_RG16F_EXT, "luminance alpha",
+      return ReadTextureViaDrawQuad(tex, idx, GL_RG16F_EXT, "luminance alpha",
                                     GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
     case GL_LUMINANCE_ALPHA32F_EXT:
-      return ReadTextureViaDrawQuad(tex, layer, GL_RG32F, "luminance alpha",
+      return ReadTextureViaDrawQuad(tex, idx, GL_RG32F, "luminance alpha",
                                     GL_LUMINANCE_ALPHA, GL_RED, GL_ALPHA);
     /* RGB */
     case GL_RGB32F: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA32F, "RGB32F",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA32F, "RGB32F",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA32F;
       return r;
     }
     case GL_RGB16F: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGB16F",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16F, "RGB16F",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA16F;
       return r;
     }
     case GL_RGB9_E5: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGB9_E5",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16F, "RGB9_E5",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA16F;
       return r;
     }
     case GL_RGB8I: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA8I, "RGB8I",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA8I, "RGB8I",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA8I;
       return r;
     }
     case GL_RGB8UI: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA8UI, "RGB8UI",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA8UI, "RGB8UI",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA8UI;
       return r;
     }
     case GL_RGB16I: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16I, "RGB16I",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16I, "RGB16I",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA16I;
       return r;
     }
     case GL_RGB16UI: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16UI, "RGB16UI",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16UI, "RGB16UI",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA16UI;
       return r;
     }
     case GL_RGB32I: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16I, "RGB32I",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16I, "RGB32I",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA32I;
       return r;
     }
     case GL_RGB32UI: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16UI, "RGB32UI",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16UI, "RGB32UI",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA32UI;
@@ -780,7 +798,7 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     }
     /* SRGB */
     case GL_SRGB8: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_SRGB8_ALPHA8, "srgb",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_SRGB8_ALPHA8, "srgb",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_SRGB8_ALPHA8;
@@ -790,21 +808,21 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     // TODO: Draw to a regular R/RG/RGB/RGBA 8bit texture with a shader that
     // will map [-1, 1] to the correct values.
     case GL_R8_SNORM: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_R16F, "R8_SNORM",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_R16F, "R8_SNORM",
                                            {GL_RED, GL_ZERO, GL_ZERO, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_R16F;
       return r;
     }
     case GL_RG8_SNORM: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RG16F, "RG8_SNORM",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RG16F, "RG8_SNORM",
                                            {GL_RED, GL_GREEN, GL_ZERO, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RG16F;
       return r;
     }
     case GL_RGB8_SNORM: {
-      ImageData r = ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGB8_SNORM",
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_RGBA16F, "RGB8_SNORM",
                                            {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA16F;
@@ -812,7 +830,7 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     }
     case GL_RGBA8_SNORM: {
       ImageData r =
-          ReadTextureViaDrawQuad(tex, layer, GL_RGBA16F, "RGBGBA8_SNORM",
+          ReadTextureViaDrawQuad(tex, idx, GL_RGBA16F, "RGBGBA8_SNORM",
                                  {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
       // Override the internal format to the format of the data.
       r.sizedFormat = GL_RGBA16F;
@@ -823,7 +841,7 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
     case GL_ATC_RGB_AMD:
     case GL_ETC1_RGB8_OES:
-      return ReadCompressedTexture(tex, layer, GL_RGBA8,
+      return ReadCompressedTexture(tex, idx, GL_RGBA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
     /* compressed 8bit RGBA */
     case GL_COMPRESSED_RGBA_ASTC_4x4:
@@ -847,12 +865,12 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
     case GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:
     case GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:
-      return ReadCompressedTexture(tex, layer, GL_RGBA8,
+      return ReadCompressedTexture(tex, idx, GL_RGBA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
     /* compressed 8bit SRGB */
     case GL_COMPRESSED_SRGB8_ETC2:
       // GL_SRGB8 (i.e. without alpha) is not color renderable.
-      return ReadCompressedTexture(tex, layer, GL_SRGB8_ALPHA8,
+      return ReadCompressedTexture(tex, idx, GL_SRGB8_ALPHA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ONE});
     /* compressed 8bit SRGBA */
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_4x4:
@@ -871,31 +889,31 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
     case GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12:
     case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:
     case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2:
-      return ReadCompressedTexture(tex, layer, GL_SRGB8_ALPHA8,
+      return ReadCompressedTexture(tex, idx, GL_SRGB8_ALPHA8,
                                    {GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA});
     /* compressed 11bit R - Half floats have 11bit mantissa. */
     case GL_COMPRESSED_R11_EAC:
     case GL_COMPRESSED_SIGNED_R11_EAC:
-      return ReadCompressedTexture(tex, layer, GL_R16F,
+      return ReadCompressedTexture(tex, idx, GL_R16F,
                                    {GL_RED, GL_ZERO, GL_ZERO, GL_ONE});
     /* compressed 11 bit RG - Half floats have 11bit mantissa. */
     case GL_COMPRESSED_RG11_EAC:
     case GL_COMPRESSED_SIGNED_RG11_EAC:
-      return ReadCompressedTexture(tex, layer, GL_RG16F,
+      return ReadCompressedTexture(tex, idx, GL_RG16F,
                                    {GL_RED, GL_GREEN, GL_ZERO, GL_ONE});
     /* formats that can be used as render targets */
     default: {
       auto readFb = CreateAndBindFramebuffer(GL_FRAMEBUFFER);
       if (tex.kind == GL_TEXTURE_CUBE_MAP) {
-        uint32_t face = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (layer % 6);
+        uint32_t face = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (idx.layer % 6);
         imports.glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                       face, tex.id, level);
-      } else if (layer == 0) {
+                                       face, tex.id, idx.level);
+      } else if (idx.layer == 0) {
         imports.glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                     tex.id, level);
+                                     tex.id, idx.level);
       } else {
         imports.glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                          tex.id, level, layer);
+                                          tex.id, idx.level, idx.layer);
       }
       return ReadPixels(tex.w, tex.h);
     }
@@ -904,8 +922,8 @@ ImageData Reader::ReadTexture(const texture& tex, GLint level, GLint layer,
 }
 
 ImageData Reader::ReadTextureViaDrawQuad(const Sampler& sampler,
-                                         const texture& tex, uint32_t format,
-                                         swizzle swizzle) {
+                                         const texture& tex, index idx,
+                                         uint32_t format, swizzle swizzle) {
   GAPID_DEBUG("MEC: Drawing quad to format 0x%x", format);
   CHECK_GL_ERROR("MEC: Entered ReadTextureViaDrawQuad in error state");
 
@@ -919,7 +937,7 @@ ImageData Reader::ReadTextureViaDrawQuad(const Sampler& sampler,
   auto savedState = tex.getState(imports);
   CHECK_GL_ERROR("MEC: Failed querying texture state");
 
-  tex.prepareToRead(imports, swizzle);
+  tex.prepareToRead(imports, idx.level, swizzle);
   CHECK_GL_ERROR("MEC: Failed setting texture state");
 
   DrawTexturedQuad(sampler, tex.w, tex.h);
@@ -933,7 +951,7 @@ ImageData Reader::ReadTextureViaDrawQuad(const Sampler& sampler,
       .w = tex.w,
       .h = tex.h,
   };
-  return ReadTexture(res, 0, 0, format);
+  return ReadTexture(res, {0, 0}, format);
 }
 
 ImageData Reader::ReadRenderbuffer(Renderbuffer* rb) {
@@ -980,7 +998,7 @@ ImageData Reader::ReadRenderbuffer(Renderbuffer* rb) {
         .w = w,
         .h = h,
     };
-    return ReadTexture(res, 0, 0, format);
+    return ReadTexture(res, {0, 0}, format);
   }
 }
 
@@ -1040,7 +1058,7 @@ void SerializeTexture(Reader& r, StateSerializer* serializer,
       }
       out.w = img->mWidth;
       out.h = img->mHeight;
-      auto newImg = r.ReadTexture(out, level, layer, img->mSizedFormat);
+      auto newImg = r.ReadTexture(out, {level, layer}, img->mSizedFormat);
       SerializeAndUpdate(serializer, img, newImg);
     }
   }
