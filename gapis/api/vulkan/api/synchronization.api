@@ -112,7 +112,7 @@ cmd VkResult vkGetFenceStatus(
 
 @threadSafety("system")
 @indirect("VkDevice")
-@blocking
+@threadsafe
 cmd VkResult vkWaitForFences(
     VkDevice       device,
     u32            fenceCount,
