@@ -192,6 +192,8 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 		fail(msg)
 	}
 
+	engine.RunStaticConstructors()
+
 	return &Executor{
 		llvm:     engine,
 		funcPtrs: map[string]unsafe.Pointer{},
