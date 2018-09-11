@@ -85,7 +85,7 @@ func decode(d *Decoder, v reflect.Value) {
 			decode(d, v.Index(i))
 		}
 	case reflect.Slice:
-		if t.Elem().Kind() == reflect.Uint8 && !t.Elem().Implements(tyCharTy) {
+		if t.Elem() == tyUint8Ty {
 			d.Data(v.Interface().([]uint8))
 		} else {
 			for i, c := 0, v.Len(); i < c; i++ {
