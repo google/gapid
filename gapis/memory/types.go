@@ -30,6 +30,7 @@ var (
 	tyAlignedTy = reflect.TypeOf((*AlignedTy)(nil)).Elem()
 	tyEncodable = reflect.TypeOf((*Encodable)(nil)).Elem()
 	tyDecodable = reflect.TypeOf((*Decodable)(nil)).Elem()
+	tyUint8Ty   = reflect.TypeOf(uint8(0))
 )
 
 // Int is a signed integer type.
