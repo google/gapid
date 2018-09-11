@@ -128,18 +128,31 @@ func (m *Module) validateTargetData(td llvm.TargetData) {
 
 // Optimize optimizes the module.
 func (m *Module) Optimize() {
-	pass := llvm.NewPassManager()
-	defer pass.Dispose()
+	fpm := llvm.NewFunctionPassManagerForModule(m.llvm)
+	defer fpm.Dispose()
 
-	// pass.AddFunctionInliningPass() // Way too slow with this pass
-	pass.AddInstructionCombiningPass()
-	pass.AddReassociatePass()
-	pass.AddConstantPropagationPass()
-	pass.AddPromoteMemoryToRegisterPass()
-	pass.AddGVNPass()
-	pass.AddCFGSimplificationPass()
-	pass.AddAggressiveDCEPass()
-	pass.Run(m.llvm)
+	mpm := llvm.NewPassManager()
+	defer mpm.Dispose()
+
+	pmb := llvm.NewPassManagerBuilder()
+	defer pmb.Dispose()
+
+	pmb.SetOptLevel(int(llvm.CodeGenLevelDefault))
+	pmb.SetSizeLevel(0)
+
+	mpm.AddVerifierPass()
+	fpm.AddVerifierPass()
+
+	pmb.Populate(mpm)
+	pmb.PopulateFunc(fpm)
+
+	fpm.InitializeFunc()
+	for fn := m.llvm.FirstFunction(); !fn.IsNil(); fn = llvm.NextFunction(fn) {
+		fpm.RunFunc(fn)
+	}
+	fpm.FinalizeFunc()
+
+	mpm.Run(m.llvm)
 }
 
 // Executor constructs an executor.
