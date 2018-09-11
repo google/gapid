@@ -324,12 +324,6 @@ func (b *Builder) IsBlockTerminated() bool {
 	return !b.llvm.GetInsertBlock().LastInstruction().IsATerminatorInst().IsNil()
 }
 
-// GlobalString returns a pointer to a global variable holidng the string data.
-func (b *Builder) GlobalString(s string) *Value {
-	tys := b.m.Types
-	return b.val(tys.Pointer(tys.Uint8), b.llvm.CreateGlobalStringPtr(s, "str"))
-}
-
 // FuncAddr returns the pointer to the given function.
 func (b *Builder) FuncAddr(f *Function) *Value {
 	return b.val(b.m.Types.Pointer(f.Type), f.llvm)

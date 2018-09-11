@@ -562,7 +562,7 @@ func (c *C) sliceRange(s *S, e *semantic.SliceRange) *codegen.Value {
 }
 
 func (c *C) stringValue(s *S, e semantic.StringValue) *codegen.Value {
-	str := c.MakeString(s, s.Scalar(uint64(len(e))), s.GlobalString(string(e)))
+	str := c.MakeString(s, s.Scalar(uint64(len(e))), s.Scalar(string(e)))
 	c.deferRelease(s, str, semantic.StringType)
 	return str
 }

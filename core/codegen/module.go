@@ -341,45 +341,94 @@ func (c Const) Value(b *Builder) *Value {
 	return b.val(c.Type, c.llvm)
 }
 
-// Scalar returns a constant scalar with the value v.
+// Scalar returns an inferred type constant scalar with the value v.
 func (m *Module) Scalar(v interface{}) Const {
-	rty := reflect.TypeOf(v)
 	ty := m.Types.TypeOf(v)
+	return m.ScalarOfType(v, ty)
+}
+
+// Array returns an constant array with the value v and element type ty.
+func (m *Module) Array(v interface{}, elTy Type) Const {
+	ty := m.Types.Array(elTy, reflect.ValueOf(v).Len())
+	return m.ScalarOfType(v, ty)
+}
+
+// ScalarOfType returns a constant scalar with the value v with the given type.
+func (m *Module) ScalarOfType(v interface{}, ty Type) Const {
+	if ty == nil {
+		fail("ScalarOfType passed nil type")
+	}
 	var val llvm.Value
-	switch {
-	case rty.Kind() == reflect.Slice:
-		rv := reflect.ValueOf(v)
-		vals := make([]llvm.Value, rv.Len())
-		for i := range vals {
-			vals[i] = m.Scalar(rv.Index(i).Interface()).llvm
-		}
-		val = llvm.ConstArray(ty.llvmTy(), vals)
-	case ty == m.Types.Bool:
-		if reflect.ValueOf(v).Bool() {
-			val = llvm.ConstInt(ty.llvmTy(), 1, false)
+	switch v := v.(type) {
+	case *Value:
+		val = v.llvm
+	case Const:
+		val = v.llvm
+	case Global:
+		val = v.llvm
+	case *Function:
+		if v != nil {
+			ty, val = m.Types.Pointer(v.Type), v.llvm
 		} else {
-			val = llvm.ConstInt(ty.llvmTy(), 0, false)
+			ty = m.Types.Pointer(m.Types.Void)
+			val = llvm.ConstNull(ty.llvmTy())
 		}
-	case IsSignedInteger(ty):
-		val = llvm.ConstInt(ty.llvmTy(), uint64(reflect.ValueOf(v).Int()), false)
-	case IsUnsignedInteger(ty):
-		val = llvm.ConstInt(ty.llvmTy(), reflect.ValueOf(v).Uint(), false)
-	case IsFloat(ty):
-		val = llvm.ConstFloat(ty.llvmTy(), float64(reflect.ValueOf(v).Float()))
-	case IsStruct(ty):
-		ty := ty.(*Struct)
-		r := reflect.ValueOf(v)
-		fields := make([]llvm.Value, r.NumField())
-		for i := range fields {
-			fields[i] = m.Scalar(r.Field(i).Interface()).llvm
-		}
-		val = llvm.ConstNamedStruct(ty.llvm, fields)
 	default:
-		fail("Scalar does not support type %T", v)
+		switch reflect.TypeOf(v).Kind() {
+		case reflect.Array, reflect.Slice:
+			arrTy, ok := ty.(*Array)
+			if !ok {
+				fail("Slice must have an array type. Got %v", ty)
+			}
+			rv := reflect.ValueOf(v)
+			vals := make([]llvm.Value, rv.Len())
+			for i := range vals {
+				vals[i] = m.ScalarOfType(rv.Index(i).Interface(), arrTy.Element).llvm
+			}
+			val = llvm.ConstArray(arrTy.Element.llvmTy(), vals)
+		case reflect.Bool:
+			if reflect.ValueOf(v).Bool() {
+				val = llvm.ConstInt(ty.llvmTy(), 1, false)
+			} else {
+				val = llvm.ConstInt(ty.llvmTy(), 0, false)
+			}
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			val = llvm.ConstInt(ty.llvmTy(), uint64(reflect.ValueOf(v).Int()), false)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			val = llvm.ConstInt(ty.llvmTy(), reflect.ValueOf(v).Uint(), false)
+		case reflect.Float32, reflect.Float64:
+			val = llvm.ConstFloat(ty.llvmTy(), float64(reflect.ValueOf(v).Float()))
+		case reflect.Struct:
+			strTy, ok := ty.(*Struct)
+			if !ok {
+				fail("Struct must have an struct type. Got %v", ty)
+			}
+			r := reflect.ValueOf(v)
+			fields := make([]llvm.Value, r.NumField())
+			for i := range fields {
+				fields[i] = m.Scalar(r.Field(i).Interface()).llvm
+			}
+			val = llvm.ConstNamedStruct(strTy.llvm, fields)
+		case reflect.String:
+			s := v.(string)
+			var ok bool
+			val, ok = m.strings[s]
+			if !ok {
+				arr := llvm.ConstString(s, true)
+				buf := llvm.AddGlobal(m.llvm, arr.Type(), "str")
+				buf.SetInitializer(arr)
+				buf.SetLinkage(llvm.PrivateLinkage)
+				ptrTy := m.Types.Pointer(m.Types.Uint8)
+				val = llvm.ConstPointerCast(buf, ptrTy.llvmTy())
+				m.strings[s] = val
+			}
+		default:
+			fail("Scalar does not support type %T", v)
+		}
 	}
 
-	if a, b := val.Type().String(), ty.llvmTy().String(); a != b {
-		fail("Value type mismatch for %T: value: %v, type: %v", v, a, b)
+	if val.Type().C != ty.llvmTy().C {
+		fail("Value type mismatch for %T: value: %v, type: %v", v, val.Type(), ty.llvmTy())
 	}
 
 	val.SetName(fmt.Sprintf("%v", v))
@@ -393,11 +442,16 @@ func (m *Module) ConstStruct(ty *Struct, fields map[string]interface{}) Const {
 		if v := fields[f.Name]; v == nil {
 			vals[i] = llvm.ConstNull(f.Type.llvmTy())
 		} else {
-			vals[i] = m.Scalar(v).Cast(f.Type).llvm
+			vals[i] = m.ScalarOfType(v, f.Type).llvm
 		}
 	}
 	val := llvm.ConstNamedStruct(ty.llvm, vals)
 	return Const{ty, val}
+}
+
+// Zero returns a constant zero value of type ty.
+func (m *Module) Zero(ty Type) Const {
+	return Const{ty, llvm.ConstNull(ty.llvmTy())}
 }
 
 // SizeOf returns the size of the type in bytes as a uint64.
