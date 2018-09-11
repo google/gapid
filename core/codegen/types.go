@@ -646,17 +646,7 @@ func (t *Types) FieldsOf(v interface{}) []Field {
 		if f.Name == "_" {
 			continue // Cgo padding struct. No thanks.
 		}
-		ty := t.TypeOf(f.Type)
-		if f.Type == reflect.TypeOf(unsafe.Pointer(nil)) {
-			if name, ok := f.Tag.Lookup("ptr"); ok {
-				s, ok := t.structs[name]
-				if !ok {
-					panic(fmt.Errorf("Unknown pointer type '%v'", name))
-				}
-				ty = t.Pointer(s)
-			}
-		}
-		fields = append(fields, Field{Name: f.Name, Type: ty})
+		fields = append(fields, Field{Name: f.Name, Type: t.TypeOf(f.Type)})
 	}
 	return fields
 }
