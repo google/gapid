@@ -63,6 +63,12 @@ func (f *Function) LinkPrivate() *Function {
 	return f
 }
 
+// LinkInternal makes this function use internal linkage.
+func (f *Function) LinkInternal() *Function {
+	f.llvm.SetLinkage(llvm.InternalLinkage)
+	return f
+}
+
 // Build calls cb with a Builder that can construct the function body.
 func (f *Function) Build(cb func(*Builder)) (err error) {
 	if f.built {
