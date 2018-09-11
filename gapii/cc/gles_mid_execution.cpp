@@ -195,7 +195,7 @@ class SamplerCube : public Sampler {
       case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
         return "textureCube(tex, vec3(uv.xw, 1.0))";
       case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-        return "textureCube(tex, vec3(uv.xw, 1.0))";
+        return "textureCube(tex, vec3(uv.zw, -1.0))";
       default:
         GAPID_FATAL("MEC: unexpected cube face: 0x%x", mFace);
         return "";
