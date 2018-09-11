@@ -1074,6 +1074,7 @@ func (e *encoder) map_(n *semantic.Map) (outID uint64) {
 			Name:      e.str(n.Name()),
 			KeyType:   e.ty(n.KeyType),
 			ValueType: e.ty(n.ValueType),
+			Dense:     n.Dense,
 		}
 	})
 	return
