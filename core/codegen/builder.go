@@ -381,6 +381,19 @@ func (b *Builder) PrintfSpecifier(v *Value) (string, []*Value) {
 	panic(fmt.Errorf("Cannot print type %v", v.Type()))
 }
 
+// StructOf builds a struct value that holds all the values in v.
+func (b *Builder) StructOf(name string, v []*Value) *Value {
+	fields := make([]Field, len(v))
+	for i, v := range v {
+		fields[i].Type = v.Type()
+	}
+	s := b.Undef(b.m.Types.Struct(name, fields...))
+	for i, v := range v {
+		s = s.Insert(i, v)
+	}
+	return s
+}
+
 // block calls f to appends instructions to the specified block.
 // If next is not nil and the f returns without terminating the block, then a
 // unconditional jump to next is added to the block.
