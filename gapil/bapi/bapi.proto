@@ -564,6 +564,7 @@ message Map {
   uint64 name = 2;  // String ID
   Type key_type = 3;
   Type value_type = 4;
+  bool dense = 5;
 }
 
 message MapAssign {

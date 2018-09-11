@@ -851,6 +851,7 @@ func (d *decoder) map_(mapID uint64) (out *semantic.Map) {
 			s.Named = semantic.Named(d.str(p.Name))
 			s.KeyType = d.ty(p.KeyType)
 			s.ValueType = d.ty(p.ValueType)
+			s.Dense = p.Dense
 			if owner := d.node(p.Owner); owner != nil {
 				semantic.Add(owner.(semantic.Owner), s)
 			}
