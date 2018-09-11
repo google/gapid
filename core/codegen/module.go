@@ -43,6 +43,9 @@ type Module struct {
 
 // NewModule returns a new module with the specified name.
 func NewModule(name string, target *device.ABI) *Module {
+	if target == nil {
+		panic("NewModule must be passed a non-nil target")
+	}
 	layout := target.MemoryLayout
 	intSize := 8 * int(layout.Integer.Size)
 	ptrSize := 8 * int(layout.Pointer.Size)
@@ -54,33 +57,35 @@ func NewModule(name string, target *device.ABI) *Module {
 
 	module := ctx.NewModule(name)
 	module.SetTarget(triple.String())
+	bt := func(name string, dtl *device.DataTypeLayout, llvm llvm.Type) basicType {
+		return basicType{name, 8 * int(dtl.Size), 8 * int(dtl.Alignment), llvm}
+	}
 
 	m := &Module{
 		Types: Types{
-			Void:          basicType{"void", 0, ctx.VoidType()},
-			Bool:          basicType{"bool", 1, ctx.Int1Type()},
-			Int:           Integer{true, basicType{"int", intSize, ctx.IntType(intSize)}},
-			Int8:          Integer{true, basicType{"int8", 8, ctx.Int8Type()}},
-			Int16:         Integer{true, basicType{"int16", 16, ctx.Int16Type()}},
-			Int32:         Integer{true, basicType{"int32", 32, ctx.Int32Type()}},
-			Int64:         Integer{true, basicType{"int64", 64, ctx.Int64Type()}},
-			Uint:          Integer{false, basicType{"uint", intSize, ctx.IntType(intSize)}},
-			Uint8:         Integer{false, basicType{"uint8", 8, ctx.Int8Type()}},
-			Uint16:        Integer{false, basicType{"uint16", 16, ctx.Int16Type()}},
-			Uint32:        Integer{false, basicType{"uint32", 32, ctx.Int32Type()}},
-			Uint64:        Integer{false, basicType{"uint64", 64, ctx.Int64Type()}},
-			Uintptr:       Integer{false, basicType{"uintptr", ptrSize, ctx.IntType(ptrSize)}},
-			Size:          Integer{false, basicType{"size", sizeSize, ctx.IntType(sizeSize)}},
-			Float32:       Float{basicType{"float32", 32, ctx.FloatType()}},
-			Float64:       Float{basicType{"float64", 64, ctx.DoubleType()}},
-			ptrSizeInBits: ptrSize,
-			pointers:      map[Type]Pointer{},
-			arrays:        map[typeInt]*Array{},
-			structs:       map[string]*Struct{},
-			funcs:         map[string]*FunctionType{},
-			enums:         map[string]Enum{},
-			aliases:       map[string]Alias{},
-			named:         map[string]Type{},
+			Void:     basicType{"void", 0, 0, ctx.VoidType()},
+			Bool:     Integer{false, basicType{"bool", 1, 8, ctx.Int1Type()}},
+			Int:      Integer{true, bt("int", layout.Integer, ctx.IntType(intSize))},
+			Int8:     Integer{true, bt("int8", layout.I8, ctx.Int8Type())},
+			Int16:    Integer{true, bt("int16", layout.I16, ctx.Int16Type())},
+			Int32:    Integer{true, bt("int32", layout.I32, ctx.Int32Type())},
+			Int64:    Integer{true, bt("int64", layout.I64, ctx.Int64Type())},
+			Uint:     Integer{false, bt("uint", layout.Integer, ctx.IntType(intSize))},
+			Uint8:    Integer{false, bt("uint8", layout.I8, ctx.Int8Type())},
+			Uint16:   Integer{false, bt("uint16", layout.I16, ctx.Int16Type())},
+			Uint32:   Integer{false, bt("uint32", layout.I32, ctx.Int32Type())},
+			Uint64:   Integer{false, bt("uint64", layout.I64, ctx.Int64Type())},
+			Uintptr:  Integer{false, bt("uintptr", layout.Pointer, ctx.IntType(ptrSize))},
+			Size:     Integer{false, bt("size", layout.Size, ctx.IntType(sizeSize))},
+			Float32:  Float{bt("float32", layout.F32, ctx.FloatType())},
+			Float64:  Float{bt("float64", layout.F64, ctx.DoubleType())},
+			pointers: map[Type]Pointer{},
+			arrays:   map[typeInt]*Array{},
+			structs:  map[string]*Struct{},
+			funcs:    map[string]*FunctionType{},
+			enums:    map[string]Enum{},
+			aliases:  map[string]Alias{},
+			named:    map[string]Type{},
 		},
 		llvm:    module,
 		ctx:     ctx,
@@ -90,6 +95,8 @@ func NewModule(name string, target *device.ABI) *Module {
 		funcs:   map[string]*Function{},
 		strings: map[string]llvm.Value{},
 	}
+	m.Types.emptyStructField = Field{"empty-struct", m.Types.Int8}
+	m.Types.m = m
 
 	voidPtr := m.Types.Pointer(m.Types.Void)
 	// void llvm.memcpy.p0i8.p0i8.i32(i8 * <dest>, i8 * <src>, i32 <len>, i32 <align>, i1 <isvolatile>)
@@ -356,8 +363,8 @@ func (m *Module) Scalar(v interface{}) Const {
 
 // ConstStruct returns a constant struct with the value v.
 func (m *Module) ConstStruct(ty *Struct, fields map[string]interface{}) Const {
-	vals := make([]llvm.Value, len(ty.Fields))
-	for i, f := range ty.Fields {
+	vals := make([]llvm.Value, len(ty.Fields()))
+	for i, f := range ty.Fields() {
 		if v := fields[f.Name]; v == nil {
 			vals[i] = llvm.ConstNull(f.Type.llvmTy())
 		} else {
@@ -366,4 +373,23 @@ func (m *Module) ConstStruct(ty *Struct, fields map[string]interface{}) Const {
 	}
 	val := llvm.ConstNamedStruct(ty.llvm, vals)
 	return Const{ty, val}
+}
+
+// SizeOf returns the size of the type in bytes as a uint64.
+func (m *Module) SizeOf(ty Type) Const {
+	return m.Scalar(uint64((ty.SizeInBits() + 7) / 8))
+}
+
+// AlignOf returns the alignment of the type in bytes.
+func (m *Module) AlignOf(ty Type) Const {
+	return m.Scalar(uint64((ty.AlignInBits() + 7) / 8))
+}
+
+// OffsetOf returns the field offset in bytes.
+func (m *Module) OffsetOf(ty *Struct, name string) Const {
+	idx := ty.FieldIndex(name)
+	if idx == -1 {
+		fail("'%v' is not a field of %v", name, ty)
+	}
+	return m.Scalar(uint64((ty.FieldOffsetInBits(idx) + 7) / 8))
 }

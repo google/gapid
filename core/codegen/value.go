@@ -117,12 +117,12 @@ func field(s *Struct, f IndexOrName) (Field, int) {
 	case string:
 		var ok bool
 		if i, ok = s.fieldIndices[f]; !ok {
-			fail("%v does not contain a field with name '%v':\n%+v", s.Name, f, s)
+			fail("%v does not contain a field with name '%v':\n%+v", s.TypeName(), f, s)
 		}
 	default:
 		fail("Attempted to index field of struct '%v' with %T. Must be int or string", s.TypeName(), f)
 	}
-	return s.Fields[i], i
+	return s.fields[i], i
 }
 
 func (b *Builder) pathName(rootName string, path []ValueIndexOrName) string {

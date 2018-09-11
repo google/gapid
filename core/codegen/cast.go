@@ -33,8 +33,8 @@ func (v *Value) Cast(ty Type) *Value {
 	}
 	assertVectorsSameLength(srcTy, dstTy)
 	srcElTy, dstElTy := Scalar(srcTy), Scalar(dstTy)
-	grow := srcElTy.sizeInBits() < dstElTy.sizeInBits()
-	shink := srcElTy.sizeInBits() > dstElTy.sizeInBits()
+	grow := srcElTy.SizeInBits() < dstElTy.SizeInBits()
+	shink := srcElTy.SizeInBits() > dstElTy.SizeInBits()
 	switch {
 	case IsInteger(srcElTy) && IsPointer(dstElTy):
 		return v.b.val(ty, v.b.llvm.CreateIntToPtr(v.llvm, ty.llvmTy(), ""))
@@ -76,7 +76,7 @@ func (v *Value) Bitcast(ty Type) *Value {
 	if srcTy == dstTy {
 		return v // No-op
 	}
-	if srcSize, dstSize := srcTy.sizeInBits(), dstTy.sizeInBits(); srcSize != dstSize {
+	if srcSize, dstSize := srcTy.SizeInBits(), dstTy.SizeInBits(); srcSize != dstSize {
 		fail("Bitcast cannot change sizes. (%v -> %v)", srcTy, dstTy)
 	}
 	return v.b.val(ty, v.b.llvm.CreateBitCast(v.llvm, ty.llvmTy(), "bitcast"))
@@ -96,8 +96,8 @@ func (v Const) Cast(ty Type) Const {
 	}
 	assertVectorsSameLength(srcTy, dstTy)
 	srcElTy, dstElTy := Scalar(srcTy), Scalar(dstTy)
-	grow := srcElTy.sizeInBits() < dstElTy.sizeInBits()
-	shink := srcElTy.sizeInBits() > dstElTy.sizeInBits()
+	grow := srcElTy.SizeInBits() < dstElTy.SizeInBits()
+	shink := srcElTy.SizeInBits() > dstElTy.SizeInBits()
 	switch {
 	case IsInteger(srcElTy) && IsPointer(dstElTy):
 		return Const{ty, llvm.ConstIntToPtr(v.llvm, ty.llvmTy())}

@@ -98,7 +98,7 @@ func (b *Builder) Equal(x, y *Value) *Value {
 	if ty, ok := ty.(*Struct); ok {
 		assertTypesEqual(x.Type(), y.Type())
 		var eq *Value
-		for i, f := range ty.Fields {
+		for i, f := range ty.Fields() {
 			x, y := x.Extract(f.Name), y.Extract(f.Name)
 			if i == 0 {
 				eq = b.Equal(x, y)
@@ -117,7 +117,7 @@ func (b *Builder) NotEqual(x, y *Value) *Value {
 	if ty, ok := ty.(*Struct); ok {
 		assertTypesEqual(x.Type(), y.Type())
 		var neq *Value
-		for i, f := range ty.Fields {
+		for i, f := range ty.Fields() {
 			x, y := x.Extract(f.Name), y.Extract(f.Name)
 			if i == 0 {
 				neq = b.NotEqual(x, y)

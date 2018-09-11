@@ -22,26 +22,26 @@ import (
 	"unsafe"
 
 	"llvm/bindings/go/llvm"
+
+	"github.com/google/gapid/core/math/sint"
 )
 
 // SizeOf returns the size of the type in bytes as a uint64.
 // If ty is void, a value of 1 is returned.
 func (b *Builder) SizeOf(ty Type) *Value {
-	if ty == b.m.Types.Void {
-		return b.Scalar(uint64(1))
-	}
-	if bits := ty.sizeInBits(); bits > 0 {
-		return b.Scalar(uint64((bits + 7) / 8)).
-			SetName(fmt.Sprintf("sizeof(%v)", ty.TypeName()))
-	}
-	return b.val(b.m.Types.Uint64, llvm.SizeOf(ty.llvmTy())).
+	return b.m.SizeOf(ty).Value(b).
 		SetName(fmt.Sprintf("sizeof(%v)", ty.TypeName()))
 }
 
 // AlignOf returns the alignment of the type in bytes.
 func (b *Builder) AlignOf(ty Type) *Value {
-	return b.val(b.m.Types.Uint64, llvm.AlignOf(ty.llvmTy())).
+	return b.m.AlignOf(ty).Value(b).
 		SetName(fmt.Sprintf("alignof(%v)", ty.TypeName()))
+}
+
+// StrideInBits returns the number of bits per element when held in an array.
+func StrideInBits(ty Type) int {
+	return sint.AlignUp(sint.Max(ty.SizeInBits(), 8), ty.AlignInBits())
 }
 
 // Types contains all the types for a module.
@@ -65,14 +65,17 @@ type Types struct {
 	Float32 Type // Float32 is a 32-bit floating-point number type.
 	Float64 Type // Float64 is a 64-bit floating-point number type.
 
-	ptrSizeInBits int
-	pointers      map[Type]Pointer // T -> T*
-	arrays        map[typeInt]*Array
-	structs       map[string]*Struct
-	funcs         map[string]*FunctionType
-	enums         map[string]Enum
-	aliases       map[string]Alias
-	named         map[string]Type
+	pointers map[Type]Pointer // T -> T*
+	arrays   map[typeInt]*Array
+	structs  map[string]*Struct
+	funcs    map[string]*FunctionType
+	enums    map[string]Enum
+	aliases  map[string]Alias
+	named    map[string]Type
+
+	// emptyStructField is a field that is placed into empty structs so they
+	// are addressable. This is also automatically done by LLVM.
+	emptyStructField Field
 }
 
 type typeInt struct {
@@ -85,7 +88,8 @@ type Type interface {
 	String() string
 	TypeName() string
 
-	sizeInBits() int // 0 means target-dependent or aggregate type
+	SizeInBits() int
+	AlignInBits() int
 	llvmTy() llvm.Type
 }
 
@@ -109,15 +113,17 @@ func (l TypeList) llvm() []llvm.Type {
 }
 
 type basicType struct {
-	name string
-	bits int
-	llvm llvm.Type
+	name        string
+	sizeInBits  int
+	alignInBits int
+	llvm        llvm.Type
 }
 
 func (t basicType) TypeName() string  { return t.name }
 func (t basicType) String() string    { return t.name }
 func (t basicType) llvmTy() llvm.Type { return t.llvm }
-func (t basicType) sizeInBits() int   { return t.bits }
+func (t basicType) SizeInBits() int   { return t.sizeInBits }
+func (t basicType) AlignInBits() int  { return t.alignInBits }
 
 // Pointer represents a pointer type.
 type Pointer struct {
@@ -126,9 +132,6 @@ type Pointer struct {
 	basicType
 }
 
-func (t Pointer) TypeName() string { return fmt.Sprintf("*%v", t.Element.TypeName()) }
-func (t Pointer) String() string   { return fmt.Sprintf("*%v", t.Element) }
-
 // Pointer returns a pointer type of el.
 func (t *Types) Pointer(el Type) Pointer {
 	p, ok := t.pointers[el]
@@ -136,7 +139,12 @@ func (t *Types) Pointer(el Type) Pointer {
 		if el == t.Void {
 			el = t.Uint8
 		}
-		p = Pointer{el, basicType{"", t.ptrSizeInBits, llvm.PointerType(el.llvmTy(), 0)}}
+		p = Pointer{el, basicType{
+			fmt.Sprintf("*%v", el.TypeName()),
+			int(t.m.target.MemoryLayout.Pointer.Size * 8),
+			int(t.m.target.MemoryLayout.Pointer.Alignment * 8),
+			llvm.PointerType(el.llvmTy(), 0),
+		}}
 		t.pointers[el] = p
 	}
 	return p
@@ -146,18 +154,26 @@ func (t *Types) Pointer(el Type) Pointer {
 type Array struct {
 	Element Type // The type of the element the pointer points to.
 	Size    int  // Number of elements in the array.
-
-	basicType
+	name    string
+	llvm    llvm.Type
 }
 
-func (t *Array) TypeName() string { return fmt.Sprintf("%v[%d]", t.Element.TypeName(), t.Size) }
-func (t *Array) String() string   { return t.TypeName() }
+func (t Array) TypeName() string  { return t.name }
+func (t Array) String() string    { return t.name }
+func (t Array) llvmTy() llvm.Type { return t.llvm }
+func (t Array) SizeInBits() int   { return StrideInBits(t.Element) * t.Size }
+func (t Array) AlignInBits() int  { return t.Element.AlignInBits() }
 
 // Array returns an n-element array type of el.
 func (t *Types) Array(el Type, n int) *Array {
 	a, ok := t.arrays[typeInt{el, n}]
 	if !ok {
-		a = &Array{el, n, basicType{"", 0, llvm.ArrayType(el.llvmTy(), n)}}
+		a = &Array{
+			Element: el,
+			Size:    n,
+			name:    fmt.Sprintf("%v[%d]", el.TypeName(), n),
+			llvm:    llvm.ArrayType(el.llvmTy(), n),
+		}
 		t.arrays[typeInt{el, n}] = a
 	}
 	return a
@@ -176,14 +192,14 @@ type Vector struct {
 	basicType
 }
 
-func (t Vector) TypeName() string {
-	return fmt.Sprintf("vec<%v, %d>", t.Element.TypeName(), t.Count)
-}
-func (t Vector) String() string { return fmt.Sprintf("vec<%v, %d>", t.Element, t.Count) }
-
 // Vector returns a pointer type of el.
 func (t *Types) Vector(el Type, count int) Vector {
-	return Vector{el, count, basicType{"", 0, llvm.VectorType(el.llvmTy(), count)}}
+	return Vector{el, count, basicType{
+		fmt.Sprintf("vec<%v, %d>", el, count),
+		el.SizeInBits() * count,
+		el.AlignInBits(),
+		llvm.VectorType(el.llvmTy(), count),
+	}}
 }
 
 // IsVector returns true if ty is a vector type.
@@ -266,7 +282,8 @@ type FunctionType struct {
 
 func (t FunctionType) TypeName() string  { return t.Signature.string("") }
 func (t FunctionType) String() string    { return t.Signature.string("") }
-func (t FunctionType) sizeInBits() int   { return 0 }
+func (t FunctionType) SizeInBits() int   { return 0 }
+func (t FunctionType) AlignInBits() int  { return 0 }
 func (t FunctionType) llvmTy() llvm.Type { return t.llvm }
 
 // Signature holds signature information about a function.
@@ -295,7 +312,8 @@ type variadicTy struct{}
 
 func (variadicTy) String() string    { return "..." }
 func (variadicTy) TypeName() string  { return "..." }
-func (variadicTy) sizeInBits() int   { panic("Cannot use Variadic as a regular type") }
+func (variadicTy) SizeInBits() int   { panic("Cannot use Variadic as a regular type") }
+func (variadicTy) AlignInBits() int  { panic("Cannot use Variadic as a regular type") }
 func (variadicTy) llvmTy() llvm.Type { panic("Cannot use Variadic as a regular type") }
 
 // Variadic is a type that can be used as the last parameter of a function
@@ -304,21 +322,65 @@ var Variadic variadicTy
 
 // Struct is the type of a structure.
 type Struct struct {
-	Name         string
-	Fields       []Field
+	t            *Types
+	name         string
+	fields       []Field
 	fieldIndices map[string]int
+	packed       bool
+	hasBody      bool
+	layout       *structLayout
 	llvm         llvm.Type
 }
 
-func (t *Struct) TypeName() string { return t.Name }
+type structLayout struct {
+	offsets     []int
+	sizeInBits  int
+	alignInBits int
+}
+
+func (t *Struct) getStructLayout() *structLayout {
+	if t.layout != nil {
+		if len(t.layout.offsets) != len(t.fields) {
+			fail("Field count mismatch between struct (%v) and layout (%v) for '%v'",
+				len(t.fields), len(t.layout.offsets), t.name)
+		}
+		return t.layout
+	}
+	if !t.hasBody {
+		fail("Attempting to get struct '%v' layout before it has a body", t.name)
+	}
+	offsets := make([]int, len(t.fields))
+	offset, align := 0, 8
+	for i, f := range t.fields {
+		if t.packed {
+			offsets[i] = offset
+			offset += StrideInBits(f.Type)
+		} else {
+			a := f.Type.AlignInBits()
+			offset = sint.AlignUp(offset, a)
+			offsets[i] = offset
+			offset += StrideInBits(f.Type)
+			align = sint.Max(align, a)
+		}
+	}
+	offset = sint.AlignUp(offset, align)
+	t.layout = &structLayout{
+		offsets:     offsets,
+		sizeInBits:  offset,
+		alignInBits: align,
+	}
+	return t.layout
+}
+
+func (t *Struct) TypeName() string { return t.name }
 func (t *Struct) String() string {
-	if len(t.Fields) == 0 {
-		return fmt.Sprintf("%v{}", t.Name)
+	if len(t.fields) == 0 {
+		return fmt.Sprintf("%v{}", t.name)
 	}
 	b := bytes.Buffer{}
-	b.WriteString(t.Name)
+	b.WriteString(t.name)
 	b.WriteString(" {")
-	for _, f := range t.Fields {
+	for _, f := range t.fields {
 		b.WriteString("\n  ")
 		b.WriteString(f.Name)
 		b.WriteString(": ")
@@ -327,7 +389,9 @@ func (t *Struct) String() string {
 	b.WriteString("\n}")
 	return b.String()
 }
-func (t *Struct) sizeInBits() int   { return 0 }
+func (t *Struct) Fields() []Field   { return t.fields }
+func (t *Struct) SizeInBits() int   { return t.getStructLayout().sizeInBits }
+func (t *Struct) AlignInBits() int  { return t.getStructLayout().alignInBits }
 func (t *Struct) llvmTy() llvm.Type { return t.llvm }
 
 // Field returns the field with the given name.
@@ -335,9 +399,9 @@ func (t *Struct) llvmTy() llvm.Type { return t.llvm }
 func (t *Struct) Field(name string) Field {
 	f, ok := t.fieldIndices[name]
 	if !ok {
-		panic(fmt.Errorf("Struct '%v' does not have field with name '%v'", t.Name, name))
+		fail("Struct '%v' does not have field with name '%v'", t.name, name)
 	}
-	return t.Fields[f]
+	return t.fields[f]
 }
 
 // FieldIndex returns the index of the field with the given name, or -1 if the
@@ -349,6 +413,9 @@ func (t *Struct) FieldIndex(name string) int {
 	}
 	return f
 }
+
+// FieldOffsetInBits returns the field offset in bits from the start of the struct.
+func (t *Struct) FieldOffsetInBits(idx int) int { return t.getStructLayout().offsets[idx] }
 
 // IsStruct returns true if ty is a struct type.
 func IsStruct(ty Type) bool {
@@ -366,23 +433,33 @@ type Field struct {
 // If packed is true then fields will be stored back-to-back.
 func (t *Types) struct_(name string, packed bool, fields []Field) *Struct {
 	name = sanitizeStructName(name)
+	if fields != nil && len(fields) == 0 {
+		fields = []Field{t.emptyStructField}
+	}
 	if s, ok := t.structs[name]; ok {
 		if fields != nil {
-			if !reflect.DeepEqual(fields, s.Fields) {
-				panic(fmt.Errorf("Struct '%s' redeclared with different fields\nPrevious: %+v\nNew:      %+v",
-					name, s.Fields, fields))
+			if !reflect.DeepEqual(fields, s.fields) {
+				fail("Struct '%s' redeclared with different fields\nPrevious: %+v\nNew:      %+v",
+					name, s.fields, fields)
 			}
 			if packed != s.llvm.IsStructPacked() {
-				panic(fmt.Errorf("Struct '%s' redeclared with different packed flags", name))
+				fail("Struct '%s' redeclared with different packed flags", name)
 			}
 		}
 		return s
 	}
+
 	ty := t.m.ctx.StructCreateNamed(name)
-	s := &Struct{Name: name, llvm: ty}
+	s := &Struct{
+		t:      t,
+		name:   name,
+		packed: packed,
+		llvm:   ty,
+	}
 	t.registerNamed(s)
 	if fields != nil {
 		s.SetBody(packed, fields...)
+		s.hasBody = true
 	}
 	t.structs[name] = s
 	return s
@@ -398,7 +475,13 @@ func (t *Types) registerNamed(ty Type) {
 
 // SetBody sets the fields of the declared struct.
 func (t *Struct) SetBody(packed bool, fields ...Field) *Struct {
+	if t.hasBody && !reflect.DeepEqual(fields, t.fields) {
+		fail("Attempting to change fields of struct '%v'\nOld: %+v\nNew: %+v", t.name, t.fields, fields)
+	}
 	indices := map[string]int{}
+	if len(fields) == 0 {
+		fields = []Field{t.t.emptyStructField}
+	}
 	l := make([]llvm.Type, len(fields))
 	for i, f := range fields {
 		if f.Type == nil {
@@ -407,8 +490,9 @@ func (t *Struct) SetBody(packed bool, fields ...Field) *Struct {
 		l[i] = f.Type.llvmTy()
 		indices[f.Name] = i
 	}
-	t.Fields = fields
+	t.fields = fields
 	t.fieldIndices = indices
+	t.hasBody = true
 	t.llvm.StructSetBody(l, packed)
 	return t
 }
@@ -421,7 +505,8 @@ type Alias struct {
 
 func (a Alias) String() string    { return fmt.Sprintf("%v (%v)", a.TypeName(), Underlying(a).TypeName()) }
 func (a Alias) TypeName() string  { return a.name }
-func (a Alias) sizeInBits() int   { return a.to.sizeInBits() }
+func (a Alias) SizeInBits() int   { return a.to.SizeInBits() }
+func (a Alias) AlignInBits() int  { return a.to.AlignInBits() }
 func (a Alias) llvmTy() llvm.Type { return a.to.llvmTy() }
 
 // Alias creates a new alias type.
@@ -450,9 +535,10 @@ type Enum struct{ basicType }
 func (t *Types) Enum(name string) Enum {
 	ty := Enum{
 		basicType{
-			name: name,
-			bits: t.Int.sizeInBits(),
-			llvm: t.Int.llvmTy(),
+			name:        name,
+			sizeInBits:  t.Int.SizeInBits(),
+			alignInBits: t.Int.AlignInBits(),
+			llvm:        t.Int.llvmTy(),
 		},
 	}
 	t.enums[name] = ty
@@ -532,8 +618,10 @@ func (t *Types) TypeOf(v interface{}) Type {
 			return s // avoid stack overflow if type references itself.
 		}
 		s := t.DeclareStruct(name)
-		fields := t.FieldsOf(ty)
-		s.SetBody(false, fields...)
+		if !s.hasBody {
+			fields := t.FieldsOf(ty)
+			s.SetBody(false, fields...)
+		}
 		return s
 	default:
 		panic(fmt.Errorf("Unsupported kind %v", ty.Kind()))
