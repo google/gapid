@@ -24,15 +24,22 @@ import (
 
 // Function represents a callable function.
 type Function struct {
-	Name  string
-	Type  *FunctionType
-	llvm  llvm.Value
-	m     *Module
-	built bool
+	Name       string
+	Type       *FunctionType
+	paramNames []string
+	llvm       llvm.Value
+	m          *Module
+	built      bool
 }
 
 func (f Function) String() string {
 	return f.Type.Signature.string(f.Name)
+}
+
+// SetParameterNames assigns debug names to each of the function parameters.
+func (f *Function) SetParameterNames(names ...string) *Function {
+	f.paramNames = names
+	return f
 }
 
 // Inline makes this function prefer inlining
@@ -94,6 +101,9 @@ func (f *Function) Build(cb func(*Builder)) (err error) {
 
 	for i, p := range f.llvm.Params() {
 		b.params[i] = b.val(f.Type.Signature.Parameters[i], p)
+		if i < len(f.paramNames) {
+			b.params[i].SetName(f.paramNames[i])
+		}
 	}
 
 	if ty := f.Type.Signature.Result; ty != f.m.Types.Void {
