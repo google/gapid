@@ -325,9 +325,9 @@ func (b *Builder) PrintfSpecifier(v *Value) (string, []*Value) {
 	case *Struct:
 		vals := []*Value{}
 		sb := strings.Builder{}
-		sb.WriteString(t.Name)
+		sb.WriteString(t.TypeName())
 		sb.WriteString("{ ")
-		for i, f := range t.Fields {
+		for i, f := range t.Fields() {
 			fmt, val := b.PrintfSpecifier(v.Extract(i))
 			sb.WriteString(f.Name)
 			sb.WriteString(": ")

@@ -174,7 +174,7 @@ func (c *C) program(s Settings) (*Program, error) {
 	structs := map[string]*StructInfo{}
 	for _, t := range c.T.target {
 		if s, ok := t.(*codegen.Struct); ok {
-			structs[s.Name] = &StructInfo{Type: s}
+			structs[s.TypeName()] = &StructInfo{Type: s}
 		}
 	}
 

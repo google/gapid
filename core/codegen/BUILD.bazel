@@ -34,6 +34,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app/linker:go_default_library",
+        "//core/math/sint:go_default_library",
         "//core/os/device:go_default_library",
         "@llvm//:go",  # keep
     ],

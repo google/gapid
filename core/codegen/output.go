@@ -58,6 +58,7 @@ func (m *Module) Object(optimize bool) ([]byte, error) {
 	tm := t.CreateTargetMachine(m.triple.String(), cpu, features, opt, reloc, model)
 	defer tm.Dispose()
 
+	// Check target data is as expected.
 	td := tm.CreateTargetData()
 	defer td.Dispose()
 	m.validateTargetData(td)
@@ -73,11 +74,12 @@ func (m *Module) Object(optimize bool) ([]byte, error) {
 func (m *Module) validateTargetData(td llvm.TargetData) {
 	abi := m.target
 	errs := []string{}
-	check := func(llvm, gapid interface{}, name string) {
+	check := func(llvm, gapid interface{}, name string) bool {
 		if reflect.DeepEqual(llvm, gapid) {
-			return
+			return true
 		}
 		errs = append(errs, fmt.Sprintf("%v target mismatch for %v: %v (llvm) != %v (gapid)", name, abi.Name, llvm, gapid))
+		return false
 	}
 	checkTD := func(ty Type, dtl *device.DataTypeLayout) {
 		check(td.TypeStoreSize(ty.llvmTy()), uint64(dtl.Size), ty.String()+"-size")
@@ -98,6 +100,26 @@ func (m *Module) validateTargetData(td llvm.TargetData) {
 	checkTD(m.Types.Int8, layout.I8)
 	checkTD(m.Types.Float32, layout.F32)
 	checkTD(m.Types.Float64, layout.F64)
+
+	for _, s := range m.Types.structs {
+		if !s.hasBody {
+			continue
+		}
+		if !check(int(td.TypeStoreSize(s.llvm))*8, s.SizeInBits(), fmt.Sprintf("%v-size", s.name)) ||
+			!check(int(td.ABITypeAlignment(s.llvm))*8, s.AlignInBits(), fmt.Sprintf("%v-align", s.name)) {
+			errs = append(errs, fmt.Sprintf("%v: %v", s.name, s))
+		}
+		for i := range s.Fields() {
+			llvm := int(td.ElementOffset(s.llvm, i)) * 8
+			gapid := s.FieldOffsetInBits(i)
+			check(llvm, gapid, fmt.Sprintf("%v-field-offset %d", s.name, i))
+		}
+	}
+
+	for _, s := range m.Types.arrays {
+		check(int(td.TypeStoreSize(s.llvm))*8, s.SizeInBits(), fmt.Sprintf("%v-size", s.name))
+		check(int(td.ABITypeAlignment(s.llvm))*8, s.AlignInBits(), fmt.Sprintf("%v-align", s.name))
+	}
 
 	if len(errs) > 0 {
 		panic(fmt.Errorf("%v has ABI mismatches!\n%v", abi.Name, strings.Join(errs, "\n")))
@@ -142,6 +164,10 @@ func (m *Module) Executor(optimize bool) (*Executor, error) {
 		return nil, err
 	}
 
+	// Check target data is as expected.
+	m.validateTargetData(engine.TargetData())
+
+	// Check for unresolved extern symbols.
 	var unresolved []string
 	for _, f := range m.funcs {
 		if f.built || strings.HasPrefix(f.Name, "llvm.") {
@@ -186,8 +212,8 @@ func (e *Executor) AlignOf(t Type) int {
 
 func (e *Executor) FieldOffsets(s *Struct) []int {
 	td := e.llvm.TargetData()
-	out := make([]int, len(s.Fields))
-	for i := range s.Fields {
+	out := make([]int, len(s.Fields()))
+	for i := range s.Fields() {
 		out[i] = int(td.ElementOffset(s.llvm, i))
 	}
 	return out
@@ -195,7 +221,7 @@ func (e *Executor) FieldOffsets(s *Struct) []int {
 
 func (e *Executor) StructLayout(s *Struct) string {
 	w := bytes.Buffer{}
-	w.WriteString(s.Name)
+	w.WriteString(s.TypeName())
 	w.WriteString("{\n")
 	e.writeStructLayout(s, &w, 0, "")
 	w.WriteString("}")
@@ -203,8 +229,9 @@ func (e *Executor) StructLayout(s *Struct) string {
 }
 
 func (e *Executor) writeStructLayout(s *Struct, w *bytes.Buffer, base int, prefix string) {
+	fields := s.Fields()
 	for i, o := range e.FieldOffsets(s) {
-		f := s.Fields[i]
+		f := fields[i]
 		w.WriteString(fmt.Sprintf(" 0x%.4x: ", base+o))
 		w.WriteString(prefix)
 		w.WriteString(f.Name)
