@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"unsafe"
 
 	"llvm/bindings/go/llvm"
 
@@ -285,6 +284,12 @@ func (t FunctionType) String() string    { return t.Signature.string("") }
 func (t FunctionType) SizeInBits() int   { return 0 }
 func (t FunctionType) AlignInBits() int  { return 0 }
 func (t FunctionType) llvmTy() llvm.Type { return t.llvm }
+
+// IsFunction returns true if ty is a function type.
+func IsFunction(ty Type) bool {
+	_, ok := ty.(*FunctionType)
+	return ok
+}
 
 // Signature holds signature information about a function.
 type Signature struct {
@@ -567,12 +572,34 @@ func (t *Types) PackedStruct(name string, fields ...Field) *Struct {
 }
 
 // TypeOf returns the corresponding codegen type for the type of value v.
-// TypeOf may also accept a reflect.Type.
+// TypeOf may also accept a reflect.Type, Type, *Function or Const.
 func (t *Types) TypeOf(v interface{}) Type {
-	ty, ok := v.(reflect.Type)
-	if !ok {
+	var ty reflect.Type
+	switch v := v.(type) {
+	case Type:
+		return v
+	case *Value:
+		return v.Type()
+	case *Function:
+		if v != nil {
+			return v.Type
+		}
+	case Const:
+		return v.Type
+	case reflect.Type:
+		ty = v
+	}
+
+	if ty == nil {
 		ty = reflect.TypeOf(v)
 	}
+
+	if ty == reflect.TypeOf((*Function)(nil)) {
+		// We have a reflect type of a function, but we don't have a value to
+		// inspect its type. Return void* for these.
+		return t.Pointer(t.Void)
+	}
+
 	switch ty.Kind() {
 	case reflect.Bool:
 		return t.Bool
