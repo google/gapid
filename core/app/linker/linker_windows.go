@@ -22,7 +22,7 @@ import "syscall"
 func ProcAddress(name string) uintptr {
 	proc, err := syscall.GetProcAddress(0, name)
 	if err != nil {
-		return nil
+		return 0
 	}
 	return proc
 }
