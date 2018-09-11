@@ -627,6 +627,9 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		log.I(ctx, "Resource count:         %d", len(payload.Resources))
 	}
 
+	// Make a copy of the reference of the finished decoder list to cut off the
+	// connection between the builder and furture uses of the decoders so that
+	// the builder do not need to be kept alive when using these decoders.
 	decoders := b.decoders
 	handlePost := func(pd *gapir.PostData) {
 		// TODO: should we skip it instead of return error?
@@ -652,6 +655,9 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		})
 	}
 
+	// Make a copy of the reference of the finished notification reader list to
+	// cut off the connection between the builder and future uses of the readers
+	// so that the builder do not need to be kept alive when using these readers.
 	readers := b.notificationReaders
 	handleNotification := func(n *gapir.Notification) {
 		ctx = log.Enter(ctx, "NotificationHandler")

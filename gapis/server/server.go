@@ -27,7 +27,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/crash/reporting"
+	"github.com/google/gapid/core/context/keys"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/analytics"
@@ -43,6 +45,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
+	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -239,6 +242,14 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	if _, err = capture.ResolveFromPath(ctx, p); err != nil {
 		return nil, err
 	}
+	// Pre-resolve the dependency graph.
+	crash.Go(func() {
+		newCtx := keys.Clone(context.Background(), ctx)
+		_, err = dependencygraph.GetFootprint(newCtx, p)
+		if err != nil {
+			log.E(newCtx, "Error resolve dependency graph: %v", err)
+		}
+	})
 	return p, nil
 }
 
