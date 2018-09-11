@@ -305,6 +305,18 @@ func (g Global) LinkPrivate() Global {
 	return g
 }
 
+// LinkPublic makes this global use public linkage.
+func (g Global) LinkPublic() Global {
+	g.llvm.SetLinkage(llvm.ExternalLinkage)
+	return g
+}
+
+// SetConstant makes this global constant.
+func (g Global) SetConstant(constant bool) Global {
+	g.llvm.SetGlobalConstant(constant)
+	return g
+}
+
 // ZeroGlobal returns a zero-initialized new global variable with the specified
 // name and type.
 func (m *Module) ZeroGlobal(name string, ty Type) Global {
