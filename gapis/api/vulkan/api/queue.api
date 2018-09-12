@@ -181,7 +181,7 @@ cmd VkResult vkQueueSubmit(
       as!VkSemaphore(0), null, fence)
   }
 
-  execPendingCommands(queue)
+  execPendingCommands(queue, true)
   fence // 'fence' keyword, marking the point where observed memory writes become visible
 
   return ?
@@ -338,7 +338,7 @@ cmd VkResult vkQueueBindSparse(
       as!VkSemaphore(0), null, fence)
   }
 
-  execPendingCommands(queue)
+  execPendingCommands(queue, true)
   fence
   return ?
 }
