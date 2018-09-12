@@ -123,10 +123,6 @@ func (c *C) declareTypes() {
 			c.T.CmdParams[f] = c.T.Struct(f.Name()+"Params", fields...)
 		}
 	}
-
-	c.declareMangling()
-
-	c.declareRefRels()
 }
 
 func (c *C) declareMangling() {
