@@ -104,6 +104,54 @@ typedef struct buffer_t {
   uint32_t size;      // current size of the buffer.
 } buffer;
 
+// gapil_api_module holds the functions produced by a compilation for a single
+// API.
+typedef struct gapil_api_module_t {
+  // Offset in bytes of the API's globals from context.globals.
+  uint64_t globals_offset;
+
+  // Size in bytes of the API's globals.
+  uint64_t globals_size;
+
+  // number of functions in this module.
+  uint64_t num_cmds;
+
+  // array of functions generated for all the commands.
+  uint32_t (**cmds)(void* ctx);
+
+} gapil_api_module;
+
+// gapil_symbol is a pair of name and address.
+typedef struct gapil_symbol_t {
+  const char* name;
+  const void* addr;
+} gapil_symbol;
+
+// gapil_module holds the functions produced by a compilation.
+typedef struct gapil_module_t {
+  // creates an initializes a new context with the given arena.
+  context* (*create_context)(arena* arena);
+
+  // destroys the context created by create_context.
+  void (*destroy_context)(context*);
+
+  // Size in bytes of all globals.
+  uint64_t globals_size;
+
+  // number of APIs in this module.
+  uint32_t num_apis;
+
+  // array of all the APIs.
+  gapil_api_module* apis;
+
+  // number of symbols in this module.
+  uint32_t num_symbols;
+
+  // array of all the symbols.
+  gapil_symbol* symbols;
+
+} gapil_module;
+
 typedef uint8_t GAPIL_BOOL;
 
 #define GAPIL_FALSE 0
@@ -132,12 +180,6 @@ typedef void gapil_database_storer(context* ctx, void* ptr, uint64_t size,
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented by the compiler                                    //
 ////////////////////////////////////////////////////////////////////////////////
-
-// creates an initializes a new context with the given arena.
-context* gapil_create_context(arena* arena);
-
-// destroys the context created by gapil_create_context.
-void gapil_destroy_context(context*);
 
 void gapil_string_reference(string*);
 void gapil_string_release(string*);

@@ -21,6 +21,10 @@ import (
 
 // Settings describe the options used to compile an API file.
 type Settings struct {
+	// The name of the module to produce.
+	// This will be a global of the gapil_module type.
+	Module string
+
 	// TargetABI is the ABI used by the device running the compiled code.
 	TargetABI *device.ABI
 

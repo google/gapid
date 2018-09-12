@@ -49,15 +49,8 @@ type Program struct {
 	// Codegen is the codegen module.
 	Codegen *codegen.Module
 
-	// CreateContext is the function that creates and returns a new initialized
-	// context. It has the function signature:
-	//   context* gapil_create_context(arena*)
-	CreateContext *codegen.Function
-
-	// DestroyContext is the function that destroys a context created by
-	// CreateContext. It has the function signature:
-	//   void gapil_destroy_context(context*)
-	DestroyContext *codegen.Function
+	// Module is the global that holds the generated gapil_module structure.
+	Module codegen.Global
 }
 
 // CommandInfo holds the generated execute function for a given command.

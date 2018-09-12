@@ -42,12 +42,17 @@ func (c *C) declareContextType() {
 }
 
 func (c *C) buildContextFuncs() {
+	// Always declare these functions - their types may be used even if we're
+	// not emitting contexts.
+	c.ctx.create = c.M.Function(c.T.CtxPtr, "gapil_create_context", c.T.ArenaPtr)
+	c.ctx.destroy = c.M.Function(c.T.Void, "gapil_destroy_context", c.T.CtxPtr)
+
 	if !c.Settings.EmitContext {
 		return
 	}
 
-	c.ctx.create = c.M.Function(c.T.CtxPtr, "gapil_create_context", c.T.ArenaPtr)
-	c.ctx.destroy = c.M.Function(c.T.Void, "gapil_destroy_context", c.T.CtxPtr)
+	c.ctx.create.LinkInternal()
+	c.ctx.destroy.LinkInternal()
 
 	c.Build(c.ctx.create, func(s *S) {
 		s.Arena = s.Parameter(0)

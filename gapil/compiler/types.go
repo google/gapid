@@ -39,6 +39,7 @@ type Types struct {
 	ArenaPtr        codegen.Type                           // arena_t*
 	Uint8Ptr        codegen.Type                           // uint8_t*
 	VoidPtr         codegen.Type                           // void* (aliased of uint8_t*)
+	VoidPtrPtr      codegen.Type                           // void** (aliased of uint8_t**)
 	Globals         *codegen.Struct                        // API global variables structure.
 	GlobalsPtr      codegen.Type                           // Pointer to Globals.
 	Buf             codegen.Type                           // buffer_t
@@ -76,6 +77,7 @@ func (c *C) declareTypes() {
 	c.T.Arena = c.T.DeclareStruct("arena")
 	c.T.ArenaPtr = c.T.Pointer(c.T.Arena)
 	c.T.VoidPtr = c.T.Pointer(c.T.Void)
+	c.T.VoidPtrPtr = c.T.Pointer(c.T.VoidPtr)
 	c.T.Buf = c.T.TypeOf(C.buffer{})
 	c.T.BufPtr = c.T.Pointer(c.T.Buf)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}

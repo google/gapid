@@ -100,6 +100,7 @@ type C struct {
 		stringCompare  *codegen.Function
 		logf           *codegen.Function
 	}
+	module codegen.Global
 }
 
 // Compile compiles the given API semantic tree to a program using the given
@@ -174,16 +175,15 @@ func (c *C) program(s Settings) (*Program, error) {
 	}
 
 	return &Program{
-		Settings:       c.Settings,
-		APIs:           c.APIs,
-		Commands:       commands,
-		Structs:        structs,
-		Globals:        globals,
-		Functions:      c.functions,
-		Maps:           maps,
-		Codegen:        c.M,
-		CreateContext:  c.ctx.create,
-		DestroyContext: c.ctx.destroy,
+		Settings:  c.Settings,
+		APIs:      c.APIs,
+		Commands:  commands,
+		Structs:   structs,
+		Globals:   globals,
+		Functions: c.functions,
+		Maps:      maps,
+		Codegen:   c.M,
+		Module:    c.module,
 	}, nil
 }
 
@@ -227,6 +227,8 @@ func (c *C) compile() {
 	if c.Settings.EmitExec {
 		c.buildExec()
 	}
+
+	c.buildModule()
 }
 
 func (c *C) declareCallbacks() {
