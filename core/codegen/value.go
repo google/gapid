@@ -52,6 +52,12 @@ func (v *Value) SetName(name string) *Value {
 	return v
 }
 
+// EmitDebug emits debug info for the value.
+func (v *Value) EmitDebug(name string) *Value {
+	v.b.dbgEmitValue(v, name)
+	return v
+}
+
 // Load loads the element from the pointer value.
 func (v *Value) Load() *Value {
 	if !IsPointer(v.ty) {

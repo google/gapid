@@ -29,6 +29,7 @@ type Function struct {
 	paramNames []string
 	llvm       llvm.Value
 	m          *Module
+	dbg        *funcDbg
 	built      bool
 }
 
@@ -105,6 +106,8 @@ func (f *Function) Build(cb func(*Builder)) (err error) {
 			b.params[i].SetName(f.paramNames[i])
 		}
 	}
+
+	b.dbgEmitParameters(b.entry)
 
 	if ty := f.Type.Signature.Result; ty != f.m.Types.Void {
 		b.result = lb.CreateAlloca(ty.llvmTy(), "result")
