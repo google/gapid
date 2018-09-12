@@ -938,6 +938,27 @@ cmd void slice_range(u32* ptr) {
 			src:      `u32 i = len("abc")`,
 			expected: expected{data: D(uint32(3))},
 		}, { /////////////////////////////////////////////////////
+			name: "Expressions.Thread.Command",
+			src: `
+u64 a
+cmd void thread_cmd() { a = $Thread }`,
+			cmds: []cmd{{
+				N: "thread_cmd",
+				T: 123,
+			}},
+			expected: expected{data: D(uint64(123))},
+		}, { /////////////////////////////////////////////////////
+			name: "Expressions.Thread.Subroutine",
+			src: `
+u64 a
+sub void S() { a = $Thread }
+cmd void thread_sub() { S() }`,
+			cmds: []cmd{{
+				N: "thread_sub",
+				T: 123,
+			}},
+			expected: expected{data: D(uint64(123))},
+		}, { /////////////////////////////////////////////////////
 			name:     "Expressions.Uint64Value",
 			src:      `u64 i = 18446744073709551615`,
 			expected: expected{data: D(uint64(18446744073709551615))},

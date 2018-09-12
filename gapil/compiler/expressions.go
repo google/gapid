@@ -352,7 +352,7 @@ func (c *C) float64Value(s *S, e semantic.Float64Value) *codegen.Value {
 
 func (c *C) global(s *S, e *semantic.Global) *codegen.Value {
 	if e.Name() == semantic.BuiltinThreadGlobal.Name() {
-		return s.Scalar(uint64(0)) // TODO
+		return s.CurrentThread
 	}
 	return s.Globals.Index(0, c.CurrentAPI().Name(), e.Name()).Load()
 }

@@ -41,12 +41,15 @@ typedef struct string_t string;
 // context contains information about the environment in which a function is
 // executing.
 typedef struct context_t {
-  uint32_t id;      // the context identifier. Can be treated as user-data.
-  uint64_t cmd_id;  // the current command identifier.
+  uint32_t id;         // the context identifier. Can be treated as user-data.
+  globals* globals;    // a pointer to the global state.
+  arena* arena;        // the memory arena used for allocations.
+  uint64_t thread;     // the identifier of the currently executing thread.
+  void* cmd_args;      // the arguments to the currently executing command.
+  uint64_t cmd_id;     // the current command identifier.
+  uint64_t cmd_idx;    // the index of the current command being executed.
+  uint64_t cmd_flags;  // extra info for the current command being executed.
   uint32_t* next_pool_id;  // the identifier of the next pool to be created.
-  globals* globals;        // a pointer to the global state.
-  arena* arena;            // the memory arena used for allocations.
-  void* arguments;         // the arguments to the currently executing command.
   // additional data used by compiler plugins goes here.
 } context;
 
