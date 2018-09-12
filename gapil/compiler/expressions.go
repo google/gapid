@@ -243,12 +243,12 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 	for i, a := range e.Arguments {
 		args[i+1] = c.expression(s, a).SetName(tf.FullParameters[i].Name())
 	}
-	f, ok := c.functions[tf]
+	f, ok := c.subroutines[tf]
 	if !ok && tf.Subroutine {
 		// Likely a subroutine calling another subrotine that hasn't been compiled yet.
 		// Compile it now.
 		c.subroutine(tf)
-		f, ok = c.functions[tf]
+		f, ok = c.subroutines[tf]
 	}
 	if !ok {
 		panic(fmt.Errorf("Couldn't resolve call target %v", tf.Name()))
