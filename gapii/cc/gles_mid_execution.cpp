@@ -647,7 +647,7 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
   img.width = w;
   img.height = h;
   img.data.reset(new std::vector<uint8_t>(size));
-  GAPID_DEBUG("ReadPixels: Reading %d bytes", size);
+  GAPID_DEBUG("ReadPixels: Reading %dx%d at %d bytes", w, h, size);
   imports.glReadnPixels(0, 0, w, h, img.dataFormat, img.dataType,
                         img.data->size(), img.data->data());
   CHECK_GL_ERROR("ReadPixels: Failed to read pixels");
@@ -903,6 +903,8 @@ ImageData Reader::ReadTexture(const texture& tex, index idx, uint32_t format) {
                                    {GL_RED, GL_GREEN, GL_ZERO, GL_ONE});
     /* formats that can be used as render targets */
     default: {
+      // Need to use GL_FRAMEBUFFER (GL_READ_FRAMEBUFFER fails) due to
+      // driver bug b/115574126.
       auto readFb = CreateAndBindFramebuffer(GL_FRAMEBUFFER);
       if (tex.kind == GL_TEXTURE_CUBE_MAP) {
         uint32_t face = GL_TEXTURE_CUBE_MAP_POSITIVE_X + (idx.layer % 6);
@@ -975,8 +977,10 @@ ImageData Reader::ReadRenderbuffer(Renderbuffer* rb) {
       "MEC: Reading renderbuffer %d format 0x%x type 0x%x sized 0x%x at 0x%x",
       rb->mID, img->mDataFormat, img->mDataType, format, attach);
   if (attach == GL_COLOR_ATTACHMENT0) {
-    auto readFb = CreateAndBindFramebuffer(GL_READ_FRAMEBUFFER);
-    imports.glFramebufferRenderbuffer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+    // Need to use GL_FRAMEBUFFER (GL_READ_FRAMEBUFFER fails) due to
+    // driver bug b/115574126.
+    auto readFb = CreateAndBindFramebuffer(GL_FRAMEBUFFER);
+    imports.glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                       GL_RENDERBUFFER, rb->mID);
     return ReadPixels(w, h);
   } else {
