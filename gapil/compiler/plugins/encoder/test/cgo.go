@@ -73,9 +73,9 @@ func gapil_encode_object(ctx *C.context, isGroup uint8, ty uint32, dataSize uint
 }
 
 //export gapil_slice_encoded
-func gapil_slice_encoded(ctx *C.context, slicePtr *C.slice) {
+func gapil_slice_encoded(ctx *C.context, slice *C.slice) {
 	e := encoders[ctx]
-	e.callbacks = append(e.callbacks, cbSliceEncoded{Size: int(slicePtr.size)})
+	e.callbacks = append(e.callbacks, cbSliceEncoded{Size: int(slice.size)})
 }
 
 //export gapil_encode_backref
@@ -111,9 +111,9 @@ type cbBackref struct {
 
 func withEncoder(f func(ctx *C.context)) callbacks {
 	a := arena.New()
-	ctx := C.gapil_create_context((*C.arena)(a.Pointer))
+	ctx := C.create_context((*C.arena)(a.Pointer))
 	defer func() {
-		C.gapil_destroy_context(ctx)
+		C.destroy_context(ctx)
 		a.Dispose()
 	}()
 

@@ -29,6 +29,7 @@ apic_compile(
         "encode",
         "context",
     ],
+    module = "gapil_encoder_module",
     symbols = "c",
 )
 

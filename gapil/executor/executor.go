@@ -15,7 +15,11 @@
 // Package executor provides an interface for executing compiled API programs.
 package executor
 
+// #include "env.h"
+import "C"
+
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/google/gapid/core/codegen"
@@ -40,15 +44,17 @@ func New(prog *compiler.Program, optimize bool) *Executor {
 		panic(err)
 	}
 
-	if prog.CreateContext == nil || prog.DestroyContext == nil {
-		panic("Program has no context functions. Was EmitContext not set to true?")
+	m := (*C.gapil_module)(e.GlobalAddress(prog.Module))
+
+	if m.create_context == nil || m.destroy_context == nil {
+		panic(fmt.Errorf("Program has no context functions. Was EmitContext not set to true?\nmodule: %+v", m))
 	}
 
 	exec := &Executor{
 		program:        prog,
 		exec:           e,
-		createContext:  e.FunctionAddress(prog.CreateContext),
-		destroyContext: e.FunctionAddress(prog.DestroyContext),
+		createContext:  unsafe.Pointer(m.create_context),
+		destroyContext: unsafe.Pointer(m.destroy_context),
 		globalsSize:    uint64(e.SizeOf(prog.Globals.Type)),
 		cmdFunctions:   map[string]unsafe.Pointer{},
 	}

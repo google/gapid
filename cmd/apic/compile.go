@@ -68,6 +68,7 @@ func (s *symbols) Choose(v interface{}) {
 type compileVerb struct {
 	Target string `help:"The target device ABI"`
 	Output string `help:"The output file path"`
+	Module string `help:"The name of the global module variable to emit"`
 	Emit   struct {
 		Clone   bool `help:"Emit clone methods"`
 		Encode  bool `help:"Emit encoder logic"`
@@ -116,6 +117,7 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	settings := compiler.Settings{
 		TargetABI:   abi,
 		CaptureABI:  abi,
+		Module:      v.Module,
 		Namespaces:  namespaces,
 		EmitExec:    v.Emit.Exec,
 		EmitContext: v.Emit.Context,

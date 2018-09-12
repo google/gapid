@@ -29,6 +29,7 @@ go_library(
         "externs.go",
         "mangle.go",
         "map.go",
+        "module.go",
         "plugin.go",
         "program.go",
         "refcount.go",

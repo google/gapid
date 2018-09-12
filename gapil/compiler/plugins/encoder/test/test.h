@@ -142,6 +142,9 @@ void insert_map_string(map* m, const char* k, const char* v);
 basic_types* create_basic_types_ref(arena*, ref**);
 inner_class* create_inner_class_ref(arena*, ref**);
 
+context* create_context(arena* arena);
+void destroy_context(context* ctx);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
