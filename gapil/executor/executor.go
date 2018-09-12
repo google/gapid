@@ -35,7 +35,7 @@ type Executor struct {
 
 // New returns a new and initialized Executor for the given program.
 func New(prog *compiler.Program, optimize bool) *Executor {
-	e, err := prog.Module.Executor(optimize)
+	e, err := prog.Codegen.Executor(optimize)
 	if err != nil {
 		panic(err)
 	}

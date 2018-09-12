@@ -144,15 +144,15 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if v.Optimize {
-		prog.Module.Optimize()
+		prog.Codegen.Optimize()
 	}
 
 	if v.Dump {
-		fmt.Fprintln(os.Stderr, prog.Module.String())
+		fmt.Fprintln(os.Stderr, prog.Codegen.String())
 		return fmt.Errorf("IR dump")
 	}
 
-	obj, err := prog.Module.Object(v.Optimize)
+	obj, err := prog.Codegen.Object(v.Optimize)
 	if err != nil {
 		return err
 	}
