@@ -254,15 +254,20 @@ func (c *C) declareCallbacks() {
 // If the function has a parameter of type context_t* then the Ctx, Globals and
 // Arena scope fields are automatically assigned.
 func (c *C) Build(f *codegen.Function, do func(*S)) {
-	err(f.Build(func(jb *codegen.Builder) {
+	err(f.Build(func(b *codegen.Builder) {
 		s := &S{
-			Builder:    jb,
+			Builder:    b,
 			Parameters: map[*semantic.Parameter]*codegen.Value{},
 			locals:     map[*semantic.Local]*codegen.Value{},
 		}
 		for i, p := range f.Type.Signature.Parameters {
 			if p == c.T.CtxPtr {
-				s.Ctx = jb.Parameter(i).SetName("ctx")
+				s.Ctx = b.Parameter(i).SetName("ctx")
+				if debugCtxNotNull {
+					s.If(s.Ctx.IsNull(), func(s *S) {
+						c.LogF(s, "Context is null")
+					})
+				}
 				s.Globals = s.Ctx.Index(0, ContextGlobals).Load().SetName("globals")
 				s.Arena = s.Ctx.Index(0, ContextArena).Load().SetName("arena")
 				break
