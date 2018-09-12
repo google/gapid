@@ -63,6 +63,7 @@ type C struct {
 	commands    map[*semantic.Function]*codegen.Function
 	externs     map[*semantic.Function]*codegen.Function
 	subroutines map[*semantic.Function]*codegen.Function
+	functions   map[string]*codegen.Function
 	ctx         struct { // Functions that operate on contexts
 		create  *codegen.Function
 		destroy *codegen.Function
@@ -128,6 +129,7 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 		commands:    map[*semantic.Function]*codegen.Function{},
 		externs:     map[*semantic.Function]*codegen.Function{},
 		subroutines: map[*semantic.Function]*codegen.Function{},
+		functions:   map[string]*codegen.Function{},
 		mappings:    mappings,
 	}
 	for _, n := range s.Namespaces {
@@ -159,13 +161,6 @@ func (c *C) program(s Settings) (*Program, error) {
 
 	globals := &StructInfo{Type: c.T.Globals}
 
-	functions := map[string]*codegen.Function{}
-	c.plugins.foreach(func(p FunctionExposerPlugin) {
-		for n, f := range p.Functions() {
-			functions[n] = f
-		}
-	})
-
 	structs := map[string]*StructInfo{}
 	for _, t := range c.T.target {
 		if s, ok := t.(*codegen.Struct); ok {
@@ -184,7 +179,7 @@ func (c *C) program(s Settings) (*Program, error) {
 		Commands:       commands,
 		Structs:        structs,
 		Globals:        globals,
-		Functions:      functions,
+		Functions:      c.functions,
 		Maps:           maps,
 		Module:         c.M,
 		CreateContext:  c.ctx.create,
@@ -237,6 +232,12 @@ func (c *C) compile() {
 	c.buildContextFuncs()
 
 	c.plugins.foreach(func(p Plugin) { p.Build(c) })
+
+	c.plugins.foreach(func(p FunctionExposerPlugin) {
+		for n, f := range p.Functions() {
+			c.functions[n] = f
+		}
+	})
 
 	if c.Settings.EmitExec {
 		for _, api := range c.APIs {
