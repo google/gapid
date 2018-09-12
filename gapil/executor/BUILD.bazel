@@ -18,7 +18,9 @@ go_library(
     name = "go_default_library",
     srcs = [
         "encode.go",
+        "env.cpp",
         "env.go",
+        "env.h",
         "executor.go",
     ],
     cdeps = [
