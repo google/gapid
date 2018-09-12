@@ -43,7 +43,7 @@ func (c *C) StorageTypes(layout *device.MemoryLayout, prefix string) *StorageTyp
 	}
 	c.T.storage[key] = s
 
-	matchesTarget := memLayoutKey(c.T.targetABI.MemoryLayout.String()) == key
+	matchesTarget := c.T.targetABI.MemoryLayout.SameAs(layout)
 
 	toBuild := []*semantic.Class{}
 
