@@ -20,12 +20,14 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
+var errAborted error = api.ErrCmdAborted{}
+
 func (c ErrorCode) Err() error {
 	switch c {
 	case ErrSuccess:
 		return nil
 	case ErrAborted:
-		return api.ErrCmdAborted{}
+		return errAborted
 	default:
 		return fmt.Errorf("Unknown error code %v", c)
 	}
