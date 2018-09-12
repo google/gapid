@@ -108,7 +108,6 @@ func (c *C) defineMapTypes() {
 			mi.MapMethods = MapMethods{
 				Contains: c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
 				Index:    c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
-				Lookup:   c.M.Function(mi.Val, name+"_lookup", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
 				Remove:   c.M.Function(c.T.Void, name+"_remove", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
 				Clear:    c.M.Function(c.T.Void, name+"_clear", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
 			}
@@ -126,7 +125,6 @@ func (c *C) defineMapTypes() {
 				impl.MapMethods = MapMethods{
 					Contains: c.Method(true, mi.Type, c.T.Bool, "contains", mi.Key).LinkOnceODR(),
 					Index:    c.Method(false, mi.Type, valPtrTy, "index", mi.Key, c.T.Bool).LinkOnceODR(),
-					Lookup:   c.Method(true, mi.Type, mi.Val, "lookup", mi.Key).LinkOnceODR(),
 					Remove:   c.Method(false, mi.Type, c.T.Void, "remove", mi.Key).LinkOnceODR(),
 					Clear:    c.Method(false, mi.Type, c.T.Void, "clear").LinkOnceODR(),
 				}
@@ -136,7 +134,6 @@ func (c *C) defineMapTypes() {
 			// Delegate the methods of this map on to the common implmentation.
 			c.Delegate(mi.Contains, impl.Contains)
 			c.Delegate(mi.Index, impl.Index)
-			c.Delegate(mi.Lookup, impl.Lookup)
 			c.Delegate(mi.Remove, impl.Remove)
 			c.Delegate(mi.Clear, impl.Clear)
 
@@ -392,24 +389,6 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 			s.Return(valPtr)
 		})
 		s.Return(s.Zero(c.T.Pointer(mi.Val)))
-	})
-
-	c.Build(mi.Lookup, func(s *S) {
-		m := s.Parameter(0).SetName("map")
-		k := s.Parameter(1).SetName("key")
-		s.Arena = m.Index(0, MapArena).Load().SetName("arena")
-
-		checkRefCount(s, m)
-
-		ptr := s.Call(mi.Index, m, k, s.Scalar(false))
-		s.If(ptr.IsNull(), func(s *S) {
-			v := c.initialValue(s, valTy)
-			c.reference(s, v, valTy)
-			s.Return(v)
-		})
-		v := ptr.Load()
-		c.reference(s, v, valTy)
-		s.Return(v)
 	})
 
 	c.Build(mi.Remove, func(s *S) {
