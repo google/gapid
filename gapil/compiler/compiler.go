@@ -225,18 +225,7 @@ func (c *C) compile() {
 	})
 
 	if c.Settings.EmitExec {
-		for _, api := range c.APIs {
-			c.currentAPI = api
-			for _, f := range api.Externs {
-				c.extern(f)
-			}
-			for _, f := range api.Subroutines {
-				c.subroutine(f)
-			}
-			for _, f := range api.Functions {
-				c.command(f)
-			}
-		}
+		c.buildExec()
 	}
 }
 
@@ -286,20 +275,20 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 
 // MakeSlice creates a new slice of the given size in bytes.
 func (c *C) MakeSlice(s *S, size, count *codegen.Value) *codegen.Value {
-	dstPtr := s.Local("dstPtr", c.T.Sli)
-	c.MakeSliceAt(s, size, count, dstPtr)
-	return dstPtr.Load()
+	slice := s.Local("slice", c.T.Sli)
+	c.MakeSliceAt(s, size, count, slice)
+	return slice.Load()
 }
 
 // MakeSliceAt creates a new slice of the given size in bytes at the given
 // slice pointer.
-func (c *C) MakeSliceAt(s *S, size, count, dstPtr *codegen.Value) {
+func (c *C) MakeSliceAt(s *S, size, count, slice *codegen.Value) {
 	pool := s.Call(c.callbacks.makePool, s.Ctx, size)
-	dstPtr.Index(0, SlicePool).Store(pool)
-	dstPtr.Index(0, SliceRoot).Store(s.Scalar(uint64(0)))
-	dstPtr.Index(0, SliceBase).Store(s.Scalar(uint64(0)))
-	dstPtr.Index(0, SliceSize).Store(size)
-	dstPtr.Index(0, SliceCount).Store(count)
+	slice.Index(0, SlicePool).Store(pool)
+	slice.Index(0, SliceRoot).Store(s.Scalar(uint64(0)))
+	slice.Index(0, SliceBase).Store(s.Scalar(uint64(0)))
+	slice.Index(0, SliceSize).Store(size)
+	slice.Index(0, SliceCount).Store(count)
 }
 
 // CopySlice copies the contents of slice src to dst.
@@ -310,17 +299,17 @@ func (c *C) CopySlice(s *S, dst, src *codegen.Value) {
 // SliceDataForRead returns a pointer to an array of slice elements.
 // This pointer should be used to read (not write) from the slice.
 // The pointer is only valid until the slice is touched again.
-func (c *C) SliceDataForRead(s *S, slicePtr *codegen.Value, elType codegen.Type) *codegen.Value {
+func (c *C) SliceDataForRead(s *S, slice *codegen.Value, elType codegen.Type) *codegen.Value {
 	access := s.Scalar(Read).Cast(c.T.DataAccess)
-	return s.Call(c.callbacks.sliceData, s.Ctx, slicePtr, access).Cast(c.T.Pointer(elType))
+	return s.Call(c.callbacks.sliceData, s.Ctx, slice, access).Cast(c.T.Pointer(elType))
 }
 
 // SliceDataForWrite returns a pointer to an array of slice elements.
 // This pointer should be used to write (not read) to the slice.
 // The pointer is only valid until the slice is touched again.
-func (c *C) SliceDataForWrite(s *S, slicePtr *codegen.Value, elType codegen.Type) *codegen.Value {
+func (c *C) SliceDataForWrite(s *S, slice *codegen.Value, elType codegen.Type) *codegen.Value {
 	access := s.Scalar(Write).Cast(c.T.DataAccess)
-	return s.Call(c.callbacks.sliceData, s.Ctx, slicePtr, access).Cast(c.T.Pointer(elType))
+	return s.Call(c.callbacks.sliceData, s.Ctx, slice, access).Cast(c.T.Pointer(elType))
 }
 
 // MakeString creates a new string from the specified data and length in bytes.
@@ -368,6 +357,7 @@ func (c *C) Log(s *S, severity log.Severity, msg string, args ...interface{}) {
 	if ctx == nil {
 		ctx = s.Zero(c.T.CtxPtr)
 	}
+
 	loc := c.SourceLocation()
 	fullArgs := []*codegen.Value{
 		s.Scalar(uint8(severity)),

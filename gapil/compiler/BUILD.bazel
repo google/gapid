@@ -24,6 +24,7 @@ go_library(
         "context.go",
         "debug.go",
         "errors.go",
+        "exec.go",
         "expressions.go",
         "externs.go",
         "mangle.go",

@@ -192,7 +192,7 @@ func (c *C) hashValue(s *S, t semantic.Type, value *codegen.Value) *codegen.Valu
 	u64Type := c.T.Target(semantic.Uint64Type)
 	u32Type := c.T.Target(semantic.Uint32Type)
 	if keyType != value.Type() {
-		fail("hashValue must be called with the given type, %+v, %+v", keyType, value.Type())
+		fail("hashValue passed unexpected type. Got: %+v, expect: %+v", value.Type(), keyType)
 	}
 
 	switch t := semantic.Underlying(t).(type) {
@@ -266,6 +266,7 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 		checkRefCount(s, m)
 
 		h := c.hashValue(s, keyTy, k)
+
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
 		s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
