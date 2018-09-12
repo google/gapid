@@ -37,7 +37,7 @@ type API struct {
 	Slices       []*Slice       // the pointer types used
 	References   []*Reference   // the reference types used
 	Signatures   []*Signature   // the function signature types used
-	Index        *Uint8Value    // the index of this api
+	Index        Uint8Value     // the index of this api
 }
 
 func (*API) isNode() {}
