@@ -403,4 +403,7 @@ func (b *Builder) block(block, next llvm.BasicBlock, f func()) {
 
 func (b *Builder) setInsertPointAtEnd(block llvm.BasicBlock) {
 	b.llvm.SetInsertPointAtEnd(block)
+	// LLVM will clear the debug location on a insert point change.
+	// Restore it to what we previously had.
+	b.dbgRestoreLocation()
 }

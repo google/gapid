@@ -39,6 +39,7 @@ type Module struct {
 	memcpy     *Function
 	memset     *Function
 	exceptions exceptions
+	dbg        *dbg
 }
 
 // NewModule returns a new module with the specified name.
@@ -111,8 +112,21 @@ func NewModule(name string, target *device.ABI) *Module {
 	return m
 }
 
+// EmitDebug enables debug info generation for the module.
+func (m *Module) EmitDebug() {
+	if m.dbg == nil {
+		m.dbg = &dbg{
+			files: map[string]file{},
+			tys:   map[Type]llvm.Metadata{},
+			m:     m,
+		}
+	}
+}
+
 // Verify checks correctness of the module.
 func (m *Module) Verify() error {
+	m.dbg.finalize()
+
 	for f := m.llvm.FirstFunction(); !f.IsNil(); f = llvm.NextFunction(f) {
 		if err := llvm.VerifyFunction(f, llvm.ReturnStatusAction); err != nil {
 			f.Dump()

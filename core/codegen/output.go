@@ -157,6 +157,8 @@ func (m *Module) Optimize() {
 
 // Executor constructs an executor.
 func (m *Module) Executor(optimize bool) (*Executor, error) {
+	m.dbg.finalize()
+
 	if err := m.Verify(); err != nil {
 		return nil, err
 	}
