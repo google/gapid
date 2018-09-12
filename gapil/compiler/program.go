@@ -46,8 +46,8 @@ type Program struct {
 	// Functions is a map of function name to plugin implemented functions.
 	Functions map[string]*codegen.Function
 
-	// Module is the generated code module.
-	Module *codegen.Module
+	// Codegen is the codegen module.
+	Codegen *codegen.Module
 
 	// CreateContext is the function that creates and returns a new initialized
 	// context. It has the function signature:
@@ -95,14 +95,14 @@ type MapMethods struct {
 
 // Dump returns the full LLVM IR for the program.
 func (p *Program) Dump() string {
-	return p.Module.String()
+	return p.Codegen.String()
 }
 
 var reIRDefineFunc = regexp.MustCompile(`define \w* @(\w*)\([^\)]*\)`)
 
 // IR returns a map of function to IR.
 func (p *Program) IR() map[string]string {
-	ir := p.Module.String()
+	ir := p.Codegen.String()
 	out := map[string]string{}
 	currentFunc, currentIR := "", &bytes.Buffer{}
 	flush := func() {

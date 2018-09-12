@@ -143,7 +143,7 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 		return nil, err
 	}
 
-	if err := prog.Module.Verify(); err != nil {
+	if err := c.M.Verify(); err != nil {
 		return nil, err
 	}
 
@@ -181,7 +181,7 @@ func (c *C) program(s Settings) (*Program, error) {
 		Globals:        globals,
 		Functions:      c.functions,
 		Maps:           maps,
-		Module:         c.M,
+		Codegen:        c.M,
 		CreateContext:  c.ctx.create,
 		DestroyContext: c.ctx.destroy,
 	}, nil
