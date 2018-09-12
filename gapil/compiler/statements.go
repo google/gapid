@@ -271,48 +271,44 @@ func (c *C) doAssign(s *S, op string, lhs, rhs semantic.Expression) {
 
 func (c *C) expressionAddr(s *S, target semantic.Expression) *codegen.Value {
 	path := []codegen.ValueIndexOrName{}
-	revPath := func() {
+	revPath := func() []codegen.ValueIndexOrName {
 		for i, c, m := 0, len(path), len(path)/2; i < m; i++ {
 			j := c - i - 1
 			path[i], path[j] = path[j], path[i]
 		}
+		return path
 	}
 	for {
 		switch n := target.(type) {
 		case *semantic.Global:
 			path = append(path, n.Name(), c.CurrentAPI().Name(), 0)
-			revPath()
-			return s.Globals.Index(path...)
+			return s.Globals.Index(revPath()...)
 		case *semantic.Local:
 			path = append(path, 0)
-			revPath()
-			return s.locals[n].Index(path...)
+			return s.locals[n].Index(revPath()...)
 		case *semantic.Member:
 			path = append(path, n.Field.Name())
 			target = n.Object
 			if semantic.IsReference(target.ExpressionType()) {
 				path = append(path, RefValue, 0)
-				revPath()
-				return c.expression(s, target).Index(path...)
+				return c.expression(s, target).Index(revPath()...)
 			}
 		case *semantic.ArrayIndex:
 			path = append(path, c.expression(s, n.Index))
 			target = n.Array
 		case *semantic.MapIndex:
 			path = append(path, 0)
-			revPath()
 			m := c.expression(s, n.Map)
 			k := c.expression(s, n.Index)
-			v := s.Call(c.T.Maps[n.Type].Index, m, k, s.Scalar(false)).SetName("map_get")
-			return v.Index(path...)
+			v := s.Call(c.T.Maps[n.Type].Index, m, s.Ctx, k, s.Scalar(false)).SetName("map_get")
+			return v.Index(revPath()...)
 		case *semantic.Unknown:
 			target = n.Inferred
 		case *semantic.Ignore:
 			return nil
 		default:
 			path = append(path, 0)
-			revPath()
-			return s.LocalInit("tmp", c.expression(s, n)).Index(path...)
+			return s.LocalInit("tmp", c.expression(s, n)).Index(revPath()...)
 		}
 	}
 }
@@ -493,8 +489,7 @@ func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {
 		// This can be overridden with the WriteToApplicationPool setting.
 		chainWrite(func(el *codegen.Value, next func(el *codegen.Value)) {
 			pool := slice.Extract(SlicePool)
-			appPool := s.Zero(c.T.PoolPtr)
-			s.If(s.NotEqual(pool, appPool), func(s *S) {
+			s.If(s.NotEqual(pool, s.Zero(pool.Type())), func(s *S) {
 				next(el) // Actually perform the write.
 			})
 		})
