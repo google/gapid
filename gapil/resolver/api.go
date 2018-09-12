@@ -25,8 +25,7 @@ import (
 func apiNames(rv *resolver, in *ast.API) {
 	if in.Index != nil {
 		if n, e := strconv.ParseUint(in.Index.Value, 10, 4); e == nil {
-			rv.api.Index = new(semantic.Uint8Value)
-			*rv.api.Index = semantic.Uint8Value(n)
+			rv.api.Index = semantic.Uint8Value(n)
 		} else {
 			rv.errorf(in.Index, "cannot convert API index %q into 4-bit unsigned integer", in.Index.Value)
 		}

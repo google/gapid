@@ -429,9 +429,7 @@ func (e *encoder) api(n *semantic.API) (outID uint64) {
 		foreach(n.Slices, e.slice, &p.Slices)
 		foreach(n.References, e.reference, &p.References)
 		foreach(n.Signatures, e.signature, &p.Signatures)
-		if n.Index != nil {
-			p.Index = uint32(*n.Index)
-		}
+		p.Index = uint32(n.Index)
 		return p
 	})
 

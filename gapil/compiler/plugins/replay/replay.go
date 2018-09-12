@@ -264,10 +264,7 @@ func (r *replayer) buildCall(cmd *semantic.Function) *codegen.Function {
 
 		api := cmd.Owner().(*semantic.API)
 
-		var apiIdx int
-		if api.Index != nil {
-			apiIdx = int(*api.Index)
-		}
+		apiIdx := int(api.Index)
 		cmdIdx := api.CommandIndex(cmd)
 		if cmdIdx < 0 {
 			panic("Command not found in API?!")

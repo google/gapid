@@ -270,8 +270,7 @@ func (d *decoder) api(apiID uint64) (out *semantic.API) {
 			foreach(p.Slices, d.slice, &s.Slices)
 			foreach(p.References, d.reference, &s.References)
 			foreach(p.Signatures, d.signature, &s.Signatures)
-			idx := semantic.Uint8Value(p.Index)
-			s.Index = &idx
+			s.Index = semantic.Uint8Value(p.Index)
 			d.toSort = append(d.toSort, s)
 		})
 	return
