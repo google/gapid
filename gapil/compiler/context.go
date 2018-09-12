@@ -58,7 +58,6 @@ func (c *C) buildContextFuncs() {
 		nextPoolID := c.Alloc(s, s.Scalar(1), c.T.Uint32).SetName("next_pool_id")
 		nextPoolID.Store(s.Scalar(uint32(1)))
 
-		s.Ctx.Index(0, ContextLocation).Store(s.Scalar(uint32(0xffffffff)))
 		s.Ctx.Index(0, ContextArena).Store(s.Arena)
 		s.Ctx.Index(0, ContextNextPoolID).Store(nextPoolID)
 

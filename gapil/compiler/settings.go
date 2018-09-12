@@ -41,10 +41,6 @@ type Settings struct {
 	// each API command. Implies EmitContext.
 	EmitExec bool
 
-	// CodeLocations is true if the compiler should emit writes to the context's
-	// location field with the currently executing statement.
-	CodeLocations bool
-
 	// WriteToApplicationPool is true if writes to the application pool should
 	// be performed.
 	WriteToApplicationPool bool

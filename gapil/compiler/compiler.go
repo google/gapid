@@ -22,13 +22,11 @@ package compiler
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/host"
-	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
 	"github.com/google/gapid/gapil/semantic"
@@ -74,8 +72,6 @@ type C struct {
 	}
 	emptyString     codegen.Global
 	mappings        *semantic.Mappings
-	locationIndex   map[Location]int
-	locations       []Location
 	refRels         refRels
 	currentAPI      *semantic.API
 	currentFunc     *semantic.Function
@@ -126,11 +122,9 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 		Mangler:  s.Mangler,
 		Settings: s,
 
-		plugins:       s.Plugins,
-		functions:     map[*semantic.Function]*codegen.Function{},
-		mappings:      mappings,
-		locationIndex: map[Location]int{},
-		locations:     []Location{},
+		plugins:   s.Plugins,
+		functions: map[*semantic.Function]*codegen.Function{},
+		mappings:  mappings,
 	}
 	for _, n := range s.Namespaces {
 		c.Root = &mangling.Namespace{Name: n, Parent: c.Root}
@@ -191,7 +185,6 @@ func (c *C) program(s Settings) (*Program, error) {
 		Globals:        globals,
 		Functions:      functions,
 		Maps:           maps,
-		Locations:      c.locations,
 		Module:         c.M,
 		CreateContext:  c.ctx.create,
 		DestroyContext: c.ctx.destroy,
@@ -262,8 +255,8 @@ func (c *C) compile() {
 
 // Build implements the function f by creating a new scope and calling do to
 // emit the function body.
-// If the function has a parameter of type context_t* then the Ctx, Location,
-// Globals and Arena scope fields are automatically assigned.
+// If the function has a parameter of type context_t* then the Ctx, Globals and
+// Arena scope fields are automatically assigned.
 func (c *C) Build(f *codegen.Function, do func(*S)) {
 	err(f.Build(func(jb *codegen.Builder) {
 		s := &S{
@@ -276,7 +269,6 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 				s.Ctx = jb.Parameter(i).SetName("ctx")
 				s.Globals = s.Ctx.Index(0, ContextGlobals).Load().SetName("globals")
 				s.Arena = s.Ctx.Index(0, ContextArena).Load().SetName("arena")
-				s.Location = s.Ctx.Index(0, ContextLocation)
 				break
 			}
 		}
@@ -499,27 +491,6 @@ func (c *C) SourceLocation() SourceLocation {
 	return SourceLocation{}
 }
 
-func (c *C) setCodeLocation(s *S, t cst.Token) {
-	_, file := filepath.Split(t.Source.Filename)
-	line, col := t.Cursor()
-	loc := Location{file, line, col}
-	idx, ok := c.locationIndex[loc]
-	if !ok {
-		idx = len(c.locations)
-		c.locations = append(c.locations, loc)
-	}
-	if idx != s.locationIdx {
-		s.locationIdx = idx
-		c.updateCodeLocation(s)
-	}
-}
-
-func (c *C) updateCodeLocation(s *S) {
-	if c.Settings.CodeLocations && s.Location != nil {
-		s.Location.Store(s.Scalar(uint32(s.locationIdx)))
-	}
-}
-
 func (c *C) setCurrentFunction(f *semantic.Function) *semantic.Function {
 	old := c.currentFunc
 	c.currentFunc = f
@@ -545,12 +516,9 @@ func (c *C) popExpression(s *S) {
 }
 
 func (c *C) onChangeStatement(s *S) {
-	n := c.CurrentStatement()
-	if n == nil {
-		return
-	}
-	if cst := c.mappings.CST(n); cst != nil {
-		c.setCodeLocation(s, cst.Tok())
+	if n := c.CurrentStatement(); n != nil {
+		loc := c.SourceLocationFor(n)
+		s.SetLocation(loc.Line, loc.Column)
 	}
 }
 
