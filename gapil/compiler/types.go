@@ -28,22 +28,22 @@ import "C"
 // Types augments the codegen.Types structure.
 type Types struct {
 	codegen.Types
-	Ctx             *codegen.Struct                     // context_t
-	CtxPtr          codegen.Type                        // context_t*
-	Pool            codegen.Type                        // pool_t
-	PoolPtr         codegen.Type                        // pool_t*
-	Sli             codegen.Type                        // slice_t
-	Str             *codegen.Struct                     // string_t
-	StrPtr          codegen.Type                        // string_t*
-	Arena           *codegen.Struct                     // arena_t
-	ArenaPtr        codegen.Type                        // arena_t*
-	Uint8Ptr        codegen.Type                        // uint8_t*
-	VoidPtr         codegen.Type                        // void* (aliased of uint8_t*)
-	Globals         *codegen.Struct                     // API global variables structure.
-	GlobalsPtr      codegen.Type                        // Pointer to Globals.
-	Buf             codegen.Type                        // buffer_t
-	BufPtr          codegen.Type                        // buffer_t*
-	CmdParams       map[*semantic.Function]codegen.Type // struct holding all command parameters and return value.
+	Ctx             *codegen.Struct                        // context_t
+	CtxPtr          codegen.Type                           // context_t*
+	Pool            codegen.Type                           // pool_t
+	PoolPtr         codegen.Type                           // pool_t*
+	Sli             codegen.Type                           // slice_t
+	Str             *codegen.Struct                        // string_t
+	StrPtr          codegen.Type                           // string_t*
+	Arena           *codegen.Struct                        // arena_t
+	ArenaPtr        codegen.Type                           // arena_t*
+	Uint8Ptr        codegen.Type                           // uint8_t*
+	VoidPtr         codegen.Type                           // void* (aliased of uint8_t*)
+	Globals         *codegen.Struct                        // API global variables structure.
+	GlobalsPtr      codegen.Type                           // Pointer to Globals.
+	Buf             codegen.Type                           // buffer_t
+	BufPtr          codegen.Type                           // buffer_t*
+	CmdParams       map[*semantic.Function]*codegen.Struct // struct holding all command parameters and return value.
 	DataAccess      codegen.Type
 	Maps            map[*semantic.Map]*MapInfo
 	mapImpls        []mapImpl
@@ -79,7 +79,7 @@ func (c *C) declareTypes() {
 	c.T.Buf = c.T.TypeOf(C.buffer{})
 	c.T.BufPtr = c.T.Pointer(c.T.Buf)
 	c.T.Maps = map[*semantic.Map]*MapInfo{}
-	c.T.CmdParams = map[*semantic.Function]codegen.Type{}
+	c.T.CmdParams = map[*semantic.Function]*codegen.Struct{}
 	c.T.DataAccess = c.T.Enum("gapil_data_access")
 	c.T.target = map[semantic.Type]codegen.Type{}
 	c.T.storage = map[memLayoutKey]*StorageTypes{}
@@ -108,19 +108,14 @@ func (c *C) declareTypes() {
 			c.T.target[t] = mapPtrTy
 		}
 
-		// Declare all the slice types.
+		// Forward-declare all the slice types.
 		for _, t := range api.Slices {
 			c.T.target[t] = c.T.Sli
 		}
 
-		// Declare all the command parameter structs.
+		// Forward-declare all the command parameter structs.
 		for _, f := range api.Functions {
-			fields := make([]codegen.Field, 0, len(f.FullParameters)+1)
-			fields = append(fields, codegen.Field{Name: semantic.BuiltinThreadGlobal.Name(), Type: c.T.Uint64})
-			for _, p := range f.FullParameters {
-				fields = append(fields, codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)})
-			}
-			c.T.CmdParams[f] = c.T.Struct(f.Name()+"Params", fields...)
+			c.T.CmdParams[f] = c.T.DeclareStruct(f.Name() + "Params")
 		}
 	}
 }
@@ -191,6 +186,16 @@ func (c *C) buildTypes() {
 				codegen.Field{Name: RefArena, Type: c.T.ArenaPtr},
 				codegen.Field{Name: RefValue, Type: c.T.Target(t.To)},
 			)
+		}
+
+		// Build all the command parameter types.
+		for _, f := range api.Functions {
+			fields := make([]codegen.Field, 0, len(f.FullParameters)+1)
+			fields = append(fields, codegen.Field{Name: semantic.BuiltinThreadGlobal.Name(), Type: c.T.Uint64})
+			for _, p := range f.FullParameters {
+				fields = append(fields, codegen.Field{Name: p.Name(), Type: c.T.Target(p.Type)})
+			}
+			c.T.CmdParams[f].SetBody(false, fields...)
 		}
 	}
 

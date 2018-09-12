@@ -155,7 +155,7 @@ func (c *C) program(s Settings) (*Program, error) {
 	for a, f := range c.commands {
 		commands[a.Name()] = &CommandInfo{
 			Execute:    f,
-			Parameters: c.T.CmdParams[a].(*codegen.Struct),
+			Parameters: c.T.CmdParams[a],
 		}
 	}
 
