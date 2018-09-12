@@ -425,9 +425,22 @@ func (c *C) mapContains(s *S, e *semantic.MapContains) *codegen.Value {
 func (c *C) mapIndex(s *S, e *semantic.MapIndex) *codegen.Value {
 	m := c.expression(s, e.Map)
 	k := c.expression(s, e.Index)
-	res := s.Call(c.T.Maps[e.Type].Lookup, m, k).SetName("map_lookup")
-	c.deferRelease(s, res, e.Type.ValueType)
-	return res
+
+	res := s.Local("map_lookup", c.T.Target(e.Type.ValueType))
+	ptr := s.Call(c.T.Maps[e.Type].Index, m, k, s.Scalar(false))
+	s.IfElse(ptr.IsNull(), func(s *S) {
+		val := c.initialValue(s, e.Type.ValueType)
+		c.reference(s, val, e.Type.ValueType)
+		res.Store(val)
+	}, func(s *S) {
+		val := ptr.Load()
+		c.reference(s, val, e.Type.ValueType)
+		res.Store(val)
+	})
+
+	out := res.Load()
+	c.deferRelease(s, out, e.Type.ValueType)
+	return out
 }
 
 func (c *C) member(s *S, e *semantic.Member) *codegen.Value {

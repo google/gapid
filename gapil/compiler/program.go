@@ -89,7 +89,6 @@ type MapInfo struct {
 type MapMethods struct {
 	Contains *codegen.Function // bool(M*, ctx*, K)
 	Index    *codegen.Function //   V*(M*, ctx*, K, addIfNotFound)
-	Lookup   *codegen.Function //   V(M*, ctx*, K)
 	Remove   *codegen.Function // void(M*, ctx*, K)
 	Clear    *codegen.Function // void(M*, ctx*)
 }
