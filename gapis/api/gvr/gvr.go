@@ -143,6 +143,11 @@ func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, unused bool)
 	return api.CmdID(0), false
 }
 
+// IsTrivialTerminator returns true if the terminator is just stopping at the given index
+func (API) IsTrivialTerminator(ctx context.Context, p *path.Capture, command api.SubCmdIdx) (bool, error) {
+	return true, nil
+}
+
 // RecoverMidExecutionCommand returns a virtual command, used to describe the
 // a subcommand that was created before the start of the trace
 // GVR has no subcommands of this type, so this should never be called

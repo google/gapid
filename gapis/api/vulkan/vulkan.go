@@ -639,6 +639,30 @@ func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, initialCall 
 	return api.CmdID(0), false
 }
 
+// IsTrivialTerminator returns true if the terminator is just stopping at the given index
+func (API) IsTrivialTerminator(ctx context.Context, p *path.Capture, after api.SubCmdIdx) (bool, error) {
+	s, err := resolve.SyncData(ctx, p)
+	if err != nil {
+		return false, err
+	}
+
+	if len(after) == 1 {
+		a := api.CmdID(after[0])
+		// If we are not running subcommands we can probably batch
+		for _, v := range s.SortedKeys() {
+			if v > a {
+				return true, nil
+			}
+			for _, k := range s.CommandRanges[v].SortedKeys() {
+				if k > a {
+					return false, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
 // RecoverMidExecutionCommand returns a virtual command, used to describe the
 // a subcommand that was created before the start of the trace
 func (API) RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, dat interface{}) (api.Cmd, error) {
