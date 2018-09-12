@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-func (c *C) expression(s *S, e semantic.Expression) *codegen.Value {
+func (c *C) expression(s *S, e semantic.Expression) (out *codegen.Value) {
 	c.pushExpression(s, e)
 	defer c.popExpression(s)
 
@@ -32,6 +32,15 @@ func (c *C) expression(s *S, e semantic.Expression) *codegen.Value {
 		c.LogI(s, msg)
 		defer c.LogI(s, msg+" -- done")
 	}
+
+	defer func() {
+		if out != nil {
+			got, expect := out.Type(), c.T.Target(e.ExpressionType())
+			if got != expect {
+				fail("expression(%T %+v) returned value of unexpected type. Got: %v, expect: %v", e, e, got, expect)
+			}
+		}
+	}()
 
 	switch e := e.(type) {
 	case *semantic.ArrayIndex:
