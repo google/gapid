@@ -57,7 +57,7 @@ func (c *C) returnType(f *semantic.Function) codegen.Type {
 }
 
 func (c *C) command(f *semantic.Function) {
-	if _, ok := c.functions[f]; ok {
+	if _, ok := c.commands[f]; ok {
 		return
 	}
 	old := c.setCurrentFunction(f)
@@ -78,12 +78,12 @@ func (c *C) command(f *semantic.Function) {
 
 		c.plugins.foreach(func(p OnEndCommandListener) { p.OnEndCommand(s, f) })
 	})
-	c.functions[f] = out
+	c.commands[f] = out
 	c.setCurrentFunction(old)
 }
 
 func (c *C) subroutine(f *semantic.Function) {
-	if _, ok := c.functions[f]; ok {
+	if _, ok := c.subroutines[f]; ok {
 		return
 	}
 	old := c.setCurrentFunction(f)
@@ -97,7 +97,7 @@ func (c *C) subroutine(f *semantic.Function) {
 	}
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
 	out := c.M.Function(resTy, name, paramTys...)
-	c.functions[f] = out
+	c.subroutines[f] = out
 	c.Build(out, func(s *S) {
 		if debugFunctionCalls {
 			c.LogI(s, f.Name())

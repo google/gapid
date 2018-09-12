@@ -22,7 +22,7 @@ import (
 )
 
 func (c *C) extern(f *semantic.Function) {
-	if _, ok := c.functions[f]; ok {
+	if _, ok := c.externs[f]; ok {
 		panic(fmt.Errorf("Duplicate extern '%v'", f.Name()))
 	}
 	callParams := f.CallParameters()
@@ -41,7 +41,7 @@ func (c *C) extern(f *semantic.Function) {
 		paramTys = append(paramTys, c.T.Pointer(resTy))
 	}
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
-	c.functions[f] = c.M.Function(c.T.Void, name, paramTys...)
+	c.externs[f] = c.M.Function(c.T.Void, name, paramTys...)
 }
 
 func (c *C) callExtern(s *S, e *semantic.Call) *codegen.Value {
@@ -57,7 +57,7 @@ func (c *C) callExtern(s *S, e *semantic.Call) *codegen.Value {
 		}
 	}
 
-	f, ok := c.functions[tf]
+	f, ok := c.externs[tf]
 	if !ok {
 		panic(fmt.Errorf("Couldn't resolve extern call target %v", tf.Name()))
 	}

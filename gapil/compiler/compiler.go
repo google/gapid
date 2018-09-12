@@ -59,9 +59,11 @@ type C struct {
 	// Settings are the configuration values used for this compile.
 	Settings Settings
 
-	plugins   plugins
-	functions map[*semantic.Function]*codegen.Function
-	ctx       struct { // Functions that operate on contexts
+	plugins     plugins
+	commands    map[*semantic.Function]*codegen.Function
+	externs     map[*semantic.Function]*codegen.Function
+	subroutines map[*semantic.Function]*codegen.Function
+	ctx         struct { // Functions that operate on contexts
 		create  *codegen.Function
 		destroy *codegen.Function
 	}
@@ -122,9 +124,11 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 		Mangler:  s.Mangler,
 		Settings: s,
 
-		plugins:   s.Plugins,
-		functions: map[*semantic.Function]*codegen.Function{},
-		mappings:  mappings,
+		plugins:     s.Plugins,
+		commands:    map[*semantic.Function]*codegen.Function{},
+		externs:     map[*semantic.Function]*codegen.Function{},
+		subroutines: map[*semantic.Function]*codegen.Function{},
+		mappings:    mappings,
 	}
 	for _, n := range s.Namespaces {
 		c.Root = &mangling.Namespace{Name: n, Parent: c.Root}
@@ -145,11 +149,8 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 }
 
 func (c *C) program(s Settings) (*Program, error) {
-	commands := make(map[string]*CommandInfo, len(c.functions))
-	for a, f := range c.functions {
-		if a.Subroutine || a.Extern {
-			continue
-		}
+	commands := make(map[string]*CommandInfo, len(c.commands))
+	for a, f := range c.commands {
 		commands[a.Name()] = &CommandInfo{
 			Execute:    f,
 			Parameters: c.T.CmdParams[a].(*codegen.Struct),
