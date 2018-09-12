@@ -406,7 +406,10 @@ func (c *C) local(s *S, e *semantic.Local) *codegen.Value {
 		}
 		fail("Couldn't locate local '%v'. Have locals:\n%v", e.Name(), strings.Join(locals, "\n"))
 	}
-	return l.Load()
+	if l.isPtr {
+		return l.val.Load()
+	}
+	return l.val
 }
 
 func (c *C) make(s *S, e *semantic.Make) *codegen.Value {

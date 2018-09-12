@@ -270,8 +270,11 @@ func (c *C) expressionAddr(s *S, target semantic.Expression) *codegen.Value {
 			path = append(path, n.Name(), c.CurrentAPI().Name(), 0)
 			return s.Globals.Index(revPath()...)
 		case *semantic.Local:
+			if isLocalImmutable(n) {
+				fail("Cannot take the address of an immutable local")
+			}
 			path = append(path, 0)
-			return s.locals[n].Index(revPath()...)
+			return s.locals[n].val.Index(revPath()...)
 		case *semantic.Member:
 			path = append(path, n.Field.Name())
 			target = n.Object
@@ -340,10 +343,23 @@ func (c *C) declareLocal(s *S, n *semantic.DeclareLocal) {
 	} else {
 		def = c.initialValue(s, n.Local.Type)
 	}
-	c.reference(s, def, n.Local.Type)
-	local := s.LocalInit(n.Local.Name(), def)
-	s.locals[n.Local] = local
-	defer func() { c.release(s, local.Load(), n.Local.Type) }()
+	var l local
+	if isLocalImmutable(n.Local) {
+		l = local{def, false}
+	} else {
+		l = local{s.LocalInit(n.Local.Name(), def), true}
+	}
+	l.val.EmitDebug(n.Local.Name())
+	s.locals[n.Local] = l
+}
+
+func isLocalImmutable(l *semantic.Local) bool {
+	switch l.Type.(type) {
+	case *semantic.Class:
+		return false
+	default:
+		return true
+	}
 }
 
 func (c *C) fence(s *S, n *semantic.Fence) {
@@ -373,7 +389,7 @@ func (c *C) iteration(s *S, n *semantic.Iteration) {
 		return s.NotEqual(it.Load(), to)
 	}, func() {
 		s.enter(func(s *S) {
-			s.locals[n.Iterator] = it
+			s.locals[n.Iterator] = local{it, true}
 			c.block(s, n.Block)
 			it.Store(s.Add(it.Load(), one))
 		})
@@ -395,9 +411,9 @@ func (c *C) mapIteration(s *S, n *semantic.MapIteration) {
 	mapPtr := c.expression(s, n.Map)
 	c.IterateMap(s, mapPtr, n.IndexIterator.Type, func(i, k, v *codegen.Value) {
 		s.enter(func(s *S) {
-			s.locals[n.IndexIterator] = i
-			s.locals[n.KeyIterator] = k
-			s.locals[n.ValueIterator] = v
+			s.locals[n.IndexIterator] = local{i, true}
+			s.locals[n.KeyIterator] = local{k, true}
+			s.locals[n.ValueIterator] = local{v, true}
 			c.block(s, n.Block)
 		})
 	})
