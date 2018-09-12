@@ -18,6 +18,7 @@ const (
 	debugFunctionCalls       = false
 	debugStatements          = false
 	debugExpressions         = false
+	debugCtxNotNull          = false
 	debugRefCounts           = false
 	debugDisableRefCounts    = false
 	debugDisableRefCountOpts = false
