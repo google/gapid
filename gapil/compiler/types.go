@@ -480,23 +480,27 @@ func (c *C) initialValue(s *S, t semantic.Type) *codegen.Value {
 	case *semantic.Class:
 		class := s.Undef(c.T.Target(t))
 		for i, f := range t.Fields {
+			var val *codegen.Value
 			if f.Default != nil {
-				class = class.Insert(i, c.expression(s, f.Default))
+				val = c.expression(s, f.Default)
 			} else {
-				class = class.Insert(i, c.initialValue(s, f.Type))
+				val = c.initialValue(s, f.Type)
 			}
+			c.reference(s, val, f.Type)
+			class = class.Insert(i, val)
 		}
+		c.deferRelease(s, class, t)
 		return class
 	case *semantic.Map:
 		mapInfo := c.T.Maps[t]
-		mapPtr := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type)
-		mapPtr.Index(0, MapRefCount).Store(s.Scalar(uint32(1)))
-		mapPtr.Index(0, MapArena).Store(s.Arena)
-		mapPtr.Index(0, MapCount).Store(s.Scalar(uint64(0)))
-		mapPtr.Index(0, MapCapacity).Store(s.Scalar(uint64(0)))
-		mapPtr.Index(0, MapElements).Store(s.Zero(c.T.Pointer(mapInfo.Elements)))
-		c.deferRelease(s, mapPtr, t)
-		return mapPtr
+		m := c.Alloc(s, s.Scalar(uint64(1)), mapInfo.Type).SetName(t.String())
+		m.Index(0, MapRefCount).Store(s.Scalar(uint32(1)))
+		m.Index(0, MapArena).Store(s.Arena)
+		m.Index(0, MapCount).Store(s.Scalar(uint64(0)))
+		m.Index(0, MapCapacity).Store(s.Scalar(uint64(0)))
+		m.Index(0, MapElements).Store(s.Zero(c.T.Pointer(mapInfo.Elements)))
+		c.deferRelease(s, m, t)
+		return m
 	default:
 		return s.Zero(c.T.Target(t))
 	}
