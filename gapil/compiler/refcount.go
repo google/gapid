@@ -54,7 +54,7 @@ func (f *refRel) build(
 		refPtr := getRefPtr(s, val)
 		oldCount := refPtr.Load()
 		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func(s *S) {
-			c.Log(s, log.Fatal, "Attempting to reference released "+f.name)
+			c.Log(s, log.Fatal, "Attempting to reference released "+f.name+" (%p)", refPtr)
 		})
 		newCount := s.Add(oldCount, s.Scalar(uint32(1)))
 		if debugRefCounts {
@@ -71,7 +71,7 @@ func (f *refRel) build(
 		refPtr := getRefPtr(s, val)
 		oldCount := refPtr.Load()
 		s.If(s.Equal(oldCount, s.Scalar(uint32(0))), func(s *S) {
-			c.Log(s, log.Fatal, "Attempting to release "+f.name+" with no remaining references!")
+			c.Log(s, log.Fatal, "Attempting to release "+f.name+" with no remaining references! (%p)", refPtr)
 		})
 		newCount := s.Sub(oldCount, s.Scalar(uint32(1)))
 		if debugRefCounts {
