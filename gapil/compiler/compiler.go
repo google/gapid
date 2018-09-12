@@ -258,7 +258,7 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 		s := &S{
 			Builder:    b,
 			Parameters: map[*semantic.Parameter]*codegen.Value{},
-			locals:     map[*semantic.Local]*codegen.Value{},
+			locals:     map[*semantic.Local]local{},
 		}
 		for i, p := range f.Type.Signature.Parameters {
 			if p == c.T.CtxPtr {
