@@ -60,7 +60,9 @@ func body(rv *resolver, in []ast.Node, owner semantic.Node) *semantic.Return {
 	}
 	// and special case the return statement allowing access to the return parameter
 	if returnStatement != nil {
-		return return_(rv, returnStatement, f)
+		out := return_(rv, returnStatement, f)
+		rv.mappings.Add(returnStatement, out)
+		return out
 	}
 	return nil
 }
@@ -69,19 +71,19 @@ func statement(rv *resolver, in ast.Node) semantic.Statement {
 	var out semantic.Statement
 	switch in := in.(type) {
 	case *ast.Assign:
-		return assign(rv, in)
+		out = assign(rv, in)
 	case *ast.DeclareLocal:
-		return declareLocal(rv, in)
+		out = declareLocal(rv, in)
 	case *ast.Delete:
-		return delete_(rv, in)
+		out = delete_(rv, in)
 	case *ast.Branch:
-		return branch(rv, in)
+		out = branch(rv, in)
 	case *ast.Switch:
-		return switch_(rv, in)
+		out = switch_(rv, in)
 	case *ast.Iteration:
-		return iteration(rv, in)
+		out = iteration(rv, in)
 	case *ast.MapIteration:
-		return mapIteration(rv, in)
+		out = mapIteration(rv, in)
 	case *ast.Call:
 		c := call(rv, in)
 		if e, ok := c.(semantic.Expression); ok {
@@ -90,18 +92,19 @@ func statement(rv *resolver, in ast.Node) semantic.Statement {
 				return semantic.Invalid{}
 			}
 		}
-		if s, ok := c.(semantic.Statement); ok {
-			return s
+		s, ok := c.(semantic.Statement)
+		if !ok {
+			rv.errorf(in, "expected statement, got %T", c)
+			return semantic.Invalid{}
 		}
-		rv.errorf(in, "expected statement, got %T", c)
-		return semantic.Invalid{}
+		out = s
 	case *ast.Return:
 		rv.errorf(in, "unexpected return")
 		return semantic.Invalid{}
 	case *ast.Abort:
-		return &semantic.Abort{AST: in, Function: rv.scope.function}
+		out = &semantic.Abort{AST: in, Function: rv.scope.function}
 	case *ast.Fence:
-		return &semantic.Fence{AST: in, Explicit: true}
+		out = &semantic.Fence{AST: in, Explicit: true}
 	case *ast.Generic, *ast.Member:
 		rv.errorf(in, "incomplete statement")
 		out = semantic.Invalid{Partial: expression(rv, in)}
