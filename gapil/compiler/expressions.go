@@ -292,22 +292,19 @@ func (c *C) cast(s *S, e *semantic.Cast) *codegen.Value {
 }
 
 func (c *C) classInitializer(s *S, e *semantic.ClassInitializer) *codegen.Value {
-	class := c.classInitializerNoRelease(s, e)
-	c.deferRelease(s, class, e.Class)
-	return class
-}
-
-func (c *C) classInitializerNoRelease(s *S, e *semantic.ClassInitializer) *codegen.Value {
 	class := s.Undef(c.T.Target(e.ExpressionType()))
 	for i, iv := range e.InitialValues() {
 		f := e.Class.Fields[i]
+		var val *codegen.Value
 		if iv != nil {
-			class = class.Insert(f.Name(), c.expression(s, iv))
+			val = c.expression(s, iv)
 		} else {
-			class = class.Insert(f.Name(), c.initialValue(s, f.Type))
+			val = c.initialValue(s, f.Type)
 		}
+		c.reference(s, val, f.Type)
+		class = class.Insert(f.Name(), val)
 	}
-	c.reference(s, class, e.Class) // references all referencable fields.
+	c.deferRelease(s, class, e.Class)
 	return class
 }
 
@@ -317,7 +314,9 @@ func (c *C) create(s *S, e *semantic.Create) *codegen.Value {
 	ptr := c.Alloc(s, s.Scalar(uint64(1)), refTy)
 	ptr.Index(0, RefRefCount).Store(s.Scalar(uint32(1)))
 	ptr.Index(0, RefArena).Store(s.Arena)
-	ptr.Index(0, RefValue).Store(c.classInitializerNoRelease(s, e.Initializer))
+	class := c.classInitializer(s, e.Initializer)
+	c.reference(s, class, e.Type.To)
+	ptr.Index(0, RefValue).Store(class)
 	c.deferRelease(s, ptr, e.Type)
 	return ptr
 }
@@ -449,7 +448,10 @@ func (c *C) member(s *S, e *semantic.Member) *codegen.Value {
 	case *semantic.Class:
 		return obj.Extract(e.Field.Name())
 	case *semantic.Reference:
-		return obj.Index(0, RefValue, e.Field.Name()).Load()
+		val := obj.Index(0, RefValue, e.Field.Name()).Load()
+		c.reference(s, val, e.Field.Type)
+		c.deferRelease(s, val, e.Field.Type)
+		return val
 	default:
 		fail("Unexpected type for member: '%v'", ty)
 		return nil

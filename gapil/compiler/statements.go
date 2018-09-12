@@ -252,17 +252,17 @@ func (c *C) doAssign(s *S, op string, lhs, rhs semantic.Expression) {
 	switch op {
 	case ast.OpAssign:
 		c.reference(s, val, rhs.ExpressionType())
-		c.release(s, dst.Load(), lhs.ExpressionType())
+		c.deferRelease(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	case ast.OpAssignPlus:
 		val := c.doBinaryOp(s, ast.OpPlus, dst.Load(), val)
 		c.reference(s, val, rhs.ExpressionType())
-		c.release(s, dst.Load(), lhs.ExpressionType())
+		c.deferRelease(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	case ast.OpAssignMinus:
 		val := c.doBinaryOp(s, ast.OpMinus, dst.Load(), val)
 		c.reference(s, val, rhs.ExpressionType())
-		c.release(s, dst.Load(), lhs.ExpressionType())
+		c.deferRelease(s, dst.Load(), lhs.ExpressionType())
 		dst.Store(val)
 	default:
 		fail("Unsupported composite assignment operator '%s'", op)

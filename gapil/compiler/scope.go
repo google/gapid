@@ -40,6 +40,10 @@ type S struct {
 	// Parameters is the current function's parameters.
 	Parameters map[*semantic.Parameter]*codegen.Value
 
+	// The list of values that will be referenced or released when the scope
+	// closes.
+	pendingRefRels pendingRefRels
+
 	parent      *S
 	locals      map[*semantic.Local]*codegen.Value
 	locationIdx int
@@ -138,5 +142,16 @@ func (s *S) onExit(f func()) {
 func (s *S) exit() {
 	for _, f := range s.onExitLogic {
 		f()
+	}
+	if !s.IsBlockTerminated() {
+		// The last instruction written to the current block was a
+		// terminator instruction. This should only happen if we've emitted
+		// a return statement and the scopes around this statement are
+		// closing. The logic in Scope.Return() will have already exited
+		// all the contexts, so we can safely return here.
+		//
+		// TODO: This is really icky - more time should be spent thinking
+		// of ways to avoid special casing return statements like this.
+		s.pendingRefRels.apply(s)
 	}
 }

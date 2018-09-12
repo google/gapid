@@ -16,6 +16,8 @@ package compiler
 
 import (
 	"fmt"
+	"runtime"
+	"strings"
 
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
@@ -232,31 +234,9 @@ func (c *C) buildRefRels() {
 			s.Call(c.callbacks.freeString, strPtr)
 		})
 
-	for apiTy, funcs := range r {
-		switch apiTy {
-		case semantic.StringType:
-			// Already implemented
-
-		default:
-			switch apiTy := apiTy.(type) {
-			case *semantic.Slice:
-				// Already implemented
-
-			case *semantic.Reference:
-				funcs.build(c,
-					func(s *S, refPtr *codegen.Value) *codegen.Value {
-						return refPtr.IsNull()
-					},
-					func(s *S, refPtr *codegen.Value) *codegen.Value {
-						return refPtr.Index(0, RefRefCount)
-					},
-					func(s *S, refPtr *codegen.Value) {
-						s.Arena = refPtr.Index(0, RefArena).Load().SetName("arena")
-						c.release(s, refPtr.Index(0, RefValue).Load(), apiTy.To)
-						c.Free(s, refPtr)
-					})
-
-			case *semantic.Map:
+	for _, api := range c.APIs {
+		for _, apiTy := range api.Maps {
+			if funcs, ok := r[apiTy]; ok {
 				funcs.build(c,
 					func(s *S, mapPtr *codegen.Value) *codegen.Value {
 						return mapPtr.IsNull()
@@ -269,8 +249,28 @@ func (c *C) buildRefRels() {
 						s.Call(c.T.Maps[apiTy].Clear, mapPtr)
 						c.Free(s, mapPtr)
 					})
+			}
+		}
 
-			case *semantic.Class:
+		for _, apiTy := range api.References {
+			if funcs, ok := r[apiTy]; ok {
+				funcs.build(c,
+					func(s *S, refPtr *codegen.Value) *codegen.Value {
+						return refPtr.IsNull()
+					},
+					func(s *S, refPtr *codegen.Value) *codegen.Value {
+						return refPtr.Index(0, RefRefCount)
+					},
+					func(s *S, refPtr *codegen.Value) {
+						s.Arena = refPtr.Index(0, RefArena).Load().SetName("arena")
+						c.doRelease(s, refPtr.Index(0, RefValue).Load(), apiTy.To)
+						c.Free(s, refPtr)
+					})
+			}
+		}
+
+		for _, apiTy := range api.Classes {
+			if funcs, ok := r[apiTy]; ok {
 				refFields := []*semantic.Field{}
 				for _, f := range apiTy.Fields {
 					ty := semantic.Underlying(f.Type)
@@ -282,52 +282,178 @@ func (c *C) buildRefRels() {
 				c.Build(funcs.reference, func(s *S) {
 					val := s.Parameter(0)
 					for _, f := range refFields {
-						c.reference(s, val.Extract(f.Name()), f.Type)
+						c.doReference(s, val.Extract(f.Name()), f.Type)
 					}
 				})
 				c.Build(funcs.release, func(s *S) {
 					val := s.Parameter(0)
 					for _, f := range refFields {
-						c.release(s, val.Extract(f.Name()), f.Type)
+						c.doRelease(s, val.Extract(f.Name()), f.Type)
 					}
 				})
-			default:
-				fail("Unhandled reference type %T", apiTy)
 			}
 		}
 	}
 }
 
+func caller() string {
+	locs := []string{}
+	for i := 2; i < 10; i++ {
+		_, file, line, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		if i := strings.LastIndex(file, "/"); i > 0 {
+			file = file[i+1:]
+		}
+		locs = append(locs, fmt.Sprintf("%v:%v", file, line))
+	}
+	return strings.Join(locs, " ")
+}
+
 func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
-	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
-		s.Call(f.reference, val)
+	if got, expect := val.Type(), c.T.Target(ty); got != expect {
+		fail("reference() called with a value of an expected type. Got %+v, expect %+v", got, expect)
+	}
+	if !c.isRefCounted(semantic.Underlying(ty)) {
+		return
+	}
+	if debugRefCounts {
+		c.LogI(s, fmt.Sprintf("reference(%v: %%p): %v", ty, caller()), val)
+	}
+	if debugDisableRefCounts {
+		return
+	}
+	if debugDisableRefCountOpts {
+		c.doReference(s, val, ty)
+	} else {
+		s.pendingRefRels.add(c, val, ty, 1)
 	}
 }
 
 func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
-	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
-		s.Call(f.release, val)
+	if got, expect := val.Type(), c.T.Target(ty); got != expect {
+		fail("release() called with a value of an expected type. Got %+v, expect %+v", got, expect)
+	}
+	if !c.isRefCounted(semantic.Underlying(ty)) {
+		return
+	}
+	if debugRefCounts {
+		c.LogI(s, fmt.Sprintf("release(%v: %%p): %v", ty, caller()), val)
+	}
+	if debugDisableRefCounts {
+		return
+	}
+	if debugDisableRefCountOpts {
+		c.doRelease(s, val, ty)
+	} else {
+		s.pendingRefRels.add(c, val, ty, -1)
 	}
 }
 
 func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
-	if debugRefCounts {
-		c.LogI(s, "deferRelease("+fmt.Sprintf("%T", ty)+": %p)", val)
+	if got, expect := val.Type(), c.T.Target(ty); got != expect {
+		fail("deferRelease() called with a value of an expected type. Got %+v, expect %+v", got, expect)
 	}
-	s.onExit(func() {
-		if s.IsBlockTerminated() {
-			// The last instruction written to the current block was a
-			// terminator instruction. This should only happen if we've emitted
-			// a return statement and the scopes around this statement are
-			// closing. The logic in Scope.Return() will have already exited
-			// all the contexts, so we can safely return here.
-			//
-			// TODO: This is really icky - more time should be spent thinking
-			// of ways to avoid special casing return statements like this.
-			return
+	if debugDisableRefCounts {
+		return
+	}
+	if debugRefCounts {
+		c.LogI(s, fmt.Sprintf("deferRelease(%v: %%p): %v", ty, caller()), val)
+	}
+	s.pendingRefRels.add(c, val, ty, -1)
+}
+
+type pendingRefRels struct {
+	c       *C
+	indices map[*codegen.Value]int
+	list    []pendingRefRel
+}
+
+// pendingRefRel is a pending reference count change when the scope closes.
+type pendingRefRel struct {
+	val    *codegen.Value
+	ty     semantic.Type
+	delta  int
+	caller string
+}
+
+func (p *pendingRefRels) add(c *C, val *codegen.Value, ty semantic.Type, delta int) {
+	if !c.isRefCounted(ty) {
+		return
+	}
+	if p.c == nil {
+		*p = pendingRefRels{
+			c:       c,
+			indices: map[*codegen.Value]int{},
 		}
-		c.release(s, val, ty)
-	})
+	}
+	if i, ok := p.indices[val]; ok {
+		p.list[i].delta = p.list[i].delta + delta
+	} else {
+		p.indices[val] = len(p.list)
+		r := pendingRefRel{
+			val:   val,
+			ty:    ty,
+			delta: delta,
+		}
+		if debugRefCounts {
+			r.caller = caller()
+		}
+		p.list = append(p.list, r)
+	}
+}
+
+func (p *pendingRefRels) apply(s *S) {
+	if p.c == nil {
+		return
+	}
+	if debugRefCounts {
+		p.c.LogI(s, "pendingRefRels.apply()")
+		for _, r := range p.list {
+			p.c.LogI(s, fmt.Sprintf("%v: %%p: %v", r.ty, r.delta), r.val)
+		}
+		p.c.LogI(s, "----------------------")
+	}
+
+	for _, r := range p.list {
+		for i := 0; i < r.delta; i++ {
+			if f, ok := p.c.refRels.tys[semantic.Underlying(r.ty)]; ok {
+				if debugRefCounts {
+					p.c.LogI(s, fmt.Sprintf("pending-reference(%v: %%p): %v", r.ty, r.caller), r.val)
+				}
+				s.Call(f.reference, r.val)
+			}
+		}
+	}
+	for _, r := range p.list {
+		for i := 0; i > r.delta; i-- {
+			if f, ok := p.c.refRels.tys[semantic.Underlying(r.ty)]; ok {
+				if debugRefCounts {
+					p.c.LogI(s, fmt.Sprintf("pending-release(%v: %%p): %v", r.ty, r.caller), r.val)
+				}
+				s.Call(f.release, r.val)
+			}
+		}
+	}
+}
+
+func (c *C) doReference(s *S, val *codegen.Value, ty semantic.Type) {
+	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
+		if debugRefCounts {
+			c.LogI(s, fmt.Sprintf("doReference(%v: %%p): %v", ty, caller()), val)
+		}
+		s.Call(f.reference, val)
+	}
+}
+
+func (c *C) doRelease(s *S, val *codegen.Value, ty semantic.Type) {
+	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
+		if debugRefCounts {
+			c.LogI(s, fmt.Sprintf("doRelease(%v: %%p): %v", ty, caller()), val)
+		}
+		s.Call(f.release, val)
+	}
 }
 
 func (c *C) isRefCounted(ty semantic.Type) bool {
