@@ -77,6 +77,16 @@ func inferUnknown(rv *resolver, lhs semantic.Node, rhs semantic.Node) {
 		// This might fail to infer the expression (i.e. keeps it at nil).
 		// That is fine as long as some future expression still infers it.
 		u.Inferred = lhsToObserved(rv, lhs)
+
+		// As the unknown has only just been resolved, there may be locals with
+		// 'any' types. Fix these up now.
+		rv.scope.Symbols.Visit(func(s string, n semantic.Node) {
+			if n, ok := n.(*semantic.Local); ok {
+				if n.Value == u {
+					n.Type = u.ExpressionType()
+				}
+			}
+		})
 	}
 }
 

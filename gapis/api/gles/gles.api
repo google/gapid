@@ -875,7 +875,7 @@ cmd CGLError CGLCreateContext(CGLTexelFormatObj pix, CGLContextObj share, CGLCon
   context := ?
   CGLContexts[context] = CreateContext(CGLContexts[share])
   ctx[0] = context
-  return context
+  return ?
 }
 
 @custom @no_replay
