@@ -34,8 +34,9 @@ func (c *C) LoadParameters(s *S, f *semantic.Function) {
 		SetName("params")
 
 	for _, p := range f.FullParameters {
-		v := params.Index(0, p.Name()).Load()
-		v.SetName(p.Name())
+		v := params.Index(0, p.Name()).Load().
+			SetName(p.Name()).
+			EmitDebug(p.Name())
 		s.Parameters[p] = v
 	}
 }
@@ -46,7 +47,13 @@ func (c *C) command(f *semantic.Function) {
 	}
 	old := c.setCurrentFunction(f)
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
-	out := c.M.Function(c.T.Void, name, c.T.CtxPtr)
+	loc := c.SourceLocationFor(f)
+	out := c.M.
+		Function(c.T.Void, name, c.T.CtxPtr).
+		SetLocation(loc.File, loc.Line).
+		SetParameterNames("gapil_context").
+		LinkInternal()
+
 	c.Build(out, func(s *S) {
 		if debugFunctionCalls {
 			c.LogI(s, f.Name())
@@ -74,13 +81,23 @@ func (c *C) subroutine(f *semantic.Function) {
 
 	params := f.CallParameters()
 	paramTys := make([]codegen.Type, len(params)+1)
+	paramNames := make([]string, len(params)+1)
 	paramTys[0] = c.T.CtxPtr
+	paramNames[0] = "ctx"
 	for i, p := range params {
 		paramTys[i+1] = c.T.Target(p.Type)
+		paramNames[i+1] = p.Name()
 	}
 	resTy := c.T.Target(f.Return.Type)
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
-	out := c.M.Function(resTy, name, paramTys...)
+
+	loc := c.SourceLocationFor(f)
+	out := c.M.
+		Function(resTy, name, paramTys...).
+		SetLocation(loc.File, loc.Line).
+		SetParameterNames(paramNames...).
+		LinkInternal()
+
 	c.subroutines[f] = out
 	c.Build(out, func(s *S) {
 		if debugFunctionCalls {

@@ -268,8 +268,12 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 						c.LogF(s, "Context is null")
 					})
 				}
-				s.Globals = s.Ctx.Index(0, ContextGlobals).Load().SetName("globals")
-				s.Arena = s.Ctx.Index(0, ContextArena).Load().SetName("arena")
+				s.Globals = s.Ctx.Index(0, ContextGlobals).Load().
+					SetName("globals").
+					EmitDebug("globals")
+				s.Arena = s.Ctx.Index(0, ContextArena).Load().
+					SetName("arena").
+					EmitDebug("arena")
 				break
 			}
 		}
