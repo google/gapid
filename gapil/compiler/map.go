@@ -255,9 +255,19 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 	elTy := mi.Elements
 	u64Type := c.T.Target(semantic.Uint64Type)
 
+	checkRefCount := func(s *S, m *codegen.Value) {
+		cnt := m.Index(0, MapRefCount).Load()
+		s.If(s.LessOrEqualTo(cnt, s.Zero(cnt.Type())), func(s *S) {
+			c.LogF(s, "Map refcount is %d", cnt)
+		})
+	}
+
 	c.Build(mi.Contains, func(s *S) {
 		m := s.Parameter(0).SetName("map")
 		k := s.Parameter(1).SetName("key")
+
+		checkRefCount(s, m)
+
 		h := c.hashValue(s, keyTy, k)
 		capacity := m.Index(0, MapCapacity).Load()
 		elements := m.Index(0, MapElements).Load()
@@ -283,6 +293,8 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 		k := s.Parameter(1).SetName("key")
 		addIfNotFound := s.Parameter(2).SetName("addIfNotFound")
 		s.Arena = m.Index(0, MapArena).Load().SetName("arena")
+
+		checkRefCount(s, m)
 
 		countPtr := m.Index(0, MapCount)
 		capacityPtr := m.Index(0, MapCapacity)
@@ -387,6 +399,8 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 		k := s.Parameter(1).SetName("key")
 		s.Arena = m.Index(0, MapArena).Load().SetName("arena")
 
+		checkRefCount(s, m)
+
 		ptr := s.Call(mi.Index, m, k, s.Scalar(false))
 		s.If(ptr.IsNull(), func(s *S) {
 			v := c.initialValue(s, valTy)
@@ -402,6 +416,8 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 		m := s.Parameter(0).SetName("map")
 		k := s.Parameter(1).SetName("key")
 		s.Arena = m.Index(0, MapArena).Load().SetName("arena")
+
+		checkRefCount(s, m)
 
 		countPtr := m.Index(0, MapCount)
 		capacity := m.Index(0, MapCapacity).Load()

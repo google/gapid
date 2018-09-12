@@ -390,6 +390,11 @@ func (c *C) LogI(s *S, msg string, args ...interface{}) {
 	c.Log(s, log.Info, msg, args...)
 }
 
+// LogF is short hand for Log(s, log.Fatal, msg, args...)
+func (c *C) LogF(s *S, msg string, args ...interface{}) {
+	c.Log(s, log.Fatal, msg, args...)
+}
+
 // Fail is used to immediately terminate compilation due to an internal
 // compiler error.
 func (c *C) Fail(msg string, args ...interface{}) { fail(msg, args...) }
