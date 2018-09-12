@@ -67,6 +67,9 @@ type SynchronizedAPI interface {
 	// a subcommand that was created before the start of the trace.
 	// If the api does not have mid-execution commands, NoMECSubcommandsError should be returned.
 	RecoverMidExecutionCommand(ctx context.Context, c *path.Capture, data interface{}) (api.Cmd, error)
+
+	// IsTrivialTerminator returns true if stopping at the given command is trivial.
+	IsTrivialTerminator(ctx context.Context, c *path.Capture, cmd api.SubCmdIdx) (bool, error)
 }
 
 type writer struct {
@@ -112,13 +115,19 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 
 	terminators := make([]transform.Terminator, 0)
 	transforms := transform.Transforms{}
-
+	isTrivial := true
 	for _, api := range rc.APIs {
 		if sync, ok := api.(SynchronizedAPI); ok {
 			term, err := sync.GetTerminator(ctx, c)
 			if err != nil {
 				return nil, err
 			}
+
+			t, err := sync.IsTrivialTerminator(ctx, c, fullCommand)
+			if err != nil {
+				return nil, err
+			}
+			isTrivial = t && isTrivial
 			if term != nil {
 				terminators = append(terminators, term)
 				continue
@@ -132,9 +141,12 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		}
 		transforms.Add(t)
 	}
-
+	if isTrivial {
+		return cmds[0:id], nil
+	}
 	w := &writer{rc.NewState(ctx), nil}
 	transforms.Transform(ctx, cmds, w)
+
 	return w.cmds, nil
 }
 
