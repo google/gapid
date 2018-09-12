@@ -1193,6 +1193,8 @@ func (d *decoder) node(p *Node) semantic.Node {
 		return nil
 	}
 	switch p := protoutil.OneOf(p).(type) {
+	case *Node_Abort:
+		return d.abort(p.Abort)
 	case *Node_Annotation:
 		return d.annotation(p.Annotation)
 	case *Node_Api:
@@ -1249,6 +1251,8 @@ func (d *decoder) node(p *Node) semantic.Node {
 		return d.enum(p.Enum)
 	case *Node_Expression:
 		return d.expr(p.Expression)
+	case *Node_Fence:
+		return d.fence(p.Fence)
 	case *Node_Field:
 		return d.field(p.Field)
 	case *Node_FieldInit:
@@ -1267,6 +1271,8 @@ func (d *decoder) node(p *Node) semantic.Node {
 		return d.mapAssign(p.MapAssign)
 	case *Node_MapIteration:
 		return d.mapIteration(p.MapIteration)
+	case *Node_MapRemove:
+		return d.mapRemove(p.MapRemove)
 	case *Node_Parameter:
 		return d.param(p.Parameter)
 	case *Node_Pointer:
