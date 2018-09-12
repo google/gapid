@@ -258,20 +258,23 @@ func (c *C) call(s *S, e *semantic.Call) *codegen.Value {
 
 	switch {
 	case tf.Subroutine:
-		res = s.Call(f, args...)
-
-		// Subroutines return a <error, value> pair.
-		// Check the error.
-		err := res.Extract(retError)
-		s.If(s.NotEqual(err, s.Scalar(ErrSuccess)), func(s *S) {
-			retTy := c.returnType(c.currentFunc)
-			s.Return(s.Zero(retTy).Insert(retError, err))
-		})
-		if tf.Return.Type == semantic.VoidType {
-			return nil
+		needCleanup := false
+		for s := s; s != nil; s = s.parent {
+			if len(s.pendingRefRels.list) > 0 || len(s.onExitLogic) > 0 {
+				needCleanup = true
+				break
+			}
 		}
-		// Return the value.
-		res = res.Extract(retValue)
+		if needCleanup {
+			cleanup := func() {
+				for s := s; s != nil; s = s.parent {
+					s.exit()
+				}
+			}
+			res = s.Invoke(f, cleanup, args...)
+		} else {
+			res = s.Call(f, args...)
+		}
 
 	default:
 		res = s.Call(f, args...)

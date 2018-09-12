@@ -29,24 +29,7 @@ import (
 	"github.com/google/gapid/gapis/memory"
 )
 
-// #include "gapil/runtime/cc/runtime.h"
-//
-// typedef context* (TCreateContext) (arena*);
-// typedef void     (TDestroyContext) (context*);
-// typedef uint32_t (TFunc) (void* ctx);
-//
-// static context* create_context(TCreateContext* func, arena* a) { return func(a); }
-// static void destroy_context(TDestroyContext* func, context* ctx) { func(ctx); }
-// static uint32_t call(context* ctx, TFunc* func) { return func(ctx); }
-//
-// // Implemented below.
-// extern void* pool_data_resolver(context*, pool*, uint64_t ptr, gapil_data_access, uint64_t* len);
-// extern void  database_storer(context* ctx, void* ptr, uint64_t size, uint8_t* id_out);
-//
-// static void set_callbacks() {
-//   gapil_set_pool_data_resolver(&pool_data_resolver);
-//   gapil_set_database_storer(&database_storer);
-// }
+// #include "env.h"
 import "C"
 
 func init() {

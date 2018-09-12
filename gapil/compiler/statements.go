@@ -24,11 +24,6 @@ import (
 	"github.com/google/gapid/gapil/semantic"
 )
 
-const (
-	retError = "error"
-	retValue = "value"
-)
-
 // LoadParameters loads the command's parameters from the context's arguments
 // field and stores them into s.Parameters.
 func (c *C) LoadParameters(s *S, f *semantic.Function) {
@@ -45,24 +40,13 @@ func (c *C) LoadParameters(s *S, f *semantic.Function) {
 	}
 }
 
-func (c *C) returnType(f *semantic.Function) codegen.Type {
-	fields := []codegen.Field{{Name: retError, Type: c.T.Uint32}}
-	if f.Return.Type != semantic.VoidType {
-		fields = append(fields, codegen.Field{
-			Name: retValue,
-			Type: c.T.Target(f.Return.Type),
-		})
-	}
-	return c.T.Struct(f.Name()+"_result", fields...)
-}
-
 func (c *C) command(f *semantic.Function) {
 	if _, ok := c.commands[f]; ok {
 		return
 	}
 	old := c.setCurrentFunction(f)
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
-	out := c.M.Function(c.returnType(f), name, c.T.CtxPtr)
+	out := c.M.Function(c.T.Void, name, c.T.CtxPtr)
 	c.Build(out, func(s *S) {
 		if debugFunctionCalls {
 			c.LogI(s, f.Name())
@@ -87,7 +71,6 @@ func (c *C) subroutine(f *semantic.Function) {
 		return
 	}
 	old := c.setCurrentFunction(f)
-	resTy := c.returnType(f)
 
 	params := f.CallParameters()
 	paramTys := make([]codegen.Type, len(params)+1)
@@ -95,6 +78,7 @@ func (c *C) subroutine(f *semantic.Function) {
 	for i, p := range params {
 		paramTys[i+1] = c.T.Target(p.Type)
 	}
+	resTy := c.T.Target(f.Return.Type)
 	name := fmt.Sprintf("%v_%v", c.CurrentAPI().Name(), f.Name())
 	out := c.M.Function(resTy, name, paramTys...)
 	c.subroutines[f] = out
@@ -174,8 +158,10 @@ func (c *C) statement(s *S, n semantic.Statement) bool {
 }
 
 func (c *C) abort(s *S, n *semantic.Abort) {
-	retTy := c.returnType(c.currentFunc)
-	s.Return(s.Zero(retTy).Insert(retError, s.Scalar(ErrAborted)))
+	for s := s; s != nil; s = s.parent {
+		s.exit()
+	}
+	s.Throw(s.Scalar(ErrAborted))
 }
 
 func (c *C) applyReads(s *S) {
@@ -431,26 +417,31 @@ func (c *C) read(s *S, n *semantic.Read) {
 }
 
 func (c *C) return_(s *S, n *semantic.Return) {
-	var val *codegen.Value
-	var ty semantic.Type
 	switch {
-	case n.Value != nil:
-		val = c.expression(s, n.Value)
-		ty = n.Value.ExpressionType()
-	case c.currentFunc.Signature.Return != semantic.VoidType:
-		val = c.initialValue(s, c.currentFunc.Signature.Return)
-		ty = c.currentFunc.Signature.Return
+	case c.currentFunc.Subroutine:
+		var val *codegen.Value
+		var ty semantic.Type
+		switch {
+		case n.Value != nil:
+			val = c.expression(s, n.Value)
+			ty = n.Value.ExpressionType()
+		case c.currentFunc.Signature.Return != semantic.VoidType:
+			val = c.initialValue(s, c.currentFunc.Signature.Return)
+			ty = c.currentFunc.Signature.Return
+		default:
+			s.Return(nil)
+			return
+		}
+
+		val = val.Cast(c.T.Target(n.Function.Return.Type))
+
+		c.reference(s, val, ty)
+		s.Return(val)
+
 	default:
+		// Commands have no return
 		s.Return(nil)
-		return
 	}
-
-	val = val.Cast(c.T.Target(n.Function.Return.Type))
-
-	c.reference(s, val, ty)
-	retTy := c.returnType(c.currentFunc) // <error, value>
-	ret := s.Zero(retTy).Insert(retValue, val)
-	s.Return(ret)
 }
 
 func (c *C) sliceAssign(s *S, n *semantic.SliceAssign) {

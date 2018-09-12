@@ -126,8 +126,8 @@ typedef void* gapil_pool_data_resolver(context*, pool*, uint64_t ptr,
 
 // callback to store the buffer at ptr of the given size into the database.
 // Writes the 20-byte database identifier of the stored data to id.
-typedef void* gapil_database_storer(context* ctx, void* ptr, uint64_t size,
-                                    uint8_t* id_out);
+typedef void gapil_database_storer(context* ctx, void* ptr, uint64_t size,
+                                   uint8_t* id_out);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented by the compiler                                    //
