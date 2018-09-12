@@ -21,6 +21,7 @@ go_library(
         "assert.go",
         "builder.go",
         "cast.go",
+        "datalayout.go",
         "debug.go",
         "doc.go",
         "exceptions.go",

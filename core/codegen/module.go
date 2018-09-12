@@ -58,6 +58,10 @@ func NewModule(name string, target *device.ABI) *Module {
 
 	module := ctx.NewModule(name)
 	module.SetTarget(triple.String())
+	if dl := DataLayout(target); dl != "" {
+		module.SetDataLayout(dl)
+	}
+
 	bt := func(name string, dtl *device.DataTypeLayout, llvm llvm.Type) basicType {
 		return basicType{name, 8 * int(dtl.Size), 8 * int(dtl.Alignment), llvm}
 	}
