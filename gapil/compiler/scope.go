@@ -40,6 +40,9 @@ type S struct {
 	// Parameters is the current function's parameters.
 	Parameters map[*semantic.Parameter]*codegen.Value
 
+	// The identifier of the currently executing thread.
+	CurrentThread *codegen.Value
+
 	// The list of values that will be referenced or released when the scope
 	// closes.
 	pendingRefRels pendingRefRels
@@ -62,14 +65,15 @@ func (s *S) enter(f func(*S)) {
 	}
 
 	child := &S{
-		Builder:    s.Builder,
-		Ctx:        s.Ctx,
-		Location:   s.Location,
-		Globals:    s.Globals,
-		Arena:      s.Arena,
-		Parameters: s.Parameters,
-		parent:     s,
-		locals:     locals,
+		Builder:       s.Builder,
+		Ctx:           s.Ctx,
+		Location:      s.Location,
+		Globals:       s.Globals,
+		Arena:         s.Arena,
+		Parameters:    s.Parameters,
+		CurrentThread: s.CurrentThread,
+		parent:        s,
+		locals:        locals,
 	}
 
 	f(child)

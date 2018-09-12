@@ -28,7 +28,7 @@ import (
 // field and stores them into s.Parameters.
 func (c *C) LoadParameters(s *S, f *semantic.Function) {
 	params := s.Ctx.
-		Index(0, ContextArguments).
+		Index(0, ContextCmdArgs).
 		Load().
 		Cast(c.T.Pointer(c.T.CmdParams[f])).
 		SetName("params")

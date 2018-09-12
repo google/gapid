@@ -276,6 +276,9 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 				s.Arena = s.Ctx.Index(0, ContextArena).Load().
 					SetName("arena").
 					EmitDebug("arena")
+				s.CurrentThread = s.Ctx.Index(0, ContextThread).Load().
+					SetName("thread").
+					EmitDebug("$Thread")
 				break
 			}
 		}
