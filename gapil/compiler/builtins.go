@@ -52,7 +52,6 @@ func init() {
 
 // Field names for the context_t runtime type.
 const (
-	ContextLocation   = "location"
 	ContextGlobals    = "globals"
 	ContextArena      = "arena"
 	ContextCmdID      = "cmd_id"

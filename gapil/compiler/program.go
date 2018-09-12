@@ -16,7 +16,6 @@ package compiler
 
 import (
 	"bytes"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -43,10 +42,6 @@ type Program struct {
 
 	// Globals is the StructInfo of all the globals.
 	Globals *StructInfo
-
-	// Locations is the array of source locations.
-	// Only generated if Settings.CodeLocations is true.
-	Locations []Location
 
 	// Functions is a map of function name to plugin implemented functions.
 	Functions map[string]*codegen.Function
@@ -97,17 +92,6 @@ type MapMethods struct {
 	Lookup   *codegen.Function //   V(M*, ctx*, K)
 	Remove   *codegen.Function // void(M*, ctx*, K)
 	Clear    *codegen.Function // void(M*, ctx*)
-}
-
-// Location defines a single .api source location.
-type Location struct {
-	File   string
-	Line   int
-	Column int
-}
-
-func (l Location) String() string {
-	return fmt.Sprintf("%v:%v:%v", l.File, l.Line, l.Column)
 }
 
 // Dump returns the full LLVM IR for the program.
