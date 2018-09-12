@@ -331,6 +331,6 @@ func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
 }
 
 func (c *C) isRefCounted(ty semantic.Type) bool {
-	_, ok := c.refRels.tys[ty]
+	_, ok := c.refRels.tys[semantic.Underlying(ty)]
 	return ok
 }
