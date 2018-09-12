@@ -245,7 +245,7 @@ cmd VkResult vkSetEvent(
     // event list in the queue object, we should roll out the pending commands
     if len(q.PendingEvents) == 0 {
       LastBoundQueue = Queues[queue]
-      execPendingCommands(queue)
+      execPendingCommands(queue, true)
     }
   }
   fence

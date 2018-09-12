@@ -107,7 +107,7 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
   }
 }
 
-sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets) {
+sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets, bool processImages) {
   if descriptor_set != null {
     for i in (0 .. len(descriptor_set.Bindings)) {
       binding := descriptor_set.Bindings[as!u32(i)]
@@ -131,7 +131,9 @@ sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(
           VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
           VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+          if (processImages) {
             readMemoryInImageBindings(binding.ImageBinding)
+          }
         default: {}
       }
     }
@@ -196,7 +198,7 @@ sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBi
   }
 }
 
-sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets) {
+sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets, bool processImages) {
   if descriptor_set != null {
     for i in (0 .. len(descriptor_set.Bindings)) {
       binding := descriptor_set.Bindings[as!u32(i)]
@@ -212,13 +214,14 @@ sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             writeMemoryInBufferViewBindings(binding.BufferViewBindings)
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          writeMemoryInImageBindings(binding.ImageBinding)
+          if (processImages) {
+            writeMemoryInImageBindings(binding.ImageBinding)
+          }
         default: {}
       }
     }
   }
 }
-
 
 sub void readWriteMemoryInBoundDescriptorSets(
     ref!PipelineLayoutObject pipelineLayout,
@@ -226,8 +229,53 @@ sub void readWriteMemoryInBoundDescriptorSets(
     map!(u32, map!(u32, map!(u32, VkDeviceSize))) bufferBindingOffsets) {
   layerCount := len(pipelineLayout.SetLayouts)
   for i in (0 .. layerCount) {
-    readMemoryInDescriptorSet(descriptorSets[as!u32(i)], bufferBindingOffsets[as!u32(i)])
-    writeMemoryInDescriptorSet(descriptorSets[as!u32(i)], bufferBindingOffsets[as!u32(i)])
+    descriptorSet := descriptorSets[as!u32(i)]
+    if descriptorSet != null {
+      if !(descriptorSet.VulkanHandle in ProcessedDescriptorSets.val) {
+        offsets := bufferBindingOffsets[as!u32(i)]
+        readMemoryInDescriptorSet(descriptorSet, offsets, true)
+        writeMemoryInDescriptorSet(descriptorSet, offsets, true)
+        
+        descriptors := ProcessedDescriptorSet()
+        descriptors.shouldReadBuffers = false
+        newOffsets := descriptors.bufferOffsets
+        for _, j, jj in offsets {
+          for _, k, v in jj {
+            if (!newOffsets[j][k][v]) {
+              x := newOffsets[j]
+              y := x[k]
+              y[v] = true
+              x[k] = y
+              newOffsets[j] = x
+            }
+            
+          }
+        }
+        descriptors.bufferOffsets = newOffsets
+        ProcessedDescriptorSets.val[descriptorSet.VulkanHandle] = descriptors
+      } else if ProcessedDescriptorSets.val[descriptorSet.VulkanHandle].shouldReadBuffers {
+        offsets := bufferBindingOffsets[as!u32(i)]
+        readMemoryInDescriptorSet(descriptorSet, offsets, false)
+        writeMemoryInDescriptorSet(descriptorSet, offsets, false)
+        
+        descriptors := ProcessedDescriptorSets.val[descriptorSet.VulkanHandle]
+        descriptors.shouldReadBuffers = false
+        newOffsets := descriptors.bufferOffsets
+        for _, j, jj in offsets {
+          for _, k, v in jj {
+            if (!newOffsets[j][k][v]) {
+              x := newOffsets[j]
+              y := x[k]
+              y[v] = true
+              x[k] = y
+              newOffsets[j] = x
+            }
+          }
+        }
+        descriptors.bufferOffsets = newOffsets
+        ProcessedDescriptorSets.val[descriptorSet.VulkanHandle] = descriptors
+      }
+    }
   }
 }
 
