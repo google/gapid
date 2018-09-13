@@ -17,9 +17,6 @@ package compiler
 func (c *C) buildExec() {
 	for _, api := range c.APIs {
 		c.currentAPI = api
-		for _, f := range api.Externs {
-			c.extern(f)
-		}
 		for _, f := range api.Subroutines {
 			c.subroutine(f)
 		}

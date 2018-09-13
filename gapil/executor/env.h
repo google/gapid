@@ -21,16 +21,20 @@ extern "C" {
 typedef context*(TCreateContext)(arena*);
 typedef void(TDestroyContext)(context*);
 typedef uint32_t(TFunc)(void* ctx);
+typedef void gapil_extern(context*, void* args, void* res);
 
 // Implemented in env.cpp
 context* create_context(TCreateContext* func, arena* a);
 void destroy_context(TDestroyContext* func, context* ctx);
 uint32_t call(context* ctx, TFunc* func);
 
+void register_c_extern(const char* name, gapil_extern* fn);
+
 typedef struct callbacks_t {
   void* apply_reads;
   void* apply_writes;
   void* resolve_pool_data;
+  void* call_extern;
   void* store_in_database;
 } callbacks;
 

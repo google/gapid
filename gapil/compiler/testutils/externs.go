@@ -21,6 +21,16 @@ import (
 )
 
 //#include "gapil/runtime/cc/runtime.h"
+//
+// typedef struct extern_a_args_t {
+//   uint64_t   i;
+//   float      f;
+//   GAPIL_BOOL b;
+// } extern_a_args;
+//
+// typedef struct extern_b_args_t {
+//   string* s;
+// } extern_b_args;
 import "C"
 
 var (
@@ -33,14 +43,23 @@ var (
 	ExternB func(*executor.Env, string) bool
 )
 
-//export test_extern_a
-func test_extern_a(ctx unsafe.Pointer, i uint64, f float32, b bool, out *uint64) {
-	env := executor.GetEnv(ctx)
-	*out = ExternA(env, i, f, b)
+func init() {
+	executor.RegisterGoExtern("test.extern_a", externA)
+	executor.RegisterGoExtern("test.extern_b", externB)
 }
 
-//export test_extern_b
-func test_extern_b(ctx unsafe.Pointer, s *C.string, out *bool) {
-	env := executor.GetEnv(ctx)
-	*out = ExternB(env, C.GoString((*C.char)((unsafe.Pointer)(&s.data[0]))))
+func externA(env *executor.Env, args, out unsafe.Pointer) {
+	a := (*C.extern_a_args)(args)
+	o := (*uint64)(out)
+	b := false
+	if a.b != 0 {
+		b = true
+	}
+	*o = ExternA(env, uint64(a.i), float32(a.f), b)
+}
+
+func externB(env *executor.Env, args, out unsafe.Pointer) {
+	a := (*C.extern_b_args)(args)
+	o := (*bool)(out)
+	*o = ExternB(env, C.GoString((*C.char)((unsafe.Pointer)(&a.s.data[0]))))
 }
