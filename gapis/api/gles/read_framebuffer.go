@@ -152,6 +152,12 @@ func postFBData(ctx context.Context,
 		panic("Found framebuffer attachment with both color and depth/stencil components!")
 	}
 
+	// Error out early if trying to read depth data on GLES 2.
+	if hasDepth && version.IsES && version.Major == 2 {
+		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrDepthBufferNotSupported()})
+		return
+	}
+
 	bufferBits := GLbitfield(0)
 	if hasColor {
 		bufferBits |= GLbitfield_GL_COLOR_BUFFER_BIT
@@ -238,11 +244,11 @@ func postFBData(ctx context.Context,
 		t.glBindFramebuffer_Read(ctx, framebufferID)
 	}
 
-	if u, t := getReadPixelsFormat(version, unsizedFormat, ty); unsizedFormat != u || ty != t {
+	if u, t, o := getReadPixelsFormat(version, unsizedFormat, ty); unsizedFormat != u || ty != t {
 		// glReadPixels() cannot be called with the natural unsized-format and
 		// type of the framebuffer. Instead, fetch the framebuffer in a format
 		// that can be read, and then convert the result to the expected format.
-		f, err := getImageFormat(u, t)
+		f, err := getImageFormat(o, t)
 		if err != nil {
 			res(nil, err)
 			return
@@ -266,13 +272,15 @@ func postFBData(ctx context.Context,
 	tmp := s.AllocOrPanic(ctx, uint64(imageSize))
 	defer tmp.Free()
 
-	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-		// TODO: We use Call() directly here because we are calling glReadPixels
-		// with depth formats which are not legal for GLES. Once we're replaying
-		// on-device again, we need to take a look at methods for reading the
-		// depth buffer.
+	if hasDepth && version.IsES {
+		copyDepthToColorGLES(ctx, dID, thread, s, out, t, fbai.format, inW, inH)
+	}
 
+	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.ReserveMemory(tmp.Range())
+
+		// We use Call() directly here because on host replay, we are calling
+		// glReadPixels with depth formats which are not legal for GLES.
 		cb.GlReadPixels(0, 0, GLsizei(outW), GLsizei(outH), unsizedFormat, ty, tmp.Ptr()).
 			Call(ctx, s, b)
 
@@ -305,12 +313,17 @@ func postFBData(ctx context.Context,
 
 // getReadPixelsFormat returns a unsized-format and type that is compatible with
 // glReadPixels() for the given framebuffer unsized-format and type.
+// The third return value is an "override" unsized-format that is compatible
+// with the returned format and should be used as the resuling image format.
+// The override is used for reading depth as color.
 // See the GLES spec: 4.3.2 Reading Pixels
-func getReadPixelsFormat(version *Version, uf GLenum, ty GLenum) (GLenum, GLenum) {
+func getReadPixelsFormat(version *Version, uf GLenum, ty GLenum) (GLenum, GLenum, GLenum) {
 	if version.IsES {
 		switch uf {
 		case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER:
 			uf = GLenum_GL_RGBA_INTEGER
+		case GLenum_GL_DEPTH_COMPONENT:
+			return GLenum_GL_RED, GLenum_GL_FLOAT, GLenum_GL_DEPTH_COMPONENT
 		default:
 			uf = GLenum_GL_RGBA
 		}
@@ -332,7 +345,7 @@ func getReadPixelsFormat(version *Version, uf GLenum, ty GLenum) (GLenum, GLenum
 			ty = GLenum_GL_FLOAT
 		}
 	}
-	return uf, ty
+	return uf, ty, uf
 }
 
 func mutateAndWriteEach(ctx context.Context, out transform.Writer, id api.CmdID, cmds ...api.Cmd) {

@@ -7,6 +7,10 @@ Unknown device.
 
 The framebuffer is not available at this point in the trace.
 
+# ERR_DEPTH_BUFFER_NOT_SUPPORTED
+
+Reading the depth buffer is not supported for GLES 2.0. Use desktop replay instead.
+
 # ERR_NO_TEXTURE_DATA
 
 No texture data has been associated with texture {{texture_name}} at this point in the trace.
