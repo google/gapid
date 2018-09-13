@@ -24,7 +24,7 @@ api_library(
 
 apic_compile(
     name = "api_compiled",
-    api = ":api",
+    apis = [":api"],
     emit = [
         "encode",
         "context",
