@@ -1016,6 +1016,25 @@ cmd void AbortInSub() {
 				err:  api.ErrCmdAborted{},
 			},
 		}, { /////////////////////////////////////////////////////
+			name: "Statements.Abort.InCmd.Cleanup",
+			src: `
+cmd void AbortInCmdCleanup() {
+	s := "this string must be released before throwing the exception"
+	abort
+}`,
+			cmds:     []cmd{{N: "AbortInCmdCleanup"}},
+			expected: expected{err: api.ErrCmdAborted{}},
+		}, { /////////////////////////////////////////////////////
+			name: "Statements.Abort.InSub.Cleanup",
+			src: `
+sub void call_abort() { abort }
+cmd void AbortInSubCleanup() {
+	s := "this string must be released in the exception cleanup"
+	call_abort()
+}`,
+			cmds:     []cmd{{N: "AbortInSubCleanup"}},
+			expected: expected{err: api.ErrCmdAborted{}},
+		}, { /////////////////////////////////////////////////////
 			name: "Statements.ArrayAssign",
 			src: `
 u32[5] i
@@ -1237,12 +1256,34 @@ cmd void MapRehash() {
 			cmds:     []cmd{{N: "MapRehash"}},
 			expected: expected{data: D([]uint32{17, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})},
 		}, { /////////////////////////////////////////////////////
+			name: "Statements.MapIteration",
+			src: `
+class S { u32 i }
+class M { map!(u32, S) m }
+u32[3] r
+cmd void MapIteration() {
+	m := M().m
+	m[1] = S(5)
+	m[2] = S(7)
+	m[3] = S(9)
+	for i, k, v in m {
+		r[0] = r[0] + as!u32(i)
+		r[1] = r[1] + k
+		r[2] = r[2] + v.i
+	}
+}`,
+			cmds:     []cmd{{N: "MapIteration"}},
+			expected: expected{data: D([]uint32{3, 6, 21})},
+		}, { /////////////////////////////////////////////////////
 			name: "Statements.Read",
 			src: `
 cmd void Read(u32* ptr) {
 	read(ptr[0:5])
 }`, // TODO: test read callbacks
-			cmds: []cmd{{N: "Read"}},
+			cmds: []cmd{{
+				N: "Read",
+				D: D(ptrA),
+			}},
 		}, { /////////////////////////////////////////////////////
 			name: "Statements.Return",
 			src: `
@@ -1444,7 +1485,11 @@ cmd void StringFromSubroutine() { x := ReturnAString() }
 			src: `
 class C { string s }
 C c
-cmd void StringInClass() { c = C("purr") }
+cmd void StringInClass() {
+	c = C("purr")
+	c = C("meow")
+	c = C("hiss")
+}
 `,
 			cmds:     []cmd{{N: "StringInClass"}},
 			expected: expected{numAllocs: 1},
@@ -1619,8 +1664,7 @@ cmd void Read(PodStruct* input) {
 			settings: compiler.Settings{
 				CaptureABI: device.AndroidARMv7a,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.Slice.Struct",
 			src: `
 class PodStruct {
@@ -1664,8 +1708,7 @@ cmd void Read(PodStruct* input) {
 			settings: compiler.Settings{
 				CaptureABI: device.AndroidARMv7a,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.StructWithStruct",
 			src: `
 class SizeStruct {
@@ -1702,8 +1745,7 @@ cmd void Read(StructInStruct* input) {
 			settings: compiler.Settings{
 				CaptureABI: device.AndroidARMv7a,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.Slice.StructWithStruct",
 			src: `
 class SizeStruct {
@@ -1751,8 +1793,7 @@ cmd void Read(StructInStruct* input) {
 			settings: compiler.Settings{
 				CaptureABI: device.AndroidARMv7a,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.Write.Struct",
 			src: `
 class PodStruct {
@@ -1760,11 +1801,16 @@ class PodStruct {
 	void* b
 	u16 c
 	u64 d
-	size  e
+	size e
+	int[4] f
 }
 
 cmd void Write(PodStruct* input, void* ptr) {
 	p := PodStruct(0x00010203, ptr, 0x0a0b, 0xbadf00dbadf00d00, as!size(0x31323334))
+	p.f[0] = as!int(1)
+	p.f[1] = as!int(2)
+	p.f[2] = as!int(3)
+	p.f[3] = as!int(4)
 	input[0] = p
 }
 `,
@@ -1776,14 +1822,14 @@ cmd void Write(PodStruct* input, void* ptr) {
 				buffers: buffers{
 					ptrA:      D(uint32(0x00010203), uint32(0xdeadbeef), uint16(0x0a0b)),
 					ptrA + 16: D(uint64(0xbadf00dbadf00d00), uint32(0x31323334)),
+					ptrA + 28: D(uint32(1), uint32(2), uint32(3), uint32(4)),
 				},
 			},
 			settings: compiler.Settings{
 				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.WriteSlice.Struct",
 			src: `
 class PodStruct {
@@ -1816,8 +1862,7 @@ cmd void Write(PodStruct* input, void* ptr) {
 				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.Write.StructWithStruct",
 			src: `
 class SizeStruct {
@@ -1849,8 +1894,7 @@ cmd void Read(StructInStruct* input) {
 				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.Write.Slice.StructWithStruct",
 			src: `
 class SizeStruct {
@@ -1886,8 +1930,7 @@ cmd void Read(StructInStruct* input) {
 				CaptureABI:             device.AndroidARMv7a,
 				WriteToApplicationPool: true,
 			},
-		},
-		{
+		}, { /////////////////////////////////////////////////////
 			name: "CaptureMemoryLayout.StructWithPointer",
 			src: `
 class SizeStruct {
