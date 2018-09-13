@@ -186,6 +186,10 @@ typedef struct gapil_runtime_callbacks_t {
   void* (*resolve_pool_data)(context*, pool*, uint64_t ptr, gapil_data_access,
                              uint64_t* size);
 
+  // call_extern calls the extern with the given name and arguments. If the
+  // extern has a return type, then the result should be be stored to res.
+  void (*call_extern)(context*, uint8_t* name, void* args, void* res);
+
   // stores the buffer at ptr of the given size into the database.
   // Writes the 20-byte database identifier of the stored data to id.
   void (*store_in_database)(context* ctx, void* ptr, uint64_t size,
@@ -284,6 +288,11 @@ DECL_GAPIL_CB(void*, gapil_resolve_pool_data, context*, pool*, uint64_t ptr,
 // Writes the 20-byte database identifier of the stored data to id.
 DECL_GAPIL_CB(void, gapil_store_in_database, context* ctx, void* ptr,
               uint64_t size, uint8_t* id_out);
+
+// gapil_call_extern calls the extern with the given name and arguments. If the
+// extern has a return type, then the result should be be stored to res.
+DECL_GAPIL_CB(void, gapil_call_extern, context*, uint8_t* name, void* args,
+              void* res);
 
 #undef DECL_GAPIL_CB
 

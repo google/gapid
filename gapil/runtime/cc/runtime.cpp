@@ -349,4 +349,11 @@ void gapil_store_in_database(context* ctx, void* ptr, uint64_t size,
   runtime_callbacks.store_in_database(ctx, ptr, size, id_out);
 }
 
+void gapil_call_extern(context* ctx, uint8_t* name, void* args, void* res) {
+  DEBUG_PRINT("gapil_call_extern(ctx: %p, name: %s, args: %p, res: %p)", ctx,
+              name, args, res);
+  GAPID_ASSERT(runtime_callbacks.call_extern != nullptr);
+  runtime_callbacks.call_extern(ctx, name, args, res);
+}
+
 }  // extern "C"

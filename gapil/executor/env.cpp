@@ -14,6 +14,17 @@
 
 #include "env.h"
 
+#include <stdio.h>
+#include <string>
+#include <unordered_map>
+
+namespace {
+
+std::unordered_map<std::string, gapil_extern*> externs;
+gapil_runtime_callbacks go_callbacks;
+
+}  // anonymous namespace
+
 extern "C" {
 
 context* create_context(TCreateContext* func, arena* a) { return func(a); }
@@ -29,8 +40,21 @@ uint32_t call(context* ctx, TFunc* fptr) {
   }
 }
 
+void call_extern(context* ctx, uint8_t* name, void* args, void* res) {
+  auto it = externs.find(reinterpret_cast<const char*>(name));
+  if (it != externs.end()) {
+    it->second(ctx, args, res);
+    return;
+  }
+  go_callbacks.call_extern(ctx, name, args, res);
+}
+
 void set_callbacks(callbacks* go_cbs) {
+  go_callbacks = *reinterpret_cast<gapil_runtime_callbacks*>(go_cbs);
+
   gapil_runtime_callbacks cbs = {0};
+  cbs.call_extern = &call_extern;
+
   cbs.apply_reads =
       reinterpret_cast<decltype(cbs.apply_reads)>(go_cbs->apply_reads),
   cbs.apply_writes =
@@ -40,6 +64,10 @@ void set_callbacks(callbacks* go_cbs) {
   cbs.store_in_database = reinterpret_cast<decltype(cbs.store_in_database)>(
       go_cbs->store_in_database),
   gapil_set_runtime_callbacks(&cbs);
+}
+
+void register_c_extern(const char* name, gapil_extern* fn) {
+  externs[name] = fn;
 }
 
 }  // extern "C"

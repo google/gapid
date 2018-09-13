@@ -27,6 +27,7 @@ func callbacks() *C.callbacks {
 		apply_reads:       C.applyReads,
 		apply_writes:      C.applyWrites,
 		resolve_pool_data: C.resolvePoolData,
+		call_extern:       C.callExtern,
 		store_in_database: C.storeInDatabase,
 	}
 }
@@ -49,4 +50,9 @@ func resolvePoolData(c *C.context, pool *C.pool, ptr C.uint64_t, access C.gapil_
 //export storeInDatabase
 func storeInDatabase(c *C.context, ptr unsafe.Pointer, size C.uint64_t, idOut *C.uint8_t) {
 	env(c).storeInDatabase(ptr, size, idOut)
+}
+
+//export callExtern
+func callExtern(c *C.context, name *C.uint8_t, args, res unsafe.Pointer) {
+	env(c).callExtern(name, args, res)
 }

@@ -30,6 +30,7 @@ import (
 )
 
 // #include "env.h"
+// #include <stdlib.h> // free
 import "C"
 
 // buffer is an allocation used to hold remapped memory.
@@ -274,4 +275,23 @@ func (e *Env) storeInDatabase(ptr unsafe.Pointer, size C.uint64_t, idOut *C.uint
 
 func init() {
 	C.set_callbacks(callbacks())
+}
+
+func (e *Env) callExtern(name *C.uint8_t, args, res unsafe.Pointer) {
+	n := C.GoString((*C.char)((unsafe.Pointer)(name)))
+	f, ok := externs[n]
+	if !ok {
+		panic(fmt.Sprintf("No handler for extern '%v'", n))
+	}
+	f(e, args, res)
+}
+
+func init() {
+	C.set_callbacks(callbacks())
+}
+
+func registerCExtern(name string, e unsafe.Pointer) {
+	n := C.CString(name)
+	C.register_c_extern(n, (*C.gapil_extern)(e))
+	C.free(unsafe.Pointer(n))
 }

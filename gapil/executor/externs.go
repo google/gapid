@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Google Inc.
+// Copyright (C) 2017 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gapil/runtime/cc/runtime.h"
+package executor
 
-void applyReads(context*);
-void applyWrites(context*);
-void* resolvePoolData(context*, pool*, uint64_t ptr, gapil_data_access,
-                      uint64_t* size);
-void callExtern(context*, uint8_t* name, void* args, void* res);
-void storeInDatabase(context*, void* ptr, uint64_t size, uint8_t* id_out);
+import (
+	"unsafe"
+)
+
+type Extern func(e *Env, args, res unsafe.Pointer)
+
+var externs = map[string]Extern{}
+
+// RegisterGoExtern registers the golang extern e.
+func RegisterGoExtern(name string, e Extern) {
+	externs[name] = e
+}
+
+// RegisterCExtern registers the c extern e.
+func RegisterCExtern(name string, e unsafe.Pointer) {
+	registerCExtern(name, e)
+}
