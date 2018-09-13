@@ -671,7 +671,7 @@ vkCmdBindDescriptorSetsArgs {
 }
 
 sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
-   _ = PipelineLayouts[args.Layout]
+  _ = PipelineLayouts[args.Layout]
   dynamic_offset_index := MutableU32(0)
 
   computeInfo := lastComputeInfo()
@@ -696,12 +696,14 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
       set := args.DescriptorSets[as!u32(i)]
       setObj := DescriptorSets[set]
       currentDescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
+      desc_set_buf_offsets := bufferBindingOffsets[as!u32(i)+args.FirstSet]
 
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the Bindings in order of the binding number.
       for j in (0 .. setObj.Layout.MaximumBinding + 1) {
         if j in setObj.Bindings {
+          desc_binding_buf_offsets := desc_set_buf_offsets[as!u32(j)]
           binding := setObj.Bindings[j]
           for k in (0 .. len(binding.BufferBinding)) {
             bufferBinding := binding.BufferBinding[as!u32(k)]
@@ -718,34 +720,12 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
               default:
                 dynamic_offset_index.Val
             }
-            bufferBindingOffsets[as!u32(i)][as!u32(j)][as!u32(k)] = binding_offset
-            if (bufferBinding.Buffer in Buffers) {
-              bufferObject := Buffers[bufferBinding.Buffer]
-              readMemoryInBuffer(bufferObject, binding_offset, bufferBinding.Range)
-            }
+            desc_binding_buf_offsets[as!u32(k)] = binding_offset
           }
-          for k in (0 .. len(binding.BufferViewBindings)) {
-            buffer_view := binding.BufferViewBindings[as!u32(k)]
-            if (buffer_view != as!VkBufferView(0)) {
-              buffer_view_object := BufferViews[buffer_view]
-              readMemoryInBuffer(buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
-            }
-          }
-          for k in (0 .. len(binding.ImageBinding)) {
-            imageBinding := binding.ImageBinding[as!u32(k)]
-            _ = Samplers[imageBinding.Sampler]
-            if (imageBinding.ImageView != as!VkImageView(0)) {
-              if imageBinding.ImageView in ImageViews {
-                imageViewObj := ImageViews[imageBinding.ImageView]
-                imageObj := imageViewObj.Image
-                rng := imageViewObj.SubresourceRange
-                readImageSubresource(imageObj, rng)
-                updateImageQueue(imageObj, rng)
-              }
-            }
-          }
+          desc_set_buf_offsets[as!u32(j)] = desc_binding_buf_offsets
         }
       }
+      bufferBindingOffsets[as!u32(i)+args.FirstSet] = desc_set_buf_offsets
     }
   }
 }
