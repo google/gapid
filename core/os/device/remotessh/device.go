@@ -121,12 +121,12 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	}
 
 	if len(auths) == 0 {
-		return nil, fmt.Errorf("No valid authentication method for SSH connection %s", c.Name)
+		return nil, log.Errf(ctx, nil, "No valid authentication method for SSH connection %s", c.Name)
 	}
 
 	hosts, err := knownhosts.New(c.KnownHosts)
 	if err != nil {
-		return nil, fmt.Errorf("Could not read known hosts %v", err)
+		return nil, log.Errf(ctx, err, "Could not read known hosts")
 	}
 
 	sshConfig := &ssh.ClientConfig{
@@ -137,7 +137,7 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 
 	connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), sshConfig)
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Dial tcp: %s:%d with sshConfig: %v failed", c.Host, c.Port, sshConfig)
 	}
 	env := shell.NewEnv()
 
@@ -179,22 +179,22 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	}
 
 	if kind == device.UnknownOS {
-		return nil, fmt.Errorf("Could not determine unix type")
+		return nil, log.Errf(ctx, nil, "Could not determine unix type")
 	}
 	b.os = kind
 	dir, cleanup, err := b.MakeTempDir(ctx)
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Could not make temporary directory")
 	}
 	defer cleanup(ctx)
 
 	localDeviceInfo, err := layout.DeviceInfo(ctx, b.os)
 	if err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Could not get device info")
 	}
 
 	if err = b.PushFile(ctx, localDeviceInfo.System(), dir+"/device-info"); err != nil {
-		return nil, err
+		return nil, log.Errf(ctx, err, "Error running: './device-info'")
 	}
 
 	stderr := bytes.Buffer{}
