@@ -22,6 +22,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
@@ -214,15 +215,19 @@ func rescaleBytes(ctx context.Context, data []byte, max int) {
 }
 
 func (verb *screenshotVerb) getAttachment(ctx context.Context) (api.FramebufferAttachment, error) {
-	switch verb.Attachment {
-	case 0:
+	switch strings.ToLower(verb.Attachment) {
+	case "", "color", "color0", "c0", "c", "0":
 		return api.FramebufferAttachment_Color0, nil
-	case 1:
+	case "color1", "c1", "1":
 		return api.FramebufferAttachment_Color1, nil
-	case 2:
+	case "color2", "c2", "2":
 		return api.FramebufferAttachment_Color2, nil
-	case 3:
+	case "color3", "c3", "3":
 		return api.FramebufferAttachment_Color3, nil
+	case "depth", "d":
+		return api.FramebufferAttachment_Depth, nil
+	case "stencil", "s":
+		return api.FramebufferAttachment_Stencil, nil
 	default:
 		return 0, log.Errf(ctx, nil, "Invalid color attachment %v", verb.Attachment)
 	}
