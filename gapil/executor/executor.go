@@ -15,7 +15,7 @@
 // Package executor provides an interface for executing compiled API programs.
 package executor
 
-// #include "env.h"
+//#include "gapil/runtime/cc/runtime.h"
 import "C"
 
 import (

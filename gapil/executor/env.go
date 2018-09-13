@@ -32,11 +32,6 @@ import (
 // #include "env.h"
 import "C"
 
-func init() {
-	// Setup the gapil runtime environment.
-	C.set_callbacks()
-}
-
 // buffer is an allocation used to hold remapped memory.
 type buffer struct {
 	rng   memory.Range
@@ -230,9 +225,7 @@ func (e *Env) applyObservations(l []api.CmdObservation) {
 	}
 }
 
-//export gapil_apply_reads
-func gapil_apply_reads(c *C.context) {
-	e := env(c)
+func (e *Env) applyReads() {
 	if extras := e.cmd.Extras(); extras != nil {
 		if observations := extras.Observations(); observations != nil {
 			e.applyObservations(observations.Reads)
@@ -240,9 +233,7 @@ func gapil_apply_reads(c *C.context) {
 	}
 }
 
-//export gapil_apply_writes
-func gapil_apply_writes(c *C.context) {
-	e := env(c)
+func (e *Env) applyWrites() {
 	if extras := e.cmd.Extras(); extras != nil {
 		if observations := extras.Observations(); observations != nil {
 			e.applyObservations(observations.Writes)
@@ -250,8 +241,7 @@ func gapil_apply_writes(c *C.context) {
 	}
 }
 
-//export pool_data_resolver
-func pool_data_resolver(c *C.context, pool *C.pool, ptr C.uint64_t, access C.gapil_data_access, len *C.uint64_t) unsafe.Pointer {
+func (e *Env) resolvePoolData(pool *C.pool, ptr C.uint64_t, access C.gapil_data_access, len *C.uint64_t) unsafe.Pointer {
 	if pool != nil {
 		if ptr > pool.size {
 			panic(fmt.Errorf("%v overflows pool buffer %v", ptr, pool.size))
@@ -263,7 +253,6 @@ func pool_data_resolver(c *C.context, pool *C.pool, ptr C.uint64_t, access C.gap
 	}
 
 	// Application pool
-	e := env(c)
 	b := e.buffers.find(uint64(ptr))
 	offset := uint64(ptr) - b.rng.Base
 	if len != nil {
@@ -272,10 +261,8 @@ func pool_data_resolver(c *C.context, pool *C.pool, ptr C.uint64_t, access C.gap
 	return (unsafe.Pointer)(uintptr(b.alloc) + uintptr(offset))
 }
 
-//export database_storer
-func database_storer(c *C.context, ptr unsafe.Pointer, size C.uint64_t, idOut *C.uint8_t) {
-	env := GetEnv((unsafe.Pointer)(c))
-	ctx := env.Context()
+func (e *Env) storeInDatabase(ptr unsafe.Pointer, size C.uint64_t, idOut *C.uint8_t) {
+	ctx := e.Context()
 	sli := slice.Bytes(ptr, uint64(size))
 	id, err := database.Store(ctx, sli)
 	if err != nil {
@@ -283,4 +270,8 @@ func database_storer(c *C.context, ptr unsafe.Pointer, size C.uint64_t, idOut *C
 	}
 	out := slice.Bytes((unsafe.Pointer)(idOut), 20)
 	copy(out, id[:])
+}
+
+func init() {
+	C.set_callbacks(callbacks())
 }

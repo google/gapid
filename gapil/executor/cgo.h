@@ -14,28 +14,8 @@
 
 #include "gapil/runtime/cc/runtime.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif  // __cplusplus
-
-typedef context*(TCreateContext)(arena*);
-typedef void(TDestroyContext)(context*);
-typedef uint32_t(TFunc)(void* ctx);
-
-// Implemented in env.cpp
-context* create_context(TCreateContext* func, arena* a);
-void destroy_context(TDestroyContext* func, context* ctx);
-uint32_t call(context* ctx, TFunc* func);
-
-typedef struct callbacks_t {
-  void* apply_reads;
-  void* apply_writes;
-  void* resolve_pool_data;
-  void* store_in_database;
-} callbacks;
-
-void set_callbacks(callbacks*);
-
-#ifdef __cplusplus
-}  // extern "C"
-#endif  // __cplusplus
+void applyReads(context*);
+void applyWrites(context*);
+void* resolvePoolData(context*, pool*, uint64_t ptr, gapil_data_access,
+                      uint64_t* size);
+void storeInDatabase(context*, void* ptr, uint64_t size, uint8_t* id_out);
