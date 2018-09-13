@@ -283,7 +283,8 @@ func (c *C) Build(f *codegen.Function, do func(*S)) {
 			}
 		}
 
-		s.enter(do)
+		do(s)
+		s.exit()
 	}))
 }
 
