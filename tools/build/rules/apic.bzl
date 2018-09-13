@@ -26,6 +26,57 @@ def _apic_library_to_source(go, attr, source, merge):
     for t in attr.templates:
         merge(source, t)
 
+def _apic_binary_impl(ctx):
+    api = ctx.attr.api
+    apilist = api.includes.to_list()
+    generated = depset()
+
+    outputs = [ctx.new_file(ctx.label.name + ".bapi")]
+    generated += outputs
+
+    ctx.actions.run(
+        inputs = apilist,
+        outputs = outputs,
+        arguments = [
+            "binary",
+            "--search",
+            api_search_path(apilist),
+            "--output",
+            outputs[0].path,
+            api.main.path,
+        ],
+        mnemonic = "apic",
+        progress_message = "apic binary " + api.main.short_path,
+        executable = ctx.executable._apic,
+        use_default_shell_env = True,
+    )
+
+    return [
+        DefaultInfo(files = depset(generated)),
+    ]
+
+"""Adds an API binary rule"""
+apic_binary = rule(
+    _apic_binary_impl,
+    attrs = {
+        "api": attr.label(
+            allow_files = False,
+            mandatory = True,
+            providers = [
+                "main",
+                "includes",
+            ],
+        ),
+        "_apic": attr.label(
+            executable = True,
+            cfg = "host",
+            allow_files = True,
+            default = Label("//cmd/apic:apic"),
+        ),
+    },
+    fragments = ["cpp"],
+)
+
 def _apic_compile_impl(ctx):
     api = ctx.attr.api
     apiname = api.apiname
