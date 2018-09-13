@@ -522,6 +522,7 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
 }
 
 @indirect("VkDevice")
+@threadsafe
 cmd void vkUpdateDescriptorSets(
     VkDevice                    device,
     u32                         descriptorWriteCount,
@@ -732,6 +733,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdBindDescriptorSets(
     VkCommandBuffer        commandBuffer,
     VkPipelineBindPoint    pipelineBindPoint,
@@ -778,6 +780,7 @@ sub void dovkCmdPushConstants(ref!vkCmdPushConstantsArgs args) {
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdPushConstants(
     VkCommandBuffer    commandBuffer,
     VkPipelineLayout   layout,

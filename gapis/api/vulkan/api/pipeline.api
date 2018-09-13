@@ -50,6 +50,7 @@
 
 @threadSafety("system")
 @indirect("VkDevice")
+@threadsafe
 cmd VkResult vkCreatePipelineLayout(
     VkDevice                          device,
     const VkPipelineLayoutCreateInfo* pCreateInfo,
@@ -220,6 +221,7 @@ class CreatedGraphicsPipelines {
 }
 
 @indirect("VkDevice")
+@threadsafe
 cmd VkResult vkCreateGraphicsPipelines(
     VkDevice                            device,
     VkPipelineCache                     pipelineCache,
@@ -445,6 +447,7 @@ class CreatedComputePipelines {
 }
 
 @indirect("VkDevice")
+@threadsafe
 cmd VkResult vkCreateComputePipelines(
     VkDevice                           device,
     VkPipelineCache                    pipelineCache,
@@ -538,6 +541,7 @@ cmd void vkDestroyPipeline(
 }
 
 @indirect("VkDevice")
+@threadsafe
 cmd VkResult vkCreateShaderModule(
     VkDevice                        device,
     const VkShaderModuleCreateInfo* pCreateInfo,
@@ -660,6 +664,7 @@ sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdBindPipeline(
     VkCommandBuffer     commandBuffer,
     VkPipelineBindPoint pipelineBindPoint,
@@ -685,6 +690,7 @@ sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetViewport(
     VkCommandBuffer   commandBuffer,
     u32               firstViewport,
@@ -717,6 +723,7 @@ sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetScissor(
     VkCommandBuffer commandBuffer,
     u32             firstScissor,
@@ -748,6 +755,7 @@ sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetLineWidth(
     VkCommandBuffer commandBuffer,
     f32             lineWidth) {
@@ -772,6 +780,7 @@ sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetDepthBias(
     VkCommandBuffer commandBuffer,
     f32             depthBiasConstantFactor,
@@ -803,6 +812,7 @@ sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetBlendConstants(
               VkCommandBuffer commandBuffer,
     @readonly f32[4]          blendConstants) {
@@ -830,6 +840,7 @@ sub void dovkCmdSetDepthBounds(ref!vkCmdSetDepthBoundsArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetDepthBounds(
     VkCommandBuffer commandBuffer,
     f32             minDepthBounds,
@@ -856,6 +867,7 @@ sub void dovkCmdSetStencilCompareMask(ref!vkCmdSetStencilCompareMaskArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetStencilCompareMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
@@ -883,6 +895,7 @@ sub void dovkCmdSetStencilWriteMask(ref!vkCmdSetStencilWriteMaskArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetStencilWriteMask(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
@@ -910,6 +923,7 @@ sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetStencilReference(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,

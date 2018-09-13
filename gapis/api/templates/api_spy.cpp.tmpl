@@ -229,8 +229,8 @@
           observer->observeTimestamp();
         }
 
-        {{if (GetAnnotation $ "blocking")}}
-          unlock();
+        {{if (GetAnnotation $ "threadsafe")}}
+        unlock();
         {{end}}
         {{/* Perform the call */}}
         {{if not (GetAnnotation $ "synthetic")}}
@@ -243,8 +243,8 @@
             mImports.{{Template "CmdName" $}}({{Template "C++.CallArguments" $}});
           {{end}}
         {{end}}
-        {{if (GetAnnotation $ "blocking")}}
-          lock(observer);
+        {{if (GetAnnotation $ "threadsafe")}}
+        lock(observer);
         {{end}}
 ¶
         {{if IsVoid $.Return.Type}}
