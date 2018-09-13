@@ -74,6 +74,7 @@ go_library(
         "links.go",
         "markers.go",
         "math.go",
+        "read_depth.go",
         "read_framebuffer.go",
         "read_texture.go",
         "replay.go",

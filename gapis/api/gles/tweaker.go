@@ -91,6 +91,14 @@ func (t *tweaker) glDisable(ctx context.Context, name GLenum) {
 	}
 }
 
+func (t *tweaker) glViewport(ctx context.Context, x, y GLint, w, h GLsizei) {
+	if o := t.c.Rasterization().Viewport(); !o.EqualTo(x, y, w, h) {
+		t.doAndUndo(ctx,
+			t.cb.GlViewport(x, y, w, h),
+			t.cb.GlViewport(o.X(), o.Y(), o.Width(), o.Height()))
+	}
+}
+
 func (t *tweaker) glDisableVertexAttribArray(ctx context.Context, l AttributeLocation) {
 	arr := t.c.Bound().VertexArray().VertexAttributeArrays().Get(l)
 	if !arr.IsNil() && arr.Enabled() == GLboolean_GL_TRUE {
