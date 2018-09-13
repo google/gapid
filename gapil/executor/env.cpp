@@ -29,9 +29,17 @@ uint32_t call(context* ctx, TFunc* fptr) {
   }
 }
 
-void set_callbacks() {
-  gapil_set_pool_data_resolver(&pool_data_resolver);
-  gapil_set_database_storer(&database_storer);
+void set_callbacks(callbacks* go_cbs) {
+  gapil_runtime_callbacks cbs = {0};
+  cbs.apply_reads =
+      reinterpret_cast<decltype(cbs.apply_reads)>(go_cbs->apply_reads),
+  cbs.apply_writes =
+      reinterpret_cast<decltype(cbs.apply_writes)>(go_cbs->apply_writes),
+  cbs.resolve_pool_data = reinterpret_cast<decltype(cbs.resolve_pool_data)>(
+      go_cbs->resolve_pool_data),
+  cbs.store_in_database = reinterpret_cast<decltype(cbs.store_in_database)>(
+      go_cbs->store_in_database),
+  gapil_set_runtime_callbacks(&cbs);
 }
 
 }  // extern "C"

@@ -160,6 +160,10 @@ typedef uint8_t GAPIL_BOOL;
 #define GAPIL_FALSE 0
 #define GAPIL_TRUE 1
 
+#ifndef DECL_GAPIL_CB
+#define DECL_GAPIL_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // Functions to be implemented by the user of the runtime                     //
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,40 +173,31 @@ typedef enum gapil_data_access_t {
   GAPIL_WRITE = 0x2,
 } gapil_data_access;
 
-// callback to access a pool's data.
-// If len is non-nil, it will be assigned the maximum number of bytes from the
-// returned pointer that can be accessed.
-typedef void* gapil_pool_data_resolver(context*, pool*, uint64_t ptr,
-                                       gapil_data_access, uint64_t* len);
+typedef struct gapil_runtime_callbacks_t {
+  // applys the read observations tagged to the current command into the memory
+  // model.
+  void (*apply_reads)(context*);
 
-// callback to store the buffer at ptr of the given size into the database.
-// Writes the 20-byte database identifier of the stored data to id.
-typedef void gapil_database_storer(context* ctx, void* ptr, uint64_t size,
-                                   uint8_t* id_out);
+  // applys the write observations tagged to the current command into the memory
+  // model.
+  void (*apply_writes)(context*);
 
-////////////////////////////////////////////////////////////////////////////////
-// Runtime API implemented by the compiler                                    //
-////////////////////////////////////////////////////////////////////////////////
+  // Returns a pointer to the pool's data starting at pointer for size bytes.
+  void* (*resolve_pool_data)(context*, pool*, uint64_t ptr, gapil_data_access,
+                             uint64_t* size);
 
-void gapil_string_reference(string*);
-void gapil_string_release(string*);
+  // stores the buffer at ptr of the given size into the database.
+  // Writes the 20-byte database identifier of the stored data to id.
+  void (*store_in_database)(context* ctx, void* ptr, uint64_t size,
+                            uint8_t* id_out);
 
-void gapil_slice_reference(slice);
-void gapil_slice_release(slice);
+} gapil_runtime_callbacks;
+
+void gapil_set_runtime_callbacks(gapil_runtime_callbacks*);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
-
-// sets the resolver callback used to return pointers to slice data.
-void gapil_set_pool_data_resolver(gapil_pool_data_resolver*);
-
-// sets the callback used to store data into the database.
-void gapil_set_database_storer(gapil_database_storer*);
-
-#ifndef DECL_GAPIL_CB
-#define DECL_GAPIL_CB(RETURN, NAME, ...) RETURN NAME(__VA_ARGS__)
-#endif
 
 // allocates memory using the arena with the given size and alignment.
 DECL_GAPIL_CB(void*, gapil_alloc, arena*, uint64_t size, uint64_t align);
@@ -279,7 +274,13 @@ DECL_GAPIL_CB(void, gapil_apply_reads, context*);
 // model.
 DECL_GAPIL_CB(void, gapil_apply_writes, context*);
 
-// Stores the buffer at ptr of the given size into the database.
+// Returns a pointer to access a pool's data.
+// If len is non-nil, it will be assigned the maximum number of bytes from the
+// returned pointer that can be accessed.
+DECL_GAPIL_CB(void*, gapil_resolve_pool_data, context*, pool*, uint64_t ptr,
+              gapil_data_access, uint64_t* size);
+
+// stores the buffer at ptr of the given size into the database.
 // Writes the 20-byte database identifier of the stored data to id.
 DECL_GAPIL_CB(void, gapil_store_in_database, context* ctx, void* ptr,
               uint64_t size, uint8_t* id_out);
