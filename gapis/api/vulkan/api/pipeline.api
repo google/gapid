@@ -780,6 +780,7 @@ sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetDepthBias(
     VkCommandBuffer commandBuffer,
     f32             depthBiasConstantFactor,
@@ -922,6 +923,7 @@ sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
 
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
 cmd void vkCmdSetStencilReference(
     VkCommandBuffer    commandBuffer,
     VkStencilFaceFlags faceMask,
