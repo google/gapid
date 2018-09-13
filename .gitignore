@@ -8,6 +8,7 @@
 # Single files
 /.gapid-config
 /.bazelrc
+/screenshot.png
 
 # General patterns
 *.gfxtrace
