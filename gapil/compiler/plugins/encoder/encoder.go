@@ -200,11 +200,15 @@ func (e *encoder) buildStateEncodeFunc() {
 			Parent: e.Root,
 			Name:   cases.Title(api.Name()) + "State",
 		}
+
+		stateTy := e.T.Globals.Field(api.Name()).Type
+		statePtr := e.T.Pointer(stateTy)
+
 		mgEncode := e.mgEncode(mgState)
 		e.C.Build(e.M.Function(
 			e.T.VoidPtr,
 			e.Mangler(mgEncode),
-			e.T.GlobalsPtr, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
+			statePtr, e.T.CtxPtr, e.T.Bool), func(s *compiler.S) {
 
 			this, isGroup := s.Parameter(0), s.Parameter(2)
 
