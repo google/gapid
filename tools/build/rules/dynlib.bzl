@@ -55,7 +55,7 @@ def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"]
         name = name + ".so",
         srcs = [":" + name + "_syms"],
         deps = deps + [name + ".ldscript"],
-        linkopts = linkopts + ["-Wl,--version-script", name + ".ldscript"],
+        linkopts = linkopts + ["-Wl,--version-script", "$(location " + name + ".ldscript)"],
         linkshared = 1,
         visibility = ["//visibility:private"],
         **kwargs
@@ -64,7 +64,7 @@ def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"]
         name = name + ".dylib",
         deps = deps + [name + "_osx.ldscript"],
         linkopts = linkopts + [
-            "-Wl,-exported_symbols_list", name + "_osx.ldscript",
+            "-Wl,-exported_symbols_list", "$(location " + name + "_osx.ldscript)",
             "-Wl,-dead_strip",
         ],
         linkshared = 1,
@@ -75,7 +75,7 @@ def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"]
         name = name + ".dll",
         srcs = [":" + name + "_syms"],
         deps = deps + [name + ".ldscript"],
-        linkopts = linkopts + ["-Wl,--version-script", name + ".ldscript"],
+        linkopts = linkopts + ["-Wl,--version-script", "$(location " + name + ".ldscript)"],
         linkshared = 1,
         visibility = ["//visibility:private"],
         **kwargs
@@ -102,7 +102,7 @@ def android_dynamic_library(name, exports = "", deps = [], linkopts = [], **kwar
         name = name,
         deps = deps + [name + ".ldscript"],
         linkopts = linkopts + [
-            "-Wl,--version-script", name + ".ldscript",
+            "-Wl,--version-script", "$(location " + name + ".ldscript)",
             "-Wl,--unresolved-symbols=report-all",
             "-Wl,--gc-sections",
             "-Wl,--exclude-libs,libgcc.a",
