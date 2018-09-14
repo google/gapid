@@ -296,6 +296,9 @@ inline PackEncoder::SPtr CallObserver::encoder() { return mEncoderStack.top(); }
 
 template <typename T, typename /* = enable_if_encodable<T> */>
 inline void CallObserver::enter(const T& obj) {
+  if (!mShouldTrace) {
+    return;
+  }
   auto group = reinterpret_cast<PackEncoder*>(obj.encode(this, true));
   GAPID_ASSERT_MSG(group != nullptr,
                    "encode() for group did not return sub-encoder");
@@ -304,6 +307,9 @@ inline void CallObserver::enter(const T& obj) {
 
 template <typename T, typename /* = enable_if_encodable<T> */>
 inline void CallObserver::encode(const T& obj) {
+  if (!mShouldTrace) {
+    return;
+  }
   auto group = obj.encode(this, false);
   GAPID_ASSERT_MSG(group == nullptr,
                    "encode() for non-group returned sub-encoder");
