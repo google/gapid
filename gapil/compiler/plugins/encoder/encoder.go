@@ -208,14 +208,15 @@ func (e *encoder) buildStateEncodeFunc() {
 
 			this, isGroup := s.Parameter(0), s.Parameter(2)
 
-			e.debug(s, "encoding state: this: %p, ctx: %p", this, s.Ctx)
+			e.debug(s, "encoding "+api.Name()+" state: this: %p, ctx: %p", this, s.Ctx)
 
 			typeID := s.Call(e.entities.state[api].encodeType, s.Ctx)
 
 			buf, delBuf := e.newBuf(s)
 
 			for i, g := range encodeableGlobals(api) {
-				ptr := this.Index(0, api.Name(), g.Name())
+				e.debug(s, "encoding "+api.Name()+" global '"+g.Name()+"'")
+				ptr := this.Index(0, g.Name())
 				e.encodeField(s, ptr, buf, serialization.StateStart+serialization.ProtoFieldID(i), g.Type)
 			}
 
@@ -490,7 +491,7 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 
 			s.If(newRef, func(s *compiler.S) {
 				count := mapPtr.Index(0, compiler.MapCount).Load()
-				e.debug(s, "encoding map at %p: cnt: %d, cap: %d, refcount: %d",
+				e.debug(s, "encoding map '"+ty.Name()+"' at %p: cnt: %d, cap: %d, refcount: %d",
 					mapPtr, count,
 					mapPtr.Index(0, compiler.MapCapacity).Load(),
 					mapPtr.Index(0, compiler.MapRefCount).Load())
@@ -517,11 +518,11 @@ func (e *encoder) encodeValue(s *compiler.S, ptr, buf *codegen.Value, ty semanti
 					writeKey, flushKey := writer(ty.KeyType, serialization.MapKey)
 
 					e.IterateMap(s, mapPtr, semantic.Uint32Type, func(i, k, v *codegen.Value) {
-						e.debug(s, "encoding map val %d", i.Load())
+						e.debug(s, "encoding map '"+ty.Name()+"' val %d", i.Load())
 						writeVal(v)
 					})
 					e.IterateMap(s, mapPtr, semantic.Uint32Type, func(i, k, v *codegen.Value) {
-						e.debug(s, "encoding map key %d", i.Load())
+						e.debug(s, "encoding map '"+ty.Name()+"' key %d", i.Load())
 						writeKey(k)
 					})
 
