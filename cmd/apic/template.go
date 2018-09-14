@@ -51,19 +51,22 @@ type templateVerb struct {
 }
 
 func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	api, mappings, err := resolve(ctx, v.Search, flags, resolver.Options{
-		ExtractCalls:   true,
-		RemoveDeadCode: true,
-	})
-
-	if err != nil {
-		return err
-	}
 	args := flags.Args()
 	if len(args) < 2 {
 		app.Usage(ctx, "Missing template file")
 		return nil
 	}
+
+	apis, mappings, err := resolve(ctx, args[0:1], v.Search, resolver.Options{
+		ExtractCalls:   true,
+		RemoveDeadCode: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	api := apis[0]
+
 	if v.Gopath != "" {
 		build.Default.GOPATH = filepath.FromSlash(v.Gopath)
 	}
@@ -81,7 +84,7 @@ func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 	if err := f.Include(mainTemplate); err != nil {
-		return fmt.Errorf("%s: %s\n", mainTemplate, err)
+		return fmt.Errorf("%s: %s", mainTemplate, err)
 	}
 	return nil
 }
