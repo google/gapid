@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapil/bapi"
 	"github.com/google/gapid/gapil/resolver"
+	"github.com/google/gapid/gapil/semantic"
 )
 
 func init() {
@@ -39,11 +40,11 @@ type binaryVerb struct {
 }
 
 func (v *binaryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	apis, mappings, err := resolve(ctx, flags.Args(), v.Search, resolver.Options{})
+	api, mappings, err := resolve(ctx, v.Search, flags, resolver.Options{})
 	if err != nil {
 		return err
 	}
-	data, err := bapi.Encode(apis, mappings)
+	data, err := bapi.Encode([]*semantic.API{api}, mappings)
 	if err != nil {
 		return err
 	}
