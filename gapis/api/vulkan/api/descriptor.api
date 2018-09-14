@@ -746,7 +746,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
             // If the offset has changed, then we may have to reprocess this
             // descriptor set.
             if hasBeenRead.b {
-              if !(as!u32(j) in existingOffsets[as!u32(i)]) {
+              if !(as!u32(j) in existingOffsets) {
                 hasBeenRead.b = false
               } else if !(as!u32(k) in existingOffsets[as!u32(j)]) {
                 hasBeenRead.b = false
