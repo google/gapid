@@ -110,31 +110,33 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
 sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets, bool processImages) {
   if descriptor_set != null {
     for i in (0 .. len(descriptor_set.Bindings)) {
-      binding := descriptor_set.Bindings[as!u32(i)]
-      switch binding.BindingType {
-        case
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            if as!u32(i) in bufferBindingOffsets {
-              readMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets[as!u32(i)])
-            } else {
-              readMemoryInBufferBindings(binding.BufferBinding, null)
+      if (descriptor_set.Bindings[as!u32(i)] != null) {
+        binding := descriptor_set.Bindings[as!u32(i)]
+        switch binding.BindingType {
+          case
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+              if as!u32(i) in bufferBindingOffsets {
+                readMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets[as!u32(i)])
+              } else {
+                readMemoryInBufferBindings(binding.BufferBinding, null)
+              }
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+              readMemoryInBufferViewBindings(binding.BufferViewBindings)
+          case
+            VK_DESCRIPTOR_TYPE_SAMPLER,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            if (processImages) {
+              readMemoryInImageBindings(binding.ImageBinding)
             }
-        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-          VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            readMemoryInBufferViewBindings(binding.BufferViewBindings)
-        case
-          VK_DESCRIPTOR_TYPE_SAMPLER,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-          VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-          VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-          if (processImages) {
-            readMemoryInImageBindings(binding.ImageBinding)
-          }
-        default: {}
+          default: {}
+        }
       }
     }
   }
@@ -201,23 +203,25 @@ sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBi
 sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets, bool processImages) {
   if descriptor_set != null {
     for i in (0 .. len(descriptor_set.Bindings)) {
-      binding := descriptor_set.Bindings[as!u32(i)]
-      switch binding.BindingType {
-        case
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            if as!u32(i) in bufferBindingOffsets {
-              writeMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets[as!u32(i)])
-            } else {
-              writeMemoryInBufferBindings(binding.BufferBinding, null)
+      if (descriptor_set.Bindings[as!u32(i)] != null) {
+        binding := descriptor_set.Bindings[as!u32(i)]
+        switch binding.BindingType {
+          case
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+              if as!u32(i) in bufferBindingOffsets {
+                writeMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets[as!u32(i)])
+              } else {
+                writeMemoryInBufferBindings(binding.BufferBinding, null)
+              }
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+              writeMemoryInBufferViewBindings(binding.BufferViewBindings)
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            if (processImages) {
+              writeMemoryInImageBindings(binding.ImageBinding)
             }
-        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            writeMemoryInBufferViewBindings(binding.BufferViewBindings)
-        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          if (processImages) {
-            writeMemoryInImageBindings(binding.ImageBinding)
-          }
-        default: {}
+          default: {}
+        }
       }
     }
   }
