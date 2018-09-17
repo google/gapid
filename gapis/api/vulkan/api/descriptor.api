@@ -223,7 +223,7 @@ cmd VkResult vkResetDescriptorPool(
   @unused VkDescriptorSet  VulkanHandle
   @unused VkDescriptorPool DescriptorPool
   // Map from a binding number to its bound array of buffers.
-  map!(u32, DescriptorBinding)      Bindings
+  map!(u32, ref!DescriptorBinding)      Bindings
   ref!DescriptorSetLayoutObject     Layout
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
@@ -257,7 +257,7 @@ cmd VkResult vkAllocateDescriptorSets(
       for j in (0 .. object.Layout.MaximumBinding + 1) {
         if j in object.Layout.Bindings {
           binding := object.Layout.Bindings[j]
-          descriptorBinding := DescriptorBinding(
+          descriptorBinding := new!DescriptorBinding(
             BindingType: binding.Type)
           imageInfos := descriptorBinding.ImageBinding
           bufferInfos := descriptorBinding.BufferBinding
@@ -699,8 +699,6 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
   
   for i in (0 .. len(args.DescriptorSets)) {
     if args.DescriptorSets[as!u32(i)] in DescriptorSets {
-      
-
       set := args.DescriptorSets[as!u32(i)]
       setObj := DescriptorSets[set]
       currentDescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
@@ -722,7 +720,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
       // binding index, and then array index, we have to loop over all
       // of the Bindings in order of the binding number.
       for j in (0 .. setObj.Layout.MaximumBinding + 1) {
-        if j in setObj.Bindings {
+        if (j in setObj.Bindings) && (setObj.Bindings[j] != null) {
           binding := setObj.Bindings[j]
           for k in (0 .. len(binding.BufferBinding)) {
             bufferBinding := binding.BufferBinding[as!u32(k)]
