@@ -432,7 +432,8 @@ cmd VkResult vkCreateGraphicsPipelines(
     pipeline := ?
     pipelines[i] = pipeline
     createdPipelines.Objects[i].VulkanHandle = pipeline
-    if (createdPipelines.Objects[i].BasePipelineIndex != -1) {
+    if ((createdPipelines.Objects[i].BasePipelineIndex != -1) &&
+      ((as!u32(createdPipelines.Objects[i].Flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != as!u32(0))) {
       createdPipelines.Objects[i].BasePipeline = pipelines[createdPipelines.Objects[i].BasePipelineIndex]
     }
     GraphicsPipelines[pipeline] = createdPipelines.Objects[i]
