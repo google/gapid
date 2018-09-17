@@ -142,7 +142,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 		transforms.Add(t)
 	}
 	if isTrivial {
-		return cmds[0:id], nil
+		return cmds[0 : id+1], nil
 	}
 	w := &writer{rc.NewState(ctx), nil}
 	transforms.Transform(ctx, cmds, w)
