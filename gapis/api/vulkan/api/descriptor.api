@@ -759,17 +759,6 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
               }
             }
             desc_binding_buf_offsets[as!u32(k)] = binding_offset
-            if (bufferBinding.Buffer in Buffers) {
-              bufferObject := Buffers[bufferBinding.Buffer]
-              readMemoryInBuffer(bufferObject, binding_offset, bufferBinding.Range)
-            }
-          }
-          for k in (0 .. len(binding.BufferViewBindings)) {
-            buffer_view := binding.BufferViewBindings[as!u32(k)]
-            if (buffer_view != as!VkBufferView(0)) {
-              buffer_view_object := BufferViews[buffer_view]
-              readMemoryInBuffer(buffer_view_object.Buffer, buffer_view_object.Offset, buffer_view_object.Range)
-            }
           }
           desc_set_buf_offsets[as!u32(j)] = desc_binding_buf_offsets
         }
