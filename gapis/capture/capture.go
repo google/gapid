@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/google/gapid/core/app/analytics"
@@ -219,10 +220,10 @@ func ResolveFromPath(ctx context.Context, p *path.Capture) (*Capture, error) {
 }
 
 // Import imports the capture by name and data, and stores it in the database.
-func Import(ctx context.Context, name string, data []byte) (*path.Capture, error) {
-	dataID, err := database.Store(ctx, data)
+func Import(ctx context.Context, name string, src Source) (*path.Capture, error) {
+	dataID, err := database.Store(ctx, src)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to store capture data: %v", err)
+		return nil, fmt.Errorf("Unable to store capture data source: %v", err)
 	}
 	id, err := database.Store(ctx, &Record{
 		Name: name,
@@ -266,6 +267,40 @@ func (c *Capture) Export(ctx context.Context, w io.Writer) error {
 	return e.encode(ctx)
 }
 
+// Source represents the source of capture data.
+type Source interface {
+	// ReadCloser returns an io.ReadCloser instance, from which capture data
+	// can be read and closed after reading.
+	ReadCloser() (io.ReadCloser, error)
+}
+
+// blobReadCloser implements the Source interface, it represents the capture
+// data in raw byte form.
+type blobReadCloser struct {
+	*bytes.Reader
+}
+
+// Close implements the io.ReadCloser interface.
+func (*blobReadCloser) Close() error {
+	return nil
+}
+
+// ReadCloser implements the Source interface.
+func (b *Blob) ReadCloser() (io.ReadCloser, error) {
+	return &blobReadCloser{bytes.NewReader(b.GetData())}, nil
+}
+
+// ReadCloser implements the Source interface.
+func (f *File) ReadCloser() (io.ReadCloser, error) {
+	o, err := os.Open(f.GetPath())
+	if err != nil {
+		return nil, &service.ErrDataUnavailable{
+			Reason: messages.ErrFileCannotBeRead(),
+		}
+	}
+	return o, nil
+}
+
 func toProto(ctx context.Context, c *Capture) (*Record, error) {
 	buf := bytes.Buffer{}
 	if err := c.Export(ctx, &buf); err != nil {
@@ -289,7 +324,11 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	copy(dataID[:], r.Data)
 	data, err := database.Resolve(ctx, dataID)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to load capture data: %v", err)
+		return nil, fmt.Errorf("Unable to load capture data source: %v", err)
+	}
+	dataSrc, ok := data.(Source)
+	if !ok {
+		return nil, fmt.Errorf("Unable to load capture data source: Failed to resolve capture.Source")
 	}
 
 	stopTiming := analytics.SendTiming("capture", "deserialize")
@@ -313,7 +352,13 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	// which protoconv functions need to handle resources.
 	ctx = id.PutRemapper(ctx, d)
 
-	if err := pack.Read(ctx, bytes.NewReader(data.([]byte)), d, false); err != nil {
+	readCloser, err := dataSrc.ReadCloser()
+	if err != nil {
+		return nil, err
+	}
+	defer readCloser.Close()
+
+	if err := pack.Read(ctx, readCloser, d, false); err != nil {
 		switch err := errors.Cause(err).(type) {
 		case pack.ErrUnsupportedVersion:
 			log.E(ctx, "%v", err)
