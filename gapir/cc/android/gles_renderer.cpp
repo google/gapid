@@ -27,7 +27,7 @@ namespace {
 
 class GlesRendererImpl : public GlesRenderer {
  public:
-  GlesRendererImpl();
+  GlesRendererImpl(GlesRendererImpl* shared);
   virtual ~GlesRendererImpl() override;
 
   virtual Api* api() override;
@@ -48,14 +48,16 @@ class GlesRendererImpl : public GlesRenderer {
   Gles mApi;
 
   EGLContext mContext;
+  EGLContext mSharedContext;
   EGLSurface mSurface;
   EGLDisplay mDisplay;
 };
 
-GlesRendererImpl::GlesRendererImpl()
+GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared)
     : mBound(false),
       mNeedsResolve(true),
       mContext(EGL_NO_CONTEXT),
+      mSharedContext(shared == nullptr ? EGL_NO_CONTEXT : shared->mContext),
       mSurface(EGL_NO_SURFACE) {
   mDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
   EGLint error = eglGetError();
@@ -171,7 +173,7 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
       // clang-format on
   };
   mContext =
-      eglCreateContext(mDisplay, eglConfig, EGL_NO_CONTEXT, contextAttribList);
+      eglCreateContext(mDisplay, eglConfig, mSharedContext, contextAttribList);
   error = eglGetError();
   if (error != EGL_SUCCESS) {
     GAPID_FATAL("Failed to create EGL context: %d", error);
@@ -250,7 +252,8 @@ const char* GlesRendererImpl::version() {
 }  // anonymous namespace
 
 GlesRenderer* GlesRenderer::create(GlesRenderer* sharedContext) {
-  return new GlesRendererImpl();
+  return new GlesRendererImpl(
+      reinterpret_cast<GlesRendererImpl*>(sharedContext));
 }
 
 }  // namespace gapir
