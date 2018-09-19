@@ -45,7 +45,8 @@ func TestCaptureExportImport(t *testing.T) {
 		return
 	}
 
-	ip, err := capture.Import(ctx, "imported", buf.Bytes())
+	src := &capture.Blob{Data: buf.Bytes()}
+	ip, err := capture.Import(ctx, "imported", src)
 	if !assert.For(ctx, "capture.Import").ThatError(err).Succeeded() {
 		return
 	}
