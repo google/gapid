@@ -207,12 +207,20 @@ struct Options {
   int logLevel = LOG_LEVEL;
   const char* logPath = "logs/gapir.log";
 
+  enum ReplayMode {
+    kUnknown = 0,    // Can't determine replay type from arguments yet.
+    kConflict,       // Impossible combination of command line arguments.
+    kReplayServer,   // Run gapir as a server.
+    kReplayArchive,  // Replay an exported archive.
+  };
+  ReplayMode mode = kUnknown;
   bool wait_for_debugger = false;
   const char* cachePath = nullptr;
   const char* portArgStr = "0";
   const char* authTokenFile = nullptr;
   int idleTimeoutSec = 0;
   const char* replayArchive = nullptr;
+  const char* postbackDirectory = "";
   bool version = false;
 
   static Options Parse(int argc, const char* argv[]) {
@@ -220,21 +228,31 @@ struct Options {
 
     for (int i = 1; i < argc; i++) {
       if (strcmp(argv[i], "--replay-archive") == 0) {
+        opts.SetMode(kReplayArchive);
         if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --replay-archive <archive-dir>");
+          GAPID_FATAL("Usage: --replay-archive <archive-directory>");
         }
         opts.replayArchive = argv[++i];
+      } else if (strcmp(argv[i], "--postback-dir") == 0) {
+        opts.SetMode(kReplayArchive);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --postback-dir <output-directory>");
+        }
+        opts.postbackDirectory = argv[++i];
       } else if (strcmp(argv[i], "--auth-token-file") == 0) {
+        opts.SetMode(kReplayServer);
         if (i + 1 >= argc) {
           GAPID_FATAL("Usage: --auth-token-file <token-string>");
         }
         opts.authTokenFile = argv[++i];
       } else if (strcmp(argv[i], "--cache") == 0) {
+        opts.SetMode(kReplayServer);
         if (i + 1 >= argc) {
           GAPID_FATAL("Usage: --cache <cache-directory>");
         }
         opts.cachePath = argv[++i];
       } else if (strcmp(argv[i], "--port") == 0) {
+        opts.SetMode(kReplayServer);
         if (i + 1 >= argc) {
           GAPID_FATAL("Usage: --port <port_num>");
         }
@@ -271,6 +289,7 @@ struct Options {
         }
         opts.logPath = argv[++i];
       } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
+        opts.SetMode(kReplayServer);
         if (i + 1 >= argc) {
           GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
         }
@@ -285,6 +304,14 @@ struct Options {
     }
     return opts;
   }
+
+ private:
+  void SetMode(ReplayMode mode) {
+    if (this->mode != kUnknown && this->mode != mode) {
+      mode = kConflict;
+    }
+    this->mode = mode;
+  }
 };
 
 }  // namespace
@@ -295,7 +322,7 @@ static int replayArchive(Options opts) {
   GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
   MemoryManager memoryManager(memorySizes);
   std::string payloadPath = std::string(opts.replayArchive) + "/payload.bin";
-  gapir::ReplayArchive conn(payloadPath);
+  gapir::ReplayArchive conn(payloadPath, opts.postbackDirectory);
   std::unique_ptr<ResourceProvider> resourceProvider =
       ResourceDiskCache::create(nullptr, opts.replayArchive);
   std::unique_ptr<Context> context = Context::create(
@@ -383,7 +410,10 @@ int main(int argc, const char* argv[]) {
   if (opts.version) {
     printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
     return EXIT_SUCCESS;
-  } else if (opts.replayArchive) {
+  } else if (opts.mode == Options::kConflict) {
+    GAPID_ERROR("Argument conflicts.");
+    return EXIT_FAILURE;
+  } else if (opts.mode == Options::kReplayArchive) {
     return replayArchive(opts);
   } else {
     return startServer(opts);
