@@ -21,6 +21,9 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type exportReplayVerb struct{ ExportReplayFlags }
@@ -61,7 +64,44 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		return err
 	}
 
-	if err := client.ExportReplay(ctx, capturePath, device, verb.Out); err != nil {
+	var fbreqs []*service.GetFramebufferAttachmentRequest
+	if verb.OutputFrames {
+		filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capturePath)
+		if err != nil {
+			return log.Err(ctx, err, "Couldn't get filter")
+		}
+
+		requestEvents := path.Events{
+			Capture:     capturePath,
+			LastInFrame: true,
+			Filter:      filter,
+		}
+
+		// Get the end-of-frame events.
+		eofEvents, err := getEvents(ctx, client, &requestEvents)
+		if err != nil {
+			return log.Err(ctx, err, "Couldn't get frame events")
+		}
+
+		for _, e := range eofEvents {
+			fbreqs = append(fbreqs, &service.GetFramebufferAttachmentRequest{
+				ReplaySettings: &service.ReplaySettings{
+					Device: device,
+					DisableReplayOptimization: true,
+				},
+				After:      e.Command,
+				Attachment: api.FramebufferAttachment_Color0,
+				Settings:   &service.RenderSettings{},
+				Hints:      nil,
+			})
+		}
+	}
+
+	opts := &service.ExportReplayOptions{
+		GetFramebufferAttachmentRequests: fbreqs,
+	}
+
+	if err := client.ExportReplay(ctx, capturePath, device, verb.Out, opts); err != nil {
 		return log.Err(ctx, err, "Failed to export replay")
 	}
 	return nil

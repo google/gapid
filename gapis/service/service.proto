@@ -288,11 +288,19 @@ message SaveCaptureResponse {
   Error error = 1;
 }
 
+message ExportReplayOptions {
+  path.Report report = 1;
+  repeated GetFramebufferAttachmentRequest get_framebuffer_attachment_requests =
+      2;
+}
+
 message ExportReplayRequest {
   path.Capture capture = 1;
   string path = 2;
   path.Device device = 3;
+  ExportReplayOptions options = 4;
 }
+
 message ExportReplayResponse {
   Error error = 1;
 }

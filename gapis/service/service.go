@@ -79,7 +79,7 @@ type Service interface {
 	SaveCapture(ctx context.Context, c *path.Capture, path string) error
 
 	// ExportReplay saves replay commands and assets to file.
-	ExportReplay(ctx context.Context, c *path.Capture, d *path.Device, path string) error
+	ExportReplay(ctx context.Context, c *path.Capture, d *path.Device, path string, opts *ExportReplayOptions) error
 
 	// DCECapture returns a new capture containing only the requested commands and their dependencies.
 	DCECapture(ctx context.Context, capture *path.Capture, commands []*path.Command) (*path.Capture, error)

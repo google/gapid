@@ -306,17 +306,16 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		code := uint32(0xe11de11d)
 		b.Push(value.U32(code))
 		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
-			if err != nil {
-				t.res = nil
-				log.E(ctx, "Flush did not get expected EOS code: '%v'", err)
-				return
-			}
-			if r.Uint32() != code {
-				log.E(ctx, "Flush did not get expected EOS code")
-				return
-			}
 			for _, res := range t.res {
-				res(t.issues, nil)
+				res.Do(func() (interface{}, error) {
+					if err != nil {
+						return nil, log.Err(ctx, err, "Flush did not get expected EOS code: '%v'")
+					}
+					if r.Uint32() != code {
+						return nil, log.Err(ctx, nil, "Flush did not get expected EOS code")
+					}
+					return t.issues, nil
+				})
 			}
 		})
 		return nil

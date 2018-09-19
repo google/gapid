@@ -37,7 +37,10 @@ const (
 	defaultBatchDelay    = time.Millisecond * 100
 )
 
+// Manager executes replay requests.
 type Manager interface {
+	// Replay requests that req is to be performed on the device described by
+	// intent, using the capture described by intent.
 	Replay(
 		ctx context.Context,
 		intent Intent,
