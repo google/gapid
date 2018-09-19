@@ -43,7 +43,7 @@ type QueryIssues interface {
 	QueryIssues(
 		ctx context.Context,
 		intent Intent,
-		mgr *Manager,
+		mgr Manager,
 		displayToSurface bool,
 		hints *service.UsageHints) ([]Issue, error)
 }
@@ -55,7 +55,7 @@ type QueryFramebufferAttachment interface {
 	QueryFramebufferAttachment(
 		ctx context.Context,
 		intent Intent,
-		mgr *Manager,
+		mgr Manager,
 		after []uint64,
 		width, height uint32,
 		attachment api.FramebufferAttachment,
