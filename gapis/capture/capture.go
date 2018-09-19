@@ -281,13 +281,11 @@ type blobReadCloser struct {
 }
 
 // Close implements the io.ReadCloser interface.
-func (*blobReadCloser) Close() error {
-	return nil
-}
+func (blobReadCloser) Close() error { return nil }
 
 // ReadCloser implements the Source interface.
 func (b *Blob) ReadCloser() (io.ReadCloser, error) {
-	return &blobReadCloser{bytes.NewReader(b.GetData())}, nil
+	return blobReadCloser{bytes.NewReader(b.GetData())}, nil
 }
 
 // ReadCloser implements the Source interface.
