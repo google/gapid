@@ -43,140 +43,110 @@ class GlesRendererImpl : public GlesRenderer {
   void reset();
 
   Backbuffer mBackbuffer;
-  bool mBound;
   bool mNeedsResolve;
   Gles mApi;
 
+  EGLConfig mConfig;
   EGLContext mContext;
   EGLContext mSharedContext;
   EGLSurface mSurface;
   EGLDisplay mDisplay;
 };
 
+#define EGL_CHECK_ERROR(FORMAT, ...)                    \
+  do {                                                  \
+    EGLint err = eglGetError();                         \
+    if (err != EGL_SUCCESS) {                           \
+      GAPID_FATAL(FORMAT ": 0x%x", ##__VA_ARGS__, err); \
+    }                                                   \
+  } while (false)
+
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared)
-    : mBound(false),
-      mNeedsResolve(true),
+    : mNeedsResolve(false),
       mContext(EGL_NO_CONTEXT),
       mSharedContext(shared == nullptr ? EGL_NO_CONTEXT : shared->mContext),
       mSurface(EGL_NO_SURFACE) {
   mDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  EGLint error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_FATAL("Failed to get EGL display: %d", error);
-  }
+  EGL_CHECK_ERROR("Failed to get EGL display");
 
   eglInitialize(mDisplay, nullptr, nullptr);
-  error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_FATAL("Failed to initialize EGL: %d", error);
-  }
+  EGL_CHECK_ERROR("Failed to initialize EGL");
 
   eglBindAPI(EGL_OPENGL_ES_API);
-  error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_FATAL("Failed to bind EGL API: %d", error);
-  }
-
-  // Initialize with a default target.
-  setBackbuffer(Backbuffer(8, 8, core::gl::GL_RGBA8,
-                           core::gl::GL_DEPTH24_STENCIL8,
-                           core::gl::GL_DEPTH24_STENCIL8));
+  EGL_CHECK_ERROR("Failed to bind EGL API");
 }
 
 GlesRendererImpl::~GlesRendererImpl() {
-  reset();
+  unbind();
+
+  if (mContext != nullptr) {
+    eglDestroyContext(mDisplay, mContext);
+    EGL_CHECK_ERROR("Failed to destroy context %p", mContext);
+  }
+
+  if (mSurface != nullptr) {
+    eglDestroySurface(mDisplay, mSurface);
+    EGL_CHECK_ERROR("Failed to destroy surface %p", mSurface);
+  }
 
   eglTerminate(mDisplay);
-  EGLint error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_WARNING("Failed to terminate EGL: %d", error);
-  }
+  EGL_CHECK_ERROR("Failed to terminate EGL");
 
   eglReleaseThread();
-  error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_WARNING("Failed to release EGL thread: %d", error);
-  }
+  EGL_CHECK_ERROR("Failed to release EGL thread");
 }
 
 Api* GlesRendererImpl::api() { return &mApi; }
 
-void GlesRendererImpl::reset() {
-  unbind();
+void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
+  if (mBackbuffer == backbuffer) {
+    return;  // No change
+  }
 
+  if (mBackbuffer.format == backbuffer.format) {
+    // Only a resize is necessary
+    GAPID_INFO("Resizing renderer: %dx%d -> %dx%d", mBackbuffer.width,
+               mBackbuffer.height, backbuffer.width, backbuffer.height);
+  } else {
+    if (mContext != nullptr) {
+      GAPID_WARNING(
+          "Attempting to change format of renderer: [0x%x, 0x%x, 0x%x] -> "
+          "[0x%x, 0x%x, 0x%x]",
+          mBackbuffer.format.color, mBackbuffer.format.depth,
+          mBackbuffer.format.stencil, backbuffer.format.color,
+          backbuffer.format.depth, backbuffer.format.stencil);
+    }
+
+    // Find a supported EGL context config.
+    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
+    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
+    core::gl::getDepthBits(backbuffer.format.depth, d);
+    core::gl::getStencilBits(backbuffer.format.stencil, s);
+
+    const int configAttribList[] = {
+        // clang-format off
+        EGL_RED_SIZE, r,
+        EGL_GREEN_SIZE, g,
+        EGL_BLUE_SIZE, b,
+        EGL_ALPHA_SIZE, a,
+        EGL_BUFFER_SIZE, r+g+b+a,
+        EGL_DEPTH_SIZE, d,
+        EGL_STENCIL_SIZE, s,
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_NONE
+        // clang-format on
+    };
+    int one = 1;
+    eglChooseConfig(mDisplay, configAttribList, &mConfig, 1, &one);
+    EGL_CHECK_ERROR("Failed to choose EGL config");
+  }
+
+  // Delete existing surface.
   if (mSurface != EGL_NO_SURFACE) {
     eglDestroySurface(mDisplay, mSurface);
-    EGLint error = eglGetError();
-    if (error != EGL_SUCCESS) {
-      GAPID_WARNING("Failed to destroy EGL surface: %d", error);
-    }
+    EGL_CHECK_ERROR("Failed to destroy EGL surface %p", mSurface);
     mSurface = EGL_NO_SURFACE;
-  }
-
-  if (mContext != EGL_NO_CONTEXT) {
-    eglDestroyContext(mDisplay, mContext);
-    EGLint error = eglGetError();
-    if (error != EGL_SUCCESS) {
-      GAPID_WARNING("Failed to destroy EGL context: %d", error);
-    }
-    mContext = EGL_NO_CONTEXT;
-  }
-
-  mBackbuffer = Backbuffer();
-}
-
-void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
-  if (mContext != EGL_NO_CONTEXT && mBackbuffer == backbuffer) {
-    // No change
-    return;
-  }
-
-  // TODO: Check for and handle resizing path.
-
-  const bool wasBound = mBound;
-
-  reset();
-
-  int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-  core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
-  core::gl::getDepthBits(backbuffer.format.depth, d);
-  core::gl::getStencilBits(backbuffer.format.stencil, s);
-
-  // Find a supported EGL context config.
-  const int configAttribList[] = {
-      // clang-format off
-      EGL_RED_SIZE, r,
-      EGL_GREEN_SIZE, g,
-      EGL_BLUE_SIZE, b,
-      EGL_ALPHA_SIZE, a,
-      EGL_BUFFER_SIZE, r+g+b+a,
-      EGL_DEPTH_SIZE, d,
-      EGL_STENCIL_SIZE, s,
-      EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-      EGL_NONE
-      // clang-format on
-  };
-  int one = 1;
-  EGLConfig eglConfig;
-  eglChooseConfig(mDisplay, configAttribList, &eglConfig, 1, &one);
-  EGLint error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_FATAL("Failed to choose EGL config: %d", error);
-  }
-
-  // Create an EGL context.
-  const int contextAttribList[] = {
-      // clang-format off
-      EGL_CONTEXT_CLIENT_VERSION, 2,
-      EGL_NONE
-      // clang-format on
-  };
-  mContext =
-      eglCreateContext(mDisplay, eglConfig, mSharedContext, contextAttribList);
-  error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_FATAL("Failed to create EGL context: %d", error);
   }
 
   // Create an EGL surface for the read/draw framebuffer.
@@ -187,34 +157,33 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
       EGL_NONE
       // clang-format on
   };
-  mSurface = eglCreatePbufferSurface(mDisplay, eglConfig, surfaceAttribList);
-  error = eglGetError();
-  if (error != EGL_SUCCESS) {
-    GAPID_FATAL("Failed to create EGL pbuffer surface: %d", error);
+  mSurface = eglCreatePbufferSurface(mDisplay, mConfig, surfaceAttribList);
+  EGL_CHECK_ERROR("Failed to create EGL pbuffer surface");
+
+  if (mContext == nullptr) {
+    // Create an EGL context.
+    const int contextAttribList[] = {
+        // clang-format off
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE
+        // clang-format on
+    };
+    mContext =
+        eglCreateContext(mDisplay, mConfig, mSharedContext, contextAttribList);
+    EGL_CHECK_ERROR("Failed to create EGL context");
+    mNeedsResolve = true;
   }
 
   mBackbuffer = backbuffer;
-  mNeedsResolve = true;
-
-  if (wasBound) {
-    bind(false);
-  }
 }
 
 void GlesRendererImpl::bind(bool resetViewportScissor) {
-  if (!mBound) {
-    eglMakeCurrent(mDisplay, mSurface, mSurface, mContext);
-    EGLint error = eglGetError();
-    if (error != EGL_SUCCESS) {
-      GAPID_FATAL("Failed to make EGL current: %d", error);
-    }
+  eglMakeCurrent(mDisplay, mSurface, mSurface, mContext);
+  EGL_CHECK_ERROR("Failed to make context %p current", mContext);
 
-    mBound = true;
-
-    if (mNeedsResolve) {
-      mNeedsResolve = false;
-      mApi.resolve();
-    }
+  if (mNeedsResolve) {
+    mNeedsResolve = false;
+    mApi.resolve();
   }
 
   if (resetViewportScissor) {
@@ -224,14 +193,8 @@ void GlesRendererImpl::bind(bool resetViewportScissor) {
 }
 
 void GlesRendererImpl::unbind() {
-  if (mBound) {
-    eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    EGLint error = eglGetError();
-    if (error != EGL_SUCCESS) {
-      GAPID_WARNING("Failed to release EGL context: %d", error);
-    }
-    mBound = false;
-  }
+  eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+  EGL_CHECK_ERROR("Failed to release EGL context");
 }
 
 const char* GlesRendererImpl::name() {
