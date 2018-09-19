@@ -26,18 +26,18 @@ type contextMgrKeyTy string
 const contextMgrKey = contextMgrKeyTy("replayMgrID")
 
 // PutManager attaches a manager to a Context.
-func PutManager(ctx context.Context, m *Manager) context.Context {
+func PutManager(ctx context.Context, m Manager) context.Context {
 	return keys.WithValue(ctx, contextMgrKey, m)
 }
 
 // GetManager retrieves the manager from a context previously annotated by
 // PutManager.
-func GetManager(ctx context.Context) *Manager {
+func GetManager(ctx context.Context) Manager {
 	val := ctx.Value(contextMgrKey)
 	if val == nil {
 		panic(string(contextMgrKey + " not present"))
 	}
-	return val.(*Manager)
+	return val.(Manager)
 }
 
 type contextDeviceKeyTy string

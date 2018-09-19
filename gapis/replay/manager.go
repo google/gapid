@@ -37,9 +37,19 @@ const (
 	defaultBatchDelay    = time.Millisecond * 100
 )
 
+type Manager interface {
+	Replay(
+		ctx context.Context,
+		intent Intent,
+		cfg Config,
+		req Request,
+		generator Generator,
+		hints *service.UsageHints) (val interface{}, err error)
+}
+
 // Manager is used discover replay devices and to send replay requests to those
 // discovered devices.
-type Manager struct {
+type manager struct {
 	gapir      *gapir.Client
 	schedulers map[id.ID]*scheduler.Scheduler
 	mutex      sync.Mutex // guards schedulers
@@ -56,8 +66,8 @@ type batchKey struct {
 }
 
 // New returns a new Manager instance using the database db.
-func New(ctx context.Context) *Manager {
-	out := &Manager{
+func New(ctx context.Context) Manager {
+	out := &manager{
 		gapir:      gapir.New(ctx),
 		schedulers: make(map[id.ID]*scheduler.Scheduler),
 	}
@@ -68,7 +78,7 @@ func New(ctx context.Context) *Manager {
 // Replay requests that req is to be performed on the device described by intent,
 // using the capture described by intent. Replay requests made with configs that
 // have equality (==) will likely be batched into the same replay pass.
-func (m *Manager) Replay(
+func (m *manager) Replay(
 	ctx context.Context,
 	intent Intent,
 	cfg Config,
@@ -111,7 +121,7 @@ func (m *Manager) Replay(
 	return s.Schedule(ctx, req, b)
 }
 
-func (m *Manager) scheduler(ctx context.Context, deviceID id.ID) (*scheduler.Scheduler, error) {
+func (m *manager) scheduler(ctx context.Context, deviceID id.ID) (*scheduler.Scheduler, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	s, found := m.schedulers[deviceID]
@@ -121,7 +131,7 @@ func (m *Manager) scheduler(ctx context.Context, deviceID id.ID) (*scheduler.Sch
 	return s, nil
 }
 
-func (m *Manager) createScheduler(ctx context.Context, device bind.Device) {
+func (m *manager) createScheduler(ctx context.Context, device bind.Device) {
 	deviceID := device.Instance().ID.ID()
 	log.I(ctx, "New scheduler for device: %v", deviceID)
 	m.mutex.Lock()
@@ -129,7 +139,7 @@ func (m *Manager) createScheduler(ctx context.Context, device bind.Device) {
 	m.schedulers[deviceID] = scheduler.New(ctx, m.batch)
 }
 
-func (m *Manager) destroyScheduler(ctx context.Context, device bind.Device) {
+func (m *manager) destroyScheduler(ctx context.Context, device bind.Device) {
 	deviceID := device.Instance().ID.ID()
 	log.I(ctx, "Destroying scheduler for device: %v", deviceID)
 	m.mutex.Lock()

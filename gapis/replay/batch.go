@@ -53,7 +53,7 @@ func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
 	return nil
 }
 
-func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b scheduler.Batch) {
+func (m *manager) batch(ctx context.Context, e []scheduler.Executable, b scheduler.Batch) {
 	batch := b.Key.(batchKey)
 
 	ctx = PutDevice(ctx, path.NewDevice(batch.device))
@@ -100,7 +100,7 @@ func (m *Manager) batch(ctx context.Context, e []scheduler.Executable, b schedul
 	}
 }
 
-func (m *Manager) execute(
+func (m *manager) execute(
 	ctx context.Context,
 	d bind.Device,
 	deviceID, captureID id.ID,

@@ -58,7 +58,7 @@ func (API) RebuildState(ctx context.Context, g *api.GlobalState) ([]api.Cmd, int
 func (API) QueryFramebufferAttachment(
 	ctx context.Context,
 	intent replay.Intent,
-	mgr *replay.Manager,
+	mgr replay.Manager,
 	after []uint64,
 	width, height uint32,
 	attachment api.FramebufferAttachment,

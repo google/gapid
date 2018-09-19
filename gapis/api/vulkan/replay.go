@@ -760,7 +760,7 @@ func (a API) Replay(
 func (a API) QueryFramebufferAttachment(
 	ctx context.Context,
 	intent replay.Intent,
-	mgr *replay.Manager,
+	mgr replay.Manager,
 	after []uint64,
 	width, height uint32,
 	attachment api.FramebufferAttachment,
@@ -815,7 +815,7 @@ func (a API) QueryFramebufferAttachment(
 func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
-	mgr *replay.Manager,
+	mgr replay.Manager,
 	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
