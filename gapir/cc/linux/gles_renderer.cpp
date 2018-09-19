@@ -113,7 +113,6 @@ class GlesRendererImpl : public GlesRenderer {
   virtual const char* version() override;
 
  private:
-  void reset();
   void createPbuffer(int width, int height);
 
   Backbuffer mBackbuffer;
@@ -128,8 +127,6 @@ class GlesRendererImpl : public GlesRenderer {
   GLXContext mSharedContext;
   GLXPbuffer mPbuffer;
   GLXFBConfig mFBConfig;
-
-  static thread_local GlesRendererImpl* tlsBound;
 
   pfn_XFree fn_XFree;
   pfn_XCloseDisplay fn_XCloseDisplay;
@@ -147,8 +144,6 @@ class GlesRendererImpl : public GlesRenderer {
   pfn_glXDestroyContext fn_glXDestroyContext;
   pfn_glXGetProcAddress fn_glXGetProcAddress;
 };
-
-thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
 
 // NB: We keep a reference the shared GL context, so "parent" context
 //     must stay alive at least for the duration of this context.
@@ -210,15 +205,19 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
       (major == 1 && minor < 3)) {
     GAPID_FATAL("GLX 1.3+ unsupported by X server (was %d.%d)", major, minor);
   }
-
-  // Initialize with a default target.
-  setBackbuffer(Backbuffer(8, 8, core::gl::GL_RGBA8,
-                           core::gl::GL_DEPTH24_STENCIL8,
-                           core::gl::GL_DEPTH24_STENCIL8));
 }
 
 GlesRendererImpl::~GlesRendererImpl() {
-  reset();
+  unbind();
+
+  if (mContext != nullptr) {
+    fn_glXDestroyContext(mDisplay, mContext);
+    GAPID_DEBUG("Destroyed context %p", mContext);
+  }
+
+  if (mPbuffer != 0) {
+    fn_glXDestroyPbuffer(mDisplay, mPbuffer);
+  }
 
   if (mOwnsDisplay && mDisplay != nullptr) {
     fn_XCloseDisplay(mDisplay);
@@ -227,24 +226,11 @@ GlesRendererImpl::~GlesRendererImpl() {
 
 Api* GlesRendererImpl::api() { return &mApi; }
 
-void GlesRendererImpl::reset() {
-  unbind();
-
-  if (mContext != nullptr) {
-    fn_glXDestroyContext(mDisplay, mContext);
-    GAPID_DEBUG("Destroyed context %p", mContext);
-    mContext = nullptr;
-  }
-
-  if (mPbuffer != 0) {
-    fn_glXDestroyPbuffer(mDisplay, mPbuffer);
-    mPbuffer = 0;
-  }
-
-  mBackbuffer = Backbuffer();
-}
-
 void GlesRendererImpl::createPbuffer(int width, int height) {
+  if (mContext != nullptr) {
+    unbind();  // Flush before yanking the surface.
+  }
+
   if (mPbuffer != 0) {
     fn_glXDestroyPbuffer(mDisplay, mPbuffer);
     mPbuffer = 0;
@@ -279,129 +265,114 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     return;  // No change
   }
 
+  if (mBackbuffer.format == backbuffer.format) {
+    // Only a resize is necessary
+    GAPID_INFO("Resizing renderer: %dx%d -> %dx%d", mBackbuffer.width,
+               mBackbuffer.height, backbuffer.width, backbuffer.height);
+  } else {
+    if (mContext != nullptr) {
+      GAPID_WARNING(
+          "Attempting to change format of renderer: [0x%x, 0x%x, 0x%x] -> "
+          "[0x%x, 0x%x, 0x%x]",
+          mBackbuffer.format.color, mBackbuffer.format.depth,
+          mBackbuffer.format.stencil, backbuffer.format.color,
+          backbuffer.format.depth, backbuffer.format.stencil);
+    }
+
+    // Find the FB config matching the requested format.
+    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
+    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
+    core::gl::getDepthBits(backbuffer.format.depth, d);
+    core::gl::getStencilBits(backbuffer.format.stencil, s);
+
+    const int visualAttribs[] = {
+        // clang-format off
+        GLX_RED_SIZE, r,
+        GLX_GREEN_SIZE, g,
+        GLX_BLUE_SIZE, b,
+        GLX_ALPHA_SIZE, a,
+        GLX_DEPTH_SIZE, d,
+        GLX_STENCIL_SIZE, s,
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
+        None
+        // clang-format on
+    };
+    int fbConfigsCount;
+    GLXFBConfig* fbConfigs = fn_glXChooseFBConfig(
+        mDisplay, DefaultScreen(mDisplay), visualAttribs, &fbConfigsCount);
+    if (fbConfigs == nullptr) {
+      GAPID_FATAL("Unable to find a suitable X framebuffer config");
+    }
+    mFBConfig = fbConfigs[0];
+    fn_XFree(fbConfigs);
+  }
+
   // Some exotic extensions let you create contexts without a backbuffer.
   // In these cases the backbuffer is zero size - just create a small one.
   int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
   int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
-
-  if (mContext != nullptr) {
-    if (mBackbuffer.format == backbuffer.format) {
-      // Only a resize is necessary
-      GAPID_INFO("Resizing renderer: %dx%d -> %dx%d", mBackbuffer.width,
-                 mBackbuffer.height, backbuffer.width, backbuffer.height);
-      createPbuffer(safe_width, safe_height);
-      fn_glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext);
-      mBackbuffer = backbuffer;
-      return;
-    }
-
-    GAPID_WARNING(
-        "Recreating renderer: [0x%x, 0x%x, 0x%x] -> [0x%x, 0x%x, 0x%x]",
-        mBackbuffer.format.color, mBackbuffer.format.depth,
-        mBackbuffer.format.stencil, backbuffer.format.color,
-        backbuffer.format.depth, backbuffer.format.stencil);
-  }
-
-  auto wasBound = tlsBound == this;
-
-  reset();
-
-  int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-  core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
-  core::gl::getDepthBits(backbuffer.format.depth, d);
-  core::gl::getStencilBits(backbuffer.format.stencil, s);
-
-  const int visualAttribs[] = {
-      // clang-format off
-      GLX_RED_SIZE, r,
-      GLX_GREEN_SIZE, g,
-      GLX_BLUE_SIZE, b,
-      GLX_ALPHA_SIZE, a,
-      GLX_DEPTH_SIZE, d,
-      GLX_STENCIL_SIZE, s,
-      GLX_RENDER_TYPE, GLX_RGBA_BIT,
-      GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
-      None
-      // clang-format on
-  };
-  int fbConfigsCount;
-  GLXFBConfig* fbConfigs = fn_glXChooseFBConfig(
-      mDisplay, DefaultScreen(mDisplay), visualAttribs, &fbConfigsCount);
-  if (fbConfigs == nullptr) {
-    GAPID_FATAL("Unable to find a suitable X framebuffer config");
-  }
-  mFBConfig = fbConfigs[0];
-  fn_XFree(fbConfigs);
-
-  glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
-      (glXCreateContextAttribsARBProc)fn_glXGetProcAddress(
-          "glXCreateContextAttribsARB");
-  if (glXCreateContextAttribsARB == nullptr) {
-    GAPID_FATAL("Unable to get address of glXCreateContextAttribsARB");
-  }
-  // Prevent X from taking down the process if the GL version is not supported.
-  auto oldHandler =
-      fn_XSetErrorHandler([](Display*, XErrorEvent*) -> int { return 0; });
-  for (auto gl_version : core::gl::sVersionSearchOrder) {
-    // List of name-value pairs.
-    const int contextAttribs[] = {
-        // clang-format off
-        GLX_RENDER_TYPE, GLX_RGBA_TYPE,
-        GLX_CONTEXT_MAJOR_VERSION_ARB, gl_version.major,
-        GLX_CONTEXT_MINOR_VERSION_ARB, gl_version.minor,
-        GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
-        GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
-        None,
-        // clang-format on
-    };
-    mContext = glXCreateContextAttribsARB(mDisplay, mFBConfig, mSharedContext,
-                                          /* direct */ True, contextAttribs);
-    if (mContext != nullptr) {
-      GAPID_DEBUG("Created GL %i.%i context %p (shaded with context %p)",
-                  gl_version.major, gl_version.minor, mContext, mSharedContext);
-      break;
-    }
-  }
-  fn_XSetErrorHandler(oldHandler);
-  if (mContext == nullptr) {
-    GAPID_FATAL("Failed to create glX context");
-  }
-  fn_XSync(mDisplay, False);
-
   createPbuffer(safe_width, safe_height);
 
-  mBackbuffer = backbuffer;
-  mNeedsResolve = true;
-
-  if (wasBound) {
-    bind(false);
+  if (mContext == nullptr) {
+    glXCreateContextAttribsARBProc glXCreateContextAttribsARB =
+        (glXCreateContextAttribsARBProc)fn_glXGetProcAddress(
+            "glXCreateContextAttribsARB");
+    if (glXCreateContextAttribsARB == nullptr) {
+      GAPID_FATAL("Unable to get address of glXCreateContextAttribsARB");
+    }
+    // Prevent X from taking down the process if the GL version is not
+    // supported.
+    auto oldHandler =
+        fn_XSetErrorHandler([](Display*, XErrorEvent*) -> int { return 0; });
+    for (auto gl_version : core::gl::sVersionSearchOrder) {
+      // List of name-value pairs.
+      const int contextAttribs[] = {
+          // clang-format off
+          GLX_RENDER_TYPE, GLX_RGBA_TYPE,
+          GLX_CONTEXT_MAJOR_VERSION_ARB, gl_version.major,
+          GLX_CONTEXT_MINOR_VERSION_ARB, gl_version.minor,
+          GLX_CONTEXT_FLAGS_ARB, GLX_CONTEXT_DEBUG_BIT_ARB,
+          GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+          None,
+          // clang-format on
+      };
+      mContext = glXCreateContextAttribsARB(mDisplay, mFBConfig, mSharedContext,
+                                            /* direct */ True, contextAttribs);
+      if (mContext != nullptr) {
+        GAPID_DEBUG("Created GL %i.%i context %p (shaded with context %p)",
+                    gl_version.major, gl_version.minor, mContext,
+                    mSharedContext);
+        break;
+      }
+    }
+    fn_XSetErrorHandler(oldHandler);
+    if (mContext == nullptr) {
+      GAPID_FATAL("Failed to create glX context");
+    }
+    fn_XSync(mDisplay, False);
+    mNeedsResolve = true;
   }
+
+  mBackbuffer = backbuffer;
 }
 
 void GlesRendererImpl::bind(bool resetViewportScissor) {
-  auto bound = tlsBound;
-  if (bound != this) {
-    if (bound != nullptr) {
-      bound->unbind();
-    }
+  if (!fn_glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext)) {
+    GAPID_FATAL("Unable to make GLX context current");
+  }
 
-    if (!fn_glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext)) {
-      GAPID_FATAL("Unable to make GLX context current");
-    }
-    tlsBound = this;
+  if (mNeedsResolve) {
+    mNeedsResolve = false;
+    mApi.resolve();
+  }
 
-    if (mNeedsResolve) {
-      mNeedsResolve = false;
-      mApi.resolve();
-    }
-
-    if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
-      mApi.mFunctionStubs.glDebugMessageCallback(
-          reinterpret_cast<void*>(&DebugCallback), this);
-      mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
-      mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
-      GAPID_DEBUG("Enabled KHR_debug extension");
-    }
+  if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
+    mApi.mFunctionStubs.glDebugMessageCallback(
+        reinterpret_cast<void*>(&DebugCallback), this);
+    mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
+    mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    GAPID_DEBUG("Enabled KHR_debug extension");
   }
 
   if (resetViewportScissor) {
@@ -411,10 +382,7 @@ void GlesRendererImpl::bind(bool resetViewportScissor) {
 }
 
 void GlesRendererImpl::unbind() {
-  if (tlsBound == this) {
-    fn_glXMakeContextCurrent(mDisplay, None, None, nullptr);
-    tlsBound = nullptr;
-  }
+  fn_glXMakeContextCurrent(mDisplay, None, None, nullptr);
 }
 
 const char* GlesRendererImpl::name() {
