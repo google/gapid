@@ -53,7 +53,7 @@ class GlesRenderer : public Renderer {
   virtual void setBackbuffer(Backbuffer backbuffer) = 0;
 
   // Makes the current renderer active.
-  virtual void bind() = 0;
+  virtual void bind(bool resetViewportScissor) = 0;
 
   // Makes the current renderer inactive.
   virtual void unbind() = 0;

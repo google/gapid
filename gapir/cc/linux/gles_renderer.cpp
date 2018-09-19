@@ -105,7 +105,7 @@ class GlesRendererImpl : public GlesRenderer {
 
   virtual Api* api() override;
   virtual void setBackbuffer(Backbuffer backbuffer) override;
-  virtual void bind() override;
+  virtual void bind(bool resetViewportScissor) override;
   virtual void unbind() override;
   virtual const char* name() override;
   virtual const char* extensions() override;
@@ -374,36 +374,39 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
   mNeedsResolve = true;
 
   if (wasBound) {
-    bind();
+    bind(false);
   }
 }
 
-void GlesRendererImpl::bind() {
+void GlesRendererImpl::bind(bool resetViewportScissor) {
   auto bound = tlsBound;
-  if (bound == this) {
-    return;
+  if (bound != this) {
+    if (bound != nullptr) {
+      bound->unbind();
+    }
+
+    if (!fn_glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext)) {
+      GAPID_FATAL("Unable to make GLX context current");
+    }
+    tlsBound = this;
+
+    if (mNeedsResolve) {
+      mNeedsResolve = false;
+      mApi.resolve();
+    }
+
+    if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
+      mApi.mFunctionStubs.glDebugMessageCallback(
+          reinterpret_cast<void*>(&DebugCallback), this);
+      mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
+      mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
+      GAPID_DEBUG("Enabled KHR_debug extension");
+    }
   }
 
-  if (bound != nullptr) {
-    bound->unbind();
-  }
-
-  if (!fn_glXMakeContextCurrent(mDisplay, mPbuffer, mPbuffer, mContext)) {
-    GAPID_FATAL("Unable to make GLX context current");
-  }
-  tlsBound = this;
-
-  if (mNeedsResolve) {
-    mNeedsResolve = false;
-    mApi.resolve();
-  }
-
-  if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
-    mApi.mFunctionStubs.glDebugMessageCallback(
-        reinterpret_cast<void*>(&DebugCallback), this);
-    mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
-    mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    GAPID_DEBUG("Enabled KHR_debug extension");
+  if (resetViewportScissor) {
+    mApi.mFunctionStubs.glViewport(0, 0, mBackbuffer.width, mBackbuffer.height);
+    mApi.mFunctionStubs.glScissor(0, 0, mBackbuffer.width, mBackbuffer.height);
   }
 }
 
