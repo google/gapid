@@ -42,7 +42,21 @@ bool ReplayArchive::sendCrashDump(const std::string& filepath,
   GAPID_INFO("Crash dump saved at: %s", filepath.c_str());
   return true;
 }
-bool ReplayArchive::sendPostData(std::unique_ptr<Posts> posts) { return true; }
+bool ReplayArchive::sendPostData(std::unique_ptr<Posts> posts) {
+  if (mPostbackDir.empty()) {
+    return true;
+  }
+  std::unique_ptr<replay_service::PostData> postdata(posts->release_to_proto());
+  int nMessages = postdata->post_data_pieces_size();
+  for (int i = 0; i < nMessages; ++i) {
+    uint64_t id = postdata->post_data_pieces(i).id();
+    std::string data = postdata->post_data_pieces(i).data();
+    std::string path = mPostbackDir + "/" + std::to_string(id) + ".bin";
+    std::fstream output(path, std::ios::out | std::ios::binary);
+    output.write(data.data(), data.size());
+  }
+  return true;
+}
 bool ReplayArchive::sendNotification(uint64_t id, uint32_t severity,
                                      uint32_t api_index, uint64_t label,
                                      const std::string& msg, const void* data,

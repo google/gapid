@@ -24,8 +24,10 @@ namespace gapir {
 // ReplayArchive implements ReplayConnection for exported replays.
 class ReplayArchive : public ReplayConnection {
  public:
-  ReplayArchive(const std::string& fileprefix)
-      : ReplayConnection(nullptr), mFileprefix(fileprefix) {}
+  ReplayArchive(const std::string& fileprefix, const std::string& postbackDir)
+      : ReplayConnection(nullptr),
+        mFileprefix(fileprefix),
+        mPostbackDir(postbackDir) {}
   // Read payload from disk.
   virtual std::unique_ptr<Payload> getPayload() override;
 
@@ -44,6 +46,7 @@ class ReplayArchive : public ReplayConnection {
 
  private:
   std::string mFileprefix;
+  std::string mPostbackDir;
 };
 
 }  // namespace gapir
