@@ -32,7 +32,7 @@ class GlesRendererImpl : public GlesRenderer {
 
   virtual Api* api() override;
   virtual void setBackbuffer(Backbuffer backbuffer) override;
-  virtual void bind() override;
+  virtual void bind(bool resetViewportScissor) override;
   virtual void unbind() override;
   virtual const char* name() override;
   virtual const char* extensions() override;
@@ -197,11 +197,11 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
   mNeedsResolve = true;
 
   if (wasBound) {
-    bind();
+    bind(false);
   }
 }
 
-void GlesRendererImpl::bind() {
+void GlesRendererImpl::bind(bool resetViewportScissor) {
   if (!mBound) {
     eglMakeCurrent(mDisplay, mSurface, mSurface, mContext);
     EGLint error = eglGetError();
@@ -215,6 +215,11 @@ void GlesRendererImpl::bind() {
       mNeedsResolve = false;
       mApi.resolve();
     }
+  }
+
+  if (resetViewportScissor) {
+    mApi.mFunctionStubs.glViewport(0, 0, mBackbuffer.width, mBackbuffer.height);
+    mApi.mFunctionStubs.glScissor(0, 0, mBackbuffer.width, mBackbuffer.height);
   }
 }
 

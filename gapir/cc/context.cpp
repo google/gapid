@@ -227,7 +227,7 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             mRootGlesRenderer->setBackbuffer(GlesRenderer::Backbuffer(
                 8, 8, core::gl::GL_RGBA8, core::gl::GL_DEPTH24_STENCIL8,
                 core::gl::GL_DEPTH24_STENCIL8));
-            mRootGlesRenderer->bind();
+            mRootGlesRenderer->bind(false);
           }
           auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
           if (!renderer) {
@@ -247,11 +247,13 @@ void Context::registerCallbacks(Interpreter* interpreter) {
   interpreter->registerBuiltin(
       Gles::INDEX, Builtins::ReplayBindRenderer,
       [this, interpreter](uint32_t label, Stack* stack, bool) {
+        bool resetViewportScissor = stack->pop<bool>();
         uint32_t id = stack->pop<uint32_t>();
         if (stack->isValid()) {
-          GAPID_INFO("[%u]replayBindRenderer(%u)", label, id);
+          GAPID_INFO("[%u]replayBindRenderer(%u, %s)", label, id,
+                     resetViewportScissor ? "true" : "false");
           auto renderer = mGlesRenderers[id];
-          renderer->bind();
+          renderer->bind(resetViewportScissor);
           Api* api = renderer->api();
           interpreter->setRendererFunctions(api->index(), &api->mFunctions);
           GAPID_DEBUG("[%u]Bound renderer %u: %s - %s", label, id,
@@ -289,7 +291,6 @@ void Context::registerCallbacks(Interpreter* interpreter) {
       [this](uint32_t label, Stack* stack, bool) {
         GlesRenderer::Backbuffer backbuffer;
 
-        bool resetViewportScissor = stack->pop<bool>();
         backbuffer.format.stencil = stack->pop<uint32_t>();
         backbuffer.format.depth = stack->pop<uint32_t>();
         backbuffer.format.color = stack->pop<uint32_t>();
@@ -299,16 +300,16 @@ void Context::registerCallbacks(Interpreter* interpreter) {
 
         if (!stack->isValid()) {
           GAPID_WARNING(
-              "[%u]Error during calling function replayCreateRenderer", label);
+              "[%u]Error during calling function replayChangeBackbuffer",
+              label);
           return false;
         }
 
         if (stack->isValid()) {
-          GAPID_DEBUG(
-              "[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x, %s)", label,
-              backbuffer.width, backbuffer.height, backbuffer.format.color,
-              backbuffer.format.depth, backbuffer.format.stencil,
-              resetViewportScissor ? "true" : "false");
+          GAPID_DEBUG("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
+                      label, backbuffer.width, backbuffer.height,
+                      backbuffer.format.color, backbuffer.format.depth,
+                      backbuffer.format.stencil);
           auto renderer = mGlesRenderers[id];
           if (renderer == nullptr) {
             GAPID_WARNING(
@@ -318,15 +319,6 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             return false;
           }
           renderer->setBackbuffer(backbuffer);
-          auto gles = renderer->getApi<Gles>();
-          // TODO: This needs to change when we support other APIs.
-          GAPID_ASSERT(gles != nullptr);
-          if (resetViewportScissor) {
-            gles->mFunctionStubs.glViewport(0, 0, backbuffer.width,
-                                            backbuffer.height);
-            gles->mFunctionStubs.glScissor(0, 0, backbuffer.width,
-                                           backbuffer.height);
-          }
           return true;
         } else {
           GAPID_WARNING(

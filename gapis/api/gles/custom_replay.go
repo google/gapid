@@ -285,6 +285,7 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 			return err
 		}
 	}
+	resetViewportScissor := false
 	if cs := FindDynamicContextState(s.Arena, ω.Extras()); !cs.IsNil() {
 		cmd := cb.ReplayChangeBackbuffer(
 			ctxID,
@@ -293,13 +294,13 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 			cs.BackbufferColorFmt(),
 			cs.BackbufferDepthFmt(),
 			cs.BackbufferStencilFmt(),
-			cs.ResetViewportScissor(),
 		)
 		if err := cmd.Mutate(ctx, id, s, b); err != nil {
 			return err
 		}
+		resetViewportScissor = cs.ResetViewportScissor()
 	}
-	if err := cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b); err != nil {
+	if err := cb.ReplayBindRenderer(ctxID, resetViewportScissor).Mutate(ctx, id, s, b); err != nil {
 		return err
 	}
 	return nil
@@ -335,7 +336,7 @@ func (ω *WglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	}
 	ctxID := uint32(GetState(s).WGLContexts().Get(ω.Hglrc()).Identifier())
 	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
+	return cb.ReplayBindRenderer(ctxID, false).Mutate(ctx, id, s, b)
 }
 
 func (ω *CGLCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -358,7 +359,7 @@ func (ω *CGLSetCurrentContext) Mutate(ctx context.Context, id api.CmdID, s *api
 	}
 	ctxID := uint32(GetState(s).CGLContexts().Get(ω.Ctx()).Identifier())
 	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
+	return cb.ReplayBindRenderer(ctxID, false).Mutate(ctx, id, s, b)
 }
 
 func (ω *GlXCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
@@ -391,7 +392,7 @@ func (ω *GlXMakeContextCurrent) Mutate(ctx context.Context, id api.CmdID, s *ap
 	}
 	ctxID := uint32(GetState(s).GLXContexts().Get(ω.Ctx()).Identifier())
 	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
-	return cb.ReplayBindRenderer(ctxID).Mutate(ctx, id, s, b)
+	return cb.ReplayBindRenderer(ctxID, false).Mutate(ctx, id, s, b)
 }
 
 // Force all attributes to use the capture-observed locations during replay.

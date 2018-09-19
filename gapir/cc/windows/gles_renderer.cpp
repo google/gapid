@@ -348,7 +348,7 @@ class GlesRendererImpl : public GlesRenderer {
 
   virtual Api* api() override;
   virtual void setBackbuffer(Backbuffer backbuffer) override;
-  virtual void bind() override;
+  virtual void bind(bool resetViewportScissor) override;
   virtual void unbind() override;
   virtual const char* name() override;
   virtual const char* extensions() override;
@@ -428,33 +428,36 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     unbind();
     mContext->set_backbuffer(backbuffer);
     mNeedsResolve = true;
-    bind();
+    bind(false);
   }
 
   mBackbuffer = backbuffer;
 }
 
-void GlesRendererImpl::bind() {
+void GlesRendererImpl::bind(bool resetViewportScissor) {
   auto bound = tlsBound;
-  if (bound == this) {
-    return;
+  if (bound != this) {
+    if (bound != nullptr) {
+      bound->unbind();
+    }
+
+    tlsBound = this;
+
+    if (mContext == nullptr) {
+      return;
+    }
+
+    mContext->bind();
+
+    if (mNeedsResolve) {
+      mNeedsResolve = false;
+      mApi.resolve();
+    }
   }
 
-  if (bound != nullptr) {
-    bound->unbind();
-  }
-
-  tlsBound = this;
-
-  if (mContext == nullptr) {
-    return;
-  }
-
-  mContext->bind();
-
-  if (mNeedsResolve) {
-    mNeedsResolve = false;
-    mApi.resolve();
+  if (resetViewportScissor) {
+    mApi.mFunctionStubs.glViewport(0, 0, mBackbuffer.width, mBackbuffer.height);
+    mApi.mFunctionStubs.glScissor(0, 0, mBackbuffer.width, mBackbuffer.height);
   }
 }
 

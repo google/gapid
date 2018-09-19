@@ -45,7 +45,7 @@ class GlesRendererImpl : public GlesRenderer {
 
   virtual Api* api() override;
   virtual void setBackbuffer(Backbuffer backbuffer) override;
-  virtual void bind() override;
+  virtual void bind(bool resetViewportScissor) override;
   virtual void unbind() override;
   virtual const char* name() override;
   virtual const char* extensions() override;
@@ -183,32 +183,30 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     mNeedsResolve = true;
 
     if (wasBound) {
-        bind();
+        bind(false);
     }
 }
 
-void GlesRendererImpl::bind() {
+void GlesRendererImpl::bind(bool resetViewportScissor) {
     auto bound = tlsBound;
-    if (bound == this) {
-        return;
+    if (bound != this) {
+        if (bound != nullptr) {
+            bound->unbind();
+        }
+
+        [mContext makeCurrentContext];
+        tlsBound = this;
+
+        if (mNeedsResolve) {
+            mNeedsResolve = false;
+            mApi.resolve();
+        }
     }
 
-    if (bound != nullptr) {
-        bound->unbind();
+    if (resetViewportScissor) {
+        mApi.mFunctionStubs.glViewport(0, 0, mBackbuffer.width, mBackbuffer.height);
+        mApi.mFunctionStubs.glScissor(0, 0, mBackbuffer.width, mBackbuffer.height);
     }
-
-    [mContext makeCurrentContext];
-    tlsBound = this;
-
-    if (mNeedsResolve) {
-        mNeedsResolve = false;
-        mApi.resolve();
-    }
-
-    int major = 0;
-    int minor = 0;
-    mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MAJOR_VERSION, &major);
-    mApi.mFunctionStubs.glGetIntegerv(Gles::GLenum::GL_MINOR_VERSION, &minor);
 }
 
 void GlesRendererImpl::unbind() {

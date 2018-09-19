@@ -18,7 +18,7 @@ cmd void replayCreateRenderer(u32 rendererID) { }
 
 // replayBindRenderer makes the renderer constructed with replayCreateRenderer active.
 @synthetic
-cmd void replayBindRenderer(u32 rendererID) { }
+cmd void replayBindRenderer(u32 rendererID, bool reset_viewport_scissor) { }
 
 // replayUnbindRenderer makes the renderer constructed with replayCreateRenderer inactive.
 @synthetic
@@ -31,8 +31,7 @@ cmd void replayChangeBackbuffer(u32     rendererID,
                                 GLsizei backbuffer_height,
                                 GLenum  backbuffer_color_fmt,
                                 GLenum  backbuffer_depth_fmt,
-                                GLenum  backbuffer_stencil_fmt,
-                                bool    reset_viewport_scissor) { }
+                                GLenum  backbuffer_stencil_fmt) { }
 
 @synthetic
 cmd void startTimer(u8 index) { }
