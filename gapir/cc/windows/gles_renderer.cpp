@@ -203,6 +203,7 @@ void WGL::PBuffer::create_buffer(const GlesRenderer::Backbuffer& backbuffer) {
 void WGL::PBuffer::release_buffer() {
   auto wgl = WGL::get();
   if (mHDC != nullptr) {
+    unbind();
     if (!wgl.ReleasePbufferDCARB(mPBuf, mHDC)) {
       GAPID_ERROR("Failed to release HDC. Error: 0x%x", GetLastError());
     }
@@ -356,8 +357,6 @@ class GlesRendererImpl : public GlesRenderer {
   virtual const char* version() override;
 
  private:
-  void reset();
-
   Gles mApi;
   Backbuffer mBackbuffer;
 
@@ -366,11 +365,7 @@ class GlesRendererImpl : public GlesRenderer {
   std::string mExtensions;
   std::shared_ptr<WGL::PBuffer> mContext;
   std::shared_ptr<WGL::PBuffer> mSharedContext;
-
-  static thread_local GlesRendererImpl* tlsBound;
 };
-
-thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
 
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
     : mNeedsResolve(true),
@@ -378,15 +373,9 @@ GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
       mSharedContext(shared_context != nullptr ? shared_context->mContext
                                                : nullptr) {}
 
-GlesRendererImpl::~GlesRendererImpl() { reset(); }
+GlesRendererImpl::~GlesRendererImpl() { unbind(); }
 
 Api* GlesRendererImpl::api() { return &mApi; }
-
-void GlesRendererImpl::reset() {
-  unbind();
-  mContext = nullptr;
-  mBackbuffer = Backbuffer();
-}
 
 static void DebugCallback(uint32_t source, uint32_t type, Gles::GLuint id,
                           uint32_t severity, Gles::GLsizei length,
@@ -404,55 +393,37 @@ static void DebugCallback(uint32_t source, uint32_t type, Gles::GLuint id,
 }
 
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
-  auto wasBound = tlsBound == this;
-  GAPID_ASSERT(
-      wasBound /* The renderer has to be bound when changing the backbuffer */);
-
   if (mBackbuffer == backbuffer) {
     return;  // No change
   }
 
   if (mContext == nullptr) {
     mContext = WGL::PBuffer::create(backbuffer, mSharedContext.get());
-    mContext->bind();
-    mApi.resolve();
-    mNeedsResolve = false;
-    if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
-      mApi.mFunctionStubs.glDebugMessageCallback(
-          reinterpret_cast<void*>(&DebugCallback), this);
-      mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
-      mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
-      GAPID_DEBUG("Enabled KHR_debug extension");
-    }
-  } else {
-    unbind();
-    mContext->set_backbuffer(backbuffer);
     mNeedsResolve = true;
-    bind(false);
+  } else {
+    mContext->set_backbuffer(backbuffer);
   }
 
   mBackbuffer = backbuffer;
 }
 
 void GlesRendererImpl::bind(bool resetViewportScissor) {
-  auto bound = tlsBound;
-  if (bound != this) {
-    if (bound != nullptr) {
-      bound->unbind();
-    }
+  if (mContext == nullptr) {
+    GAPID_FATAL("Attempted to bind a null context");
+  }
+  mContext->bind();
 
-    tlsBound = this;
+  if (mNeedsResolve) {
+    mNeedsResolve = false;
+    mApi.resolve();
+  }
 
-    if (mContext == nullptr) {
-      return;
-    }
-
-    mContext->bind();
-
-    if (mNeedsResolve) {
-      mNeedsResolve = false;
-      mApi.resolve();
-    }
+  if (mApi.mFunctionStubs.glDebugMessageCallback != nullptr) {
+    mApi.mFunctionStubs.glDebugMessageCallback(
+        reinterpret_cast<void*>(&DebugCallback), this);
+    mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT);
+    mApi.mFunctionStubs.glEnable(Gles::GLenum::GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    GAPID_DEBUG("Enabled KHR_debug extension");
   }
 
   if (resetViewportScissor) {
@@ -462,11 +433,8 @@ void GlesRendererImpl::bind(bool resetViewportScissor) {
 }
 
 void GlesRendererImpl::unbind() {
-  if (tlsBound == this) {
-    if (mContext != nullptr) {
-      mContext->unbind();
-    }
-    tlsBound = nullptr;
+  if (mContext != nullptr) {
+    mContext->unbind();
   }
 }
 
