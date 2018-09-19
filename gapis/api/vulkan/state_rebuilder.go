@@ -2070,6 +2070,36 @@ func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
 	))
 }
 
+func isShaderModuleInState(sm ShaderModuleObjectʳ, st *api.GlobalState) bool {
+	shaders := GetState(st).ShaderModules()
+	if shaders.Contains(sm.VulkanHandle()) {
+		if shaders.Get(sm.VulkanHandle()) == sm {
+			return true
+		}
+	}
+	return false
+}
+
+func isRenderPassInState(rp RenderPassObjectʳ, st *api.GlobalState) bool {
+	passes := GetState(st).RenderPasses()
+	if passes.Contains(rp.VulkanHandle()) {
+		if passes.Get(rp.VulkanHandle()) == rp {
+			return true
+		}
+	}
+	return false
+}
+
+func isPipelineLayoutInState(pl PipelineLayoutObjectʳ, st *api.GlobalState) bool {
+	layouts := GetState(st).PipelineLayouts()
+	if layouts.Contains(pl.VulkanHandle()) {
+		if layouts.Get(pl.VulkanHandle()) == pl {
+			return true
+		}
+	}
+	return false
+}
+
 func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 	cache := VkPipelineCache(0)
 	if !cp.PipelineCache().IsNil() {
@@ -2083,12 +2113,33 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 		}
 	}
 
+	// Check if the shader module exist in the old state. If so, it MUST has
+	// been handled by createShaderModule() BEFORE this function get called.
+	// If not, create temporary shasder modules.
 	var temporaryShaderModule ShaderModuleObjectʳ
-
-	if !GetState(sb.newState).ShaderModules().Contains(cp.Stage().Module().VulkanHandle()) {
+	if !isShaderModuleInState(cp.Stage().Module(), sb.oldState) {
 		// This is a previously deleted shader module, recreate it, then clear it
-		sb.createShaderModule(cp.Stage().Module())
-		temporaryShaderModule = cp.Stage().Module()
+		temporaryShaderModule = cp.Stage().Module().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryShaderModule.SetVulkanHandle(
+			VkShaderModule(newUnusedID(true, func(x uint64) bool {
+				return GetState(sb.newState).ShaderModules().Contains(VkShaderModule(x))
+			})))
+		sb.createShaderModule(temporaryShaderModule)
+		cp.Stage().SetModule(temporaryShaderModule)
+	}
+
+	// Same as above, create temporary pipeline layout if it does not exist in
+	// the old state.
+	var temporaryPipelineLayout PipelineLayoutObjectʳ
+	if !isPipelineLayoutInState(cp.PipelineLayout(), sb.oldState) {
+		// create temporary pipeline layout for the pipeline to be created.
+		temporaryPipelineLayout = cp.PipelineLayout().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryPipelineLayout.SetVulkanHandle(
+			VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
+				return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
+			})))
+		sb.createPipelineLayout(temporaryPipelineLayout)
+		cp.SetPipelineLayout(temporaryPipelineLayout)
 	}
 
 	specializationInfo := NewVkSpecializationInfoᶜᵖ(memory.Nullptr)
@@ -2135,6 +2186,13 @@ func (sb *stateBuilder) createComputePipeline(cp ComputePipelineObjectʳ) {
 			memory.Nullptr,
 		))
 	}
+	if !temporaryPipelineLayout.IsNil() {
+		sb.write(sb.cb.VkDestroyPipelineLayout(
+			temporaryPipelineLayout.Device(),
+			temporaryPipelineLayout.VulkanHandle(),
+			memory.Nullptr,
+		))
+	}
 }
 
 func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
@@ -2152,34 +2210,55 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 
 	stagesInOrder := gp.Stages().Keys()
 
+	// Check if the shader modules exist in the old state. If so, they MUST have
+	// been handled by createShaderModule() BEFORE reaching here. If not, create
+	// temporary shader module here.
 	temporaryShaderModules := []ShaderModuleObjectʳ{}
-	stages := []VkPipelineShaderStageCreateInfo{}
 	for _, ss := range stagesInOrder {
 		s := gp.Stages().Get(ss)
-		if !GetState(sb.newState).ShaderModules().Contains(s.Module().VulkanHandle()) {
-			// create temporary shader modules for the pipeline to be created.
-			sb.createShaderModule(s.Module())
-			temporaryShaderModules = append(temporaryShaderModules, s.Module())
+		if !isShaderModuleInState(s.Module(), sb.oldState) {
+			// create temporary shader module the pipeline to be created.
+			temporaryShaderModule := s.Module().Clone(sb.newState.Arena, api.CloneContext{})
+			temporaryShaderModule.SetVulkanHandle(
+				VkShaderModule(newUnusedID(true, func(x uint64) bool {
+					return GetState(sb.newState).ShaderModules().Contains(VkShaderModule(x))
+				})))
+			sb.createShaderModule(temporaryShaderModule)
+			s.SetModule(temporaryShaderModule)
+			temporaryShaderModules = append(temporaryShaderModules, temporaryShaderModule)
 		}
 	}
 
+	// Handled in the same way as the shader modules above.
 	var temporaryPipelineLayout PipelineLayoutObjectʳ
-	if !GetState(sb.newState).PipelineLayouts().Contains(gp.Layout().VulkanHandle()) {
+	if !isPipelineLayoutInState(gp.Layout(), sb.oldState) {
 		// create temporary pipeline layout for the pipeline to be created.
-		sb.createPipelineLayout(gp.Layout())
-		temporaryPipelineLayout = GetState(sb.newState).PipelineLayouts().Get(gp.Layout().VulkanHandle())
+		temporaryPipelineLayout = gp.Layout().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryPipelineLayout.SetVulkanHandle(
+			VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
+				return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
+			})))
+		sb.createPipelineLayout(temporaryPipelineLayout)
+		gp.SetLayout(temporaryPipelineLayout)
 	}
 
+	// Handled in the same way as the shader modules above.
 	var temporaryRenderPass RenderPassObjectʳ
-	if !GetState(sb.newState).RenderPasses().Contains(gp.RenderPass().VulkanHandle()) {
-		// create temporary render pass for the pipeline to be created.
-		sb.createRenderPass(gp.RenderPass())
-		temporaryRenderPass = GetState(sb.newState).RenderPasses().Get(gp.RenderPass().VulkanHandle())
+	if !isRenderPassInState(gp.RenderPass(), sb.oldState) {
+		// create temporary renderpass for the pipeline to be created.
+		temporaryRenderPass = gp.RenderPass().Clone(sb.newState.Arena, api.CloneContext{})
+		temporaryRenderPass.SetVulkanHandle(
+			VkRenderPass(newUnusedID(true, func(x uint64) bool {
+				return GetState(sb.newState).RenderPasses().Contains(VkRenderPass(x))
+			})))
+		sb.createRenderPass(temporaryRenderPass)
+		gp.SetRenderPass(temporaryRenderPass)
 	}
 
 	// DO NOT! coalesce the prevous calls with this one. createShaderModule()
 	// makes calls which means pending read/write observations will get
 	// shunted off with it instead of on the VkCreateGraphicsPipelines call
+	stages := []VkPipelineShaderStageCreateInfo{}
 	for _, ss := range stagesInOrder {
 		s := gp.Stages().Get(ss)
 		specializationInfo := NewVkSpecializationInfoᶜᵖ(memory.Nullptr)
