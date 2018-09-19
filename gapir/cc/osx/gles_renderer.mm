@@ -63,43 +63,29 @@ class GlesRendererImpl : public GlesRenderer {
   NSOpenGLContext* mSharedContext;
   bool mNeedsResolve;
   Gles mApi;
-
-  static thread_local GlesRendererImpl* tlsBound;
 };
-
-thread_local GlesRendererImpl* GlesRendererImpl::tlsBound = nullptr;
 
 GlesRendererImpl::GlesRendererImpl(GlesRendererImpl* shared_context)
     : mQueriedExtensions(false),
       mWindow(nullptr),
       mContext(nullptr),
       mSharedContext(shared_context != nullptr ? shared_context->mContext : 0),
-      mNeedsResolve(true) {
-  // Initialize with a default target.
-  setBackbuffer(Backbuffer(8, 8, core::gl::GL_RGBA8, core::gl::GL_DEPTH24_STENCIL8,
-                           core::gl::GL_DEPTH24_STENCIL8));
-}
+      mNeedsResolve(false) {}
 
-GlesRendererImpl::~GlesRendererImpl() { reset(); }
-
-Api* GlesRendererImpl::api() { return &mApi; }
-
-void GlesRendererImpl::reset() {
+GlesRendererImpl::~GlesRendererImpl() {
   unbind();
 
   if (mWindow != nullptr) {
     [mWindow close];
     [mWindow release];
-    mWindow = nullptr;
   }
 
   if (mContext != nullptr) {
     [mContext release];
-    mContext = nullptr;
   }
-
-  mBackbuffer = Backbuffer();
 }
+
+Api* GlesRendererImpl::api() { return &mApi; }
 
 void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
   if (mBackbuffer == backbuffer) {
@@ -111,27 +97,27 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
   int safe_width = (backbuffer.width > 0) ? backbuffer.width : 8;
   int safe_height = (backbuffer.height > 0) ? backbuffer.height : 8;
 
-  if (mContext != nullptr) {
-    if (mBackbuffer.format == backbuffer.format) {
-      // Only a resize is necessary
-      GAPID_INFO("Resizing renderer: %dx%d -> %dx%d", mBackbuffer.width, mBackbuffer.height,
-                 backbuffer.width, backbuffer.height);
-      [mWindow setContentSize:NSMakeSize(safe_width, safe_height)];
-      [mContext update];
-      mBackbuffer = backbuffer;
-      return;
+  if (mBackbuffer.format == backbuffer.format) {
+    // Only a resize is necessary
+    GAPID_INFO("Resizing renderer: %dx%d -> %dx%d", mBackbuffer.width, mBackbuffer.height,
+               backbuffer.width, backbuffer.height);
+    [mWindow setContentSize:NSMakeSize(safe_width, safe_height)];
+    [mContext update];
+    mBackbuffer = backbuffer;
+    return;
+  } else if (mContext != nullptr) {
+    GAPID_WARNING(
+        "Attempting to change format of renderer: [0x%x, 0x%x, 0x%x] -> [0x%x, 0x%x, 0x%x]",
+        mBackbuffer.format.color, mBackbuffer.format.depth, mBackbuffer.format.stencil,
+        backbuffer.format.color, backbuffer.format.depth, backbuffer.format.stencil);
+    if (mWindow != nullptr) {
+      [mWindow close];
+      [mWindow release];
+      mWindow = nullptr;
     }
-
-    GAPID_WARNING("Recreating renderer: [0x%x, 0x%x, 0x%x] -> [0x%x, 0x%x, 0x%x]",
-                  mBackbuffer.format.color, mBackbuffer.format.depth, mBackbuffer.format.stencil,
-                  backbuffer.format.color, backbuffer.format.depth, backbuffer.format.stencil);
   }
 
-  auto wasBound = tlsBound == this;
-
   [NSApplication sharedApplication];
-
-  reset();
 
   NSRect rect = NSMakeRect(0, 0, safe_width, safe_height);
   mWindow = [[NSWindow alloc] initWithContentRect:rect
@@ -142,78 +128,65 @@ void GlesRendererImpl::setBackbuffer(Backbuffer backbuffer) {
     GAPID_FATAL("Unable to create NSWindow");
   }
 
-  int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
-  core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
-  core::gl::getDepthBits(backbuffer.format.depth, d);
-  core::gl::getStencilBits(backbuffer.format.stencil, s);
+  if (mContext == nullptr) {
+    int r = 8, g = 8, b = 8, a = 8, d = 24, s = 8;
+    core::gl::getColorBits(backbuffer.format.color, r, g, b, a);
+    core::gl::getDepthBits(backbuffer.format.depth, d);
+    core::gl::getStencilBits(backbuffer.format.stencil, s);
 
-  NSOpenGLPixelFormatAttribute attributes[] = {
-      // clang-format on
-      NSOpenGLPFANoRecovery,
-      NSOpenGLPFAColorSize,
-      (NSOpenGLPixelFormatAttribute)(r + g + b),
-      NSOpenGLPFAAlphaSize,
-      (NSOpenGLPixelFormatAttribute)(a),
-      NSOpenGLPFADepthSize,
-      (NSOpenGLPixelFormatAttribute)d,
-      NSOpenGLPFAStencilSize,
-      (NSOpenGLPixelFormatAttribute)s,
-      NSOpenGLPFAAccelerated,
-      NSOpenGLPFABackingStore,
-      NSOpenGLPFAOpenGLProfile,
-      NSOpenGLProfileVersion3_2Core,
-      (NSOpenGLPixelFormatAttribute)0
-      // clang-format off
-    };
+    NSOpenGLPixelFormatAttribute attributes[] = {
+        // clang-format on
+        NSOpenGLPFANoRecovery,
+        NSOpenGLPFAColorSize,
+        (NSOpenGLPixelFormatAttribute)(r + g + b),
+        NSOpenGLPFAAlphaSize,
+        (NSOpenGLPixelFormatAttribute)(a),
+        NSOpenGLPFADepthSize,
+        (NSOpenGLPixelFormatAttribute)d,
+        NSOpenGLPFAStencilSize,
+        (NSOpenGLPixelFormatAttribute)s,
+        NSOpenGLPFAAccelerated,
+        NSOpenGLPFABackingStore,
+        NSOpenGLPFAOpenGLProfile,
+        NSOpenGLProfileVersion3_2Core,
+        (NSOpenGLPixelFormatAttribute)0
+        // clang-format off
+      };
 
     NSOpenGLPixelFormat* format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
     if (format == nullptr) {
-        GAPID_FATAL("Unable to create NSOpenGLPixelFormat");
+      GAPID_FATAL("Unable to create NSOpenGLPixelFormat");
     }
 
-  mContext = [[NSOpenGLContext alloc] initWithFormat:format shareContext:mSharedContext];
+    mContext = [[NSOpenGLContext alloc] initWithFormat:format shareContext:mSharedContext];
     if (mContext == nullptr) {
         GAPID_FATAL("Unable to create NSOpenGLContext");
     }
-
-    [mContext setView:[mWindow contentView]];
-    [mWindow display];
-
-    mBackbuffer = backbuffer;
     mNeedsResolve = true;
+  }
 
-    if (wasBound) {
-        bind(false);
-    }
+  [mContext setView:[mWindow contentView]];
+  [mWindow display];
+
+  mBackbuffer = backbuffer;
 }
 
 void GlesRendererImpl::bind(bool resetViewportScissor) {
-    auto bound = tlsBound;
-    if (bound != this) {
-        if (bound != nullptr) {
-            bound->unbind();
-        }
+  [mContext makeCurrentContext];
 
-        [mContext makeCurrentContext];
-        tlsBound = this;
+  if (mNeedsResolve) {
+    mNeedsResolve = false;
+    mApi.resolve();
+  }
 
-        if (mNeedsResolve) {
-            mNeedsResolve = false;
-            mApi.resolve();
-        }
-    }
-
-    if (resetViewportScissor) {
-        mApi.mFunctionStubs.glViewport(0, 0, mBackbuffer.width, mBackbuffer.height);
-        mApi.mFunctionStubs.glScissor(0, 0, mBackbuffer.width, mBackbuffer.height);
-    }
+  if (resetViewportScissor) {
+    mApi.mFunctionStubs.glViewport(0, 0, mBackbuffer.width, mBackbuffer.height);
+    mApi.mFunctionStubs.glScissor(0, 0, mBackbuffer.width, mBackbuffer.height);
+  }
 }
 
 void GlesRendererImpl::unbind() {
-    if (tlsBound == this) {
-        [NSOpenGLContext clearCurrentContext];
-        tlsBound = nullptr;
-    }
+  [NSOpenGLContext clearCurrentContext];
 }
 
 const char* GlesRendererImpl::name() {
