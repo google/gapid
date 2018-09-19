@@ -224,10 +224,10 @@ void Context::registerCallbacks(Interpreter* interpreter) {
               GAPID_ERROR("Could not create GLES renderer on this device");
               return false;
             }
-            mRootGlesRenderer->bind();
             mRootGlesRenderer->setBackbuffer(GlesRenderer::Backbuffer(
                 8, 8, core::gl::GL_RGBA8, core::gl::GL_DEPTH24_STENCIL8,
                 core::gl::GL_DEPTH24_STENCIL8));
+            mRootGlesRenderer->bind();
           }
           auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
           if (!renderer) {
