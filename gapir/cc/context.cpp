@@ -227,7 +227,6 @@ void Context::registerCallbacks(Interpreter* interpreter) {
             mRootGlesRenderer->setBackbuffer(GlesRenderer::Backbuffer(
                 8, 8, core::gl::GL_RGBA8, core::gl::GL_DEPTH24_STENCIL8,
                 core::gl::GL_DEPTH24_STENCIL8));
-            mRootGlesRenderer->bind(false);
           }
           auto renderer = GlesRenderer::create(mRootGlesRenderer.get());
           if (!renderer) {
