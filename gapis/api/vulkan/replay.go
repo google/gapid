@@ -502,10 +502,6 @@ type issuesRequest struct {
 	displayToSurface bool
 }
 
-// exportReplayRequest requests full trace to be produced.
-type exportReplayRequest struct {
-}
-
 func (a API) Replay(
 	ctx context.Context,
 	intent replay.Intent,
@@ -611,18 +607,6 @@ func (a API) Replay(
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
-
-		case exportReplayRequest:
-			// TODO: Implement a transform specifically for export replay
-			if issues == nil {
-				n, err := expandCommands(false)
-				if err != nil {
-					return err
-				}
-				issues = newFindIssues(ctx, c, n)
-			}
-			issues.reportTo(rr.Result)
-			optimize = false
 
 		case framebufferRequest:
 
@@ -809,6 +793,9 @@ func (a API) QueryFramebufferAttachment(
 	if err != nil {
 		return nil, err
 	}
+	if _, ok := mgr.(replay.Exporter); ok {
+		return nil, nil
+	}
 	return res.(*image.Data), nil
 }
 
@@ -824,10 +811,8 @@ func (a API) QueryIssues(
 	if err != nil {
 		return nil, err
 	}
+	if _, ok := mgr.(replay.Exporter); ok {
+		return nil, nil
+	}
 	return res.([]replay.Issue), nil
-}
-
-// ExportReplayRequest returns request type for standalone replay.
-func (a API) ExportReplayRequest() replay.Request {
-	return exportReplayRequest{}
 }

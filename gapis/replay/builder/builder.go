@@ -18,6 +18,7 @@ package builder
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/gapid/core/app/crash"
@@ -37,6 +38,9 @@ import (
 	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/value"
 )
+
+// ErrReplayNotExecuted indicate the replay request was canceled.
+var ErrReplayNotExecuted = errors.New("replay was canceled")
 
 type stackItem struct {
 	ty  protocol.Type // Type of the item.
@@ -554,6 +558,26 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 
 func (b *Builder) RegisterNotificationReader(reader NotificationReader) {
 	b.notificationReaders = append(b.notificationReaders, reader)
+}
+
+// Export compiles the replay instructions, returning a Payload that can be
+// sent to the replay virtual-machine.
+func (b *Builder) Export(ctx context.Context) (gapir.Payload, error) {
+	ctx = status.Start(ctx, "Export")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "Export")
+
+	payload, _, _, err := b.Build(ctx)
+	if err != nil {
+		return payload, err
+	}
+
+	// Send phony postbacks.
+	for _, decoder := range b.decoders {
+		decoder.decode(nil, ErrReplayNotExecuted)
+	}
+
+	return payload, err
 }
 
 // Build compiles the replay instructions, returning a Payload that can be

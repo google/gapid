@@ -42,7 +42,6 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
-	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
@@ -259,13 +258,14 @@ func (s *server) SaveCapture(ctx context.Context, c *path.Capture, path string) 
 	defer f.Close()
 	return capture.Export(ctx, c, f)
 }
-
-func (s *server) ExportReplay(ctx context.Context, c *path.Capture, d *path.Device, path string) error {
+func (s *server) ExportReplay(ctx context.Context, c *path.Capture, d *path.Device, out string, opts *service.ExportReplayOptions) error {
+	ctx = status.Start(ctx, "RPC ExportReplay")
+	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "ExportReplay")
 	if !s.enableLocalFiles {
 		return fmt.Errorf("Server not configured to allow writing of local files")
 	}
-	return replay.ExportReplay(ctx, c, d, path)
+	return exportReplay(ctx, c, d, out, opts)
 }
 
 func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*path.Command) (*path.Capture, error) {

@@ -16,65 +16,69 @@ package replay
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
-	gopath "path"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/archive"
-	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
 	gapir "github.com/google/gapid/gapir/client"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
-// ExportReplay write replay commands and assets to path.
-func ExportReplay(ctx context.Context, pCapture *path.Capture, pDevice *path.Device, outDir string) error {
-	if pDevice == nil {
-		return log.Errf(ctx, nil, "Unable to produce replay on unknown device.")
+// Exporter stores the input replays and export them as gapir instruction.
+type Exporter interface {
+	Manager
+	// Export wait for waitRequests replay requests to be sent,
+	// it then compiles the instructions for replay and triggers
+	// all postback with builder.ErrReplayNotExecuted .
+	Export(ctx context.Context, waitRequests int) (*gapir.Payload, error)
+}
+
+// NewExporter creates a new Exporter.
+func NewExporter() Exporter {
+	return &exportManager{
+		requests: make(chan RequestAndResult),
+	}
+}
+
+type exportManager struct {
+	key      *batchKey
+	requests chan RequestAndResult
+}
+
+func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Payload, error) {
+	var requests []RequestAndResult
+	for i := 0; i < waitRequests; i++ {
+		requests = append(requests, <-m.requests)
 	}
 
-	ctx = capture.Put(ctx, pCapture)
-	c, err := capture.Resolve(ctx)
+	ctx = PutDevice(ctx, path.NewDevice(m.key.device))
+	d := bind.GetRegistry(ctx).Device(m.key.device)
+
+	capturePath := path.NewCapture(m.key.capture)
+	c, err := capture.ResolveFromPath(ctx, capturePath)
 	if err != nil {
-		return err
+		return nil, log.Err(ctx, err, "Failed to load capture")
 	}
 
-	// Capture can use multiple APIs.
-	// Iterate the APIs in use looking for those that support replay generation.
-	var generator Generator
-	for _, a := range c.APIs {
-		if a, ok := a.(Generator); ok {
-			generator = a
-			break
-		}
-	}
-
-	if generator == nil {
-		return log.Errf(ctx, nil, "Unable to find replay API.")
-	}
-
-	d := bind.GetRegistry(ctx).Device(pDevice.ID.ID())
-	if d == nil {
-		return log.Errf(ctx, nil, "Unknown device %v", pDevice.ID.ID())
-	}
-
+	ctx = capture.Put(ctx, capturePath)
 	ctx = log.V{
-		"capture": pCapture.ID.ID(),
+		"capture": m.key.capture,
 		"device":  d.Instance().GetName(),
 	}.Bind(ctx)
+
+	intent := Intent{path.NewDevice(m.key.device), capturePath}
 
 	cml := c.Header.ABI.MemoryLayout
 	ctx = log.V{"capture memory layout": cml}.Bind(ctx)
 
 	deviceABIs := d.Instance().GetConfiguration().GetABIs()
 	if len(deviceABIs) == 0 {
-		return log.Err(ctx, nil, "Replay device doesn't list any ABIs")
+		return nil, log.Err(ctx, nil, "Replay device doesn't list any ABIs")
 	}
 
 	replayABI := findABI(cml, deviceABIs)
@@ -86,17 +90,17 @@ func ExportReplay(ctx context.Context, pCapture *path.Capture, pDevice *path.Dev
 
 	b := builder.New(replayABI.MemoryLayout)
 
-	_, ranges, err := initialcmds.InitialCommands(ctx, pCapture)
+	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
 	generatorReplayTimer.Time(func() {
-		err = generator.Replay(
+		ctx := status.Start(ctx, "Generate")
+		defer status.Finish(ctx)
+
+		err = m.key.generator.Replay(
 			ctx,
-			Intent{pDevice, pCapture},
-			Config(&struct{}{}),
-			[]RequestAndResult{{
-				Request: Request(generator.(interface{ ExportReplayRequest() Request }).ExportReplayRequest()),
-				Result:  func(val interface{}, err error) {},
-			}},
+			intent,
+			m.key.config,
+			requests,
 			d.Instance(),
 			c,
 			&adapter{
@@ -106,43 +110,53 @@ func ExportReplay(ctx context.Context, pCapture *path.Capture, pDevice *path.Dev
 	})
 
 	if err != nil {
-		return log.Err(ctx, err, "Replay returned error")
+		return nil, log.Err(ctx, err, "Replay returned error")
+	}
+
+	if config.DebugReplay {
+		log.I(ctx, "Building payload...")
 	}
 
 	var payload gapir.Payload
-	var handlePost builder.PostDataHandler
-	var handleNotification builder.NotificationHandler
-	builderBuildTimer.Time(func() { payload, handlePost, handleNotification, err = b.Build(ctx) })
+	builderBuildTimer.Time(func() { payload, err = b.Export(ctx) })
 	if err != nil {
-		return log.Err(ctx, err, "Failed to build replay payload")
+		return nil, log.Err(ctx, err, "Failed to build replay payload")
+	}
+	return &payload, nil
+}
+
+func (m *exportManager) Replay(
+	ctx context.Context,
+	intent Intent,
+	cfg Config,
+	req Request,
+	generator Generator,
+	hints *service.UsageHints) (val interface{}, err error) {
+
+	key := &batchKey{
+		capture:   intent.Capture.ID.ID(),
+		device:    intent.Device.ID.ID(),
+		config:    cfg,
+		generator: generator,
 	}
 
-	err = os.MkdirAll(outDir, os.ModePerm)
-	if err != nil {
-		return log.Errf(ctx, err, "Failed to create output directory: %v", outDir)
+	if m.key == nil {
+		m.key = key
 	}
 
-	payloadBytes, err := proto.Marshal(&payload)
-	if err != nil {
-		return log.Errf(ctx, err, "Failed to serialize replay payload.")
-	}
-	err = ioutil.WriteFile(gopath.Join(outDir, "payload.bin"), payloadBytes, 0644)
-
-	ar := archive.New(gopath.Join(outDir, "resources"))
-	defer ar.Dispose()
-
-	db := database.Get(ctx)
-	for _, ri := range payload.Resources {
-		rID, err := id.Parse(ri.Id)
-		if err != nil {
-			return log.Errf(ctx, err, "Failed to parse resource id: %v", ri.Id)
-		}
-		obj, err := db.Resolve(ctx, rID)
-		if err != nil {
-			return log.Errf(ctx, err, "Failed to parse resource id: %v", ri.Id)
-		}
-		ar.Write(ri.Id, obj.([]byte))
+	if *key != *m.key {
+		return nil, log.Errf(ctx, nil, "Can not export trace with incompatible requests")
 	}
 
-	return nil
+	type res struct {
+		val interface{}
+		err error
+	}
+	out := make(chan res, 1)
+	m.requests <- RequestAndResult{
+		Request: req,
+		Result:  Result(func(val interface{}, err error) { out <- res{val, err} }),
+	}
+	r := <-out
+	return r.val, r.err
 }

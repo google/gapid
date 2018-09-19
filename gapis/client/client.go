@@ -283,11 +283,12 @@ func (c *client) SaveCapture(ctx context.Context, capture *path.Capture, path st
 	return nil
 }
 
-func (c *client) ExportReplay(ctx context.Context, capture *path.Capture, device *path.Device, path string) error {
+func (c *client) ExportReplay(ctx context.Context, capture *path.Capture, device *path.Device, path string, opts *service.ExportReplayOptions) error {
 	res, err := c.client.ExportReplay(ctx, &service.ExportReplayRequest{
 		Capture: capture,
 		Path:    path,
 		Device:  device,
+		Options: opts,
 	})
 	if err != nil {
 		return err
