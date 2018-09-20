@@ -51,7 +51,7 @@ func wrapHandler(to log.Handler) log.Handler {
 func prepareContext(flags *LogFlags) context.Context {
 	// now build the initial root context
 	process := file.Abs(os.Args[0]).NoExt().Basename()
-	LogHandler.SetTarget(wrapHandler(flags.Style.Handler(log.Std())))
+	LogHandler.SetTarget(wrapHandler(flags.Style.Handler(log.Std())), true)
 	ctx := context.Background()
 	ctx = log.PutProcess(ctx, process)
 	ctx = log.PutFilter(ctx, log.SeverityFilter(flags.Level))
@@ -79,7 +79,7 @@ func updateContext(ctx context.Context, flags *LogFlags) context.Context {
 		})
 		handler = log.OnClosed(handler, func() { file.Close() })
 		handler = wrapHandler(handler)
-		if old := LogHandler.SetTarget(handler); old != nil {
+		if old, _ := LogHandler.SetTarget(handler, false); old != nil {
 			old.Close()
 		}
 	}

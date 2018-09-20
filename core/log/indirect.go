@@ -18,17 +18,20 @@ import "sync"
 
 // Indirect is a Handler that can be dynamically retarget to another logger.
 type Indirect struct {
-	mutex  sync.RWMutex
-	target Handler
+	mutex     sync.RWMutex
+	target    Handler
+	isDefault bool
 }
 
 // SetTarget assigns the handler target to l, returning the old target.
-func (i *Indirect) SetTarget(l Handler) Handler {
+func (i *Indirect) SetTarget(l Handler, isDefault bool) (Handler, bool) {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 	old := i.target
+	oldWasDefault := i.isDefault
 	i.target = l
-	return old
+	i.isDefault = isDefault
+	return old, oldWasDefault
 }
 
 // Target returns the target handler.
@@ -36,6 +39,14 @@ func (i *Indirect) Target() Handler {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 	return i.target
+}
+
+// IsDefault returns whether the current handler is considered the default
+// handler (typically logging to stdout).
+func (i *Indirect) IsDefault() bool {
+	i.mutex.RLock()
+	defer i.mutex.RUnlock()
+	return i.isDefault
 }
 
 func (i *Indirect) Handle(m *Message) {
