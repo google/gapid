@@ -75,8 +75,8 @@ func main() {
 // called.
 var features = []string{}
 
-// addFallbackLogHandler adds a handler to b that calls to fallback when nothing
-// else is listening.
+// addFallbackLogHandler adds a handler to b that calls to fallback, only when
+// nothing else is listening, i.e. nothing is listening to the log stream RPC.
 func addFallbackLogHandler(b *log.Broadcaster, fallback log.Handler) {
 	b.Listen(log.NewHandler(func(m *log.Message) {
 		if b.Count() == 1 {
@@ -87,8 +87,11 @@ func addFallbackLogHandler(b *log.Broadcaster, fallback log.Handler) {
 
 func run(ctx context.Context) error {
 	logBroadcaster := log.Broadcast()
-	oldHandler := app.LogHandler.SetTarget(logBroadcaster)
-	addFallbackLogHandler(logBroadcaster, oldHandler)
+	if oldHandler, oldWasDefault := app.LogHandler.SetTarget(logBroadcaster, false); oldWasDefault {
+		addFallbackLogHandler(logBroadcaster, oldHandler)
+	} else {
+		logBroadcaster.Listen(oldHandler)
+	}
 
 	if *adbPath != "" {
 		adb.ADB = file.Abs(*adbPath)
