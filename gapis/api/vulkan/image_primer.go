@@ -381,7 +381,13 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		}))
 		// Since we cannot guess how much the driver will actually request of us,
 		// overallocating by a factor of 2 should be enough.
-		vkAllocateMemory(p.sb, dev.VulkanHandle(), VkDeviceSize(stagingImgSize*2), uint32(memIndex), memHandle)
+		// TODO: Insert opcodes to determine the allocation size dynamically on the
+		// replay side.
+		allocSize := VkDeviceSize(stagingImgSize * 2)
+		if allocSize < VkDeviceSize(262144) {
+			allocSize = VkDeviceSize(262144)
+		}
+		vkAllocateMemory(p.sb, dev.VulkanHandle(), allocSize, uint32(memIndex), memHandle)
 		mem := GetState(p.sb.newState).DeviceMemories().Get(memHandle)
 
 		vkBindImageMemory(p.sb, dev.VulkanHandle(), stagingImgHandle, memHandle, 0)
