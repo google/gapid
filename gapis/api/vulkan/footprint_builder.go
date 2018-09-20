@@ -857,13 +857,17 @@ func (ds *descriptorSet) setDescriptor(ctx context.Context,
 			d.img = vkImg
 			d.buf = vkBuf
 			d.sampler = sampler
-			d.ty = ty
 			d.bufRng = rng
 			d.bufOffset = boundOffset
 			if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
 				ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
 				ds.dynamicDescriptorCount++
 			}
+			if d.ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+				d.ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
+				ds.dynamicDescriptorCount--
+			}
+			d.ty = ty
 		} else {
 			log.E(ctx, "FootprintBuilder: Not *descriptor type in descriptorSet: %v, with "+
 				"binding: %v, array index: %v", *ds, bi, di)
@@ -1034,11 +1038,15 @@ type boundDescriptorSet struct {
 }
 
 func newBoundDescriptorSet(ctx context.Context, bh *dependencygraph.Behavior,
-	ds *descriptorSet, getDynamicOffset func() uint32) *boundDescriptorSet {
+	ds *descriptorSet, dynamicOffsets []uint32) *boundDescriptorSet {
 	bds := &boundDescriptorSet{descriptorSet: ds}
 	bds.dynamicOffsets = make([]uint32, ds.dynamicDescriptorCount)
-	for i := range bds.dynamicOffsets {
-		bds.dynamicOffsets[i] = getDynamicOffset()
+	dOffsetCount := len(dynamicOffsets)
+	if len(bds.dynamicOffsets) < dOffsetCount {
+		dOffsetCount = len(bds.dynamicOffsets)
+	}
+	for i := 0; i < dOffsetCount; i++ {
+		bds.dynamicOffsets[i] = dynamicOffsets[i]
 	}
 	write(ctx, bh, bds)
 	return bds
@@ -2278,20 +2286,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 		firstSet := cmd.FirstSet()
 		dOffsets := []uint32{}
-		dOffsetsLeft := 0
 		if cmd.DynamicOffsetCount() > uint32(0) {
 			dOffsets = cmd.PDynamicOffsets().Slice(0, uint64(cmd.DynamicOffsetCount()),
 				l).MustRead(ctx, cmd, s, nil)
-			dOffsetsLeft = len(dOffsets)
-		}
-		getDynamicOffset := func() uint32 {
-			if dOffsetsLeft > 0 {
-				d := dOffsets[len(dOffsets)-dOffsetsLeft]
-				dOffsetsLeft--
-				return d
-			}
-			log.E(ctx, "FootprintBuilder: The number of dynamic offsets does not match with the number of dynamic descriptors")
-			return 0
 		}
 		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
 		cbc.behave = func(sc submittedCommand,
@@ -2299,7 +2296,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
 			for i, ds := range dss {
 				set := firstSet + uint32(i)
-				execInfo.currentCmdBufState.descriptorSets[set] = newBoundDescriptorSet(ctx, cbh, ds, getDynamicOffset)
+				execInfo.currentCmdBufState.descriptorSets[set] = newBoundDescriptorSet(ctx, cbh, ds, dOffsets)
 			}
 			ft.AddBehavior(ctx, cbh)
 		}
