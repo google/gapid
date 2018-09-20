@@ -21,6 +21,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/gapid/core/log"
 )
 
 var app = Task{
@@ -117,6 +119,8 @@ func Start(ctx context.Context, name string, args ...interface{}) context.Contex
 		parent:   parent,
 		children: map[*Task]struct{}{},
 	}
+	log.D(ctx, "Starting task: %s", t.name)
+
 	parent.add(t)
 	onTaskStart(ctx, t)
 	return PutTask(ctx, t)
