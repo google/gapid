@@ -305,10 +305,10 @@ void Context::registerCallbacks(Interpreter* interpreter) {
         }
 
         if (stack->isValid()) {
-          GAPID_DEBUG("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
-                      label, backbuffer.width, backbuffer.height,
-                      backbuffer.format.color, backbuffer.format.depth,
-                      backbuffer.format.stencil);
+          GAPID_INFO("[%u]replayChangeBackbuffer(%d, %d, 0x%x, 0x%x, 0x%x)",
+                     label, backbuffer.width, backbuffer.height,
+                     backbuffer.format.color, backbuffer.format.depth,
+                     backbuffer.format.stencil);
           auto renderer = mGlesRenderers[id];
           if (renderer == nullptr) {
             GAPID_WARNING(
