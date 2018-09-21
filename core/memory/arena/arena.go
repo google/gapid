@@ -56,7 +56,7 @@ func (a Arena) Allocate(size, alignment int) unsafe.Pointer {
 }
 
 // Reallocate reallocates the memory at ptr to the new size and alignment.
-// ptr must have been allocated from this arena.
+// ptr must have been allocated from this arena or be nil.
 func (a Arena) Reallocate(ptr unsafe.Pointer, size, alignment int) unsafe.Pointer {
 	a.assertNotNil()
 	return C.arena_realloc((*C.arena)(a.Pointer), ptr, C.uint32_t(size), C.uint32_t(alignment))

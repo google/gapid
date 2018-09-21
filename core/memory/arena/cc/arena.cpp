@@ -195,6 +195,10 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
 }
 
 void* Arena::reallocate(void* ptr, uint32_t size, uint32_t align) {
+  if (ptr == nullptr) {
+    return allocate(size, align);
+  }
+
   bool reallocate = false;
   uint32_t old_size = 0;
   lock();
