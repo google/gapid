@@ -37,6 +37,9 @@ type Settings struct {
 	// Prefix for mangler
 	Namespaces []string
 
+	// EmitDebug is true if the compiler should emit DWARF debug info.
+	EmitDebug bool
+
 	// EmitContext is true if the compiler should generate context creation and
 	// destruction functions.
 	EmitContext bool

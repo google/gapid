@@ -135,6 +135,11 @@ func Compile(apis []*semantic.API, mappings *semantic.Mappings, s Settings) (*Pr
 		functions:   map[string]*codegen.Function{},
 		mappings:    mappings,
 	}
+
+	if s.EmitDebug {
+		c.M.EmitDebug()
+	}
+
 	for _, n := range s.Namespaces {
 		c.Root = &mangling.Namespace{Name: n, Parent: c.Root}
 	}
@@ -311,7 +316,14 @@ func (c *C) MakeSliceAt(s *S, size, count, slice *codegen.Value) {
 
 // CopySlice copies the contents of slice src to dst.
 func (c *C) CopySlice(s *S, dst, src *codegen.Value) {
-	s.Call(c.callbacks.copySlice, s.Ctx, s.LocalInit("dstPtr", dst), s.LocalInit("srcPtr", src))
+	pDst := s.LocalInit("dstPtr", dst)
+	pSrc := s.LocalInit("srcPtr", src)
+	c.CopySliceByPtr(s, pDst, pSrc)
+}
+
+// CopySliceByPtr copies the contents of slice at *src to the slice at *dst.
+func (c *C) CopySliceByPtr(s *S, dst, src *codegen.Value) {
+	s.Call(c.callbacks.copySlice, s.Ctx, dst, src)
 }
 
 // SliceDataForRead returns a pointer to an array of slice elements.
