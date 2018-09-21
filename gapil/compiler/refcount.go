@@ -319,7 +319,7 @@ func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
 		return
 	}
 	if debugRefCounts {
-		c.LogI(s, fmt.Sprintf("reference(%v: %%p): %v", ty, caller()), val)
+		c.LogI(s, fmt.Sprintf("reference(%v: %%v): %v", ty, caller()), val)
 	}
 	if debugDisableRefCounts {
 		return
@@ -339,7 +339,7 @@ func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
 		return
 	}
 	if debugRefCounts {
-		c.LogI(s, fmt.Sprintf("release(%v: %%p): %v", ty, caller()), val)
+		c.LogI(s, fmt.Sprintf("release(%v: %%v): %v", ty, caller()), val)
 	}
 	if debugDisableRefCounts {
 		return
@@ -355,11 +355,14 @@ func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
 	if got, expect := val.Type(), c.T.Target(ty); got != expect {
 		fail("deferRelease() called with a value of an expected type. Got %+v, expect %+v", got, expect)
 	}
-	if debugDisableRefCounts {
+	if !c.isRefCounted(semantic.Underlying(ty)) {
 		return
 	}
 	if debugRefCounts {
-		c.LogI(s, fmt.Sprintf("deferRelease(%v: %%p): %v", ty, caller()), val)
+		c.LogI(s, fmt.Sprintf("deferRelease(%v: %%v): %v", ty, caller()), val)
+	}
+	if debugDisableRefCounts {
+		return
 	}
 	s.pendingRefRels.add(c, val, ty, -1)
 }
@@ -409,18 +412,21 @@ func (p *pendingRefRels) apply(s *S) {
 		return
 	}
 	if debugRefCounts {
+		p.c.LogI(s, "vvvvvvvvvvvvvvvvvvvvvv")
 		p.c.LogI(s, "pendingRefRels.apply()")
 		for _, r := range p.list {
-			p.c.LogI(s, fmt.Sprintf("%v: %%p: %v", r.ty, r.delta), r.val)
+			if r.delta != 0 {
+				p.c.LogI(s, fmt.Sprintf("%+d %v: %%v", r.delta, r.ty), r.val)
+			}
 		}
-		p.c.LogI(s, "----------------------")
+		p.c.LogI(s, "^^^^^^^^^^^^^^^^^^^^^^")
 	}
 
 	for _, r := range p.list {
 		for i := 0; i < r.delta; i++ {
 			if f, ok := p.c.refRels.tys[semantic.Underlying(r.ty)]; ok {
 				if debugRefCounts {
-					p.c.LogI(s, fmt.Sprintf("pending-reference(%v: %%p): %v", r.ty, r.caller), r.val)
+					p.c.LogI(s, fmt.Sprintf("pending-reference(%v: %%v): %v", r.ty, r.caller), r.val)
 				}
 				s.Call(f.reference, r.val)
 			}
@@ -430,7 +436,7 @@ func (p *pendingRefRels) apply(s *S) {
 		for i := 0; i > r.delta; i-- {
 			if f, ok := p.c.refRels.tys[semantic.Underlying(r.ty)]; ok {
 				if debugRefCounts {
-					p.c.LogI(s, fmt.Sprintf("pending-release(%v: %%p): %v", r.ty, r.caller), r.val)
+					p.c.LogI(s, fmt.Sprintf("pending-release(%v: %%v): %v", r.ty, r.caller), r.val)
 				}
 				s.Call(f.release, r.val)
 			}
@@ -441,7 +447,7 @@ func (p *pendingRefRels) apply(s *S) {
 func (c *C) doReference(s *S, val *codegen.Value, ty semantic.Type) {
 	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
 		if debugRefCounts {
-			c.LogI(s, fmt.Sprintf("doReference(%v: %%p): %v", ty, caller()), val)
+			c.LogI(s, fmt.Sprintf("doReference(%v: %%v): %v", ty, caller()), val)
 		}
 		s.Call(f.reference, val)
 	}
@@ -450,7 +456,7 @@ func (c *C) doReference(s *S, val *codegen.Value, ty semantic.Type) {
 func (c *C) doRelease(s *S, val *codegen.Value, ty semantic.Type) {
 	if f, ok := c.refRels.tys[semantic.Underlying(ty)]; ok {
 		if debugRefCounts {
-			c.LogI(s, fmt.Sprintf("doRelease(%v: %%p): %v", ty, caller()), val)
+			c.LogI(s, fmt.Sprintf("doRelease(%v: %%v): %v", ty, caller()), val)
 		}
 		s.Call(f.release, val)
 	}
