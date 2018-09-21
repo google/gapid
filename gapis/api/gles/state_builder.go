@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/compare"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
@@ -208,6 +209,9 @@ func (sb *stateBuilder) contextExtras(ctx context.Context, c Contextʳ) []api.Cm
 }
 
 func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c Contextʳ, representative map[ShareListʳ]EGLContext) {
+	ctx = status.Start(ctx, "contextObject %v", c.Identifier())
+	defer status.Finish(ctx)
+
 	write, cb := sb.write, sb.cb
 
 	// Check if we have already created any other context within this share-list.
@@ -221,25 +225,29 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 
 	write(ctx, cb.GlPixelStorei(GLenum_GL_UNPACK_ALIGNMENT, 1))
 
-	if names := c.Objects().GeneratedNames().Buffers(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenBuffers(1, sb.writesData(ctx, id)))
-				if o := c.Objects().Buffers().Get(id); !o.IsNil() {
-					sb.bufferObject(ctx, o)
+	if names := c.Objects().GeneratedNames().Buffers(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d buffers", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenBuffers(1, sb.writesData(ctx, id)))
+					if o := c.Objects().Buffers().Get(id); !o.IsNil() {
+						sb.bufferObject(ctx, o)
+					}
 				}
 			}
-		}
+		})
 	}
-	if names := c.Objects().GeneratedNames().Renderbuffers(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenRenderbuffers(1, sb.writesData(ctx, id)))
-				if o := c.Objects().Renderbuffers().Get(id); !o.IsNil() {
-					sb.renderbufferObject(ctx, o)
+	if names := c.Objects().GeneratedNames().Renderbuffers(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d renderbuffers", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenRenderbuffers(1, sb.writesData(ctx, id)))
+					if o := c.Objects().Renderbuffers().Get(id); !o.IsNil() {
+						sb.renderbufferObject(ctx, o)
+					}
 				}
 			}
-		}
+		})
 	}
 	for _, defaultTexture := range []Textureʳ{
 		c.Objects().Default().Texture2d(),
@@ -254,102 +262,122 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 	} {
 		sb.textureObject(ctx, defaultTexture)
 	}
-	if names := c.Objects().GeneratedNames().Textures(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenTextures(1, sb.writesData(ctx, id)))
-				if o := c.Objects().Textures().Get(id); !o.IsNil() {
-					sb.textureObject(ctx, o)
+	if names := c.Objects().GeneratedNames().Textures(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d textures", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenTextures(1, sb.writesData(ctx, id)))
+					if o := c.Objects().Textures().Get(id); !o.IsNil() {
+						sb.textureObject(ctx, o)
+					}
 				}
 			}
-		}
+		})
 	}
-	if objs := c.Objects().ImageUnits(); sb.once(objs) {
-		for _, id := range objs.Keys() {
-			if o := c.Objects().ImageUnits().Get(id); !o.IsNil() {
-				sb.imageUnit(ctx, o)
-			}
-		}
-	}
-	if objs := c.Objects().Shaders(); sb.once(objs) {
-		for _, id := range objs.Keys() {
-			if o := c.Objects().Shaders().Get(id); !o.IsNil() {
-				sb.shaderObject(ctx, o)
-			}
-		}
-	}
-	if objs := c.Objects().Programs(); sb.once(objs) {
-		// Get the largest used shader ID.
-		maxID := ShaderId(0)
-		for i := range c.Objects().Shaders().All() {
-			if i > maxID {
-				maxID = i
-			}
-		}
-		for _, id := range objs.Keys() {
-			if o := c.Objects().Programs().Get(id); !o.IsNil() {
-				sb.programObject(ctx, o, uint32(maxID)+1)
-			}
-		}
-	}
-	if names := c.Objects().GeneratedNames().Pipelines(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenProgramPipelines(1, sb.writesData(ctx, id)))
-				if o := c.Objects().Pipelines().Get(id); !o.IsNil() {
-					sb.pipelineObject(ctx, o)
+	if objs := c.Objects().ImageUnits(); sb.once(objs) && objs.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d image units", objs.Len()), func(ctx context.Context) {
+			for _, id := range objs.Keys() {
+				if o := c.Objects().ImageUnits().Get(id); !o.IsNil() {
+					sb.imageUnit(ctx, o)
 				}
 			}
-		}
+		})
 	}
-	if names := c.Objects().GeneratedNames().Samplers(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenSamplers(1, sb.writesData(ctx, id)))
-				if o := c.Objects().Samplers().Get(id); !o.IsNil() {
-					sb.samplerObject(ctx, o)
+	if objs := c.Objects().Shaders(); sb.once(objs) && objs.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d shaders", objs.Len()), func(ctx context.Context) {
+			for _, id := range objs.Keys() {
+				if o := c.Objects().Shaders().Get(id); !o.IsNil() {
+					sb.shaderObject(ctx, o)
 				}
 			}
-		}
+		})
 	}
-	if names := c.Objects().GeneratedNames().Queries(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenQueries(1, sb.writesData(ctx, id)))
-				if o := c.Objects().Queries().Get(id); !o.IsNil() {
-					sb.queryObject(ctx, o)
+	if objs := c.Objects().Programs(); sb.once(objs) && objs.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d programs", objs.Len()), func(ctx context.Context) {
+			// Get the largest used shader ID.
+			maxID := ShaderId(0)
+			for i := range c.Objects().Shaders().All() {
+				if i > maxID {
+					maxID = i
 				}
 			}
-		}
-	}
-	if objs := c.Objects().SyncObjects(); sb.once(objs) {
-		for _, id := range objs.Keys() {
-			if o := c.Objects().SyncObjects().Get(id); !o.IsNil() {
-				sb.syncObject(ctx, o)
+			for _, id := range objs.Keys() {
+				if o := c.Objects().Programs().Get(id); !o.IsNil() {
+					sb.programObject(ctx, o, uint32(maxID)+1)
+				}
 			}
-		}
+		})
+	}
+	if names := c.Objects().GeneratedNames().Pipelines(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d pipelines", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenProgramPipelines(1, sb.writesData(ctx, id)))
+					if o := c.Objects().Pipelines().Get(id); !o.IsNil() {
+						sb.pipelineObject(ctx, o)
+					}
+				}
+			}
+		})
+	}
+	if names := c.Objects().GeneratedNames().Samplers(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d samplers", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenSamplers(1, sb.writesData(ctx, id)))
+					if o := c.Objects().Samplers().Get(id); !o.IsNil() {
+						sb.samplerObject(ctx, o)
+					}
+				}
+			}
+		})
+	}
+	if names := c.Objects().GeneratedNames().Queries(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d queries", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenQueries(1, sb.writesData(ctx, id)))
+					if o := c.Objects().Queries().Get(id); !o.IsNil() {
+						sb.queryObject(ctx, o)
+					}
+				}
+			}
+		})
+	}
+	if objs := c.Objects().SyncObjects(); sb.once(objs) && objs.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d sync objects", objs.Len()), func(ctx context.Context) {
+			for _, id := range objs.Keys() {
+				if o := c.Objects().SyncObjects().Get(id); !o.IsNil() {
+					sb.syncObject(ctx, o)
+				}
+			}
+		})
 	}
 	sb.transformFeedbackObject(ctx, c.Objects().Default().TransformFeedback())
-	if names := c.Objects().GeneratedNames().TransformFeedbacks(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenTransformFeedbacks(1, sb.writesData(ctx, id)))
-				if o := c.Objects().TransformFeedbacks().Get(id); !o.IsNil() {
-					sb.transformFeedbackObject(ctx, o)
+	if names := c.Objects().GeneratedNames().TransformFeedbacks(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d tf feedback objects", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenTransformFeedbacks(1, sb.writesData(ctx, id)))
+					if o := c.Objects().TransformFeedbacks().Get(id); !o.IsNil() {
+						sb.transformFeedbackObject(ctx, o)
+					}
 				}
 			}
-		}
+		})
 	}
 	sb.vertexArrayObject(ctx, c.Objects().Default().VertexArray())
-	if names := c.Objects().GeneratedNames().VertexArrays(); sb.once(names) {
-		for _, id := range names.Keys() {
-			if id != 0 && names.Get(id) {
-				write(ctx, cb.GlGenVertexArrays(1, sb.writesData(ctx, id)))
-				if o := c.Objects().VertexArrays().Get(id); !o.IsNil() {
-					sb.vertexArrayObject(ctx, o)
+	if names := c.Objects().GeneratedNames().VertexArrays(); sb.once(names) && names.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d VAOs", names.Len()), func(ctx context.Context) {
+			for _, id := range names.Keys() {
+				if id != 0 && names.Get(id) {
+					write(ctx, cb.GlGenVertexArrays(1, sb.writesData(ctx, id)))
+					if o := c.Objects().VertexArrays().Get(id); !o.IsNil() {
+						sb.vertexArrayObject(ctx, o)
+					}
 				}
 			}
-		}
+		})
 	}
 	sb.vertexState(ctx, c.Vertex())
 	sb.reasterizationState(ctx, c.Rasterization())

@@ -148,6 +148,9 @@ func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	out := c.NewUninitializedState(ctx)
 	if c.InitialState != nil {
+		ctx = status.Start(ctx, "BuildInitialCommands")
+		defer status.Finish(ctx)
+
 		// Rebuild all the writes into the memory pools.
 		for _, m := range c.InitialState.Memory {
 			pool, _ := out.Memory.Get(memory.PoolID(m.Pool))
