@@ -375,21 +375,61 @@ func (c *C) Log(s *S, severity log.Severity, msg string, args ...interface{}) {
 		ctx = s.Zero(c.T.CtxPtr)
 	}
 
+	// Transform all args into codegen Values (if they're not already)
+	vals := make([]*codegen.Value, len(args))
+	for i, arg := range args {
+		v, ok := arg.(*codegen.Value)
+		if !ok {
+			v = s.Scalar(arg)
+		}
+		vals[i] = v
+	}
+
+	// Substitute any %v's with their expanded form
+	msg, vals = substitutePercentVs(s, msg, vals)
+
 	loc := c.SourceLocation()
-	fullArgs := []*codegen.Value{
+	fullArgs := append([]*codegen.Value{
 		s.Scalar(uint8(severity)),
 		s.Scalar(loc.File),
 		s.Scalar(uint32(loc.Line)),
 		s.Scalar(msg),
+	}, vals...)
+	s.Call(c.callbacks.logf, fullArgs...)
+}
+
+// substitutePercentVs returns the transformed printf fmt message and values,
+// replacing any '%v's with the correct specifier(s) for the given value type.
+func substitutePercentVs(s *S, fmt string, vals []*codegen.Value) (string, []*codegen.Value) {
+	inRunes := ([]rune)(fmt)
+	outRunes := make([]rune, 0, len(inRunes))
+	outVals := make([]*codegen.Value, 0, len(vals))
+	for i, c := 0, len(inRunes); i < c; i++ {
+		r := inRunes[i]
+		if r == '%' && i <= len(inRunes)-1 {
+			n := inRunes[i+1]
+			switch n {
+			case 'v':
+				f, v := s.PrintfSpecifier(vals[0])
+				vals = vals[1:]
+				outRunes = append(outRunes, ([]rune)(f)...)
+				outVals = append(outVals, v...)
+			case '%':
+				outRunes = append(outRunes, '%', '%')
+			default:
+				outRunes = append(outRunes, '%', n)
+				outVals = append(outVals, vals[0])
+				vals = vals[1:]
 	}
-	for _, arg := range args {
-		if val, ok := arg.(*codegen.Value); ok {
-			fullArgs = append(fullArgs, val)
+			i++ // Skip the consumed character following the %
 		} else {
-			fullArgs = append(fullArgs, s.Scalar(arg))
+			outRunes = append(outRunes, r)
 		}
 	}
-	s.Call(c.callbacks.logf, fullArgs...)
+	if len(vals) != 0 {
+		fail("Log message has %v unconsumed values. Message: '%v'", len(vals), fmt)
+	}
+	return string(outRunes), outVals
 }
 
 // LogI is short hand for Log(s, log.Info, msg, args...)
