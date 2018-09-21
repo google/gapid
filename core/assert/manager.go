@@ -76,15 +76,15 @@ func (ctx Manager) For(msg string, args ...interface{}) *Assertion {
 }
 
 func (o ctxOutput) Fatal(args ...interface{}) {
-	log.F(o.ctx, true, fmt.Sprint(args...))
+	log.F(o.ctx, true, "%v", fmt.Sprint(args...))
 }
 
 func (o ctxOutput) Error(args ...interface{}) {
-	log.E(o.ctx, fmt.Sprint(args...))
+	log.E(o.ctx, "%v", fmt.Sprint(args...))
 }
 
 func (o ctxOutput) Log(args ...interface{}) {
-	log.I(o.ctx, fmt.Sprint(args...))
+	log.I(o.ctx, "%v", fmt.Sprint(args...))
 }
 
 func (stdOutput) Fatal(args ...interface{}) {
