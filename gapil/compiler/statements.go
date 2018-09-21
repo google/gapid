@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/ast"
 	"github.com/google/gapid/gapil/semantic"
 )
@@ -113,10 +114,20 @@ func (c *C) subroutine(f *semantic.Function) {
 
 func (c *C) block(s *S, n *semantic.Block) {
 	s.enter(func(s *S) {
+		cst, _ := c.mappings.CST(n).(*cst.Branch)
+		// Update source location to the opening brace.
+		if l := c.SourceLocationForCST(cst.First()); l.IsValid() {
+			s.SetLocation(l.Line, l.Column)
+		}
+		// Emit statements.
 		for _, st := range n.Statements {
 			if !c.statement(s, st) {
 				break
 			}
+		}
+		// Update source location to the closing brace.
+		if l := c.SourceLocationForCST(cst.Last()); l.IsValid() {
+			s.SetLocation(l.Line, l.Column)
 		}
 	})
 }

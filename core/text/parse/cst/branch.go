@@ -25,6 +25,24 @@ type Branch struct {
 	Children []Node
 }
 
+// First returns the first child of the branch, or nil if the branch has no
+// children.
+func (n *Branch) First() Node {
+	if n == nil || len(n.Children) == 0 {
+		return nil
+	}
+	return n.Children[0]
+}
+
+// Last returns the last child of the branch, or nil if the branch has no
+// children.
+func (n *Branch) Last() Node {
+	if n == nil || len(n.Children) == 0 {
+		return nil
+	}
+	return n.Children[len(n.Children)-1]
+}
+
 // Tok returns the underlying token of this node.
 func (n *Branch) Tok() Token {
 	tok := Token{}
