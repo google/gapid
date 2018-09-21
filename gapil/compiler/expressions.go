@@ -326,11 +326,9 @@ func (c *C) create(s *S, e *semantic.Create) *codegen.Value {
 
 func (c *C) clone(s *S, e *semantic.Clone) *codegen.Value {
 	src := c.expression(s, e.Slice)
-	srcSize := src.Extract(SliceSize)
-	elSize := s.SizeOf(c.T.Capture(e.Type.To))
-	dstCount := s.Div(srcSize, elSize)
-	dstSize := s.Mul(dstCount, elSize)
-	dst := c.MakeSlice(s, dstSize, dstCount)
+	size := src.Extract(SliceSize)
+	count := src.Extract(SliceCount)
+	dst := c.MakeSlice(s, size, count)
 	c.plugins.foreach(func(p OnReadListener) { p.OnRead(s, src, e.Type) })
 	c.CopySlice(s, dst, src)
 	c.plugins.foreach(func(p OnWriteListener) { p.OnWrite(s, dst, e.Type) })
