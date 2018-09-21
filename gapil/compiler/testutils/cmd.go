@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
@@ -82,6 +83,12 @@ func (c Cmd) Encode(out []byte) bool {
 	w.Uint64(c.T)
 	copy(out[8:], c.D)
 	return true
+}
+
+// Clone makes a shallow copy of this command.
+func (c *Cmd) Clone(arena.Arena) api.Cmd {
+	clone := *c
+	return &clone
 }
 
 // Extras is a helper wrapper around an api.CmdExtras has helpers methods for
