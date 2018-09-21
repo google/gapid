@@ -221,7 +221,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		groupers = append(groupers, cmdgrouper.Run(
 			func(cmd api.Cmd, s *api.GlobalState) (interface{}, string) {
 				if api := cmd.API(); api != nil {
-					if context := api.Context(s, cmd.Thread()); context != nil {
+					if context := api.Context(ctx, s, cmd.Thread()); context != nil {
 						id := context.ID()
 						return id, ctxs[id].Name
 					}

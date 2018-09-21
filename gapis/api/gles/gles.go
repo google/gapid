@@ -252,7 +252,7 @@ func GetFramebufferAttachmentInfoByID(
 }
 
 // Context returns the active context for the given state and thread.
-func (API) Context(s *api.GlobalState, thread uint64) api.Context {
+func (API) Context(ctx context.Context, s *api.GlobalState, thread uint64) api.Context {
 	if c := GetContext(s, thread); !c.IsNil() {
 		return c
 	}

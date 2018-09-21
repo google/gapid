@@ -52,7 +52,7 @@ type API interface {
 		attachment FramebufferAttachment) (info FramebufferAttachmentInfo, err error)
 
 	// Context returns the active context for the given state.
-	Context(state *GlobalState, thread uint64) Context
+	Context(ctx context.Context, state *GlobalState, thread uint64) Context
 
 	// CreateCmd constructs and returns a new command with the specified name.
 	CreateCmd(a arena.Arena, name string) Cmd
