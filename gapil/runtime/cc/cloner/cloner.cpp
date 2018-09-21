@@ -29,7 +29,7 @@ namespace {
 struct tracker {
   tracker(core::Arena* a) : arena(a), map(a) {}
   core::Arena* arena;
-  gapil::Map<void*, void*> map;
+  gapil::Map<void*, void*, false> map;
 };
 
 }  // anonymous namespace
