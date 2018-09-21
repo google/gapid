@@ -42,7 +42,7 @@ func Once(task Task) Task {
 // retryDelay between retry attempts.
 // if maxAttempts <= 0, then there is no maximum limit to the number of times
 // f will be called.
-func Retry(ctx context.Context, maxAttempts int, retryDelay time.Duration, f func(context.Context) (retry bool, err error)) error {
+func Retry(ctx context.Context, maxAttempts int, retryDelay time.Duration, f func(context.Context) (done bool, err error)) error {
 	var count int
 	for {
 		done, err := f(ctx)
