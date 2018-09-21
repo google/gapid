@@ -87,10 +87,11 @@ class CustomIntervalList {
   // when calling merge(). Intervals will merge if: edge-distance < threshold.
   // Examples:
   // • A threshold of 0 will require intervals to overlap before they are
-  // merged. • A threshold of 1 will merge intervals if they overlap or touch
-  // edges. • A threshold of 2 will merge intervals as described above, and
-  // those with a
-  //   single unit gap.
+  //   merged.
+  // • A threshold of 1 will merge intervals if they overlap or touch
+  //   edges.
+  // • A threshold of 2 will merge intervals as described above, and those with
+  //   a single unit gap.
   // Changing the merge thresholds will not affect any existing intervals in the
   // list.
   inline void setMergeThreshold(interval_unit_type threshold);
