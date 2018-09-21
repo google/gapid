@@ -57,7 +57,7 @@ var (
 	gapirAuthToken   = flag.String("gapir-auth-token", "", "_The connection authorization token for gapir")
 	gapirArgStr      = flag.String("gapir-args", "", "_The arguments to be passed to the host-run gapir")
 	scanAndroidDevs  = flag.Bool("monitor-android-devices", true, "Server will scan for locally connected Android devices")
-	addLocalDevice   = flag.Bool("add-local-device", true, "Server will create a new local replay device")
+	addLocalDevice   = flag.Bool("add-local-device", true, "Server can trace and replay locally")
 	idleTimeout      = flag.Duration("idle-timeout", 0, "_Closes GAPIS if the server is not repeatedly pinged within this duration")
 	adbPath          = flag.String("adb", "", "Path to the adb executable; leave empty to search the environment")
 	enableLocalFiles = flag.Bool("enable-local-files", false, "Allow clients to access local .gfxtrace files by path")
