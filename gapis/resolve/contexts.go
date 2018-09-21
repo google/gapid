@@ -108,7 +108,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 			return nil
 		}
 
-		context := api.Context(s, cmd.Thread())
+		context := api.Context(ctx, s, cmd.Thread())
 		if context == nil {
 			return nil
 		}
