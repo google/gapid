@@ -20,7 +20,6 @@ package main
 import (
 	"context"
 	"flag"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -51,12 +50,8 @@ func run(ctx context.Context) error {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
 	name := filepath.Base(*path)
-	in, err := ioutil.ReadFile(*path)
-	if err != nil {
-		return err
-	}
 
-	p, err := capture.Import(ctx, name, in)
+	p, err := capture.Import(ctx, name, &capture.File{Path: *path})
 	if err != nil {
 		return err
 	}
