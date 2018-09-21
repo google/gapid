@@ -122,6 +122,13 @@ func Start(ctx context.Context, name string, args ...interface{}) context.Contex
 	return PutTask(ctx, t)
 }
 
+// Do is a convenience function for calling block between Start() and Finish().
+func Do(ctx context.Context, name string, block func(context.Context)) {
+	ctx = Start(ctx, name)
+	defer Finish(ctx)
+	block(ctx)
+}
+
 // UpdateProgress updates the progress of the task started with Start().
 // n is the number of units of completion, which ranges from [0, outof).
 func UpdateProgress(ctx context.Context, n, outof int) {
