@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/core/codegen"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/host"
+	"github.com/google/gapid/core/text/parse/cst"
 	"github.com/google/gapid/gapil/compiler/mangling"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
 	"github.com/google/gapid/gapil/semantic"
@@ -420,7 +421,7 @@ func substitutePercentVs(s *S, fmt string, vals []*codegen.Value) (string, []*co
 				outRunes = append(outRunes, '%', n)
 				outVals = append(outVals, vals[0])
 				vals = vals[1:]
-	}
+			}
 			i++ // Skip the consumed character following the %
 		} else {
 			outRunes = append(outRunes, r)
@@ -503,6 +504,11 @@ type SourceLocation struct {
 	Column int
 }
 
+// IsValid returns true if the source location is valid.
+func (l SourceLocation) IsValid() bool {
+	return l.File != "" && l.Line > 0
+}
+
 func (l SourceLocation) String() string {
 	parts := []string{}
 	if l.Node != nil {
@@ -526,15 +532,23 @@ func (l SourceLocation) String() string {
 // given semantic node.
 func (c *C) SourceLocationFor(n semantic.Node) SourceLocation {
 	if cst := c.mappings.CST(n); cst != nil {
-		tok := cst.Tok()
-		line, col := tok.Cursor()
-		file := tok.Source.Filename
-		if i := strings.LastIndex(file, "gapid/"); i > 0 {
-			file = file[i+6:]
-		}
-		return SourceLocation{n, file, line, col}
+		l := c.SourceLocationForCST(cst)
+		l.Node = n
+		return l
 	}
 	return SourceLocation{Node: n}
+}
+
+// SourceLocationForCST returns a string describing the source location of the
+// given CST node.
+func (c *C) SourceLocationForCST(n cst.Node) SourceLocation {
+	tok := n.Tok()
+	line, col := tok.Cursor()
+	file := tok.Source.Filename
+	if i := strings.LastIndex(file, "gapid/"); i > 0 {
+		file = file[i+6:]
+	}
+	return SourceLocation{nil, file, line, col}
 }
 
 // SourceLocation returns the SoureLocation for the currently built expression,
