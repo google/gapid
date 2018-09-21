@@ -36,8 +36,8 @@ func NewDecoder(r binary.Reader, m *device.MemoryLayout) *Decoder {
 }
 
 func (d *Decoder) alignAndOffset(l *device.DataTypeLayout) {
-	d.Align(uint64(l.GetAlignment()))
-	d.o += uint64(l.GetSize())
+	d.Align(uint64(l.Alignment))
+	d.o += uint64(l.Size)
 }
 
 // MemoryLayout returns the MemoryLayout used by the decoder.
@@ -67,92 +67,92 @@ func (d *Decoder) Skip(n uint64) {
 
 // Pointer loads and returns a pointer address.
 func (d *Decoder) Pointer() uint64 {
-	d.alignAndOffset(d.m.GetPointer())
-	return binary.ReadUint(d.r, 8*d.m.GetPointer().GetSize())
+	d.alignAndOffset(d.m.Pointer)
+	return binary.ReadUint(d.r, 8*d.m.Pointer.Size)
 }
 
 // F32 loads and returns a float32.
 func (d *Decoder) F32() float32 {
-	d.alignAndOffset(d.m.GetF32())
+	d.alignAndOffset(d.m.F32)
 	return d.r.Float32()
 }
 
 // F64 loads and returns a float64.
 func (d *Decoder) F64() float64 {
-	d.alignAndOffset(d.m.GetF64())
+	d.alignAndOffset(d.m.F64)
 	return d.r.Float64()
 }
 
 // I8 loads and returns a int8.
 func (d *Decoder) I8() int8 {
-	d.alignAndOffset(d.m.GetI8())
+	d.alignAndOffset(d.m.I8)
 	return d.r.Int8()
 }
 
 // I16 loads and returns a int16.
 func (d *Decoder) I16() int16 {
-	d.alignAndOffset(d.m.GetI16())
+	d.alignAndOffset(d.m.I16)
 	return d.r.Int16()
 }
 
 // I32 loads and returns a int32.
 func (d *Decoder) I32() int32 {
-	d.alignAndOffset(d.m.GetI32())
+	d.alignAndOffset(d.m.I32)
 	return d.r.Int32()
 }
 
 // I64 loads and returns a int64.
 func (d *Decoder) I64() int64 {
-	d.alignAndOffset(d.m.GetI64())
+	d.alignAndOffset(d.m.I64)
 	return d.r.Int64()
 }
 
 // U8 loads and returns a uint8.
 func (d *Decoder) U8() uint8 {
-	d.alignAndOffset(d.m.GetI8())
+	d.alignAndOffset(d.m.I8)
 	return d.r.Uint8()
 }
 
 // U16 loads and returns a uint16.
 func (d *Decoder) U16() uint16 {
-	d.alignAndOffset(d.m.GetI16())
+	d.alignAndOffset(d.m.I16)
 	return d.r.Uint16()
 }
 
 // U32 loads and returns a uint32.
 func (d *Decoder) U32() uint32 {
-	d.alignAndOffset(d.m.GetI32())
+	d.alignAndOffset(d.m.I32)
 	return d.r.Uint32()
 }
 
 // U64 loads and returns a uint64.
 func (d *Decoder) U64() uint64 {
-	d.alignAndOffset(d.m.GetI64())
+	d.alignAndOffset(d.m.I64)
 	return d.r.Uint64()
 }
 
 // Char loads and returns an char.
 func (d *Decoder) Char() Char {
-	d.alignAndOffset(d.m.GetChar())
-	return Char(binary.ReadInt(d.r, 8*d.m.GetChar().GetSize()))
+	d.alignAndOffset(d.m.Char)
+	return Char(binary.ReadInt(d.r, 8*d.m.Char.Size))
 }
 
 // Int loads and returns an int.
 func (d *Decoder) Int() Int {
-	d.alignAndOffset(d.m.GetInteger())
-	return Int(binary.ReadInt(d.r, 8*d.m.GetInteger().GetSize()))
+	d.alignAndOffset(d.m.Integer)
+	return Int(binary.ReadInt(d.r, 8*d.m.Integer.Size))
 }
 
 // Uint loads and returns a uint.
 func (d *Decoder) Uint() Uint {
-	d.alignAndOffset(d.m.GetInteger())
-	return Uint(binary.ReadUint(d.r, 8*d.m.GetInteger().GetSize()))
+	d.alignAndOffset(d.m.Integer)
+	return Uint(binary.ReadUint(d.r, 8*d.m.Integer.Size))
 }
 
 // Size loads and returns a size_t.
 func (d *Decoder) Size() Size {
-	d.alignAndOffset(d.m.GetSize())
-	return Size(binary.ReadUint(d.r, 8*d.m.GetSize().GetSize()))
+	d.alignAndOffset(d.m.Size)
+	return Size(binary.ReadUint(d.r, 8*d.m.Size.Size))
 }
 
 // String loads and returns a null-terminated string.

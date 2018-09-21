@@ -34,8 +34,8 @@ type Encoder struct {
 func NewEncoder(w binary.Writer, m *device.MemoryLayout) *Encoder { return &Encoder{w, m, 0} }
 
 func (e *Encoder) alignAndOffset(d *device.DataTypeLayout) {
-	e.Align(uint64(d.GetAlignment()))
-	e.o += uint64(d.GetSize())
+	e.Align(uint64(d.Alignment))
+	e.o += uint64(d.Size)
 }
 
 // MemoryLayout returns the MemoryLayout used by the encoder.
@@ -65,92 +65,92 @@ func (e *Encoder) Pad(n uint64) {
 
 // Pointer stores a pointer address.
 func (e *Encoder) Pointer(addr uint64) {
-	e.alignAndOffset(e.m.GetPointer())
-	binary.WriteUint(e.w, 8*e.m.GetPointer().GetSize(), addr)
+	e.alignAndOffset(e.m.Pointer)
+	binary.WriteUint(e.w, 8*e.m.Pointer.Size, addr)
 }
 
 // F32 stores a float32.
 func (e *Encoder) F32(v float32) {
-	e.alignAndOffset(e.m.GetF32())
+	e.alignAndOffset(e.m.F32)
 	e.w.Float32(v)
 }
 
 // F64 stores a float64.
 func (e *Encoder) F64(v float64) {
-	e.alignAndOffset(e.m.GetF64())
+	e.alignAndOffset(e.m.F64)
 	e.w.Float64(v)
 }
 
 // I8 stores a int8.
 func (e *Encoder) I8(v int8) {
-	e.alignAndOffset(e.m.GetI8())
+	e.alignAndOffset(e.m.I8)
 	e.w.Int8(v)
 }
 
 // I16 stores a int16.
 func (e *Encoder) I16(v int16) {
-	e.alignAndOffset(e.m.GetI16())
+	e.alignAndOffset(e.m.I16)
 	e.w.Int16(v)
 }
 
 // I32 stores a int32.
 func (e *Encoder) I32(v int32) {
-	e.alignAndOffset(e.m.GetI32())
+	e.alignAndOffset(e.m.I32)
 	e.w.Int32(v)
 }
 
 // I64 stores a int64.
 func (e *Encoder) I64(v int64) {
-	e.alignAndOffset(e.m.GetI64())
+	e.alignAndOffset(e.m.I64)
 	e.w.Int64(v)
 }
 
 // U8 stores a uint8.
 func (e *Encoder) U8(v uint8) {
-	e.alignAndOffset(e.m.GetI8())
+	e.alignAndOffset(e.m.I8)
 	e.w.Uint8(v)
 }
 
 // U16 stores a uint16.
 func (e *Encoder) U16(v uint16) {
-	e.alignAndOffset(e.m.GetI16())
+	e.alignAndOffset(e.m.I16)
 	e.w.Uint16(v)
 }
 
 // U32 stores a uint32.
 func (e *Encoder) U32(v uint32) {
-	e.alignAndOffset(e.m.GetI32())
+	e.alignAndOffset(e.m.I32)
 	e.w.Uint32(v)
 }
 
 // U64 stores a uint64.
 func (e *Encoder) U64(v uint64) {
-	e.alignAndOffset(e.m.GetI64())
+	e.alignAndOffset(e.m.I64)
 	e.w.Uint64(v)
 }
 
 // Char stores an char.
 func (e *Encoder) Char(v Char) {
-	e.alignAndOffset(e.m.GetChar())
-	binary.WriteInt(e.w, 8*e.m.GetChar().GetSize(), int64(v))
+	e.alignAndOffset(e.m.Char)
+	binary.WriteInt(e.w, 8*e.m.Char.Size, int64(v))
 }
 
 // Int stores an int.
 func (e *Encoder) Int(v Int) {
-	e.alignAndOffset(e.m.GetInteger())
-	binary.WriteInt(e.w, 8*e.m.GetInteger().GetSize(), int64(v))
+	e.alignAndOffset(e.m.Integer)
+	binary.WriteInt(e.w, 8*e.m.Integer.Size, int64(v))
 }
 
 // Uint stores a uint.
 func (e *Encoder) Uint(v Uint) {
-	e.alignAndOffset(e.m.GetInteger())
-	binary.WriteUint(e.w, 8*e.m.GetInteger().GetSize(), uint64(v))
+	e.alignAndOffset(e.m.Integer)
+	binary.WriteUint(e.w, 8*e.m.Integer.Size, uint64(v))
 }
 
 // Size stores a size_t.
 func (e *Encoder) Size(v Size) {
-	e.alignAndOffset(e.m.GetSize())
-	binary.WriteUint(e.w, 8*e.m.GetSize().GetSize(), uint64(v))
+	e.alignAndOffset(e.m.Size)
+	binary.WriteUint(e.w, 8*e.m.Size.Size, uint64(v))
 }
 
 // String stores a null-terminated string.
