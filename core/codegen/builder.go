@@ -363,6 +363,9 @@ func (b *Builder) PrintfSpecifier(v *Value) (string, []*Value) {
 		sb.WriteString(t.TypeName())
 		sb.WriteString("{ ")
 		for i, f := range t.Fields() {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
 			fmt, val := b.PrintfSpecifier(v.Extract(i))
 			sb.WriteString(f.Name)
 			sb.WriteString(": ")
@@ -372,7 +375,7 @@ func (b *Builder) PrintfSpecifier(v *Value) (string, []*Value) {
 		sb.WriteString(" }")
 		return sb.String(), vals
 	}
-	panic(fmt.Errorf("Cannot print type %v", v.Type()))
+	return fmt.Sprintf("<%v>", v.Type()), nil
 }
 
 // StructOf builds a struct value that holds all the values in v.
