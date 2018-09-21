@@ -33,6 +33,7 @@ go_library(
         "//core/data/binary:go_default_library",
         "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//gapil/executor:go_default_library",
         "//gapis/api:go_default_library",
