@@ -533,7 +533,7 @@ func dependencySync(ctx context.Context, d *sync.Data, c *path.Capture) error {
 
 			excIdx := 0
 			for _, subcmd := range d.SubcommandReferences[id] {
-				for excIdx < len(executors) && executors[excIdx].lastIdx.LessThan(subcmd.Index) {
+				for excIdx < len(executors)-1 && executors[excIdx].lastIdx.LessThan(subcmd.Index) {
 					excIdx++
 				}
 
