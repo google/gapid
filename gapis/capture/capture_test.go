@@ -33,7 +33,7 @@ func TestCaptureExportImport(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	header := &capture.Header{ABI: device.WindowsX86_64}
 	cmds := []api.Cmd{test.Cmds.A, test.Cmds.B}
-	p, err := capture.New(ctx, arena.New(), "test", header, cmds)
+	p, err := capture.New(ctx, arena.New(), "test", header, nil, cmds)
 	if !assert.For(ctx, "capture.New").ThatError(err).Succeeded() {
 		return
 	}

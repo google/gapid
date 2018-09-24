@@ -42,7 +42,7 @@ func newPathTest(ctx context.Context) *path.Capture {
 		cb.CmdTypeMix(1, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, false, test.Voidᵖ(0x87654321), 3),
 		cb.PrimeState(test.U8ᵖ(0x89abcdef)),
 	}
-	p, err := capture.New(ctx, a, "test", h, cmds)
+	p, err := capture.New(ctx, a, "test", h, nil, cmds)
 	if err != nil {
 		log.F(ctx, true, "Couldn't create capture: %v", err)
 	}

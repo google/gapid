@@ -92,11 +92,13 @@ func init() {
 // The new capture is stored in the database.
 func New(ctx context.Context, a arena.Arena, name string, header *Header, initialState *InitialState, cmds []api.Cmd) (*path.Capture, error) {
 	b := newBuilder(a)
-	for _, state := range initialState.APIs {
-		b.addInitialState(ctx, state)
-	}
-	for _, mem := range initialState.Memory {
-		b.addInitialMemory(ctx, mem)
+	if initialState != nil {
+		for _, state := range initialState.APIs {
+			b.addInitialState(ctx, state)
+		}
+		for _, mem := range initialState.Memory {
+			b.addInitialMemory(ctx, mem)
+		}
 	}
 	for _, cmd := range cmds {
 		b.addCmd(ctx, cmd)
