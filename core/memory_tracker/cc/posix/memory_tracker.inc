@@ -14,26 +14,25 @@
  * limitations under the License.
  */
 
-
 #include <functional>
 namespace gapii {
 namespace track_memory {
 
 class PosixMemoryTracker {
-  public:
-    PosixMemoryTracker(std::function<bool(void*)> segfault_function):
-      signal_handler_registered_(false),
-      orig_action_{0},
-      handle_segfault_(segfault_function) {
-    }
+public:
+  PosixMemoryTracker(std::function<bool(void *)> segfault_function)
+      : orig_action_{0}, handle_segfault_(segfault_function) {}
 
+  bool IsInstalled() const {
+    struct sigaction orig_action = {0};
+    sigaction(SIGSEGV, nullptr, &orig_action);
+    return orig_action.sa_sigaction == &SegfaultHandlerFunction;
+  }
 
-  bool IsInstalled() const { return signal_handler_registered_; }
-
-  protected:
+protected:
   // A static wrapper of HandleSegfault() as sigaction() asks for a static
   // function.
-  static void SegfaultHandlerFunction(int sig, siginfo_t* info, void* unused);
+  static void SegfaultHandlerFunction(int sig, siginfo_t *info, void *unused);
 
   // EnableMemoryTrackerImpl calls sigaction() to register the new segfault
   // handler to the thread (and affects all the child threads), stores the
@@ -49,45 +48,45 @@ class PosixMemoryTracker {
   // othwerwise returns false.
   bool inline DisableMemoryTrackerImpl();
 
-  private:
-    bool signal_handler_registered_;  // A flag to indicate whether the signal
-                                      // handler has been registered
-    struct sigaction orig_action_;    // The original signal action for SIGSEGV
-    std::function<bool(void*)> handle_segfault_; // The function to call on a segfault
+private:
+  struct sigaction orig_action_; // The original signal action for SIGSEGV
+  std::function<bool(void *)>
+      handle_segfault_; // The function to call on a segfault
 };
 
 typedef MemoryTrackerImpl<PosixMemoryTracker> MemoryTracker;
-extern PosixMemoryTracker* unique_tracker;
+extern PosixMemoryTracker *unique_tracker;
 
-void inline PosixMemoryTracker::SegfaultHandlerFunction(int sig, siginfo_t* info, void* unused) {
+void inline PosixMemoryTracker::SegfaultHandlerFunction(int sig,
+                                                        siginfo_t *info,
+                                                        void *unused) {
   if (unique_tracker) {
     if (!unique_tracker->handle_segfault_(info->si_addr)) {
-      #ifndef NDEBUG
-        raise(SIGTRAP);
-      #endif // NDEBUG
-        (*unique_tracker->orig_action_.sa_sigaction)(sig, info, unused);
+#ifndef NDEBUG
+      raise(SIGTRAP);
+#endif // NDEBUG
+      (*unique_tracker->orig_action_.sa_sigaction)(sig, info, unused);
     }
   }
 }
 
 bool inline PosixMemoryTracker::EnableMemoryTrackerImpl() {
-  if (signal_handler_registered_) {
+  if (IsInstalled()) {
     return true;
   }
+
   unique_tracker = this;
   struct sigaction sa {
     0
   };
   sa.sa_flags = SA_SIGINFO;
   sigemptyset(&sa.sa_mask);
-  sa.sa_sigaction = SegfaultHandlerFunction;
-  signal_handler_registered_ = sigaction(SIGSEGV, &sa, &orig_action_) != 1;
-  return signal_handler_registered_;
+  sa.sa_sigaction = &SegfaultHandlerFunction;
+  return sigaction(SIGSEGV, &sa, &orig_action_) != 1;
 }
 
 bool inline PosixMemoryTracker::DisableMemoryTrackerImpl() {
-  if (signal_handler_registered_) {
-    signal_handler_registered_ = false;
+  if (IsInstalled()) {
     return sigaction(SIGSEGV, &orig_action_, nullptr) != 1;
   }
   return true;
