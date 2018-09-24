@@ -15,107 +15,54 @@
  */
 
 #include "resource_cache.h"
+#include "resource.h"
+#include "resource_loader.h"
 
-#include <memory>
+#include "core/cc/log.h"
 
-#include "core/cc/assert.h"
-#include "replay_connection.h"
+#include <vector>
 
 namespace gapir {
+size_t ResourceCache::prefetch(const Resource* res, size_t count,
+                               ResourceLoader* fetcher) {
+  size_t res_sum = 0;
+  std::vector<Resource> uncached;
+  uncached.reserve(count);
 
-ResourceCache::ResourceCache(std::unique_ptr<ResourceProvider> fallbackProvider)
-    : mFallbackProvider(std::move(fallbackProvider)) {}
-
-bool ResourceCache::get(const Resource* resources, size_t count,
-                        ReplayConnection* conn, void* target, size_t size) {
-  uint8_t* dst = reinterpret_cast<uint8_t*>(target);
-  Batch batch(dst, size);
   for (size_t i = 0; i < count; i++) {
-    const Resource& resource = resources[i];
-    if (size < resource.size) {
-      return false;  // Not enough space
+    const auto& r = res[i];
+    if (hasCache(r)) {
+      continue;
     }
-    // Try fetching the resource from the cache.
-    if (getCache(resource, dst)) {
-      // In cache. Flush the pending requests.
-      // Note: This implementation can result in many round trips to the
-      // GAPIS, because whenever a cache hit happens, all the pending
-      // resources accumulated before this resource must be fetched and
-      // loaded prior to the cached resource to be loaded. The original
-      // design was based around the idea that we could load the resource
-      // directly into the destination buffer without temporary copies.
-      // As gRPC forces us to have temporary copies, this implementation
-      // should be changed to have a single fetch.
-      // TODO: Update this batching logic to reduce the number of resource
-      // fetching calls.
-      if (!batch.flush(*this, conn)) {
-        return false;  // Failed to get resources from fallback provider.
-      }
-      batch = Batch(dst, size);
-    } else {
-      // Not in cache.
-      // Add this to the batch we need to request from the fallback provider.
-      batch.append(resource);
+    if (res_sum + r.size > totalCacheSize()) {
+      break;
     }
-    dst += resource.size;
-    size -= resource.size;
+    uncached.push_back(r);
+    res_sum += r.size;
   }
-  return batch.flush(*this, conn);
-}
-
-ResourceCache::Batch::Batch(void* target, size_t size)
-    : mTarget(reinterpret_cast<uint8_t*>(target)), mSize(0), mSpace(size) {
-  GAPID_ASSERT(target != nullptr);
-}
-
-bool ResourceCache::Batch::append(const Resource& resource) {
-  if (mTarget == nullptr) {
-    GAPID_FATAL("Cannot append after flush.");
-  }
-  if (mSpace < resource.size) {
-    return false;
-  }
-  mResources.push_back(resource);
-  mSize += resource.size;
-  mSpace -= resource.size;
-  return true;
-}
-
-bool ResourceCache::Batch::flush(ResourceCache& cache, ReplayConnection* conn) {
-  uint8_t* ptr = mTarget;
-  mTarget = nullptr;  // nullptr is used for detecting append-after-flush.
-  size_t count = mResources.size();
-  if (count == 0) {
-    return true;
-  }
-  if (!cache.mFallbackProvider) {
-    return false;
-  }
-  size_t one_req_limit =
-      100 * 1024 * 1024;  // limit 100MB unless there is only resource
-  size_t i = 0;
-  size_t j = 0;
-  size_t one_req_size = 0;
-  while (i < count) {
-    if (((i != j) && (one_req_size + mResources[j].size > one_req_limit)) ||
-        (j == mResources.size())) {
-      if (!cache.mFallbackProvider->get(&mResources[i], j - i, conn, ptr,
-                                        one_req_size)) {
-        return false;
-      }
-      while (i < j) {
-        cache.putCache(mResources[i], ptr);
-        ptr += mResources[i].size;
-        i++;
-      }
-      one_req_size = 0;
+  GAPID_INFO("Prefetch %zu out of %zu resources...", uncached.size(), count);
+  ResourceLoadingBatch bat;
+  auto fetchBatch = [&bat, fetcher, this]() {
+    auto fetched =
+        fetcher->fetch(bat.resources().data(), bat.resources().size());
+    size_t put_sum = 0;
+    for (size_t i = 0; i < bat.resources().size(); i++) {
+      putCache(bat.resources().at(i),
+               reinterpret_cast<const uint8_t*>(fetched->data()) + put_sum);
+      put_sum += bat.resources().at(i).size;
     }
-    if (j < mResources.size()) {
-      one_req_size += mResources[j].size;
-      j++;
+    bat.clear();
+  };
+
+  for (auto& r : uncached) {
+    if (!bat.append(r, nullptr)) {
+      fetchBatch();
+      bat.append(r, nullptr);
     }
   }
-  return true;
+  if (bat.size() > 0) {
+    fetchBatch();
+  }
+  return uncached.size();
 }
-
 }  // namespace gapir

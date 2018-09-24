@@ -22,7 +22,7 @@
 #include "core/cc/timer.h"
 
 #include "gapir/cc/renderer.h"
-#include "gapir/cc/replay_connection.h"
+#include "gapir/cc/replay_service.h"
 
 #include <memory>
 #include <string>
@@ -35,8 +35,8 @@ class Interpreter;
 class MemoryManager;
 class PostBuffer;
 class ReplayRequest;
-class ResourceInMemoryCache;
-class ResourceProvider;
+class ResourceCache;
+class ResourceLoader;
 class Stack;
 class VulkanRenderer;
 
@@ -48,14 +48,14 @@ class Context : private Renderer::Listener {
   // Creates a new Context object and initialize it with loading the replay
   // request, setting up the memory manager, setting up the caches and
   // prefetching the resources
-  static std::unique_ptr<Context> create(ReplayConnection* conn,
+  static std::unique_ptr<Context> create(ReplayService* srv,
                                          core::CrashHandler& crash_handler,
-                                         ResourceProvider* resource_provider,
+                                         ResourceLoader* resource_loader,
                                          MemoryManager* memory_manager);
 
   ~Context();
 
-  void prefetch(ResourceInMemoryCache* cache) const;
+  void prefetch(ResourceCache* cache) const;
 
   // Run the interpreter over the opcode stream of the replay request and
   // returns true if the interpretation was successful false otherwise
@@ -71,8 +71,8 @@ class Context : private Renderer::Listener {
     POST_BUFFER_SIZE = 2 * 1024 * 1024,
   };
 
-  Context(ReplayConnection* conn, core::CrashHandler& crash_handler,
-          ResourceProvider* resource_provider, MemoryManager* memory_manager);
+  Context(ReplayService* srv, core::CrashHandler& crash_handler,
+          ResourceLoader* resource_loader, MemoryManager* memory_manager);
 
   // Initialize the context object with loading the replay request, setting up
   // the memory manager, setting up the caches and prefetching the resources
@@ -87,7 +87,7 @@ class Context : private Renderer::Listener {
   // (void*)
   bool postData(Stack* stack);
 
-  // Load a resource from the resource provider where the index of the resource
+  // Load a resource from the resource loader where the index of the resource
   // is at the top of the stack (uint32_t) and the target address is at the
   // second element of the stack (void*)
   bool loadResource(Stack* stack);
@@ -102,15 +102,15 @@ class Context : private Renderer::Listener {
   // Flushes any pending post data buffered from calling postData.
   bool flushPostBuffer(Stack* stack);
 
-  // Server connection object to fetch and post resources back to the server
-  ReplayConnection* mConnection;
+  // Server object to fetch and post resources back to.
+  ReplayService* mSrv;
 
   // The crash handler used for catching and reporting crashes.
   core::CrashHandler& mCrashHandler;
 
-  // Resource provider (possibly with caching) to fetch the resources required
+  // Resource loader (possibly with caching) to fetch the resources required
   // by the replay. It is owned by the creator of the Context object.
-  ResourceProvider* mResourceProvider;
+  ResourceLoader* mResourceLoader;
 
   // Memory manager to manage the memory used by the replay and by the
   // interpreter. Is is owned by the creator of the Context object.

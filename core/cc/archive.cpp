@@ -50,6 +50,9 @@ void must_truncate(int fd, off_t length) {
 
 namespace core {
 
+static const char* kIndexFileNameSuffix = ".index";
+static const char* kDataFileNameSuffix = ".data";
+
 // Use mmap-ed data file if it is available.
 // fseek+fread might fail on some driver.
 #if GAPID_ARCHIVE_USE_MMAP
@@ -192,15 +195,17 @@ bool Archive::RecordFile::resize(uint64_t size) {
 
 #endif  //  GAPID_ARCHIVE_USE_MMAP
 
-Archive::Archive(const std::string& archiveName) {
+Archive::Archive(const std::string& archiveName)
+    : mDataFilePath(archiveName + kDataFileNameSuffix),
+      mIndexFilePath(archiveName + kIndexFileNameSuffix) {
   // Open or create the archive data file in binary read/write mode.
-  const std::string dataFilename(archiveName + ".data");
+  const std::string dataFilename(mDataFilePath);
   if (!mDataFile.open(dataFilename)) {
     GAPID_FATAL("Unable to open archive data file %s", dataFilename.c_str());
   }
 
   // Open or create the archive index file in binary read/write mode.
-  const std::string indexFilename(archiveName + ".index");
+  const std::string indexFilename(mIndexFilePath);
   if (!(mIndexFile = fopen(indexFilename.c_str(), "ab+"))) {
     GAPID_FATAL("Unable to open archive index file %s", indexFilename.c_str());
   }

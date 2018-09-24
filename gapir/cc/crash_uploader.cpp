@@ -18,15 +18,15 @@
 #include "core/cc/crash_handler.h"
 #include "core/cc/file_reader.h"
 #include "core/cc/log.h"
-#include "gapir/cc/replay_connection.h"
+#include "gapir/cc/replay_service.h"
 
 #include <stdio.h>
 
 namespace gapir {
 
 CrashUploader::CrashUploader(core::CrashHandler& crash_handler,
-                             ReplayConnection* conn)
-    : mConnection(conn) {
+                             ReplayService* srv)
+    : mSrv(srv) {
   mUnregister = crash_handler.registerHandler(
       [this](const std::string& minidumpPath, bool succeeded) {
         if (!succeeded) {
@@ -55,8 +55,8 @@ CrashUploader::CrashUploader(core::CrashHandler& crash_handler,
           return;
         }
 
-        if (!mConnection->sendCrashDump(minidumpPath, minidumpData.get(),
-                                        minidumpSize)) {
+        if (!mSrv->sendCrashDump(minidumpPath, minidumpData.get(),
+                                 minidumpSize)) {
           GAPID_ERROR("Failed to send minidump to server");
           return;
         }

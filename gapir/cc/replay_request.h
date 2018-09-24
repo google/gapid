@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "memory_manager.h"
-#include "replay_connection.h"
+#include "replay_service.h"
 
 namespace gapir {
 
@@ -36,10 +36,10 @@ namespace gapir {
 class ReplayRequest {
  public:
   // Creates a new replay request and loads it content from the given replay
-  // connection. Returns the new replay request if loading it was successful or
-  // nullptr otherwise. The memory manager is used to store the content of the
-  // replay request
-  static std::unique_ptr<ReplayRequest> create(ReplayConnection* conn,
+  // service instance. Returns the new replay request if loading it was
+  // successful or nullptr otherwise. The memory manager is used to store the
+  // content of the replay request.
+  static std::unique_ptr<ReplayRequest> create(ReplayService* srv,
                                                MemoryManager* memoryManager);
 
   // Get the stack size required by the replay

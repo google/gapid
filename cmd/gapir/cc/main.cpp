@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
+#include "gapir/cc/archive_replay_service.h"
+#include "gapir/cc/cached_resource_loader.h"
 #include "gapir/cc/context.h"
 #include "gapir/cc/crash_uploader.h"
+#include "gapir/cc/grpc_replay_service.h"
+#include "gapir/cc/in_memory_resource_cache.h"
 #include "gapir/cc/memory_manager.h"
-#include "gapir/cc/replay_archive.h"
-#include "gapir/cc/replay_connection.h"
-#include "gapir/cc/resource_disk_cache.h"
-#include "gapir/cc/resource_in_memory_cache.h"
-#include "gapir/cc/resource_requester.h"
+#include "gapir/cc/on_disk_resource_cache.h"
 #include "gapir/cc/server.h"
 #include "gapir/cc/surface.h"
 
@@ -63,22 +63,6 @@ std::vector<uint32_t> memorySizes {
       128 * 1024 * 1024U,       // 128MB
 };
 
-// createResourceProvider constructs and returns a ResourceInMemoryCache.
-// If cachePath is non-null then the ResourceInMemoryCache will be backed by a
-// disk-cache.
-std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
-    const char* cachePath, MemoryManager* memoryManager) {
-  if (cachePath != nullptr) {
-    GAPID_FATAL("Disk cache is currently out of service. Got %s", cachePath);
-    return std::unique_ptr<ResourceInMemoryCache>(ResourceInMemoryCache::create(
-        ResourceDiskCache::create(ResourceRequester::create(), cachePath),
-        memoryManager->getBaseAddress()));
-  } else {
-    return std::unique_ptr<ResourceInMemoryCache>(ResourceInMemoryCache::create(
-        ResourceRequester::create(), memoryManager->getBaseAddress()));
-  }
-}
-
 // Setup creates and starts a replay server at the given URI port. Returns the
 // created and started server.
 // Note the given memory manager and the crash handler, they may be used for
@@ -86,31 +70,32 @@ std::unique_ptr<ResourceInMemoryCache> createResourceProvider(
 // to them exclusive to one connected client. All other replay requests from
 // other clients will be blocked, until the current replay finishes.
 std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
-                              const char* cachePath, int idleTimeoutSec,
+                              ResourceCache* cache, int idleTimeoutSec,
                               core::CrashHandler* crashHandler,
                               MemoryManager* memMgr, std::mutex* lock) {
   // Return a replay server with the following replay ID handler. The first
   // package for a replay must be the ID of the replay.
   return Server::createAndStart(
       uri, authToken, idleTimeoutSec,
-      [cachePath, memMgr, crashHandler, lock](ReplayConnection* replayConn,
-                                              const std::string& replayId) {
+      [cache, memMgr, crashHandler, lock](GrpcReplayService* replayConn,
+                                          const std::string& replayId) {
         std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
-        std::unique_ptr<ResourceInMemoryCache> resourceProvider(
-            createResourceProvider(cachePath, memMgr));
+
+        auto resLoader = CachedResourceLoader::create(
+            cache, PassThroughResourceLoader::create(replayConn));
 
         std::unique_ptr<CrashUploader> crash_uploader =
             std::unique_ptr<CrashUploader>(
                 new CrashUploader(*crashHandler, replayConn));
 
-        std::unique_ptr<Context> context = Context::create(
-            replayConn, *crashHandler, resourceProvider.get(), memMgr);
+        std::unique_ptr<Context> context =
+            Context::create(replayConn, *crashHandler, resLoader.get(), memMgr);
 
         if (context == nullptr) {
           GAPID_WARNING("Loading Context failed!");
           return;
         }
-        context->prefetch(resourceProvider.get());
+        context->prefetch(resLoader->getCache());
 
         GAPID_INFO("Replay started");
         bool ok = context->interpret();
@@ -164,10 +149,11 @@ void android_main(struct android_app* app) {
                       "Supported ABIs: %s\n",
                       uri.c_str(), core::supportedABIs());
 
+  auto cache = InMemoryResourceCache::create(memoryManager.getBaseAddress());
   int idleTimeoutSec = 0;  // No timeout
   std::mutex lock;
   std::unique_ptr<Server> server =
-      Setup(uri.c_str(), nullptr, nullptr, idleTimeoutSec, &crashHandler,
+      Setup(uri.c_str(), nullptr, cache.get(), idleTimeoutSec, &crashHandler,
             &memoryManager, &lock);
   std::thread waiting_thread([&]() { server.get()->wait(); });
   if (chmod(socket_file_path.c_str(), S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH)) {
@@ -214,7 +200,7 @@ struct Options {
     kReplayArchive,  // Replay an exported archive.
   };
   ReplayMode mode = kUnknown;
-  bool wait_for_debugger = false;
+  bool waitForDebugger = false;
   const char* cachePath = nullptr;
   const char* portArgStr = "0";
   const char* authTokenFile = nullptr;
@@ -295,7 +281,7 @@ struct Options {
         }
         opts.idleTimeoutSec = atoi(argv[++i]);
       } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
-        opts.wait_for_debugger = true;
+        opts.waitForDebugger = true;
       } else if (strcmp(argv[i], "--version") == 0) {
         opts.version = true;
       } else {
@@ -322,12 +308,18 @@ static int replayArchive(Options opts) {
   GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
   MemoryManager memoryManager(memorySizes);
   std::string payloadPath = std::string(opts.replayArchive) + "/payload.bin";
-  gapir::ReplayArchive conn(payloadPath, opts.postbackDirectory);
-  std::unique_ptr<ResourceProvider> resourceProvider =
-      ResourceDiskCache::create(nullptr, opts.replayArchive);
+  gapir::ArchiveReplayService replayArchive(payloadPath,
+                                            opts.postbackDirectory);
+  // All the resource data must be in the archive file, no fallback resource
+  // loader to fetch uncached resources data.
+  auto onDiskCache = OnDiskResourceCache::create(opts.replayArchive, false);
+  std::unique_ptr<ResourceLoader> resLoader =
+      CachedResourceLoader::create(onDiskCache.get(), nullptr);
   std::unique_ptr<Context> context = Context::create(
-      &conn, crashHandler, resourceProvider.get(), &memoryManager);
+      &replayArchive, crashHandler, resLoader.get(), &memoryManager);
 
+  // All resouce data must be in the on-disk cache files now, no 'prefetch'
+  // call to the on-disk cache here.
   GAPID_INFO("Replay started");
   bool ok = context->interpret();
   GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
@@ -378,11 +370,12 @@ static int startServer(Options opts) {
   std::string uri =
       std::string(local_host_name) + std::string(":") + std::string(portStr);
 
+  auto cache = InMemoryResourceCache::create(memoryManager.getBaseAddress());
+
   std::mutex lock;
-  std::unique_ptr<Server> server =
-      Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
-            opts.cachePath, opts.idleTimeoutSec, &crashHandler, &memoryManager,
-            &lock);
+  std::unique_ptr<Server> server = Setup(
+      uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
+      cache.get(), opts.idleTimeoutSec, &crashHandler, &memoryManager, &lock);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());
@@ -403,7 +396,7 @@ int main(int argc, const char* argv[]) {
   signal(SIGPIPE, SIG_IGN);
 #endif
 
-  if (opts.wait_for_debugger) {
+  if (opts.waitForDebugger) {
     GAPID_INFO("Waiting for debugger to attach");
     core::Debugger::waitForAttach();
   }

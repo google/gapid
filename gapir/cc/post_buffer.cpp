@@ -15,16 +15,15 @@
  */
 
 #include "post_buffer.h"
+#include "replay_service.h"
 
 #include <cstring>
 #include <new>
 
-#include "replay_connection.h"
-
 namespace gapir {
 
 PostBuffer::PostBuffer(uint32_t desiredCapacity, PostBufferCallback callback)
-    : mPosts(ReplayConnection::Posts::create()),
+    : mPosts(ReplayService::Posts::create()),
       mTotalPostCount(0),
       mCapacity(desiredCapacity),
       mCallback(callback),
@@ -38,7 +37,7 @@ bool PostBuffer::push(const void* address, uint32_t count) {
     // Write it out immediately instead of buffering to reduce time spent
     // copying large buffers around. This also handles the case where the count
     // is larger than the buffer capacity.
-    auto onePost = ReplayConnection::Posts::create();
+    auto onePost = ReplayService::Posts::create();
     onePost->append(mTotalPostCount, address, count);
     mTotalPostCount++;
     return mCallback(std::move(onePost));
@@ -61,7 +60,7 @@ bool PostBuffer::flush() {
 
   if (mOffset > 0) {
     ok = mCallback(std::move(mPosts));
-    mPosts = ReplayConnection::Posts::create();
+    mPosts = ReplayService::Posts::create();
     mOffset = 0;
   }
   return ok;

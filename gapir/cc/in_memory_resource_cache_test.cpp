@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-#include "resource_in_memory_cache.h"
+#include "in_memory_resource_cache.h"
+#include "cached_resource_loader.h"
 #include "memory_manager.h"
-#include "mock_resource_provider.h"
-#include "resource_provider.h"
+#include "mock_resource_loader.h"
+#include "replay_service.h"
 #include "test_utilities.h"
 
 #include <gmock/gmock.h>
@@ -49,46 +50,43 @@ class ResourceInMemoryCacheTest : public Test {
     mMemoryManager.reset(new MemoryManager(memorySizes));
     mMemoryManager->setVolatileMemory(MEMORY_SIZE - CACHE_SIZE);
 
-    // ResourceInMemoryCache -> PatternedResourceProvider ->
-    // MockResourceProvider
-    mFallbackProvider = new StrictMock<MockResourceProvider>();
+    mCache = InMemoryResourceCache::create(mMemoryManager->getBaseAddress());
+    mMemoryCachedResourceLoader = CachedResourceLoader::create(
+        mCache.get(),
+        std::unique_ptr<ResourceLoader>(new StrictMock<MockResourceLoader>()));
 
-    auto patternedResourceProvider = new PatternedResourceProvider(
-        std::unique_ptr<StrictMock<MockResourceProvider>>(mFallbackProvider));
+    mFallbackLoader = static_cast<StrictMock<MockResourceLoader>*>(
+        mMemoryCachedResourceLoader->getFallbackResourceLoader());
 
-    mResourceInMemoryCache = ResourceInMemoryCache::create(
-        std::unique_ptr<PatternedResourceProvider>(patternedResourceProvider),
-        mMemoryManager->getBaseAddress());
-
-    mResourceInMemoryCache->resize(CACHE_SIZE);
+    mCache->resize(CACHE_SIZE);
   }
 
   inline void expectCacheHit(std::vector<Resource> resources) {
     SCOPED_TRACE("expectCacheHit");
 
-    auto pattern = PatternedResourceProvider::patternFor(resources);
-    size_t size = pattern.size();
+    auto res_data = createResourcesData(resources);
+    size_t size = res_data.size();
 
     std::vector<uint8_t> got(size);
 
     // Test as a single request.
-    EXPECT_TRUE(mResourceInMemoryCache->get(resources.data(), resources.size(),
-                                            nullptr, got.data(), size));
+    EXPECT_TRUE(mMemoryCachedResourceLoader->load(
+        resources.data(), resources.size(), got.data(), size));
 
-    EXPECT_EQ(got, pattern);
+    EXPECT_EQ(got, res_data);
 
     // Test individually
     size_t offset = 0;
     for (auto resource : resources) {
-      EXPECT_TRUE(mResourceInMemoryCache->get(&resource, 1, nullptr,
-                                              &got[offset], resource.size));
+      EXPECT_TRUE(mMemoryCachedResourceLoader->load(&resource, 1, &got[offset],
+                                                    resource.size));
       offset += resource.size;
     }
 
-    EXPECT_EQ(got, pattern);
+    EXPECT_EQ(got, res_data);
 
     if (HasFailure()) {
-      mResourceInMemoryCache->dump(stdout);
+      mMemoryCachedResourceLoader->getCache()->dump(stdout);
     }
   }
 
@@ -100,23 +98,23 @@ class ResourceInMemoryCacheTest : public Test {
       size += resource.size;
     }
     std::vector<uint8_t> got(size);
-    EXPECT_CALL(*mFallbackProvider, get(_, _, _, got.data(), size))
+    auto res_data = createResourcesData(resources);
+    EXPECT_CALL(*mFallbackLoader, fetch(_, _))
         .With(Args<0, 1>(ElementsAreArray(resources)))
-        .WillOnce(Return(true))
+        .WillOnce(Return(ByMove(std::move(createResources(res_data)))))
         .RetiresOnSaturation();
-    EXPECT_TRUE(mResourceInMemoryCache->get(resources.data(), resources.size(),
-                                            nullptr, got.data(), size));
+    EXPECT_TRUE(mMemoryCachedResourceLoader->load(
+        resources.data(), resources.size(), got.data(), size));
 
-    auto pattern = PatternedResourceProvider::patternFor(resources);
-    EXPECT_EQ(got, pattern);
+    EXPECT_EQ(got, res_data);
   }
 
   static const size_t TEMP_SIZE = 2048;
 
-  StrictMock<MockResourceProvider>* mFallbackProvider;
-
+  StrictMock<MockResourceLoader>* mFallbackLoader;
+  std::unique_ptr<InMemoryResourceCache> mCache;
   std::unique_ptr<MemoryManager> mMemoryManager;
-  std::unique_ptr<ResourceInMemoryCache> mResourceInMemoryCache;
+  std::unique_ptr<CachedResourceLoader> mMemoryCachedResourceLoader;
   uint8_t mTemp[TEMP_SIZE];
 };
 
@@ -143,14 +141,14 @@ TEST_F(ResourceInMemoryCacheTest, CacheHit) {
 TEST_F(ResourceInMemoryCacheTest, Prefetch) {
   InSequence x;
 
-  mResourceInMemoryCache->resize(A.size + B.size + C.size + D.size);
-  EXPECT_CALL(*mFallbackProvider,
-              get(_, _, _, mTemp, A.size + B.size + C.size + D.size))
+  EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(A, B, C, D)))
-      .WillOnce(Return(true));
+      .WillOnce(Return(ByMove(
+          std::move(createResources(createResourcesData({A, B, C, D}))))));
 
   Resource resources[] = {A, B, C, D, E};
-  mResourceInMemoryCache->prefetch(resources, 5, nullptr, mTemp, TEMP_SIZE);
+  mCache->resize(TEMP_SIZE);
+  mCache->prefetch(resources, 5, mFallbackLoader);
 
   // These should be cached.
   expectCacheHit({C, B});
@@ -160,7 +158,7 @@ TEST_F(ResourceInMemoryCacheTest, Prefetch) {
 }
 
 TEST_F(ResourceInMemoryCacheTest, PrefetchCacheHit) {
-  mResourceInMemoryCache->resize(A.size + B.size + C.size + D.size);
+  mCache->resize(A.size + B.size + C.size + D.size);
   expectCacheMiss({A, B, C, D});
   // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
   // ┃ offset:      0 ┃ offset:     64 ┃ offset:    320 ┃ offset:    832 ┃
@@ -168,8 +166,8 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchCacheHit) {
   // ┃ id:          A ┃ id:          B ┃ id:          C ┃ id:          D ┃
   // ┃ head           ┃                ┃                ┃                ┃
   // ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┛
-  Resource resources[] = {A, B, C, D};
-  mResourceInMemoryCache->prefetch(resources, 4, nullptr, mTemp, TEMP_SIZE);
+  std::vector<Resource> resources{A, B, C, D};
+  mCache->prefetch(resources.data(), 4, mFallbackLoader);
   // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
   // ┃ offset:      0 ┃ offset:     64 ┃ offset:    320 ┃ offset:    832 ┃
   // ┃ size:       64 ┃ size:      256 ┃ size:      512 ┃ size:     1024 ┃
@@ -182,7 +180,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchCacheHit) {
 TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHit) {
   InSequence x;
 
-  mResourceInMemoryCache->resize(A.size + B.size + C.size + D.size);
+  mCache->resize(A.size + B.size + C.size + D.size);
   expectCacheMiss({A, C});
   // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
   // ┃ offset:      0 ┃ offset:     64 ┃ offset:    320 ┃ offset:    832 ┃
@@ -190,11 +188,13 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHit) {
   // ┃ id:          A ┃ id:          B ┃ id:          C ┃ id:          D ┃
   // ┃ head           ┃                ┃                ┃                ┃
   // ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┛
-  Resource resources[] = {A, B, C, D};
-  EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, B.size + D.size))
+  std::vector<Resource> resources{A, B, C, D};
+  EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(B, D)))
-      .WillOnce(Return(true));
-  mResourceInMemoryCache->prefetch(resources, 4, nullptr, mTemp, TEMP_SIZE);
+      .WillOnce(Return(
+          ByMove(std::move(createResources(createResourcesData({B, D}))))));
+  EXPECT_TRUE(
+      mMemoryCachedResourceLoader->load(resources.data(), 4, mTemp, TEMP_SIZE));
   // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
   // ┃ offset:      0 ┃ offset:     64 ┃ offset:    320 ┃ offset:    832 ┃
   // ┃ size:       64 ┃ size:      256 ┃ size:      512 ┃ size:     1024 ┃
@@ -207,7 +207,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHit) {
 TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHitWithWrapped) {
   InSequence x;
 
-  mResourceInMemoryCache->resize(B.size + C.size + D.size);
+  mCache->resize(B.size + C.size + D.size);
   expectCacheMiss({C, B, A, D});
   // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
   // ┃ offset:     64 ┃ offset:    512 ┃ offset:    768 ┃ offset:    832 ┃
@@ -216,10 +216,11 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHitWithWrapped) {
   // ┃ head           ┃                ┃                ┃                ┃
   // ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━┛
   Resource resources[] = {B, C, D};
-  EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, C.size))
+  EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(C)))
-      .WillOnce(Return(true));
-  mResourceInMemoryCache->prefetch(resources, 3, nullptr, mTemp, TEMP_SIZE);
+      .WillOnce(
+          Return(ByMove(std::move(createResources(createResourcesData({C}))))));
+  mMemoryCachedResourceLoader->load(resources, 3, mTemp, TEMP_SIZE);
   // ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
   // ┃ offset:  64 ┃ offset: 576 ┃ offset: 768 ┃ offset:  832 ┃
   // ┃ size:   512 ┃ size:   192 ┃ size:    64 ┃ size:   1024 ┃
@@ -232,43 +233,42 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHitWithWrapped) {
 TEST_F(ResourceInMemoryCacheTest, Resize) {
   InSequence x;
 
-  mResourceInMemoryCache->resize(D.size / 2);
+  mMemoryCachedResourceLoader->getCache()->resize(D.size / 2);
 
   // D is too big to fit in the cache.
   expectCacheMiss({D});
   expectCacheMiss({D});
 
-  mResourceInMemoryCache->resize(D.size);
+  mCache->resize(D.size);
   expectCacheMiss({D});
   expectCacheHit({D});  // Now should be big enough to hold D.
 
   // Same size. Should be an effective no-op.
-  mResourceInMemoryCache->resize(D.size);
+  mCache->resize(D.size);
   expectCacheHit({D});
 
   // Expand the buffer to also include space for C.
-  mResourceInMemoryCache->resize(D.size + C.size);
+  mCache->resize(D.size + C.size);
   expectCacheHit({D});
   expectCacheMiss({C});
   expectCacheHit({D, C});
 
   // Reduce the buffer so that it can no longer fit C.
-  mResourceInMemoryCache->resize(D.size + B.size);
+  mCache->resize(D.size + B.size);
   expectCacheHit({D});
   expectCacheMiss({C});
 
   // Reduce the buffer so that it is empty.
-  mResourceInMemoryCache->resize(0);
+  mCache->resize(0);
   expectCacheMiss({D, C});
 
   // Grow the buffer to hold A, B, C, D, E and a bit of space.
-  mResourceInMemoryCache->resize(A.size + B.size + C.size + D.size + E.size +
-                                 10);
+  mCache->resize(A.size + B.size + C.size + D.size + E.size + 10);
   expectCacheMiss({A, B, C, D, E});
   expectCacheHit({A, B, C, D, E});
 
   // Reduce the buffer so that it can fit A, B and a bit of space.
-  mResourceInMemoryCache->resize(A.size + B.size + 10);
+  mCache->resize(A.size + B.size + 10);
   expectCacheHit({A, B});
   expectCacheMiss({C, D, E});
 }
@@ -279,7 +279,7 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
   Resource A1("A1", 1), B1("B1", 1), C1("C1", 1), D1("D1", 1);
   Resource E1("E1", 1), F1("F1", 1), G1("G1", 1), H1("H1", 1);
   Resource A2("A2", 2), B2("B2", 2), C2("C2", 2), D2("D2", 2);
-  mResourceInMemoryCache->resize(8);
+  mMemoryCachedResourceLoader->getCache()->resize(8);
   // ┏━━━━━━━━━━━━━━━━┓
   // ┃ offset:      0 ┃
   // ┃ size:        8 ┃
@@ -354,10 +354,11 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
   {
     SCOPED_TRACE(".6");
     Resource resources[] = {A1, B1, C1, D1, E1};
-    EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, 1))
+    EXPECT_CALL(*mFallbackLoader, fetch(_, _))
         .With(Args<0, 1>(ElementsAre(E1)))
-        .WillOnce(Return(true));
-    mResourceInMemoryCache->prefetch(resources, 5, nullptr, mTemp, TEMP_SIZE);
+        .WillOnce(Return(
+            ByMove(std::move(createResources(createResourcesData({E1}))))));
+    mMemoryCachedResourceLoader->load(resources, 5, mTemp, TEMP_SIZE);
     expectCacheHit({A1, B1, C1, D1, E1});
   }
   // clang-format off
@@ -381,10 +382,11 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
   // ┗━━━━━━━━━━━━┻━━━━━━━━━━━━┻━━━━━━━━━━━━┻━━━━━━━━━━━━┻━━━━━━━━━━━━┛
   {
     Resource resources[] = {A1, C2, D2};
-    EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, A1.size + D2.size))
+    EXPECT_CALL(*mFallbackLoader, fetch(_, _))
         .With(Args<0, 1>(ElementsAre(A1, D2)))
-        .WillOnce(Return(true));
-    mResourceInMemoryCache->prefetch(resources, 3, nullptr, mTemp, TEMP_SIZE);
+        .WillOnce(Return(
+            ByMove(std::move(createResources(createResourcesData({A1, D2}))))));
+    mMemoryCachedResourceLoader->load(resources, 3, mTemp, TEMP_SIZE);
   }
   // ┏━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
   // ┃ offset:  0 ┃ offset:  2 ┃ offset:  3 ┃ offset:  5 ┃ offset:  7 ┃
@@ -404,13 +406,14 @@ TEST_F(ResourceInMemoryCacheTest, PrefecthOverrun) {
   Resource A1("A1", 1), B1("B1", 1), C1("C1", 1), D1("D1", 1);
   Resource E1("E1", 1), F1("F1", 1), G1("G1", 1), H1("H1", 1);
   Resource A2("A2", 2), B2("B2", 2), C2("C2", 2), D2("D2", 2);
-  mResourceInMemoryCache->resize(8);
+  mCache->resize(8);
 
-  Resource resources1[] = {A1, B1, C1, D1, E1};
-  EXPECT_CALL(*mFallbackProvider, get(_, _, _, mTemp, 5))
+  std::vector<Resource> resources1{A1, B1, C1, D1, E1};
+  EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(A1, B1, C1, D1, E1)))
-      .WillOnce(Return(true));
-  mResourceInMemoryCache->prefetch(resources1, 5, nullptr, mTemp, TEMP_SIZE);
+      .WillOnce(Return(
+          ByMove(std::move(createResources(createResourcesData(resources1))))));
+  mMemoryCachedResourceLoader->load(resources1.data(), 5, mTemp, TEMP_SIZE);
 
   // ┏━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┓
   // ┃  A1  ┃  B1  ┃  C1  ┃  D1  ┃  E1  ┃      ┃      ┃      ┃

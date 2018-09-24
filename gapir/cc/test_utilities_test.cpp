@@ -17,7 +17,8 @@
 #include "test_utilities.h"
 #include "base_type.h"
 #include "interpreter.h"
-#include "replay_connection.h"
+#include "replay_service.h"
+#include "resource.h"
 
 #include "gapir/replay_service/service.pb.h"
 
@@ -74,7 +75,7 @@ void pushString(std::vector<uint8_t>* buf, const char* str) {
   buf->push_back(0);
 }
 
-std::unique_ptr<ReplayConnection::Payload> createPayload(
+std::unique_ptr<ReplayService::Payload> createPayload(
     uint32_t stackSize, uint32_t volatileMemorySize,
     const std::vector<uint8_t>& constantMemory,
     const std::vector<Resource>& resources,
@@ -90,17 +91,28 @@ std::unique_ptr<ReplayConnection::Payload> createPayload(
     r->set_id(resources[i].id);
     r->set_size(resources[i].size);
   }
-  return std::unique_ptr<ReplayConnection::Payload>(
-      new ReplayConnection::Payload(std::move(p)));
+  return std::unique_ptr<ReplayService::Payload>(
+      new ReplayService::Payload(std::move(p)));
 }
 
-std::unique_ptr<ReplayConnection::Resources> createResources(
+std::unique_ptr<ReplayService::Resources> createResources(
     const std::vector<uint8_t>& data) {
   auto p =
       std::unique_ptr<replay_service::Resources>(new replay_service::Resources);
   p->set_data(data.data(), data.size());
-  return std::unique_ptr<ReplayConnection::Resources>(
-      new ReplayConnection::Resources(std::move(p)));
+  return std::unique_ptr<ReplayService::Resources>(
+      new ReplayService::Resources(std::move(p)));
+}
+
+std::vector<uint8_t> createResourcesData(
+    const std::vector<Resource>& resources) {
+  std::vector<uint8_t> v;
+  for (auto resource : resources) {
+    for (size_t i = 0; i < resource.size; i++) {
+      v.push_back(resource.id[i % resource.id.size()]);
+    }
+  }
+  return v;
 }
 
 }  // namespace test

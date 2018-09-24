@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef GAPIR_REPLAY_CONNECTION_H
-#define GAPIR_REPLAY_CONNECTION_H
+#ifndef GAPIR_REPLAY_SERVICE_H
+#define GAPIR_REPLAY_SERVICE_H
+
+#include "resource.h"
+
+#include "gapir/replay_service/service.pb.h"
 
 #include <functional>
 #include <memory>
@@ -23,64 +27,20 @@
 #include <tuple>
 #include <vector>
 
-namespace grpc {
-template <typename RES, typename REQ>
-class ServerReaderWriter;
-}
-
 namespace replay_service {
 class Payload;
 class Resources;
 class ReplayRequest;
-class PayloadRequest;
-class ResourceRequest;
 class PostData;
 class ReplayResponse;
-class Notification;
 }  // namespace replay_service
 
 namespace gapir {
 
-using ReplayGrpcStream =
-    grpc::ServerReaderWriter<replay_service::ReplayResponse,
-                             replay_service::ReplayRequest>;
-using PayloadHandler = std::function<bool(const replay_service::Payload&)>;
-using ResourcesHandler = std::function<bool(const replay_service::Resources&)>;
-
-// ReplayConnection wraps the replay stream connection and provides an interface
-// to ease receiving and sending of replay data, hides the protobuf and grpc
-// detailed code.
-class ReplayConnection {
+// ReplayService is an interface that wraps all the server-client data
+// communication methods needed for a replay.
+class ReplayService {
  public:
-  // ResourceRequest is a wraper class of replay_service::ResourceRequest, it
-  // hides the new/delete operations of the proto object from the outer code.
-  class ResourceRequest {
-   public:
-    // Returns a new created empty ResourceRequest.
-    static std::unique_ptr<ResourceRequest> create() {
-      return std::unique_ptr<ResourceRequest>(new ResourceRequest());
-    }
-
-    ~ResourceRequest();
-
-    ResourceRequest(const ResourceRequest&) = delete;
-    ResourceRequest(ResourceRequest&&) = delete;
-    ResourceRequest& operator=(const ResourceRequest&) = delete;
-    ResourceRequest& operator=(ResourceRequest&&) = delete;
-
-    // Adds a resource, with its ID and expected size, to the request list.
-    bool append(const std::string& id, size_t size);
-    // Get the internal proto object raw pointer, and gives away the ownership
-    // of the proto object.
-    replay_service::ResourceRequest* release_to_proto();
-
-   private:
-    ResourceRequest();
-
-    // The internal wrapped proto object.
-    std::unique_ptr<replay_service::ResourceRequest> mProtoResourceRequest;
-  };
-
   // Posts is a wraper class of replay_service::PostData, it hides the
   // new/delete operations of the proto object from the outer code.
   class Posts {
@@ -124,11 +84,6 @@ class ReplayConnection {
   // new/delete operations of the proto object from outer code.
   class Payload {
    public:
-    // Gets a Payload from replay connection stream. Takes the ownership of
-    // the proto object in the returned Payload. Returns nullptr in case of
-    // error.
-    static std::unique_ptr<Payload> get(ReplayGrpcStream* stream);
-
     // Creates a new Payload from a protobuf payload object.
     Payload(std::unique_ptr<replay_service::Payload> protoPayload);
 
@@ -160,20 +115,15 @@ class ReplayConnection {
     const void* opcodes_data() const;
 
    private:
-    Payload(std::unique_ptr<replay_service::ReplayRequest> req);
-
     // The internal proto object.
-    std::unique_ptr<replay_service::ReplayRequest> mProtoReplayRequest;
+    std::unique_ptr<replay_service::Payload> mProtoPayload;
+    // std::unique_ptr<replay_service::ReplayRequest> mProtoReplayRequest;
   };
 
   // Resources is a wraper class of replay_service::Resources, it hides the
   // new/delete operations of the proto object from outer code.
   class Resources {
    public:
-    // Gets a Resources from the replay connection stream, takes the ownership
-    // of the proto object received. Returns nullptr in case of error.
-    static std::unique_ptr<Resources> get(ReplayGrpcStream* stream);
-
     // Creates a new Resources from a protobuf resources object.
     Resources(std::unique_ptr<replay_service::Resources> protoResources);
 
@@ -192,54 +142,37 @@ class ReplayConnection {
     Resources(std::unique_ptr<replay_service::ReplayRequest> req);
 
     // The internal proto object.
-    std::unique_ptr<replay_service::ReplayRequest> mProtoReplayRequest;
+    std::unique_ptr<replay_service::Resources> mProtoResources;
   };
 
-  // Creates a ReplayConnection from the gRPC stream. If the gRPC stream is
-  // nullptr, returns nullptr
-  static std::unique_ptr<ReplayConnection> create(ReplayGrpcStream* stream) {
-    if (stream == nullptr) {
-      return nullptr;
-    }
-    return std::unique_ptr<ReplayConnection>(new ReplayConnection(stream));
-  }
+  ReplayService() = default;
+  virtual ~ReplayService() {}
 
-  virtual ~ReplayConnection();
+  ReplayService(const ReplayService&) = delete;
+  ReplayService(ReplayService&&) = delete;
+  ReplayService& operator=(const ReplayService&) = delete;
+  ReplayService& operator=(ReplayService&&) = delete;
 
-  ReplayConnection(const ReplayConnection&) = delete;
-  ReplayConnection(ReplayConnection&&) = delete;
-  ReplayConnection& operator=(const ReplayConnection&) = delete;
-  ReplayConnection& operator=(ReplayConnection&&) = delete;
-
-  // Sends PayloadRequest and returns the received Payload. Returns nullptr in
-  // case of error.
-  virtual std::unique_ptr<Payload> getPayload();
-  // Sends ResourceRequest and returns the received Resources. Returns nullptr
-  // in case of error.
-  virtual std::unique_ptr<Resources> getResources(
-      std::unique_ptr<ResourceRequest> req);
+  // Gets a Payload. Returns nullptr in case of error.
+  virtual std::unique_ptr<Payload> getPayload() = 0;
+  // Get Resources. Returns nullptr in case of error.
+  virtual std::unique_ptr<Resources> getResources(const Resource* resources,
+                                                  size_t resCount) = 0;
 
   // Sends ReplayFinished signal. Returns true if succeeded, otherwise returns
   // false.
-  virtual bool sendReplayFinished();
+  virtual bool sendReplayFinished() = 0;
   // Sends crash dump. Returns true if succeeded, otherwise returns false.
   virtual bool sendCrashDump(const std::string& filepath,
-                             const void* crash_data, uint32_t crash_size);
+                             const void* crash_data, uint32_t crash_size) = 0;
   // Sends post data. Returns true if succeeded, otherwise returns false.
-  virtual bool sendPostData(std::unique_ptr<Posts> posts);
+  virtual bool sendPosts(std::unique_ptr<Posts> posts) = 0;
   // Sends notification. Returns true if succeeded, otherwise returns false.
   virtual bool sendNotification(uint64_t id, uint32_t severity,
                                 uint32_t api_index, uint64_t label,
                                 const std::string& msg, const void* data,
-                                uint32_t data_size);
-
- protected:
-  ReplayConnection(ReplayGrpcStream* stream) : mGrpcStream(stream) {}
-
- private:
-  // The gRPC stream connection.
-  ReplayGrpcStream* mGrpcStream;
+                                uint32_t data_size) = 0;
 };
 }  // namespace gapir
 
-#endif  // GAPIR_REPLAY_CONNECTION_H
+#endif  // GAPIR_REPLAY_SERVICE_H

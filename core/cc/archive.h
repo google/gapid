@@ -53,6 +53,12 @@ class Archive {
   // Write a resource of size size keyed by id from buffer into the archive.
   bool write(const std::string& id, const void* buffer, uint32_t size);
 
+  // Returns the path of the index file.
+  std::string indexFilePath() const { return mIndexFilePath; }
+
+  // Returns the path of the data file.
+  std::string dataFilePath() const { return mDataFilePath; }
+
  protected:
   struct ArchiveRecord {
     uint64_t offset;
@@ -87,6 +93,8 @@ class Archive {
   RecordFile mDataFile;
   FILE* mIndexFile;
   std::unordered_map<std::string, ArchiveRecord> mRecords;
+  const std::string mDataFilePath;
+  const std::string mIndexFilePath;
 };
 
 }  // namespace core

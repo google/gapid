@@ -21,10 +21,10 @@
 #include "interpreter.h"
 #include "memory_manager.h"
 #include "post_buffer.h"
-#include "replay_connection.h"
 #include "replay_request.h"
-#include "resource_in_memory_cache.h"
-#include "resource_provider.h"
+#include "replay_service.h"
+#include "resource_cache.h"
+#include "resource_loader.h"
 #include "stack.h"
 #include "vulkan_renderer.h"
 
@@ -41,12 +41,12 @@
 
 namespace gapir {
 
-std::unique_ptr<Context> Context::create(ReplayConnection* conn,
+std::unique_ptr<Context> Context::create(ReplayService* srv,
                                          core::CrashHandler& crash_handler,
-                                         ResourceProvider* resource_provider,
+                                         ResourceLoader* resource_loader,
                                          MemoryManager* memory_manager) {
   std::unique_ptr<Context> context(
-      new Context(conn, crash_handler, resource_provider, memory_manager));
+      new Context(srv, crash_handler, resource_loader, memory_manager));
 
   if (context->initialize()) {
     GAPID_DEBUG("Replay context initialized successfully");
@@ -58,21 +58,20 @@ std::unique_ptr<Context> Context::create(ReplayConnection* conn,
 }
 
 // TODO: Make the PostBuffer size dynamic? It currently holds 2MB of data.
-Context::Context(ReplayConnection* conn, core::CrashHandler& crash_handler,
-                 ResourceProvider* resource_provider,
-                 MemoryManager* memory_manager)
+Context::Context(ReplayService* srv, core::CrashHandler& crash_handler,
+                 ResourceLoader* resource_loader, MemoryManager* memory_manager)
     :
 
-      mConnection(conn),
+      mSrv(srv),
       mCrashHandler(crash_handler),
-      mResourceProvider(resource_provider),
+      mResourceLoader(resource_loader),
       mMemoryManager(memory_manager),
       mVulkanRenderer(nullptr),
       mPostBuffer(new PostBuffer(
           POST_BUFFER_SIZE,
-          [this](std::unique_ptr<ReplayConnection::Posts> posts) -> bool {
-            if (mConnection != nullptr) {
-              return mConnection->sendPostData(std::move(posts));
+          [this](std::unique_ptr<ReplayService::Posts> posts) -> bool {
+            if (mSrv != nullptr) {
+              return mSrv->sendPosts(std::move(posts));
             }
             return false;
           })),
@@ -86,7 +85,7 @@ Context::~Context() {
 }
 
 bool Context::initialize() {
-  mReplayRequest = ReplayRequest::create(mConnection, mMemoryManager);
+  mReplayRequest = ReplayRequest::create(mSrv, mMemoryManager);
   if (mReplayRequest == nullptr) {
     GAPID_ERROR("Replay request creation failed");
     return false;
@@ -104,19 +103,18 @@ bool Context::initialize() {
   return true;
 }
 
-void Context::prefetch(ResourceInMemoryCache* cache) const {
+void Context::prefetch(ResourceCache* cache) const {
   auto cacheSize = static_cast<uint32_t>(
       static_cast<uint8_t*>(mMemoryManager->getVolatileAddress()) -
       static_cast<uint8_t*>(mMemoryManager->getBaseAddress()));
   cache->resize(cacheSize);
-
   auto resources = mReplayRequest->getResources();
-  if (resources.size() > 0) {
-    GAPID_INFO("Prefetching %zu resources...", resources.size());
-    mResourceProvider->prefetch(resources.data(), resources.size(), mConnection,
-                                mMemoryManager->getVolatileAddress(),
-                                mReplayRequest->getVolatileMemorySize());
+  if (resources.size() == 0) {
+    return;
   }
+
+  auto tempLoader = PassThroughResourceLoader::create(mSrv);
+  cache->prefetch(resources.data(), resources.size(), tempLoader.get());
 }
 
 bool Context::interpret() {
@@ -172,8 +170,8 @@ void Context::onDebugMessage(uint32_t severity, uint8_t api_index,
       GAPID_DEBUG("[%d]renderer: %s", label, msg);
       break;
   }
-  mConnection->sendNotification(mNumSentDebugMessages++, severity, api_index,
-                                label, str_msg, nullptr, 0);
+  mSrv->sendNotification(mNumSentDebugMessages++, severity, api_index, label,
+                         str_msg, nullptr, 0);
 }
 
 void Context::registerCallbacks(Interpreter* interpreter) {
@@ -681,9 +679,8 @@ bool Context::loadResource(Stack* stack) {
 
   const auto& resource = mReplayRequest->getResources()[resourceId];
 
-  if (!mResourceProvider->get(&resource, 1, mConnection, address,
-                              resource.size)) {
-    GAPID_WARNING("Can't fetch resource: %s", resource.id.c_str());
+  if (!mResourceLoader->load(&resource, 1, address, resource.size)) {
+    GAPID_WARNING("Can't load resource: %s", resource.id.c_str());
     return false;
   }
 

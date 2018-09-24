@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "resource_in_memory_cache.h"
-#include "replay_connection.h"
+#include "in_memory_resource_cache.h"
+#include "replay_service.h"
+#include "resource_loader.h"
 
 #include "core/cc/assert.h"
 
@@ -28,56 +29,25 @@
 
 namespace gapir {
 
-std::unique_ptr<ResourceInMemoryCache> ResourceInMemoryCache::create(
-    std::unique_ptr<ResourceProvider> fallbackProvider, void* buffer) {
-  return std::unique_ptr<ResourceInMemoryCache>(
-      new ResourceInMemoryCache(std::move(fallbackProvider), buffer));
+std::unique_ptr<InMemoryResourceCache> InMemoryResourceCache::create(
+    void* buffer) {
+  return std::unique_ptr<InMemoryResourceCache>(
+      new InMemoryResourceCache(buffer));
 }
 
-ResourceInMemoryCache::ResourceInMemoryCache(
-    std::unique_ptr<ResourceProvider> fallbackProvider, void* buffer)
-    : ResourceCache(std::move(fallbackProvider)),
-      mHead(new Block(0, 0)),
+InMemoryResourceCache::InMemoryResourceCache(void* buffer)
+    : mHead(new Block(0, 0)),
       mBuffer(static_cast<uint8_t*>(buffer)),
       mBufferSize(0) {}
 
-ResourceInMemoryCache::~ResourceInMemoryCache() {
+InMemoryResourceCache::~InMemoryResourceCache() {
   while (mHead->next != mHead) {
     destroy(mHead->next);
   }
   delete mHead;
 }
 
-void ResourceInMemoryCache::prefetch(const Resource* resources, size_t count,
-                                     ReplayConnection* conn, void* temp,
-                                     size_t tempSize) {
-  if (temp == nullptr) {
-    return;
-  }
-  GAPID_DEBUG(
-      "ResourceInMemoryCache::prefetch(count: %zu, mBufferSize: %zu, tempSize: "
-      "%zu)",
-      count, mBufferSize, tempSize);
-  Batch batch(temp, tempSize);
-  size_t space = mBufferSize;
-  for (size_t i = 0; i < count; i++) {
-    const Resource& resource = resources[i];
-    if (space < resource.size) {
-      break;
-    }
-    space -= resource.size;
-    if (mCache.find(resource.id) != mCache.end()) {
-      continue;
-    }
-    if (!batch.append(resource)) {
-      batch.flush(*this, conn);
-      batch = Batch(temp, tempSize);
-    }
-  }
-  batch.flush(*this, conn);
-}
-
-void ResourceInMemoryCache::clear() {
+void InMemoryResourceCache::clear() {
   mCache.clear();
   while (mHead->next != mHead) {
     mHead = destroy(mHead);
@@ -86,10 +56,10 @@ void ResourceInMemoryCache::clear() {
   mHead->next = mHead->prev = mHead;
 }
 
-void ResourceInMemoryCache::resize(size_t newSize) {
+bool InMemoryResourceCache::resize(size_t newSize) {
   GAPID_DEBUG("Cache resizing: %zu -> %zu", mBufferSize, newSize);
   if (newSize == mBufferSize) {
-    return;  // No change.
+    return true;  // No change.
   }
 
   Block* first = this->first();
@@ -123,9 +93,10 @@ void ResourceInMemoryCache::resize(size_t newSize) {
 
   mHead = last;  // Move head to the space.
   mBufferSize = newSize;
+  return true;
 }
 
-void ResourceInMemoryCache::dump(FILE* out) {
+void InMemoryResourceCache::dump(FILE* out) {
   Block* first = last()->next;
   foreach_block(first, [&](Block* block) {
     fprintf(out, (block == first) ? "┏━━━━━━━━━━━━━━━━" : "┳━━━━━━━━━━━━━━━━");
@@ -157,10 +128,10 @@ void ResourceInMemoryCache::dump(FILE* out) {
   fprintf(out, "┛\n");
 }
 
-void ResourceInMemoryCache::putCache(const Resource& resource,
+bool InMemoryResourceCache::putCache(const Resource& resource,
                                      const void* data) {
   if (resource.size > mBufferSize) {
-    return;  // Wouldn't fit even if everything was evicted.
+    return false;  // Wouldn't fit even if everything was evicted.
   }
 
   // Merge mHead into next block(s) until it is big enough to hold our resource.
@@ -197,15 +168,19 @@ void ResourceInMemoryCache::putCache(const Resource& resource,
 
   // Move head on to the next block.
   mHead = mHead->next;
+  return true;
 }
 
-bool ResourceInMemoryCache::getCache(const Resource& resource, void* data) {
-  auto iter = mCache.find(resource.id);
-  if (iter == mCache.end()) {
+bool InMemoryResourceCache::hasCache(const Resource& resource) {
+  return mCache.find(resource.id) != mCache.end();
+}
+
+bool InMemoryResourceCache::loadCache(const Resource& resource, void* data) {
+  if (!hasCache(resource)) {
     return false;
   }
   // Cached resource found. Copy data.
-  size_t offset = iter->second;
+  size_t offset = mCache.find(resource.id)->second;
   if (offset + resource.size <= mBufferSize) {
     memcpy(data, mBuffer + offset, resource.size);
   } else {

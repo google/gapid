@@ -1,0 +1,98 @@
+/*
+ * Copyright (C) 2018 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef GAPIR_REPLAY_CONNECTION_H
+#define GAPIR_REPLAY_CONNECTION_H
+
+#include "replay_service.h"
+#include "resource.h"
+
+#include <memory>
+#include <string>
+
+namespace grpc {
+template <typename RES, typename REQ>
+class ServerReaderWriter;
+}
+
+namespace replay_service {
+class ReplayRequest;
+class ReplayResponse;
+}  // namespace replay_service
+
+namespace gapir {
+
+using ReplayGrpcStream =
+    grpc::ServerReaderWriter<replay_service::ReplayResponse,
+                             replay_service::ReplayRequest>;
+
+// GrpcReplayService implements ReplayService interface for GRPC connection.
+// It represents a source of all replay data which is based on grpc stream.
+class GrpcReplayService : public ReplayService {
+ public:
+  // Creates a GrpcReplayService from the gRPC stream. If the gRPC stream is
+  // nullptr, returns nullptr
+  static std::unique_ptr<GrpcReplayService> create(ReplayGrpcStream* stream) {
+    if (stream == nullptr) {
+      return nullptr;
+    }
+    return std::unique_ptr<GrpcReplayService>(new GrpcReplayService(stream));
+  }
+
+  virtual ~GrpcReplayService() override {
+    if (mGrpcStream != nullptr) {
+      this->sendReplayFinished();
+    }
+  }
+
+  GrpcReplayService(const GrpcReplayService&) = delete;
+  GrpcReplayService(GrpcReplayService&&) = delete;
+  GrpcReplayService& operator=(const GrpcReplayService&) = delete;
+  GrpcReplayService& operator=(GrpcReplayService&&) = delete;
+
+  // Sends PayloadRequest and returns the received Payload. Returns nullptr in
+  // case of error.
+  virtual std::unique_ptr<ReplayService::Payload> getPayload() override;
+  // Sends ResourceRequest and returns the received Resources. Returns nullptr
+  // in case of error.
+  virtual std::unique_ptr<ReplayService::Resources> getResources(
+      const Resource* resource, size_t resCount) override;
+
+  // Sends ReplayFinished signal. Returns true if succeeded, otherwise returns
+  // false.
+  virtual bool sendReplayFinished() override;
+  // Sends crash dump. Returns true if succeeded, otherwise returns false.
+  virtual bool sendCrashDump(const std::string& filepath,
+                             const void* crash_data,
+                             uint32_t crash_size) override;
+  // Sends post data. Returns true if succeeded, otherwise returns false.
+  virtual bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
+  // Sends notification. Returns true if succeeded, otherwise returns false.
+  virtual bool sendNotification(uint64_t id, uint32_t severity,
+                                uint32_t api_index, uint64_t label,
+                                const std::string& msg, const void* data,
+                                uint32_t data_size) override;
+
+ protected:
+  GrpcReplayService(ReplayGrpcStream* stream) : mGrpcStream(stream) {}
+
+ private:
+  // The gRPC stream connection.
+  ReplayGrpcStream* mGrpcStream;
+};
+}  // namespace gapir
+
+#endif  // GAPIR_REPLAY_CONNECTION_H

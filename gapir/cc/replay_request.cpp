@@ -16,7 +16,6 @@
 
 #include "replay_request.h"
 #include "memory_manager.h"
-#include "resource_provider.h"
 
 #include "core/cc/log.h"
 
@@ -32,13 +31,13 @@
 namespace gapir {
 
 std::unique_ptr<ReplayRequest> ReplayRequest::create(
-    ReplayConnection* conn, MemoryManager* memoryManager) {
+    ReplayService* srv, MemoryManager* memoryManager) {
   // Request the replay data from the server.
-  if (conn == nullptr) {
-    GAPID_ERROR("Failed to create ReplayRequest: null ReplayConnection");
-    return nullptr;  // no replay connection.
+  if (srv == nullptr) {
+    GAPID_ERROR("Failed to create ReplayRequest: null ReplayService");
+    return nullptr;  // no replay service.
   }
-  std::unique_ptr<ReplayConnection::Payload> payload = conn->getPayload();
+  std::unique_ptr<ReplayService::Payload> payload = srv->getPayload();
   if (payload == nullptr) {
     GAPID_ERROR("Failed to create ReplayRequest: null Payload")
     return nullptr;  // failed at getting payload.
