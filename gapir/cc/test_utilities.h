@@ -19,8 +19,8 @@
 
 #include "base_type.h"
 #include "interpreter.h"
-#include "replay_connection.h"
-#include "resource_provider.h"
+#include "replay_service.h"
+#include "resource.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -60,14 +60,17 @@ void pushUint32(std::vector<uint8_t>* buf, uint32_t v);
 void pushString(std::vector<uint8_t>* buf, const std::string& str);
 void pushString(std::vector<uint8_t>* buf, const char* str);
 
-std::unique_ptr<ReplayConnection::Payload> createPayload(
+std::unique_ptr<ReplayService::Payload> createPayload(
     uint32_t stackSize, uint32_t volatileMemorySize,
     const std::vector<uint8_t>& constantMemory,
     const std::vector<Resource>& resources,
     const std::vector<uint32_t>& instructions);
 
-std::unique_ptr<ReplayConnection::Resources> createResources(
+std::unique_ptr<ReplayService::Resources> createResources(
     const std::vector<uint8_t>& data);
+
+std::vector<uint8_t> createResourcesData(
+    const std::vector<Resource>& resources);
 
 }  // namespace test
 }  // namespace gapir

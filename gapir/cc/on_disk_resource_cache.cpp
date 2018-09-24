@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include "resource_disk_cache.h"
-#include "replay_connection.h"
-#include "resource_provider.h"
+#include "on_disk_resource_cache.h"
+#include "replay_service.h"
 
 #include "core/cc/log.h"
 
@@ -61,47 +60,35 @@ int mkdirAll(const std::string& path) {
 
 }  // anonymous namespace
 
-std::unique_ptr<ResourceProvider> ResourceDiskCache::create(
-    std::unique_ptr<ResourceProvider> fallbackProvider,
-    const std::string& path) {
+std::unique_ptr<OnDiskResourceCache> OnDiskResourceCache::create(
+    const std::string& path, bool cleanUp) {
   if (0 != mkdirAll(path)) {
     GAPID_WARNING(
         "Couldn't access/create cache directory; disabling disk cache.");
-    return fallbackProvider;  // Disk path was inaccessible.
+    return nullptr;  // Disk path was inaccessible.
   } else {
     std::string diskPath = path;
     if (diskPath.back() != PATH_DELIMITER) {
       diskPath.push_back(PATH_DELIMITER);
     }
 
-    return std::unique_ptr<ResourceProvider>(new ResourceDiskCache(
-        std::move(fallbackProvider), std::move(diskPath)));
+    return std::unique_ptr<OnDiskResourceCache>(
+        new OnDiskResourceCache(std::move(diskPath), cleanUp));
   }
 }
 
-ResourceDiskCache::ResourceDiskCache(
-    std::unique_ptr<ResourceProvider> fallbackProvider, const std::string& path)
-    : ResourceCache(std::move(fallbackProvider)),
-      mArchive(path + "resources") {}
+OnDiskResourceCache::OnDiskResourceCache(const std::string& path, bool cleanUp)
+    : mArchive(path + "resources"), mCleanUp(cleanUp) {}
 
-void ResourceDiskCache::prefetch(const Resource* resources, size_t count,
-                                 ReplayConnection* conn, void* temp,
-                                 size_t tempSize) {
-  Batch batch(temp, tempSize);
-  for (size_t i = 0; i < count; i++) {
-    if (!batch.append(resources[i])) {
-      batch.flush(*this, conn);
-      batch = Batch(temp, tempSize);
-    }
-  }
-  batch.flush(*this, conn);
+bool OnDiskResourceCache::putCache(const Resource& resource, const void* data) {
+  return mArchive.write(resource.id, data, resource.size);
 }
 
-void ResourceDiskCache::putCache(const Resource& resource, const void* data) {
-  mArchive.write(resource.id, data, resource.size);
+bool OnDiskResourceCache::hasCache(const Resource& resource) {
+  return mArchive.contains(resource.id);
 }
 
-bool ResourceDiskCache::getCache(const Resource& resource, void* data) {
+bool OnDiskResourceCache::loadCache(const Resource& resource, void* data) {
   return mArchive.read(resource.id, data, resource.size);
 }
 

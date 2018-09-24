@@ -14,29 +14,32 @@
  * limitations under the License.
  */
 
-#ifndef GAPID_SERVER_CONNECTION_H
-#define GAPID_SERVER_CONNECTION_H
+#ifndef GAPIR_SERVER_H
+#define GAPIR_SERVER_H
+
+#include "gapir/replay_service/service.grpc.pb.h"
+#include "gapir/replay_service/service.pb.h"
+#include "grpc_replay_service.h"
+
+#include "core/cc/log.h"
 
 #include <grpc++/grpc++.h>
+
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
 #include <thread>
 
-#include "core/cc/log.h"
-#include "gapir/replay_service/service.grpc.pb.h"
-#include "replay_connection.h"
-
 namespace gapir {
 
 using ReplayHandler =
-    std::function<void(ReplayConnection*, const std::string& replay_id)>;
+    std::function<void(GrpcReplayService*, const std::string& replay_id)>;
 using WatchDogFeeder = std::function<void()>;
 
 class Server;
 
-// Implements the GAPIR replay service.
+// Implements the protobuf+grpc generated GAPIR replay service.
 class GapirServiceImpl final : public replay_service::Gapir::Service {
   friend Server;
 
@@ -138,4 +141,4 @@ class Server {
 
 }  // namespace gapir
 
-#endif  // GAPID_SERVER_CONNECTION_H
+#endif  // GAPIR_SERVER_H

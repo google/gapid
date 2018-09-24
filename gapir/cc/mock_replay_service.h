@@ -17,7 +17,8 @@
 #ifndef GAPIR_MOCK_REPLAY_CONNECTION_H
 #define GAPIR_MOCK_REPLAY_CONNECTION_H
 
-#include "replay_connection.h"
+#include "grpc_replay_service.h"
+#include "resource.h"
 
 #include <memory>
 #include <string>
@@ -26,19 +27,15 @@
 
 namespace gapir {
 namespace test {
-class MockReplayConnection : public ReplayConnection {
+class MockReplayService : public GrpcReplayService {
  public:
-  MockReplayConnection() : ReplayConnection(nullptr) {}
-  MOCK_METHOD0(getPayload, std::unique_ptr<ReplayConnection::Payload>());
-  MOCK_METHOD1(mockedGetResources, std::unique_ptr<ReplayConnection::Resources>(
-                                       ReplayConnection::ResourceRequest*));
-  std::unique_ptr<ReplayConnection::Resources> getResources(
-      std::unique_ptr<ReplayConnection::ResourceRequest> req) override {
-    return mockedGetResources(req.get());
-  }
-  MOCK_METHOD1(mockedSendPostData, bool(ReplayConnection::Posts*));
-  bool sendPostData(std::unique_ptr<ReplayConnection::Posts> posts) override {
-    return mockedSendPostData(posts.get());
+  MockReplayService() : GrpcReplayService(nullptr) {}
+  MOCK_METHOD0(getPayload, std::unique_ptr<ReplayService::Payload>());
+  MOCK_METHOD2(getResources, std::unique_ptr<ReplayService::Resources>(
+                                 const Resource* resources, size_t resSize));
+  MOCK_METHOD1(mockedSendPosts, bool(ReplayService::Posts*));
+  bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override {
+    return mockedSendPosts(posts.get());
   }
   MOCK_METHOD7(sendNotification,
                bool(uint64_t, uint32_t, uint32_t, uint64_t, const std::string&,

@@ -17,20 +17,20 @@
 #ifndef GAPIR_POSTBUFFER_H
 #define GAPIR_POSTBUFFER_H
 
+#include "replay_service.h"
+
 #include <cstdint>
 #include <functional>
 #include <memory>
 
-#include "replay_connection.h"
-
 namespace gapir {
 
-// PostBuffer provides a delayed-send buffer for pushing data to the server.
-// This serves as an optimisation to batch many small postbacks into fewer,
-// larger batches.
+// PostBuffer provides a delayed-processed buffer for tasks like pushing data to
+// the server, etc. This serves as an optimisation to batch many small postbacks
+// into fewer, larger batches.
 class PostBuffer {
  public:
-  typedef std::function<bool(std::unique_ptr<ReplayConnection::Posts>)>
+  typedef std::function<bool(std::unique_ptr<ReplayService::Posts>)>
       PostBufferCallback;
 
   // Constructs a PostBuffer with the specified maximum capacity and function to
@@ -48,7 +48,7 @@ class PostBuffer {
 
  private:
   // The PostBuffer's internal buffer.
-  std::unique_ptr<ReplayConnection::Posts> mPosts;
+  std::unique_ptr<ReplayService::Posts> mPosts;
 
   // The total number of posts ever processed by this post buffer.
   uint64_t mTotalPostCount;

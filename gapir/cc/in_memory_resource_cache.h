@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef GAPIR_RESOURCE_IN_MEMORY_CACHE_H
-#define GAPIR_RESOURCE_IN_MEMORY_CACHE_H
+#ifndef GAPIR_IN_MEMORY_RESOURCE_CACHE_H
+#define GAPIR_IN_MEMORY_RESOURCE_CACHE_H
 
-#include "replay_connection.h"
+#include "replay_service.h"
 #include "resource_cache.h"
 
 #include "core/cc/assert.h"
@@ -31,29 +31,24 @@ namespace gapir {
 // Fixed size in-memory resource cache. It uses a ring buffer to store the cache
 // and starts invalidating cache entries from the oldest to the newest when more
 // space is required.
-class ResourceInMemoryCache : public ResourceCache {
+class InMemoryResourceCache : public ResourceCache {
  public:
   // Creates a new in-memory cache with the given fallback provider and base
   // address. The initial cache size is 0 byte.
-  static std::unique_ptr<ResourceInMemoryCache> create(
-      std::unique_ptr<ResourceProvider> fallbackProvider, void* buffer);
+  static std::unique_ptr<InMemoryResourceCache> create(void* buffer);
 
   // destructor
-  ~ResourceInMemoryCache();
+  ~InMemoryResourceCache();
 
-  // Prefetches the specified resources, caching as many that fit in memory as
-  // possible.
-  void prefetch(const Resource* resources, size_t count, ReplayConnection* conn,
-                void* temp, size_t tempSize) override;
+  // ResourceCache interface implementation
+  virtual bool putCache(const Resource& res, const void* resData) override;
+  virtual bool hasCache(const Resource& res) override;
+  virtual bool loadCache(const Resource& res, void* target) override;
+  virtual size_t totalCacheSize() const override { return mBufferSize; }
+  virtual bool resize(size_t newSize) override;
+  virtual void dump(FILE*) override;
 
-  // clears the cache.
-  void clear();
-
-  // resets the size of the buffer used for caching.
-  void resize(size_t newSize);
-
-  // debug print the internal state.
-  void dump(FILE*);
+  virtual void clear();
 
  protected:
   // A doubly-linked list data structure representing a chunk of memory in the
@@ -78,9 +73,6 @@ class ResourceInMemoryCache : public ResourceCache {
     Block* prev;
   };
 
-  void putCache(const Resource& resource, const void* data) override;
-  bool getCache(const Resource& resource, void* data) override;
-
   // free evicts the cache entry for block, transforming it into a free block.
   void free(Block* block);
 
@@ -98,8 +90,7 @@ class ResourceInMemoryCache : public ResourceCache {
 
  private:
   // constructor
-  ResourceInMemoryCache(std::unique_ptr<ResourceProvider> fallbackProvider,
-                        void* buffer);
+  InMemoryResourceCache(void* buffer);
 
   // put adds the the resource to the cache.
   // size must be less or equal to mBufferSize.
@@ -121,19 +112,19 @@ class ResourceInMemoryCache : public ResourceCache {
   size_t mBufferSize;
 };
 
-inline ResourceInMemoryCache::Block::Block()
+inline InMemoryResourceCache::Block::Block()
     : offset(0), size(0), next(this), prev(this) {}
-inline ResourceInMemoryCache::Block::Block(size_t offset_, size_t size_)
+inline InMemoryResourceCache::Block::Block(size_t offset_, size_t size_)
     : offset(offset_), size(size_), next(this), prev(this) {}
-inline ResourceInMemoryCache::Block::Block(size_t offset_, size_t size_,
+inline InMemoryResourceCache::Block::Block(size_t offset_, size_t size_,
                                            const ResourceId& id_)
     : offset(offset_), size(size_), id(id_), next(this), prev(this) {}
 
-inline ResourceInMemoryCache::Block::~Block() {
+inline InMemoryResourceCache::Block::~Block() {
   GAPID_ASSERT(next == this && prev == this);
 }
 
-inline void ResourceInMemoryCache::Block::linkAfter(Block* other) {
+inline void InMemoryResourceCache::Block::linkAfter(Block* other) {
   GAPID_ASSERT(next == this && prev == this);
   next = other->next;
   prev = other;
@@ -141,7 +132,7 @@ inline void ResourceInMemoryCache::Block::linkAfter(Block* other) {
   prev->next = this;
 }
 
-inline void ResourceInMemoryCache::Block::linkBefore(Block* other) {
+inline void InMemoryResourceCache::Block::linkBefore(Block* other) {
   GAPID_ASSERT(next == this && prev == this);
   next = other;
   prev = other->prev;
@@ -149,7 +140,7 @@ inline void ResourceInMemoryCache::Block::linkBefore(Block* other) {
   prev->next = this;
 }
 
-inline void ResourceInMemoryCache::Block::unlink() {
+inline void InMemoryResourceCache::Block::unlink() {
   GAPID_ASSERT(next != this && prev != this);
   next->prev = prev;
   prev->next = next;
@@ -157,20 +148,20 @@ inline void ResourceInMemoryCache::Block::unlink() {
   prev = this;
 }
 
-inline bool ResourceInMemoryCache::Block::isFree() const {
+inline bool InMemoryResourceCache::Block::isFree() const {
   return id.size() == 0;
 }
 
-inline size_t ResourceInMemoryCache::Block::end() const {
+inline size_t InMemoryResourceCache::Block::end() const {
   return offset + size;
 }
 
-inline void ResourceInMemoryCache::free(Block* block) {
+inline void InMemoryResourceCache::free(Block* block) {
   mCache.erase(block->id);
   block->id = ResourceId();
 }
 
-inline void ResourceInMemoryCache::foreach_block(
+inline void InMemoryResourceCache::foreach_block(
     Block* first, const std::function<void(Block*)>& cb) {
   std::vector<Block*> blocks;
   blocks.push_back(first);
@@ -182,7 +173,7 @@ inline void ResourceInMemoryCache::foreach_block(
   }
 }
 
-inline ResourceInMemoryCache::Block* ResourceInMemoryCache::destroy(
+inline InMemoryResourceCache::Block* InMemoryResourceCache::destroy(
     Block* block) {
   Block* next = block->next;
   if (mHead == block) {
@@ -194,11 +185,11 @@ inline ResourceInMemoryCache::Block* ResourceInMemoryCache::destroy(
   return next;
 }
 
-inline ResourceInMemoryCache::Block* ResourceInMemoryCache::first() {
+inline InMemoryResourceCache::Block* InMemoryResourceCache::first() {
   return last()->next;
 }
 
-inline ResourceInMemoryCache::Block* ResourceInMemoryCache::last() {
+inline InMemoryResourceCache::Block* InMemoryResourceCache::last() {
   Block* block = mHead;
   for (; block->next->offset > block->offset; block = block->next) {
   }
@@ -207,4 +198,4 @@ inline ResourceInMemoryCache::Block* ResourceInMemoryCache::last() {
 
 }  // namespace gapir
 
-#endif  // GAPIR_RESOURCE_IN_MEMORY_CACHE_H
+#endif  // GAPIR_IN_MEMORY_RESOURCE_CACHE_H

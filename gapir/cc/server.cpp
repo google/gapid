@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#include "gapir/cc/server.h"
+#include "server.h"
+#include "gapir/replay_service/service.grpc.pb.h"
+#include "grpc_replay_service.h"
+
+#include "core/cc/log.h"
 
 #include <grpc++/grpc++.h>
 #include <string.h>
 #include <functional>
 #include <limits>
 #include <vector>
-
-#include "core/cc/log.h"
-#include "gapir/replay_service/service.grpc.pb.h"
-#include "replay_connection.h"
 
 namespace gapir {
 
@@ -65,8 +65,8 @@ Status GapirServiceImpl::Replay(ServerContext* context, ReplayStream* stream) {
   replay_service::ReplayRequest req;
   while (stream->Read(&req)) {
     if (req.req_case() == replay_service::ReplayRequest::kReplayId) {
-      std::unique_ptr<ReplayConnection> replay_conn =
-          ReplayConnection::create(stream);
+      std::unique_ptr<GrpcReplayService> replay_conn =
+          GrpcReplayService::create(stream);
       if (replay_conn != nullptr) {
         mHandleReplay(replay_conn.get(), req.replay_id());
       }

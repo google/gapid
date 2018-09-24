@@ -14,29 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef GAPIR_CRASH_REPORTER_H
-#define GAPIR_CRASH_REPORTER_H
+#ifndef GAPIR_MOCK_RESOURCE_PROVIDER_H
+#define GAPIR_MOCK_RESOURCE_PROVIDER_H
 
-#include "core/cc/crash_handler.h"
-#include "gapir/cc/replay_service.h"
+#include "resource_loader.h"
 
-#include <memory>
-#include <string>
+#include <gmock/gmock.h>
+#include <vector>
+
+#include "replay_service.h"
 
 namespace gapir {
+namespace test {
 
-// CrashUploader uploads crash minidumps from a CrashHandler to GAPIS via a
-// ServerConnection.
-class CrashUploader {
+class MockResourceLoader : public ResourceLoader {
  public:
-  CrashUploader(core::CrashHandler& crash_handler, ReplayService* srv);
-  ~CrashUploader();
-
- private:
-  core::CrashHandler::Unregister mUnregister;
-  ReplayService* mSrv;
+  MOCK_METHOD4(load, bool(const Resource* resources, size_t count, void* target,
+                          size_t targetSize));
+  MOCK_METHOD2(fetch, std::unique_ptr<ReplayService::Resources>(
+                          const Resource* resources, size_t count));
 };
 
+}  // namespace test
 }  // namespace gapir
 
-#endif  // GAPIR_CRASH_REPORTER_H
+#endif  // GAPIR_MOCK_RESOURCE_PROVIDER_H

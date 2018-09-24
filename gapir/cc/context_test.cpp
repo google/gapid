@@ -18,9 +18,9 @@
 #include "base_type.h"
 #include "interpreter.h"
 #include "memory_manager.h"
-#include "mock_replay_connection.h"
-#include "mock_resource_provider.h"
-#include "resource_provider.h"
+#include "mock_replay_service.h"
+#include "mock_resource_loader.h"
+#include "resource_loader.h"
 #include "test_utilities.h"
 
 #include <gmock/gmock.h>
@@ -44,37 +44,36 @@ class ContextTest : public ::testing::Test {
   virtual void SetUp() {
     std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
     mMemoryManager.reset(new MemoryManager(memorySizes));
-    mResourceProvider.reset(new StrictMock<MockResourceProvider>());
-    mConn.reset(new MockReplayConnection());
+    mResourceLoader.reset(new StrictMock<MockResourceLoader>());
+    mSrv.reset(new MockReplayService());
   }
 
   std::unique_ptr<MemoryManager> mMemoryManager;
-  std::unique_ptr<StrictMock<MockResourceProvider>> mResourceProvider;
-  std::unique_ptr<MockReplayConnection> mConn;
+  std::unique_ptr<StrictMock<MockResourceLoader>> mResourceLoader;
+  std::unique_ptr<MockReplayService> mSrv;
 };
 }  // anonymous namespace
 
 TEST_F(ContextTest, Create) {
   auto payload = createPayload(0, 0, {}, {}, {});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, NotNull());
 }
 
 TEST_F(ContextTest, CreateErrorReplayRequest) {
   // Failed to load
-  EXPECT_CALL(*mConn, getPayload())
+  EXPECT_CALL(*mSrv, getPayload())
       .WillOnce(
-          Return(ByMove(std::unique_ptr<ReplayConnection::Payload>(nullptr))));
+          Return(ByMove(std::unique_ptr<ReplayService::Payload>(nullptr))));
 
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, IsNull());
 }
@@ -82,11 +81,10 @@ TEST_F(ContextTest, CreateErrorReplayRequest) {
 TEST_F(ContextTest, CreateErrorVolatileMemory) {
   auto payload = createPayload(0, MEMORY_SIZE + 1, {}, {}, {});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, IsNull());
 }
@@ -99,14 +97,13 @@ TEST_F(ContextTest, LoadResource) {
                      instruction(Interpreter::InstructionCode::RESOURCE, 0)});
   std::vector<uint8_t> resourceA{1, 2, 3, 4};
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
-  EXPECT_CALL(*mResourceProvider, get(Pointee(Eq(A)), 1, _, _, 4))
-      .WillOnce(DoAll(WithArg<3>(SetVoidPointee(resourceA)), Return(true)));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mResourceLoader, load(Pointee(Eq(A)), 1, _, 4))
+      .WillOnce(DoAll(WithArg<2>(SetVoidPointee(resourceA)), Return(true)));
 
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, NotNull());
   EXPECT_TRUE(context->interpret());
@@ -119,11 +116,10 @@ TEST_F(ContextTest, LoadResourcePopFailed) {
       createPayload(128, 1024, {}, {A},
                     {instruction(Interpreter::InstructionCode::RESOURCE, 0)});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, NotNull());
   EXPECT_FALSE(context->interpret());
@@ -136,14 +132,13 @@ TEST_F(ContextTest, LoadResourceGetFailed) {
                                  BaseType::VolatilePointer, 0),
                      instruction(Interpreter::InstructionCode::RESOURCE, 0)});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
-  EXPECT_CALL(*mResourceProvider, get(Pointee(Eq(A)), 1, _, _, 4))
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mResourceLoader, load(Pointee(Eq(A)), 1, _, 4))
       .WillOnce(Return(false));
 
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, NotNull());
   EXPECT_FALSE(context->interpret());
@@ -160,10 +155,9 @@ TEST_F(ContextTest, PostData) {
   pushBytes(&expected, {1, 2, 3, 4, 5, 6});
   std::vector<uint8_t> actual;
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
-  EXPECT_CALL(*mConn, mockedSendPostData(NotNull()))
-      .WillOnce(Invoke([&actual](ReplayConnection::Posts* posts) -> bool {
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, mockedSendPosts(NotNull()))
+      .WillOnce(Invoke([&actual](ReplayService::Posts* posts) -> bool {
         for (size_t i = 0; i < posts->piece_count(); i++) {
           actual.resize(actual.size() + posts->piece_size(i));
           memcpy(&actual[actual.size() - posts->piece_size(i)],
@@ -173,8 +167,8 @@ TEST_F(ContextTest, PostData) {
       }));
 
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
   EXPECT_THAT(context, NotNull());
   EXPECT_TRUE(context->interpret());
   EXPECT_THAT(actual, ContainerEq(expected));
@@ -189,11 +183,10 @@ TEST_F(ContextTest, PostDataErrorPop) {
                                  BaseType::Uint8, 6),  // Wrong type
                      instruction(Interpreter::InstructionCode::POST)});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
 
   EXPECT_THAT(context, NotNull());
   EXPECT_FALSE(context->interpret());
@@ -207,13 +200,12 @@ TEST_F(ContextTest, PostDataErrorPost) {
        instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 6),
        instruction(Interpreter::InstructionCode::POST)});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
-  EXPECT_CALL(*mConn, mockedSendPostData(NotNull())).WillOnce(Return(false));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, mockedSendPosts(NotNull())).WillOnce(Return(false));
 
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
   EXPECT_THAT(context, NotNull());
   EXPECT_FALSE(context->interpret());
 }
@@ -230,20 +222,18 @@ TEST_F(ContextTest, Notification) {
        instruction(Interpreter::InstructionCode::PUSH_I, BaseType::Uint32, 6),
        instruction(Interpreter::InstructionCode::POST)});
 
-  EXPECT_CALL(*mConn, getPayload())
-      .WillOnce(Return(ByMove(std::move(payload))));
+  EXPECT_CALL(*mSrv, getPayload()).WillOnce(Return(ByMove(std::move(payload))));
   core::CrashHandler crash_handler;
-  auto context = Context::create(mConn.get(), crash_handler,
-                                 mResourceProvider.get(), mMemoryManager.get());
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
   EXPECT_THAT(context, NotNull());
 
-  EXPECT_CALL(*mConn, mockedSendPostData(NotNull()))
-      .WillOnce(
-          Invoke([&context, &msg](ReplayConnection::Posts* posts) -> bool {
-            context->onDebugMessage(severity, api_index, msg.c_str());
-            return true;
-          }));
-  EXPECT_CALL(*mConn,
+  EXPECT_CALL(*mSrv, mockedSendPosts(NotNull()))
+      .WillOnce(Invoke([&context, &msg](ReplayService::Posts* posts) -> bool {
+        context->onDebugMessage(severity, api_index, msg.c_str());
+        return true;
+      }));
+  EXPECT_CALL(*mSrv,
               sendNotification(0, severity, api_index, 0, msg, IsNull(), 0))
       .WillOnce(Return(true));
 

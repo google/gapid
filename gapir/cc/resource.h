@@ -20,31 +20,64 @@
 #include <stdint.h>
 
 #include <string>
+#include <vector>
 
 namespace gapir {
 
 typedef std::string ResourceId;
 
 // Resource represent a requestable blob of data from the server.
-class Resource {
- public:
-  inline Resource();
-  inline Resource(const Resource& other);
-  inline Resource(ResourceId id, uint32_t size);
-  inline bool operator==(const Resource& other) const;
+struct Resource {
+  Resource() : id(), size(0) {}
+  Resource(ResourceId id_, uint32_t size_) : id(id_), size(size_) {}
+  Resource(const Resource& other) : id(other.id), size(other.size) {}
+  Resource(Resource&& other) : id(other.id), size(other.size) {}
+  Resource& operator=(const Resource& other) = default;
+  Resource& operator=(Resource&& other) = default;
 
-  ResourceId id;  // The resource identifier.
-  uint32_t size;  // The resource size in bytes.
+  bool operator==(const Resource& other) const {
+    return id == other.id && size == other.size;
+  }
+
+  ResourceId id;
+  uint32_t size;
 };
 
-inline Resource::Resource() {}
-inline Resource::Resource(const Resource& other)
-    : id(other.id), size(other.size) {}
-inline Resource::Resource(ResourceId id_, uint32_t size_)
-    : id(id_), size(size_) {}
-inline bool Resource::operator==(const Resource& other) const {
-  return id == other.id && size == other.size;
-}
+// ResourceLoadingBatch is a helper class to group resources and their loading
+// destinations. Contiguous resources will be grouped together for loading.
+// TODO(qining): Drop or improve this class once we have fetch/load methods of
+// ResourceLoader merged.
+class ResourceLoadingBatch {
+ public:
+  // Limit the size of the resources when there are multiple
+  // resources to be fetched in a ResourceLoadingBatch.
+  static const size_t kMultipleResourcesSizeLimit = 100 * 1024 * 1024;
+
+  ResourceLoadingBatch() : mResources(), mDstsAndSizes(), mSize(0) {}
+
+  // Accessors.
+  const std::vector<Resource>& resources() const { return mResources; }
+  const std::vector<std::pair<uint8_t*, size_t> >& dstsAndSizes() const {
+    return mDstsAndSizes;
+  }
+  size_t size() const { return mSize; }
+  // Clear resets the ResourceLoadingBatch.
+  void clear() {
+    mResources.clear();
+    mDstsAndSizes.clear();
+    mSize = 0;
+  }
+
+  // Appends a resource to be fetched later with its loading destination. It is
+  // fine to append resources with nullptr dst if the resources are to be
+  // fetched only, never loaded.
+  bool append(const Resource& res, uint8_t* dst);
+
+ private:
+  std::vector<Resource> mResources;
+  std::vector<std::pair<uint8_t*, size_t> > mDstsAndSizes;
+  size_t mSize;
+};
 
 }  // namespace gapir
 

@@ -14,35 +14,23 @@
  * limitations under the License.
  */
 
-#include "replay_archive.h"
+#include "archive_replay_service.h"
 #include "core/cc/log.h"
 
-#include <grpc++/grpc++.h>
 #include <fstream>
 #include <memory>
 
-#include "gapir/replay_service/service.grpc.pb.h"
-
 namespace gapir {
 
-std::unique_ptr<ReplayConnection::Payload> ReplayArchive::getPayload() {
-  std::fstream input(mFileprefix, std::ios::in | std::ios::binary);
+std::unique_ptr<ReplayService::Payload> ArchiveReplayService::getPayload() {
+  std::fstream input(mFilePrefix, std::ios::in | std::ios::binary);
   std::unique_ptr<replay_service::Payload> payload(new replay_service::Payload);
   payload->ParseFromIstream(&input);
   return std::unique_ptr<Payload>(new Payload(std::move(payload)));
 }
 
-std::unique_ptr<ReplayConnection::Resources> ReplayArchive::getResources(
-    std::unique_ptr<ResourceRequest> req) {
-  return nullptr;
-}
-bool ReplayArchive::sendReplayFinished() { return true; }
-bool ReplayArchive::sendCrashDump(const std::string& filepath,
-                                  const void* crash_data, uint32_t crash_size) {
-  GAPID_INFO("Crash dump saved at: %s", filepath.c_str());
-  return true;
-}
-bool ReplayArchive::sendPostData(std::unique_ptr<Posts> posts) {
+bool ArchiveReplayService::sendPosts(
+    std::unique_ptr<ReplayService::Posts> posts) {
   if (mPostbackDir.empty()) {
     return true;
   }
@@ -55,12 +43,6 @@ bool ReplayArchive::sendPostData(std::unique_ptr<Posts> posts) {
     std::fstream output(path, std::ios::out | std::ios::binary);
     output.write(data.data(), data.size());
   }
-  return true;
-}
-bool ReplayArchive::sendNotification(uint64_t id, uint32_t severity,
-                                     uint32_t api_index, uint64_t label,
-                                     const std::string& msg, const void* data,
-                                     uint32_t data_size) {
   return true;
 }
 }  // namespace gapir

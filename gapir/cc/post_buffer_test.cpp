@@ -39,7 +39,7 @@ class PostBufferTest : public ::testing::Test {
   void setupPostBuffer(uint32_t bufferSize, bool callbackShouldSucceed) {
     mPostBuffer.reset(new PostBuffer(
         bufferSize, [&, callbackShouldSucceed](
-                        std::unique_ptr<ReplayConnection::Posts> posts) {
+                        std::unique_ptr<ReplayService::Posts> posts) {
           mPostsCounter++;
           size_t piece_count = posts->piece_count();
           for (uint32_t i = 0; i < piece_count; i++) {

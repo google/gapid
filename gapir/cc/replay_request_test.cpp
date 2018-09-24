@@ -16,8 +16,8 @@
 
 #include "replay_request.h"
 #include "memory_manager.h"
-#include "mock_replay_connection.h"
-#include "mock_resource_provider.h"
+#include "mock_replay_service.h"
+#include "mock_resource_loader.h"
 #include "replay_connection.h"
 #include "test_utilities.h"
 
@@ -50,17 +50,16 @@ TEST(ReplayRequestTestStatic, Create) {
   auto payload = createPayload(stackSize, volatileMemorySize, constantMemory,
                                resources, instructionList);
 
-  auto mock_conn =
-      std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
+  auto mock_srv = std::unique_ptr<MockReplayService>(new MockReplayService());
 
-  EXPECT_CALL(*mock_conn, getPayload())
+  EXPECT_CALL(*mock_srv, getPayload())
       .WillOnce(Return(ByMove(std::move(payload))));
 
   std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
   std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
   auto replayRequest =
-      ReplayRequest::create(mock_conn.get(), memoryManager.get());
+      ReplayRequest::create(mock_srv.get(), memoryManager.get());
 
   EXPECT_THAT(replayRequest, NotNull());
 
@@ -77,15 +76,14 @@ TEST(ReplayRequestTestStatic, Create) {
 }
 
 TEST(ReplayRequestTestStatic, CreateErrorGet) {
-  auto mock_conn =
-      std::unique_ptr<MockReplayConnection>(new MockReplayConnection());
-  EXPECT_CALL(*mock_conn, getPayload()).WillOnce(Return(ByMove(nullptr)));
+  auto mock_srv = std::unique_ptr<MockReplayService>(new MockReplayService());
+  EXPECT_CALL(*mock_srv, getPayload()).WillOnce(Return(ByMove(nullptr)));
 
   std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
   std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
   auto replayRequest =
-      ReplayRequest::create(mock_conn.get(), memoryManager.get());
+      ReplayRequest::create(mock_srv.get(), memoryManager.get());
 
   EXPECT_EQ(nullptr, replayRequest);
 }
