@@ -68,6 +68,10 @@ std::vector<void*> DirtyPageTable::DumpAndClearAll() {
 
 template <>
 bool MemoryTracker::AddTrackingRangeImpl(void* start, size_t size) {
+  if (!EnableMemoryTrackerImpl()) {
+    return false;
+  }
+
   if (size == 0) return false;
   if (IsInRanges(reinterpret_cast<uintptr_t>(start), ranges_)) return false;
 

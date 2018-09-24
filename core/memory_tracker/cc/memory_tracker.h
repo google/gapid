@@ -131,7 +131,7 @@ inline bool IsInRanges(uintptr_t addr, std::map<uintptr_t, size_t>& ranges,
   return true;
 }
 
-// SpinLock is a spin lock implemented with atomic variable and opertions.
+// SpinLock is a spin lock implemented with atomic variable and operations.
 // Mutiple calls to Lock in a single thread will result into a deadlock.
 class SpinLock {
  public:
