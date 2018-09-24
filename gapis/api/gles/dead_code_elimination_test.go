@@ -225,7 +225,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		cmds := append(prologue, testCmds...)
 
 		h := &capture.Header{ABI: device.WindowsX86_64}
-		capturePath, err := capture.New(ctx, a, name, h, cmds)
+		capturePath, err := capture.New(ctx, a, name, h, nil, cmds)
 		if err != nil {
 			panic(err)
 		}
