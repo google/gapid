@@ -76,7 +76,7 @@
   ref!DedicatedRequirementsKHR                 DedicatedRequirementsKHR
   // If ever layer/level is set to the same queue, then set it here instead.
   // This can save expensive looping through Aspects/Layers/Levels
-  @unused ref!QueueObject                      LastBoundQueue
+  @untracked @unused ref!QueueObject           LastBoundQueue
 }
 
 @internal class ImageAspect {
@@ -92,10 +92,10 @@
   u32         Height
   @unused u32 Depth
   @spy_disabled
-  @hidden @nobox @internal u8[] Data
-  VkImageLayout                 Layout
-  ref!VkSubresourceLayout       LinearLayout
-  @unused ref!QueueObject       LastBoundQueue
+  @hidden @nobox @internal u8[]      Data
+  VkImageLayout                      Layout
+  ref!VkSubresourceLayout            LinearLayout
+  @untracked @unused ref!QueueObject LastBoundQueue
 }
 
 @internal class SparseBoundImageAspectInfo {
