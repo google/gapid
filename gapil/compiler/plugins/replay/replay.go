@@ -27,9 +27,9 @@ import (
 import "C"
 
 const (
-	// getReplayData is the name of the function that retrieves the replay
+	// GetReplayData is the name of the function that retrieves the replay
 	// data from the context.
-	getReplayData = "get_replay_data"
+	GetReplayData = "get_replay_data"
 
 	// Anything very low in application address-space is extremely
 	// unlikely to be a valid pointer.
@@ -108,7 +108,7 @@ func (r *replayer) OnPreBuildContext(c *compiler.C) {
 		r.replayLayout = c.Settings.CaptureABI.MemoryLayout
 	}
 
-	r.getReplayData = c.M.Function(replayDataPtr, getReplayData, c.T.CtxPtr)
+	r.getReplayData = c.M.Function(replayDataPtr, GetReplayData, c.T.CtxPtr)
 
 	r.parseCallbacks()
 }
@@ -127,6 +127,12 @@ func (r *replayer) ContextData(c *compiler.C) []compiler.ContextField {
 			Init: func(s *compiler.S, dataPtr *codegen.Value) {
 				c.InitBuffer(s, dataPtr.Index(0, stream), s.Scalar(uint32(initialStreamCap)))
 				s.Call(r.callbacks.initData, s.Ctx, dataPtr)
+
+				// The pointer alignment field is to support identical output
+				// with the legacy replay builder logic. This should be removed.
+				// See Builder::layout_volatile_memory in builder.cpp.
+				pointerAlignment := uint32(r.replayLayout.Pointer.Alignment)
+				dataPtr.Index(0, "pointer_alignment").Store(s.Scalar(pointerAlignment))
 			},
 			Term: func(s *compiler.S, dataPtr *codegen.Value) {
 				s.Call(r.callbacks.termData, s.Ctx, dataPtr)
@@ -138,7 +144,7 @@ func (r *replayer) ContextData(c *compiler.C) []compiler.ContextField {
 
 func (r *replayer) Functions() map[string]*codegen.Function {
 	return map[string]*codegen.Function{
-		getReplayData: r.getReplayData,
+		GetReplayData: r.getReplayData,
 	}
 }
 
@@ -312,6 +318,15 @@ func (r *replayer) addResource(s *compiler.S, slice *codegen.Value) *codegen.Val
 	return s.Call(r.callbacks.addResource, s.Ctx, dataPtr, slicePtr)
 }
 
+func (r *replayer) addConstant(s *compiler.S, val *codegen.Value, ty semantic.Type) *codegen.Value {
+	dataPtr := s.Ctx.Index(0, data)
+	ptr := s.LocalInit("constant-ptr", val).Cast(r.T.VoidPtr)
+	size := s.SizeOf(r.T.Replay(ty)).Cast(r.T.Uint32)
+	alignment := s.AlignOf(r.T.Replay(ty)).Cast(r.T.Uint32)
+	addr := s.Call(r.callbacks.addConstant, s.Ctx, dataPtr, ptr, size, alignment)
+	return r.asmConstantPtr(s, addr)
+}
+
 func (r *replayer) push(s *compiler.S, val *codegen.Value, ty semantic.Type) {
 	r.loadRemap(s, val, ty, func(s *compiler.S) {
 		r.asmPush(s, r.value(s, val, ty))
@@ -343,6 +358,11 @@ func (r *replayer) value(s *compiler.S, val *codegen.Value, ty semantic.Type) *c
 		return s.Select(s.LessThan(val, s.Scalar(observableAddressStart).Cast(val.Type())),
 			r.asmAbsolutePtr(s, val),
 			r.observedPtr(s, val, ty))
+	case *semantic.StaticArray:
+		if isRemapped(ty.ValueType) {
+			r.Fail("Static array parameters of remapped types currently not supported")
+		}
+		return r.addConstant(s, val, ty)
 	}
 	r.Fail("Unhandled type %v", ty.Name())
 	return nil

@@ -35,6 +35,7 @@
 #define SLICE_ARGS(sli) sli->pool, sli->root, sli->base, sli->size
 
 using namespace gapir::vm;
+using namespace gapil::runtime::replay;
 
 // Ensure that replay.cpp is not stripped from the final executable.
 // Typically the symbols defined by this compilation unit are only dynamically
@@ -55,12 +56,14 @@ void gapil_replay_init_data(context* ctx, gapil_replay_data* data) {
   auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
   data->data_ex = arena->create<DataEx>();
   data->resources = buffer{.arena = ctx->arena};
+  data->constants = buffer{.arena = ctx->arena};
 }
 
 void gapil_replay_term_data(context* ctx, gapil_replay_data* data) {
   auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
   arena->destroy(reinterpret_cast<DataEx*>(data->data_ex));
   gapil_destroy_buffer(&data->resources);
+  gapil_destroy_buffer(&data->constants);
 }
 
 uint64_t gapil_replay_allocate_memory(context* ctx, gapil_replay_data* data,
@@ -107,6 +110,47 @@ uint32_t gapil_replay_add_resource(context* ctx, gapil_replay_data* data,
   info.size = sli->size;
   ex->resources[id] = info;
   return info.index;
+}
+
+uint32_t gapil_replay_add_constant(context* ctx, gapil_replay_data* data,
+                                   void* buf, uint32_t size,
+                                   uint32_t alignment) {
+  DEBUG_PRINT("gapil_replay_add_constant(buf: %p, size: %" PRIu32 ")", buf,
+              size);
+  auto ex = reinterpret_cast<DataEx*>(data->data_ex);
+
+  // TODO: Remove. This is only here to match old implementation.
+  alignment = std::max(alignment, data->pointer_alignment);
+
+  // try to find an existing constant in the constants buffer.
+  auto id = core::Id::Hash(buf, size);
+  auto it = ex->constant_offsets.find(id);
+  if (it != ex->constant_offsets.end()) {
+    return it->second;
+  }
+
+  auto& consts = data->constants;
+
+  // grow the constants buffer to fit the data with the specified alignment.
+  auto offset = align<size_t>(consts.size, alignment);
+  auto new_size = offset + size;
+  if (new_size > consts.capacity) {
+    auto arena = reinterpret_cast<core::Arena*>(consts.arena);
+    consts.capacity = std::max<uint32_t>(new_size, consts.capacity * 2);
+    consts.data = (uint8_t*)arena->reallocate(consts.data, consts.capacity,
+                                              consts.alignment);
+  }
+  // clear the alignment padding to 0
+  memset(consts.data + consts.size, 0, offset - consts.size);
+  consts.size = new_size;
+
+  // append the data.
+  memcpy(consts.data + offset, buf, size);
+
+  // add the id to the constants_offsets map so that this data can be shared.
+  ex->constant_offsets[id] = offset;
+
+  return offset;
 }
 
 gapil_replay_remap_func* gapil_replay_get_remap_func(char* api, char* type) {

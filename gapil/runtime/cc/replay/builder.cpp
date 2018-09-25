@@ -43,6 +43,7 @@
 #define ASM_VAL_ARGS(val) val.data, asm_type_str(val.data_type)
 
 using namespace gapir::vm;
+using namespace gapil::runtime::replay;
 
 // Ensure that replay.cpp is not stripped from final executable.
 // See GAPIL_REPLAY_FORCE_LINK in replay.cpp for more info.
@@ -120,7 +121,7 @@ class Builder {
  public:
   Builder(::arena* a, gapil_replay_data* d);
 
-  void layout_volatile_memory(uint32_t pointer_alignment);
+  void layout_volatile_memory();
   void generate_opcodes();
   void build_resources();
 
@@ -223,7 +224,7 @@ class Builder {
 Builder::Builder(arena* arena, gapil_replay_data* data)
     : arena_(arena), data_(data), opcodes_(arena) {}
 
-void Builder::layout_volatile_memory(uint32_t pointer_alignment) {
+void Builder::layout_volatile_memory() {
   DEBUG_PRINT("Builder::layout_volatile_memory()");
 
   auto ex = reinterpret_cast<DataEx*>(data_->data_ex);
@@ -249,8 +250,8 @@ void Builder::layout_volatile_memory(uint32_t pointer_alignment) {
       auto size = block.mEnd - block.mStart;
       auto alignment = block.mAlignment;
 
-      // TODO: Remove. This is only here to conform to old implementation.
-      alignment = pointer_alignment;
+      // TODO: Remove. This is only here to match old implementation.
+      alignment = data_->pointer_alignment;
 
       auto addr = volatile_mem.alloc(size, alignment);
       DEBUG_PRINT("%.3d: Block NS %d [0x%x - 0x%x] (align %d): 0x%x",
@@ -562,10 +563,9 @@ void Builder::store(gapil_replay_asm_value dst) {
 
 }  // anonymous namespace
 
-void gapil_replay_build(context* ctx, gapil_replay_data* data,
-                        uint32_t pointer_alignment) {
+void gapil_replay_build(context* ctx, gapil_replay_data* data) {
   Builder builder(ctx->arena, data);
-  builder.layout_volatile_memory(pointer_alignment);
+  builder.layout_volatile_memory();
   builder.generate_opcodes();
   builder.build_resources();
 }

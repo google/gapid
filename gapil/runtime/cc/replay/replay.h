@@ -34,11 +34,18 @@ typedef struct gapil_replay_data_t {
   // the replay.
   buffer resources;
 
+  // buffer of constant data used by the replay.
+  buffer constants;
+
   // function used to emit the call of the current command
   void (*call)(context*);
 
   // additional data referenced by replay.cpp.
   void* data_ex;
+
+  // Alignment of a pointer for the replay device.
+  // TODO: Remove. This is only here to match old replay implementation.
+  uint32_t pointer_alignment;
 } gapil_replay_data;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,8 +53,7 @@ typedef struct gapil_replay_data_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 // TODO
-void gapil_replay_build(context* ctx, gapil_replay_data* data,
-                        uint32_t pointer_alignment);
+void gapil_replay_build(context* ctx, gapil_replay_data* data);
 
 // gapil_replay_remap_func is a function that can be used to return a remapping
 // key for the given remapped value at ptr.
@@ -94,6 +100,13 @@ DECL_GAPIL_REPLAY_FUNC(void, gapil_replay_reserve_memory, context* ctx,
 // encoded as a resource. The resource identifier is returned.
 DECL_GAPIL_REPLAY_FUNC(uint32_t, gapil_replay_add_resource, context* ctx,
                        gapil_replay_data* data, slice* slice);
+
+// gapil_replay_add_constant adds data to the constants buffer, returning the
+// address of the constant in the constant address space.
+// Constants are deduplicated.
+DECL_GAPIL_REPLAY_FUNC(uint32_t, gapil_replay_add_constant, context* ctx,
+                       gapil_replay_data* data, void* buf, uint32_t size,
+                       uint32_t alignment);
 
 // gapil_replay_get_remap_func is called to lookup the remapping function for a
 // given API type.
