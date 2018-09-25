@@ -1180,7 +1180,7 @@ func pipelineResourceData(ctx context.Context,
 				return nil, fmt.Errorf(
 					"Pipeline binding type of %v does not match descriptor set binding type of %v",
 					binding.Type,
-					bindingInfo.BindingType)
+					bindingInfo.BindingType())
 			}
 
 			// Only one of these should be populated

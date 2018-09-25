@@ -44,7 +44,7 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 	}
 	l := e.s.MemoryLayout
 	dynamicStateInfo := info.Slice(0, 1, l).MustReadʷ(e.ctx, e.cmd, e.s, e.b, e.w)[0]
-	states := dynamicStateInfo.PDynamicStates().Slice(0, uint64(dynamicStateInfo.DynamicStateCount()), l).MustReadʷ(e.ctx, e.cmd, e.s, e.b, e.w)
+	states := dynamicStateInfo.PDynamicStatesʷ(e.ctx, e.w).Slice(0, uint64(dynamicStateInfo.DynamicStateCountʷ(e.ctx, e.w)), l).MustReadʷ(e.ctx, e.cmd, e.s, e.b, e.w)
 	for _, s := range states {
 		if s == state {
 			return true
@@ -88,24 +88,24 @@ func (e externs) resetCmd(commandBuffer VkCommandBuffer) {
 
 func (e externs) notifyPendingCommandAdded(queue VkQueue) {
 	s := GetState(e.s)
-	queueObject := s.Queues().Get(queue)
-	command := queueObject.PendingCommands().Get(uint32(queueObject.PendingCommands().Len() - 1))
-	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndex())
+	queueObject := s.Queuesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, queue)
+	command := queueObject.PendingCommandsʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, uint32(queueObject.PendingCommandsʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w)-1))
+	s.SubCmdIdx[len(s.SubCmdIdx)-1] = uint64(command.CommandIndexʷ(e.ctx, e.w))
 	s.queuedCommands[command] = QueuedCommand{
 		submit:          e.cmd,
 		submissionIndex: append([]uint64(nil), s.SubCmdIdx...),
 	}
 
-	queueObject.PendingCommands().Add(uint32(queueObject.PendingCommands().Len()-1), command)
+	queueObject.PendingCommandsʷ(e.ctx, e.w).Addʷ(e.ctx, e.w, uint32(queueObject.PendingCommandsʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w)-1), command)
 }
 
 func (e externs) onCommandAdded(buffer VkCommandBuffer) {
 	o := GetState(e.s)
 	o.initialCommands[buffer] =
 		append(o.initialCommands[buffer], e.cmd)
-	b := o.CommandBuffers().Get(buffer)
+	b := o.CommandBuffersʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, buffer)
 	if o.AddCommand != nil {
-		o.AddCommand(b.CommandReferences().Get(uint32(b.CommandReferences().Len() - 1)))
+		o.AddCommand(b.CommandReferencesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, uint32(b.CommandReferencesʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w)-1)))
 	}
 }
 
@@ -174,18 +174,18 @@ func (e externs) unmapMemory(slice memory.Slice) {
 func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
 func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInMapped uint64, readSize memory.Size) {
 	l := e.s.MemoryLayout
-	mem := GetState(e.s).DeviceMemories().Get(memoryHandle)
-	mappedOffset := uint64(mem.MappedOffset())
+	mem := GetState(e.s).DeviceMemoriesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, memoryHandle)
+	mappedOffset := uint64(mem.MappedOffsetʷ(e.ctx, e.w))
 	dstStart := mappedOffset + offsetInMapped
 	srcStart := offsetInMapped
 
-	absSrcStart := mem.MappedLocation().Address() + offsetInMapped
+	absSrcStart := mem.MappedLocationʷ(e.ctx, e.w).Address() + offsetInMapped
 	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(readSize)}
 
 	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
 	for _, r := range writeRngList {
-		mem.Data().Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
-			Copy(e.ctx, U8ᵖ(mem.MappedLocation()).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b, e.w)
+		mem.Dataʷ(e.ctx, e.w).Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
+			Copy(e.ctx, U8ᵖ(mem.MappedLocationʷ(e.ctx, e.w)).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b, e.w)
 	}
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
@@ -214,15 +214,15 @@ func (e externs) popDebugMarker() {
 
 func (e externs) pushRenderPassMarker(rp VkRenderPass) {
 	if GetState(e.s).pushMarkerGroup != nil {
-		rpObj := GetState(e.s).RenderPasses().Get(rp)
+		rpObj := GetState(e.s).RenderPassesʷ(e.ctx, e.w).Getʷ(e.ctx, e.w, rp)
 		var name string
-		if !rpObj.DebugInfo().IsNil() && len(rpObj.DebugInfo().ObjectName()) > 0 {
-			name = rpObj.DebugInfo().ObjectName()
+		if !rpObj.DebugInfoʷ(e.ctx, e.w).IsNil() && len(rpObj.DebugInfoʷ(e.ctx, e.w).ObjectNameʷ(e.ctx, e.w)) > 0 {
+			name = rpObj.DebugInfoʷ(e.ctx, e.w).ObjectNameʷ(e.ctx, e.w)
 		} else {
 			name = fmt.Sprintf("RenderPass: %v", rp)
 		}
 		GetState(e.s).pushMarkerGroup(name, false, RenderPassMarker)
-		if rpObj.SubpassDescriptions().Len() > 1 {
+		if rpObj.SubpassDescriptionsʷ(e.ctx, e.w).Lenʷ(e.ctx, e.w) > 1 {
 			GetState(e.s).pushMarkerGroup("Subpass: 0", false, RenderPassMarker)
 		}
 	}
@@ -244,72 +244,72 @@ func (e externs) popAndPushMarkerForNextSubpass(nextSubpass uint32) {
 	}
 }
 
-func bindSparse(ctx context.Context, a api.Cmd, id api.CmdID, s *api.GlobalState, binds *QueuedSparseBinds) {
+func bindSparse(ctx context.Context, w api.StateWatcher, a api.Cmd, id api.CmdID, s *api.GlobalState, binds *QueuedSparseBinds) {
 	// Do not use the subroutine: subRoundUpTo because the subroutine takes uint32 arguments
 	roundUpTo := func(dividend, divisor VkDeviceSize) VkDeviceSize {
 		return (dividend + divisor - 1) / divisor
 	}
 	st := GetState(s)
-	for buffer, binds := range binds.BufferBinds().All() {
-		if !st.Buffers().Contains(buffer) {
+	for buffer, binds := range binds.BufferBindsʷ(ctx, w).Allʷ(ctx, w) {
+		if !st.Buffersʷ(ctx, w).Containsʷ(ctx, w, buffer) {
 			subVkErrorInvalidBuffer(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, buffer)
 		}
-		bufObj := st.Buffers().Get(buffer)
-		blockSize := bufObj.MemoryRequirements().Alignment()
-		for _, bind := range binds.SparseMemoryBinds().All() {
+		bufObj := st.Buffersʷ(ctx, w).Getʷ(ctx, w, buffer)
+		blockSize := bufObj.MemoryRequirementsʷ(ctx, w).Alignmentʷ(ctx, w)
+		for _, bind := range binds.SparseMemoryBindsʷ(ctx, w).Allʷ(ctx, w) {
 			// TODO: assert bind.Size and bind.MemoryOffset must be multiple times of
 			// block size.
-			numBlocks := roundUpTo(bind.Size(), blockSize)
-			memOffset := bind.MemoryOffset()
-			resOffset := bind.ResourceOffset()
+			numBlocks := roundUpTo(bind.Sizeʷ(ctx, w), blockSize)
+			memOffset := bind.MemoryOffsetʷ(ctx, w)
+			resOffset := bind.ResourceOffsetʷ(ctx, w)
 			for i := VkDeviceSize(0); i < numBlocks; i++ {
-				bufObj.SparseMemoryBindings().Add(
+				bufObj.SparseMemoryBindingsʷ(ctx, w).Addʷ(ctx, w,
 					uint64(resOffset),
 					NewVkSparseMemoryBind(s.Arena, // TODO: Use scratch arena?
-						resOffset,     // resourceOffset
-						blockSize,     // size
-						bind.Memory(), // memory
-						memOffset,     // memoryOffset
-						bind.Flags(),  // flags
+						resOffset,            // resourceOffset
+						blockSize,            // size
+						bind.Memoryʷ(ctx, w), // memory
+						memOffset,            // memoryOffset
+						bind.Flagsʷ(ctx, w),  // flags
 					))
 				memOffset += blockSize
 				resOffset += blockSize
 			}
 		}
 	}
-	for image, binds := range binds.OpaqueImageBinds().All() {
-		if !st.Images().Contains(image) {
+	for image, binds := range binds.OpaqueImageBindsʷ(ctx, w).Allʷ(ctx, w) {
+		if !st.Imagesʷ(ctx, w).Containsʷ(ctx, w, image) {
 			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, image)
 		}
-		imgObj := st.Images().Get(image)
-		blockSize := imgObj.MemoryRequirements().Alignment()
-		for _, bind := range binds.SparseMemoryBinds().All() {
+		imgObj := st.Imagesʷ(ctx, w).Getʷ(ctx, w, image)
+		blockSize := imgObj.MemoryRequirementsʷ(ctx, w).Alignmentʷ(ctx, w)
+		for _, bind := range binds.SparseMemoryBindsʷ(ctx, w).Allʷ(ctx, w) {
 			// TODO: assert bind.Size and bind.MemoryOffset must be multiple times of
 			// block size.
-			numBlocks := roundUpTo(bind.Size(), blockSize)
-			memOffset := bind.MemoryOffset()
-			resOffset := bind.ResourceOffset()
+			numBlocks := roundUpTo(bind.Sizeʷ(ctx, w), blockSize)
+			memOffset := bind.MemoryOffsetʷ(ctx, w)
+			resOffset := bind.ResourceOffsetʷ(ctx, w)
 			for i := VkDeviceSize(0); i < numBlocks; i++ {
-				imgObj.OpaqueSparseMemoryBindings().Add(
+				imgObj.OpaqueSparseMemoryBindingsʷ(ctx, w).Addʷ(ctx, w,
 					uint64(resOffset),
 					NewVkSparseMemoryBind(s.Arena, // TODO: Use scratch arena?
-						resOffset,     // resourceOffset
-						blockSize,     // size
-						bind.Memory(), // memory
-						memOffset,     // memoryOffset
-						bind.Flags(),  // flags
+						resOffset,            // resourceOffset
+						blockSize,            // size
+						bind.Memoryʷ(ctx, w), // memory
+						memOffset,            // memoryOffset
+						bind.Flagsʷ(ctx, w),  // flags
 					))
 				memOffset += blockSize
 				resOffset += blockSize
 			}
 		}
 	}
-	for image, binds := range binds.ImageBinds().All() {
-		if !st.Images().Contains(image) {
+	for image, binds := range binds.ImageBindsʷ(ctx, w).Allʷ(ctx, w) {
+		if !st.Imagesʷ(ctx, w).Containsʷ(ctx, w, image) {
 			subVkErrorInvalidImage(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, image)
 		}
-		imgObj := st.Images().Get(image)
-		for _, bind := range binds.SparseImageMemoryBinds().All() {
+		imgObj := st.Imagesʷ(ctx, w).Getʷ(ctx, w, image)
+		for _, bind := range binds.SparseImageMemoryBindsʷ(ctx, w).Allʷ(ctx, w) {
 			if !imgObj.IsNil() {
 				err := subAddSparseImageMemoryBinding(ctx, a, id, nil, s, nil, a.Thread(), nil, nil, image, bind)
 				if err != nil {
