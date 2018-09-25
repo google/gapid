@@ -126,7 +126,7 @@ func drawCallStats(ctx context.Context, capt *path.Capture, stats *service.Stats
 
 	processCmd := func(idx uint64) error {
 		cmd := cmds[idx]
-		err := cmd.Mutate(ctx, api.CmdID(idx), st, nil)
+		err := cmd.Mutate(ctx, api.CmdID(idx), st, nil, nil)
 		if err != nil {
 			return err
 		}

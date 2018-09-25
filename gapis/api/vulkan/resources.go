@@ -551,13 +551,13 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 				Bytes:  image.NewID(l.Data().ResourceID(ctx, s)),
 			}
 		}
-		elementAndTexelBlockSize, err := subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, vkFmt)
+		elementAndTexelBlockSize, err := subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, nil, vkFmt)
 		if err != nil {
 			log.Errf(ctx, err, "[Trim linear image data for image: %v]", t.VulkanHandle())
 			return nil
 		}
 		texelHeight := elementAndTexelBlockSize.TexelBlockSize().Height()
-		heightInBlocks, _ := subRoundUpTo(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, l.Height(), texelHeight)
+		heightInBlocks, _ := subRoundUpTo(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, nil, l.Height(), texelHeight)
 		colorData := make([]uint8, 0, expectedSize)
 		colorRawSize := uint64(format.Size(int(l.Width()), 1, 1))
 		levelData := l.Data().MustRead(ctx, nil, s, nil)
@@ -838,7 +838,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: c.Arena} // TODO: We probably should have a new arena passed in here!
 	state := c.NewState(ctx)
-	cmd.Mutate(ctx, api.CmdNoID, state, nil)
+	cmd.Mutate(ctx, api.CmdNoID, state, nil, nil)
 
 	shader := data.GetShader()
 	var codeSlice interface{}

@@ -80,7 +80,7 @@ type writer struct {
 func (s *writer) State() *api.GlobalState { return s.state }
 
 func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	cmd.Mutate(ctx, id, s.state, nil)
+	cmd.Mutate(ctx, id, s.state, nil, nil)
 	s.cmds = append(s.cmds, cmd)
 }
 
@@ -175,7 +175,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
 			sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb)
 		} else {
-			cmd.Mutate(ctx, id, s, nil)
+			cmd.Mutate(ctx, id, s, nil, nil)
 		}
 		postCmdCb(s, api.SubCmdIdx{uint64(id)}, cmd)
 		return nil

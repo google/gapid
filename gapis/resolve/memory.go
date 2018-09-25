@@ -57,7 +57,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 		return nil, err
 	}
 	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil)
+		cmd.Mutate(ctx, id, s, nil, nil)
 		return nil
 	})
 	if err != nil {
@@ -82,7 +82,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	})
 
 	lastCmd := cmds[len(cmds)-1]
-	api.MutateCmds(ctx, s, nil, lastCmd)
+	api.MutateCmds(ctx, s, nil, nil, lastCmd)
 
 	// Check whether the requested pool was ever created.
 	pool, err := s.Memory.Get(memory.PoolID(p.Pool))

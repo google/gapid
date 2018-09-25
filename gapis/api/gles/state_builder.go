@@ -156,7 +156,7 @@ func (sb *stateBuilder) write(cmd api.Cmd) {
 		fn(cmd)
 	}
 	sb.preCmd = sb.preCmd[:0]
-	if err := cmd.Mutate(sb.ctx, api.CmdNoID, sb.newState, nil); err != nil {
+	if err := cmd.Mutate(sb.ctx, api.CmdNoID, sb.newState, nil, nil); err != nil {
 		log.W(sb.ctx, "Initial cmd %v: %v - %v", len(sb.cmds), cmd, err)
 	} else {
 		log.D(sb.ctx, "Initial cmd %v: %v", len(sb.cmds), cmd)

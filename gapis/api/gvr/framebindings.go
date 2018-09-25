@@ -97,7 +97,7 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 				}
 			}
 		}
-		cmd.Mutate(ctx, id, s, nil)
+		cmd.Mutate(ctx, id, s, nil, nil)
 		return nil
 	})
 

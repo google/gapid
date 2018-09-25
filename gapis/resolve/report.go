@@ -127,7 +127,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 				messages.ErrTraceAssert(as.Reason)))
 		}
 
-		if err := cmd.Mutate(ctx, id, state, nil /* no builder, just mutate */); err != nil {
+		if err := cmd.Mutate(ctx, id, state, nil /* builder */, nil /* watcher */); err != nil {
 			if !api.IsErrCmdAborted(err) {
 				items = append(items, r.newReportItem(log.Error, uint64(id),
 					messages.ErrInternalError(err.Error())))

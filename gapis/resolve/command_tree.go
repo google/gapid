@@ -250,7 +250,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Walk the list of unfiltered commands to build the groups.
 	s := c.NewState(ctx)
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil)
+		cmd.Mutate(ctx, id, s, nil, nil)
 		if filter(id, cmd, s) {
 			for _, g := range groupers {
 				g.Process(ctx, id, cmd, s)
@@ -305,7 +305,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	// Now we have all the groups, we finally need to add the filtered commands.
 	s = c.NewState(ctx)
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil)
+		cmd.Mutate(ctx, id, s, nil, nil)
 
 		if !filter(id, cmd, s) {
 			return nil

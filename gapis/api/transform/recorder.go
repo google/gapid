@@ -38,7 +38,7 @@ func (r *Recorder) State() *api.GlobalState {
 // and if the Recorder has a state, mutates this state object.
 func (r *Recorder) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
 	if r.S != nil {
-		cmd.Mutate(ctx, id, r.S, nil)
+		cmd.Mutate(ctx, id, r.S, nil, nil)
 	}
 	r.Cmds = append(r.Cmds, cmd)
 	r.CmdsAndIDs = append(r.CmdsAndIDs, CmdAndID{cmd, id})

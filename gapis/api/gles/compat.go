@@ -272,7 +272,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		switch cmd := cmd.(type) {
 		case *GlBindBuffer:
 			if cmd.Buffer() == 0 {
-				buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target())
+				buf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target())
 				if err != nil {
 					log.E(ctx, "Can not get bound buffer: %v ", err)
 				}
@@ -337,11 +337,11 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlBindBufferBase:
 			if cmd.Buffer() == 0 {
-				genBuf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target())
+				genBuf, err := subGetBoundBuffer(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target())
 				if err != nil {
 					onError(ctx, id, cmd, fmt.Errorf("Can not get bound buffer: %v", err))
 				}
-				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, cmd.Target(), cmd.Index())
+				idxBuf, err := subGetBoundBufferAtIndex(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, cmd.Target(), cmd.Index())
 				if err != nil {
 					onError(ctx, id, cmd, fmt.Errorf("Can not get bound buffer: %v", err))
 				}
@@ -380,7 +380,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			if c.Vertex().Attributes().Contains(cmd.Location()) {
 				oldAttrib := c.Vertex().Attributes().Get(cmd.Location())
 				oldValue := oldAttrib.Value().MustRead(ctx, cmd, s, nil /* builder */)
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 				newAttrib := c.Vertex().Attributes().Get(cmd.Location())
 				newValue := newAttrib.Value().MustRead(ctx, cmd, s, nil /* builder */)
 				if reflect.DeepEqual(oldValue, newValue) {
@@ -412,7 +412,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 			// command.
 			// This is so we can grab the source string from the Shader object.
 			// We will actually provide the source to driver at compile time.
-			cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+			cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 			return
 
 		case *GlCompileShader:
@@ -893,7 +893,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				// framebuffer. The state is mutated so that when a non-default
 				// framebuffer is bound later on, FRAMEBUFFER_SRGB will be enabled.
 				// (see GlBindFramebuffer below)
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 				return
 			}
 
@@ -1150,7 +1150,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				cmd := cmd.clone(s.Arena)
 				convertTexTarget(cmd)
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					return cmd.Mutate(ctx, id, s, nil) // do not call, just mutate
+					return cmd.Mutate(ctx, id, s, nil, nil) // do not call, just mutate
 				}))
 
 				// Rebind the currently bound 2D texture.  This might seem like a no-op, however,
@@ -1197,7 +1197,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 
 		case *GlFramebufferTextureMultiviewOVR:
 			{
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
@@ -1210,7 +1210,7 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 		case *GlFramebufferTextureMultisampleMultiviewOVR:
 			{
 				// TODO: Support multi-sample rendering.
-				cmd.Mutate(ctx, id, s, nil /* no builder, just mutate */)
+				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
 				// Translate it to the non-multiview version, but do not modify state,
 				// otherwise we would lose the knowledge about view count.
 				out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
