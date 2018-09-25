@@ -39,6 +39,10 @@ type Types struct {
 	ArenaPtr        codegen.Type                           // arena_t*
 	Any             *codegen.Struct                        // gapil_any_t
 	AnyPtr          codegen.Type                           // gapil_any_t*
+	Msg             *codegen.Struct                        // gapil_msg_t
+	MsgPtr          codegen.Type                           // gapil_msg_t*
+	MsgArg          *codegen.Struct                        // gapil_msg_arg_t
+	MsgArgPtr       codegen.Type                           // gapil_msg_arg_t*
 	RTTI            *codegen.Struct                        // gapil_rtti
 	Uint8Ptr        codegen.Type                           // uint8_t*
 	VoidPtr         codegen.Type                           // void* (aliased of uint8_t*)
@@ -80,6 +84,10 @@ func (c *C) declareTypes() {
 	c.T.Uint8Ptr = c.T.Pointer(c.T.Uint8)
 	c.T.Any = c.T.TypeOf(C.gapil_any{}).(*codegen.Struct)
 	c.T.AnyPtr = c.T.Pointer(c.T.Any)
+	c.T.Msg = c.T.TypeOf(C.gapil_msg{}).(*codegen.Struct)
+	c.T.MsgPtr = c.T.Pointer(c.T.Msg)
+	c.T.MsgArg = c.T.TypeOf(C.gapil_msg_arg{}).(*codegen.Struct)
+	c.T.MsgArgPtr = c.T.Pointer(c.T.MsgArg)
 	c.T.RTTI = c.T.TypeOf(C.gapil_rtti{}).(*codegen.Struct)
 	c.T.Arena = c.T.DeclareStruct("arena")
 	c.T.ArenaPtr = c.T.Pointer(c.T.Arena)
@@ -476,7 +484,7 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 		case semantic.CharType:
 			return t.Uint8 // TODO: dynamic length
 		case semantic.MessageType:
-			return t.Uint8 // TODO: Messages
+			return t.MsgPtr
 		default:
 			fail("Unsupported builtin type %v", ty.Name())
 			return nil

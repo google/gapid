@@ -153,13 +153,32 @@ typedef struct gapil_any_t {
                 // separately).
 } gapil_any;
 
+typedef struct gapil_msg_arg_t {
+  gapil_char* name;  // argument identifier.
+  gapil_any* value;  // argument value.
+} gapil_msg_arg;
+
+typedef struct gapil_msg_t {
+  // number of owners of this message.
+  uint32_t ref_count;
+
+  // arena that owns this message allocation.
+  arena* arena;
+
+  // message identifier string.
+  gapil_char* identifier;
+
+  // array of key-value pairs. Terminated with a null-null.
+  gapil_msg_arg* args;
+} gapil_msg;
+
 // gapil_api_module holds the functions produced by a compilation for a single
 // API.
 typedef struct gapil_api_module_t {
-  // Offset in bytes of the API's globals from context.globals.
+  // offset in bytes of the API's globals from context.globals.
   uint64_t globals_offset;
 
-  // Size in bytes of the API's globals.
+  // size in bytes of the API's globals.
   uint64_t globals_size;
 
   // number of functions in this module.
@@ -251,6 +270,9 @@ void gapil_set_runtime_callbacks(gapil_runtime_callbacks*);
 
 DECL_GAPIL_CB(void, gapil_any_reference, gapil_any*);
 DECL_GAPIL_CB(void, gapil_any_release, gapil_any*);
+
+DECL_GAPIL_CB(void, gapil_msg_reference, gapil_msg*);
+DECL_GAPIL_CB(void, gapil_msg_release, gapil_msg*);
 
 // allocates memory using the arena with the given size and alignment.
 DECL_GAPIL_CB(void*, gapil_alloc, arena*, uint64_t size, uint64_t align);

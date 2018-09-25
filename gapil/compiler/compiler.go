@@ -97,6 +97,8 @@ type C struct {
 		logf           *codegen.Function
 		makePool       *codegen.Function
 		makeString     *codegen.Function
+		msgReference   *codegen.Function
+		msgRelease     *codegen.Function
 		realloc        *codegen.Function
 		sliceData      *codegen.Function
 		sliceToString  *codegen.Function
@@ -255,6 +257,8 @@ func (c *C) declareCallbacks() {
 	c.callbacks.logf = c.M.ParseFunctionSignature(C.GoString(C.gapil_logf_sig))
 	c.callbacks.makePool = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_pool_sig))
 	c.callbacks.makeString = c.M.ParseFunctionSignature(C.GoString(C.gapil_make_string_sig))
+	c.callbacks.msgReference = c.M.ParseFunctionSignature(C.GoString(C.gapil_msg_reference_sig))
+	c.callbacks.msgRelease = c.M.ParseFunctionSignature(C.GoString(C.gapil_msg_release_sig))
 	c.callbacks.realloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_realloc_sig))
 	c.callbacks.sliceData = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_data_sig))
 	c.callbacks.sliceToString = c.M.ParseFunctionSignature(C.GoString(C.gapil_slice_to_string_sig))

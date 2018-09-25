@@ -97,6 +97,30 @@ void gapil_any_release(gapil_any* a) {
   }
 }
 
+void gapil_msg_reference(gapil_msg* m) {
+  if (m != nullptr) {
+    GAPID_ASSERT_MSG(m->ref_count > 0, "Attempting to reference released msg");
+    m->ref_count++;
+  }
+}
+
+void gapil_msg_release(gapil_msg* m) {
+  if (m != nullptr) {
+    GAPID_ASSERT_MSG(m->ref_count > 0, "Attempting to reference released msg");
+    m->ref_count--;
+    if (m->ref_count == 0) {
+      auto args = m->args;
+      while (args->name != nullptr) {
+        gapil_any_release(args->value);
+        args++;
+      }
+      auto a = reinterpret_cast<Arena*>(m->arena);
+      a->free(m->args);
+      a->free(m);
+    }
+  }
+}
+
 void* gapil_alloc(arena_t* a, uint64_t size, uint64_t align) {
   Arena* arena = reinterpret_cast<Arena*>(a);
   void* ptr = arena->allocate(size, align);

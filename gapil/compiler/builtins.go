@@ -87,6 +87,20 @@ const (
 	AnyValue    = "value"
 )
 
+// Field names for the gapil_msg_arg_t runtime type.
+const (
+	MsgArgName  = "name"
+	MsgArgValue = "value"
+)
+
+// Field names for the gapil_msg_t runtime type.
+const (
+	MsgRefCount   = "ref_count"
+	MsgArena      = "arena"
+	MsgIdentifier = "identifier"
+	MsgArgs       = "args"
+)
+
 // Field names for the pool_t runtime type.
 const (
 	PoolRefCount = "ref_count"
