@@ -466,16 +466,19 @@ func (t *Types) struct_(name string, packed bool, fields []Field) *Struct {
 		s.SetBody(packed, fields...)
 		s.hasBody = true
 	}
-	t.structs[name] = s
+	if name != "" {
+		t.structs[name] = s
+	}
 	return s
 }
 
 func (t *Types) registerNamed(ty Type) {
-	name := ty.TypeName()
-	if _, dup := t.named[name]; dup {
-		fail("Duplicate types with the name %v", name)
+	if name := ty.TypeName(); name != "" {
+		if _, dup := t.named[name]; dup {
+			fail("Duplicate types with the name %v", name)
+		}
+		t.named[name] = ty
 	}
-	t.named[name] = ty
 }
 
 // SetBody sets the fields of the declared struct.
