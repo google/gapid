@@ -90,6 +90,7 @@ func (c *C) buildContextFuncs() {
 					var val *codegen.Value
 					if g.Default != nil {
 						val = c.expression(s, g.Default)
+						val = c.doCast(s, g.Type, g.Default.ExpressionType(), val)
 					} else {
 						val = c.initialValue(s, g.Type)
 					}

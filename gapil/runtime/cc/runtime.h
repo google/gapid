@@ -27,6 +27,8 @@ typedef struct pool_t pool;
 typedef struct globals_t globals;
 typedef struct string_t string;
 
+typedef uint8_t gapil_char;
+
 #define GAPIL_ERR_SUCCESS 0
 #define GAPIL_ERR_ABORTED 1
 
@@ -108,6 +110,48 @@ typedef struct buffer_t {
   uint32_t size;       // current size of the buffer.
   uint32_t alignment;  // min alignment in bytes of the data allocation.
 } buffer;
+
+#define GAPIL_KIND_BOOL 1
+#define GAPIL_KIND_U8 2
+#define GAPIL_KIND_S8 3
+#define GAPIL_KIND_U16 4
+#define GAPIL_KIND_S16 5
+#define GAPIL_KIND_F32 6
+#define GAPIL_KIND_U32 7
+#define GAPIL_KIND_S32 8
+#define GAPIL_KIND_F64 9
+#define GAPIL_KIND_U64 10
+#define GAPIL_KIND_S64 11
+#define GAPIL_KIND_INT 12
+#define GAPIL_KIND_UINT 13
+#define GAPIL_KIND_SIZE 14
+#define GAPIL_KIND_CHAR 15
+#define GAPIL_KIND_ARRAY 16
+#define GAPIL_KIND_CLASS 17
+#define GAPIL_KIND_ENUM 18
+#define GAPIL_KIND_MAP 19
+#define GAPIL_KIND_POINTER 20
+#define GAPIL_KIND_REFERENCE 21
+#define GAPIL_KIND_SLICE 22
+#define GAPIL_KIND_STRING 23
+
+typedef struct gapil_rtti {
+  uint32_t kind;             // kind of the type.
+  uint32_t api_index;        // api index to which the type belongs.
+  uint32_t type_index;       // index of the type within the api.
+  gapil_char* type_name;     // name of the type.
+  void (*reference)(void*);  // increment the reference count for the type.
+  void (*release)(void*);    // decrement the reference count for the type.
+} gapil_rtti;
+
+typedef struct gapil_any_t {
+  uint32_t ref_count;  // number of owners of this any.
+  arena* arena;        // arena that owns this any allocation.
+  gapil_rtti* rtti;    // type information of the value.
+  void* value;  // pointer to the value. For boxed value-types, this should be
+                // allocated as part of the any (it should not be freed
+                // separately).
+} gapil_any;
 
 // gapil_api_module holds the functions produced by a compilation for a single
 // API.
@@ -204,6 +248,9 @@ void gapil_set_runtime_callbacks(gapil_runtime_callbacks*);
 ////////////////////////////////////////////////////////////////////////////////
 // Runtime API implemented in runtime.cpp                                     //
 ////////////////////////////////////////////////////////////////////////////////
+
+DECL_GAPIL_CB(void, gapil_any_reference, gapil_any*);
+DECL_GAPIL_CB(void, gapil_any_release, gapil_any*);
 
 // allocates memory using the arena with the given size and alignment.
 DECL_GAPIL_CB(void*, gapil_alloc, arena*, uint64_t size, uint64_t align);

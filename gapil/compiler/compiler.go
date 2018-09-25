@@ -84,6 +84,8 @@ type C struct {
 	isFence         bool // If true, a fence should be emitted for the given statement
 	callbacks       struct {
 		alloc          *codegen.Function
+		anyReference   *codegen.Function
+		anyRelease     *codegen.Function
 		applyReads     *codegen.Function
 		applyWrites    *codegen.Function
 		callExtern     *codegen.Function
@@ -240,6 +242,8 @@ func (c *C) compile() {
 
 func (c *C) declareCallbacks() {
 	c.callbacks.alloc = c.M.ParseFunctionSignature(C.GoString(C.gapil_alloc_sig))
+	c.callbacks.anyReference = c.M.ParseFunctionSignature(C.GoString(C.gapil_any_reference_sig))
+	c.callbacks.anyRelease = c.M.ParseFunctionSignature(C.GoString(C.gapil_any_release_sig))
 	c.callbacks.applyReads = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_reads_sig))
 	c.callbacks.applyWrites = c.M.ParseFunctionSignature(C.GoString(C.gapil_apply_writes_sig))
 	c.callbacks.callExtern = c.M.ParseFunctionSignature(C.GoString(C.gapil_call_extern_sig))

@@ -111,6 +111,10 @@ func (c *C) declareRefRels() {
 	c.refRels.tys[semantic.StringType] = str
 	c.refRels.impls[semantic.StringType] = str
 
+	any := refRel{name: "any", reference: c.callbacks.anyReference, release: c.callbacks.anyRelease}
+	c.refRels.tys[semantic.AnyType] = any
+	c.refRels.impls[semantic.AnyType] = any
+
 	var isRefTy func(ty semantic.Type) bool
 	isRefTy = func(ty semantic.Type) bool {
 		ty = semantic.Underlying(ty)
@@ -313,7 +317,7 @@ func caller() string {
 
 func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
 	if got, expect := val.Type(), c.T.Target(ty); got != expect {
-		fail("reference() called with a value of an expected type. Got %+v, expect %+v", got, expect)
+		fail("reference() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
 	}
 	if !c.isRefCounted(semantic.Underlying(ty)) {
 		return
@@ -333,7 +337,7 @@ func (c *C) reference(s *S, val *codegen.Value, ty semantic.Type) {
 
 func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
 	if got, expect := val.Type(), c.T.Target(ty); got != expect {
-		fail("release() called with a value of an expected type. Got %+v, expect %+v", got, expect)
+		fail("release() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
 	}
 	if !c.isRefCounted(semantic.Underlying(ty)) {
 		return
@@ -353,7 +357,7 @@ func (c *C) release(s *S, val *codegen.Value, ty semantic.Type) {
 
 func (c *C) deferRelease(s *S, val *codegen.Value, ty semantic.Type) {
 	if got, expect := val.Type(), c.T.Target(ty); got != expect {
-		fail("deferRelease() called with a value of an expected type. Got %+v, expect %+v", got, expect)
+		fail("deferRelease() called with a value of an unexpected type. Got %+v, expect %+v", got, expect)
 	}
 	if !c.isRefCounted(semantic.Underlying(ty)) {
 		return

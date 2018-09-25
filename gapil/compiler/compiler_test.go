@@ -133,6 +133,50 @@ bool k = true
 				),
 			},
 		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.Bool",
+			src:      `bool a = as!bool(as!any(true))`,
+			expected: expected{data: D(true)},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.U8",
+			src:      `u8 a = as!u8(as!any(as!u8(10)))`,
+			expected: expected{data: D(uint8(10))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.S8",
+			src:      `s8 a = as!s8(as!any(as!s8(-11)))`,
+			expected: expected{data: D(int8(-11))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.U16",
+			src:      `u16 a = as!u16(as!any(as!u16(1000)))`,
+			expected: expected{data: D(uint16(1000))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.S16",
+			src:      `s16 a = as!s16(as!any(as!s16(-1001)))`,
+			expected: expected{data: D(int16(-1001))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.F32",
+			src:      `f32 a = as!f32(as!any(as!f32(65536)))`,
+			expected: expected{data: D(float32(65536))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.U32",
+			src:      `u32 a = as!u32(as!any(as!u32(10001)))`,
+			expected: expected{data: D(uint32(10001))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.S32",
+			src:      `s32 a = as!s32(as!any(as!s32(-10002)))`,
+			expected: expected{data: D(int32(-10002))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.F64",
+			src:      `f64 a = as!f64(as!any(as!f64(65536)))`,
+			expected: expected{data: D(float64(65536))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.U64",
+			src:      `u64 a = as!u64(as!any(as!u64(100001)))`,
+			expected: expected{data: D(uint64(100001))},
+		}, { ///////////////////////////////////////////////////
+			name:     "Types.Any.PackAndUnpack.S64",
+			src:      `s64 a = as!s64(as!any(as!s64(-100002)))`,
+			expected: expected{data: D(int64(-100002))},
+		}, { ///////////////////////////////////////////////////
 			name: "Types.Arrays",
 			src: `
 type u32[4] u32x4
@@ -1480,6 +1524,18 @@ sub string ReturnAString() { return "A string" }
 cmd void StringFromSubroutine() { x := ReturnAString() }
 `,
 			cmds: []cmd{{N: "StringFromSubroutine"}},
+		}, { /////////////////////////////////////////////////////
+			name: "RefCount.StringInAny",
+			src: `
+any a
+cmd void StringInAny() {
+	a = "purr"
+	a = "meow"
+	a = "hiss"
+}
+`,
+			cmds:     []cmd{{N: "StringInAny"}},
+			expected: expected{numAllocs: 2},
 		}, { /////////////////////////////////////////////////////
 			name: "RefCount.StringInClass",
 			src: `

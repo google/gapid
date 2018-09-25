@@ -20,10 +20,17 @@ import (
 )
 
 func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.Value {
+	if c.T.Target(srcTy) != v.Type() {
+		fail("doCast() srcTy does not match type of v. srcTy: %v, v.Type(): %v", c.T.Target(srcTy), v.Type())
+	}
+	if dstTy == srcTy {
+		return v // No cast required
+	}
 	srcPtrTy, srcIsPtr := srcTy.(*semantic.Pointer)
-	// dstPtrTy, dstIsPtr := dstTy.(*semantic.Pointer)
 	srcSliceTy, srcIsSlice := srcTy.(*semantic.Slice)
 	dstSliceTy, dstIsSlice := dstTy.(*semantic.Slice)
+	srcIsAny := srcTy == semantic.AnyType
+	dstIsAny := dstTy == semantic.AnyType
 	srcIsString := srcTy == semantic.StringType
 	dstIsString := dstTy == semantic.StringType
 
@@ -57,6 +64,10 @@ func (c *C) doCast(s *S, dstTy, srcTy semantic.Type, v *codegen.Value) *codegen.
 		count := s.Div(size, s.SizeOf(c.T.Capture(srcSliceTy.To)))
 		size = s.Mul(count, s.SizeOf(c.T.Capture(dstSliceTy.To)))
 		return c.buildSlice(s, root, base, size, count, pool)
+	case dstIsAny:
+		return c.packAny(s, srcTy, v)
+	case srcIsAny:
+		return c.unpackAny(s, dstTy, v)
 	default:
 		return v.Cast(c.T.Target(dstTy)) // TODO: capture vs memory.
 	}

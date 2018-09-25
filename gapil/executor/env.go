@@ -198,6 +198,61 @@ func (e *Env) Globals() []byte {
 	return slice.Bytes((unsafe.Pointer)(e.cCtx.globals), e.Executor.globalsSize)
 }
 
+// Any unpacks and returns the value held by the gapil_any at p.
+func (e *Env) Any(p unsafe.Pointer) interface{} {
+	a := (*C.gapil_any)(p)
+	switch a.rtti.kind {
+	case C.GAPIL_KIND_BOOL:
+		return *(*bool)(a.value)
+	case C.GAPIL_KIND_U8:
+		return *(*uint8)(a.value)
+	case C.GAPIL_KIND_S8:
+		return *(*int8)(a.value)
+	case C.GAPIL_KIND_U16:
+		return *(*uint16)(a.value)
+	case C.GAPIL_KIND_S16:
+		return *(*int16)(a.value)
+	case C.GAPIL_KIND_F32:
+		return *(*float32)(a.value)
+	case C.GAPIL_KIND_U32:
+		return *(*uint32)(a.value)
+	case C.GAPIL_KIND_S32:
+		return *(*int32)(a.value)
+	case C.GAPIL_KIND_F64:
+		return *(*float64)(a.value)
+	case C.GAPIL_KIND_U64:
+		return *(*uint64)(a.value)
+	case C.GAPIL_KIND_S64:
+		return *(*int64)(a.value)
+	case C.GAPIL_KIND_INT:
+		return *(*memory.Int)(a.value)
+	case C.GAPIL_KIND_UINT:
+		return *(*memory.Uint)(a.value)
+	case C.GAPIL_KIND_SIZE:
+		return *(*memory.Size)(a.value)
+	case C.GAPIL_KIND_CHAR:
+		return *(*memory.Char)(a.value)
+	case C.GAPIL_KIND_ARRAY:
+		panic("Unpacking Arrays boxed in anys not implemented")
+	case C.GAPIL_KIND_CLASS:
+		panic("Unpacking Classes boxed in anys not implemented")
+	case C.GAPIL_KIND_ENUM:
+		panic("Unpacking Enums boxed in anys not implemented")
+	case C.GAPIL_KIND_MAP:
+		panic("Unpacking Maps boxed in anys not implemented")
+	case C.GAPIL_KIND_POINTER:
+		panic("Unpacking Pointers boxed in anys not implemented")
+	case C.GAPIL_KIND_REFERENCE:
+		panic("Unpacking References boxed in anys not implemented")
+	case C.GAPIL_KIND_SLICE:
+		panic("Unpacking Slices boxed in anys not implemented")
+	case C.GAPIL_KIND_STRING:
+		s := (*C.string)(a.value)
+		return C.GoString((*C.char)(unsafe.Pointer(&s.data[0])))
+	}
+	return nil
+}
+
 // GetBytes returns the bytes that are in the given memory range.
 func (e *Env) GetBytes(rng memory.Range) []byte {
 	basePtr := e.buffers.remap(rng)
