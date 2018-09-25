@@ -462,3 +462,17 @@ func (t *traceHandler) Event(evt service.TraceEvent) (*service.StatusResponse, e
 func (t *traceHandler) Dispose() {
 	t.conn.CloseSend()
 }
+
+func (c *client) DCECapture(ctx context.Context, capture *path.Capture, commands []*path.Command) (*path.Capture, error) {
+	res, err := c.client.DCECapture(ctx, &service.DCECaptureRequest{
+		Capture:  capture,
+		Commands: commands,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetCapture(), nil
+}

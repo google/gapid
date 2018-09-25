@@ -297,6 +297,17 @@ message ExportReplayResponse {
   Error error = 1;
 }
 
+message DCECaptureRequest {
+  path.Capture capture = 1;
+  repeated path.Command commands = 2;
+}
+message DCECaptureResponse {
+  oneof res {
+    path.Capture capture = 1;
+    Error error = 2;
+  }
+}
+
 message GetDevicesRequest {
 }
 message GetDevicesResponse {
@@ -526,6 +537,11 @@ service Gapid {
 
   // ExportReplay saves replay commands and assets to file.
   rpc ExportReplay(ExportReplayRequest) returns (ExportReplayResponse) {
+  }
+
+  // DCECapture returns a new capture containing only the requested commands
+  // and their dependencies.
+  rpc DCECapture(DCECaptureRequest) returns (DCECaptureResponse) {
   }
 
   // GetDevices returns the full list of replay devices avaliable to the server.

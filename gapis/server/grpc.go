@@ -388,6 +388,15 @@ func (s *grpcServer) ExportReplay(ctx xctx.Context, req *service.ExportReplayReq
 	return &service.ExportReplayResponse{}, nil
 }
 
+func (s *grpcServer) DCECapture(ctx xctx.Context, req *service.DCECaptureRequest) (*service.DCECaptureResponse, error) {
+	defer s.inRPC()()
+	capture, err := s.handler.DCECapture(s.bindCtx(ctx), req.Capture, req.Commands)
+	if err := service.NewError(err); err != nil {
+		return &service.DCECaptureResponse{Res: &service.DCECaptureResponse_Error{Error: err}}, nil
+	}
+	return &service.DCECaptureResponse{Res: &service.DCECaptureResponse_Capture{Capture: capture}}, nil
+}
+
 func (s *grpcServer) GetDevices(ctx xctx.Context, req *service.GetDevicesRequest) (*service.GetDevicesResponse, error) {
 	defer s.inRPC()()
 	devices, err := s.handler.GetDevices(s.bindCtx(ctx))
