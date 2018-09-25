@@ -39,6 +39,7 @@ go_library(
         "stresstest.go",
         "sxs_video.go",
         "trace.go",
+        "trim.go",
         "unpack.go",
         "video.go",
     ],
