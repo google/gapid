@@ -20,7 +20,6 @@ import (
 	"unsafe"
 
 	"github.com/google/gapid/core/data/slice"
-	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapil/executor"
 	replaysrv "github.com/google/gapid/gapir/replay_service"
 )
@@ -32,7 +31,7 @@ import (
 import "C"
 
 func replayData(env *executor.Env) (*C.gapil_replay_data, error) {
-	pfn := env.Executor.FunctionAddress(getReplayData)
+	pfn := env.Executor.FunctionAddress(GetReplayData)
 	if pfn == nil {
 		return nil, fmt.Errorf("Program did not export the function to get the replay opcodes")
 	}
@@ -44,22 +43,14 @@ func replayData(env *executor.Env) (*C.gapil_replay_data, error) {
 }
 
 // Build builds the replay payload for execution.
-func Build(env *executor.Env, layout *device.MemoryLayout) (replaysrv.Payload, error) {
+func Build(env *executor.Env) (replaysrv.Payload, error) {
 	data, err := replayData(env)
 	if err != nil {
 		return replaysrv.Payload{}, err
 	}
 
-	// The pointer alignment is to support identical output with the legacy
-	// replay builder logic. This should be removed.
-	// See Builder::layout_volatile_memory in builder.cpp.
-	pointerAlignment := 4
-	if layout != nil {
-		pointerAlignment = int(layout.Pointer.Alignment)
-	}
-
 	ctx := (*C.context)(env.CContext())
-	C.gapil_replay_build(ctx, data, (C.uint32_t)(pointerAlignment))
+	C.gapil_replay_build(ctx, data)
 
 	resources := slice.Cast(
 		slice.Bytes(unsafe.Pointer(data.resources.data), uint64(data.resources.size)),

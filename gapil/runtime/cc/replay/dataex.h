@@ -19,6 +19,17 @@
 #include "core/cc/interval_list.h"
 
 #include <unordered_map>
+#include <vector>
+
+namespace gapil {
+namespace runtime {
+namespace replay {
+
+// align returns val aligned up the the next multiple of by.
+template <typename T>
+inline T align(T val, T by) {
+  return ((val + by - 1) / by) * by;
+}
 
 template <typename T>
 class StackAllocator {
@@ -37,8 +48,6 @@ class StackAllocator {
   inline T alignment() const { return min_alignment; }
 
  private:
-  inline T align(T val, T by) { return ((val + by - 1) / by) * by; }
-
   T head;
   T min_alignment;
 };
@@ -57,6 +66,7 @@ struct DataEx {
   typedef uint32_t RemapKey;
   typedef uint32_t ResourceIndex;
   typedef uint64_t VolatileAddr;
+  typedef uint64_t ConstantAddr;
 
   struct ResourceInfo {
     uint32_t index;
@@ -67,6 +77,11 @@ struct DataEx {
   std::unordered_map<Namespace, MemoryRanges> reserved;
   std::unordered_map<core::Id, ResourceInfo> resources;
   std::unordered_map<RemapKey, VolatileAddr> remappings;
+  std::unordered_map<core::Id, uint32_t> constant_offsets;
 };
+
+}  // namespace replay
+}  // namespace runtime
+}  // namespace gapil
 
 #endif  // __GAPIL_RUNTIME_REPLAY_DATAEX_H__

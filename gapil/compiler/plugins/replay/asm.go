@@ -133,6 +133,10 @@ func (r *replayer) asmAbsolutePtr(s *compiler.S, addr *codegen.Value) *codegen.V
 	return r.asmValue(s, addr.Cast(r.T.Uint64), asmTypeAbsolutePointer)
 }
 
+func (r *replayer) asmConstantPtr(s *compiler.S, addr *codegen.Value) *codegen.Value {
+	return r.asmValue(s, addr.Cast(r.T.Uint64), asmTypeConstantPointer)
+}
+
 func (r *replayer) asmObservedPtr(s *compiler.S, addr *codegen.Value, ns asmNamespace) *codegen.Value {
 	return r.asmValue(s, addr.Cast(r.T.Uint64), asmTypeObservedPointerNS0+asmType(ns))
 }

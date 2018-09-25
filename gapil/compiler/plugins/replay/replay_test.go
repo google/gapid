@@ -356,7 +356,7 @@ func (t test) run(ctx context.Context) (succeeded bool) {
 		fmt.Println(program.Dump())
 	}
 
-	payload, err := replay.Build(env, nil)
+	payload, err := replay.Build(env)
 	succeeded = assert.For(ctx, "Build").ThatError(err).Succeeded()
 	if succeeded {
 		got, err := opcode.Disassemble(bytes.NewReader(payload.Opcodes), device.LittleEndian)
