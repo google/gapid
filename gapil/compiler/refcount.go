@@ -115,6 +115,10 @@ func (c *C) declareRefRels() {
 	c.refRels.tys[semantic.AnyType] = any
 	c.refRels.impls[semantic.AnyType] = any
 
+	msg := refRel{name: "message", reference: c.callbacks.msgReference, release: c.callbacks.msgRelease}
+	c.refRels.tys[semantic.MessageType] = msg
+	c.refRels.impls[semantic.MessageType] = msg
+
 	var isRefTy func(ty semantic.Type) bool
 	isRefTy = func(ty semantic.Type) bool {
 		ty = semantic.Underlying(ty)

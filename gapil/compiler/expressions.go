@@ -463,7 +463,24 @@ func (c *C) member(s *S, e *semantic.Member) *codegen.Value {
 }
 
 func (c *C) message(s *S, e *semantic.MessageValue) *codegen.Value {
-	return s.Zero(c.T.Target(e.ExpressionType())).SetName("TODO:message") // TODO
+	args := c.Alloc(s, s.Scalar(len(e.Arguments)+1), c.T.MsgArg)
+	for i, a := range e.Arguments {
+		val := c.expression(s, a.Value)
+		c.reference(s, val, a.Field.Type)
+		args.Index(i, MsgArgName).Store(s.Scalar(a.Field.Name()))
+		args.Index(i, MsgArgValue).Store(c.packAny(s, a.Field.Type, val))
+	}
+	args.Index(len(e.Arguments)).Store(s.Zero(c.T.MsgArg))
+
+	msg := c.Alloc(s, s.Scalar(1), c.T.Msg)
+	msg.Index(0, MsgRefCount).Store(s.Scalar(uint32(1)))
+	msg.Index(0, MsgArena).Store(s.Arena)
+	msg.Index(0, MsgIdentifier).Store(s.Scalar(e.AST.Name.Value))
+	msg.Index(0, MsgArgs).Store(args)
+
+	c.deferRelease(s, msg, semantic.MessageType)
+
+	return msg
 }
 
 func (c *C) null(s *S, e semantic.Null) *codegen.Value {

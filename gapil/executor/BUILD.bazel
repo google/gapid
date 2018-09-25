@@ -42,5 +42,6 @@ go_library(
         "//gapis/capture:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
+        "//gapis/stringtable:go_default_library",
     ],
 )

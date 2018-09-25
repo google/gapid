@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/stringtable"
 )
 
 // #include "env.h"
@@ -196,6 +197,25 @@ func (e *Env) Context() context.Context {
 // Globals returns the memory of the global state.
 func (e *Env) Globals() []byte {
 	return slice.Bytes((unsafe.Pointer)(e.cCtx.globals), e.Executor.globalsSize)
+}
+
+// Message unpacks the gapil_msg at p, returning a stringtable Msg.
+func (e *Env) Message(p unsafe.Pointer) *stringtable.Msg {
+	m := (*C.gapil_msg)(p)
+	args := (*[256]C.gapil_msg_arg)(unsafe.Pointer(m.args))
+	out := &stringtable.Msg{
+		Identifier: C.GoString((*C.char)(unsafe.Pointer(m.identifier))),
+		Arguments:  map[string]*stringtable.Value{},
+	}
+	for _, arg := range args {
+		if arg.name == nil {
+			break
+		}
+		name := C.GoString((*C.char)(unsafe.Pointer(arg.name)))
+		val := e.Any(unsafe.Pointer(arg.value))
+		out.Arguments[name] = stringtable.ToValue(val)
+	}
+	return out
 }
 
 // Any unpacks and returns the value held by the gapil_any at p.
