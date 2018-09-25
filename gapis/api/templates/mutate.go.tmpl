@@ -277,29 +277,6 @@
 
 {{/*
 -------------------------------------------------------------------------------
-  Declares the value method for the given static array type.
--------------------------------------------------------------------------------
-*/}}
-{{define "DeclareArrayValue"}}
-  {{AssertType $ "Array" "StaticArray"}}
-
-  {{if not (or (Macro "IsInternal" $.ValueType) (IsAny $.ValueType))}}
-    func (arr {{Template "Go.Type" $}}) value(ϟb *builder.Builder, ϟc api.Cmd, ϟg *api.GlobalState) value.Pointer {
-      if len(arr) > 0 {
-        for _, e := range arr {
-          {{Template "PushInput" "Type" $.ValueType "Name" "e"}}
-        }
-        return ϟb.Buffer(len(arr))
-      } else {
-        return value.AbsolutePointer(0)
-      }
-    }
-  {{end}}
-{{end}}
-
-
-{{/*
--------------------------------------------------------------------------------
   Emits a function info definition for each of the commands.
 -------------------------------------------------------------------------------
 */}}
