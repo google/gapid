@@ -37,6 +37,9 @@ type Types struct {
 	StrPtr          codegen.Type                           // string_t*
 	Arena           *codegen.Struct                        // arena_t
 	ArenaPtr        codegen.Type                           // arena_t*
+	Any             *codegen.Struct                        // gapil_any_t
+	AnyPtr          codegen.Type                           // gapil_any_t*
+	RTTI            *codegen.Struct                        // gapil_rtti
 	Uint8Ptr        codegen.Type                           // uint8_t*
 	VoidPtr         codegen.Type                           // void* (aliased of uint8_t*)
 	VoidPtrPtr      codegen.Type                           // void** (aliased of uint8_t**)
@@ -56,6 +59,7 @@ type Types struct {
 	captureToTarget map[semantic.Type]*codegen.Function
 	targetToCapture map[semantic.Type]*codegen.Function
 	mangled         map[codegen.Type]mangling.Type
+	rttis           map[semantic.Type]codegen.Global
 }
 
 type memLayoutKey string
@@ -74,6 +78,9 @@ func (c *C) declareTypes() {
 	c.T.Str = c.T.TypeOf(C.string{}).(*codegen.Struct)
 	c.T.StrPtr = c.T.Pointer(c.T.Str)
 	c.T.Uint8Ptr = c.T.Pointer(c.T.Uint8)
+	c.T.Any = c.T.TypeOf(C.gapil_any{}).(*codegen.Struct)
+	c.T.AnyPtr = c.T.Pointer(c.T.Any)
+	c.T.RTTI = c.T.TypeOf(C.gapil_rtti{}).(*codegen.Struct)
 	c.T.Arena = c.T.DeclareStruct("arena")
 	c.T.ArenaPtr = c.T.Pointer(c.T.Arena)
 	c.T.VoidPtr = c.T.Pointer(c.T.Void)
@@ -88,6 +95,7 @@ func (c *C) declareTypes() {
 	c.T.captureToTarget = map[semantic.Type]*codegen.Function{}
 	c.T.targetToCapture = map[semantic.Type]*codegen.Function{}
 	c.T.mangled = map[codegen.Type]mangling.Type{}
+	c.T.rttis = map[semantic.Type]codegen.Global{}
 
 	for _, api := range c.APIs {
 		// Forward-declare all the class types.
@@ -438,7 +446,7 @@ func (t *Types) basic(ty semantic.Type) codegen.Type {
 	case *semantic.Builtin:
 		switch ty {
 		case semantic.AnyType:
-			return t.Uint8Ptr // TODO
+			return t.AnyPtr
 		case semantic.VoidType:
 			return t.Void
 		case semantic.BoolType:

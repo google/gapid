@@ -77,6 +77,26 @@ void gapil_logf(uint8_t severity, uint8_t* file, uint32_t line, uint8_t* fmt,
   }
 }
 
+void gapil_any_reference(gapil_any* a) {
+  if (a != nullptr) {
+    GAPID_ASSERT_MSG(a->ref_count > 0, "Attempting to reference released any");
+    a->ref_count++;
+  }
+}
+
+void gapil_any_release(gapil_any* a) {
+  if (a != nullptr) {
+    GAPID_ASSERT_MSG(a->ref_count > 0, "Attempting to reference released any");
+    a->ref_count--;
+    if (a->ref_count == 0) {
+      if (a->rtti->release != nullptr) {
+        a->rtti->release(a->value);
+      }
+      reinterpret_cast<Arena*>(a->arena)->free(a);
+    }
+  }
+}
+
 void* gapil_alloc(arena_t* a, uint64_t size, uint64_t align) {
   Arena* arena = reinterpret_cast<Arena*>(a);
   void* ptr = arena->allocate(size, align);

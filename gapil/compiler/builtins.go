@@ -69,6 +69,24 @@ const (
 	SliceCount = "count"
 )
 
+// Field names for the gapil_rtti_t runtime type.
+const (
+	RTTIKind      = "kind"
+	RTTIAPIIndex  = "api_index"
+	RTTITypeIndex = "type_index"
+	RTTITypeName  = "type_name"
+	RTTIReference = "reference"
+	RTTIRelease   = "release"
+)
+
+// Field names for the gapil_any_t runtime type.
+const (
+	AnyRefCount = "ref_count"
+	AnyArena    = "arena"
+	AnyRTTI     = "rtti"
+	AnyValue    = "value"
+)
+
 // Field names for the pool_t runtime type.
 const (
 	PoolRefCount = "ref_count"
@@ -114,4 +132,31 @@ const (
 const (
 	Read  = C.GAPIL_READ
 	Write = C.GAPIL_WRITE
+)
+
+// gapil_kind enumerator values.
+const (
+	KindBool      = uint32(C.GAPIL_KIND_BOOL)
+	KindU8        = uint32(C.GAPIL_KIND_U8)
+	KindS8        = uint32(C.GAPIL_KIND_S8)
+	KindU16       = uint32(C.GAPIL_KIND_U16)
+	KindS16       = uint32(C.GAPIL_KIND_S16)
+	KindF32       = uint32(C.GAPIL_KIND_F32)
+	KindU32       = uint32(C.GAPIL_KIND_U32)
+	KindS32       = uint32(C.GAPIL_KIND_S32)
+	KindF64       = uint32(C.GAPIL_KIND_F64)
+	KindU64       = uint32(C.GAPIL_KIND_U64)
+	KindS64       = uint32(C.GAPIL_KIND_S64)
+	KindInt       = uint32(C.GAPIL_KIND_INT)
+	KindUint      = uint32(C.GAPIL_KIND_UINT)
+	KindSize      = uint32(C.GAPIL_KIND_SIZE)
+	KindChar      = uint32(C.GAPIL_KIND_CHAR)
+	KindArray     = uint32(C.GAPIL_KIND_ARRAY)
+	KindClass     = uint32(C.GAPIL_KIND_CLASS)
+	KindEnum      = uint32(C.GAPIL_KIND_ENUM)
+	KindMap       = uint32(C.GAPIL_KIND_MAP)
+	KindPointer   = uint32(C.GAPIL_KIND_POINTER)
+	KindReference = uint32(C.GAPIL_KIND_REFERENCE)
+	KindSlice     = uint32(C.GAPIL_KIND_SLICE)
+	KindString    = uint32(C.GAPIL_KIND_STRING)
 )
