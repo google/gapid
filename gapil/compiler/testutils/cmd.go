@@ -93,6 +93,11 @@ func (c *Cmd) Clone(arena.Arena) api.Cmd {
 	return &clone
 }
 
+// Alive returns true if this command should be marked alive for DCE
+func (c *Cmd) Alive() bool {
+	return false
+}
+
 // Extras is a helper wrapper around an api.CmdExtras has helpers methods for
 // adding read and writ observations.
 type Extras struct {

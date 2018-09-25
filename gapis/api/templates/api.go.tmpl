@@ -1713,6 +1713,14 @@ import (
   }
 
   func (ϟc *{{$name}}) RefID() ϟapi.RefID { return ϟc.refID }
+
+  func (ϟc *{{$name}}) Alive() bool {
+    {{if GetAnnotation $ "alive"}}
+      return true
+    {{else}}
+      return false
+    {{end}}
+  }
 {{end}}
 
 

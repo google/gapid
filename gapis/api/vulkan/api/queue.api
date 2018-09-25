@@ -190,6 +190,7 @@ cmd VkResult vkQueueSubmit(
 @threadSafety("system")
 @indirect("VkQueue", "VkDevice")
 @threadsafe
+@alive
 cmd VkResult vkQueueWaitIdle(
     VkQueue queue) {
   if !(queue in Queues) { vkErrorInvalidQueue(queue) }

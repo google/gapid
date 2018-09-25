@@ -91,6 +91,15 @@ func NewDCEBuilder(graph DependencyGraph) *DCEBuilder {
 		origCmdIDs: make([]api.CmdID, 0, len(graph.Capture().Commands)),
 		liveCmdIDs: make(map[api.CmdID]api.CmdID),
 	}
+	for i, cmd := range b.graph.Capture().Commands {
+		if cmd.Alive() {
+			nodeID := b.graph.GetNodeID(CmdNode{api.SubCmdIdx{uint64(i)}})
+			if nodeID != NodeNoID && !b.isLive[nodeID] {
+				b.isLive[nodeID] = true
+				b.requestedNodes = append(b.requestedNodes, nodeID)
+			}
+		}
+	}
 	return b
 }
 
