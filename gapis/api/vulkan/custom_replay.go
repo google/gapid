@@ -237,7 +237,7 @@ func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.GlobalState) (key interfac
 	return
 }
 
-func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
 
@@ -249,7 +249,7 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 
 	hijack := cb.ReplayCreateVkInstance(a.PCreateInfo(), a.PAllocator(), a.PInstance(), a.Result())
 	hijack.Extras().MustClone(a.Extras().All()...)
-	err := hijack.Mutate(ctx, id, s, b)
+	err := hijack.Mutate(ctx, id, s, b, w)
 
 	if b == nil || err != nil {
 		return err
@@ -257,18 +257,18 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 
 	// Call the replayRegisterVkInstance() synthetic API function.
 	instance := a.PInstance().MustRead(ctx, a, s, b)
-	return cb.ReplayRegisterVkInstance(instance).Mutate(ctx, id, s, b)
+	return cb.ReplayRegisterVkInstance(instance).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Call the underlying vkDestroyInstance() and do the observation.
-	err := a.mutate(ctx, id, s, b)
+	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayUnregisterVkInstance() synthetic API function.
-	return cb.ReplayUnregisterVkInstance(a.Instance()).Mutate(ctx, id, s, b)
+	return cb.ReplayUnregisterVkInstance(a.Instance()).Mutate(ctx, id, s, b, nil)
 }
 
 func EnterRecreate(ctx context.Context, s *api.GlobalState) func() {
@@ -276,7 +276,7 @@ func EnterRecreate(ctx context.Context, s *api.GlobalState) func() {
 	return func() { GetState(s).SetIsRebuilding(false) }
 }
 
-func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	// Hijack VkCreateDevice's Mutate() method entirely with our
 	// ReplayCreateVkDevice's Mutate(). Similar to VkCreateInstance's Mutate()
 	// above.
@@ -319,56 +319,56 @@ func (a *VkCreateDevice) Mutate(ctx context.Context, id api.CmdID, s *api.Global
 			hijack.AddRead(d.Data())
 		}
 
-		err := hijack.Mutate(ctx, id, s, b)
+		err := hijack.Mutate(ctx, id, s, b, w)
 		if err != nil {
 			return err
 		}
 		// Call the replayRegisterVkDevice() synthetic API function.
 		device := a.PDevice().MustRead(ctx, a, s, b)
-		return cb.ReplayRegisterVkDevice(a.PhysicalDevice(), device, a.PCreateInfo()).Mutate(ctx, id, s, b)
+		return cb.ReplayRegisterVkDevice(a.PhysicalDevice(), device, a.PCreateInfo()).Mutate(ctx, id, s, b, nil)
 	}
 
-	return a.mutate(ctx, id, s, b)
+	return a.mutate(ctx, id, s, b, w)
 }
 
-func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkDestroyDevice) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	// Call the underlying vkDestroyDevice() and do the observation.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	err := a.mutate(ctx, id, s, b)
+	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayUnregisterVkDevice() synthetic API function.
-	return cb.ReplayUnregisterVkDevice(a.Device()).Mutate(ctx, id, s, b)
+	return cb.ReplayUnregisterVkDevice(a.Device()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkAllocateCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	// Call the underlying vkAllocateCommandBuffers() and do the observation.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	err := a.mutate(ctx, id, s, b)
+	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayRegisterVkCommandBuffers() synthetic API function to link these command buffers to the device.
 	count := a.PAllocateInfo().MustRead(ctx, a, s, b).CommandBufferCount()
-	return cb.ReplayRegisterVkCommandBuffers(a.Device(), count, a.PCommandBuffers()).Mutate(ctx, id, s, b)
+	return cb.ReplayRegisterVkCommandBuffers(a.Device(), count, a.PCommandBuffers()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkFreeCommandBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	// Call the underlying vkFreeCommandBuffers() and do the observation.
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	err := a.mutate(ctx, id, s, b)
+	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
 		return err
 	}
 	// Call the replayUnregisterVkCommandBuffers() synthetic API function to discard the link of these command buffers.
 	count := a.CommandBufferCount()
-	return cb.ReplayUnregisterVkCommandBuffers(count, a.PCommandBuffers()).Mutate(ctx, id, s, b)
+	return cb.ReplayUnregisterVkCommandBuffers(count, a.PCommandBuffers()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return a.mutate(ctx, id, s, b)
+		return a.mutate(ctx, id, s, b, w)
 	}
 
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
@@ -403,16 +403,16 @@ func (a *VkCreateSwapchainKHR) Mutate(ctx context.Context, id api.CmdID, s *api.
 	hijack.AddRead(pNextData.Data())
 	hijack.AddRead(infoData.Data())
 
-	err := hijack.Mutate(ctx, id, s, b)
+	err := hijack.Mutate(ctx, id, s, b, w)
 
 	return err
 }
 
-func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	// Do the mutation, including applying memory write observations, before having the replay device call the vkAcquireNextImageKHR() command.
 	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
 	// Note that this is only necessary for building replay instructions
-	err := a.mutate(ctx, id, s, nil)
+	err := a.mutate(ctx, id, s, nil, w)
 	if b != nil {
 		l := s.MemoryLayout
 		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).
@@ -451,9 +451,9 @@ func insertVirtualSwapchainPNext(ctx context.Context, cmd api.Cmd, id api.CmdID,
 	return newInfoData, pNextData
 }
 
-func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, insert a pNext struct to enable the
 	// virtual surface on the replay device.
@@ -474,7 +474,7 @@ func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *ap
 	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
 	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
 	if (info.PNext()) != (Voidᶜᵖ(0)) {
-		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
 		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
 		for i := uint32(0); i < numPNext; i++ {
 			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
@@ -498,9 +498,9 @@ func (c *VkCreateXlibSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *ap
 	return nil
 }
 
-func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, insert a pNext struct to enable the
 	// virtual surface on the replay device.
@@ -522,7 +522,7 @@ func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
 	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
 	if (info.PNext()) != (Voidᶜᵖ(0)) {
-		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
 		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
 		for i := uint32(0); i < numPNext; i++ {
 			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
@@ -546,9 +546,9 @@ func (c *VkCreateXcbSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 	return nil
 }
 
-func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, insert a pNext struct to enable the
 	// virtual surface on the replay device.
@@ -569,7 +569,7 @@ func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
 	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
 	if (info.PNext()) != (Voidᶜᵖ(0)) {
-		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
 		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
 		for i := uint32(0); i < numPNext; i++ {
 			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
@@ -593,9 +593,9 @@ func (c *VkCreateWaylandSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	return nil
 }
 
-func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, insert a pNext struct to enable the
 	// virtual surface on the replay device.
@@ -616,7 +616,7 @@ func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
 	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
 	if (info.PNext()) != (Voidᶜᵖ(0)) {
-		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
 		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
 		for i := uint32(0); i < numPNext; i++ {
 			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
@@ -640,9 +640,9 @@ func (c *VkCreateMirSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api
 	return nil
 }
 
-func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, insert a pNext struct to enable the
 	// virtual surface on the replay device.
@@ -663,7 +663,7 @@ func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *a
 	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
 	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
 	if (info.PNext()) != (Voidᶜᵖ(0)) {
-		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
 		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
 		for i := uint32(0); i < numPNext; i++ {
 			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
@@ -687,9 +687,9 @@ func (c *VkCreateWin32SurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *a
 	return nil
 }
 
-func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, insert a pNext struct to enable the
 	// virtual surface on the replay device.
@@ -710,7 +710,7 @@ func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	hijack.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
 	info := hijack.PCreateInfo().MustRead(ctx, hijack, g, b)
 	if (info.PNext()) != (Voidᶜᵖ(0)) {
-		numPNext := (externs{ctx, hijack, id, g, b}.numberOfPNext(info.PNext()))
+		numPNext := (externs{ctx, hijack, id, g, b, nil}.numberOfPNext(info.PNext()))
 		next := NewMutableVoidPtr(g.Arena, Voidᵖ(info.PNext()))
 		for i := uint32(0); i < numPNext; i++ {
 			VkStructureTypeᶜᵖ(next.Ptr()).MustRead(ctx, hijack, g, b)
@@ -734,9 +734,9 @@ func (c *VkCreateAndroidSurfaceKHR) Mutate(ctx context.Context, id api.CmdID, g 
 	return nil
 }
 
-func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	// When building replay instructions, apply the write observations so that
 	// the returned surface format count and formats, which are captured in
@@ -765,9 +765,9 @@ func (c *VkGetPhysicalDeviceSurfaceFormatsKHR) Mutate(ctx context.Context, id ap
 	return nil
 }
 
-func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder) error {
+func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, id api.CmdID, g *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
-		return c.mutate(ctx, id, g, b)
+		return c.mutate(ctx, id, g, b, w)
 	}
 	l := g.MemoryLayout
 	c.Extras().Observations().ApplyReads(g.Memory.ApplicationPool())
@@ -791,19 +791,19 @@ func (c *VkGetPhysicalDeviceSurfacePresentModesKHR) Mutate(ctx context.Context, 
 	return nil
 }
 
-func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkGetFenceStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	err := a.mutate(ctx, id, s, b)
+	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
 		return err
 	}
 
-	return cb.ReplayGetFenceStatus(a.Device(), a.Fence(), a.Result(), a.Result()).Mutate(ctx, id, s, b)
+	return cb.ReplayGetFenceStatus(a.Device(), a.Fence(), a.Result(), a.Result()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	err := a.mutate(ctx, id, s, b)
+	err := a.mutate(ctx, id, s, b, w)
 	if b == nil || err != nil {
 		return err
 	}
@@ -817,11 +817,11 @@ func (a *VkGetEventStatus) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 		wait = false
 	}
 
-	return cb.ReplayGetEventStatus(a.Device(), a.Event(), a.Result(), wait, a.Result()).Mutate(ctx, id, s, b)
+	return cb.ReplayGetEventStatus(a.Device(), a.Event(), a.Result(), wait, a.Result()).Mutate(ctx, id, s, b, nil)
 }
 
-func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
-	if err := a.mutate(ctx, id, s, b); err != nil {
+func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	if err := a.mutate(ctx, id, s, b, w); err != nil {
 		return err
 	}
 	l := s.MemoryLayout

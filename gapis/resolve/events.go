@@ -80,7 +80,7 @@ func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*servic
 		return 0
 	}
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		cmd.Mutate(ctx, id, s, nil)
+		cmd.Mutate(ctx, id, s, nil, nil)
 
 		// TODO: Add event generation to the API files.
 		if !filter(id, cmd, s) {

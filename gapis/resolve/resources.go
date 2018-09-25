@@ -76,7 +76,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 
 	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if err := cmd.Mutate(ctx, id, state, nil); err != nil {
+		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
 		}
 		return nil
@@ -85,7 +85,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
-		cmd.Mutate(ctx, id, state, nil)
+		cmd.Mutate(ctx, id, state, nil, nil)
 		return nil
 	})
 

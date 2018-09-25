@@ -38,6 +38,7 @@ type externs struct {
 	cmdID api.CmdID
 	s     *api.GlobalState
 	b     *rb.Builder
+	w     api.StateWatcher
 }
 
 func (e externs) mapMemory(slice memory.Slice) {

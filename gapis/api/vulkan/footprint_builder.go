@@ -1253,13 +1253,13 @@ func (vb *FootprintBuilder) visitBlocksInVkSparseImageMemoryBind(ctx context.Con
 
 	gran, found := sparseImageMemoryBindGranularity(ctx, imgObj, bind)
 	if found {
-		width, _ := subGetMipSize(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, imgObj.Info().Extent().Width(), level)
-		height, _ := subGetMipSize(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, imgObj.Info().Extent().Height(), level)
-		wb, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, width, gran.Width())
-		hb, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, height, gran.Height())
-		xe, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, bind.Extent().Width(), gran.Width())
-		ye, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, bind.Extent().Height(), gran.Height())
-		ze, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, bind.Extent().Depth(), gran.Depth())
+		width, _ := subGetMipSize(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, imgObj.Info().Extent().Width(), level)
+		height, _ := subGetMipSize(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, imgObj.Info().Extent().Height(), level)
+		wb, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, width, gran.Width())
+		hb, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, height, gran.Height())
+		xe, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, bind.Extent().Width(), gran.Width())
+		ye, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, bind.Extent().Height(), gran.Height())
+		ze, _ := subRoundUpTo(ctx, cmd, id, nil, s, nil, cmd.Thread(), nil, nil, bind.Extent().Depth(), gran.Depth())
 		blockSize := uint64(imgObj.MemoryRequirements().Alignment())
 		for zi := uint32(0); zi < ze; zi++ {
 			for yi := uint32(0); yi < ye; yi++ {
@@ -1581,7 +1581,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 	}
 
 	// Mutate
-	if err := cmd.Mutate(ctx, id, s, nil); err != nil {
+	if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 		// Continue the footprint building without emitting errors here. It is the
 		// following mutate() calls' responsibility to catch the error.
 		return
@@ -1603,7 +1603,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		modify(ctx, bh, vb.toVkHandle(uint64(cmd.Memory())))
 		memObj := GetState(s).DeviceMemories().Get(cmd.Memory())
 		isCoherent, _ := subIsMemoryCoherent(ctx, cmd, id, nil, s, GetState(s),
-			cmd.Thread(), nil, memObj)
+			cmd.Thread(), nil, nil, memObj)
 		if isCoherent {
 			vb.mappedCoherentMemories[cmd.Memory()] = memObj
 		}
@@ -1624,7 +1624,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 			if mem.IsNil() {
 				continue
 			}
-			isCoherent, _ := subIsMemoryCoherent(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, mem)
+			isCoherent, _ := subIsMemoryCoherent(ctx, cmd, id, nil, s, GetState(s), cmd.Thread(), nil, nil, mem)
 			if isCoherent {
 				if !coherentMemDone {
 					vb.writeCoherentMemoryData(ctx, cmd, bh)
@@ -1686,7 +1686,7 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vb.toVkHandle(uint64(cmd.Memory())))
 		offset := uint64(cmd.MemoryOffset())
 		inferredSize, err := subInferImageSize(ctx, cmd, id, nil, s, nil, cmd.Thread(),
-			nil, GetState(s).Images().Get(cmd.Image()))
+			nil, nil, GetState(s).Images().Get(cmd.Image()))
 		if err != nil {
 			log.E(ctx, "FootprintBuilder: Cannot get inferred size of image: %v", cmd.Image())
 			log.E(ctx, "FootprintBuilder: Command %v %v: %v", id, cmd, err)

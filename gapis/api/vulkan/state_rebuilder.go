@@ -69,7 +69,7 @@ func newInitialStateOutput(oldState *api.GlobalState) *initialStateOutput {
 }
 
 func (o *initialStateOutput) write(ctx context.Context, cmd api.Cmd, id api.CmdID) {
-	if err := cmd.Mutate(ctx, id, o.newState, nil); err != nil {
+	if err := cmd.Mutate(ctx, id, o.newState, nil, nil); err != nil {
 		log.W(ctx, "Initial cmd %v: %v - %v", len(o.cmds), cmd, err)
 	} else {
 		log.D(ctx, "Initial cmd %v: %v", len(o.cmds), cmd)
@@ -1103,11 +1103,11 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 	// info struct is missing.
 	if dedicatedMemoryNV && buffer.Info().DedicatedAllocationNV().IsNil() {
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, "VkBuffer", uint64(buffer.VulkanHandle()))
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkBuffer", uint64(buffer.VulkanHandle()))
 	}
 	if dedicatedMemoryNV && buffer.Memory().DedicatedAllocationNV().IsNil() {
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, "VkDeviceMemory", uint64(buffer.Memory().VulkanHandle()))
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(buffer.Memory().VulkanHandle()))
 	}
 
 	if dedicatedMemoryNV {
@@ -1320,21 +1320,21 @@ type byteSizeAndExtent struct {
 
 func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel uint32, aspect VkImageAspectFlagBits) byteSizeAndExtent {
 	elementAndTexelBlockSize, _ :=
-		subGetElementAndTexelBlockSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, format)
+		subGetElementAndTexelBlockSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, format)
 	texelWidth := elementAndTexelBlockSize.TexelBlockSize().Width()
 	texelHeight := elementAndTexelBlockSize.TexelBlockSize().Height()
 
-	width, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, extent.Width(), mipLevel)
-	height, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, extent.Height(), mipLevel)
-	depth, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, extent.Depth(), mipLevel)
-	widthInBlocks, _ := subRoundUpTo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, width, texelWidth)
-	heightInBlocks, _ := subRoundUpTo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, height, texelHeight)
+	width, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, extent.Width(), mipLevel)
+	height, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, extent.Height(), mipLevel)
+	depth, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, extent.Depth(), mipLevel)
+	widthInBlocks, _ := subRoundUpTo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, width, texelWidth)
+	heightInBlocks, _ := subRoundUpTo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, height, texelHeight)
 	elementSize := uint32(0)
 	switch aspect {
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
 		elementSize = elementAndTexelBlockSize.ElementSize()
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
-		elementSize, _ = subGetDepthElementSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, format, false)
+		elementSize, _ = subGetDepthElementSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, format, false)
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		// Stencil element is always 1 byte wide
 		elementSize = uint32(1)
@@ -1342,7 +1342,7 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 	// The Depth element size might be different when it is in buffer instead of image.
 	elementSizeInBuf := elementSize
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
-		elementSizeInBuf, _ = subGetDepthElementSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, format, true)
+		elementSizeInBuf, _ = subGetDepthElementSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, format, true)
 	}
 
 	size := uint64(widthInBlocks) * uint64(heightInBlocks) * uint64(depth) * uint64(elementSize)
@@ -1361,7 +1361,7 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 
 func (sb *stateBuilder) imageAspectFlagBits(flag VkImageAspectFlags) []VkImageAspectFlagBits {
 	bits := []VkImageAspectFlagBits{}
-	b, _ := subUnpackImageAspectFlags(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, flag)
+	b, _ := subUnpackImageAspectFlags(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, flag)
 	for _, bit := range b.All() {
 		bits = append(bits, bit)
 	}
@@ -1499,11 +1499,11 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	// info struct is missing.
 	if dedicatedMemoryNV && img.Info().DedicatedAllocationNV().IsNil() {
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, "VkImage", uint64(img.VulkanHandle()))
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkImage", uint64(img.VulkanHandle()))
 	}
 	if dedicatedMemoryNV && img.BoundMemory().DedicatedAllocationNV().IsNil() {
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, "VkDeviceMemory", uint64(img.BoundMemory().VulkanHandle()))
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(img.BoundMemory().VulkanHandle()))
 	}
 
 	if dedicatedMemoryNV {

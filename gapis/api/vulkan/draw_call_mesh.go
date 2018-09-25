@@ -185,7 +185,7 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, thread uint64, boun
 		size := uint64(indexCount) * sizeOfIndex
 
 		backingMemoryPieces, err := subGetBufferBoundMemoryPiecesInRange(
-			ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, boundIndexBuffer.BoundBuffer().Buffer(),
+			ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, nil, boundIndexBuffer.BoundBuffer().Buffer(),
 			boundIndexBuffer.BoundBuffer().Offset()+VkDeviceSize(uint64(firstIndex)*sizeOfIndex),
 			VkDeviceSize(size))
 		if err != nil {
@@ -321,7 +321,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	sliceSize := uint64(boundVertexBuffer.Range())
 
 	formatElementAndTexelBlockSize, err :=
-		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, attribute.Fmt())
+		subGetElementAndTexelBlockSize(ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, nil, attribute.Fmt())
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,7 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	}
 
 	backingMemoryPieces, err := subGetBufferBoundMemoryPiecesInRange(
-		ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, boundVertexBuffer.Buffer(),
+		ctx, nil, api.CmdNoID, nil, s, nil, thread, nil, nil, boundVertexBuffer.Buffer(),
 		boundVertexBuffer.Offset()+VkDeviceSize(offset),
 		VkDeviceSize(fullSize))
 	if err != nil {

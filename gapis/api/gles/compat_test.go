@@ -101,7 +101,7 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	s := newState(ctx)
 	var found bool
 	err = api.ForeachCmd(ctx, r.Cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		if err := cmd.Mutate(ctx, id, s, nil); err != nil {
+		if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 			return err
 		}
 

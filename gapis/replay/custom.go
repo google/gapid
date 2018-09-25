@@ -32,7 +32,8 @@ type Custom struct {
 	F func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error
 }
 
-func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder) error {
+func (c Custom) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState,
+	b *builder.Builder, w api.StateWatcher) error {
 	if b == nil {
 		return nil
 	}

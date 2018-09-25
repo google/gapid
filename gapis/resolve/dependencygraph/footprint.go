@@ -210,7 +210,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 				// execution footprint info, we still need to mutate it in the new
 				// state, because following commands in other APIs may depends on the
 				// side effect of the this command.
-				if err := cmd.Mutate(ctx, id, s, nil); err != nil {
+				if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 					bh.Aborted = true
 					// Continue the footprint building even if errors are found. It is
 					// following mutate calls, which are to build the replay

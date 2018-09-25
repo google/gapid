@@ -74,7 +74,9 @@ func (c *Cmd) Extras() *api.CmdExtras {
 }
 
 // Mutate stubs the api.Cmd interface.
-func (c *Cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder) error { return nil }
+func (c *Cmd) Mutate(context.Context, api.CmdID, *api.GlobalState, *builder.Builder, api.StateWatcher) error {
+	return nil
+}
 
 // Encode implements the executor.Encodable interface to encode the command to
 // a buffer used by the compiler generated execute function.

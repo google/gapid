@@ -235,7 +235,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		c, _ := capture.Resolve(ctx)
 		s := c.NewState(ctx)
 		err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-			if err := cmd.Mutate(ctx, id, s, nil); err != nil {
+			if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 				return fmt.Errorf("%v: %v: %v", id, cmd, err)
 			}
 			return nil

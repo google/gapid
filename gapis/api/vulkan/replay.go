@@ -272,7 +272,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		numDev := e.PPhysicalDeviceCount().Slice(0, 1, l).MustRead(ctx, cmd, s, nil)[0]
 		devSlice := e.PPhysicalDevices().Slice(0, uint64(numDev), l)
 		devs := devSlice.MustRead(ctx, cmd, s, nil)
-		allProps := externs{ctx, cmd, id, s, nil}.fetchPhysicalDeviceProperties(e.Instance(), devSlice)
+		allProps := externs{ctx, cmd, id, s, nil, nil}.fetchPhysicalDeviceProperties(e.Instance(), devSlice)
 		propList := []VkPhysicalDeviceProperties{}
 		for _, dev := range devs {
 			propList = append(propList, allProps.PhyDevToProperties().Get(dev).Clone(s.Arena, api.CloneContext{}))

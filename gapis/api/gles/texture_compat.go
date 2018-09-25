@@ -141,7 +141,7 @@ func (tc *textureCompat) convertFormat(
 		}
 
 		// Luminance/Alpha is not supported on desktop so convert it to R/G.
-		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, target); err == nil {
+		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, target); err == nil {
 			if laCompat, ok := luminanceAlphaCompat[internalformat.get()]; ok {
 				internalformat.set(laCompat.rgFormat)
 				tc.compatSwizzle[t] = laCompat.compatSwizzle
@@ -202,7 +202,7 @@ func (tc *textureCompat) postTexParameter(ctx context.Context, target, parameter
 	s := out.State()
 	switch parameter {
 	case GLenum_GL_TEXTURE_SWIZZLE_R, GLenum_GL_TEXTURE_SWIZZLE_G, GLenum_GL_TEXTURE_SWIZZLE_B, GLenum_GL_TEXTURE_SWIZZLE_A:
-		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, target); err == nil {
+		if t, err := subGetBoundTextureOrErrorInvalidEnum(ctx, nil, api.CmdNoID, nil, s, GetState(s), cmd.Thread(), nil, nil, target); err == nil {
 			_, curr := tc.getSwizzle(t, parameter)
 			// The tex parameter was recently mutated, so set the original swizzle from current state.
 			tc.origSwizzle[parameter][t] = curr
