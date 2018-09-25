@@ -210,6 +210,14 @@ func (b *dependencyGraphBuilder) CloseForwardDependency(ctx context.Context, dep
 	}
 }
 
+// DropForwardDependency is called to abandon a previously opened
+// forward dependency, without actually adding the forward dependency.
+// See `StateWatcher.OpenForwardDependency` for an explanation of forward dependencies.
+func (b *dependencyGraphBuilder) DropForwardDependency(ctx context.Context, dependencyID interface{}) {
+	debug(ctx, "  DropForwardDependency: %v", dependencyID)
+	delete(b.openForwardDependencies, dependencyID)
+}
+
 func (b *dependencyGraphBuilder) addMemoryWrite(e WriteMemEffect) {
 	span := interval.U64Span{
 		Start: e.Slice.Base(),
