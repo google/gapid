@@ -203,30 +203,6 @@ func (b *Builder) AllocateTemporaryMemory(size uint64) value.Pointer {
 	return value.TemporaryPointer(b.temp.alloc(size))
 }
 
-// AllocateTemporaryMemoryChunks allocates a contiguous block of memory in the
-// temporary volatile address-space big enough to hold all the specified chunks
-// sizes, in sequential order. AllocateTemporaryMemoryChunks returns a pointer
-// to each of the allocated chunks and the size of the entire allocation. The
-// allocation block will be freed on the next call to CommitCommand/AbortCommand
-// upon which reading or writing to this memory will result in undefined
-// behavior.
-// TODO: REMOVE
-func (b *Builder) AllocateTemporaryMemoryChunks(sizes []uint64) (ptrs []value.Pointer, size uint64) {
-	alignment := uint64(b.memoryLayout.GetPointer().GetAlignment())
-	ptrs = make([]value.Pointer, len(sizes))
-	for _, s := range sizes {
-		size = align(size, alignment)
-		size += s
-	}
-	base := b.AllocateTemporaryMemory(size)
-	offset := uint64(0)
-	for i, s := range sizes {
-		ptrs[i] = base.Offset(offset)
-		offset += align(s, alignment)
-	}
-	return ptrs, size
-}
-
 // BeginCommand should be called before building any replay instructions.
 func (b *Builder) BeginCommand(cmdID, threadID uint64) {
 	if b.inCmd {
