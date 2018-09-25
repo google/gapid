@@ -102,9 +102,11 @@ typedef struct ref_t {
 // buffer is a structure used to hold a variable size byte array.
 // buffer is used internally by the compiler to write out variable length data.
 typedef struct buffer_t {
-  uint8_t* data;      // buffer data.
-  uint32_t capacity;  // total capacity of the buffer.
-  uint32_t size;      // current size of the buffer.
+  arena* arena;        // the arena that owns the buffer data.
+  uint8_t* data;       // buffer data.
+  uint32_t capacity;   // total capacity of the buffer.
+  uint32_t size;       // current size of the buffer.
+  uint32_t alignment;  // min alignment in bytes of the data allocation.
 } buffer;
 
 // gapil_api_module holds the functions produced by a compilation for a single
@@ -219,11 +221,11 @@ DECL_GAPIL_CB(void, gapil_create_buffer, arena*, uint64_t capacity,
               uint64_t alignment, buffer*);
 
 // destroys a buffer previously created with gapil_create_buffer.
-DECL_GAPIL_CB(void, gapil_destroy_buffer, arena*, buffer*);
+DECL_GAPIL_CB(void, gapil_destroy_buffer, buffer*);
 
 // appends data to a buffer.
-DECL_GAPIL_CB(void, gapil_append_buffer, arena*, buffer*, const void* data,
-              uint64_t size, uint64_t alignment);
+DECL_GAPIL_CB(void, gapil_append_buffer, buffer*, const void* data,
+              uint64_t size);
 
 // allocates a new slice and underlying pool with the given size.
 DECL_GAPIL_CB(pool*, gapil_make_pool, context*, uint64_t size);

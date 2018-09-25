@@ -76,20 +76,18 @@ class Buffer {
   Buffer(Buffer&&) = delete;
   Buffer& operator=(const Buffer&) = delete;
 
-  arena* arena_;
   buffer buf_;
-  uint64_t alignment_;
   bool owns_buf_;
 };
 
 Buffer::Buffer(arena* arena, uint64_t capacity, uint64_t alignment)
-    : arena_(arena), buf_{0}, alignment_(alignment), owns_buf_(true) {
+    : buf_{0}, owns_buf_(true) {
   gapil_create_buffer(arena, capacity, alignment, &buf_);
 }
 
 Buffer::~Buffer() {
   if (owns_buf_) {
-    gapil_destroy_buffer(arena_, &buf_);
+    gapil_destroy_buffer(&buf_);
   }
 }
 
@@ -107,7 +105,7 @@ bool Buffer::Reader::read(T* out) {
 
 void Buffer::set_size(size_t size) {
   if (size > buf_.capacity) {
-    gapil_realloc(arena_, buf_.data, size, alignment_);
+    gapil_realloc(buf_.arena, buf_.data, size, buf_.alignment);
     buf_.capacity = size;
   }
   buf_.size = size;
@@ -115,7 +113,7 @@ void Buffer::set_size(size_t size) {
 
 template <typename T>
 void Buffer::append(const T& data) {
-  gapil_append_buffer(arena_, &buf_, &data, sizeof(data), alignment_);
+  gapil_append_buffer(&buf_, &data, sizeof(data));
 }
 
 template <typename T>

@@ -54,13 +54,13 @@ extern "C" {
 void gapil_replay_init_data(context* ctx, gapil_replay_data* data) {
   auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
   data->data_ex = arena->create<DataEx>();
-  data->resources = buffer{0};
+  data->resources = buffer{.arena = ctx->arena};
 }
 
 void gapil_replay_term_data(context* ctx, gapil_replay_data* data) {
   auto arena = reinterpret_cast<core::Arena*>(ctx->arena);
   arena->destroy(reinterpret_cast<DataEx*>(data->data_ex));
-  gapil_destroy_buffer(ctx->arena, &data->resources);
+  gapil_destroy_buffer(&data->resources);
 }
 
 uint64_t gapil_replay_allocate_memory(context* ctx, gapil_replay_data* data,

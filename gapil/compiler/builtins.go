@@ -103,9 +103,11 @@ const (
 
 // Field names for the buffer_t runtime type.
 const (
-	BufData = "data"
-	BufCap  = "capacity"
-	BufSize = "size"
+	BufArena = "arena"
+	BufData  = "data"
+	BufCap   = "capacity"
+	BufSize  = "size"
+	BufAlign = "alignment"
 )
 
 // gapil_data_access enumerator values.
