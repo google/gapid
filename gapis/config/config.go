@@ -18,7 +18,8 @@ package config
 const (
 	DebugReplay                = false
 	DebugReplayBuilder         = false
-	DisableDeadCodeElimination = true
+	DisableDeadCodeElimination = false
+	NewDeadCodeElimination     = false
 	DebugDeadCodeElimination   = false
 	DebugDependencyGraph       = false
 	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
