@@ -121,3 +121,47 @@ func (a *API) CommandIndex(cmd *Function) int {
 	}
 	return -1
 }
+
+// ClassIndex returns the index of the given class, or -1 if the class does not
+// belong to the API.
+func (a *API) ClassIndex(class *Class) int {
+	for i, c := range a.Classes {
+		if c == class {
+			return i
+		}
+	}
+	return -1
+}
+
+// EnumIndex returns the index of the given enum, or -1 if the enum does not
+// belong to the API.
+func (a *API) EnumIndex(enum *Enum) int {
+	for i, e := range a.Enums {
+		if e == enum {
+			return i
+		}
+	}
+	return -1
+}
+
+// MapIndex returns the index of the given map, or -1 if the map does not belong
+// to the API.
+func (a *API) MapIndex(t *Map) int {
+	for i, m := range a.Maps {
+		if m == t {
+			return i
+		}
+	}
+	return -1
+}
+
+// SliceIndex returns the index of the given slice, or -1 if the slice does not
+// belong to the API.
+func (a *API) SliceIndex(slice *Slice) int {
+	for i, s := range a.Slices {
+		if s == slice {
+			return i
+		}
+	}
+	return -1
+}
