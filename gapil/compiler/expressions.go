@@ -392,7 +392,7 @@ func (c *C) length(s *S, e *semantic.Length) *codegen.Value {
 	if l == nil {
 		fail("Unhandled length expression type %v", e.Object.ExpressionType().Name())
 	}
-	return c.doCast(s, e.Type, semantic.Uint32Type, l)
+	return c.doCast(s, e.Type, semantic.Uint64Type, l)
 }
 
 func (c *C) local(s *S, e *semantic.Local) *codegen.Value {
