@@ -24,11 +24,11 @@ func (c *C) declareBufferFuncs() {
 		Inline().
 		LinkPrivate()
 
-	c.buf.term = c.M.Function(c.T.Void, "gapil_term_buffer", c.T.CtxPtr, c.T.BufPtr).
+	c.buf.term = c.M.Function(c.T.Void, "gapil_term_buffer", c.T.BufPtr).
 		Inline().
 		LinkPrivate()
 
-	c.buf.append = c.M.Function(c.T.Void, "gapil_apnd_buffer", c.T.CtxPtr, c.T.BufPtr, c.T.Uint32, c.T.VoidPtr).
+	c.buf.append = c.M.Function(c.T.Void, "gapil_apnd_buffer", c.T.BufPtr, c.T.Uint32, c.T.VoidPtr).
 		Inline().
 		LinkPrivate()
 }
@@ -38,20 +38,23 @@ func (c *C) buildBufferFuncs() {
 		bufPtr, capacity := s.Parameter(1), s.Parameter(2)
 
 		data := c.Alloc(s, capacity, c.T.Uint8)
+		bufPtr.Index(0, BufArena).Store(s.Arena)
 		bufPtr.Index(0, BufData).Store(data)
 		bufPtr.Index(0, BufCap).Store(capacity)
 		bufPtr.Index(0, BufSize).Store(s.Scalar(uint32(0)))
+		bufPtr.Index(0, BufAlign).Store(s.Scalar(uint32(16)))
 	})
 
 	c.Build(c.buf.term, func(s *S) {
-		bufPtr := s.Parameter(1)
-
+		bufPtr := s.Parameter(0)
+		s.Arena = bufPtr.Index(0, BufArena).Load()
 		bufData := bufPtr.Index(0, BufData).Load()
 		c.Free(s, bufData)
 	})
 
 	c.Build(c.buf.append, func(s *S) {
-		bufPtr, size, data := s.Parameter(1), s.Parameter(2), s.Parameter(3)
+		bufPtr, size, data := s.Parameter(0), s.Parameter(1), s.Parameter(2)
+		s.Arena = bufPtr.Index(0, BufArena).Load()
 
 		bufData := bufPtr.Index(0, BufData).Load()
 		bufCap := bufPtr.Index(0, BufCap).Load()
@@ -78,14 +81,14 @@ func (c *C) InitBuffer(s *S, bufPtr, initialCapacity *codegen.Value) {
 
 // TermBuffer frees a buffer's data without freeing the buffer itself.
 func (c *C) TermBuffer(s *S, bufPtr *codegen.Value) {
-	s.Call(c.buf.term, s.Ctx, bufPtr)
+	s.Call(c.buf.term, bufPtr)
 }
 
 // AppendBuffer appends bytes to the buffer.
 // size must be of type uint32.
 // bytes must be of type void* (alias of uint8*).
 func (c *C) AppendBuffer(s *S, bufPtr, size, bytes *codegen.Value) {
-	s.Call(c.buf.append, s.Ctx, bufPtr, size, bytes)
+	s.Call(c.buf.append, bufPtr, size, bytes)
 }
 
 // AppendBufferData appends a data to the buffer from the given pointer.

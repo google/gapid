@@ -107,32 +107,32 @@ void gapil_create_buffer(arena* a, uint64_t capacity, uint64_t alignment,
               ")",
               capacity, alignment);
   Arena* arena = reinterpret_cast<Arena*>(a);
+  buf->arena = a;
   buf->data = (uint8_t*)arena->allocate(capacity, alignment);
   buf->size = 0;
   buf->capacity = capacity;
+  buf->alignment = alignment;
 }
 
-void gapil_destroy_buffer(arena* a, buffer* buf) {
+void gapil_destroy_buffer(buffer* buf) {
   DEBUG_PRINT("gapil_destroy_buffer()");
-  Arena* arena = reinterpret_cast<Arena*>(a);
+  Arena* arena = reinterpret_cast<Arena*>(buf->arena);
   arena->free(buf->data);
   buf->capacity = 0;
   buf->size = 0;
 }
 
-void gapil_append_buffer(arena* a, buffer* buf, const void* data, uint64_t size,
-                         uint64_t alignment) {
-  DEBUG_PRINT("gapil_append_buffer(data: %p, size: %" PRId64
-              ", alignment: %" PRId64 ")",
-              data, size, alignment);
-  if (buf->size + size > buf->capacity) {
-    Arena* arena = reinterpret_cast<Arena*>(a);
-    buf->capacity *= 2;
+void gapil_append_buffer(buffer* buf, const void* data, uint64_t size) {
+  DEBUG_PRINT("gapil_append_buffer(data: %p, size: %" PRId64 ")", data, size);
+  auto new_size = buf->size + size;
+  if (new_size > buf->capacity) {
+    Arena* arena = reinterpret_cast<Arena*>(buf->arena);
+    buf->capacity = std::max<uint32_t>(buf->size + size, buf->capacity * 2);
     buf->data =
-        (uint8_t*)arena->reallocate(buf->data, buf->capacity, alignment);
+        (uint8_t*)arena->reallocate(buf->data, buf->capacity, buf->alignment);
   }
   memcpy(buf->data + buf->size, data, size);
-  buf->size = buf->size + size;
+  buf->size = new_size;
 }
 
 pool* gapil_make_pool(context* ctx, uint64_t size) {
