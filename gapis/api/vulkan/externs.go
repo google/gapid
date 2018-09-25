@@ -495,3 +495,20 @@ func (e externs) recordFenceReset(fence VkFence) {
 		e.w.DropForwardDependency(e.ctx, fenceSignal(fence))
 	}
 }
+
+type swapchainImage struct {
+	swapchain  VkSwapchainKHR
+	imageIndex uint32
+}
+
+func (e externs) recordAcquireNextImage(swapchain VkSwapchainKHR, imageIndex uint32) {
+	if e.w != nil {
+		e.w.OpenForwardDependency(e.ctx, swapchainImage{swapchain, imageIndex})
+	}
+}
+
+func (e externs) recordPresentSwapchainImage(swapchain VkSwapchainKHR, imageIndex uint32) {
+	if e.w != nil {
+		e.w.CloseForwardDependency(e.ctx, swapchainImage{swapchain, imageIndex})
+	}
+}
