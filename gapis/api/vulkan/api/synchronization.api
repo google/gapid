@@ -95,6 +95,7 @@ cmd VkResult vkResetFences(
     f := fences[i]
     if !(f in Fences) { vkErrorInvalidFence(fences[i]) }
     Fences[f].Signaled = false
+    recordFenceReset(f)
   }
   return ?
 }
@@ -122,8 +123,14 @@ cmd VkResult vkWaitForFences(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   fences := pFences[0:fenceCount]
   for i in (0 .. fenceCount) {
-    if !(fences[i] in Fences) { vkErrorInvalidFence(fences[i]) }
-    _ = fences[i]
+    f := fences[i]
+    if !(f in Fences) { vkErrorInvalidFence(fences[i]) }
+    if Fences[f].Signaled {
+      recordFenceWait(f)
+    } else {
+      // TODO: handle case when signal comes after wait (e.g. in a multi-threaded app)
+      vkErrorInvalidFence(f)
+    }
   }
   return ?
 }
@@ -464,3 +471,7 @@ cmd void vkCmdPipelineBarrier(
 
   AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
 }
+
+extern void recordFenceSignal(VkFence fence)
+extern void recordFenceWait(VkFence fence)
+extern void recordFenceReset(VkFence fence)
