@@ -50,16 +50,16 @@
 }
 
 @internal class BufferObject {
-  @unused VkDevice                  Device
-  @unused VkBuffer                  VulkanHandle
-  @unused BufferInfo                Info
-  ref!DeviceMemoryObject            Memory
-  VkDeviceSize                      MemoryOffset
-  map!(u64, VkSparseMemoryBind)     SparseMemoryBindings
-  @unused ref!QueueObject           LastBoundQueue
-  @unused ref!VulkanDebugMarkerInfo DebugInfo
-  VkMemoryRequirements              MemoryRequirements
-  ref!DedicatedRequirementsKHR      DedicatedRequirementsKHR
+  @unused VkDevice                   Device
+  @unused VkBuffer                   VulkanHandle
+  @unused BufferInfo                 Info
+  ref!DeviceMemoryObject             Memory
+  VkDeviceSize                       MemoryOffset
+  map!(u64, VkSparseMemoryBind)      SparseMemoryBindings
+  @untracked @unused ref!QueueObject LastBoundQueue
+  @unused ref!VulkanDebugMarkerInfo  DebugInfo
+  VkMemoryRequirements               MemoryRequirements
+  ref!DedicatedRequirementsKHR       DedicatedRequirementsKHR
 }
 
 @threadSafety("system")

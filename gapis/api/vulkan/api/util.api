@@ -348,13 +348,15 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
 }
 
 @internal class AllBits {
-  map!(VkImageAspectFlags, dense_map!(u32, VkImageAspectFlagBits)) allBits
+  @untrackedMap @untracked
+  map!(VkImageAspectFlags, ref!unpackedImageAspectFlagBits) allBits
 }
 
-@hidden @serialize
+@hidden @serialize @untracked
 AllBits allBits
 
 @internal class unpackedImageAspectFlagBits {
+  @untrackedMap @untracked
   dense_map!(u32, VkImageAspectFlagBits) Bits
 }
 
@@ -368,10 +370,10 @@ sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectF
         m.Bits[len(m.Bits)] = as!VkImageAspectFlagBits(1 << as!u32(i))
       }
     }
-    allBits.allBits[flag] = m.Bits
+    allBits.allBits[flag] = m
   }
   
-  return allBits.allBits[flag]
+  return allBits.allBits[flag].Bits
 }
 
 @internal class emptyMap {

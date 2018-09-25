@@ -54,7 +54,7 @@ enum QueryStatus {
   @unused VkQueryPipelineStatisticFlags PipelineStatistics
   @unused map!(u32, QueryStatus)        Status
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
-  @unused ref!QueueObject               LastBoundQueue
+  @untracked @unused ref!QueueObject    LastBoundQueue
 }
 
 @threadSafety("system")
