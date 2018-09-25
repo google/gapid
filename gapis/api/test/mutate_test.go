@@ -427,6 +427,38 @@ func TestOperationsOpCall_3_In_Arrays(t *testing.T) {
 	}.check(ctx, ml, ml)
 }
 
+func TestOperationsOpCall_3_In_StaticArrays(t *testing.T) {
+	ctx := log.Testing(t)
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
+	a := arena.New()
+	defer a.Dispose()
+	cb := CommandBuilder{Thread: 0, Arena: a}
+	ml := device.Little64
+
+	u8s := NewU8ː3ᵃ(a, 4, 5, 6)
+	u32s := NewU32ː3ᵃ(a, 7, 8, 9)
+
+	test{
+		cmds: []api.Cmd{
+			cb.CmdVoid3InStaticArrays(u8s, u32s, u8s),
+		},
+		expected: expected{
+			constants: []byte{
+				4, 5, 6,
+				0, 0, 0, 0, 0, // alignment padding
+				7, 0, 0, 0, 8, 0, 0, 0, 9, 0, 0, 0,
+			},
+			opcodes: []interface{}{
+				opcode.Label{Value: 0},
+				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x0},
+				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x8},
+				opcode.PushI{DataType: protocol.Type_ConstantPointer, Value: 0x0}, // Shared constant data (dedupe)
+				opcode.Call{PushReturn: false, ApiIndex: funcInfoCmdVoid3InStaticArrays.ApiIndex, FunctionID: funcInfoCmdVoid3InStaticArrays.ID},
+			},
+		},
+	}.check(ctx, ml, ml)
+}
+
 func TestOperationsOpCall_InArrayOfStrings(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
