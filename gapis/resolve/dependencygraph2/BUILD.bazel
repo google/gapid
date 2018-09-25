@@ -18,6 +18,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "dce.go",
         "dependency_graph.go",
         "dependency_graph_builder.go",
         "effect.go",
@@ -31,7 +32,9 @@ go_library(
         "//core/app/benchmark:go_default_library",
         "//core/log:go_default_library",
         "//core/math/interval:go_default_library",
+        "//core/memory/arena:go_default_library",
         "//gapis/api:go_default_library",
+        "//gapis/api/transform:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",

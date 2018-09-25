@@ -18,8 +18,9 @@ package config
 const (
 	DebugReplay                = false
 	DebugReplayBuilder         = false
-	DisableDeadCodeElimination = false
+	DisableDeadCodeElimination = true
 	DebugDeadCodeElimination   = false
+	DebugDependencyGraph       = false
 	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
 	LogMemoryInExtras          = false // Logs all commands' read/write memory observation together with extras
 	// Logs all mappings at the end of the replay from original trace
