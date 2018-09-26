@@ -165,23 +165,6 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	return s
 }
 
-// BuildInitialCommands returns a set of commands which will setup the initial state.
-func (c *Capture) BuildInitialCommands(ctx context.Context) ([]api.Cmd, interval.U64RangeList) {
-	ranges := interval.U64RangeList{}
-	cmds := []api.Cmd{}
-	// TODO: This can be easily cached for the given capture.
-	if c.InitialState != nil {
-		s := c.NewState(ctx)
-		for _, v := range s.APIs {
-			s, r := v.RebuildState(ctx, s)
-			ranges = append(ranges, r...)
-			cmds = append(cmds, s...)
-		}
-		return cmds, ranges
-	}
-	return nil, interval.U64RangeList{}
-}
-
 // Service returns the service.Capture description for this capture.
 func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture {
 	apis := make([]*path.API, len(c.APIs))

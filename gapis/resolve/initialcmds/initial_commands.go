@@ -32,7 +32,9 @@ type initialCommandData struct {
 	ranges interval.U64RangeList
 }
 
-// InitialCommands resolves and returns the Intial Commands for the capture C
+// InitialCommands resolves and returns the list of commands that will rebuild
+// the mid-execution state block from an initialized state, along with the
+// memory ranges in use by the state.
 func InitialCommands(ctx context.Context, c *path.Capture) ([]api.Cmd, interval.U64RangeList, error) {
 	obj, err := database.Build(ctx, &InitialCmdsResolvable{Capture: c})
 	if err != nil {
@@ -42,13 +44,25 @@ func InitialCommands(ctx context.Context, c *path.Capture) ([]api.Cmd, interval.
 	return x.cmds, x.ranges, nil
 }
 
+// Resolve returns the resolved initialCommandData.
 func (r *InitialCmdsResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	c, err := capture.ResolveFromPath(ctx, r.Capture)
 
 	if err != nil {
 		return nil, err
 	}
-	cmds, ranges := c.BuildInitialCommands(ctx)
-	return &initialCommandData{
-		cmds, ranges}, nil
+
+	ranges := interval.U64RangeList{}
+	cmds := []api.Cmd{}
+
+	if c.InitialState != nil {
+		s := c.NewState(ctx)
+		for _, v := range s.APIs {
+			s, r := v.RebuildState(ctx, s)
+			ranges = append(ranges, r...)
+			cmds = append(cmds, s...)
+		}
+	}
+
+	return &initialCommandData{cmds, ranges}, nil
 }
