@@ -46,6 +46,16 @@ type CustomState struct {
 	initialCommands   map[VkCommandBuffer][]api.Cmd
 }
 
+func (c *CustomState) init(s *State) {
+	c.queuedCommands = make(map[CommandReferenceʳ]QueuedCommand)
+	c.initialCommands = make(map[VkCommandBuffer][]api.Cmd)
+
+	for b, cb := range s.CommandBuffers().All() {
+		existingCommands := cb.CommandReferences().Len()
+		c.initialCommands[b] = make([]api.Cmd, existingCommands)
+	}
+}
+
 func getStateObject(s *api.GlobalState) *State {
 	return GetState(s)
 }
@@ -81,21 +91,11 @@ func (*State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (p
 
 // SetupInitialState recreates the command lamdas from the state block.
 // These are not encoded so we have to set them up here.
-func (c *State) SetupInitialState(ctx context.Context) {
-	c.InitializeCustomState()
+func (s *State) SetupInitialState(ctx context.Context) {
+	s.CustomState.init(s)
 }
 
-func (c *State) InitializeCustomState() {
-	c.queuedCommands = make(map[CommandReferenceʳ]QueuedCommand)
-	c.initialCommands = make(map[VkCommandBuffer][]api.Cmd)
-
-	for b, cb := range c.CommandBuffers().All() {
-		existingCommands := cb.CommandReferences().Len()
-		c.initialCommands[b] = make([]api.Cmd, existingCommands)
-	}
-}
-
-func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
+func (State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 

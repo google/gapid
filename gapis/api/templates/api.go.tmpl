@@ -1240,7 +1240,7 @@ import (
     func (p {{$ptr_ty}}) Read(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder) ({{$el_ty}}, error) {
       return p.Readʷ(ϟctx, ϟc, ϟg, ϟb, nil)
     }
-    
+
     // Read reads and returns the {{$el_ty}} element at the pointer.
     func (p {{$ptr_ty}}) Readʷ(ϟctx context.Context, ϟc ϟapi.Cmd, ϟg *ϟapi.GlobalState, ϟb *builder.Builder, ϟw ϟapi.StateWatcher) ({{$el_ty}}, error) {
       ϟa := ϟg.Arena; _ = ϟa
@@ -1833,20 +1833,20 @@ import (
   }
 
   // Init initializes the state.
-  func (g *State) Init() {
-    ϟa := g.a; _ = ϟa
+  func (s *State) Init() {
+    ϟa := s.a; _ = ϟa
     {{range $g := $.Globals}}
       {{if IsNil $g.Default}}
         {{if $init := Macro "Go.DefaultInitialValue" $g.Type}}
-          g.Set{{$g.Name | GoPublicName}}({{$init}})
+          s.Set{{$g.Name | GoPublicName}}({{$init}})
         {{else}}
-          g.Set{{$g.Name | GoPublicName}}({{Template "Go.Null" $g.Type}})
+          s.Set{{$g.Name | GoPublicName}}({{Template "Go.Null" $g.Type}})
         {{end}}
       {{else}}
-        g.Set{{$g.Name | GoPublicName}}({{Template "Go.Read" $g.Default}})
+        s.Set{{$g.Name | GoPublicName}}({{Template "Go.Read" $g.Default}})
       {{end}}
     {{end}}
-    g.InitializeCustomState()
+    s.CustomState.init(s)
   }
 
   // Properties returns all the properties of the state.
@@ -2218,7 +2218,7 @@ import (
 
 {{/*
 -------------------------------------------------------------------------------
-  DeclareFieldID emits the Go declaration of the global variable identifying 
+  DeclareFieldID emits the Go declaration of the global variable identifying
 -------------------------------------------------------------------------------
 */}}
 {{define "DeclareFieldID"}}
