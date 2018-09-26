@@ -57,7 +57,10 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 	return nil, nil
 }
 
-func (s *State) SetupInitialState(ctx context.Context, g *api.GlobalState) {
+// SetupInitialState sanitizes deserialized state to make it valid.
+// It can fill in any derived data which we choose not to serialize, or it can
+// apply backward-compatibility fixes for older traces.
+func (s *State) SetupInitialState(ctx context.Context) {
 	a := s.Arena()
 	contexts := NewU64ːContextʳᵐ(a)
 	contexts.Add(0, NilContextʳ)

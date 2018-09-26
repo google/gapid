@@ -130,7 +130,8 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 }
 
 // NewUninitializedState returns a new, uninitialized GlobalState built for the
-// capture c.
+// capture c. The returned state does not contain the capture's mid-execution
+// state.
 func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
@@ -141,26 +142,28 @@ func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 	return s
 }
 
-// NewState returns a new, default-initialized State object built for the
-// capture.
+// NewState returns a new, initialized GlobalState object built for the capture
+// c. If the capture contains a mid-execution state, then this will be copied
+// into the returned state.
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
-	s := c.NewUninitializedState(ctx)
+	out := c.NewUninitializedState(ctx)
 	if c.InitialState != nil {
+		// Rebuild all the writes into the memory pools.
 		for _, m := range c.InitialState.Memory {
-			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))
+			pool, _ := out.Memory.Get(memory.PoolID(m.Pool))
 			if pool == nil {
-				pool = s.Memory.NewAt(memory.PoolID(m.Pool))
+				pool = out.Memory.NewAt(memory.PoolID(m.Pool))
 			}
 			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
 		}
+		// Clone serialized state, and initialize it for use.
 		for k, v := range c.InitialState.APIs {
-			s.APIs[k.ID()] = v.Clone(s.Arena)
-		}
-		for _, v := range s.APIs {
-			v.SetupInitialState(ctx, s)
+			s := v.Clone(out.Arena)
+			s.SetupInitialState(ctx)
+			out.APIs[k.ID()] = s
 		}
 	}
-	return s
+	return out
 }
 
 // Service returns the service.Capture description for this capture.

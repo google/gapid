@@ -81,7 +81,7 @@ func (*State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (p
 
 // SetupInitialState recreates the command lamdas from the state block.
 // These are not encoded so we have to set them up here.
-func (c *State) SetupInitialState(ctx context.Context, s *api.GlobalState) {
+func (c *State) SetupInitialState(ctx context.Context) {
 	c.InitializeCustomState()
 }
 

@@ -37,18 +37,21 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 	return nil, nil
 }
 
-func (*State) SetupInitialState(ctx context.Context, s *api.GlobalState) {}
+// SetupInitialState sanitizes deserialized state to make it valid.
+// It can fill in any derived data which we choose not to serialize,
+// or it can apply backward-compatibility fixes for older traces.
+func (State) SetupInitialState(ctx context.Context) {}
 
 func (s *State) InitializeCustomState() {}
 
-func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
+func (s *State) preMutate(ctx context.Context, g *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 
 type CustomState struct{}
 
 // RebuildState is a no-op to conform to the api.API interface.
-func (API) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+func (API) RebuildState(ctx context.Context, g *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
 	return nil, nil
 }
 
