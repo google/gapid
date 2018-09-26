@@ -193,7 +193,7 @@ func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	ft := NewFootprint(ctx, cmds, numInitialCmds)
 
-	s := c.NewUninitializedState(ctx, ranges)
+	s := c.NewUninitializedState(ctx).ReserveMemory(ranges)
 	t0 := footprintBuildCounter.Start()
 	defer footprintBuildCounter.Stop(t0)
 	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {

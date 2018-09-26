@@ -129,12 +129,10 @@ func NewState(ctx context.Context) (*api.GlobalState, error) {
 	return c.NewState(ctx), nil
 }
 
-// NewUninitializedState returns a new, uninitialized State object built for the capture.
-func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64RangeList) *api.GlobalState {
+// NewUninitializedState returns a new, uninitialized GlobalState built for the
+// capture c.
+func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 	freeList := memory.InvertMemoryRanges(c.Observed)
-	for _, r := range rngs {
-		interval.Remove(&freeList, r.Span())
-	}
 	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
 	s := api.NewStateWithAllocator(
 		memory.NewBasicAllocator(freeList),
@@ -146,7 +144,7 @@ func (c *Capture) NewUninitializedState(ctx context.Context, rngs interval.U64Ra
 // NewState returns a new, default-initialized State object built for the
 // capture.
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
-	s := c.NewUninitializedState(ctx, interval.U64RangeList{})
+	s := c.NewUninitializedState(ctx)
 	if c.InitialState != nil {
 		for _, m := range c.InitialState.Memory {
 			pool, _ := s.Memory.Get(memory.PoolID(m.Pool))

@@ -288,7 +288,7 @@ func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 	builder := newDependencyGraphBuilder(ctx, config, c, initialCmds)
 	var state *api.GlobalState
 	if config.IncludeInitialCommands {
-		state = c.NewUninitializedState(ctx, initialRanges)
+		state = c.NewUninitializedState(ctx).ReserveMemory(initialRanges)
 	} else {
 		state = c.NewState(ctx)
 	}
