@@ -105,18 +105,20 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	// Verify that the recreated state matches the original desired state.
 	diffs := 0
 	compare.Compare(s, GetState(sb.newState), func(d compare.Path) {
-		last := d[len(d)-1]
-		if oldSlice, ok := last.Value.(memory.Slice); ok {
-			if newSlice, ok := last.Value.(memory.Slice); ok {
-				old := AsU8ˢ(sb.tmpArena, oldSlice, sb.oldState.MemoryLayout)
-				new := AsU8ˢ(sb.tmpArena, newSlice, sb.newState.MemoryLayout)
-				if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
-					return // The pool IDs are different, but the resource IDs match exactly.
-				}
-				oldData := old.MustRead(ctx, nil, sb.oldState, nil)
-				newData := new.MustRead(ctx, nil, sb.newState, nil)
-				if reflect.DeepEqual(oldData, newData) {
-					return // The pool IDs are different, but the actual data matches exactly.
+		if l := len(d); l > 1 {
+			last := d[l-2] // l-1: is the pool, l-2 is the memory.Slice.
+			if oldSlice, ok := last.Reference.(memory.Slice); ok {
+				if newSlice, ok := last.Value.(memory.Slice); ok {
+					old := AsU8ˢ(sb.tmpArena, oldSlice, sb.oldState.MemoryLayout)
+					new := AsU8ˢ(sb.tmpArena, newSlice, sb.newState.MemoryLayout)
+					if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
+						return // The pool IDs are different, but the resource IDs match exactly.
+					}
+					oldData := old.MustRead(ctx, nil, sb.oldState, nil)
+					newData := new.MustRead(ctx, nil, sb.newState, nil)
+					if reflect.DeepEqual(oldData, newData) {
+						return // The pool IDs are different, but the actual data matches exactly.
+					}
 				}
 			}
 		}
