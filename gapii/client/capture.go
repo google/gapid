@@ -118,7 +118,7 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 	// there's no application waiting for the connection. Treat errors as
 	// another waiting-for-connection case.
 	return task.Retry(ctx, 0, 500*time.Millisecond, func(ctx context.Context) (retry bool, err error) {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", p.Port), time.Second)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", p.Port), 3*time.Second)
 		if err != nil {
 			return false, log.Err(ctx, err, "Dial failed")
 		}
