@@ -24,6 +24,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/context/keys:go_default_library",
+        "//core/data/compare:go_default_library",
     ],
 )
 
