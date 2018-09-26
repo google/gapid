@@ -42,13 +42,13 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 // or it can apply backward-compatibility fixes for older traces.
 func (State) SetupInitialState(ctx context.Context) {}
 
-func (s *State) InitializeCustomState() {}
-
 func (s *State) preMutate(ctx context.Context, g *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 
 type CustomState struct{}
+
+func (CustomState) init(*State) {}
 
 // RebuildState is a no-op to conform to the api.API interface.
 func (API) RebuildState(ctx context.Context, g *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {

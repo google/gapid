@@ -24,6 +24,8 @@ import (
 
 type CustomState struct{}
 
+func (CustomState) init(*State) {}
+
 // RebuildState is a no-op to conform to the api.API interface.
 func (API) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
 	return nil, nil
@@ -51,8 +53,6 @@ func (s *State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) 
 // It can fill in any derived data which we choose not to serialize,
 // or it can apply backward-compatibility fixes for older traces.
 func (*State) SetupInitialState(ctx context.Context) {}
-
-func (s *State) InitializeCustomState() {}
 
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil

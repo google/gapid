@@ -30,6 +30,8 @@ import (
 
 type CustomState struct{}
 
+func (CustomState) init(*State) {}
+
 func GetContext(s *api.GlobalState, thread uint64) Contextʳ {
 	return GetState(s).GetContext(thread)
 }
@@ -77,8 +79,6 @@ func (s *State) SetupInitialState(ctx context.Context) {
 		}
 	}
 }
-
-func (s *State) InitializeCustomState() {}
 
 func (s *State) contextRoot(p *path.Command, thread uint64) *path.MapIndex {
 	return path.NewField("Contexts", resolve.APIStateAfter(p, ID)).MapIndex(thread)
