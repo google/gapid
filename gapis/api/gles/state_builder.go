@@ -296,6 +296,17 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 			}
 		})
 	}
+	var programs []ProgramId
+	if objs := c.Objects().Programs(); sb.once(objs) && objs.Len() > 0 {
+		status.Do(ctx, fmt.Sprintf("rebuilding %d programs", objs.Len()), func(ctx context.Context) {
+			for _, id := range objs.Keys() {
+				if o := c.Objects().Programs().Get(id); !o.IsNil() {
+					sb.programObject(ctx, o)
+					programs = append(programs, id)
+				}
+			}
+		})
+	}
 	if objs := c.Objects().Shaders(); sb.once(objs) && objs.Len() > 0 {
 		status.Do(ctx, fmt.Sprintf("rebuilding %d shaders", objs.Len()), func(ctx context.Context) {
 			for _, id := range objs.Keys() {
@@ -305,19 +316,10 @@ func (sb *stateBuilder) contextObject(ctx context.Context, handle EGLContext, c 
 			}
 		})
 	}
-	if objs := c.Objects().Programs(); sb.once(objs) && objs.Len() > 0 {
-		status.Do(ctx, fmt.Sprintf("rebuilding %d programs", objs.Len()), func(ctx context.Context) {
-			// Get the largest used shader ID.
-			maxID := ShaderId(0)
-			for i := range c.Objects().Shaders().All() {
-				if i > maxID {
-					maxID = i
-				}
-			}
-			for _, id := range objs.Keys() {
-				if o := c.Objects().Programs().Get(id); !o.IsNil() {
-					sb.programObject(ctx, o, uint32(maxID)+1)
-				}
+	if len(programs) > 0 {
+		status.Do(ctx, fmt.Sprintf("attaching shaders to %d programs", len(programs)), func(ctx context.Context) {
+			for _, id := range programs {
+				sb.attachShaders(ctx, c.Objects().Programs().Get(id))
 			}
 		})
 	}
@@ -676,7 +678,7 @@ func (sb *stateBuilder) shaderObject(ctx context.Context, s Shaderʳ) {
 	write(ctx, cb.GlShaderSource(id, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
 }
 
-func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstShaderID uint32) {
+func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 	write, cb, id := sb.write, sb.cb, p.GetID()
 
 	write(ctx, cb.GlCreateProgram(id))
@@ -712,13 +714,11 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstSha
 				sb.E(ctx, "Precompiled programs not suppored yet") // TODO
 				continue
 			}
-			shaderID := ShaderId(firstShaderID)
-			firstShaderID++
-			write(ctx, cb.GlCreateShader(t, shaderID))
-			write(ctx, cb.GlShaderSource(shaderID, 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
-			write(ctx, api.WithExtras(cb.GlCompileShader(shaderID), s.Get().Clone(cb.Arena, sb.cloneCtx)))
-			write(ctx, cb.GlAttachShader(id, shaderID))
-			attachedShaders = append(attachedShaders, shaderID)
+			write(ctx, cb.GlCreateShader(t, s.ID()))
+			write(ctx, cb.GlShaderSource(s.ID(), 1, sb.readsData(ctx, sb.readsData(ctx, s.Source())), memory.Nullptr))
+			write(ctx, api.WithExtras(cb.GlCompileShader(s.ID()), s.Get().Clone(cb.Arena, sb.cloneCtx)))
+			write(ctx, cb.GlAttachShader(id, s.ID()))
+			attachedShaders = append(attachedShaders, s.ID())
 		}
 
 		write(ctx, api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
@@ -730,7 +730,7 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstSha
 		}
 		write(ctx, cb.GlUseProgram(0))
 
-		// Detach and delete the linked shaders (we'll attach the shaders from the state below).
+		// Detach and delete the linked shaders (we'll attach the shaders from the state later).
 		for _, shaderID := range attachedShaders {
 			write(ctx, cb.GlDetachShader(id, shaderID))
 			write(ctx, cb.GlDeleteShader(shaderID))
@@ -739,6 +739,10 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstSha
 	if !p.ValidateExtra().IsNil() {
 		write(ctx, api.WithExtras(cb.GlValidateProgram(id), p.ValidateExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
 	}
+}
+
+func (sb *stateBuilder) attachShaders(ctx context.Context, p Programʳ) {
+	write, cb, id := sb.write, sb.cb, p.GetID()
 
 	for _, s := range p.Shaders().All() {
 		if s := s.GetID(); s != 0 {
