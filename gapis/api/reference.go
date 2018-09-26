@@ -16,6 +16,8 @@ package api
 
 import (
 	"sync/atomic"
+
+	"github.com/google/gapid/core/data/compare"
 )
 
 // RefID is a type used to identify instances of the reference types used in the API models.
@@ -44,4 +46,10 @@ type NilReference struct{}
 
 func (NilReference) RefID() RefID {
 	return NilRefID
+}
+
+func init() {
+	// Don't compare RefIDs.
+	compare.Register(func(c compare.Comparator, a, b RefID) {
+	})
 }
