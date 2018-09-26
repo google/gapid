@@ -22,9 +22,9 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type CustomState struct{}
+type customState struct{}
 
-func (CustomState) init(*State) {}
+func (customState) init(*State) {}
 
 // RebuildState is a no-op to conform to the api.API interface.
 func (API) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {

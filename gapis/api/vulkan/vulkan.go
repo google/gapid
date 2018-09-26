@@ -32,7 +32,7 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type CustomState struct {
+type customState struct {
 	SubCmdIdx         api.SubCmdIdx
 	CurrentSubmission api.Cmd
 	PreSubcommand     func(interface{})
@@ -46,7 +46,7 @@ type CustomState struct {
 	initialCommands   map[VkCommandBuffer][]api.Cmd
 }
 
-func (c *CustomState) init(s *State) {
+func (c *customState) init(s *State) {
 	c.queuedCommands = make(map[CommandReferenceʳ]QueuedCommand)
 	c.initialCommands = make(map[VkCommandBuffer][]api.Cmd)
 
@@ -92,7 +92,7 @@ func (*State) Root(ctx context.Context, p *path.State, r *path.ResolveConfig) (p
 // SetupInitialState recreates the command lamdas from the state block.
 // These are not encoded so we have to set them up here.
 func (s *State) SetupInitialState(ctx context.Context) {
-	s.CustomState.init(s)
+	s.customState.init(s)
 }
 
 func (State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {

@@ -28,9 +28,9 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-type CustomState struct{}
+type customState struct{}
 
-func (CustomState) init(*State) {}
+func (customState) init(*State) {}
 
 func GetContext(s *api.GlobalState, thread uint64) Contextʳ {
 	return GetState(s).GetContext(thread)

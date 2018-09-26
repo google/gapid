@@ -46,9 +46,9 @@ func (s *State) preMutate(ctx context.Context, g *api.GlobalState, cmd api.Cmd) 
 	return nil
 }
 
-type CustomState struct{}
+type customState struct{}
 
-func (CustomState) init(*State) {}
+func (customState) init(*State) {}
 
 // RebuildState is a no-op to conform to the api.API interface.
 func (API) RebuildState(ctx context.Context, g *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
