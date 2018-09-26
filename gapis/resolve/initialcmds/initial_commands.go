@@ -57,10 +57,10 @@ func (r *InitialCmdsResolvable) Resolve(ctx context.Context) (interface{}, error
 
 	if c.InitialState != nil {
 		s := c.NewState(ctx)
-		for _, v := range s.APIs {
-			s, r := v.RebuildState(ctx, s)
+		for _, api := range c.APIs {
+			c, r := api.RebuildState(ctx, s)
+			cmds = append(cmds, c...)
 			ranges = append(ranges, r...)
-			cmds = append(cmds, s...)
 		}
 	}
 

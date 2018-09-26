@@ -41,7 +41,16 @@ type stateBuilder struct {
 	cloneCtx        api.CloneContext
 }
 
-func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+// RebuildState returns a set of commands which, if executed on a new clean
+// state, will reproduce the API's state in s.
+// The segments of memory that were used to create these commands are returned
+// in the rangeList.
+func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+	s, hasState := oldState.APIs[ID].(*State)
+	if !hasState {
+		return nil, nil
+	}
+
 	newState := api.NewStateWithAllocator(memory.NewBasicAllocator(value.ValidMemoryRanges), oldState.MemoryLayout)
 	sb := &stateBuilder{
 		ctx:             ctx,

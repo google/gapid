@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/constset"
 )
@@ -55,6 +56,12 @@ type API interface {
 
 	// CreateCmd constructs and returns a new command with the specified name.
 	CreateCmd(a arena.Arena, name string) Cmd
+
+	// RebuildState returns a set of commands which, if executed on a new clean
+	// state, will reproduce the API's state in s.
+	// The segments of memory that were used to create these commands are
+	// returned in the rangeList.
+	RebuildState(ctx context.Context, s *GlobalState) ([]Cmd, interval.U64RangeList)
 }
 
 // FramebufferAttachmentInfo describes a framebuffer at a given point in the trace
