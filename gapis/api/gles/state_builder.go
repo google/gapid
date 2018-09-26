@@ -726,6 +726,11 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ, firstSha
 				sb.uniform(ctx, u.Type(), UniformLocation(loc), GLsizei(u.ArraySize()), sb.readsSlice(ctx, u.Value()))
 			}
 		}
+		for loc, b := range p.ActiveResources().UniformBlocks().All() {
+			if index := b.Binding(); index > 0 {
+				write(ctx, cb.GlUniformBlockBinding(id, UniformBlockIndex(loc), GLuint(index)))
+			}
+		}
 		write(ctx, cb.GlUseProgram(0))
 
 		// Detach and delete the linked shaders (we'll attach the shaders from the state below).
