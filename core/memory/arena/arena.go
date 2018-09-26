@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/google/gapid/core/data/compare"
+
 	"github.com/google/gapid/core/context/keys"
 )
 
@@ -215,4 +217,10 @@ func (r *Reader) Read(dst unsafe.Pointer, size int) {
 		*dst = *src
 	}
 	r.Offset += size
+}
+
+func init() {
+	// Don't compare arenas.
+	compare.Register(func(c compare.Comparator, a, b Arena) {
+	})
 }
