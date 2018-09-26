@@ -147,7 +147,7 @@ func (m *Manager) execute(
 	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
 	out := &adapter{
-		state:   c.NewUninitializedState(ctx, ranges),
+		state:   c.NewUninitializedState(ctx).ReserveMemory(ranges),
 		builder: b,
 	}
 

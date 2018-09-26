@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
@@ -108,6 +109,15 @@ func NewStateWithAllocator(allocator memory.Allocator, memoryLayout *device.Memo
 		APIs:         map[ID]State{},
 		Allocator:    allocator,
 	}
+}
+
+// ReserveMemory reserves the specifed memory ranges from the state's allocator,
+// preventing them from being allocated.
+// ReserveMemory is a fluent helper function for calling
+// s.Allocator.ReserveMemory(rngs).
+func (s *GlobalState) ReserveMemory(rngs interval.U64RangeList) *GlobalState {
+	s.Allocator.ReserveRanges(rngs)
+	return s
 }
 
 func (s GlobalState) String() string {

@@ -100,7 +100,7 @@ func ExportReplay(ctx context.Context, pCapture *path.Capture, pDevice *path.Dev
 			d.Instance(),
 			c,
 			&adapter{
-				state:   c.NewUninitializedState(ctx, ranges),
+				state:   c.NewUninitializedState(ctx).ReserveMemory(ranges),
 				builder: b,
 			})
 	})

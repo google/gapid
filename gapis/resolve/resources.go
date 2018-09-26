@@ -52,11 +52,11 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 	// If the capture contains initial state, build the necessary commands to recreate it.
-	initialCmds, rnges, err := initialcmds.InitialCommands(ctx, r.Capture)
+	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
 	if err != nil {
 		return nil, err
 	}
-	state := c.NewUninitializedState(ctx, rnges)
+	state := c.NewUninitializedState(ctx).ReserveMemory(ranges)
 	state.OnResourceCreated = func(r api.Resource) {
 		currentCmdResourceCount++
 		seen[r] = len(seen)

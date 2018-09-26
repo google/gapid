@@ -75,7 +75,7 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 	if err != nil {
 		return nil, err
 	}
-	state := capture.NewUninitializedState(ctx, ranges)
+	state := capture.NewUninitializedState(ctx).ReserveMemory(ranges)
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
 	idMap := api.ResourceMap{}
