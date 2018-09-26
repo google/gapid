@@ -84,7 +84,7 @@ type State interface {
 	// SetupInitialState sanitizes deserialized state to make it valid.
 	// It can fill in any derived data which we choose not to serialize,
 	// or it can apply backward-compatibility fixes for older traces.
-	SetupInitialState(ctx context.Context, g *GlobalState)
+	SetupInitialState(ctx context.Context)
 
 	// InitializeCustomState initializes any custom state on this object
 	InitializeCustomState()
