@@ -1814,7 +1814,7 @@ import (
     {{end}}
     a arena.Arena
     refID ϟapi.RefID
-    CustomState `hidden:"true" nobox:"true"`
+    customState `hidden:"true" nobox:"true"`
   }
 
   {{range $g := $.Globals}}
@@ -1846,7 +1846,7 @@ import (
         s.Set{{$g.Name | GoPublicName}}({{Template "Go.Read" $g.Default}})
       {{end}}
     {{end}}
-    s.CustomState.init(s)
+    s.customState.init(s)
   }
 
   // Properties returns all the properties of the state.
@@ -1864,7 +1864,7 @@ import (
 
 	// Clone returns a deep copy of this state object.
   func (g *State) Clone(ϟa arena.Arena) ϟapi.State {
-    out := &State{CustomState: g.CustomState, refID: ϟapi.NewRefID()}
+    out := &State{customState: g.customState, refID: ϟapi.NewRefID()}
     {{if len $.Globals}}
       ϟseen := ϟapi.CloneContext{}
       _ = ϟseen
