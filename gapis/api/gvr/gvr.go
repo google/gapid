@@ -41,15 +41,16 @@ func (*State) SetupInitialState(ctx context.Context, s *api.GlobalState) {}
 
 func (s *State) InitializeCustomState() {}
 
-func (*State) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
-	return nil, nil
-}
-
 func (c *State) preMutate(ctx context.Context, s *api.GlobalState, cmd api.Cmd) error {
 	return nil
 }
 
 type CustomState struct{}
+
+// RebuildState is a no-op to conform to the api.API interface.
+func (API) RebuildState(ctx context.Context, s *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+	return nil, nil
+}
 
 func (API) QueryFramebufferAttachment(
 	ctx context.Context,

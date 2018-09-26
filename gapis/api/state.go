@@ -24,7 +24,6 @@ import (
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/database"
@@ -85,12 +84,6 @@ type State interface {
 	// It can fill in any derived data which we choose not to serialize,
 	// or it can apply backward-compatibility fixes for older traces.
 	SetupInitialState(ctx context.Context, g *GlobalState)
-
-	// RebuildState returns a set of commands which, if executed
-	// on a clean new state, will reproduce the current state.
-	// The segments of memory that were used to create these commands
-	// are returned in the rangeList.
-	RebuildState(ctx context.Context, s *GlobalState) ([]Cmd, interval.U64RangeList)
 
 	// InitializeCustomState initializes any custom state on this object
 	InitializeCustomState()

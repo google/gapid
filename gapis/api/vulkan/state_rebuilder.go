@@ -125,9 +125,20 @@ func (s *State) newStateBuilder(ctx context.Context, out stateBuilderOutput) *st
 	}
 }
 
-// TODO: wherever possible, use old resources instead of doing full reads on the old pools.
-//       This is especially useful for things that are internal pools, (Shader words for example)
-func (s *State) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+// RebuildState returns a set of commands which, if executed on a new clean
+// state, will reproduce the API's state in s.
+// The segments of memory that were used to create these commands are returned
+// in the rangeList.
+func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+	s, hasState := oldState.APIs[ID].(*State)
+	if !hasState {
+		return nil, nil
+	}
+
+	// TODO: wherever possible, use old resources instead of doing full reads on
+	// the old pools. This is especially useful for things that are internal
+	// pools, (Shader words for example)
+
 	// TODO: Debug Info
 	out := newInitialStateOutput(oldState)
 	sb := s.newStateBuilder(ctx, out)
