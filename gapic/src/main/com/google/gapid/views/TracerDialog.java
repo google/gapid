@@ -20,6 +20,7 @@ import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.withIndents;
@@ -71,6 +72,7 @@ import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
@@ -226,23 +228,23 @@ public class TracerDialog {
 
       private List<DeviceCaptureInfo> devices;
 
-      private ComboViewer device;
-      private LoadingIndicator.Widget deviceLoader;
-      private ComboViewer api;
-      private ActionTextbox traceTarget;
-      private Text arguments;
-      private Text cwd;
-      private Text envVars;
-      private Spinner frameCount;
-      private Button fromBeginning;
-      private Button withoutBuffering;
-      private Button hideUnknownExtensions;
-      private Button clearCache;
-      private Button disablePcs;
+      private final ComboViewer device;
+      private final LoadingIndicator.Widget deviceLoader;
+      private final ComboViewer api;
+      private final ActionTextbox traceTarget;
+      private final Text arguments;
+      private final Text cwd;
+      private final Text envVars;
+      private final Spinner frameCount;
+      private final Button fromBeginning;
+      private final Button withoutBuffering;
+      private final Button hideUnknownExtensions;
+      private final Button clearCache;
+      private final Button disablePcs;
       private final FileTextbox.Directory directory;
       protected final Text file;
+      private final Label pcsWarning;
 
-      private Label pcsWarning;
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
@@ -367,6 +369,15 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
         pcsWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
         pcsWarning.setVisible(!models.settings.traceDisablePcs);
+
+        createLabel(this, "");
+        Link adbWarning = withLayoutData(
+            createLink(this, "Path to adb invalid/missing. " +
+                "To trace on Android, please fix it in the <a>preferences</a>.",
+                e -> SettingsDialog.showSettingsDialog(getShell(), models, widgets.theme)),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
+        adbWarning.setVisible(models.settings.isAdbInvalid());
 
         device.getCombo().addListener(
             SWT.Selection, e -> update(models.settings, getSelectedDevice()));
