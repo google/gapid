@@ -67,6 +67,14 @@ struct Maker<const void*, true> {
   static inline void inplace_new(void** ptr, core::Arena* a) { *ptr = nullptr; }
 };
 
+// Special case for bool, because std::is_constructible<bool, core::Arena*>
+// is true, but without an arg, we want it to return false.
+template <>
+struct Maker<bool, true> {
+  static inline bool make(core::Arena* a) { return false; }
+  static inline void inplace_new(bool* ptr, core::Arena* a) { *ptr = false; }
+};
+
 // make returns a T constructed by the list of args.
 // If T has a core::Arena* as the first constructor parameter then a is
 // prepended to the list of arguments.
