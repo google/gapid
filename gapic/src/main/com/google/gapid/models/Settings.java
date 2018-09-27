@@ -34,6 +34,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -162,6 +166,19 @@ public class Settings {
       analyticsClientId = UUID.randomUUID().toString();
     } else if (!enabled && analyticsEnabled()) {
       analyticsClientId = "";
+    }
+  }
+
+  public boolean isAdbInvalid() {
+    if (adb.isEmpty()) {
+      return true;
+    }
+
+    try {
+      Path path = FileSystems.getDefault().getPath(adb);
+      return !Files.isRegularFile(path) || !Files.isExecutable(path);
+    } catch (InvalidPathException e) {
+      return true;
     }
   }
 
