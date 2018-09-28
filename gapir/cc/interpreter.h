@@ -191,6 +191,9 @@ class Interpreter {
 
   // The thread pool used to interpret on different threads.
   ThreadPool mThreadPool;
+
+  // The number of API calls made thus far.
+  uint32_t mNumApiCallsMade;
 };
 
 inline bool Interpreter::isConstantAddressForType(const void* address,
