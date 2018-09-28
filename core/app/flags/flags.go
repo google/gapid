@@ -141,42 +141,50 @@ func (s *Set) Bind(name string, value interface{}, help string) {
 		return
 	}
 	rv := reflect.ValueOf(value)
-	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
-		panic(fmt.Sprintf("Unhandled flag type : %v", rv.Type()))
+
+	if rv.Kind() != reflect.Ptr {
+		panic(fmt.Sprint("Flag value not a pointer: %v", rv.Type()))
 	}
-	e := rv.Elem()
-	t := e.Type()
-	for i := 0; i < e.NumField(); i++ {
-		tf := t.Field(i)
-		if tf.PkgPath != "" {
-			continue // Unexported.
+
+	switch e := rv.Elem(); e.Kind() {
+	case reflect.Slice:
+		s.Raw.Var(newRepeatedFlag(e), name, help)
+	case reflect.Struct:
+		t := e.Type()
+		for i := 0; i < e.NumField(); i++ {
+			tf := t.Field(i)
+			if tf.PkgPath != "" {
+				continue // Unexported.
+			}
+			field := e.Field(i)
+			if !field.CanSet() {
+				panic(fmt.Sprintf("Unsettable field %q : %v", tf.Name, field.Type()))
+			}
+			tags := tf.Tag
+			fname := strings.ToLower(tf.Name)
+			fullname := tags.Get("fullname")
+			partialname := tags.Get("name")
+			usage := tags.Get("help")
+			if tf.Anonymous {
+				fname = ""
+			}
+			if partialname != "" {
+				fname = partialname
+			}
+			switch {
+			case fullname != "":
+				// all done
+			case fname == "":
+				fullname = name
+			case name == "":
+				fullname = fname
+			default:
+				fullname = name + "-" + fname
+			}
+			s.Bind(fullname, field.Addr().Interface(), usage)
 		}
-		field := e.Field(i)
-		if !field.CanSet() {
-			panic(fmt.Sprintf("Unsettable field %q : %v", tf.Name, field.Type()))
-		}
-		tags := tf.Tag
-		fname := strings.ToLower(tf.Name)
-		fullname := tags.Get("fullname")
-		partialname := tags.Get("name")
-		usage := tags.Get("help")
-		if tf.Anonymous {
-			fname = ""
-		}
-		if partialname != "" {
-			fname = partialname
-		}
-		switch {
-		case fullname != "":
-			// all done
-		case fname == "":
-			fullname = name
-		case name == "":
-			fullname = fname
-		default:
-			fullname = name + "-" + fname
-		}
-		s.Bind(fullname, field.Addr().Interface(), usage)
+	default:
+		panic(fmt.Sprintf("Unhandled flag type: %v", rv.Type()))
 	}
 }
 
