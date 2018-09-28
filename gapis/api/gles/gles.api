@@ -740,7 +740,7 @@ sub void ApplyStaticContextState(ref!Context ctx, ref!StaticContextState staticS
   }
 }
 
-sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynamicState) {
+sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynamicState, bool resetViewportScissor) {
   if (dynamicState != null) {
     backbuffer := ctx.Objects.Framebuffers[0]
 
@@ -762,7 +762,7 @@ sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynam
       SizedFormat: dynamicState.BackbufferStencilFmt,
     )
 
-    if dynamicState.ResetViewportScissor {
+    if resetViewportScissor {
       ctx.Pixel.Scissor.Box.Width = dynamicState.BackbufferWidth
       ctx.Pixel.Scissor.Box.Height = dynamicState.BackbufferHeight
       ctx.Rasterization.Viewport.Width = dynamicState.BackbufferWidth

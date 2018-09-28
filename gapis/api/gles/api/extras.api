@@ -30,7 +30,6 @@ class DynamicContextState {
   GLenum  BackbufferColorFmt
   GLenum  BackbufferDepthFmt
   GLenum  BackbufferStencilFmt
-  bool    ResetViewportScissor
   bool    PreserveBuffersOnSwap
   // TODO: Currently unused
   @unused GLuint RedSize

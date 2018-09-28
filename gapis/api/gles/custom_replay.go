@@ -285,7 +285,6 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 			return err
 		}
 	}
-	resetViewportScissor := false
 	if cs := FindDynamicContextState(s.Arena, ω.Extras()); !cs.IsNil() {
 		cmd := cb.ReplayChangeBackbuffer(
 			ctxID,
@@ -298,9 +297,8 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 		if err := cmd.Mutate(ctx, id, s, b, nil); err != nil {
 			return err
 		}
-		resetViewportScissor = cs.ResetViewportScissor()
 	}
-	if err := cb.ReplayBindRenderer(ctxID, resetViewportScissor).Mutate(ctx, id, s, b, nil); err != nil {
+	if err := cb.ReplayBindRenderer(ctxID, false).Mutate(ctx, id, s, b, nil); err != nil {
 		return err
 	}
 	return nil

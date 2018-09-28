@@ -417,13 +417,11 @@ gapil::Ref<DynamicContextState> GlesSpy::GetEGLDynamicContextState(
         display, context);
   }
 
-  bool resetViewportScissor = true;
   bool preserveBuffersOnSwap = swapBehavior == EGL_BUFFER_PRESERVED;
 
   auto out = gapil::Ref<DynamicContextState>::create(
       arena(), width, height, backbufferColorFmt, backbufferDepthFmt,
-      backbufferStencilFmt, resetViewportScissor, preserveBuffersOnSwap, r, g,
-      b, a, d, s);
+      backbufferStencilFmt, preserveBuffersOnSwap, r, g, b, a, d, s);
 
   // Store the DynamicContextState as an extra.
   observer->encode(*out.get());
