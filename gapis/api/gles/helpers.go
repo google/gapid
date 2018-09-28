@@ -224,8 +224,7 @@ func NewDynamicContextStateForTest(a arena.Arena, width, height int, preserveBuf
 		GLenum_GL_RGB565,            //   BackbufferColorFmt
 		GLenum_GL_DEPTH_COMPONENT16, //   BackbufferDepthFmt
 		GLenum_GL_STENCIL_INDEX8,    //   BackbufferStencilFmt
-		true, //     ResetViewportScissor
-		preserveBuffersOnSwap, //     PreserveBuffersOnSwap
+		preserveBuffersOnSwap,       //     PreserveBuffersOnSwap
 		0, // RedSize
 		0, // GreenSize
 		0, // BlueSize

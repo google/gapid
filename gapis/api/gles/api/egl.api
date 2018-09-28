@@ -282,8 +282,10 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
     SetContext(ctx)
     if !ctx.Other.Initialized {
       ApplyStaticContextState(ctx, GetEGLStaticContextState(display, context))
+      ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context), true)
+    } else {
+      ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context), false)
     }
-    ApplyDynamicContextState(ctx, GetEGLDynamicContextState(display, draw, context))
   } else {
     dynamicState := GetEGLDynamicContextState(display, draw, context)
     staticState := GetEGLStaticContextState(display, context)
@@ -300,7 +302,7 @@ cmd EGLBoolean eglMakeCurrent(EGLDisplay display,
       // ApplyDynamicContextState() so SetContext() must be set before these
       // calls.
       ApplyStaticContextState(ctx, staticState)
-      ApplyDynamicContextState(ctx, dynamicState)
+      ApplyDynamicContextState(ctx, dynamicState, false)
     } else {
       // TODO: onEGLError(EGL_BAD_CONTEXT)
       _ = newMsg(SEVERITY_ERROR, new!ERR_CONTEXT_DOES_NOT_EXIST(id: as!u64(context)))
