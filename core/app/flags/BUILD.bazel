@@ -20,6 +20,7 @@ go_library(
         "choices.go",
         "doc.go",
         "flags.go",
+        "repeated.go",
         "strings.go",
     ],
     importpath = "github.com/google/gapid/core/app/flags",
@@ -29,7 +30,10 @@ go_library(
 go_test(
     name = "go_default_test",
     size = "small",
-    srcs = ["choices_test.go"],
+    srcs = [
+        "choices_test.go",
+        "repeated_test.go",
+    ],
     embed = [":go_default_library"],
     deps = ["//core/assert:go_default_library"],
 )
