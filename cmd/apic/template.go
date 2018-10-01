@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/gapil/resolver"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/app/flags"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapil/template"
@@ -46,7 +45,7 @@ type templateVerb struct {
 	Dir        string        `help:"The output directory"`
 	Tracer     string        `help:"The template function trace expression"`
 	Gopath     string        `help:"the go path to use when looking up packages"`
-	GlobalList flags.Strings `help:"A global value setting for the template"`
+	GlobalList []string      `help:"A global value setting for the template"`
 	Search     file.PathList `help:"The set of paths to search for includes"`
 }
 
@@ -76,7 +75,7 @@ func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		Dir:     v.Dir,
 		APIFile: api.Name(),
 		Loader:  ioutil.ReadFile,
-		Globals: v.GlobalList.Strings(),
+		Globals: v.GlobalList,
 		Tracer:  v.Tracer,
 	}
 	f, err := template.NewFunctions(ctx, api, mappings, options)

@@ -16,19 +16,7 @@ package flags
 
 import (
 	"net/url"
-	"strings"
 )
-
-// Strings implements flag.Value for lists of strings.
-type Strings []string
-
-func (f *Strings) String() string    { return strings.Join(f.Strings(), ":") }
-func (f *Strings) Strings() []string { return ([]string)(*f) }
-
-func (f *Strings) Set(value string) error {
-	*f = append(*f, value)
-	return nil
-}
 
 // URL implements flag.Value for a url.URL flag.
 type URL struct {
