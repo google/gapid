@@ -29,7 +29,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//core/app:go_default_library",
-        "//core/app/flags:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/file:go_default_library",
