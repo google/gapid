@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
@@ -39,8 +40,8 @@ type screenshotVerb struct{ ScreenshotFlags }
 func init() {
 	verb := &screenshotVerb{
 		ScreenshotFlags{
-			At:    flags.U64Slice{},
-			Frame: -1,
+			At:    []flags.U64Slice{},
+			Frame: []int64{},
 			Out:   "screenshot.png",
 			NoOpt: false,
 		},
@@ -80,22 +81,55 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
-	var command *path.Command
+	var commands []*path.Command
 	if len(verb.At) > 0 {
-		command = capture.Command(verb.At[0], verb.At[1:]...)
+		for _, at := range verb.At {
+			commands = append(commands, capture.Command(at[0], at[1:]...))
+		}
 	} else {
-		var err error
-		command, err = verb.frameCommand(ctx, capture, client)
+		commands, err = verb.frameCommands(ctx, capture, client)
 		if err != nil {
 			return err
 		}
 	}
 
-	if frame, err := verb.getSingleFrame(ctx, command, device, client); err == nil {
-		return verb.writeSingleFrame(flipImg(frame), verb.Out)
-	} else {
-		return err
+	// Submit requests in parallel, so that gapis will batch them.
+	var wg sync.WaitGroup
+	c := make(chan error)
+	multi := len(commands) > 1
+	for idx, command := range commands {
+		wg.Add(1)
+		go func(idx int, command *path.Command) {
+			defer wg.Done()
+
+			var err error
+			if frame, err := verb.getSingleFrame(ctx, command, device, client); err == nil {
+				err = verb.writeSingleFrame(flipImg(frame), formatOut(verb.Out, idx, multi))
+			}
+			c <- err
+		}(idx, command)
 	}
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
+	for err := range c {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func formatOut(out string, idx int, multi bool) string {
+	if strings.Contains(out, "%d") {
+		return fmt.Sprintf(out, idx)
+	} else if !multi {
+		return out
+	} else if p := strings.LastIndex(out, "."); p != -1 {
+		return fmt.Sprintf("%s_%d%s", out[:p], idx, out[p:])
+	}
+	return fmt.Sprintf("%s_%d", out, idx)
 
 }
 
@@ -165,7 +199,7 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 	}, nil
 }
 
-func (verb *screenshotVerb) frameCommand(ctx context.Context, capture *path.Capture, client service.Service) (*path.Command, error) {
+func (verb *screenshotVerb) frameCommands(ctx context.Context, capture *path.Capture, client service.Service) ([]*path.Command, error) {
 	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Couldn't get filter")
@@ -183,11 +217,18 @@ func (verb *screenshotVerb) frameCommand(ctx context.Context, capture *path.Capt
 		return nil, log.Err(ctx, err, "Couldn't get frame events")
 	}
 
-	if verb.Frame == -1 {
-		verb.Frame = int64(len(eofEvents)) - 1
+	if len(verb.Frame) == 0 {
+		verb.Frame = []int64{-1}
 	}
-	fmt.Printf("Frame Command: %v\n", eofEvents[verb.Frame].Command.GetIndices())
-	return eofEvents[verb.Frame].Command, nil
+
+	var commands []*path.Command
+	for _, frame := range verb.Frame {
+		if frame == -1 {
+			frame = int64(len(eofEvents)) - 1
+		}
+		commands = append(commands, eofEvents[frame].Command)
+	}
+	return commands, nil
 }
 
 // rescaleBytes scales the values in `data` from [0, `max`] to [0, 255].  If

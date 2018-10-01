@@ -252,12 +252,12 @@ type (
 	ScreenshotFlags struct {
 		Gapis      GapisFlags
 		Gapir      GapirFlags
-		At         flags.U64Slice `help:"command/subcommand index for the screenshot"`
-		Frame      int64          `help:"frame index for the screenshot. Empty for last"`
-		Out        string         `help:"output image file (default 'screenshot.png')"`
-		NoOpt      bool           `help:"disables optimization of the replay stream"`
-		Attachment string         `help:"the attachment to show (0-3 for color, d for depth, s for stencil)"`
-		Overdraw   bool           `help:"renders the overdraw instead of the color framebuffer"`
+		At         []flags.U64Slice `help:"command/subcommand index for the screenshot (repeatable)"`
+		Frame      []int64          `help:"frame index for the screenshot (repeatable). Empty for last"`
+		Out        string           `help:"output image file (default 'screenshot.png')"`
+		NoOpt      bool             `help:"disables optimization of the replay stream"`
+		Attachment string           `help:"the attachment to show (0-3 for color, d for depth, s for stencil)"`
+		Overdraw   bool             `help:"renders the overdraw instead of the color framebuffer"`
 		Max        struct {
 			Overdraw int `help:"the amount of overdraw to map to white in the output"`
 		}
