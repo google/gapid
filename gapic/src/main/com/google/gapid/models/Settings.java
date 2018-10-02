@@ -169,17 +169,32 @@ public class Settings {
     }
   }
 
-  public boolean isAdbInvalid() {
+  public boolean isAdbValid() {
+    return checkAdbIsValid(adb) == null;
+  }
+
+  /**
+   * Returns an error message if adb is invalid or {@code null} if it is valid.
+   */
+  public static String checkAdbIsValid(String adb) {
     if (adb.isEmpty()) {
-      return true;
+      return "path is missing";
     }
 
     try {
       Path path = FileSystems.getDefault().getPath(adb);
-      return !Files.isRegularFile(path) || !Files.isExecutable(path);
+      if (!Files.exists(path)) {
+        return "path does not exist";
+      } else if (!Files.isRegularFile(path)) {
+        return "path is not a file";
+      } else if (!Files.isExecutable(path)) {
+        return "path is not an executable";
+      }
     } catch (InvalidPathException e) {
-      return true;
+      return "path is invalid: " + e.getReason();
     }
+
+    return null;
   }
 
   private void updateFrom(Properties properties) {
