@@ -26,20 +26,16 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
-import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
-import static com.google.gapid.widgets.Widgets.withMargin;
-import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.ClientAction;
+import com.google.gapid.server.Client;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
-import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
-import com.google.gapid.server.Client;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
@@ -50,7 +46,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Menu;
@@ -88,10 +83,7 @@ public class WelcomeDialog {
   public static void showFirstTimeDialog(
       Shell shell, Models models, Widgets widgets, Runnable next) {
     new WelcomeDialogBase(shell, widgets.theme) {
-      private FileTextbox adbPath;
-      private Button allowAnalytics;
-      private Button allowCrashReports;
-      private Button allowUpdateChecks;
+      private SettingsDialog.SettingsFormBase form;
 
       @Override
       protected Control createDialogArea(Composite parent) {
@@ -99,31 +91,9 @@ public class WelcomeDialog {
           createLabel(c, Messages.WELCOME_TEXT)
               .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-          Composite form = withLayoutData(
-              createComposite(c, withMargin(new GridLayout(2, false), 0, 10)),
+          form = withLayoutData(new SettingsDialog.SettingsFormBase(models, c, 0, 10),
               new GridData(SWT.FILL, SWT.FILL, true, true));
-          createLabel(form, "Path to adb:");
-          adbPath = withLayoutData(new FileTextbox.File(form, models.settings.adb) {
-            @Override
-            protected void configureDialog(FileDialog dialog) {
-              dialog.setText("Path to adb:");
-            }
-          }, new GridData(SWT.FILL, SWT.FILL, true, false));
-
-          allowAnalytics = withLayoutData(
-              createCheckbox(form, Messages.ANALYTICS_OPTION, true),
-              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
-          allowCrashReports = withLayoutData(
-              createCheckbox(form, Messages.CRASH_REPORTING_OPTION, true),
-              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
-          allowUpdateChecks = withLayoutData(
-              createCheckbox(form, Messages.UPDATE_CHECK_OPTION, true),
-              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
-          withLayoutData(
-              createLink(form, Messages.PRIVACY_POLICY, WelcomeDialog::showPolicy),
-              withIndents(
-                  withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
-        });
+         });
       }
 
       @Override
@@ -134,12 +104,7 @@ public class WelcomeDialog {
       @Override
       protected void okPressed() {
         models.settings.skipFirstRunDialog = true;
-        models.settings.adb = adbPath.getText();
-        models.settings.setAnalyticsEnabled(allowAnalytics.getSelection());
-        models.settings.reportCrashes = allowCrashReports.getSelection();
-        models.settings.autoCheckForUpdates = allowUpdateChecks.getSelection();
-        models.settings.save();
-        models.settings.onChange();
+        form.save();
 
         super.okPressed();
         next.run();

@@ -450,27 +450,6 @@ message ClientInteraction {
   ClientAction action = 2;
 };
 
-message EnableCrashReportingRequest {
-  // Enables or disable anonymous crash reporting.
-  // This will override the -crashreport command line flag.
-  bool enable = 1;
-}
-
-message EnableCrashReportingResponse {
-}
-
-message EnableAnalyticsRequest {
-  // Enables or disable anonymous analytics reporting.
-  // This will override the -analytics command line flag.
-  bool enable = 1;
-  // The client identifier to use for analytics reporting.
-  // This will override the -analytics command line flag.
-  string client_id = 2;
-}
-
-message EnableAnalyticsResponse {
-}
-
 message ClientEventRequest {
   oneof kind {
     ClientInteraction interaction = 1;
@@ -478,6 +457,28 @@ message ClientEventRequest {
 }
 
 message ClientEventResponse {
+}
+
+message UpdateSettingsRequest {
+  // Enables or disable anonymous crash reporting.
+  // This will override the -crashreport command line flag.
+  bool enable_crash_reporting = 1;
+
+  // Enables or disable anonymous analytics reporting.
+  // This will override the -analytics command line flag.
+  bool enable_analytics = 2;
+
+  // The client identifier to use for analytics reporting.
+  // This will override the -analytics command line flag.
+  string client_id = 3;
+
+  // The path to the adb executable to use.
+  // This will override the -adb command line flag.
+  string adb = 4;
+}
+
+message UpdateSettingsResponse {
+  Error error = 1;
 }
 
 // Gapid is the RPC service to the GAPIS server.
@@ -587,16 +588,6 @@ service Gapid {
   rpc Find(FindRequest) returns (stream FindResponse) {
   }
 
-  // EnableCrashReporting enables or disables crash reporting for this session.
-  rpc EnableCrashReporting(EnableCrashReportingRequest)
-      returns (EnableCrashReportingResponse) {
-  }
-
-  // EnableAnalytics enables or disables analytics reporting for this session.
-  rpc EnableAnalytics(EnableAnalyticsRequest)
-      returns (EnableAnalyticsResponse) {
-  }
-
   // ClientEvent records a client event action, used for analytics.
   // If the user has not opted-in for analytics then this call does nothing.
   rpc ClientEvent(ClientEventRequest) returns (ClientEventResponse) {
@@ -616,6 +607,10 @@ service Gapid {
   // Trace returns a steam that can be used to start and stop
   // a trace
   rpc Trace(stream TraceRequest) returns (stream TraceResponse) {
+  }
+
+  // Updates environment settings.
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
   }
 
   ///////////////////////////////////////////////////////////////

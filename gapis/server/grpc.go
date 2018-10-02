@@ -452,22 +452,13 @@ func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindSer
 	return s.handler.Find(s.bindCtx(ctx), req, server.Send)
 }
 
-func (s *grpcServer) EnableCrashReporting(ctx xctx.Context, req *service.EnableCrashReportingRequest) (*service.EnableCrashReportingResponse, error) {
-	defer s.inRPC()()
-	err := s.handler.EnableCrashReporting(s.bindCtx(ctx), req.Enable)
-	if err != nil {
-		return nil, err
+func (s *grpcServer) UpdateSettings(ctx xctx.Context, req *service.UpdateSettingsRequest) (*service.UpdateSettingsResponse, error) {
+	defer s.inRPC()
+	err := s.handler.UpdateSettings(s.bindCtx(ctx), req)
+	if err := service.NewError(err); err != nil {
+		return &service.UpdateSettingsResponse{Error: err}, nil
 	}
-	return &service.EnableCrashReportingResponse{}, nil
-}
-
-func (s *grpcServer) EnableAnalytics(ctx xctx.Context, req *service.EnableAnalyticsRequest) (*service.EnableAnalyticsResponse, error) {
-	defer s.inRPC()()
-	err := s.handler.EnableAnalytics(s.bindCtx(ctx), req.Enable, req.ClientId)
-	if err != nil {
-		return nil, err
-	}
-	return &service.EnableAnalyticsResponse{}, nil
+	return &service.UpdateSettingsResponse{}, nil
 }
 
 func (s *grpcServer) ClientEvent(ctx xctx.Context, req *service.ClientEventRequest) (*service.ClientEventResponse, error) {

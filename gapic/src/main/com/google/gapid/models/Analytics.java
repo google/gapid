@@ -39,42 +39,32 @@ public class Analytics implements ExceptionHandler {
   }
 
   private final Client client;
+  private final Settings settings;
   private final ExceptionHandler handler;
-  private boolean enabled;
-  private boolean reportCrashes;
 
   public Analytics(Client client, Settings settings, ExceptionHandler handler) {
     this.client = client;
+    this.settings = settings;
     this.handler = handler;
-    this.reportCrashes = settings.reportCrashes;
-    this.enabled = settings.analyticsEnabled();
-
-    settings.addListener(s -> update(s));
   }
 
   @Override
   public void reportException(Throwable thrown) {
-    if (reportCrashes) {
+    if (settings.reportCrashes) {
       handler.reportException(thrown);
     }
   }
 
   public void postInteraction(View view, Service.ClientAction action) {
     LOG.log(FINE, "Interaction {1} on {0}", new Object[] { view, action });
-    if (enabled) {
+    if (settings.analyticsEnabled()) {
       Rpc.listen(client.postEvent(interaction(view, action)), Analytics::logIfFailure);
     }
   }
 
-  private void update(Settings s) {
-    if (reportCrashes != s.reportCrashes) {
-      reportCrashes = s.reportCrashes;
-      Rpc.listen(client.setCrashReportsEnabled(reportCrashes), Analytics::logIfFailure);
-    }
-    if (enabled != s.analyticsEnabled()) {
-      enabled = s.analyticsEnabled();
-      Rpc.listen(client.setAnalyticsEnabled(enabled, s.analyticsClientId), Analytics::logIfFailure);
-    }
+  // TODO: Maybe find a better place for this...
+  public void updateSettings() {
+    Rpc.listen(settings.updateOnServer(client), Analytics::logIfFailure);
   }
 
   private static void logIfFailure(Rpc.Result<?> result) {

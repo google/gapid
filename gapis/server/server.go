@@ -38,7 +38,9 @@ import (
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
@@ -464,27 +466,6 @@ func (s *server) GetProfile(ctx context.Context, name string, debug int32) ([]by
 	return b.Bytes(), nil
 }
 
-func (s *server) EnableCrashReporting(ctx context.Context, enable bool) error {
-	if enable {
-		reporting.Enable(ctx, app.Name, app.Version.String())
-	} else {
-		reporting.Disable()
-	}
-	return nil
-}
-
-func (s *server) EnableAnalytics(ctx context.Context, enable bool, clientID string) error {
-	if enable {
-		analytics.Enable(ctx, clientID, analytics.AppVersion{
-			Name: app.Name, Build: app.Version.Build,
-			Major: app.Version.Major, Minor: app.Version.Minor, Point: app.Version.Point,
-		})
-	} else {
-		analytics.Disable()
-	}
-	return nil
-}
-
 func (s *server) ClientEvent(ctx context.Context, req *service.ClientEventRequest) error {
 	if i := req.GetInteraction(); i != nil {
 		analytics.SendEvent("client", i.View, i.Action.String())
@@ -673,4 +654,26 @@ func (s *server) Trace(ctx context.Context) (service.TraceHandler, error) {
 		doneSignal,
 		doneSigFunc,
 	}, nil
+}
+
+func (s *server) UpdateSettings(ctx context.Context, settings *service.UpdateSettingsRequest) error {
+	if settings.EnableAnalytics {
+		analytics.Enable(ctx, settings.ClientId, analytics.AppVersion{
+			Name: app.Name, Build: app.Version.Build,
+			Major: app.Version.Major, Minor: app.Version.Minor, Point: app.Version.Point,
+		})
+	} else {
+		analytics.Disable()
+	}
+
+	if settings.EnableCrashReporting {
+		reporting.Enable(ctx, app.Name, app.Version.String())
+	} else {
+		reporting.Disable()
+	}
+
+	if settings.Adb != "" {
+		adb.ADB = file.Abs(settings.Adb)
+	}
+	return nil
 }
