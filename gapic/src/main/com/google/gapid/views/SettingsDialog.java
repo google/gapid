@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
@@ -39,6 +40,8 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 
 /**
@@ -134,10 +137,25 @@ public class SettingsDialog extends DialogBase {
       allowUpdateChecks = withLayoutData(
           createCheckbox(this, Messages.UPDATE_CHECK_OPTION, true),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+      Label adbWarning = withLayoutData(createLabel(this, ""),
+          withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
+      adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
       withLayoutData(
           createLink(this, Messages.PRIVACY_POLICY, WelcomeDialog::showPolicy),
           withIndents(
               withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
+
+      Listener adbListener = e -> {
+        String error = Settings.checkAdbIsValid(adbPath.getText().trim());
+        if (error == null) {
+          adbWarning.setVisible(false);
+        } else {
+          adbWarning.setText("Path to adb is invalid. Please fix for Android support: " + error);
+          adbWarning.setVisible(true);
+        }
+      };
+      adbPath.addBoxListener(SWT.Modify, adbListener);
+      adbListener.handleEvent(null);
     }
 
     protected void beforeAnalytics() {

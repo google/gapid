@@ -377,7 +377,7 @@ public class TracerDialog {
                 e -> SettingsDialog.showSettingsDialog(getShell(), models, widgets.theme)),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
-        adbWarning.setVisible(models.settings.isAdbInvalid());
+        adbWarning.setVisible(!models.settings.isAdbValid());
 
         device.getCombo().addListener(
             SWT.Selection, e -> update(models.settings, getSelectedDevice()));
