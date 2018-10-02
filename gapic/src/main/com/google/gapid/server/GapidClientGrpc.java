@@ -25,13 +25,11 @@ import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientEventRequest;
 import com.google.gapid.proto.service.Service.ClientEventResponse;
-import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
-import com.google.gapid.proto.service.Service.EnableAnalyticsResponse;
-import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
-import com.google.gapid.proto.service.Service.EnableCrashReportingResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
 import com.google.gapid.proto.service.Service.TraceTargetTreeNodeRequest;
 import com.google.gapid.proto.service.Service.TraceTargetTreeNodeResponse;
+import com.google.gapid.proto.service.Service.UpdateSettingsRequest;
+import com.google.gapid.proto.service.Service.UpdateSettingsResponse;
 
 import java.util.function.Consumer;
 
@@ -149,17 +147,6 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
-  public ListenableFuture<EnableCrashReportingResponse> enableCrashReporting(
-      EnableCrashReportingRequest request) {
-    return client.enableCrashReporting(request);
-  }
-
-  @Override
-  public ListenableFuture<EnableAnalyticsResponse> enableAnalytics(EnableAnalyticsRequest request) {
-    return client.enableAnalytics(request);
-  }
-
-  @Override
   public ListenableFuture<ClientEventResponse> postClientEvent(ClientEventRequest request) {
     return client.clientEvent(request);
   }
@@ -170,6 +157,10 @@ public class GapidClientGrpc implements GapidClient {
     return client.traceTargetTreeNode(request);
   }
 
+  @Override
+  public ListenableFuture<UpdateSettingsResponse> updateSettings(UpdateSettingsRequest request) {
+    return client.updateSettings(request);
+  }
 
   @Override
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {

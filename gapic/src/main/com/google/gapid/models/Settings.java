@@ -21,8 +21,9 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.StreamSupport.stream;
 
 import com.google.common.base.Splitter;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
-import com.google.gapid.util.Events;
 import com.google.gapid.util.OS;
 
 import org.eclipse.swt.graphics.Point;
@@ -47,11 +48,6 @@ public class Settings {
   private static final Logger LOG = Logger.getLogger(Settings.class.getName());
   private static final String SETTINGS_FILE = ".gapic";
   private static final int MAX_RECENT_FILES = 16;
-  private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
-
-  public interface Listener extends Events.Listener {
-    void onSettingsChanged(Settings settings);
-  }
 
   public Point windowLocation = null;
   public Point windowSize = null;
@@ -91,27 +87,6 @@ public class Settings {
   public boolean disableReplayOptimization = false;
   public boolean reportCrashes = false;
 
-  /**
-   * Registers the listener for changes.
-   */
-  public void addListener(Listener listener) {
-    listeners.addListener(listener);
-  }
-
-  /**
-   * Removes the listener for changes.
-   */
-  public void removeListener(Listener listener) {
-    listeners.removeListener(listener);
-  }
-
-  /**
-   * Call when settings are changed.
-   */
-  public void onChange() {
-    listeners.fire().onSettingsChanged(this);
-  }
-
   public static Settings load() {
     Settings result = new Settings();
 
@@ -138,6 +113,10 @@ public class Settings {
     } catch (IOException e) {
       LOG.log(FINE, "IO error writing properties to " + file, e);
     }
+  }
+
+  public ListenableFuture<Void> updateOnServer(Client client) {
+    return client.updateSettings(reportCrashes, analyticsEnabled(), analyticsClientId, adb);
   }
 
   public void addToRecent(String file) {

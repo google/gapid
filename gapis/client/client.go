@@ -368,21 +368,6 @@ func (c *client) Find(ctx context.Context, req *service.FindRequest, handler ser
 	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
 }
 
-func (c *client) EnableCrashReporting(ctx context.Context, enable bool) error {
-	_, err := c.client.EnableCrashReporting(ctx, &service.EnableCrashReportingRequest{
-		Enable: enable,
-	})
-	return err
-}
-
-func (c *client) EnableAnalytics(ctx context.Context, enable bool, clientID string) error {
-	_, err := c.client.EnableAnalytics(ctx, &service.EnableAnalyticsRequest{
-		Enable:   enable,
-		ClientId: clientID,
-	})
-	return err
-}
-
 func (c *client) ClientEvent(ctx context.Context, req *service.ClientEventRequest) error {
 	_, err := c.client.ClientEvent(ctx, req)
 	return err
@@ -475,4 +460,15 @@ func (c *client) DCECapture(ctx context.Context, capture *path.Capture, commands
 		return nil, err.Get()
 	}
 	return res.GetCapture(), nil
+}
+
+func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettingsRequest) error {
+	res, err := c.client.UpdateSettings(ctx, req)
+	if err != nil {
+		return err
+	}
+	if err := res.GetError(); err != nil {
+		return err.Get()
+	}
+	return nil
 }

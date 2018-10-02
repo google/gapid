@@ -28,8 +28,6 @@ import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CheckForUpdatesRequest;
 import com.google.gapid.proto.service.Service.ClientEventRequest;
-import com.google.gapid.proto.service.Service.EnableAnalyticsRequest;
-import com.google.gapid.proto.service.Service.EnableCrashReportingRequest;
 import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
@@ -209,25 +207,6 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getImage(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Void> setCrashReportsEnabled(boolean enabled) {
-    return call(() -> String.format("RPC->setCrashReportsEnabled(%b)", enabled),
-        stack -> Futures.transform(
-            client.enableCrashReporting(EnableCrashReportingRequest.newBuilder()
-                .setEnable(enabled)
-                .build()),
-            in -> null));
-  }
-
-  public ListenableFuture<Void> setAnalyticsEnabled(boolean enabled, String clientId) {
-    return call(() -> String.format("RPC->setAnalyticsEnabled(%b, %s)", enabled, clientId),
-        stack -> Futures.transform(
-            client.enableAnalytics(EnableAnalyticsRequest.newBuilder()
-                .setEnable(enabled)
-                .setClientId(enabled ? clientId : "")
-                .build()),
-            in -> null));
-  }
-
   public ListenableFuture<Void> postEvent(Service.ClientInteraction interaction) {
     return call(() -> String.format("RPC->postClientEvent(%s)", shortDebugString(interaction)),
         stack -> Futures.transform(
@@ -248,6 +227,21 @@ public class Client {
                 .setDensity(density)
                 .build()),
             in -> immediateFuture(throwIfError(in.getNode(), in.getError(), stack))));
+  }
+
+  public ListenableFuture<Void> updateSettings(
+      boolean crashReporting, boolean analytics, String clientId, String adb) {
+    return call(() -> String.format(
+        "RPC->updateSettings(%b, %b, %s, %s)", crashReporting, analytics, clientId, adb),
+        stack -> Futures.transformAsync(
+            client.updateSettings(Service.UpdateSettingsRequest.newBuilder()
+                .setEnableCrashReporting(crashReporting)
+                .setEnableAnalytics(analytics)
+                .setClientId(clientId)
+                .setAdb(adb)
+                .build()),
+            in -> immediateFuture(throwIfError(null, in.getError(), stack))));
+
   }
 
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
