@@ -41,7 +41,7 @@ func init() {
 	verb := &screenshotVerb{
 		ScreenshotFlags{
 			At:    []flags.U64Slice{},
-			Frame: []int64{},
+			Frame: []int{},
 			Out:   "screenshot.png",
 			NoOpt: false,
 		},
@@ -208,25 +208,48 @@ func (verb *screenshotVerb) frameCommands(ctx context.Context, capture *path.Cap
 	requestEvents := path.Events{
 		Capture:     capture,
 		LastInFrame: true,
+		DrawCalls:   verb.Draws,
 		Filter:      filter,
 	}
 
-	// Get the end-of-frame events.
-	eofEvents, err := getEvents(ctx, client, &requestEvents)
+	// Get the end-of-frame and possibly draw call events.
+	events, err := getEvents(ctx, client, &requestEvents)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Couldn't get frame events")
 	}
 
+	// Compute an index of frame to event idx.
+	frameIdx := map[int]int{}
+	lastFrame := 0
+	for i, e := range events {
+		if e.Kind == service.EventKind_LastInFrame {
+			lastFrame++
+			frameIdx[lastFrame] = i
+		}
+	}
+
 	if len(verb.Frame) == 0 {
-		verb.Frame = []int64{-1}
+		verb.Frame = []int{lastFrame}
 	}
 
 	var commands []*path.Command
 	for _, frame := range verb.Frame {
-		if frame == -1 {
-			frame = int64(len(eofEvents)) - 1
+		last, ok := frameIdx[frame]
+		if !ok {
+			return nil, fmt.Errorf("Invalid frame number %d (last frame is %d)", frame, lastFrame)
 		}
-		commands = append(commands, eofEvents[frame].Command)
+
+		first := last
+		if verb.Draws {
+			if frame == 1 {
+				first = 0
+			} else {
+				first = frameIdx[frame-1]
+			}
+		}
+		for idx := first; idx <= last; idx++ {
+			commands = append(commands, events[idx].Command)
+		}
 	}
 	return commands, nil
 }

@@ -253,7 +253,8 @@ type (
 		Gapis      GapisFlags
 		Gapir      GapirFlags
 		At         []flags.U64Slice `help:"command/subcommand index for the screenshot (repeatable)"`
-		Frame      []int64          `help:"frame index for the screenshot (repeatable). Empty for last"`
+		Frame      []int            `help:"frame index for the screenshot (repeatable). Empty for last"`
+		Draws      bool             `help:"create a screenshot of every draw call in the requested frame(s) (only honored if using -frame)"`
 		Out        string           `help:"output image file (default 'screenshot.png')"`
 		NoOpt      bool             `help:"disables optimization of the replay stream"`
 		Attachment string           `help:"the attachment to show (0-3 for color, d for depth, s for stencil)"`
