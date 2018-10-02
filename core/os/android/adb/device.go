@@ -36,6 +36,8 @@ const (
 	ErrInvalidDeviceList = fault.Const("Could not parse device list")
 	// ErrInvalidStatus May be returned if the status string is not a known status.
 	ErrInvalidStatus = fault.Const("Invalid status string")
+	// Frequency at which to print scan errors.
+	printScanErrorsEveryNSeconds = 120
 )
 
 var (
@@ -75,10 +77,17 @@ func Monitor(ctx context.Context, r *bind.Registry, interval time.Duration) erro
 		r.AddDevice(ctx, d)
 	}
 
+	var lastErrorPrinted time.Time
 	for {
 		if err := scanDevices(ctx); err != nil {
-			return log.Err(ctx, err, "Couldn't scan devices")
+			if time.Since(lastErrorPrinted).Seconds() > printScanErrorsEveryNSeconds {
+				log.E(ctx, "Couldn't scan devices: %v", err)
+				lastErrorPrinted = time.Now()
+			}
+		} else {
+			lastErrorPrinted = time.Time{}
 		}
+
 		select {
 		case <-task.ShouldStop(ctx):
 			return nil
