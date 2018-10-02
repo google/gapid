@@ -25,10 +25,9 @@ import (
 )
 
 type captureLog struct {
-	file         *os.File
-	header       *capture.Header
-	initialState *capture.InitialState
-	cmds         []api.Cmd
+	file   *os.File
+	header *capture.Header
+	cmds   []api.Cmd
 }
 
 var (
@@ -44,10 +43,9 @@ func NewCaptureLog(ctx context.Context, sourceCapture *capture.Capture, path str
 		return nil
 	}
 	return &captureLog{
-		file:         f,
-		header:       sourceCapture.Header,
-		initialState: sourceCapture.InitialState,
-		cmds:         []api.Cmd{},
+		file:   f,
+		header: sourceCapture.Header,
+		cmds:   []api.Cmd{},
 	}
 }
 
@@ -62,7 +60,7 @@ func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 func (t *captureLog) Flush(ctx context.Context, out Writer) {
 	a := arena.New()
 	defer a.Dispose()
-	capt, err := capture.New(ctx, a, "capturelog", t.header, t.initialState, t.cmds)
+	capt, err := capture.New(ctx, a, "capturelog", t.header, nil, t.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
 		return
