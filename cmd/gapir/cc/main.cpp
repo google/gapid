@@ -44,6 +44,10 @@
 #if TARGET_OS == GAPID_OS_ANDROID
 #include <sys/stat.h>
 #include "android_native_app_glue.h"
+#elif TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
+#include <dirent.h>
+#include <ftw.h>
+#include <sys/types.h>
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
 using namespace core;
@@ -63,6 +67,25 @@ std::vector<uint32_t> memorySizes {
       128 * 1024 * 1024U,       // 128MB
 };
 
+#if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
+std::string getTempOnDiskCachePath() {
+  const char* tmpDir = std::getenv("TMPDIR");
+  if (tmpDir == nullptr) {
+    GAPID_WARNING("$TMPDIR is null");
+    return "";
+  }
+  auto t = std::string(tmpDir) + "/gapir-cache.XXXXXX";
+  std::vector<char> v(t.begin(), t.end());
+  v.push_back('\0');
+  char* path = mkdtemp(v.data());
+  if (path == nullptr) {
+    GAPID_WARNING("Failed at creating temp dir");
+    return "";
+  }
+  return path;
+}
+#endif
+
 // Setup creates and starts a replay server at the given URI port. Returns the
 // created and started server.
 // Note the given memory manager and the crash handler, they may be used for
@@ -81,8 +104,13 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
                                           const std::string& replayId) {
         std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
 
-        auto resLoader = CachedResourceLoader::create(
-            cache, PassThroughResourceLoader::create(replayConn));
+        std::unique_ptr<ResourceLoader> resLoader;
+        if (cache == nullptr) {
+          resLoader = PassThroughResourceLoader::create(replayConn);
+        } else {
+          resLoader = CachedResourceLoader::create(
+              cache, PassThroughResourceLoader::create(replayConn));
+        }
 
         std::unique_ptr<CrashUploader> crash_uploader =
             std::unique_ptr<CrashUploader>(
@@ -95,7 +123,9 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
           GAPID_WARNING("Loading Context failed!");
           return;
         }
-        context->prefetch(resLoader->getCache());
+        if (cache != nullptr) {
+          context->prefetch(cache);
+        }
 
         GAPID_INFO("Replay started");
         bool ok = context->interpret();
@@ -190,6 +220,12 @@ void android_main(struct android_app* app) {
 namespace {
 
 struct Options {
+  struct OnDiskCache {
+    bool enabled = false;
+    bool cleanUp = false;
+    const char* path = "";
+  };
+
   int logLevel = LOG_LEVEL;
   const char* logPath = "logs/gapir.log";
 
@@ -208,6 +244,8 @@ struct Options {
   const char* replayArchive = nullptr;
   const char* postbackDirectory = "";
   bool version = false;
+
+  OnDiskCache onDiskCacheOptions;
 
   static Options Parse(int argc, const char* argv[]) {
     Options opts;
@@ -231,12 +269,17 @@ struct Options {
           GAPID_FATAL("Usage: --auth-token-file <token-string>");
         }
         opts.authTokenFile = argv[++i];
-      } else if (strcmp(argv[i], "--cache") == 0) {
+      } else if (strcmp(argv[i], "--enable-disk-cache") == 0) {
+        opts.SetMode(kReplayServer);
+        opts.onDiskCacheOptions.enabled = true;
+      } else if (strcmp(argv[i], "--disk-cache-path") == 0) {
         opts.SetMode(kReplayServer);
         if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --cache <cache-directory>");
+          GAPID_FATAL("Usage: --disk-cache-path <cache-directory>");
         }
-        opts.cachePath = argv[++i];
+        opts.onDiskCacheOptions.path = argv[++i];
+      } else if (strcmp(argv[i], "--cleanup-on-disk-cache") == 0) {
+        opts.onDiskCacheOptions.cleanUp = true;
       } else if (strcmp(argv[i], "--port") == 0) {
         opts.SetMode(kReplayServer);
         if (i + 1 >= argc) {
@@ -300,6 +343,86 @@ struct Options {
   }
 };
 
+// createCache constructs and returns a ResourceCache based on the given
+// onDiskCacheOpts. If on-disk cache is not enabled or not possible to create,
+// an in-memory cache will be built and returned. If on-disk cache is created
+// in a temporary directory or onDiskCacheOpts is specified to clear cache
+// files, a monitor process will be forked to delete the cache files when the
+// main GAPIR VM process ends.
+std::unique_ptr<ResourceCache> createCache(
+    const Options::OnDiskCache& onDiskCacheOpts, MemoryManager* memoryManager) {
+#if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
+  if (!onDiskCacheOpts.enabled) {
+    return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+  }
+  auto onDiskCachePath = std::string(onDiskCacheOpts.path);
+  bool cleanUpOnDiskCache = onDiskCacheOpts.cleanUp;
+  bool useTempCacheFolder = false;
+  if (onDiskCachePath.size() == 0) {
+    useTempCacheFolder = true;
+    cleanUpOnDiskCache = true;
+    onDiskCachePath = getTempOnDiskCachePath();
+  }
+  if (onDiskCachePath.size() == 0) {
+    GAPID_WARNING(
+        "No disk cache path specified and no $TMPDIR environment variable "
+        "defined for temporary on-disk cache, fallback to use in-memory "
+        "cache.");
+    return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+  }
+  auto onDiskCache =
+      OnDiskResourceCache::create(onDiskCachePath, cleanUpOnDiskCache);
+  if (onDiskCache == nullptr) {
+    GAPID_WARNING(
+        "On-disk cache creation failed, fallback to use in-memory cache");
+    return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+  }
+  GAPID_INFO("On-disk cache created at %s", onDiskCachePath.c_str());
+  if (cleanUpOnDiskCache || useTempCacheFolder) {
+    GAPID_INFO("On-disk cache files will be cleaned up when GAPIR ends");
+    if (fork() == 0) {
+      pid_t ppid = getppid();
+      while (!kill(ppid, 0)) {
+        // check every 500ms
+        usleep(500000);
+      }
+      DIR* dir = opendir(onDiskCachePath.c_str());
+      if (dir != nullptr) {
+        if (useTempCacheFolder) {
+          // Using temporary folder for cache files, delete both the files and
+          // the folder.
+          nftw(onDiskCachePath.c_str(),
+               [](const char* fpath, const struct stat* sb, int typeflag,
+                  struct FTW* ftwbuf) -> int {
+                 switch (typeflag) {
+                   case FTW_D:
+                     return rmdir(fpath);
+                   default:
+                     return unlink(fpath);
+                 }
+                 return 0;
+               },
+               64, FTW_DEPTH);
+          rmdir(onDiskCachePath.c_str());
+        } else {
+          // The OnDiskResourceCache must have been created with "clean up"
+          // enabled. Calling its destructor to delete the cache files.
+          onDiskCache.reset(nullptr);
+        }
+      }
+      exit(0);
+    }
+  }
+  return onDiskCache;
+#else   // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
+  if (onDiskCacheOpts.enabled) {
+    GAPID_WARNING(
+        "On-disk cache not supported, fallback to use in-memory cache");
+  }
+#endif  // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
+  // Just use the in-memory cache
+  return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+}
 }  // namespace
 
 static int replayArchive(Options opts) {
@@ -318,8 +441,6 @@ static int replayArchive(Options opts) {
   std::unique_ptr<Context> context = Context::create(
       &replayArchive, crashHandler, resLoader.get(), &memoryManager);
 
-  // All resouce data must be in the on-disk cache files now, no 'prefetch'
-  // call to the on-disk cache here.
   GAPID_INFO("Replay started");
   bool ok = context->interpret();
   GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
@@ -370,7 +491,7 @@ static int startServer(Options opts) {
   std::string uri =
       std::string(local_host_name) + std::string(":") + std::string(portStr);
 
-  auto cache = InMemoryResourceCache::create(memoryManager.getBaseAddress());
+  auto cache = createCache(opts.onDiskCacheOptions, &memoryManager);
 
   std::mutex lock;
   std::unique_ptr<Server> server = Setup(
