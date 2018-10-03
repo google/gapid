@@ -697,13 +697,18 @@ ImageData Reader::ReadTexture(const texture& tex, index idx, uint32_t format) {
       break;
     case GL_DEPTH24_STENCIL8:
     case GL_DEPTH32F_STENCIL8:
-      GAPID_WARNING("MEC: Reading of stencil data is not yet supported");
-      // Fall through to depth
+      GAPID_WARNING("MEC: Reading of depth stencil data is not yet supported");
+      break;
     case GL_DEPTH_COMPONENT16:
     case GL_DEPTH_COMPONENT24:
-    case GL_DEPTH_COMPONENT32F:
-      return ReadTextureViaDrawQuad(tex, idx, GL_R32F, "depth",
-                                    GL_DEPTH_COMPONENT, GL_RED);
+    case GL_DEPTH_COMPONENT32:
+    case GL_DEPTH_COMPONENT32F: {
+      ImageData r = ReadTextureViaDrawQuad(tex, idx, GL_R32F, "depth",
+                                           GL_DEPTH_COMPONENT, GL_RED);
+      // Override the internal format to the format of the data.
+      r.sizedFormat = GL_DEPTH_COMPONENT32F;
+      return r;
+    }
     /* alpha and luminance */
     case GL_ALPHA8_EXT:
       return ReadTextureViaDrawQuad(tex, idx, GL_R8, "alpha", GL_ALPHA,
