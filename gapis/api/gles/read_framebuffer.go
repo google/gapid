@@ -322,7 +322,7 @@ func getReadPixelsFormat(version *Version, uf GLenum, ty GLenum) (GLenum, GLenum
 		switch uf {
 		case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER:
 			uf = GLenum_GL_RGBA_INTEGER
-		case GLenum_GL_DEPTH_COMPONENT:
+		case GLenum_GL_DEPTH_COMPONENT, GLenum_GL_DEPTH_STENCIL:
 			return GLenum_GL_RED, GLenum_GL_FLOAT, GLenum_GL_DEPTH_COMPONENT
 		default:
 			uf = GLenum_GL_RGBA
