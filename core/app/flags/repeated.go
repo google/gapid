@@ -63,6 +63,9 @@ func newRepeatedFlag(value reflect.Value) flag.Value {
 }
 
 func (f *repeated) String() string {
+	if !f.value.IsValid() {
+		return ""
+	}
 	strs := make([]string, f.value.Len())
 	for i := 0; i < len(strs); i++ {
 		strs[i] = f.value.Index(i).String()
