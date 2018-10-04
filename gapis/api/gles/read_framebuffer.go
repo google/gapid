@@ -219,6 +219,12 @@ func postFBData(ctx context.Context,
 		renderbufferID := t.glGenRenderbuffer(ctx)
 		t.glBindRenderbuffer(ctx, renderbufferID)
 
+		if hasColor {
+			// Blit defaults to color attachment 0. attaching there avoids
+			// having to setup the read/draw buffer mappings.
+			attachment = GLenum_GL_COLOR_ATTACHMENT0
+		}
+
 		mutateAndWriteEach(ctx, out, dID,
 			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(inW), GLsizei(inH)),
 			cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, GLenum_GL_RENDERBUFFER, renderbufferID),
@@ -226,6 +232,7 @@ func postFBData(ctx context.Context,
 		)
 
 		t.glBindFramebuffer_Read(ctx, framebufferID)
+		t.glReadBuffer(ctx, attachment)
 	}
 
 	if hasColor && (inW != outW || inH != outH) {
@@ -235,6 +242,10 @@ func postFBData(ctx context.Context,
 		t.glBindFramebuffer_Draw(ctx, framebufferID)
 		renderbufferID := t.glGenRenderbuffer(ctx)
 		t.glBindRenderbuffer(ctx, renderbufferID)
+
+		// Blit defaults to color attachment 0. Attaching there avoids having to
+		// setup the read/draw buffer mappings.
+		attachment = GLenum_GL_COLOR_ATTACHMENT0
 
 		mutateAndWriteEach(ctx, out, dID,
 			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(outW), GLsizei(outH)),
