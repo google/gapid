@@ -37,6 +37,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <sstream>
 #include <vector>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
@@ -130,7 +131,8 @@ Spy::Spy()
       mDisablePrecompiledShaders(false),
       mRecordGLErrorState(false),
       mNestedFrameStart(0),
-      mNestedFrameEnd(0) {
+      mNestedFrameEnd(0),
+      mFrameNumber(0) {
 #if TARGET_OS == GAPID_OS_ANDROID
   // Use a "localabstract" pipe on Android to prevent depending on the traced
   // application having the INTERNET permission set, required for opening and
@@ -505,6 +507,16 @@ void Spy::saveInitialStateForApi(const char* name) {
 }
 
 void Spy::onPostFrameBoundary(bool isStartOfFrame) {
+  mFrameNumber++;
+  if (should_record_timestamps()) {
+    std::stringstream fn;
+    fn << "Frame Number: " << mFrameNumber;
+    capture::TraceMessage timestamp;
+    timestamp.set_timestamp(core::GetNanoseconds());
+    timestamp.set_message(fn.str());
+    mEncoder->object(&timestamp);
+  }
+
   if (!is_suspended() && mCaptureFrames >= 1) {
     mCaptureFrames -= 1;
     if (mCaptureFrames == 0) {
