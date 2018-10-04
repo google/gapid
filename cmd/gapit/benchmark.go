@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -533,18 +534,25 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	traceStartTimestamp := boxedVal.(*service.Stats).TraceStart
 
+	frameTimes := []uint64{}
+
 	stateBuildTime := int64(0)
 	stateBuildStartTime := traceStartTimestamp
 	stateBuildEndTime := traceStartTimestamp
+	hasStateSerialization := false
+	frameRe := regexp.MustCompile("Frame Number: [\\d]*")
 	for _, m := range messages.List {
 		if m.Message == "State serialization started" {
+			hasStateSerialization = true
 			stateBuildStartTime = m.Timestamp
-		}
-		if m.Message == "State serialization finished" {
+		} else if m.Message == "State serialization finished" {
 			stateBuildEndTime = m.Timestamp
 			stateBuildTime = int64(stateBuildEndTime - stateBuildStartTime)
+		} else if !hasStateSerialization && frameRe.MatchString(m.Message) {
+			frameTimes = append(frameTimes, m.Timestamp)
 		}
 	}
+
 	if len(events) < 1 {
 		panic("No events")
 	}
@@ -554,6 +562,15 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	frameTime := float64(frameCaptureTime / uint64(len(events)))
 	stateTime := float64(stateBuildTime)
 	traceMaxMemory := int64(0)
+
+	nonLoadingFrameTime := uint64(0)
+	// We assume that the last 10% of frames come from a non-loading screen
+	if hasStateSerialization {
+		nFrames := len(frameTimes) / 20
+		stableStart := frameTimes[len(frameTimes)-nFrames-1]
+		stableEnd := frameTimes[len(frameTimes)-1]
+		nonLoadingFrameTime = (stableEnd - stableStart) / uint64(nFrames)
+	}
 
 	ctx = oldCtx
 	writeOutput := func() {
@@ -575,13 +592,14 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		fmt.Fprintln(os.Stdout, "")
 		w = tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
-		fmt.Fprintln(w, "Caching Done\tInteraction\tMax Memory\tBefore MEC Frame Time")
-		fmt.Fprintln(w, "------------\t-----------\t----------\t--------------------")
-		fmt.Fprintf(w, "%+v\t%+v\t%+v\t%+v\n",
+		fmt.Fprintln(w, "Caching Done\tInteraction\tMax Memory\tBefore MEC Frame Time\tTrailing Frame Time")
+		fmt.Fprintln(w, "------------\t-----------\t----------\t---------------------\t-----------------")
+		fmt.Fprintf(w, "%+v\t%+v\t%+v\t%+v\t%+v\n",
 			verb.gapisCachingDoneTime.Sub(verb.traceDoneTime),
 			verb.interactionDoneTime.Sub(verb.interactionStartTime),
 			traceMaxMemory,
 			time.Duration(preMecFramerate)*time.Nanosecond,
+			time.Duration(nonLoadingFrameTime)*time.Nanosecond,
 		)
 		w.Flush()
 	}
@@ -653,9 +671,34 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		f.Write(b)
 		f.Write([]byte(","))
 
+		startTime := traceStartTimestampInMicroseconds
+		for i, m := range frameTimes {
+			if m >= stateBuildStartTime {
+				break
+			}
+			tsk.Name = fmt.Sprintf("Untracked Frame %+v", i)
+			tsk.Ts = int64(startTime) - timeOffsetInMicroseconds
+			tsk.EventType = "B"
+			b, _ = json.Marshal(tsk)
+			f.Write([]byte("\n"))
+			f.Write(b)
+			f.Write([]byte(","))
+
+			tsk.Name = ""
+			tsk.Ts = int64(m/1000) - timeOffsetInMicroseconds
+			tsk.EventType = "E"
+			b, _ = json.Marshal(tsk)
+			f.Write([]byte("\n"))
+			f.Write(b)
+			f.Write([]byte(","))
+
+			startTime = (m / 1000)
+		}
+
 		if stateBuildStartTime != stateBuildEndTime {
 			tsk.Name = "State Serialization"
 			tsk.Ts = int64(stateBuildStartTime/1000) - timeOffsetInMicroseconds
+			tsk.EventType = "B"
 			b, _ = json.Marshal(tsk)
 			f.Write([]byte("\n"))
 			f.Write(b)
@@ -669,7 +712,8 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			f.Write(b)
 			f.Write([]byte(","))
 		}
-		startTime := (stateBuildEndTime / 1000)
+
+		startTime = (stateBuildEndTime / 1000)
 		for i, e := range events {
 			tsk.Name = fmt.Sprintf("Frame %+v", i)
 			tsk.Ts = int64(startTime) - timeOffsetInMicroseconds
