@@ -200,14 +200,14 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
             native.android_sdk_repository,
             name = "androidsdk",
             locals = locals,
-            api_level = 21,
+            api_level = 26,
         )
 
         maybe_repository(
             native.android_ndk_repository,
             name = "androidndk",
             locals = locals,
-            api_level = 21,
+            api_level = 26,
         )
 
         maybe_repository(
