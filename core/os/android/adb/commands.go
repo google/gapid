@@ -145,7 +145,7 @@ func (b *binding) StartActivityForDebug(ctx context.Context, a android.ActivityA
 // StartService launches the specified service action.
 func (b *binding) StartService(ctx context.Context, a android.ServiceAction, extras ...android.ActionExtra) error {
 	args := append([]string{
-		"startservice",
+		"start-foreground-service",
 		"-a", a.Name,
 		"-n", a.Component(),
 	}, extrasFlags(extras)...)
