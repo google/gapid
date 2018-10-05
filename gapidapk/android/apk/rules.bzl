@@ -69,7 +69,10 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
         template = "AndroidManifest.xml.in",
         out = name + "/" + "AndroidManifest.xml",
         replace = "{srchash}",
-        srcs = fatapks + ["//gapidapk/android/app/src/main:source"],
+        srcs = fatapks + [
+            "AndroidManifest.xml.in",
+            "//gapidapk/android/app/src/main:source",
+        ],
         visibility = ["//visibility:public"],
     )
     native.filegroup(
