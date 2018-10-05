@@ -278,6 +278,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
     VkDevice device = *pDevice;
     (void)device; // Use is conditional of preprocessor defines.
     VulkanImports::VkDeviceFunctions* functions = nullptr;
+    (void)functions;
 
     // Add this device, along with the vkGetDeviceProcAddr to our map.
     // This way when someone calls vkGetDeviceProcAddr, we can forward
