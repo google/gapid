@@ -54,7 +54,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools\bin\sdkmanager platforms;android-21 build-tools;26.0.1 ndk-bundle
+tools\bin\sdkmanager platforms;android-26 build-tools;26.0.1 ndk-bundle
 ```
 
 Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The minimum required version of the NDK is r16b.
@@ -110,7 +110,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1" ndk-bundle
+tools/bin/sdkmanager "platforms;android-26" "build-tools;26.0.1" ndk-bundle
 ```
 
 Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
@@ -171,7 +171,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-21" "build-tools;26.0.1" ndk-bundle
+tools/bin/sdkmanager "platforms;android-26" "build-tools;26.0.1" ndk-bundle
 ```
 
 Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
