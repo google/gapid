@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/replay/protocol"
 	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 )
@@ -235,8 +236,19 @@ func postFBData(ctx context.Context,
 		t.glReadBuffer(ctx, attachment)
 	}
 
-	if hasColor && (inW != outW || inH != outH) {
-		// Resize
+	// These are formats that are required to be supported by GLES glReadPixels.
+	// See section 4.3.2 of the GLES 3.0 spec.
+	needFBQuery := version.IsES && !((unsizedFormat == GLenum_GL_RGBA && ty == GLenum_GL_UNSIGNED_BYTE) ||
+		(unsizedFormat == GLenum_GL_RGBA && ty == GLenum_GL_UNSIGNED_INT_2_10_10_10_REV) ||
+		(unsizedFormat == GLenum_GL_RGBA_INTEGER && ty == GLenum_GL_INT) ||
+		(unsizedFormat == GLenum_GL_RGBA_INTEGER && ty == GLenum_GL_UNSIGNED_INT))
+
+	needResize := hasColor && (inW != outW || inH != outH)
+	// If we need to ask the driver what format to use to read the pixels, due
+	// to driver issues, it needs to be COLOR_ATTACHMENT0. See b/115574126.
+	needColorAtt0 := needFBQuery && hasColor && attachment != GLenum_GL_COLOR_ATTACHMENT0
+
+	if needResize || needColorAtt0 {
 		t.glScissor(ctx, 0, 0, GLsizei(inW), GLsizei(inH))
 		framebufferID := t.glGenFramebuffer(ctx)
 		t.glBindFramebuffer_Draw(ctx, framebufferID)
@@ -246,28 +258,26 @@ func postFBData(ctx context.Context,
 		// Blit defaults to color attachment 0. Attaching there avoids having to
 		// setup the read/draw buffer mappings.
 		attachment = GLenum_GL_COLOR_ATTACHMENT0
+		sampling := GLenum_GL_NEAREST
+		if needResize {
+			sampling = GLenum_GL_LINEAR
+		}
 
 		mutateAndWriteEach(ctx, out, dID,
 			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(outW), GLsizei(outH)),
 			cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, GLenum_GL_RENDERBUFFER, renderbufferID),
-			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), bufferBits, GLenum_GL_LINEAR),
+			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), bufferBits, sampling),
 		)
 		t.glBindFramebuffer_Read(ctx, framebufferID)
 	}
 
-	if u, t, o := getReadPixelsFormat(version, unsizedFormat, ty); unsizedFormat != u || ty != t {
-		// glReadPixels() cannot be called with the natural unsized-format and
-		// type of the framebuffer. Instead, fetch the framebuffer in a format
-		// that can be read, and then convert the result to the expected format.
-		f, err := getImageFormat(o, t)
-		if err != nil {
-			res(nil, err)
-			return
-		}
-		res = res.Transform(func(in interface{}) (interface{}, error) {
-			return in.(*image.Data).Convert(imgFmt)
-		})
-		imgFmt, unsizedFormat, ty = f, u, t
+	if hasDepth && version.IsES {
+		copyDepthToColorGLES(ctx, dID, thread, s, out, t, fbai.format, inW, inH)
+	}
+
+	if needFBQuery {
+		// Can only query the FB if bound to GL_FRAMEBUFFER. See b/115574126.
+		t.glBindFramebuffer_ReadToBoth(ctx)
 	}
 
 	t.setPackStorage(ctx, NewPixelStorageState(s.Arena,
@@ -280,83 +290,117 @@ func postFBData(ctx context.Context,
 	), 0)
 
 	imageSize := imgFmt.Size(int(outW), int(outH), 1)
-	tmp := s.AllocOrPanic(ctx, uint64(imageSize))
-	defer tmp.Free()
-
-	if hasDepth && version.IsES {
-		copyDepthToColorGLES(ctx, dID, thread, s, out, t, fbai.format, inW, inH)
+	bufferSize := imageSize
+	if needFBQuery {
+		// Since we have no idea what format the data will be in, we need to be
+		// as pessimistic as possible. Assume 4 channels at 4 bytes each, which
+		// is the maximum possible by GLES. We also need space to store the
+		// format and type (2 4byte enums).
+		bufferSize = 16*int(outW)*int(outH) + 8
 	}
+
+	tmp := s.AllocOrPanic(ctx, uint64(bufferSize))
+	defer tmp.Free()
 
 	out.MutateAndWrite(ctx, dID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.ReserveMemory(tmp.Range())
 
-		// We use Call() directly here because on host replay, we are calling
-		// glReadPixels with depth formats which are not legal for GLES.
-		cb.GlReadPixels(0, 0, GLsizei(outW), GLsizei(outH), unsizedFormat, ty, tmp.Ptr()).
-			Call(ctx, s, b)
+		if needFBQuery {
+			ptr := value.ObservedPointer(tmp.Address())
+			// Query the driver for the format and type that glReadPixels supports.
+			b.Push(value.U32(GLenum_GL_IMPLEMENTATION_COLOR_READ_FORMAT))
+			b.Push(ptr.Offset(0))
+			b.Call(funcInfoGlGetIntegerv)
 
-		b.Post(value.ObservedPointer(tmp.Address()), uint64(imageSize), func(r binary.Reader, err error) {
+			b.Push(value.U32(GLenum_GL_IMPLEMENTATION_COLOR_READ_TYPE))
+			b.Push(ptr.Offset(4))
+			b.Call(funcInfoGlGetIntegerv)
+
+			// Call glReadPixels with the above returned format and type.
+			b.Push(value.S32(0))                        // x
+			b.Push(value.S32(0))                        // y
+			b.Push(value.S32(outW))                     // width
+			b.Push(value.S32(outH))                     // height
+			b.Load(protocol.Type_Uint32, ptr.Offset(0)) // format
+			b.Load(protocol.Type_Uint32, ptr.Offset(4)) // type
+			b.Push(ptr.Offset(8))                       // pixels
+			b.Call(funcInfoGlReadPixels)
+		} else {
+			// We use Call() directly here because on host replay, we are calling
+			// glReadPixels with depth formats which are not legal for GLES.
+			cb.GlReadPixels(0, 0, GLsizei(outW), GLsizei(outH), unsizedFormat, ty, tmp.Ptr()).
+				Call(ctx, s, b)
+		}
+
+		b.Post(value.ObservedPointer(tmp.Address()), uint64(bufferSize), func(r binary.Reader, err error) {
 			res.Do(func() (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}
 
-				data := make([]byte, imageSize)
-				r.Data(data)
-				if err := r.Error(); err != nil {
-					return nil, fmt.Errorf("Could not read framebuffer data (expected length %d bytes): %v", imageSize, err)
+				u, t := unsizedFormat, ty
+				if needFBQuery {
+					u, t = GLenum(r.Int32()), GLenum(r.Int32())
+					bufferSize -= 8
 				}
 
-				return &image.Data{
-					Bytes:  data,
+				data := make([]byte, bufferSize)
+				r.Data(data)
+				if err := r.Error(); err != nil {
+					return nil, fmt.Errorf("Could not read framebuffer data (expected length %d bytes): %v", bufferSize, err)
+				}
+
+				if u == unsizedFormat && t == ty {
+					return &image.Data{
+						Bytes:  data[:imageSize],
+						Width:  uint32(outW),
+						Height: uint32(outH),
+						Depth:  1,
+						Format: imgFmt,
+					}, nil
+				}
+
+				// We had to query the driver for the format and it is different
+				// than what was requested, So, we need to convert it. Also
+				// handles the case where we read depth as color.
+
+				f, err := getImageFormat(u, t)
+				if err != nil {
+					return nil, err
+				}
+
+				img := &image.Data{
+					Bytes:  data[:f.Size(int(outW), int(outH), 1)],
 					Width:  uint32(outW),
 					Height: uint32(outH),
 					Depth:  1,
-					Format: imgFmt,
-				}, nil
+					Format: f,
+				}
+
+				if hasDepth {
+					// Filter out the red channel and then pretend it's just depth.
+					redFmt := filterUncompressedImageFormat(f, func(c stream.Channel) bool {
+						return c == stream.Channel_Red
+					})
+					var err error
+					if img, err = img.Convert(redFmt); err != nil {
+						return nil, err
+					}
+					depthFmt, err := getImageFormat(GLenum_GL_DEPTH_COMPONENT, ty)
+					if err != nil {
+						return nil, err
+					}
+					img.Format = depthFmt
+					return img, nil
+				}
+
+				return img.Convert(imgFmt)
 			})
 		})
 		return nil
 	}))
 
 	out.MutateAndWrite(ctx, dID, cb.GlGetError(0)) // Check for errors.
-}
-
-// getReadPixelsFormat returns a unsized-format and type that is compatible with
-// glReadPixels() for the given framebuffer unsized-format and type.
-// The third return value is an "override" unsized-format that is compatible
-// with the returned format and should be used as the resuling image format.
-// The override is used for reading depth as color.
-// See the GLES spec: 4.3.2 Reading Pixels
-func getReadPixelsFormat(version *Version, uf GLenum, ty GLenum) (GLenum, GLenum, GLenum) {
-	if version.IsES {
-		switch uf {
-		case GLenum_GL_RED_INTEGER, GLenum_GL_RG_INTEGER, GLenum_GL_RGB_INTEGER, GLenum_GL_RGBA_INTEGER:
-			uf = GLenum_GL_RGBA_INTEGER
-		case GLenum_GL_DEPTH_COMPONENT, GLenum_GL_DEPTH_STENCIL:
-			return GLenum_GL_RED, GLenum_GL_FLOAT, GLenum_GL_DEPTH_COMPONENT
-		default:
-			uf = GLenum_GL_RGBA
-		}
-		switch ty {
-		case GLenum_GL_UNSIGNED_BYTE,
-			GLenum_GL_UNSIGNED_SHORT_4_4_4_4,
-			GLenum_GL_UNSIGNED_SHORT_5_5_5_1,
-			GLenum_GL_UNSIGNED_SHORT_5_6_5:
-			ty = GLenum_GL_UNSIGNED_BYTE
-		case GLenum_GL_UNSIGNED_INT,
-			GLenum_GL_UNSIGNED_INT_10F_11F_11F_REV,
-			GLenum_GL_UNSIGNED_INT_2_10_10_10_REV,
-			GLenum_GL_UNSIGNED_INT_5_9_9_9_REV,
-			GLenum_GL_UNSIGNED_SHORT:
-			ty = GLenum_GL_UNSIGNED_INT
-		case GLenum_GL_BYTE, GLenum_GL_INT, GLenum_GL_SHORT:
-			ty = GLenum_GL_INT
-		default:
-			ty = GLenum_GL_FLOAT
-		}
-	}
-	return uf, ty, uf
 }
 
 func mutateAndWriteEach(ctx context.Context, out transform.Writer, id api.CmdID, cmds ...api.Cmd) {

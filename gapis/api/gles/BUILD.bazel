@@ -130,6 +130,7 @@ go_library(
         "//gapis/messages:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/replay/builder:go_default_library",
+        "//gapis/replay/protocol:go_default_library",
         "//gapis/replay/value:go_default_library",
         "//gapis/resolve:go_default_library",
         "//gapis/resolve/dependencygraph:go_default_library",
