@@ -33,7 +33,7 @@ import java.util.concurrent.Executors;
  * socket is made, the service will send the installed package information on the accepted
  * connection, then close the accepted connection and the listening socket.
  */
-public class DeviceInfoService extends IntentService {
+public class DeviceInfoService extends GapidService {
     private static final String TAG = "gapid-pkginfo";
 
     /**
@@ -56,7 +56,7 @@ public class DeviceInfoService extends IntentService {
     private static final String DEFAULT_SOCKET_NAME = "gapid-devinfo";
 
     public DeviceInfoService() {
-        super("DeviceInfoService");
+        super("DeviceInfoService", Type.DeviceInfo);
     }
 
     @Override

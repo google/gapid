@@ -58,7 +58,7 @@ import java.util.concurrent.Executors;
  * socket is made, the service will send the installed package information on the accepted
  * connection, then close the accepted connection and the listening socket.
  */
-public class PackageInfoService extends IntentService {
+public class PackageInfoService extends GapidService {
     private static final String TAG = "gapid-pkginfo";
 
     private static final int MAX_ICON_SIZE = 256;
@@ -184,7 +184,7 @@ public class PackageInfoService extends IntentService {
     }
 
     public PackageInfoService() {
-        super("PackageInfoService");
+        super("PackageInfoService", Type.PackageInfo);
     }
 
     @Override
@@ -393,7 +393,7 @@ public class PackageInfoService extends IntentService {
      * Duplicates are only stored once.
      */
     private class IconStore {
-        private final Map<String, Integer> dataMap = new HashMap();
+        private final Map<String, Integer> dataMap = new HashMap<>();
         private final JSONArray json = new JSONArray();
         private final int iconDensity;
         private final Cache<Pair<Resources, Integer>, byte[]> cache;
