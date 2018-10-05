@@ -340,6 +340,14 @@ func (t *tweaker) glBindFramebuffer_Read(ctx context.Context, id FramebufferId) 
 	}
 }
 
+// glBindFramebuffer_ReadToBoth binds the currently bound READ_FRAMEBUFFER to GL_FRAMEBUFFER.
+func (t *tweaker) glBindFramebuffer_ReadToBoth(ctx context.Context) {
+	d, r := t.c.Bound().DrawFramebuffer().GetID(), t.c.Bound().ReadFramebuffer().GetID()
+	t.doAndUndo(ctx,
+		t.cb.GlBindFramebuffer(GLenum_GL_FRAMEBUFFER, r),
+		t.cb.GlBindFramebuffer(GLenum_GL_DRAW_FRAMEBUFFER, d))
+}
+
 func (t *tweaker) glReadBuffer(ctx context.Context, id GLenum) {
 	fb := t.c.Bound().ReadFramebuffer()
 	if o := fb.ReadBuffer(); o != id {
