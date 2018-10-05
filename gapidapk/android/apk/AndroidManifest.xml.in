@@ -24,6 +24,7 @@
         android:icon="@drawable/logo"
         android:label="GAPID - ${name}"
         android:supportsRtl="true"
+        android:debuggable="true"
         >
         <activity android:name="android.app.NativeActivity"
                   android:label="GAPID - ${name}">
