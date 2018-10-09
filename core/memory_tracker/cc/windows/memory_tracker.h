@@ -19,23 +19,13 @@
 
 #include "core/memory_tracker/cc/memory_protections.h"
 
-#include <Windows.h>
 #include <atomic>
 #include <cstdint>
 
 namespace gapii {
 namespace track_memory {
 
-inline bool set_protection(void* p, size_t size, PageProtections prot) {
-  DWORD protections =
-      (prot == PageProtections::kRead)
-          ? PAGE_READONLY
-          : (prot == PageProtections::kWrite)
-                ? PAGE_READWRITE
-                : (prot == PageProtections::kReadWrite) ? PAGE_READWRITE : 0;
-  return VirtualProtect(p, size, protections, nullptr);
-}
-
+bool set_protection(void* p, size_t size, PageProtections prot);
 #define IS_POSIX 0
 // SignalBlocker is a no-op on Windows.
 class SignalBlocker {
@@ -49,17 +39,7 @@ class SignalBlocker {
   SignalBlocker& operator=(SignalBlocker&&) = delete;
 };
 
-inline uint32_t GetPageSize() {
-  static std::atomic<uint32_t> pageSize;
-  int x = pageSize.load();
-  if (x != 0) {
-    return x;
-  }
-  SYSTEM_INFO si;
-  GetSystemInfo(&si);
-  pageSize.store(si.dwPageSize);
-  return si.dwPageSize;
-}
+uint32_t GetPageSize();
 
 }  // namespace track_memory
 }  // namespace gapii
