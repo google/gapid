@@ -29,7 +29,7 @@ class WindowsMemoryTracker {
   protected:
   // A static wrapper of HandleSegfault() as VectoredException() asks for a static
   // function.
-  static LONG NTAPI VectoredExceptionHandler(struct _EXCEPTION_POINTERS *info);
+  static long int __stdcall VectoredExceptionHandler(void *info);
 
   // EnableMemoryTrackerImpl calls sigaction() to register the new segfault
   // handler to the thread (and affects all the child threads), stores the
@@ -38,12 +38,12 @@ class WindowsMemoryTracker {
   // if the signal handler has already been set by the same memory tracker
   // instance before, all following calls to this function will just return
   // true.
-  bool inline EnableMemoryTrackerImpl();
+  bool EnableMemoryTrackerImpl();
 
   // DisableMemoryTrackerImpl recovers the original segfault signal
   // handler. Returns true if the handler is recovered successfully,
   // othwerwise returns false.
-  bool inline DisableMemoryTrackerImpl();
+  bool DisableMemoryTrackerImpl();
 
   private:
   void* vectored_exception_handler_; // The currently registered vectored exception
@@ -53,48 +53,6 @@ class WindowsMemoryTracker {
 
 typedef MemoryTrackerImpl<WindowsMemoryTracker> MemoryTracker;
 extern WindowsMemoryTracker* unique_tracker;
-
-// A static wrapper of HandleSegfault() as sigaction() asks for a static
-// function.
-LONG NTAPI WindowsMemoryTracker::VectoredExceptionHandler(struct _EXCEPTION_POINTERS *info){
-  if (info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
-        unique_tracker) {
-    if (unique_tracker->handle_segfault_(
-        reinterpret_cast<void*>(info->ExceptionRecord->ExceptionInformation[1]))) {
-      return EXCEPTION_CONTINUE_EXECUTION;
-    }
-  }
-  return EXCEPTION_CONTINUE_SEARCH;
-}
-
-// EnableMemoryTrackerImpl calls sigaction() to register the new segfault
-// handler to the thread (and affects all the child threads), stores the
-// original segfault handler. This method sets the static pointer:
-// unique_tracker to |this| pointer. The signal handler will not be set again
-// if the signal handler has already been set by the same memory tracker
-// instance before, all following calls to this function will just return
-// true.
-bool inline WindowsMemoryTracker::EnableMemoryTrackerImpl() {
-  if (vectored_exception_handler_) {
-    return true;
-  }
-  const uint32_t kCallFirst = 1;
-  unique_tracker = this;
-  vectored_exception_handler_ = AddVectoredExceptionHandler(kCallFirst, &VectoredExceptionHandler);
-  return vectored_exception_handler_ != nullptr;
-}
-
-// DisableMemoryTrackerImpl recovers the original segfault signal
-// handler. Returns true if the handler is recovered successfully,
-// othwerwise returns false.
-bool inline WindowsMemoryTracker::DisableMemoryTrackerImpl() {
-  if (vectored_exception_handler_) {
-    ULONG ret = RemoveVectoredExceptionHandler(vectored_exception_handler_);
-    vectored_exception_handler_ = nullptr;
-    return ret != 0;
-  }
-  return true;
-}
 
 } // namespace track_memory
 } // namespace gapii

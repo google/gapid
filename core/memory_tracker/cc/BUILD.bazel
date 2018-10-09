@@ -27,6 +27,7 @@ cc_library(
         "//tools/build:windows": glob([
             "windows/*.h",
             "windows/*.inc",
+            "windows/*.cpp",
         ]),
         "//conditions:default": glob([
             "posix/*.h",
