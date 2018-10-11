@@ -70,10 +70,14 @@ std::vector<uint32_t> memorySizes {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
 std::string getTempOnDiskCachePath() {
   const char* tmpDir = std::getenv("TMPDIR");
-  if (tmpDir == nullptr) {
+  struct stat sb;
+  if (!tmpDir && stat("/tmp", &sb) == 0 && S_ISDIR(sb.st_mode)) {
+    tmpDir = "/tmp";
+  } else {
     GAPID_WARNING("$TMPDIR is null");
     return "";
   }
+
   auto t = std::string(tmpDir) + "/gapir-cache.XXXXXX";
   std::vector<char> v(t.begin(), t.end());
   v.push_back('\0');
@@ -413,7 +417,7 @@ std::unique_ptr<ResourceCache> createCache(
       exit(0);
     }
   }
-  return onDiskCache;
+  return std::move(onDiskCache);
 #else   // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   if (onDiskCacheOpts.enabled) {
     GAPID_WARNING(

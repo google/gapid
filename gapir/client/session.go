@@ -99,11 +99,26 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 		return err
 	}
 
+	forceEnableDiskCache := true
+
+	// If the user has not specified anything disk-cache related
+	// we should force a disk cache for remote devices.
+	for _, a := range launchArgs {
+		if a == "--enable-disk-cache" ||
+			a == "--disk-cache-path" ||
+			a == "--cleanup-on-disk-cache" {
+			forceEnableDiskCache = false
+		}
+	}
+
 	args := []string{
 		"--idle-timeout-sec", strconv.Itoa(int(sessionTimeout / time.Second)),
 		"--auth-token-file", pf,
 	}
 	args = append(args, launchArgs...)
+	if forceEnableDiskCache {
+		args = append(args, "--enable-disk-cache")
+	}
 
 	gapir, err := layout.Gapir(ctx, abi)
 	if err = d.PushFile(ctx, gapir.System(), otherdir+"/gapir"); err != nil {
