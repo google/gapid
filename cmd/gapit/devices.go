@@ -58,6 +58,9 @@ func (verb *devicesVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			continue
 		}
 		d := o.(*device.Instance)
+		if verb.OS != device.UnknownOS && verb.OS != d.GetConfiguration().GetOS().GetKind() {
+			continue
+		}
 		jsonBytes, err := json.MarshalIndent(d, "", "  ")
 		if err != nil {
 			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't marshal device to JSON"))

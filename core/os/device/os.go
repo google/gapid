@@ -41,3 +41,7 @@ func (o1 *OS) CompareVersions(o2 *OS) VersionMatch {
 		return CompleteMatch
 	}
 }
+
+func (o *OSKind) Choose(c interface{}) {
+	*o = c.(OSKind)
+}

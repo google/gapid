@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/flags"
+	"github.com/google/gapid/core/os/device"
 )
 
 const (
@@ -85,6 +86,7 @@ type (
 	}
 	DevicesFlags struct {
 		Gapis GapisFlags
+		OS    device.OSKind `help:"Only display devices of the given OS kind"`
 	}
 	ProfileFlags struct {
 		Pprof string `help:"_produce a pprof file"`
