@@ -144,8 +144,13 @@ func (b *binding) StartActivityForDebug(ctx context.Context, a android.ActivityA
 
 // StartService launches the specified service action.
 func (b *binding) StartService(ctx context.Context, a android.ServiceAction, extras ...android.ActionExtra) error {
+	cmd := "start-foreground-service"
+	if b.Instance().GetConfiguration().GetOS().GetMajorVersion() < 8 {
+		// "am start-foreground-service" was added in 8.0 (API 26).
+		cmd = "startservice"
+	}
 	args := append([]string{
-		"start-foreground-service",
+		cmd,
 		"-a", a.Name,
 		"-n", a.Component(),
 	}, extrasFlags(extras)...)
