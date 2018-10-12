@@ -353,7 +353,7 @@ func Decode(r binary.Reader) (Opcode, error) {
 	case protocol.OpSwitchThread:
 		return SwitchThread{Index: unpackX(i)}, nil
 	default:
-		return nil, fmt.Errorf("Unknown opcode with code %v", code)
+		return nil, fmt.Errorf("Unknown opcode with code %v", int(code))
 	}
 }
 
