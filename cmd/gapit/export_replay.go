@@ -29,7 +29,9 @@ import (
 type exportReplayVerb struct{ ExportReplayFlags }
 
 func init() {
-	verb := &exportReplayVerb{}
+	verb := &exportReplayVerb{
+		ExportReplayFlags{Out: "replay_export"},
+	}
 	app.AddVerb(&app.Verb{
 		Name:      "export_replay",
 		ShortHelp: "Export replay vm instruction and assets.",
@@ -86,7 +88,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		for _, e := range eofEvents {
 			fbreqs = append(fbreqs, &service.GetFramebufferAttachmentRequest{
 				ReplaySettings: &service.ReplaySettings{
-					Device: device,
+					Device:                    device,
 					DisableReplayOptimization: true,
 				},
 				After:      e.Command,
