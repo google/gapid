@@ -261,6 +261,18 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
 				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
 			case *GlVertexAttribPointer:
 				b.Write(g, vertexAttribKey{c.Bound().VertexArray(), cmd.Location()})
+			case *GlEGLImageTargetTexture2DOES:
+				img := GetState(s).EGLImages().Get(EGLImageKHR(cmd.Image()))
+				if !img.IsNil() && img.Target() == EGLenum_EGL_GL_TEXTURE_2D {
+					if sc := GetState(s).EGLContexts().Get(img.Context()); !sc.IsNil() {
+						data, size := sc.Objects().Textures().Get(TextureId(img.Buffer())).dataAndSize(0, 0)
+						b.Read(g, data)
+						b.Read(g, size)
+					}
+				}
+				data, size := getTextureDataAndSize(ctx, cmd, id, s, c.Bound().TextureUnit(), cmd.Target(), 0)
+				b.Write(g, data)
+				b.Write(g, size)
 			default:
 				// Force all unhandled commands to be kept alive.
 				b.KeepAlive = true
