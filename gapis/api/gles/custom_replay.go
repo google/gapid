@@ -79,20 +79,6 @@ func (i ShaderId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap
 func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if !ctx.IsNil() && i != 0 {
-		if tex := ctx.Objects().Textures().Get(i); !tex.IsNil() {
-			_, isDeleteCmd := cmd.(*GlDeleteTextures)
-			if eglImage := tex.EGLImage(); !eglImage.IsNil() && !isDeleteCmd {
-				// Ignore this texture and use the data that EGLImage points to.
-				// (unless it is a delete command - we do not want kill the shared data)
-				ctx := GetState(s).EGLContexts().Get(eglImage.Context())
-				isTex2D := eglImage.Target() == EGLenum_EGL_GL_TEXTURE_2D
-				i := TextureId(eglImage.Buffer().Address())
-				if !ctx.IsNil() && isTex2D && ctx.Objects().Textures().Contains(i) {
-					return objectKey{ctx.Objects().Textures(), i}, true
-				}
-				panic(fmt.Errorf("Can not find EGL image target: %v", eglImage))
-			}
-		}
 		key, remap = objectKey{ctx.Objects().Textures(), i}, true
 	}
 	return
