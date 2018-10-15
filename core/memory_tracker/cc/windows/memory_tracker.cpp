@@ -1,11 +1,10 @@
 #include "core/memory_tracker/cc/memory_tracker.h"
-#include <functional>
 #include <Windows.h>
 #include <atomic>
+#include <functional>
 
 namespace gapii {
 namespace track_memory {
-
 
 bool set_protection(void* p, size_t size, PageProtections prot) {
   DWORD oldProt;
@@ -18,15 +17,15 @@ bool set_protection(void* p, size_t size, PageProtections prot) {
   return VirtualProtect(p, size, protections, &oldProt);
 }
 
-
 // A static wrapper of HandleSegfault() as sigaction() asks for a static
 // function.
-long int __stdcall WindowsMemoryTracker::VectoredExceptionHandler(void* _info){
-  struct _EXCEPTION_POINTERS* info = reinterpret_cast<struct _EXCEPTION_POINTERS*>(_info);
+long int __stdcall WindowsMemoryTracker::VectoredExceptionHandler(void* _info) {
+  struct _EXCEPTION_POINTERS* info =
+      reinterpret_cast<struct _EXCEPTION_POINTERS*>(_info);
   if (info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
-        unique_tracker) {
-    if (unique_tracker->handle_segfault_(
-        reinterpret_cast<void*>(info->ExceptionRecord->ExceptionInformation[1]))) {
+      unique_tracker) {
+    if (unique_tracker->handle_segfault_(reinterpret_cast<void*>(
+            info->ExceptionRecord->ExceptionInformation[1]))) {
       return EXCEPTION_CONTINUE_EXECUTION;
     }
   }
@@ -46,8 +45,10 @@ bool WindowsMemoryTracker::EnableMemoryTrackerImpl() {
   }
   const uint32_t kCallFirst = 1;
   unique_tracker = this;
-  PVECTORED_EXCEPTION_HANDLER handler = reinterpret_cast<PVECTORED_EXCEPTION_HANDLER>(&VectoredExceptionHandler);
-  vectored_exception_handler_ = AddVectoredExceptionHandler(kCallFirst, handler);
+  PVECTORED_EXCEPTION_HANDLER handler =
+      reinterpret_cast<PVECTORED_EXCEPTION_HANDLER>(&VectoredExceptionHandler);
+  vectored_exception_handler_ =
+      AddVectoredExceptionHandler(kCallFirst, handler);
   return vectored_exception_handler_ != nullptr;
 }
 
@@ -75,6 +76,5 @@ uint32_t GetPageSize() {
   return si.dwPageSize;
 }
 
-
-} // namespace track_memory
-} // namespace gapii
+}  // namespace track_memory
+}  // namespace gapii
