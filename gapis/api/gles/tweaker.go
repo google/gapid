@@ -324,6 +324,14 @@ func (t *tweaker) GlBindBuffer_ElementArrayBuffer(ctx context.Context, id Buffer
 	}
 }
 
+func (t *tweaker) GlBindBuffer_PixelUnpackBuffer(ctx context.Context, id BufferId) {
+	if o := t.c.Bound().PixelUnpackBuffer().GetID(); o != id {
+		t.doAndUndo(ctx,
+			t.cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, id),
+			t.cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, o))
+	}
+}
+
 func (t *tweaker) glBindFramebuffer_Draw(ctx context.Context, id FramebufferId) {
 	if o := t.c.Bound().DrawFramebuffer().GetID(); o != id {
 		t.doAndUndo(ctx,
