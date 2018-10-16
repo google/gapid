@@ -17,7 +17,7 @@ type void* EGLClientBuffer
 type void* EGLConfig
 type void* EGLContext
 type void* EGLDisplay
-@replay_custom_value type void* EGLImageKHR
+@replay_remap @replay_custom_value type void* EGLImageKHR
 type s32   EGLint
 type int   EGLNativeDisplayType
 type void* EGLNativePixmapType
