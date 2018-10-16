@@ -21,6 +21,7 @@
 #include "core/cc/log.h"
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 namespace gapir {
 namespace {
@@ -34,6 +35,7 @@ class GlesRendererImpl : public GlesRenderer {
   virtual void setBackbuffer(Backbuffer backbuffer) override;
   virtual void bind(bool resetViewportScissor) override;
   virtual void unbind() override;
+  virtual void* createExternalImage(uint32_t texture) override;
   virtual const char* name() override;
   virtual const char* extensions() override;
   virtual const char* vendor() override;
@@ -195,6 +197,12 @@ void GlesRendererImpl::bind(bool resetViewportScissor) {
 void GlesRendererImpl::unbind() {
   eglMakeCurrent(mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
   EGL_CHECK_ERROR("Failed to release EGL context");
+}
+
+void* GlesRendererImpl::createExternalImage(uint32_t texture) {
+  return mApi.mFunctionStubs.eglCreateImageKHR(
+      mDisplay, mContext, EGL_GL_TEXTURE_2D_KHR,
+      (EGLClientBuffer)(uint64_t)texture, nullptr);
 }
 
 const char* GlesRendererImpl::name() {

@@ -73,6 +73,9 @@ class GlesRenderer : public Renderer {
   virtual const char* version() = 0;
 
   virtual bool isValid() { return true; }
+
+  // Creates an external image backed by the given texture.
+  virtual void* createExternalImage(uint32_t texture) { return nullptr; }
 };
 
 inline GlesRenderer::Backbuffer::Format::Format()
