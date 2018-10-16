@@ -127,6 +127,13 @@ func (i GLsync) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap b
 	return
 }
 
+func (i EGLImageKHR) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
+	if !i.IsNullptr() {
+		key, remap = objectKey{GetState(s).EGLImages(), i}, true
+	}
+	return
+}
+
 func (i GLsync) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
 	return value.AbsolutePointer(i)
 }
