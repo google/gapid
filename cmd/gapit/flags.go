@@ -142,6 +142,12 @@ type (
 		Gapir GapirFlags
 		At    int `help:"command index to dump the resources after"`
 	}
+	DumpFBOFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"output framebuffer directory path"`
+		CommandFilterFlags
+	}
 	DumpFlags struct {
 		Gapis          GapisFlags
 		Gapir          GapirFlags
