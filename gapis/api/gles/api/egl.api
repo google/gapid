@@ -403,7 +403,7 @@ cmd EGLBoolean eglWaitNative(EGLint engine) {
 
 @if(Extension.EGL_KHR_image_base)
 @doc("https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_image_base.txt", Extension.EGL_KHR_image_base)
-@no_replay
+@custom @no_replay
 cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      display,
                                   EGLContext      context,
                                   EGLenum         target,
