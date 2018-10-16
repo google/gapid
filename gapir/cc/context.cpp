@@ -326,6 +326,37 @@ void Context::registerCallbacks(Interpreter* interpreter) {
       });
 
   interpreter->registerBuiltin(
+      Gles::INDEX, Builtins::ReplayCreateExternalImage,
+      [this](uint32_t label, Stack* stack, bool pushReturn) {
+        uint32_t texId = stack->pop<uint32_t>();
+        uint32_t ctxId = stack->pop<uint32_t>();
+
+        if (!stack->isValid()) {
+          GAPID_WARNING(
+              "[%u]Error during calling function replayCreateExternalImage",
+              label);
+          return false;
+        }
+
+        auto renderer = mGlesRenderers[ctxId];
+        if (renderer == nullptr) {
+          GAPID_WARNING(
+              "[%u]replayCreateExternalImage called with unknown renderer "
+              "%" PRIu32,
+              label, ctxId);
+          return false;
+        }
+
+        GAPID_INFO("[%u]replayCreateExternalImage(%d, %d)", label, ctxId,
+                   texId);
+        auto result = renderer->createExternalImage(texId);
+        if (pushReturn) {
+          stack->push(result);
+        }
+        return true;
+      });
+
+  interpreter->registerBuiltin(
       Vulkan::INDEX, Builtins::ReplayCreateVkInstance,
       [this, interpreter](uint32_t label, Stack* stack, bool pushReturn) {
         GAPID_DEBUG("[%u]replayCreateVkInstance()", label);
