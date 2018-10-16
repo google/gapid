@@ -297,6 +297,21 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 	return nil
 }
 
+func (ω *EglCreateImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	err := ω.mutate(ctx, id, s, nil, w)
+	if b == nil || err != nil {
+		return err
+	}
+
+	if ω.Target() != EGLenum_EGL_GL_TEXTURE_2D {
+		return fmt.Errorf("Cannot create a non texture backed EGLImage: %v", ω)
+	}
+
+	ctxID := uint32(GetState(s).EGLContexts().Get(ω.Context()).Identifier())
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
+	return cb.ReplayCreateExternalImage(ctxID, TextureId(ω.Buffer().Address()), ω.Result()).Mutate(ctx, id, s, b, nil)
+}
+
 func (ω *WglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	err := ω.mutate(ctx, id, s, nil, w)
 	if b == nil || err != nil {

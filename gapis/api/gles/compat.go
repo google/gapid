@@ -155,6 +155,17 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 	bufferCompat := newBufferCompat(int(glDev.UniformBufferAlignment))
 	eglContextHandle := map[Contextʳ]EGLContext{}
 
+	nextTextureID := TextureId(0xffff0000)
+	newTexture := func(i api.CmdID, cb CommandBuilder, out transform.Writer) TextureId {
+		s := out.State()
+		id := nextTextureID
+		tmp := s.AllocDataOrPanic(ctx, id)
+		defer tmp.Free()
+		out.MutateAndWrite(ctx, i.Derived(), cb.GlGenTextures(1, tmp.Ptr()).AddWrite(tmp.Data()))
+		nextTextureID--
+		return id
+	}
+
 	// Definitions of Vertex Arrays backed by client memory.
 	// We postpone the write of the command until draw call.
 	clientVAs := map[VertexAttributeArrayʳ]*GlVertexAttribPointer{}
@@ -242,6 +253,24 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 				out.MutateAndWrite(ctx, dID, cb.GlGenVertexArrays(1, tmp.Ptr()).AddWrite(tmp.Data()))
 				out.MutateAndWrite(ctx, dID, cb.GlBindVertexArray(DefaultVertexArrayId))
 			}
+			return
+
+		case *EglCreateImageKHR:
+			if target.eglImageExternal == unsupported {
+				// Only mutate, don't write. EGL images are treated as regular textures.
+				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
+				return
+			}
+
+			if cmd.Target() == EGLenum_EGL_NATIVE_BUFFER_ANDROID {
+				// Need to create a texture, but probably don't have a context.
+				// This case is handled in glEGLImageTargetTexture2DOES below.
+				// Only mutate, don't write.
+				cmd.Mutate(ctx, id, s, nil /* builder */, nil /* watcher */)
+				return
+			}
+
+			out.MutateAndWrite(ctx, id, cmd)
 			return
 		}
 
@@ -1086,39 +1115,58 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 					return
 				}
 
-				target := cmd.Target()
+				t := newTweaker(out, dID, cb)
+				t.GlBindBuffer_PixelUnpackBuffer(ctx, 0)
+
 				imgs := eglImage.Images()
 				img := imgs.Get(0)
 				sizedFormat := img.SizedFormat() // Might be RGB565 which is not supported on desktop
 				sizedFormatProp := &glenumProperty{func() GLenum { return sizedFormat }, func(f GLenum) { sizedFormat = f }}
 
-				t := newTweaker(out, dID, cb)
-				defer t.revert(ctx)
-				t.GlBindBuffer_PixelUnpackBuffer(ctx, 0)
+				if target.eglImageExternal == unsupported {
+					target := cmd.Target()
 
-				switch target {
-				case GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_EXTERNAL_OES:
-					// First time this texture is sync'ed. Initilize it.
-					if c.Bound().TextureUnit().Binding2d().Image().IsNil() {
+					switch target {
+					case GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_EXTERNAL_OES:
+						// First time this texture is sync'ed. Initilize it.
+						if c.Bound().TextureUnit().Binding2d().Image().IsNil() {
+							textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, sizedFormatProp, nil, nil, out, id, cmd)
+							out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width(), img.Height(), 0, img.DataFormat(), img.DataType(), memory.Nullptr))
+							// External textures use GL_LINEAR as the default and only allow GL_LINEAR or GL_NEAREST.
+							if c.Bound().TextureUnit().Binding2d().MinFilter() == GLenum_GL_NEAREST_MIPMAP_LINEAR {
+								out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
+							}
+						}
+					case GLenum_GL_TEXTURE_2D_ARRAY:
+						// First time this texture is sync'ed. Initilize it.
+						if c.Bound().TextureUnit().Binding2dArray().Image().IsNil() {
+							textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D_ARRAY, sizedFormatProp, nil, nil, out, id, cmd)
+							out.MutateAndWrite(ctx, dID, cb.GlTexImage3D(GLenum_GL_TEXTURE_2D_ARRAY, 0, GLint(sizedFormat), img.Width(), img.Height(), GLsizei(imgs.Len()), 0, img.DataFormat(), img.DataType(), memory.Nullptr))
+							// External textures use GL_LINEAR as the default and only allow GL_LINEAR or GL_NEAREST.
+							if c.Bound().TextureUnit().Binding2dArray().MinFilter() == GLenum_GL_NEAREST_MIPMAP_LINEAR {
+								out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D_ARRAY, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
+							}
+						}
+					default:
+						onError(ctx, id, cmd, fmt.Errorf("Unexpected GlEGLImageTargetTexture2DOES target: %v", target))
+					}
+				} else {
+					switch eglImage.Target() {
+					case EGLenum_EGL_GL_TEXTURE_2D:
+						// Already a texture backed external image.
+					case EGLenum_EGL_NATIVE_BUFFER_ANDROID:
+						// Create a new texture and create the external image based on it instead.
+						texID := newTexture(id, cb, out)
+						t.glBindTexture_2D(ctx, texID)
 						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D, sizedFormatProp, nil, nil, out, id, cmd)
 						out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(sizedFormat), img.Width(), img.Height(), 0, img.DataFormat(), img.DataType(), memory.Nullptr))
-						// External textures use GL_LINEAR as the default and only allow GL_LINEAR or GL_NEAREST.
-						if c.Bound().TextureUnit().Binding2d().MinFilter() == GLenum_GL_NEAREST_MIPMAP_LINEAR {
-							out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
-						}
+						// The mutate here will change the EGLImage to now be backed by our texture.
+						// We can pass null pointers for most arguments, as they are ignored in the
+						// custom replay.
+						out.MutateAndWrite(ctx, dID, cb.EglCreateImageKHR(memory.Nullptr, eglContextHandle[c], EGLenum_EGL_GL_TEXTURE_2D, EGLClientBuffer(texID), memory.Nullptr, cmd.Image()))
+					default:
+						onError(ctx, id, cmd, fmt.Errorf("Unexpected eglCreateImageKHR target: %v", cmd.Target()))
 					}
-				case GLenum_GL_TEXTURE_2D_ARRAY:
-					// First time this texture is sync'ed. Initilize it.
-					if c.Bound().TextureUnit().Binding2dArray().Image().IsNil() {
-						textureCompat.convertFormat(ctx, GLenum_GL_TEXTURE_2D_ARRAY, sizedFormatProp, nil, nil, out, id, cmd)
-						out.MutateAndWrite(ctx, dID, cb.GlTexImage3D(GLenum_GL_TEXTURE_2D_ARRAY, 0, GLint(sizedFormat), img.Width(), img.Height(), GLsizei(imgs.Len()), 0, img.DataFormat(), img.DataType(), memory.Nullptr))
-						// External textures use GL_LINEAR as the default and only allow GL_LINEAR or GL_NEAREST.
-						if c.Bound().TextureUnit().Binding2dArray().MinFilter() == GLenum_GL_NEAREST_MIPMAP_LINEAR {
-							out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D_ARRAY, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_LINEAR)))
-						}
-					}
-				default:
-					onError(ctx, id, cmd, fmt.Errorf("Unexpected GlEGLImageTargetTexture2DOES target: %v", target))
 				}
 
 				// Update the content if we made a snapshot.
@@ -1131,11 +1179,23 @@ func compat(ctx context.Context, device *device.Instance, onError onCompatError)
 						0, // SkipPixels
 						1, // Alignment
 					), 0)
+					if target.eglImageExternal != unsupported && eglImage.Target() == EGLenum_EGL_GL_TEXTURE_2D {
+						// Update the actual underlying texture of the eglImage.
+						t.eglMakeCurrent(ctx, eglImage.Context())
+						t.glBindTexture_2D(ctx, TextureId(eglImage.Buffer().Address()))
+					}
+
 					ptr := s.AllocOrPanic(ctx, e.Size)
 					out.MutateAndWrite(ctx, dID, cb.GlTexSubImage2D(GLenum_GL_TEXTURE_2D, 0, 0, 0, e.Width, e.Height, e.Format, e.Type, ptr.Ptr()).AddRead(ptr.Range(), e.ID))
 					ptr.Free()
 				}
 
+				// The revert is needed before we replay the command to restore
+				// the correct context and texture bindings.
+				t.revert(ctx)
+				if target.eglImageExternal != unsupported {
+					out.MutateAndWrite(ctx, id, cmd)
+				}
 				return
 			}
 
