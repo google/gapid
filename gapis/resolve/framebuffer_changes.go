@@ -62,7 +62,7 @@ const errNoAPI = fault.Const("Command has no API")
 
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.Capture, r.Config)
+	ctx = SetupContext(ctx, r.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

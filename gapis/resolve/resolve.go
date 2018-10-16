@@ -424,7 +424,8 @@ func convert(val reflect.Value, ty reflect.Type) (reflect.Value, bool) {
 	return val, false
 }
 
-func setupContext(ctx context.Context, c *path.Capture, r *path.ResolveConfig) context.Context {
+// SetupContext binds the capture and a replay device to the returned context.
+func SetupContext(ctx context.Context, c *path.Capture, r *path.ResolveConfig) context.Context {
 	if c != nil {
 		ctx = capture.Put(ctx, c)
 	}

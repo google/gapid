@@ -29,6 +29,6 @@ func Get(ctx context.Context, p *path.Any, r *path.ResolveConfig) (interface{}, 
 // Resolve implements the database.Resolver interface.
 func (r *GetResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	c := path.FindCapture(r.Path.Node())
-	ctx = setupContext(ctx, c, r.Config)
+	ctx = SetupContext(ctx, c, r.Config)
 	return ResolveService(ctx, r.Path.Node(), r.Config)
 }

@@ -43,7 +43,7 @@ func Set(ctx context.Context, p *path.Any, v interface{}, r *path.ResolveConfig)
 
 // Resolve implements the database.Resolver interface.
 func (r *SetResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, path.FindCapture(r.Path.Node()), r.Config)
+	ctx = SetupContext(ctx, path.FindCapture(r.Path.Node()), r.Config)
 
 	a := arena.New()
 

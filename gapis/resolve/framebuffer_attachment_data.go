@@ -27,7 +27,7 @@ import (
 // Resolve implements the database.Resolver interface.
 func (r *FramebufferAttachmentBytesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	c := path.FindCapture(r.After)
-	ctx = setupContext(ctx, c, r.Config)
+	ctx = SetupContext(ctx, c, r.Config)
 
 	intent := replay.Intent{
 		Device:  r.ReplaySettings.Device,
