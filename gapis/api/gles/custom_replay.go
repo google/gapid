@@ -235,7 +235,7 @@ func (i BufferDataPointer) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalS
 	return value.ObservedPointer(i)
 }
 
-func (i GLeglImageOES) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
+func (i EGLImageKHR) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
 	return value.AbsolutePointer(i)
 }
 
