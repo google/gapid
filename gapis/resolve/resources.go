@@ -39,7 +39,7 @@ func Resources(ctx context.Context, c *path.Capture, r *path.ResolveConfig) (*se
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.Capture, r.Config)
+	ctx = SetupContext(ctx, r.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

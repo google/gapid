@@ -21,10 +21,10 @@ import "gapis/service/path/path.proto";
 
 message DependencyGraphResolvable {
   path.Capture capture = 1;
-  path.Device device = 2;
+  path.ResolveConfig config = 2;
 }
 
 message FootprintResolvable {
   path.Capture capture = 1;
-  path.Device device = 2;
+  path.ResolveConfig config = 2;
 }

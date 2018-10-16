@@ -37,6 +37,7 @@ go_library(
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/replay:go_default_library",
+        "//gapis/resolve:go_default_library",
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service/path:go_default_library",
     ],

@@ -180,7 +180,7 @@ func CommandTreeNodeForCommand(ctx context.Context, p *path.CommandTreeNodeForCo
 // Resolve implements the database.Resolver interface.
 func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	p := r.Path
-	ctx = setupContext(ctx, p.Capture, r.Config)
+	ctx = SetupContext(ctx, p.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

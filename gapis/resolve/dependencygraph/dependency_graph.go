@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/replay"
+	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -151,7 +151,7 @@ type BehaviourProvider interface {
 func GetDependencyGraph(ctx context.Context, device *path.Device) (*DependencyGraph, error) {
 	r, err := database.Build(ctx, &DependencyGraphResolvable{
 		Capture: capture.Get(ctx),
-		Device:  device,
+		Config:  &path.ResolveConfig{ReplayDevice: device},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Could not calculate dependency graph: %v", err)
@@ -160,10 +160,7 @@ func GetDependencyGraph(ctx context.Context, device *path.Device) (*DependencyGr
 }
 
 func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = capture.Put(ctx, r.Capture)
-	if d := r.Device; d != nil {
-		ctx = replay.PutDevice(ctx, d)
-	}
+	ctx = resolve.SetupContext(ctx, r.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {

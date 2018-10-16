@@ -51,7 +51,7 @@ func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtabl
 
 // Resolve implements the database.Resolver interface.
 func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.Path.Capture, r.Config)
+	ctx = SetupContext(ctx, r.Path.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {
