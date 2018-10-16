@@ -415,7 +415,7 @@ func (sb *stateBuilder) eglImage(ctx context.Context, img EGLImageʳ) {
 	attribs := img.AttribList().MustRead(ctx, nil, sb.oldState, nil)
 	cmd := cb.EglCreateImageKHR(img.Display(), img.Context(), img.Target(), img.Buffer(), sb.readsData(ctx, attribs), img.ID())
 	if extra := img.Extra(); !extra.IsNil() {
-		cmd.Extras().Add(extra)
+		cmd.Extras().Add(extra.Get().Clone(cb.Arena, sb.cloneCtx))
 	}
 	write(ctx, cmd)
 }
