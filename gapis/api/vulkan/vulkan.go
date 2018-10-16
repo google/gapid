@@ -659,6 +659,7 @@ func (API) IsTrivialTerminator(ctx context.Context, p *path.Capture, after api.S
 				}
 			}
 		}
+		return true, nil
 	}
 	return false, nil
 }
