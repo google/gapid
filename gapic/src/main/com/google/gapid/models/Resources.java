@@ -15,6 +15,8 @@
  */
 package com.google.gapid.models;
 
+import static com.google.gapid.util.Paths.compare;
+import static com.google.gapid.util.Paths.isNull;
 import static com.google.gapid.util.Paths.resourceAfter;
 import static java.util.Collections.emptyList;
 
@@ -23,9 +25,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.Resource;
 import com.google.gapid.proto.service.api.API;
-import com.google.gapid.proto.service.api.API.ResourceType;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
@@ -33,7 +33,6 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
-import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -147,7 +146,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     }
 
     public ResourceList getResources(Path.Command after, API.ResourceType type) {
-      List<Service.Resource> list = Lists.newArrayList();
+      List<Resource> list = Lists.newArrayList();
       boolean complete = true;
       for (Service.ResourcesByType rs : resources.getTypesList()) {
         if (rs.getType() != type) {
@@ -155,8 +154,9 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
         }
 
         for (Service.Resource r : rs.getResourcesList()) {
-          if (Paths.compare(firstAccess(r), after) <= 0) {
-            list.add(r);
+          if (compare(firstAccess(r), after) <= 0) {
+            Path.Command deleted = r.getDeleted();
+            list.add(new Resource(r, !isNull(deleted) && compare(deleted, after) <= 0));
           } else {
             complete = false;
           }
@@ -172,10 +172,10 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
 
   public static class ResourceList {
     public final API.ResourceType type;
-    public final List<Service.Resource> resources;
+    public final List<Resource> resources;
     public final boolean complete;
 
-    public ResourceList(ResourceType type, List<Resource> resources, boolean complete) {
+    public ResourceList(API.ResourceType type, List<Resource> resources, boolean complete) {
       this.type = type;
       this.resources = resources;
       this.complete = complete;
@@ -185,8 +185,18 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
       return resources.isEmpty();
     }
 
-    public Stream<Service.Resource> stream() {
+    public Stream<Resource> stream() {
       return resources.stream();
+    }
+  }
+
+  public static class Resource {
+    public final Service.Resource resource;
+    public final boolean deleted;
+
+    public Resource(Service.Resource resource, boolean deleted) {
+      this.resource = resource;
+      this.deleted = deleted;
     }
   }
 
