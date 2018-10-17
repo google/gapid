@@ -75,6 +75,12 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		}
 	}
 
+	// Resources destroyed during state reconstructions should be hidden from the user, as they are
+	// temporary objects created to correctly reconstruct the state.
+	state.OnResourceDestroyed = func(r api.Resource) {
+		delete(seen, r)
+	}
+
 	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
@@ -82,6 +88,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil
 	})
 
+	state.OnResourceDestroyed = nil
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
@@ -91,6 +98,9 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	types := map[api.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {
+		if _, ok := seen[tr.resource]; !ok {
+			continue
+		}
 		ty := tr.resource.ResourceType(ctx)
 		b := types[ty]
 		if b == nil {
