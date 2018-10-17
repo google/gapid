@@ -268,6 +268,7 @@ func TestResizeRenderer(t *testing.T) {
 	)
 
 	b.ResizeBackbuffer(64, 64)
+	b.Add(b.CB.GlViewport(0, 0, 64, 64))
 	b.ClearColor(0, 0, 1, 1)
 	triangle := b.Add(b.CB.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 3).AddRead(triangleVerticesR.Data()))
 	c := buildAndMaybeExportCapture(ctx, b, "resize-renderer")
