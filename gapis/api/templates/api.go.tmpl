@@ -388,7 +388,7 @@ import (
     return m
   }
 
-  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}, val {{$value}}) {{$name}} {
+  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}, val {{$value}}) {{$name}} {
     if ϟw != nil {
       ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
         {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
@@ -398,6 +398,10 @@ import (
       }
     }
     (*m.Map)[key] = val
+
+    {{if IsReference $.ValueType}}{{if GetAnnotation $.ValueType.To "resource"}}
+      val.OnCreate(ϟg)
+    {{end}}{{end}}
     return m
   }
 
@@ -674,9 +678,8 @@ import (
 
   {{if GetAnnotation $.To "resource"}}
     // OnCreate should be called immediately after the {{$name}} resource is created.
-    func (c {{$name}}) OnCreate(ϟg *ϟapi.GlobalState) {{$name}} {
+    func (c {{$name}}) OnCreate(ϟg *ϟapi.GlobalState) {
       if f := ϟg.OnResourceCreated; c.IsResource() && f != nil { f(c) }
-      return c
     }
 
     // OnAccess should be called each time the {{$name}} resource is used.
