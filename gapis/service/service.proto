@@ -847,6 +847,8 @@ message Resource {
   uint64 order = 4;
   // The list of command indices where the resource was used.
   repeated path.Command accesses = 5;
+  // The command at which this resource was deleted/destroyed.
+  path.Command deleted = 6;
 }
 
 // Context represents a single rendering context in the capture.
