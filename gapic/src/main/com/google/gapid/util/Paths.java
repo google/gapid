@@ -345,14 +345,18 @@ public class Paths {
         .build();
   }
 
+  public static boolean isNull(Path.Command c) {
+    return (c == null) || (c.getIndicesCount() == 0);
+  }
+
   /**
    * Compares a and b, returning -1 if a comes before b, 1 if b comes before a and 0 if they
    * are equal.
    */
   public static int compare(Path.Command a, Path.Command b) {
-    if (a == null) {
-      return (b == null) ? 0 : -1;
-    } else if (b == null) {
+    if (isNull(a)) {
+      return isNull(b) ? 0 : -1;
+    } else if (isNull(b)) {
       return 1;
     }
 

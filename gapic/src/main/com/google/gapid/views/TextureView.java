@@ -20,6 +20,7 @@ import static com.google.gapid.proto.service.api.API.ResourceType.TextureResourc
 import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
+import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
@@ -65,7 +66,9 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.ImageData;
@@ -73,6 +76,7 @@ import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
@@ -112,9 +116,12 @@ public class TextureView extends Composite
 
     setLayout(new FillLayout(SWT.VERTICAL));
     SashForm splitter = new SashForm(this, SWT.VERTICAL);
-    textureTable = createTableViewer(splitter, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
+
+    Composite tableAndOption = createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
+    textureTable = createTableViewer(tableAndOption, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
     imageProvider = new ImageProvider(models, textureTable, widgets.loading);
     initTextureSelector(textureTable, imageProvider);
+    Button showDeleted = createCheckbox(tableAndOption, "Show deleted textures", true);
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
@@ -123,6 +130,8 @@ public class TextureView extends Composite
     splitter.setWeights(models.settings.texturesSplitterWeights);
     addListener(SWT.Dispose, e -> models.settings.texturesSplitterWeights = splitter.getWeights());
 
+    showDeleted.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    textureTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
@@ -140,7 +149,21 @@ public class TextureView extends Composite
       imageProvider.reset();
     });
 
+    ViewerFilter filterDeleted = new ViewerFilter() {
+      @Override
+      public boolean select(Viewer viewer, Object parentElement, Object element) {
+        return !((Data)element).deleted;
+      }
+    };
+
     textureTable.getTable().addListener(SWT.Selection, e -> updateSelection());
+    showDeleted.addListener(SWT.Selection, e -> {
+      if (showDeleted.getSelection()) {
+        textureTable.removeFilter(filterDeleted);
+      } else {
+        textureTable.addFilter(filterDeleted);
+      }
+    });
   }
 
   protected void setImage(FetchedImage result) {
@@ -214,7 +237,7 @@ public class TextureView extends Composite
       Widgets.Refresher refresher = withAsyncRefresh(textureTable);
       List<Data> textures = Lists.newArrayList();
       models.resources.getResources(TextureResource).stream()
-          .map(Data::new)
+          .map(r -> new Data(r.resource, r.deleted))
           .forEach(data -> {
             textures.add(data);
             data.load(models.resources, textureTable.getTable(), refresher);
@@ -292,10 +315,12 @@ public class TextureView extends Composite
    */
   private static class Data {
     public final Service.Resource info;
+    public final boolean deleted;
     protected AdditionalInfo imageInfo;
 
-    public Data(Service.Resource info) {
+    public Data(Service.Resource info, boolean deleted) {
       this.info = info;
+      this.deleted = deleted;
       this.imageInfo = AdditionalInfo.NULL;
     }
 

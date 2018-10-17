@@ -412,7 +412,7 @@ public class ShaderView extends Composite
               }
             });
             resources.stream()
-                .map(Data::new)
+                .map(r -> new Data(r.resource))
                 .forEach(shaders::add);
           }
           lastUpdateContainedAllShaders = resources.complete;
