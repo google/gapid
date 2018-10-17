@@ -101,7 +101,7 @@ class ResourceInMemoryCacheTest : public Test {
     auto res_data = createResourcesData(resources);
     EXPECT_CALL(*mFallbackLoader, fetch(_, _))
         .With(Args<0, 1>(ElementsAreArray(resources)))
-        .WillOnce(Return(ByMove(std::move(createResources(res_data)))))
+        .WillOnce(Return(ByMove(createResources(res_data))))
         .RetiresOnSaturation();
     EXPECT_TRUE(mMemoryCachedResourceLoader->load(
         resources.data(), resources.size(), got.data(), size));
@@ -143,8 +143,8 @@ TEST_F(ResourceInMemoryCacheTest, Prefetch) {
 
   EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(A, B, C, D)))
-      .WillOnce(Return(ByMove(
-          std::move(createResources(createResourcesData({A, B, C, D}))))));
+      .WillOnce(
+          Return(ByMove(createResources(createResourcesData({A, B, C, D})))));
 
   Resource resources[] = {A, B, C, D, E};
   mCache->resize(TEMP_SIZE);
@@ -191,8 +191,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHit) {
   std::vector<Resource> resources{A, B, C, D};
   EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(B, D)))
-      .WillOnce(Return(
-          ByMove(std::move(createResources(createResourcesData({B, D}))))));
+      .WillOnce(Return(ByMove(createResources(createResourcesData({B, D})))));
   EXPECT_TRUE(
       mMemoryCachedResourceLoader->load(resources.data(), 4, mTemp, TEMP_SIZE));
   // ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
@@ -218,8 +217,7 @@ TEST_F(ResourceInMemoryCacheTest, PrefetchPartialCacheHitWithWrapped) {
   Resource resources[] = {B, C, D};
   EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(C)))
-      .WillOnce(
-          Return(ByMove(std::move(createResources(createResourcesData({C}))))));
+      .WillOnce(Return(ByMove(createResources(createResourcesData({C})))));
   mMemoryCachedResourceLoader->load(resources, 3, mTemp, TEMP_SIZE);
   // ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
   // ┃ offset:  64 ┃ offset: 576 ┃ offset: 768 ┃ offset:  832 ┃
@@ -356,8 +354,7 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
     Resource resources[] = {A1, B1, C1, D1, E1};
     EXPECT_CALL(*mFallbackLoader, fetch(_, _))
         .With(Args<0, 1>(ElementsAre(E1)))
-        .WillOnce(Return(
-            ByMove(std::move(createResources(createResourcesData({E1}))))));
+        .WillOnce(Return(ByMove(createResources(createResourcesData({E1})))));
     mMemoryCachedResourceLoader->load(resources, 5, mTemp, TEMP_SIZE);
     expectCacheHit({A1, B1, C1, D1, E1});
   }
@@ -384,8 +381,8 @@ TEST_F(ResourceInMemoryCacheTest, CachingLogic) {
     Resource resources[] = {A1, C2, D2};
     EXPECT_CALL(*mFallbackLoader, fetch(_, _))
         .With(Args<0, 1>(ElementsAre(A1, D2)))
-        .WillOnce(Return(
-            ByMove(std::move(createResources(createResourcesData({A1, D2}))))));
+        .WillOnce(
+            Return(ByMove(createResources(createResourcesData({A1, D2})))));
     mMemoryCachedResourceLoader->load(resources, 3, mTemp, TEMP_SIZE);
   }
   // ┏━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
@@ -411,8 +408,8 @@ TEST_F(ResourceInMemoryCacheTest, PrefecthOverrun) {
   std::vector<Resource> resources1{A1, B1, C1, D1, E1};
   EXPECT_CALL(*mFallbackLoader, fetch(_, _))
       .With(Args<0, 1>(ElementsAre(A1, B1, C1, D1, E1)))
-      .WillOnce(Return(
-          ByMove(std::move(createResources(createResourcesData(resources1))))));
+      .WillOnce(
+          Return(ByMove(createResources(createResourcesData(resources1)))));
   mMemoryCachedResourceLoader->load(resources1.data(), 5, mTemp, TEMP_SIZE);
 
   // ┏━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┓
