@@ -405,7 +405,7 @@ import (
     return m
   }
 
-  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {
+  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}) {
     if m.Map != nil {
       if ϟw != nil {
         ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
@@ -415,6 +415,11 @@ import (
           ϟw.CloseForwardDependency(ϟctx, key)
         }
       }
+      {{if IsReference $.ValueType}}{{if GetAnnotation $.ValueType.To "resource"}}
+      if v, ok := (*m.Map)[key]; ok {
+        v.OnDestroy(ϟg)
+      }
+      {{end}}{{end}}
       delete(*m.Map, key)
     }
   }
@@ -686,6 +691,11 @@ import (
     func (c {{$name}}) OnAccess(ϟg *ϟapi.GlobalState) {{$name}} {
       if f := ϟg.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
       return c
+    }
+
+    // OnDestroy should be called immediately after the {{$name}} resource is destroyed.
+    func (c {{$name}}) OnDestroy(ϟg *ϟapi.GlobalState) {
+      if f := ϟg.OnResourceDestroyed; c.IsResource() && f != nil { f(c) }
     }
   {{end}}
 
