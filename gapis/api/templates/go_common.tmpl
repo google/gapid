@@ -684,11 +684,7 @@
 {{define "Go.Create"}}
   {{AssertType $ "Create"}}
 
-  {{if GetAnnotation $.Initializer.Class "resource"}}
-    New{{Template "Go.Type" $.Type}}{{Template "Go.ClassInitializer" $.Initializer}}.OnCreate(ϟg)
-  {{else}}
-    New{{Template "Go.Type" $.Type}}{{Template "Go.ClassInitializer" $.Initializer}}
-  {{end}}
+  New{{Template "Go.Type" $.Type}}{{Template "Go.ClassInitializer" $.Initializer}}
 {{end}}
 
 

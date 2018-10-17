@@ -455,22 +455,22 @@ class DefaultObjects {
 // Objects which are never shared between contexts.
 @internal
 class Objects {
-  GeneratedObjectNames                             GeneratedNames
-  DefaultObjects                                   Default
-  map!(BufferId, ref!Buffer)                       Buffers
-  map!(FramebufferId, ref!Framebuffer)             Framebuffers
-  map!(ImageUnitId, ref!ImageUnit)                 ImageUnits
-  map!(PipelineId, ref!Pipeline)                   Pipelines
-  map!(ProgramId, ref!Program)                     Programs
-  map!(QueryId, ref!Query)                         Queries
-  map!(RenderbufferId, ref!Renderbuffer)           Renderbuffers
-  map!(SamplerId, ref!Sampler)                     Samplers
-  map!(ShaderId, ref!Shader)                       Shaders
-  map!(GLsync, ref!SyncObject)                     SyncObjects
-  map!(TextureUnitId, ref!TextureUnit)             TextureUnits
-  map!(TextureId, ref!Texture)                     Textures
-  map!(TransformFeedbackId, ref!TransformFeedback) TransformFeedbacks
-  map!(VertexArrayId, ref!VertexArray)             VertexArrays
+  GeneratedObjectNames                                        GeneratedNames
+  DefaultObjects                                              Default
+  @handleMap map!(BufferId, ref!Buffer)                       Buffers
+  @handleMap map!(FramebufferId, ref!Framebuffer)             Framebuffers
+  @handleMap map!(ImageUnitId, ref!ImageUnit)                 ImageUnits
+  @handleMap map!(PipelineId, ref!Pipeline)                   Pipelines
+  @handleMap map!(ProgramId, ref!Program)                     Programs
+  @handleMap map!(QueryId, ref!Query)                         Queries
+  @handleMap map!(RenderbufferId, ref!Renderbuffer)           Renderbuffers
+  @handleMap map!(SamplerId, ref!Sampler)                     Samplers
+  @handleMap map!(ShaderId, ref!Shader)                       Shaders
+  @handleMap map!(GLsync, ref!SyncObject)                     SyncObjects
+  @handleMap map!(TextureUnitId, ref!TextureUnit)             TextureUnits
+  @handleMap map!(TextureId, ref!Texture)                     Textures
+  @handleMap map!(TransformFeedbackId, ref!TransformFeedback) TransformFeedbacks
+  @handleMap map!(VertexArrayId, ref!VertexArray)             VertexArrays
 }
 
 @internal

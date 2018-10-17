@@ -570,7 +570,7 @@
   {{if eq $.Operator "="}}
     {{Template "Go.Read" $.To.Map}}.§
     {{if GetAnnotation $.To.Map "handleMap"}}
-      CreateHandleʷ(ϟctx, ϟw, §
+      CreateHandleʷ(ϟctx, ϟw, ϟg, §
     {{else if Macro "IsUntrackedMap" $.To.Map}}
       Add(§
     {{else}}§
