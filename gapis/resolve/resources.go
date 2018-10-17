@@ -88,7 +88,12 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		return nil
 	})
 
-	state.OnResourceDestroyed = nil
+	state.OnResourceDestroyed = func(r api.Resource) {
+		if index, ok := seen[r]; ok {
+			resources[index].deleted = currentCmdIndex
+		}
+	}
+
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
@@ -123,6 +128,7 @@ type trackedResource struct {
 	id       id.ID
 	name     string
 	accesses []uint64
+	deleted  uint64
 }
 
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
@@ -135,6 +141,9 @@ func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	}
 	for i, a := range r.accesses {
 		out.Accesses[i] = p.Command(a)
+	}
+	if r.deleted > 0 {
+		out.Deleted = p.Command(r.deleted)
 	}
 	return out
 }
