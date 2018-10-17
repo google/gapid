@@ -24,6 +24,10 @@ struct destroyer {
   std::function<void(void)> destroy;
 };
 
+static inline void set_dispatch_from_parent(void* child, void* parent) {
+  *((const void**)child) = *((const void**)parent);
+}
+
 // Declared in api_spy.h.tmpl
 bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
                                    uint32_t* h, std::vector<uint8_t>* data) {
@@ -243,6 +247,15 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
                                                           &command_buffer)) {
     return false;
   }
+  set_dispatch_from_parent((void*)command_buffer, (void*)device);
+
+  VkCommandBufferBeginInfo command_buffer_begin_info = {
+      VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      nullptr,
+      VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+      nullptr,
+  };
+  fn.vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
 
   VkImageMemoryBarrier barriers[2] = {
       {VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
