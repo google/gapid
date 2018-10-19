@@ -23,6 +23,7 @@ go_library(
         "common.go",
         "devices.go",
         "dump.go",
+        "dump_fbo.go",
         "dump_pipeline.go",
         "dump_replay.go",
         "dump_shaders.go",
