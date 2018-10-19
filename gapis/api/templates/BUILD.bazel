@@ -176,3 +176,10 @@ api_template(
     outputs = ["opengl_framework_exports.cpp"],
     template = "opengl_framework_exports.cpp.tmpl",
 )
+
+api_template(
+    name = "enum_lookup.go",
+    includes = [":templates"],
+    outputs = ["{api}_enum_lookup.go"],
+    template = "enum_lookup.go.tmpl",
+)
