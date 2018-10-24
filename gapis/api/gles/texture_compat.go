@@ -120,6 +120,14 @@ func (tc *textureCompat) convertFormat(
 	id api.CmdID,
 	cmd api.Cmd) {
 
+	// Compressed formats are replaced by RGBA8
+	// TODO: What about SRGB?
+	if internalformat != nil && isCompressedFormat(internalformat.get()) {
+		if _, supported := tc.f.compressedTextureFormats[internalformat.get()]; !supported {
+			internalformat.set(GLenum_GL_RGBA8)
+		}
+	}
+
 	if tc.v.IsES {
 		return
 	}
@@ -165,14 +173,6 @@ func (tc *textureCompat) convertFormat(
 		case GLenum_GL_RGB10_A2UI: // Not supported in GL 3.2
 			internalformat.set(GLenum_GL_RGBA16UI)
 		case GLenum_GL_STENCIL_INDEX8: // TODO: not supported on desktop.
-		}
-
-		// Compressed formats are replaced by RGBA8
-		// TODO: What about SRGB?
-		if isCompressedFormat(internalformat.get()) {
-			if _, supported := tc.f.compressedTextureFormats[internalformat.get()]; !supported {
-				internalformat.set(GLenum_GL_RGBA8)
-			}
 		}
 	}
 
