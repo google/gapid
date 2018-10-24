@@ -108,7 +108,7 @@ func getFeatures(ctx context.Context, version string, ext extensions) (features,
 		vertexHalfFloatOES:        ext.get("GL_OES_vertex_half_float"),
 		eglImageExternal:          ext.get("GL_OES_EGL_image_external"),
 		textureMultisample:        ext.get("ARB_texture_multisample"),
-		compressedTextureFormats:  getSupportedCompressedTextureFormats(ext),
+		compressedTextureFormats:  getSupportedCompressedTextureFormats(v, ext),
 		supportGenerateMipmapHint: v.IsES,
 	}
 
