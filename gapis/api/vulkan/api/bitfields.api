@@ -41,6 +41,7 @@ type VkFlags VkInstanceCreateFlags
 
 /// Format capability flags
 @unused
+@analyze_usage
 bitfield VkFormatFeatureFlagBits {
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT                  = 0x00000001, /// Format can be used for sampled images (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
   VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT                  = 0x00000002, /// Format can be used for storage images (STORAGE_IMAGE descriptor type)
@@ -56,9 +57,11 @@ bitfield VkFormatFeatureFlagBits {
   VK_FORMAT_FEATURE_BLIT_DST_BIT                       = 0x00000800, /// Format can be used as the destination image of blits with vkCommandBlitImage
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT    = 0x00001000,
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG = 0x00002000,
+  VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR               = 0x00004000,
+  VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR               = 0x00008000,
   // Vulkan 1.1 core
-  VK_FORMAT_FEATURE_TRANSFER_SRC_BIT                                                            = 0x00004000,
-  VK_FORMAT_FEATURE_TRANSFER_DST_BIT                                                            = 0x00008000,
+  VK_FORMAT_FEATURE_TRANSFER_SRC_BIT                                                            = 0x00004000, // VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR
+  VK_FORMAT_FEATURE_TRANSFER_DST_BIT                                                            = 0x00008000, // VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR
   VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT                                                 = 0x00020000,
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT                            = 0x00040000,
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT           = 0x00080000,
@@ -510,7 +513,7 @@ type VkFlags VkExternalSemaphoreHandleTypeFlags
 @unused
 @analyze_usage
 bitfield VkFenceImportFlagBits {
-  VK_FENCE_IMPORT_TEMPORARY_BIT     = 0x00000001,
+  VK_FENCE_IMPORT_TEMPORARY_BIT     = 0x000000001,
   VK_FENCE_IMPORT_TEMPORARY_BIT_KHR = 0x000000001, // VK_FENCE_IMPORT_TEMPORARY_BIT,
 }
 type VkFlags VkFenceImportFlags

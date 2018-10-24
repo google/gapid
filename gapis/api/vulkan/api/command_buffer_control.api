@@ -423,3 +423,20 @@ cmd void vkCmdExecuteCommands(
 
   AddCommand(commandBuffer, cmd_vkCmdExecuteCommands, mapPos)
 }
+
+// ----------------------------------------------------------------------------
+// Vulkan 1.1 Commands
+// ----------------------------------------------------------------------------
+
+//////////////////
+// Command pool //
+//////////////////
+
+@indirect("VkDevice")
+cmd void vkTrimCommandPool(
+    VkDevice                device,
+    VkCommandPool           commandPool,
+    VkCommandPoolTrimFlags  flags) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+}
