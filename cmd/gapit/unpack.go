@@ -16,8 +16,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,50 +47,71 @@ func (verb *unpackVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
-	ctx = log.V{"filepath": filepath}.Bind(ctx)
+	inpath, err := filepath.Abs(flags.Arg(0))
+	ctx = log.V{"filepath": inpath}.Bind(ctx)
 	if err != nil {
 		return log.Err(ctx, err, "Could not find capture file")
 	}
 
-	r, err := os.Open(filepath)
+	r, err := os.Open(inpath)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
 
-	return pack.Read(ctx, r, unpacker{verb.Verbose, map[uint64]int{}}, true)
+	var ev pack.Events
+	if len(verb.Dump) > 0 {
+		ids := make(map[uint64]bool, len(verb.Dump))
+		for _, id := range verb.Dump {
+			ids[id] = true
+		}
+
+		out := verb.Out
+		if out == "" {
+			out = "."
+		}
+		out, err := filepath.Abs(out)
+		ctx = log.V{"out": out}.Bind(ctx)
+		if err != nil {
+			return log.Err(ctx, err, "Could not find output directory")
+		}
+
+		ev = &dumper{ids, verb.Children, out, 0, 0}
+	} else {
+		ev = &printer{verb.Verbose, map[uint64]int{}}
+	}
+	return pack.Read(ctx, r, ev, true)
 }
 
-type unpacker struct {
+type printer struct {
 	Verbose bool
 	DepthOf map[uint64]int
 }
 
-func (u unpacker) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
+func (u *printer) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
 	depth := 0
 	u.DepthOf[id] = depth
 	log.I(ctx, "%sBeginGroup(msg: %v, id: %v)", indent(depth), u.msgString(msg), id)
 	return nil
 }
-func (u unpacker) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
+func (u *printer) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
 	depth := u.DepthOf[parentID] + 1
 	u.DepthOf[id] = depth
 	log.I(ctx, "%sBeginChildGroup(msg: %v, id: %v, parentID: %v)", indent(depth), u.msgString(msg), id, parentID)
 	return nil
 }
-func (u unpacker) EndGroup(ctx context.Context, id uint64) error {
+func (u *printer) EndGroup(ctx context.Context, id uint64) error {
 	depth := u.DepthOf[id]
 	delete(u.DepthOf, id)
 	log.I(ctx, "%sEndGroup(id: %v)", indent(depth), id)
 	return nil
 }
-func (u unpacker) Object(ctx context.Context, msg proto.Message) error {
+func (u *printer) Object(ctx context.Context, msg proto.Message) error {
 	depth := 0
 	log.I(ctx, "%sObject(msg: %v)", indent(depth), u.msgString(msg))
 	return nil
 }
-func (u unpacker) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
+func (u *printer) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
 	depth := u.DepthOf[parentID] + 1
 	log.I(ctx, "%sChildObject(msg: %v, parentID: %v)", indent(depth), u.msgString(msg), parentID)
 	return nil
@@ -98,7 +121,7 @@ func indent(depth int) string {
 	return strings.Repeat("  ", depth)
 }
 
-func (u *unpacker) msgString(msg proto.Message) string {
+func (u *printer) msgString(msg proto.Message) string {
 	var str string
 	switch msg := msg.(type) {
 	case *pack.Dynamic:
@@ -110,4 +133,75 @@ func (u *unpacker) msgString(msg proto.Message) string {
 		str = str[:97] + "..." // TODO: Consider unicode.
 	}
 	return str
+}
+
+type dumper struct {
+	ids      map[uint64]bool
+	children bool
+	dir      string
+	found    int
+	count    int
+}
+
+func (u *dumper) BeginGroup(ctx context.Context, msg proto.Message, id uint64) error {
+	if _, ok := u.ids[id]; ok {
+		u.found = 1
+		path, err := u.dump(msg)
+		log.I(ctx, "BeginGroup(id: %v) -> %s", id, path)
+		return err
+	}
+	return nil
+}
+func (u *dumper) BeginChildGroup(ctx context.Context, msg proto.Message, id, parentID uint64) error {
+	include := u.found > 0 && u.children
+	if _, ok := u.ids[id]; ok {
+		u.found++
+		include = true
+	}
+
+	if include {
+		path, err := u.dump(msg)
+		log.I(ctx, "BeginChildGroup(id: %v, parentID: %v) -> %s", id, parentID, path)
+		return err
+	}
+	return nil
+}
+func (u *dumper) EndGroup(ctx context.Context, id uint64) error {
+	include := u.found > 0 && u.children
+	if _, ok := u.ids[id]; ok {
+		u.found--
+		include = true
+	}
+
+	if include {
+		log.I(ctx, "EndGroup(id: %v)", id)
+	}
+	return nil
+}
+func (u *dumper) Object(ctx context.Context, msg proto.Message) error {
+	if u.found > 0 {
+		path, err := u.dump(msg)
+		log.I(ctx, "Object -> %s", path)
+		return err
+	}
+	return nil
+}
+func (u *dumper) ChildObject(ctx context.Context, msg proto.Message, parentID uint64) error {
+	if u.found > 0 && u.children {
+		path, err := u.dump(msg)
+		log.I(ctx, "ChildObject(parentID: %v) -> %s", parentID, path)
+		return err
+	}
+	return nil
+}
+
+func (u *dumper) dump(msg proto.Message) (path string, err error) {
+	u.count++
+	path = filepath.Join(u.dir, fmt.Sprintf("unpack_%03d.json", u.count))
+
+	data, err := json.Marshal(msg)
+	if err == nil {
+		err = ioutil.WriteFile(path, data, 0664)
+	}
+	return
 }

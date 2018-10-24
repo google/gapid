@@ -276,7 +276,10 @@ type (
 		CommandFilterFlags
 	}
 	UnpackFlags struct {
-		Verbose bool `help:"if true, then output will not be truncated"`
+		Dump     []uint64 `help:"IDs of groups to extract"`
+		Children bool     `help:"if true, the groups' children are extracted as well"`
+		Out      string   `help:"the directory where to store the extracted objects (default '.')"`
+		Verbose  bool     `help:"if true, then output will not be truncated"`
 	}
 	StatsFlags struct {
 		Gapis  GapisFlags
