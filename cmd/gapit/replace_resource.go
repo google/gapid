@@ -116,7 +116,7 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 			return log.Errf(ctx, err, "Could not read resource file %s", verb.ResourcePath)
 		}
 		resourceData = api.NewResourceData(&api.Shader{
-			Type: shaderResourceData.GetType(),
+			Type:   shaderResourceData.GetType(),
 			Source: string(newResourceBytes),
 		})
 	case verb.UpdateResourceBinary != "":
@@ -139,7 +139,7 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 				return err
 			}
 			resourcesSource[i] = api.NewResourceData(&api.Shader{
-				Type: rd.(*api.ResourceData).GetShader().GetType(),
+				Type:   rd.(*api.ResourceData).GetShader().GetType(),
 				Source: string(newData),
 			})
 		}
