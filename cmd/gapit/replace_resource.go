@@ -105,11 +105,20 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 			return err
 		}
 		resourcePath = capture.Command(uint64(verb.At)).ResourceAfter(matchedResource.ID).Path()
+		oldResourceData, err := client.Get(ctx, resourcePath, nil)
+		if err != nil {
+			log.Errf(ctx, err, "Could not get data for shader: %v", matchedResource)
+			return err
+		}
+		shaderResourceData := oldResourceData.(*api.ResourceData).GetShader()
 		newResourceBytes, err := ioutil.ReadFile(verb.ResourcePath)
 		if err != nil {
 			return log.Errf(ctx, err, "Could not read resource file %s", verb.ResourcePath)
 		}
-		resourceData = api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: string(newResourceBytes)})
+		resourceData = api.NewResourceData(&api.Shader{
+			Type:   shaderResourceData.GetType(),
+			Source: string(newResourceBytes),
+		})
 	case verb.UpdateResourceBinary != "":
 		shaderResources := resources.FindAll(func(t api.ResourceType, r service.Resource) bool {
 			return t == api.ResourceType_ShaderResource
@@ -129,7 +138,10 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 				log.Errf(ctx, err, "Could not update the shader: %v", v)
 				return err
 			}
-			resourcesSource[i] = api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: string(newData)})
+			resourcesSource[i] = api.NewResourceData(&api.Shader{
+				Type:   rd.(*api.ResourceData).GetShader().GetType(),
+				Source: string(newData),
+			})
 		}
 		resourceData = api.NewMultiResourceData(resourcesSource)
 		resourcePath = capture.Command(uint64(verb.At)).ResourcesAfter(ids).Path()
