@@ -2800,6 +2800,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		// TODO: ResetCommandPool should overwrite all the command buffers in this
 		// pool.
 		*VkResetCommandPool,
+		*VkTrimCommandPool,
+		*VkTrimCommandPoolKHR,
 		*VkDestroyCommandPool:
 		bh.Alive = true
 	case *VkGetPhysicalDeviceXlibPresentationSupportKHR,
