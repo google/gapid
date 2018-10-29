@@ -657,10 +657,10 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 				for level := uint32(0); level < t.Info().MipLevels(); level++ {
 					info := t.imageInfo(ctx, s, vkFmt, layer, level)
 					if info == nil {
-						continue
+						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 					}
 					if !setCubemapFace(info, cubeMapLevels[level], layer) {
-						continue
+						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 					}
 				}
 			}
@@ -676,7 +676,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 				for level := uint32(0); level < t.Info().MipLevels(); level++ {
 					info := t.imageInfo(ctx, s, vkFmt, layer, level)
 					if info == nil {
-						continue
+						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 					}
 					levels[level] = info
 				}
@@ -690,7 +690,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 		for level := uint32(0); level < t.Info().MipLevels(); level++ {
 			info := t.imageInfo(ctx, s, vkFmt, 0, level)
 			if info == nil {
-				continue
+				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
 			levels[level] = info
 		}
@@ -702,7 +702,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 		for level := uint32(0); level < t.Info().MipLevels(); level++ {
 			info := t.imageInfo(ctx, s, vkFmt, 0, level)
 			if info == nil {
-				continue
+				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
 			levels[level] = info
 		}
@@ -717,7 +717,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 				for level := uint32(0); level < t.Info().MipLevels(); level++ {
 					info := t.imageInfo(ctx, s, vkFmt, layer, level)
 					if info == nil {
-						continue
+						return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 					}
 					levels[level] = info
 				}
@@ -730,7 +730,7 @@ func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*a
 		for level := uint32(0); level < t.Info().MipLevels(); level++ {
 			info := t.imageInfo(ctx, s, vkFmt, 0, level)
 			if info == nil {
-				continue
+				return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
 			}
 			levels[level] = info
 		}
