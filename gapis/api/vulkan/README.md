@@ -14,6 +14,23 @@ If tracing from the command line this can be done with
 When using the GUI, this can be acheived by unchecking
 `Trace from Beginning`
 
+### Invalid VkDestoryXXX and VkFreeXXX Commands Due to Mid-Execution Capture
+When using Mid-Execution capture, it is possible that at the time of
+capturing, an object's dependee has been destroyed but the object itself is
+still there, such objects will **NOT** be rebuilt for replay and the
+`VkDestroyXXX` referring to such object will be **dropped** for replay, also
+`VkFreeXXX` commands referring to such objects will be **modified** or
+**dropped** to not freeing those not-rebuilt objects.
+
+For example: A `VkImage` might have been destroyed when a
+Mid-Execution capture starts, but the `VkImageView` handles that were created
+with the destroyed `VkImage` might still be there. In such cases, those
+`VkImageView` handles are invalid and will not be created during replay, also
+the `VkFramebuffer` handles that depend on those `VkImageView` handles will
+not be created during replay too. `VkDestroyImageView` and `VkDestroyFramebuffer`
+commands that refer to those `VkImageView` and `VkFramebuffer` handles will be
+dropped, so won't be called during replay.
+
 ## Subcommands
 When visualizing the tree of Commands, every VkQueueSubmit is expanded into
 a list of the commands that are run during that submission. From there you can

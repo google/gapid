@@ -310,6 +310,215 @@ func buildReplayEnumeratePhysicalDevices(
 		numDevData.Data()).AddRead(phyDevData.Data()).AddRead(devIDData.Data())
 }
 
+// dropInvalidDestroy is a transformation that drops all VkDestroyXXX commands
+// whose destroying targets are not recorded in the state.
+type dropInvalidDestroy struct{}
+
+func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	s := out.State()
+	l := s.MemoryLayout
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
+	warnDropCmd := func(handles ...interface{}) {
+		log.W(ctx, "Dropping [%d]:%v because the creation of %v was not recorded", id, cmd, handles)
+	}
+	warnModCmd := func(handles ...interface{}) {
+		log.W(ctx, "Modifing [%d]:%v to remove the reference to %v because the creation of them were not recorded", id, cmd, handles)
+	}
+	switch cmd := cmd.(type) {
+	case *VkDestroyInstance:
+		if !GetState(s).Instances().Contains(cmd.Instance()) {
+			warnDropCmd(cmd.Instance())
+			return
+		}
+	case *VkDestroyDevice:
+		if !GetState(s).Devices().Contains(cmd.Device()) {
+			warnDropCmd(cmd.Device())
+			return
+		}
+	case *VkFreeCommandBuffers:
+		cmdBufCount := cmd.CommandBufferCount()
+		if cmdBufCount > 0 {
+			cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+			cmdBufs := cmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), l).MustRead(ctx, cmd, s, nil)
+			newCmdBufs := []VkCommandBuffer{}
+			dropped := []VkCommandBuffer{}
+			for _, b := range cmdBufs {
+				if GetState(s).CommandBuffers().Contains(b) {
+					newCmdBufs = append(newCmdBufs, b)
+				} else {
+					dropped = append(dropped, b)
+				}
+			}
+			if len(newCmdBufs) == 0 {
+				// no need to have this command
+				warnDropCmd(cmdBufs)
+				return
+			}
+			if len(newCmdBufs) != len(cmdBufs) {
+				// need to modify the command to drop the command buffers not
+				// in the state out of the command
+				warnModCmd(dropped)
+				newCmdBufsData := s.AllocDataOrPanic(ctx, newCmdBufs)
+				defer newCmdBufsData.Free()
+				newCmd := cb.VkFreeCommandBuffers(cmd.Device(), cmd.CommandPool(), uint32(len(newCmdBufs)), newCmdBufsData.Ptr()).AddRead(newCmdBufsData.Data())
+				out.MutateAndWrite(ctx, id, newCmd)
+				return
+			}
+			// No need to modify the command, just mutate and write the command
+			// like others.
+		}
+	case *VkFreeMemory:
+		if !GetState(s).DeviceMemories().Contains(cmd.Memory()) {
+			warnDropCmd(cmd.Memory())
+			return
+		}
+	case *VkDestroyBuffer:
+		if !GetState(s).Buffers().Contains(cmd.Buffer()) {
+			warnDropCmd(cmd.Buffer())
+			return
+		}
+	case *VkDestroyBufferView:
+		if !GetState(s).BufferViews().Contains(cmd.BufferView()) {
+			warnDropCmd(cmd.BufferView())
+			return
+		}
+	case *VkDestroyImage:
+		if !GetState(s).Images().Contains(cmd.Image()) {
+			warnDropCmd(cmd.Image())
+			return
+		}
+	case *VkDestroyImageView:
+		if !GetState(s).ImageViews().Contains(cmd.ImageView()) {
+			warnDropCmd(cmd.ImageView())
+			return
+		}
+	case *VkDestroyShaderModule:
+		if !GetState(s).ShaderModules().Contains(cmd.ShaderModule()) {
+			warnDropCmd(cmd.ShaderModule())
+			return
+		}
+	case *VkDestroyPipeline:
+		if !GetState(s).GraphicsPipelines().Contains(cmd.Pipeline()) &&
+			!GetState(s).ComputePipelines().Contains(cmd.Pipeline()) {
+			warnDropCmd(cmd.Pipeline())
+			return
+		}
+	case *VkDestroyPipelineLayout:
+		if !GetState(s).PipelineLayouts().Contains(cmd.PipelineLayout()) {
+			warnDropCmd(cmd.PipelineLayout())
+			return
+		}
+	case *VkDestroyPipelineCache:
+		if !GetState(s).PipelineCaches().Contains(cmd.PipelineCache()) {
+			warnDropCmd(cmd.PipelineCache())
+			return
+		}
+	case *VkDestroySampler:
+		if !GetState(s).Samplers().Contains(cmd.Sampler()) {
+			warnDropCmd(cmd.Sampler())
+			return
+		}
+	case *VkFreeDescriptorSets:
+		descSetCount := cmd.DescriptorSetCount()
+		if descSetCount > 0 {
+			cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+			descSets := cmd.PDescriptorSets().Slice(0, uint64(descSetCount), l).MustRead(ctx, cmd, s, nil)
+			newDescSets := []VkDescriptorSet{}
+			dropped := []VkDescriptorSet{}
+			for _, ds := range descSets {
+				if GetState(s).DescriptorSets().Contains(ds) {
+					newDescSets = append(newDescSets, ds)
+				} else {
+					dropped = append(dropped, ds)
+				}
+			}
+			if len(newDescSets) == 0 {
+				// no need to have this command
+				warnDropCmd(descSets)
+				return
+			}
+			if len(newDescSets) != len(descSets) {
+				// need to modify the command to drop the command buffers not
+				// in the state out of the command
+				warnModCmd(dropped)
+				newDescSetsData := s.AllocDataOrPanic(ctx, newDescSets)
+				defer newDescSetsData.Free()
+				newCmd := cb.VkFreeDescriptorSets(
+					cmd.Device(), cmd.DescriptorPool(), uint32(len(newDescSets)),
+					newDescSetsData.Ptr(), VkResult_VK_SUCCESS).AddRead(newDescSetsData.Data())
+				out.MutateAndWrite(ctx, id, newCmd)
+				return
+			}
+			// No need to modify the command, just mutate and write the command
+			// like others.
+		}
+	case *VkDestroyDescriptorSetLayout:
+		if !GetState(s).DescriptorSetLayouts().Contains(cmd.DescriptorSetLayout()) {
+			warnDropCmd(cmd.DescriptorSetLayout())
+			return
+		}
+	case *VkDestroyDescriptorPool:
+		if !GetState(s).DescriptorPools().Contains(cmd.DescriptorPool()) {
+			warnDropCmd(cmd.DescriptorPool())
+			return
+		}
+	case *VkDestroyFence:
+		if !GetState(s).Fences().Contains(cmd.Fence()) {
+			warnDropCmd(cmd.Fence())
+			return
+		}
+	case *VkDestroySemaphore:
+		if !GetState(s).Semaphores().Contains(cmd.Semaphore()) {
+			warnDropCmd(cmd.Semaphore())
+			return
+		}
+	case *VkDestroyEvent:
+		if !GetState(s).Events().Contains(cmd.Event()) {
+			warnDropCmd(cmd.Event())
+			return
+		}
+	case *VkDestroyQueryPool:
+		if !GetState(s).QueryPools().Contains(cmd.QueryPool()) {
+			warnDropCmd(cmd.QueryPool())
+			return
+		}
+	case *VkDestroyFramebuffer:
+		if !GetState(s).Framebuffers().Contains(cmd.Framebuffer()) {
+			warnDropCmd(cmd.Framebuffer())
+			return
+		}
+	case *VkDestroyRenderPass:
+		if !GetState(s).RenderPasses().Contains(cmd.RenderPass()) {
+			warnDropCmd(cmd.RenderPass())
+			return
+		}
+	case *VkDestroyCommandPool:
+		if !GetState(s).CommandPools().Contains(cmd.CommandPool()) {
+			warnDropCmd(cmd.CommandPool())
+			return
+		}
+	case *VkDestroySurfaceKHR:
+		if !GetState(s).Surfaces().Contains(cmd.Surface()) {
+			warnDropCmd(cmd.Surface())
+			return
+		}
+	case *VkDestroySwapchainKHR:
+		if !GetState(s).Swapchains().Contains(cmd.Swapchain()) {
+			warnDropCmd(cmd.Swapchain())
+			return
+		}
+	case *VkDestroyDebugReportCallbackEXT:
+		if !GetState(s).DebugReportCallbacks().Contains(cmd.Callback()) {
+			warnDropCmd(cmd.Callback())
+			return
+		}
+	}
+	out.MutateAndWrite(ctx, id, cmd)
+	return
+}
+
+func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer) {}
+
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
 type destroyResourcesAtEOS struct {
@@ -520,6 +729,7 @@ func (a API) Replay(
 
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
+	transforms.Add(&dropInvalidDestroy{})
 
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}
