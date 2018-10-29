@@ -53,6 +53,5 @@ cmd void vkTrimCommandPoolKHR(
     VkDevice                device,
     VkCommandPool           commandPool,
     VkCommandPoolTrimFlags  flags) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+  TrimCommandPool(device, commandPool, flags)
 }

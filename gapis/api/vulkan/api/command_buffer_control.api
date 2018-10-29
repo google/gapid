@@ -432,11 +432,18 @@ cmd void vkCmdExecuteCommands(
 // Command pool //
 //////////////////
 
-@indirect("VkDevice")
-cmd void vkTrimCommandPool(
+sub void TrimCommandPool(
     VkDevice                device,
     VkCommandPool           commandPool,
     VkCommandPoolTrimFlags  flags) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(commandPool in CommandPools) { vkErrorInvalidCommandPool(commandPool) }
+}
+
+@indirect("VkDevice")
+cmd void vkTrimCommandPool(
+    VkDevice                device,
+    VkCommandPool           commandPool,
+    VkCommandPoolTrimFlags  flags) {
+  TrimCommandPool(device, commandPool, flags)
 }
