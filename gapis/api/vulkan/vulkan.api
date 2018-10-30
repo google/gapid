@@ -67,6 +67,7 @@ import "api/util.api"
 
 import "extensions/ext_debug_marker.api"
 import "extensions/ext_debug_report.api"
+import "extensions/amd_buffer_marker.api"
 import "extensions/khr_dedicated_allocation.api"
 import "extensions/khr_display.api"
 import "extensions/khr_display_swapchain.api"
@@ -204,6 +205,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_NV_dedicated_allocation"] = true
   supported.ExtensionNames["VK_KHR_get_memory_requirements2"] = true
   supported.ExtensionNames["VK_KHR_dedicated_allocation"] = true
+  supported.ExtensionNames["VK_AMD_buffer_marker"] = true
   return supported
 }
 
