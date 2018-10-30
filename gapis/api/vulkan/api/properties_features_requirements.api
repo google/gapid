@@ -269,11 +269,12 @@ cmd void vkGetImageMemoryRequirements(
     VkImage               image,
     VkMemoryRequirements* pMemoryRequirements) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  requirements := ?
-  if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
-  pMemoryRequirements[0] = requirements
-  Images[image].MemoryRequirements = requirements
+  if !(image in Images) { vkErrorInvalidImage(image) } else {
+    requirements := ?
+    if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
+    pMemoryRequirements[0] = requirements
+    Images[image].MemoryRequirements = requirements
+  }
 }
 
 @indirect("VkDevice")

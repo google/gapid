@@ -243,9 +243,10 @@ cmd VkResult vkAcquireNextImageKHR(
     Semaphores[semaphore].Signaled = true
   }
   if (fence != 0) {
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    Fences[fence].Signaled = true
-    recordFenceSignal(fence)
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
+      Fences[fence].Signaled = true
+      recordFenceSignal(fence)
+    }
   }
   Swapchains[swapchain].ImagesAcquired[imageIndex] = true
   recordAcquireNextImage(swapchain, imageIndex)

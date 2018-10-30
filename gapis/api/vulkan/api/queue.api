@@ -175,10 +175,11 @@ cmd VkResult vkQueueSubmit(
   }
   leaveSubcontext()
   if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-      as!VkSemaphore(0), null, fence)
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
+        as!VkSemaphore(0), null, fence)
+    }
   }
 
   execPendingCommands(queue, true)
@@ -333,10 +334,11 @@ cmd VkResult vkQueueBindSparse(
   leaveSubcontext()
 
   if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-      as!VkSemaphore(0), null, fence)
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
+        as!VkSemaphore(0), null, fence)
+    }
   }
 
   execPendingCommands(queue, true)
