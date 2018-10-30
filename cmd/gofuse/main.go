@@ -104,23 +104,19 @@ func run() error {
 			return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(projectRoot, path))
 		})
 
-	fmt.Println("Collecting generated .go files from:", filepath.Join(projectRoot, "bazel-genfiles"))
-	bazelGenfiles := collect(filepath.Join(projectRoot, "bazel-genfiles"), always).
+	// E.g. bazel-out/k8-dbg/genfiles
+	genfilesOut := filepath.Join(projectRoot, "bazel-out", *bazelOutDirectory, "genfiles")
+	fmt.Println("Collecting generated .go files from:", genfilesOut)
+	genfilesMappingOut := collect(genfilesOut, always).
 		ifTrue(and(isFile, hasSuffix(".go"))). // Only consider .go files
 		mapping(func(path string) string {
-			return filepath.Join(
-				fusedRoot,
-				"src",
-				"github.com",
-				"google",
-				"gapid",
-				rel(filepath.Join(projectRoot, "bazel-genfiles"), path))
-		})
+		return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(genfilesOut, path))
+	})
 
 	// E.g. bazel-out/k8-dbg/bin
-	genRootOut := filepath.Join(projectRoot, "bazel-out", *bazelOutDirectory, "bin")
-	fmt.Println("Collecting generated .go files from:", genRootOut)
-	genMappingOut := collect(genRootOut, always).ifTrue(and(
+	binOut := filepath.Join(projectRoot, "bazel-out", *bazelOutDirectory, "bin")
+	fmt.Println("Collecting generated .go files from:", binOut)
+	binMappingOut := collect(binOut, always).ifTrue(and(
 		isFile,
 		contains("github.com"),
 		hasSuffix(".go"),
@@ -142,7 +138,7 @@ func run() error {
 	}
 
 	// Every mapping we're going to deal with.
-	allMappings := join(srcMapping, genMappingOut, bazelGenfiles, extMapping)
+	allMappings := join(srcMapping, genfilesMappingOut, binMappingOut, extMapping)
 
 	// Remove all existing symlinks in the fused directory that part of the
 	// mappings. This may never happen if the OS automatically deletes deleted
