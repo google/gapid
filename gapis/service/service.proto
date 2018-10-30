@@ -849,6 +849,8 @@ message Resource {
   repeated path.Command accesses = 5;
   // The command at which this resource was deleted/destroyed.
   path.Command deleted = 6;
+  // The command at which this resource was created.
+  path.Command created = 7;
 }
 
 // Context represents a single rendering context in the capture.
