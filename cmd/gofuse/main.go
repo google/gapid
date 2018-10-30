@@ -17,7 +17,7 @@
 // gofuse will create a new 'fused' directory in the project root which
 // contains:
 //  • Symlinks to authored .go (and optionally, .proto) source files in the GAPID source tree.
-//  • Symlinks to bazel-generated .go files (bazel-out and bazel-genfiles).
+//  • Symlinks to bazel-generated .go files (bazel-out/[config]/{bin,genfiles}).
 //  • Symlinks to external 3rd-party .go files.
 // These symlinks are 'fused' into a single, common directory structure that
 // is expected by the typical GOPATH rules used by go tooling.
