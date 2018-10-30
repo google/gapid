@@ -61,9 +61,12 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		return log.Err(ctx, err, "Failed to load the capture file")
 	}
 
-	device, err := getDevice(ctx, client, capturePath, verb.Gapir)
-	if err != nil {
-		return err
+	var device *path.Device
+	if !verb.OriginalDevice {
+		device, err = getDevice(ctx, client, capturePath, verb.Gapir)
+		if err != nil {
+			return err
+		}
 	}
 
 	var fbreqs []*service.GetFramebufferAttachmentRequest

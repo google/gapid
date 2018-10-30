@@ -113,10 +113,11 @@ type (
 		CommandFilterFlags
 	}
 	ExportReplayFlags struct {
-		Gapis        GapisFlags
-		Gapir        GapirFlags
-		Out          string `help:"output directory for commands and assets"`
-		OutputFrames bool   `help:"generate trace that output frames(disable diagnostics)"`
+		Gapis          GapisFlags
+		Gapir          GapirFlags
+		OriginalDevice bool   `help:"export replay for the original device"`
+		Out            string `help:"output directory for commands and assets"`
+		OutputFrames   bool   `help:"generate trace that output frames(disable diagnostics)"`
 		CommandFilterFlags
 	}
 	VideoFlags struct {
