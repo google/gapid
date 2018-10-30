@@ -355,9 +355,10 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
   }
   if len(LastBoundQueue.PendingEvents) == 0 {
     for _ , _ , b in args.ImageMemoryBarriers {
-      if !(b.image in Images) { vkErrorInvalidImage(b.image) }
-      image := Images[b.image]
+      if !(b.image in Images) { vkErrorInvalidImage(b.image) } else {
+        image := Images[b.image]
       transitionImageLayout(image, b.subresourceRange, b.oldLayout, b.newLayout)
+      }
     }
   }
 }
@@ -421,12 +422,13 @@ cmd void vkCmdWaitEvents(
 
 sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
   for _ , _ , v in args.ImageMemoryBarriers {
-    if !(v.image in Images) { vkErrorInvalidImage(v.image) }
-    image := Images[v.image]
-    transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
-    if v.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED {
-      writeImageSubresource(image, v.subresourceRange)
-      updateImageQueue(image, v.subresourceRange)
+    if !(v.image in Images) { vkErrorInvalidImage(v.image) } else {
+      image := Images[v.image]
+      transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
+      if v.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED {
+        writeImageSubresource(image, v.subresourceRange)
+        updateImageQueue(image, v.subresourceRange)
+      }
     }
   }
 }

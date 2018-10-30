@@ -129,15 +129,16 @@ cmd void vkDestroyBuffer(
     VkDevice                     device,
     VkBuffer                     buffer,
     AllocationCallbacks          pAllocator) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if (buffer != as!VkBuffer(0)) {
-    bufferObject := Buffers[buffer]
-    if (bufferObject.Memory != null) {
-      // If the memory is deleted first, then do not try to remove ourselves.
-      delete(bufferObject.Memory.BoundObjects,
-      as!u64(buffer))
+  if !(device in Devices) { vkErrorInvalidDevice(device) } else {
+    if (buffer != as!VkBuffer(0)) {
+      bufferObject := Buffers[buffer]
+      if (bufferObject.Memory != null) {
+        // If the memory is deleted first, then do not try to remove ourselves.
+        delete(bufferObject.Memory.BoundObjects,
+        as!u64(buffer))
+      }
+      delete(Buffers, buffer)
     }
-    delete(Buffers, buffer)
   }
 }
 
