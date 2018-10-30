@@ -64,6 +64,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			resource: r,
 			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
 			accesses: []uint64{currentCmdIndex},
+			created:  currentCmdIndex,
 		})
 	}
 	state.OnResourceAccessed = func(r api.Resource) {
@@ -129,6 +130,7 @@ type trackedResource struct {
 	name     string
 	accesses []uint64
 	deleted  uint64
+	created  uint64
 }
 
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
@@ -145,6 +147,7 @@ func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	if r.deleted > 0 {
 		out.Deleted = p.Command(r.deleted)
 	}
+	out.Created = p.Command(r.created)
 	return out
 }
 
