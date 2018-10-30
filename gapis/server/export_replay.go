@@ -26,6 +26,7 @@ import (
 	"github.com/google/gapid/core/archive"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay"
@@ -35,11 +36,17 @@ import (
 )
 
 func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out string, opts *service.ExportReplayOptions) error {
+	cap, err := capture.ResolveFromPath(ctx, c)
+
 	if d == nil {
-		return log.Errf(ctx, nil, "Unable to produce replay on unknown device.")
+		instance := *cap.Header.Device
+		instance.Name = "mock-" + instance.Name
+		instance.GenID()
+		dev := &bind.Simple{To: &instance}
+		bind.GetRegistry(ctx).AddDevice(ctx, dev)
+		d = path.NewDevice(dev.Instance().ID.ID())
 	}
 
-	cap, err := capture.ResolveFromPath(ctx, c)
 	intent := replay.Intent{d, c}
 
 	var queries []func(mgr replay.Manager) error
