@@ -25,8 +25,10 @@
 // Note: the extensive use of symlinks makes Windows support unlikely.
 //
 // Examples:
-//   bazel run //cmd/gofuse -- --bazelout=k8-dbg           --linkproto=true
-//   bazel run //cmd/gofuse -- --bazelout=darwin-fastbuild
+//   bazel run //cmd/gofuse
+//   bazel run //cmd/gofuse -- --bazelout=k8-fastbuild
+//   bazel run //cmd/gofuse -- --bazelout=k8-dbg
+//   bazel run //cmd/gofuse -- --bazelout=darwin-fastbuild --linkproto=false
 package main
 
 import (
@@ -35,6 +37,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -48,10 +51,11 @@ var externals = map[string]string{
 
 var (
 	fuseDir = flag.String("dir", "", "directory to use as the fuse root")
-	bazelOutDirectory = flag.String("bazelout", "k8-fastbuild",
-		"The bazel-out/X directory name. E.g. k8-fastbuild, darwin-fastbuild, k8-dbg, etc.")
 
-	linkProtoFiles = flag.Bool("linkproto", false,
+	bazelOutDirectory = flag.String("bazelout", "",
+		"The bazel-out/X directory name from which to include .go files. E.g. k8-fastbuild, darwin-fastbuild, k8-dbg, etc.")
+
+	linkProtoFiles = flag.Bool("linkproto", true,
 		"Whether to symlink .proto files. This is useful if you want to work in the fuse directory exclusively.")
 )
 
@@ -66,8 +70,27 @@ func main() {
 
 func run() error {
 
-	// If run via 'bazel run', use the shell's CWD, not bazel's.
-	if cwd := os.Getenv("BUILD_WORKING_DIRECTORY"); cwd != "" {
+	if len(*bazelOutDirectory) == 0 {
+		switch runtime.GOOS {
+		case "linux":
+			*bazelOutDirectory = "k8-fastbuild"
+			break
+		case "darwin":
+			*bazelOutDirectory = "darwin-fastbuild"
+		default:
+		}
+
+		if len(*bazelOutDirectory) == 0 {
+			fmt.Println("\nFailed to guess bazel-out/X directory. Please pass --bazelout=X")
+			return fmt.Errorf("need bazelout flag")
+		}
+
+		fmt.Printf("\nWARNING: guessed bazel-out/X directory as: %s. Please pass --bazelout=X to be more explicit.\n", *bazelOutDirectory)
+		fmt.Println()
+	}
+
+	// If run via 'bazel run', use the workspace directory.
+	if cwd := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); cwd != "" {
 		os.Chdir(cwd)
 	}
 
@@ -110,8 +133,8 @@ func run() error {
 	genfilesMappingOut := collect(genfilesOut, always).
 		ifTrue(and(isFile, hasSuffix(".go"))). // Only consider .go files
 		mapping(func(path string) string {
-		return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(genfilesOut, path))
-	})
+			return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(genfilesOut, path))
+		})
 
 	// E.g. bazel-out/k8-dbg/bin
 	binOut := filepath.Join(projectRoot, "bazel-out", *bazelOutDirectory, "bin")
