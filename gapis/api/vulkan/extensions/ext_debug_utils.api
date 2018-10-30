@@ -1,0 +1,244 @@
+// Copyright (C) 2018 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_EXT_debug_utils") define VK_EXT_DEBUG_UTILS_SPEC_VERSION   1
+@extension("VK_EXT_debug_utils") define VK_EXT_DEBUG_UTILS_EXTENSION_NAME "VK_EXT_debug_utils"
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_EXT_debug_utils")
+class VkDebugUtilsObjectNameInfoEXT {
+  VkStructureType            sType
+  const void*                pNext
+  VkObjectType               objectType
+  u64                        objectHandle
+  const char*                pObjectName
+}
+
+@extension("VK_EXT_debug_utils")
+class VkDebugUtilsObjectTagInfoEXT {
+    VkStructureType          sType
+    const void*              pNext
+    VkObjectType             objectType
+    u64                      objectHandle
+    u64                      tagName
+    size                     tagSize
+    const void*              pTag
+}
+
+@extension("VK_EXT_debug_utils")
+class VkDebugUtilsLabelEXT {
+    VkStructureType         sType
+    const void*             pNext
+    const char*             pLabelName
+    f32[4]                  color
+}
+
+//////////////
+// Commands //
+//////////////
+
+@threadSafety("app")
+@extension("VK_EXT_debug_utils")
+@indirect("VkDevice")
+@override
+@no_replay
+cmd VkResult vkSetDebugUtilsObjectNameEXT(
+    VkDevice                       device,
+    const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  nameInfo := pNameInfo[0]
+  // TODO setDebugMarkerObjectName(nameInfo)
+  return ?
+}
+
+@threadSafety("app")
+@extension("VK_EXT_debug_utils")
+@indirect("VkDevice")
+@override
+@no_replay
+cmd VkResult vkSetDebugUtilsObjectTagEXT(
+    VkDevice                       device,
+    const VkDebugUtilsObjectTagInfoEXT* pTagInfo) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  tagInfo := pTagInfo[0]
+  // setDebugMarkerObjectTag(tagInfo)
+  return ?
+}
+
+@internal class
+vkCmdBeginDebugUtilsLabelEXTArgs {
+  @unused string MarkerName,
+  @unused f32[4] Color     ,
+}
+
+sub void dovkCmdBeginDebugUtilsLabelEXT(ref!vkCmdBeginDebugUtilsLabelEXTArgs args) {
+  pushDebugMarker(args.MarkerName)
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkCmdBeginDebugUtilsLabelEXT(
+    VkCommandBuffer             commandBuffer,
+    const VkDebugUtilsLabelEXT* pLabelInfo) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  labelInfo := pLabelInfo[0]
+  args := new!vkCmdBeginDebugUtilsLabelEXTArgs(
+    MarkerName: as!string(labelInfo.pLabelName),
+  )
+  args.Color[0] = labelInfo.color[0]
+  args.Color[1] = labelInfo.color[1]
+  args.Color[2] = labelInfo.color[2]
+  args.Color[3] = labelInfo.color[3]
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginDebugUtilsLabelEXT))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginDebugUtilsLabelEXT[mapPos] = args
+
+  AddCommand(commandBuffer, cmd_vkCmdBeginDebugUtilsLabelEXT, mapPos)
+}
+
+
+
+@internal class
+vkCmdEndDebugUtilsLabelEXTArgs {}
+
+sub void dovkCmdEndDebugUtilsLabelEXT(ref!vkCmdEndDebugUtilsLabelEXTArgs draw) {
+  popDebugMarker()
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkCmdEndDebugUtilsLabelEXT(
+    VkCommandBuffer commandBuffer) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  args := new!vkCmdEndDebugUtilsLabelEXTArgs()
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndDebugUtilsLabelEXT))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndDebugUtilsLabelEXT[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdEndDebugUtilsLabelEXT, mapPos)
+}
+
+
+@internal class
+vkCmdInsertDebugUtilsLabelEXTArgs {
+  @unused string LabelName,
+  @unused f32[4] Color     ,
+}
+
+sub void dovkCmdInsertDebugUtilsLabelEXT(ref!vkCmdInsertDebugUtilsLabelEXTArgs draw) {
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkCmdInsertDebugUtilsLabelEXT(
+    VkCommandBuffer             commandBuffer,
+    const VkDebugUtilsLabelEXT* pLabelInfo) {
+  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
+  labelInfo := pLabelInfo[0]
+  args := new!vkCmdInsertDebugUtilsLabelEXTArgs(
+    LabelName: as!string(labelInfo.pLabelName),
+  )
+  args.Color[0] = labelInfo.color[0]
+  args.Color[1] = labelInfo.color[1]
+  args.Color[2] = labelInfo.color[2]
+  args.Color[3] = labelInfo.color[3]
+
+  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdInsertDebugUtilsLabelEXT))
+  CommandBuffers[commandBuffer].BufferCommands.vkCmdInsertDebugUtilsLabelEXT[mapPos] =
+  args
+
+  AddCommand(commandBuffer, cmd_vkCmdInsertDebugUtilsLabelEXT, mapPos)
+}
+
+@threadSafety("app")
+@indirect("VkQueue", "VkDevice")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkQueueBeginDebugUtilsLabelEXT(
+    VkQueue                                     queue,
+    const VkDebugUtilsLabelEXT*                 pLabelInfo)
+{
+}
+
+@threadSafety("app")
+@indirect("VkQueue", "VkDevice")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkQueueEndDebugUtilsLabelEXT(
+    VkQueue                                     queue)
+{
+}
+
+@threadSafety("app")
+@indirect("VkQueue", "VkDevice")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkQueueInsertDebugUtilsLabelEXT(
+    VkQueue                                     queue,
+    const VkDebugUtilsLabelEXT*                 pLabelInfo)
+{
+}
+
+// TODO
+//  * vkCreateDebugUtilsMessengerEXT
+//  * vkDestroyDebugUtilsMessengerEXT
+//  * vkSubmitDebugUtilsMessageEXT
+
+////////////////////
+// State tracking //
+////////////////////

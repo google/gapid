@@ -312,6 +312,12 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdDebugMarkerEndEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerEndEXT[reference.MapIndex])
     case cmd_vkCmdDebugMarkerInsertEXT:
       dovkCmdDebugMarkerInsertEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerInsertEXT[reference.MapIndex])
+    case cmd_vkCmdBeginDebugUtilsLabelEXT:
+      dovkCmdBeginDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginDebugUtilsLabelEXT[reference.MapIndex])
+    case cmd_vkCmdEndDebugUtilsLabelEXT:
+      dovkCmdEndDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndDebugUtilsLabelEXT[reference.MapIndex])
+    case cmd_vkCmdDebugMarkerInsertEXT:
+      dovkCmdInsertDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdInsertDebugUtilsLabelEXT[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }

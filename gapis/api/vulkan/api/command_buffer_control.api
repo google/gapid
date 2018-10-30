@@ -172,6 +172,9 @@ enum CommandType {
   cmd_vkCmdDebugMarkerBeginEXT    = 44,
   cmd_vkCmdDebugMarkerEndEXT      = 45,
   cmd_vkCmdDebugMarkerInsertEXT   = 46,
+  cmd_vkCmdBeginDebugUtilsLabelEXT = 47,
+  cmd_vkCmdEndDebugUtilsLabelEXT  = 48,
+  cmd_vkCmdInsertDebugUtilsLabelEXT = 49,
   cmd_vkNoCommand                 = 0xFFFFFFFF
 }
 
@@ -246,6 +249,9 @@ enum SemaphoreUpdate {
   map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
   map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
   map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
+  map!(u32, ref!vkCmdBeginDebugUtilsLabelEXTArgs) vkCmdBeginDebugUtilsLabelEXT
+  map!(u32, ref!vkCmdEndDebugUtilsLabelEXTArgs)  vkCmdEndDebugUtilsLabelEXT
+  map!(u32, ref!vkCmdInsertDebugUtilsLabelEXTArgs)  vkCmdInsertDebugUtilsLabelEXT
 }
 
 @internal class CommandBufferObject {
