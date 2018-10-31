@@ -60,8 +60,10 @@ static void GetProgramReflectionInfo_GLES20(GlesSpy* spy,
   int32_t maxLength = 0;
   maxLength = std::max(maxLength, getProgramiv(GL_ACTIVE_ATTRIBUTE_MAX_LENGTH));
   maxLength = std::max(maxLength, getProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH));
-  maxLength = std::max(maxLength,
-                       getProgramiv(GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH));
+  if (gles30) {
+    maxLength = std::max(maxLength,
+                         getProgramiv(GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH));
+  }
   maxLength += 16;  // extra space for appending of array suffix
   std::vector<char> buffer(maxLength);
 
