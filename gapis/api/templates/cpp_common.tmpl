@@ -265,7 +265,7 @@
   {{else if IsPointer     $}}{{Template "C++.ParameterTypeNoSuffix" $.To}}{{if $.Const}} const{{end}}*
   {{else if IsStaticArray $}}{{Template "C++.Type" $.ValueType}}
   {{else if IsString      $}}{{if $func.Extern}} std::string {{else}} const char* {{end}}
-  {{else if IsEnum        $}}{{$}}
+  {{/* {{else if IsEnum        $}}{{$}} */}}
   {{else                   }}{{Template "C++.Type" $}}
   {{end}}
 {{end}}
@@ -283,7 +283,7 @@
   {{else if IsPointer   $}}{{Template "C++.ParameterType" $.To}}{{if $.Const}} const{{end}}*
   {{else if IsString    $}}const char*
   {{else if IsAny       $}}{{Template "C++.ParameterTypeAny" $}}
-  {{else if IsEnum      $}}{{$}}
+  {{/* {{else if IsEnum        $}}{{$}} */}}
   {{else                 }}{{Template "C++.Type" $}}
   {{end}}
 {{end}}
