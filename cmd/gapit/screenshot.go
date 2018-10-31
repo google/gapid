@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
@@ -60,9 +61,17 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
+	captureFilepath := flags.Arg(0)
+
+	// Try parsing captureFilepath as a hex string.
+	captureId, err := id.Parse(captureFilepath)
+
 	if err != nil {
-		return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
+		// captureFilepath really *is* a file path.
+		captureFilepath, err = filepath.Abs(captureFilepath)
+		if err != nil {
+			return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
+		}
 	}
 
 	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
@@ -71,10 +80,17 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer client.Close()
 
-	capture, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Errf(ctx, err, "LoadCapture(%v)", filepath)
+	var capture *path.Capture
+
+	if captureId.IsValid() {
+		capture = &path.Capture{ID: path.NewID(captureId)}
+	} else {
+		capture, err = client.LoadCapture(ctx, captureFilepath)
+		if err != nil {
+			return log.Errf(ctx, err, "LoadCapture(%v)", captureFilepath)
+		}
 	}
+	log.I(ctx, "Getting screenshot from capture id: %s", capture.ID)
 
 	device, err := getDevice(ctx, client, capture, verb.Gapir)
 	if err != nil {
