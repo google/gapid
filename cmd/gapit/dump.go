@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -43,22 +42,11 @@ func (verb *dumpVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
+	client, cp, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
-
-	filepath, err := filepath.Abs(flags.Arg(0))
-	ctx = log.V{"filepath": filepath}.Bind(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Could not find capture file")
-	}
-
-	cp, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to load the capture file")
-	}
 
 	boxedCapture, err := client.Get(ctx, cp.Path(), nil)
 	if err != nil {

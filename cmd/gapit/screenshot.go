@@ -21,13 +21,11 @@ import (
 	"image"
 	"image/png"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/flags"
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
@@ -61,35 +59,12 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	captureFilepath := flags.Arg(0)
-
-	// Try parsing captureFilepath as a hex string.
-	captureId, err := id.Parse(captureFilepath)
-
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		// captureFilepath really *is* a file path.
-		captureFilepath, err = filepath.Abs(captureFilepath)
-		if err != nil {
-			return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
-		}
-	}
-
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
 
-	var capture *path.Capture
-
-	if captureId.IsValid() {
-		capture = &path.Capture{ID: path.NewID(captureId)}
-	} else {
-		capture, err = client.LoadCapture(ctx, captureFilepath)
-		if err != nil {
-			return log.Errf(ctx, err, "LoadCapture(%v)", captureFilepath)
-		}
-	}
 	log.I(ctx, "Getting screenshot from capture id: %s", capture.ID)
 
 	device, err := getDevice(ctx, client, capture, verb.Gapir)
@@ -171,7 +146,7 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 	}
 	iip, err := client.GetFramebufferAttachment(ctx,
 		&service.ReplaySettings{
-			Device: device,
+			Device:                    device,
 			DisableReplayOptimization: verb.NoOpt,
 			DisplayToSurface:          verb.DisplayToSurface,
 		},

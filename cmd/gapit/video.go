@@ -25,7 +25,6 @@ import (
 	"image/png"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 
@@ -198,21 +197,11 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
-	}
-
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
-
-	capture, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Errf(ctx, err, "LoadCapture(%v)", filepath)
-	}
 
 	device, err := getDevice(ctx, client, capture, verb.Gapir)
 	if err != nil {
@@ -257,17 +246,28 @@ func (verb *videoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return err
 	}
 
+	// A bit messy: vidOut wants the filepath of the capture so that it can
+	// write images or a video alongside it if no output path is given.
+	// But arg 0 might not be a file path, so we check here.
+	var filepath string
+	if !verb.CaptureID {
+		// It is a file path, not a capture ID.
+		filepath = flags.Arg(0)
+	}
+
 	return vidOut(ctx, filepath, vidFun)
 }
 
 func (verb *videoVerb) writeFrames(ctx context.Context, filepath string, vidFun videoFrameWriter) error {
 	outFile := verb.Out
-	if outFile == "" {
+	if outFile == "" && filepath == "" {
+		return fmt.Errorf("need output file argument")
+	} else if outFile == "" {
 		outFile = file.Abs(filepath).ChangeExt("").System()
 	} else {
 		pth := file.Abs(outFile)
 		if pth.Ext() != "" && !strings.EqualFold(pth.Ext(), ".png") {
-			return fmt.Errorf("Only .png output supported")
+			return fmt.Errorf("only .png output supported")
 		}
 		outFile = pth.ChangeExt("").System()
 	}
@@ -308,7 +308,9 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 	crash.Go(func() { vidDone <- vidFun(frames) })
 
 	out := verb.Out
-	if out == "" {
+	if out == "" && filepath == "" {
+		return fmt.Errorf("need output file argument")
+	} else if out == "" {
 		out = file.Abs(filepath).ChangeExt(".mp4").System()
 	}
 	mpg, err := os.Create(out)
@@ -331,7 +333,7 @@ func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, d
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight)}
 	iip, err := client.GetFramebufferAttachment(ctx, &service.ReplaySettings{
-		Device: device,
+		Device:                    device,
 		DisableReplayOptimization: noOpt,
 	}, cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {
