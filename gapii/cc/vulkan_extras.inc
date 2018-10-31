@@ -113,7 +113,7 @@ uint32_t SpyOverride_vkSetDebugUtilsObjectTagEXT(
 
 void SpyOverride_vkCmdWriteBufferMarkerAMD(
   VkCommandBuffer commandBuffer, uint32_t pipelineStage,
-  VkBuffer dstBuffer, VkBuffer dstOffset, uint32_t marker) {}
+  VkBuffer dstBuffer, VkDeviceSize dstOffset, uint32_t marker) {}
 
 bool m_coherent_memory_tracking_enabled = false;
 
