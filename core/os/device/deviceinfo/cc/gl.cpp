@@ -48,12 +48,6 @@ void glDriver(device::OpenGLDriver* driver) {
   GAPID_ASSERT(glGetError != nullptr);
   GAPID_ASSERT(glGetString != nullptr);
 
-  glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
-  glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS,
-                &maxtransformfeedbackseparateattribs);
-  glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS,
-                &maxtransformfeedbackinterleavedcomponents);
-
   glGetError();  // Clear error state.
   glGetIntegerv(GL_MAJOR_VERSION, &major_version);
   glGetIntegerv(GL_MINOR_VERSION, &minor_version);
@@ -67,6 +61,12 @@ void glDriver(device::OpenGLDriver* driver) {
   if (major_version >= 3) {
     GAPID_ASSERT(glGetIntegerv != nullptr);
     GAPID_ASSERT(glGetStringi != nullptr);
+
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformbufferalignment);
+    glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS,
+                  &maxtransformfeedbackseparateattribs);
+    glGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS,
+                  &maxtransformfeedbackinterleavedcomponents);
 
     int32_t c = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &c);
