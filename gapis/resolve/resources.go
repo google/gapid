@@ -136,7 +136,7 @@ type trackedResource struct {
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	out := &service.Resource{
 		ID:       path.NewID(r.id),
-		Handle:   r.resource.ResourceHandle(),
+		Handle:   r.resource.ResourceHandle() + fmt.Sprintf("<%d>", r.created),
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),
 		Accesses: make([]*path.Command, len(r.accesses)),
