@@ -179,8 +179,6 @@ func (sb *stateBuilder) write(ctx context.Context, cmd api.Cmd) {
 	sb.preCmd = sb.preCmd[:0]
 	if err := cmd.Mutate(ctx, api.CmdNoID, sb.newState, nil, nil); err != nil {
 		log.W(ctx, "Initial cmd %v: %v - %v", len(sb.cmds), cmd, err)
-	} else {
-		log.D(ctx, "Initial cmd %v: %v", len(sb.cmds), cmd)
 	}
 	sb.cmds = append(sb.cmds, cmd)
 }
