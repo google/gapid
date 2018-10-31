@@ -88,7 +88,7 @@ cmd VkResult vkSetDebugUtilsObjectNameEXT(
     VkDevice                       device,
     const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  nameInfo := pNameInfo[0]
+  // nameInfo := pNameInfo[0]
   // TODO setDebugMarkerObjectName(nameInfo)
   return ?
 }
@@ -102,8 +102,8 @@ cmd VkResult vkSetDebugUtilsObjectTagEXT(
     VkDevice                       device,
     const VkDebugUtilsObjectTagInfoEXT* pTagInfo) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  tagInfo := pTagInfo[0]
-  // setDebugMarkerObjectTag(tagInfo)
+  // tagInfo := pTagInfo[0]
+  // TODO setDebugMarkerObjectTag(tagInfo)
   return ?
 }
 
@@ -146,7 +146,7 @@ cmd void vkCmdBeginDebugUtilsLabelEXT(
 @internal class
 vkCmdEndDebugUtilsLabelEXTArgs {}
 
-sub void dovkCmdEndDebugUtilsLabelEXT(ref!vkCmdEndDebugUtilsLabelEXTArgs draw) {
+sub void dovkCmdEndDebugUtilsLabelEXT(ref!vkCmdEndDebugUtilsLabelEXTArgs args) {
   popDebugMarker()
 }
 
@@ -174,7 +174,8 @@ vkCmdInsertDebugUtilsLabelEXTArgs {
   @unused f32[4] Color     ,
 }
 
-sub void dovkCmdInsertDebugUtilsLabelEXT(ref!vkCmdInsertDebugUtilsLabelEXTArgs draw) {
+sub void dovkCmdInsertDebugUtilsLabelEXT(ref!vkCmdInsertDebugUtilsLabelEXTArgs args) {
+  pushDebugMarker(args.LabelName)
 }
 
 @threadSafety("app")

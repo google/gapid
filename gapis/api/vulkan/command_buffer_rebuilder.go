@@ -1349,6 +1349,12 @@ func GetCommandFunction(cr *CommandReference) interface{} {
 		return subDovkCmdDebugMarkerEndEXT
 	case CommandType_cmd_vkCmdDebugMarkerInsertEXT:
 		return subDovkCmdDebugMarkerInsertEXT
+	case CommandType_cmd_vkCmdBeginDebugUtilsLabelEXT:
+		return subDovkCmdBeginDebugUtilsLabelEXT
+	case CommandType_cmd_vkCmdEndDebugUtilsLabelEXT:
+		return subDovkCmdEndDebugUtilsLabelEXT
+	case CommandType_cmd_vkCmdInsertDebugUtilsLabelEXT:
+		return subDovkCmdInsertDebugUtilsLabelEXT
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
