@@ -33,6 +33,11 @@ cmd void replayChangeBackbuffer(u32     rendererID,
                                 GLenum  backbuffer_depth_fmt,
                                 GLenum  backbuffer_stencil_fmt) { }
 
+// replayCreateExternalImage creates a texture base EGL external image. This command
+// is only valid if the replay target is GLES.
+@synthetic
+cmd EGLImageKHR replayCreateExternalImage(u32 rendererID, TextureId texture) { return ? }
+
 @synthetic
 cmd void startTimer(u8 index) { }
 

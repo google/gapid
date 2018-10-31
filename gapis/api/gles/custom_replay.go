@@ -79,20 +79,6 @@ func (i ShaderId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap
 func (i TextureId) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
 	ctx := GetContext(s, cmd.Thread())
 	if !ctx.IsNil() && i != 0 {
-		if tex := ctx.Objects().Textures().Get(i); !tex.IsNil() {
-			_, isDeleteCmd := cmd.(*GlDeleteTextures)
-			if eglImage := tex.EGLImage(); !eglImage.IsNil() && !isDeleteCmd {
-				// Ignore this texture and use the data that EGLImage points to.
-				// (unless it is a delete command - we do not want kill the shared data)
-				ctx := GetState(s).EGLContexts().Get(eglImage.Context())
-				isTex2D := eglImage.Target() == EGLenum_EGL_GL_TEXTURE_2D
-				i := TextureId(eglImage.Buffer().Address())
-				if !ctx.IsNil() && isTex2D && ctx.Objects().Textures().Contains(i) {
-					return objectKey{ctx.Objects().Textures(), i}, true
-				}
-				panic(fmt.Errorf("Can not find EGL image target: %v", eglImage))
-			}
-		}
 		key, remap = objectKey{ctx.Objects().Textures(), i}, true
 	}
 	return
@@ -137,6 +123,13 @@ func (i GLsync) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap b
 	ctx := GetContext(s, cmd.Thread())
 	if !ctx.IsNil() && !i.IsNullptr() {
 		key, remap = objectKey{ctx.Objects().SyncObjects(), i}, true
+	}
+	return
+}
+
+func (i EGLImageKHR) remap(cmd api.Cmd, s *api.GlobalState) (key interface{}, remap bool) {
+	if !i.IsNullptr() {
+		key, remap = objectKey{GetState(s).EGLImages(), i}, true
 	}
 	return
 }
@@ -249,7 +242,7 @@ func (i BufferDataPointer) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalS
 	return value.ObservedPointer(i)
 }
 
-func (i GLeglImageOES) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
+func (i EGLImageKHR) value(b *builder.Builder, cmd api.Cmd, s *api.GlobalState) value.Value {
 	return value.AbsolutePointer(i)
 }
 
@@ -302,6 +295,21 @@ func (ω *EglMakeCurrent) Mutate(ctx context.Context, id api.CmdID, s *api.Globa
 		return err
 	}
 	return nil
+}
+
+func (ω *EglCreateImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	err := ω.mutate(ctx, id, s, nil, w)
+	if b == nil || err != nil {
+		return err
+	}
+
+	if ω.Target() != EGLenum_EGL_GL_TEXTURE_2D {
+		return fmt.Errorf("Cannot create a non texture backed EGLImage: %v", ω)
+	}
+
+	ctxID := uint32(GetState(s).EGLContexts().Get(ω.Context()).Identifier())
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
+	return cb.ReplayCreateExternalImage(ctxID, TextureId(ω.Buffer().Address()), ω.Result()).Mutate(ctx, id, s, b, nil)
 }
 
 func (ω *WglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {

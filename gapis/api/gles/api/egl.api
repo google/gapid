@@ -17,7 +17,7 @@ type void* EGLClientBuffer
 type void* EGLConfig
 type void* EGLContext
 type void* EGLDisplay
-type void* EGLImageKHR
+@replay_remap @replay_custom_value type void* EGLImageKHR
 type s32   EGLint
 type int   EGLNativeDisplayType
 type void* EGLNativePixmapType
@@ -25,9 +25,6 @@ type void* EGLNativeWindowType
 type void* EGLSurface
 type void* EGLSyncKHR
 type u64   EGLTimeKHR
-
-@replay_custom_value
-type void* GLeglImageOES
 
 sub EGLint[] CloneAttribList(const EGLint* attrib_list) {
   // TODO: Replace with proper loop control flow
@@ -406,7 +403,7 @@ cmd EGLBoolean eglWaitNative(EGLint engine) {
 
 @if(Extension.EGL_KHR_image_base)
 @doc("https://www.khronos.org/registry/egl/extensions/KHR/EGL_KHR_image_base.txt", Extension.EGL_KHR_image_base)
-@no_replay
+@custom @no_replay
 cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      display,
                                   EGLContext      context,
                                   EGLenum         target,

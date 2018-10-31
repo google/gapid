@@ -22,21 +22,26 @@
 
 namespace {
 
+// The mesa driver does bad things with LLVM. Since we also use llvm,
+// we can't have the mesa driver do bad things to our code.
+// Therefore we should preload any versions of llvm that may be required
+// into the start of our address space.
+// See: https://github.com/google/gapid/issues/1707 for more information
+struct MesaLLVMOpener {
+  MesaLLVMOpener() {
+    char name[512];
+    for (int i = 3; i <= 7; i++) {
+      snprintf(name, sizeof(name), "libLLVM-%d.0.so.1", i);
+      dlopen(name, RTLD_LAZY | RTLD_DEEPBIND);
+    }
+  }
+};
+
 void* getGlesProcAddress(const char* name) {
   using namespace core;
   typedef void* (*GPAPROC)(const char* name);
-
-  // The mesa driver does bad things with LLVM. Since we also use llvm,
-  // we can't have the mesa driver do bad things to our code.
-  // Therefore we should preload any versions of llvm that may be required
-  // into the start of our address space.
-  // See: https://github.com/google/gapid/issues/1707 for more information
-  static void* _dummy0 = dlopen("libLLVM-3.0.so.1", RTLD_LAZY | RTLD_DEEPBIND);
-  static void* _dummy1 = dlopen("libLLVM-4.0.so.1", RTLD_LAZY | RTLD_DEEPBIND);
-  static void* _dummy2 = dlopen("libLLVM-5.0.so.1", RTLD_LAZY | RTLD_DEEPBIND);
-  (void)_dummy0;
-  (void)_dummy1;
-  (void)_dummy2;
+  static MesaLLVMOpener _dummy;
+  (void)_dummy;
 
   // Why .1 ?
   // See: https://bugs.launchpad.net/ubuntu/+source/python-qt4/+bug/941826

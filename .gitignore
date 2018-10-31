@@ -7,7 +7,7 @@
 
 # Single files
 /.gapid-config
-/.bazelrc
+/user.bazelrc
 /screenshot.png
 
 # General patterns

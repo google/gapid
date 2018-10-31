@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/google/gapid/core/app/flags"
+	"github.com/google/gapid/core/os/device"
 )
 
 const (
@@ -85,6 +86,7 @@ type (
 	}
 	DevicesFlags struct {
 		Gapis GapisFlags
+		OS    device.OSKind `help:"Only display devices of the given OS kind"`
 	}
 	ProfileFlags struct {
 		Pprof string `help:"_produce a pprof file"`
@@ -111,10 +113,11 @@ type (
 		CommandFilterFlags
 	}
 	ExportReplayFlags struct {
-		Gapis        GapisFlags
-		Gapir        GapirFlags
-		Out          string `help:"output directory for commands and assets"`
-		OutputFrames bool   `help:"generate trace that output frames(disable diagnostics)"`
+		Gapis          GapisFlags
+		Gapir          GapirFlags
+		OriginalDevice bool   `help:"export replay for the original device"`
+		Out            string `help:"output directory for commands and assets"`
+		OutputFrames   bool   `help:"generate trace that output frames(disable diagnostics)"`
 		CommandFilterFlags
 	}
 	VideoFlags struct {
@@ -141,6 +144,12 @@ type (
 		Gapis GapisFlags
 		Gapir GapirFlags
 		At    int `help:"command index to dump the resources after"`
+	}
+	DumpFBOFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"output framebuffer directory path"`
+		CommandFilterFlags
 	}
 	DumpFlags struct {
 		Gapis          GapisFlags

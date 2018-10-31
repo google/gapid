@@ -47,6 +47,11 @@ alias(
     actual = "//cmd/gapit",
 )
 
+alias(
+    name = "enum_lookup",
+    actual = "//cmd/enum_lookup",
+)
+
 # Rules to build the expected installed structure for running
 filegroup(
     name = "pkg",

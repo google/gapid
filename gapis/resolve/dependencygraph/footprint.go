@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -174,10 +175,13 @@ func GetFootprint(ctx context.Context, c *path.Capture) (*Footprint, error) {
 
 // Resolve implements the database.Resolver interface.
 func (r *FootprintResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, r.Capture)
+	ctx = resolve.SetupContext(ctx, r.Capture, r.Config)
+
+	c, err := capture.Resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	cmds := c.Commands
 	// If the capture contains initial state, prepend the commands to build the state.
 	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)

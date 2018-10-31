@@ -45,7 +45,9 @@ echo $(date): Starting build...
 # "--strategy CppLink=local" disables the sandbox when linking, which is
 # required for the symbol dumping to work, as the linker *always* puts absolute
 # paths to the .a files into the debug section of the executable.
-$BUILD_ROOT/bazel/bin/bazel build -c opt --config symbols \
+$BUILD_ROOT/bazel/bin/bazel \
+    --output_base="${TMP}/bazel_out" \
+    build -c opt --config symbols \
     --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
     --define GAPID_BUILD_SHA="$BUILD_SHA" \
     --strategy CppLink=local \

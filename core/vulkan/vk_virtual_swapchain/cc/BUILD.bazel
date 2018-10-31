@@ -35,7 +35,10 @@ cc_library(
         "//tools/build:darwin": [],
         "//tools/build:windows": ["-lpthread"],
         # Android
-        "//conditions:default": ["-lm"],
+        "//conditions:default": [
+            "-ldl",
+            "-lm",
+        ],
     }),
     visibility = ["//visibility:public"],
     deps = [

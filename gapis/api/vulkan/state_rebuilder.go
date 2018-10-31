@@ -2493,6 +2493,7 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 		!GetState(sb.newState).Images().Contains(iv.Image().VulkanHandle()) {
 		// If the image that this image view points to has been deleted,
 		// then don't even re-create the image view
+		log.W(sb.ctx, "The image of image view %v is invalid, image view %v will not be created", iv.VulkanHandle(), iv.VulkanHandle())
 		return
 	}
 
@@ -2518,6 +2519,7 @@ func (sb *stateBuilder) createBufferView(bv BufferViewObjectʳ) {
 	if !GetState(sb.newState).Buffers().Contains(bv.Buffer().VulkanHandle()) {
 		// If the image that this image view points to has been deleted,
 		// then don't even re-create the image view
+		log.W(sb.ctx, "The buffer of buffer view %v is invalid, buffer view %v will not be created", bv.VulkanHandle(), bv.VulkanHandle())
 		return
 	}
 

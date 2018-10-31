@@ -623,7 +623,7 @@ cmd void glDrawRangeElementsBaseVertexOES(GLenum         mode,
 
 @if(Extension.GL_OES_EGL_image)
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", Extension.GL_OES_EGL_image)
-cmd void glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image) {
+cmd void glEGLImageTargetRenderbufferStorageOES(GLenum target, EGLImageKHR image) {
 
 }
 
@@ -631,7 +631,7 @@ cmd void glEGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES ima
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image.txt", Extension.GL_OES_EGL_image)
 @doc("https://www.khronos.org/registry/gles/extensions/EXT/EXT_EGL_image_array.txt", Extension.GL_EXT_EGL_image_array)
 @doc("https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image_external.txt", Extension.GL_OES_EGL_image_external)
-cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
+cmd void glEGLImageTargetTexture2DOES(GLenum target, EGLImageKHR image) {
   switch (target) {
     @if(Extension.GL_OES_EGL_image)
     case GL_TEXTURE_2D: {}
@@ -644,7 +644,7 @@ cmd void glEGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image) {
   }
   eglImage := EGLImages[as!EGLImageKHR(image)]
   if eglImage == null {
-    glErrorInvalidOperation_ObjectDoesNotExist!GLeglImageOES(image)
+    glErrorInvalidOperation_ObjectDoesNotExist!EGLImageKHR(image)
   }
   t := GetBoundTextureOrErrorInvalidEnum(target)
 

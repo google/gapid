@@ -388,7 +388,7 @@ import (
     return m
   }
 
-  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}, val {{$value}}) {{$name}} {
+  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}, val {{$value}}) {{$name}} {
     if ϟw != nil {
       ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
         {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
@@ -398,10 +398,14 @@ import (
       }
     }
     (*m.Map)[key] = val
+
+    {{if IsReference $.ValueType}}{{if GetAnnotation $.ValueType.To "resource"}}
+      val.OnCreate(ϟg)
+    {{end}}{{end}}
     return m
   }
 
-  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {
+  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}) {
     if m.Map != nil {
       if ϟw != nil {
         ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
@@ -411,6 +415,11 @@ import (
           ϟw.CloseForwardDependency(ϟctx, key)
         }
       }
+      {{if IsReference $.ValueType}}{{if GetAnnotation $.ValueType.To "resource"}}
+      if v, ok := (*m.Map)[key]; ok {
+        v.OnDestroy(ϟg)
+      }
+      {{end}}{{end}}
       delete(*m.Map, key)
     }
   }
@@ -674,15 +683,19 @@ import (
 
   {{if GetAnnotation $.To "resource"}}
     // OnCreate should be called immediately after the {{$name}} resource is created.
-    func (c {{$name}}) OnCreate(ϟg *ϟapi.GlobalState) {{$name}} {
+    func (c {{$name}}) OnCreate(ϟg *ϟapi.GlobalState) {
       if f := ϟg.OnResourceCreated; c.IsResource() && f != nil { f(c) }
-      return c
     }
 
     // OnAccess should be called each time the {{$name}} resource is used.
     func (c {{$name}}) OnAccess(ϟg *ϟapi.GlobalState) {{$name}} {
       if f := ϟg.OnResourceAccessed; c.IsResource() && f != nil { f(c) }
       return c
+    }
+
+    // OnDestroy should be called immediately after the {{$name}} resource is destroyed.
+    func (c {{$name}}) OnDestroy(ϟg *ϟapi.GlobalState) {
+      if f := ϟg.OnResourceDestroyed; c.IsResource() && f != nil { f(c) }
     }
   {{end}}
 

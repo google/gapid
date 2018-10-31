@@ -18,7 +18,6 @@
 #include "memory_manager.h"
 #include "mock_replay_service.h"
 #include "mock_resource_loader.h"
-#include "replay_connection.h"
 #include "test_utilities.h"
 
 #include <gmock/gmock.h>

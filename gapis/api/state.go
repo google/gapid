@@ -58,6 +58,9 @@ type GlobalState struct {
 	// OnResourceAccessed is called when a resource is used.
 	OnResourceAccessed func(Resource)
 
+	// OnResourceDestroyed is called when a resource is destroyed.
+	OnResourceDestroyed func(Resource)
+
 	// OnError is called when the command does not conform to the API.
 	OnError func(err interface{})
 

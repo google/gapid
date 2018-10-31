@@ -157,6 +157,11 @@ func (*Member) isExpression() {}
 // ExpressionType implements Expression returning the type of the field.
 func (m *Member) ExpressionType() Type { return m.Field.Type }
 
+// GetAnnotation returns the annotation with the matching name, if present.
+func (m *Member) GetAnnotation(name string) *Annotation {
+	return m.Field.GetAnnotation(name)
+}
+
 // MessageValue is an expression that produces a localized message
 type MessageValue struct {
 	AST       *ast.Class          // the underlying syntax node this was built from

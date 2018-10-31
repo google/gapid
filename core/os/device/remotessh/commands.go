@@ -321,10 +321,9 @@ func (b binding) ListExecutables(ctx context.Context, inPath string) ([]string, 
 	if inPath == "" {
 		inPath = b.GetURIRoot()
 	}
-	files, err := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "f", "-executable", "-printf", `%f\\n`).Call(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// 'find' may partially succeed. Redirect the error messages to /dev/null,
+	// only process the successfully found executables.
+	files, _ := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "f", "-executable", "-printf", `%f\\n`, "2>/dev/null").Call(ctx)
 	scanner := bufio.NewScanner(strings.NewReader(files))
 	out := []string{}
 	for scanner.Scan() {
@@ -339,10 +338,9 @@ func (b binding) ListDirectories(ctx context.Context, inPath string) ([]string, 
 	if inPath == "" {
 		inPath = b.GetURIRoot()
 	}
-	dirs, err := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "d", "-printf", `%f\\n`).Call(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// 'find' may partially succeed. Redirect the error messages to /dev/null,
+	// only process the successfully found directories.
+	dirs, _ := b.Shell("find", `"`+inPath+`"`, "-mindepth", "1", "-maxdepth", "1", "-type", "d", "-printf", `%f\\n`, "2>/dev/null").Call(ctx)
 	scanner := bufio.NewScanner(strings.NewReader(dirs))
 	out := []string{}
 	for scanner.Scan() {

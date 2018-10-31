@@ -39,7 +39,7 @@ type ResolvedResources struct {
 // Resolve builds a ResolvedResources object for all of the resources
 // at the path r.After
 func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.After.Capture, r.Config)
+	ctx = SetupContext(ctx, r.After.Capture, r.Config)
 
 	resources, err := buildResources(ctx, r.After)
 

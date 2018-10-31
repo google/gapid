@@ -570,7 +570,7 @@
   {{if eq $.Operator "="}}
     {{Template "Go.Read" $.To.Map}}.§
     {{if GetAnnotation $.To.Map "handleMap"}}
-      CreateHandleʷ(ϟctx, ϟw, §
+      CreateHandleʷ(ϟctx, ϟw, ϟg, §
     {{else if Macro "IsUntrackedMap" $.To.Map}}
       Add(§
     {{else}}§
@@ -593,7 +593,7 @@
 
   {{Template "Go.Read" $.Map}}.§
   {{if GetAnnotation $.Map "handleMap"}}
-    DestroyHandleʷ(ϟctx, ϟw, §
+    DestroyHandleʷ(ϟctx, ϟw, ϟg, §
   {{else if Macro "IsUntrackedMap" $.Map}}
     Remove(§
   {{else}}

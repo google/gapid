@@ -70,12 +70,14 @@ std::vector<uint32_t> memorySizes {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
 std::string getTempOnDiskCachePath() {
   const char* tmpDir = std::getenv("TMPDIR");
-  struct stat sb;
-  if (!tmpDir && stat("/tmp", &sb) == 0 && S_ISDIR(sb.st_mode)) {
-    tmpDir = "/tmp";
-  } else {
-    GAPID_WARNING("$TMPDIR is null");
-    return "";
+  if (!tmpDir) {
+    struct stat sb;
+    if (stat("/tmp", &sb) == 0 && S_ISDIR(sb.st_mode)) {
+      tmpDir = "/tmp";
+    } else {
+      GAPID_WARNING("$TMPDIR is null and /tmp is not a directory");
+      return "";
+    }
   }
 
   auto t = std::string(tmpDir) + "/gapir-cache.XXXXXX";

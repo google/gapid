@@ -44,7 +44,7 @@ func State(ctx context.Context, p *path.State, r *path.ResolveConfig) (interface
 
 // Resolve implements the database.Resolver interface.
 func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.Path.After.Capture, r.Config)
+	ctx = SetupContext(ctx, r.Path.After.Capture, r.Config)
 
 	cmdIdx := r.Path.After.Indices[0]
 	allCmds, err := Cmds(ctx, r.Path.After.Capture)
@@ -80,7 +80,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 
 // Resolve implements the database.Resolver interface.
 func (r *StateResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.Path.After.Capture, r.Config)
+	ctx = SetupContext(ctx, r.Path.After.Capture, r.Config)
 	obj, _, _, err := state(ctx, r.Path, r.Config)
 	return obj, err
 }

@@ -977,6 +977,8 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		for _, bufferInfo := range write.PBufferInfo().Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer()
+			read(ctx, bh, vb.toVkHandle(uint64(vkBuf)))
+			vb.buffers[vkBuf].getSubBindingList(ctx, bh, uint64(bufferInfo.Offset()), uint64(bufferInfo.Range()))
 			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType(), VkImage(0),
 				vb.toVkHandle(0), vkBuf, bufferInfo.Offset(), bufferInfo.Range())
 			dstElm++
@@ -986,6 +988,8 @@ func (ds *descriptorSet) writeDescriptors(ctx context.Context,
 		for _, bufferInfo := range write.PBufferInfo().Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
 			updateDstForOverflow()
 			vkBuf := bufferInfo.Buffer()
+			read(ctx, bh, vb.toVkHandle(uint64(vkBuf)))
+			vb.buffers[vkBuf].getSubBindingList(ctx, bh, uint64(bufferInfo.Offset()), uint64(bufferInfo.Range()))
 			ds.setDescriptor(ctx, bh, dstBinding, dstElm, write.DescriptorType(), VkImage(0),
 				vb.toVkHandle(0), vkBuf, bufferInfo.Offset(), bufferInfo.Range())
 			dstElm++
@@ -2796,6 +2800,8 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		// TODO: ResetCommandPool should overwrite all the command buffers in this
 		// pool.
 		*VkResetCommandPool,
+		*VkTrimCommandPool,
+		*VkTrimCommandPoolKHR,
 		*VkDestroyCommandPool:
 		bh.Alive = true
 	case *VkGetPhysicalDeviceXlibPresentationSupportKHR,

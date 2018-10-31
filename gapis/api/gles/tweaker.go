@@ -73,6 +73,24 @@ func (t *tweaker) getCapability(ctx context.Context, name GLenum) bool {
 	return res != 0
 }
 
+func (t *tweaker) eglMakeCurrent(ctx context.Context, nID EGLContext) {
+	var oID EGLContext
+	for k, v := range GetState(t.s).EGLContexts().All() {
+		if v == t.c {
+			oID = k
+			break
+		}
+	}
+	if oCtx, nCtx := t.c, GetState(t.s).EGLContexts().Get(nID); oCtx != nCtx {
+		t.out.MutateAndWrite(ctx, t.dID, t.cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, nID, 1))
+		t.c = nCtx
+		t.undo = append(t.undo, func(ctx context.Context) {
+			t.out.MutateAndWrite(ctx, t.dID, t.cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, oID, 1))
+			t.c = oCtx
+		})
+	}
+}
+
 func (t *tweaker) glEnable(ctx context.Context, name GLenum) {
 	// TODO: This does not correctly handle indexed state.
 	if o := t.getCapability(ctx, name); o != true {
@@ -321,6 +339,14 @@ func (t *tweaker) GlBindBuffer_ElementArrayBuffer(ctx context.Context, id Buffer
 		t.doAndUndo(ctx,
 			t.cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, id),
 			t.cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, o))
+	}
+}
+
+func (t *tweaker) GlBindBuffer_PixelUnpackBuffer(ctx context.Context, id BufferId) {
+	if o := t.c.Bound().PixelUnpackBuffer().GetID(); o != id {
+		t.doAndUndo(ctx,
+			t.cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, id),
+			t.cb.GlBindBuffer(GLenum_GL_PIXEL_UNPACK_BUFFER, o))
 	}
 }
 

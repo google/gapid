@@ -228,7 +228,8 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
   dstDepthElementSize := getDepthElementSize(dstFormat, false)
   for r in (0 .. len(args.Regions)) {
-    // TODO: (qining) Handle the apsect mask
+    // TODO: Support KHR_maintenance1 extension, support copying from a 2D array
+    // image to slices of a 3D image and vice versa.
     region := args.Regions[as!u32(r)]
     srcBaseLayer := region.srcSubresource.baseArrayLayer
     dstBaseLayer := region.srcSubresource.baseArrayLayer

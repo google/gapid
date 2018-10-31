@@ -39,7 +39,7 @@ func Resources(ctx context.Context, c *path.Capture, r *path.ResolveConfig) (*se
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	ctx = setupContext(ctx, r.Capture, r.Config)
+	ctx = SetupContext(ctx, r.Capture, r.Config)
 
 	c, err := capture.Resolve(ctx)
 	if err != nil {
@@ -64,6 +64,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			resource: r,
 			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
 			accesses: []uint64{currentCmdIndex},
+			created:  currentCmdIndex,
 		})
 	}
 	state.OnResourceAccessed = func(r api.Resource) {
@@ -75,12 +76,24 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		}
 	}
 
+	// Resources destroyed during state reconstructions should be hidden from the user, as they are
+	// temporary objects created to correctly reconstruct the state.
+	state.OnResourceDestroyed = func(r api.Resource) {
+		delete(seen, r)
+	}
+
 	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
 		}
 		return nil
 	})
+
+	state.OnResourceDestroyed = func(r api.Resource) {
+		if index, ok := seen[r]; ok {
+			resources[index].deleted = currentCmdIndex
+		}
+	}
 
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
@@ -91,6 +104,9 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	types := map[api.ResourceType]*service.ResourcesByType{}
 	for _, tr := range resources {
+		if _, ok := seen[tr.resource]; !ok {
+			continue
+		}
 		ty := tr.resource.ResourceType(ctx)
 		b := types[ty]
 		if b == nil {
@@ -113,6 +129,8 @@ type trackedResource struct {
 	id       id.ID
 	name     string
 	accesses []uint64
+	deleted  uint64
+	created  uint64
 }
 
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
@@ -126,6 +144,10 @@ func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	for i, a := range r.accesses {
 		out.Accesses[i] = p.Command(a)
 	}
+	if r.deleted > 0 {
+		out.Deleted = p.Command(r.deleted)
+	}
+	out.Created = p.Command(r.created)
 	return out
 }
 
