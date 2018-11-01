@@ -84,6 +84,8 @@ type Service interface {
 	// DCECapture returns a new capture containing only the requested commands and their dependencies.
 	DCECapture(ctx context.Context, capture *path.Capture, commands []*path.Command) (*path.Capture, error)
 
+	GetGraphVisualizationFile(ctx context.Context, capture *path.Capture) (string, error)
+
 	// GetDevices returns the full list of replay devices avaliable to the server.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.

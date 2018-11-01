@@ -397,6 +397,15 @@ func (s *grpcServer) DCECapture(ctx xctx.Context, req *service.DCECaptureRequest
 	return &service.DCECaptureResponse{Res: &service.DCECaptureResponse_Capture{Capture: capture}}, nil
 }
 
+func (s *grpcServer) GetGraphVisualizationFile(ctx xctx.Context, req *service.GraphVisualizationFileRequest) (*service.GraphVisualizationFileResponse, error) {
+	defer s.inRPC()()
+	graphVisualizationFile, err := s.handler.GetGraphVisualizationFile(s.bindCtx(ctx), req.Capture)
+	if err := service.NewError(err); err != nil {
+		return &service.GraphVisualizationFileResponse{Res: &service.GraphVisualizationFileResponse_Error{Error: err}}, nil
+	}
+	return &service.GraphVisualizationFileResponse{Res: &service.GraphVisualizationFileResponse_GraphVisualizationFile{GraphVisualizationFile: graphVisualizationFile}}, nil
+}
+
 func (s *grpcServer) GetDevices(ctx xctx.Context, req *service.GetDevicesRequest) (*service.GetDevicesResponse, error) {
 	defer s.inRPC()()
 	devices, err := s.handler.GetDevices(s.bindCtx(ctx))
