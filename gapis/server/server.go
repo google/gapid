@@ -50,6 +50,7 @@ import (
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
+	"github.com/google/gapid/gapis/resolve/dependencygraph2/graph_visualization"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -296,6 +297,19 @@ func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*p
 		return nil, err
 	}
 	return trimmed, nil
+}
+
+func (s *server) GetGraphVisualizationFile(ctx context.Context, p *path.Capture) (string, error) {
+	ctx = log.Enter(ctx, "Inside GetGraphVisualizationFile function")
+	c, err := capture.ResolveFromPath(ctx, p)
+	if err != nil {
+		return "", err
+	}
+	graphVisualizationFile, err := graph_visualization.GetGraphVisualizationFileFromCapture(ctx, c)
+	if err != nil {
+		return "", err
+	}
+	return graphVisualizationFile, nil
 }
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {

@@ -484,3 +484,16 @@ func (c *client) GetTimestamps(ctx context.Context, capture *path.Capture, devic
 	}
 	return res, nil
 }
+
+func (c *client) GetGraphVisualizationFile(ctx context.Context, capture *path.Capture) (string, error) {
+	res, err := c.client.GetGraphVisualizationFile(ctx, &service.GraphVisualizationFileRequest{
+		Capture: capture,
+	})
+	if err != nil {
+		return "", err
+	}
+	if err := res.GetError(); err != nil {
+		return "", err.Get()
+	}
+	return res.GetGraphVisualizationFile(), nil
+}

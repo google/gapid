@@ -29,6 +29,7 @@ go_library(
         "dump_shaders.go",
         "export_replay.go",
         "flags.go",
+        "graph_visualization.go",
         "inputs.go",
         "main.go",
         "memory.go",
