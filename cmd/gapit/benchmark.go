@@ -89,6 +89,14 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	verb.startTime = time.Now()
 
 	client, err := getGapis(ctx, GapisFlags{}, GapirFlags{})
+	if err != nil {
+		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+	}
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.E(ctx, "Error closing client: %v", err)
+		}
+	}()
 
 	var writeTrace func(path string, gapisTrace, gapitTrace *bytes.Buffer) error
 
@@ -125,10 +133,6 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	_ = stringTable
 
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
-	}
-	defer client.Close()
 	status.Finish(ctx)
 
 	if flags.NArg() > 0 {
