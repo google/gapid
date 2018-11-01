@@ -217,13 +217,15 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		panic(err)
 	}
 
-	b.To = &device
-	b.To.Name = c.Name
-
-	for i := range b.To.ID.Data {
+	device.Name = c.Name
+	device.GenID()
+	for i := range device.ID.Data {
 		// Flip some bits, since if you have a local & ssh device
 		// they would otherwise be the same
-		b.To.ID.Data[i] = 0x10 ^ b.To.ID.Data[i]
+		device.ID.Data[i] = 0x10 ^ device.ID.Data[i]
 	}
+
+	b.To = &device
+
 	return b, nil
 }
