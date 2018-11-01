@@ -333,7 +333,7 @@ func getFrame(ctx context.Context, maxWidth, maxHeight int, cmd *path.Command, d
 	ctx = log.V{"cmd": cmd.Indices}.Bind(ctx)
 	settings := &service.RenderSettings{MaxWidth: uint32(maxWidth), MaxHeight: uint32(maxHeight)}
 	iip, err := client.GetFramebufferAttachment(ctx, &service.ReplaySettings{
-		Device:                    device,
+		Device: device,
 		DisableReplayOptimization: noOpt,
 	}, cmd, api.FramebufferAttachment_Color0, settings, nil)
 	if err != nil {

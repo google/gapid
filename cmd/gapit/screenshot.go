@@ -146,7 +146,7 @@ func (verb *screenshotVerb) getSingleFrame(ctx context.Context, cmd *path.Comman
 	}
 	iip, err := client.GetFramebufferAttachment(ctx,
 		&service.ReplaySettings{
-			Device:                    device,
+			Device: device,
 			DisableReplayOptimization: verb.NoOpt,
 			DisplayToSurface:          verb.DisplayToSurface,
 		},
