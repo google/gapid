@@ -319,8 +319,8 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       break;
     }
     case llvm::ARM::Bcc: {
-      uint32_t pred = inst.getOperand(0).getImm();
-      uint32_t imm = inst.getOperand(1).getImm();
+      uint32_t imm = inst.getOperand(0).getImm();
+      uint32_t pred = inst.getOperand(1).getImm();
       possible_end_of_function = true;
 
       void *target = calculatePcRelativeAddressArm(data, offset, imm);
