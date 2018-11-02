@@ -79,7 +79,6 @@ void* gInterceptor = nullptr;
 InterceptFunctionFunc* gInterceptFunction = nullptr;
 std::unordered_map<std::string, void*> gCallbacks;
 const char* gDriverPaths[] = {
-    SYSTEM_LIB_PATH "libhwgl.so",  // Huawei specific, must be first.
     SYSTEM_LIB_PATH "libGLES.so",      SYSTEM_LIB_PATH "libEGL.so",
     SYSTEM_LIB_PATH "libGLESv1_CM.so", SYSTEM_LIB_PATH "libGLESv2.so",
     SYSTEM_LIB_PATH "libGLESv3.so",
@@ -189,19 +188,7 @@ void Installer::install_gles() {
     const char* name = gapii::kGLESExports[i].mName;
     void* func_export = gapii::kGLESExports[i].mFunc;
     bool import_found = false;
-    if (drivers[0] != nullptr) {  // libhwgl.so
-      // Huawei implements all functions in this library with prefix,
-      // all GL functions in libGLES*.so are just trampolines to his.
-      // However, we do not support trampoline interception for now,
-      // so try to intercept the internal implementation instead.
-      std::string hwName = "hw_" + std::string(name);
-      if (void* func_import = dlsym(drivers[0], hwName.c_str())) {
-        import_found = true;
-        functions[func_import] = func{name, func_export};
-        continue;  // Do not do any other lookups.
-      }
-    }
-    for (int i = 1; i < NELEM(gDriverPaths); ++i) {
+    for (int i = 0; i < NELEM(gDriverPaths); ++i) {
       if (void* func_import = dlsym(drivers[i], name)) {
         import_found = true;
         functions[func_import] = func{name, func_export};
