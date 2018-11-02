@@ -329,4 +329,9 @@ type (
 		CommandFilterFlags
 		CaptureFileFlags
 	}
+	GetTimestampsFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"output file to save the profiling result"`
+	}
 )

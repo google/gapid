@@ -630,6 +630,11 @@ service Gapid {
   // GetProfile returns the pprof profile with the given name.
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
   }
+
+  // GetTimestamps returns the timestamps of the begin and end of execution of a
+  // command buffer.
+  rpc GetTimestamps(GetTimestampsRequest) returns (GetTimestampsResponse) {
+  }
 }
 
 message Error {
@@ -1112,4 +1117,26 @@ message DeviceAPITraceConfiguration {
   bool can_disable_pcs = 2;
   // Does this API support MEC.
   FeatureStatus mid_execution_capture_support = 3;
+}
+
+message GetTimestampsRequest {
+  path.Capture capture = 1;
+  path.Device device = 2;
+}
+
+message TimestampsItem {
+  path.Command begin = 1;
+  path.Command end = 2;
+  uint64 time = 3;
+}
+
+message Timestamps {
+  repeated TimestampsItem timestamps = 1;
+}
+
+message GetTimestampsResponse {
+  oneof res {
+    Timestamps timestamps = 1;
+    Error error = 2;
+  }
 }

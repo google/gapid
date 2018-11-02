@@ -473,3 +473,14 @@ func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettings
 	}
 	return nil
 }
+
+func (c *client) GetTimestamps(ctx context.Context, capture *path.Capture, device *path.Device) (interface{}, error) {
+	res, err := c.client.GetTimestamps(ctx, &service.GetTimestampsRequest{
+		Capture: capture,
+		Device:  device,
+	})
+	if err != nil {
+		return "", err
+	}
+	return res, nil
+}

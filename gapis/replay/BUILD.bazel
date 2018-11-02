@@ -27,6 +27,7 @@ go_library(
         "manager.go",
         "mapping_printer.go",
         "replay.go",
+        "timestamps.go",
     ],
     importpath = "github.com/google/gapid/gapis/replay",
     visibility = ["//visibility:public"],

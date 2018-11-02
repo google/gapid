@@ -22,6 +22,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 // Support is the optional interface implemented by APIs that can describe
@@ -48,6 +49,14 @@ type QueryIssues interface {
 		hints *service.UsageHints) ([]Issue, error)
 }
 
+type QueryTimestamps interface {
+	QueryTimestamps(
+		ctx context.Context,
+		intent Intent,
+		mgr Manager,
+		hints *service.UsageHints) ([]Timestamps, error)
+}
+
 // QueryFramebufferAttachment is the interface implemented by types that can
 // return the content of a framebuffer attachment at a particular point in a
 // capture.
@@ -71,4 +80,10 @@ type Issue struct {
 	Command  api.CmdID        // The command that reported the issue.
 	Severity service.Severity // The severity of the issue.
 	Error    error            // The issue's error.
+}
+
+type Timestamps struct {
+	Begin *path.Command
+	End   *path.Command
+	Time  uint64
 }

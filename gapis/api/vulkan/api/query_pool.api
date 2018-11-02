@@ -110,7 +110,7 @@ cmd void vkDestroyQueryPool(
 @threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
-@no_replay
+//@no_replay
 // GetQueryPoolResults has no semantic impact
 // on replay, so avoid replaying it. It can cause
 // hangs depending on the state of the query pool
