@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
@@ -112,6 +113,10 @@ func (v VersionSpec) Format(f fmt.State, c rune) {
 func init() {
 	Name = file.Abs(os.Args[0]).Basename()
 	Flags.Log = logDefaults()
+	// TODO(awoloszyn): Figure out why object churn is soo bad, and try to
+	//                  minimize it.
+	//                  At that point we can remove this.
+	debug.SetGCPercent(40)
 }
 
 // getArgs preprocesses the command line arguments to
