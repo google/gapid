@@ -2584,7 +2584,7 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 	var temporaryRenderPass RenderPassObjectʳ
 	for _, v := range fb.ImageAttachments().All() {
-		if !GetState(sb.oldState).ImageViews().Contains(v.VulkanHandle()) {
+		if !GetState(sb.newState).ImageViews().Contains(v.VulkanHandle()) {
 			log.W(sb.ctx, "Image View %v is invalid, framebuffer %v will not be created", v.VulkanHandle(), fb.VulkanHandle())
 			return
 		}
