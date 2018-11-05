@@ -92,8 +92,8 @@ const EGLint EGL_CONTEXT_FLAGS_KHR = 0x30FC;
 const EGLint EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR = 0x0001;
 const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 
-const uint32_t kMaxFramebufferObservationWidth = 1920 / 2;
-const uint32_t kMaxFramebufferObservationHeight = 1280 / 2;
+const uint32_t kMaxFramebufferObservationWidth = 3840;
+const uint32_t kMaxFramebufferObservationHeight = 2560;
 
 const uint32_t kStartMidExecutionCapture = 0xdeadbeef;
 
