@@ -90,7 +90,18 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
   if createInfo == null { vkErrorNullPointer("VkInstanceCreateInfo") }
   info := createInfo[0]
 
-  // TODO: handle pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkInstanceCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   if (info.pApplicationInfo != null) {
     object.ApiVersion = readVkApplicationInfo(info.pApplicationInfo)
   } else {
@@ -120,7 +131,18 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
 sub u32 readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
   info := applicationInfo[0]
 
-  // TODO: handle pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkApplicationInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   if (info.pApplicationName != null) {
     _ = as!string(info.pApplicationName)
   }

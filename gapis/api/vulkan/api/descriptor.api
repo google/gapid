@@ -66,7 +66,17 @@ cmd VkResult vkCreateDescriptorSetLayout(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorSetLayoutCreateInfo") }
   info := pCreateInfo[0]
-  // TODO: info.pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDescriptorSetLayoutCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   count := info.bindingCount
   bindings := info.pBindings[0:count]
   descriptorSetLayout := new!DescriptorSetLayoutObject()
@@ -137,6 +147,17 @@ cmd VkResult vkCreateDescriptorPool(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorPoolCreateInfo") }
   info := pCreateInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDescriptorPoolCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   pool := new!DescriptorPoolObject(
     Device:   device,
     Flags:    info.flags,
@@ -146,7 +167,6 @@ cmd VkResult vkCreateDescriptorPool(
   for i in (0 .. info.poolSizeCount) {
     pool.Sizes[i] = sizes[i]
   }
-  // TODO: info.pNext
 
   handle := ?
   if pDescriptorPool == null { vkErrorNullPointer("VkDescriptorPool") }
@@ -237,7 +257,17 @@ cmd VkResult vkAllocateDescriptorSets(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pAllocateInfo == null { vkErrorNullPointer("VkDescriptorSetAllocateInfo") }
   info := pAllocateInfo[0]
-  // TODO: info.pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDescriptorSetAllocateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   count := info.descriptorSetCount
 
   layouts := info.pSetLayouts[0:count]
@@ -530,6 +560,38 @@ cmd void vkUpdateDescriptorSets(
     u32                         descriptorCopyCount,
     const VkCopyDescriptorSet*  pDescriptorCopies) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
+  ws := pDescriptorWrites[0:descriptorWriteCount]
+  for i in (0 .. descriptorWriteCount) {
+    w := ws[i]
+    // handle VkWriteDescriptorSet pNext
+    if w.pNext != null {
+      numPNext := numberOfPNext(w.pNext)
+      next := MutableVoidPtr(as!void*(w.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkWriteDescriptorSet
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+  
+  cs := pDescriptorCopies[0:descriptorCopyCount]
+  for i in (0 .. descriptorCopyCount) {
+    c := cs[i]
+    // handle VkCopyDescriptorSet pNext
+    if c.pNext != null {
+      numPNext := numberOfPNext(c.pNext)
+      next := MutableVoidPtr(as!void*(c.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkCopyDescriptorSet
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
+  }
 
   writes := RewriteWriteDescriptorSets(
     descriptorWriteCount,

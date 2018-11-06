@@ -198,6 +198,18 @@ cmd VkResult vkFlushMappedMemoryRanges(
   memoryRanges := pMemoryRanges[0:memoryRangeCount]
   for i in (0 .. memoryRangeCount) {
     flushRange := memoryRanges[i]
+    // handle mapped memory range pNext
+    if flushRange.pNext != null {
+      numPNext := numberOfPNext(flushRange.pNext)
+      next := MutableVoidPtr(as!void*(flushRange.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkMappedMemoryRange
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     if !(flushRange.memory in DeviceMemories) { vkErrorInvalidDeviceMemory(flushRange.memory) }
     memoryObject := DeviceMemories[flushRange.memory]
     mappedLocation := as!u8*(memoryObject.MappedLocation)

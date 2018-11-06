@@ -58,6 +58,17 @@ cmd VkResult vkCreateCommandPool(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkCommandPoolCreateInfo") }
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkCommandPoolCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   handle := ?
   if pCommandPool == null { vkErrorNullPointer("VkCommandPool") }
@@ -289,6 +300,17 @@ cmd VkResult vkAllocateCommandBuffers(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pAllocateInfo == null { vkErrorNullPointer("VkCommandBufferAllocateInfo") }
   allocateInfo := pAllocateInfo[0]
+  // handle pNext
+  if allocateInfo.pNext != null {
+    numPNext := numberOfPNext(allocateInfo.pNext)
+    next := MutableVoidPtr(as!void*(allocateInfo.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkCommandBufferAllocateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   count := allocateInfo.commandBufferCount
 
   fence
@@ -345,7 +367,18 @@ cmd VkResult vkBeginCommandBuffer(
   info := pBeginInfo[0]
   begin := new!CommandBufferBegin(Flags: info.flags,Inherited:  false)
 
-  // TODO: pBeginInfo->pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkCommandBufferBeginInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   if info.pInheritanceInfo != null {
     inheritanceInfo := info.pInheritanceInfo[0]
     begin.Inherited = true
@@ -355,7 +388,17 @@ cmd VkResult vkBeginCommandBuffer(
     begin.InheritedOcclusionQuery = inheritanceInfo.occlusionQueryEnable
     begin.InheritedQueryFlags = inheritanceInfo.queryFlags
     begin.InheritedPipelineStatsFlags = inheritanceInfo.pipelineStatistics
-    // TODO: pBeginInfo->pInheritanceInfo->pNext
+    // handle pBeginInfo->pInheritanceInfo->pNext
+    if inheritanceInfo.pNext != null {
+      numPNext := numberOfPNext(inheritanceInfo.pNext)
+      next := MutableVoidPtr(as!void*(inheritanceInfo.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkCommandBufferInheritanceInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
   }
   buff := CommandBuffers[commandBuffer]
   buff.BeginInfo = begin

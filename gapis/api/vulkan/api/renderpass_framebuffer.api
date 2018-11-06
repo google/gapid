@@ -61,6 +61,17 @@ cmd VkResult vkCreateFramebuffer(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkFramebufferCreateInfo") }
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkFramebufferCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   attachments := create_info.pAttachments[0:create_info.attachmentCount]
 
   framebufferObject := new!FramebufferObject(Device: device,
@@ -133,6 +144,17 @@ cmd VkResult vkCreateRenderPass(
   renderPass.Device = device
   if pCreateInfo == null { vkErrorNullPointer("VkRenderPassCreateInfo") }
   info := pCreateInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkRenderPassCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   attachments := info.pAttachments[0:info.attachmentCount]
   for i in (0 .. info.attachmentCount) {
@@ -240,6 +262,17 @@ cmd void vkCmdBeginRenderPass(
   begin_info := pRenderPassBegin[0]
   if !(begin_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(begin_info.renderPass) }
   if !(begin_info.framebuffer in Framebuffers) { vkErrorInvalidFramebuffer(begin_info.framebuffer) }
+  // handle pNext
+  if begin_info.pNext != null {
+    numPNext := numberOfPNext(begin_info.pNext)
+    next := MutableVoidPtr(as!void*(begin_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkRenderPassCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   args := new!vkCmdBeginRenderPassArgs(
     Contents:     contents,
     RenderPass:   begin_info.renderPass,

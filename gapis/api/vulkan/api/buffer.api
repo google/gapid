@@ -169,6 +169,17 @@ cmd VkResult vkCreateBufferView(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkBufferViewCreateInfo") }
   buffer_view_create_info := pCreateInfo[0]
+  // handle mapped memory range pNext
+  if buffer_view_create_info.pNext != null {
+    numPNext := numberOfPNext(buffer_view_create_info.pNext)
+    next := MutableVoidPtr(as!void*(buffer_view_create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkBufferViewCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   handle := ?
   bufferViewObject := new!BufferViewObject(
