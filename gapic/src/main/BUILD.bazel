@@ -31,7 +31,6 @@ java_library(
         "//gapic/third_party:guava",
         "//gapic/third_party:jface",
         "//gapic/third_party:lwjgl",
-        "//gapic/third_party:swt",
         "//gapidapk/pkginfo:pkginfo_java_proto",
         "//gapis/api:api_java_proto",
         "//gapis/memory:memory_java_proto",
@@ -41,6 +40,7 @@ java_library(
         "//gapis/stringtable:stringtable_java_proto",
         "//gapis/vertex:vertex_java_proto",
         "@com_google_protobuf//:protobuf_java",
+        "@swt",
     ],
 )
 

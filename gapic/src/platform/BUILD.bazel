@@ -27,7 +27,7 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "//gapic/third_party:lwjgl",
-        "//gapic/third_party:swt",
+        "@swt",
     ],
 )
 
