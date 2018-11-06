@@ -28,7 +28,7 @@ load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
 #  mingw - if false, our cc toolchain, which uses MinGW on Windows is not initialized.
 #  locals - can be used to provide local path overrides for repos:
 #     {"foo": "/path/to/foo"} would cause @foo to be a local repo based on /path/to/foo.
-def gapid_dependencies(android = True, java_client = True, mingw = True, locals = {}):
+def gapid_dependencies(android = True, mingw = True, locals = {}):
     #####################################################
     # Get repositories with workspace rules we need first
 
@@ -183,17 +183,6 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         commit = "5598462f987841f7c1abe9209650ea8d3e727b46",
         build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
     )
-
-    if java_client:
-        maybe_repository(
-            github_repository,
-            name = "com_github_grpc_java",
-            locals = locals,
-            organization = "grpc",
-            project = "grpc-java",
-            commit = "009c51f2f793aabf516db90a14a52da2b613aa21",
-            build_file = "@gapid//tools/build/third_party:grpc_java.BUILD",
-        )
 
     if android:
         maybe_repository(
