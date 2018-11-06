@@ -31,3 +31,9 @@ def gapic_dependencies(locals = {}):
         commit = "009c51f2f793aabf516db90a14a52da2b613aa21",
         build_file = "@gapid//tools/build/third_party:grpc_java.BUILD",
     )
+
+    maybe_repository(
+        swt,
+        name = "swt",
+        locals = locals,
+    )

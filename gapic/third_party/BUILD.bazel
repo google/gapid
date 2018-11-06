@@ -51,22 +51,6 @@ java_import(
 )
 
 java_import(
-    name = "swt",
-    jars = select({
-        "//tools/build:linux": [
-            "platform/linux/swt.jar",
-        ],
-        "//tools/build:darwin": [
-            "platform/osx/swt.jar",
-        ],
-        "//tools/build:windows": [
-            "platform/windows/swt.jar",
-        ],
-    }),
-    visibility = ["//visibility:public"],
-)
-
-java_import(
     name = "lwjgl",
     jars = [
         "lwjgl/lwjgl.jar",
