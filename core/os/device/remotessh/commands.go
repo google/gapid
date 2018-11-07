@@ -32,21 +32,20 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text"
-	"golang.org/x/crypto/ssh"
 )
 
 // remoteProcess is the interface to a running process, as started by a Target.
 type remoteProcess struct {
-	session *ssh.Session
 	wg      sync.WaitGroup
+	session *pooledSession
 }
 
 func (r *remoteProcess) Kill() error {
-	return r.session.Signal(ssh.SIGSEGV)
+	return r.session.kill()
 }
 
 func (r *remoteProcess) Wait(ctx context.Context) error {
-	ret := r.session.Wait()
+	ret := r.session.wait()
 	r.wg.Wait()
 	return ret
 }
@@ -57,17 +56,17 @@ type sshShellTarget struct{ b *binding }
 
 // Start starts the given command in the remote shell.
 func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
-	session, err := t.b.connection.NewSession()
+	pooled, err := t.b.newPooledSession()
 	if err != nil {
 		return nil, err
 	}
 	p := &remoteProcess{
-		session: session,
+		session: pooled,
 		wg:      sync.WaitGroup{},
 	}
 
 	if cmd.Stdin != nil {
-		stdin, err := session.StdinPipe()
+		stdin, err := pooled.session.StdinPipe()
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +77,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	}
 
 	if cmd.Stdout != nil {
-		stdout, err := session.StdoutPipe()
+		stdout, err := pooled.session.StdoutPipe()
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +89,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	}
 
 	if cmd.Stderr != nil {
-		stderr, err := session.StderrPipe()
+		stderr, err := pooled.session.StderrPipe()
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +120,7 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 	}
 
 	val := prefix + cmd.Name + " " + strings.Join(cmd.Args, " ")
-	if err := session.Start(val); err != nil {
+	if err := pooled.session.Start(val); err != nil {
 		return nil, err
 	}
 
