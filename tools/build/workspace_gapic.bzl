@@ -34,6 +34,14 @@ def gapic_dependencies(locals = {}):
     )
 
     maybe_repository(
+        native.maven_jar,
+        name = "com_google_guava",
+        locals = locals,
+        artifact = "com.google.guava:guava:27.0-jre",
+        sha1 = "c6ad87d2575af8ac8ec38e28e75aefa882cc3a1f",
+    )
+
+    maybe_repository(
         swt,
         name = "swt",
         locals = locals,
