@@ -66,7 +66,7 @@ public abstract class SelectionHandler<W extends Widget> {
     ListenableFuture<T> future = Scheduler.EXECUTOR.submit(onBgThread);
     lastSelectionFuture = future;
 
-    Futures.addCallback(future, new LoggingCallback<T>(log) {
+    MoreFutures.addCallback(future, new LoggingCallback<T>(log) {
       @Override
       public void onSuccess(T result) {
         if (result != null && isCurrentSelection(currentSelection)) {

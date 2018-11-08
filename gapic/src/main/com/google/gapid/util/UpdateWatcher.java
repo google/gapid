@@ -15,17 +15,23 @@
  */
 package com.google.gapid.util;
 
+import static com.google.gapid.util.MoreFutures.logFailure;
+
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service.Release;
 import com.google.gapid.server.Client;
+
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Utility class for checking for new releases of GAPID.
  */
 public class UpdateWatcher {
+  private static final Logger LOG = Logger.getLogger(UpdateWatcher.class.getName());
+
   private static final long CHECK_INTERVAL_MS = TimeUnit.HOURS.toMillis(8);
   private static final boolean INCLUDE_PRE_RELEASES = false;
 
@@ -44,7 +50,7 @@ public class UpdateWatcher {
     this.client = client;
     this.listener = listener;
     if (settings.updateAvailable) {
-      Scheduler.EXECUTOR.schedule(this::doCheck, 0, TimeUnit.MILLISECONDS);
+      logFailure(LOG, Scheduler.EXECUTOR.schedule(this::doCheck, 0, TimeUnit.MILLISECONDS));
     } else {
       scheduleCheck();
     }
@@ -54,7 +60,7 @@ public class UpdateWatcher {
     long now = System.currentTimeMillis();
     long timeSinceLastUpdateMS = now - settings.lastCheckForUpdates;
     long delay = Math.max(CHECK_INTERVAL_MS - timeSinceLastUpdateMS, 0);
-    Scheduler.EXECUTOR.schedule(this::doCheck, delay, TimeUnit.MILLISECONDS);
+    logFailure(LOG, Scheduler.EXECUTOR.schedule(this::doCheck, delay, TimeUnit.MILLISECONDS));
   }
 
   private void doCheck() {

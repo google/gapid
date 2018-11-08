@@ -15,19 +15,48 @@
  */
 package com.google.gapid.util;
 
+import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.AsyncFunction;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Logger;
 
 /**
  * Additional utilities for {@link ListenableFuture ListenableFutures}.
  */
 public class MoreFutures {
   private MoreFutures() {
+  }
+
+  public static <V> void addCallback(
+      ListenableFuture<V> future, FutureCallback<? super V> callback) {
+    Futures.addCallback(future, callback, Scheduler.EXECUTOR);
+  }
+
+  public static <I, O> ListenableFuture<O> transform(
+      ListenableFuture<I> input, Function<? super I, ? extends O> function) {
+    return Futures.transform(input, function, Scheduler.EXECUTOR);
+  }
+
+  public static <I, O> ListenableFuture<O> transformAsync(
+      ListenableFuture<I> input,
+      AsyncFunction<? super I, ? extends O> function) {
+    return Futures.transformAsync(input, function, Scheduler.EXECUTOR);
+  }
+
+  public static void logFailure(Logger log, ListenableFuture<?> future) {
+    addCallback(future, new LoggingCallback<Object>(log) {
+      @Override
+      public void onSuccess(Object result) {
+        // Ignore.
+      }
+    });
   }
 
   public static <I, O> ListenableFuture<O> combine(
@@ -38,7 +67,7 @@ public class MoreFutures {
         results.add(Result.getUninterruptibly(future));
       }
       return fun.apply(results);
-    });
+    }, Scheduler.EXECUTOR);
   }
 
   public static <I, O> ListenableFuture<O> combineAsync(
@@ -49,7 +78,7 @@ public class MoreFutures {
         results.add(Result.getUninterruptibly(future));
       }
       return fun.apply(results);
-    });
+    }, Scheduler.EXECUTOR);
   }
 
   public static interface Combiner<I, O> {

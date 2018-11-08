@@ -48,6 +48,7 @@ import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Scheduler;
 import com.google.protobuf.ByteString;
@@ -72,14 +73,14 @@ public class Client {
 
   public ListenableFuture<ServerInfo> getSeverInfo() {
     return call(() -> "RPC->getServerInfo()",
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.getServerInfo(GetServerInfoRequest.getDefaultInstance()),
             in -> immediateFuture(throwIfError(in.getInfo(), in.getError(), stack))));
   }
 
   public ListenableFuture<Release> checkForUpdates(boolean includePrereleases) {
     return call(() -> String.format("RPC->checkForUpdates(%b)", includePrereleases),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.checkForUpdates(CheckForUpdatesRequest.newBuilder()
                 .setIncludePrereleases(includePrereleases)
                 .build()),
@@ -89,7 +90,7 @@ public class Client {
   public ListenableFuture<Value> get(Path.Any path, Path.Device device) {
     return call(
         () -> String.format("RPC->get(%s, %s)", shortDebugString(path), shortDebugString(device)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.get(GetRequest.newBuilder()
                 .setPath(path)
                 .setConfig(Path.ResolveConfig.newBuilder()
@@ -102,7 +103,7 @@ public class Client {
     return call(
         () -> String.format("RPC->set(%s, %s, %s)",
             shortDebugString(path), shortDebugString(device), shortDebugString(value)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.set(SetRequest.newBuilder()
                 .setPath(path)
                 .setConfig(Path.ResolveConfig.newBuilder()
@@ -116,7 +117,7 @@ public class Client {
     return call(
         () -> String.format("RPC->follow(%s, %s)",
             shortDebugString(path), shortDebugString(device)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.follow(FollowRequest.newBuilder()
                 .setPath(path)
                 .setConfig(Path.ResolveConfig.newBuilder()
@@ -127,14 +128,14 @@ public class Client {
 
   public ListenableFuture<List<Stringtable.Info>> getAvailableStringTables() {
     return call(() -> "RPC->getAvailableStringTables()",
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
           client.getAvailableStringTables(GetAvailableStringTablesRequest.getDefaultInstance()),
           in -> immediateFuture(throwIfError(in.getTables(), in.getError(), stack).getListList())));
   }
 
   public ListenableFuture<Stringtable.StringTable> getStringTable(Stringtable.Info info) {
     return call(() -> String.format("RPC->getStringTable(%s)", shortDebugString(info)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.getStringTable(GetStringTableRequest.newBuilder()
                 .setTable(info)
                 .build()),
@@ -143,7 +144,7 @@ public class Client {
 
   public ListenableFuture<Path.Capture> importCapture(byte[] data) {
     return call(() -> String.format("RPC->importCapture(<%d bytes>)", data.length),
-        stack -> Futures.transformAsync(client.importCapture(
+        stack -> MoreFutures.transformAsync(client.importCapture(
             ImportCaptureRequest.newBuilder()
                 .setData(ByteString.copyFrom(data))
                 .build()),
@@ -152,7 +153,7 @@ public class Client {
 
   public ListenableFuture<Path.Capture> loadCapture(String path) {
     return call(() -> String.format("RPC->loadCapture(%s)", path),
-        stack ->Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.loadCapture(LoadCaptureRequest.newBuilder()
                 .setPath(path)
                 .build()),
@@ -161,7 +162,7 @@ public class Client {
 
   public ListenableFuture<byte[]> exportCapture(Path.Capture path) {
     return call(() -> String.format("RPC->exportCapture(%s)", shortDebugString(path)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.exportCapture(ExportCaptureRequest.newBuilder()
                 .setCapture(path)
                 .build()),
@@ -170,7 +171,7 @@ public class Client {
 
   public ListenableFuture<List<Path.Device>> getDevices() {
     return call(() -> "RPC->getDevices()",
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.getDevices(GetDevicesRequest.getDefaultInstance()),
             in -> immediateFuture(throwIfError(in.getDevices(), in.getError(), stack)
                 .getListList())));
@@ -178,7 +179,7 @@ public class Client {
 
   public ListenableFuture<List<Path.Device>> getDevicesForReplay(Path.Capture capture) {
     return call(() -> String.format("RPC->getDevicesForReplay(%s)", shortDebugString(capture)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.getDevicesForReplay(GetDevicesForReplayRequest.newBuilder()
               .setCapture(capture)
               .build()),
@@ -193,7 +194,7 @@ public class Client {
         () -> String.format("RPC->getFramebufferAttachment(%s, %s, %s, %s, %s)",
             shortDebugString(device), shortDebugString(after), attachment,
             shortDebugString(settings), shortDebugString(hints)),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.getFramebufferAttachment(GetFramebufferAttachmentRequest.newBuilder()
                 .setReplaySettings(
                   ReplaySettings.newBuilder()
@@ -209,7 +210,7 @@ public class Client {
 
   public ListenableFuture<Void> postEvent(Service.ClientInteraction interaction) {
     return call(() -> String.format("RPC->postClientEvent(%s)", shortDebugString(interaction)),
-        stack -> Futures.transform(
+        stack -> MoreFutures.transform(
             client.postClientEvent(ClientEventRequest.newBuilder()
                 .setInteraction(interaction)
                 .build()),
@@ -220,7 +221,7 @@ public class Client {
       Path.Device device, String uri, float density) {
     return call(() -> String.format(
         "RPC->traceTargetTreeNode(%s, %s, %g)", shortDebugString(device), uri, density),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.getTraceTargetTreeNode(Service.TraceTargetTreeNodeRequest.newBuilder()
                 .setDevice(device)
                 .setUri(uri)
@@ -233,7 +234,7 @@ public class Client {
       boolean crashReporting, boolean analytics, String clientId, String adb) {
     return call(() -> String.format(
         "RPC->updateSettings(%b, %b, %s, %s)", crashReporting, analytics, clientId, adb),
-        stack -> Futures.transformAsync(
+        stack -> MoreFutures.transformAsync(
             client.updateSettings(Service.UpdateSettingsRequest.newBuilder()
                 .setEnableCrashReporting(crashReporting)
                 .setEnableAnalytics(analytics)

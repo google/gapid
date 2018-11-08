@@ -111,7 +111,7 @@ public class Geometries
 
   @Override
   protected ListenableFuture<Data> doLoad(Source s, Path.Device device) {
-    return Futures.transformAsync(fetchMeshMetadata(device, s.command, s.semantics), semantics -> {
+    return MoreFutures.transformAsync(fetchMeshMetadata(device, s.command, s.semantics), semantics -> {
       ListenableFuture<Model> originalFuture = fetchModel(device, meshAfter(
           s.command, semantics.getOptions().build(), POS_NORM_XYZ_F32));
       ListenableFuture<Model> facetedFuture = fetchModel(device, meshAfter(
@@ -171,12 +171,12 @@ public class Geometries
 
   private ListenableFuture<VertexSemantics> fetchMeshMetadata(
       Path.Device device, CommandIndex command, VertexSemantics currentSemantics) {
-    return Futures.transform(client.get(meshAfter(command, Paths.NODATA_MESH_OPTIONS), device),
+    return MoreFutures.transform(client.get(meshAfter(command, Paths.NODATA_MESH_OPTIONS), device),
         value -> new VertexSemantics(value.getMesh(), currentSemantics));
   }
 
   private ListenableFuture<Model> fetchModel(Path.Device device, Path.Any path) {
-    return Futures.transformAsync(client.get(path, device), value -> fetchModel(value.getMesh()));
+    return MoreFutures.transformAsync(client.get(path, device), value -> fetchModel(value.getMesh()));
   }
 
   private static ListenableFuture<Model> fetchModel(API.Mesh mesh) {

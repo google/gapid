@@ -55,6 +55,7 @@ import com.google.gapid.util.IntRange;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.LongPoint;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.CopyPaste.CopyData;
@@ -935,7 +936,7 @@ public class MemoryView extends Composite
 
     @Override
     public CopyData[] getCopyData(Selection selection) {
-      return Futures.getUnchecked(Futures.transform(data.load(selection.startRow * BYTES_PER_ROW,
+      return Futures.getUnchecked(MoreFutures.transform(data.load(selection.startRow * BYTES_PER_ROW,
           (int)(selection.endRow - selection.startRow + 1) * BYTES_PER_ROW), memory -> {
             StringBuilder buffer = new StringBuilder();
             Iterator<Segment> lines = getLines(selection.startRow, selection.endRow + 1, memory);
@@ -1003,7 +1004,7 @@ public class MemoryView extends Composite
     public CopyData[] getCopyData(Selection selection) {
       if (selection.range == ASCII_RANGE) {
         // Copy the actual data, rather than the display.
-        return Futures.getUnchecked(Futures.transform(
+        return Futures.getUnchecked(MoreFutures.transform(
             data.load(selection.startRow * BYTES_PER_ROW,
                 (int)(selection.endRow - selection.startRow + 1) * BYTES_PER_ROW),
                 s -> new CopyData[] {

@@ -34,6 +34,7 @@ import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.widgets.Shell;
@@ -83,7 +84,7 @@ public class Devices {
   }
 
   protected void loadReplayDevices(Path.Capture capturePath) {
-    rpcController.start().listen(Futures.transformAsync(client.getDevicesForReplay(capturePath),
+    rpcController.start().listen(MoreFutures.transformAsync(client.getDevicesForReplay(capturePath),
         devs -> Futures.allAsList(devs.stream()
             .map(dev -> client.get(Paths.device(dev), dev))
             .collect(toList()))),
@@ -142,12 +143,12 @@ public class Devices {
   }
 
   public void loadDevices() {
-    rpcController.start().listen(Futures.transformAsync(client.getDevices(), paths -> {
+    rpcController.start().listen(MoreFutures.transformAsync(client.getDevices(), paths -> {
       List<ListenableFuture<DeviceCaptureInfo>> results = Lists.newArrayList();
       for (Path.Device path : paths) {
         ListenableFuture<Service.Value> dev = client.get(Paths.device(path), path);
         ListenableFuture<Service.Value> props = client.get(Paths.traceInfo(path), path);
-        results.add(Futures.transform(Futures.allAsList(dev, props), l -> {
+        results.add(MoreFutures.transform(Futures.allAsList(dev, props), l -> {
           return new DeviceCaptureInfo(path, l.get(0).getDevice(), l.get(1).getTraceConfig(),
               new TraceTargets(shell, analytics, client, path));
         }));

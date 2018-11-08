@@ -22,7 +22,6 @@ import static java.util.logging.Level.WARNING;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
@@ -35,6 +34,7 @@ import com.google.gapid.util.Events;
 import com.google.gapid.util.Events.ListenerCollection;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
 
@@ -84,14 +84,14 @@ public class Follower {
     for (API.Parameter p : command.getParametersList()) {
       Path.Any follow = Paths.commandField(path, p.getName());
       ListenableFuture<Path.Any> future = client.follow(follow, node.device);
-      Futures.addCallback(future, callback(follow, v -> paths.put(p.getName(), v), onResult));
+      MoreFutures.addCallback(future, callback(follow, v -> paths.put(p.getName(), v), onResult));
       futures.add(future);
     }
 
     if (command.hasResult()) {
       Path.Any follow = Paths.commandResult(path);
       ListenableFuture<Path.Any> future = client.follow(follow, node.device);
-      Futures.addCallback(future, callback(follow, v -> paths.put(RESULT_NAME, v), onResult));
+      MoreFutures.addCallback(future, callback(follow, v -> paths.put(RESULT_NAME, v), onResult));
       futures.add(future);
     }
 
@@ -120,7 +120,7 @@ public class Follower {
 
     ObjectStore<Path.Any> result = ObjectStore.create();
     ListenableFuture<Path.Any> future = client.follow(path, node.device);
-    Futures.addCallback(future, callback(path, v -> {
+    MoreFutures.addCallback(future, callback(path, v -> {
       synchronized(result) {
         result.update(v);
       }

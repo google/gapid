@@ -37,6 +37,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.ObjectStore;
 import com.google.gapid.util.Paths;
 
@@ -77,8 +78,8 @@ public class ApiState
 
   @Override
   protected ListenableFuture<Node> doLoad(Path.Any path, Path.Device device) {
-    return Futures.transformAsync(client.get(path, device),
-        tree -> Futures.transform(client.get(stateTree(tree.getStateTree().getRoot()), device),
+    return MoreFutures.transformAsync(client.get(path, device),
+        tree -> MoreFutures.transform(client.get(stateTree(tree.getStateTree().getRoot()), device),
             val -> new RootNode(device, tree.getStateTree().getRoot().getTree(), val.getStateTreeNode())));
   }
 
@@ -115,9 +116,9 @@ public class ApiState
   }
 
   public ListenableFuture<Node> load(Node node) {
-    return node.load(shell, () -> Futures.transformAsync(
+    return node.load(shell, () -> MoreFutures.transformAsync(
         client.get(Paths.stateTree(node.getPath(Path.StateTreeNode.newBuilder())), node.device),
-        value -> Futures.transform(constants.loadConstants(value.getStateTreeNode()),
+        value -> MoreFutures.transform(constants.loadConstants(value.getStateTreeNode()),
             ignore -> new NodeData(value.getStateTreeNode()))));
   }
 
@@ -161,12 +162,12 @@ public class ApiState
     }
 
     RootNode root = (RootNode)getData();
-    return Futures.transform(client.get(stateTree(root.tree, path), root.device),
+    return MoreFutures.transform(client.get(stateTree(root.tree, path), root.device),
         value -> value.getPath().getStateTreeNode());
   }
 
   public ListenableFuture<Box.Value> loadValue(Node node) {
-    return Futures.transform(
+    return MoreFutures.transform(
         client.get(node.getData().getValuePath(), node.device), Service.Value::getBox);
   }
 
@@ -233,7 +234,7 @@ public class ApiState
         return loadFuture;
       }
 
-      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+      return loadFuture = MoreFutures.transformAsync(loader.get(), newData ->
           submitIfNotDisposed(shell, () -> {
             data = newData.data;
             loadFuture = null; // Don't hang on to listeners.
