@@ -28,7 +28,6 @@ java_library(
         "//core/stream:stream_java_proto",
         "//gapic/src/platform",
         "//gapic/third_party:grpc",
-        "//gapic/third_party:guava",
         "//gapic/third_party:lwjgl",
         "//gapidapk/pkginfo:pkginfo_java_proto",
         "//gapis/api:api_java_proto",
@@ -38,6 +37,7 @@ java_library(
         "//gapis/service/path:path_java_proto",
         "//gapis/stringtable:stringtable_java_proto",
         "//gapis/vertex:vertex_java_proto",
+        "@com_google_guava//jar",
         "@com_google_protobuf//:protobuf_java",
         "@jface",
         "@swt",
@@ -56,7 +56,7 @@ java_grpc_library(
     deps = [
         "//core/log/log_pb:log_pb_java_proto",
         "//gapic/third_party:grpc",
-        "//gapic/third_party:guava",
         "//gapis/service:service_java_proto",
+        "@com_google_guava//jar",
     ],
 )

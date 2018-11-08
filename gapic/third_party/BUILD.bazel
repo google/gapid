@@ -13,14 +13,6 @@
 # limitations under the License.
 
 java_import(
-    name = "guava",
-    jars = [
-        "guava-20.0.jar",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-java_import(
     name = "grpc",
     jars = [
         "grpc/grpc-context-1.0.1.jar",
