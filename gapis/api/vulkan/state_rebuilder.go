@@ -1717,7 +1717,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 					oldQueue = sparseQueue.VulkanHandle()
 				}
 				transitionInfo = append(transitionInfo, imageSubRangeInfo{
-					aspectMask:     VkImageAspectFlags(aspect),
+					aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
 					baseMipLevel:   level,
 					levelCount:     1,
 					baseArrayLayer: layer,
@@ -1729,7 +1729,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 				})
 				if q.Family() != imgLevel.LastBoundQueue().Family() {
 					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
-						aspectMask:     VkImageAspectFlags(aspect),
+						aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
 						baseMipLevel:   level,
 						levelCount:     1,
 						baseArrayLayer: layer,
