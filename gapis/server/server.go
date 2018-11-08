@@ -534,6 +534,7 @@ func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
 		NoBuffer:              opts.NoBuffer,
 		HideUnknownExtensions: opts.HideUnknownExtensions,
 		StoreTimestamps:       opts.RecordTraceTimes,
+		PipeName:              opts.PipeName,
 	}
 }
 

@@ -137,7 +137,12 @@ Spy::Spy()
   // Use a "localabstract" pipe on Android to prevent depending on the traced
   // application having the INTERNET permission set, required for opening and
   // listening on a TCP socket.
-  mConnection = ConnectionStream::listenPipe("gapii", true);
+  std::string pipe = "gapii";
+  char* envPipe = getenv("GAPII_PIPE_NAME");
+  if (envPipe != nullptr) {
+    pipe = envPipe;
+  }
+  mConnection = ConnectionStream::listenPipe(pipe.c_str(), true);
 #else   // TARGET_OS
   mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
 #endif  // TARGET_OS

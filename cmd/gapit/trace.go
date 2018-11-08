@@ -176,6 +176,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		RecordTraceTimes:      verb.Record.TraceTimes,
 		ClearCache:            verb.Clear.Cache,
 		ServerLocalSavePath:   out,
+		PipeName:              verb.PipeName,
 	}
 
 	if uri != "" {

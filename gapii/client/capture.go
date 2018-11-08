@@ -82,6 +82,8 @@ type Options struct {
 	Flags Flags
 	// Additional flags to pass to am start
 	AdditionalFlags string
+	// The name of the pipe to connect/listen to.
+	PipeName string
 }
 
 const sizeGap = 1024 * 1024 * 5

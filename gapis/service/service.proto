@@ -1045,6 +1045,8 @@ message TraceOptions {
   bool record_trace_times = 20;
   // Where should we save the capture file.
   string server_local_save_path = 21;
+  // Name of the pipe to connect/listen to.
+  string pipe_name = 22;
 }
 
 enum TraceEvent {
