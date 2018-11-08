@@ -95,7 +95,8 @@ public class Images {
    */
   public static org.eclipse.swt.graphics.Image createAutoScaledImage(
       ResourceManager resources, ImageData data) {
-    return resources.createImage(ImageDescriptor.createFromImageData(data));
+    return resources.createImage(
+        ImageDescriptor.createFromImageDataProvider(zoom -> (zoom == 100) ? data : null));
   }
 
   public static org.eclipse.swt.graphics.Image createNonScaledImage(Device device, ImageData data) {
