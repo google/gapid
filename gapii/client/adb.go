@@ -105,7 +105,11 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	ctx = log.V{"port": port}.Bind(ctx)
 
 	log.I(ctx, "Forwarding")
-	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket("gapii")); err != nil {
+	pipe := "gapii"
+	if o.PipeName != "" {
+		pipe = o.PipeName
+	}
+	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket(pipe)); err != nil {
 		return nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
 	}
 

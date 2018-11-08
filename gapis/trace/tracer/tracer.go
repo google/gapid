@@ -56,6 +56,7 @@ type TraceOptions struct {
 	WriteFile         string   // Where should we write the output
 	AdditionalFlags   string   // Additional flags to pass to the application
 	CWD               string   // What directory the application use as a CWD
+	PipeName          string   // The name of the pipe to connect/listen to.
 
 	Duration              float32 // How many seconds should we trace
 	ObserveFrameFrequency uint32  // How frequently should we do frame observations
@@ -147,5 +148,6 @@ func (o TraceOptions) GapiiOptions() gapii.Options {
 		apis,
 		flags,
 		o.AdditionalFlags,
+		o.PipeName,
 	}
 }
