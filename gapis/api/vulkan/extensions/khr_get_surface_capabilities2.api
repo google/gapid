@@ -67,7 +67,18 @@ cmd VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pSurfaceInfo == null { vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR") }
   info := pSurfaceInfo[0]
-  // TODO: handle pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkPhysicalDeviceSurfaceInfo2KHR
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+  
   if !(info.surface in Surfaces) { vkErrorInvalidSurface(info.surface) }
   if pSurfaceCapabilities == null { vkErrorNullPointer("VkSurfaceCapabilitiesKHR") }
   pSurfaceCapabilities[0] = ?
@@ -87,7 +98,18 @@ cmd VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pSurfaceInfo == null { vkErrorNullPointer("const VkPhysicalDeviceSurfaceInfo2KHR") }
   info := pSurfaceInfo[0]
-  // TODO: handle pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkPhysicalDeviceSurfaceInfo2KHR
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   if !(info.surface in Surfaces) { vkErrorInvalidSurface(info.surface) }
   if pSurfaceFormatCount == null { vkErrorNullPointer("uint32_t") }
   _ = pSurfaceFormatCount[0]

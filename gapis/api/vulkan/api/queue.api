@@ -96,6 +96,19 @@ cmd VkResult vkQueueSubmit(
   enterSubcontext()
   for i in (0 .. submitCount) {
     info := submitInfo[i]
+
+    // handle pNext
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkQueueSubmitInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
@@ -263,6 +276,18 @@ cmd VkResult vkQueueBindSparse(
   enterSubcontext()
   for i in (0 .. bindInfoCount) {
     info := infos[i]
+    // handle pNext
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkBindSparseInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]

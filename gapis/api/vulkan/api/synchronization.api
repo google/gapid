@@ -58,6 +58,18 @@ cmd VkResult vkCreateFence(
   if pCreateInfo == null { vkErrorNullPointer("VkFenceCreateInfo") }
   f := new!FenceObject()
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkFenceCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   f.Device = device
 
   if ((as!u32(create_info.flags) & as!u32(VK_FENCE_CREATE_SIGNALED_BIT)) != 0) {
@@ -157,7 +169,18 @@ cmd VkResult vkCreateSemaphore(
     VkSemaphore*                 pSemaphore) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSemaphoreCreateInfo") }
-  _ = pCreateInfo[0]
+  create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkSemaphoreCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   handle := ?
   semaphoreObject := new!SemaphoreObject(Device: device,
@@ -200,7 +223,19 @@ cmd VkResult vkCreateEvent(
     VkEvent*                     pEvent) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkEventCreateInfo") }
-  read(pCreateInfo[0:1])
+  create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkEventCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   event := new!EventObject()
   event.Device = device
   event.Signaled = false
@@ -383,8 +418,11 @@ cmd void vkCmdWaitEvents(
     DstStageMask:  dstStageMask,
   )
   events := pEvents[0:eventCount]
+  handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
   memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+  handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+  handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. eventCount) {
     if !(events[i] in Events) { vkErrorInvalidEvent(events[i]) }
@@ -433,6 +471,60 @@ sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
   }
 }
 
+sub void handleMemoryBarriersPNext(const VkMemoryBarrier* pBarriers, u32 count) {
+  barriers := pBarriers[0:count]
+  for i in (0 .. count) {
+    b := barriers[i]
+    // handle pNext
+    if b.pNext != null {
+      numPNext := numberOfPNext(b.pNext)
+      next := MutableVoidPtr(as!void*(b.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkMemoryBarrier
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+}
+
+sub void handleBufferMemoryBarriersPNext(const VkBufferMemoryBarrier* pBarriers, u32 count) {
+  barriers := pBarriers[0:count]
+  for i in (0 .. count) {
+    b := barriers[i]
+    // handle pNext
+    if b.pNext != null {
+      numPNext := numberOfPNext(b.pNext)
+      next := MutableVoidPtr(as!void*(b.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkBufferMemoryBarrier
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+}
+
+sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u32 count) {
+  barriers := pBarriers[0:count]
+  for i in (0 .. count) {
+    b := barriers[i]
+    // handle pNext
+    if b.pNext != null {
+      numPNext := numberOfPNext(b.pNext)
+      next := MutableVoidPtr(as!void*(b.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkImageMemoryBarrier
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdPipelineBarrier(
@@ -452,16 +544,19 @@ cmd void vkCmdPipelineBarrier(
     DstStageMask:     dstStageMask,
     DependencyFlags:  dependencyFlags
   )
+  handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
   memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
   for i in (0 .. memoryBarrierCount) {
     args.MemoryBarriers[i] = memoryBarriers[i]
   }
 
+  handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   for i in (0 .. bufferMemoryBarrierCount) {
     args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
   }
 
+  handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. imageMemoryBarrierCount) {
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]

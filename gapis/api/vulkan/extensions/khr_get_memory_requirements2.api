@@ -183,7 +183,17 @@ cmd void vkGetImageSparseMemoryRequirements2KHR(
   info := pInfo[0]
   image := info.image
   if !(image in Images) { vkErrorInvalidImage(image) }
-  // TODO: handle pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkImageSparseMemoryRequirementsInfo2KHR
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   if pSparseMemoryRequirementCount == null { vkErrorNullPointer("uint32_t") }
   read(pSparseMemoryRequirementCount[0:1])
 
