@@ -32,6 +32,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Values;
 
 import org.eclipse.swt.graphics.ImageData;
@@ -47,21 +48,21 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
   public static ListenableFuture<FetchedImage> load(
       Client client, Path.Device device, ListenableFuture<Path.ImageInfo> imageInfo) {
-    return Futures.transformAsync(imageInfo, imageInfoPath -> load(client, device, imageInfoPath));
+    return MoreFutures.transformAsync(imageInfo, imageInfoPath -> load(client, device, imageInfoPath));
   }
 
   public static ListenableFuture<FetchedImage> load(
       Client client, Path.Device device, Path.ImageInfo imagePath) {
-    return Futures.transformAsync(client.get(imageInfo(imagePath), device), value -> {
+    return MoreFutures.transformAsync(client.get(imageInfo(imagePath), device), value -> {
       Images.Format format = getFormat(value.getImageInfo());
-      return Futures.transform(client.get(imageData(imagePath, format.format), device),
+      return MoreFutures.transform(client.get(imageData(imagePath, format.format), device),
           pixelValue -> new FetchedImage(client, device, format, pixelValue.getImageInfo()));
     });
   }
 
   public static ListenableFuture<FetchedImage> load(
       Client client, Path.Device device, Path.ResourceData imagePath) {
-    return Futures.transformAsync(client.get(resourceInfo(imagePath), device), value -> {
+    return MoreFutures.transformAsync(client.get(resourceInfo(imagePath), device), value -> {
       API.ResourceData data = value.getResourceData();
       API.Texture texture = data.getTexture();
       switch (texture.getTypeCase()) {
@@ -87,7 +88,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
   public static ListenableFuture<FetchedImage> load(
       Client client, Path.Device device, Path.ResourceData imagePath, Images.Format format) {
-    return Futures.transform(client.get(imageData(imagePath, format.format), device), value -> {
+    return MoreFutures.transform(client.get(imageData(imagePath, format.format), device), value -> {
       API.ResourceData data = value.getResourceData();
       API.Texture texture = data.getTexture();
       switch (texture.getTypeCase()) {
@@ -113,7 +114,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
   public static ListenableFuture<ImageData> loadImage(
       ListenableFuture<FetchedImage> futureImage, final int layer, final int level) {
-    return Futures.transformAsync(futureImage, image -> Futures.transform(
+    return MoreFutures.transformAsync(futureImage, image -> MoreFutures.transform(
         image.getImage(
             Math.min(layer, image.getLayerCount() - 1),
             Math.min(level, image.getLevelCount() - 1)), (l) -> l.getImageData()));
@@ -121,7 +122,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
   public static ListenableFuture<ImageData> loadThumbnail(
       Client client, Path.Device device, Path.Thumbnail path, Consumer<Info> onInfo) {
-    return loadImage(Futures.transform(client.get(thumbnail(path), device), value -> {
+    return loadImage(MoreFutures.transform(client.get(thumbnail(path), device), value -> {
       onInfo.accept(value.getImageInfo());
       return new FetchedImage(client, device, Images.Format.Color8, value.getImageInfo());
     }), 0, 0);
@@ -320,7 +321,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       synchronized (this) {
         result = image;
       }
-      return (result == null) ? Futures.transform(doLoad(), this) : immediateFuture(result);
+      return (result == null) ? MoreFutures.transform(doLoad(), this) : immediateFuture(result);
     }
 
     @Override
@@ -391,7 +392,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
 
     @Override
     protected ListenableFuture<Image> doLoad() {
-      return Futures.transform(client.get(blob(imageInfo.getBytes()), device), data ->
+      return MoreFutures.transform(client.get(blob(imageInfo.getBytes()), device), data ->
         convertImage(imageInfo, format, Values.getBytes(data)));
     }
 
@@ -428,7 +429,7 @@ public class FetchedImage implements MultiLayerAndLevelImage {
       for (int i = 0; i < imageInfos.length; i++) {
         futures[i] = client.get(blob(imageInfos[i].getBytes()), device);
       }
-      return Futures.transform(Futures.allAsList(futures), values -> {
+      return MoreFutures.transform(Futures.allAsList(futures), values -> {
         byte[][] data = new byte[values.size()][];
         for (int i = 0; i < data.length; i++) {
           data[i] = Values.getBytes(values.get(i));

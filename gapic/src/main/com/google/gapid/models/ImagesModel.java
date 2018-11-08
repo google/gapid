@@ -17,7 +17,6 @@ package com.google.gapid.models;
 
 import static com.google.gapid.image.FetchedImage.loadThumbnail;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.image.FetchedImage;
 import com.google.gapid.models.CommandStream.CommandIndex;
@@ -26,6 +25,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 
 import org.eclipse.swt.graphics.ImageData;
@@ -76,19 +76,19 @@ public class ImagesModel {
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.Command command, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(command), onInfo),
+    return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(command), onInfo),
         image -> processImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.CommandTreeNode node, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(node), onInfo),
+    return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(node), onInfo),
         image -> processImage(image, size));
   }
 
   public ListenableFuture<ImageData> getThumbnail(
       Path.ResourceData resource, int size, Consumer<Image.Info> onInfo) {
-    return Futures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(resource), onInfo),
+    return MoreFutures.transform(loadThumbnail(client, getReplayDevice(), thumbnail(resource), onInfo),
         image -> processImage(image, size));
   }
 

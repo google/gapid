@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.MoreFutures.logFailure;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
@@ -86,11 +87,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Dialogs used for capturing a trace.
  */
 public class TracerDialog {
+  protected static final Logger LOG = Logger.getLogger(TracerDialog.class.getName());
+
   private TracerDialog() {
   }
 
@@ -268,7 +272,7 @@ public class TracerDialog {
           deviceLoader.startLoading();
           // By waiting a tiny bit, the icon will change to the loading indicator, giving the user
           // feedback that something is happening, in case the refresh is really quick.
-          Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS);
+          logFailure(LOG, Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS));
         });
 
         deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));

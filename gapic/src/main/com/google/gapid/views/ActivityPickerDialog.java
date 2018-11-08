@@ -20,7 +20,6 @@ import static com.google.gapid.widgets.Widgets.createTreeForViewer;
 import static org.eclipse.jface.dialogs.IDialogConstants.OK_ID;
 
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import com.google.gapid.image.Images;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
@@ -31,6 +30,7 @@ import com.google.gapid.server.GapitPkgInfoProcess;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable.MessageType;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.SearchBox;
@@ -251,7 +251,7 @@ public class ActivityPickerDialog extends DialogBase {
     float iconDensityScale = DPIUtil.getDeviceZoom() / 100.0f;
     GapitPkgInfoProcess process =
         new GapitPkgInfoProcess(models.settings, device.getSerial(), iconDensityScale);
-    Futures.addCallback(process.start(), new FutureCallback<PkgInfo.PackageList>() {
+    MoreFutures.addCallback(process.start(), new FutureCallback<PkgInfo.PackageList>() {
       @Override
       public void onFailure(Throwable t) {
         LOG.log(Level.WARNING, "Failed to read package info", t);

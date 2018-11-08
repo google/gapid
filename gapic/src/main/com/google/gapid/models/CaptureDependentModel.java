@@ -15,13 +15,13 @@
  */
 package com.google.gapid.models;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.MoreFutures;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -73,7 +73,7 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
 
     @Override
     protected ListenableFuture<T> doLoad(Path.Any path, Path.Device device) {
-      return Futures.transform(client.get(path, device), val -> unbox(val, device));
+      return MoreFutures.transform(client.get(path, device), val -> unbox(val, device));
     }
 
     protected abstract T unbox(Service.Value value, Path.Device device);
