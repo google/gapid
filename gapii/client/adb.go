@@ -167,6 +167,40 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	return process, nil
 }
 
+// Connect connects to an app that is already setup to trace. This is similar to
+// Start(...), except that it skips some steps as it is assumed that the loading
+// of libgapii is done manually and the app is waiting for a connection from the
+// host.
+func Connect(ctx context.Context, d adb.Device, abi *device.ABI, pipe string, o Options) (*Process, error) {
+	port, err := adb.LocalFreeTCPPort()
+	if err != nil {
+		return nil, log.Err(ctx, err, "Finding free port for gapii")
+	}
+	ctx = log.V{"port": port}.Bind(ctx)
+
+	log.I(ctx, "Checking gapid.apk is installed")
+	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Installing gapid.apk")
+	}
+
+	log.I(ctx, "Forwarding")
+	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket(pipe)); err != nil {
+		return nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
+	}
+
+	process := &Process{
+		Port:    int(port),
+		Device:  d,
+		Options: o,
+	}
+	interceptorPath := apk.LibInterceptorPath(abi)
+	if err := process.connect(ctx, 0, interceptorPath); err != nil {
+		return nil, err
+	}
+	return process, nil
+}
+
 // reserveVulkanDevice reserves the given device for starting Vulkan trace and
 // set the implicit Vulkan layers property to let the Vulkan loader loads
 // VkGraphicsSpy layer. It returns the mutex which reserves the device and error.
