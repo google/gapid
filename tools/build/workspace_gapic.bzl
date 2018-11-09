@@ -118,6 +118,30 @@ def gapic_dependencies(locals = {}):
         sha1 = "a4c7ff238a91b901c8b459889b6d0d7a9d889b4d",
     )
 
+    # LWJGL.
+    ############################################################################
+    maybe_repository(
+        _maven_jar_with_natives,
+        name = "org_lwjgl_core",
+        locals = locals,
+        artifact = "org.lwjgl:lwjgl:3.2.0",
+        sha1 = "7723544dc3fc740f0ee59cce9a3a0cecc8681747",
+        linux_sha1 = "4c23e3f9ae657a52bddfa1c92d1b0ba770259eed",
+        windows_sha1 = "86c90ce2abe6129bfd5052a8b82f3dc2394c8dd1",
+        macos_sha1 = "84bf26af17298d47b0ff9765a426279aaa133cad",
+    )
+
+    maybe_repository(
+        _maven_jar_with_natives,
+        name = "org_lwjgl_opengl",
+        locals = locals,
+        artifact = "org.lwjgl:lwjgl-opengl:3.2.0",
+        sha1 = "1c64c692473a70af297651d369debc93efa2e49f",
+        linux_sha1 = "953ac48def909b1c67fc54299f5c403479ef8ac7",
+        windows_sha1 = "b1f27bce30f8e40b03502a5d86687b30d844ba35",
+        macos_sha1 = "4b2015f5d180dc707ac47d000acd35d49b5d7463",
+    )
+
     # Other dependencies.
     ############################################################################
     maybe_repository(
@@ -138,4 +162,35 @@ def gapic_dependencies(locals = {}):
         jface,
         name = "jface",
         locals = locals,
+    )
+
+def _maven_jar_with_natives(name, artifact, sha1 = None, linux_sha1 = None, windows_sha1 = None, macos_sha1 = None):
+    native.maven_jar(
+        name = name,
+        artifact = artifact,
+        sha1 = sha1,
+    )
+
+    toks = artifact.split(":")
+    toks.insert(len(toks) - 1, "jar")
+
+    toks.insert(len(toks) - 1, "natives-linux")
+    native.maven_jar(
+        name = name + "_natives_linux",
+        artifact = ":".join(toks),
+        sha1 = linux_sha1,
+    )
+
+    toks[len(toks) - 2] = "natives-windows"
+    native.maven_jar(
+        name = name + "_natives_windows",
+        artifact = ":".join(toks),
+        sha1 = windows_sha1,
+    )
+
+    toks[len(toks) - 2] = "natives-macos"
+    native.maven_jar(
+        name = name + "_natives_macos",
+        artifact = ":".join(toks),
+        sha1 = macos_sha1,
     )
