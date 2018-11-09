@@ -98,37 +98,44 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			return fmt.Errorf("Could not find matching device")
 		}
 
-		for _, dev := range devices {
-			targets, err := client.FindTraceTargets(ctx, &service.FindTraceTargetsRequest{
-				Device: dev,
-				Uri:    traceURI,
+		if len(devices) == 1 && strings.HasPrefix(traceURI, "port:") {
+			found = append(found, info{
+				uri:    traceURI,
+				device: devices[0],
+				name:   "capture",
 			})
-			if err != nil {
-				continue
-			}
-
-			dd, err := client.Get(ctx, dev.Path(), nil)
-			if err != nil {
-				return err
-			}
-			d := dd.(*device.Instance)
-
-			for _, target := range targets {
-				name := target.Name
-				switch {
-				case target.FriendlyApplication != "":
-					name = target.FriendlyApplication
-				case target.FriendlyExecutable != "":
-					name = target.FriendlyExecutable
+		} else {
+			for _, dev := range devices {
+				targets, err := client.FindTraceTargets(ctx, &service.FindTraceTargetsRequest{
+					Device: dev,
+					Uri:    traceURI,
+				})
+				if err != nil {
+					continue
 				}
 
-				found = append(found, info{
-					uri:        target.Uri,
-					deviceName: d.Name,
-					device:     dev,
-					name:       name,
-				})
-				traceDevice = dev
+				dd, err := client.Get(ctx, dev.Path(), nil)
+				if err != nil {
+					return err
+				}
+				d := dd.(*device.Instance)
+
+				for _, target := range targets {
+					name := target.Name
+					switch {
+					case target.FriendlyApplication != "":
+						name = target.FriendlyApplication
+					case target.FriendlyExecutable != "":
+						name = target.FriendlyExecutable
+					}
+
+					found = append(found, info{
+						uri:        target.Uri,
+						deviceName: d.Name,
+						device:     dev,
+						name:       name,
+					})
+				}
 			}
 		}
 
@@ -148,9 +155,10 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			return log.Errf(ctx, nil, "%v", sb.String())
 		}
 
-		fmt.Printf("Tracing %+v", found[0].uri)
+		fmt.Printf("Tracing %+v\n", found[0].uri)
 		out = found[0].name + ".gfxtrace"
 		uri = found[0].uri
+		traceDevice = found[0].device
 	}
 
 	if verb.Out != "" {
