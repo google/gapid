@@ -50,7 +50,7 @@ class ResourceInMemoryCacheTest : public Test {
     mMemoryManager.reset(new MemoryManager(memorySizes));
     mMemoryManager->setVolatileMemory(MEMORY_SIZE - CACHE_SIZE);
 
-    mCache = InMemoryResourceCache::create(mMemoryManager->getBaseAddress());
+    mCache = InMemoryResourceCache::create(mMemoryManager->getTopAddress());
     mMemoryCachedResourceLoader = CachedResourceLoader::create(
         mCache.get(),
         std::unique_ptr<ResourceLoader>(new StrictMock<MockResourceLoader>()));

@@ -109,11 +109,9 @@ TEST_F(InterpreterTest, PushIDouble1) {
 }
 
 TEST_F(InterpreterTest, LoadC) {
-  mMemoryManager->setReplayDataSize(10, 0);
-  uint8_t constantMemory[7] = {0x00, 0x00, 0x12, 0x34, 0x56, 0x78, 0x9a};
-  uint8_t* constantBaseAddress =
-      static_cast<uint8_t*>(mMemoryManager->getConstantAddress());
-  memcpy(constantBaseAddress, &constantMemory, sizeof(constantMemory));
+  uint8_t constantMemory[10] = {0x00, 0x00, 0x12, 0x34, 0x56,
+                                0x78, 0x9a, 0x00, 0x00, 0x00};
+  mMemoryManager->setReplayData(constantMemory, 10, nullptr, 0);
 
   mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint16_t>{0x7856});
 
@@ -136,12 +134,10 @@ TEST_F(InterpreterTest, LoadV) {
 }
 
 TEST_F(InterpreterTest, LoadConstantAddress) {
-  mMemoryManager->setReplayDataSize(10, 0);
-  uint8_t constantMemory[7] = {0x00, 0x00, 0x12, 0x34, 0x56, 0x78, 0x9a};
-  uint8_t* constantBaseAddress =
-      static_cast<uint8_t*>(mMemoryManager->getConstantAddress());
-  memcpy(constantBaseAddress, &constantMemory, 7);
+  uint8_t const_memory[10] = {0x00, 0x00, 0x12, 0x34, 0x56,
+                              0x78, 0x9a, 0x00, 0x00, 0x00};
 
+  mMemoryManager->setReplayData(const_memory, 10, nullptr, 0);
   mInterpreter->registerBuiltin(0, 0, CheckTopOfStack<uint16_t>{0x7856});
 
   std::vector<uint32_t> instructions{
@@ -207,11 +203,8 @@ TEST_F(InterpreterTest, Store) {
 }
 
 TEST_F(InterpreterTest, Copy) {
-  mMemoryManager->setReplayDataSize(20, 0);
-  uint8_t constantMemory[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  uint8_t* constantBaseAddress =
-      static_cast<uint8_t*>(mMemoryManager->getConstantAddress());
-  memcpy(constantBaseAddress, &constantMemory, 10);
+  uint8_t constantMemory[20] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+  mMemoryManager->setReplayData(constantMemory, 20, nullptr, 0);
 
   std::vector<uint32_t> instructions{
       instruction(Interpreter::InstructionCode::PUSH_I,
@@ -307,12 +300,11 @@ TEST_F(InterpreterTest, Add3xFloat) {
 }
 
 TEST_F(InterpreterTest, Strcpy) {
-  mMemoryManager->setReplayDataSize(20, 0);
+  uint8_t const_memory[20] = {};
   const char* constantMemory = "abc";
-  uint8_t* constantBaseAddress =
-      static_cast<uint8_t*>(mMemoryManager->getConstantAddress());
-  memcpy(constantBaseAddress, constantMemory, 4);
+  memcpy(const_memory, constantMemory, 4);
 
+  mMemoryManager->setReplayData(const_memory, 20, nullptr, 0);
   uint8_t* volatileMemory =
       static_cast<uint8_t*>(mMemoryManager->volatileToAbsolute(100));
 
@@ -335,11 +327,10 @@ TEST_F(InterpreterTest, Strcpy) {
 }
 
 TEST_F(InterpreterTest, StrcpyShortBuffer) {
-  mMemoryManager->setReplayDataSize(20, 0);
+  uint8_t const_memory[20] = {};
   const char* constantMemory = "abcdef";
-  uint8_t* constantBaseAddress =
-      static_cast<uint8_t*>(mMemoryManager->getConstantAddress());
-  memcpy(constantBaseAddress, constantMemory, 7);
+  memcpy(const_memory, constantMemory, 7);
+  mMemoryManager->setReplayData(const_memory, 20, nullptr, 0);
 
   uint8_t* volatileMemory =
       static_cast<uint8_t*>(mMemoryManager->volatileToAbsolute(100));
