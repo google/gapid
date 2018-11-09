@@ -42,18 +42,6 @@ std::unique_ptr<ReplayRequest> ReplayRequest::create(
     GAPID_ERROR("Failed to create ReplayRequest: null Payload")
     return nullptr;  // failed at getting payload.
   }
-  // Reserve Replay data segments and load data into the memory manager.
-  if (!memoryManager->setReplayDataSize(payload->constants_size(),
-                                        payload->opcodes_size())) {
-    GAPID_ERROR(
-        "Failed to create ReplayRequest: failed to set replay data size "
-        "(constant memory size or opcode memory size)")
-    return nullptr;
-  }
-  memcpy(memoryManager->getConstantAddress(), payload->constants_data(),
-         payload->constants_size());
-  memcpy(memoryManager->getOpcodeAddress(), payload->opcodes_data(),
-         payload->opcodes_size());
 
   // initialize this replay request.
   std::unique_ptr<ReplayRequest> req(new ReplayRequest());
@@ -61,8 +49,7 @@ std::unique_ptr<ReplayRequest> ReplayRequest::create(
   GAPID_DEBUG("Stack size: %d", req->mStackSize);
   req->mVolatileMemorySize = payload->volatile_memory_size();
   GAPID_DEBUG("Volatile memory size: %d", req->mVolatileMemorySize);
-  req->mConstantMemory = {memoryManager->getConstantAddress(),
-                          payload->constants_size()};
+  req->mConstantMemory = {payload->constants_data(), payload->constants_size()};
   GAPID_DEBUG("Constant memory size: %zu", payload->constants_size());
   req->mResources.reserve(payload->resource_info_count());
   for (size_t i = 0; i < payload->resource_info_count(); i++) {
@@ -72,8 +59,12 @@ std::unique_ptr<ReplayRequest> ReplayRequest::create(
   GAPID_DEBUG("Resources: %zu", req->mResources.size());
   const uint32_t instCount = payload->opcodes_size() / sizeof(uint32_t);
   req->mInstructionList = {
-      static_cast<uint32_t*>(memoryManager->getOpcodeAddress()), instCount};
+      static_cast<const uint32_t*>(payload->opcodes_data()), instCount};
   GAPID_DEBUG("Instruction count: %" PRIu32, instCount);
+  memoryManager->setReplayData(
+      (const uint8_t*)payload->constants_data(), payload->constants_size(),
+      (const uint8_t*)payload->opcodes_data(), payload->opcodes_size());
+  req->mPayload = std::move(payload);
   return req;
 }
 

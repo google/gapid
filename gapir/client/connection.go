@@ -135,7 +135,7 @@ func (c *Connection) SendResources(ctx context.Context, resources []byte) error 
 		},
 	}
 	if err := c.stream.Send(&resReq); err != nil {
-		return log.Err(ctx, err, "Sneding resources")
+		return log.Err(ctx, err, "Sending resources")
 	}
 	return nil
 }
