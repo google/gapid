@@ -48,28 +48,29 @@ java_library(
 
 cc_binary(
     name = "liblinux_glcanvas.so",
-    srcs = ["linux/glcanvas.cc"],
-    copts = [
-        "-Iexternal/local_jdk/include",
-        "-Iexternal/local_jdk/include/linux",
+    srcs = [
+        "jni.h",
+        "jni_md.h",
+        "linux/glcanvas.cc",
     ],
+    includes = ["."],
     linkopts = [
         "-lGL",
         "-lX11",
     ],
     linkshared = 1,
-    deps = [
-        ":jni.h",
-        ":jni_md.h",
-    ],
 )
 
-cc_library(
-    name = "jni.h",
-    hdrs = ["@local_jdk//:jni_header"],
+genrule(
+    name = "copy_jni.h",
+    srcs = ["@bazel_tools//tools/jdk:jni_header"],
+    outs = ["jni.h"],
+    cmd = "cp -f $< $@",
 )
 
-cc_library(
-    name = "jni_md.h",
-    hdrs = ["@local_jdk//:jni_md_header-linux"],
+genrule(
+    name = "copy_jni_md.h",
+    srcs = ["@bazel_tools//tools/jdk:jni_md_header-linux"],
+    outs = ["jni_md.h"],
+    cmd = "cp -f $< $@",
 )
