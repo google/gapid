@@ -185,7 +185,7 @@ void android_main(struct android_app* app) {
                       "Supported ABIs: %s\n",
                       uri.c_str(), core::supportedABIs());
 
-  auto cache = InMemoryResourceCache::create(memoryManager.getBaseAddress());
+  auto cache = InMemoryResourceCache::create(memoryManager.getTopAddress());
   int idleTimeoutSec = 0;  // No timeout
   std::mutex lock;
   std::unique_ptr<Server> server =
@@ -359,7 +359,7 @@ std::unique_ptr<ResourceCache> createCache(
     const Options::OnDiskCache& onDiskCacheOpts, MemoryManager* memoryManager) {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   if (!onDiskCacheOpts.enabled) {
-    return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+    return InMemoryResourceCache::create(memoryManager->getTopAddress());
   }
   auto onDiskCachePath = std::string(onDiskCacheOpts.path);
   bool cleanUpOnDiskCache = onDiskCacheOpts.cleanUp;
@@ -374,14 +374,14 @@ std::unique_ptr<ResourceCache> createCache(
         "No disk cache path specified and no $TMPDIR environment variable "
         "defined for temporary on-disk cache, fallback to use in-memory "
         "cache.");
-    return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+    return InMemoryResourceCache::create(memoryManager->getTopAddress());
   }
   auto onDiskCache =
       OnDiskResourceCache::create(onDiskCachePath, cleanUpOnDiskCache);
   if (onDiskCache == nullptr) {
     GAPID_WARNING(
         "On-disk cache creation failed, fallback to use in-memory cache");
-    return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+    return InMemoryResourceCache::create(memoryManager->getTopAddress());
   }
   GAPID_INFO("On-disk cache created at %s", onDiskCachePath.c_str());
   if (cleanUpOnDiskCache || useTempCacheFolder) {
@@ -427,7 +427,7 @@ std::unique_ptr<ResourceCache> createCache(
   }
 #endif  // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   // Just use the in-memory cache
-  return InMemoryResourceCache::create(memoryManager->getBaseAddress());
+  return InMemoryResourceCache::create(memoryManager->getTopAddress());
 }
 }  // namespace
 

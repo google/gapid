@@ -24,21 +24,20 @@
 
 //                 mMemory[0]
 //   ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
-//   ┃             ┃        in-memory       ┃
-//   ┃             ┃        resource        ┃
-//   ┃             ┃          cache         ┃
-//   ┃             ┣━━━━━━━━━━━━━━━━━━━━━━━━┨
+//   ┃             ┃                        ┃
+//   ┃             ┃                        ┃
 //   ┃             ┃                        ┃
 //   ┃             ┃         volatile       ┃
 //   ┃   mMemory   ┃          memory        ┃
 //   ┃             ┃                        ┃
-//   ┃             ┣━━━━━━━━━━━━┳━━━━━━━━━━━┨
-//   ┃             ┃            ┃  constant ┃
-//   ┃             ┃   replay   ┃   memory  ┃
-//   ┃             ┃    data    ┣━━━━━━━━━━━┨
-//   ┃             ┃            ┃   opcode  ┃
-//   ┃             ┃            ┃   memory  ┃
-//   ┗━━━━━━━━━━━━━┻━━━━━━━━━━━━┻━━━━━━━━━━━┛
+//   ┃             ┃                        ┨
+//   ┃             ┣━━━━━━━━━━━━━━━━━━━━━━━━┨
+//   ┃             ┃                        ┃
+//   ┃             ┃        in-memory       ┃
+//   ┃             ┃        resource        ┃
+//   ┃             ┃          cache         ┃
+//   ┃             ┃                        ┃
+//   ┗━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┛
 //                 mMemory[mSize]
 
 namespace gapir {
@@ -49,9 +48,11 @@ namespace {
 const float kDriverOverheadFactor = 0.3f;
 }  // namespace
 
-MemoryManager::MemoryRange::MemoryRange() : base(nullptr), size(0) {}
+template <typename T>
+MemoryManager::MemoryRange<T>::MemoryRange() : base(nullptr), size(0) {}
 
-MemoryManager::MemoryRange::MemoryRange(uint8_t* base, uint32_t size)
+template <typename T>
+MemoryManager::MemoryRange<T>::MemoryRange(T* base, uint32_t size)
     : base(base), size(size) {}
 
 MemoryManager::MemoryManager(const std::vector<uint32_t>& sizeList)
@@ -78,48 +79,15 @@ MemoryManager::MemoryManager(const std::vector<uint32_t>& sizeList)
   }
 
   GAPID_DEBUG("Base address: %p", mMemory.get());
-  setReplayDataSize(0, 0);
   setVolatileMemory(mSize);
 }
 
-bool MemoryManager::setReplayDataSize(uint32_t constantMemorySize,
-                                      uint32_t opcodeMemorySize) {
-  GAPID_DEBUG("MemoryManager::setReplayDataSize(%d, %d)", constantMemorySize,
-              opcodeMemorySize);
-  if (opcodeMemorySize > mSize) {
-    GAPID_ERROR("Opcode memory size: %d larger than total memory size: %d",
-                opcodeMemorySize, mSize);
-    return false;
-  }
-  mOpcodeMemory = {align(mMemory.get() + mSize - opcodeMemorySize),
-                   opcodeMemorySize};
-  GAPID_DEBUG("Opcode range: [%p,%p]", mOpcodeMemory.base,
-              mOpcodeMemory.base + mOpcodeMemory.size - 1);
-
-  if (constantMemorySize > mSize - mOpcodeMemory.size) {
-    GAPID_ERROR(
-        "Constant memory size: %d larger than available memory size: %d",
-        constantMemorySize, mSize - mOpcodeMemory.size);
-    return false;
-  }
-  mConstantMemory = {align(mOpcodeMemory.base - constantMemorySize),
-                     constantMemorySize};
-  GAPID_DEBUG("Constant range: [%p,%p]", mConstantMemory.base,
-              mConstantMemory.base + mConstantMemory.size - 1);
-
-  mReplayData = {mConstantMemory.base,
-                 mConstantMemory.size + mOpcodeMemory.size};
-  GAPID_DEBUG("Replay range: [%p,%p]", mReplayData.base,
-              mReplayData.base + mReplayData.size - 1);
-  return true;
-}
-
 bool MemoryManager::setVolatileMemory(uint32_t size) {
-  if (size > mSize - mReplayData.size) {
+  if (size > mSize) {
     return false;
   }
 
-  mVolatileMemory = {align(mReplayData.base - size), size};
+  mVolatileMemory = {&mMemory[0], size};
   GAPID_DEBUG("Volatile range: [%p,%p]", mVolatileMemory.base,
               mVolatileMemory.base + mVolatileMemory.size - 1);
   return true;
@@ -129,6 +97,16 @@ uint8_t* MemoryManager::align(uint8_t* addr) const {
   uintptr_t x = reinterpret_cast<uintptr_t>(addr);
   x -= x % MemoryManager::kAlignment;
   return reinterpret_cast<uint8_t*>(x);
+}
+
+void MemoryManager::setReplayData(const uint8_t* constantMemoryBase,
+                                  uint32_t constantMemorySize,
+                                  const uint8_t* opcodeMemoryBase,
+                                  uint32_t opcodeMemorySize) {
+  mConstantMemory =
+      MemoryRange<const uint8_t>{constantMemoryBase, constantMemorySize};
+  mOpcodeMemory =
+      MemoryRange<const uint8_t>{opcodeMemoryBase, opcodeMemorySize};
 }
 
 }  // namespace gapir

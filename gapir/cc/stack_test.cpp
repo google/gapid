@@ -36,9 +36,12 @@ class StackTest : public ::testing::Test {
     std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
     mMemoryManager.reset(new MemoryManager(memorySizes));
     mStack.reset(new Stack(STACK_CAPACITY, mMemoryManager.get()));
-    mMemoryManager->setReplayDataSize(CONSTANT_SIZE, 0);
+
+    mMemoryManager->setReplayData(const_memory, constantMemorySize, nullptr, 0);
   }
 
+  static const uint32_t constantMemorySize = 1024;
+  uint8_t const_memory[constantMemorySize] = {};
   std::unique_ptr<MemoryManager> mMemoryManager;
   std::unique_ptr<Stack> mStack;
 };
