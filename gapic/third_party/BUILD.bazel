@@ -21,21 +21,6 @@ java_import(
 )
 
 java_import(
-    name = "jface",
-    jars = [
-        "jface/org.eclipse.core.commands_3.8.0.v20160316-1921.jar",
-        "jface/org.eclipse.core.runtime_3.12.0.v20160606-1342.jar",
-        "jface/org.eclipse.equinox.common_3.8.0.v20160509-1230.jar",
-        "jface/org.eclipse.jface_3.12.1.v20160923-1528.jar",
-        "jface/org.eclipse.jface.databinding_1.8.1.v20161026-1531.jar",
-        "jface/org.eclipse.jface.text_3.11.2.v20161113-1700.jar",
-        "jface/org.eclipse.osgi_3.11.2.v20161107-1947.jar",
-        "jface/org.eclipse.text_3.6.0.v20160503-1849.jar",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-java_import(
     name = "grpc",
     jars = [
         "grpc/grpc-context-1.0.1.jar",
