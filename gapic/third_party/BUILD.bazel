@@ -13,21 +13,6 @@
 # limitations under the License.
 
 java_import(
-    name = "grpc",
-    jars = [
-        "grpc/grpc-context-1.0.1.jar",
-        "grpc/grpc-core-1.0.1.jar",
-        "grpc/grpc-okhttp-1.0.1.jar",
-        "grpc/grpc-protobuf-1.0.1.jar",
-        "grpc/grpc-protobuf-lite-1.0.1.jar",
-        "grpc/grpc-stub-1.0.1.jar",
-        "grpc/okhttp-2.5.0.jar",
-        "grpc/okio-1.6.0.jar",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-java_import(
     name = "lwjgl",
     jars = [
         "lwjgl/lwjgl.jar",

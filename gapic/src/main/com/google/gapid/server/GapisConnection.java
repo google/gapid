@@ -94,8 +94,8 @@ public abstract class GapisConnection implements Closeable {
       // Us OkHTTP as netty deadlocks a lot with the go server.
       // TODO: figure out what exactly is causing netty to deadlock.
       baseChannel = new OkHttpChannelProvider().builderForTarget(target)
-        .usePlaintext(true)
-        .maxMessageSize(2 * 1000 * 1000 * 1000) // Do not overflow int32
+        .usePlaintext()
+        .maxInboundMessageSize(2 * 1000 * 1000 * 1000) // Do not overflow int32
         .build();
 
       channel = authToken.isEmpty() ? baseChannel :

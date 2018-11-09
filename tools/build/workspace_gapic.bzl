@@ -23,6 +23,9 @@ load("@gapid//tools/build/third_party:swt.bzl", "swt")
 #  locals - can be used to provide local path overrides for repos:
 #     {"foo": "/path/to/foo"} would cause @foo to be a local repo based on /path/to/foo.
 def gapic_dependencies(locals = {}):
+
+    # gRPC and it's dependencies.
+    ############################################################################
     maybe_repository(
         github_repository,
         name = "com_github_grpc_java",
@@ -33,6 +36,90 @@ def gapic_dependencies(locals = {}):
         build_file = "@gapid//tools/build/third_party:grpc_java.BUILD",
     )
 
+    maybe_repository(
+        native.maven_jar,
+        name = "io_grpc_context",
+        locals = locals,
+        artifact = "io.grpc:grpc-context:1.16.1",
+        sha1 = "4adb6d55045b21cb384bc4498d4a7593f6cab8d7",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "io_grpc_core",
+        locals = locals,
+        artifact = "io.grpc:grpc-core:1.16.1",
+        sha1 = "8a938ece0ad8d8bf77d790c502ba51ebec114aa9",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "io_grpc_okhttp",
+        locals = locals,
+        artifact = "io.grpc:grpc-okhttp:1.16.1",
+        sha1 = "ae34ca46a3366cdb6d1836e7540162ee6c3627d1",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "io_grpc_protobuf",
+        locals = locals,
+        artifact = "io.grpc:grpc-protobuf:1.16.1",
+        sha1 = "1f8ac89924b5de4a94058ae26c9de28f8eff49dd",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "io_grpc_protobuf_lite",
+        locals = locals,
+        artifact = "io.grpc:grpc-protobuf-lite:1.16.1",
+        sha1 = "3d03ee1e5e292f2312d7ca99c00ddcf9d0544c35",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "io_grpc_stub",
+        locals = locals,
+        artifact = "io.grpc:grpc-stub:1.16.1",
+        sha1 = "f3c30248564608791407bf43b1d4db52a80e6c36",
+    )
+
+    # OKHttp used by gRPC.
+    maybe_repository(
+        native.maven_jar,
+        name = "com_squareup_okhttp",
+        locals = locals,
+        artifact = "com.squareup.okhttp:okhttp:2.5.0",
+        sha1 = "4de2b4ed3445c37ec1720a7d214712e845a24636",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "com_squareup_okio",
+        locals = locals,
+        artifact = "com.squareup.okio:okio:1.6.0",
+        sha1 = "98476622f10715998eacf9240d6b479f12c66143",
+    )
+
+    # Opencensus used by gRPC.
+    maybe_repository(
+        native.maven_jar,
+        name = "io_opencensus_api",
+        locals = locals,
+        artifact = "io.opencensus:opencensus-api:0.12.3",
+        sha1 = "743f074095f29aa985517299545e72cc99c87de0",
+    )
+
+    maybe_repository(
+        native.maven_jar,
+        name = "io_opencensus_contrib_grpc_metrics",
+        locals = locals,
+        artifact = "io.opencensus:opencensus-contrib-grpc-metrics:0.12.3",
+        sha1 = "a4c7ff238a91b901c8b459889b6d0d7a9d889b4d",
+    )
+
+    # Other dependencies.
+    ############################################################################
     maybe_repository(
         native.maven_jar,
         name = "com_google_guava",
