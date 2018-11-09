@@ -16,6 +16,7 @@
 # Java client dependencies.
 
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
+load("@gapid//tools/build/third_party:jface.bzl", "jface")
 load("@gapid//tools/build/third_party:swt.bzl", "swt")
 
 # Defines the repositories for GAPID's Java client's dependencies.
@@ -35,5 +36,11 @@ def gapic_dependencies(locals = {}):
     maybe_repository(
         swt,
         name = "swt",
+        locals = locals,
+    )
+
+    maybe_repository(
+        jface,
+        name = "jface",
         locals = locals,
     )
