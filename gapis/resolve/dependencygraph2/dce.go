@@ -47,7 +47,7 @@ func DCECapture(ctx context.Context, name string, p *path.Capture, requestedCmds
 	ctx = log.Enter(ctx, "DCECapture")
 
 	cfg := DependencyGraphConfig{
-		MergeSubCmdNodes:       true,
+		MergeSubCmdNodes:       !config.DeadSubCmdElimination,
 		IncludeInitialCommands: false,
 	}
 	graph, err := GetDependencyGraph(ctx, p, cfg)

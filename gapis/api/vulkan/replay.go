@@ -769,7 +769,7 @@ func (a API) Replay(
 			if config.NewDeadCodeElimination {
 				if dceInfo.newDce == nil {
 					cfg := dependencygraph2.DependencyGraphConfig{
-						MergeSubCmdNodes:       true,
+						MergeSubCmdNodes:       !config.DeadSubCmdElimination,
 						IncludeInitialCommands: true,
 					}
 					graph, err := dependencygraph2.GetDependencyGraph(ctx, capture.Get(ctx), cfg)

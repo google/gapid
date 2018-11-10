@@ -105,8 +105,10 @@ func (e externs) onCommandAdded(buffer VkCommandBuffer) {
 	o.initialCommands[buffer] =
 		append(o.initialCommands[buffer], e.cmd)
 	b := o.CommandBuffersʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, buffer)
+	refs := b.CommandReferencesʷ(e.ctx, e.w, true)
+	c := refs.Getʷ(e.ctx, e.w, false, uint32(refs.Lenʷ(e.ctx, e.w, false)-1))
 	if o.AddCommand != nil {
-		o.AddCommand(b.CommandReferencesʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, uint32(b.CommandReferencesʷ(e.ctx, e.w, true).Lenʷ(e.ctx, e.w, false)-1)))
+		o.AddCommand(c)
 	}
 }
 
@@ -137,6 +139,9 @@ func (e externs) onPreSubcommand(ref CommandReferenceʳ) {
 	if o.PreSubcommand != nil {
 		o.PreSubcommand(ref)
 	}
+	if e.w != nil {
+		e.w.OnBeginSubCmd(e.ctx, o.SubCmdIdx)
+	}
 }
 
 func (e externs) onPreProcessCommand(ref CommandReferenceʳ) {
@@ -149,6 +154,9 @@ func (e externs) onPostSubcommand(ref CommandReferenceʳ) {
 	o := GetState(e.s)
 	if o.PostSubcommand != nil {
 		o.PostSubcommand(ref)
+	}
+	if e.w != nil {
+		e.w.OnEndSubCmd(e.ctx)
 	}
 }
 
