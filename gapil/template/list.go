@@ -186,3 +186,8 @@ func (f *Functions) PartitionByKey(arr interface{}, keyMacro string) (interface{
 	}
 	return slices.Interface(), nil
 }
+
+func (f *Functions) Length(arr interface{}) (int, error) {
+	v := reflect.ValueOf(arr)
+	return v.Len(), nil
+}

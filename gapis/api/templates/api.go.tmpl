@@ -275,6 +275,9 @@ import (
   }
 
   func (c {{$name}}) RefID() ϟapi.RefID { return c.refID }
+  func (c {{$name}}) NewFragmentMap() ϟapi.FragmentMap {
+    return ϟapi.NewDenseFragmentMap(1 + {{$ty.Size}})
+  }
 {{end}}
 
 
@@ -289,6 +292,7 @@ import (
   {{$name  := $.Name}}
   {{$key   := Macro "Go.Type" $.KeyType}}
   {{$value := Macro "Go.Type" $.ValueType}}
+  {{$keyFrag := Macro "MapIndexFragment" "Map" $ "Key" "key"}}
 
   type {{$name}} struct {
     Map   *map[{{$key}}]{{$value}}
@@ -323,7 +327,7 @@ import (
       v = {{Template "Go.Null" $.ValueType}}
     }
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, ϟapi.MapIndexFragment{key}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+      ϟw.OnGet(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
     }
     return v
   }
@@ -352,7 +356,7 @@ import (
       }
     {{end}}
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, ϟapi.MapIndexFragment{key}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+      ϟw.OnGet(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
     }
     return
   }
@@ -364,7 +368,7 @@ import (
 
   func (m {{$name}}) Addʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}, val {{$value}}) {{$name}} {
     if ϟw != nil {
-      ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+      ϟw.OnSet(ϟctx, m, {{$keyFrag}},
         {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
         {{Template "Reference" "Type" $.ValueType "Val" "val"}})
     }
@@ -374,7 +378,7 @@ import (
 
   func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}, val {{$value}}) {{$name}} {
     if ϟw != nil {
-      ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+      ϟw.OnSet(ϟctx, m, {{$keyFrag}},
         {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
         {{Template "Reference" "Type" $.ValueType "Val" "val"}})
       if _, ok := (*m.Map)[key]; !ok {
@@ -392,7 +396,7 @@ import (
   func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}) {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+        ϟw.OnSet(ϟctx, m, {{$keyFrag}},
           {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
           ϟapi.NilReference{})
         if _, ok := (*m.Map)[key]; ok {
@@ -423,7 +427,7 @@ import (
         _, ok := (*m.Map)[key]
       {{end}}
       if ϟw != nil {
-        ϟw.OnGet(ϟctx, m, ϟapi.MapIndexFragment{key}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+        ϟw.OnGet(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
       }
       return ok
     }
@@ -439,7 +443,7 @@ import (
   func (m {{$name}}) Removeʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, m, ϟapi.MapIndexFragment{key},
+        ϟw.OnSet(ϟctx, m, {{$keyFrag}},
           {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
           ϟapi.NilReference{})
       }
@@ -547,6 +551,19 @@ import (
   }
 
   func (m {{$name}}) RefID() ϟapi.RefID { return m.refID }
+  func (m {{$name}}) NewFragmentMap() ϟapi.FragmentMap {
+    {{if $.Dense}}return ϟapi.NewDenseFragmentMap(len(*m.Map))
+    {{else}}return ϟapi.NewSparseFragmentMap()
+    {{end}}
+  }
+{{end}}
+
+
+{{define "MapIndexFragment"}}
+  {{AssertType $.Map "Map"}}
+  {{if $.Map.Dense}}ϟapi.ArrayIndexFragment{(int)({{$.Key}})}§
+  {{else}}ϟapi.MapIndexFragment{key}§
+  {{end}}
 {{end}}
 
 
@@ -683,6 +700,9 @@ import (
   }
 
   func (c {{$name}}) RefID() ϟapi.RefID { return c.refID }
+  func (c {{$name}}) NewFragmentMap() ϟapi.FragmentMap {
+    return ϟapi.NewDenseFragmentMap(1 + {{Length $.To.Fields}})
+  }
 {{end}}
 
 
@@ -1368,9 +1388,9 @@ import (
     fmt.Fprintln(f, "}")
   }
 
-  {{range $f := $.Fields}}
+  {{range $i, $f := $.Fields}}
     {{Template "DeclareGetterSetter" "Struct" $name "Prefix" "data" "Name" $f.Name "Type" $f.Type "Watch" true}}
-    {{Template "DeclareFieldID" "Class" $name "Name" $f.Name}}
+    {{Template "DeclareFieldID" "Class" $name "Name" $f.Name "Index" $i}}
   {{end}}
 
   // Arena returns the memory arena used to allocate this class.
@@ -1522,6 +1542,9 @@ import (
   }
 
   func (a {{$name}}) RefID() ϟapi.RefID { return a.refID }
+  func ({{$name}}) NewFragmentMap() ϟapi.FragmentMap {
+    return ϟapi.NewDenseFragmentMap(1 + {{Length $.Fields}})
+  }
 {{end}}
 
 
@@ -1636,12 +1659,11 @@ import (
     return ϟc
   }
 
-  {{range $p := $.FullParameters}}
+  {{range $i, $p := $.FullParameters}}
     {{$pname := Macro "Go.Parameter" $p}}
     {{Template "DeclareGetterSetter" "Struct" $name "Name" $p.Name "Type" $p.Type "PtrMethod" "true" "Watch" true}}¶
-    {{Template "DeclareFieldID" "Class" $name "Name" $p.Name}}
+    {{Template "DeclareFieldID" "Class" $name "Name" $p.Name "Index" $i}}
   {{end}}
-  {{Template "DeclareFieldID" "Class" $name "Name" "Result"}}
 
   // clone returns a shallow clone of the command. Extras are shared.
   func (ϟc *{{$name}}) clone(ϟa arena.Arena) *{{$name}} {
@@ -1666,6 +1688,9 @@ import (
   }
 
   func (ϟc *{{$name}}) RefID() ϟapi.RefID { return ϟc.refID }
+  func ({{$name}}) NewFragmentMap() ϟapi.FragmentMap {
+    return ϟapi.NewDenseFragmentMap(1 + {{Length $.FullParameters}})
+  }
 
   func (ϟc *{{$name}}) Alive() bool {
     {{if GetAnnotation $ "alive"}}
@@ -1743,9 +1768,9 @@ import (
     customState `hidden:"true" nobox:"true"`
   }
 
-  {{range $g := $.Globals}}
+  {{range $i, $g := $.Globals}}
     {{Template "DeclareGetterSetter" "Struct" "State" "Name" $g.Name "Type" $g.Type "PtrMethod" "true" "Watch" true}}¶
-    {{Template "DeclareFieldID" "Class" "State" "Name" $g.Name}}
+    {{Template "DeclareFieldID" "Class" "State" "Name" $g.Name "Index" $i}}
   {{end}}
 
   // Arena returns the memory arena used to allocate the state.
@@ -1803,6 +1828,9 @@ import (
   }
 
   func (g *State) RefID() ϟapi.RefID { return g.refID }
+  func (State) NewFragmentMap() ϟapi.FragmentMap {
+    return ϟapi.NewDenseFragmentMap(1 + {{Length $.Globals}})
+  }
 {{end}}
 
 
@@ -2152,6 +2180,7 @@ import (
   type {{$fieldID}} struct{}
   func ({{$fieldID}}) ClassName() string { return "{{$.Class}}" }
   func ({{$fieldID}}) FieldName() string { return "{{$.Name}}" }
+  func ({{$fieldID}}) FieldIndex() int { return {{$.Index}} }
 {{end}}
 
 

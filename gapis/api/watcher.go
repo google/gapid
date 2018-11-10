@@ -17,6 +17,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"math/bits"
 
 	"github.com/google/gapid/gapis/memory"
 )
@@ -82,6 +83,8 @@ type FieldFragment struct {
 
 func (f FieldFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, ".%s", f.Field.FieldName()) }
 
+func (f FieldFragment) DenseIndex() int { return 1 + f.Field.FieldIndex() }
+
 func (FieldFragment) fragment() {}
 
 // ArrayIndexFragment is a Fragment identifying an array index.
@@ -90,6 +93,7 @@ type ArrayIndexFragment struct {
 	ArrayIndex int
 }
 
+func (f ArrayIndexFragment) DenseIndex() int            { return 1 + f.ArrayIndex }
 func (f ArrayIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%d]", f.ArrayIndex) }
 
 func (ArrayIndexFragment) fragment() {}
@@ -108,6 +112,7 @@ func (MapIndexFragment) fragment() {}
 // map (all key/value pairs) or array (all values).
 type CompleteFragment struct{}
 
+func (CompleteFragment) DenseIndex() int            { return 0 }
 func (CompleteFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[*]") }
 
 func (CompleteFragment) fragment() {}
@@ -115,5 +120,154 @@ func (CompleteFragment) fragment() {}
 // Field identifies a field in an API object
 type Field interface {
 	FieldName() string
+	FieldIndex() int
 	ClassName() string
 }
+
+type FragmentMap interface {
+	Get(Fragment) (interface{}, bool)
+	Set(Fragment, interface{})
+	Delete(Fragment)
+	Clear()
+	ForeachFrag(func(Fragment, interface{}) error) error
+	EmptyClone() FragmentMap
+}
+
+type DenseFragment interface {
+	DenseIndex() int
+}
+
+type denseFragmentMapEntry struct {
+	frag  Fragment
+	value interface{}
+}
+
+type DenseFragmentMap struct {
+	Values []denseFragmentMapEntry
+}
+
+func NewDenseFragmentMap(cap int) *DenseFragmentMap {
+	return &DenseFragmentMap{
+		Values: make([]denseFragmentMapEntry, cap),
+	}
+}
+
+func (m DenseFragmentMap) Get(f Fragment) (interface{}, bool) {
+	if d, ok := f.(DenseFragment); ok {
+		i := d.DenseIndex()
+		if i < len(m.Values) {
+			a := m.Values[i]
+			if a.frag != nil {
+				if a.frag != f {
+					panic("Collision in DenseFragmentmap")
+				}
+				return a.value, true
+			}
+			return nil, false
+		}
+		return nil, false
+	} else {
+		panic("DenseFragmentMap used with non-dense fragment")
+	}
+}
+
+func (m *DenseFragmentMap) Set(f Fragment, v interface{}) {
+	if d, ok := f.(DenseFragment); ok {
+		i := d.DenseIndex()
+		n := len(m.Values)
+		if i >= n {
+			n := 1 << uint(bits.Len(uint(i)))
+			newVals := make([]denseFragmentMapEntry, n)
+			copy(newVals, m.Values)
+			m.Values = newVals
+		}
+		a := &m.Values[i]
+		if a.frag != nil && a.frag != f {
+			panic("Collision in DenseFragmentMap")
+		}
+		a.frag = f
+		a.value = v
+	} else {
+		panic("DenseFragmentMap used with non-dense fragment")
+	}
+}
+
+func (m DenseFragmentMap) Delete(f Fragment) {
+	if d, ok := f.(DenseFragment); ok {
+		i := d.DenseIndex()
+		if i < len(m.Values) {
+			m.Values[i] = denseFragmentMapEntry{}
+		}
+	} else {
+		panic("DenseFragmentMap used with non-dense fragment")
+	}
+}
+
+func (m DenseFragmentMap) ForeachFrag(f func(Fragment, interface{}) error) error {
+	for _, v := range m.Values {
+		if v.frag == nil {
+			continue
+		}
+		if err := f(v.frag, v.value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m DenseFragmentMap) Clear() {
+	for _, e := range m.Values {
+		e.frag = nil
+	}
+}
+
+func (m DenseFragmentMap) EmptyClone() FragmentMap {
+	return NewDenseFragmentMap(len(m.Values))
+}
+
+type SparseFragmentMap struct {
+	Map map[Fragment]interface{}
+}
+
+func NewSparseFragmentMap() *SparseFragmentMap {
+	return &SparseFragmentMap{
+		Map: make(map[Fragment]interface{}),
+	}
+}
+
+func (m SparseFragmentMap) Get(f Fragment) (interface{}, bool) {
+	v, ok := m.Map[f]
+	return v, ok
+}
+
+func (m *SparseFragmentMap) Set(f Fragment, v interface{}) {
+	m.Map[f] = v
+}
+
+func (m SparseFragmentMap) Delete(f Fragment) {
+	delete(m.Map, f)
+}
+
+func (m SparseFragmentMap) ForeachFrag(f func(Fragment, interface{}) error) error {
+	for k, v := range m.Map {
+		if err := f(k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m SparseFragmentMap) Clear() {
+	m.Map = make(map[Fragment]interface{})
+}
+
+func (m SparseFragmentMap) EmptyClone() FragmentMap {
+	return NewSparseFragmentMap()
+}
+
+type RefObject interface {
+	Reference
+	NewFragmentMap() FragmentMap
+}
+
+func (NilReference) NewFragmentMap() FragmentMap { panic("NewFragmentMap called on NilReference") }
