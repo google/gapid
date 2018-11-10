@@ -746,7 +746,8 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
       drawInfo.BufferBindingOffsets
   }
 
-  for i in (0 .. len(args.DescriptorSets)) {
+  numDescSets := len(args.DescriptorSets)
+  for i in (0 .. numDescSets) {
     if args.DescriptorSets[as!u32(i)] in DescriptorSets {
       set := args.DescriptorSets[as!u32(i)]
       setObj := DescriptorSets[set]
@@ -773,7 +774,8 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
         if (j in setObj.Bindings) && (setObj.Bindings[j] != null) {
           desc_binding_buf_offsets := desc_set_buf_offsets[as!u32(j)]
           binding := setObj.Bindings[j]
-          for k in (0 .. len(binding.BufferBinding)) {
+          numBufferBindings := len(binding.BufferBinding)
+          for k in (0 .. numBufferBindings) {
             bufferBinding := binding.BufferBinding[as!u32(k)]
 
             binding_offset := switch binding.BindingType {

@@ -97,7 +97,8 @@ class CmdBindBuffer {
 }
 
 sub void dovkCmdBindVertexBuffers(ref!vkCmdBindVertexBuffersArgs bind) {
-  for i in (0 .. len(bind.Buffers)) {
+  n := len(bind.Buffers)
+  for i in (0 .. n) {
     v := bind.Buffers[as!u32(i)]
     lastDrawInfo().BoundVertexBuffers[as!u32(i) + bind.FirstBinding] = BoundBuffer(
       Buffers[v], bind.Offsets[as!u32(i)],

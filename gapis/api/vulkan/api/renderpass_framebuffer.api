@@ -244,7 +244,8 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
   lastDrawInfo().InRenderPass = true
   attachments := lastDrawInfo().Framebuffer.ImageAttachments
-  for i in (0 .. len(attachments)) {
+  n := len(attachments)
+  for i in (0 .. n) {
     loadImageAttachment(as!u32(i))
   }
   pushRenderPassMarker(args.RenderPass)
@@ -347,7 +348,8 @@ vkCmdEndRenderPassArgs {
 
 sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   attachmentDescriptions := lastDrawInfo().RenderPass.AttachmentDescriptions
-  for i in (0 .. len(attachmentDescriptions)) {
+  n := len(attachmentDescriptions)
+  for i in (0 .. n) {
     storeImageAttachment(as!u32(i))
   }
   lastDrawInfo().InRenderPass = false

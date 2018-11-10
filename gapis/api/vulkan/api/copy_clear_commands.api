@@ -227,7 +227,8 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   dstFormat := dstImageObject.Info.Format
   dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
   dstDepthElementSize := getDepthElementSize(dstFormat, false)
-  for r in (0 .. len(args.Regions)) {
+  n := len(args.Regions)
+  for r in (0 .. n) {
     // TODO: Support KHR_maintenance1 extension, support copying from a 2D array
     // image to slices of a 3D image and vice versa.
     region := args.Regions[as!u32(r)]
@@ -354,7 +355,8 @@ sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   dstFormat := dstImageObject.Info.Format
   dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
   dstDepthElementSize := getDepthElementSize(dstFormat, false)
-  for r in (0 .. len(args.Regions)) {
+  n := len(args.Regions)
+  for r in (0 .. n) {
     // TODO: (qining) Handle the apsect mask
     region := args.Regions[as!u32(r)]
     srcBaseLayer := region.srcSubresource.baseArrayLayer
@@ -516,7 +518,8 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
   depthElementSize := getDepthElementSize(format, true)
   // Iterate through regions
-  for i in (0 .. len(args.Regions)) {
+  n := len(args.Regions)
+  for i in (0 .. n) {
     region := args.Regions[as!u32(i)]
     rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
     rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)

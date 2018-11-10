@@ -65,7 +65,8 @@ sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, Vk
 }
 
 sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
-  for i in (0 .. len(bufferBindings)) {
+  n := len(bufferBindings)
+  for i in (0 .. n) {
     bufferBinding := bufferBindings[as!u32(i)]
     if bufferBinding.Buffer != as!VkBuffer(0) {
       if (bufferBinding.Buffer in Buffers) {
@@ -159,7 +160,8 @@ sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDev
 }
 
 sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
-  for i in (0 .. len(bufferBindings)) {
+  n := len(bufferBindings)
+  for i in (0 .. n) {
     bufferBinding := bufferBindings[as!u32(i)]
     if bufferBinding.Buffer != as!VkBuffer(0) {
       if (bufferBinding.Buffer in Buffers) {
