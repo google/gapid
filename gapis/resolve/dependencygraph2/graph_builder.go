@@ -19,21 +19,25 @@ import (
 	"math/bits"
 
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 )
 
 type GraphBuilder interface {
-	AddDependencies(map[NodeID][]FragmentAccess,
+	AddDependencies(context.Context,
+		map[NodeID][]FragmentAccess,
 		map[NodeID][]MemoryAccess,
 		map[NodeID][]ForwardAccess)
-	AddNodeDependencies(NodeID, []FragmentAccess, []MemoryAccess, []ForwardAccess)
 	BuildReverseDependencies()
-	GetCmdNodeID(api.CmdID) NodeID
+	GetCmdNodeID(api.CmdID, api.SubCmdIdx) NodeID
 	GetObsNodeIDs(api.CmdID, []api.CmdObservation, bool) []NodeID
 	GetCmdContext(api.CmdID, api.Cmd) CmdContext
+	GetSubCmdContext(api.SubCmdIdx, CmdContext) CmdContext
 	GetNodeStats(NodeID) *NodeStats
 	GetStats() *GraphBuilderStats
 	GetGraph() *dependencyGraph
+	OnBeginCmd(ctx context.Context, cmdCtx CmdContext)
+	OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext)
 }
 
 type GraphBuilderStats struct {
@@ -52,31 +56,47 @@ type GraphBuilderStats struct {
 }
 
 type graphBuilder struct {
-	pendingNodes []NodeID
-	nodeStats    []*NodeStats
-	graph        *dependencyGraph
-	stats        GraphBuilderStats
-	isDep        []bool
-	depSlice     []NodeID
+	pendingNodes   []NodeID
+	nodeStats      []*NodeStats
+	graph          *dependencyGraph
+	stats          GraphBuilderStats
+	isDep          []bool
+	depSlice       []NodeID
+	subCmdContexts map[NodeID]CmdContext
+	initCmdNodeIDs map[NodeID][]NodeID
+	syncData       *sync.Data
 }
 
 func NewGraphBuilder(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd) *graphBuilder {
+	c *capture.Capture, initialCmds []api.Cmd, syncData *sync.Data) *graphBuilder {
 	return &graphBuilder{
-		graph: newDependencyGraph(ctx, config, c, initialCmds, []Node{}),
+		graph:          newDependencyGraph(ctx, config, c, initialCmds, []Node{}),
+		subCmdContexts: make(map[NodeID]CmdContext),
+		initCmdNodeIDs: make(map[NodeID][]NodeID),
+		syncData:       syncData,
 	}
 }
 
 func (b *graphBuilder) AddDependencies(
+	ctx context.Context,
 	fragAcc map[NodeID][]FragmentAccess,
 	memAcc map[NodeID][]MemoryAccess,
 	forwardAcc map[NodeID][]ForwardAccess) {
 	for _, n := range b.pendingNodes {
-		b.AddNodeDependencies(n, fragAcc[n], memAcc[n], forwardAcc[n])
+		cmdCtx, ok := b.subCmdContexts[n]
+		if !ok {
+			cmdCtx.cmdID = api.CmdNoID
+			cmdCtx.nodeID = n
+			cmdCtx.parentNodeID = NodeNoID
+		}
+		b.AddNodeDependencies(ctx, cmdCtx, fragAcc[n], memAcc[n], forwardAcc[n])
 	}
+	b.subCmdContexts = make(map[NodeID]CmdContext)
+	b.initCmdNodeIDs = make(map[NodeID][]NodeID)
 	b.pendingNodes = b.pendingNodes[:0]
 }
-func (b *graphBuilder) AddNodeDependencies(nodeID NodeID,
+func (b *graphBuilder) AddNodeDependencies(
+	ctx context.Context, cmdCtx CmdContext,
 	fragAccesses []FragmentAccess,
 	memAccesses []MemoryAccess,
 	forwardAccesses []ForwardAccess) {
@@ -86,6 +106,21 @@ func (b *graphBuilder) AddNodeDependencies(nodeID NodeID,
 	}
 	isDep := b.isDep
 	depSlice := b.depSlice
+	parent := cmdCtx.parentNodeID
+	if parent != NodeNoID {
+		isDep[parent] = true
+		depSlice = append(depSlice, parent)
+	}
+
+	nodeID := cmdCtx.nodeID
+	initCmdNodeIDs := b.initCmdNodeIDs[nodeID]
+	if len(initCmdNodeIDs) > 0 {
+		for _, initNodeID := range initCmdNodeIDs {
+			isDep[initNodeID] = true
+			depSlice = append(depSlice, initNodeID)
+		}
+	}
+
 	stats := b.nodeStats[nodeID]
 	for _, a := range fragAccesses {
 		if a.Mode&ACCESS_READ != 0 {
@@ -169,12 +204,15 @@ func (b *graphBuilder) AddNodeDependencies(nodeID NodeID,
 	b.stats.UniqueMemWrites += stats.UniqueMemWrites
 }
 
-func (b *graphBuilder) GetCmdNodeID(cmdID api.CmdID) NodeID {
-	nodeID := b.graph.GetCmdNodeID(cmdID, api.SubCmdIdx{})
+func (b *graphBuilder) GetCmdNodeID(cmdID api.CmdID, idx api.SubCmdIdx) NodeID {
+	if cmdID == api.CmdNoID {
+		return NodeNoID
+	}
+	nodeID := b.graph.GetCmdNodeID(cmdID, idx)
 	if nodeID != NodeNoID {
 		return nodeID
 	}
-	fullIdx := api.SubCmdIdx{(uint64)(cmdID)}
+	fullIdx := append(api.SubCmdIdx{(uint64)(cmdID)}, idx...)
 	node := CmdNode{fullIdx}
 	return b.addNode(node)
 }
@@ -193,9 +231,15 @@ func (b *graphBuilder) GetObsNodeIDs(cmdID api.CmdID, obs []api.CmdObservation, 
 }
 
 func (b *graphBuilder) GetCmdContext(cmdID api.CmdID, cmd api.Cmd) CmdContext {
-	nodeID := b.GetCmdNodeID(cmdID)
+	nodeID := b.GetCmdNodeID(cmdID, api.SubCmdIdx{})
 	stats := b.nodeStats[nodeID]
-	return CmdContext{cmdID, cmd, nodeID, stats}
+	return CmdContext{cmdID, cmd, api.SubCmdIdx{}, nodeID, 0, NodeNoID, stats}
+}
+
+func (b *graphBuilder) GetSubCmdContext(idx api.SubCmdIdx, parent CmdContext) CmdContext {
+	nodeID := b.GetCmdNodeID(parent.cmdID, idx)
+	stats := b.nodeStats[nodeID]
+	return CmdContext{parent.cmdID, parent.cmd, idx, nodeID, parent.depth + 1, parent.nodeID, stats}
 }
 
 func (b *graphBuilder) GetNodeStats(nodeID NodeID) *NodeStats {
@@ -208,6 +252,25 @@ func (b *graphBuilder) GetStats() *GraphBuilderStats {
 
 func (b *graphBuilder) GetGraph() *dependencyGraph {
 	return b.graph
+}
+
+func (b *graphBuilder) OnBeginCmd(ctx context.Context, cmdCtx CmdContext) {
+	b.subCmdContexts[cmdCtx.nodeID] = cmdCtx
+}
+
+func (b *graphBuilder) OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext) {
+	if _, ok := b.subCmdContexts[subCmdCtx.nodeID]; !ok {
+		b.subCmdContexts[subCmdCtx.nodeID] = subCmdCtx
+	}
+	if syncAPI, ok := cmdCtx.cmd.API().(sync.SynchronizedAPI); ok {
+		idx := append(api.SubCmdIdx{(uint64)(subCmdCtx.cmdID)}, subCmdCtx.subCmdIdx...)
+		if genCmdID, ok := syncAPI.FlattenSubcommandIdx(idx, b.syncData, true); ok && genCmdID != api.CmdNoID {
+			genNodeID := b.graph.GetCmdNodeID(genCmdID, api.SubCmdIdx{})
+			if genNodeID != NodeNoID {
+				b.initCmdNodeIDs[subCmdCtx.nodeID] = append(b.initCmdNodeIDs[subCmdCtx.nodeID], genNodeID)
+			}
+		}
+	}
 }
 
 func (b *graphBuilder) BuildReverseDependencies() {

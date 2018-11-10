@@ -46,6 +46,8 @@ type ForwardWatcher interface {
 	DropForwardDependency(ctx context.Context, cmdCtx CmdContext, dependencyID interface{})
 	OnBeginCmd(ctx context.Context, cmdCtx CmdContext)
 	OnEndCmd(ctx context.Context, cmdCtx CmdContext) map[NodeID][]ForwardAccess
+	OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext)
+	OnEndSubCmd(ctx context.Context, cmdCtx CmdContext)
 }
 
 type forwardWatcher struct {
@@ -133,4 +135,10 @@ func (b *forwardWatcher) OnEndCmd(ctx context.Context, cmdCtx CmdContext) map[No
 	b.nodeAccesses = make(map[NodeID][]ForwardAccess)
 	b.forwardAccesses = []ForwardAccess{}
 	return acc
+}
+func (b *forwardWatcher) OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext) {
+	b.Flush(ctx, cmdCtx)
+}
+func (b *forwardWatcher) OnEndSubCmd(ctx context.Context, cmdCtx CmdContext) {
+	b.Flush(ctx, cmdCtx)
 }

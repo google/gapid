@@ -16,11 +16,13 @@ package dependencygraph2
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -54,5 +56,9 @@ func (r *DependencyGraph2Resolvable) Resolve(ctx context.Context) (interface{}, 
 		IncludeInitialCommands: r.IncludeInitialCommands,
 		MergeSubCmdNodes:       r.MergeSubCmdNodes,
 	}
-	return BuildDependencyGraph(ctx, config, c, initialCmds, initialRanges)
+	syncData, err := resolve.SyncData(ctx, r.Capture)
+	if err != nil {
+		return nil, fmt.Errorf("Error resolving synchronization data for dependency graph: %v", err)
+	}
+	return BuildDependencyGraph(ctx, config, c, initialCmds, initialRanges, syncData)
 }

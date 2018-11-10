@@ -30,6 +30,10 @@ type StateWatcher interface {
 	// OnEndCmd is called at the end of each API call
 	OnEndCmd(ctx context.Context, cmdID CmdID, cmd Cmd)
 
+	OnBeginSubCmd(ctx context.Context, subCmdIdx SubCmdIdx)
+
+	OnEndSubCmd(ctx context.Context)
+
 	// OnGet is called when a fragment of state (field, map key, array index) is read
 	OnReadFrag(ctx context.Context, owner RefObject, f Fragment, v RefObject, track bool)
 

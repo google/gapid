@@ -20,6 +20,7 @@ const (
 	DebugReplayBuilder         = false
 	DisableDeadCodeElimination = false
 	NewDeadCodeElimination     = false
+	DeadSubCmdElimination      = false
 	DebugDeadCodeElimination   = false
 	DebugDependencyGraph       = false
 	LogExtrasInTransforms      = false // Logs all commands' extras together with transforms
