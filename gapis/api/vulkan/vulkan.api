@@ -377,7 +377,8 @@ sub ref!DrawInfo lastDrawInfo() {
 
 // Clear the recorded descriptor sets in the last draw
 sub void clearLastDrawInfoDescriptorSets() {
-  for i in (0 .. len(lastDrawInfo().DescriptorSets)) {
+  n := len(lastDrawInfo().DescriptorSets)
+  for i in (0 .. n) {
     lastDrawInfo().DescriptorSets[as!u32(i)] = null
   }
 }

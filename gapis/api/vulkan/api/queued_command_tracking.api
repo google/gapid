@@ -48,7 +48,8 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
   processSubcommand.b = true
   ProcessedDescriptorSets = UsedDescriptorSets()
 
-  for i in (0 .. len(q.PendingCommands)) {
+  numPendingCmds := len(q.PendingCommands)
+  for i in (0 .. numPendingCmds) {
     cmd := q.PendingCommands[as!u32(i)]
     if ((len(q.PendingEvents) != 0) || (len(q.PendingSemaphores) != 0)) {
       newCmds[len(newCmds)] = cmd
@@ -211,7 +212,8 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
   q.PendingCommands = newCmds
 
   resetSubcontext()
-  for i in (0 .. len(signaledQueues)) {
+  numSignaledQueues := len(signaledQueues)
+  for i in (0 .. numSignaledQueues) {
     execPendingCommands(signaledQueues[as!u32(i)], false)
   }
 }
