@@ -34,10 +34,7 @@ cc_library(
         ]),
         "//conditions:default": [],
     }),
-    hdrs = glob([
-        "include/*.h",
-        "include/*.hpp",
-    ]),
+    hdrs = glob(["include/*.h"]),
     copts = cc_copts() + [
         "-fno-rtti",
         "-fno-exceptions",

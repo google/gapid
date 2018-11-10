@@ -37,14 +37,6 @@ void *InitializeInterceptor();
 // undefined behaviour.
 void TerminateInterceptor(void *interceptor);
 
-// Find a function in the application by it's mangled symbol name by searching
-// both the public symbol table and the internal symbol table if available. The
-// returned pointer can be used to call the function after casted to the
-// approptiate type or can be passed to other functions provided by the
-// interceptor. If failes to find a symbol with the given name or more then 1
-// symbol found then nullptr is returned.
-void *FindFunctionByName(void *interceptor, const char *symbol_name);
-
 // Intercepts a function specified by "old_function" with the one specified by
 // "new_function". If "callback_function" is not nullptr then a callback stub
 // is generated and returned in the pointer specified by "callback_function"
@@ -60,14 +52,6 @@ bool InterceptFunction(void *interceptor, void *old_function,
                        void *new_function, void **callback_function = nullptr,
                        void (*error_callback)(void *, const char *) = nullptr,
                        void *error_callback_baton = nullptr);
-
-// Intercepts a function specifyind by "symbol_name" if exactly 1 symbol matches
-// the specified name. The function has the same semantics as InterceptFunction
-// regarding all other argument.
-bool InterceptSymbol(void *interceptor, const char *symbol_name,
-                     void *new_function, void **callback_function,
-                     void (*error_callback)(void *, const char *) = nullptr,
-                     void *error_callback_baton = nullptr);
 
 }  // extern "C"
 

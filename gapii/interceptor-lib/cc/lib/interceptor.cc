@@ -38,7 +38,6 @@
 #include "llvm/Support/TargetSelect.h"
 
 #include "code_generator.h"
-#include "linker.h"
 #include "memory_manager.h"
 #include "target.h"
 
@@ -62,11 +61,6 @@ class InterceptorImpl {
   Error InterceptFunction(void *old_function, void *new_function,
                           void **callback_function);
 
-  Error InterceptFunction(const char *symbol_name, void *new_function,
-                          void **callback_function);
-
-  void *FindFunctionByName(const char *symbol_name);
-
  private:
   Error WriteMemory(void *target, const void *source, size_t num,
                     bool is_executable);
@@ -83,7 +77,6 @@ class InterceptorImpl {
   Error CreateCompensationFunction(void *old_function, size_t rewrite_size,
                                    void **callback_function);
 
-  Linker linker_;
   std::unique_ptr<Target> target_;
   std::unique_ptr<MemoryManager> executable_memory_;
   std::unordered_map<void *, std::vector<uint8_t>> original_codes_;
@@ -99,11 +92,6 @@ void TerminateInterceptor(void *interceptor) {
   delete static_cast<InterceptorImpl *>(interceptor);
 }
 
-void *FindFunctionByName(void *interceptor, const char *symbol_name) {
-  return static_cast<InterceptorImpl *>(interceptor)
-      ->FindFunctionByName(symbol_name);
-}
-
 bool InterceptFunction(void *interceptor, void *old_function,
                        void *new_function, void **callback_function,
                        void (*error_callback)(void *, const char *),
@@ -115,22 +103,6 @@ bool InterceptFunction(void *interceptor, void *old_function,
     std::ostringstream oss;
     oss << "Intercepting function at " << old_function
         << " failed: " << error.GetMessage();
-    error_callback(error_callback_baton, oss.str().c_str());
-  }
-  return error.Success();
-}
-
-bool InterceptSymbol(void *interceptor, const char *symbol_name,
-                     void *new_function, void **callback_function,
-                     void (*error_callback)(void *, const char *),
-                     void *error_callback_baton) {
-  Error error =
-      static_cast<InterceptorImpl *>(interceptor)
-          ->InterceptFunction(symbol_name, new_function, callback_function);
-  if (error_callback && error.Fail()) {
-    std::ostringstream oss;
-    oss << "Intercepting '" << symbol_name
-        << "' failed: " << error.GetMessage();
     error_callback(error_callback_baton, oss.str().c_str());
   }
   return error.Success();
@@ -368,32 +340,4 @@ Error InterceptorImpl::InterceptFunction(void *old_function, void *new_function,
     }
   }
   return Error("Failed to find a suitable trampoline");
-}
-
-Error InterceptorImpl::InterceptFunction(const char *symbol_name,
-                                         void *new_function,
-                                         void **callback_function) {
-  linker_.RefreshSymbolList();
-
-  std::vector<Linker::Symbol> symbols = linker_.FindSymbols(symbol_name);
-  if (symbols.empty())
-    return Error("Failed to find symbol with name '%s'", symbol_name);
-  if (symbols.size() > 1)
-    return Error("More then 1 symbol found with name '%s'", symbol_name);
-
-  const Linker::Symbol &symbol = symbols.front();
-  return InterceptFunction(reinterpret_cast<void *>(symbol.address),
-                           new_function, callback_function);
-}
-
-void *InterceptorImpl::FindFunctionByName(const char *symbol_name) {
-  if (!symbol_name) return nullptr;
-
-  linker_.RefreshSymbolList();
-
-  std::vector<Linker::Symbol> symbols = linker_.FindSymbols(symbol_name);
-  if (symbols.empty()) return nullptr;
-  if (symbols.size() > 1) return nullptr;
-
-  return reinterpret_cast<void *>(symbols.front().address);
 }
