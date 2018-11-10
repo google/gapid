@@ -1,5 +1,3 @@
 InitializeInterceptor
 TerminateInterceptor
-FindFunctionByName
 InterceptFunction
-InterceptSymbol
