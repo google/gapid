@@ -319,6 +319,7 @@ func (b *DCEBuilder) attachOrphanObs(ctx context.Context, id api.CmdID, cmd api.
 			log.D(ctx, "Adding orphan obs: [%v] %v\n", id, o, cmdObs)
 		}
 	}
+	b.orphanObs = b.orphanObs[:0]
 	obs.Reads = append(obs.Reads, oldReads...)
 	*cmd.Extras() = extras
 }
