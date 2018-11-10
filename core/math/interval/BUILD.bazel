@@ -21,15 +21,22 @@ go_library(
         "doc.go",
         "list.go",
         "u64.go",
+        "value_list.go",
     ],
     importpath = "github.com/google/gapid/core/math/interval",
     visibility = ["//visibility:public"],
+    deps = [
+        "//core/math/u64:go_default_library",
+    ],
 )
 
 go_test(
     name = "go_default_test",
     size = "small",
-    srcs = ["u64_test.go"],
+    srcs = [
+        "u64_test.go",
+        "value_list_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
