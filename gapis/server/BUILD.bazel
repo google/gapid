@@ -44,6 +44,7 @@ go_library(
         "//gapis/api:go_default_library",
         "//gapis/api/all:go_default_library",
         "//gapis/capture:go_default_library",
+        "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/messages:go_default_library",
         "//gapis/replay:go_default_library",

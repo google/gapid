@@ -43,6 +43,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
@@ -238,14 +239,25 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	}
 
 	// Pre-resolve the dependency graph.
-	newCtx := keys.Clone(context.Background(), ctx)
-	crash.Go(func() {
-		cctx := status.PutTask(newCtx, nil)
-		_, err = dependencygraph.GetFootprint(cctx, p)
-		if err != nil {
-			log.E(newCtx, "Error resolve dependency graph: %v", err)
-		}
-	})
+	if !config.DisableDeadCodeElimination {
+		newCtx := keys.Clone(context.Background(), ctx)
+		crash.Go(func() {
+			cctx := status.PutTask(newCtx, nil)
+			var err error
+			if config.NewDeadCodeElimination {
+				cfg := dependencygraph2.DependencyGraphConfig{
+					MergeSubCmdNodes:       true,
+					IncludeInitialCommands: true,
+				}
+				_, err = dependencygraph2.GetDependencyGraph(cctx, p, cfg)
+			} else {
+				_, err = dependencygraph.GetFootprint(cctx, p)
+			}
+			if err != nil {
+				log.E(newCtx, "Error resolve dependency graph: %v", err)
+			}
+		})
+	}
 	return p, nil
 }
 
