@@ -17,14 +17,14 @@ package dependencygraph2
 import (
 	"context"
 	"fmt"
-	"reflect"
+	"sort"
 
 	"github.com/google/gapid/core/app/benchmark"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
-	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -32,280 +32,306 @@ var (
 	dependencyGraphBuilderCounter = benchmark.Duration("DependencyGraph.Builder")
 )
 
+type NodeStats struct {
+	NumFragReads        uint64
+	NumFragWrites       uint64
+	NumMemReads         uint64
+	NumMemWrites        uint64
+	NumForwardDepOpens  uint64
+	NumForwardDepCloses uint64
+	NumForwardDepDrops  uint64
+	NumDeps             uint64
+	NumFragDeps         uint64
+	NumCompleteFragDeps uint64
+	NumMemDeps          uint64
+	UniqueFragReads     uint64
+	UniqueFragWrites    uint64
+	UniqueMemReads      uint64
+	UniqueMemWrites     uint64
+	UniqueDeps          uint64
+}
+
+type AccessMode uint
+
+const (
+	ACCESS_READ       AccessMode = 1 << 0
+	ACCESS_WRITE      AccessMode = 1 << 1
+	ACCESS_READ_WRITE AccessMode = ACCESS_READ | ACCESS_WRITE
+)
+
 // The data needed to build a dependency graph by iterating through the commands in a trace
 type dependencyGraphBuilder struct {
 	// graph is the dependency graph being constructed
-	graph *dependencyGraph
+	// graph *dependencyGraph
+	capture *capture.Capture
 
-	// currentCmdID is the CmdID of the command currently being processed
-	currentCmdID api.CmdID
+	config DependencyGraphConfig
 
-	// currentCmd is the command currently being processed
-	currentCmd api.Cmd
+	fragWatcher    FragWatcher
+	memWatcher     MemWatcher
+	forwardWatcher ForwardWatcher
 
-	// currentNodeID is the NodeID of the dependency graph node corresponding to the currentCmdID
-	currentNodeID NodeID
+	graphBuilder GraphBuilder
 
-	// currentDependencyExists[i] is true if currentNodeID depends on node i
-	currentDependencyExists []bool
-
-	// currentDependencies is a slice containing all of the nodes depended on by currentNodeID
-	currentDependencies []NodeID
-
-	// currentSubCmdIdx stores the SubCmdIdx of the latest effect
-	// currentSubCmdIdx api.SubCmdIdx
-
-	// currentCreateCount is a count of how many CreateResource effects are associated with currentNodeID
-	currentCreateCount int
-
-	// fragmentWrites stores all non-overwritten writes to the state, excluding memory writes.
-	// fragmentWrites[ref][frag] gives the latest node to write to the fragment
-	// frag in the object corresponding to ref
-	fragmentWrites map[api.RefID]map[api.Fragment]NodeID
-
-	// memoryWrites stores all non-overwritten writes to memory ranges
-	memoryWrites map[memory.PoolID]*memoryWriteList
-
-	// openForwardDependencies tracks pending forward dependencies, where the
-	// first node has been processed, but the second node has not yet been
-	// processed. The keys are the unique identifier for the forward
-	// dependency.
-	openForwardDependencies map[interface{}]NodeID
+	cmdCtx CmdContext
 
 	Stats struct {
-		NumCmdNodes     uint64
-		NumObsNodes     uint64
-		NumReads        uint64
-		NumWrites       uint64
-		NumMemoryReads  uint64
-		NumMemoryWrites uint64
+		NumFragReads        uint64
+		NumFragWrites       uint64
+		NumMemReads         uint64
+		NumMemWrites        uint64
+		NumForwardDepOpens  uint64
+		NumForwardDepCloses uint64
+		NumForwardDepDrops  uint64
 	}
 }
 
 // Build a new dependencyGraphBuilder.
 func newDependencyGraphBuilder(ctx context.Context, config DependencyGraphConfig,
 	c *capture.Capture, initialCmds []api.Cmd) *dependencyGraphBuilder {
-	graph := newDependencyGraph(ctx, config, c, initialCmds)
-	builder := &dependencyGraphBuilder{
-		graph: graph,
-		currentDependencyExists: make([]bool, graph.NumNodes()),
-		currentCmdID:            api.CmdNoID,
-		currentNodeID:           NodeNoID,
-		fragmentWrites:          make(map[api.RefID]map[api.Fragment]NodeID),
-		memoryWrites:            make(map[memory.PoolID]*memoryWriteList),
-		openForwardDependencies: make(map[interface{}]NodeID),
-	}
+	builder := &dependencyGraphBuilder{}
+	builder.capture = c
+	builder.config = config
+	builder.fragWatcher = NewFragWatcher()
+	builder.memWatcher = NewMemWatcher()
+	builder.forwardWatcher = NewForwardWatcher()
+	builder.graphBuilder = NewGraphBuilder(ctx, config, c, initialCmds)
 	return builder
 }
 
 // BeginCmd is called at the beginning of each API call
 func (b *dependencyGraphBuilder) OnBeginCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
-	debug(ctx, "OnBeginCmd [%d] %v", cmdID, cmd)
-	b.currentCmdID = cmdID
-	b.currentCmd = cmd
-	b.currentNodeID = b.graph.GetNodeID(CmdNode{api.SubCmdIdx{uint64(cmdID)}})
+	cmdCtx := b.graphBuilder.GetCmdContext(cmdID, cmd)
+	b.fragWatcher.OnBeginCmd(ctx, cmdCtx)
+	b.memWatcher.OnBeginCmd(ctx, cmdCtx)
+	b.forwardWatcher.OnBeginCmd(ctx, cmdCtx)
+	b.cmdCtx = cmdCtx
 }
 
 // EndCmd is called at the end of each API call
 func (b *dependencyGraphBuilder) OnEndCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
-	debug(ctx, "OnEndCmd [%d] %v", cmdID, cmd)
-	if len(b.currentDependencies) > 0 {
-		sortedDeps := make([]NodeID, len(b.currentDependencies), len(b.currentDependencies)+b.currentCreateCount)
-		copy(sortedDeps, b.currentDependencies)
-		b.currentDependencies = b.currentDependencies[:0]
-		for _, tgt := range sortedDeps {
-			b.currentDependencyExists[tgt] = false
-		}
-		b.graph.setDependencies(b.currentNodeID, sortedDeps)
-		b.currentCmdID = api.CmdNoID
-		b.currentCmd = nil
-		b.currentCreateCount = 0
-		b.currentNodeID = NodeNoID
-	}
+	cmdCtx := b.cmdCtx
+
+	fragAcc := b.fragWatcher.OnEndCmd(ctx, cmdCtx)
+	memAcc := b.memWatcher.OnEndCmd(ctx, cmdCtx)
+	forwardAcc := b.forwardWatcher.OnEndCmd(ctx, cmdCtx)
+
+	b.graphBuilder.AddDependencies(fragAcc, memAcc, forwardAcc)
+
+	b.cmdCtx = CmdContext{}
 }
 
 func (b *dependencyGraphBuilder) OnGet(ctx context.Context, owner api.RefObject, frag api.Fragment, valueRef api.RefObject) {
-	debug(ctx, "  OnGet (%T %d)%v : %d", owner, owner.RefID(), frag, valueRef.RefID())
-	readEffect := ReadFragmentEffect{b.currentNodeID, frag}
-	writes, ok := b.fragmentWrites[owner.RefID()]
-	if !ok {
-		return
-	}
-	if _, ok := frag.(api.CompleteFragment); ok {
-		for writeFrag, writeNode := range writes {
-			writeEffect := WriteFragmentEffect{writeNode, writeFrag}
-			b.addDependency(writeEffect, readEffect)
-		}
-	} else if writeNode, ok := writes[frag]; ok {
-		writeEffect := WriteFragmentEffect{writeNode, frag}
-		b.addDependency(writeEffect, readEffect)
-	}
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumFragReads++
+	b.Stats.NumFragReads++
+	b.fragWatcher.OnReadFrag(ctx, cmdCtx, owner, frag, valueRef)
 }
 
 func (b *dependencyGraphBuilder) OnSet(ctx context.Context, owner api.RefObject, frag api.Fragment, oldValueRef api.RefObject, newValueRef api.RefObject) {
-	debug(ctx, "  OnSet (%T %d)%v : %d → %d", owner, owner.RefID(), frag, oldValueRef.RefID(), newValueRef.RefID())
-	if _, ok := frag.(api.CompleteFragment); ok {
-		b.fragmentWrites[owner.RefID()] = map[api.Fragment]NodeID{frag: b.currentNodeID}
-	} else if writes, ok := b.fragmentWrites[owner.RefID()]; ok {
-		writes[frag] = b.currentNodeID
-	} else {
-		b.fragmentWrites[owner.RefID()] = map[api.Fragment]NodeID{frag: b.currentNodeID}
-	}
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumFragWrites++
+	b.Stats.NumFragWrites++
+	b.fragWatcher.OnWriteFrag(ctx, cmdCtx, owner, frag, oldValueRef, newValueRef)
 }
 
 // OnWriteSlice is called when writing to a slice
 func (b *dependencyGraphBuilder) OnWriteSlice(ctx context.Context, slice memory.Slice) {
-	debug(ctx, "  OnWriteSlice: %v", slice)
-	b.addMemoryWrite(WriteMemEffect{b.currentNodeID, slice})
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumMemWrites++
+	b.Stats.NumMemWrites++
+	b.memWatcher.OnWriteSlice(ctx, cmdCtx, slice)
 }
 
 // OnReadSlice is called when reading from a slice
 func (b *dependencyGraphBuilder) OnReadSlice(ctx context.Context, slice memory.Slice) {
-	debug(ctx, "  OnReadSlice: %v", slice)
-	b.addMemoryRead(ReadMemEffect{b.currentNodeID, slice})
-}
-
-// observationSlice constructs a Slice from a CmdObservation
-func observationSlice(obs api.CmdObservation) memory.Slice {
-	return memory.NewSlice(obs.Range.Base, obs.Range.Base, obs.Range.Size, obs.Range.Size, obs.Pool, reflect.TypeOf(memory.Char(0)))
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumMemReads++
+	b.Stats.NumMemReads++
+	b.memWatcher.OnReadSlice(ctx, cmdCtx, slice)
 }
 
 // OnWriteObs is called when a memory write observation becomes visible
 func (b *dependencyGraphBuilder) OnWriteObs(ctx context.Context, obs []api.CmdObservation) {
-	for i, o := range obs {
-		b.addObs(i, o, true)
-	}
+	cmdCtx := b.cmdCtx
+	b.memWatcher.OnWriteObs(ctx, cmdCtx, obs, b.graphBuilder.GetObsNodeIDs(cmdCtx.cmdID, obs, true))
 }
 
 // OnReadObs is called when a memory read observation becomes visible
 func (b *dependencyGraphBuilder) OnReadObs(ctx context.Context, obs []api.CmdObservation) {
-	for i, o := range obs {
-		b.addObs(i, o, false)
-	}
+	cmdCtx := b.cmdCtx
+	b.memWatcher.OnReadObs(ctx, cmdCtx, obs, b.graphBuilder.GetObsNodeIDs(cmdCtx.cmdID, obs, false))
 }
 
 // OpenForwardDependency is called to begin a forward dependency.
 // See `StateWatcher.OpenForwardDependency` for an explanation of forward dependencies.
 func (b *dependencyGraphBuilder) OpenForwardDependency(ctx context.Context, dependencyID interface{}) {
-	debug(ctx, "  OpenForwardDependency: %v", dependencyID)
-	if _, ok := b.openForwardDependencies[dependencyID]; ok {
-		log.I(ctx, "OpenForwardDependency: Forward dependency opened multiple times before being closed. DependencyID: %v, close node: %v", dependencyID, b.currentNodeID)
-	} else {
-		b.openForwardDependencies[dependencyID] = b.currentNodeID
-		b.currentCreateCount++
-	}
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumForwardDepOpens++
+	b.Stats.NumForwardDepOpens++
+	b.forwardWatcher.OpenForwardDependency(ctx, cmdCtx, dependencyID)
 }
 
 // CloseForwardDependency is called to end a forward dependency.
 // See `StateWatcher.OpenForwardDependency` for an explanation of forward dependencies.
 func (b *dependencyGraphBuilder) CloseForwardDependency(ctx context.Context, dependencyID interface{}) {
-	debug(ctx, "  CloseForwardDependency: %v", dependencyID)
-	if openNode, ok := b.openForwardDependencies[dependencyID]; ok {
-		delete(b.openForwardDependencies, dependencyID)
-		openEffect := OpenForwardDependencyEffect{openNode, dependencyID}
-		closeEffect := CloseForwardDependencyEffect{b.currentNodeID, dependencyID}
-		b.addDependency(openEffect, closeEffect)
-	} else {
-		log.I(ctx, "CloseForwardDependency: Forward dependency closed before being opened. DependencyID: %v, close node: %v", dependencyID, b.currentNodeID)
-	}
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumForwardDepCloses++
+	b.Stats.NumForwardDepCloses++
+	b.forwardWatcher.CloseForwardDependency(ctx, cmdCtx, dependencyID)
 }
 
 // DropForwardDependency is called to abandon a previously opened
 // forward dependency, without actually adding the forward dependency.
 // See `StateWatcher.OpenForwardDependency` for an explanation of forward dependencies.
 func (b *dependencyGraphBuilder) DropForwardDependency(ctx context.Context, dependencyID interface{}) {
-	debug(ctx, "  DropForwardDependency: %v", dependencyID)
-	delete(b.openForwardDependencies, dependencyID)
-}
-
-func (b *dependencyGraphBuilder) addMemoryWrite(e WriteMemEffect) {
-	span := interval.U64Span{
-		Start: e.Slice.Base(),
-		End:   e.Slice.Base() + e.Slice.Size(),
-	}
-	if writes, ok := b.memoryWrites[e.Slice.Pool()]; ok {
-		i := interval.Replace(writes, span)
-		(*writes)[i].effect = e
-	} else {
-		b.memoryWrites[e.Slice.Pool()] = &memoryWriteList{memoryWrite{e, span}}
-	}
-}
-
-func (b *dependencyGraphBuilder) addMemoryRead(e ReadMemEffect) {
-	span := interval.U64Span{
-		Start: e.Slice.Base(),
-		End:   e.Slice.Base() + e.Slice.Size(),
-	}
-	if writes, ok := b.memoryWrites[e.Slice.Pool()]; ok {
-		i, c := interval.Intersect(writes, span)
-		for _, w := range (*writes)[i : i+c] {
-			b.addDependency(w.effect, e)
-		}
-	}
-}
-
-func (b *dependencyGraphBuilder) addObs(index int, obs api.CmdObservation, isWrite bool) {
-	obsNode := ObsNode{
-		CmdObservation: obs,
-		CmdID:          b.currentCmdID,
-		IsWrite:        isWrite,
-		Index:          index,
-	}
-	b.addMemoryWrite(WriteMemEffect{b.graph.GetNodeID(obsNode), observationSlice(obs)})
+	cmdCtx := b.cmdCtx
+	cmdCtx.stats.NumForwardDepDrops++
+	b.Stats.NumForwardDepDrops++
+	b.forwardWatcher.DropForwardDependency(ctx, cmdCtx, dependencyID)
 }
 
 // LogStats logs some interesting stats about the graph construction
-func (b *dependencyGraphBuilder) LogStats(ctx context.Context) {
-	log.I(ctx, "nodes: %v, cmds: %v, obs: %v, edges: %v",
-		b.graph.NumNodes(), b.Stats.NumCmdNodes, b.Stats.NumObsNodes, b.graph.NumDependencies())
-	log.I(ctx, "reads: %v, writes: %v, memReads: %v, memWrites: %v",
-		b.Stats.NumReads, b.Stats.NumWrites, b.Stats.NumMemoryReads, b.Stats.NumMemoryWrites)
-	t := dependencyGraphBuilderCounter.Get()
-	if t != 0 {
-		log.I(ctx, "time: %v", dependencyGraphBuilderCounter.Get())
-	}
-}
+func (b *dependencyGraphBuilder) LogStats(ctx context.Context, full bool) {
+	log.I(ctx, "Dependency Graph Stats:")
+	graphStats := b.graphBuilder.GetStats()
+	log.I(ctx, "          NumCmdNodes: %-8v  NumObsNodes: %v", graphStats.NumCmdNodes, graphStats.NumObsNodes)
+	log.I(ctx, "        Accesses:")
+	log.I(ctx, "          NumFragReads: %-8v  UniqueFragReads: %v", b.Stats.NumFragReads, graphStats.UniqueFragReads)
+	log.I(ctx, "          NumFragWrites: %-7v  UniqueFragWrites: %v", b.Stats.NumFragWrites, graphStats.UniqueFragWrites)
+	log.I(ctx, "          NumMemReads: %-9v  UniqueMemReads: %v", b.Stats.NumMemReads, graphStats.UniqueMemReads)
+	log.I(ctx, "          NumMemWrites: %-8v  UniqueMemWrites: %v", b.Stats.NumMemWrites, graphStats.UniqueMemWrites)
+	log.I(ctx, "          NumForwardDepOpens: %-4v  NumForwardDepCloses: %-4v  NumForwardDepDrops: %v", b.Stats.NumForwardDepOpens, b.Stats.NumForwardDepCloses, b.Stats.NumForwardDepDrops)
+	log.I(ctx, "        Deps:")
+	log.I(ctx, "          NumDeps: %-15v  UniqueDeps: %v", graphStats.NumDeps, graphStats.UniqueDeps)
+	log.I(ctx, "          NumFragDeps: %-4v  NumCompleteFragDeps: %-4v  NumMemDeps: %v", graphStats.NumFragDeps, graphStats.NumCompleteFragDeps, graphStats.NumMemDeps)
 
-func (b *dependencyGraphBuilder) addDependency(write WriteEffect, read ReadEffect) {
-	writeID := write.GetNodeID()
-	readID := read.GetNodeID()
-	if _, ok := write.(ReverseEffect); ok {
-		b.graph.addDependency(writeID, readID)
-		return
-	}
+	if full {
+		graph := b.graphBuilder.GetGraph()
+		nodeIDs := make([]NodeID, len(graph.nodes))
+		for i := range nodeIDs {
+			nodeIDs[i] = (NodeID)(i)
+		}
 
-	if readID != b.currentNodeID {
-		panic(fmt.Errorf("Read from node %v; expected %v", readID, b.currentNodeID))
-	}
-	if !b.currentDependencyExists[writeID] {
-		b.currentDependencies = append(b.currentDependencies, writeID)
-		b.currentDependencyExists[writeID] = true
+		sortBy := func(f func(n NodeID) uint64) {
+			sort.Slice(nodeIDs, func(i, j int) bool {
+				return f(nodeIDs[i]) > f(nodeIDs[j])
+			})
+		}
+
+		logNode := func(v uint64, n NodeID) {
+			var cmdStr string
+			if node, ok := graph.nodes[n].(CmdNode); ok {
+				if len(node.Index) == 1 {
+					cmdID := (api.CmdID)(node.Index[0])
+					cmd := graph.GetCommand(cmdID)
+					cmdStr = fmt.Sprintf("%v", cmd)
+				}
+			}
+			log.I(ctx, "%-9v  %v  %s", v, graph.nodes[n], cmdStr)
+			s := b.graphBuilder.GetNodeStats(n)
+			log.I(ctx, "        Accesses:")
+			log.I(ctx, "          NumFragReads: %-8v  UniqueFragReads: %v", s.NumFragReads, s.UniqueFragReads)
+			log.I(ctx, "          NumFragWrites: %-7v  UniqueFragWrites: %v", s.NumFragWrites, s.UniqueFragWrites)
+			log.I(ctx, "          NumMemReads: %-9v  UniqueMemReads: %v", s.NumMemReads, s.UniqueMemReads)
+			log.I(ctx, "          NumMemWrites: %-8v  UniqueMemWrites: %v", s.NumMemWrites, s.UniqueMemWrites)
+			log.I(ctx, "          NumForwardDepOpens: %-4v  NumForwardDepCloses: %-4v  NumForwardDepDrops: %v", s.NumForwardDepOpens, s.NumForwardDepCloses, s.NumForwardDepDrops)
+			log.I(ctx, "        Deps:")
+			log.I(ctx, "          NumDeps: %-15v  UniqueDeps: %v", s.NumDeps, s.UniqueDeps)
+			log.I(ctx, "          NumFragDeps: %-4v  NumCompleteFragDeps: %-4v  NumMemDeps: %v", s.NumFragDeps, s.NumCompleteFragDeps, s.NumMemDeps)
+		}
+
+		logTop := func(c uint, f func(n NodeID) uint64) {
+			sortBy(f)
+			for _, n := range nodeIDs[:c] {
+				logNode(f(n), n)
+			}
+		}
+
+		log.I(ctx, "Top Nodes by total accesses:")
+		totalAccesses := func(n NodeID) uint64 {
+			s := b.graphBuilder.GetNodeStats(n)
+			return s.NumFragReads +
+				s.NumFragWrites +
+				s.NumMemReads +
+				s.NumMemWrites +
+				s.NumForwardDepOpens +
+				s.NumForwardDepCloses +
+				s.NumForwardDepDrops
+		}
+		logTop(10, totalAccesses)
+
+		log.I(ctx, "Top Nodes by unique accesses:")
+		uniqueAccesses := func(n NodeID) uint64 {
+			s := b.graphBuilder.GetNodeStats(n)
+			return s.UniqueFragReads +
+				s.UniqueFragWrites +
+				s.UniqueMemReads +
+				s.UniqueMemWrites +
+				s.NumForwardDepOpens +
+				s.NumForwardDepCloses +
+				s.NumForwardDepDrops
+		}
+		logTop(10, uniqueAccesses)
 	}
 }
 
 func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 	c *capture.Capture, initialCmds []api.Cmd, initialRanges interval.U64RangeList) (DependencyGraph, error) {
-	builder := newDependencyGraphBuilder(ctx, config, c, initialCmds)
+	ctx = status.Start(ctx, "BuildDependencyGraph")
+	defer status.Finish(ctx)
+	b := newDependencyGraphBuilder(ctx, config, c, initialCmds)
 	var state *api.GlobalState
 	if config.IncludeInitialCommands {
 		state = c.NewUninitializedState(ctx).ReserveMemory(initialRanges)
 	} else {
 		state = c.NewState(ctx)
 	}
-	err := builder.graph.ForeachCmd(ctx, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
-		return cmd.Mutate(ctx, id, state, nil, builder)
-	})
+	mutate := func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		return cmd.Mutate(ctx, id, state, nil, b)
+	}
+	mutateD := func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		return mutate(ctx, id.Derived(), cmd)
+	}
+	err := api.ForeachCmd(ctx, initialCmds, mutateD)
 	if err != nil {
 		return nil, err
 	}
-	if config.ReverseDependencies {
-		builder.graph.buildDependenciesTo()
+	err = api.ForeachCmd(ctx, c.Commands, mutate)
+	if err != nil {
+		return nil, err
 	}
-	return builder.graph, nil
+
+	if config.ReverseDependencies {
+		b.graphBuilder.BuildReverseDependencies()
+	}
+
+	graph := b.graphBuilder.GetGraph()
+
+	b.LogStats(ctx, false)
+
+	return graph, nil
 }
 
-func debug(ctx context.Context, fmt string, args ...interface{}) {
-	if config.DebugDependencyGraph {
-		log.D(ctx, fmt, args...)
+type Distribution struct {
+	SmallBins []uint64
+	LargeBins map[uint64]uint64
+}
+
+func (d Distribution) Add(x uint64) {
+	if x < uint64(len(d.SmallBins)) {
+		d.SmallBins[x]++
+	} else {
+		if d.LargeBins == nil {
+			d.LargeBins = make(map[uint64]uint64)
+		}
+		d.LargeBins[x]++
 	}
+}
+
+type CmdContext struct {
+	cmdID  api.CmdID
+	cmd    api.Cmd
+	nodeID NodeID
+	stats  *NodeStats
 }
