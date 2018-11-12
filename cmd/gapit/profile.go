@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		for _, t := range ts.Timestamps {
 			begin := cmdToString(t.Begin)
 			end := cmdToString(t.End)
-			record := []string{begin, end, fmt.Sprint(t.Time)}
+			record := []string{begin, end, fmt.Sprint(t.TimeInNanoseconds)}
 			if err := reportWriter.Write(record); err != nil {
 				log.Err(ctx, err, "Failed to write record")
 			}

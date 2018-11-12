@@ -1119,21 +1119,33 @@ message DeviceAPITraceConfiguration {
   FeatureStatus mid_execution_capture_support = 3;
 }
 
+// GetTimestampsRequest is the request send to server to get the timestamps for
+// the commands in the capture.
 message GetTimestampsRequest {
   path.Capture capture = 1;
   path.Device device = 2;
 }
 
-message TimestampsItem {
-  path.Command begin = 1;
-  path.Command end = 2;
-  uint64 time = 3;
-}
-
+// Timestamps describes the durations of commands execution, each of which
+// is specified in a TimestampsItem message.
 message Timestamps {
   repeated TimestampsItem timestamps = 1;
 }
 
+// TimestampsItem represents one entry in a Timestamps report.
+// It describes the duratoin of execution time between the two commands
+// specified by "begin" and "end" fields.
+message TimestampsItem {
+  // The path of the command which begins the time measurement.
+  path.Command begin = 1;
+  // The path of the command which ends the time measurement.
+  path.Command end = 2;
+  // The duration in nanoseconds between the two commands specified.
+  uint64 time_in_nanoseconds = 3;
+}
+
+// GetTimestampsResponse is the response message server sends back which contains
+// the time duratoins for the commands when replay the trace.
 message GetTimestampsResponse {
   oneof res {
     Timestamps timestamps = 1;

@@ -116,6 +116,7 @@ cmd void vkDestroyQueryPool(
 // hangs depending on the state of the query pool
 // TODO(awoloszyn): Work out all of the cases where this
 // may cause hangs, and fix it for replay.
+// Currently(12/11/2018) comments out for getting timestamps out.
 cmd VkResult vkGetQueryPoolResults(
     VkDevice           device,
     VkQueryPool        queryPool,

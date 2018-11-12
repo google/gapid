@@ -16,6 +16,7 @@ package replay
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
@@ -54,7 +55,7 @@ type QueryTimestamps interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
-		hints *service.UsageHints) ([]Timestamps, error)
+		hints *service.UsageHints) ([]Timestamp, error)
 }
 
 // QueryFramebufferAttachment is the interface implemented by types that can
@@ -82,8 +83,12 @@ type Issue struct {
 	Error    error            // The issue's error.
 }
 
-type Timestamps struct {
+// Timestamp represents an execution time measurement between the two commands specified.
+type Timestamp struct {
+	// The path of the command which begins the time measurement.
 	Begin *path.Command
-	End   *path.Command
-	Time  uint64
+	// The path of the command which ends the time measurement.
+	End *path.Command
+	// The duration in nanoseconds between the two commands specified.
+	Time time.Duration
 }

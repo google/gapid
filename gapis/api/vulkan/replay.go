@@ -834,7 +834,6 @@ func (a API) Replay(
 				}
 				timestamps = newQueryTimestamps(ctx, c, n)
 			}
-			log.I(ctx, "replay result is %v", rr.Result)
 			timestamps.reportTo(rr.Result)
 			optimize = false
 		case framebufferRequest:
@@ -920,7 +919,6 @@ func (a API) Replay(
 	}
 
 	if issues != nil {
-		// transforms.Add(newQueryTimestamps(ctx, c))
 		transforms.Add(issues) // Issue reporting required.
 	} else {
 		if timestamps != nil {
@@ -1056,12 +1054,7 @@ func (a API) QueryTimestamps(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
-	hints *service.UsageHints) ([]replay.Timestamps, error) {
-
-	_, err := resolve.SyncData(ctx, intent.Capture)
-	if err != nil {
-		return nil, err
-	}
+	hints *service.UsageHints) ([]replay.Timestamp, error) {
 
 	c, r := timestampsConfig{}, timestampsRequest{}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
@@ -1071,5 +1064,5 @@ func (a API) QueryTimestamps(
 	if _, ok := mgr.(replay.Exporter); ok {
 		return nil, nil
 	}
-	return res.([]replay.Timestamps), nil
+	return res.([]replay.Timestamp), nil
 }

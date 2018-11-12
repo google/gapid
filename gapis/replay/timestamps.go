@@ -1,4 +1,4 @@
-// Copyright (C) 2017 Google Inc.
+// Copyright (C) 2018 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.
 		return nil, err
 	}
 
-	ts := []Timestamps{}
+	ts := []Timestamp{}
 	if device != nil {
 		intent := Intent{
 			Capture: capturePath,
@@ -57,9 +57,9 @@ func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.
 	var timestamps service.Timestamps
 	for _, t := range ts {
 		item := &service.TimestampsItem{
-			Begin: t.Begin,
-			End:   t.End,
-			Time:  t.Time,
+			Begin:             t.Begin,
+			End:               t.End,
+			TimeInNanoseconds: uint64(t.Time),
 		}
 		timestamps.Timestamps = append(timestamps.Timestamps, item)
 	}
