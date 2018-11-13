@@ -50,6 +50,8 @@ type QueryIssues interface {
 		hints *service.UsageHints) ([]Issue, error)
 }
 
+// QueryTimestamps is the interface implemented by types that can
+// return the timestamps of the execution of commands
 type QueryTimestamps interface {
 	QueryTimestamps(
 		ctx context.Context,

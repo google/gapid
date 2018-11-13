@@ -34,26 +34,38 @@ import (
 // Default query pool size
 const queryPoolSize = 256
 
+type timestampRecord struct {
+	timestamp replay.Timestamp
+	// Is this timestamp from the last command in the commandbuffer
+	IsEoC bool
+}
+
 // queryPoolInfo contains the information about the query pool
 type queryPoolInfo struct {
-	queryPool     VkQueryPool
-	queryPoolSize uint32
-	device        VkDevice
+	queryPool       VkQueryPool
+	queryPoolSize   uint32
+	device          VkDevice
+	timestampPeriod float32
+	queue           VkQueue
+	// writeIndex is the next slot in the query pool can be used.
+	writeIndex uint32
+	// readIndex is the index in the result list that the next result will be collected.
+	readIndex uint32
+	results   []timestampRecord
 }
 
 type queryTimestamps struct {
 	commandPools map[VkDevice]VkCommandPool
-	queryPools   map[VkQueue]queryPoolInfo
+	queryPools   map[VkQueue]*queryPoolInfo
 	replayResult []replay.Result
 	timestamps   []replay.Timestamp
 	allocated    []*api.AllocResult
-	resultIndex  uint32
 }
 
 func newQueryTimestamps(ctx context.Context, c *capture.Capture, numInitialCmds int) *queryTimestamps {
 	transform := &queryTimestamps{
 		commandPools: make(map[VkDevice]VkCommandPool),
-		queryPools:   make(map[VkQueue]queryPoolInfo),
+		queryPools:   make(map[VkQueue]*queryPoolInfo),
 	}
 	return transform
 }
@@ -78,23 +90,25 @@ func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 	out transform.Writer,
 	queue VkQueue,
 	device VkDevice,
-	numQuery uint32) VkQueryPool {
+	timestampPeriod float32,
+	numQuery uint32) *queryPoolInfo {
 	s := out.State()
 
 	qSize := uint32(0)
-	q, ok := t.queryPools[queue]
-	if ok && GetState(s).QueryPools().Contains(q.queryPool) {
-		if numQuery <= q.queryPoolSize {
-			return q.queryPool
+	info, ok := t.queryPools[queue]
+	if ok && GetState(s).QueryPools().Contains(info.queryPool) {
+		if numQuery <= info.queryPoolSize {
+			return info
 		}
-		// Destroy old query pool if it can not hold the results.
+		// Get the results back before destroy the old querypool
+		t.GetQueryResults(ctx, cb, out, info)
 		newCmd := cb.VkDestroyQueryPool(
-			q.device,
-			q.queryPool,
+			info.device,
+			info.queryPool,
 			memory.Nullptr)
 		out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
-		// Increase the size of pool to 1.5 times of previous size every time.
-		qSize = max(numQuery, q.queryPoolSize*3/2)
+		// Increase the size of pool to 1.5 times of previous size or set it to numQuery whichever is larger.
+		qSize = max(numQuery, info.queryPoolSize*3/2)
 	} else {
 		qSize = queryPoolSize
 	}
@@ -122,12 +136,13 @@ func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 		VkResult_VK_SUCCESS)
 
 	newCmd.AddRead(queryPoolCreateInfo.Data()).AddWrite(queryPoolHandleData.Data())
-	t.queryPools[queue] = queryPoolInfo{queryPool, qSize, device}
+	info = &queryPoolInfo{queryPool, qSize, device, timestampPeriod, queue, 0, 0, []timestampRecord{}}
+	t.queryPools[queue] = info
 	out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
-	return queryPool
+	return info
 }
 
-func (t *queryTimestamps) createComandpoolIfNeeded(ctx context.Context,
+func (t *queryTimestamps) createCommandpoolIfNeeded(ctx context.Context,
 	cb CommandBuilder,
 	out transform.Writer,
 	device VkDevice,
@@ -239,7 +254,7 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 	out transform.Writer,
 	id api.CmdID,
 	device VkDevice,
-	queryPool VkQueryPool,
+	queryPoolInfo *queryPoolInfo,
 	commandPool VkCommandPool,
 	cmd *VkQueueSubmit) {
 
@@ -256,7 +271,6 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 	submitCount := cmd.SubmitCount()
 	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
-	query := uint32(0)
 	for i := uint32(0); i < submitCount; i++ {
 		si := submitInfos[i]
 		waitSemPtr := memory.Nullptr
@@ -285,23 +299,24 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 			cb,
 			out,
 			device,
-			queryPool,
+			queryPoolInfo.queryPool,
 			commandPool,
-			query)
+			queryPoolInfo.writeIndex)
+		queryPoolInfo.writeIndex++
 		newCmdBuffers := make([]VkCommandBuffer, newCmdCount)
 		newCmdBuffers[0] = commandbuffer
 		for j := uint32(0); j < cmdCount; j++ {
 			buf := cmdBuffers[j]
 			newCmdBuffers[j*2+1] = buf
 
-			query++
 			commandbuffer = t.generateQueryCommand(ctx,
 				cb,
 				out,
 				device,
-				queryPool,
+				queryPoolInfo.queryPool,
 				commandPool,
-				query)
+				queryPoolInfo.writeIndex)
+			queryPoolInfo.writeIndex++
 			newCmdBuffers[j*2+2] = commandbuffer
 
 			begin := &path.Command{
@@ -315,7 +330,8 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 			end := &path.Command{
 				Indices: []uint64{uint64(id), uint64(i), uint64(j), uint64(n - 1)},
 			}
-			t.timestamps = append(t.timestamps, replay.Timestamp{Begin: begin, End: end})
+			queryPoolInfo.results = append(queryPoolInfo.results,
+				timestampRecord{timestamp: replay.Timestamp{begin, end, 0}, IsEoC: j == cmdCount-1})
 		}
 
 		cmdBufferPtr := allocAndRead(newCmdBuffers).Ptr()
@@ -346,6 +362,72 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 		newCmd.AddRead(read.Data())
 	}
 	out.MutateAndWrite(ctx, id, newCmd)
+}
+
+func (t *queryTimestamps) GetQueryResults(ctx context.Context,
+	cb CommandBuilder,
+	out transform.Writer,
+	queryPoolInfo *queryPoolInfo) {
+	if queryPoolInfo == nil {
+		log.E(ctx, "queryPoolInfo is invalid")
+		return
+	}
+	queryCount := queryPoolInfo.writeIndex
+	queue := queryPoolInfo.queue
+	if queryCount == 0 {
+		return
+	}
+	s := out.State()
+	waitCmd := cb.VkQueueWaitIdle(queue, VkResult_VK_SUCCESS)
+	out.MutateAndWrite(ctx, api.CmdNoID, waitCmd)
+
+	buflen := uint64(queryCount * 8)
+	tmp := s.AllocOrPanic(ctx, buflen)
+	flags := VkQueryResultFlags(VkQueryResultFlagBits_VK_QUERY_RESULT_64_BIT | VkQueryResultFlagBits_VK_QUERY_RESULT_WAIT_BIT)
+	newCmd := cb.VkGetQueryPoolResults(
+		queryPoolInfo.device,
+		queryPoolInfo.queryPool,
+		0,
+		queryCount,
+		memory.Size(buflen),
+		tmp.Ptr(),
+		8,
+		flags,
+		VkResult_VK_SUCCESS)
+
+	out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
+
+	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+		b.ReserveMemory(tmp.Range())
+		b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
+			if err != nil {
+				log.I(ctx, "b post get err %v", err)
+				return
+			}
+
+			tStart := r.Uint64()
+			for i := uint32(1); i < queryCount; i++ {
+				tEnd := r.Uint64()
+				record := queryPoolInfo.results[queryPoolInfo.readIndex]
+				record.timestamp.Time = time.Duration(uint64(float32(tEnd-tStart)*queryPoolInfo.timestampPeriod)) * time.Nanosecond
+				if record.IsEoC && i < queryCount {
+					tStart = r.Uint64()
+					i++
+				} else {
+					tStart = tEnd
+				}
+				t.timestamps = append(t.timestamps, record.timestamp)
+				queryPoolInfo.readIndex++
+			}
+			// Reset the results array after store the results in the final result list t.timestamps
+			queryPoolInfo.results = []timestampRecord{}
+			queryPoolInfo.readIndex = 0
+			queryPoolInfo.writeIndex = 0
+		})
+		return nil
+	}))
+
+	tmp.Free()
 }
 
 func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
@@ -380,55 +462,13 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		}
 		queryCount := cmdBufferCount * 2
 
-		commandPool := t.createComandpoolIfNeeded(ctx, cb, out, vkDevice, queueFamilyIndex)
-		queryPool := t.createQueryPoolIfNeeded(ctx, cb, out, vkQueue, vkDevice, queryCount)
-		t.rewriteQueueSubmit(ctx, cb, out, id, vkDevice, queryPool, commandPool, cmd)
-
-		// TODO: Retrieve the results when the query pool is full or when the replay
-		// is done instead of wait queue idle for every submission.
-		// Further improvement is doing a pre-pass over the commands to
-		// determine the query pool size.
-		waitCmd := cb.VkQueueWaitIdle(vkQueue, VkResult_VK_SUCCESS)
-		out.MutateAndWrite(ctx, id, waitCmd)
-
-		// Get results back.
-		buflen := uint64(queryCount * 8)
-		tmp := s.AllocOrPanic(ctx, buflen)
-		flags := VkQueryResultFlags(VkQueryResultFlagBits_VK_QUERY_RESULT_64_BIT | VkQueryResultFlagBits_VK_QUERY_RESULT_WAIT_BIT)
-		newCmd := cb.VkGetQueryPoolResults(
-			vkDevice,
-			queryPool,
-			0,
-			queryCount,
-			memory.Size(buflen),
-			tmp.Ptr(),
-			8,
-			flags,
-			VkResult_VK_SUCCESS)
-
-		out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
-
-		out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-			b.ReserveMemory(tmp.Range())
-			b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
-				if err != nil {
-					log.I(ctx, "b post get err %v", err)
-					return
-				}
-
-				tStart := r.Uint64()
-				for i := uint32(1); i < queryCount; i++ {
-					tEnd := r.Uint64()
-					t.timestamps[t.resultIndex].Time = time.Duration(uint64(float32(tEnd-tStart)*timestampPeriod)) * time.Nanosecond
-					t.resultIndex++
-					tStart = tEnd
-				}
-			})
-			return nil
-		}))
-
-		tmp.Free()
-
+		commandPool := t.createCommandpoolIfNeeded(ctx, cb, out, vkDevice, queueFamilyIndex)
+		queryPoolInfo := t.createQueryPoolIfNeeded(ctx, cb, out, vkQueue, vkDevice, timestampPeriod, queryCount)
+		numSlotAvailable := queryPoolInfo.queryPoolSize - queryPoolInfo.writeIndex
+		if numSlotAvailable < queryCount {
+			t.GetQueryResults(ctx, cb, out, queryPoolInfo)
+		}
+		t.rewriteQueueSubmit(ctx, cb, out, id, vkDevice, queryPoolInfo, commandPool, cmd)
 	default:
 		out.MutateAndWrite(ctx, id, cmd)
 	}
@@ -437,6 +477,9 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 	s := out.State()
 	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	for _, queryPoolInfo := range t.queryPools {
+		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
+	}
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		code := uint32(0xbeefcace)
 		b.Push(value.U32(code))
