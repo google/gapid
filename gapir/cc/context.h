@@ -65,6 +65,13 @@ class Context : private Renderer::Listener {
   virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
                               const char* msg) override;
 
+  // Initialize the context object with loading the replay request, setting up
+  // the memory manager, setting up the caches and prefetching the resources
+  bool initialize();
+
+  // Cleanuo the context for the next replay.
+  bool cleanup();
+
  private:
   enum {
     MAX_TIMERS = 256,
@@ -73,10 +80,6 @@ class Context : private Renderer::Listener {
 
   Context(ReplayService* srv, core::CrashHandler& crash_handler,
           ResourceLoader* resource_loader, MemoryManager* memory_manager);
-
-  // Initialize the context object with loading the replay request, setting up
-  // the memory manager, setting up the caches and prefetching the resources
-  bool initialize();
 
   // Register the callbacks for the interpreter (Gl functions, load resource,
   // post resource)

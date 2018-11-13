@@ -36,27 +36,31 @@ class ArchiveReplayService : public ReplayService {
       : mFilePrefix(fileprefix), mPostbackDir(postbackDir) {}
 
   // Read payload from disk.
-  virtual std::unique_ptr<Payload> getPayload() override;
+  std::unique_ptr<Payload> getPayload() override;
 
   // Send post data to local on disk file.
-  virtual bool sendPosts(std::unique_ptr<Posts> posts) override;
+  bool sendPosts(std::unique_ptr<Posts> posts) override;
 
   // We are reading from disk, so the following methods are not implemented.
-  virtual std::unique_ptr<Resources> getResources(const Resource* resources,
+  std::unique_ptr<Resources> getResources(const Resource* resources,
                                                   size_t resCount) override {
     return nullptr;
   }
 
-  virtual bool sendReplayFinished() override { return true; }
+  std::unique_ptr<replay_service::ReplayRequest> getRequest() override { 
+    return std::unique_ptr<replay_service::ReplayRequest>(new replay_service::ReplayRequest());
+  }
 
-  virtual bool sendCrashDump(const std::string& filepath,
+  bool sendReplayFinished() override { return true; }
+
+  bool sendCrashDump(const std::string& filepath,
                              const void* crash_data,
                              uint32_t crash_size) override {
     GAPID_INFO("Crash dump saved at: %s", filepath.c_str());
     return true;
   }
 
-  virtual bool sendNotification(uint64_t id, uint32_t severity,
+  bool sendNotification(uint64_t id, uint32_t severity,
                                 uint32_t api_index, uint64_t label,
                                 const std::string& msg, const void* data,
                                 uint32_t data_size) override {

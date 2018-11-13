@@ -47,14 +47,7 @@ std::unique_ptr<Context> Context::create(ReplayService* srv,
                                          MemoryManager* memory_manager) {
   std::unique_ptr<Context> context(
       new Context(srv, crash_handler, resource_loader, memory_manager));
-
-  if (context->initialize()) {
-    GAPID_DEBUG("Replay context initialized successfully");
-    return context;
-  } else {
-    GAPID_ERROR("Replay context initialization failed");
-    return nullptr;
-  }
+  return std::move(context);
 }
 
 // TODO: Make the PostBuffer size dynamic? It currently holds 2MB of data.
@@ -82,6 +75,16 @@ Context::~Context() {
     delete it->second;
   }
   delete mVulkanRenderer;
+}
+
+bool Context::cleanup() {
+  for (auto it = mGlesRenderers.begin(); it != mGlesRenderers.end(); it++) {
+    delete it->second;
+  }
+  delete mVulkanRenderer;
+  mGlesRenderers.clear();
+  mVulkanRenderer = nullptr;
+  return true;
 }
 
 bool Context::initialize() {

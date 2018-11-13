@@ -29,7 +29,6 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/replay/builder"
-	"github.com/google/gapid/gapis/replay/executor"
 	"github.com/google/gapid/gapis/replay/scheduler"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
@@ -182,11 +181,10 @@ func (m *manager) execute(
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
 
-	connection, err := m.gapir.Connect(ctx, d, replayABI)
+	connection, err := m.connect(ctx, d, replayABI)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to device")
 	}
-	defer connection.Close()
 
 	if config.DebugReplay {
 		log.I(ctx, "Sending payload")
@@ -197,7 +195,7 @@ func (m *manager) execute(
 	}
 
 	executeTimer.Time(func() {
-		err = executor.Execute(
+		err = Execute(
 			ctx,
 			payload,
 			handlePost,

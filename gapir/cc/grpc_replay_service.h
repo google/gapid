@@ -65,27 +65,28 @@ class GrpcReplayService : public ReplayService {
 
   // Sends PayloadRequest and returns the received Payload. Returns nullptr in
   // case of error.
-  virtual std::unique_ptr<ReplayService::Payload> getPayload() override;
+  std::unique_ptr<ReplayService::Payload> getPayload() override;
   // Sends ResourceRequest and returns the received Resources. Returns nullptr
   // in case of error.
-  virtual std::unique_ptr<ReplayService::Resources> getResources(
+  std::unique_ptr<ReplayService::Resources> getResources(
       const Resource* resource, size_t resCount) override;
 
   // Sends ReplayFinished signal. Returns true if succeeded, otherwise returns
   // false.
-  virtual bool sendReplayFinished() override;
+  bool sendReplayFinished() override;
   // Sends crash dump. Returns true if succeeded, otherwise returns false.
-  virtual bool sendCrashDump(const std::string& filepath,
+  bool sendCrashDump(const std::string& filepath,
                              const void* crash_data,
                              uint32_t crash_size) override;
   // Sends post data. Returns true if succeeded, otherwise returns false.
-  virtual bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
+  bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
   // Sends notification. Returns true if succeeded, otherwise returns false.
-  virtual bool sendNotification(uint64_t id, uint32_t severity,
+  bool sendNotification(uint64_t id, uint32_t severity,
                                 uint32_t api_index, uint64_t label,
                                 const std::string& msg, const void* data,
                                 uint32_t data_size) override;
 
+  std::unique_ptr<replay_service::ReplayRequest> getRequest() override;
  protected:
   GrpcReplayService(ReplayGrpcStream* stream) : mGrpcStream(stream) {}
 

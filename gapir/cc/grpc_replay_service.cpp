@@ -118,4 +118,10 @@ bool GrpcReplayService::sendNotification(uint64_t id, uint32_t severity,
   return mGrpcStream->Write(res);
 }
 
+std::unique_ptr<replay_service::ReplayRequest> GrpcReplayService::getRequest() {
+  std::unique_ptr<replay_service::ReplayRequest> req = std::unique_ptr<replay_service::ReplayRequest>(new replay_service::ReplayRequest());
+  mGrpcStream->Read(req.get());
+  return std::move(req);
+}
+
 }  // namespace gapir

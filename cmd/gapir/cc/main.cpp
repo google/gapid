@@ -106,10 +106,7 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
   // package for a replay must be the ID of the replay.
   return Server::createAndStart(
       uri, authToken, idleTimeoutSec,
-      [cache, memMgr, crashHandler, lock](GrpcReplayService* replayConn,
-                                          const std::string& replayId) {
-        std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
-
+      [cache, memMgr, crashHandler, lock](GrpcReplayService* replayConn) {
         std::unique_ptr<ResourceLoader> resLoader;
         if (cache == nullptr) {
           resLoader = PassThroughResourceLoader::create(replayConn);
@@ -129,13 +126,35 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
           GAPID_WARNING("Loading Context failed!");
           return;
         }
-        if (cache != nullptr) {
-          context->prefetch(cache);
-        }
+      
+        
+        do {
+          auto req = replayConn->getRequest();
+          if (!req) {
+            break;
+          }
+          if (req->req_case() == replay_service::ReplayRequest::kReplayId) {    
+            std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
+            if (context->initialize()) {
+              GAPID_DEBUG("Replay context initialized successfully");
+            } else {
+              GAPID_ERROR("Replay context initialization failed");
+              continue;
+            }    
+            if (cache != nullptr) {
+              context->prefetch(cache);
+            }
 
-        GAPID_INFO("Replay started");
-        bool ok = context->interpret();
-        GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
+            GAPID_INFO("Replay started");
+            bool ok = context->interpret();
+            GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
+            replayConn->sendReplayFinished();
+            if (!context->cleanup()) {
+              GAPID_ERROR("Replay cleanup failed");
+              return;
+            }
+          }
+        } while(true);
       });
 }
 
@@ -444,11 +463,24 @@ static int replayArchive(Options opts) {
   auto onDiskCache = OnDiskResourceCache::create(opts.replayArchive, false);
   std::unique_ptr<ResourceLoader> resLoader =
       CachedResourceLoader::create(onDiskCache.get(), nullptr);
+  
   std::unique_ptr<Context> context = Context::create(
       &replayArchive, crashHandler, resLoader.get(), &memoryManager);
 
+  if (context->initialize()) {
+    GAPID_DEBUG("Replay context initialized successfully");
+  } else {
+    GAPID_ERROR("Replay context initialization failed");
+    return EXIT_FAILURE;
+  }
+
   GAPID_INFO("Replay started");
   bool ok = context->interpret();
+  replayArchive.sendReplayFinished();
+  if (!context->cleanup()) {
+    GAPID_ERROR("Replay cleanup failed");
+    return EXIT_FAILURE;
+  }
   GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

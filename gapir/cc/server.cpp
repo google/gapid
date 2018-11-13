@@ -62,16 +62,13 @@ Status GapirServiceImpl::Replay(ServerContext* context, ReplayStream* stream) {
     return Status(grpc::StatusCode::UNAUTHENTICATED,
                   grpc::string("Invalid auth token"));
   }
-  replay_service::ReplayRequest req;
-  while (stream->Read(&req)) {
-    if (req.req_case() == replay_service::ReplayRequest::kReplayId) {
-      std::unique_ptr<GrpcReplayService> replay_conn =
-          GrpcReplayService::create(stream);
-      if (replay_conn != nullptr) {
-        mHandleReplay(replay_conn.get(), req.replay_id());
-      }
-    }
+
+  std::unique_ptr<GrpcReplayService> replay_conn =
+        GrpcReplayService::create(stream);
+  if (replay_conn != nullptr) {
+    mHandleReplay(replay_conn.get());
   }
+  
   return Status::OK;
 }
 

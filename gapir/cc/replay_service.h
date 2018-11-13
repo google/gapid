@@ -172,6 +172,9 @@ class ReplayService {
                                 uint32_t api_index, uint64_t label,
                                 const std::string& msg, const void* data,
                                 uint32_t data_size) = 0;
+
+  // Returns the next replay request from the server.
+  virtual std::unique_ptr<replay_service::ReplayRequest> getRequest() = 0;
 };
 }  // namespace gapir
 
