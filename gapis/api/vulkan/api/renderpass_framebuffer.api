@@ -300,6 +300,8 @@ vkCmdNextSubpassArgs {
 }
 
 sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
+  useRenderPass()
+
   lastDrawInfo().LastSubpass += 1
   if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
     subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
@@ -350,6 +352,7 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
   for i in (0 .. len(attachmentDescriptions)) {
     storeImageAttachment(as!u32(i))
   }
+  _ = lastDrawInfo().InRenderPass
   lastDrawInfo().InRenderPass = false
   popRenderPassMarker()
   if (len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1) {
@@ -415,4 +418,11 @@ sub void storeImageAttachment(u32 attachmentID) {
       }
     }
   }
+}
+
+@spy_disabled
+sub void useRenderPass() {
+  // read and write InRenderPass to ensure dependencies between render pass commands
+  _ = lastDrawInfo().InRenderPass
+  lastDrawInfo().InRenderPass = true
 }
