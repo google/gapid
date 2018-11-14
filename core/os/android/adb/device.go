@@ -17,6 +17,7 @@ package adb
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -132,6 +133,12 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		var major, minor, point int32
 		fmt.Sscanf(version, "%d.%d.%d", &major, &minor, &point)
 		d.To.Configuration.OS = device.AndroidOS(major, minor, point)
+	}
+
+	// Collect the API version
+	if version, err := d.SystemProperty(ctx, "ro.build.version.sdk"); err == nil {
+		v, _ := strconv.Atoi(version)
+		d.To.Configuration.OS.APIVersion = int32(v)
 	}
 
 	if description, err := d.SystemProperty(ctx, "ro.build.description"); err == nil {
