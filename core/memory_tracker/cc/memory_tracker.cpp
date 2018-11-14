@@ -16,6 +16,8 @@
 
 #include "memory_tracker.h"
 
+#include "core/cc/log.h"
+
 #if COHERENT_TRACKING_ENABLED
 #include <map>
 
@@ -24,133 +26,136 @@ namespace track_memory {
 
 MemoryTracker::derived_tracker_type* unique_tracker = nullptr;
 
-void DirtyPageTable::RecollectIfPossible(size_t num_stale_pages) {
-  if (pages_.size() - stored_ > num_stale_pages) {
-    // If we have more extra spaces for recollection than required, remove
-    // required number of not used spaces.
-    size_t new_size = pages_.size() - num_stale_pages;
-    pages_.resize(new_size);
-  } else {
-    // Otherwise shrink the storage to hold all not-yet-dumped dirty pages.
-    pages_.resize(stored_ + 1);
+template <>
+MemoryTracker::tracking_range_list_type::iterator
+MemoryTracker::FirstOverlappedRange(uintptr_t addr, size_t size) {
+  uintptr_t end = addr + size;
+  auto it = tracking_ranges_.upper_bound(addr);
+  if (it == tracking_ranges_.end()) {
+    return it;
   }
-}
-
-std::vector<void*> DirtyPageTable::DumpAndClearInRange(void* start,
-                                                       size_t size) {
-  uintptr_t start_addr = reinterpret_cast<uintptr_t>(start);
-  std::vector<void*> r;
-  r.reserve(stored_);
-  for (auto it = pages_.begin(); it != current_;) {
-    auto nt = std::next(it, 1);
-    if (*it >= start_addr && *it < start_addr + size) {
-      r.push_back(reinterpret_cast<void*>(*it));
-      pages_.splice(pages_.end(), pages_, it);
-      stored_ -= 1;
-    }
-    it = nt;
+  if (it->second->Overlaps(addr, end)) {
+    return it;
   }
-  return r;
-}
-
-std::vector<void*> DirtyPageTable::DumpAndClearAll() {
-  std::vector<void*> r;
-  r.reserve(stored_);
-  std::for_each(pages_.begin(), current_, [&r](uintptr_t addr) {
-    r.push_back(reinterpret_cast<void*>(addr));
-  });
-  // Set the space for the next page address to the beginning of the storage,
-  // and reset the counter.
-  current_ = pages_.begin();
-  stored_ = 0u;
-  return r;
+  return tracking_ranges_.end();
 }
 
 template <>
-bool MemoryTracker::AddTrackingRangeImpl(void* start, size_t size) {
+bool MemoryTracker::TrackRangeImpl(void* start, size_t size) {
   if (!EnableMemoryTrackerImpl()) {
     return false;
   }
 
   if (size == 0) return false;
-  if (IsInRanges(reinterpret_cast<uintptr_t>(start), ranges_)) return false;
-
-  void* start_page_addr = GetAlignedAddress(start, page_size_);
-  size_t size_aligned = GetAlignedSize(start, size, page_size_);
-  dirty_pages_.Reserve(size_aligned / page_size_);
-  ranges_[reinterpret_cast<uintptr_t>(start)] = size;
-  return set_protection(start_page_addr, size_aligned,
-                        track_read_ ? PageProtections::kNone
-                                    : PageProtections::kRead) == 0;
-}
-
-template <>
-bool MemoryTracker::RemoveTrackingRangeImpl(void* start, size_t size) {
-  if (size == 0) return false;
-  auto it = ranges_.find(reinterpret_cast<uintptr_t>(start));
-  if (it == ranges_.end()) return false;
-
-  ranges_.erase(it);
-  void* start_page_addr = GetAlignedAddress(start, page_size_);
-  size_t size_aligned = GetAlignedSize(start, size, page_size_);
-  dirty_pages_.RecollectIfPossible(size_aligned / page_size_);
-
-  bool result = true;
-  for (uint8_t* p = reinterpret_cast<uint8_t*>(start_page_addr);
-       p < reinterpret_cast<uint8_t*>(start_page_addr) + size_aligned;
-       p = p + page_size_) {
-    if (!IsInRanges(reinterpret_cast<uintptr_t>(p), ranges_, true)) {
-      result &= set_protection(p, page_size_, PageProtections::kReadWrite) == 0;
-    }
+  uintptr_t addr = reinterpret_cast<uintptr_t>(start);
+  auto overlap = FirstOverlappedRange(addr, size);
+  if (overlap != tracking_ranges_.end()) {
+    return false;
   }
+  auto new_rng = std::unique_ptr<MemoryTracker::tracking_range_type>(
+      new MemoryTracker::tracking_range_type(reinterpret_cast<uintptr_t>(start),
+                                             size));
+  bool result = set_protection(
+      reinterpret_cast<void*>(new_rng->aligned_start()),
+      new_rng->aligned_size(),
+      track_read_ ? PageProtections::kNone : PageProtections::kRead);
+  tracking_ranges_[addr + size] = std::move(new_rng);
   return result;
 }
 
 template <>
-bool MemoryTracker::ClearTrackingRangesImpl() {
-  if (std::any_of(ranges_.begin(), ranges_.end(),
-                  [this](std::pair<uintptr_t, size_t> r) {
-                    void* start = reinterpret_cast<void*>(r.first);
-                    size_t size = r.second;
-                    void* start_page_addr =
-                        GetAlignedAddress(start, page_size_);
-                    size_t size_aligned =
-                        GetAlignedSize(start, size, page_size_);
-                    dirty_pages_.RecollectIfPossible(size_aligned / page_size_);
-                    // TODO(qining): Add Windows support
-                    return set_protection(start_page_addr, size_aligned,
-                                          PageProtections::kReadWrite) != 0;
-                  })) {
-    return false;
+bool MemoryTracker::UntrackRangeImpl(void* start, size_t size) {
+  if (size == 0) return false;
+  uintptr_t addr = reinterpret_cast<uintptr_t>(start);
+  uintptr_t end = addr + size;
+  auto it = tracking_ranges_.find(end);
+  if (it == tracking_ranges_.end()) return false;
+
+  bool result = true;
+  uintptr_t first_page = it->second->aligned_start();
+  size_t aligned_size = it->second->aligned_size();
+  uintptr_t last_page = first_page + aligned_size - GetPageSize();
+
+  tracking_ranges_.erase(it);
+
+  // Handle the non-boundary pages first. Boundary pages might also be tracked
+  // in other ranges, and their flag should not be reset to ReadWrite if other
+  // ranges are tracking them.
+  if (first_page < last_page) {
+    result &= set_protection(
+        reinterpret_cast<void*>(first_page + GetPageSize()),
+        aligned_size - 2 * GetPageSize(), PageProtections::kReadWrite);
   }
-  ranges_.clear();
-  return true;
+
+  if (FirstOverlappedRange(first_page, GetPageSize()) ==
+          tracking_ranges_.end() &&
+      FirstOverlappedRange(last_page, GetPageSize()) ==
+          tracking_ranges_.end()) {
+    result &= set_protection(reinterpret_cast<void*>(first_page), GetPageSize(),
+                             PageProtections::kReadWrite);
+    result &= set_protection(reinterpret_cast<void*>(last_page), GetPageSize(),
+                             PageProtections::kReadWrite);
+  }
+
+  return result;
+}
+
+template <>
+bool MemoryTracker::HandleAndClearDirtyIntersectsImpl(
+    void* start, size_t size,
+    std::function<void(void* dirty_addr, size_t dirty_size)> handle_dirty) {
+  uintptr_t addr = reinterpret_cast<uintptr_t>(start);
+  uintptr_t end = RoundUpAlignedAddress(addr + size, GetPageSize());
+  addr = RoundDownAlignedAddress(addr, GetPageSize());
+  size = end - addr;
+
+  bool set_protection_result = true;
+
+  auto clear_dirty_intersects = [&handle_dirty, &set_protection_result, this](
+                                    uintptr_t i_addr, size_t i_size) -> bool {
+    handle_dirty(reinterpret_cast<void*>(i_addr), i_size);
+    set_protection_result = set_protection(
+        reinterpret_cast<void*>(i_addr), i_size,
+        track_read_ ? PageProtections::kNone : PageProtections::kRead);
+    // Return true so that in ForDirtyIntersects, marked dirty pages will
+    // be cleared.
+    return true;
+  };
+
+  auto first_rng = FirstOverlappedRange(addr, size);
+  for (auto it = first_rng; it != tracking_ranges_.end(); it++) {
+    if (it->second->Overlaps(addr, end)) {
+      it->second->ForDirtyIntersects(addr, size, clear_dirty_intersects);
+    } else {
+      break;
+    }
+  }
+  return set_protection_result;
 }
 
 template <>
 bool MemoryTracker::HandleSegfaultImpl(void* fault_addr) {
-  if (!IsInRanges(reinterpret_cast<uintptr_t>(fault_addr), ranges_, true)) {
+  uintptr_t addr = reinterpret_cast<uintptr_t>(fault_addr);
+  uintptr_t end = RoundUpAlignedAddress(addr + 1u, GetPageSize());
+  addr = RoundDownAlignedAddress(addr, GetPageSize());
+  auto first_rng_it = FirstOverlappedRange(addr, end - addr);
+  if (first_rng_it == tracking_ranges_.end()) {
     return false;
   }
-
-  // The fault address is within a tracking range
-  void* page_addr = GetAlignedAddress(fault_addr, page_size_);
-  if (dirty_pages_.Has(page_addr)) {
-    // Dirty pages should always be writable. But in practice, dirty pages may
-    // not be writable. E.g. One page is added to tracking ranges twice with
-    // two ranges that shares a common page, but not overlapping. The later
-    // added range will mark the shared page as read-only, even though the
-    // page has already been marked as dirty before.
-    set_protection(page_addr, page_size_, PageProtections::kReadWrite);
-    return true;
+  bool result = true;
+  for (auto& it = first_rng_it; it != tracking_ranges_.end(); it++) {
+    if (it->second->Overlaps(addr, end)) {
+      result &= it->second->SetDirty(
+          reinterpret_cast<uintptr_t>(fault_addr), 1u,
+          [](uintptr_t dirty_addr, size_t dirty_size) -> bool {
+            return set_protection(reinterpret_cast<void*>(dirty_addr),
+                                  dirty_size, PageProtections::kReadWrite);
+          });
+    } else {
+      break;
+    }
   }
-  if (!dirty_pages_.Record(page_addr)) {
-    // The dirty page table does not have enough space pre-allocated,
-    // fallback to the original handler.
-    return false;
-  }
-  set_protection(page_addr, page_size_, PageProtections::kReadWrite);
-  return true;
+  return result;
 }
 
 }  // namespace track_memory

@@ -19,7 +19,6 @@
 
 #include <gmock/gmock.h>
 
-// TODO(qining): Add Windows support
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -29,6 +28,7 @@
 #include <list>
 #include <map>
 #include <thread>
+#include <unordered_map>
 
 namespace gapii {
 namespace track_memory {
@@ -36,60 +36,72 @@ namespace test {
 
 using ::testing::Contains;
 
-TEST(GetAlignedAddressTest, 4KAligned) {
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x0, 0x1000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x50, 0x1000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x100, 0x1000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x800, 0x1000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0xFFF, 0x1000));
-  EXPECT_EQ((void*)0x1000, GetAlignedAddress((void*)0x1000, 0x1000));
-  EXPECT_EQ((void*)0x1000, GetAlignedAddress((void*)0x1FFF, 0x1000));
-  EXPECT_EQ((void*)0x2611000, GetAlignedAddress((void*)0x2611001, 0x1000));
-  EXPECT_EQ((void*)0x2611000, GetAlignedAddress((void*)0x2611FFF, 0x1000));
-  EXPECT_EQ((void*)0xFFFFF000, GetAlignedAddress((void*)0xFFFFFFFF, 0x1000));
+TEST(RoundUpAlignedAddress, 4KAligned) {
+  EXPECT_EQ(0x0, RoundUpAlignedAddress(0x0, 0x1000));
+  EXPECT_EQ(0x1000, RoundUpAlignedAddress(0x1, 0x1000));
+  EXPECT_EQ(0x1000, RoundUpAlignedAddress(0x100, 0x1000));
+  EXPECT_EQ(0x1000, RoundUpAlignedAddress(0x800, 0x1000));
+  EXPECT_EQ(0x1000, RoundUpAlignedAddress(0xFFF, 0x1000));
+  EXPECT_EQ(0x1000, RoundUpAlignedAddress(0x1000, 0x1000));
+  EXPECT_EQ(0x2000, RoundUpAlignedAddress(0x1FFF, 0x1000));
+  EXPECT_EQ(0x2612000, RoundUpAlignedAddress(0x2611001, 0x1000));
+  EXPECT_EQ(0x2612000, RoundUpAlignedAddress(0x2611FFF, 0x1000));
+  EXPECT_EQ(0xFFFFF000, RoundUpAlignedAddress(0xFFFFE001, 0x1000));
 }
 
-TEST(GetAlignedAddressTest, 64KAligned) {
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x0, 0x10000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x50, 0x10000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x100, 0x10000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0x1800, 0x10000));
-  EXPECT_EQ((void*)0x0, GetAlignedAddress((void*)0xFFFF, 0x10000));
-  EXPECT_EQ((void*)0x10000, GetAlignedAddress((void*)0x10000, 0x10000));
-  EXPECT_EQ((void*)0x10000, GetAlignedAddress((void*)0x1FFFF, 0x10000));
-  EXPECT_EQ((void*)0x2610000, GetAlignedAddress((void*)0x2611001, 0x10000));
-  EXPECT_EQ((void*)0xFFFF0000, GetAlignedAddress((void*)0xFFFFFFFF, 0x10000));
+TEST(RoundUpAlignedAddress, 64KAligned) {
+  EXPECT_EQ(0x0, RoundUpAlignedAddress(0x0, 0x10000));
+  EXPECT_EQ(0x10000, RoundUpAlignedAddress(0x1, 0x10000));
+  EXPECT_EQ(0x10000, RoundUpAlignedAddress(0x100, 0x10000));
+  EXPECT_EQ(0x10000, RoundUpAlignedAddress(0x1800, 0x10000));
+  EXPECT_EQ(0x10000, RoundUpAlignedAddress(0xFFFF, 0x10000));
+  EXPECT_EQ(0x10000, RoundUpAlignedAddress(0x10000, 0x10000));
+  EXPECT_EQ(0x20000, RoundUpAlignedAddress(0x1FFFF, 0x10000));
+  EXPECT_EQ(0x2620000, RoundUpAlignedAddress(0x2610001, 0x10000));
+  EXPECT_EQ(0xFFFF0000, RoundUpAlignedAddress(0xFFFE0001, 0x10000));
+}
+
+TEST(RoundDownAlignedAddress, 4KAligned) {
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x0, 0x1000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x50, 0x1000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x100, 0x1000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x800, 0x1000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0xFFF, 0x1000));
+  EXPECT_EQ(0x1000, RoundDownAlignedAddress(0x1000, 0x1000));
+  EXPECT_EQ(0x1000, RoundDownAlignedAddress(0x1FFF, 0x1000));
+  EXPECT_EQ(0x2611000, RoundDownAlignedAddress(0x2611001, 0x1000));
+  EXPECT_EQ(0x2611000, RoundDownAlignedAddress(0x2611FFF, 0x1000));
+  EXPECT_EQ(0xFFFFF000, RoundDownAlignedAddress(0xFFFFFFFF, 0x1000));
+}
+
+TEST(RoundDownAlignedAddress, 64KAligned) {
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x0, 0x10000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x50, 0x10000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x100, 0x10000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0x1800, 0x10000));
+  EXPECT_EQ(0x0, RoundDownAlignedAddress(0xFFFF, 0x10000));
+  EXPECT_EQ(0x10000, RoundDownAlignedAddress(0x10000, 0x10000));
+  EXPECT_EQ(0x10000, RoundDownAlignedAddress(0x1FFFF, 0x10000));
+  EXPECT_EQ(0x2610000, RoundDownAlignedAddress(0x2611001, 0x10000));
+  EXPECT_EQ(0xFFFF0000, RoundDownAlignedAddress(0xFFFFFFFF, 0x10000));
 }
 
 // If the alignment value is invalid, just make sure we don't crash, the
 // results are undefined in such cases.
-TEST(GetAlignedAddressTest, Invalid) {
+TEST(RoundUpAlignedAddress, Invalid) {
   // Alignment is zero
-  GetAlignedAddress((void*)0x12345678, 0x0);
+  RoundUpAlignedAddress(0x12345678, 0x0);
   // Alignment is not a power of two
-  GetAlignedAddress((void*)0x12345678, 0x7);
-  GetAlignedAddress((void*)0x12345678, 0xFFFF);
+  RoundUpAlignedAddress(0x12345678, 0x7);
+  RoundUpAlignedAddress(0x12345678, 0xFFFF);
 }
 
-TEST(GetAlignedSizeTest, 4KAligned) {
-  EXPECT_EQ(0x0, GetAlignedSize((void*)0x0, 0x0, 0x1000));
-  EXPECT_EQ(0x1000, GetAlignedSize((void*)0x0, 0x0FFF, 0x1000));
-  EXPECT_EQ(0x1000, GetAlignedSize((void*)0x0, 0x1000, 0x1000));
-  EXPECT_EQ(0x2000, GetAlignedSize((void*)0x0, 0x1FFF, 0x1000));
-  EXPECT_EQ(0x2000, GetAlignedSize((void*)0x0, 0x2000, 0x1000));
-  EXPECT_EQ(0x0, GetAlignedSize((void*)0x0FFF, 0x0, 0x1000));
-  EXPECT_EQ(0x1000, GetAlignedSize((void*)0x0FFF, 0x1, 0x1000));
-  EXPECT_EQ(0x2000, GetAlignedSize((void*)0x0FFF, 0x1000, 0x1000));
-  EXPECT_EQ(0x1000, GetAlignedSize((void*)0xFFFFF000, 0x1, 0x1000));
-  EXPECT_EQ(0x0, GetAlignedSize((void*)0xFFFFFFFF, 0x0, 0x1000));
-}
-
-TEST(GetAlignedSizeTest, Invalid) {
-  // Overflow
-  EXPECT_EQ(0x0, GetAlignedSize((void*)(~(uintptr_t)0x0), 0x1, 0x1000));
-  EXPECT_EQ(0x0, GetAlignedSize((void*)0x1, (~(size_t)0x0), 0x1000));
+TEST(RoundDownAlignedAddress, Invalid) {
   // Alignment is zero
-  EXPECT_EQ(0x0, GetAlignedSize((void*)0x12345678, 0x4321, 0x0));
+  RoundDownAlignedAddress(0x12345678, 0x0);
+  // Alignment is not a power of two
+  RoundDownAlignedAddress(0x12345678, 0x7);
+  RoundDownAlignedAddress(0x12345678, 0xFFFF);
 }
 
 namespace {
@@ -434,255 +446,128 @@ TEST_F(WrapperTest, WithSignalSafeWrapper) {
   EXPECT_FALSE(deadlocked_.load(std::memory_order_seq_cst));
 }
 
-namespace {
-// A sub-class of DirtyPageTable that exposes the internal storage for test.
-class DirtyPageTableForTest : public DirtyPageTable {
- public:
-  const std::list<uintptr_t>& pages() const { return pages_; }
-  const std::list<uintptr_t>::iterator& current() const { return current_; }
-  size_t stored() const { return stored_; }
+// namespace {
+// // A sub-class of MarkList that exposes the internal storage for test.
+// template <typename T>
+// class MarkListForTest : public MarkList<T> {
+// public:
+// const std::vector<T>& v() const { return v_; }
+// size_t marked_count() const { return marked_count_; }
+// size_t marked_end() const {return marked_end_; }
+// };
+// }  // namespace
+
+template <typename T>
+class MarkListTest : public ::testing::Test {
+ protected:
+  MarkList<T>* CreateMarkList(size_t size) {
+    m_.reset(new MarkList<T>(size));
+    return m_.get();
+  }
+  std::unique_ptr<MarkList<T>> m_;
 };
-}  // namespace
 
-TEST(DirtyPageTableTest, Init) {
-  DirtyPageTableForTest t;
-  EXPECT_EQ(0u, t.stored());
-  EXPECT_EQ(1u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+using MarkListTestTypes = ::testing::Types<uint32_t, uint64_t>;
+
+TYPED_TEST_CASE(MarkListTest, MarkListTestTypes);
+
+TYPED_TEST(MarkListTest, NoSpace) {
+  auto m = this->CreateMarkList(0);
+  EXPECT_FALSE(m->Mark(TypeParam()));
+  size_t marked = 0;
+  m->ForEachMarked([&marked](const TypeParam&) -> bool {
+    marked += 1;
+    return false;
+  });
+  EXPECT_EQ(0, marked);
 }
 
-TEST(DirtyPageTableTest, Reserve) {
-  DirtyPageTableForTest t;
-  t.Reserve(10u);
-  EXPECT_EQ(11u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+TEST(MarkListTestUint32, Mark) {
+  MarkList<uint32_t> m(4);
+  EXPECT_TRUE(m.Mark(1));
+  EXPECT_TRUE(m.Mark(2));
+  EXPECT_TRUE(m.Mark(3));
+  // Mark 3 twice
+  EXPECT_TRUE(m.Mark(3));
+  // 5 should fail.
+  EXPECT_FALSE(m.Mark(5));
 
-  t.Reserve(100u);
-  EXPECT_EQ(111u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+  std::unordered_map<uint32_t, size_t> expected;
+  expected[1] = 1;
+  expected[2] = 1;
+  expected[3] = 2;
 
-  t.Reserve(1000u);
-  EXPECT_EQ(1111u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+  std::unordered_map<uint32_t, size_t> actual;
+  m.ForEachMarked([&actual](const uint32_t& t) -> bool {
+    if (actual.find(t) == actual.end()) {
+      actual[t] = 0;
+    }
+    actual[t] += 1;
+    return false;
+  });
+  EXPECT_THAT(expected, ::testing::ContainerEq(actual));
 }
 
-TEST(DirtyPageTableTest, Record) {
-  DirtyPageTableForTest t;
-  // Record should fail when there is no space available.
-  EXPECT_FALSE(t.Record((void*)0x100));
-  EXPECT_EQ(0u, t.stored());
-  EXPECT_EQ(1u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+TYPED_TEST(MarkListTest, DoNotClear) {
+  auto m = this->CreateMarkList(4);
+  TypeParam item = TypeParam();
+  EXPECT_TRUE(m->Mark(item));
+  EXPECT_TRUE(m->Mark(item));
+  EXPECT_TRUE(m->Mark(item));
 
-  t.Reserve(1u);
-  EXPECT_EQ(0u, t.stored());
-  EXPECT_EQ(2u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+  size_t marked = 0;
+  m->ForEachMarked([&marked](const TypeParam& t) -> bool {
+    marked += 1;
+    return false;
+  });
+  EXPECT_EQ(3u, marked);
 
-  t.Reserve(3u);
-  EXPECT_EQ(0u, t.stored());
-  EXPECT_EQ(5u, t.pages().size());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_NE(t.pages().end(), t.current());
+  EXPECT_TRUE(m->Mark(item));
+  marked = 0;
+  m->ForEachMarked([&marked](const TypeParam& t) -> bool {
+    marked += 1;
+    return false;
+  });
+  EXPECT_EQ(4u, marked);
 
-  EXPECT_TRUE(t.Record((void*)0x200));
-  EXPECT_EQ(1u, t.stored());
-  EXPECT_EQ(5u, t.pages().size());  // Record should not allocate new space.
-  EXPECT_EQ(std::next(t.pages().begin(), 1), t.current());
-
-  EXPECT_TRUE(t.Record((void*)0x300));
-  EXPECT_TRUE(t.Record((void*)0x400));
-  EXPECT_EQ(3u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 3), t.current());
-  EXPECT_EQ(5u, t.pages().size());
-
-  EXPECT_TRUE(t.Record((void*)0x500));
-  EXPECT_EQ(4u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 4), t.current());
-  EXPECT_EQ(5u, t.pages().size());
-
-  EXPECT_FALSE(t.Record((void*)0x600));
-  EXPECT_EQ(4u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 4), t.current());
-  EXPECT_EQ(5u, t.pages().size());
+  EXPECT_FALSE(m->Mark(item));
+  marked = 0;
+  m->ForEachMarked([&marked](const TypeParam& t) -> bool {
+    marked += 1;
+    return false;
+  });
+  EXPECT_EQ(4u, marked);
 }
 
-TEST(DirtyPageTableTest, Has) {
-  DirtyPageTableForTest t;
-  EXPECT_FALSE(t.Has((void*)0x100));
-  EXPECT_FALSE(t.Has((void*)0x200));
-  EXPECT_FALSE(t.Has((void*)0x300));
+TYPED_TEST(MarkListTest, Clear) {
+  auto m = this->CreateMarkList(4);
+  TypeParam item = TypeParam();
+  EXPECT_TRUE(m->Mark(item));
+  EXPECT_TRUE(m->Mark(item));
+  EXPECT_TRUE(m->Mark(item));
+  EXPECT_TRUE(m->Mark(item));
 
-  t.Reserve(3u);
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_TRUE(t.Record((void*)0x200));
-  EXPECT_TRUE(t.Has((void*)0x100));
-  EXPECT_TRUE(t.Has((void*)0x200));
-  EXPECT_FALSE(t.Has((void*)0x300));
+  size_t marked = 0;
+  m->ForEachMarked([&marked](const TypeParam& t) -> bool {
+    marked += 1;
+    return true;
+  });
+  EXPECT_EQ(4u, marked);
 
-  t.DumpAndClearAll();
-  EXPECT_FALSE(t.Has((void*)0x100));
-  EXPECT_FALSE(t.Has((void*)0x200));
-  EXPECT_FALSE(t.Has((void*)0x300));
-}
+  marked = 0;
+  m->ForEachMarked([&marked](const TypeParam& t) -> bool {
+    marked += 1;
+    return true;
+  });
+  EXPECT_EQ(0u, marked);
 
-TEST(DirtyPageTableTest, DumpAndClearAll) {
-  DirtyPageTableForTest t;
-  auto empty_dump = t.DumpAndClearAll();
-  EXPECT_EQ(std::vector<void*>(), empty_dump);
-
-  std::vector<void*> addresses = {(void*)0x100, (void*)0x200, (void*)0x300,
-                                  (void*)0x400, (void*)0x500};
-  t.Reserve(5u);
-  for (auto a : addresses) {
-    EXPECT_TRUE(t.Record(a));
-  }
-  EXPECT_EQ(6u, t.pages().size());
-  EXPECT_EQ(5u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 5), t.current());
-
-  auto dump = t.DumpAndClearAll();
-  EXPECT_EQ(6u, t.pages().size());
-  EXPECT_EQ(0u, t.stored());
-  EXPECT_EQ(t.pages().begin(), t.current());
-  EXPECT_EQ(addresses, dump);
-}
-
-TEST(DirtyPageTableTest, DumpAndClearInRange) {
-  DirtyPageTableForTest t;
-  auto empty_dump = t.DumpAndClearInRange((void*)0x0, 0xFFFFFFFF);
-  EXPECT_EQ(std::vector<void*>(), empty_dump);
-
-  std::vector<void*> addresses = {(void*)0x100, (void*)0x200, (void*)0x300,
-                                  (void*)0x400, (void*)0x500};
-  t.Reserve(5u);
-  for (auto a : addresses) {
-    EXPECT_TRUE(t.Record(a));
-  }
-  EXPECT_EQ(6u, t.pages().size());
-  EXPECT_EQ(5u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 5), t.current());
-
-  // Dump the dirty pages in range: [0x234, 0x447), expect 0x300 and 0x400 are
-  // dumped and removed from the dirty page table.
-  auto dump_start_0x234_size_0x213 = t.DumpAndClearInRange((void*)0x234, 0x213);
-  EXPECT_EQ(6u, t.pages().size());
-  EXPECT_EQ(3u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 3), t.current());
-  EXPECT_THAT(dump_start_0x234_size_0x213, Contains((void*)0x300));
-  EXPECT_THAT(dump_start_0x234_size_0x213, Contains((void*)0x400));
-
-  // Removed pages should not exist.
-  empty_dump = t.DumpAndClearInRange((void*)0x234, 0x213);
-  EXPECT_EQ(std::vector<void*>(), empty_dump);
-
-  // Recording new pages should work
-  EXPECT_TRUE(t.Record((void*)0x600));
-  EXPECT_TRUE(t.Record((void*)0x700));
-  EXPECT_EQ(6u, t.pages().size());
-  EXPECT_EQ(5u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 5), t.current());
-  // Dump the dirty pages in range [0x100, 0x600), expect 0x100, 0x200, 0x500
-  // are dumped and removed from the dirty page table.
-  auto dump_start_0x100_size_0x500 = t.DumpAndClearInRange((void*)0x100, 0x500);
-  EXPECT_EQ(6u, t.pages().size());
-  EXPECT_EQ(2u, t.stored());
-  EXPECT_EQ(std::next(t.pages().begin(), 2), t.current());
-  EXPECT_THAT(dump_start_0x100_size_0x500, Contains((void*)0x100));
-  EXPECT_THAT(dump_start_0x100_size_0x500, Contains((void*)0x200));
-  EXPECT_THAT(dump_start_0x100_size_0x500, Contains((void*)0x500));
-}
-
-TEST(DirtyPageTableTest, RecollectIfPossible) {
-  DirtyPageTableForTest t;
-  // recollect all the spaces.
-  t.Reserve(5u);
-  EXPECT_EQ(6u, t.pages().size());
-  t.RecollectIfPossible(5u);
-  EXPECT_EQ(1u, t.pages().size());
-
-  // cannot recollect any spaces.
-  t.Reserve(5u);
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_EQ(std::next(t.pages().begin(), 5), t.current());
-  EXPECT_EQ(5u, t.stored());
-  EXPECT_EQ(6u, t.pages().size());
-  t.RecollectIfPossible(5u);
-  EXPECT_EQ(std::next(t.pages().begin(), 5), t.current());
-  EXPECT_EQ(5u, t.stored());
-  EXPECT_EQ(6u, t.pages().size());
-
-  // recollect part of the spaces.
-  t.Reserve(5u);
-  EXPECT_TRUE(t.Record((void*)0x100));
-  EXPECT_EQ(std::next(t.pages().begin(), 6), t.current());
-  EXPECT_EQ(6u, t.stored());
-  EXPECT_EQ(11u, t.pages().size());
-  t.RecollectIfPossible(5u);
-  EXPECT_EQ(std::next(t.pages().begin(), 6), t.current());
-  EXPECT_EQ(6u, t.stored());
-  EXPECT_EQ(7u, t.pages().size());
-}
-
-// Test helper function: MemoryTracker::IsInRange()
-TEST(IsInRangesTest, IsInRangesNotPageAligned) {
-  std::map<uintptr_t, size_t> test_ranges;
-  // Empty ranges
-  EXPECT_FALSE(IsInRanges(0x1000, test_ranges));
-
-  // At starting address
-  test_ranges[0x1000] = 0x100;
-  EXPECT_TRUE(IsInRanges(0x1000, test_ranges));
-  // Higher than staring address
-  EXPECT_TRUE(IsInRanges(0x1001, test_ranges));
-  EXPECT_FALSE(IsInRanges(0x1100, test_ranges));
-  // Lower than staring address
-  EXPECT_FALSE(IsInRanges(0x0FFF, test_ranges));
-
-  // Multiple ranges
-  test_ranges[0x208] = 0x10;
-  EXPECT_FALSE(IsInRanges(0x207, test_ranges));
-  EXPECT_TRUE(IsInRanges(0x20A, test_ranges));
-  EXPECT_TRUE(IsInRanges(0x1000, test_ranges));
-  EXPECT_TRUE(IsInRanges(0x1001, test_ranges));
-  EXPECT_FALSE(IsInRanges(0x1100, test_ranges));
-  EXPECT_FALSE(IsInRanges(0xFFF, test_ranges));
-}
-
-TEST(IsInRangesTest, IsInRangesPageAligned) {
-  std::map<uintptr_t, size_t> test_ranges;
-  // Empty ranges
-  EXPECT_FALSE(IsInRanges(0x1000, test_ranges, true));
-
-  // At starting address
-  test_ranges[0x1000] = 0x100;
-  EXPECT_TRUE(IsInRanges(0x1000, test_ranges, true));
-  // Higher than staring address
-  EXPECT_TRUE(IsInRanges(0x1001, test_ranges, true));
-  EXPECT_TRUE(IsInRanges(0x1100, test_ranges, true));
-  EXPECT_FALSE(IsInRanges(0x2100, test_ranges, true));
-  // Lower than staring address
-  EXPECT_FALSE(IsInRanges(0x0FFF, test_ranges, true));
-
-  // Multiple ranges
-  test_ranges[0x208] = 0x10;
-  EXPECT_TRUE(IsInRanges(0x207, test_ranges, true));
-  EXPECT_TRUE(IsInRanges(0x20A, test_ranges, true));
-  EXPECT_TRUE(IsInRanges(0x1000, test_ranges, true));
-  EXPECT_TRUE(IsInRanges(0x1001, test_ranges, true));
-  EXPECT_FALSE(IsInRanges(0x2100, test_ranges, true));
-  EXPECT_TRUE(IsInRanges(0xFFF, test_ranges, true));
-  EXPECT_FALSE(IsInRanges(0x3FFF, test_ranges, true));
+  EXPECT_TRUE(m->Mark(item));
+  marked = 0;
+  m->ForEachMarked([&marked](const TypeParam& t) -> bool {
+    marked += 1;
+    return true;
+  });
+  EXPECT_EQ(1u, marked);
 }
 
 namespace {
@@ -703,90 +588,87 @@ class AlignedMemory {
 
 // Allocates one page of memory, adds the memory range to the memory tracker,
 // touches the allocated memory, the tracker should record the touched page.
-TEST(MemoryTrackerTest, Basic) {
+TEST(MemoryTrackerTest, BasicUse) {
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  const size_t page_size = GetPageSize();
+  AlignedMemory m(page_size, page_size);
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
-  memset(m.mem(), 0xFF, t.page_size());
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
-  EXPECT_EQ(0xFF, *(uint8_t*)m.mem());
+  EXPECT_TRUE(t.TrackRange(m.mem(), page_size));
+
+  memset(m.mem(), 0xFF, page_size);
+  t.HandleAndClearDirtyIntersects(nullptr, std::numeric_limits<size_t>::max(),
+                                  [&m, &page_size](void* addr, size_t size) {
+                                    EXPECT_EQ(m.mem(), addr);
+                                    EXPECT_EQ(0xFF, *(uint8_t*)m.mem());
+                                    EXPECT_EQ(page_size, size);
+                                  });
+
   // Clean up
-  EXPECT_TRUE(t.ClearTrackingRanges());
+  EXPECT_TRUE(t.UntrackRange(m.mem(), page_size));
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
-// Test for GetDirtyPagesInRange and ResetPagesToTrack interfaces.
-TEST(MemoryTrackerTest, GetDirtyPagesInRangeAndResetPagesToTrack) {
+// Test for HandleAndClearDirtyIntersects.
+TEST(MemoryTrackerTest, HandleAndClear) {
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  const size_t page_size = GetPageSize();
+  AlignedMemory m(page_size, page_size);
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
+  EXPECT_TRUE(t.TrackRange(m.mem(), page_size));
 
-  memset(m.mem(), 0xFF, t.page_size());
-  std::vector<void*> dirty_pages =
-      t.GetDirtyPagesInRange(m.mem(), t.page_size());
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
+  memset(m.mem(), 0xAB, page_size);
+  // Touches the same page again with updated value.
+  memset(m.mem(), 0xCD, page_size);
+  size_t num_called = 0;
+  EXPECT_TRUE(t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size,
+      [&m, page_size, &num_called](void* addr, size_t size) {
+        EXPECT_EQ(m.mem(), addr);
+        EXPECT_EQ(0xCD, *(uint8_t*)m.mem());
+        EXPECT_EQ(page_size, size);
+        num_called++;
+      }));
+  // Only one intersect should be found.
+  EXPECT_EQ(1u, num_called);
 
-  // Touches the same page again, this should not be recorded.
-  memset(m.mem(), 0xFF, t.page_size());
-  std::vector<void*> empty_dump =
-      t.GetDirtyPagesInRange(m.mem(), t.page_size());
-  EXPECT_EQ(0u, empty_dump.size());
-
-  EXPECT_TRUE(t.ResetPagesToTrack(dirty_pages));
-  memset(m.mem(), 0xFF, t.page_size());
-  dirty_pages = t.GetDirtyPagesInRange(m.mem(), t.page_size());
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
-
-  EXPECT_TRUE(t.ClearTrackingRanges());
-  ASSERT_TRUE(t.DisableMemoryTracker());
-}
-
-// Test for GetAndResetInRange interface.
-TEST(MemoryTrackerTest, GetAndResetInRange) {
-  MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
-  ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
-
-  // Test getting dirty pages in a range
-  // Exact same range as the tracking page:
-  memset(m.mem(), 0xFF, t.page_size());
-  std::vector<void*> dirty_pages =
-      t.GetAndResetDirtyPagesInRange(m.mem(), t.page_size());
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
-  dirty_pages = t.GetAndResetDirtyPagesInRange(m.mem(), t.page_size());
-  EXPECT_EQ(0u, dirty_pages.size());
   // Starting at a lower address without no overlap:
-  memset(m.mem(), 0xFF, t.page_size());
-  dirty_pages = t.GetAndResetDirtyPagesInRange(
-      VoidPointerAdd(m.mem(), (-1) * t.page_size()), t.page_size());
-  EXPECT_EQ(0u, dirty_pages.size());
-  // Starting at lower address with overlapping with the tracking page:
-  memset(m.mem(), 0xFF, t.page_size());
-  dirty_pages = t.GetAndResetDirtyPagesInRange(
-      VoidPointerAdd(m.mem(), (-1) * t.page_size()), t.page_size() + 1u);
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
-  // Starting at a higher address with overlapping:
-  memset(m.mem(), 0xFF, t.page_size());
-  dirty_pages = t.GetAndResetDirtyPagesInRange(
-      VoidPointerAdd(m.mem(), t.page_size() - 1u), t.page_size());
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
-  // Starting at a higher address without overlapping:
-  memset(m.mem(), 0xFF, t.page_size());
-  dirty_pages = t.GetAndResetDirtyPagesInRange(
-      VoidPointerAdd(m.mem(), t.page_size()), t.page_size());
-  EXPECT_EQ(0u, dirty_pages.size());
+  memset(m.mem(), 0x12, page_size);
+  t.HandleAndClearDirtyIntersects(
+      VoidPointerAdd(m.mem(), (-1) * page_size), page_size,
+      [&num_called](void*, size_t) { num_called++; });
+  EXPECT_EQ(1u, num_called);
 
-  EXPECT_TRUE(t.ClearTrackingRanges());
+  // Starting at lower address with overlapping with the tracking page:
+  memset(m.mem(), 0x34, page_size);
+  t.HandleAndClearDirtyIntersects(VoidPointerAdd(m.mem(), (-1) * page_size),
+                                  page_size + 1u,
+                                  [&num_called, &m](void* addr, size_t) {
+                                    EXPECT_EQ(m.mem(), addr);
+                                    EXPECT_EQ(0x34, *(uint8_t*)m.mem());
+                                    num_called++;
+                                  });
+  EXPECT_EQ(2u, num_called);
+
+  // Starting at a higher address with overlapping:
+  memset(m.mem(), 0x56, page_size);
+  t.HandleAndClearDirtyIntersects(VoidPointerAdd(m.mem(), page_size - 1u),
+                                  page_size,
+                                  [&num_called, &m](void* addr, size_t) {
+                                    EXPECT_EQ(m.mem(), addr);
+                                    EXPECT_EQ(0x56, *(uint8_t*)m.mem());
+                                    num_called++;
+                                  });
+  EXPECT_EQ(3u, num_called);
+
+  // Starting at a higher address without overlapping:
+  memset(m.mem(), 0x78, page_size);
+  t.HandleAndClearDirtyIntersects(
+      VoidPointerAdd(m.mem(), page_size), page_size,
+      [&num_called](void*, size_t) { num_called++; });
+
+  EXPECT_EQ(3u, num_called);
+
+  EXPECT_TRUE(t.UntrackRange(m.mem(), page_size));
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
@@ -795,16 +677,18 @@ TEST(MemoryTrackerTest, GetAndResetInRange) {
 // anything.
 TEST(MemoryTrackerTest, NoTrackingMemory) {
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  const size_t page_size = GetPageSize();
+  AlignedMemory m(page_size, page_size);
   // Still register the segfault handler, even though it should not be
   // triggered.
   ASSERT_TRUE(t.EnableMemoryTracker());
+  memset(m.mem(), 0xFF, page_size);
 
-  memset(m.mem(), 0xFF, t.page_size());
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
+  size_t num_called = 0;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size, [&num_called](void*, size_t) { num_called++; });
+  EXPECT_EQ(0u, num_called);
 
-  EXPECT_EQ(0u, dirty_pages.size());
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
@@ -813,26 +697,33 @@ TEST(MemoryTrackerTest, NoTrackingMemory) {
 // tracker should have just one record of the touched page.
 TEST(MemoryTrackerTest, MultithreadSamePage) {
   MemoryTracker t;
+  const size_t page_size = GetPageSize();
   // allocates one pages.
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
   ASSERT_TRUE(t.EnableMemoryTracker());
 
-  std::thread t1([&t, &m]() {
+  std::thread t1([&t, &m, page_size]() {
     // Adding tracking range may return false
-    t.AddTrackingRange(m.mem(), t.page_size());
-    memset(m.mem(), 0xFF, t.page_size());
+    t.TrackRange(m.mem(), page_size);
+    memset(m.mem(), 0xFF, page_size);
   });
-  std::thread t2([&t, &m]() {
+  std::thread t2([&t, &m, page_size]() {
     // Adding tracking range may return false
-    t.AddTrackingRange(m.mem(), t.page_size());
-    memset(m.mem(), 0xFF, t.page_size());
+    t.TrackRange(m.mem(), page_size);
+    memset(m.mem(), 0xFF, page_size);
   });
   t1.join();
   t2.join();
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
-  EXPECT_EQ(1u, dirty_pages.size());
-  EXPECT_EQ(m.mem(), dirty_pages[0]);
+  size_t num_called = 0;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size,
+      [&num_called, &m, page_size](void* addr, size_t size) {
+        EXPECT_EQ(m.mem(), addr);
+        EXPECT_EQ(page_size, size);
+        num_called++;
+      });
+  EXPECT_EQ(1u, num_called);
+
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
@@ -841,29 +732,41 @@ TEST(MemoryTrackerTest, MultithreadSamePage) {
 // pages.
 TEST(MemoryTrackerTest, MultithreadDifferentPage) {
   MemoryTracker t;
+  const size_t page_size = GetPageSize();
   // allocates two pages.
-  AlignedMemory m(t.page_size(), t.page_size() * 2);
+  AlignedMemory m(page_size, page_size * 2);
   void* first_page = m.mem();
-  void* second_page = VoidPointerAdd(m.mem(), t.page_size());
+  void* second_page = VoidPointerAdd(m.mem(), page_size);
   ASSERT_TRUE(t.EnableMemoryTracker());
 
-  std::thread t1([&t, first_page]() {
+  std::thread t1([&t, first_page, page_size]() {
     // touches the first page.
-    EXPECT_TRUE(t.AddTrackingRange(first_page, t.page_size()));
-    memset(first_page, 0xFF, t.page_size());
+    EXPECT_TRUE(t.TrackRange(first_page, page_size));
+    memset(first_page, 0x12, page_size);
   });
-  std::thread t2([&t, second_page]() {
+  std::thread t2([&t, second_page, page_size]() {
     // touches the second page.
-    EXPECT_TRUE(t.AddTrackingRange(second_page, t.page_size()));
-    memset(second_page, 0xFF, t.page_size());
+    EXPECT_TRUE(t.TrackRange(second_page, page_size));
+    memset(second_page, 0x34, page_size);
   });
   t1.join();
   t2.join();
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
-  EXPECT_EQ(2u, dirty_pages.size());
-  EXPECT_THAT(dirty_pages, Contains(first_page));
-  EXPECT_THAT(dirty_pages, Contains(second_page));
+  uintptr_t dirty_start = std::numeric_limits<uintptr_t>::max();
+  uintptr_t dirty_end = 0;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size * 2u,
+      [&dirty_start, &dirty_end](void* addr, size_t size) {
+        uintptr_t casted_addr = reinterpret_cast<uintptr_t>(addr);
+        if (casted_addr < dirty_start) {
+          dirty_start = casted_addr;
+        }
+        if (casted_addr + size > dirty_end) {
+          dirty_end = casted_addr + size;
+        }
+      });
+
+  EXPECT_EQ(m.mem(), (void*)dirty_start);
+  EXPECT_EQ(2u * page_size, dirty_end - dirty_start);
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
 
@@ -873,18 +776,22 @@ TEST(MemoryTrackerTest, MultithreadDifferentPage) {
 TEST(MemoryTrackerTest, UnalignedRangeTrackingMemory) {
   const size_t start_offset = 128;
   const size_t range_size = 97;
+  const size_t page_size = GetPageSize();
 
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
 
   void* range_start = VoidPointerAdd(m.mem(), start_offset);
 
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(range_start, range_size));
+  EXPECT_TRUE(t.TrackRange(range_start, range_size));
   memset(range_start, 0xFF, range_size);
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
-
+  std::vector<void*> dirty_pages;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size, [&dirty_pages, page_size](void* addr, size_t size) {
+        dirty_pages.push_back(addr);
+        EXPECT_EQ(page_size, size);
+      });
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
   ASSERT_TRUE(t.DisableMemoryTracker());
@@ -917,8 +824,9 @@ class SilentSignal {
 // will be set to read-write before return.
 template <>
 void SilentSignal<SIGSEGV>::IgnoreSignal(int, siginfo_t* info, void*) {
-  void* page_start = GetAlignedAddress(info->si_addr, getpagesize());
-  mprotect(page_start, getpagesize(), PROT_READ | PROT_WRITE);
+  void* page_start = (void*)RoundDownAlignedAddress(
+      reinterpret_cast<uintptr_t>(info->si_addr), GetPageSize());
+  mprotect(page_start, GetPageSize(), PROT_READ | PROT_WRITE);
 }
 }  // namespace
 
@@ -927,9 +835,10 @@ TEST(MemoryTrackerTest, RegisterAndUnregister) {
   SilentSignal<SIGTRAP> st;
   ASSERT_TRUE(st.succeeded());
   ASSERT_TRUE(ss.succeeded());
+  const size_t page_size = GetPageSize();
 
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
   ASSERT_TRUE(t.EnableMemoryTracker());
   // A second call to register segfault handler should return true.
   EXPECT_TRUE(t.EnableMemoryTracker());
@@ -938,15 +847,17 @@ TEST(MemoryTrackerTest, RegisterAndUnregister) {
   std::thread another_thread([&t]() { EXPECT_TRUE(t.EnableMemoryTracker()); });
   another_thread.join();
 
-  EXPECT_TRUE(t.AddTrackingRange(m.mem(), t.page_size()));
+  EXPECT_TRUE(t.TrackRange(m.mem(), page_size));
   EXPECT_TRUE(t.DisableMemoryTracker());
   // Although multiple calls to register segfault handler are made, the handler
   // should only be set once, and by one call to unregister segfault handler,
   // the disposition of segfault signal should be recovered to the previous
   // handler.
-  memset(m.mem(), 0xFF, t.page_size());
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_EQ(0u, dirty_pages.size());
+  memset(m.mem(), 0xFF, page_size);
+  size_t num_called = 0;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size, [&num_called](void*, size_t) { num_called++; });
+  EXPECT_EQ(0u, num_called);
 }
 
 // Allocates one page of memory, add a memory range to the tracker, add another
@@ -960,13 +871,14 @@ TEST(MemoryTrackerTest, OverlappedTrackingRange) {
 
   const size_t range_size = 2048;
   const size_t second_range_offset = 1024;
+  const size_t page_size = GetPageSize();
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
 
   void* second_range_start = VoidPointerAdd(m.mem(), second_range_offset);
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(m.mem(), range_size));
-  EXPECT_FALSE(t.AddTrackingRange(second_range_start, range_size));
+  EXPECT_TRUE(t.TrackRange(m.mem(), range_size));
+  EXPECT_FALSE(t.TrackRange(second_range_start, range_size));
 
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
@@ -982,20 +894,26 @@ TEST(MemoryTrackerTest, UnalignedRangeTrackingHigherAddress) {
 
   const size_t start_offset = 128;
   const size_t range_size = 97;
+  const size_t page_size = GetPageSize();
 
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
 
   void* range_start = VoidPointerAdd(m.mem(), start_offset);
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(range_start, range_size));
+  EXPECT_TRUE(t.TrackRange(range_start, range_size));
 
   void* touch_start = VoidPointerAdd(range_start, range_size);
   const size_t touch_size = range_size;
   memset(touch_start, 0xFF, touch_size);
 
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
+  std::vector<void*> dirty_pages;
+  t.HandleAndClearDirtyIntersects(
+      range_start, range_size,
+      [&dirty_pages, page_size](void* addr, size_t size) {
+        dirty_pages.push_back(addr);
+        EXPECT_THAT(page_size, size);
+      });
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
@@ -1011,21 +929,26 @@ TEST(MemoryTrackerTest, UnalignedRangeNotTrackingLowerAddress) {
 
   const size_t start_offset = 128;
   const size_t range_size = 97;
+  const size_t page_size = GetPageSize();
 
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
 
   void* range_start = VoidPointerAdd(m.mem(), start_offset);
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(range_start, range_size));
+  EXPECT_TRUE(t.TrackRange(range_start, range_size));
 
   void* touch_start = reinterpret_cast<void*>(
       reinterpret_cast<uintptr_t>(range_start) - range_size);
   const size_t touch_size = range_size;
   memset(touch_start, 0xFF, touch_size);
 
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
+  std::vector<void*> dirty_pages;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size, [&dirty_pages, page_size](void* addr, size_t size) {
+        dirty_pages.push_back(addr);
+        EXPECT_THAT(page_size, size);
+      });
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
@@ -1040,25 +963,30 @@ TEST(MemoryTrackerTest, RemoveOneRangeShouldNotAffectOthersInSamePage) {
 
   const size_t first_offset = 128;
   const size_t first_size = 97;
+  const size_t page_size = GetPageSize();
 
   const size_t second_offset = 1024;
   const size_t second_size = 97;
 
   MemoryTracker t;
-  AlignedMemory m(t.page_size(), t.page_size());
+  AlignedMemory m(page_size, page_size);
 
   void* first_start = VoidPointerAdd(m.mem(), first_offset);
   void* second_start = VoidPointerAdd(m.mem(), second_offset);
   ASSERT_TRUE(t.EnableMemoryTracker());
-  EXPECT_TRUE(t.AddTrackingRange(first_start, first_size));
-  EXPECT_TRUE(t.AddTrackingRange(second_start, second_size));
+  EXPECT_TRUE(t.TrackRange(first_start, first_size));
+  EXPECT_TRUE(t.TrackRange(second_start, second_size));
 
-  EXPECT_TRUE(t.RemoveTrackingRange(first_start, first_size));
+  EXPECT_TRUE(t.UntrackRange(first_start, first_size));
 
   memset(second_start, 0xFF, second_size);
 
-  std::vector<void*> dirty_pages = t.GetAndResetAllDirtyPages();
-  EXPECT_TRUE(t.ClearTrackingRanges());
+  std::vector<void*> dirty_pages;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), page_size, [&dirty_pages, page_size](void* addr, size_t size) {
+        dirty_pages.push_back(addr);
+        EXPECT_THAT(page_size, size);
+      });
 
   EXPECT_EQ(1u, dirty_pages.size());
   EXPECT_EQ(m.mem(), dirty_pages[0]);
@@ -1068,9 +996,9 @@ TEST(MemoryTrackerTest, RemoveOneRangeShouldNotAffectOthersInSamePage) {
 // Allocates a lot of pages and tracking/touches them in multiple threads.
 TEST(MemoryTrackerTest, ManyPagesMultithread) {
   const size_t num_threads = 128;
-  const size_t num_pages_per_thread = 4;
+  const size_t num_pages_per_thread = 16;
   const size_t num_pages = num_pages_per_thread * num_threads;
-  const size_t page_size = getpagesize();
+  const size_t page_size = GetPageSize();
 
   MemoryTracker t;
   ASSERT_TRUE(t.EnableMemoryTracker());
@@ -1081,20 +1009,30 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
   threads.reserve(num_threads);
   // Every thread is responsible for 4 continuous pages.
   for (uint32_t ti = 0; ti < num_threads; ti++) {
-    threads.emplace_back(std::thread([mem_start_addr, num_pages_per_thread, ti,
-                                      page_size, &t]() {
-      size_t thread_range_size = num_pages_per_thread * page_size;
-      void* thread_range_start =
-          VoidPointerAdd(mem_start_addr, ti * thread_range_size);
-      EXPECT_TRUE(t.AddTrackingRange(thread_range_start, thread_range_size));
-      memset(thread_range_start, 0xFF, thread_range_size);
-    }));
+    threads.emplace_back(std::thread(
+        [mem_start_addr, num_pages_per_thread, ti, page_size, &t]() {
+          size_t thread_range_size = num_pages_per_thread * page_size;
+          void* thread_range_start =
+              VoidPointerAdd(mem_start_addr, ti * thread_range_size);
+          EXPECT_TRUE(t.TrackRange(thread_range_start, thread_range_size));
+          memset(thread_range_start, 0xFF, thread_range_size);
+        }));
   }
   std::for_each(threads.begin(), threads.end(),
                 [](std::thread& t) { t.join(); });
 
   // All the pages should have been recorded.
-  auto dirty_pages = t.GetAndResetAllDirtyPages();
+  std::vector<void*> dirty_pages;
+  t.HandleAndClearDirtyIntersects(
+      m.mem(), num_pages * page_size,
+      [&dirty_pages, page_size](void* addr, size_t size) {
+        uintptr_t casted_addr = reinterpret_cast<uintptr_t>(addr);
+        for (size_t i = 0; i < size / GetPageSize(); i++) {
+          dirty_pages.push_back(
+              reinterpret_cast<void*>(casted_addr + i * GetPageSize()));
+        }
+        EXPECT_EQ(0u, size % GetPageSize());
+      });
   EXPECT_EQ(num_pages, dirty_pages.size());
   for (uint32_t i = 0; i < num_pages; i++) {
     void* page = VoidPointerAdd(mem_start_addr, i * page_size);
@@ -1103,7 +1041,6 @@ TEST(MemoryTrackerTest, ManyPagesMultithread) {
 
   ASSERT_TRUE(t.DisableMemoryTracker());
 }
-
 }  // namespace test
 }  // namespace track_memory
 }  // namespace gapii

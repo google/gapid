@@ -37,7 +37,7 @@ inline bool set_protection(void* p, size_t size, PageProtections prot) {
                                    : (prot == PageProtections::kReadWrite)
                                          ? PROT_READ | PROT_WRITE
                                          : 0;
-  return mprotect(p, size, protections);
+  return mprotect(p, size, protections) == 0;
 }
 
 // SignalBlocker blocks the specified signal when it is constructed, and
