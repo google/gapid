@@ -274,22 +274,6 @@ import (
     return out
   }
 
-  // Clone makes a deep copy of this static array, using ϟa for allocations.
-  func (m {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
-    out := {{$name}}{
-      data: &[{{$ty.Size}}]{{$el}}{},
-      refID: ϟapi.NewRefID(),
-    }
-    if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
-      ϟw.OnSet(ϟctx, out, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
-    }
-    for i := 0; i < {{$ty.Size}}; i++ {
-      out.Setʷ(ϟctx, ϟw, i, {{Template "Clone" "Type" $ty.ValueType "Src" "m.Getʷ(ϟctx, ϟw, i)" "Watch" true}})
-    }
-    return out
-  }
-
   func (c {{$name}}) RefID() ϟapi.RefID { return c.refID }
 {{end}}
 
@@ -562,32 +546,6 @@ import (
     return cloned
   }
 
-  // Clone makes a deep copy of this map.
-  func (m {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
-    if existing, ok := ϟseen[m.refID]; ok {
-      return existing.({{$name}})
-    }
-    if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
-    }
-    out := make(map[{{$key}}]{{$value}}, len(*m.Map))
-    ϟseen[m.Map] = &out
-    cloned := {{$name}}{
-      Map: &out,
-      a: ϟa,
-      refID: ϟapi.NewRefID(),
-    }
-    ϟseen[m.refID] = cloned
-    for k, v := range *m.Map {
-      out[{{Template "Clone" "Type" $.KeyType "Src" "k" "Watch" true}}] =§
-        {{Template "Clone" "Type" $.ValueType "Src" "v" "Watch" true}}
-    }
-    if ϟw != nil {
-      ϟw.OnSet(ϟctx, cloned, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
-    }
-    return cloned
-  }
-
   func (m {{$name}}) RefID() ϟapi.RefID { return m.refID }
 {{end}}
 
@@ -654,30 +612,6 @@ import (
       {{$name := $f.Name | GoPrivateName}}
       cloned.data.{{$name}} = c.data.{{Template "Clone" "Type" $f.Type "Src" $name}}
     {{end}}
-    return cloned
-  }
-
-  // Clone makes a deep copy of this reference.
-  func (c {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
-    if c.IsNil() { return Nil{{$name}} }
-    if existing, ok := ϟseen[c.refID]; ok {
-      return existing.({{$name}})
-    }
-    if ϟw != nil {
-      ϟw.OnGet(ϟctx, c, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
-    }
-    cloned := {{$name}}{
-      data: &{{$data}}{},
-      refID: ϟapi.NewRefID(),
-    }
-    ϟseen[c.refID] = cloned
-    {{range $f := $.To.Fields}}
-      {{$name := $f.Name | GoPrivateName}}
-      cloned.data.{{$name}} = c.data.{{Template "Clone" "Type" $f.Type "Src" $name "Watch" true}}
-    {{end}}
-    if ϟw != nil {
-      ϟw.OnSet(ϟctx, cloned, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
-    }
     return cloned
   }
 
@@ -1587,27 +1521,6 @@ import (
     return cloned
   }
 
-  // Clone makes a deep copy of this class.
-  func (c {{$name}}) Cloneʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟa arena.Arena, ϟseen ϟapi.CloneContext) {{$name}} {
-    if ϟw != nil {
-      ϟw.OnGet(ϟctx, c, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
-    }
-    cloned := {{$name}}{
-      data: &{{$data}}{
-        {{range $f := $.Fields}}
-          {{$name := $f.Name | GoPrivateName}}
-          {{$name}}: c.data.{{Template "Clone" "Type" $f.Type "Src" $name "Watch" true}},
-        {{end}}
-      },
-      a: ϟa,
-      refID: ϟapi.NewRefID(),
-    }
-    if ϟw != nil {
-      ϟw.OnSet(ϟctx, cloned, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟapi.NilReference{})
-    }
-    return cloned
-  }
-
   func (a {{$name}}) RefID() ϟapi.RefID { return a.refID }
 {{end}}
 
@@ -2169,13 +2082,13 @@ import (
   {{AssertType $.Type "Type"}}
 
   {{     if IsPseudonym     $.Type}}{{Template "Clone" "Type" $.Type.To "Src" $.Src}}
-  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
-  {{else if IsMap           $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
-  {{else if IsClass         $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
+  {{else if IsStaticArray   $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
+  {{else if IsMap           $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
+  {{else if IsClass         $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
   {{else if IsEnum          $.Type}}{{$.Src}}
   {{else if IsPointer       $.Type}}{{$.Src}}
   {{else if IsSlice         $.Type}}{{$.Src}}
-  {{else if IsReference     $.Type}}{{$.Src}}.Clone{{if $.Watch}}ʷ(ϟctx, ϟw, {{else}}({{end}}ϟa, ϟseen)
+  {{else if IsReference     $.Type}}{{$.Src}}.Clone(ϟa, ϟseen)
   {{else if IsBool          $.Type}}{{$.Src}}
   {{else if IsInt           $.Type}}{{$.Src}}
   {{else if IsUint          $.Type}}{{$.Src}}
