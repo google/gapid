@@ -210,53 +210,53 @@ enum SemaphoreUpdate {
 }
 
 @internal class BufferCommands {
-  dense_map!(u32, ref!vkCmdBindPipelineArgs)           vkCmdBindPipeline
-  dense_map!(u32, ref!vkCmdSetViewportArgs)            vkCmdSetViewport
-  dense_map!(u32, ref!vkCmdSetScissorArgs)             vkCmdSetScissor
-  dense_map!(u32, ref!vkCmdSetLineWidthArgs)           vkCmdSetLineWidth
-  dense_map!(u32, ref!vkCmdSetDepthBiasArgs)           vkCmdSetDepthBias
-  dense_map!(u32, ref!vkCmdSetBlendConstantsArgs)      vkCmdSetBlendConstants
-  dense_map!(u32, ref!vkCmdSetDepthBoundsArgs)         vkCmdSetDepthBounds
-  dense_map!(u32, ref!vkCmdSetStencilCompareMaskArgs)  vkCmdSetStencilCompareMask
-  dense_map!(u32, ref!vkCmdSetStencilWriteMaskArgs)    vkCmdSetStencilWriteMask
-  dense_map!(u32, ref!vkCmdSetStencilReferenceArgs)    vkCmdSetStencilReference
-  dense_map!(u32, ref!vkCmdBindDescriptorSetsArgs)     vkCmdBindDescriptorSets
-  dense_map!(u32, ref!vkCmdBindIndexBufferArgs)        vkCmdBindIndexBuffer
-  dense_map!(u32, ref!vkCmdBindVertexBuffersArgs)      vkCmdBindVertexBuffers
-  dense_map!(u32, ref!vkCmdDrawArgs)                   vkCmdDraw
-  dense_map!(u32, ref!vkCmdDrawIndexedArgs)            vkCmdDrawIndexed
-  dense_map!(u32, ref!vkCmdDrawIndirectArgs)           vkCmdDrawIndirect
-  dense_map!(u32, ref!vkCmdDrawIndexedIndirectArgs)    vkCmdDrawIndexedIndirect
-  dense_map!(u32, ref!vkCmdDispatchArgs)               vkCmdDispatch
-  dense_map!(u32, ref!vkCmdDispatchIndirectArgs)       vkCmdDispatchIndirect
-  dense_map!(u32, ref!vkCmdCopyBufferArgs)             vkCmdCopyBuffer
-  dense_map!(u32, ref!vkCmdCopyImageArgs)              vkCmdCopyImage
-  dense_map!(u32, ref!vkCmdBlitImageArgs)              vkCmdBlitImage
-  dense_map!(u32, ref!vkCmdCopyBufferToImageArgs)      vkCmdCopyBufferToImage
-  dense_map!(u32, ref!vkCmdCopyImageToBufferArgs)      vkCmdCopyImageToBuffer
-  dense_map!(u32, ref!vkCmdUpdateBufferArgs)           vkCmdUpdateBuffer
-  dense_map!(u32, ref!vkCmdFillBufferArgs)             vkCmdFillBuffer
-  dense_map!(u32, ref!vkCmdClearColorImageArgs)        vkCmdClearColorImage
-  dense_map!(u32, ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
-  dense_map!(u32, ref!vkCmdClearAttachmentsArgs)       vkCmdClearAttachments
-  dense_map!(u32, ref!vkCmdResolveImageArgs)           vkCmdResolveImage
-  dense_map!(u32, ref!vkCmdSetEventArgs)               vkCmdSetEvent
-  dense_map!(u32, ref!vkCmdResetEventArgs)             vkCmdResetEvent
-  dense_map!(u32, ref!vkCmdWaitEventsArgs)             vkCmdWaitEvents
-  dense_map!(u32, ref!vkCmdPipelineBarrierArgs)        vkCmdPipelineBarrier
-  dense_map!(u32, ref!vkCmdBeginQueryArgs)             vkCmdBeginQuery
-  dense_map!(u32, ref!vkCmdEndQueryArgs)               vkCmdEndQuery
-  dense_map!(u32, ref!vkCmdResetQueryPoolArgs)         vkCmdResetQueryPool
-  dense_map!(u32, ref!vkCmdWriteTimestampArgs)         vkCmdWriteTimestamp
-  dense_map!(u32, ref!vkCmdCopyQueryPoolResultsArgs)   vkCmdCopyQueryPoolResults
-  dense_map!(u32, ref!vkCmdPushConstantsArgs)          vkCmdPushConstants
-  dense_map!(u32, ref!vkCmdBeginRenderPassArgs)        vkCmdBeginRenderPass
-  dense_map!(u32, ref!vkCmdNextSubpassArgs)            vkCmdNextSubpass
-  dense_map!(u32, ref!vkCmdEndRenderPassArgs)          vkCmdEndRenderPass
-  dense_map!(u32, ref!vkCmdExecuteCommandsArgs)        vkCmdExecuteCommands
-  dense_map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
-  dense_map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
-  dense_map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdBindPipelineArgs)           vkCmdBindPipeline
+  @untrackedMap dense_map!(u32, ref!vkCmdSetViewportArgs)            vkCmdSetViewport
+  @untrackedMap dense_map!(u32, ref!vkCmdSetScissorArgs)             vkCmdSetScissor
+  @untrackedMap dense_map!(u32, ref!vkCmdSetLineWidthArgs)           vkCmdSetLineWidth
+  @untrackedMap dense_map!(u32, ref!vkCmdSetDepthBiasArgs)           vkCmdSetDepthBias
+  @untrackedMap dense_map!(u32, ref!vkCmdSetBlendConstantsArgs)      vkCmdSetBlendConstants
+  @untrackedMap dense_map!(u32, ref!vkCmdSetDepthBoundsArgs)         vkCmdSetDepthBounds
+  @untrackedMap dense_map!(u32, ref!vkCmdSetStencilCompareMaskArgs)  vkCmdSetStencilCompareMask
+  @untrackedMap dense_map!(u32, ref!vkCmdSetStencilWriteMaskArgs)    vkCmdSetStencilWriteMask
+  @untrackedMap dense_map!(u32, ref!vkCmdSetStencilReferenceArgs)    vkCmdSetStencilReference
+  @untrackedMap dense_map!(u32, ref!vkCmdBindDescriptorSetsArgs)     vkCmdBindDescriptorSets
+  @untrackedMap dense_map!(u32, ref!vkCmdBindIndexBufferArgs)        vkCmdBindIndexBuffer
+  @untrackedMap dense_map!(u32, ref!vkCmdBindVertexBuffersArgs)      vkCmdBindVertexBuffers
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawArgs)                   vkCmdDraw
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndexedArgs)            vkCmdDrawIndexed
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndirectArgs)           vkCmdDrawIndirect
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndexedIndirectArgs)    vkCmdDrawIndexedIndirect
+  @untrackedMap dense_map!(u32, ref!vkCmdDispatchArgs)               vkCmdDispatch
+  @untrackedMap dense_map!(u32, ref!vkCmdDispatchIndirectArgs)       vkCmdDispatchIndirect
+  @untrackedMap dense_map!(u32, ref!vkCmdCopyBufferArgs)             vkCmdCopyBuffer
+  @untrackedMap dense_map!(u32, ref!vkCmdCopyImageArgs)              vkCmdCopyImage
+  @untrackedMap dense_map!(u32, ref!vkCmdBlitImageArgs)              vkCmdBlitImage
+  @untrackedMap dense_map!(u32, ref!vkCmdCopyBufferToImageArgs)      vkCmdCopyBufferToImage
+  @untrackedMap dense_map!(u32, ref!vkCmdCopyImageToBufferArgs)      vkCmdCopyImageToBuffer
+  @untrackedMap dense_map!(u32, ref!vkCmdUpdateBufferArgs)           vkCmdUpdateBuffer
+  @untrackedMap dense_map!(u32, ref!vkCmdFillBufferArgs)             vkCmdFillBuffer
+  @untrackedMap dense_map!(u32, ref!vkCmdClearColorImageArgs)        vkCmdClearColorImage
+  @untrackedMap dense_map!(u32, ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
+  @untrackedMap dense_map!(u32, ref!vkCmdClearAttachmentsArgs)       vkCmdClearAttachments
+  @untrackedMap dense_map!(u32, ref!vkCmdResolveImageArgs)           vkCmdResolveImage
+  @untrackedMap dense_map!(u32, ref!vkCmdSetEventArgs)               vkCmdSetEvent
+  @untrackedMap dense_map!(u32, ref!vkCmdResetEventArgs)             vkCmdResetEvent
+  @untrackedMap dense_map!(u32, ref!vkCmdWaitEventsArgs)             vkCmdWaitEvents
+  @untrackedMap dense_map!(u32, ref!vkCmdPipelineBarrierArgs)        vkCmdPipelineBarrier
+  @untrackedMap dense_map!(u32, ref!vkCmdBeginQueryArgs)             vkCmdBeginQuery
+  @untrackedMap dense_map!(u32, ref!vkCmdEndQueryArgs)               vkCmdEndQuery
+  @untrackedMap dense_map!(u32, ref!vkCmdResetQueryPoolArgs)         vkCmdResetQueryPool
+  @untrackedMap dense_map!(u32, ref!vkCmdWriteTimestampArgs)         vkCmdWriteTimestamp
+  @untrackedMap dense_map!(u32, ref!vkCmdCopyQueryPoolResultsArgs)   vkCmdCopyQueryPoolResults
+  @untrackedMap dense_map!(u32, ref!vkCmdPushConstantsArgs)          vkCmdPushConstants
+  @untrackedMap dense_map!(u32, ref!vkCmdBeginRenderPassArgs)        vkCmdBeginRenderPass
+  @untrackedMap dense_map!(u32, ref!vkCmdNextSubpassArgs)            vkCmdNextSubpass
+  @untrackedMap dense_map!(u32, ref!vkCmdEndRenderPassArgs)          vkCmdEndRenderPass
+  @untrackedMap dense_map!(u32, ref!vkCmdExecuteCommandsArgs)        vkCmdExecuteCommands
+  @untrackedMap dense_map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
 }
 
 @internal class CommandBufferObject {
@@ -265,8 +265,9 @@ enum SemaphoreUpdate {
   @unused VkCommandBuffer                 VulkanHandle
   @unused VkCommandPool                   Pool
   @unused VkCommandBufferLevel            Level
-  @unused dense_map!(u32, ref!CommandReference) CommandReferences
-  @unused BufferCommands                  BufferCommands
+  @untrackedMap @unused
+  dense_map!(u32, ref!CommandReference)   CommandReferences
+  @untracked @unused BufferCommands       BufferCommands
   @unused ref!CommandBufferBegin          BeginInfo
   @unused ref!VulkanDebugMarkerInfo       DebugInfo
 
