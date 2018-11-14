@@ -838,6 +838,7 @@ class vkCmdClearAttachmentsArgs {
 }
 
 sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
+  useRenderPass()
 }
 
 @threadSafety("app")

@@ -147,6 +147,8 @@ cmd void vkCmdBindVertexBuffers(
 
 
 sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
+  useRenderPass()
+
   readWriteMemoryInBoundGraphicsDescriptorSets()
   readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
@@ -186,6 +188,8 @@ vkCmdDrawIndexedArgs {
 }
 
 sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
+  useRenderPass()
+
   // Loop through the index buffer, and find the low and high
   // vertices. Then read all of the applicable vertex buffers.
   lastDraw := lastDrawInfo()
@@ -247,6 +251,8 @@ cmd void vkCmdDrawIndexed(
 }
 
 sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
+  useRenderPass()
+
   if draw.DrawCount > 0 {
     readWriteMemoryInBoundGraphicsDescriptorSets()
     command_size := as!VkDeviceSize(16)
@@ -291,6 +297,8 @@ cmd void vkCmdDrawIndirect(
 }
 
 sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
+  useRenderPass()
+
   if draw.DrawCount > 0 {
     readWriteMemoryInBoundGraphicsDescriptorSets()
     command_size := as!VkDeviceSize(16)
