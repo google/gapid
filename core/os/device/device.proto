@@ -120,6 +120,8 @@ message OS {
   int32 minor_version = 5;
   // The point version of the OS.
   int32 point_version = 6;
+  // The API version of the OS.
+  int32 API_version = 7;
 }
 
 // CPU represents a specific central processing unit product.
