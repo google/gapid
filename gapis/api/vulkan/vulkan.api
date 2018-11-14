@@ -291,6 +291,10 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   VkQueue Queue
 }
 
+@internal class PushConstantInfo {
+  @hidden @nobox @internal u8[]     Data
+}
+
 enum LastSubmissionType {
   SUBMIT  = 0
   PRESENT = 1
@@ -342,6 +346,7 @@ enum LastSubmissionType {
 @hidden @serialize UsedDescriptorSets                   ProcessedDescriptorSets
 
 @untrackedMap map!(VkQueue, ref!DynamicPipelineState) LastDynamicPipelineStates
+@untrackedMap map!(VkQueue, ref!PushConstantInfo)     LastPushConstants
 
 @internal class ProcessedDescriptorSet {
   map!(u32, map!(u32, map!(VkDeviceSize, bool))) bufferOffsets
@@ -399,6 +404,22 @@ sub ref!ComputeInfo lastComputeInfo() {
       new!ComputeInfo()
   }
   return lci
+}
+
+sub ref!PushConstantInfo lastPushConstants() {
+  if LastBoundQueue != null {
+    if !(LastBoundQueue.VulkanHandle in LastPushConstants) {
+      dev := Devices[LastBoundQueue.Device]
+      physDev := PhysicalDevices[dev.PhysicalDevice]
+      LastPushConstants[LastBoundQueue.VulkanHandle] = new!PushConstantInfo(make!u8(physDev.PhysicalDeviceProperties.limits.maxPushConstantsSize))
+    }
+  }
+  return switch (LastBoundQueue == null) {
+    case false:
+      LastPushConstants[LastBoundQueue.VulkanHandle]
+    case true:
+      null
+  }
 }
 
 sub ref!DynamicPipelineState lastDynamicPipelineState() {

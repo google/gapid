@@ -349,6 +349,7 @@ cmd void vkCmdDrawIndexedIndirect(
 }
 
 sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
+  readComputeState()
   readWriteMemoryInBoundComputeDescriptorSets()
 }
 
@@ -384,6 +385,7 @@ class vkCmdDispatchIndirectArgs {
 sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
   command_size := as!VkDeviceSize(12)
   readMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
+  readComputeState()
   readWriteMemoryInBoundComputeDescriptorSets()
 }
 
@@ -435,6 +437,11 @@ sub  ref!DynamicStateSet unpackDynamicState(ref!DynamicData data) {
     }
   }
   return obj
+}
+
+@spy_disabled
+sub void readComputeState() {
+  readPushConstants(VK_PIPELINE_BIND_POINT_COMPUTE)
 }
 
 @spy_disabled
@@ -515,4 +522,6 @@ sub void readDrawState() {
     _ = pipeline.DepthState.Back.writeMask
     _ = pipeline.DepthState.Back.reference
   }
+
+  readPushConstants(VK_PIPELINE_BIND_POINT_GRAPHICS)
 }

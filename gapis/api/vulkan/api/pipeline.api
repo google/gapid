@@ -1146,3 +1146,18 @@ cmd void vkCmdSetStencilReference(
   AddCommand(commandBuffer, cmd_vkCmdSetStencilReference, mapPos)
 }
 
+@internal class MutablePipelineLayout {
+  ref!PipelineLayoutObject Val
+}
+
+sub ref!PipelineLayoutObject boundPipelineLayout(VkPipelineBindPoint bindPoint) {
+  layout := MutablePipelineLayout(null)
+  switch bindPoint {
+    case VK_PIPELINE_BIND_POINT_COMPUTE:
+      layout.Val = lastComputeInfo().ComputePipeline.PipelineLayout
+    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      layout.Val = lastDrawInfo().GraphicsPipeline.Layout
+    default: {}
+  }
+  return layout.Val
+}
