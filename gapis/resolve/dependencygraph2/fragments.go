@@ -32,8 +32,8 @@ type FragmentAccess struct {
 }
 
 type FragWatcher interface {
-	OnReadFrag(ctx context.Context, cmdCtx CmdContext, owner api.RefObject, f api.Fragment, v api.RefObject)
-	OnWriteFrag(ctx context.Context, cmdCtx CmdContext, owner api.RefObject, f api.Fragment, old api.RefObject, new api.RefObject)
+	OnReadFrag(ctx context.Context, cmdCtx CmdContext, owner api.RefObject, f api.Fragment, v api.RefObject, track bool)
+	OnWriteFrag(ctx context.Context, cmdCtx CmdContext, owner api.RefObject, f api.Fragment, old api.RefObject, new api.RefObject, track bool)
 	OnBeginCmd(ctx context.Context, cmdCtx CmdContext)
 	OnEndCmd(ctx context.Context, cmdCtx CmdContext) map[NodeID][]FragmentAccess
 }
@@ -61,7 +61,7 @@ type fragWatcher struct {
 }
 
 func (b *fragWatcher) OnReadFrag(ctx context.Context, cmdCtx CmdContext,
-	owner api.RefObject, frag api.Fragment, value api.RefObject) {
+	owner api.RefObject, frag api.Fragment, value api.RefObject, track bool) {
 	ownerID := owner.RefID()
 	valueID := value.RefID()
 
@@ -77,6 +77,19 @@ func (b *fragWatcher) OnReadFrag(ctx context.Context, cmdCtx CmdContext,
 		} else {
 			return
 		}
+	}
+
+	// The value is now (indirectly) reachable through an api.State object.
+	// Update `StateRefs` so that later reads/writes to fragments of
+	// `valueRef` are not ignored.
+	if valueID != api.NilRefID {
+		if _, ok := b.stateRefs[valueID]; !ok {
+			b.stateRefs[valueID] = reflect.TypeOf(value)
+		}
+	}
+
+	if !track {
+		return
 	}
 
 	if ownerFrags, ok := b.refAccesses.Get(ownerID); ok {
@@ -116,17 +129,10 @@ func (b *fragWatcher) OnReadFrag(ctx context.Context, cmdCtx CmdContext,
 
 	// Add this fragment to the set of fragments to be flushed
 	b.pendingFragments[ownerID] = append(b.pendingFragments[ownerID], frag)
-
-	// The value is now (indirectly) reachable through an api.State object.
-	// Update `StateRefs` so that later reads/writes to fragments of
-	// `valueRef` are not ignored.
-	if valueID != api.NilRefID {
-		b.stateRefs[valueID] = reflect.TypeOf(value)
-	}
 }
 
 func (b *fragWatcher) OnWriteFrag(ctx context.Context, cmdCtx CmdContext,
-	owner api.RefObject, frag api.Fragment, oldVal api.RefObject, newVal api.RefObject) {
+	owner api.RefObject, frag api.Fragment, oldVal api.RefObject, newVal api.RefObject, track bool) {
 	ownerID := owner.RefID()
 	newValID := newVal.RefID()
 
@@ -142,6 +148,19 @@ func (b *fragWatcher) OnWriteFrag(ctx context.Context, cmdCtx CmdContext,
 		} else {
 			return
 		}
+	}
+
+	// The value is now (indirectly) reachable through an api.State object.
+	// Update `StateRefs` so that later reads/writes to fragments of
+	// `valueRef` are not ignored.
+	if newValID != api.NilRefID {
+		if _, ok := b.stateRefs[newValID]; ok {
+			b.stateRefs[newValID] = reflect.TypeOf(newVal)
+		}
+	}
+
+	if !track {
+		return
 	}
 
 	if ownerFrags, ok := b.refAccesses.Get(ownerID); ok {
@@ -208,13 +227,6 @@ func (b *fragWatcher) OnWriteFrag(ctx context.Context, cmdCtx CmdContext,
 
 	// Add this fragment to the set of fragments to be flushed
 	b.pendingFragments[ownerID] = append(b.pendingFragments[ownerID], frag)
-
-	// The value is now (indirectly) reachable through an api.State object.
-	// Update `StateRefs` so that later reads/writes to fragments of
-	// `valueRef` are not ignored.
-	if newValID != api.NilRefID {
-		b.stateRefs[newValID] = reflect.TypeOf(newVal)
-	}
 }
 
 func (b *fragWatcher) Flush(ctx context.Context, cmdCtx CmdContext) {

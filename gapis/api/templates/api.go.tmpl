@@ -192,10 +192,10 @@ import (
     return a.data[i]
   }
 
-  func (a {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, i int) {{$el}} {
+  func (a {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, i int) {{$el}} {
     v := a.data[i]
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, a, ϟapi.ArrayIndexFragment{i}, {{Template "Reference" "Type"  $ty.ValueType "Val" "v"}})
+      ϟw.OnReadFrag(ϟctx, a, ϟapi.ArrayIndexFragment{i}, {{Template "Reference" "Type"  $ty.ValueType "Val" "v"}}, ϟtrack)
     }
     return v
   }
@@ -204,11 +204,11 @@ import (
     a.data[i] = v
   }
 
-  func (a {{$name}}) Setʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, i int, v {{$el}}) {
+  func (a {{$name}}) Setʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, i int, v {{$el}}) {
     if ϟw != nil {
-      ϟw.OnSet(ϟctx, a, ϟapi.ArrayIndexFragment{i},
+      ϟw.OnWriteFrag(ϟctx, a, ϟapi.ArrayIndexFragment{i},
         {{Template "Reference" "Type" $ty.ValueType "Val" "a.data[i]"}},
-        {{Template "Reference" "Type" $ty.ValueType "Val" "v"}})
+        {{Template "Reference" "Type" $ty.ValueType "Val" "v"}}, ϟtrack)
     }
     a.data[i] = v
   }
@@ -226,11 +226,11 @@ import (
   // Equals returns true if the array is equal to o.
   func (a {{$name}}) Equalsʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, o {{$name}}) bool {
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, a, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
-      ϟw.OnGet(ϟctx, o, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+      ϟw.OnReadFrag(ϟctx, a, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, true)
+      ϟw.OnReadFrag(ϟctx, o, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, true)
     }
     for i, c := 0, {{$ty.Size}}; i < c; i++ {
-      if !({{Template "Equal" "Type" $ty.ValueType "LHS" "a.Getʷ(ϟctx, ϟw, i)" "RHS" "o.Getʷ(ϟctx, ϟw, i)" "Watch" true}}) {
+      if !({{Template "Equal" "Type" $ty.ValueType "LHS" "a.Getʷ(ϟctx, ϟw, true, i)" "RHS" "o.Getʷ(ϟctx, ϟw, true, i)" "Watch" true}}) {
         return false
       }
     }
@@ -320,14 +320,14 @@ import (
     return v
   }
 
-  func (m {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {{$value}} {
+  func (m {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, key {{$key}}) {{$value}} {
     ϟa := m.a; _ = ϟa
     v, ok := (*m.Map)[key]
     if !ok {
       v = {{Template "Go.Null" $.ValueType}}
     }
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+      ϟw.OnReadFrag(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}}, ϟtrack)
     }
     return v
   }
@@ -345,7 +345,7 @@ import (
     return
   }
 
-  func (m {{$name}}) Lookupʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) (v {{$value}}, ok bool) {
+  func (m {{$name}}) Lookupʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, key {{$key}}) (v {{$value}}, ok bool) {
     ϟa := m.a; _ = ϟa
     if m.Map != nil {
       v, ok = (*m.Map)[key]
@@ -356,7 +356,7 @@ import (
       }
     {{end}}
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+      ϟw.OnReadFrag(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}}, ϟtrack)
     }
     return
   }
@@ -366,21 +366,21 @@ import (
     return m
   }
 
-  func (m {{$name}}) Addʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}, val {{$value}}) {{$name}} {
+  func (m {{$name}}) Addʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, key {{$key}}, val {{$value}}) {{$name}} {
     if ϟw != nil {
-      ϟw.OnSet(ϟctx, m, {{$keyFrag}},
+      ϟw.OnWriteFrag(ϟctx, m, {{$keyFrag}},
         {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
-        {{Template "Reference" "Type" $.ValueType "Val" "val"}})
+        {{Template "Reference" "Type" $.ValueType "Val" "val"}}, ϟtrack)
     }
     (*m.Map)[key] = val
     return m
   }
 
-  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}, val {{$value}}) {{$name}} {
+  func (m {{$name}}) CreateHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, ϟg *ϟapi.GlobalState, key {{$key}}, val {{$value}}) {{$name}} {
     if ϟw != nil {
-      ϟw.OnSet(ϟctx, m, {{$keyFrag}},
+      ϟw.OnWriteFrag(ϟctx, m, {{$keyFrag}},
         {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
-        {{Template "Reference" "Type" $.ValueType "Val" "val"}})
+        {{Template "Reference" "Type" $.ValueType "Val" "val"}}, ϟtrack)
       if _, ok := (*m.Map)[key]; !ok {
         ϟw.OpenForwardDependency(ϟctx, key)
       }
@@ -393,12 +393,12 @@ import (
     return m
   }
 
-  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟg *ϟapi.GlobalState, key {{$key}}) {
+  func (m {{$name}}) DestroyHandleʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, ϟg *ϟapi.GlobalState, key {{$key}}) {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, m, {{$keyFrag}},
+        ϟw.OnWriteFrag(ϟctx, m, {{$keyFrag}},
           {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
-          ϟapi.NilReference{})
+          ϟapi.NilReference{}, ϟtrack)
         if _, ok := (*m.Map)[key]; ok {
           ϟw.CloseForwardDependency(ϟctx, key)
         }
@@ -419,7 +419,7 @@ import (
     return
   }
 
-  func (m {{$name}}) Containsʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) bool {
+  func (m {{$name}}) Containsʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, key {{$key}}) bool {
     if m.Map != nil {
       {{if or (IsMap $.ValueType) (IsReference $.ValueType) (IsClass $.ValueType)}}
         v, ok := (*m.Map)[key]
@@ -427,7 +427,7 @@ import (
         _, ok := (*m.Map)[key]
       {{end}}
       if ϟw != nil {
-        ϟw.OnGet(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}})
+        ϟw.OnReadFrag(ϟctx, m, {{$keyFrag}}, {{Template "Reference" "Type" $.ValueType "Val" "v"}}, ϟtrack)
       }
       return ok
     }
@@ -440,12 +440,12 @@ import (
     }
   }
 
-  func (m {{$name}}) Removeʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, key {{$key}}) {
+  func (m {{$name}}) Removeʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, key {{$key}}) {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, m, {{$keyFrag}},
+        ϟw.OnWriteFrag(ϟctx, m, {{$keyFrag}},
           {{Template "Reference" "Type" $.ValueType "Val" "(*m.Map)[key]"}},
-          ϟapi.NilReference{})
+          ϟapi.NilReference{}, ϟtrack)
       }
       delete(*m.Map, key)
     }
@@ -458,10 +458,10 @@ import (
     return 0
   }
 
-  func (m {{$name}}) Lenʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) int {
+  func (m {{$name}}) Lenʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool) int {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+        ϟw.OnReadFrag(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟtrack)
       }
       return len(*m.Map)
     }
@@ -477,10 +477,10 @@ import (
   }
 
   // All returns this {{$name}} as a Go map.
-  func (m {{$name}}) Allʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) map[{{$key}}]{{$value}} {
+  func (m {{$name}}) Allʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool) map[{{$key}}]{{$value}} {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+        ϟw.OnReadFrag(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟtrack)
       }
       return *m.Map
     }
@@ -514,12 +514,12 @@ import (
     return s
   }
 
-  func (m {{$name}}) Keysʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) []{{$key}} {
+  func (m {{$name}}) Keysʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool) []{{$key}} {
     if m.Map == nil {
       return nil
     }
     if ϟw != nil {
-      ϟw.OnGet(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{})
+      ϟw.OnReadFrag(ϟctx, m, ϟapi.CompleteFragment{}, ϟapi.NilReference{}, ϟtrack)
     }
     s := make({{$sorted}}, len(*m.Map))
     i := 0
@@ -2056,30 +2056,30 @@ import (
 
   {{if $.Watch}}
     func (c {{if $.PtrMethod}}*{{end}}{{$.Struct}}) {{$get}}ʷ(§
-          ϟctx context.Context, ϟw ϟapi.StateWatcher) {{$g}} {
+          ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool) {{$g}} {
       v := {{$field}}
       if ϟw != nil {
-        ϟw.OnGet(ϟctx, c, ϟapi.FieldFragment{§
+        ϟw.OnReadFrag(ϟctx, c, ϟapi.FieldFragment{§
           {{if $.Class}}
             {{Template "FieldID" "Class" $.Class "Name" $.Name}}§
           {{else}}
             {{Template "FieldID" "Class" $.Struct "Name" $.Name}}§
           {{end}}}, §
-          {{$newRef}})
+          {{$newRef}}, ϟtrack)
       }
       return v
     }
 
     func (c {{if $.PtrMethod}}*{{end}}{{$.Struct}}) {{$set}}ʷ(§
-          ϟctx context.Context, ϟw ϟapi.StateWatcher, v {{$g}}) {
+          ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, v {{$g}}) {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, c, ϟapi.FieldFragment{§
+        ϟw.OnWriteFrag(ϟctx, c, ϟapi.FieldFragment{§
           {{if $.Class}}
             {{Template "FieldID" "Class" $.Class "Name" $.Name}}§
           {{else}}
             {{Template "FieldID" "Class" $.Struct "Name" $.Name}}§
           {{end}}}, §
-          {{$oldRef}}, {{$newRef}})
+          {{$oldRef}}, {{$newRef}}, ϟtrack)
       }
       {{$field}} = v
     }

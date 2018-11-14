@@ -422,8 +422,8 @@
 
   {
     {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}} := int32(0){{end}}
-    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.All§
-      {{if Macro "IsUntrackedMap" $.Map}}(){{else}}ʷ(ϟctx, ϟw){{end}} {
+    for {{$.KeyIterator.Name}}, {{$.ValueIterator.Name}} := range {{Template "Go.Read" $.Map}}.Allʷ(ϟctx, ϟw, §
+      {{Template "TrackMap" $.Map}}) {
       {{Template "Block" $.Block}}
       {{if ne $.IndexIterator.Name "_"}}{{$.IndexIterator.Name}}++{{end}}
     }
@@ -523,14 +523,10 @@
     {{if ne $.Operator "="}}{{Error "Compound assignments to '_' are not supported (%s)" $.Operator}}{{end}}
     _ = {{Template "Go.Read" $.RHS}}
   {{else}}
-    {{     if IsMember $.LHS}}{{Template "Go.Read" $.LHS.Object}}.Set{{$.LHS.Field | GoPublicName}}§
-      {{if GetAnnotation $.LHS.Field "untracked"}}(§
-      {{else}}ʷ(ϟctx, ϟw, §
-      {{end}}
-    {{else if IsGlobal $.LHS}}ϟs.Set{{$.LHS.Name | GoPublicName}}§
-      {{if GetAnnotation $.LHS "untracked"}}(§
-      {{else}}ʷ(ϟctx, ϟw, §
-      {{end}}
+    {{     if IsMember $.LHS}}{{Template "Go.Read" $.LHS.Object}}.Set{{$.LHS.Field | GoPublicName}}ʷ(ϟctx, ϟw, §
+      {{Template "Track" $.LHS.Field}}, §
+    {{else if IsGlobal $.LHS}}ϟs.Set{{$.LHS.Name | GoPublicName}}ʷ(ϟctx, ϟw, §
+      {{Template "Track" $.LHS}}, §
     {{else                  }}{{Error "Unhandled assign to %v" $.LHS}}
     {{end}}
 
@@ -552,7 +548,7 @@
   {{AssertType $ "ArrayAssign"}}
 
   {{if eq $.Operator "="}}
-    {{Template "Go.Read" $.To.Array}}.Setʷ(ϟctx, ϟw, int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Array}}.Setʷ(ϟctx, ϟw, true, int({{Template "Go.Read" $.To.Index}}), {{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported ArrayAssign operator %s" $.Operator}}
   {{end}}
@@ -570,13 +566,13 @@
   {{if eq $.Operator "="}}
     {{Template "Go.Read" $.To.Map}}.§
     {{if GetAnnotation $.To.Map "handleMap"}}
-      CreateHandleʷ(ϟctx, ϟw, ϟg, §
-    {{else if Macro "IsUntrackedMap" $.To.Map}}
-      Add(§
-    {{else}}§
+      CreateHandleʷ(ϟctx, ϟw, §
+      {{Template "TrackMap" $.To.Map}}, ϟg, §
+    {{else}}
       Addʷ(ϟctx, ϟw, §
+      {{Template "TrackMap" $.To.Map}}, §
     {{end}}
-    {{Template "Go.Read" $.To.Index}},{{Template "Go.Read" $.Value}})
+    {{Template "Go.Read" $.To.Index}}, {{Template "Go.Read" $.Value}})
   {{else}}
     {{Error "Unsupported MapAssign operator %s" $.Operator}}
   {{end}}
@@ -593,11 +589,11 @@
 
   {{Template "Go.Read" $.Map}}.§
   {{if GetAnnotation $.Map "handleMap"}}
-    DestroyHandleʷ(ϟctx, ϟw, ϟg, §
-  {{else if Macro "IsUntrackedMap" $.Map}}
-    Remove(§
+    DestroyHandleʷ(ϟctx, ϟw, §
+    {{Template "TrackMap" $.Map}}, ϟg, §
   {{else}}
     Removeʷ(ϟctx, ϟw, §
+    {{Template "TrackMap" $.Map}}, §
   {{end}}
   {{Template "Go.Read" $.Key}})
 {{end}}
