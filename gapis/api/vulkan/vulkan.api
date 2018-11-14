@@ -246,6 +246,31 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
 }
 
+@internal class DynamicPipelineState {
+  // The viewports set by vkCmdSetViewport
+  map!(u32, VkViewport) Viewports
+  // The Scissors set by vkCmdSetScissor
+  map!(u32, VkRect2D) Scissors
+  // The value set by vkCmdSetLineWidth
+  f32 LineWidth
+  // The constant factor set by vkCmdSetDepthBias
+  f32 DepthBiasConstantFactor
+  // The clamp set by vkCmdSetDepthBias
+  f32 DepthBiasClamp
+  // The slope factor set by vkCmdSetDepthBias
+  f32 DepthBiasSlopeFactor
+  // The blend constants set by vkCmdSetBlendConstants
+  f32[4] BlendConstants
+  // The min depth bounds set by vkCmdSetDepthBounds
+  f32 MinDepthBounds
+  // The max depth bounds set by vkCmdSetDepthBounds
+  f32 MaxDepthBounds
+  // The front stencil state set by vkCmdSetStencil*
+  VkStencilOpState StencilFront
+  // The back stencil state set by vkCmdSetStencil*
+  VkStencilOpState StencilBack
+}
+
 @internal class ComputeInfo {
   // A mapping from the descriptor set bound numbers to descriptor set objects
   map!(u32, ref!DescriptorSetObject) DescriptorSets
@@ -316,6 +341,7 @@ enum LastSubmissionType {
 @serialize LastSubmissionType                           LastSubmission
 @hidden @serialize UsedDescriptorSets                   ProcessedDescriptorSets
 
+@untrackedMap map!(VkQueue, ref!DynamicPipelineState) LastDynamicPipelineStates
 
 @internal class ProcessedDescriptorSet {
   map!(u32, map!(u32, map!(VkDeviceSize, bool))) bufferOffsets
@@ -373,4 +399,20 @@ sub ref!ComputeInfo lastComputeInfo() {
       new!ComputeInfo()
   }
   return lci
+}
+
+sub ref!DynamicPipelineState lastDynamicPipelineState() {
+  if LastBoundQueue != null {
+    if !(LastBoundQueue.VulkanHandle in LastDynamicPipelineStates) {
+      LastDynamicPipelineStates[LastBoundQueue.VulkanHandle] = new!DynamicPipelineState()
+    }
+  }
+
+  ldps := switch (LastBoundQueue == null) {
+    case false:
+      LastDynamicPipelineStates[LastBoundQueue.VulkanHandle]
+    case true:
+      new!DynamicPipelineState()
+  }
+  return ldps
 }
