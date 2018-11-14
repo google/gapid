@@ -56,15 +56,13 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = select({
         "//tools/build:android-armeabi-v7a": [
-            "@llvm//:ARMCodeGen",
             "@llvm//:ARMDisassembler",
         ],
         "//tools/build:android-arm64-v8a": [
-            "@llvm//:AArch64CodeGen",
             "@llvm//:AArch64Disassembler",
         ],
         "//tools/build:android-x86": [
-            "@llvm//:X86CodeGen",
+            "@llvm//:X86Desc",
             "@llvm//:X86Disassembler",
         ],
         "//conditions:default": [],
