@@ -274,7 +274,7 @@ class TrackingRange {
           uintptr_t i_addr = std::max(c_addr, addr);
           uintptr_t i_end = std::min(c_end, end);
           if (i_addr < i_end) {
-            if(clear_if(c_addr, c_end - c_addr)) {
+            if (clear_if(c_addr, c_end - c_addr)) {
               cells_[cid].state = PageCell::State::kClear;
               return true;
             }
