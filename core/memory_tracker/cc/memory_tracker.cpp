@@ -86,11 +86,12 @@ bool MemoryTracker::UntrackRangeImpl(void* start, size_t size) {
   }
 
   if (FirstOverlappedRange(first_page, GetPageSize()) ==
-          tracking_ranges_.end() &&
-      FirstOverlappedRange(last_page, GetPageSize()) ==
-          tracking_ranges_.end()) {
+      tracking_ranges_.end()) {
     result &= set_protection(reinterpret_cast<void*>(first_page), GetPageSize(),
                              PageProtections::kReadWrite);
+  }
+  if (FirstOverlappedRange(last_page, GetPageSize()) ==
+      tracking_ranges_.end()) {
     result &= set_protection(reinterpret_cast<void*>(last_page), GetPageSize(),
                              PageProtections::kReadWrite);
   }
