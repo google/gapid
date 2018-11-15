@@ -446,17 +446,6 @@ TEST_F(WrapperTest, WithSignalSafeWrapper) {
   EXPECT_FALSE(deadlocked_.load(std::memory_order_seq_cst));
 }
 
-// namespace {
-// // A sub-class of MarkList that exposes the internal storage for test.
-// template <typename T>
-// class MarkListForTest : public MarkList<T> {
-// public:
-// const std::vector<T>& v() const { return v_; }
-// size_t marked_count() const { return marked_count_; }
-// size_t marked_end() const {return marked_end_; }
-// };
-// }  // namespace
-
 template <typename T>
 class MarkListTest : public ::testing::Test {
  protected:
@@ -584,7 +573,72 @@ class AlignedMemory {
  private:
   void* mem_;
 };
+
+// Expose the protected methods for testing helper functions
+class MemoryTrackerForHelperTest : public MemoryTracker {
+ public:
+  tracking_range_list_type::iterator FirstOverlappedRange(uintptr_t addr,
+                                                          size_t size) {
+    return MemoryTracker::FirstOverlappedRange(addr, size);
+  }
+
+  tracking_range_list_type& ranges() { return tracking_ranges_; }
+  void insert(uintptr_t addr, size_t size) {
+    tracking_ranges_[addr + size] =
+        std::unique_ptr<MemoryTracker::tracking_range_type>(
+            new MemoryTracker::tracking_range_type(addr, size));
+  }
+};
 }  // namespace
+
+TEST(MemoryTrackerTest, FirstOverlappedRange) {
+  MemoryTrackerForHelperTest t;
+  auto it = t.FirstOverlappedRange(0x0, 0x0);
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x100, 0x10);
+  EXPECT_EQ(it, t.ranges().end());
+
+  t.insert(0x123, 0x456); // [0x123 - 0x579)
+  it = t.FirstOverlappedRange(0x0, 0x100); // [0x0, 0x100)
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x100, 0x100); // [0x100, 0x200)
+  EXPECT_EQ(it, t.ranges().find(0x579));
+  it = t.FirstOverlappedRange(0x500, 0x100); // [0x500, 0x600)
+  EXPECT_EQ(it, t.ranges().find(0x579));
+  it = t.FirstOverlappedRange(0x200, 0x100); // [0x200, 0x300)
+  EXPECT_EQ(it, t.ranges().find(0x579));
+  it = t.FirstOverlappedRange(0x100, 0x500); // [0x100, 0x600)
+  EXPECT_EQ(it, t.ranges().find(0x579));
+  it = t.FirstOverlappedRange(0x600, 0x100); // [0x600, 0x700)
+  EXPECT_EQ(it, t.ranges().end());
+
+  t.ranges().erase(t.ranges().find(0x579));
+  it = t.FirstOverlappedRange(0x0, 0x100); // [0x0, 0x100)
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x100, 0x100); // [0x100, 0x200)
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x500, 0x100); // [0x500, 0x600)
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x200, 0x100); // [0x200, 0x300)
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x100, 0x500); // [0x100, 0x600)
+  EXPECT_EQ(it, t.ranges().end());
+  it = t.FirstOverlappedRange(0x600, 0x100); // [0x600, 0x700)
+  EXPECT_EQ(it, t.ranges().end());
+
+  t.insert(0x100, 0x100); // [0x100, 0x200)
+  t.insert(0x200, 0x200); // [0x200, 0x400)
+  it = t.FirstOverlappedRange(0x0, 0x200); // [0x0, 0x200)
+  EXPECT_EQ(it, t.ranges().find(0x200));
+  it = t.FirstOverlappedRange(0x1FF, 0x200); // [0x1FF, 0x3FF)
+  EXPECT_EQ(it, t.ranges().find(0x200));
+  it = t.FirstOverlappedRange(0x1FF, 0x300); // [0x1FF, 0x4FF)
+  EXPECT_EQ(it, t.ranges().find(0x200));
+  it = t.FirstOverlappedRange(0x200, 0x200); // [0x200, 0x400)
+  EXPECT_EQ(it, t.ranges().find(0x400));
+  it = t.FirstOverlappedRange(0x0, 0x400); // [0x0, 0x400)
+  EXPECT_EQ(it, t.ranges().find(0x200));
+}
 
 // Allocates one page of memory, adds the memory range to the memory tracker,
 // touches the allocated memory, the tracker should record the touched page.

@@ -16,8 +16,6 @@
 
 #include "memory_tracker.h"
 
-#include "core/cc/log.h"
-
 #if COHERENT_TRACKING_ENABLED
 #include <map>
 
@@ -104,6 +102,7 @@ template <>
 bool MemoryTracker::HandleAndClearDirtyIntersectsImpl(
     void* start, size_t size,
     std::function<void(void* dirty_addr, size_t dirty_size)> handle_dirty) {
+  if (size == 0) return true;
   uintptr_t addr = reinterpret_cast<uintptr_t>(start);
   uintptr_t end = RoundUpAlignedAddress(addr + size, GetPageSize());
   addr = RoundDownAlignedAddress(addr, GetPageSize());
