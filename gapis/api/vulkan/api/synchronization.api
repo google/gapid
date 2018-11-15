@@ -395,12 +395,8 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
     }
   }
   if len(LastBoundQueue.PendingEvents) == 0 {
-    for _ , _ , b in args.ImageMemoryBarriers {
-      if !(b.image in Images) { vkErrorInvalidImage(b.image) } else {
-        image := Images[b.image]
-      transitionImageLayout(image, b.subresourceRange, b.oldLayout, b.newLayout)
-      }
-    }
+    processBarriers(args.SrcStageMask, args.DstStageMask,
+      args.MemoryBarriers, args.BufferMemoryBarriers, args.ImageMemoryBarriers)
   }
 }
 
@@ -468,16 +464,9 @@ cmd void vkCmdWaitEvents(
 }
 
 sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
-  for _ , _ , v in args.ImageMemoryBarriers {
-    if !(v.image in Images) { vkErrorInvalidImage(v.image) } else {
-      image := Images[v.image]
-      transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
-      if v.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED {
-        writeImageSubresource(image, v.subresourceRange)
-        updateImageQueue(image, v.subresourceRange)
-      }
-    }
-  }
+  // TODO: Determine how DependencyFlags affect the state or dependency graph
+  processBarriers(args.SrcStageMask, args.DstStageMask,
+    args.MemoryBarriers, args.BufferMemoryBarriers, args.ImageMemoryBarriers)
 }
 
 sub void handleMemoryBarriersPNext(const VkMemoryBarrier* pBarriers, u32 count) {
@@ -584,3 +573,76 @@ cmd void vkCmdPipelineBarrier(
 extern void recordFenceSignal(VkFence fence)
 extern void recordFenceWait(VkFence fence)
 extern void recordFenceReset(VkFence fence)
+
+sub void processBarriers(VkPipelineStageFlags             srcStageMask,
+                         VkPipelineStageFlags             dstStageMask,
+                         map!(u32, VkMemoryBarrier)       memoryBarriers,
+                         map!(u32, VkBufferMemoryBarrier) bufferBarriers,
+                         map!(u32, VkImageMemoryBarrier)  imageBarriers) {
+  // Note: srcStageMask, dstStageMask, srcAccessMask, dstAccessMask
+  // These parameters do not currently seem to to affect any state change, but
+  // are included as arguments here as they may may be helpful for future
+  // validation or analysis.
+
+  processMemoryBarriers(srcStageMask, dstStageMask, memoryBarriers)
+  processBufferBarriers(srcStageMask, dstStageMask, bufferBarriers)
+
+  for _ , _ , v in imageBarriers {
+    if !(v.image in Images) { vkErrorInvalidImage(v.image) } else {
+      image := Images[v.image]
+      transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
+
+      // TODO (#2395): `updateImageQueue` seems to assume that the current queue
+      // takes ownership of the image, but this is not necessarily the case for
+      // queue family ownership barriers.
+      updateImageQueue(image, v.subresourceRange)
+
+      processImageBarrier(v, image)
+    }
+  }
+}
+
+@spy_disabled
+sub void processMemoryBarriers(VkPipelineStageFlags       srcStageMask,
+                               VkPipelineStageFlags       dstStageMask,
+                               map!(u32, VkMemoryBarrier) memoryBarriers) {
+  if len(memoryBarriers) > 0 {
+    for _ , _ , img in Images {
+      for _ , _ , aspect in img.Aspects {
+        for _ , _ , layer in aspect.Layers {
+          for _ , _ , level in layer.Levels {
+            read(level.Data)
+            write(level.Data)
+          }
+        }
+      }
+    }
+    for _ , _ , mem in DeviceMemories {
+      read(mem.Data)
+      write(mem.Data)
+    }
+  }
+}
+
+@spy_disabled
+sub void processBufferBarriers(VkPipelineStageFlags             srcStageMask,
+                               VkPipelineStageFlags             dstStageMask,
+                               map!(u32, VkBufferMemoryBarrier) bufferBarriers) {
+  for _ , _ , v in bufferBarriers {
+    if !(v.buffer in Buffers) { vkErrorInvalidBuffer(v.buffer) } else {
+      buf := Buffers[v.buffer]
+      readMemoryInBuffer(buf, v.offset, v.size)
+      writeMemoryInBuffer(buf, v.offset, v.size)
+      // TODO (#2395): transition queue family ownership
+    }
+  }
+}
+
+@spy_disabled
+sub void processImageBarrier(VkImageMemoryBarrier v, ref!ImageObject image) {
+  if v.oldLayout != VK_IMAGE_LAYOUT_UNDEFINED {
+    readImageSubresource(image, v.subresourceRange)
+  }
+  writeImageSubresource(image, v.subresourceRange)
+  // TODO (#2395): transition queue family ownership
+}
