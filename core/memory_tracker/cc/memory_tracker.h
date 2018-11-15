@@ -295,7 +295,7 @@ class TrackingRange {
     if (!GetCellFor(addr, &start_id)) {
       return false;
     }
-    if (!GetCellFor(addr + size, &end_id)) {
+    if (!GetCellFor(addr + size - 1u, &end_id)) {
       return false;
     }
     bool result = true;

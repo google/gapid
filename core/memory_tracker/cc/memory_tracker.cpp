@@ -146,7 +146,7 @@ bool MemoryTracker::HandleSegfaultImpl(void* fault_addr) {
   for (auto& it = first_rng_it; it != tracking_ranges_.end(); it++) {
     if (it->second->Overlaps(addr, end)) {
       result &= it->second->SetDirty(
-          reinterpret_cast<uintptr_t>(fault_addr), 1u,
+          addr, end - addr,
           [](uintptr_t dirty_addr, size_t dirty_size) -> bool {
             return set_protection(reinterpret_cast<void*>(dirty_addr),
                                   dirty_size, PageProtections::kReadWrite);
