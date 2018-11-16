@@ -419,14 +419,10 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 				t.timestamps = append(t.timestamps, record.timestamp)
 				queryPoolInfo.readIndex++
 			}
-			// Reset the results array after store the results in the final result list t.timestamps
-			queryPoolInfo.results = []timestampRecord{}
-			queryPoolInfo.readIndex = 0
-			queryPoolInfo.writeIndex = 0
 		})
 		return nil
 	}))
-
+	queryPoolInfo.writeIndex = 0
 	tmp.Free()
 }
 
