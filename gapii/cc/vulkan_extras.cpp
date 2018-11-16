@@ -413,7 +413,12 @@ void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start,
 #if COHERENT_TRACKING_ENABLED
   if (m_coherent_memory_tracking_enabled) {
     void* start_addr = reinterpret_cast<void*>(start);
-    mMemoryTracker.AddTrackingRange(start_addr, size);
+    if (!mMemoryTracker.TrackRange(start_addr, size)) {
+      GAPID_ERROR(
+          "Failed at adding tracking range: (%p - %p) to coherent memory "
+          "tracker",
+          (void*)start, (void*)(start + size));
+    }
   }
 #endif  // COHERENT_TRACKING_ENABLED
 }
@@ -427,13 +432,15 @@ void VulkanSpy::readMappedCoherentMemory(CallObserver* observer,
   void* offset_addr = (void*)(offset_in_mapped + mapped_location);
 #if COHERENT_TRACKING_ENABLED
   if (m_coherent_memory_tracking_enabled) {
-    const size_val page_size = mMemoryTracker.page_size();
-    // Get the valid mapped range
-    const auto dirty_pages =
-        mMemoryTracker.GetAndResetDirtyPagesInRange(offset_addr, readSize);
-    for (const void* p : dirty_pages) {
-      uint64_t page_start = (uint64_t)(p);
-      observer->read(slice((uint8_t*)page_start, 0ULL, page_size));
+    // Read the valid mapped range
+    if (!mMemoryTracker.HandleAndClearDirtyIntersects(
+            offset_addr, readSize, [observer, this](void* addr, size_val size) {
+              observer->read(slice((uint8_t*)addr, 0ULL, size));
+            })) {
+      GAPID_ERROR(
+          "Failed at resetting memory page permissions when observing range: "
+          "(%p - %p)",
+          (void*)offset_addr, (void*)((uintptr_t)offset_addr + readSize));
     }
     return;
   }
@@ -446,7 +453,7 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start,
 #if COHERENT_TRACKING_ENABLED
   if (m_coherent_memory_tracking_enabled) {
     void* start_addr = reinterpret_cast<void*>(start);
-    mMemoryTracker.RemoveTrackingRange(start_addr, size);
+    mMemoryTracker.UntrackRange(start_addr, size);
   }
 #endif  // COHERENT_TRACKING_ENABLED
 }
