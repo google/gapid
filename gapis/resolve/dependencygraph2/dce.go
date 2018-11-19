@@ -94,7 +94,7 @@ func NewDCEBuilder(graph DependencyGraph) *DCEBuilder {
 	for i := 0; i < b.graph.NumInitialCommands(); i++ {
 		cmdID := api.CmdID(i).Derived()
 		cmd := b.graph.GetCommand(cmdID)
-		if cmd.Alive() {
+		if cmd.Alive() || config.AllInitialCommandsLive {
 			nodeID := b.graph.GetCmdNodeID(cmdID, api.SubCmdIdx{})
 			if nodeID != NodeNoID && !b.isLive[nodeID] {
 				b.isLive[nodeID] = true
