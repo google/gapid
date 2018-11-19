@@ -161,6 +161,8 @@ type Service interface {
 
 	// Update the environment settings.
 	UpdateSettings(ctx context.Context, req *UpdateSettingsRequest) error
+
+	GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error)
 }
 
 type TraceHandler interface {

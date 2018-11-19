@@ -110,12 +110,6 @@ cmd void vkDestroyQueryPool(
 @threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
-@no_replay
-// GetQueryPoolResults has no semantic impact
-// on replay, so avoid replaying it. It can cause
-// hangs depending on the state of the query pool
-// TODO(awoloszyn): Work out all of the cases where this
-// may cause hangs, and fix it for replay.
 cmd VkResult vkGetQueryPoolResults(
     VkDevice           device,
     VkQueryPool        queryPool,

@@ -44,6 +44,7 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
@@ -677,4 +678,11 @@ func (s *server) UpdateSettings(ctx context.Context, settings *service.UpdateSet
 		adb.ADB = file.Abs(settings.Adb)
 	}
 	return nil
+}
+
+func (s *server) GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error) {
+	ctx = status.Start(ctx, "RPC GetTimestamps")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "GetTimestamps")
+	return replay.GetTimestamps(ctx, c, d)
 }

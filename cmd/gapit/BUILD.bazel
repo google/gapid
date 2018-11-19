@@ -40,6 +40,7 @@ go_library(
         "stats.go",
         "stresstest.go",
         "sxs_video.go",
+        "profile.go",
         "trace.go",
         "trim.go",
         "unpack.go",
