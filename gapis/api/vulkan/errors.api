@@ -68,7 +68,6 @@ sub void vkErrorInvalidQueue(VkQueue queue) {
 
 sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
   vkErrorInvalidHandle("VkCommandBuffer", as!u64(cmdbuf))
-  abort
 }
 
 sub void vkErrorCommandBufferIncomplete(VkCommandBuffer cmdbuf) {

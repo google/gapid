@@ -257,7 +257,6 @@ cmd void vkCmdBeginRenderPass(
     VkCommandBuffer              commandBuffer,
     const VkRenderPassBeginInfo* pRenderPassBegin,
     VkSubpassContents            contents) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if pRenderPassBegin == null { vkErrorNullPointer("VkRenderPassBeginInfo") }
   begin_info := pRenderPassBegin[0]
   if !(begin_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(begin_info.renderPass) }
@@ -284,11 +283,15 @@ cmd void vkCmdBeginRenderPass(
     args.ClearValues[i] = clear_values[i]
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
+  }
 }
 
 @internal class
@@ -325,14 +328,17 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
     VkSubpassContents contents) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdNextSubpassArgs(contents)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdNextSubpassArgs(contents)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass[mapPos] =
-  args
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
+  }
 }
 
 @internal class
@@ -355,14 +361,17 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdEndRenderPassArgs()
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdEndRenderPassArgs()
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass[mapPos] =
-  args
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+  }
 }
 
 sub void loadImageAttachment(u32 attachmentID) {

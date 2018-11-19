@@ -346,13 +346,16 @@ cmd void vkFreeCommandBuffers(
   for i in (0 .. commandBufferCount) {
     buffer := cb[i]
     if buffer != as!VkCommandBuffer(0) {
-      if !(buffer in CommandBuffers) { vkErrorInvalidCommandBuffer(buffer) }
-      buffer_object := CommandBuffers[buffer]
-      pool := buffer_object.Pool
-      pool_object := CommandPools[pool]
-      delete(pool_object.CommandBuffers, buffer)
-      resetCmd(buffer)
-      delete(CommandBuffers, buffer)
+      if !(buffer in CommandBuffers) {
+        vkErrorInvalidCommandBuffer(buffer)
+      } else {
+        buffer_object := CommandBuffers[buffer]
+        pool := buffer_object.Pool
+        pool_object := CommandPools[pool]
+        delete(pool_object.CommandBuffers, buffer)
+        resetCmd(buffer)
+        delete(CommandBuffers, buffer)
+      }
     }
   }
 }
@@ -362,7 +365,6 @@ cmd void vkFreeCommandBuffers(
 cmd VkResult vkBeginCommandBuffer(
     VkCommandBuffer                 commandBuffer,
     const VkCommandBufferBeginInfo* pBeginInfo) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if pBeginInfo == null { vkErrorNullPointer("VkCommandBufferBeginInfo") }
   info := pBeginInfo[0]
   begin := new!CommandBufferBegin(Flags: info.flags,Inherited:  false)
@@ -400,19 +402,27 @@ cmd VkResult vkBeginCommandBuffer(
       }
     }
   }
-  buff := CommandBuffers[commandBuffer]
-  buff.BeginInfo = begin
-  buff.Recording = RECORDING
-  resetCommandBuffer(buff)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    buff := CommandBuffers[commandBuffer]
+    buff.BeginInfo = begin
+    buff.Recording = RECORDING
+    resetCommandBuffer(buff)
+  }
   return ?
 }
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkEndCommandBuffer(
     VkCommandBuffer commandBuffer) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  buff := CommandBuffers[commandBuffer]
-  buff.Recording = COMPLETED
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    buff := CommandBuffers[commandBuffer]
+    buff.Recording = COMPLETED
+  }
   return ?
 }
 
@@ -421,11 +431,14 @@ cmd VkResult vkEndCommandBuffer(
 cmd VkResult vkResetCommandBuffer(
     VkCommandBuffer           commandBuffer,
     VkCommandBufferResetFlags flags) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  buff := CommandBuffers[commandBuffer]
-  buff.Recording = NOT_STARTED
-  buff.BeginInfo = null
-  resetCommandBuffer(buff)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    buff := CommandBuffers[commandBuffer]
+    buff.Recording = NOT_STARTED
+    buff.BeginInfo = null
+    resetCommandBuffer(buff)
+  }
   return ?
 }
 
@@ -452,19 +465,25 @@ cmd void vkCmdExecuteCommands(
     VkCommandBuffer        commandBuffer,
     u32                    commandBufferCount,
     const VkCommandBuffer* pCommandBuffers) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  cmd_buffers := pCommandBuffers[0:commandBufferCount]
-  args := new!vkCmdExecuteCommandsArgs()
-  for i in (0 .. commandBufferCount) {
-    if !(cmd_buffers[i] in CommandBuffers) { vkErrorInvalidCommandBuffer(cmd_buffers[i]) }
-    args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmd_buffers := pCommandBuffers[0:commandBufferCount]
+    args := new!vkCmdExecuteCommandsArgs()
+    for i in (0 .. commandBufferCount) {
+      if !(cmd_buffers[i] in CommandBuffers) {
+        vkErrorInvalidCommandBuffer(cmd_buffers[i])
+      } else {
+        args.CommandBuffers[as!u32(i)] = cmd_buffers[i]
+      }
+    }
+
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands[mapPos] =
+    args
+
+    AddCommand(commandBuffer, cmd_vkCmdExecuteCommands, mapPos)
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdExecuteCommands[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdExecuteCommands, mapPos)
 }
 
 // ----------------------------------------------------------------------------

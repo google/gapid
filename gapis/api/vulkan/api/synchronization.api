@@ -325,18 +325,21 @@ cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if !(event in Events) { vkErrorInvalidEvent(event) }
   args := new!vkCmdSetEventArgs(
     Event:      event,
     StageMask:  stageMask
   )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdSetEvent, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdSetEvent, mapPos)
+  }
 }
 
 @internal class vkCmdResetEventArgs {
@@ -355,18 +358,21 @@ cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if !(event in Events) { vkErrorInvalidEvent(event) }
   args := new!vkCmdResetEventArgs(
     Event:      event,
     StageMask:  stageMask,
   )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdResetEvent, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdResetEvent, mapPos)
+  }
 }
 
 @internal class vkCmdWaitEventsArgs {
@@ -412,7 +418,6 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdWaitEventsArgs(
     SrcStageMask:  srcStageMask,
     DstStageMask:  dstStageMask,
@@ -438,11 +443,15 @@ cmd void vkCmdWaitEvents(
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
+  }
 }
 
 //////////////////////
@@ -538,7 +547,6 @@ cmd void vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdPipelineBarrierArgs(
     SrcStageMask:     srcStageMask,
     DstStageMask:     dstStageMask,
@@ -562,11 +570,15 @@ cmd void vkCmdPipelineBarrier(
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
+  }
 }
 
 extern void recordFenceSignal(VkFence fence)

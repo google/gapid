@@ -842,7 +842,6 @@ cmd void vkCmdBindDescriptorSets(
     const VkDescriptorSet* pDescriptorSets,
     u32                    dynamicOffsetCount,
     const u32*             pDynamicOffsets) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if pDescriptorSets == null { vkErrorNullPointer("VkDescriptorSet") }
   sets := pDescriptorSets[0:descriptorSetCount]
   args := new!vkCmdBindDescriptorSetsArgs(
@@ -859,11 +858,15 @@ cmd void vkCmdBindDescriptorSets(
     args.DescriptorSets[i] = sets[i]
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
+  }
 }
 
 @internal class
@@ -887,16 +890,19 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdPushConstantsArgs(
-    layout,                stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
-  )
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdPushConstantsArgs(
+      layout,                stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
+    )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants[mapPos] =
-  args
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdPushConstants, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdPushConstants, mapPos)
+  }
 }
 
 // ----------------------------------------------------------------------------
