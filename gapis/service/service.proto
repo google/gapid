@@ -1144,8 +1144,8 @@ message TimestampsItem {
   uint64 time_in_nanoseconds = 3;
 }
 
-// GetTimestampsResponse is the response message server sends back which contains
-// the time duratoins for the commands when replay the trace.
+// GetTimestampsResponse is the response message server sends back which
+// contains the time duratoins for the commands when replay the trace.
 message GetTimestampsResponse {
   oneof res {
     Timestamps timestamps = 1;

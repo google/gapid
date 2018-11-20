@@ -15,13 +15,13 @@
 cc_library(
     name = "spirv-reflect",
     srcs = [
+        "include/spirv/unified1/spirv.h",
         "spirv_reflect.c",
         "spirv_reflect.h",
-        "include/spirv/unified1/spirv.h",
     ],
     hdrs = [
-        "spirv_reflect.h",
         "include/spirv/unified1/spirv.h",
+        "spirv_reflect.h",
     ],
     copts = ["-std=c99"],
     include_prefix = "third_party/SPIRV-Reflect/",

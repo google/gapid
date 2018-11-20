@@ -45,10 +45,10 @@ cc_library(
         "-DNV_EXTENSIONS",
         "-Wno-unused-variable",
     ],
+    include_prefix = "third_party/glslang",
     linkopts = select({
         "@gapid//tools/build:windows": [],
         "//conditions:default": ["-lpthread"],
     }),
-    include_prefix = "third_party/glslang",
     visibility = ["//visibility:public"],
 )
