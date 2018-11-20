@@ -236,10 +236,12 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	if _, err = capture.ResolveFromPath(ctx, p); err != nil {
 		return nil, err
 	}
+
 	// Pre-resolve the dependency graph.
+	newCtx := keys.Clone(context.Background(), ctx)
 	crash.Go(func() {
-		newCtx := keys.Clone(context.Background(), ctx)
-		_, err = dependencygraph.GetFootprint(newCtx, p)
+		cctx := status.PutTask(newCtx, nil)
+		_, err = dependencygraph.GetFootprint(cctx, p)
 		if err != nil {
 			log.E(newCtx, "Error resolve dependency graph: %v", err)
 		}
