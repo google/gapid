@@ -59,6 +59,10 @@ type recordType string
 // blob is the record type for a raw byte slice
 const blob = recordType("<blob>")
 
+// blobFunc is the record type for a function that returns
+// a raw byte slice
+const blobFunc = recordType("<blobFunc>")
+
 type record struct {
 	data         []byte      // data is the encoded object
 	ty           recordType  // ty is the type of the encoded object
@@ -145,12 +149,20 @@ type memory struct {
 func (d *memory) Store(ctx context.Context, val interface{}) (id.ID, error) {
 	var data []byte
 	var ty recordType
+	dontStoreData := false
 
 	switch val := val.(type) {
 	case nil:
 		panic(fmt.Errorf("Attemping to store nil in database"))
 	case []byte:
 		data, ty = val, blob
+	case func() ([]byte, error):
+		dat, err := val()
+		if err != nil {
+			return id.ID{}, err
+		}
+		data, ty = dat, blobFunc
+		dontStoreData = true
 	default:
 		m, err := toProto(ctx, val)
 		if err != nil {
@@ -168,7 +180,11 @@ func (d *memory) Store(ctx context.Context, val interface{}) (id.ID, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, got := d.records[id]; !got {
-		d.records[id] = &record{data: data, ty: ty, object: val, created: getCallstack(4)}
+		if dontStoreData {
+			d.records[id] = &record{data: nil, ty: ty, object: val, created: getCallstack(4)}
+		} else {
+			d.records[id] = &record{data: data, ty: ty, object: val, created: getCallstack(4)}
+		}
 	}
 
 	return id, nil
@@ -264,6 +280,17 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 	}
 	if rs.err != nil {
 		return nil, rs.err // Resolve errored.
+	}
+
+	if r.ty == blobFunc {
+		if x, ok := r.object.(func() ([]byte, error)); ok {
+			return func() ([]byte, error) {
+				d.mutex.Unlock()
+				defer d.mutex.Lock()
+				return x()
+			}()
+		}
+		return nil, fmt.Errorf("Resource '%v' of incorrect type", id)
 	}
 	return r.object, nil // Done.
 }
