@@ -31,6 +31,8 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+var submission_num uint32 = 0
+
 // Default query pool size
 const queryPoolSize = 256
 
@@ -439,6 +441,10 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	switch cmd := cmd.(type) {
 
 	case *VkQueueSubmit:
+		submission_num++
+		if submission_num == 3 {
+			log.I(ctx, "s is %+v", s)
+		}
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		vkQueue := cmd.Queue()
 		queue := GetState(s).Queues().Get(vkQueue)
