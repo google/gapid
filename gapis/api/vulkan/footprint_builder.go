@@ -824,7 +824,6 @@ func newDescriptorSet() *descriptorSet {
 }
 
 func (ds *descriptorSet) reserveDescriptor(bi, di uint64) {
-	ds.descriptors.SetValue([]uint64{bi, di}, &descriptor{sampler: &vkHandle{handle: 0}})
 	if _, ok := ds.descriptorCounts[bi]; !ok {
 		ds.descriptorCounts[bi] = uint64(0)
 	}
@@ -842,39 +841,29 @@ func (ds *descriptorSet) getDescriptor(ctx context.Context,
 			"binding: %v, array index: %v", *ds, bi, di)
 		return nil
 	}
-	log.E(ctx, "FootprintBuilder: Read target descriptor does not exists in "+
-		"descriptorSet: %v, with binding: %v, array index: %v", *ds, bi, di)
 	return nil
 }
 
 func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	bh *dependencygraph.Behavior, bi, di uint64, ty VkDescriptorType,
 	vkImg VkImage, sampler *vkHandle, vkBuf VkBuffer, boundOffset, rng VkDeviceSize) {
-	// dataBindingList resBindingList, sampler vkHandle, rng VkDeviceSize) {
 	if v := ds.descriptors.Value([]uint64{bi, di}); v != nil {
 		if d, ok := v.(*descriptor); ok {
-			write(ctx, bh, d)
-			d.img = vkImg
-			d.buf = vkBuf
-			d.sampler = sampler
-			d.bufRng = rng
-			d.bufOffset = boundOffset
-			if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
-				ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
-				ds.dynamicDescriptorCount++
-			}
 			if d.ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
 				d.ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
 				ds.dynamicDescriptorCount--
 			}
-			d.ty = ty
 		} else {
 			log.E(ctx, "FootprintBuilder: Not *descriptor type in descriptorSet: %v, with "+
 				"binding: %v, array index: %v", *ds, bi, di)
 		}
-	} else {
-		log.E(ctx, "FootprintBuilder: Write target descriptor does not exist in "+
-			"descriptorSet: %v, with binding: %v, array index: %v", *ds, bi, di)
+	}
+	d := &descriptor{ty: ty, img: vkImg, sampler: sampler, buf: vkBuf, bufOffset: boundOffset, bufRng: rng}
+	ds.descriptors.SetValue([]uint64{bi, di}, d)
+    write(ctx, bh, d)
+	if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+		ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
+		ds.dynamicDescriptorCount++
 	}
 }
 
@@ -1028,8 +1017,10 @@ func (ds *descriptorSet) copyDescriptors(ctx context.Context,
 	for i := uint64(0); i < uint64(copy.DescriptorCount()); i++ {
 		updateDstAndSrcForOverflow()
 		srcD := srcDs.getDescriptor(ctx, bh, srcBinding, srcElm)
-		ds.setDescriptor(ctx, bh, dstBinding, dstElm, srcD.ty,
-			srcD.img, srcD.sampler, srcD.buf, srcD.bufOffset, srcD.bufRng)
+		if srcD != nil {
+			ds.setDescriptor(ctx, bh, dstBinding, dstElm, srcD.ty,
+				srcD.img, srcD.sampler, srcD.buf, srcD.bufOffset, srcD.bufRng)
+		}
 		srcElm++
 		dstElm++
 	}
@@ -1319,10 +1310,13 @@ func (vb *FootprintBuilder) newCommand(ctx context.Context,
 	bh *dependencygraph.Behavior, vkCb VkCommandBuffer) *commandBufferCommand {
 	cbc := &commandBufferCommand{}
 	read(ctx, bh, vb.toVkHandle(uint64(vkCb)))
-	read(ctx, bh, vb.commandBuffers[vkCb].begin)
-	write(ctx, bh, cbc)
-	vb.commands[vkCb] = append(vb.commands[vkCb], cbc)
-	return cbc
+	if _, ok := vb.commandBuffers[vkCb]; ok {
+		read(ctx, bh, vb.commandBuffers[vkCb].begin)
+		write(ctx, bh, cbc)
+		vb.commands[vkCb] = append(vb.commands[vkCb], cbc)
+		return cbc
+	}
+	return nil
 }
 
 func newFootprintBuilder() *FootprintBuilder {
@@ -2023,30 +2017,38 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	case *VkResetCommandBuffer:
 		read(ctx, bh, vb.toVkHandle(uint64(cmd.CommandBuffer())))
-		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].begin)
-		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].end)
-		vb.commands[cmd.CommandBuffer()] = []*commandBufferCommand{}
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].begin)
+			write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].end)
+			vb.commands[cmd.CommandBuffer()] = []*commandBufferCommand{}
+		}
 
 	case *VkFreeCommandBuffers:
 		count := uint64(cmd.CommandBufferCount())
 		for _, vkCb := range cmd.PCommandBuffers().Slice(0, count, l).MustRead(ctx, cmd, s, nil) {
-			if read(ctx, bh, vb.toVkHandle(uint64(vkCb))) {
-				write(ctx, bh, vb.commandBuffers[vkCb].begin)
-				write(ctx, bh, vb.commandBuffers[vkCb].end)
-				delete(vb.commandBuffers, vkCb)
-				delete(vb.commands, vkCb)
+			if _, ok := vb.commandBuffers[vkCb]; ok {
+				if read(ctx, bh, vb.toVkHandle(uint64(vkCb))) {
+					write(ctx, bh, vb.commandBuffers[vkCb].begin)
+					write(ctx, bh, vb.commandBuffers[vkCb].end)
+					delete(vb.commandBuffers, vkCb)
+					delete(vb.commands, vkCb)
+				}
 			}
 		}
 		bh.Alive = true
 
 	case *VkBeginCommandBuffer:
 		read(ctx, bh, vb.toVkHandle(uint64(cmd.CommandBuffer())))
-		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].begin)
-		vb.commands[cmd.CommandBuffer()] = []*commandBufferCommand{}
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].begin)
+			vb.commands[cmd.CommandBuffer()] = []*commandBufferCommand{}
+		}
 	case *VkEndCommandBuffer:
 		read(ctx, bh, vb.toVkHandle(uint64(cmd.CommandBuffer())))
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].begin)
-		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].end)
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].begin)
+			write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].end)
+		}
 
 	// copy, blit, resolve, clear, fill, update image and buffer
 	case *VkCmdCopyImage:
@@ -2194,7 +2196,9 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		read(ctx, bh, vb.toVkHandle(uint64(vkRp)))
 		vkFb := cmd.PRenderPassBegin().MustRead(ctx, cmd, s, nil).Framebuffer()
 		read(ctx, bh, vb.toVkHandle(uint64(vkFb)))
-		write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			write(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+		}
 		rp := GetState(s).RenderPasses().Get(vkRp)
 		fb := GetState(s).Framebuffers().Get(vkFb)
 		read(ctx, bh, vb.toVkHandle(uint64(fb.RenderPass().VulkanHandle())))
@@ -2203,15 +2207,16 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				read(ctx, bh, vb.toVkHandle(uint64(ia.Image().VulkanHandle())))
 			}
 		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionState) {
-			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
-			execInfo.beginRenderPass(ctx, vb, cbh, rp, fb)
-			execInfo.renderPassBegin = newForwardPairedLabel(ctx, cbh)
-			ft.AddBehavior(ctx, cbh)
-			cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
-			// Without this, we drop some needed commands.
+		if cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer()); cbc != nil {
+			cbc.behave = func(sc submittedCommand,
+				execInfo *queueExecutionState) {
+				cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
+				execInfo.beginRenderPass(ctx, vb, cbh, rp, fb)
+				execInfo.renderPassBegin = newForwardPairedLabel(ctx, cbh)
+				ft.AddBehavior(ctx, cbh)
+				cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
+				// Without this, we drop some needed commands.
+			}
 		}
 
 	case *VkCmdNextSubpass:
@@ -2226,16 +2231,18 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		}
 
 	case *VkCmdEndRenderPass:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionState) {
-			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
-			execInfo.endRenderPass(ctx, ft, cbh, sc)
-			read(ctx, cbh, execInfo.renderPassBegin)
-			ft.AddBehavior(ctx, cbh)
-			cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
-			// Without this, we drop some needed commands.
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+			cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
+			cbc.behave = func(sc submittedCommand,
+				execInfo *queueExecutionState) {
+				cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
+				execInfo.endRenderPass(ctx, ft, cbh, sc)
+				read(ctx, cbh, execInfo.renderPassBegin)
+				ft.AddBehavior(ctx, cbh)
+				cbh.Alive = true // TODO(awoloszyn)(BUG:1158): Investigate why this is needed.
+				// Without this, we drop some needed commands.
+			}
 		}
 
 	// bind vertex buffers, index buffer, pipeline and descriptors
@@ -2307,28 +2314,34 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 
 	// draw and dispatch
 	case *VkCmdDraw:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionState) {
-			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
-			vb.draw(ctx, cbh, execInfo)
-			ft.AddBehavior(ctx, cbh)
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+			cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
+			cbc.behave = func(sc submittedCommand,
+				execInfo *queueExecutionState) {
+				cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
+				vb.draw(ctx, cbh, execInfo)
+				ft.AddBehavior(ctx, cbh)
+			}
 		}
 
 	case *VkCmdDrawIndexed:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionState) {
-			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
-			vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
-			vb.draw(ctx, cbh, execInfo)
-			ft.AddBehavior(ctx, cbh)
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+			cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
+			cbc.behave = func(sc submittedCommand,
+				execInfo *queueExecutionState) {
+				cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
+				vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
+				vb.draw(ctx, cbh, execInfo)
+				ft.AddBehavior(ctx, cbh)
+			}
 		}
 
 	case *VkCmdDrawIndirect:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+		}
 		count := uint64(cmd.DrawCount())
 		sizeOfDrawIndirectdCommand := uint64(4 * 4)
 		offset := uint64(cmd.Offset())
@@ -2338,17 +2351,20 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				sizeOfDrawIndirectdCommand)...)
 			offset += uint64(cmd.Stride())
 		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionState) {
-			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
-			vb.draw(ctx, cbh, execInfo)
-			read(ctx, cbh, src...)
-			ft.AddBehavior(ctx, cbh)
+		if cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer()); cbc != nil {
+			cbc.behave = func(sc submittedCommand,
+				execInfo *queueExecutionState) {
+				cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
+				vb.draw(ctx, cbh, execInfo)
+				read(ctx, cbh, src...)
+				ft.AddBehavior(ctx, cbh)
+			}
 		}
 
 	case *VkCmdDrawIndexedIndirect:
-		read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+		if _, ok := vb.commandBuffers[cmd.CommandBuffer()]; ok {
+			read(ctx, bh, vb.commandBuffers[cmd.CommandBuffer()].renderPassBegin)
+		}
 		count := uint64(cmd.DrawCount())
 		sizeOfDrawIndexedIndirectCommand := uint64(5 * 4)
 		offset := uint64(cmd.Offset())
@@ -2358,14 +2374,15 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				sizeOfDrawIndexedIndirectCommand)...)
 			offset += uint64(cmd.Stride())
 		}
-		cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer())
-		cbc.behave = func(sc submittedCommand,
-			execInfo *queueExecutionState) {
-			cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
-			vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
-			vb.draw(ctx, cbh, execInfo)
-			read(ctx, cbh, src...)
-			ft.AddBehavior(ctx, cbh)
+		if cbc := vb.newCommand(ctx, bh, cmd.CommandBuffer()); cbc != nil {
+			cbc.behave = func(sc submittedCommand,
+				execInfo *queueExecutionState) {
+				cbh := sc.cmd.newBehavior(ctx, sc, execInfo)
+				vb.readBoundIndexBuffer(ctx, cbh, execInfo, cmd)
+				vb.draw(ctx, cbh, execInfo)
+				read(ctx, cbh, src...)
+				ft.AddBehavior(ctx, cbh)
+			}
 		}
 
 	case *VkCmdDispatch:
@@ -2553,8 +2570,13 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 		hasCmd := false
 		for i, submit := range cmd.PSubmits().Slice(0, submitCount, l).MustRead(ctx, cmd, s, nil) {
 			commandBufferCount := uint64(submit.CommandBufferCount())
-			for j, vkCb := range submit.PCommandBuffers().Slice(0, commandBufferCount, l).MustRead(ctx, cmd, s, nil) {
-				read(ctx, bh, vb.toVkHandle(uint64(vkCb)))
+			for j := uint64(0); j < commandBufferCount; j++ {
+				vkCb := submit.PCommandBuffers().Slice(j, j+1, l).MustRead(ctx, cmd, s, nil)[0]
+				// In case of invalid command buffer handle, stop traversing the whole
+				// slice.
+				if _, ok := vb.commandBuffers[vkCb]; !ok {
+					break
+				}
 				read(ctx, bh, vb.commandBuffers[vkCb].end)
 				for k, cbc := range vb.commands[vkCb] {
 					if !hasCmd {
@@ -2565,6 +2587,11 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 					vb.submitInfos[id].pendingCommands = append(vb.submitInfos[id].pendingCommands, submittedCmd)
 					if cbc.isCmdExecuteCommands {
 						for scbi, scb := range cbc.secondaryCommandBuffers {
+							// In case of invalid secondary command buffer, stop traversing
+							// all the secondary command buffers
+							if _, ok := vb.commandBuffers[scb]; !ok {
+								break
+							}
 							read(ctx, bh, vb.commandBuffers[scb].end)
 							for sci, scbc := range vb.commands[scb] {
 								fci := api.SubCmdIdx{uint64(id), uint64(i), uint64(j), uint64(k), uint64(scbi), uint64(sci)}
@@ -2576,11 +2603,23 @@ func (vb *FootprintBuilder) BuildFootprint(ctx context.Context,
 				}
 			}
 			waitSemaphoreCount := uint64(submit.WaitSemaphoreCount())
-			waitVkSps := submit.PWaitSemaphores().Slice(0, waitSemaphoreCount, l).MustRead(ctx, cmd, s, nil)
-			vb.submitInfos[id].waitSemaphores = append(vb.submitInfos[id].waitSemaphores, waitVkSps...)
+			for j := uint64(0); j < waitSemaphoreCount; j++ {
+				sp := submit.PWaitSemaphores().Slice(j, j+1, l).MustRead(ctx, cmd, s, nil)[0]
+				// In case of invalid semaphores, stop traversing all the semaphores.
+				if !GetState(s).Semaphores().Contains(sp) {
+					break
+				}
+				vb.submitInfos[id].waitSemaphores = append(vb.submitInfos[id].waitSemaphores, sp)
+			}
 			signalSemaphoreCount := uint64(submit.SignalSemaphoreCount())
-			signalVkSps := submit.PSignalSemaphores().Slice(0, signalSemaphoreCount, l).MustRead(ctx, cmd, s, nil)
-			vb.submitInfos[id].signalSemaphores = append(vb.submitInfos[id].signalSemaphores, signalVkSps...)
+			for j := uint64(0); j < signalSemaphoreCount; j++ {
+				sp := submit.PSignalSemaphores().Slice(j, j+1, l).MustRead(ctx, cmd, s, nil)[0]
+				// In case of invalid semaphores, stop traversing all the semaphores.
+				if !GetState(s).Semaphores().Contains(sp) {
+					break
+				}
+				vb.submitInfos[id].signalSemaphores = append(vb.submitInfos[id].signalSemaphores, sp)
+			}
 		}
 		vb.submitInfos[id].signalFence = cmd.Fence()
 
