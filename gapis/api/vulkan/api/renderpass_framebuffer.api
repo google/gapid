@@ -80,6 +80,7 @@ cmd VkResult vkCreateFramebuffer(
     Layers:                   create_info.layers,
     RenderPass:               RenderPasses[create_info.renderPass])
   for i in (0 .. create_info.attachmentCount) {
+    if !(attachments[i] in ImageViews) { vkErrorInvalidImageView(attachments[i]) }
     framebufferObject.ImageAttachments[i] = ImageViews[attachments[i]]
   }
 

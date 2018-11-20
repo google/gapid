@@ -43,6 +43,8 @@
 }
 
 sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
+  if !(buffer.SrcBuffer in Buffers) { vkErrorInvalidBuffer(buffer.SrcBuffer) }
+  if !(buffer.DstBuffer in Buffers) { vkErrorInvalidBuffer(buffer.DstBuffer) }
   sourceBuffer := Buffers[buffer.SrcBuffer]
   destBuffer := Buffers[buffer.DstBuffer]
   for _ , _ , region in buffer.CopyRegions {
@@ -212,6 +214,8 @@ class vkCmdCopyImageArgs {
 }
 
 sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
+  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
+  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
 
@@ -339,6 +343,8 @@ class vkCmdBlitImageArgs {
 }
 
 sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
+  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
+  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
 
@@ -510,6 +516,8 @@ class vkCmdCopyBufferToImageArgs {
 }
 
 sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
+  if !(args.SrcBuffer in Buffers) { vkErrorInvalidBuffer(args.SrcBuffer) }
+  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
   bufferObject := Buffers[args.SrcBuffer]
   imageObject := Images[args.DstImage]
   format := imageObject.Info.Format
@@ -669,6 +677,7 @@ cmd void vkCmdCopyImageToBuffer(
 }
 
 sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
+  if !(args.DstBuffer in Buffers) { vkErrorInvalidBuffer(args.DstBuffer) }
   Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
   buff := Buffers[args.DstBuffer]
   bufPieces := getBufferBoundMemoryPiecesInRange(buff, args.DstOffset, args.DataSize)
@@ -713,6 +722,7 @@ class vkCmdFillBufferArgs {
 }
 
 sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
+  if !(args.Buffer in Buffers) { vkErrorInvalidBuffer(args.Buffer) }
   buf := Buffers[args.Buffer]
   bufPieces := getBufferBoundMemoryPiecesInRange(buf, args.DstOffset, args.Size)
   for _ , _ , p in bufPieces {
@@ -876,6 +886,8 @@ cmd void vkCmdClearAttachments(
 }
 
 sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
+  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
+  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
   for _ , _ , r in args.ResolveRegions {
     srcRange := VkImageSubresourceRange(
       r.srcSubresource.aspectMask,
