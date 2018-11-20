@@ -129,7 +129,8 @@ cmd void vkDestroyBuffer(
     VkDevice                     device,
     VkBuffer                     buffer,
     AllocationCallbacks          pAllocator) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) } else {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) } else {
     if (buffer != as!VkBuffer(0)) {
       bufferObject := Buffers[buffer]
       if (bufferObject.Memory != null) {
@@ -180,6 +181,7 @@ cmd VkResult vkCreateBufferView(
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
+  if !(buffer_view_create_info.buffer in Buffers) { vkErrorInvalidBuffer(buffer_view_create_info.buffer) }
 
   handle := ?
   bufferViewObject := new!BufferViewObject(
