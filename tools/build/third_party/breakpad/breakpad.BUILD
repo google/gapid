@@ -220,7 +220,6 @@ cc_library(
         "@gapid//tools/build:windows": DUMP_SYMS_WINDOWS,
     }),
     hdrs = glob(["src/**/*.h"]),
-    strip_include_prefix = "src",
     copts = cc_copts() + [
         "-DN_UNDF=0x0",
     ] + select({
@@ -228,18 +227,19 @@ cc_library(
         "@gapid//tools/build:linux": ["-Wno-maybe-uninitialized"],
         "//conditions:default": [],
     }),
-    deps = select({
-        "@gapid//tools/build:linux": ["@lss"],
-        "//conditions:default": [],
-    }),
     linkopts = select({
         "@gapid//tools/build:windows": ["-limagehlp"],
+        "//conditions:default": [],
+    }),
+    strip_include_prefix = "src",
+    deps = select({
+        "@gapid//tools/build:linux": ["@lss"],
         "//conditions:default": [],
     }),
 )
 
 cc_binary(
     name = "dump_syms",
-    deps = [":dump_syms-lib"],
     visibility = ["//visibility:public"],
+    deps = [":dump_syms-lib"],
 )
