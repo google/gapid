@@ -482,6 +482,14 @@ func (e externs) vkErrInvalidImageSubresource(img VkImage, subresourceType strin
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrInvalidDescriptorBindingType(set VkDescriptorSet, binding uint32, layoutType, updateType VkDescriptorType) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Updating descriptor binding at: %v: %d with type: %v, but the type defined in descriptor set layout is: %v", set, binding, layoutType, updateType)
+	e.onVkError(issue)
+}
+
 type fenceSignal uint64
 
 func (e externs) recordFenceSignal(fence VkFence) {

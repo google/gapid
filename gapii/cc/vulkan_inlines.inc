@@ -55,3 +55,7 @@ inline void VulkanSpy::vkErrInvalidImageLayout(CallObserver*, VkImage img, uint3
 inline void VulkanSpy::vkErrInvalidImageSubresource(CallObserver*, VkImage img, std::string subresourceType, uint32_t value) {
     GAPID_WARNING("Error: Accessing invalid image subresource at Image: %" PRIu64 ", %s: %" PRIu32, img, subresourceType.c_str(), value);
 }
+
+inline void VulkanSpy::vkErrInvalidDescriptorBindingType(CallObserver*, VkDescriptorSet set, uint32_t binding, uint32_t layout_type, uint32_t update_type) {
+    GAPID_WARNING("Error: Updating descriptor binding at: %" PRIu64 ": %" PRIu32 " with type: %" PRIu32 ", but the type defined in descriptor set layout is: %" PRIu32 "", set, binding, layout_type, update_type);
+}

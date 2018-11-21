@@ -284,38 +284,6 @@ cmd VkResult vkAllocateDescriptorSets(
       pool := DescriptorPools[info.descriptorPool]
       pool.DescriptorSets[handle] = object
       object.Layout = DescriptorSetLayouts[layouts[i]]
-      for j in (0 .. object.Layout.MaximumBinding + 1) {
-        if j in object.Layout.Bindings {
-          binding := object.Layout.Bindings[j]
-          descriptorBinding := new!DescriptorBinding(
-            BindingType: binding.Type)
-          imageInfos := descriptorBinding.ImageBinding
-          bufferInfos := descriptorBinding.BufferBinding
-          bufferViews := descriptorBinding.BufferViewBindings
-          for k in (0 .. binding.Count) {
-            switch binding.Type {
-              case VK_DESCRIPTOR_TYPE_SAMPLER,
-                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                  VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-                imageInfos[k] = new!VkDescriptorImageInfo()
-              case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                  VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                bufferViews[k] = as!VkBufferView(0)
-              case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                bufferInfos[k] = new!VkDescriptorBufferInfo()
-            }
-          }
-          descriptorBinding.ImageBinding = imageInfos
-          descriptorBinding.BufferBinding = bufferInfos
-          descriptorBinding.BufferViewBindings = bufferViews
-          object.Bindings[j] = descriptorBinding
-        }
-      }
       DescriptorSets[handle] = object
     }
   }
@@ -600,7 +568,16 @@ cmd void vkUpdateDescriptorSets(
     set := DescriptorSets[w.DstSet]
     binding := w.Binding
     arrayIndex := w.BindingArrayIndex
-    setBinding := set.Bindings[binding]
+    setBinding := switch set.Bindings[binding] == null {
+      case false:
+        set.Bindings[binding]
+      case true:
+        new!DescriptorBinding(BindingType: set.Layout.Bindings[binding].Type)
+    }
+    if set.Layout.Bindings[binding].Type != setBinding.BindingType {
+      vkErrInvalidDescriptorBindingType(set.VulkanHandle, binding, set.Layout.Bindings[binding].Type, setBinding.BindingType)
+    }
+
     switch w.Type {
       case VK_DESCRIPTOR_TYPE_SAMPLER,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -658,8 +635,19 @@ cmd void vkUpdateDescriptorSets(
   for _ , _ , c in copies {
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
-    srcBinding := srcSet.Bindings[c.SrcBinding]
-    dstBinding := dstSet.Bindings[c.DstBinding]
+    //srcBinding := srcSet.Bindings[c.SrcBinding]
+    srcBinding := switch (c.SrcBinding in srcSet.Bindings) {
+      case false:
+        srcSet.Bindings[c.SrcBinding]
+      case true:
+        new!DescriptorBinding(BindingType: srcSet.Layout.Bindings[c.SrcBinding].Type)
+    }
+    dstBinding := switch (c.DstBinding in dstSet.Bindings) {
+      case false:
+        dstSet.Bindings[c.DstBinding]
+      case true:
+        new!DescriptorBinding(BindingType: dstSet.Layout.Bindings[c.DstBinding].Type)
+    }
     switch (srcBinding.BindingType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
