@@ -564,9 +564,9 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	traceMaxMemory := int64(0)
 
 	nonLoadingFrameTime := uint64(0)
-	// We assume that the last 10% of frames come from a non-loading screen
+	// We assume that the last 20% of frames come from a non-loading screen
 	if hasStateSerialization {
-		nFrames := len(frameTimes) / 20
+		nFrames := len(frameTimes) / 5
 		stableStart := frameTimes[len(frameTimes)-nFrames-1]
 		stableEnd := frameTimes[len(frameTimes)-1]
 		nonLoadingFrameTime = (stableEnd - stableStart) / uint64(nFrames)
