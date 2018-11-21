@@ -860,7 +860,7 @@ func (ds *descriptorSet) setDescriptor(ctx context.Context,
 	}
 	d := &descriptor{ty: ty, img: vkImg, sampler: sampler, buf: vkBuf, bufOffset: boundOffset, bufRng: rng}
 	ds.descriptors.SetValue([]uint64{bi, di}, d)
-    write(ctx, bh, d)
+	write(ctx, bh, d)
 	if ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
 		ty == VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC {
 		ds.dynamicDescriptorCount++
