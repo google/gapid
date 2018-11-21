@@ -543,7 +543,7 @@ cmd void vkUpdateDescriptorSets(
       }
     }
   }
-  
+
   cs := pDescriptorCopies[0:descriptorCopyCount]
   for i in (0 .. descriptorCopyCount) {
     c := cs[i]
@@ -616,7 +616,7 @@ cmd void vkUpdateDescriptorSets(
               }
             }
           }
-      
+
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
@@ -635,7 +635,6 @@ cmd void vkUpdateDescriptorSets(
   for _ , _ , c in copies {
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
-    //srcBinding := srcSet.Bindings[c.SrcBinding]
     srcBinding := switch (c.SrcBinding in srcSet.Bindings) {
       case false:
         srcSet.Bindings[c.SrcBinding]
@@ -721,7 +720,7 @@ vkCmdBindDescriptorSetsArgs {
   map!(u32, u32)             DynamicOffsets
 }
 
-@internal class 
+@internal class
 emptyBufferOffsets {
   map!(u32, map!(u32, map!(VkDeviceSize, bool))) BufferBindingOffsets
 }
@@ -766,7 +765,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
         case false:
           emptyBufferOffsets().BufferBindingOffsets
       }
-      
+
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the Bindings in order of the binding number.
@@ -803,7 +802,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
 
               if !hasBeenRead.b {
                 oldSets := ProcessedDescriptorSets.val[set].bufferOffsets
-                ProcessedDescriptorSets.val[set] = 
+                ProcessedDescriptorSets.val[set] =
                   ProcessedDescriptorSet(oldSets, true)
 
               }
