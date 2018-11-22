@@ -210,6 +210,15 @@ func (p *InstalledPackage) FileDir(ctx context.Context) (string, error) {
 	return path, err
 }
 
+// AppDir returns the absolute path of the installed packages files directory.
+func (p *InstalledPackage) AppDir(ctx context.Context) (string, error) {
+	out, err := p.Device.Shell("run-as", p.Name, "pwd").Call(ctx)
+	if err != nil {
+		return "", err
+	}
+	return out, err
+}
+
 // Pid returns the PID of the newest (if pgrep exists) running process belonging to the given package.
 func (p *InstalledPackage) Pid(ctx context.Context) (int, error) {
 	// First, try pgrep.
