@@ -23,4 +23,5 @@ message DependencyGraph2Resolvable {
   path.Capture capture = 1;
   bool includeInitialCommands = 2;
   bool mergeSubCmdNodes = 3;
+  bool reverseDependencies = 4;
 }
