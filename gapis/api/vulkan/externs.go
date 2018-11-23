@@ -466,6 +466,14 @@ func (e externs) vkErrCommandBufferIncomplete(cmdbuf VkCommandBuffer) {
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrCommandBufferNotRecording(cmdbuf VkCommandBuffer) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Executing command buffer %v was not in the RECORDING state", cmdbuf)
+	e.onVkError(issue)
+}
+
 func (e externs) vkErrInvalidImageLayout(img VkImage, aspect, layer, level uint32, layout VkImageLayout, expectedLayout VkImageLayout) {
 	var issue replay.Issue
 	issue.Command = e.cmdID

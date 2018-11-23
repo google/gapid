@@ -46,6 +46,7 @@ extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handl
 extern void vkErrInvalidDescriptorArrayElement(u64 set, u32 binding, u32 arrayIndex)
 extern void vkErrInvalidDescriptorBindingType(VkDescriptorSet set, u32 binding, VkDescriptorType layoutType, VkDescriptorType updateType)
 extern void vkErrCommandBufferIncomplete(VkCommandBuffer cmdbuf)
+extern void vkErrCommandBufferNotRecording(VkCommandBuffer cmdbuf)
 extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout)
 extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
 
@@ -73,6 +74,10 @@ sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
 
 sub void vkErrorCommandBufferIncomplete(VkCommandBuffer cmdbuf) {
   vkErrCommandBufferIncomplete(cmdbuf)
+}
+
+sub void vkErrorCommandBufferNotRecording(VkCommandBuffer cmdbuf) {
+  vkErrCommandBufferNotRecording(cmdbuf)
 }
 
 sub void vkErrorInvalidDeviceMemory(VkDeviceMemory mem) {

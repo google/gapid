@@ -47,6 +47,10 @@ inline void VulkanSpy::vkErrCommandBufferIncomplete(CallObserver*, VkCommandBuff
     GAPID_WARNING("Error: Executing command buffer %zu was not in the COMPLETED state", cmdbuf)
 }
 
+inline void VulkanSpy::vkErrCommandBufferNotRecording(CallObserver*, VkCommandBuffer cmdbuf) {
+    GAPID_WARNING("Error: Executing command buffer %zu was not in the RECORDING state", cmdbuf)
+}
+
 inline void VulkanSpy::vkErrInvalidImageLayout(CallObserver*, VkImage img, uint32_t aspect, uint32_t layer, uint32_t level, uint32_t layout, uint32_t expectedLayout) {
     GAPID_WARNING("Error: Image subresource at Image: %" PRIu64 ", AspectBit: %" PRIu32 ", Layer: %" PRIu32 ", Level: %" PRIu32 " was in layout %" PRIu32 ", but was expected to be in layout %" PRIu32,
         img, aspect, layer, level, layout, expectedLayout);
