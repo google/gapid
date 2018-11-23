@@ -528,11 +528,8 @@ cmd VkResult vkCreateGraphicsPipelines(
     obj.RenderPass = RenderPasses[create_info.renderPass]
     obj.Subpass = create_info.subpass
     if ((as!u32(create_info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
-      if (create_info.basePipelineIndex != -1) {
-        obj.BasePipelineIndex = create_info.basePipelineIndex
-      } else {
-        obj.BasePipeline = create_info.basePipelineHandle
-      }
+      obj.BasePipelineIndex = create_info.basePipelineIndex
+      obj.BasePipeline = create_info.basePipelineHandle
     } else {
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
@@ -625,11 +622,8 @@ cmd VkResult vkCreateComputePipelines(
     }
     obj.Stage = stage_data
     if ((as!u32(info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
-      if (info.basePipelineIndex != -1) {
-        obj.BasePipelineIndex = info.basePipelineIndex
-      } else {
-        obj.BasePipeline = info.basePipelineHandle
-      }
+      obj.BasePipelineIndex = info.basePipelineIndex
+      obj.BasePipeline = info.basePipelineHandle
     } else {
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
