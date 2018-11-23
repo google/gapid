@@ -290,8 +290,8 @@ func getPipelinesInOrder(s *State, compute bool) []VkPipeline {
 		}
 	}
 
-	numHandled := 0
 	for len(unhandledPipelines) != 0 {
+		numHandled := 0
 		for k, v := range unhandledPipelines {
 			handled := false
 			if v == 0 {
