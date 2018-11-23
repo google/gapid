@@ -584,7 +584,7 @@ cmd void vkDestroySampler(
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if sampler in Samplers {
-    obj := Samplers[sampler] 
+    obj := Samplers[sampler]
     if obj != null {
       for _, vkDesSet, bindingAndIndices in obj.DescriptorUsers {
         if vkDesSet in DescriptorSets {
@@ -625,7 +625,7 @@ sub void updateImageQueue(ref!ImageObject image, VkImageSubresourceRange rng) {
   }
 }
 
-sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng, 
+sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
     ref!QueueObject queue) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
@@ -639,41 +639,6 @@ sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
               level.LastBoundQueue = queue
             }
           }
-        }
-      }
-    }
-  }
-}
-
-@spy_disabled
-sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  layerCount := imageSubresourceLayerCount(image, rng)
-  levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
-    for _, i, layer in image.Aspects[aspectBit].Layers {
-      if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
-        for _, k, level in layer.Levels {
-          if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
-            read(level.Data)
-          }
-        }
-      }
-    }
-  }
-}
-
-@spy_disabled
-sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  layerCount := imageSubresourceLayerCount(image, rng)
-  levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
-    if aspectBit in image.Aspects {
-      aspect := image.Aspects[aspectBit]
-      for layerIndex in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
-        layer := aspect.Layers[layerIndex]
-        for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
-          level := layer.Levels[mipLevel]
-          write(level.Data)
         }
       }
     }

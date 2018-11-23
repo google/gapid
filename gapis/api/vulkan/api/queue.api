@@ -333,7 +333,7 @@ cmd VkResult vkQueueBindSparse(
       bindsToQueue := new!SparseMemoryBinds()
       memoryBinds := bufferBindInfo.pBinds[0:bufferBindInfo.bindCount]
       for k in (0 .. bufferBindInfo.bindCount) {
-        if (memoryBinds[k].memory != as!VkDeviceMemory(0)) && 
+        if (memoryBinds[k].memory != as!VkDeviceMemory(0)) &&
             !(memoryBinds[k].memory in DeviceMemories) {
           vkErrorInvalidDeviceMemory(memoryBinds[k].memory)
         }
@@ -351,7 +351,7 @@ cmd VkResult vkQueueBindSparse(
       for k in (0 .. opaqueBindInfo.bindCount) {
         if (memoryBinds[k].memory != as!VkDeviceMemory(0)) &&
             !(memoryBinds[k].memory in DeviceMemories) {
-          vkErrorInvalidDeviceMemory(memoryBinds[k].memory) 
+          vkErrorInvalidDeviceMemory(memoryBinds[k].memory)
         }
         bindsToQueue.SparseMemoryBinds[k] = memoryBinds[k]
       }
@@ -366,8 +366,8 @@ cmd VkResult vkQueueBindSparse(
       imageMemoryBinds := imageBindInfo.pBinds[0:imageBindInfo.bindCount]
       for k in (0 .. imageBindInfo.bindCount) {
         if (imageMemoryBinds[k].memory != as!VkDeviceMemory(0)) &&
-              !(imageMemoryBinds[k].memory in DeviceMemories) { 
-            vkErrorInvalidDeviceMemory(imageMemoryBinds[k].memory) 
+              !(imageMemoryBinds[k].memory in DeviceMemories) {
+            vkErrorInvalidDeviceMemory(imageMemoryBinds[k].memory)
         }
         bindsToQueue.SparseImageMemoryBinds[k] = imageMemoryBinds[k]
       }
