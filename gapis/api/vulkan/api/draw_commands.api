@@ -436,9 +436,11 @@ sub void readWriteMemoryInBoundComputeDescriptorSets() {
 
 sub  ref!DynamicStateSet unpackDynamicState(ref!DynamicData data) {
   obj := new!DynamicStateSet()
-  for _, _, s in data.DynamicStates {
-    if as!s32(s) < 9 {
-      obj.contains[as!s32(s)] = true
+  if data != null {
+    for _, _, s in data.DynamicStates {
+      if as!s32(s) < 9 {
+        obj.contains[as!s32(s)] = true
+      }
     }
   }
   return obj
