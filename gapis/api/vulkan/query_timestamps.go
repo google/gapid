@@ -271,6 +271,7 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 	submitCount := cmd.SubmitCount()
 	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 	newSubmitInfos := make([]VkSubmitInfo, submitCount)
+
 	for i := uint32(0); i < submitCount; i++ {
 		si := submitInfos[i]
 		waitSemPtr := memory.Nullptr
@@ -285,6 +286,7 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 		}
 
 		signalSemPtr := memory.Nullptr
+
 		if count := uint64(si.SignalSemaphoreCount()); count > 0 {
 			signalSemPtr = allocAndRead(si.PSignalSemaphores().
 				Slice(0, count, l).
@@ -293,23 +295,11 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 
 		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
 		cmdCount := si.CommandBufferCount()
-		newCmdCount := cmdCount*2 + 1
-
-		commandbuffer := t.generateQueryCommand(ctx,
-			cb,
-			out,
-			device,
-			queryPoolInfo.queryPool,
-			commandPool,
-			queryPoolInfo.writeIndex)
-		queryPoolInfo.writeIndex++
-		newCmdBuffers := make([]VkCommandBuffer, newCmdCount)
-		newCmdBuffers[0] = commandbuffer
-		for j := uint32(0); j < cmdCount; j++ {
-			buf := cmdBuffers[j]
-			newCmdBuffers[j*2+1] = buf
-
-			commandbuffer = t.generateQueryCommand(ctx,
+		cmdBufferPtr := memory.Nullptr
+		newCmdCount := uint32(0)
+		if cmdCount != 0 {
+			newCmdCount = cmdCount*2 + 1
+			commandbuffer := t.generateQueryCommand(ctx,
 				cb,
 				out,
 				device,
@@ -317,24 +307,44 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 				commandPool,
 				queryPoolInfo.writeIndex)
 			queryPoolInfo.writeIndex++
-			newCmdBuffers[j*2+2] = commandbuffer
+			newCmdBuffers := make([]VkCommandBuffer, newCmdCount)
+			newCmdBuffers[0] = commandbuffer
+			for j := uint32(0); j < cmdCount; j++ {
+				buf := cmdBuffers[j]
+				newCmdBuffers[j*2+1] = buf
 
-			begin := &path.Command{
-				Indices: []uint64{uint64(id), uint64(i), uint64(j), 0},
+				commandbuffer = t.generateQueryCommand(ctx,
+					cb,
+					out,
+					device,
+					queryPoolInfo.queryPool,
+					commandPool,
+					queryPoolInfo.writeIndex)
+				queryPoolInfo.writeIndex++
+				newCmdBuffers[j*2+2] = commandbuffer
+
+				begin := &path.Command{
+					Indices: []uint64{uint64(id), uint64(i), uint64(j), 0},
+				}
+				c, ok := GetState(s).CommandBuffers().Lookup(buf)
+				if !ok {
+					fmt.Errorf("Invalid command buffer %v", buf)
+				}
+				n := c.CommandReferences().Len()
+
+				k := 0
+				if n > 0 {
+					k = n - 1
+				}
+				end := &path.Command{
+					Indices: []uint64{uint64(id), uint64(i), uint64(j), uint64(k)},
+				}
+				queryPoolInfo.results = append(queryPoolInfo.results,
+					timestampRecord{timestamp: replay.Timestamp{begin, end, 0}, IsEoC: j == cmdCount-1})
 			}
-			c, ok := GetState(s).CommandBuffers().Lookup(buf)
-			if !ok {
-				fmt.Errorf("Invalid command buffer %v", buf)
-			}
-			n := c.CommandReferences().Len()
-			end := &path.Command{
-				Indices: []uint64{uint64(id), uint64(i), uint64(j), uint64(n - 1)},
-			}
-			queryPoolInfo.results = append(queryPoolInfo.results,
-				timestampRecord{timestamp: replay.Timestamp{begin, end, 0}, IsEoC: j == cmdCount-1})
+
+			cmdBufferPtr = allocAndRead(newCmdBuffers).Ptr()
 		}
-
-		cmdBufferPtr := allocAndRead(newCmdBuffers).Ptr()
 		newSubmitInfos[i] = NewVkSubmitInfo(s.Arena,
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
 			0, // pNext
@@ -408,6 +418,9 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 			tStart := r.Uint64()
 			for i := uint32(1); i < queryCount; i++ {
 				tEnd := r.Uint64()
+				if queryPoolInfo.readIndex >= uint32(len(queryPoolInfo.results)) {
+					panic(fmt.Errorf("ReadIndex [%v] is larger then the size of query [%v]", queryCount, len(queryPoolInfo.results)))
+				}
 				record := queryPoolInfo.results[queryPoolInfo.readIndex]
 				record.timestamp.Time = time.Duration(uint64(float32(tEnd-tStart)*queryPoolInfo.timestampPeriod)) * time.Nanosecond
 				if record.IsEoC && i < queryCount {
