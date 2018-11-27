@@ -431,3 +431,5 @@ sub T min!T(T a, T b) {
     case false: b
   }
 }
+
+extern u32 onesCount(u32 a)

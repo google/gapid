@@ -17,6 +17,7 @@ package vulkan
 import (
 	"context"
 	"fmt"
+	"math/bits"
 	"reflect"
 
 	"github.com/google/gapid/core/log"
@@ -474,6 +475,38 @@ func (e externs) vkErrCommandBufferNotRecording(cmdbuf VkCommandBuffer) {
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrQueryOutOfRange(queryPool VkQueryPool, query uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Query %v in QueryPool %v was out of range", query, queryPool)
+	e.onVkError(issue)
+}
+
+func (e externs) vkErrQueryUninitialized(queryPool VkQueryPool, query uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Query %v in QueryPool %v was uninitialized", query, queryPool)
+	e.onVkError(issue)
+}
+
+func (e externs) vkErrQueryNotInactive(queryPool VkQueryPool, query uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Query %v in QueryPool %v was not in the INACTIVE state", query, queryPool)
+	e.onVkError(issue)
+}
+
+func (e externs) vkErrQueryNotActive(queryPool VkQueryPool, query uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Query %v in QueryPool %v was not in the ACTIVE state", query, queryPool)
+	e.onVkError(issue)
+}
+
 func (e externs) vkErrInvalidImageLayout(img VkImage, aspect, layer, level uint32, layout VkImageLayout, expectedLayout VkImageLayout) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
@@ -533,4 +566,8 @@ func (e externs) recordPresentSwapchainImage(swapchain VkSwapchainKHR, imageInde
 	if e.w != nil {
 		e.w.CloseForwardDependency(e.ctx, swapchainImage{swapchain, imageIndex})
 	}
+}
+
+func (e externs) onesCount(a uint32) uint32 {
+	return (uint32)(bits.OnesCount32(a))
 }

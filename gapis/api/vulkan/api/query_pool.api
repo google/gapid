@@ -41,9 +41,10 @@
 //////////////////////////
 
 enum QueryStatus {
-  QUERY_STATUS_INACTIVE = 0
-  QUERY_STATUS_ACTIVE   = 1
-  QUERY_STATUS_COMPLETE = 2
+  QUERY_STATUS_INACTIVE      = 0
+  QUERY_STATUS_ACTIVE        = 1
+  QUERY_STATUS_COMPLETE      = 2
+  QUERY_STATUS_UNINITIALIZED = 4
 }
 
 @internal class QueryPoolObject {
@@ -87,7 +88,7 @@ cmd VkResult vkCreateQueryPool(
     QueryCount:          info.queryCount,
     PipelineStatistics:  info.pipelineStatistics)
   for i in (0 .. info.queryCount) {
-    pool.Status[i] = QUERY_STATUS_INACTIVE
+    pool.Status[i] = QUERY_STATUS_UNINITIALIZED
   }
 
   QueryPools[handle] = pool
@@ -121,7 +122,29 @@ cmd VkResult vkGetQueryPoolResults(
     VkQueryResultFlags flags) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(queryPool in QueryPools) { vkErrorInvalidQueryPool(queryPool) }
-  write(as!u8*(pData)[0:dataSize])
+
+  pool := QueryPools[queryPool]
+  dstIntSize := switch (as!u32(flags) & as!u32(VK_QUERY_RESULT_64_BIT)) != 0 {
+    case true: as!VkDeviceSize(8)
+    case false: as!VkDeviceSize(4)
+  }
+  resultCount := getResultCount(pool)
+  dstCount := switch (as!u32(flags) & as!u32(VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) != 0 {
+    case true: resultCount + 1
+    case false: resultCount
+  }
+  dstSize := dstIntSize * as!VkDeviceSize(dstCount)
+  for i in (0 .. queryCount) {
+    dstOffset := as!VkDeviceSize(i) * stride
+    write(pData[dstOffset:dstOffset + dstSize])
+
+    query := i + firstQuery
+    if !(query < pool.QueryCount) { vkErrorQueryOutOfRange(queryPool, query) }
+    if pool.Status[query] == QUERY_STATUS_UNINITIALIZED {
+      vkErrorQueryUninitialized(queryPool, query)
+    }
+  }
+
   return ?
 }
 
@@ -136,8 +159,13 @@ cmd VkResult vkGetQueryPoolResults(
 }
 
 sub void dovkCmdBeginQuery(ref!vkCmdBeginQueryArgs args) {
+  if !(args.QueryPool in QueryPools) { vkErrorInvalidQueryPool(args.QueryPool) }
   pool := QueryPools[args.QueryPool]
   if pool != null {
+    if !(args.Query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, args.Query) }
+    if pool.Status[args.Query] != QUERY_STATUS_INACTIVE {
+      vkErrorQueryNotInactive(args.QueryPool, args.Query)
+    }
     pool.Status[args.Query] = QUERY_STATUS_ACTIVE
     pool.LastBoundQueue = LastBoundQueue
   }
@@ -173,8 +201,13 @@ vkCmdEndQueryArgs {
 }
 
 sub void dovkCmdEndQuery(ref!vkCmdEndQueryArgs args) {
+  if !(args.QueryPool in QueryPools) { vkErrorInvalidQueryPool(args.QueryPool) }
   pool := QueryPools[args.QueryPool]
   if pool != null {
+    if !(args.Query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, args.Query) }
+    if pool.Status[args.Query] != QUERY_STATUS_ACTIVE {
+      vkErrorQueryNotActive(args.QueryPool, args.Query)
+    }
     pool.Status[args.Query] = QUERY_STATUS_COMPLETE
     pool.LastBoundQueue = LastBoundQueue
   }
@@ -210,9 +243,12 @@ vkCmdResetQueryPoolArgs {
 }
 
 sub void dovkCmdResetQueryPool(ref!vkCmdResetQueryPoolArgs args) {
+  if !(args.QueryPool in QueryPools) { vkErrorInvalidQueryPool(args.QueryPool) }
   pool := QueryPools[args.QueryPool]
   if pool != null {
     for i in (0 .. args.QueryCount) {
+      query := args.FirstQuery + i
+      if !(query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, query) }
       pool.Status[args.FirstQuery + i] = QUERY_STATUS_INACTIVE
     }
     pool.LastBoundQueue = LastBoundQueue
@@ -249,8 +285,15 @@ cmd void vkCmdResetQueryPool(
 }
 
 sub void dovkCmdWriteTimestamp(ref!vkCmdWriteTimestampArgs args) {
+  if !(args.QueryPool in QueryPools) { vkErrorInvalidQueryPool(args.QueryPool) }
   pool := QueryPools[args.QueryPool]
   if pool != null {
+    if !(args.Query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, args.Query) }
+    if pool.Status[args.Query] != QUERY_STATUS_INACTIVE {
+      vkErrorQueryNotInactive(args.QueryPool, args.Query)
+    }
+    pool.Status[args.Query] = QUERY_STATUS_COMPLETE
+
     pool.LastBoundQueue = LastBoundQueue
   }
 }
@@ -290,9 +333,33 @@ class vkCmdCopyQueryPoolResultsArgs {
 }
 
 sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
+  if !(args.QueryPool in QueryPools) { vkErrorInvalidQueryPool(args.QueryPool) }
   pool := QueryPools[args.QueryPool]
   if pool != null {
     pool.LastBoundQueue = LastBoundQueue
+  }
+  dstIntSize := switch (as!u32(args.Flags) & as!u32(VK_QUERY_RESULT_64_BIT)) != 0 {
+    case true: as!VkDeviceSize(8)
+    case false: as!VkDeviceSize(4)
+  }
+  resultCount := getResultCount(pool)
+  dstCount := switch (as!u32(args.Flags) & as!u32(VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) != 0 {
+    case true: resultCount + 1
+    case false: resultCount
+  }
+  dstSize := dstIntSize * as!VkDeviceSize(dstCount)
+  buf := Buffers[args.DstBuffer]
+  for i in (0 .. args.QueryCount) {
+    if buf != null {
+      dstOffset := args.DstOffset + as!VkDeviceSize(i) * args.Stride
+      writeMemoryInBuffer(buf, dstOffset, dstSize)
+    }
+
+    query := i + args.FirstQuery
+    if !(query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, query) }
+    if pool.Status[query] == QUERY_STATUS_UNINITIALIZED {
+      vkErrorQueryUninitialized(args.QueryPool, query)
+    }
   }
 }
 
@@ -327,5 +394,16 @@ cmd void vkCmdCopyQueryPoolResults(
     args
 
     AddCommand(commandBuffer, cmd_vkCmdCopyQueryPoolResults, mapPos)
+  }
+}
+
+sub u32 getResultCount(ref!QueryPoolObject pool) {
+  return switch pool.QueryType {
+    case VK_QUERY_TYPE_OCCLUSION:
+      as!u32(1)
+    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+      onesCount(as!u32(pool.PipelineStatistics))
+    case VK_QUERY_TYPE_TIMESTAMP:
+      as!u32(1)
   }
 }
