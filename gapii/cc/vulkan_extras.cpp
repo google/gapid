@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <bitset>
 #include "gapii/cc/vulkan_layer_extras.h"
 #include "gapii/cc/vulkan_spy.h"
 
@@ -499,6 +500,9 @@ void VulkanSpy::popDebugMarker(CallObserver*) {}
 void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}
 void VulkanSpy::popRenderPassMarker(CallObserver*) {}
 void VulkanSpy::popAndPushMarkerForNextSubpass(CallObserver*, uint32_t) {}
+uint32_t VulkanSpy::onesCount(CallObserver*, uint32_t x) {
+  return std::bitset<32>(x).count();
+}
 
 gapil::Ref<PhysicalDevicesAndProperties>
 VulkanSpy::fetchPhysicalDeviceProperties(CallObserver* observer,

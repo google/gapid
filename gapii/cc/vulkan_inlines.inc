@@ -51,6 +51,22 @@ inline void VulkanSpy::vkErrCommandBufferNotRecording(CallObserver*, VkCommandBu
     GAPID_WARNING("Error: Executing command buffer %zu was not in the RECORDING state", cmdbuf)
 }
 
+inline void VulkanSpy::vkErrQueryOutOfRange(CallObserver*, VkQueryPool queryPool, uint32_t query) {
+    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was out of range", query, queryPool)
+}
+
+inline void VulkanSpy::vkErrQueryUninitialized(CallObserver*, VkQueryPool queryPool, uint32_t query) {
+    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was uninitialized", query, queryPool)
+}
+
+inline void VulkanSpy::vkErrQueryNotInactive(CallObserver*, VkQueryPool queryPool, uint32_t query) {
+    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was not in the INACTIVE state", query, queryPool)
+}
+
+inline void VulkanSpy::vkErrQueryNotActive(CallObserver*, VkQueryPool queryPool, uint32_t query) {
+    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was not in the ACTIVE state", query, queryPool)
+}
+
 inline void VulkanSpy::vkErrInvalidImageLayout(CallObserver*, VkImage img, uint32_t aspect, uint32_t layer, uint32_t level, uint32_t layout, uint32_t expectedLayout) {
     GAPID_WARNING("Error: Image subresource at Image: %" PRIu64 ", AspectBit: %" PRIu32 ", Layer: %" PRIu32 ", Level: %" PRIu32 " was in layout %" PRIu32 ", but was expected to be in layout %" PRIu32,
         img, aspect, layer, level, layout, expectedLayout);
