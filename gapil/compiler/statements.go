@@ -168,6 +168,8 @@ func (c *C) statement(s *S, n semantic.Statement) bool {
 		c.mapIteration(s, n)
 	case *semantic.MapRemove:
 		c.mapRemove(s, n)
+	case *semantic.MapClear:
+		c.mapClear(s, n)
 	case *semantic.Read:
 		c.read(s, n)
 	case *semantic.Return:
@@ -454,6 +456,12 @@ func (c *C) mapRemove(s *S, n *semantic.MapRemove) {
 	m := c.expression(s, n.Map)
 	k := c.expression(s, n.Key)
 	s.Call(c.T.Maps[ty].Remove, m, k)
+}
+
+func (c *C) mapClear(s *S, n *semantic.MapClear) {
+	ty := n.Type
+	m := c.expression(s, n.Map)
+	s.Call(c.T.Maps[ty].ClearKeep, m)
 }
 
 func (c *C) read(s *S, n *semantic.Read) {

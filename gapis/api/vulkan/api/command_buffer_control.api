@@ -210,53 +210,53 @@ enum SemaphoreUpdate {
 }
 
 @internal class BufferCommands {
-  map!(u32, ref!vkCmdBindPipelineArgs)           vkCmdBindPipeline
-  map!(u32, ref!vkCmdSetViewportArgs)            vkCmdSetViewport
-  map!(u32, ref!vkCmdSetScissorArgs)             vkCmdSetScissor
-  map!(u32, ref!vkCmdSetLineWidthArgs)           vkCmdSetLineWidth
-  map!(u32, ref!vkCmdSetDepthBiasArgs)           vkCmdSetDepthBias
-  map!(u32, ref!vkCmdSetBlendConstantsArgs)      vkCmdSetBlendConstants
-  map!(u32, ref!vkCmdSetDepthBoundsArgs)         vkCmdSetDepthBounds
-  map!(u32, ref!vkCmdSetStencilCompareMaskArgs)  vkCmdSetStencilCompareMask
-  map!(u32, ref!vkCmdSetStencilWriteMaskArgs)    vkCmdSetStencilWriteMask
-  map!(u32, ref!vkCmdSetStencilReferenceArgs)    vkCmdSetStencilReference
-  map!(u32, ref!vkCmdBindDescriptorSetsArgs)     vkCmdBindDescriptorSets
-  map!(u32, ref!vkCmdBindIndexBufferArgs)        vkCmdBindIndexBuffer
-  map!(u32, ref!vkCmdBindVertexBuffersArgs)      vkCmdBindVertexBuffers
-  map!(u32, ref!vkCmdDrawArgs)                   vkCmdDraw
-  map!(u32, ref!vkCmdDrawIndexedArgs)            vkCmdDrawIndexed
-  map!(u32, ref!vkCmdDrawIndirectArgs)           vkCmdDrawIndirect
-  map!(u32, ref!vkCmdDrawIndexedIndirectArgs)    vkCmdDrawIndexedIndirect
-  map!(u32, ref!vkCmdDispatchArgs)               vkCmdDispatch
-  map!(u32, ref!vkCmdDispatchIndirectArgs)       vkCmdDispatchIndirect
-  map!(u32, ref!vkCmdCopyBufferArgs)             vkCmdCopyBuffer
-  map!(u32, ref!vkCmdCopyImageArgs)              vkCmdCopyImage
-  map!(u32, ref!vkCmdBlitImageArgs)              vkCmdBlitImage
-  map!(u32, ref!vkCmdCopyBufferToImageArgs)      vkCmdCopyBufferToImage
-  map!(u32, ref!vkCmdCopyImageToBufferArgs)      vkCmdCopyImageToBuffer
-  map!(u32, ref!vkCmdUpdateBufferArgs)           vkCmdUpdateBuffer
-  map!(u32, ref!vkCmdFillBufferArgs)             vkCmdFillBuffer
-  map!(u32, ref!vkCmdClearColorImageArgs)        vkCmdClearColorImage
-  map!(u32, ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
-  map!(u32, ref!vkCmdClearAttachmentsArgs)       vkCmdClearAttachments
-  map!(u32, ref!vkCmdResolveImageArgs)           vkCmdResolveImage
-  map!(u32, ref!vkCmdSetEventArgs)               vkCmdSetEvent
-  map!(u32, ref!vkCmdResetEventArgs)             vkCmdResetEvent
-  map!(u32, ref!vkCmdWaitEventsArgs)             vkCmdWaitEvents
-  map!(u32, ref!vkCmdPipelineBarrierArgs)        vkCmdPipelineBarrier
-  map!(u32, ref!vkCmdBeginQueryArgs)             vkCmdBeginQuery
-  map!(u32, ref!vkCmdEndQueryArgs)               vkCmdEndQuery
-  map!(u32, ref!vkCmdResetQueryPoolArgs)         vkCmdResetQueryPool
-  map!(u32, ref!vkCmdWriteTimestampArgs)         vkCmdWriteTimestamp
-  map!(u32, ref!vkCmdCopyQueryPoolResultsArgs)   vkCmdCopyQueryPoolResults
-  map!(u32, ref!vkCmdPushConstantsArgs)          vkCmdPushConstants
-  map!(u32, ref!vkCmdBeginRenderPassArgs)        vkCmdBeginRenderPass
-  map!(u32, ref!vkCmdNextSubpassArgs)            vkCmdNextSubpass
-  map!(u32, ref!vkCmdEndRenderPassArgs)          vkCmdEndRenderPass
-  map!(u32, ref!vkCmdExecuteCommandsArgs)        vkCmdExecuteCommands
-  map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
-  map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
-  map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
+  dense_map!(u32, ref!vkCmdBindPipelineArgs)           vkCmdBindPipeline
+  dense_map!(u32, ref!vkCmdSetViewportArgs)            vkCmdSetViewport
+  dense_map!(u32, ref!vkCmdSetScissorArgs)             vkCmdSetScissor
+  dense_map!(u32, ref!vkCmdSetLineWidthArgs)           vkCmdSetLineWidth
+  dense_map!(u32, ref!vkCmdSetDepthBiasArgs)           vkCmdSetDepthBias
+  dense_map!(u32, ref!vkCmdSetBlendConstantsArgs)      vkCmdSetBlendConstants
+  dense_map!(u32, ref!vkCmdSetDepthBoundsArgs)         vkCmdSetDepthBounds
+  dense_map!(u32, ref!vkCmdSetStencilCompareMaskArgs)  vkCmdSetStencilCompareMask
+  dense_map!(u32, ref!vkCmdSetStencilWriteMaskArgs)    vkCmdSetStencilWriteMask
+  dense_map!(u32, ref!vkCmdSetStencilReferenceArgs)    vkCmdSetStencilReference
+  dense_map!(u32, ref!vkCmdBindDescriptorSetsArgs)     vkCmdBindDescriptorSets
+  dense_map!(u32, ref!vkCmdBindIndexBufferArgs)        vkCmdBindIndexBuffer
+  dense_map!(u32, ref!vkCmdBindVertexBuffersArgs)      vkCmdBindVertexBuffers
+  dense_map!(u32, ref!vkCmdDrawArgs)                   vkCmdDraw
+  dense_map!(u32, ref!vkCmdDrawIndexedArgs)            vkCmdDrawIndexed
+  dense_map!(u32, ref!vkCmdDrawIndirectArgs)           vkCmdDrawIndirect
+  dense_map!(u32, ref!vkCmdDrawIndexedIndirectArgs)    vkCmdDrawIndexedIndirect
+  dense_map!(u32, ref!vkCmdDispatchArgs)               vkCmdDispatch
+  dense_map!(u32, ref!vkCmdDispatchIndirectArgs)       vkCmdDispatchIndirect
+  dense_map!(u32, ref!vkCmdCopyBufferArgs)             vkCmdCopyBuffer
+  dense_map!(u32, ref!vkCmdCopyImageArgs)              vkCmdCopyImage
+  dense_map!(u32, ref!vkCmdBlitImageArgs)              vkCmdBlitImage
+  dense_map!(u32, ref!vkCmdCopyBufferToImageArgs)      vkCmdCopyBufferToImage
+  dense_map!(u32, ref!vkCmdCopyImageToBufferArgs)      vkCmdCopyImageToBuffer
+  dense_map!(u32, ref!vkCmdUpdateBufferArgs)           vkCmdUpdateBuffer
+  dense_map!(u32, ref!vkCmdFillBufferArgs)             vkCmdFillBuffer
+  dense_map!(u32, ref!vkCmdClearColorImageArgs)        vkCmdClearColorImage
+  dense_map!(u32, ref!vkCmdClearDepthStencilImageArgs) vkCmdClearDepthStencilImage
+  dense_map!(u32, ref!vkCmdClearAttachmentsArgs)       vkCmdClearAttachments
+  dense_map!(u32, ref!vkCmdResolveImageArgs)           vkCmdResolveImage
+  dense_map!(u32, ref!vkCmdSetEventArgs)               vkCmdSetEvent
+  dense_map!(u32, ref!vkCmdResetEventArgs)             vkCmdResetEvent
+  dense_map!(u32, ref!vkCmdWaitEventsArgs)             vkCmdWaitEvents
+  dense_map!(u32, ref!vkCmdPipelineBarrierArgs)        vkCmdPipelineBarrier
+  dense_map!(u32, ref!vkCmdBeginQueryArgs)             vkCmdBeginQuery
+  dense_map!(u32, ref!vkCmdEndQueryArgs)               vkCmdEndQuery
+  dense_map!(u32, ref!vkCmdResetQueryPoolArgs)         vkCmdResetQueryPool
+  dense_map!(u32, ref!vkCmdWriteTimestampArgs)         vkCmdWriteTimestamp
+  dense_map!(u32, ref!vkCmdCopyQueryPoolResultsArgs)   vkCmdCopyQueryPoolResults
+  dense_map!(u32, ref!vkCmdPushConstantsArgs)          vkCmdPushConstants
+  dense_map!(u32, ref!vkCmdBeginRenderPassArgs)        vkCmdBeginRenderPass
+  dense_map!(u32, ref!vkCmdNextSubpassArgs)            vkCmdNextSubpass
+  dense_map!(u32, ref!vkCmdEndRenderPassArgs)          vkCmdEndRenderPass
+  dense_map!(u32, ref!vkCmdExecuteCommandsArgs)        vkCmdExecuteCommands
+  dense_map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
+  dense_map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
+  dense_map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
 }
 
 @internal class CommandBufferObject {
@@ -445,9 +445,62 @@ cmd VkResult vkResetCommandBuffer(
   return ?
 }
 
+sub void resetBufferCommands(ref!CommandBufferObject obj) {
+  clear(obj.BufferCommands.vkCmdBindPipeline)  
+  clear(obj.BufferCommands.vkCmdSetViewport)  
+  clear(obj.BufferCommands.vkCmdSetScissor)  
+  clear(obj.BufferCommands.vkCmdSetLineWidth)  
+  clear(obj.BufferCommands.vkCmdSetDepthBias)  
+  clear(obj.BufferCommands.vkCmdSetBlendConstants)  
+  clear(obj.BufferCommands.vkCmdSetDepthBounds)  
+  clear(obj.BufferCommands.vkCmdSetStencilCompareMask)  
+  clear(obj.BufferCommands.vkCmdSetStencilWriteMask)  
+  clear(obj.BufferCommands.vkCmdSetStencilReference)  
+  clear(obj.BufferCommands.vkCmdBindDescriptorSets)  
+  clear(obj.BufferCommands.vkCmdBindIndexBuffer)  
+  clear(obj.BufferCommands.vkCmdBindVertexBuffers)  
+  clear(obj.BufferCommands.vkCmdDraw)  
+  clear(obj.BufferCommands.vkCmdDrawIndexed)  
+  clear(obj.BufferCommands.vkCmdDrawIndirect)  
+  clear(obj.BufferCommands.vkCmdDrawIndexedIndirect)  
+  clear(obj.BufferCommands.vkCmdDispatch)  
+  clear(obj.BufferCommands.vkCmdDispatchIndirect)  
+  clear(obj.BufferCommands.vkCmdCopyBuffer)  
+  clear(obj.BufferCommands.vkCmdCopyImage)  
+  clear(obj.BufferCommands.vkCmdBlitImage)  
+  clear(obj.BufferCommands.vkCmdCopyBufferToImage)  
+  clear(obj.BufferCommands.vkCmdCopyImageToBuffer)  
+  clear(obj.BufferCommands.vkCmdUpdateBuffer)  
+  clear(obj.BufferCommands.vkCmdFillBuffer)  
+  clear(obj.BufferCommands.vkCmdClearColorImage)  
+  clear(obj.BufferCommands.vkCmdClearDepthStencilImage)  
+  clear(obj.BufferCommands.vkCmdClearAttachments)  
+  clear(obj.BufferCommands.vkCmdResolveImage)  
+  clear(obj.BufferCommands.vkCmdSetEvent)  
+  clear(obj.BufferCommands.vkCmdResetEvent)  
+  clear(obj.BufferCommands.vkCmdWaitEvents)  
+  clear(obj.BufferCommands.vkCmdPipelineBarrier)  
+  clear(obj.BufferCommands.vkCmdBeginQuery)  
+  clear(obj.BufferCommands.vkCmdEndQuery)  
+  clear(obj.BufferCommands.vkCmdResetQueryPool)  
+  clear(obj.BufferCommands.vkCmdWriteTimestamp)  
+  clear(obj.BufferCommands.vkCmdCopyQueryPoolResults)  
+  clear(obj.BufferCommands.vkCmdPushConstants)  
+  clear(obj.BufferCommands.vkCmdBeginRenderPass)  
+  clear(obj.BufferCommands.vkCmdNextSubpass)  
+  clear(obj.BufferCommands.vkCmdEndRenderPass)  
+  clear(obj.BufferCommands.vkCmdExecuteCommands)  
+  clear(obj.BufferCommands.vkCmdDebugMarkerBeginEXT)  
+  clear(obj.BufferCommands.vkCmdDebugMarkerEndEXT)  
+  clear(obj.BufferCommands.vkCmdDebugMarkerInsertEXT)  
+}
+
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {
-  obj.BufferCommands = BufferCommands()
-  obj.CommandReferences = emptyMap().m
+  // Reset the commands instead of clearing them.
+  // We have to iterate over them either way, but this way
+  // we don't have to free/allocate new memory for the maps
+  resetBufferCommands(obj)
+  clear(obj.CommandReferences)
   resetCmd(obj.VulkanHandle)
 }
 

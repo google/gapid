@@ -315,8 +315,9 @@ cmd VkResult vkResetEvent(
 }
 
 sub void dovkCmdSetEvent(ref!vkCmdSetEventArgs event) {
-  Events[event.Event].Signaled = true
-  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
+  evt := Events[event.Event]
+  evt.Signaled = true
+  evt.SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
 @threadSafety("app")
@@ -348,8 +349,9 @@ cmd void vkCmdSetEvent(
 }
 
 sub void dovkCmdResetEvent(ref!vkCmdResetEventArgs event) {
-  Events[event.Event].Signaled = false
-  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
+  evt := Events[event.Event]
+  evt.Signaled = false
+  evt.SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
 @threadSafety("app")

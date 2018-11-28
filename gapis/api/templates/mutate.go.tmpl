@@ -343,6 +343,7 @@
   {{else if IsMapAssign    $}}{{Template "MapAssign" $}}
   {{else if IsSliceAssign  $}}{{Template "SliceAssign" $}}
   {{else if IsMapRemove    $}}{{Template "MapRemove" $}}
+  {{else if IsMapClear     $}}{{Template "MapClear" $}}
   {{else if IsCopy         $}}{{Template "Copy" $}}
   {{else if IsReturn       $}}{{Template "Return" $}}
   {{else if IsIteration    $}}{{Template "Iteration" $}}
@@ -600,6 +601,25 @@
     Removeʷ(ϟctx, ϟw, §
   {{end}}
   {{Template "Go.Read" $.Key}})
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to remove a map element.
+-------------------------------------------------------------------------------
+*/}}
+{{define "MapClear"}}
+  {{AssertType $ "MapClear"}}
+
+  {{Template "Go.Read" $.Map}}.§
+  {{if GetAnnotation $.Map "handleMap"}}
+    DestroyHandlesʷ(ϟctx, ϟw, §
+  {{else if Macro "IsUntrackedMap" $.Map}}
+    Clear(§
+  {{else}}
+    Clearʷ(ϟctx, ϟw, §
+  {{end}}
+  )
 {{end}}
 
 

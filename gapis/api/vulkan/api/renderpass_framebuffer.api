@@ -240,11 +240,12 @@ vkCmdBeginRenderPassArgs {
 }
 
 sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
-  lastDrawInfo().Framebuffer = Framebuffers[args.Framebuffer]
-  lastDrawInfo().LastSubpass = 0
-  lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
-  lastDrawInfo().InRenderPass = true
-  attachments := lastDrawInfo().Framebuffer.ImageAttachments
+  ldi := lastDrawInfo()
+  ldi.Framebuffer = Framebuffers[args.Framebuffer]
+  ldi.LastSubpass = 0
+  ldi.RenderPass = RenderPasses[args.RenderPass]
+  ldi.InRenderPass = true
+  attachments := ldi.Framebuffer.ImageAttachments
   n := len(attachments)
   for i in (0 .. n) {
     loadImageAttachment(as!u32(i))
@@ -303,29 +304,29 @@ vkCmdNextSubpassArgs {
 
 sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
   useRenderPass()
-
-  lastDrawInfo().LastSubpass += 1
-  if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
-    subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
+  ldi := lastDrawInfo()
+  ldi.LastSubpass += 1
+  if ldi.LastSubpass < len(ldi.RenderPass.SubpassDescriptions) {
+    subpass := ldi.RenderPass.SubpassDescriptions[ldi.LastSubpass]
     for _ , _ , a in subpass.InputAttachments {
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ColorAttachments {
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ResolveAttachments {
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     if subpass.DepthStencilAttachment != null {
       dsRef := subpass.DepthStencilAttachment
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[dsRef.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
     }
   }
-  popAndPushMarkerForNextSubpass(lastDrawInfo().LastSubpass)
+  popAndPushMarkerForNextSubpass(ldi.LastSubpass)
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
@@ -350,15 +351,16 @@ vkCmdEndRenderPassArgs {
 }
 
 sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
-  attachmentDescriptions := lastDrawInfo().RenderPass.AttachmentDescriptions
+  ldi := lastDrawInfo()
+  attachmentDescriptions := ldi.RenderPass.AttachmentDescriptions
   n := len(attachmentDescriptions)
   for i in (0 .. n) {
     storeImageAttachment(as!u32(i))
   }
-  _ = lastDrawInfo().InRenderPass
-  lastDrawInfo().InRenderPass = false
+  _ = ldi.InRenderPass
+  ldi.InRenderPass = false
   popRenderPassMarker()
-  if (len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1) {
+  if (len(ldi.RenderPass.SubpassDescriptions) > 1) {
     popRenderPassMarker()
   }
 }
@@ -383,8 +385,9 @@ cmd void vkCmdEndRenderPass(
 sub void loadImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
-    attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
-    desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
+    ldi := lastDrawInfo()
+    attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
+    desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       switch desc.loadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD: {
@@ -404,8 +407,9 @@ sub void loadImageAttachment(u32 attachmentID) {
 sub void storeImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
-    attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
-    desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
+    ldi := lastDrawInfo()
+    attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
+    desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       if desc.initialLayout != desc.finalLayout {
         transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)

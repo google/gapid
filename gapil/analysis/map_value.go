@@ -169,6 +169,15 @@ func (v *MapValue) Get(s *scope, key Value) Value {
 	return UnionOf(candidates...)
 }
 
+// Clear returns a new map that does not contain anything
+func (v *MapValue) Clear() Value {
+	return &MapValue{
+		Map:        v.Map,
+		KeyToValue: make(map[Value]Value, len(v.KeyToValue)),
+		ValueToKey: make(map[Value]Value, len(v.KeyToValue)),
+	}
+}
+
 // findEqualByKey looks for an existing key in v that is equal to keyin,
 // returning the existing key and value if found. If no key equal to keyin
 // is found then (nil, nil) is returned.

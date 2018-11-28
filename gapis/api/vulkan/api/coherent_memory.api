@@ -301,9 +301,10 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 }
 
 sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
-  for _ , _ , vertex_binding in lastDrawInfo().GraphicsPipeline.VertexInputState.BindingDescriptions {
-    if vertex_binding.binding in lastDrawInfo().BoundVertexBuffers {
-      bound_vertex_buffer := lastDrawInfo().BoundVertexBuffers[vertex_binding.binding]
+  ldi := lastDrawInfo()
+  for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
+    if vertex_binding.binding in ldi.BoundVertexBuffers {
+      bound_vertex_buffer := ldi.BoundVertexBuffers[vertex_binding.binding]
       backing_buf := bound_vertex_buffer.Buffer
       if backing_buf.Memory != null {
         start_vertex := switch vertex_binding.inputRate {

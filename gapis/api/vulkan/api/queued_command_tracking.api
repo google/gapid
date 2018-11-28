@@ -42,7 +42,7 @@
 
 sub void execPendingCommands(VkQueue queue, bool isRoot) {
   q := Queues[queue]
-  newCmds := emptyMap().m
+  newCmds := emptyDenseMap().m
   signaledQueues := queueMap().m
   processSubcommand := MutableBool()
   processSubcommand.b = true

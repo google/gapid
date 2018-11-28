@@ -76,6 +76,7 @@ type decoderInstances struct {
 	MapIndex     []*semantic.MapIndex
 	MapIteration []*semantic.MapIteration
 	MapRemove    []*semantic.MapRemove
+	MapClear     []*semantic.MapClear
 	Member       []*semantic.Member
 	MessageValue []*semantic.MessageValue
 	Observed     []*semantic.Observed
@@ -111,6 +112,7 @@ type decoderInstances struct {
 	ASTCall         []*ast.Call
 	ASTCase         []*ast.Case
 	ASTClass        []*ast.Class
+	ASTClear        []*ast.Clear
 	ASTDeclareLocal []*ast.DeclareLocal
 	ASTDefault      []*ast.Default
 	ASTDefinition   []*ast.Definition
@@ -917,6 +919,16 @@ func (d *decoder) mapRemove(mapRemoveID uint64) (out *semantic.MapRemove) {
 	return
 }
 
+func (d *decoder) mapClear(mapClearID uint64) (out *semantic.MapClear) {
+	d.build(d.content.Instances.MapClear, &d.inst.MapClear, mapClearID, &out,
+		func(p *MapClear, s *semantic.MapClear) {
+			s.AST = d.astClear(p.Ast)
+			s.Type = d.map_(p.Type)
+			s.Map = d.expr(p.Map)
+		})
+	return
+}
+
 func (d *decoder) member(memberID uint64) (out *semantic.Member) {
 	d.build(d.content.Instances.Member, &d.inst.Member, memberID, &out,
 		func(p *Member, s *semantic.Member) {
@@ -1141,6 +1153,8 @@ func (d *decoder) stat(statID uint64) semantic.Statement {
 		return d.mapIteration(p.MapIteration)
 	case *Statement_MapRemove:
 		return d.mapRemove(p.MapRemove)
+	case *Statement_MapClear:
+		return d.mapClear(p.MapClear)
 	case *Statement_Read:
 		return d.read(p.Read)
 	case *Statement_Return:
@@ -1272,6 +1286,8 @@ func (d *decoder) node(p *Node) semantic.Node {
 		return d.mapIteration(p.MapIteration)
 	case *Node_MapRemove:
 		return d.mapRemove(p.MapRemove)
+	case *Node_MapClear:
+		return d.mapClear(p.MapClear)
 	case *Node_Parameter:
 		return d.param(p.Parameter)
 	case *Node_Pointer:
@@ -1514,6 +1530,14 @@ func (d *decoder) astDelete(astDeleteID uint64) (out *ast.Delete) {
 	d.build(d.content.Instances.AstDelete, &d.inst.ASTDelete, astDeleteID, &out,
 		func(p *ASTDelete, s *ast.Delete) {
 			s.Key = d.astNode(p.Key)
+			s.Map = d.astNode(p.Map)
+		})
+	return
+}
+
+func (d *decoder) astClear(astClearID uint64) (out *ast.Clear) {
+	d.build(d.content.Instances.AstClear, &d.inst.ASTClear, astClearID, &out,
+		func(p *ASTClear, s *ast.Clear) {
 			s.Map = d.astNode(p.Map)
 		})
 	return

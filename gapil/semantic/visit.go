@@ -265,6 +265,8 @@ func Replace(node Node, visitor func(Node) Node) {
 	case *MapRemove:
 		n.Map = visitor(n.Map).(Expression)
 		n.Key = visitor(n.Key).(Expression)
+	case *MapClear:
+		n.Map = visitor(n.Map).(Expression)
 	case *Member:
 		n.Object = visitor(n.Object).(Expression)
 		n.Field = visitor(n.Field).(*Field)

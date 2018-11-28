@@ -76,6 +76,8 @@ func statement(rv *resolver, in ast.Node) semantic.Statement {
 		out = declareLocal(rv, in)
 	case *ast.Delete:
 		out = delete_(rv, in)
+	case *ast.Clear:
+		out = clear_(rv, in)
 	case *ast.Branch:
 		out = branch(rv, in)
 	case *ast.Switch:
@@ -170,6 +172,17 @@ func delete_(rv *resolver, in *ast.Delete) *semantic.MapRemove {
 		rv.errorf(in.Map, "delete's first argument must be a map, got %s", typename(m.ExpressionType()))
 	}
 	return &semantic.MapRemove{AST: in, Type: mty, Map: m, Key: k}
+}
+
+func clear_(rv *resolver, in *ast.Clear) *semantic.MapClear {
+	m := expression(rv, in.Map)
+	mty, ok := m.ExpressionType().(*semantic.Map)
+	if !ok {
+		rv.errorf(in.Map, "clear's argument must be a map, got %s", typename(m.ExpressionType()))
+	}
+	out := &semantic.MapClear{AST: in, Type: mty, Map: m}
+	rv.mappings.Add(in, out)
+	return out
 }
 
 func addLocal(rv *resolver, in *ast.DeclareLocal, name string, value semantic.Expression) *semantic.DeclareLocal {

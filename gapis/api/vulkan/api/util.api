@@ -376,8 +376,8 @@ sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectF
   return allBits.allBits[flag].Bits
 }
 
-@internal class emptyMap {
-  map!(u32, ref!CommandReference) m
+@internal class emptyDenseMap {
+  dense_map!(u32, ref!CommandReference) m
 }
 
 @internal class BoundBuffer {

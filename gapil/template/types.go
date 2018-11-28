@@ -86,6 +86,7 @@ var (
 		semantic.MapContains{},
 		semantic.MapIndex{},
 		semantic.MapRemove{},
+		semantic.MapClear{},
 		semantic.Map{},
 		semantic.Member{},
 		semantic.MessageValue{},

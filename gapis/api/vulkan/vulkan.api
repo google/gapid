@@ -344,9 +344,8 @@ enum LastSubmissionType {
 @serialize @untracked PresentInfo                       LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
 @hidden @serialize UsedDescriptorSets                   ProcessedDescriptorSets
-
-@untrackedMap map!(VkQueue, ref!DynamicPipelineState) LastDynamicPipelineStates
-@untrackedMap map!(VkQueue, ref!PushConstantInfo)     LastPushConstants
+@untrackedMap map!(VkQueue, ref!DynamicPipelineState)   LastDynamicPipelineStates
+@untrackedMap map!(VkQueue, ref!PushConstantInfo)       LastPushConstants
 
 @internal class ProcessedDescriptorSet {
   map!(u32, map!(u32, map!(VkDeviceSize, bool))) bufferOffsets

@@ -289,7 +289,7 @@ import (
 {{define "DeclareMap"}}
   {{AssertType $ "Map"}}
 
-  {{$name  := $.Name}}
+  {{$name  := $.Name | GoPublicName}}
   {{$key   := Macro "Go.Type" $.KeyType}}
   {{$value := Macro "Go.Type" $.ValueType}}
   {{$keyFrag := Macro "MapIndexFragment" "Map" $ "Key" "key"}}
@@ -412,6 +412,19 @@ import (
     }
   }
 
+func (m {{$name}}) DestroyHandlesʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) {
+    if m.Map != nil {
+      if ϟw != nil {
+        ϟw.OnSet(ϟctx, m, ϟapi.CompleteFragment{},
+          ϟapi.NilReference{}, ϟapi.NilReference{})
+        for key, _ := range (*m.Map) {
+          ϟw.CloseForwardDependency(ϟctx, key)
+        }
+      }
+      *m.Map = make(map[{{$key}}]{{$value}})
+    }
+  }
+
   func (m {{$name}}) Contains(key {{$key}}) (ok bool) {
     if m.Map != nil {
       _, ok = (*m.Map)[key]
@@ -448,6 +461,22 @@ import (
           ϟapi.NilReference{})
       }
       delete(*m.Map, key)
+    }
+  }
+
+  func (m {{$name}}) Clearʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) {
+    if m.Map != nil {
+      if ϟw != nil {
+        ϟw.OnSet(ϟctx, m, ϟapi.CompleteFragment{},
+          ϟapi.NilReference{}, ϟapi.NilReference{})
+      }
+      *m.Map = make(map[{{$key}}]{{$value}})
+    }
+  }
+
+  func (m {{$name}}) Clear() {
+    if m.Map != nil {
+      *m.Map = make(map[{{$key}}]{{$value}})
     }
   }
 
