@@ -30,10 +30,10 @@ type StateWatcher interface {
 	OnEndCmd(ctx context.Context, cmdID CmdID, cmd Cmd)
 
 	// OnGet is called when a fragment of state (field, map key, array index) is read
-	OnGet(ctx context.Context, owner Reference, f Fragment, v Reference)
+	OnGet(ctx context.Context, owner RefObject, f Fragment, v RefObject)
 
 	// OnSet is called when a fragment of state (field, map key, array index) is written
-	OnSet(ctx context.Context, owner Reference, f Fragment, old Reference, new Reference)
+	OnSet(ctx context.Context, owner RefObject, f Fragment, old RefObject, new RefObject)
 
 	// OnWriteSlice is called when writing to a slice
 	OnWriteSlice(ctx context.Context, s memory.Slice)
@@ -87,20 +87,20 @@ func (FieldFragment) fragment() {}
 // ArrayIndexFragment is a Fragment identifying an array index.
 // This corresponds to syntax such as `myArray[3]`.
 type ArrayIndexFragment struct {
-	Index int
+	ArrayIndex int
 }
 
-func (f ArrayIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%d]", f.Index) }
+func (f ArrayIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%d]", f.ArrayIndex) }
 
 func (ArrayIndexFragment) fragment() {}
 
 // MapIndexFragment is a Fragment identifying a map index.
 // This corresponds to syntax such as `myMap["foo"]`
 type MapIndexFragment struct {
-	Index interface{}
+	MapIndex interface{}
 }
 
-func (f MapIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%v]", f.Index) }
+func (f MapIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%v]", f.MapIndex) }
 
 func (MapIndexFragment) fragment() {}
 
@@ -108,7 +108,7 @@ func (MapIndexFragment) fragment() {}
 // map (all key/value pairs) or array (all values).
 type CompleteFragment struct{}
 
-func (f CompleteFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[*]") }
+func (CompleteFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[*]") }
 
 func (CompleteFragment) fragment() {}
 

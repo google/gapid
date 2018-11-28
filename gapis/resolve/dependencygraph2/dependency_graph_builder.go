@@ -124,7 +124,7 @@ func (b *dependencyGraphBuilder) OnEndCmd(ctx context.Context, cmdID api.CmdID, 
 	}
 }
 
-func (b *dependencyGraphBuilder) OnGet(ctx context.Context, owner api.Reference, frag api.Fragment, valueRef api.Reference) {
+func (b *dependencyGraphBuilder) OnGet(ctx context.Context, owner api.RefObject, frag api.Fragment, valueRef api.RefObject) {
 	debug(ctx, "  OnGet (%T %d)%v : %d", owner, owner.RefID(), frag, valueRef.RefID())
 	readEffect := ReadFragmentEffect{b.currentNodeID, frag}
 	writes, ok := b.fragmentWrites[owner.RefID()]
@@ -142,7 +142,7 @@ func (b *dependencyGraphBuilder) OnGet(ctx context.Context, owner api.Reference,
 	}
 }
 
-func (b *dependencyGraphBuilder) OnSet(ctx context.Context, owner api.Reference, frag api.Fragment, oldValueRef api.Reference, newValueRef api.Reference) {
+func (b *dependencyGraphBuilder) OnSet(ctx context.Context, owner api.RefObject, frag api.Fragment, oldValueRef api.RefObject, newValueRef api.RefObject) {
 	debug(ctx, "  OnSet (%T %d)%v : %d → %d", owner, owner.RefID(), frag, oldValueRef.RefID(), newValueRef.RefID())
 	if _, ok := frag.(api.CompleteFragment); ok {
 		b.fragmentWrites[owner.RefID()] = map[api.Fragment]NodeID{frag: b.currentNodeID}
