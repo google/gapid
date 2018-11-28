@@ -1357,11 +1357,11 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		queueFamilyIgnore,                     // dstQueueFamilyIndex
 		job.renderTarget.image.VulkanHandle(), // image
 		NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-			outputBarrierAspect, // aspectMask
-			0,                   // baseMipLevel
-			job.renderTarget.image.Info().MipLevels(), // levelCount
-			0, // baseArrayLayer
-			job.renderTarget.image.Info().ArrayLayers(), // layerCount
+			outputBarrierAspect,    // aspectMask
+			job.renderTarget.level, // baseMipLevel
+			1, // levelCount
+			job.renderTarget.layer, // baseArrayLayer
+			1, // layerCount
 		))
 	bufBarriers := []VkBufferMemoryBarrier{
 		NewVkBufferMemoryBarrier(h.sb.ta,
@@ -1531,11 +1531,11 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			queueFamilyIgnore,                                                            // dstQueueFamilyIndex
 			job.renderTarget.image.VulkanHandle(),                                        // image
 			NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-				outputBarrierAspect, // aspectMask
-				0,                   // baseMipLevel
-				job.renderTarget.image.Info().MipLevels(), // levelCount
-				0, // baseArrayLayer
-				job.renderTarget.image.Info().ArrayLayers(), // layerCount
+				outputBarrierAspect,    // aspectMask
+				job.renderTarget.level, // baseMipLevel
+				1, // levelCount
+				job.renderTarget.layer, // baseArrayLayer
+				1, // layerCount
 			),
 		))
 	default:
