@@ -81,6 +81,7 @@ type encoderInstances struct {
 	MapIndex        map[*semantic.MapIndex]uint64
 	MapIteration    map[*semantic.MapIteration]uint64
 	MapRemove       map[*semantic.MapRemove]uint64
+	MapClear        map[*semantic.MapClear]uint64
 	Member          map[*semantic.Member]uint64
 	MessageValue    map[*semantic.MessageValue]uint64
 	Null            map[semantic.Null]uint64
@@ -121,6 +122,7 @@ type encoderInstances struct {
 	ASTCall         map[*ast.Call]uint64
 	ASTCase         map[*ast.Case]uint64
 	ASTClass        map[*ast.Class]uint64
+	ASTClear        map[*ast.Clear]uint64
 	ASTDeclareLocal map[*ast.DeclareLocal]uint64
 	ASTDefault      map[*ast.Default]uint64
 	ASTDefinition   map[*ast.Definition]uint64
@@ -319,6 +321,8 @@ func (e *encoder) node(n semantic.Node) *Node {
 		return &Node{Ty: &Node_MapIteration{MapIteration: e.mapIteration(n)}}
 	case *semantic.MapRemove:
 		return &Node{Ty: &Node_MapRemove{MapRemove: e.mapRemove(n)}}
+	case *semantic.MapClear:
+		return &Node{Ty: &Node_MapClear{MapClear: e.mapClear(n)}}
 	case *semantic.Member:
 		return &Node{Ty: &Node_Member{Member: e.member(n)}}
 	case *semantic.MessageValue:
@@ -1141,6 +1145,17 @@ func (e *encoder) mapRemove(n *semantic.MapRemove) (outID uint64) {
 	return
 }
 
+func (e *encoder) mapClear(n *semantic.MapClear) (outID uint64) {
+	e.build(&e.instances.MapClear, e.maps.MapClear, n, &outID, func() *MapClear {
+		return &MapClear{
+			Ast:  e.astClear(n.AST),
+			Type: e.map_(n.Type),
+			Map:  e.expr(n.Map),
+		}
+	})
+	return
+}
+
 func (e *encoder) member(n *semantic.Member) (outID uint64) {
 	e.build(&e.instances.Member, e.maps.Member, n, &outID, func() *Member {
 		return &Member{
@@ -1374,6 +1389,8 @@ func (e *encoder) stat(n semantic.Statement) (outID uint64) {
 			p.Ty = &Statement_MapIteration{e.mapIteration(n)}
 		case *semantic.MapRemove:
 			p.Ty = &Statement_MapRemove{e.mapRemove(n)}
+		case *semantic.MapClear:
+			p.Ty = &Statement_MapClear{e.mapClear(n)}
 		case *semantic.Read:
 			p.Ty = &Statement_Read{e.read(n)}
 		case *semantic.Return:
@@ -1663,6 +1680,15 @@ func (e *encoder) astDelete(n *ast.Delete) (outID uint64) {
 	return
 }
 
+func (e *encoder) astClear(n *ast.Clear) (outID uint64) {
+	e.build(&e.instances.AstClear, e.maps.ASTClear, n, &outID, func() *ASTClear {
+		return &ASTClear{
+			Map: e.astNode(n.Map),
+		}
+	})
+	return
+}
+
 func (e *encoder) astCase(n *ast.Case) (outID uint64) {
 	e.build(&e.instances.AstCase, e.maps.ASTCase, n, &outID, func() *ASTCase {
 		p := &ASTCase{
@@ -1887,6 +1913,8 @@ func (e *encoder) astNode(n ast.Node) (out *ASTNode) {
 		return &ASTNode{Ty: &ASTNode_Case{e.astCase(n)}}
 	case *ast.Class:
 		return &ASTNode{Ty: &ASTNode_Class{e.astClass(n)}}
+	case *ast.Clear:
+		return &ASTNode{Ty: &ASTNode_Clear{e.astClear(n)}}
 	case *ast.DeclareLocal:
 		return &ASTNode{Ty: &ASTNode_DeclareLocal{e.astDeclareLocal(n)}}
 	case *ast.Default:

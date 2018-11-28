@@ -30,7 +30,7 @@ namespace core {
 // Blocks will be created with sizes that range from
 // [2^kMinBlockSizePower, 2^kMaxBlockSizePower] in powers of 2.
 static const uint32_t kMinBlockSizePower = 5;
-static const uint32_t kMaxBlockSizePower = 12;
+static const uint32_t kMaxBlockSizePower = 14;
 
 // free_list_node is a simple linked list node that is used
 // to track all of the currently unused blocks.
@@ -57,7 +57,7 @@ struct block_data {
 struct chunk_header {
   uint16_t block_size;
   uint16_t block_index;
-  std::atomic<uint32_t> num_allocations;
+  uint32_t num_allocations;
 };
 
 // Arena is a memory allocator that owns each of the allocations made by it.

@@ -631,7 +631,8 @@ sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
   levelCount := imageSubresourceLevelCount(image, rng)
   for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
     if aspectBit in image.Aspects {
-      for _, i, layer in image.Aspects[aspectBit].Layers {
+      layers := image.Aspects[aspectBit].Layers
+      for _, i, layer in  layers {
         if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
           for _, k, level in layer.Levels {
             if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
@@ -714,11 +715,13 @@ sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng,
   levelCount := imageSubresourceLevelCount(img, rng)
   for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
     if (aspectBit in img.Aspects) {
+      aspects := img.Aspects[aspectBit]
       for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
-        if (layer in img.Aspects[aspectBit].Layers) {
+        if (layer in aspects.Layers) {
+          ll := aspects.Layers[layer]
           for level in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
-            if (level in img.Aspects[aspectBit].Layers[layer].Levels) {
-              imgLevel := img.Aspects[aspectBit].Layers[layer].Levels[level]
+            if (level in ll.Levels) {
+              imgLevel := ll.Levels[level]
               imgLevel.Layout = newLayout
               imgLevel.LastBoundQueue = LastBoundQueue
             }

@@ -720,7 +720,7 @@ vkCmdBindDescriptorSetsArgs {
   map!(u32, u32)             DynamicOffsets
 }
 
-@internal class
+@internal class 
 emptyBufferOffsets {
   map!(u32, map!(u32, map!(VkDeviceSize, bool))) BufferBindingOffsets
 }
@@ -751,7 +751,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
     if args.DescriptorSets[as!u32(i)] in DescriptorSets {
       set := args.DescriptorSets[as!u32(i)]
       setObj := DescriptorSets[set]
-      currentDescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
+      currentDescriptorSets[args.FirstSet + as!u32(i)] = setObj
       desc_set_buf_offsets := bufferBindingOffsets[as!u32(i)+args.FirstSet]
       hasBeenRead := switch (set in ProcessedDescriptorSets.val) {
         case true:
@@ -790,7 +790,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
               default:
                 dynamic_offset_index.Val
             }
-
+            
             // If the offset has changed, then we may have to reprocess this
             // descriptor set.
             if hasBeenRead.b {
@@ -804,7 +804,7 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
 
               if !hasBeenRead.b {
                 oldSets := ProcessedDescriptorSets.val[set].bufferOffsets
-                ProcessedDescriptorSets.val[set] =
+                ProcessedDescriptorSets.val[set] = 
                   ProcessedDescriptorSet(oldSets, true)
 
               }
@@ -850,10 +850,9 @@ cmd void vkCmdBindDescriptorSets(
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
-    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets))
-    CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets[mapPos] =
-    args
-
+    bc := CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets
+    mapPos := as!u32(len(bc))
+    bc[mapPos] = args
     AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
   }
 }

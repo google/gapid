@@ -80,10 +80,11 @@ type MapInfo struct {
 
 // MapMethods are the functions that operate on a map.
 type MapMethods struct {
-	Contains *codegen.Function // bool(M*, ctx*, K)
-	Index    *codegen.Function //   V*(M*, ctx*, K, addIfNotFound)
-	Remove   *codegen.Function // void(M*, ctx*, K)
-	Clear    *codegen.Function // void(M*, ctx*)
+	Contains  *codegen.Function // bool(M*, ctx*, K)
+	Index     *codegen.Function //   V*(M*, ctx*, K, addIfNotFound)
+	Remove    *codegen.Function // void(M*, ctx*, K)
+	Clear     *codegen.Function // void(M*, ctx*)
+	ClearKeep *codegen.Function // void(M*, ctx*)
 }
 
 // Dump returns the full LLVM IR for the program.

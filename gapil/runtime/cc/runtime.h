@@ -36,8 +36,8 @@ typedef uint8_t gapil_char;
 #define GAPIL_MAP_ELEMENT_FULL 1
 #define GAPIL_MAP_ELEMENT_USED 2
 
-#define GAPIL_MAP_GROW_MULTIPLIER 2
-#define GAPIL_MIN_MAP_SIZE 16
+#define GAPIL_MAP_GROW_MULTIPLIER 4
+#define GAPIL_MIN_MAP_SIZE 32
 #define GAPIL_MAP_MAX_CAPACITY 0.8f
 
 // context contains information about the environment in which a function is
