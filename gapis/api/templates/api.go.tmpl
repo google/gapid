@@ -2129,14 +2129,14 @@ import (
 
 {{/*
 -------------------------------------------------------------------------------
-  RefID returns a unique identifier for a reference
+  Reference returns an `api.Reference` value corresponding to the given value
 -------------------------------------------------------------------------------
 */}}
 {{define "Reference"}}
   {{AssertType $.Type "Type"}}
 
   {{if or (IsMap $.Type) (IsReference $.Type) (IsClass $.Type) (IsStaticArray $.Type)}}§
-    (ϟapi.Reference)({{$.Val}})
+    {{$.Val}}
   {{else}}ϟapi.NilReference{}
   {{end}}
 {{end}}
