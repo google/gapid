@@ -769,6 +769,11 @@ class vkCmdClearColorImageArgs {
 }
 
 sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
+  if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
+  image := Images[args.Image]
+  for _, _, r in args.Ranges {
+    writeImageSubresource(image, r)
+  }
 }
 
 @threadSafety("app")
@@ -811,6 +816,11 @@ class vkCmdClearDepthStencilImageArgs {
 }
 
 sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args) {
+  if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
+  image := Images[args.Image]
+  for _, _, r in args.Ranges {
+    writeImageSubresource(image, r)
+  }
 }
 
 @threadSafety("app")
