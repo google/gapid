@@ -31,7 +31,7 @@ type GraphBuilder interface {
 	GetCmdNodeID(api.CmdID, api.SubCmdIdx) NodeID
 	GetObsNodeIDs(api.CmdID, []api.CmdObservation, bool) []NodeID
 	GetCmdContext(api.CmdID, api.Cmd) CmdContext
-	GetSubCmdContext(api.SubCmdIdx, CmdContext) CmdContext
+	GetSubCmdContext(api.CmdID, api.SubCmdIdx) CmdContext
 	GetNodeStats(NodeID) *NodeStats
 	GetStats() *GraphBuilderStats
 	GetGraph() *dependencyGraph
@@ -236,10 +236,30 @@ func (b *graphBuilder) GetCmdContext(cmdID api.CmdID, cmd api.Cmd) CmdContext {
 	return CmdContext{cmdID, cmd, api.SubCmdIdx{}, nodeID, 0, NodeNoID, stats}
 }
 
-func (b *graphBuilder) GetSubCmdContext(idx api.SubCmdIdx, parent CmdContext) CmdContext {
-	nodeID := b.GetCmdNodeID(parent.cmdID, idx)
+func (b *graphBuilder) GetSubCmdContext(cmdID api.CmdID, idx api.SubCmdIdx) CmdContext {
+	ancestors := b.graph.GetCmdAncestorNodeIDs(cmdID, idx)
+	nodeID := ancestors[len(idx)]
+	if nodeID == NodeNoID {
+		fullIdx := append(api.SubCmdIdx{(uint64)(cmdID)}, idx...)
+		node := CmdNode{fullIdx}
+		nodeID = b.addNode(node)
+	}
+	parentID := NodeNoID
+	for i, _ := range idx {
+		parentID = ancestors[len(idx)-1-i]
+		if parentID != NodeNoID {
+			break
+		}
+	}
 	stats := b.nodeStats[nodeID]
-	return CmdContext{parent.cmdID, parent.cmd, idx, nodeID, parent.depth + 1, parent.nodeID, stats}
+	cmdCtx := CmdContext{cmdID, nil, idx, nodeID, 0, parentID, stats}
+	if parentID != NodeNoID {
+		if parentCtx, ok := b.subCmdContexts[parentID]; ok {
+			cmdCtx.cmd = parentCtx.cmd
+			cmdCtx.depth = parentCtx.depth + 1
+		}
+	}
+	return cmdCtx
 }
 
 func (b *graphBuilder) GetNodeStats(nodeID NodeID) *NodeStats {
