@@ -568,6 +568,18 @@ func (e externs) recordPresentSwapchainImage(swapchain VkSwapchainKHR, imageInde
 	}
 }
 
+func (e externs) recordBeginCommandBuffer(commandBuffer VkCommandBuffer) {
+	if e.w != nil {
+		e.w.OpenForwardDependency(e.ctx, commandBuffer)
+	}
+}
+
+func (e externs) recordEndCommandBuffer(commandBuffer VkCommandBuffer) {
+	if e.w != nil {
+		e.w.CloseForwardDependency(e.ctx, commandBuffer)
+	}
+}
+
 func (e externs) onesCount(a uint32) uint32 {
 	return (uint32)(bits.OnesCount32(a))
 }

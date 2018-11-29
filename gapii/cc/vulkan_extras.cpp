@@ -467,6 +467,8 @@ void VulkanSpy::recordFenceReset(CallObserver*, uint64_t) {}
 void VulkanSpy::recordAcquireNextImage(CallObserver*, uint64_t, uint32_t) {}
 void VulkanSpy::recordPresentSwapchainImage(CallObserver*, uint64_t, uint32_t) {
 }
+void VulkanSpy::recordBeginCommandBuffer(CallObserver*, VkCommandBuffer) {}
+void VulkanSpy::recordEndCommandBuffer(CallObserver*, VkCommandBuffer) {}
 
 bool VulkanSpy::hasDynamicProperty(CallObserver* observer,
                                    const VkPipelineDynamicStateCreateInfo* info,

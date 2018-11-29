@@ -360,6 +360,9 @@ cmd void vkFreeCommandBuffers(
   }
 }
 
+extern void recordBeginCommandBuffer(VkCommandBuffer commandBuffer)
+extern void recordEndCommandBuffer(VkCommandBuffer commandBuffer)
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 cmd VkResult vkBeginCommandBuffer(
@@ -410,6 +413,7 @@ cmd VkResult vkBeginCommandBuffer(
     buff.Recording = RECORDING
     resetCommandBuffer(buff)
   }
+  recordBeginCommandBuffer(commandBuffer)
   return ?
 }
 
@@ -426,6 +430,7 @@ cmd VkResult vkEndCommandBuffer(
     }
     buff.Recording = COMPLETED
   }
+  recordEndCommandBuffer(commandBuffer)
   return ?
 }
 
