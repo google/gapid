@@ -833,6 +833,7 @@ cmd void vkCmdBindDescriptorSets(
     const u32*             pDynamicOffsets) {
   if pDescriptorSets == null { vkErrorNullPointer("VkDescriptorSet") }
   sets := pDescriptorSets[0:descriptorSetCount]
+  if !(layout in PipelineLayouts) { vkErrorInvalidPipelineLayout(layout) }
   args := new!vkCmdBindDescriptorSetsArgs(
     PipelineBindPoint: pipelineBindPoint,
     Layout:            layout,
@@ -844,7 +845,9 @@ cmd void vkCmdBindDescriptorSets(
     args.DynamicOffsets[i] = dynamic_offsets[i]
   }
   for i in (0 .. descriptorSetCount) {
-    args.DescriptorSets[i] = sets[i]
+    set := sets[i]
+    if !(set in DescriptorSets) { vkErrorInvalidDescriptorSet(set) }
+    args.DescriptorSets[i] = set
   }
 
   if !(commandBuffer in CommandBuffers) {
