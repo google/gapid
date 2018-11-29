@@ -286,7 +286,11 @@ sub void AddCommand(
     SparseBinds: as!ref!QueuedSparseBinds(null),
     SignalFence: as!VkFence(0),
   )
-  CommandBuffers[commandBuffer].CommandReferences[commandIndex] = cmd
+  cb := CommandBuffers[commandBuffer]
+  if cb.Recording != RECORDING {
+    vkErrorCommandBufferNotRecording(commandBuffer)
+  }
+  cb.CommandReferences[commandIndex] = cmd
   onCommandAdded(commandBuffer)
 }
 
