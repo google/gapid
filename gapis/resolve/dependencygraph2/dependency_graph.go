@@ -80,6 +80,10 @@ type DependencyGraph interface {
 	// GetNodeID returns the NodeID associated with given node data
 	GetCmdNodeID(api.CmdID, api.SubCmdIdx) NodeID
 
+	// GetCmdAncestorNodeIDs returns the NodeIDs associated with the ancestors of the
+	// given subcommand.
+	GetCmdAncestorNodeIDs(api.CmdID, api.SubCmdIdx) []NodeID
+
 	// ForeachCmd iterates over all API calls in the graph.
 	// If IncludeInitialCommands is true, this includes the initial commands
 	// which reconstruct the initial state.
@@ -189,6 +193,22 @@ func (g *dependencyGraph) GetCmdNodeID(cmdID api.CmdID, idx api.SubCmdIdx) NodeI
 		return x.(NodeID)
 	}
 	return NodeNoID
+}
+
+// GetCmdAncestorNodeIDs returns the NodeIDs associated with the ancestors of the
+// given subcommand.
+func (g *dependencyGraph) GetCmdAncestorNodeIDs(cmdID api.CmdID, idx api.SubCmdIdx) []NodeID {
+	fullIdx := append(api.SubCmdIdx{(uint64)(cmdID)}, idx...)
+	values := g.cmdNodeIDs.Values(fullIdx)
+	nodeIDs := make([]NodeID, len(values))
+	for i, v := range values {
+		if v != nil {
+			nodeIDs[i] = v.(NodeID)
+		} else {
+			nodeIDs[i] = NodeNoID
+		}
+	}
+	return nodeIDs
 }
 
 // ForeachCmd iterates over all API calls in the graph.

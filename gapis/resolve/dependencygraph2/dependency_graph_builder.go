@@ -143,7 +143,7 @@ func (b *dependencyGraphBuilder) OnBeginSubCmd(ctx context.Context, subCmdIdx ap
 		return
 	}
 
-	subCmdCtx := b.graphBuilder.GetSubCmdContext(subCmdIdx, cmdCtx)
+	subCmdCtx := b.graphBuilder.GetSubCmdContext(cmdCtx.cmdID, subCmdIdx)
 
 	b.graphBuilder.OnBeginSubCmd(ctx, cmdCtx, subCmdCtx, recordIdx)
 	b.fragWatcher.OnBeginSubCmd(ctx, cmdCtx, subCmdCtx)
