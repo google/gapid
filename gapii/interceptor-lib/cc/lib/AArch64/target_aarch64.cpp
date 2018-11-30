@@ -227,3 +227,28 @@ Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
   }
   return Error();
 }
+
+void *TargetAARCH64::CheckIsPLT(void *old_function, void *new_function) {
+  // Currently only handles the case where the first instruction in the
+  // function is an uncoditional branch.
+  std::unique_ptr<Disassembler> disassembler(CreateDisassembler(old_function));
+  if (!disassembler) {
+    return old_function;
+  }
+
+  void *func_addr = GetLoadAddress(old_function);
+  llvm::MCInst inst;
+  uint64_t inst_size = 0;
+  if (!disassembler->GetInstruction(func_addr, 0, inst, inst_size)) {
+    return old_function;
+  }
+
+  switch (inst.getOpcode()) {
+    case llvm::AArch64::B: {
+      uint64_t imm = inst.getOperand(0).getImm() << 2;
+      return calculatePcRelativeAddress(func_addr, 0, imm, false);
+    }
+  }
+
+  return old_function;
+}

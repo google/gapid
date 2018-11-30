@@ -44,6 +44,8 @@ class TargetARM : public Target {
 
   void *FixupCallbackFunction(void *old_function, void *new_function) override;
 
+  void *CheckIsPLT(void *old_function, void *new_function) override;
+
  private:
   enum TrampolineType {
     FULL_TRAMPOLINE = 0,  // Full trampoline with an absolute jump
