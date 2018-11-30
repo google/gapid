@@ -52,8 +52,7 @@ std::vector<TrampolineConfig> TargetX86::GetTrampolineConfigs(
 }
 
 Error TargetX86::EmitTrampoline(const TrampolineConfig &config,
-                                CodeGenerator &codegen, void *source,
-                                void *target) {
+                                CodeGenerator &codegen, void *target) {
   switch (config.type) {
     case FULL_TRAMPOLINE: {
       uintptr_t target_addr = reinterpret_cast<uintptr_t>(target);

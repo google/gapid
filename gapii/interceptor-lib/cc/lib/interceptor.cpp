@@ -182,8 +182,7 @@ Error InterceptorImpl::GetTrampolineSize(const TrampolineConfig &config,
       target_->GetCodeGenerator(old_function, initial_alignment));
   if (!codegen) return Error("Failed to create a code generator!");
 
-  Error error =
-      target_->EmitTrampoline(config, *codegen, old_function, new_function);
+  Error error = target_->EmitTrampoline(config, *codegen, new_function);
   if (error.Fail()) return error;
   trampoline_size = codegen->LayoutCode();
   return Error();
@@ -197,8 +196,7 @@ Error InterceptorImpl::InstallTrampoline(const TrampolineConfig &config,
       target_->GetCodeGenerator(old_function, initial_alignment));
   if (!codegen) return Error("Failed to create a code generator!");
 
-  Error error =
-      target_->EmitTrampoline(config, *codegen, old_function, new_function);
+  Error error = target_->EmitTrampoline(config, *codegen, new_function);
   if (error.Fail()) return error;
 
   codegen->LayoutCode();
@@ -252,8 +250,7 @@ Error InterceptorImpl::RewriteInstructions(
 
   uint8_t *target_addr = static_cast<uint8_t *>(old_function) + offset;
   TrampolineConfig full_config = target_->GetFullTrampolineConfig();
-  Error error =
-      target_->EmitTrampoline(full_config, *codegen, nullptr, target_addr);
+  Error error = target_->EmitTrampoline(full_config, *codegen, target_addr);
   if (error.Fail()) return error;
 
   return Error();
