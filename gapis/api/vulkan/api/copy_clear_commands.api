@@ -508,27 +508,18 @@ sub RowLengthAndImageHeight getRowLengthAndImageHeight(VkBufferImageCopy region)
 }
 
 
-
-@internal
-class vkCmdCopyBufferToImageArgs {
-  VkBuffer                     SrcBuffer
-  VkImage                      DstImage
-  VkImageLayout                Layout
-  map!(u32, VkBufferImageCopy) Regions
-}
-
-sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
-  if !(args.SrcBuffer in Buffers) { vkErrorInvalidBuffer(args.SrcBuffer) }
-  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
-  bufferObject := Buffers[args.SrcBuffer]
-  imageObject := Images[args.DstImage]
+sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, map!(u32, VkBufferImageCopy) regions, bool isSrcBuffer) {
+  if !(image in Images) { vkErrorInvalidImage(image) }
+  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+  imageObject := Images[image]
+  bufferObject := Buffers[buffer]
   format := imageObject.Info.Format
   elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
   depthElementSize := getDepthElementSize(format, true)
   // Iterate through regions
-  n := len(args.Regions)
+  n := len(regions)
   for i in (0 .. n) {
-    region := args.Regions[as!u32(i)]
+    region := regions[as!u32(i)]
     rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
     rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
     imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
@@ -568,33 +559,45 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
             if ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32)) && (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) {
               elementSizeInImage := as!u64(getDepthElementSize(format, false))
               for x in (xStart .. xEnd) {
-                dstStart := as!VkDeviceSize((rowStartBlock + x) * elementSizeInImage)
+                imgStart := as!VkDeviceSize((rowStartBlock + x) * elementSizeInImage)
                 rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
                 bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
                 readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
                 // Discard the 4th byte in the buffer for current pixel.
                 bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
                 for _ , _ , piece in bufMemPieces {
-                  srcStart := piece.MemoryOffset
-                  srcEnd := srcStart + piece.Size
-                  dstPieceStart := (piece.ResourceOffset - bufStart) + dstStart
-                  dstPieceEnd := dstPieceStart + piece.Size
-                  copy(imageLevel.Data[dstPieceStart:dstPieceEnd], piece.DeviceMemory.Data[srcStart:srcEnd])
+                  bufMemStart := piece.MemoryOffset
+                  bufMemEnd := bufMemStart + piece.Size
+                  imgPieceStart := (piece.ResourceOffset - bufStart) + imgStart
+                  imgPieceEnd := imgPieceStart + piece.Size
+                  imgSlice := imageLevel.Data[imgPieceStart:imgPieceEnd]
+                  bufSlice := piece.DeviceMemory.Data[bufMemStart:bufMemEnd]
+                  if isSrcBuffer {
+                    copy(imgSlice, bufSlice)
+                  } else {
+                    copy(bufSlice, imgSlice)
+                  }
                 }
               }
             } else {
               copySize := as!VkDeviceSize((xEnd - xStart) * elementSize)
-              dstStart := (rowStartBlock + xStart) * elementSize
+              imgStart := (rowStartBlock + xStart) * elementSize
               rowStartInExtent := rowStartBlockInExtent * elementSize
               bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
               readMemoryInBuffer(bufferObject, bufStart, copySize)
               bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
               for _ , _ , piece in bufMemPieces {
-                srcStart := piece.MemoryOffset
-                srcEnd := srcStart + piece.Size
-                dstPieceStart := as!u64(piece.ResourceOffset - bufStart) + dstStart
-                dstPieceEnd := dstPieceStart + as!u64(piece.Size)
-                copy(imageLevel.Data[dstPieceStart:dstPieceEnd], piece.DeviceMemory.Data[srcStart:srcEnd])
+                bufMemStart := piece.MemoryOffset
+                bufMemEnd := bufMemStart + piece.Size
+                imgPieceStart := as!u64(piece.ResourceOffset - bufStart) + imgStart
+                imgPieceEnd := imgPieceStart + as!u64(piece.Size)
+                imgSlice := imageLevel.Data[imgPieceStart:imgPieceEnd]
+                bufSlice := piece.DeviceMemory.Data[bufMemStart:bufMemEnd]
+                if isSrcBuffer {
+                  copy(imgSlice, bufSlice)
+                } else {
+                  copy(bufSlice, imgSlice)
+                }
               }
             }
           }
@@ -602,6 +605,18 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
       }
     }
   }
+}
+
+@internal
+class vkCmdCopyBufferToImageArgs {
+  VkBuffer                     SrcBuffer
+  VkImage                      DstImage
+  VkImageLayout                Layout
+  map!(u32, VkBufferImageCopy) Regions
+}
+
+sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
+  copyImageBuffer(args.SrcBuffer, args.DstImage, args.Layout, args.Regions, true)
 }
 
 @threadSafety("app")
@@ -639,7 +654,8 @@ class vkCmdCopyImageToBufferArgs {
   map!(u32, VkBufferImageCopy) Regions
 }
 
-sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs dispatch) {
+sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs args) {
+  copyImageBuffer(args.DstBuffer, args.SrcImage, args.SrcImageLayout, args.Regions, false)
 }
 
 @threadSafety("app")
