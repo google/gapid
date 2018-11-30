@@ -178,6 +178,11 @@ public class ApiContext
       public int hashCode() {
         return 0;
       }
+
+      @Override
+      public boolean matches(Path.Context path) {
+        return true;
+      }
     };
 
     private final Path.ID id;
@@ -272,6 +277,10 @@ public class ApiContext
     @Override
     public int hashCode() {
       return id.hashCode();
+    }
+
+    public boolean matches(Path.Context path) {
+      return Objects.equals(id, path.getID());
     }
   }
 
