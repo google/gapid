@@ -82,8 +82,8 @@ std::vector<TrampolineConfig> TargetARM::GetTrampolineConfigs(
 }
 
 Error TargetARM::EmitTrampoline(const TrampolineConfig &config,
-                                    CodeGenerator &codegen, void *source,
-                                    void *target) {
+                                CodeGenerator &codegen, void *source,
+                                void *target) {
   switch (config.type) {
     case FULL_TRAMPOLINE: {
       uint32_t target_addr = (uintptr_t)target;
@@ -260,9 +260,10 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
         uint32_t pc_value = getThumbPc(data, offset);
         uint32_t scratch_reg =
             Rdn != llvm::ARM::R0 ? llvm::ARM::R0 : llvm::ARM::R1;
-        codegen.AddInstruction(
-            llvm::MCInstBuilder(llvm::ARM::tPUSH).addImm(0).addImm(0).addReg(
-                scratch_reg));
+        codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::tPUSH)
+                                   .addImm(0)
+                                   .addImm(0)
+                                   .addReg(scratch_reg));
         codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::tLDRpci)
                                    .addReg(scratch_reg)
                                    .addExpr(codegen.CreateDataExpr(pc_value)));
@@ -270,9 +271,10 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
                                    .addReg(Rdn)
                                    .addImm(0)
                                    .addReg(scratch_reg));
-        codegen.AddInstruction(
-            llvm::MCInstBuilder(llvm::ARM::tPOP).addImm(0).addImm(0).addReg(
-                scratch_reg));
+        codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::tPOP)
+                                   .addImm(0)
+                                   .addImm(0)
+                                   .addReg(scratch_reg));
       } else {
         codegen.AddInstruction(inst);
       }
@@ -282,12 +284,11 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       uint32_t Rt = inst.getOperand(0).getReg();
       uint32_t Rn = inst.getOperand(1).getReg();
       int64_t imm = inst.getOperand(2).getImm();
-      int64_t p   = inst.getOperand(3).getImm();
+      int64_t p = inst.getOperand(3).getImm();
       possible_end_of_function = (Rt == llvm::ARM::PC);
 
       if (Rn == llvm::ARM::PC) {
-        void *load_source =
-            calculatePcRelativeAddressArm(data, offset, imm);
+        void *load_source = calculatePcRelativeAddressArm(data, offset, imm);
         uint32_t load_data = 0;
         memcpy(&load_data, load_source, sizeof(uint32_t));
         codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::LDRi12)
