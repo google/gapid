@@ -844,6 +844,8 @@ message ResourcesByType {
 message Resource {
   // The resource's unique identifier.
   path.ID ID = 1;
+  // The context that created this resource.
+  path.Context context = 8;
   // The resource identifier used for display.
   string handle = 2;
   // The resource label.
