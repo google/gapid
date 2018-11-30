@@ -27,6 +27,8 @@
 #include "code_generator.h"
 #include "disassembler.h"
 
+#define NELEM(x) (sizeof(x) / sizeof(x[0]))
+
 using namespace interceptor;
 
 static llvm::Triple GetTriple() {
@@ -53,8 +55,32 @@ std::vector<TrampolineConfig> TargetAARCH64::GetTrampolineConfigs(
   return configs;
 }
 
+static Error getFreeRegister(CodeGenerator &codegen, unsigned int &reg) {
+  static const unsigned int regs[] = {// First try the scratch registers.
+                                      llvm::AArch64::X17, llvm::AArch64::X16,
+                                      // Then try the caller saved registers.
+                                      llvm::AArch64::X9, llvm::AArch64::X10,
+                                      llvm::AArch64::X11, llvm::AArch64::X12,
+                                      llvm::AArch64::X13, llvm::AArch64::X14,
+                                      llvm::AArch64::X15};
+
+  for (int i = 0; i < NELEM(regs); i++) {
+    if (!codegen.IsRegisterReserved(regs[i])) {
+      reg = regs[i];
+      return Error();
+    }
+  }
+  return Error("No free scratch register available");
+}
+
 Error TargetAARCH64::EmitTrampoline(const TrampolineConfig &config,
                                     CodeGenerator &codegen, void *target) {
+  unsigned int reg;
+  Error error = getFreeRegister(codegen, reg);
+  if (error.Fail()) {
+    return error;
+  }
+
   switch (config.type) {
     case FIRST_4G_TRAMPOLINE: {
       uint64_t target_addr = reinterpret_cast<uintptr_t>(target);
@@ -63,19 +89,19 @@ Error TargetAARCH64::EmitTrampoline(const TrampolineConfig &config,
       uint32_t target_addr32 = target_addr;
       codegen.AddInstruction(
           llvm::MCInstBuilder(llvm::AArch64::LDRWl)
-              .addReg(llvm::AArch64::X17)
+              .addReg(reg)
               .addExpr(codegen.CreateDataExpr(target_addr32)));
       codegen.AddInstruction(
-          llvm::MCInstBuilder(llvm::AArch64::BR).addReg(llvm::AArch64::X17));
+          llvm::MCInstBuilder(llvm::AArch64::BR).addReg(reg));
       return Error();
     }
     case FULL_TRAMPOLINE: {
       uint64_t target_addr = reinterpret_cast<uintptr_t>(target);
       codegen.AddInstruction(llvm::MCInstBuilder(llvm::AArch64::LDRXl)
-                                 .addReg(llvm::AArch64::X17)
+                                 .addReg(reg)
                                  .addExpr(codegen.CreateDataExpr(target_addr)));
       codegen.AddInstruction(
-          llvm::MCInstBuilder(llvm::AArch64::BR).addReg(llvm::AArch64::X17));
+          llvm::MCInstBuilder(llvm::AArch64::BR).addReg(reg));
       return Error();
     }
   }
@@ -97,14 +123,13 @@ static void *calculatePcRelativeAddress(void *data, size_t pc_offset,
   return reinterpret_cast<void *>(data_addr);
 }
 
-// IP1 (second intra-procedure-call scratch register) is X17 and it is used in
-// the trampoline so we need special handling for it.
-static bool hasIP1Operand(const llvm::MCInst &inst) {
-  for (size_t i = 0; i < inst.getNumOperands(); ++i) {
+static void reserveRegs(CodeGenerator &codegen, const llvm::MCInst &inst) {
+  for (size_t i = 0; i < inst.getNumOperands(); i++) {
     const llvm::MCOperand &op = inst.getOperand(i);
-    if (op.isReg() && op.getReg() == llvm::AArch64::X17) return true;
+    if (op.isReg()) {
+      codegen.ReserveRegister(op.getReg());
+    }
   }
-  return false;
 }
 
 Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
@@ -133,11 +158,7 @@ Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
     case llvm::AArch64::SUBSWri:
     case llvm::AArch64::SUBSXri:
     case llvm::AArch64::SUBXri: {
-      if (hasIP1Operand(inst))
-        return Error(
-            "Instruction not handled yet when one of the operand is IP1 (%s "
-            "(OpcodeId: %d))",
-            codegen.PrintInstruction(inst).c_str(), inst.getOpcode());
+      reserveRegs(codegen, inst);
       possible_end_of_function = false;
       codegen.AddInstruction(inst);
       break;
@@ -146,12 +167,7 @@ Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
       uint32_t Rd = inst.getOperand(0).getReg();
       uint64_t imm = inst.getOperand(1).getImm();
       possible_end_of_function = false;
-
-      if (hasIP1Operand(inst))
-        return Error(
-            "Instruction not handled yet when one of the operand is IP1 (%s "
-            "(OpcodeId: %d))",
-            codegen.PrintInstruction(inst).c_str(), inst.getOpcode());
+      reserveRegs(codegen, inst);
 
       uint64_t addr = reinterpret_cast<uintptr_t>(
           calculatePcRelativeAddress(data, offset, imm, true));
@@ -187,15 +203,10 @@ Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
       break;
     }
     case llvm::AArch64::CBZX: {
+      reserveRegs(codegen, inst);
       uint32_t Rt = inst.getOperand(0).getReg();
       uint64_t imm = inst.getOperand(1).getImm() << 2;
       possible_end_of_function = false;
-
-      if (hasIP1Operand(inst))
-        return Error(
-            "Instruction not handled yet when one of the operand is IP0 (%s "
-            "(OpcodeId: %d))",
-            codegen.PrintInstruction(inst).c_str(), inst.getOpcode());
 
       uint64_t addr = reinterpret_cast<uintptr_t>(
           calculatePcRelativeAddress(data, offset, imm, false));
