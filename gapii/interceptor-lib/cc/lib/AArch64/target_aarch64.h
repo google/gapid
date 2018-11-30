@@ -40,6 +40,8 @@ class TargetAARCH64 : public Target {
                            void *data, size_t offset,
                            bool &possible_end_of_function) override;
 
+  void *CheckIsPLT(void *old_function, void *new_function) override;
+
  private:
   enum TrampolineType {
     FULL_TRAMPOLINE = 0,      // Full trampoline with an absolute jump

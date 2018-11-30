@@ -371,3 +371,32 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
   }
   return Error();
 }
+
+void *TargetARM::CheckIsPLT(void *old_function, void *new_function) {
+  // Currently only handles the case where the first instruction in the
+  // function is an uncoditional branch.
+  std::unique_ptr<Disassembler> disassembler(CreateDisassembler(old_function));
+  if (!disassembler) {
+    return old_function;
+  }
+
+  void *func_addr = GetLoadAddress(old_function);
+  llvm::MCInst inst;
+  uint64_t inst_size = 0;
+  if (!disassembler->GetInstruction(func_addr, 0, inst, inst_size)) {
+    return old_function;
+  }
+
+  switch (inst.getOpcode()) {
+    case llvm::ARM::Bcc: {
+      uint32_t imm = inst.getOperand(0).getImm();
+      uint32_t pred = inst.getOperand(1).getImm();
+      if (pred == 0xE) {  // Unconditional.
+        return calculatePcRelativeAddressArm(func_addr, 0, imm);
+      }
+      break;
+    }
+  }
+
+  return old_function;
+}

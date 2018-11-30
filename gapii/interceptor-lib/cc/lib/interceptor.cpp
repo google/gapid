@@ -281,6 +281,8 @@ Error InterceptorImpl::CreateCompensationFunction(void *old_function,
 
 Error InterceptorImpl::InterceptFunction(void *old_function, void *new_function,
                                          void **callback_function) {
+  old_function = target_->CheckIsPLT(old_function, new_function);
+
   if (!callback_function) {
     // TODO: Verify that the function is long enough for placing a trampoline
     //       inside it. If it isn't then currently we are overwriting the

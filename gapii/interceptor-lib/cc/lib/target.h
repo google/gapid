@@ -99,6 +99,13 @@ class Target {
   virtual void *FixupCallbackFunction(void *old_function, void *new_function) {
     return new_function;
   }
+
+  // Checks if the old function is a simple PLT type function where it is
+  // (likely) not possible to install a trampoline. Returns the address of the
+  // PLT target or old_function.
+  virtual void *CheckIsPLT(void *old_function, void *new_function) {
+    return old_function;
+  }
 };
 
 }  // end of namespace interceptor
