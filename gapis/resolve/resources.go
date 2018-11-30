@@ -51,18 +51,22 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 
 	var currentCmdIndex uint64
 	var currentCmdResourceCount int
+	var currentThread uint64
+	var currentAPI api.API
 	// If the capture contains initial state, build the necessary commands to recreate it.
 	initialCmds, ranges, err := initialcmds.InitialCommands(ctx, r.Capture)
 	if err != nil {
 		return nil, err
 	}
 	state := c.NewUninitializedState(ctx).ReserveMemory(ranges)
-	state.OnResourceCreated = func(r api.Resource) {
+	state.OnResourceCreated = func(res api.Resource) {
 		currentCmdResourceCount++
-		seen[r] = len(seen)
+		seen[res] = len(seen)
+		context := currentAPI.Context(ctx, state, currentThread)
 		resources = append(resources, trackedResource{
-			resource: r,
+			resource: res,
 			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
+			context:  r.Capture.Context(id.ID(context.ID())),
 			accesses: []uint64{currentCmdIndex},
 			created:  currentCmdIndex,
 		})
@@ -83,6 +87,8 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 
 	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		currentThread = cmd.Thread()
+		currentAPI = cmd.API()
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			log.W(ctx, "Get resources: Initial cmd [%v]%v - %v", id, cmd, err)
 		}
@@ -98,6 +104,8 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
+		currentThread = cmd.Thread()
+		currentAPI = cmd.API()
 		cmd.Mutate(ctx, id, state, nil, nil)
 		return nil
 	})
@@ -127,6 +135,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 type trackedResource struct {
 	resource api.Resource
 	id       id.ID
+	context  *path.Context
 	name     string
 	accesses []uint64
 	deleted  uint64
@@ -136,6 +145,7 @@ type trackedResource struct {
 func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	out := &service.Resource{
 		ID:       path.NewID(r.id),
+		Context:  r.context,
 		Handle:   r.resource.ResourceHandle() + fmt.Sprintf("<%d>", r.created),
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),
