@@ -222,6 +222,7 @@ func (t Textureʳ) SetResourceData(
 	data *api.ResourceData,
 	resources api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	return fmt.Errorf("SetResourceData is not supported for Texture")
@@ -313,6 +314,7 @@ func (s Shaderʳ) SetResourceData(
 	data *api.ResourceData,
 	resourceIDs api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	cmdIdx := at.Indices[0]
@@ -612,6 +614,7 @@ func (p Programʳ) SetResourceData(
 	data *api.ResourceData,
 	resources api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	return fmt.Errorf("SetResourceData is not supported for Program")

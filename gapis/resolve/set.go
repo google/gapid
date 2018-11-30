@@ -316,6 +316,20 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 		cmds[where] = with.(api.Cmd)
 	}
 
+	oldCapt, err := capture.ResolveFromPath(ctx, after.Capture)
+	if err != nil {
+		return nil, err
+	}
+	var initialState *capture.InitialState
+	mutateInitialState := func(API api.API) api.State {
+		if initialState == nil {
+			if initialState = oldCapt.CloneInitialState(a); initialState == nil {
+				return nil
+			}
+		}
+		return initialState.APIs[API]
+	}
+
 	for i, resource := range meta.Resources {
 		if err := resource.SetResourceData(
 			ctx,
@@ -323,13 +337,16 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 			data[i],
 			meta.IDMap,
 			replaceCommands,
+			mutateInitialState,
 			r); err != nil {
 			return nil, err
 		}
 	}
 
-	// Store the new command list
-	return changeCommands(ctx, a, after.Capture, cmds)
+	if initialState == nil {
+		initialState = oldCapt.InitialState
+	}
+	return capture.New(ctx, a, oldCapt.Name+"*", oldCapt.Header, initialState, cmds)
 }
 
 func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {

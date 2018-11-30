@@ -747,6 +747,7 @@ func (t ImageObjectʳ) SetResourceData(
 	data *api.ResourceData,
 	resources api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	return fmt.Errorf("SetResourceData is not supported for ImageObject")
@@ -797,6 +798,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 	data *api.ResourceData,
 	resourceIDs api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	ctx = log.Enter(ctx, "ShaderModuleObject.SetResourceData()")
@@ -952,6 +954,7 @@ func (p GraphicsPipelineObjectʳ) SetResourceData(
 	*api.ResourceData,
 	api.ResourceMap,
 	api.ReplaceCallback,
+	api.MutateInitialState,
 	*path.ResolveConfig) error {
 	return fmt.Errorf("SetResourceData is not supported on GraphicsPipeline")
 }
@@ -1021,6 +1024,7 @@ func (p ComputePipelineObjectʳ) SetResourceData(
 	*api.ResourceData,
 	api.ResourceMap,
 	api.ReplaceCallback,
+	api.MutateInitialState,
 	*path.ResolveConfig) error {
 	return fmt.Errorf("SetResourceData is not supported on ComputePipeline")
 }
