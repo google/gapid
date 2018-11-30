@@ -54,8 +54,7 @@ std::vector<TrampolineConfig> TargetAARCH64::GetTrampolineConfigs(
 }
 
 Error TargetAARCH64::EmitTrampoline(const TrampolineConfig &config,
-                                    CodeGenerator &codegen, void *source,
-                                    void *target) {
+                                    CodeGenerator &codegen, void *target) {
   switch (config.type) {
     case FIRST_4G_TRAMPOLINE: {
       uint64_t target_addr = reinterpret_cast<uintptr_t>(target);

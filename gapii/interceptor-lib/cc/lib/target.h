@@ -80,8 +80,7 @@ class Target {
   // jump to the specified target address if it is placed into the location
   // specified by the source address.
   virtual Error EmitTrampoline(const TrampolineConfig &config,
-                               CodeGenerator &codegen, void *source,
-                               void *target) = 0;
+                               CodeGenerator &codegen, void *target) = 0;
 
   // Rewrite the specified instruction read from "data + offset "into the code
   // generator with a set of instructions with the exact same effect but without
