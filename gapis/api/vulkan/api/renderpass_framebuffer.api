@@ -412,13 +412,13 @@ sub void loadImageAttachment(u32 attachmentID) {
     if attachment.Image != null {
       switch desc.loadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD: {
-          readImageSubresource(attachment.Image, attachment.SubresourceRange)
-          updateImageQueue(attachment.Image, attachment.SubresourceRange)
+          readImageView(attachment)
+          updateImageViewQueue(attachment)
         }
         default: {
           // write to the attachment image, to prevent any dependencies on previous writes
-          updateImageQueue(attachment.Image, attachment.SubresourceRange)
-          writeImageSubresource(attachment.Image, attachment.SubresourceRange)
+          updateImageViewQueue(attachment)
+          writeImageView(attachment)
         }
       }
     }
@@ -437,8 +437,8 @@ sub void storeImageAttachment(u32 attachmentID) {
       }
       switch desc.storeOp {
         case VK_ATTACHMENT_STORE_OP_STORE: {
-          writeImageSubresource(attachment.Image, attachment.SubresourceRange)
-          updateImageQueue(attachment.Image, attachment.SubresourceRange)
+          writeImageView(attachment)
+          updateImageViewQueue(attachment)
         }
         default: {
           // do nothing
