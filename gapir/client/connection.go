@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/google/gapid/core/app/auth"
@@ -68,8 +69,11 @@ type Connection struct {
 }
 
 func newConnection(addr string, authToken auth.Token, timeout time.Duration) (*Connection, error) {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithBlock(),
-		grpc.WithTimeout(timeout))
+	conn, err := grpc.Dial(addr,
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.WithTimeout(timeout),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)))
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +277,7 @@ func (c *Connection) beginReplay(ctx context.Context, id string) error {
 // authentication token is empty, returns the original context.
 func (c *Connection) attachAuthToken(ctx context.Context) context.Context {
 	if len(c.authToken) != 0 {
-		return metadata.NewContext(ctx,
+		return metadata.NewOutgoingContext(ctx,
 			metadata.Pairs(gapirAuthTokenMetaDataName, string(c.authToken)))
 	}
 	return ctx

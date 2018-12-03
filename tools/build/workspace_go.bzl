@@ -19,22 +19,9 @@ load("@gapid//tools/build/rules:repository.bzl", "github_http_args")
 load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 # Defines the repositories for GAPID's go dependencies.
-# After calling gapid_dependencies(), load @io_bazel_rules_go's
+# After calling gapid_dependencies(), load @bazel_gazelle's
 # go_repository and call this macro.
 def gapid_go_dependencies():
-
-    # TODO: Cannot override rules_go's golang protobuf. Would
-    # cause a cycle. This may be fixed with
-    # https://github.com/bazelbuild/rules_go/issues/1548
-    #
-    #_maybe(_github_go_repository,
-    #    name = "com_github_golang_protobuf",
-    #    organization = "golang",
-    #    project = "protobuf",
-    #    commit = "b4deda0973fb4c70b50d226b1af49f3da59f5265",
-    #    importpath = "github.com/golang/protobuf",
-    #)
-
     _maybe(_github_go_repository,
         name = "com_github_google_go_github",
         organization = "google",
@@ -60,45 +47,12 @@ def gapid_go_dependencies():
     )
 
     _maybe(_github_go_repository,
-        name = "org_golang_google_grpc",
-        organization = "grpc",
-        project = "grpc-go",
-        commit = "50955793b0183f9de69bd78e2ec251cf20aab121",
-        importpath = "google.golang.org/grpc",
-    )
-
-    _maybe(_github_go_repository,
-        name = "org_golang_x_net",
-        organization = "golang",
-        project = "net",
-        commit = "f2499483f923065a842d38eb4c7f1927e6fc6e6d",
-        importpath = "golang.org/x/net",
-    )
-
-    _maybe(_github_go_repository,
-        name = "org_golang_x_sys",
-        organization = "golang",
-        project = "sys",
-        commit = "d75a52659825e75fff6158388dddc6a5b04f9ba5",
-        importpath = "golang.org/x/sys",
-    )
-
-    _maybe(_github_go_repository,
-        name = "org_golang_x_tools",
-        organization = "golang",
-        project = "tools",
-        commit = "3da34b1b520a543128e8441cd2ffffc383111d03",
-        importpath = "golang.org/x/tools",
-    )
-
-    _maybe(_github_go_repository,
         name = "org_golang_x_crypto",
         organization = "golang",
         project = "crypto",
         commit = "1a580b3eff7814fc9b40602fd35256c63b50f491",
         importpath = "golang.org/x/crypto",
     )
-
 
 
 def _maybe(repo_rule, name, **kwargs):

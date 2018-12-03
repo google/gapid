@@ -16,6 +16,7 @@ package grpcutil
 
 import (
 	"context"
+	"math"
 	"net"
 
 	"github.com/google/gapid/core/log"
@@ -41,6 +42,7 @@ func ServeWithListener(ctx context.Context, listener net.Listener, prepare Prepa
 	options = append([]grpc.ServerOption{
 		grpc.RPCCompressor(grpc.NewGZIPCompressor()),
 		grpc.RPCDecompressor(grpc.NewGZIPDecompressor()),
+		grpc.MaxRecvMsgSize(math.MaxInt32),
 	}, options...)
 	defer listener.Close()
 	grpcServer := grpc.NewServer(options...)
