@@ -1,5 +1,3 @@
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-
 # Copyright (C) 2018 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +29,6 @@ go_library(
         "replay.go",
         "timestamps.go",
     ],
-    embed = [":replay_go_proto"],
     importpath = "github.com/google/gapid/gapis/replay",
     visibility = ["//visibility:public"],
     deps = [
@@ -59,17 +56,4 @@ go_library(
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
     ],
-)
-
-proto_library(
-    name = "replay_proto",
-    srcs = ["resolvables.proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "replay_go_proto",
-    importpath = "github.com/google/gapid/gapis/replay",
-    proto = ":replay_proto",
-    visibility = ["//visibility:public"],
 )
