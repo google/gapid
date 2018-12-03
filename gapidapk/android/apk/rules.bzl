@@ -13,13 +13,15 @@
 # limitations under the License.
 
 load("//tools/build:rules.bzl", "extract", "filehash")
+load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def _strip_impl(ctx):
     outs = depset()
-    if ctx.fragments.cpp.cpu == ctx.attr.abi:
+    cc_toolchain = find_cpp_toolchain(ctx)
+    if cc_toolchain.cpu == ctx.attr.abi:
         out = ctx.new_file("lib/{}/{}".format(ctx.attr.abi, ctx.file.lib.basename))
         ctx.actions.run(
-            executable = ctx.fragments.cpp.strip_executable,
+            executable = cc_toolchain.strip_executable(),
             arguments = ["--strip-unneeded", "-o", out.path, ctx.file.lib.path],
             inputs = [ctx.file.lib] + ctx.files._ndk,
             outputs = [out],
@@ -40,9 +42,11 @@ _strip = rule(
         "abi": attr.string(),
         "_ndk": attr.label(
             default = "@androidndk//:files",
-        )
+        ),
+        "_cc_toolchain": attr.label(
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
+        ),
     },
-    fragments = ["cpp"]
 )
 
 def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
