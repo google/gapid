@@ -30,9 +30,9 @@ export ANDROID_HOME=$PWD/android
 export ANDROID_NDK_HOME=$PWD/android/android-ndk-r16b
 
 # Get bazel.
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.16.1/bazel-0.16.1-installer-darwin-x86_64.sh
+curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.20.0/bazel-0.20.0-installer-darwin-x86_64.sh
 mkdir bazel
-sh bazel-0.16.1-installer-darwin-x86_64.sh --prefix=$PWD/bazel
+sh bazel-0.20.0-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 
 # Specify the version of XCode
 export DEVELOPER_DIR=/Applications/Xcode_8.2.app/Contents/Developer
