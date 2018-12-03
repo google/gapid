@@ -19,6 +19,7 @@ cc_toolchain_suite(
     # target_cpu | compiler
     toolchains = {
         "x64_windows|mingw": "cc-compiler-mingw",
+        "x64_windows": "cc-compiler-mingw",
     },
 )
 
