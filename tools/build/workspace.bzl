@@ -20,6 +20,7 @@ load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
 load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 # Defines the repositories for GAPID's dependencies, excluding the
 # go dependencies, which require @io_bazel_rules_go to be setup.
@@ -136,7 +137,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
     )
 
     maybe_repository(
-        native.new_git_repository,
+        new_git_repository,
         name = "lss",
         locals = locals,
         remote = "https://chromium.googlesource.com/linux-syscall-support",
