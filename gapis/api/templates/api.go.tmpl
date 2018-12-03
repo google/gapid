@@ -412,13 +412,17 @@ import (
     }
   }
 
-func (m {{$name}}) DestroyHandlesʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) {
+  func (m {{$name}}) DestroyHandlesʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, ϟg *ϟapi.GlobalState) {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, m, ϟapi.CompleteFragment{},
-          ϟapi.NilReference{}, ϟapi.NilReference{})
-        for key, _ := range (*m.Map) {
+        ϟw.OnWriteFrag(ϟctx, m, ϟapi.CompleteFragment{},
+          ϟapi.NilReference{}, ϟapi.NilReference{}, ϟtrack)
+        for key, v := range (*m.Map) {
           ϟw.CloseForwardDependency(ϟctx, key)
+          _ = v
+          {{if IsReference $.ValueType}}{{if GetAnnotation $.ValueType.To "resource"}}
+            v.OnDestroy(ϟg)
+          {{end}}{{end}}
         }
       }
       *m.Map = make(map[{{$key}}]{{$value}})
@@ -464,11 +468,11 @@ func (m {{$name}}) DestroyHandlesʷ(ϟctx context.Context, ϟw ϟapi.StateWatche
     }
   }
 
-  func (m {{$name}}) Clearʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher) {
+  func (m {{$name}}) Clearʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool) {
     if m.Map != nil {
       if ϟw != nil {
-        ϟw.OnSet(ϟctx, m, ϟapi.CompleteFragment{},
-          ϟapi.NilReference{}, ϟapi.NilReference{})
+        ϟw.OnWriteFrag(ϟctx, m, ϟapi.CompleteFragment{},
+          ϟapi.NilReference{}, ϟapi.NilReference{}, ϟtrack)
       }
       *m.Map = make(map[{{$key}}]{{$value}})
     }
