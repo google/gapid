@@ -180,16 +180,47 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 // VkImageSubresourceRange data
 
 @spy_disabled
-sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  readCoherentMemoryInImage(image)
+sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRange rng, u32 baseDepth, u32 depthCount, bool isWrite) {
+  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
+
+  z0 := as!u64(baseDepth)
+  z1 := switch (depthCount == VK_REMAINING_ARRAY_LAYERS) {
+    case true:
+      as!u64(image.Info.Extent.Depth)
+    case false:
+      as!u64(baseDepth + depthCount)
+  }
+
+  format := image.Info.Format
+  elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
+  depthElementSize := getDepthElementSize(format, false)
+  blockWidth := as!u64(elementAndTexelBlockSize.TexelBlockSize.Width)
+  blockHeight := as!u64(elementAndTexelBlockSize.TexelBlockSize.Height)
+
   for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+    elementSize := switch (aspectBit) {
+      case VK_IMAGE_ASPECT_COLOR_BIT:
+        as!u64(elementAndTexelBlockSize.ElementSize)
+      case VK_IMAGE_ASPECT_DEPTH_BIT:
+        as!u64(depthElementSize)
+      case VK_IMAGE_ASPECT_STENCIL_BIT:
+        as!u64(1)
+    }
     for _, i, layer in image.Aspects[aspectBit].Layers {
       if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
         for _, k, level in layer.Levels {
           if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
-            read(level.Data)
+            imageLevelWidthInBlocks := as!u64(roundUpTo(level.Width, as!u32(blockWidth)))
+            imageLevelHeightInBlocks := as!u64(roundUpTo(level.Height, as!u32(blockHeight)))
+            start := as!u64(z0) * imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
+            end := as!u64(z1) * imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
+            if isWrite {
+              write(level.Data[start:end])
+            } else {
+              read(level.Data[start:end])
+            }
           }
         }
       }
@@ -198,20 +229,65 @@ sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng
 }
 
 @spy_disabled
+sub void accessImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, bool isWrite) {
+  VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
+  accessImageSubresourceSlice(image, rng, 0, VK_REMAINING_ARRAY_LAYERS, isWrite)
+}
+
+@spy_disabled
+sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
+  accessImageSubresource(image, rng, false)
+}
+
+@spy_disabled
 sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  layerCount := imageSubresourceLayerCount(image, rng)
-  levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
-    if aspectBit in image.Aspects {
-      aspect := image.Aspects[aspectBit]
-      for layerIndex in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
-        layer := aspect.Layers[layerIndex]
-        for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
-          level := layer.Levels[mipLevel]
-          write(level.Data)
-        }
-      }
-    }
+  accessImageSubresource(image, rng, true)
+}
+
+sub bool is2DView3DImage(ref!ImageViewObject view) {
+  return ((view.Image.Info.ImageType == VK_IMAGE_TYPE_3D) &&
+      ((view.Type == VK_IMAGE_VIEW_TYPE_2D) || (view.Type == VK_IMAGE_VIEW_TYPE_2D_ARRAY)))
+}
+
+@spy_disabled
+sub void accessImageView(ref!ImageViewObject view, bool isWrite) {
+  if is2DView3DImage(view) {
+    rng := VkImageSubresourceRange(
+          aspectMask: view.SubresourceRange.aspectMask,
+          baseMipLevel: view.SubresourceRange.baseMipLevel,
+          levelCount: view.SubresourceRange.levelCount,
+          baseArrayLayer: 0,
+          layerCount: 1)
+    baseDepth := view.SubresourceRange.baseArrayLayer
+    depthCount := view.SubresourceRange.layerCount
+    accessImageSubresourceSlice(view.Image, rng, baseDepth, depthCount, isWrite)
+  } else {
+    accessImageSubresource(view.Image, view.SubresourceRange, isWrite)
+  }
+}
+
+@spy_disabled
+sub void readImageView(ref!ImageViewObject view) {
+  accessImageView(view, false)
+}
+
+@spy_disabled
+sub void writeImageView(ref!ImageViewObject view) {
+  accessImageView(view, true)
+}
+
+@spy_disabled
+sub void updateImageViewQueue(ref!ImageViewObject view) {
+  if is2DView3DImage(view) {
+    rng := VkImageSubresourceRange(
+          aspectMask: view.SubresourceRange.aspectMask,
+          baseMipLevel: view.SubresourceRange.baseMipLevel,
+          levelCount: view.SubresourceRange.levelCount,
+          baseArrayLayer: 0,
+          layerCount: 1)
+    updateImageQueue(view.Image, rng)
+  } else {
+    updateImageQueue(view.Image, view.SubresourceRange)
   }
 }
 
@@ -226,11 +302,9 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
     _ = Samplers[v.Sampler]
     if v.ImageView != as!VkImageView(0) {
       if (v.ImageView in ImageViews) {
-        imageViewObj := ImageViews[v.ImageView]
-        imageObj := imageViewObj.Image
-        rng := imageViewObj.SubresourceRange
-        updateImageQueue(imageObj, rng)
-        readImageSubresource(imageObj, rng)
+        view := ImageViews[v.ImageView]
+        updateImageViewQueue(view)
+        readImageView(view)
       }
     }
   }
@@ -241,11 +315,11 @@ sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBi
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
     if v.ImageView != as!VkImageView(0) {
-      imageViewObj := ImageViews[v.ImageView]
-      imageObj := imageViewObj.Image
-      rng := imageViewObj.SubresourceRange
-      writeImageSubresource(imageObj, rng)
-      updateImageQueue(imageObj, rng)
+      if (v.ImageView in ImageViews) {
+        view := ImageViews[v.ImageView]
+        updateImageViewQueue(view)
+        writeImageView(view)
+      }
     }
   }
 }
