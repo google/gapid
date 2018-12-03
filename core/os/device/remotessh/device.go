@@ -47,6 +47,8 @@ type Device interface {
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
 	// WriteFile writes the given file into the given location on the remote device
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
+	// DefaultReplayCacheDir returns the default path for replay resource caches
+	DefaultReplayCacheDir() string
 }
 
 // MaxNumberOfSSHConnections defines the max number of ssh connections to each
@@ -278,4 +280,9 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 	b.To = &device
 
 	return b, nil
+}
+
+// DefaultReplayCacheDir implements Device interface
+func (b *binding) DefaultReplayCacheDir() string {
+	return ""
 }

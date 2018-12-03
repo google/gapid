@@ -118,6 +118,10 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 	args = append(args, launchArgs...)
 	if forceEnableDiskCache {
 		args = append(args, "--enable-disk-cache")
+		if len(d.DefaultReplayCacheDir()) > 0 {
+			args = append(args, "--disk-cache-path", d.DefaultReplayCacheDir())
+		}
+		args = append(args, "--cleanup-on-disk-cache")
 	}
 
 	gapir, err := layout.Gapir(ctx, abi)
