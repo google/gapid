@@ -610,12 +610,11 @@
   {{Template "Go.Read" $.Map}}.§
   {{if GetAnnotation $.Map "handleMap"}}
     DestroyHandlesʷ(ϟctx, ϟw, §
-  {{else if Macro "IsUntrackedMap" $.Map}}
-    Clear(§
+    {{Template "TrackMap" $.Map}}, ϟg)
   {{else}}
     Clearʷ(ϟctx, ϟw, §
+    {{Template "TrackMap" $.Map}})
   {{end}}
-  )
 {{end}}
 
 
