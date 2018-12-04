@@ -570,12 +570,10 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
                   bufMemEnd := bufMemStart + piece.Size
                   imgPieceStart := (piece.ResourceOffset - bufStart) + imgStart
                   imgPieceEnd := imgPieceStart + piece.Size
-                  imgSlice := imageLevel.Data[imgPieceStart:imgPieceEnd]
-                  bufSlice := piece.DeviceMemory.Data[bufMemStart:bufMemEnd]
                   if isSrcBuffer {
-                    copy(imgSlice, bufSlice)
+                    copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
                   } else {
-                    copy(bufSlice, imgSlice)
+                    copy(piece.DeviceMemory.Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
                   }
                 }
               }
@@ -591,12 +589,10 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
                 bufMemEnd := bufMemStart + piece.Size
                 imgPieceStart := as!u64(piece.ResourceOffset - bufStart) + imgStart
                 imgPieceEnd := imgPieceStart + as!u64(piece.Size)
-                imgSlice := imageLevel.Data[imgPieceStart:imgPieceEnd]
-                bufSlice := piece.DeviceMemory.Data[bufMemStart:bufMemEnd]
                 if isSrcBuffer {
-                  copy(imgSlice, bufSlice)
+                  copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
                 } else {
-                  copy(bufSlice, imgSlice)
+                  copy(piece.DeviceMemory.Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
                 }
               }
             }
