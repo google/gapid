@@ -598,18 +598,17 @@ cmd void vkUpdateDescriptorSets(
             imageBinding := setBinding.ImageBinding
             imageBinding[arrayIndex] = w.ImageInfo
             setBinding.ImageBinding = imageBinding
+
             if w.ImageInfo.Sampler in Samplers {
               samObj := Samplers[w.ImageInfo.Sampler]
               if samObj != null {
-                samObj.DescriptorUsers[w.DstSet][binding][
-                  as!u32(len(samObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+                registerDescriptorUser!SamplerObject(samObj, w.DstSet, binding, arrayIndex)
               }
             }
             if w.ImageInfo.ImageView in ImageViews {
               viewObj := ImageViews[w.ImageInfo.ImageView]
               if viewObj != null {
-                viewObj.DescriptorUsers[w.DstSet][binding][
-                  as!u32(len(viewObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+                registerDescriptorUser!ImageViewObject(viewObj, w.DstSet, binding, arrayIndex)
               }
             }
           }
@@ -622,8 +621,7 @@ cmd void vkUpdateDescriptorSets(
             if w.BufferView in BufferViews {
               viewObj := BufferViews[w.BufferView]
               if viewObj != null {
-                viewObj.DescriptorUsers[w.DstSet][binding][
-                  as!u32(len(viewObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+                registerDescriptorUser!BufferViewObject(viewObj, w.DstSet, binding, arrayIndex)
               }
             }
           }
@@ -674,16 +672,14 @@ cmd void vkUpdateDescriptorSets(
         if vkSam in Samplers {
           samObj := Samplers[vkSam]
           if samObj != null {
-            samObj.DescriptorUsers[c.DstSet][c.DstBinding][
-              as!u32(len(samObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+            registerDescriptorUser!SamplerObject(samObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
           }
         }
         vkView := srcBinding.ImageBinding[c.SrcArrayIndex].ImageView
         if vkView in ImageViews {
           viewObj := ImageViews[vkView]
           if viewObj != null {
-            viewObj.DescriptorUsers[c.DstSet][c.DstBinding][
-              as!u32(len(viewObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+            registerDescriptorUser!ImageViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
           }
         }
       }
@@ -699,8 +695,7 @@ cmd void vkUpdateDescriptorSets(
         if vkView in BufferViews {
           viewObj := BufferViews[vkView]
           if viewObj != null {
-            viewObj.DescriptorUsers[c.DstSet][c.DstBinding][
-              as!u32(len(viewObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+            registerDescriptorUser!BufferViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
           }
         }
       }
@@ -986,6 +981,23 @@ sub void readPushConstants(VkPipelineBindPoint bindPoint) {
       read(pushConstants.Data[r.offset:r.offset+r.size])
     }
   }
+}
+
+
+// Util
+
+sub void registerDescriptorUser!T(ref!T user, VkDescriptorSet descSet, u32 binding, u32 arrayIndex) {
+  if !(descSet in user.DescriptorUsers) {
+    bindings := user.DescriptorUsers[descSet]
+    user.DescriptorUsers[descSet] = bindings
+  }
+  bindings := user.DescriptorUsers[descSet]
+  if !(binding in bindings) {
+    indices := bindings[binding]
+    bindings[binding] = indices
+  }
+  indices := bindings[binding]
+  indices[arrayIndex] = true
 }
 
 // ----------------------------------------------------------------------------

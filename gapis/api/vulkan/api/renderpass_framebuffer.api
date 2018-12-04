@@ -92,8 +92,11 @@ cmd VkResult vkCreateFramebuffer(
 
   for _, i, viewObj in framebufferObject.ImageAttachments {
     if viewObj != null {
-      viewObj.FramebufferUsers[handle][
-        as!u32(len(viewObj.FramebufferUsers[handle]))] = i
+      if !(handle in viewObj.FramebufferUsers) {
+        f := viewObj.FramebufferUsers[handle]
+        viewObj.FramebufferUsers[handle] = f
+      }
+      viewObj.FramebufferUsers[handle][i] = true
     }
   }
 
