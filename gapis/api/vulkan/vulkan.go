@@ -309,17 +309,16 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 				id = commandMap[initialCommands[data.CommandIndex()]]
 			}
 		}
-
+		subCmdIdx := append(api.SubCmdIdx(nil), s.SubCmdIdx...)
+		subCmdRef := sync.SubcommandReference{subCmdIdx, id, data, false}
 		if v, ok := d.SubcommandReferences[k]; ok {
-			v = append(v,
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, data, false})
+			v = append(v, subCmdRef)
 			d.SubcommandReferences[k] = v
 		} else {
-			d.SubcommandReferences[k] = []sync.SubcommandReference{
-				sync.SubcommandReference{append(api.SubCmdIdx(nil), s.SubCmdIdx...), id, data, false}}
+			d.SubcommandReferences[k] = []sync.SubcommandReference{subCmdRef}
 		}
-
 		fullSubCmdIdx := api.SubCmdIdx(append([]uint64{uint64(k)}, s.SubCmdIdx...))
+		d.SubcommandLookup.SetValue(fullSubCmdIdx, subCmdRef)
 		lastSubCmdsInSubmittedCmdBufs.SetValue(fullSubCmdIdx[0:len(fullSubCmdIdx)-1], fullSubCmdIdx[len(fullSubCmdIdx)-1])
 		lastCmdIndex = k
 
@@ -623,16 +622,10 @@ func dependencySync(ctx context.Context, d *sync.Data, c *path.Capture) error {
 // to false, returns zero and indicating the flattening failed.
 func (API) FlattenSubcommandIdx(idx api.SubCmdIdx, data *sync.Data, initialCall bool) (api.CmdID, bool) {
 	if initialCall {
-		sg, ok := data.SubcommandReferences[api.CmdID(idx[0])]
-		if !ok {
-			return api.CmdID(0), false
-		}
-		for _, v := range sg {
-			if v.Index.Equals(idx[1:]) {
-				if !v.IsCallerGroup {
-					return v.GeneratingCmd, true
-				}
-				break
+		subCmdRefVal := data.SubcommandLookup.Value(idx)
+		if subCmdRefVal != nil {
+			if subCmdRef, ok := subCmdRefVal.(sync.SubcommandReference); ok {
+				return subCmdRef.GeneratingCmd, true
 			}
 		}
 	}
