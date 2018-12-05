@@ -93,6 +93,7 @@ type Data struct {
 	SyncDependencies map[SyncNodeIdx][]SyncNodeIdx
 	SyncNodes        []SyncNode
 	CmdSyncNodes     map[api.CmdID]SyncNodeIdx
+	SubcommandLookup *api.SubCmdIdxTrie
 }
 
 type subCommandMarkerGroupTrie struct {
@@ -126,6 +127,7 @@ func NewData() *Data {
 		SyncDependencies:       map[SyncNodeIdx][]SyncNodeIdx{},
 		SyncNodes:              []SyncNode{},
 		CmdSyncNodes:           map[api.CmdID]SyncNodeIdx{},
+		SubcommandLookup:       new(api.SubCmdIdxTrie),
 	}
 }
 

@@ -74,14 +74,17 @@ func addCallerGroups(ctx context.Context, d *sync.Data, c *path.Capture) error {
 				continue // Most likely a sub-sub-command, which we don't currently support.
 			}
 			l := d.SubcommandReferences[caller]
+			fullIdx := api.SubCmdIdx{uint64(id), uint64(len(l))}
 			idx := api.SubCmdIdx{uint64(len(l))}
-			l = append(l, sync.SubcommandReference{
+			ref := sync.SubcommandReference{
 				Index:                   idx,
 				GeneratingCmd:           id,
 				MidExecutionCommandData: nil,
 				IsCallerGroup:           true,
-			})
+			}
+			l = append(l, ref)
 			d.SubcommandReferences[caller] = l
+			d.SubcommandLookup.SetValue(fullIdx, ref)
 			d.SubcommandGroups[caller] = []api.SubCmdIdx{idx}
 		}
 	}
