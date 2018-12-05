@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type dumpShadersVerb struct{ DumpShadersFlags }
@@ -53,14 +54,21 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 	}
 	defer client.Close()
 
-	boxedResources, err := client.Get(ctx, capture.Resources().Path(), nil)
+	device, err := getDevice(ctx, client, capture, verb.Gapir)
+	if err != nil {
+		return err
+	}
+
+	resolveConfig := path.ResolveConfig{ReplayDevice: device}
+
+	boxedResources, err := client.Get(ctx, capture.Resources().Path(), &resolveConfig)
 	if err != nil {
 		return log.Err(ctx, err, "Could not find the capture's resources")
 	}
 	resources := boxedResources.(*service.Resources)
 
 	if verb.At == -1 {
-		boxedCapture, err := client.Get(ctx, capture.Path(), nil)
+		boxedCapture, err := client.Get(ctx, capture.Path(), &resolveConfig)
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
@@ -75,7 +83,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 					continue
 				}
 				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.ID)
-				resourceData, err := client.Get(ctx, resourcePath.Path(), nil)
+				resourceData, err := client.Get(ctx, resourcePath.Path(), &resolveConfig)
 				if err != nil {
 					log.E(ctx, "Could not get data for shader: %v %v", v, err)
 					continue
