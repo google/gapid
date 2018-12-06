@@ -275,23 +275,36 @@ cmd void vkCmdBeginRenderPass(
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
-  args := new!vkCmdBeginRenderPassArgs(
-    Contents:     contents,
-    RenderPass:   begin_info.renderPass,
-    Framebuffer:  begin_info.framebuffer,
-    RenderArea:   begin_info.renderArea
-  )
-  clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
-  for i in (0 .. begin_info.clearValueCount) {
-    args.ClearValues[i] = clear_values[i]
-  }
 
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
-    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass))
-    CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass[mapPos] =
-    args
+    cmdBuf := CommandBuffers[commandBuffer]
+    if (begin_info.framebuffer in Framebuffers) {
+      if (begin_info.renderPass in RenderPasses) {
+        fb := Framebuffers[begin_info.framebuffer]
+        for i in (0 .. len(fb.ImageAttachments)) {
+          att := fb.ImageAttachments[as!u32(i)]
+          if att.Image != null {
+            commandBufferTouchImage(cmdBuf, att.Image, att.SubresourceRange)
+          }
+        }
+      }
+    }
+
+    args := new!vkCmdBeginRenderPassArgs(
+      Contents:     contents,
+      RenderPass:   begin_info.renderPass,
+      Framebuffer:  begin_info.framebuffer,
+      RenderArea:   begin_info.renderArea
+    )
+    clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
+    for i in (0 .. begin_info.clearValueCount) {
+      args.ClearValues[i] = clear_values[i]
+    }
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBeginRenderPass))
+    cmdBuf.BufferCommands.vkCmdBeginRenderPass[mapPos] = args
 
     AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
   }
@@ -336,11 +349,11 @@ cmd void vkCmdNextSubpass(
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
+    cmdBuf := CommandBuffers[commandBuffer]
     args := new!vkCmdNextSubpassArgs(contents)
 
-    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass))
-    CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass[mapPos] =
-    args
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdNextSubpass))
+    cmdBuf.BufferCommands.vkCmdNextSubpass[mapPos] = args
 
     AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
   }
@@ -372,16 +385,17 @@ cmd void vkCmdEndRenderPass(
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
+    cmdBuf := CommandBuffers[commandBuffer]
     args := new!vkCmdEndRenderPassArgs()
 
-    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass))
-    CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass[mapPos] =
-    args
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdEndRenderPass))
+    cmdBuf.BufferCommands.vkCmdEndRenderPass[mapPos] = args
 
     AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
   }
 }
 
+@spy_disabled
 sub void loadImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
@@ -404,6 +418,7 @@ sub void loadImageAttachment(u32 attachmentID) {
   }
 }
 
+@spy_disabled
 sub void storeImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {

@@ -42,6 +42,7 @@
   map!(u32, VkBufferCopy) CopyRegions
 }
 
+@spy_disabled
 sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
   if !(buffer.SrcBuffer in Buffers) { vkErrorInvalidBuffer(buffer.SrcBuffer) }
   if !(buffer.DstBuffer in Buffers) { vkErrorInvalidBuffer(buffer.DstBuffer) }
@@ -121,6 +122,7 @@ sub map!(VkDeviceSize, OpaqueResourceMemoryBoundPiece) getBufferBoundMemoryPiece
   return ret_val.Map
 }
 
+@spy_disabled
 sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref!BufferObject srcBuf, VkDeviceSize srcOffset, VkDeviceSize size) {
   if (dstBuf.Memory != null) && (srcBuf.Memory != null) {
     // No sparse binding in either dst and src
@@ -185,23 +187,35 @@ cmd void vkCmdCopyBuffer(
     VkBuffer            dstBuffer,
     u32                 regionCount,
     const VkBufferCopy* pRegions) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(srcBuffer in Buffers) { vkErrorInvalidBuffer(srcBuffer) }
-  if !(srcBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
-  args := new!vkCmdCopyBufferArgs(
-    SrcBuffer:  srcBuffer,
-    DstBuffer:  dstBuffer
-  )
-  regions := pRegions[0:regionCount]
-  for i in (0 .. regionCount) {
-    args.CopyRegions[i] = regions[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(srcBuffer in Buffers) {
+      vkErrorInvalidBuffer(srcBuffer)
+    } else {
+      if !(dstBuffer in Buffers) {
+        vkErrorInvalidBuffer(dstBuffer)
+      } else {
+        cmdBuf := CommandBuffers[commandBuffer]
+        cmdBuf.TouchedBuffers[srcBuffer] = true
+        cmdBuf.TouchedBuffers[dstBuffer] = true
+
+        args := new!vkCmdCopyBufferArgs(
+          SrcBuffer:  srcBuffer,
+          DstBuffer:  dstBuffer
+        )
+        regions := pRegions[0:regionCount]
+        for i in (0 .. regionCount) {
+          args.CopyRegions[i] = regions[i]
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyBuffer))
+        cmdBuf.BufferCommands.vkCmdCopyBuffer[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdCopyBuffer, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBuffer))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBuffer[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdCopyBuffer, mapPos)
 }
 
 @internal
@@ -213,6 +227,7 @@ class vkCmdCopyImageArgs {
   map!(u32, VkImageCopy) Regions
 }
 
+@spy_disabled
 sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
   if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
@@ -312,25 +327,51 @@ cmd void vkCmdCopyImage(
     VkImageLayout      dstImageLayout,
     u32                regionCount,
     const VkImageCopy* pRegions) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
-  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
-  args := new!vkCmdCopyImageArgs(
-    SrcImage:        srcImage,
-    SrcImageLayout:  srcImageLayout,
-    DstImage:        dstImage,
-    DstImageLayout:  dstImageLayout
-  )
-  regions := pRegions[0:regionCount]
-  for i in (0 .. regionCount) {
-    args.Regions[as!u32(i)] = regions[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(srcImage in Images) {
+      vkErrorInvalidImage(srcImage)
+    } else {
+      srcImgObj := Images[srcImage]
+      if !(dstImage in Images) {
+        vkErrorInvalidImage(dstImage)
+      } else {
+        dstImgObj := Images[dstImage]
+        cmdBuf := CommandBuffers[commandBuffer]
+        args := new!vkCmdCopyImageArgs(
+          SrcImage:        srcImage,
+          SrcImageLayout:  srcImageLayout,
+          DstImage:        dstImage,
+          DstImageLayout:  dstImageLayout
+        )
+        regions := pRegions[0:regionCount]
+        for i in (0 .. regionCount) {
+          r := regions[i]
+          args.Regions[as!u32(i)] = r
+          commandBufferTouchImage(cmdBuf, srcImgObj,
+            VkImageSubresourceRange(
+              r.srcSubresource.aspectMask,
+              r.srcSubresource.mipLevel,
+              as!u32(1),
+              r.srcSubresource.baseArrayLayer,
+              r.srcSubresource.layerCount))
+          commandBufferTouchImage(cmdBuf, dstImgObj,
+            VkImageSubresourceRange(
+              r.dstSubresource.aspectMask,
+              r.dstSubresource.mipLevel,
+              as!u32(1),
+              r.dstSubresource.baseArrayLayer,
+              r.dstSubresource.layerCount))
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyImage))
+        cmdBuf.BufferCommands.vkCmdCopyImage[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdCopyImage, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImage))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImage[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdCopyImage, mapPos)
 }
 
 @internal
@@ -343,6 +384,7 @@ class vkCmdBlitImageArgs {
   VkFilter               Filter
 }
 
+@spy_disabled
 sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
   if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
@@ -467,26 +509,52 @@ cmd void vkCmdBlitImage(
     u32                regionCount,
     const VkImageBlit* pRegions,
     VkFilter           filter) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
-  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
-  args := new!vkCmdBlitImageArgs(
-    SrcImage:        srcImage,
-    SrcImageLayout:  srcImageLayout,
-    DstImage:        dstImage,
-    DstImageLayout:  dstImageLayout,
-    Filter:          filter
-  )
-  regions := pRegions[0:regionCount]
-  for i in (0 .. regionCount) {
-    args.Regions[as!u32(i)] = regions[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(srcImage in Images) {
+      vkErrorInvalidImage(srcImage)
+    } else {
+      srcImgObj := Images[srcImage]
+      if !(dstImage in Images) {
+        vkErrorInvalidImage(dstImage)
+      } else {
+        dstImgObj := Images[dstImage]
+        cmdBuf := CommandBuffers[commandBuffer]
+        args := new!vkCmdBlitImageArgs(
+          SrcImage:        srcImage,
+          SrcImageLayout:  srcImageLayout,
+          DstImage:        dstImage,
+          DstImageLayout:  dstImageLayout,
+          Filter:          filter
+        )
+        regions := pRegions[0:regionCount]
+        for i in (0 .. regionCount) {
+          r := regions[i]
+          args.Regions[as!u32(i)] = r
+          commandBufferTouchImage(cmdBuf, srcImgObj,
+            VkImageSubresourceRange(
+              r.srcSubresource.aspectMask,
+              r.srcSubresource.mipLevel,
+              as!u32(1),
+              r.srcSubresource.baseArrayLayer,
+              r.srcSubresource.layerCount))
+          commandBufferTouchImage(cmdBuf, dstImgObj,
+            VkImageSubresourceRange(
+              r.dstSubresource.aspectMask,
+              r.dstSubresource.mipLevel,
+              as!u32(1),
+              r.dstSubresource.baseArrayLayer,
+              r.dstSubresource.layerCount))
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBlitImage))
+        cmdBuf.BufferCommands.vkCmdBlitImage[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdBlitImage, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBlitImage))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBlitImage[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdBlitImage, mapPos)
 }
 
 @internal
@@ -507,7 +575,7 @@ sub RowLengthAndImageHeight getRowLengthAndImageHeight(VkBufferImageCopy region)
   return RowLengthAndImageHeight(rowLength, imageHeight)
 }
 
-
+@spy_disabled
 sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, map!(u32, VkBufferImageCopy) regions, bool isSrcBuffer) {
   if !(image in Images) { vkErrorInvalidImage(image) }
   if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
@@ -611,6 +679,7 @@ class vkCmdCopyBufferToImageArgs {
   map!(u32, VkBufferImageCopy) Regions
 }
 
+@spy_disabled
 sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   copyImageBuffer(args.SrcBuffer, args.DstImage, args.Layout, args.Regions, true)
 }
@@ -625,21 +694,40 @@ cmd void vkCmdCopyBufferToImage(
     VkImageLayout            dstImageLayout,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(srcBuffer in Buffers) { vkErrorInvalidBuffer(srcBuffer) }
-  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
-  regions := pRegions[0:regionCount]
-  read(regions)
-  args := new!vkCmdCopyBufferToImageArgs(srcBuffer, dstImage, dstImageLayout)
-  for i in (0 .. regionCount) {
-    args.Regions[as!u32(i)] = regions[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(srcBuffer in Buffers) {
+      vkErrorInvalidBuffer(srcBuffer)
+    } else {
+      if !(dstImage in Images) {
+        vkErrorInvalidImage(dstImage)
+      } else {
+        dstImgObj := Images[dstImage]
+        cmdBuf := CommandBuffers[commandBuffer]
+        cmdBuf.TouchedBuffers[srcBuffer] = true
+
+        regions := pRegions[0:regionCount]
+        read(regions)
+        args := new!vkCmdCopyBufferToImageArgs(srcBuffer, dstImage, dstImageLayout)
+        for i in (0 .. regionCount) {
+          r := regions[i]
+          args.Regions[as!u32(i)] = r
+          commandBufferTouchImage(cmdBuf, dstImgObj, VkImageSubresourceRange(
+              r.imageSubresource.aspectMask,
+              r.imageSubresource.mipLevel,
+              as!u32(1),
+              r.imageSubresource.baseArrayLayer,
+              r.imageSubresource.layerCount))
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyBufferToImage))
+        cmdBuf.BufferCommands.vkCmdCopyBufferToImage[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdCopyBufferToImage, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBufferToImage))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyBufferToImage[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdCopyBufferToImage, mapPos)
 }
 
 @internal
@@ -650,6 +738,7 @@ class vkCmdCopyImageToBufferArgs {
   map!(u32, VkBufferImageCopy) Regions
 }
 
+@spy_disabled
 sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs args) {
   copyImageBuffer(args.DstBuffer, args.SrcImage, args.SrcImageLayout, args.Regions, false)
 }
@@ -664,24 +753,44 @@ cmd void vkCmdCopyImageToBuffer(
     VkBuffer                 dstBuffer,
     u32                      regionCount,
     const VkBufferImageCopy* pRegions) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
-  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
-  regions := pRegions[0:regionCount]
-  args := new!vkCmdCopyImageToBufferArgs(
-    SrcImage:        srcImage,
-    SrcImageLayout:  srcImageLayout,
-    DstBuffer:       dstBuffer,
-  )
-  for i in (0 .. regionCount) {
-    args.Regions[as!u32(i)] = regions[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(dstBuffer in Buffers) {
+      vkErrorInvalidBuffer(dstBuffer)
+    } else {
+      if !(srcImage in Images) {
+        vkErrorInvalidImage(srcImage)
+      } else {
+        srcImgObj := Images[srcImage]
+        cmdBuf := CommandBuffers[commandBuffer]
+        cmdBuf.TouchedBuffers[dstBuffer] = true
+
+        regions := pRegions[0:regionCount]
+        args := new!vkCmdCopyImageToBufferArgs(
+          SrcImage:        srcImage,
+          SrcImageLayout:  srcImageLayout,
+          DstBuffer:       dstBuffer,
+        )
+        for i in (0 .. regionCount) {
+          r := regions[i]
+          args.Regions[as!u32(i)] = r
+          commandBufferTouchImage(cmdBuf, srcImgObj,
+            VkImageSubresourceRange(
+              r.imageSubresource.aspectMask,
+              r.imageSubresource.mipLevel,
+              as!u32(1),
+              r.imageSubresource.baseArrayLayer,
+              r.imageSubresource.layerCount))
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyImageToBuffer))
+        cmdBuf.BufferCommands.vkCmdCopyImageToBuffer[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdCopyImageToBuffer, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImageToBuffer))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdCopyImageToBuffer[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdCopyImageToBuffer, mapPos)
 }
 
 @internal class vkCmdUpdateBufferArgs {
@@ -691,6 +800,7 @@ cmd void vkCmdCopyImageToBuffer(
   u8[]         Data
 }
 
+@spy_disabled
 sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   if !(args.DstBuffer in Buffers) { vkErrorInvalidBuffer(args.DstBuffer) }
   Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
@@ -712,20 +822,28 @@ cmd void vkCmdUpdateBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    dataSize,
     const void*     pData) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
-  args := new!vkCmdUpdateBufferArgs(
-    dstBuffer,
-    dstOffset,
-    dataSize,
-  )
-  args.Data = clone(as!u8*(pData)[0:dataSize])
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(dstBuffer in Buffers) {
+      vkErrorInvalidBuffer(dstBuffer)
+    } else {
+      cmdBuf := CommandBuffers[commandBuffer]
+      cmdBuf.TouchedBuffers[dstBuffer] = true
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdUpdateBuffer))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdUpdateBuffer[mapPos] =
-  args
+      args := new!vkCmdUpdateBufferArgs(
+        dstBuffer,
+        dstOffset,
+        dataSize,
+      )
+      args.Data = clone(as!u8*(pData)[0:dataSize])
 
-  AddCommand(commandBuffer, cmd_vkCmdUpdateBuffer, mapPos)
+      mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdUpdateBuffer))
+      cmdBuf.BufferCommands.vkCmdUpdateBuffer[mapPos] = args
+
+      AddCommand(commandBuffer, cmd_vkCmdUpdateBuffer, mapPos)
+    }
+  }
 }
 
 @internal
@@ -736,6 +854,7 @@ class vkCmdFillBufferArgs {
   u32          Data
 }
 
+@spy_disabled
 sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   if !(args.Buffer in Buffers) { vkErrorInvalidBuffer(args.Buffer) }
   buf := Buffers[args.Buffer]
@@ -756,20 +875,28 @@ cmd void vkCmdFillBuffer(
     VkDeviceSize    dstOffset,
     VkDeviceSize    size,
     u32             data) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(dstBuffer in Buffers) { vkErrorInvalidBuffer(dstBuffer) }
-  args := new!vkCmdFillBufferArgs(
-    dstBuffer,
-    dstOffset,
-    size,
-    data
-  )
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(dstBuffer in Buffers) {
+      vkErrorInvalidBuffer(dstBuffer)
+    } else {
+      cmdBuf := CommandBuffers[commandBuffer]
+      cmdBuf.TouchedBuffers[dstBuffer] = true
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdFillBuffer))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdFillBuffer[mapPos] =
-  args
+      args := new!vkCmdFillBufferArgs(
+        dstBuffer,
+        dstOffset,
+        size,
+        data
+      )
 
-  AddCommand(commandBuffer, cmd_vkCmdFillBuffer, mapPos)
+      mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdFillBuffer))
+      cmdBuf.BufferCommands.vkCmdFillBuffer[mapPos] = args
+
+      AddCommand(commandBuffer, cmd_vkCmdFillBuffer, mapPos)
+    }
+  }
 }
 
 @internal
@@ -780,6 +907,7 @@ class vkCmdClearColorImageArgs {
   map!(u32, VkImageSubresourceRange) Ranges
 }
 
+@spy_disabled
 sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
   if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
   image := Images[args.Image]
@@ -798,25 +926,37 @@ cmd void vkCmdClearColorImage(
     const VkClearColorValue*       pColor,
     u32                            rangeCount,
     const VkImageSubresourceRange* pRanges) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  if pColor == null { vkErrorNullPointer("VkClearColorValue") }
-  color := pColor[0]
-  ranges := pRanges[0:rangeCount]
-  args := new!vkCmdClearColorImageArgs(
-    Image:        image,
-    ImageLayout:  imageLayout,
-    Color:        color,
-  )
-  for i in (0 .. rangeCount) {
-    args.Ranges[as!u32(i)] = ranges[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(image in Images) {
+      vkErrorInvalidImage(image)
+    } else {
+      imgObj := Images[image]
+      if pColor == null {
+        vkErrorNullPointer("VkClearColorValue")
+      } else {
+        cmdBuf := CommandBuffers[commandBuffer]
+
+        color := pColor[0]
+        ranges := pRanges[0:rangeCount]
+        args := new!vkCmdClearColorImageArgs(
+          Image:        image,
+          ImageLayout:  imageLayout,
+          Color:        color,
+        )
+        for i in (0 .. rangeCount) {
+          args.Ranges[as!u32(i)] = ranges[i]
+          commandBufferTouchImage(cmdBuf, imgObj, ranges[i])
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdClearColorImage))
+        cmdBuf.BufferCommands.vkCmdClearColorImage[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdClearColorImage, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearColorImage))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearColorImage[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdClearColorImage, mapPos)
 }
 
 @internal
@@ -827,6 +967,7 @@ class vkCmdClearDepthStencilImageArgs {
   map!(u32, VkImageSubresourceRange) Ranges
 }
 
+@spy_disabled
 sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args) {
   if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
   image := Images[args.Image]
@@ -845,25 +986,37 @@ cmd void vkCmdClearDepthStencilImage(
     const VkClearDepthStencilValue* pDepthStencil,
     u32                             rangeCount,
     const VkImageSubresourceRange*  pRanges) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  if pDepthStencil == null { vkErrorNullPointer("VkClearDepthStencilValue") }
-  depthStencil := pDepthStencil[0]
-  ranges := pRanges[0:rangeCount]
-  args := new!vkCmdClearDepthStencilImageArgs(
-    Image:         image,
-    ImageLayout:   imageLayout,
-    DepthStencil:  depthStencil,
-  )
-  for i in (0 .. rangeCount) {
-    args.Ranges[as!u32(i)] = ranges[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(image in Images) {
+      vkErrorInvalidImage(image)
+    } else {
+      imgObj := Images[image]
+      if pDepthStencil == null {
+        vkErrorNullPointer("VkClearDepthStencilValue")
+      } else {
+        cmdBuf := CommandBuffers[commandBuffer]
+
+        depthStencil := pDepthStencil[0]
+        ranges := pRanges[0:rangeCount]
+        args := new!vkCmdClearDepthStencilImageArgs(
+          Image:         image,
+          ImageLayout:   imageLayout,
+          DepthStencil:  depthStencil,
+        )
+        for i in (0 .. rangeCount) {
+          args.Ranges[as!u32(i)] = ranges[i]
+          commandBufferTouchImage(cmdBuf, imgObj, ranges[i])
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdClearDepthStencilImage))
+        cmdBuf.BufferCommands.vkCmdClearDepthStencilImage[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdClearDepthStencilImage, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearDepthStencilImage))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearDepthStencilImage[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdClearDepthStencilImage, mapPos)
 }
 
 @internal
@@ -872,6 +1025,7 @@ class vkCmdClearAttachmentsArgs {
   map!(u32, VkClearRect)       Rects
 }
 
+@spy_disabled
 sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
   useRenderPass()
 }
@@ -885,22 +1039,26 @@ cmd void vkCmdClearAttachments(
     const VkClearAttachment* pAttachments,
     u32                      rectCount,
     const VkClearRect*       pRects) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdClearAttachmentsArgs()
-  attachments := pAttachments[0:attachmentCount]
-  rects := pRects[0:rectCount]
-  for i in (0 .. attachmentCount) {
-    args.Attachments[as!u32(i)] = attachments[i]
-  }
-  for i in (0 .. rectCount) {
-    args.Rects[as!u32(i)] = rects[i]
-  }
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmdBuf := CommandBuffers[commandBuffer]
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdClearAttachments))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdClearAttachments[mapPos] =
-  args
+    args := new!vkCmdClearAttachmentsArgs()
+    attachments := pAttachments[0:attachmentCount]
+    rects := pRects[0:rectCount]
+    for i in (0 .. attachmentCount) {
+      args.Attachments[as!u32(i)] = attachments[i]
+    }
+    for i in (0 .. rectCount) {
+      args.Rects[as!u32(i)] = rects[i]
+    }
 
-  AddCommand(commandBuffer, cmd_vkCmdClearAttachments, mapPos)
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdClearAttachments))
+    cmdBuf.BufferCommands.vkCmdClearAttachments[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdClearAttachments, mapPos)
+  }
 }
 
 @internal class vkCmdResolveImageArgs {
@@ -911,6 +1069,7 @@ cmd void vkCmdClearAttachments(
   map!(u32, VkImageResolve) ResolveRegions
 }
 
+@spy_disabled
 sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
   if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
   if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
@@ -949,23 +1108,50 @@ cmd void vkCmdResolveImage(
     VkImageLayout         dstImageLayout,
     u32                   regionCount,
     const VkImageResolve* pRegions) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(srcImage in Images) { vkErrorInvalidImage(srcImage) }
-  if !(dstImage in Images) { vkErrorInvalidImage(dstImage) }
-  args := new!vkCmdResolveImageArgs(
-    SrcImage:        srcImage,
-    SrcImageLayout:  srcImageLayout,
-    DstImage:        dstImage,
-    DstImageLayout:  dstImageLayout
-  )
-  regions := pRegions[0:regionCount]
-  for i in (0 .. regionCount) {
-    args.ResolveRegions[as!u32(i)] = regions[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(srcImage in Images) {
+      vkErrorInvalidImage(srcImage)
+    } else {
+      srcImg := Images[srcImage]
+      if !(dstImage in Images) {
+        vkErrorInvalidImage(dstImage)
+      } else {
+        dstImg := Images[dstImage]
+
+        cmdBuf := CommandBuffers[commandBuffer]
+        args := new!vkCmdResolveImageArgs(
+          SrcImage:        srcImage,
+          SrcImageLayout:  srcImageLayout,
+          DstImage:        dstImage,
+          DstImageLayout:  dstImageLayout
+        )
+        regions := pRegions[0:regionCount]
+        for i in (0 .. regionCount) {
+          args.ResolveRegions[as!u32(i)] = regions[i]
+
+          srcRng := VkImageSubresourceRange(
+            regions[i].srcSubresource.aspectMask,
+            regions[i].srcSubresource.mipLevel,
+            1,
+            regions[i].srcSubresource.baseArrayLayer,
+            regions[i].srcSubresource.layerCount)
+          commandBufferTouchImage(cmdBuf, srcImg, srcRng)
+          dstRng := VkImageSubresourceRange(
+            regions[i].dstSubresource.aspectMask,
+            regions[i].dstSubresource.mipLevel,
+            1,
+            regions[i].dstSubresource.baseArrayLayer,
+            regions[i].dstSubresource.layerCount)
+          commandBufferTouchImage(cmdBuf, dstImg, dstRng)
+        }
+
+        mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdResolveImage))
+        cmdBuf.BufferCommands.vkCmdResolveImage[mapPos] = args
+
+        AddCommand(commandBuffer, cmd_vkCmdResolveImage, mapPos)
+      }
+    }
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResolveImage))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdResolveImage[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdResolveImage, mapPos)
 }

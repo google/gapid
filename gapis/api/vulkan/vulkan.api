@@ -248,9 +248,9 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
 
 @internal class DynamicPipelineState {
   // The viewports set by vkCmdSetViewport
-  map!(u32, VkViewport) Viewports
+  dense_map!(u32, VkViewport) Viewports
   // The Scissors set by vkCmdSetScissor
-  map!(u32, VkRect2D) Scissors
+  dense_map!(u32, VkRect2D) Scissors
   // The value set by vkCmdSetLineWidth
   f32 LineWidth
   // The constant factor set by vkCmdSetDepthBias
@@ -343,18 +343,8 @@ enum LastSubmissionType {
 @serialize @untrackedMap map!(VkQueue, ref!ComputeInfo) LastComputeInfos
 @serialize @untracked PresentInfo                       LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
-@hidden @serialize UsedDescriptorSets                   ProcessedDescriptorSets
 @untrackedMap map!(VkQueue, ref!DynamicPipelineState)   LastDynamicPipelineStates
 @untrackedMap map!(VkQueue, ref!PushConstantInfo)       LastPushConstants
-
-@internal class ProcessedDescriptorSet {
-  map!(u32, map!(u32, map!(VkDeviceSize, bool))) bufferOffsets
-  bool shouldReadBuffers
-}
-
-@internal class UsedDescriptorSets {
-  map!(VkDescriptorSet, ProcessedDescriptorSet) val
-}
 
 @hidden bool IsRebuilding
 

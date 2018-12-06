@@ -46,7 +46,10 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
   signaledQueues := queueMap().m
   processSubcommand := MutableBool()
   processSubcommand.b = true
-  ProcessedDescriptorSets = UsedDescriptorSets()
+
+  processedEntireImages := new!ImageSet()
+  processedBuffers := new!BufferSet()
+  processedCommandBuffers := new!CommandBufferSet()
 
   numPendingCmds := len(q.PendingCommands)
   for i in (0 .. numPendingCmds) {
@@ -194,6 +197,47 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
         } // Done sparse images
 
         if ((cmd.Buffer != as!VkCommandBuffer(0))) {
+          // Process all the touched buffers and images here, ahead of the
+          // subcommands to improve state tracking performance. This should be
+          // ignored during the GAPIS state mutation.
+          if !(cmd.Buffer in processedCommandBuffers.val) {
+            cb := CommandBuffers[cmd.Buffer]
+            for _, img, cov in cb.TouchedImages {
+              if !(img in processedEntireImages.val) {
+                if img in Images {
+                  imgObj := Images[img]
+                  readCoherentMemoryInImage(imgObj)
+                  if cov.Entire {
+                    rng := VkImageSubresourceRange(
+                      aspectMask: imgObj.ImageAspect,
+                      baseMipLevel: as!u32(0),
+                      levelCount: imgObj.Info.MipLevels,
+                      baseArrayLayer: 0,
+                      layerCount: imgObj.Info.ArrayLayers,
+                    )
+                    updateImageQueue(imgObj, rng)
+                    processedEntireImages.val[img] = true
+                  } else {
+                    for _, _, rng in cov.Ranges {
+                      updateImageQueue(imgObj, rng)
+                    }
+                  }
+                }
+              }
+            }
+            for _, buf, _ in cb.TouchedBuffers {
+              if !(buf in processedBuffers.val) {
+                if buf in Buffers {
+                  bufObj := Buffers[buf]
+                  bufObj.LastBoundQueue = LastBoundQueue
+                  readCoherentMemoryInBuffer(bufObj)
+                  processedBuffers.val[buf] = true
+                }
+              }
+            }
+            processedCommandBuffers.val[cmd.Buffer] = true
+          }
+
           onPreSubcommand(cmd)
           callCommand(cmd)
 

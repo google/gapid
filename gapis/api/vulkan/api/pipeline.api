@@ -349,7 +349,7 @@ cmd VkResult vkCreateGraphicsPipelines(
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
-      
+
       obj.TessellationState = new!TessellationStateData(
         PatchControlPoints: tessellation_state.patchControlPoints
       )
@@ -368,7 +368,7 @@ cmd VkResult vkCreateGraphicsPipelines(
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
-      
+
 
       viewport_data := new!ViewportData()
 
@@ -746,7 +746,7 @@ cmd VkResult vkCreatePipelineCache(
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
-  
+
   read(as!u8*(create_info.pInitialData)[0:create_info.initialDataSize])
   handle := ?
   if pPipelineCache == null { vkErrorNullPointer("VkPipelineCache") }
