@@ -2757,14 +2757,14 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 
-	anyActive := false
+	anyInitialized := false
 	for _, k := range qp.Status().All() {
-		if k != QueryStatus_QUERY_STATUS_INACTIVE {
-			anyActive = true
+		if k != QueryStatus_QUERY_STATUS_UNINITIALIZED {
+			anyInitialized = true
 			break
 		}
 	}
-	if !anyActive {
+	if !anyInitialized {
 		return
 	}
 	queue := sb.getQueueFor(
@@ -2778,18 +2778,20 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	defer tsk.commit()
 	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
 		for i := uint32(0); i < qp.QueryCount(); i++ {
-			if qp.Status().Get(i) != QueryStatus_QUERY_STATUS_INACTIVE {
-				sb.write(sb.cb.VkCmdBeginQuery(
-					commandBuffer,
-					qp.VulkanHandle(),
-					i,
-					VkQueryControlFlags(0)))
-			}
-			if qp.Status().Get(i) == QueryStatus_QUERY_STATUS_COMPLETE {
-				sb.write(sb.cb.VkCmdEndQuery(
-					commandBuffer,
-					qp.VulkanHandle(),
-					i))
+			switch qp.Status().Get(i) {
+			case QueryStatus_QUERY_STATUS_UNINITIALIZED:
+				// do nothing
+			case QueryStatus_QUERY_STATUS_INACTIVE:
+				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
+			case QueryStatus_QUERY_STATUS_ACTIVE:
+				sb.write(sb.cb.VkCmdBeginQuery(commandBuffer, qp.VulkanHandle(), i, VkQueryControlFlags(0)))
+			case QueryStatus_QUERY_STATUS_COMPLETE:
+				if qp.QueryType() == VkQueryType_VK_QUERY_TYPE_TIMESTAMP {
+					sb.write(sb.cb.VkCmdWriteTimestamp(commandBuffer, VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, qp.VulkanHandle(), i))
+				} else {
+					sb.write(sb.cb.VkCmdBeginQuery(commandBuffer, qp.VulkanHandle(), i, VkQueryControlFlags(0)))
+					sb.write(sb.cb.VkCmdEndQuery(commandBuffer, qp.VulkanHandle(), i))
+				}
 			}
 		}
 	})
