@@ -49,8 +49,8 @@ extern void vkErrCommandBufferIncomplete(VkCommandBuffer cmdbuf)
 extern void vkErrCommandBufferNotRecording(VkCommandBuffer cmdbuf)
 extern void vkErrQueryOutOfRange(VkQueryPool queryPool, u32 query)
 extern void vkErrQueryUninitialized(VkQueryPool queryPool, u32 query)
-extern void vkErrQueryNotInactive(VkQueryPool queryPool, u32 query)
-extern void vkErrQueryNotActive(VkQueryPool queryPool, u32 query)
+extern void vkErrQueryNotReset(VkQueryPool queryPool, u32 query)
+extern void vkErrQueryNotBegan(VkQueryPool queryPool, u32 query)
 extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout)
 extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
 
@@ -90,11 +90,11 @@ sub void vkErrorQueryOutOfRange(VkQueryPool queryPool, u32 query) {
 sub void vkErrorQueryUninitialized(VkQueryPool queryPool, u32 query) {
   vkErrQueryUninitialized(queryPool, query)
 }
-sub void vkErrorQueryNotInactive(VkQueryPool queryPool, u32 query) {
-  vkErrQueryNotInactive(queryPool, query)
+sub void vkErrorQueryNotReset(VkQueryPool queryPool, u32 query) {
+  vkErrQueryNotReset(queryPool, query)
 }
-sub void vkErrorQueryNotActive(VkQueryPool queryPool, u32 query) {
-  vkErrQueryNotActive(queryPool, query)
+sub void vkErrorQueryNotBegan(VkQueryPool queryPool, u32 query) {
+  vkErrQueryNotBegan(queryPool, query)
 }
 
 sub void vkErrorInvalidDeviceMemory(VkDeviceMemory mem) {

@@ -491,19 +491,19 @@ func (e externs) vkErrQueryUninitialized(queryPool VkQueryPool, query uint32) {
 	e.onVkError(issue)
 }
 
-func (e externs) vkErrQueryNotInactive(queryPool VkQueryPool, query uint32) {
+func (e externs) vkErrQueryNotReset(queryPool VkQueryPool, query uint32) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
-	issue.Error = fmt.Errorf("Query %v in QueryPool %v was not in the INACTIVE state", query, queryPool)
+	issue.Error = fmt.Errorf("Query %v in QueryPool %v was not reset, according to Vulkan spec, all queries must be reset before use", query, queryPool)
 	e.onVkError(issue)
 }
 
-func (e externs) vkErrQueryNotActive(queryPool VkQueryPool, query uint32) {
+func (e externs) vkErrQueryNotBegan(queryPool VkQueryPool, query uint32) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
 	issue.Severity = service.Severity_ErrorLevel
-	issue.Error = fmt.Errorf("Query %v in QueryPool %v was not in the ACTIVE state", query, queryPool)
+	issue.Error = fmt.Errorf("Query %v in QueryPool %v was began", query, queryPool)
 	e.onVkError(issue)
 }
 

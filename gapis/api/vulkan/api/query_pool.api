@@ -41,10 +41,11 @@
 //////////////////////////
 
 enum QueryStatus {
-  QUERY_STATUS_INACTIVE      = 0
-  QUERY_STATUS_ACTIVE        = 1
-  QUERY_STATUS_COMPLETE      = 2
-  QUERY_STATUS_UNINITIALIZED = 4
+  QUERY_STATUS_CREATED = 0
+  QUERY_STATUS_RESET = 1
+  QUERY_STATUS_BEGAN = 2
+  QUERY_STATUS_ENDED = 3
+  QUERY_STATUS_TIMESTAMP_WRITTEN = 4
 }
 
 @internal class QueryPoolObject {
@@ -88,7 +89,7 @@ cmd VkResult vkCreateQueryPool(
     QueryCount:          info.queryCount,
     PipelineStatistics:  info.pipelineStatistics)
   for i in (0 .. info.queryCount) {
-    pool.Status[i] = QUERY_STATUS_UNINITIALIZED
+    pool.Status[i] = QUERY_STATUS_CREATED
   }
 
   QueryPools[handle] = pool
@@ -140,7 +141,7 @@ cmd VkResult vkGetQueryPoolResults(
 
     query := i + firstQuery
     if !(query < pool.QueryCount) { vkErrorQueryOutOfRange(queryPool, query) }
-    if pool.Status[query] == QUERY_STATUS_UNINITIALIZED {
+    if pool.Status[query] == QUERY_STATUS_CREATED {
       vkErrorQueryUninitialized(queryPool, query)
     }
   }
@@ -163,10 +164,10 @@ sub void dovkCmdBeginQuery(ref!vkCmdBeginQueryArgs args) {
   pool := QueryPools[args.QueryPool]
   if pool != null {
     if !(args.Query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, args.Query) }
-    if pool.Status[args.Query] != QUERY_STATUS_INACTIVE {
-      vkErrorQueryNotInactive(args.QueryPool, args.Query)
+    if pool.Status[args.Query] != QUERY_STATUS_RESET {
+      vkErrorQueryNotReset(args.QueryPool, args.Query)
     }
-    pool.Status[args.Query] = QUERY_STATUS_ACTIVE
+    pool.Status[args.Query] = QUERY_STATUS_BEGAN
     pool.LastBoundQueue = LastBoundQueue
   }
 }
@@ -205,10 +206,10 @@ sub void dovkCmdEndQuery(ref!vkCmdEndQueryArgs args) {
   pool := QueryPools[args.QueryPool]
   if pool != null {
     if !(args.Query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, args.Query) }
-    if pool.Status[args.Query] != QUERY_STATUS_ACTIVE {
-      vkErrorQueryNotActive(args.QueryPool, args.Query)
+    if pool.Status[args.Query] != QUERY_STATUS_BEGAN {
+      vkErrorQueryNotBegan(args.QueryPool, args.Query)
     }
-    pool.Status[args.Query] = QUERY_STATUS_COMPLETE
+    pool.Status[args.Query] = QUERY_STATUS_ENDED
     pool.LastBoundQueue = LastBoundQueue
   }
 }
@@ -249,7 +250,7 @@ sub void dovkCmdResetQueryPool(ref!vkCmdResetQueryPoolArgs args) {
     for i in (0 .. args.QueryCount) {
       query := args.FirstQuery + i
       if !(query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, query) }
-      pool.Status[args.FirstQuery + i] = QUERY_STATUS_INACTIVE
+      pool.Status[args.FirstQuery + i] = QUERY_STATUS_RESET
     }
     pool.LastBoundQueue = LastBoundQueue
   }
@@ -289,10 +290,10 @@ sub void dovkCmdWriteTimestamp(ref!vkCmdWriteTimestampArgs args) {
   pool := QueryPools[args.QueryPool]
   if pool != null {
     if !(args.Query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, args.Query) }
-    if pool.Status[args.Query] != QUERY_STATUS_INACTIVE {
-      vkErrorQueryNotInactive(args.QueryPool, args.Query)
+    if pool.Status[args.Query] != QUERY_STATUS_RESET {
+      vkErrorQueryNotReset(args.QueryPool, args.Query)
     }
-    pool.Status[args.Query] = QUERY_STATUS_COMPLETE
+    pool.Status[args.Query] = QUERY_STATUS_TIMESTAMP_WRITTEN
 
     pool.LastBoundQueue = LastBoundQueue
   }
@@ -357,7 +358,7 @@ sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
 
     query := i + args.FirstQuery
     if !(query < pool.QueryCount) { vkErrorQueryOutOfRange(args.QueryPool, query) }
-    if pool.Status[query] == QUERY_STATUS_UNINITIALIZED {
+    if pool.Status[query] == QUERY_STATUS_CREATED {
       vkErrorQueryUninitialized(args.QueryPool, query)
     }
   }

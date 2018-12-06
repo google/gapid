@@ -59,12 +59,12 @@ inline void VulkanSpy::vkErrQueryUninitialized(CallObserver*, VkQueryPool queryP
     GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was uninitialized", query, queryPool)
 }
 
-inline void VulkanSpy::vkErrQueryNotInactive(CallObserver*, VkQueryPool queryPool, uint32_t query) {
-    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was not in the INACTIVE state", query, queryPool)
+inline void VulkanSpy::vkErrQueryNotReset(CallObserver*, VkQueryPool queryPool, uint32_t query) {
+    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was not reset, according to Vulkan spec, all queries must be reset before use", query, queryPool)
 }
 
-inline void VulkanSpy::vkErrQueryNotActive(CallObserver*, VkQueryPool queryPool, uint32_t query) {
-    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was not in the ACTIVE state", query, queryPool)
+inline void VulkanSpy::vkErrQueryNotBegan(CallObserver*, VkQueryPool queryPool, uint32_t query) {
+    GAPID_WARNING("Error: Query %" PRIu32 " in QueryPool %" PRIu64 " was not began", query, queryPool)
 }
 
 inline void VulkanSpy::vkErrInvalidImageLayout(CallObserver*, VkImage img, uint32_t aspect, uint32_t layer, uint32_t level, uint32_t layout, uint32_t expectedLayout) {
