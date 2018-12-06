@@ -388,35 +388,37 @@ cmd VkResult vkBeginCommandBuffer(
     }
   }
 
-  if info.pInheritanceInfo != null {
-    inheritanceInfo := info.pInheritanceInfo[0]
-    begin.Inherited = true
-    begin.InheritedRenderPass = inheritanceInfo.renderPass
-    begin.InheritedSubpass = inheritanceInfo.subpass
-    begin.InheritedFramebuffer = inheritanceInfo.framebuffer
-    begin.InheritedOcclusionQuery = inheritanceInfo.occlusionQueryEnable
-    begin.InheritedQueryFlags = inheritanceInfo.queryFlags
-    begin.InheritedPipelineStatsFlags = inheritanceInfo.pipelineStatistics
-    // handle pBeginInfo->pInheritanceInfo->pNext
-    if inheritanceInfo.pNext != null {
-      numPNext := numberOfPNext(inheritanceInfo.pNext)
-      next := MutableVoidPtr(as!void*(inheritanceInfo.pNext))
-      for i in (0 .. numPNext) {
-        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkCommandBufferInheritanceInfo
-        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
-      }
-    }
-  }
   if !(commandBuffer in CommandBuffers) {
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
     buff := CommandBuffers[commandBuffer]
+    if (buff.Level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) && (info.pInheritanceInfo != null) {
+      inheritanceInfo := info.pInheritanceInfo[0]
+      begin.Inherited = true
+      begin.InheritedRenderPass = inheritanceInfo.renderPass
+      begin.InheritedSubpass = inheritanceInfo.subpass
+      begin.InheritedFramebuffer = inheritanceInfo.framebuffer
+      begin.InheritedOcclusionQuery = inheritanceInfo.occlusionQueryEnable
+      begin.InheritedQueryFlags = inheritanceInfo.queryFlags
+      begin.InheritedPipelineStatsFlags = inheritanceInfo.pipelineStatistics
+      // handle pBeginInfo->pInheritanceInfo->pNext
+      if inheritanceInfo.pNext != null {
+        numPNext := numberOfPNext(inheritanceInfo.pNext)
+        next := MutableVoidPtr(as!void*(inheritanceInfo.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkCommandBufferInheritanceInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
+    }
+
     buff.BeginInfo = begin
     buff.Recording = RECORDING
     resetCommandBuffer(buff)
   }
+
   recordBeginCommandBuffer(commandBuffer)
   return ?
 }
