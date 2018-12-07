@@ -51,6 +51,15 @@
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
+@spy_disabled
+sub void registerFramebufferUser(ref!ImageViewObject view, VkFramebuffer vkFb, u32 attachment) {
+  if !(vkFb in view.FramebufferUsers) {
+    f := view.FramebufferUsers[vkFb]
+    view.FramebufferUsers[vkFb] = f
+  }
+  view.FramebufferUsers[vkFb][attachment] = true
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateFramebuffer(
@@ -92,8 +101,7 @@ cmd VkResult vkCreateFramebuffer(
 
   for _, i, viewObj in framebufferObject.ImageAttachments {
     if viewObj != null {
-      viewObj.FramebufferUsers[handle][
-        as!u32(len(viewObj.FramebufferUsers[handle]))] = i
+      registerFramebufferUser(viewObj, handle, i)
     }
   }
 
