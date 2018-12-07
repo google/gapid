@@ -106,9 +106,13 @@ func (e externs) onCommandAdded(buffer VkCommandBuffer) {
 		append(o.initialCommands[buffer], e.cmd)
 	b := o.CommandBuffersʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, buffer)
 	refs := b.CommandReferencesʷ(e.ctx, e.w, true)
-	c := refs.Getʷ(e.ctx, e.w, false, uint32(refs.Lenʷ(e.ctx, e.w, false)-1))
+	idx := uint32(refs.Lenʷ(e.ctx, e.w, false) - 1)
+	c := refs.Getʷ(e.ctx, e.w, false, idx)
 	if o.AddCommand != nil {
 		o.AddCommand(c)
+	}
+	if e.w != nil {
+		e.w.OnRecordSubCmd(e.ctx, api.RecordIdx{uint64(buffer), uint64(idx)})
 	}
 }
 
@@ -140,7 +144,7 @@ func (e externs) onPreSubcommand(ref CommandReferenceʳ) {
 		o.PreSubcommand(ref)
 	}
 	if e.w != nil {
-		e.w.OnBeginSubCmd(e.ctx, o.SubCmdIdx)
+		e.w.OnBeginSubCmd(e.ctx, o.SubCmdIdx, api.RecordIdx{uint64(ref.Buffer()), uint64(ref.CommandIndex())})
 	}
 }
 
