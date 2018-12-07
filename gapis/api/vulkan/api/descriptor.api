@@ -986,6 +986,7 @@ sub void readPushConstants(VkPipelineBindPoint bindPoint) {
 
 // Util
 
+@spy_disabled
 sub void registerDescriptorUser!T(ref!T user, VkDescriptorSet descSet, u32 binding, u32 arrayIndex) {
   if !(descSet in user.DescriptorUsers) {
     bindings := user.DescriptorUsers[descSet]

@@ -226,6 +226,9 @@ cmd void vkDestroyBufferView(
                   }
                 }
               }
+              default: {
+                // do nothing
+              }
             }
           }
         }

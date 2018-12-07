@@ -485,6 +485,9 @@ cmd void vkDestroyImageView(
                   }
                 }
               }
+              default: {
+                // do nothing
+              }
             }
           }
         }
@@ -601,13 +604,18 @@ cmd void vkDestroySampler(
         if vkDesSet in DescriptorSets {
           desSetObj := DescriptorSets[vkDesSet]
           for _, binding, indices in bindingAndIndices {
-            switch desSetObj.Bindings[binding].BindingType {
-              case VK_DESCRIPTOR_TYPE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                for _, index, _ in indices {
-                  if desSetObj.Bindings[binding].ImageBinding[index].Sampler == sampler {
-                    desSetObj.Bindings[binding].ImageBinding[index].Sampler = as!VkSampler(0)
+            if binding in desSetObj.Bindings {
+              switch desSetObj.Bindings[binding].BindingType {
+                case VK_DESCRIPTOR_TYPE_SAMPLER,
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+                  for _, index, _ in indices {
+                    if desSetObj.Bindings[binding].ImageBinding[index].Sampler == sampler {
+                      desSetObj.Bindings[binding].ImageBinding[index].Sampler = as!VkSampler(0)
+                    }
                   }
+                }
+                default: {
+                  // do nothing
                 }
               }
             }
