@@ -30,7 +30,7 @@ type StateWatcher interface {
 	// OnEndCmd is called at the end of each API call
 	OnEndCmd(ctx context.Context, cmdID CmdID, cmd Cmd)
 
-	OnBeginSubCmd(ctx context.Context, subCmdIdx SubCmdIdx)
+	OnBeginSubCmd(ctx context.Context, subCmdIdx SubCmdIdx, recordIdx RecordIdx)
 
 	OnEndSubCmd(ctx context.Context)
 
@@ -71,7 +71,11 @@ type StateWatcher interface {
 	// forward dependency, without actually adding the forward dependency.
 	// See `OpenForwardDependency` for an explanation of forward dependencies.
 	DropForwardDependency(ctx context.Context, dependencyID interface{})
+
+	OnRecordSubCmd(ctx context.Context, recordIdx RecordIdx)
 }
+
+type RecordIdx []uint64
 
 // Fragment is an interface which marks types which identify pieces of API objects.
 // All of the implementations appear below.

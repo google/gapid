@@ -19,7 +19,6 @@ import (
 	"math/bits"
 
 	"github.com/google/gapid/gapis/api"
-	"github.com/google/gapid/gapis/api/sync"
 	"github.com/google/gapid/gapis/capture"
 )
 
@@ -37,7 +36,8 @@ type GraphBuilder interface {
 	GetStats() *GraphBuilderStats
 	GetGraph() *dependencyGraph
 	OnBeginCmd(ctx context.Context, cmdCtx CmdContext)
-	OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext)
+	OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext, recordIdx api.RecordIdx)
+	OnRecordSubCmd(ctx context.Context, cmdCtx CmdContext, recordIdx api.RecordIdx)
 }
 
 type GraphBuilderStats struct {
@@ -64,16 +64,16 @@ type graphBuilder struct {
 	depSlice       []NodeID
 	subCmdContexts map[NodeID]CmdContext
 	initCmdNodeIDs map[NodeID][]NodeID
-	syncData       *sync.Data
+	recordNodes    *RecordNodeTrie
 }
 
 func NewGraphBuilder(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd, syncData *sync.Data) *graphBuilder {
+	c *capture.Capture, initialCmds []api.Cmd) *graphBuilder {
 	return &graphBuilder{
 		graph:          newDependencyGraph(ctx, config, c, initialCmds, []Node{}),
 		subCmdContexts: make(map[NodeID]CmdContext),
 		initCmdNodeIDs: make(map[NodeID][]NodeID),
-		syncData:       syncData,
+		recordNodes:    &RecordNodeTrie{},
 	}
 }
 
@@ -258,19 +258,19 @@ func (b *graphBuilder) OnBeginCmd(ctx context.Context, cmdCtx CmdContext) {
 	b.subCmdContexts[cmdCtx.nodeID] = cmdCtx
 }
 
-func (b *graphBuilder) OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext) {
+func (b *graphBuilder) OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext, recordIdx api.RecordIdx) {
 	if _, ok := b.subCmdContexts[subCmdCtx.nodeID]; !ok {
 		b.subCmdContexts[subCmdCtx.nodeID] = subCmdCtx
 	}
-	if syncAPI, ok := cmdCtx.cmd.API().(sync.SynchronizedAPI); ok {
-		idx := append(api.SubCmdIdx{(uint64)(subCmdCtx.cmdID)}, subCmdCtx.subCmdIdx...)
-		if genCmdID, ok := syncAPI.FlattenSubcommandIdx(idx, b.syncData, true); ok && genCmdID != api.CmdNoID {
-			genNodeID := b.graph.GetCmdNodeID(genCmdID, api.SubCmdIdx{})
-			if genNodeID != NodeNoID {
-				b.initCmdNodeIDs[subCmdCtx.nodeID] = append(b.initCmdNodeIDs[subCmdCtx.nodeID], genNodeID)
-			}
-		}
+	r := b.recordNodes.GetRecordNode(recordIdx)
+	if r != NodeNoID {
+		s := subCmdCtx.nodeID
+		b.initCmdNodeIDs[s] = append(b.initCmdNodeIDs[s], r)
 	}
+}
+
+func (b *graphBuilder) OnRecordSubCmd(ctx context.Context, cmdCtx CmdContext, recordIdx api.RecordIdx) {
+	b.recordNodes.SetRecordNode(recordIdx, cmdCtx.nodeID)
 }
 
 func (b *graphBuilder) BuildReverseDependencies() {
@@ -292,4 +292,19 @@ func (b *graphBuilder) addNode(node Node) NodeID {
 	}
 	b.nodeStats = newNodeStats
 	return nodeID
+}
+
+type RecordNodeTrie struct {
+	api.SubCmdIdxTrie
+}
+
+func (t *RecordNodeTrie) SetRecordNode(recordIdx api.RecordIdx, nodeID NodeID) {
+	t.SetValue(api.SubCmdIdx(recordIdx), nodeID)
+}
+
+func (t *RecordNodeTrie) GetRecordNode(recordIdx api.RecordIdx) NodeID {
+	if nodeID, ok := t.Value(api.SubCmdIdx(recordIdx)).(NodeID); ok {
+		return nodeID
+	}
+	return NodeNoID
 }
