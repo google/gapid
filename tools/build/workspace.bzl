@@ -25,7 +25,6 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 # Defines the repositories for GAPID's dependencies, excluding the
 # go dependencies, which require @io_bazel_rules_go to be setup.
 #  android - if false, the Android NDK/SDK are not initialized.
-#  java_client - if false, the Java deps used by the client are not initialized.
 #  mingw - if false, our cc toolchain, which uses MinGW on Windows is not initialized.
 #  locals - can be used to provide local path overrides for repos:
 #     {"foo": "/path/to/foo"} would cause @foo to be a local repo based on /path/to/foo.
