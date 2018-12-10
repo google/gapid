@@ -120,7 +120,17 @@ cmd VkResult vkGetFenceStatus(
     VkFence  fence) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(fence in Fences) { vkErrorInvalidFence(fence) }
-  return ?
+  res := ?
+  if res == VK_SUCCESS {
+    // The fence was signaled, so treat this as a wait on the fence.
+    if Fences[fence].Signaled {
+      recordFenceWait(fence)
+    } else {
+      // TODO: handle case when signal comes after wait (e.g. in a multi-threaded app)
+      vkErrorInvalidFence(fence)
+    }
+  }
+  return res
 }
 
 @threadSafety("system")
