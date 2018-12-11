@@ -46,6 +46,7 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
   signaledQueues := queueMap().m
   processSubcommand := MutableBool()
   processSubcommand.b = true
+  clear(LastBoundDescriptorSetsBufferInfo)
 
   processedEntireImages := new!ImageSet()
   processedBuffers := new!BufferSet()
