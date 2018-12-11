@@ -345,8 +345,14 @@ enum LastSubmissionType {
 @serialize LastSubmissionType                           LastSubmission
 @untrackedMap map!(VkQueue, ref!DynamicPipelineState)   LastDynamicPipelineStates
 @untrackedMap map!(VkQueue, ref!PushConstantInfo)       LastPushConstants
+@untrackedMap map!(VkDescriptorSet, ref!BoundDescriptorSetBufferInfo) LastBoundDescriptorSetsBufferInfo
 
 @hidden bool IsRebuilding
+
+@internal class BoundDescriptorSetBufferInfo {
+  map!(u32, map!(u32, map!(VkDeviceSize, bool)))  bufferOffsets
+  bool shouldReadBuffers
+}
 
 sub ref!DrawInfo lastDrawInfo() {
   if LastBoundQueue != null {

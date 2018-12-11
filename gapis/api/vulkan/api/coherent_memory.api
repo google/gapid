@@ -334,9 +334,50 @@ sub void readWriteMemoryInBoundDescriptorSets(
   for i in (0 .. layerCount) {
     descriptorSet := descriptorSets[as!u32(i)]
     if descriptorSet != null {
+      if !(descriptorSet.VulkanHandle in LastBoundDescriptorSetsBufferInfo) {
         offsets := bufferBindingOffsets[as!u32(i)]
         readMemoryInDescriptorSet(descriptorSet, offsets, true)
         writeMemoryInDescriptorSet(descriptorSet, offsets, true)
+
+        descriptors := new!BoundDescriptorSetBufferInfo()
+        descriptors.shouldReadBuffers = false
+        newOffsets := descriptors.bufferOffsets
+        for _, j, jj in offsets {
+          for _, k, v in jj {
+            if (!newOffsets[j][k][v]) {
+              x := newOffsets[j]
+              y := x[k]
+              y[v] = true
+              x[k] = y
+              newOffsets[j] = x
+            }
+
+          }
+        }
+        descriptors.bufferOffsets = newOffsets
+        LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle] = descriptors
+      } else if LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle].shouldReadBuffers {
+        offsets := bufferBindingOffsets[as!u32(i)]
+        readMemoryInDescriptorSet(descriptorSet, offsets, false)
+        writeMemoryInDescriptorSet(descriptorSet, offsets, false)
+
+        descriptors := LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle]
+        descriptors.shouldReadBuffers = false
+        newOffsets := descriptors.bufferOffsets
+        for _, j, jj in offsets {
+          for _, k, v in jj {
+            if (!newOffsets[j][k][v]) {
+              x := newOffsets[j]
+              y := x[k]
+              y[v] = true
+              x[k] = y
+              newOffsets[j] = x
+            }
+          }
+        }
+        descriptors.bufferOffsets = newOffsets
+        LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle] = descriptors
+      }
     }
   }
 }

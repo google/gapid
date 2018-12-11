@@ -834,6 +834,19 @@ sub void updateDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs ar
       setObj := DescriptorSets[set]
       currentDescriptorSets[args.FirstSet + as!u32(i)] = setObj
       desc_set_buf_offsets := bufferBindingOffsets[as!u32(i)+args.FirstSet]
+      hasBeenRead := switch (set in LastBoundDescriptorSetsBufferInfo) {
+        case true:
+          MutableBool(true)
+        default:
+          MutableBool(false)
+      }
+
+      existingOffsets := switch(hasBeenRead.b) {
+        case true:
+          LastBoundDescriptorSetsBufferInfo[set].bufferOffsets
+        case false:
+          emptyBufferOffsets().BufferBindingOffsets
+      }
 
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
@@ -858,6 +871,23 @@ sub void updateDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs ar
               default:
                 dynamic_offset_index.Val
             }
+            // If the offset has changed, then we may have to reprocess this
+            // descriptor set.
+            if hasBeenRead.b {
+              if !(as!u32(j) in existingOffsets) {
+                hasBeenRead.b = false
+              } else if !(as!u32(k) in existingOffsets[as!u32(j)]) {
+                hasBeenRead.b = false
+              } else if !(binding_offset in existingOffsets[as!u32(j)][as!u32(k)]) {
+                hasBeenRead.b = false
+              }
+
+              if !hasBeenRead.b {
+                LastBoundDescriptorSetsBufferInfo[set].shouldReadBuffers = true
+
+              }
+            }
+
             desc_binding_buf_offsets[as!u32(k)] = binding_offset
           }
           desc_set_buf_offsets[as!u32(j)] = desc_binding_buf_offsets
