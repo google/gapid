@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/core/stream/fmts"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
@@ -558,35 +559,50 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 		}
 		texelHeight := elementAndTexelBlockSize.TexelBlockSize().Height()
 		heightInBlocks, _ := subRoundUpTo(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, nil, l.Height(), texelHeight)
-		colorData := make([]uint8, 0, expectedSize)
 		colorRawSize := uint64(format.Size(int(l.Width()), 1, 1))
-		levelData := l.Data().MustRead(ctx, nil, s, nil)
-		for z := uint64(0); z < uint64(l.Depth()); z++ {
-			for y := uint64(0); y < uint64(heightInBlocks); y++ {
-				offset := z*uint64(ll.DepthPitch()) + y*uint64(ll.RowPitch())
-				colorData = append(colorData, levelData[offset:offset+colorRawSize]...)
+		levelDataResID := l.Data().ResourceID(ctx, s)
+
+		resolveColorData := func() ([]byte, error) {
+			levelDataRaw, err := database.Resolve(ctx, levelDataResID)
+			if err != nil {
+				return []byte{}, log.Errf(ctx, err, "[Resolve color image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
 			}
+			levelData, ok := levelDataRaw.([]byte)
+			if !ok {
+				return []byte{}, log.Errf(ctx, err, "[Resolve color image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			levelDataMinimumLen := uint64(l.Depth()-uint32(1))*uint64(ll.DepthPitch()) + uint64(heightInBlocks-uint32(1))*uint64(ll.RowPitch()) + colorRawSize
+			if uint64(len(levelData)) < levelDataMinimumLen {
+				return []byte{}, log.Errf(ctx, nil, "[Not enough image level data to get color data, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			colorData := make([]uint8, 0, expectedSize)
+			for z := uint64(0); z < uint64(l.Depth()); z++ {
+				for y := uint64(0); y < uint64(heightInBlocks); y++ {
+					offset := z*uint64(ll.DepthPitch()) + y*uint64(ll.RowPitch())
+					colorData = append(colorData, levelData[offset:offset+colorRawSize]...)
+				}
+			}
+			return colorData, nil
 		}
-		imgData := &image.Data{
-			Format: format,
-			Width:  l.Width(),
-			Height: l.Height(),
-			Depth:  l.Depth(),
-			Bytes:  colorData[:],
-		}
-		info, err := imgData.NewInfo(ctx)
+		colorDataID, err := database.Store(ctx, resolveColorData)
 		if err != nil {
 			log.Errf(ctx, err, "[Trim linear image data for image: %v]", t.VulkanHandle())
 			return nil
 		}
-		return info
+
+		return &image.Info{
+			Format: format,
+			Width:  l.Width(),
+			Height: l.Height(),
+			Depth:  l.Depth(),
+			Bytes:  image.NewID(colorDataID),
+		}
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 		depthLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
-		depthData := depthLevel.Data().MustRead(ctx, nil, s, nil)
+		depthDataResID := depthLevel.Data().ResourceID(ctx, s)
 		stencilLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers().Get(layer).Levels().Get(level)
-		stencilData := stencilLevel.Data().MustRead(ctx, nil, s, nil)
-		dsData := make([]uint8, len(depthData)+len(stencilData))
+		stencilDataResID := stencilLevel.Data().ResourceID(ctx, s)
 
 		var dStep, sStep int
 		// Stencil data is always 1 byte wide
@@ -603,34 +619,59 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 			return nil
 		}
 
-		if len(depthData)/dStep != len(stencilData)/sStep {
+		if int(depthLevel.Data().Count())/dStep != int(stencilLevel.Data().Count())/sStep {
 			log.E(ctx, "[Merging depth and stencil data] depth/stencil data does not match")
 			return nil
 		}
 
-		// This assumes there are no 'packed' depth+stencil format, so the order
-		// is always depth first, stencil later.
-		for i := 0; i < len(stencilData); i++ {
-			dsO := i * (dStep + sStep)
-			dO := i * dStep
-			sO := i
-			copy(dsData[dsO:dsO+dStep], depthData[dO:dO+dStep])
-			copy(dsData[dsO+dStep:dsO+dStep+sStep], stencilData[sO:sO+sStep])
+		resolveDepthStencilData := func() ([]byte, error) {
+			depthDataRaw, err := database.Resolve(ctx, depthDataResID)
+			if err != nil {
+				return []byte{}, log.Errf(ctx, err, "[Resolve depth image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			depthData, ok := depthDataRaw.([]byte)
+			if !ok {
+				return []byte{}, log.Errf(ctx, err, "[Resolve depth image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			if uint64(len(depthData)) != depthLevel.Data().Count() {
+				return []byte{}, log.Errf(ctx, nil, "[Incorrect length of depth iamge level data, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			stencilDataRaw, err := database.Resolve(ctx, stencilDataResID)
+			if err != nil {
+				return []byte{}, log.Errf(ctx, err, "[Resolve stencil image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			stencilData, ok := stencilDataRaw.([]byte)
+			if !ok {
+				return []byte{}, log.Errf(ctx, err, "[Resolve stencil image level data failed, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+			if uint64(len(stencilData)) != stencilLevel.Data().Count() {
+				return []byte{}, log.Errf(ctx, nil, "[Incorect length of stencil image level data, image: %v, layer: %v, level: %v]", t.VulkanHandle(), layer, level)
+			}
+
+			dsData := make([]uint8, depthLevel.Data().Count()+stencilLevel.Data().Count())
+			// This assumes there are no 'packed' depth+stencil format, so the order
+			// is always depth first, stencil later.
+			for i := 0; i < len(stencilData); i++ {
+				dsO := i * (dStep + sStep)
+				dO := i * dStep
+				sO := i
+				copy(dsData[dsO:dsO+dStep], depthData[dO:dO+dStep])
+				copy(dsData[dsO+dStep:dsO+dStep+sStep], stencilData[sO:sO+sStep])
+			}
+			return dsData, nil
+		}
+		depthStencilDataID, err := database.Store(ctx, resolveDepthStencilData)
+		if err != nil {
+			log.Errf(ctx, err, "[Storing depth data resolving callback for image: %v]", t.VulkanHandle())
 		}
 
-		imgData := &image.Data{
+		return &image.Info{
 			Format: format,
 			Width:  depthLevel.Width(),
 			Height: depthLevel.Height(),
 			Depth:  depthLevel.Depth(),
-			Bytes:  dsData[:],
+			Bytes:  image.NewID(depthStencilDataID),
 		}
-		info, err := imgData.NewInfo(ctx)
-		if err != nil {
-			log.E(ctx, "[Merging depth and stencil data] %v", err)
-			return nil
-		}
-		return info
 	}
 	return nil
 }
