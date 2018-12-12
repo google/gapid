@@ -310,7 +310,7 @@ cmd VkResult vkCreateGraphicsPipelines(
     }
     for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
       vertex_binding := vertex_descriptions[b]
-      obj.VertexInputState.BindingDescriptions[vertex_binding.binding] = vertex_binding
+      obj.VertexInputState.BindingDescriptions[b] = vertex_binding
     }
 
     vertex_attributes := vertex_input_state.pVertexAttributeDescriptions[0:
