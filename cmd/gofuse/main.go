@@ -16,8 +16,8 @@
 //
 // gofuse will create a new 'fused' directory in the project root which
 // contains:
-//  • Symlinks to authored .go (and optionally, .proto) source files in the GAPID source tree.
-//  • Symlinks to bazel-generated .go files (bazel-out/[config]/{bin,genfiles}).
+//  • Symlinks to authored files in the GAPID source tree.
+//  • Symlinks to bazel-generated files (bazel-out/[config]/{bin,genfiles}).
 //  • Symlinks to external 3rd-party .go files.
 // These symlinks are 'fused' into a single, common directory structure that
 // is expected by the typical GOPATH rules used by go tooling.
@@ -28,7 +28,7 @@
 //   bazel run //cmd/gofuse
 //   bazel run //cmd/gofuse -- --bazelout=k8-fastbuild
 //   bazel run //cmd/gofuse -- --bazelout=k8-dbg
-//   bazel run //cmd/gofuse -- --bazelout=darwin-fastbuild --linkproto=false
+//   bazel run //cmd/gofuse -- --bazelout=darwin-fastbuild
 package main
 
 import (
@@ -43,10 +43,17 @@ import (
 
 // Map of bazel external package names to the expected import names.
 var externals = map[string]string{
-	"com_github_golang_protobuf": filepath.Join("github.com", "golang", "protobuf"),
-	"com_github_google_protobuf": filepath.Join("github.com", "google", "protobuf"),
-	"com_github_pkg_errors":      filepath.Join("github.com", "pkg", "errors"),
-	"llvm":                       "llvm",
+	"com_github_golang_protobuf":       filepath.Join("github.com", "golang", "protobuf"),
+	"com_github_google_protobuf":       filepath.Join("github.com", "google", "protobuf"),
+	"com_github_google_go_github":      filepath.Join("github.com", "google", "go-github"),
+	"com_github_google_go_querystring": filepath.Join("github.com", "google", "go-querystring"),
+	"com_github_grpc_grpc":             filepath.Join("github.com", "grpc", "grpc"),
+	"com_github_pkg_errors":            filepath.Join("github.com", "pkg", "errors"),
+	"org_golang_google_grpc":           filepath.Join("google.golang.org", "grpc"),
+	"org_golang_x_crypto":              filepath.Join("golang.org", "x", "crypto"),
+	"org_golang_x_net":                 filepath.Join("golang.org", "x", "net"),
+	"org_golang_x_tools":               filepath.Join("golang.org", "x", "tools"),
+	"llvm":                             "llvm",
 }
 
 var (
@@ -54,9 +61,6 @@ var (
 
 	bazelOutDirectory = flag.String("bazelout", "",
 		"The bazel-out/X directory name from which to include .go files. E.g. k8-fastbuild, darwin-fastbuild, k8-dbg, etc.")
-
-	linkProtoFiles = flag.Bool("linkproto", true,
-		"Whether to symlink .proto files. This is useful if you want to work in the fuse directory exclusively.")
 )
 
 func main() {
@@ -109,20 +113,20 @@ func run() error {
 	fmt.Println("Updating fused directory at:", fusedRoot)
 
 	// Collect all the existing symlinks under the fused root.
-	fusedFiles := collect(fusedRoot, always).ifTrue(and(or(hasSuffix(".go"), hasSuffix(".proto")), isFile, isSymlink))
+	fusedFiles := collect(fusedRoot, always).ifTrue(and(isFile, isSymlink))
 
-	fmt.Print("Collecting .go ")
-	if *linkProtoFiles {
-		fmt.Println("and .proto files from:", projectRoot)
-	} else {
-		fmt.Println("files from:", projectRoot)
-	}
+	fmt.Print("Collecting files from:", projectRoot)
 	srcMapping := collect(projectRoot,
 		and(
-			hasPrefix(fusedRoot).not(),                            // Don't traverse the fused root
-			hasPrefix(filepath.Join(projectRoot, "bazel-")).not(), // Don't traverse the bazel directories
+			// Don't traverse the fused root
+			hasPrefix(fusedRoot).not(),
+			// Don't traverse the bazel directories
+			hasPrefix(filepath.Join(projectRoot, "bazel-")).not(),
+			// Don't traverse directories starting with "."; don't use filepath.Join as it simplifies "."
+			hasPrefix(projectRoot+string(filepath.Separator)+".").not(),
 		)).
-		ifTrue(and(isFile, or(hasSuffix(".go"), and(fromBool(*linkProtoFiles), hasSuffix(".proto"))))). // Only consider .go and .proto files
+		// Only consider files; ignore those in root starting with "."; don't use filepath.Join as it simplifies "."
+		ifTrue(and(isFile, hasPrefix(projectRoot+string(filepath.Separator)+".").not())).
 		mapping(func(path string) string {
 			return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(projectRoot, path))
 		})
@@ -137,20 +141,45 @@ func run() error {
 		})
 
 	// E.g. bazel-out/k8-dbg/bin
+	// Currently just gets generated gapid files.
 	binOut := filepath.Join(projectRoot, "bazel-out", *bazelOutDirectory, "bin")
 	fmt.Println("Collecting generated .go files from:", binOut)
 	binMappingOut := collect(binOut, always).ifTrue(and(
 		isFile,
-		contains("github.com"),
+		contains(filepath.Join("github.com", "google", "gapid")),
 		hasSuffix(".go"),
 	)).mapping(func(path string) string {
 		return filepath.Join(fusedRoot, "src", trimUpTo(rel(projectRoot, path), "github.com"))
 	})
 
 	// Collect all the external package file mappings.
+
+	// After resolving symlinks, bazel-gapid/external points to:
+	// /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid/external
+	// But this directory is not ideal, as it only includes the externals from the last bazel build or run.
+	// Instead, we can resolve bazel-gapid and go up to get to:
+	// /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/external
+	// ...which includes all externals
+
+	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid
+	bazelGapidResolved, err := filepath.EvalSymlinks(filepath.Join(projectRoot, "bazel-gapid"))
+	if err != nil {
+		return err
+	}
+	bazelGapidResolved, err = filepath.Abs(bazelGapidResolved)
+	if err != nil {
+		return err
+	}
+
+	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/
+	bazelCacheDir := filepath.Dir(filepath.Dir(bazelGapidResolved))
+
+	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/external
+	bazelExternals := filepath.Join(bazelCacheDir, "external")
+
 	extMapping := mappings{}
 	for pkg, imp := range externals {
-		src := filepath.Join(projectRoot, "bazel-gapid", "external", pkg)
+		src := filepath.Join(bazelExternals, pkg)
 		fmt.Println("Collecting .go files from:", src)
 		dst := filepath.Join(fusedRoot, "src", imp)
 		m := collect(src, always).ifTrue(and(isFile, hasSuffix(".go"))).
@@ -163,7 +192,7 @@ func run() error {
 	// Every mapping we're going to deal with.
 	allMappings := join(srcMapping, genfilesMappingOut, binMappingOut, extMapping)
 
-	// Remove all existing symlinks in the fused directory that part of the
+	// Remove all existing symlinks in the fused directory that are not part of the
 	// mappings. This may never happen if the OS automatically deletes deleted
 	// symlink targets.
 	if err := fusedFiles.ifFalse(allMappings.dsts().set().contains).foreach(remove); err != nil {
