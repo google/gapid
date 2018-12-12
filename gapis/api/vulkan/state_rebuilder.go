@@ -1995,9 +1995,22 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 }
 
 func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
+
+	temporaryDescriptorSetLayouts := []VkDescriptorSetLayout{}
 	descriptorSets := []VkDescriptorSetLayout{}
 	for _, k := range pl.SetLayouts().Keys() {
-		descriptorSets = append(descriptorSets, pl.SetLayouts().Get(k).VulkanHandle())
+		if isDescriptorSetLayoutInState(pl.SetLayouts().Get(k), sb.oldState) {
+			descriptorSets = append(descriptorSets, pl.SetLayouts().Get(k).VulkanHandle())
+		} else {
+			temporaryDescriptorSetLayout := pl.SetLayouts().Get(k).Clone(sb.newState.Arena, api.CloneContext{})
+			temporaryDescriptorSetLayout.SetVulkanHandle(
+				VkDescriptorSetLayout(newUnusedID(true, func(x uint64) bool {
+					return GetState(sb.newState).DescriptorSetLayouts().Contains(VkDescriptorSetLayout(x))
+				})))
+			sb.createDescriptorSetLayout(temporaryDescriptorSetLayout)
+			descriptorSets = append(descriptorSets, temporaryDescriptorSetLayout.VulkanHandle())
+			temporaryDescriptorSetLayouts = append(temporaryDescriptorSetLayouts, temporaryDescriptorSetLayout.VulkanHandle())
+		}
 	}
 
 	sb.write(sb.cb.VkCreatePipelineLayout(
@@ -2017,6 +2030,14 @@ func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
 		sb.MustAllocWriteData(pl.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+
+	for _, td := range temporaryDescriptorSetLayouts {
+		sb.write(sb.cb.VkDestroyDescriptorSetLayout(
+			pl.Device(),
+			td,
+			memory.Nullptr,
+		))
+	}
 }
 
 func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
@@ -2095,6 +2116,16 @@ func isRenderPassInState(rp RenderPassObjectʳ, st *api.GlobalState) bool {
 	passes := GetState(st).RenderPasses()
 	if passes.Contains(rp.VulkanHandle()) {
 		if passes.Get(rp.VulkanHandle()) == rp {
+			return true
+		}
+	}
+	return false
+}
+
+func isDescriptorSetLayoutInState(dl DescriptorSetLayoutObjectʳ, st *api.GlobalState) bool {
+	layouts := GetState(st).DescriptorSetLayouts()
+	if layouts.Contains(dl.VulkanHandle()) {
+		if layouts.Get(dl.VulkanHandle()) == dl {
 			return true
 		}
 	}
