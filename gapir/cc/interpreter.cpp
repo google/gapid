@@ -60,12 +60,11 @@ inline bool sum(Stack& stack, uint32_t count) {
 
 Interpreter::Interpreter(core::CrashHandler& crash_handler,
                          const MemoryManager* memory_manager,
-                         uint32_t stack_depth, ApiRequestCallback callback)
+                         uint32_t stack_depth)
     :
 
       mCrashHandler(crash_handler),
       mMemoryManager(memory_manager),
-      apiRequestCallback(std::move(callback)),
       mStack(stack_depth, mMemoryManager),
       mInstructions(nullptr),
       mInstructionCount(0),
@@ -77,6 +76,10 @@ Interpreter::Interpreter(core::CrashHandler& crash_handler,
                     stack->printStack();
                     return true;
                   });
+}
+
+void Interpreter::setApiRequestCallback(ApiRequestCallback callback) {
+  apiRequestCallback = std::move(callback);
 }
 
 void Interpreter::registerBuiltin(uint8_t api, FunctionTable::Id id,
@@ -93,12 +96,20 @@ void Interpreter::setRendererFunctions(uint8_t api,
   }
 }
 
+void Interpreter::resetInstructions() {
+  mInstructions = nullptr;
+  mInstructionCount = 0;
+  mCurrentInstruction = 0;
+}
+
 bool Interpreter::run(const uint32_t* instructions, uint32_t count) {
   GAPID_ASSERT(mInstructions == nullptr);
   GAPID_ASSERT(mInstructionCount == 0);
   GAPID_ASSERT(mCurrentInstruction == 0);
   mInstructions = instructions;
   mInstructionCount = count;
+  // Reset the promise here, otherwise this may throw.
+  mExecResult = std::promise<Result>();
   auto unregisterHandler = mCrashHandler.registerHandler(
       [this](const std::string& minidumpPath, bool succeeded) {
         GAPID_ERROR("--- CRASH DURING REPLAY ---");

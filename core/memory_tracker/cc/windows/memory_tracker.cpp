@@ -1,4 +1,6 @@
 #include "core/memory_tracker/cc/memory_tracker.h"
+
+#if COHERENT_TRACKING_ENABLED
 #include <Windows.h>
 #include <atomic>
 #include <functional>
@@ -78,3 +80,4 @@ uint32_t GetPageSize() {
 
 }  // namespace track_memory
 }  // namespace gapii
+#endif  // COHERENT_MEMORY_TRACKING_ENABLED

@@ -18,6 +18,7 @@ package database
 import (
 	"context"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/data/id"
 )
@@ -30,6 +31,10 @@ type Database interface {
 	// Resolve attempts to resolve the final value associated with an id.
 	// It will traverse all Resolvable objects, blocking until they are ready.
 	Resolve(context.Context, id.ID) (interface{}, error)
+	// IsResolved returns true if the object is in the database,
+	// and has already been resolved, and false if either the object
+	// is not in the database, or is, but has not been resolved yet.
+	IsResolved(context.Context, id.ID) bool
 	// Contains returns true if the database has an entry for the specified id.
 	Contains(context.Context, id.ID) bool
 }
@@ -52,6 +57,27 @@ func Build(ctx context.Context, r Resolvable) (interface{}, error) {
 		return nil, err
 	}
 	return Get(ctx).Resolve(ctx, id)
+}
+
+// GetOrBuild stores resolvable into d, if the object is already resolved
+// in the database, returns it. Otherwise it schdules the resource to be build
+// and returns nil.
+func GetOrBuild(ctx context.Context, r Resolvable) (interface{}, error) {
+	id, err := Store(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	if Get(ctx).IsResolved(ctx, id) {
+		return Get(ctx).Resolve(ctx, id)
+	}
+
+	newCtx := status.PutTask(keys.Clone(context.Background(), ctx), nil)
+	go func() {
+		cctx := status.PutTask(newCtx, nil)
+		Get(cctx).Resolve(cctx, id)
+	}()
+
+	return nil, nil
 }
 
 type databaseKeyTy string

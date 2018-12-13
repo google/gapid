@@ -51,7 +51,7 @@ type test struct {
 }
 
 func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
-	b := builder.New(ra)
+	b := builder.New(ra, nil)
 	s := api.NewStateWithEmptyAllocator(device.Little32)
 	s.MemoryLayout = ca
 

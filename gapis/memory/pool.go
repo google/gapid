@@ -51,6 +51,20 @@ type Pools struct {
 	OnCreate   func(PoolID, *Pool)
 }
 
+func (p *Pools) Clone() Pools {
+	x := NewPools()
+	for k, v := range p.pools {
+		var np *Pool
+		if k != ApplicationPool {
+			np = x.NewAt(k)
+		} else {
+			np = x.pools[ApplicationPool]
+		}
+		np.writes = append(poolWriteList{}, v.writes[:]...)
+	}
+	return x
+}
+
 type poolSlice struct {
 	rng    Range         // The memory range of the slice.
 	writes poolWriteList // The list of writes to the pool when this slice was created.

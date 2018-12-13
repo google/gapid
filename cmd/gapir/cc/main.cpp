@@ -92,6 +92,14 @@ std::string getTempOnDiskCachePath() {
 }
 #endif
 
+struct PrewarmData {
+  GrpcReplayService* prewarm_service = nullptr;
+  Context* prewarm_context = nullptr;
+  std::string prewarm_id;
+  std::string cleanup_id;
+  std::string current_state;
+};
+
 // Setup creates and starts a replay server at the given URI port. Returns the
 // created and started server.
 // Note the given memory manager and the crash handler, they may be used for
@@ -101,15 +109,14 @@ std::string getTempOnDiskCachePath() {
 std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
                               ResourceCache* cache, int idleTimeoutSec,
                               core::CrashHandler* crashHandler,
-                              MemoryManager* memMgr, std::mutex* lock) {
+                              MemoryManager* memMgr, PrewarmData* prewarm,
+                              std::mutex* lock) {
   // Return a replay server with the following replay ID handler. The first
   // package for a replay must be the ID of the replay.
   return Server::createAndStart(
       uri, authToken, idleTimeoutSec,
-      [cache, memMgr, crashHandler, lock](GrpcReplayService* replayConn,
-                                          const std::string& replayId) {
-        std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
-
+      [cache, memMgr, crashHandler, lock,
+       prewarm](GrpcReplayService* replayConn) {
         std::unique_ptr<ResourceLoader> resLoader;
         if (cache == nullptr) {
           resLoader = PassThroughResourceLoader::create(replayConn);
@@ -126,16 +133,134 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
             Context::create(replayConn, *crashHandler, resLoader.get(), memMgr);
 
         if (context == nullptr) {
-          GAPID_WARNING("Loading Context failed!");
+          GAPID_ERROR("Loading Context failed!");
           return;
         }
-        if (cache != nullptr) {
-          context->prefetch(cache);
-        }
 
-        GAPID_INFO("Replay started");
-        bool ok = context->interpret();
-        GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
+        auto cleanup_state = [&]() {
+          if (!prewarm->prewarm_context->initialize(prewarm->cleanup_id)) {
+            return false;
+          }
+          if (cache != nullptr) {
+            prewarm->prewarm_context->prefetch(cache);
+          }
+          bool ok = prewarm->prewarm_context->interpret();
+          if (!ok) {
+            return false;
+          }
+          if (!prewarm->prewarm_context->cleanup()) {
+            return false;
+          }
+          prewarm->prewarm_id = "";
+          prewarm->cleanup_id = "";
+          prewarm->current_state = "";
+          prewarm->prewarm_context = nullptr;
+          prewarm->prewarm_service = nullptr;
+          return true;
+        };
+
+        auto prime_state = [&](std::string state, std::string cleanup) {
+          GAPID_INFO("Priming %s", state.c_str());
+          if (context->initialize(state)) {
+            GAPID_INFO("Replay context initialized successfully");
+          } else {
+            GAPID_ERROR("Replay context initialization failed");
+            return false;
+          }
+          if (cache != nullptr) {
+            context->prefetch(cache);
+          }
+          GAPID_INFO("Replay started");
+          bool ok = context->interpret(false);
+          GAPID_INFO("Priming %s", ok ? "finished successfully" : "failed");
+          if (!ok) {
+            return false;
+          }
+
+          if (!cleanup.empty()) {
+            prewarm->current_state = state;
+            prewarm->cleanup_id = cleanup;
+            prewarm->prewarm_id = state;
+            prewarm->prewarm_service = replayConn;
+            prewarm->prewarm_context = context.get();
+          }
+          return true;
+        };
+
+        do {
+          auto req = replayConn->getReplayRequest();
+          if (!req) {
+            GAPID_INFO("No more requests!");
+            break;
+          }
+          GAPID_INFO("Got request %d", req->req_case());
+          switch (req->req_case()) {
+            case replay_service::ReplayRequest::kReplay: {
+              std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
+
+              if (prewarm->current_state != req->replay().dependent_id()) {
+                GAPID_INFO("Trying to get into the correct state");
+                cleanup_state();
+                if (req->replay().dependent_id() != "") {
+                  prime_state(req->replay().dependent_id(), "");
+                }
+              } else {
+                GAPID_INFO("Already in the correct state");
+              }
+              GAPID_INFO("Running %s", req->replay().replay_id().c_str());
+              if (context->initialize(req->replay().replay_id())) {
+                GAPID_INFO("Replay context initialized successfully");
+              } else {
+                GAPID_ERROR("Replay context initialization failed");
+                continue;
+              }
+              if (cache != nullptr) {
+                context->prefetch(cache);
+              }
+
+              GAPID_INFO("Replay started");
+              bool ok = context->interpret();
+              GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
+              replayConn->sendReplayFinished();
+              if (!context->cleanup()) {
+                return;
+              }
+              prewarm->current_state = "";
+              if (prewarm->prewarm_service && !prewarm->prewarm_id.empty() &&
+                  !prewarm->cleanup_id.empty()) {
+                prewarm->prewarm_service->primeState(prewarm->prewarm_id,
+                                                     prewarm->cleanup_id);
+              }
+              break;
+            }
+            case replay_service::ReplayRequest::kPrewarm: {
+              std::lock_guard<std::mutex> mem_mgr_crash_hdl_lock_guard(*lock);
+              // We want to pre-warm into the existing state, good deal.
+              if (prewarm->current_state == req->prewarm().prerun_id()) {
+                GAPID_INFO(
+                    "Already primed in the correct state, no more work is "
+                    "needed");
+                prewarm->cleanup_id = req->prewarm().cleanup_id();
+                break;
+              }
+              if (prewarm->current_state != "") {
+                if (!cleanup_state()) {
+                  GAPID_ERROR(
+                      "Could not clean up after previous replay, in a bad "
+                      "state now");
+                  return;
+                }
+              }
+              if (!prime_state(std::move(req->prewarm().prerun_id()),
+                               std::move(req->prewarm().cleanup_id()))) {
+                GAPID_ERROR("Could not prime state: in a bad state now");
+                return;
+              }
+              break;
+            }
+            default: { break; }
+          }
+        } while (true);
       });
 }
 
@@ -234,9 +359,10 @@ void android_main(struct android_app* app) {
   auto opts = Options::Parse(app);
   auto cache = InMemoryResourceCache::create(memoryManager.getTopAddress());
   std::mutex lock;
+  PrewarmData data;
   std::unique_ptr<Server> server =
       Setup(uri.c_str(), opts.authToken.c_str(), cache.get(),
-            opts.idleTimeoutSec, &crashHandler, &memoryManager, &lock);
+            opts.idleTimeoutSec, &crashHandler, &memoryManager, &data, &lock);
   std::atomic<bool> serverIsDone(false);
   std::thread waiting_thread([&]() {
     server.get()->wait();
@@ -498,11 +624,24 @@ static int replayArchive(Options opts) {
   auto onDiskCache = OnDiskResourceCache::create(opts.replayArchive, false);
   std::unique_ptr<ResourceLoader> resLoader =
       CachedResourceLoader::create(onDiskCache.get(), nullptr);
+
   std::unique_ptr<Context> context = Context::create(
       &replayArchive, crashHandler, resLoader.get(), &memoryManager);
 
+  if (context->initialize("payload")) {
+    GAPID_DEBUG("Replay context initialized successfully");
+  } else {
+    GAPID_ERROR("Replay context initialization failed");
+    return EXIT_FAILURE;
+  }
+
   GAPID_INFO("Replay started");
   bool ok = context->interpret();
+  replayArchive.sendReplayFinished();
+  if (!context->cleanup()) {
+    GAPID_ERROR("Replay cleanup failed");
+    return EXIT_FAILURE;
+  }
   GAPID_INFO("Replay %s", ok ? "finished successfully" : "failed");
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
@@ -554,9 +693,11 @@ static int startServer(Options opts) {
   auto cache = createCache(opts.onDiskCacheOptions, &memoryManager);
 
   std::mutex lock;
-  std::unique_ptr<Server> server = Setup(
-      uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
-      cache.get(), opts.idleTimeoutSec, &crashHandler, &memoryManager, &lock);
+  PrewarmData data;
+  std::unique_ptr<Server> server =
+      Setup(uri.c_str(), (authToken.size() > 0) ? authToken.data() : nullptr,
+            cache.get(), opts.idleTimeoutSec, &crashHandler, &memoryManager,
+            &data, &lock);
   // The following message is parsed by launchers to detect the selected port.
   // DO NOT CHANGE!
   printf("Bound on port '%s'\n", portStr.c_str());

@@ -122,11 +122,14 @@ func (a API) Replay(
 	ctx context.Context,
 	intent replay.Intent,
 	cfg replay.Config,
+	dependentPayload string,
 	rrs []replay.RequestAndResult,
 	device *device.Instance,
 	capture *capture.Capture,
 	out transform.Writer) error {
-
+	if dependentPayload != "" {
+		return log.Errf(ctx, nil, "GLES does not support dependent payloads")
+	}
 	if a.GetReplayPriority(ctx, device, capture.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay GLES commands on device '%v'", device.Name)
 	}

@@ -33,9 +33,27 @@ type Generator interface {
 		ctx context.Context,
 		intent Intent,
 		cfg Config,
+		dependentPayload string,
 		requests []RequestAndResult,
 		device *device.Instance,
 		capture *capture.Capture,
+		out transform.Writer) error
+}
+
+// SplitGenerator is the interface for types that support
+// split-replay generation.
+type SplitGenerator interface {
+	Generator
+	// GetInitialPayload returns a set of instructions
+	// that can be used to set up the replay.
+	GetInitialPayload(ctx context.Context,
+		capture *path.Capture,
+		device *device.Instance,
+		out transform.Writer) error
+	// CleanupResources returns a set of instructions
+	// that can be used to clean up from the Initial payload.
+	CleanupResources(ctx context.Context,
+		device *device.Instance,
 		out transform.Writer) error
 }
 

@@ -33,8 +33,7 @@
 
 namespace gapir {
 
-using ReplayHandler =
-    std::function<void(GrpcReplayService*, const std::string& replay_id)>;
+using ReplayHandler = std::function<void(GrpcReplayService*)>;
 using WatchDogFeeder = std::function<void()>;
 
 class Server;

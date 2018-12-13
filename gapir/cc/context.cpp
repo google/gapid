@@ -47,14 +47,7 @@ std::unique_ptr<Context> Context::create(ReplayService* srv,
                                          MemoryManager* memory_manager) {
   std::unique_ptr<Context> context(
       new Context(srv, crash_handler, resource_loader, memory_manager));
-
-  if (context->initialize()) {
-    GAPID_DEBUG("Replay context initialized successfully");
-    return context;
-  } else {
-    GAPID_ERROR("Replay context initialization failed");
-    return nullptr;
-  }
+  return context;
 }
 
 // TODO: Make the PostBuffer size dynamic? It currently holds 2MB of data.
@@ -84,8 +77,19 @@ Context::~Context() {
   delete mVulkanRenderer;
 }
 
-bool Context::initialize() {
-  mReplayRequest = ReplayRequest::create(mSrv, mMemoryManager);
+bool Context::cleanup() {
+  for (auto it = mGlesRenderers.begin(); it != mGlesRenderers.end(); it++) {
+    delete it->second;
+  }
+  delete mVulkanRenderer;
+  mGlesRenderers.clear();
+  mVulkanRenderer = nullptr;
+  return true;
+}
+
+bool Context::initialize(const std::string& id) {
+  mReplayRequest = ReplayRequest::create(mSrv, id, mMemoryManager);
+  mPostBuffer->resetCount();
   if (mReplayRequest == nullptr) {
     GAPID_ERROR("Replay request creation failed");
     return false;
@@ -115,7 +119,7 @@ void Context::prefetch(ResourceCache* cache) const {
   cache->prefetch(resources.data(), resources.size(), tempLoader.get());
 }
 
-bool Context::interpret() {
+bool Context::interpret(bool cleanup) {
   Interpreter::ApiRequestCallback callback = [this](Interpreter* interpreter,
                                                     uint8_t api_index) -> bool {
     if (api_index == gapir::Vulkan::INDEX) {
@@ -131,15 +135,21 @@ bool Context::interpret() {
     }
     return false;
   };
+  if (mInterpreter == nullptr) {
+    mInterpreter.reset(new Interpreter(mCrashHandler, mMemoryManager,
+                                       mReplayRequest->getStackSize()));
 
-  mInterpreter.reset(new Interpreter(mCrashHandler, mMemoryManager,
-                                     mReplayRequest->getStackSize(),
-                                     std::move(callback)));
-  registerCallbacks(mInterpreter.get());
+    registerCallbacks(mInterpreter.get());
+  }
+  mInterpreter->setApiRequestCallback(std::move(callback));
   auto instAndCount = mReplayRequest->getInstructionList();
   auto res = mInterpreter->run(instAndCount.first, instAndCount.second) &&
              mPostBuffer->flush();
-  mInterpreter.reset(nullptr);
+  if (cleanup) {
+    mInterpreter.reset(nullptr);
+  } else {
+    mInterpreter->resetInstructions();
+  }
   return res;
 }
 

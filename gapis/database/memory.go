@@ -302,3 +302,18 @@ func (d *memory) Contains(ctx context.Context, id id.ID) (res bool) {
 	_, got := d.records[id]
 	return got
 }
+
+// Implements Database
+func (d *memory) IsResolved(ctx context.Context, id id.ID) (res bool) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	r, got := d.records[id]
+	if !got {
+		return false
+	}
+	rs := r.resolveState
+	if rs.finished == nil {
+		return true
+	}
+	return false
+}

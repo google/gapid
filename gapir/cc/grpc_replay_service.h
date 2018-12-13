@@ -17,11 +17,14 @@
 #ifndef GAPIR_REPLAY_CONNECTION_H
 #define GAPIR_REPLAY_CONNECTION_H
 
+#include "core/cc/semaphore.h"
 #include "replay_service.h"
 #include "resource.h"
 
+#include <deque>
 #include <memory>
 #include <string>
+#include <thread>
 
 namespace grpc {
 template <typename RES, typename REQ>
@@ -56,6 +59,7 @@ class GrpcReplayService : public ReplayService {
     if (mGrpcStream != nullptr) {
       this->sendReplayFinished();
     }
+    mCommunicationThread.join();
   }
 
   GrpcReplayService(const GrpcReplayService&) = delete;
@@ -65,33 +69,49 @@ class GrpcReplayService : public ReplayService {
 
   // Sends PayloadRequest and returns the received Payload. Returns nullptr in
   // case of error.
-  virtual std::unique_ptr<ReplayService::Payload> getPayload() override;
+  std::unique_ptr<ReplayService::Payload> getPayload(
+      const std::string& payload) override;
   // Sends ResourceRequest and returns the received Resources. Returns nullptr
   // in case of error.
-  virtual std::unique_ptr<ReplayService::Resources> getResources(
+  std::unique_ptr<ReplayService::Resources> getResources(
       const Resource* resource, size_t resCount) override;
 
   // Sends ReplayFinished signal. Returns true if succeeded, otherwise returns
   // false.
-  virtual bool sendReplayFinished() override;
+  bool sendReplayFinished() override;
   // Sends crash dump. Returns true if succeeded, otherwise returns false.
-  virtual bool sendCrashDump(const std::string& filepath,
-                             const void* crash_data,
-                             uint32_t crash_size) override;
+  bool sendCrashDump(const std::string& filepath, const void* crash_data,
+                     uint32_t crash_size) override;
   // Sends post data. Returns true if succeeded, otherwise returns false.
-  virtual bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
+  bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
   // Sends notification. Returns true if succeeded, otherwise returns false.
-  virtual bool sendNotification(uint64_t id, uint32_t severity,
-                                uint32_t api_index, uint64_t label,
-                                const std::string& msg, const void* data,
-                                uint32_t data_size) override;
+  bool sendNotification(uint64_t id, uint32_t severity, uint32_t api_index,
+                        uint64_t label, const std::string& msg,
+                        const void* data, uint32_t data_size) override;
+
+  std::unique_ptr<replay_service::ReplayRequest> getReplayRequest() override;
+
+  void primeState(std::string prerun_id, std::string cleanup_id);
 
  protected:
-  GrpcReplayService(ReplayGrpcStream* stream) : mGrpcStream(stream) {}
+  GrpcReplayService(ReplayGrpcStream* stream) : mGrpcStream(stream) {
+    mCommunicationThread = std::thread(&handleCommunication, this);
+  }
+
+  std::unique_ptr<replay_service::ReplayRequest> getNonReplayRequest();
+
+  static void handleCommunication(GrpcReplayService* _service);
 
  private:
   // The gRPC stream connection.
   ReplayGrpcStream* mGrpcStream;
+
+  std::mutex mCommunicationLock;
+  core::Semaphore mRequestSem;
+  core::Semaphore mDataSem;
+  std::deque<std::unique_ptr<replay_service::ReplayRequest>> mDeferredRequests;
+  std::deque<std::unique_ptr<replay_service::ReplayRequest>> mDeferredData;
+  std::thread mCommunicationThread;
 };
 }  // namespace gapir
 

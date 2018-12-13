@@ -46,6 +46,8 @@ class PostBuffer {
   // this function does nothing.
   bool flush();
 
+  void resetCount() { mTotalPostCount = 0; }
+
  private:
   // The PostBuffer's internal buffer.
   std::unique_ptr<ReplayService::Posts> mPosts;

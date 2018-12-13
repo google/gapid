@@ -15,10 +15,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/google/gapid/core/app"
@@ -51,6 +53,16 @@ func (verb *reportVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	client, capturePath, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
+	gapisTrace := &bytes.Buffer{}
+	stopGapisTrace, err := client.Profile(ctx, nil, gapisTrace, 1)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		stopGapisTrace()
+		ioutil.WriteFile("report.out", gapisTrace.Bytes(), 0644)
+	}()
+
 	if err != nil {
 		return err
 	}

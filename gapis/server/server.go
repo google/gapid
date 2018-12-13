@@ -251,8 +251,8 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 			var err error
 			if config.NewDeadCodeElimination {
 				cfg := dependencygraph2.DependencyGraphConfig{
-					MergeSubCmdNodes:       !config.DeadSubCmdElimination,
-					IncludeInitialCommands: true,
+					MergeSubCmdNodes:       true,
+					IncludeInitialCommands: false,
 				}
 				_, err = dependencygraph2.GetDependencyGraph(cctx, p, cfg)
 			} else {

@@ -40,6 +40,7 @@ class ReplayRequest {
   // successful or nullptr otherwise. The memory manager is used to store the
   // content of the replay request.
   static std::unique_ptr<ReplayRequest> create(ReplayService* srv,
+                                               const std::string& id,
                                                MemoryManager* memoryManager);
 
   // Get the stack size required by the replay

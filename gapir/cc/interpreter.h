@@ -68,8 +68,9 @@ class Interpreter {
   // Creates a new interpreter with the specified memory manager (for resolving
   // memory addresses) and with the specified maximum stack size
   Interpreter(core::CrashHandler& crash_handler,
-              const MemoryManager* memory_manager, uint32_t stack_depth,
-              ApiRequestCallback callback);
+              const MemoryManager* memory_manager, uint32_t stack_depth);
+
+  void setApiRequestCallback(ApiRequestCallback callback);
 
   // Registers a builtin function to the builtin function table.
   void registerBuiltin(uint8_t api, FunctionTable::Id, FunctionTable::Function);
@@ -81,6 +82,10 @@ class Interpreter {
   // Runs the interpreter on the instruction list specified by the pointer and
   // by its size.
   bool run(const uint32_t* instructions, uint32_t count);
+
+  // Resets the interpreter to be able to continue running instructions
+  // from this point.
+  void resetInstructions();
 
   // Registers an API instance if it has not already been done.
   bool registerApi(uint8_t api);

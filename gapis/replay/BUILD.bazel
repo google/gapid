@@ -1,3 +1,5 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
 # Copyright (C) 2018 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,18 +24,25 @@ go_library(
         "custom.go",
         "doc.go",
         "events.go",
+        "executor.go",
         "export_replay.go",
+        "id.go",
         "interfaces.go",
         "manager.go",
         "mapping_printer.go",
         "replay.go",
+        "replay_connection.go",
         "timestamps.go",
     ],
+    embed = [":replay_go_proto"],
     importpath = "github.com/google/gapid/gapis/replay",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app:go_default_library",
         "//core/app/analytics:go_default_library",
         "//core/app/benchmark:go_default_library",
+        "//core/app/crash:go_default_library",
+        "//core/app/crash/reporting:go_default_library",
         "//core/app/status:go_default_library",
         "//core/context/keys:go_default_library",
         "//core/data/binary:go_default_library",
@@ -43,17 +52,31 @@ go_library(
         "//core/memory/arena:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//core/os/file:go_default_library",
         "//gapir/client:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/transform:go_default_library",
         "//gapis/capture:go_default_library",
         "//gapis/config:go_default_library",
+        "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
         "//gapis/replay/builder:go_default_library",
-        "//gapis/replay/executor:go_default_library",
         "//gapis/replay/scheduler:go_default_library",
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
     ],
+)
+
+proto_library(
+    name = "replay_proto",
+    srcs = ["resolvables.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "replay_go_proto",
+    importpath = "github.com/google/gapid/gapis/replay",
+    proto = ":replay_proto",
+    visibility = ["//visibility:public"],
 )
