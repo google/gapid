@@ -16,7 +16,6 @@ package vulkan
 
 import (
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
@@ -221,6 +220,9 @@ func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize ui
 		deviceMemory = qr.getDeviceMemory()
 		allocated = qr.allocated
 		usingTempMem = false
+		if totalAllocationSize == uint64(0) || len(buffers) == 0 {
+			return deviceMemory, usingTempMem
+		}
 	}
 	atData := sb.MustReserve(totalAllocationSize)
 	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
@@ -380,9 +382,6 @@ func (sb *stateBuilder) newScratchTaskOnQueue(queue VkQueue) *scratchTask {
 // callbacks to the after-execution callback queue.
 func (t *scratchTask) commit() error {
 	sb := t.sb
-	if t.totalAllocationSize == uint64(0) {
-		return log.Err(sb.ctx, nil, "Nil or empty scratch buffer session")
-	}
 	res := sb.getQueueFamilyScratchResources(t.queue)
 	if mem, isTemp := res.bindAndFillBuffers(t.totalAllocationSize, t.buffers); isTemp {
 		// The fixed size scratch buffer is not large enough for the allocation,

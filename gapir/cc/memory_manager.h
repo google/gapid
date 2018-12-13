@@ -41,10 +41,11 @@ class MemoryManager {
   // allocation and cause a fatal error if none of the sizes could be allocated.
   explicit MemoryManager(const std::vector<uint32_t>& sizeList);
 
-  // Sets the size of the replay data. Returns true if the given size fits in
-  // the memory and false otherwise
-  bool setReplayDataSize(uint32_t constantMemorySize,
-                         uint32_t opcodeMemorySize);
+  // Sets the size of the replay data.
+  void setReplayData(const uint8_t* constantMemoryBase,
+                     uint32_t constantMemorySize,
+                     const uint8_t* opcodeMemoryBase,
+                     uint32_t opcodeMemorySize);
 
   // Sets the size of the volatile memory. Returns true if the given size fits
   // in the memory and false otherwise
@@ -53,9 +54,11 @@ class MemoryManager {
   // Returns the size and the base address of the different memory regions
   // managed by the memory manager
   void* getBaseAddress() const { return mMemory.get(); }
-  void* getReplayAddress() const { return mReplayData.base; }
-  void* getOpcodeAddress() const { return mOpcodeMemory.base; }
-  void* getConstantAddress() const { return mConstantMemory.base; }
+  void* getTopAddress() const { return mMemory.get() + mSize; }
+  uint32_t getFreeSpace() const { return mSize - mVolatileMemory.size; }
+
+  const void* getOpcodeAddress() const { return mOpcodeMemory.base; }
+  const void* getConstantAddress() const { return mConstantMemory.base; }
   void* getVolatileAddress() const { return mVolatileMemory.base; }
   uint32_t getSize() const { return mSize; }
   uint32_t getOpcodeSize() const { return mOpcodeMemory.size; }
@@ -90,28 +93,29 @@ class MemoryManager {
  private:
   // Struct to represent a memory interval inside the memory manager with its
   // base address and its size
+  template <typename T = uint8_t>
   struct MemoryRange {
     MemoryRange();
-    MemoryRange(uint8_t* base, uint32_t size);
-    uint8_t* end() const { return base + size; }
+    MemoryRange(T* base, uint32_t size);
+    T* end() const { return base + size; }
 
-    void* toAbsolute(uint32_t offset) const { return base + offset; }
+    T* toAbsolute(uint32_t offset) const { return base + offset; }
 
     bool isInRange(const void* address) const {
       return address >= base && address < base + size;
     }
 
     bool isInRangeWithSize(const void* address, size_t s) const {
-      const uint8_t* addr = static_cast<const uint8_t*>(address);
+      const T* addr = static_cast<const T*>(address);
       return address >= base && addr + s <= base + size;
     }
 
     uint32_t toOffset(const void* address) const {
-      const uint8_t* addr = static_cast<const uint8_t*>(address);
+      const T* addr = static_cast<const T*>(address);
       return static_cast<uint32_t>(addr - base);
     }
 
-    uint8_t* base;
+    T* base;
     uint32_t size;
   };
 
@@ -128,27 +132,18 @@ class MemoryManager {
   uint32_t mSize;
   std::unique_ptr<uint8_t[]> mMemory;
 
-  // The size and base address of the replay data. The memory range specified by
-  // these values have to specify a subset of the memory managed by the memory
-  // manager.
-  MemoryRange mReplayData;
+  // The size and base address of the opcode memory. This opcode memory
+  // is passed to us, and is expected to live inside the payload itself.
+  MemoryRange<const uint8_t> mOpcodeMemory;
 
-  // The size and base address of the opcode memory. The opcode memory is
-  // located in side the replay data, so the memory range specified by these
-  // values have to be the subset of the memory range specified by the replay
-  // data variables (size and pointer).
-  MemoryRange mOpcodeMemory;
-
-  // The size and base address of the constant memory. The constant memory is
-  // located inside the replay data, so the memory range specified by these
-  // values have to be the subset of the memory range specified by the replay
-  // data variables (size and pointer)
-  MemoryRange mConstantMemory;
+  // The size and base address of the constant memory. The constant memory
+  // is located inside the payload.
+  MemoryRange<const uint8_t> mConstantMemory;
 
   // The size and the base address of the volatile memory. The memory range
   // specified by these values have to specify a subset of the memory managed by
   // the memory manager.
-  MemoryRange mVolatileMemory;
+  MemoryRange<> mVolatileMemory;
 };
 
 inline const void* MemoryManager::constantToAbsolute(uint32_t offset) const {

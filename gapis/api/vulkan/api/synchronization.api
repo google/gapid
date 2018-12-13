@@ -58,6 +58,18 @@ cmd VkResult vkCreateFence(
   if pCreateInfo == null { vkErrorNullPointer("VkFenceCreateInfo") }
   f := new!FenceObject()
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkFenceCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   f.Device = device
 
   if ((as!u32(create_info.flags) & as!u32(VK_FENCE_CREATE_SIGNALED_BIT)) != 0) {
@@ -108,7 +120,17 @@ cmd VkResult vkGetFenceStatus(
     VkFence  fence) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(fence in Fences) { vkErrorInvalidFence(fence) }
-  return ?
+  res := ?
+  if res == VK_SUCCESS {
+    // The fence was signaled, so treat this as a wait on the fence.
+    if Fences[fence].Signaled {
+      recordFenceWait(fence)
+    } else {
+      // TODO: handle case when signal comes after wait (e.g. in a multi-threaded app)
+      vkErrorInvalidFence(fence)
+    }
+  }
+  return res
 }
 
 @threadSafety("system")
@@ -157,7 +179,18 @@ cmd VkResult vkCreateSemaphore(
     VkSemaphore*                 pSemaphore) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSemaphoreCreateInfo") }
-  _ = pCreateInfo[0]
+  create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkSemaphoreCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   handle := ?
   semaphoreObject := new!SemaphoreObject(Device: device,
@@ -200,7 +233,19 @@ cmd VkResult vkCreateEvent(
     VkEvent*                     pEvent) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkEventCreateInfo") }
-  read(pCreateInfo[0:1])
+  create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkEventCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   event := new!EventObject()
   event.Device = device
   event.Signaled = false
@@ -280,8 +325,9 @@ cmd VkResult vkResetEvent(
 }
 
 sub void dovkCmdSetEvent(ref!vkCmdSetEventArgs event) {
-  Events[event.Event].Signaled = true
-  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
+  evt := Events[event.Event]
+  evt.Signaled = true
+  evt.SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
 @threadSafety("app")
@@ -290,18 +336,21 @@ cmd void vkCmdSetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if !(event in Events) { vkErrorInvalidEvent(event) }
   args := new!vkCmdSetEventArgs(
     Event:      event,
     StageMask:  stageMask
   )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdSetEvent[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdSetEvent, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdSetEvent, mapPos)
+  }
 }
 
 @internal class vkCmdResetEventArgs {
@@ -310,8 +359,9 @@ cmd void vkCmdSetEvent(
 }
 
 sub void dovkCmdResetEvent(ref!vkCmdResetEventArgs event) {
-  Events[event.Event].Signaled = false
-  Events[event.Event].SubmitQueue = LastBoundQueue.VulkanHandle
+  evt := Events[event.Event]
+  evt.Signaled = false
+  evt.SubmitQueue = LastBoundQueue.VulkanHandle
 }
 
 @threadSafety("app")
@@ -320,18 +370,21 @@ cmd void vkCmdResetEvent(
     VkCommandBuffer      commandBuffer,
     VkEvent              event,
     VkPipelineStageFlags stageMask) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if !(event in Events) { vkErrorInvalidEvent(event) }
   args := new!vkCmdResetEventArgs(
     Event:      event,
     StageMask:  stageMask,
   )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdResetEvent[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdResetEvent, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdResetEvent, mapPos)
+  }
 }
 
 @internal class vkCmdWaitEventsArgs {
@@ -354,11 +407,8 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
     }
   }
   if len(LastBoundQueue.PendingEvents) == 0 {
-    for _ , _ , b in args.ImageMemoryBarriers {
-      if !(b.image in Images) { vkErrorInvalidImage(b.image) }
-      image := Images[b.image]
-      transitionImageLayout(image, b.subresourceRange, b.oldLayout, b.newLayout)
-    }
+    processBarriers(args.SrcStageMask, args.DstStageMask,
+      args.MemoryBarriers, args.BufferMemoryBarriers, args.ImageMemoryBarriers)
   }
 }
 
@@ -376,14 +426,16 @@ cmd void vkCmdWaitEvents(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdWaitEventsArgs(
     SrcStageMask:  srcStageMask,
     DstStageMask:  dstStageMask,
   )
   events := pEvents[0:eventCount]
+  handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
   memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
+  handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
+  handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. eventCount) {
     if !(events[i] in Events) { vkErrorInvalidEvent(events[i]) }
@@ -399,11 +451,15 @@ cmd void vkCmdWaitEvents(
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdWaitEvents[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdWaitEvents, mapPos)
+  }
 }
 
 //////////////////////
@@ -420,13 +476,61 @@ cmd void vkCmdWaitEvents(
 }
 
 sub void dovkCmdPipelineBarrier(ref!vkCmdPipelineBarrierArgs args) {
-  for _ , _ , v in args.ImageMemoryBarriers {
-    if !(v.image in Images) { vkErrorInvalidImage(v.image) }
-    image := Images[v.image]
-    transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
-    if v.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED {
-      writeImageSubresource(image, v.subresourceRange)
-      updateImageQueue(image, v.subresourceRange)
+  // TODO: Determine how DependencyFlags affect the state or dependency graph
+  processBarriers(args.SrcStageMask, args.DstStageMask,
+    args.MemoryBarriers, args.BufferMemoryBarriers, args.ImageMemoryBarriers)
+}
+
+sub void handleMemoryBarriersPNext(const VkMemoryBarrier* pBarriers, u32 count) {
+  barriers := pBarriers[0:count]
+  for i in (0 .. count) {
+    b := barriers[i]
+    // handle pNext
+    if b.pNext != null {
+      numPNext := numberOfPNext(b.pNext)
+      next := MutableVoidPtr(as!void*(b.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkMemoryBarrier
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+}
+
+sub void handleBufferMemoryBarriersPNext(const VkBufferMemoryBarrier* pBarriers, u32 count) {
+  barriers := pBarriers[0:count]
+  for i in (0 .. count) {
+    b := barriers[i]
+    // handle pNext
+    if b.pNext != null {
+      numPNext := numberOfPNext(b.pNext)
+      next := MutableVoidPtr(as!void*(b.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkBufferMemoryBarrier
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+}
+
+sub void handleImageMemoryBarriersPNext(const VkImageMemoryBarrier* pBarriers, u32 count) {
+  barriers := pBarriers[0:count]
+  for i in (0 .. count) {
+    b := barriers[i]
+    // handle pNext
+    if b.pNext != null {
+      numPNext := numberOfPNext(b.pNext)
+      next := MutableVoidPtr(as!void*(b.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkImageMemoryBarrier
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
     }
   }
 }
@@ -444,34 +548,113 @@ cmd void vkCmdPipelineBarrier(
     const VkBufferMemoryBarrier* pBufferMemoryBarriers,
     u32                          imageMemoryBarrierCount,
     const VkImageMemoryBarrier*  pImageMemoryBarriers) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   args := new!vkCmdPipelineBarrierArgs(
     SrcStageMask:     srcStageMask,
     DstStageMask:     dstStageMask,
     DependencyFlags:  dependencyFlags
   )
+  handleMemoryBarriersPNext(pMemoryBarriers, memoryBarrierCount)
   memoryBarriers := pMemoryBarriers[0:memoryBarrierCount]
   for i in (0 .. memoryBarrierCount) {
     args.MemoryBarriers[i] = memoryBarriers[i]
   }
 
+  handleBufferMemoryBarriersPNext(pBufferMemoryBarriers, bufferMemoryBarrierCount)
   bufferMemoryBarriers := pBufferMemoryBarriers[0:bufferMemoryBarrierCount]
   for i in (0 .. bufferMemoryBarrierCount) {
     args.BufferMemoryBarriers[i] = bufferMemoryBarriers[i]
   }
 
+  handleImageMemoryBarriersPNext(pImageMemoryBarriers, imageMemoryBarrierCount)
   imageMemoryBarriers := pImageMemoryBarriers[0:imageMemoryBarrierCount]
   for i in (0 .. imageMemoryBarrierCount) {
     args.ImageMemoryBarriers[i] = imageMemoryBarriers[i]
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdPipelineBarrier[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdPipelineBarrier, mapPos)
+  }
 }
 
 extern void recordFenceSignal(VkFence fence)
 extern void recordFenceWait(VkFence fence)
 extern void recordFenceReset(VkFence fence)
+
+sub void processBarriers(VkPipelineStageFlags             srcStageMask,
+                         VkPipelineStageFlags             dstStageMask,
+                         map!(u32, VkMemoryBarrier)       memoryBarriers,
+                         map!(u32, VkBufferMemoryBarrier) bufferBarriers,
+                         map!(u32, VkImageMemoryBarrier)  imageBarriers) {
+  // Note: srcStageMask, dstStageMask, srcAccessMask, dstAccessMask
+  // These parameters do not currently seem to to affect any state change, but
+  // are included as arguments here as they may may be helpful for future
+  // validation or analysis.
+
+  processMemoryBarriers(srcStageMask, dstStageMask, memoryBarriers)
+  processBufferBarriers(srcStageMask, dstStageMask, bufferBarriers)
+
+  for _ , _ , v in imageBarriers {
+    if !(v.image in Images) { vkErrorInvalidImage(v.image) } else {
+      image := Images[v.image]
+      transitionImageLayout(image, v.subresourceRange, v.oldLayout, v.newLayout)
+
+      // TODO (#2395): `updateImageQueue` seems to assume that the current queue
+      // takes ownership of the image, but this is not necessarily the case for
+      // queue family ownership barriers.
+      updateImageQueue(image, v.subresourceRange)
+
+      processImageBarrier(v, image)
+    }
+  }
+}
+
+@spy_disabled
+sub void processMemoryBarriers(VkPipelineStageFlags       srcStageMask,
+                               VkPipelineStageFlags       dstStageMask,
+                               map!(u32, VkMemoryBarrier) memoryBarriers) {
+  if len(memoryBarriers) > 0 {
+    for _ , _ , img in Images {
+      for _ , _ , aspect in img.Aspects {
+        for _ , _ , layer in aspect.Layers {
+          for _ , _ , level in layer.Levels {
+            read(level.Data)
+            write(level.Data)
+          }
+        }
+      }
+    }
+    for _ , _ , mem in DeviceMemories {
+      read(mem.Data)
+      write(mem.Data)
+    }
+  }
+}
+
+@spy_disabled
+sub void processBufferBarriers(VkPipelineStageFlags             srcStageMask,
+                               VkPipelineStageFlags             dstStageMask,
+                               map!(u32, VkBufferMemoryBarrier) bufferBarriers) {
+  for _ , _ , v in bufferBarriers {
+    if !(v.buffer in Buffers) { vkErrorInvalidBuffer(v.buffer) } else {
+      buf := Buffers[v.buffer]
+      readMemoryInBuffer(buf, v.offset, v.size)
+      writeMemoryInBuffer(buf, v.offset, v.size)
+      // TODO (#2395): transition queue family ownership
+    }
+  }
+}
+
+@spy_disabled
+sub void processImageBarrier(VkImageMemoryBarrier v, ref!ImageObject image) {
+  if v.oldLayout != VK_IMAGE_LAYOUT_UNDEFINED {
+    readImageSubresource(image, v.subresourceRange)
+  }
+  writeImageSubresource(image, v.subresourceRange)
+  // TODO (#2395): transition queue family ownership
+}

@@ -17,27 +17,24 @@ load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts")
 cc_library(
     name = "cc",
     srcs = glob([
-        "lib/*.cc",
+        "lib/*.cpp",
         "lib/*.h",
     ]) + select({
         "//tools/build:android-armeabi-v7a": glob([
-            "lib/ARM/*.cc",
+            "lib/ARM/*.cpp",
             "lib/ARM/*.h",
         ]),
         "//tools/build:android-arm64-v8a": glob([
-            "lib/AArch64/*.cc",
+            "lib/AArch64/*.cpp",
             "lib/AArch64/*.h",
         ]),
         "//tools/build:android-x86": glob([
-            "lib/X86/*.cc",
+            "lib/X86/*.cpp",
             "lib/X86/*.h",
         ]),
         "//conditions:default": [],
     }),
-    hdrs = glob([
-        "include/*.h",
-        "include/*.hpp",
-    ]),
+    hdrs = glob(["include/*.h"]),
     copts = cc_copts() + [
         "-fno-rtti",
         "-fno-exceptions",
@@ -59,15 +56,13 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = select({
         "//tools/build:android-armeabi-v7a": [
-            "@llvm//:ARMCodeGen",
             "@llvm//:ARMDisassembler",
         ],
         "//tools/build:android-arm64-v8a": [
-            "@llvm//:AArch64CodeGen",
             "@llvm//:AArch64Disassembler",
         ],
         "//tools/build:android-x86": [
-            "@llvm//:X86CodeGen",
+            "@llvm//:X86Desc",
             "@llvm//:X86Disassembler",
         ],
         "//conditions:default": [],

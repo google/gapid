@@ -347,6 +347,94 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
   }
 }
 
+@internal class ImageCoverage {
+  bool Entire
+  dense_map!(u32, VkImageSubresourceRange) Ranges
+}
+
+sub void touchEntireImageCoverage(ref!ImageCoverage coverage) {
+  coverage.Entire = true
+}
+
+sub void touchImageCoverage(ref!ImageObject image, ref!ImageCoverage coverage, VkImageSubresourceRange rng) {
+  if !coverage.Entire {
+    if isEntireSubresource(image, rng) {
+      touchEntireImageCoverage(coverage)
+    } else {
+      b := MutableBool(false)
+      for _, _, r in coverage.Ranges {
+        if (r.aspectMask == rng.aspectMask) &&
+        (r.baseMipLevel == rng.baseMipLevel) &&
+        (r.levelCount == rng.levelCount) &&
+        (r.baseArrayLayer == rng.baseArrayLayer) &&
+        (r.layerCount == rng.layerCount) {
+          b.b = true
+        }
+      }
+      if !b.b {
+        pos := as!u32(len(coverage.Ranges))
+        coverage.Ranges[pos] = rng
+      }
+    }
+  }
+}
+
+sub void commandBufferTouchEntireImage(ref!CommandBufferObject cmdbuf, ref!ImageObject image) {
+  if !(image.VulkanHandle in cmdbuf.TouchedImages) {
+    cmdbuf.TouchedImages[image.VulkanHandle] = new!ImageCoverage()
+  }
+  coverage := cmdbuf.TouchedImages[image.VulkanHandle]
+  touchEntireImageCoverage(coverage)
+}
+
+sub void commandBufferTouchImage(ref!CommandBufferObject cmdbuf, ref!ImageObject image, VkImageSubresourceRange rng) {
+  if !(image.VulkanHandle in cmdbuf.TouchedImages) {
+    cmdbuf.TouchedImages[image.VulkanHandle] = new!ImageCoverage()
+  }
+  coverage := cmdbuf.TouchedImages[image.VulkanHandle]
+  touchImageCoverage(image, coverage, rng)
+}
+
+sub void descriptorSetLinkEntireImage(ref!DescriptorSetObject descSet, ref!ImageObject image) {
+  if !(image.VulkanHandle in descSet.LinkedImages) {
+    descSet.LinkedImages[image.VulkanHandle] = new!ImageCoverage()
+  }
+  coverage := descSet.LinkedImages[image.VulkanHandle]
+  touchEntireImageCoverage(coverage)
+}
+
+sub void descriptorSetLinkImage(ref!DescriptorSetObject descSet, ref!ImageObject image, VkImageSubresourceRange rng) {
+  if !(image.VulkanHandle in descSet.LinkedImages) {
+    descSet.LinkedImages[image.VulkanHandle] = new!ImageCoverage()
+  }
+  coverage := descSet.LinkedImages[image.VulkanHandle]
+  touchImageCoverage(image, coverage, rng)
+}
+
+@untracked @internal
+class DescriptorSetSet {
+  @untrackedMap @untracked
+  map!(VkDescriptorSet, bool) val
+}
+
+@untracked @internal
+class ImageSet {
+  @untrackedMap @untracked
+  map!(VkImage, bool) val
+}
+
+@untracked @internal
+class BufferSet {
+  @untrackedMap @untracked
+  map!(VkBuffer, bool) val
+}
+
+@untracked @internal
+class CommandBufferSet {
+  @untrackedMap @untracked
+  map!(VkCommandBuffer, bool) val
+}
+
 @internal class AllBits {
   @untrackedMap @untracked
   map!(VkImageAspectFlags, ref!unpackedImageAspectFlagBits) allBits
@@ -376,8 +464,8 @@ sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectF
   return allBits.allBits[flag].Bits
 }
 
-@internal class emptyMap {
-  map!(u32, ref!CommandReference) m
+@internal class emptyDenseMap {
+  dense_map!(u32, ref!CommandReference) m
 }
 
 @internal class BoundBuffer {
@@ -431,3 +519,5 @@ sub T min!T(T a, T b) {
     case false: b
   }
 }
+
+extern u32 onesCount(u32 a)

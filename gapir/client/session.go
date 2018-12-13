@@ -118,6 +118,10 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 	args = append(args, launchArgs...)
 	if forceEnableDiskCache {
 		args = append(args, "--enable-disk-cache")
+		if len(d.DefaultReplayCacheDir()) > 0 {
+			args = append(args, "--disk-cache-path", d.DefaultReplayCacheDir())
+		}
+		args = append(args, "--cleanup-on-disk-cache")
 	}
 
 	gapir, err := layout.Gapir(ctx, abi)
@@ -309,6 +313,16 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	if err != nil {
 		return log.Errf(ctx, err, "Getting gapid.apk files directory")
 	}
+	appDir, err := apk.AppDir(ctx)
+	if err != nil {
+		return log.Errf(ctx, err, "Getting gapid.apk directory")
+	}
+
+	// Ignore the error returned from this. This is best-effort.
+	// See: https://android.googlesource.com/platform/ndk.git/+/ndk-release-r18/ndk-gdb.py#386
+	// for more information.
+	_, _ = d.Shell("run-as", apk.Name, "chmod", "+x", appDir).Call(ctx)
+
 	// Wait for the socket file to be created
 	socketPath := strings.Join([]string{apkDir, socket}, "/")
 	err = task.Retry(ctx, maxCheckSocketFileAttempts, checkSocketFileRetryDelay,

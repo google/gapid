@@ -22,7 +22,6 @@ import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
@@ -35,6 +34,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.MoreFutures;
 
 import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.widgets.Shell;
@@ -62,7 +62,7 @@ public class TraceTargets
 
   @Override
   protected ListenableFuture<Node> doLoad(Void ignored) {
-    return Futures.transform(client.getTraceTargetTreeNode(device, ROOT_URI, density), Node::new);
+    return MoreFutures.transform(client.getTraceTargetTreeNode(device, ROOT_URI, density), Node::new);
   }
 
   @Override
@@ -200,7 +200,7 @@ public class TraceTargets
         return loadFuture;
       }
 
-      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+      return loadFuture = MoreFutures.transformAsync(loader.get(), newData ->
           submitIfNotDisposed(shell, () -> {
             data = newData;
             loadFuture = null; // Don't hang on to listeners.

@@ -36,6 +36,10 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
+////////////
+// Memory //
+////////////
+
 sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize) {
   if IsMemoryCoherent(memory) && (memory.MappedLocation != null) {
     offset_in_mapped := deviceMemoryOffsetToMappedSpace(memory, readOffset)
@@ -56,6 +60,19 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
   }
 }
 
+
+////////////
+// Buffer //
+////////////
+
+sub void readCoherentMemoryInBuffer(ref!BufferObject buffer) {
+  memPieces := getBufferBoundMemoryPiecesInRange(buffer, as!VkDeviceSize(0), as!VkDeviceSize(0xFFFFFFFFFFFFFFFF))
+  for _, _, mp in memPieces {
+    readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size)
+  }
+}
+
+@spy_disabled
 sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, readOffset, readSize)
   for _, _, mp in memPieces {
@@ -64,8 +81,39 @@ sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, Vk
   }
 }
 
+@spy_disabled
+sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDeviceSize size) {
+  memPieces := getBufferBoundMemoryPiecesInRange(buffer, offset, size)
+  for _, _, mp in memPieces {
+    write(mp.DeviceMemory.Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
+  }
+}
+
+// VkDescriptorBufferInfo binding
+
+@spy_disabled
 sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
-  for i in (0 .. len(bufferBindings)) {
+  n := len(bufferBindings)
+  for i in (0 .. n) {
+    descBufferInfo := bufferBindings[as!u32(i)]
+    if descBufferInfo.Buffer != as!VkBuffer(0) {
+      if (descBufferInfo.Buffer in Buffers) {
+        offset := switch as!u32(i) in bufferBindingOffsets {
+          case true:
+            bufferBindingOffsets[as!u32(i)]
+          case false:
+            descBufferInfo.Offset
+        }
+        readMemoryInBuffer(Buffers[descBufferInfo.Buffer], offset, descBufferInfo.Range)
+      }
+    }
+  }
+}
+
+@spy_disabled
+sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
+  n := len(bufferBindings)
+  for i in (0 .. n) {
     bufferBinding := bufferBindings[as!u32(i)]
     if bufferBinding.Buffer != as!VkBuffer(0) {
       if (bufferBinding.Buffer in Buffers) {
@@ -75,12 +123,15 @@ sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffer
           case false:
             bufferBinding.Offset
         }
-        readMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range)
+        writeMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range)
       }
     }
   }
 }
 
+// VkBufferView binding
+
+@spy_disabled
 sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   for _, _, v in bufferViews {
     if v in BufferViews {
@@ -92,6 +143,84 @@ sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   }
 }
 
+
+@spy_disabled
+sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+  for _, _, v in bufferViews {
+    if v in BufferViews {
+      view := BufferViews[v]
+      if (view.Buffer.VulkanHandle in Buffers) {
+        writeMemoryInBuffer(view.Buffer, view.Offset, view.Range)
+      }
+    }
+  }
+}
+
+///////////
+// Image //
+///////////
+
+sub void readCoherentMemoryInImage(ref!ImageObject image) {
+  if image != null {
+    mem := image.BoundMemory
+    if mem != null {
+      // Host access to image memory is only well-defined for images created with
+      // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
+      // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
+      // VK_IMAGE_LAYOUT_GENERAL layout.
+      // TODO: Complete the layout tracking logic then update this if statement
+      // to check the layout of the underlying image.
+      if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
+        readCoherentMemory(mem, image.BoundMemoryOffset, inferImageSize(image))
+      }
+    }
+  }
+}
+
+// VkImageSubresourceRange data
+
+@spy_disabled
+sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
+  readCoherentMemoryInImage(image)
+  layerCount := imageSubresourceLayerCount(image, rng)
+  levelCount := imageSubresourceLevelCount(image, rng)
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+    for _, i, layer in image.Aspects[aspectBit].Layers {
+      if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
+        for _, k, level in layer.Levels {
+          if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
+            read(level.Data)
+          }
+        }
+      }
+    }
+  }
+}
+
+@spy_disabled
+sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
+  layerCount := imageSubresourceLayerCount(image, rng)
+  levelCount := imageSubresourceLevelCount(image, rng)
+  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+    if aspectBit in image.Aspects {
+      aspect := image.Aspects[aspectBit]
+      for layerIndex in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
+        layer := aspect.Layers[layerIndex]
+        for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
+          level := layer.Levels[mipLevel]
+          write(level.Data)
+        }
+      }
+    }
+  }
+}
+
+// VkImageViews used as Framebuffer attachments are handled in
+// renderpass_framebuffer.api
+
+// VkDescriptorImageInfo bindings, should only be called in subcommands
+
+@spy_disabled
 sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
@@ -107,6 +236,26 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
   }
 }
 
+@spy_disabled
+sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
+  for _, _, v in imageBindings {
+    _ = Samplers[v.Sampler]
+    if v.ImageView != as!VkImageView(0) {
+      imageViewObj := ImageViews[v.ImageView]
+      imageObj := imageViewObj.Image
+      rng := imageViewObj.SubresourceRange
+      writeImageSubresource(imageObj, rng)
+      updateImageQueue(imageObj, rng)
+    }
+  }
+}
+
+
+///////////////////
+// DescriptorSet //
+///////////////////
+
+@spy_disabled
 sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets, bool processImages) {
   if descriptor_set != null {
     for _, i, binding in descriptor_set.Bindings {
@@ -141,64 +290,8 @@ sub void readMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(
   }
 }
 
-sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDeviceSize size) {
-  mem := buffer.Memory
-  if mem != null {
-    begin := buffer.MemoryOffset + offset
-    actualSize := switch as!u64(size) {
-      case 0xFFFFFFFFFFFFFFFF:
-        buffer.Info.Size - offset
-      default:
-        size
-    }
-    end := begin + actualSize
-    if len(mem.Data) != 0 {
-      write(mem.Data[begin : end])
-    }
-  }
-}
 
-sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
-  for i in (0 .. len(bufferBindings)) {
-    bufferBinding := bufferBindings[as!u32(i)]
-    if bufferBinding.Buffer != as!VkBuffer(0) {
-      if (bufferBinding.Buffer in Buffers) {
-        offset := switch as!u32(i) in bufferBindingOffsets {
-          case true:
-            bufferBindingOffsets[as!u32(i)]
-          case false:
-            bufferBinding.Offset
-        }
-        writeMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range)
-      }
-    }
-  }
-}
-
-sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
-  for _, _, v in bufferViews {
-    if v in BufferViews {
-      view := BufferViews[v]
-      if (view.Buffer.VulkanHandle in Buffers) {
-        writeMemoryInBuffer(view.Buffer, view.Offset, view.Range)
-      }
-    }
-  }
-}
-
-sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
-  for _, _, v in imageBindings {
-    _ = Samplers[v.Sampler]
-    if v.ImageView != as!VkImageView(0) {
-      imageViewObj := ImageViews[v.ImageView]
-      imageObj := imageViewObj.Image
-      rng := imageViewObj.SubresourceRange
-      writeImageSubresource(imageObj, rng)
-      updateImageQueue(imageObj, rng)
-    }
-  }
-}
-
+@spy_disabled
 sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!(u32, map!(u32, VkDeviceSize)) bufferBindingOffsets, bool processImages) {
   if descriptor_set != null {
     for _, i, binding in descriptor_set.Bindings {
@@ -225,6 +318,14 @@ sub void writeMemoryInDescriptorSet(ref!DescriptorSetObject descriptor_set, map!
   }
 }
 
+
+/////////////////////
+// Bound resources //
+/////////////////////
+
+// Bound descriptor sets
+
+@spy_disabled
 sub void readWriteMemoryInBoundDescriptorSets(
     ref!PipelineLayoutObject pipelineLayout,
     map!(u32, ref!DescriptorSetObject) descriptorSets,
@@ -233,12 +334,12 @@ sub void readWriteMemoryInBoundDescriptorSets(
   for i in (0 .. layerCount) {
     descriptorSet := descriptorSets[as!u32(i)]
     if descriptorSet != null {
-      if !(descriptorSet.VulkanHandle in ProcessedDescriptorSets.val) {
+      if !(descriptorSet.VulkanHandle in LastBoundDescriptorSetsBufferInfo) {
         offsets := bufferBindingOffsets[as!u32(i)]
         readMemoryInDescriptorSet(descriptorSet, offsets, true)
         writeMemoryInDescriptorSet(descriptorSet, offsets, true)
-        
-        descriptors := ProcessedDescriptorSet()
+
+        descriptors := new!BoundDescriptorSetBufferInfo()
         descriptors.shouldReadBuffers = false
         newOffsets := descriptors.bufferOffsets
         for _, j, jj in offsets {
@@ -250,17 +351,17 @@ sub void readWriteMemoryInBoundDescriptorSets(
               x[k] = y
               newOffsets[j] = x
             }
-            
+
           }
         }
         descriptors.bufferOffsets = newOffsets
-        ProcessedDescriptorSets.val[descriptorSet.VulkanHandle] = descriptors
-      } else if ProcessedDescriptorSets.val[descriptorSet.VulkanHandle].shouldReadBuffers {
+        LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle] = descriptors
+      } else if LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle].shouldReadBuffers {
         offsets := bufferBindingOffsets[as!u32(i)]
         readMemoryInDescriptorSet(descriptorSet, offsets, false)
         writeMemoryInDescriptorSet(descriptorSet, offsets, false)
-        
-        descriptors := ProcessedDescriptorSets.val[descriptorSet.VulkanHandle]
+
+        descriptors := LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle]
         descriptors.shouldReadBuffers = false
         newOffsets := descriptors.bufferOffsets
         for _, j, jj in offsets {
@@ -275,31 +376,20 @@ sub void readWriteMemoryInBoundDescriptorSets(
           }
         }
         descriptors.bufferOffsets = newOffsets
-        ProcessedDescriptorSets.val[descriptorSet.VulkanHandle] = descriptors
+        LastBoundDescriptorSetsBufferInfo[descriptorSet.VulkanHandle] = descriptors
       }
     }
   }
 }
 
-sub void readCoherentMemoryInImage(ref!ImageObject image) {
-  mem := image.BoundMemory
-  if mem != null {
-    // Host access to image memory is only well-defined for images created with
-    // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
-    // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
-    // VK_IMAGE_LAYOUT_GENERAL layout.
-    // TODO: Complete the layout tracking logic then update this if statement
-    // to check the layout of the underlying image.
-    if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
-      readCoherentMemory(mem, image.BoundMemoryOffset, inferImageSize(image))
-    }
-  }
-}
+// Bound vertex/index buffers
 
+@spy_disabled
 sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
-  for _ , _ , vertex_binding in lastDrawInfo().GraphicsPipeline.VertexInputState.BindingDescriptions {
-    if vertex_binding.binding in lastDrawInfo().BoundVertexBuffers {
-      bound_vertex_buffer := lastDrawInfo().BoundVertexBuffers[vertex_binding.binding]
+  ldi := lastDrawInfo()
+  for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
+    if vertex_binding.binding in ldi.BoundVertexBuffers {
+      bound_vertex_buffer := ldi.BoundVertexBuffers[vertex_binding.binding]
       backing_buf := bound_vertex_buffer.Buffer
       if backing_buf.Memory != null {
         start_vertex := switch vertex_binding.inputRate {
@@ -326,6 +416,11 @@ sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 inst
     }
   }
 }
+
+
+//////////
+// Util //
+//////////
 
 sub bool IsMemoryCoherent(ref!DeviceMemoryObject memory) {
   physical_device := PhysicalDevices[Devices[memory.Device].PhysicalDevice]

@@ -162,6 +162,7 @@ func (p *printer) markup(n ast.Node) {
 			p.inject(n.Fields[0], beforePrefix, "•»")
 			p.inject(n.Fields[c-1], beforeSuffix, "«•")
 		}
+	case *ast.Clear:
 
 	case *ast.Delete:
 		p.inject(n.Key, beforePrefix, "•")

@@ -104,9 +104,7 @@ bool Context::initialize() {
 }
 
 void Context::prefetch(ResourceCache* cache) const {
-  auto cacheSize = static_cast<uint32_t>(
-      static_cast<uint8_t*>(mMemoryManager->getVolatileAddress()) -
-      static_cast<uint8_t*>(mMemoryManager->getBaseAddress()));
+  auto cacheSize = static_cast<uint32_t>(mMemoryManager->getFreeSpace());
   cache->resize(cacheSize);
   auto resources = mReplayRequest->getResources();
   if (resources.size() == 0) {

@@ -33,6 +33,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.MoreFutures;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -106,7 +107,7 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
     }
 
     // TODO: don't get the device via getData
-    return Futures.transform(
+    return MoreFutures.transform(
         client.get(resourceAfter(after, resource.getID()), getData().device),
         Service.Value::getResourceData);
   }

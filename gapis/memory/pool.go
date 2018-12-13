@@ -253,11 +253,14 @@ func (m poolSlice) Get(ctx context.Context, offset uint64, dst []byte) error {
 }
 
 func (m poolSlice) ResourceID(ctx context.Context) (id.ID, error) {
-	bytes := make([]byte, m.Size())
-	if err := m.Get(ctx, 0, bytes); err != nil {
-		return id.ID{}, err
+	getBytes := func() ([]byte, error) {
+		bytes := make([]byte, m.Size())
+		if err := m.Get(ctx, 0, bytes); err != nil {
+			return []byte{}, err
+		}
+		return bytes, nil
 	}
-	return database.Store(ctx, bytes)
+	return database.Store(ctx, getBytes)
 }
 
 func (m poolSlice) Slice(rng Range) Data {

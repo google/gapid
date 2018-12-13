@@ -112,10 +112,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 				inputImageObjects := copyJob.srcAspectsToDsts[aspect].dstImgs
 				inputImages := make([]ipRenderImage, len(inputImageObjects))
 				for i, iimg := range inputImageObjects {
-					layout := iimg.Aspects().Get(
-						VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT).Layers().Get(
-						layer).Levels().Get(
-						level).Layout()
+					layout := copyJob.finalLayout.layoutOf(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, layer, level)
 					inputImages[i] = ipRenderImage{
 						image:         iimg,
 						aspect:        VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
@@ -211,7 +208,7 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 			oldQueue:       queue.VulkanHandle(),
 			newQueue:       queue.VulkanHandle(),
 		})
-		oldLayouts = append(oldLayouts, l.Layout())
+		oldLayouts = append(oldLayouts, img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout())
 	})
 	p.sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), transitionInfo)
 
@@ -1360,11 +1357,11 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		queueFamilyIgnore,                     // dstQueueFamilyIndex
 		job.renderTarget.image.VulkanHandle(), // image
 		NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-			outputBarrierAspect, // aspectMask
-			0,                   // baseMipLevel
-			job.renderTarget.image.Info().MipLevels(), // levelCount
-			0, // baseArrayLayer
-			job.renderTarget.image.Info().ArrayLayers(), // layerCount
+			outputBarrierAspect,    // aspectMask
+			job.renderTarget.level, // baseMipLevel
+			1, // levelCount
+			job.renderTarget.layer, // baseArrayLayer
+			1, // layerCount
 		))
 	bufBarriers := []VkBufferMemoryBarrier{
 		NewVkBufferMemoryBarrier(h.sb.ta,
@@ -1534,11 +1531,11 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			queueFamilyIgnore,                                                            // dstQueueFamilyIndex
 			job.renderTarget.image.VulkanHandle(),                                        // image
 			NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-				outputBarrierAspect, // aspectMask
-				0,                   // baseMipLevel
-				job.renderTarget.image.Info().MipLevels(), // levelCount
-				0, // baseArrayLayer
-				job.renderTarget.image.Info().ArrayLayers(), // layerCount
+				outputBarrierAspect,    // aspectMask
+				job.renderTarget.level, // baseMipLevel
+				1, // levelCount
+				job.renderTarget.layer, // baseArrayLayer
+				1, // layerCount
 			),
 		))
 	default:

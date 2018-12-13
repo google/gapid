@@ -17,7 +17,6 @@ package com.google.gapid.server;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.proto.log.Log;
@@ -30,6 +29,7 @@ import com.google.gapid.proto.service.Service.TraceTargetTreeNodeRequest;
 import com.google.gapid.proto.service.Service.TraceTargetTreeNodeResponse;
 import com.google.gapid.proto.service.Service.UpdateSettingsRequest;
 import com.google.gapid.proto.service.Service.UpdateSettingsResponse;
+import com.google.gapid.util.MoreFutures;
 
 import java.util.function.Consumer;
 
@@ -49,7 +49,7 @@ public class GapidClientGrpc implements GapidClient {
 
   @Override
   public ListenableFuture<Void> ping() {
-    return Futures.transform(client.ping(PingRequest.getDefaultInstance()), ignored -> null);
+    return MoreFutures.transform(client.ping(PingRequest.getDefaultInstance()), ignored -> null);
   }
 
   @Override

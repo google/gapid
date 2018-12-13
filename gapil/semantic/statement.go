@@ -174,6 +174,16 @@ type MapRemove struct {
 func (*MapRemove) isNode()      {}
 func (*MapRemove) isStatement() {}
 
+// MapClear represents clearing a map
+type MapClear struct {
+	AST  *ast.Clear // the underlying syntax node this was built from
+	Type *Map       // the value type of the map
+	Map  Expression // the expression that returns the map holding the key
+}
+
+func (*MapClear) isNode()      {}
+func (*MapClear) isStatement() {}
+
 // SliceAssign represents assigning to a slice index expression.
 type SliceAssign struct {
 	AST      *ast.Assign // the underlying syntax node this was built from

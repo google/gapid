@@ -27,6 +27,7 @@ import com.google.gapid.proto.service.box.Box;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.FutureCache;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Pods;
 
 import java.util.List;
@@ -36,7 +37,7 @@ public class ConstantSets {
 
   public ConstantSets(Client client, Devices devices) {
     this.cache = FutureCache.hardCache(
-        path -> Futures.transform(client.get(constantSet(path), devices.getReplayDevicePath()),
+        path -> MoreFutures.transform(client.get(constantSet(path), devices.getReplayDevicePath()),
             Service.Value::getConstantSet),
         result -> result.getConstantsCount() != 0);
 

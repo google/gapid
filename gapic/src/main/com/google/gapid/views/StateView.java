@@ -39,6 +39,7 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
@@ -126,7 +127,7 @@ public class StateView extends Composite
         }
 
         TextViewer.showViewTextPopup(getShell(), widgets, data.getName() + ":",
-            Futures.transform(models.state.loadValue(node),
+            MoreFutures.transform(models.state.loadValue(node),
                 // Formatter.toString(<string value>) formats the string as "<string>". This makes
                 // sense in all but this context, so we simply strip them here rather than
                 // complicate the formatting code.
@@ -230,7 +231,7 @@ public class StateView extends Composite
   private void updateSelectionState() {
     ApiState.Node root = models.state.getData();
     selectionHandler.updateSelectionFromModel(
-        () -> Futures.transformAsync(models.state.getResolvedSelectedPath(),
+        () -> MoreFutures.transformAsync(models.state.getResolvedSelectedPath(),
             nodePath -> getTreePath(root, nodePath)).get(),
         path -> {
           tree.setSelection(path);
@@ -256,7 +257,7 @@ public class StateView extends Composite
         LOG.log(WARNING, "Unable to reparent path {0}", path);
         continue;
       }
-      futures.add(Futures.transformAsync(models.state.resolve(reparented),
+      futures.add(MoreFutures.transformAsync(models.state.resolve(reparented),
           nodePath -> getTreePath(root, nodePath)));
     }
 
@@ -309,10 +310,10 @@ public class StateView extends Composite
       TreePath result = new TreePath(path.toArray());
       // Ensure the last node in the path is loaded.
       return (load == null) ? Futures.immediateFuture(result) :
-          Futures.transform(load, ignored -> result);
+          MoreFutures.transform(load, ignored -> result);
     }
     return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
-        Futures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
+        MoreFutures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
   }
 
   private ListenableFuture<TreePath> getTreePathForLoadedNode(

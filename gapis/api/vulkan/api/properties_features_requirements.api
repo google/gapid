@@ -269,11 +269,12 @@ cmd void vkGetImageMemoryRequirements(
     VkImage               image,
     VkMemoryRequirements* pMemoryRequirements) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  requirements := ?
-  if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
-  pMemoryRequirements[0] = requirements
-  Images[image].MemoryRequirements = requirements
+  if !(image in Images) { vkErrorInvalidImage(image) } else {
+    requirements := ?
+    if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
+    pMemoryRequirements[0] = requirements
+    Images[image].MemoryRequirements = requirements
+  }
 }
 
 @indirect("VkDevice")
@@ -354,6 +355,18 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties2(
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pImageFormatInfo == null { vkErrorNullPointer("const VkPhysicalDeviceImageFormatInfo2") }
   if pImageFormatProperties == null { vkErrorNullPointer("VkImageFormatProperties2") }
+  info := pImageFormatInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkPhysicalDeviceImageFormatInfo2
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   pImageFormatProperties[0] = ?
   // TODO: handle pNext
   return ?

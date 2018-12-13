@@ -143,9 +143,13 @@ func getSimpleType(rv *resolver, in *ast.Identifier) semantic.Type {
 }
 
 func getMapType(rv *resolver, at ast.Node, kt, vt semantic.Type, isDense bool) *semantic.Map {
-	name := fmt.Sprintf("%s%s%s%s", strings.Title(kt.Name()), TypeInfix, vt.Name(), MapSuffix)
+	denseText := ""
+	if isDense {
+		denseText = "_dense_"
+	}
+	name := fmt.Sprintf("%s%s%s%s%s", strings.Title(kt.Name()), TypeInfix, vt.Name(), denseText, MapSuffix)
 	for _, m := range rv.api.Maps {
-		if equal(kt, m.KeyType) && equal(vt, m.ValueType) {
+		if equal(kt, m.KeyType) && equal(vt, m.ValueType) && isDense == m.Dense {
 			rv.mappings.Add(at, m)
 			return m
 		}

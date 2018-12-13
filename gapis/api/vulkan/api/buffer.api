@@ -130,14 +130,16 @@ cmd void vkDestroyBuffer(
     VkBuffer                     buffer,
     AllocationCallbacks          pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if (buffer != as!VkBuffer(0)) {
-    bufferObject := Buffers[buffer]
-    if (bufferObject.Memory != null) {
-      // If the memory is deleted first, then do not try to remove ourselves.
-      delete(bufferObject.Memory.BoundObjects,
-      as!u64(buffer))
+  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) } else {
+    if (buffer != as!VkBuffer(0)) {
+      bufferObject := Buffers[buffer]
+      if (bufferObject.Memory != null) {
+        // If the memory is deleted first, then do not try to remove ourselves.
+        delete(bufferObject.Memory.BoundObjects,
+        as!u64(buffer))
+      }
+      delete(Buffers, buffer)
     }
-    delete(Buffers, buffer)
   }
 }
 
@@ -154,7 +156,8 @@ cmd void vkDestroyBuffer(
   @unused VkDeviceSize              Range
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   // Do not track depedency for the following back-references.
-  map!(VkDescriptorSet, map!(u32, map!(u32, u32))) DescriptorUsers
+  @hidden @untrackedMap @untracked
+  map!(VkDescriptorSet, map!(u32, map!(u32, bool))) DescriptorUsers
 }
 
 // Buffer view functions
@@ -168,6 +171,18 @@ cmd VkResult vkCreateBufferView(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkBufferViewCreateInfo") }
   buffer_view_create_info := pCreateInfo[0]
+  // handle mapped memory range pNext
+  if buffer_view_create_info.pNext != null {
+    numPNext := numberOfPNext(buffer_view_create_info.pNext)
+    next := MutableVoidPtr(as!void*(buffer_view_create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkBufferViewCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+  if !(buffer_view_create_info.buffer in Buffers) { vkErrorInvalidBuffer(buffer_view_create_info.buffer) }
 
   handle := ?
   bufferViewObject := new!BufferViewObject(
@@ -199,12 +214,22 @@ cmd void vkDestroyBufferView(
       if vkDesSet in DescriptorSets {
         desSetObj := DescriptorSets[vkDesSet]
         for _, binding, indices in bindingAndIndices {
-          switch desSetObj.Bindings[binding].BindingType {
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-              for _, _, index in indices {
-                desSetObj.Bindings[binding].BufferViewBindings[index] = as!VkBufferView(0)
+          if binding in desSetObj.Bindings {
+            switch desSetObj.Bindings[binding].BindingType {
+              case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                  VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+                for _, index, _ in indices {
+                  if index in desSetObj.Bindings[binding].BufferViewBindings {
+                    if desSetObj.Bindings[binding].BufferViewBindings[index] == bufferView {
+                      desSetObj.Bindings[binding].BufferViewBindings[index] = as!VkBufferView(0)
+                    }
+                  }
+                }
               }
+              default: {
+                // do nothing
+              }
+            }
           }
         }
       }

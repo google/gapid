@@ -250,6 +250,31 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
 }
 
+@internal class DynamicPipelineState {
+  // The viewports set by vkCmdSetViewport
+  dense_map!(u32, VkViewport) Viewports
+  // The Scissors set by vkCmdSetScissor
+  dense_map!(u32, VkRect2D) Scissors
+  // The value set by vkCmdSetLineWidth
+  f32 LineWidth
+  // The constant factor set by vkCmdSetDepthBias
+  f32 DepthBiasConstantFactor
+  // The clamp set by vkCmdSetDepthBias
+  f32 DepthBiasClamp
+  // The slope factor set by vkCmdSetDepthBias
+  f32 DepthBiasSlopeFactor
+  // The blend constants set by vkCmdSetBlendConstants
+  f32[4] BlendConstants
+  // The min depth bounds set by vkCmdSetDepthBounds
+  f32 MinDepthBounds
+  // The max depth bounds set by vkCmdSetDepthBounds
+  f32 MaxDepthBounds
+  // The front stencil state set by vkCmdSetStencil*
+  VkStencilOpState StencilFront
+  // The back stencil state set by vkCmdSetStencil*
+  VkStencilOpState StencilBack
+}
+
 @internal class ComputeInfo {
   // A mapping from the descriptor set bound numbers to descriptor set objects
   map!(u32, ref!DescriptorSetObject) DescriptorSets
@@ -268,6 +293,10 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   map!(u32, ref!ImageObject) PresentImages
   // The queue on which images are presented
   VkQueue Queue
+}
+
+@internal class PushConstantInfo {
+  @hidden @nobox @internal u8[]     Data
 }
 
 enum LastSubmissionType {
@@ -318,19 +347,16 @@ enum LastSubmissionType {
 @serialize @untrackedMap map!(VkQueue, ref!ComputeInfo) LastComputeInfos
 @serialize @untracked PresentInfo                       LastPresentInfo
 @serialize LastSubmissionType                           LastSubmission
-@hidden @serialize UsedDescriptorSets                   ProcessedDescriptorSets
-
-
-@internal class ProcessedDescriptorSet {
-  map!(u32, map!(u32, map!(VkDeviceSize, bool))) bufferOffsets
-  bool shouldReadBuffers
-}
-
-@internal class UsedDescriptorSets {
-  map!(VkDescriptorSet, ProcessedDescriptorSet) val
-}
+@untrackedMap map!(VkQueue, ref!DynamicPipelineState)   LastDynamicPipelineStates
+@untrackedMap map!(VkQueue, ref!PushConstantInfo)       LastPushConstants
+@untrackedMap map!(VkDescriptorSet, ref!BoundDescriptorSetBufferInfo) LastBoundDescriptorSetsBufferInfo
 
 @hidden bool IsRebuilding
+
+@internal class BoundDescriptorSetBufferInfo {
+  map!(u32, map!(u32, map!(VkDeviceSize, bool)))  bufferOffsets
+  bool shouldReadBuffers
+}
 
 sub ref!DrawInfo lastDrawInfo() {
   if LastBoundQueue != null {
@@ -350,7 +376,8 @@ sub ref!DrawInfo lastDrawInfo() {
 
 // Clear the recorded descriptor sets in the last draw
 sub void clearLastDrawInfoDescriptorSets() {
-  for i in (0 .. len(lastDrawInfo().DescriptorSets)) {
+  n := len(lastDrawInfo().DescriptorSets)
+  for i in (0 .. n) {
     lastDrawInfo().DescriptorSets[as!u32(i)] = null
   }
 }
@@ -377,4 +404,36 @@ sub ref!ComputeInfo lastComputeInfo() {
       new!ComputeInfo()
   }
   return lci
+}
+
+sub ref!PushConstantInfo lastPushConstants() {
+  if LastBoundQueue != null {
+    if !(LastBoundQueue.VulkanHandle in LastPushConstants) {
+      dev := Devices[LastBoundQueue.Device]
+      physDev := PhysicalDevices[dev.PhysicalDevice]
+      LastPushConstants[LastBoundQueue.VulkanHandle] = new!PushConstantInfo(make!u8(physDev.PhysicalDeviceProperties.limits.maxPushConstantsSize))
+    }
+  }
+  return switch (LastBoundQueue == null) {
+    case false:
+      LastPushConstants[LastBoundQueue.VulkanHandle]
+    case true:
+      null
+  }
+}
+
+sub ref!DynamicPipelineState lastDynamicPipelineState() {
+  if LastBoundQueue != null {
+    if !(LastBoundQueue.VulkanHandle in LastDynamicPipelineStates) {
+      LastDynamicPipelineStates[LastBoundQueue.VulkanHandle] = new!DynamicPipelineState()
+    }
+  }
+
+  ldps := switch (LastBoundQueue == null) {
+    case false:
+      LastDynamicPipelineStates[LastBoundQueue.VulkanHandle]
+    case true:
+      new!DynamicPipelineState()
+  }
+  return ldps
 }

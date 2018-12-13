@@ -16,10 +16,10 @@
 package com.google.gapid.image;
 
 import com.google.common.collect.Sets;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.proto.image.Image;
 import com.google.gapid.proto.stream.Stream;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Streams;
 
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -95,7 +95,8 @@ public class Images {
    */
   public static org.eclipse.swt.graphics.Image createAutoScaledImage(
       ResourceManager resources, ImageData data) {
-    return resources.createImage(ImageDescriptor.createFromImageData(data));
+    return resources.createImage(
+        ImageDescriptor.createFromImageDataProvider(zoom -> (zoom == 100) ? data : null));
   }
 
   public static org.eclipse.swt.graphics.Image createNonScaledImage(Device device, ImageData data) {
@@ -124,7 +125,7 @@ public class Images {
   }
 
   public static ListenableFuture<ImageData> noAlpha(ListenableFuture<ImageData> image) {
-    return Futures.transform(image, data -> {
+    return MoreFutures.transform(image, data -> {
       data.alphaData = null;
       return data;
     });

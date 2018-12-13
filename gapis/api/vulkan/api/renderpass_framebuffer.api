@@ -51,6 +51,15 @@
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
+@spy_disabled
+sub void registerFramebufferUser(ref!ImageViewObject view, VkFramebuffer vkFb, u32 attachment) {
+  if !(vkFb in view.FramebufferUsers) {
+    f := view.FramebufferUsers[vkFb]
+    view.FramebufferUsers[vkFb] = f
+  }
+  view.FramebufferUsers[vkFb][attachment] = true
+}
+
 @threadSafety("system")
 @indirect("VkDevice")
 cmd VkResult vkCreateFramebuffer(
@@ -61,6 +70,17 @@ cmd VkResult vkCreateFramebuffer(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkFramebufferCreateInfo") }
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkFramebufferCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   attachments := create_info.pAttachments[0:create_info.attachmentCount]
 
   framebufferObject := new!FramebufferObject(Device: device,
@@ -69,6 +89,7 @@ cmd VkResult vkCreateFramebuffer(
     Layers:                   create_info.layers,
     RenderPass:               RenderPasses[create_info.renderPass])
   for i in (0 .. create_info.attachmentCount) {
+    if !(attachments[i] in ImageViews) { vkErrorInvalidImageView(attachments[i]) }
     framebufferObject.ImageAttachments[i] = ImageViews[attachments[i]]
   }
 
@@ -80,8 +101,7 @@ cmd VkResult vkCreateFramebuffer(
 
   for _, i, viewObj in framebufferObject.ImageAttachments {
     if viewObj != null {
-      viewObj.FramebufferUsers[handle][
-        as!u32(len(viewObj.FramebufferUsers[handle]))] = i
+      registerFramebufferUser(viewObj, handle, i)
     }
   }
 
@@ -133,6 +153,17 @@ cmd VkResult vkCreateRenderPass(
   renderPass.Device = device
   if pCreateInfo == null { vkErrorNullPointer("VkRenderPassCreateInfo") }
   info := pCreateInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkRenderPassCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   attachments := info.pAttachments[0:info.attachmentCount]
   for i in (0 .. info.attachmentCount) {
@@ -217,12 +248,14 @@ vkCmdBeginRenderPassArgs {
 }
 
 sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
-  lastDrawInfo().Framebuffer = Framebuffers[args.Framebuffer]
-  lastDrawInfo().LastSubpass = 0
-  lastDrawInfo().RenderPass = RenderPasses[args.RenderPass]
-  lastDrawInfo().InRenderPass = true
-  attachments := lastDrawInfo().Framebuffer.ImageAttachments
-  for i in (0 .. len(attachments)) {
+  ldi := lastDrawInfo()
+  ldi.Framebuffer = Framebuffers[args.Framebuffer]
+  ldi.LastSubpass = 0
+  ldi.RenderPass = RenderPasses[args.RenderPass]
+  ldi.InRenderPass = true
+  attachments := ldi.Framebuffer.ImageAttachments
+  n := len(attachments)
+  for i in (0 .. n) {
     loadImageAttachment(as!u32(i))
   }
   pushRenderPassMarker(args.RenderPass)
@@ -235,27 +268,54 @@ cmd void vkCmdBeginRenderPass(
     VkCommandBuffer              commandBuffer,
     const VkRenderPassBeginInfo* pRenderPassBegin,
     VkSubpassContents            contents) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   if pRenderPassBegin == null { vkErrorNullPointer("VkRenderPassBeginInfo") }
   begin_info := pRenderPassBegin[0]
   if !(begin_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(begin_info.renderPass) }
   if !(begin_info.framebuffer in Framebuffers) { vkErrorInvalidFramebuffer(begin_info.framebuffer) }
-  args := new!vkCmdBeginRenderPassArgs(
-    Contents:     contents,
-    RenderPass:   begin_info.renderPass,
-    Framebuffer:  begin_info.framebuffer,
-    RenderArea:   begin_info.renderArea
-  )
-  clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
-  for i in (0 .. begin_info.clearValueCount) {
-    args.ClearValues[i] = clear_values[i]
+  // handle pNext
+  if begin_info.pNext != null {
+    numPNext := numberOfPNext(begin_info.pNext)
+    next := MutableVoidPtr(as!void*(begin_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkRenderPassCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
   }
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBeginRenderPass[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmdBuf := CommandBuffers[commandBuffer]
+    if (begin_info.framebuffer in Framebuffers) {
+      if (begin_info.renderPass in RenderPasses) {
+        fb := Framebuffers[begin_info.framebuffer]
+        for i in (0 .. len(fb.ImageAttachments)) {
+          att := fb.ImageAttachments[as!u32(i)]
+          if att.Image != null {
+            commandBufferTouchImage(cmdBuf, att.Image, att.SubresourceRange)
+          }
+        }
+      }
+    }
 
-  AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
+    args := new!vkCmdBeginRenderPassArgs(
+      Contents:     contents,
+      RenderPass:   begin_info.renderPass,
+      Framebuffer:  begin_info.framebuffer,
+      RenderArea:   begin_info.renderArea
+    )
+    clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
+    for i in (0 .. begin_info.clearValueCount) {
+      args.ClearValues[i] = clear_values[i]
+    }
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBeginRenderPass))
+    cmdBuf.BufferCommands.vkCmdBeginRenderPass[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdBeginRenderPass, mapPos)
+  }
 }
 
 @internal class
@@ -264,42 +324,47 @@ vkCmdNextSubpassArgs {
 }
 
 sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
-  lastDrawInfo().LastSubpass += 1
-  if lastDrawInfo().LastSubpass < len(lastDrawInfo().RenderPass.SubpassDescriptions) {
-    subpass := lastDrawInfo().RenderPass.SubpassDescriptions[lastDrawInfo().LastSubpass]
+  useRenderPass()
+  ldi := lastDrawInfo()
+  ldi.LastSubpass += 1
+  if ldi.LastSubpass < len(ldi.RenderPass.SubpassDescriptions) {
+    subpass := ldi.RenderPass.SubpassDescriptions[ldi.LastSubpass]
     for _ , _ , a in subpass.InputAttachments {
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ColorAttachments {
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ResolveAttachments {
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[a.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     if subpass.DepthStencilAttachment != null {
       dsRef := subpass.DepthStencilAttachment
-      attachment := lastDrawInfo().Framebuffer.ImageAttachments[dsRef.Attachment]
+      attachment := ldi.Framebuffer.ImageAttachments[dsRef.Attachment]
       transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
     }
   }
-  popAndPushMarkerForNextSubpass(lastDrawInfo().LastSubpass)
+  popAndPushMarkerForNextSubpass(ldi.LastSubpass)
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdNextSubpass(
     VkCommandBuffer   commandBuffer,
     VkSubpassContents contents) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdNextSubpassArgs(contents)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmdBuf := CommandBuffers[commandBuffer]
+    args := new!vkCmdNextSubpassArgs(contents)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdNextSubpass[mapPos] =
-  args
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdNextSubpass))
+    cmdBuf.BufferCommands.vkCmdNextSubpass[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdNextSubpass, mapPos)
+  }
 }
 
 @internal class
@@ -307,13 +372,16 @@ vkCmdEndRenderPassArgs {
 }
 
 sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
-  attachmentDescriptions := lastDrawInfo().RenderPass.AttachmentDescriptions
-  for i in (0 .. len(attachmentDescriptions)) {
+  ldi := lastDrawInfo()
+  attachmentDescriptions := ldi.RenderPass.AttachmentDescriptions
+  n := len(attachmentDescriptions)
+  for i in (0 .. n) {
     storeImageAttachment(as!u32(i))
   }
-  lastDrawInfo().InRenderPass = false
+  _ = ldi.InRenderPass
+  ldi.InRenderPass = false
   popRenderPassMarker()
-  if (len(lastDrawInfo().RenderPass.SubpassDescriptions) > 1) {
+  if (len(ldi.RenderPass.SubpassDescriptions) > 1) {
     popRenderPassMarker()
   }
 }
@@ -322,21 +390,26 @@ sub void dovkCmdEndRenderPass(ref!vkCmdEndRenderPassArgs unused) {
 @indirect("VkCommandBuffer", "VkDevice")
 cmd void vkCmdEndRenderPass(
     VkCommandBuffer commandBuffer) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdEndRenderPassArgs()
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmdBuf := CommandBuffers[commandBuffer]
+    args := new!vkCmdEndRenderPassArgs()
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdEndRenderPass[mapPos] =
-  args
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdEndRenderPass))
+    cmdBuf.BufferCommands.vkCmdEndRenderPass[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdEndRenderPass, mapPos)
+  }
 }
 
+@spy_disabled
 sub void loadImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
-    attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
-    desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
+    ldi := lastDrawInfo()
+    attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
+    desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       switch desc.loadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD: {
@@ -353,11 +426,13 @@ sub void loadImageAttachment(u32 attachmentID) {
   }
 }
 
+@spy_disabled
 sub void storeImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
-    attachment := lastDrawInfo().Framebuffer.ImageAttachments[attachmentID]
-    desc := lastDrawInfo().RenderPass.AttachmentDescriptions[attachmentID]
+    ldi := lastDrawInfo()
+    attachment := ldi.Framebuffer.ImageAttachments[attachmentID]
+    desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       if desc.initialLayout != desc.finalLayout {
         transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
@@ -373,4 +448,11 @@ sub void storeImageAttachment(u32 attachmentID) {
       }
     }
   }
+}
+
+@spy_disabled
+sub void useRenderPass() {
+  // read and write InRenderPass to ensure dependencies between render pass commands
+  _ = lastDrawInfo().InRenderPass
+  lastDrawInfo().InRenderPass = true
 }

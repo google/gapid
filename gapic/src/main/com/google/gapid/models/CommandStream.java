@@ -41,6 +41,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
 
@@ -119,19 +120,19 @@ public class CommandStream
 
   @Override
   protected ListenableFuture<Node> doLoad(Path.Any path, Path.Device device) {
-    return Futures.transformAsync(client.get(path, device),
-        tree -> Futures.transform(client.get(commandTree(tree.getCommandTree().getRoot()), device),
+    return MoreFutures.transformAsync(client.get(path, device),
+        tree -> MoreFutures.transform(client.get(commandTree(tree.getCommandTree().getRoot()), device),
             val -> new RootNode(
                 device, tree.getCommandTree().getRoot().getTree(), val.getCommandTreeNode())));
   }
 
   public ListenableFuture<Node> load(Node node) {
-    return node.load(shell, () -> Futures.transformAsync(
+    return node.load(shell, () -> MoreFutures.transformAsync(
         client.get(commandTree(node.getPath(Path.CommandTreeNode.newBuilder())), node.device),
         v1 -> {
           Service.CommandTreeNode data = v1.getCommandTreeNode();
           if (data.getGroup().isEmpty() && data.hasCommands()) {
-            return Futures.transform(loadCommand(lastCommand(data.getCommands()), node.device),
+            return MoreFutures.transform(loadCommand(lastCommand(data.getCommands()), node.device),
                 cmd -> new NodeData(data, cmd));
           }
           return Futures.immediateFuture(new NodeData(data, null));
@@ -139,8 +140,8 @@ public class CommandStream
   }
 
   public ListenableFuture<API.Command> loadCommand(Path.Command path, Path.Device device) {
-    return Futures.transformAsync(client.get(command(path), device), value ->
-        Futures.transform(constants.loadConstants(value.getCommand()), ignore ->
+    return MoreFutures.transformAsync(client.get(command(path), device), value ->
+        MoreFutures.transform(constants.loadConstants(value.getCommand()), ignore ->
             value.getCommand()));
   }
 
@@ -239,7 +240,7 @@ public class CommandStream
   }
 
   public ListenableFuture<Observation[]> getObservations(Path.Device device, CommandIndex index) {
-    return Futures.transform(
+    return MoreFutures.transform(
         client.get(observationsAfter(index, Application_VALUE), device), v -> {
           List<Service.MemoryRange> reads = merge(v.getMemory().getReadsList());
           List<Service.MemoryRange> writes = merge(v.getMemory().getWritesList());
@@ -458,7 +459,7 @@ public class CommandStream
         return loadFuture;
       }
 
-      return loadFuture = Futures.transformAsync(loader.get(), newData ->
+      return loadFuture = MoreFutures.transformAsync(loader.get(), newData ->
         submitIfNotDisposed(shell, () -> {
           data = newData.data;
           command = newData.command;

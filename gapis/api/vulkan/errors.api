@@ -44,7 +44,13 @@ extern void vkErrNotNullPointer(string pointerType)
 extern void vkErrUnrecognizedExtension(string name)
 extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle)
 extern void vkErrInvalidDescriptorArrayElement(u64 set, u32 binding, u32 arrayIndex)
+extern void vkErrInvalidDescriptorBindingType(VkDescriptorSet set, u32 binding, VkDescriptorType layoutType, VkDescriptorType updateType)
 extern void vkErrCommandBufferIncomplete(VkCommandBuffer cmdbuf)
+extern void vkErrCommandBufferNotRecording(VkCommandBuffer cmdbuf)
+extern void vkErrQueryOutOfRange(VkQueryPool queryPool, u32 query)
+extern void vkErrQueryUninitialized(VkQueryPool queryPool, u32 query)
+extern void vkErrQueryNotInactive(VkQueryPool queryPool, u32 query)
+extern void vkErrQueryNotActive(VkQueryPool queryPool, u32 query)
 extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout)
 extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
 
@@ -58,10 +64,12 @@ sub void vkErrorInvalidPhysicalDevice(VkPhysicalDevice dev) {
 
 sub void vkErrorInvalidDevice(VkDevice dev) {
   vkErrorInvalidHandle("VkDevice", as!u64(dev))
+  abort
 }
 
 sub void vkErrorInvalidQueue(VkQueue queue) {
   vkErrorInvalidHandle("VkQueue", as!u64(queue))
+  abort
 }
 
 sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
@@ -70,6 +78,23 @@ sub void vkErrorInvalidCommandBuffer(VkCommandBuffer cmdbuf) {
 
 sub void vkErrorCommandBufferIncomplete(VkCommandBuffer cmdbuf) {
   vkErrCommandBufferIncomplete(cmdbuf)
+}
+
+sub void vkErrorCommandBufferNotRecording(VkCommandBuffer cmdbuf) {
+  vkErrCommandBufferNotRecording(cmdbuf)
+}
+
+sub void vkErrorQueryOutOfRange(VkQueryPool queryPool, u32 query) {
+  vkErrQueryOutOfRange(queryPool, query)
+}
+sub void vkErrorQueryUninitialized(VkQueryPool queryPool, u32 query) {
+  vkErrQueryUninitialized(queryPool, query)
+}
+sub void vkErrorQueryNotInactive(VkQueryPool queryPool, u32 query) {
+  vkErrQueryNotInactive(queryPool, query)
+}
+sub void vkErrorQueryNotActive(VkQueryPool queryPool, u32 query) {
+  vkErrQueryNotActive(queryPool, query)
 }
 
 sub void vkErrorInvalidDeviceMemory(VkDeviceMemory mem) {
@@ -187,7 +212,6 @@ sub void vkErrorInvalidDisplayMode(VkDisplayModeKHR mode) {
 
 sub void vkErrorInvalidHandle(string handleType, u64 handle) {
   vkErrInvalidHandle(handleType, handle)
-  abort
 }
 
 sub void vkErrorNullPointer(string pointerType) {

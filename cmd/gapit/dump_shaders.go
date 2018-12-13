@@ -18,13 +18,13 @@ import (
 	"context"
 	"flag"
 	"os"
-	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 type dumpShadersVerb struct{ DumpShadersFlags }
@@ -48,30 +48,27 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Errf(ctx, err, "Could not find capture file '%s'", flags.Arg(0))
-	}
-
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
 
-	capture, err := client.LoadCapture(ctx, filepath)
+	device, err := getDevice(ctx, client, capture, verb.Gapir)
 	if err != nil {
-		return log.Errf(ctx, err, "Failed to load the capture file '%v'", filepath)
+		return err
 	}
 
-	boxedResources, err := client.Get(ctx, capture.Resources().Path(), nil)
+	resolveConfig := path.ResolveConfig{ReplayDevice: device}
+
+	boxedResources, err := client.Get(ctx, capture.Resources().Path(), &resolveConfig)
 	if err != nil {
 		return log.Err(ctx, err, "Could not find the capture's resources")
 	}
 	resources := boxedResources.(*service.Resources)
 
 	if verb.At == -1 {
-		boxedCapture, err := client.Get(ctx, capture.Path(), nil)
+		boxedCapture, err := client.Get(ctx, capture.Path(), &resolveConfig)
 		if err != nil {
 			return log.Err(ctx, err, "Failed to load the capture")
 		}
@@ -86,7 +83,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 					continue
 				}
 				resourcePath := capture.Command(uint64(verb.At)).ResourceAfter(v.ID)
-				resourceData, err := client.Get(ctx, resourcePath.Path(), nil)
+				resourceData, err := client.Get(ctx, resourcePath.Path(), &resolveConfig)
 				if err != nil {
 					log.E(ctx, "Could not get data for shader: %v %v", v, err)
 					continue

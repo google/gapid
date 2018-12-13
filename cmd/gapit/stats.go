@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"text/tabwriter"
 
@@ -42,30 +41,6 @@ func init() {
 		ShortHelp: "Prints information about a capture file",
 		Action:    verb,
 	})
-}
-
-func loadCapture(ctx context.Context, flags flag.FlagSet, gapisFlags GapisFlags) (client.Client, *path.Capture, error) {
-	if flags.NArg() != 1 {
-		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
-		return nil, nil, nil
-	}
-
-	filepath, err := filepath.Abs(flags.Arg(0))
-	if err != nil {
-		return nil, nil, log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
-	}
-
-	client, err := getGapis(ctx, gapisFlags, GapirFlags{})
-	if err != nil {
-		return nil, nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
-	}
-
-	capture, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return nil, nil, log.Errf(ctx, err, "LoadCapture(%v)", filepath)
-	}
-
-	return client, capture, nil
 }
 
 func (verb *infoVerb) getEventsInRange(ctx context.Context, client service.Service, capture *path.Capture) ([]*service.Event, error) {
@@ -144,7 +119,12 @@ func (verb *infoVerb) drawCallStats(ctx context.Context, client client.Client, c
 }
 
 func (verb *infoVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	client, capture, err := loadCapture(ctx, flags, verb.Gapis)
+	if flags.NArg() != 1 {
+		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
+		return nil
+	}
+
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, GapirFlags{}, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
 		return err
 	}

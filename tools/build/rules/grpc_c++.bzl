@@ -39,6 +39,7 @@
 # each change must be ported from one to the other.
 #
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # The set of pollers to test against if a test exercises polling
 
@@ -324,7 +325,7 @@ def grpc_deps(locals = {}):
     )
 
     if "boringssl" not in native.existing_rules():
-        native.http_archive(
+        http_archive(
             name = "boringssl",
             # on the master-with-bazel branch
             url = "https://boringssl.googlesource.com/boringssl/+archive/6ae5a54bedae2c29e5b67382667871c527e68326.tar.gz",

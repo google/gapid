@@ -92,8 +92,8 @@ const EGLint EGL_CONTEXT_FLAGS_KHR = 0x30FC;
 const EGLint EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR = 0x0001;
 const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 
-const uint32_t kMaxFramebufferObservationWidth = 1920 / 2;
-const uint32_t kMaxFramebufferObservationHeight = 1280 / 2;
+const uint32_t kMaxFramebufferObservationWidth = 3840;
+const uint32_t kMaxFramebufferObservationHeight = 2560;
 
 const uint32_t kStartMidExecutionCapture = 0xdeadbeef;
 
@@ -137,7 +137,12 @@ Spy::Spy()
   // Use a "localabstract" pipe on Android to prevent depending on the traced
   // application having the INTERNET permission set, required for opening and
   // listening on a TCP socket.
-  mConnection = ConnectionStream::listenPipe("gapii", true);
+  std::string pipe = "gapii";
+  char* envPipe = getenv("GAPII_PIPE_NAME");
+  if (envPipe != nullptr) {
+    pipe = envPipe;
+  }
+  mConnection = ConnectionStream::listenPipe(pipe.c_str(), true);
 #else   // TARGET_OS
   mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
 #endif  // TARGET_OS

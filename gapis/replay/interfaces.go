@@ -16,12 +16,14 @@ package replay
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 // Support is the optional interface implemented by APIs that can describe
@@ -48,6 +50,16 @@ type QueryIssues interface {
 		hints *service.UsageHints) ([]Issue, error)
 }
 
+// QueryTimestamps is the interface implemented by types that can
+// return the timestamps of the execution of commands
+type QueryTimestamps interface {
+	QueryTimestamps(
+		ctx context.Context,
+		intent Intent,
+		mgr Manager,
+		hints *service.UsageHints) ([]Timestamp, error)
+}
+
 // QueryFramebufferAttachment is the interface implemented by types that can
 // return the content of a framebuffer attachment at a particular point in a
 // capture.
@@ -71,4 +83,14 @@ type Issue struct {
 	Command  api.CmdID        // The command that reported the issue.
 	Severity service.Severity // The severity of the issue.
 	Error    error            // The issue's error.
+}
+
+// Timestamp represents an execution time measurement between the two commands specified.
+type Timestamp struct {
+	// The path of the command which begins the time measurement.
+	Begin *path.Command
+	// The path of the command which ends the time measurement.
+	End *path.Command
+	// The duration in nanoseconds between the two commands specified.
+	Time time.Duration
 }

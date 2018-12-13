@@ -20,6 +20,10 @@ gapid_dependencies()
 load("@gapid//tools/build:workspace_go.bzl", "gapid_go_dependencies")
 gapid_go_dependencies()
 
+load("@gapid//tools/build:workspace_gapic.bzl", "gapic_dependencies", "gapic_third_party")
+gapic_dependencies()
+gapic_third_party()
+
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 go_rules_dependencies()

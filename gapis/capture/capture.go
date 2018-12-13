@@ -169,6 +169,23 @@ func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	return out
 }
 
+// CloneInitialState clones this capture's initial state and returns it.
+func (c *Capture) CloneInitialState(a arena.Arena) *InitialState {
+	if c.InitialState == nil {
+		return nil
+	}
+
+	is := &InitialState{
+		Memory: c.InitialState.Memory,
+		APIs:   make(map[api.API]api.State, len(c.InitialState.APIs)),
+	}
+	for api, s := range c.InitialState.APIs {
+		is.APIs[api] = s.Clone(a)
+	}
+
+	return is
+}
+
 // Service returns the service.Capture description for this capture.
 func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture {
 	apis := make([]*path.API, len(c.APIs))

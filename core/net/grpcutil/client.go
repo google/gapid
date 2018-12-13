@@ -16,6 +16,7 @@ package grpcutil
 
 import (
 	"context"
+	"math"
 
 	"google.golang.org/grpc"
 )
@@ -29,6 +30,7 @@ func Dial(ctx context.Context, target string, options ...grpc.DialOption) (*grpc
 	options = append([]grpc.DialOption{
 		grpc.WithCompressor(grpc.NewGZIPCompressor()),
 		grpc.WithDecompressor(grpc.NewGZIPDecompressor()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 	}, options...)
 	return grpc.Dial(target, options...)
 }

@@ -17,6 +17,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"math/bits"
 
 	"github.com/google/gapid/gapis/memory"
 )
@@ -30,10 +31,10 @@ type StateWatcher interface {
 	OnEndCmd(ctx context.Context, cmdID CmdID, cmd Cmd)
 
 	// OnGet is called when a fragment of state (field, map key, array index) is read
-	OnGet(ctx context.Context, owner Reference, f Fragment, v Reference)
+	OnReadFrag(ctx context.Context, owner RefObject, f Fragment, v RefObject, track bool)
 
 	// OnSet is called when a fragment of state (field, map key, array index) is written
-	OnSet(ctx context.Context, owner Reference, f Fragment, old Reference, new Reference)
+	OnWriteFrag(ctx context.Context, owner RefObject, f Fragment, old RefObject, new RefObject, tracke bool)
 
 	// OnWriteSlice is called when writing to a slice
 	OnWriteSlice(ctx context.Context, s memory.Slice)
@@ -82,25 +83,28 @@ type FieldFragment struct {
 
 func (f FieldFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, ".%s", f.Field.FieldName()) }
 
+func (f FieldFragment) DenseIndex() int { return 1 + f.Field.FieldIndex() }
+
 func (FieldFragment) fragment() {}
 
 // ArrayIndexFragment is a Fragment identifying an array index.
 // This corresponds to syntax such as `myArray[3]`.
 type ArrayIndexFragment struct {
-	Index int
+	ArrayIndex int
 }
 
-func (f ArrayIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%d]", f.Index) }
+func (f ArrayIndexFragment) DenseIndex() int            { return 1 + f.ArrayIndex }
+func (f ArrayIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%d]", f.ArrayIndex) }
 
 func (ArrayIndexFragment) fragment() {}
 
 // MapIndexFragment is a Fragment identifying a map index.
 // This corresponds to syntax such as `myMap["foo"]`
 type MapIndexFragment struct {
-	Index interface{}
+	MapIndex interface{}
 }
 
-func (f MapIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%v]", f.Index) }
+func (f MapIndexFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[%v]", f.MapIndex) }
 
 func (MapIndexFragment) fragment() {}
 
@@ -108,12 +112,162 @@ func (MapIndexFragment) fragment() {}
 // map (all key/value pairs) or array (all values).
 type CompleteFragment struct{}
 
-func (f CompleteFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[*]") }
+func (CompleteFragment) DenseIndex() int            { return 0 }
+func (CompleteFragment) Format(s fmt.State, r rune) { fmt.Fprintf(s, "[*]") }
 
 func (CompleteFragment) fragment() {}
 
 // Field identifies a field in an API object
 type Field interface {
 	FieldName() string
+	FieldIndex() int
 	ClassName() string
 }
+
+type FragmentMap interface {
+	Get(Fragment) (interface{}, bool)
+	Set(Fragment, interface{})
+	Delete(Fragment)
+	Clear()
+	ForeachFrag(func(Fragment, interface{}) error) error
+	EmptyClone() FragmentMap
+}
+
+type DenseFragment interface {
+	DenseIndex() int
+}
+
+type denseFragmentMapEntry struct {
+	frag  Fragment
+	value interface{}
+}
+
+type DenseFragmentMap struct {
+	Values []denseFragmentMapEntry
+}
+
+func NewDenseFragmentMap(cap int) *DenseFragmentMap {
+	return &DenseFragmentMap{
+		Values: make([]denseFragmentMapEntry, cap),
+	}
+}
+
+func (m DenseFragmentMap) Get(f Fragment) (interface{}, bool) {
+	if d, ok := f.(DenseFragment); ok {
+		i := d.DenseIndex()
+		if i < len(m.Values) {
+			a := m.Values[i]
+			if a.frag != nil {
+				if a.frag != f {
+					panic("Collision in DenseFragmentmap")
+				}
+				return a.value, true
+			}
+			return nil, false
+		}
+		return nil, false
+	} else {
+		panic("DenseFragmentMap used with non-dense fragment")
+	}
+}
+
+func (m *DenseFragmentMap) Set(f Fragment, v interface{}) {
+	if d, ok := f.(DenseFragment); ok {
+		i := d.DenseIndex()
+		n := len(m.Values)
+		if i >= n {
+			n := 1 << uint(bits.Len(uint(i)))
+			newVals := make([]denseFragmentMapEntry, n)
+			copy(newVals, m.Values)
+			m.Values = newVals
+		}
+		a := &m.Values[i]
+		if a.frag != nil && a.frag != f {
+			panic("Collision in DenseFragmentMap")
+		}
+		a.frag = f
+		a.value = v
+	} else {
+		panic("DenseFragmentMap used with non-dense fragment")
+	}
+}
+
+func (m DenseFragmentMap) Delete(f Fragment) {
+	if d, ok := f.(DenseFragment); ok {
+		i := d.DenseIndex()
+		if i < len(m.Values) {
+			m.Values[i] = denseFragmentMapEntry{}
+		}
+	} else {
+		panic("DenseFragmentMap used with non-dense fragment")
+	}
+}
+
+func (m DenseFragmentMap) ForeachFrag(f func(Fragment, interface{}) error) error {
+	for _, v := range m.Values {
+		if v.frag == nil {
+			continue
+		}
+		if err := f(v.frag, v.value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m DenseFragmentMap) Clear() {
+	for _, e := range m.Values {
+		e.frag = nil
+	}
+}
+
+func (m DenseFragmentMap) EmptyClone() FragmentMap {
+	return NewDenseFragmentMap(len(m.Values))
+}
+
+type SparseFragmentMap struct {
+	Map map[Fragment]interface{}
+}
+
+func NewSparseFragmentMap() *SparseFragmentMap {
+	return &SparseFragmentMap{
+		Map: make(map[Fragment]interface{}),
+	}
+}
+
+func (m SparseFragmentMap) Get(f Fragment) (interface{}, bool) {
+	v, ok := m.Map[f]
+	return v, ok
+}
+
+func (m *SparseFragmentMap) Set(f Fragment, v interface{}) {
+	m.Map[f] = v
+}
+
+func (m SparseFragmentMap) Delete(f Fragment) {
+	delete(m.Map, f)
+}
+
+func (m SparseFragmentMap) ForeachFrag(f func(Fragment, interface{}) error) error {
+	for k, v := range m.Map {
+		if err := f(k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m SparseFragmentMap) Clear() {
+	m.Map = make(map[Fragment]interface{})
+}
+
+func (m SparseFragmentMap) EmptyClone() FragmentMap {
+	return NewSparseFragmentMap()
+}
+
+type RefObject interface {
+	Reference
+	NewFragmentMap() FragmentMap
+}
+
+func (NilReference) NewFragmentMap() FragmentMap { panic("NewFragmentMap called on NilReference") }

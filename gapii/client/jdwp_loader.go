@@ -301,6 +301,11 @@ func (p *Process) loadAndConnectViaJDWP(
 		gapiiPath := gapidAPK.LibGAPIIPath(abi)
 		ctx = log.V{"gapii.so": gapiiPath, "process abi": abi.Name}.Bind(ctx)
 
+		if p.Options.PipeName != "" {
+			// Set the GAPID_PIPE_NAME environment variable.
+			j.Class("libcore.io.Libcore").Field("os").Call("setenv", "GAPII_PIPE_NAME", p.Options.PipeName, true)
+		}
+
 		// Load the library.
 		log.D(ctx, "Loading GAPII library...")
 		j.Class("java.lang.System").Call("load", gapiiPath)

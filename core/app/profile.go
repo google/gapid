@@ -15,11 +15,13 @@
 package app
 
 import (
+	"bufio"
 	"context"
 	"os"
 	"runtime"
 	"runtime/pprof"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/log"
 )
 
@@ -51,6 +53,21 @@ func applyProfiler(ctx context.Context, flags *ProfileFlags) func() {
 			}
 			f.Close()
 			log.I(ctx, "Mem profile written")
+		})
+	}
+	if flags.Trace != "" {
+		log.I(ctx, "Trace profiling enabled")
+		f, err := os.Create(flags.Trace)
+		if err != nil {
+			log.F(ctx, true, "Trace profiling failed to start.\nError: %v", err)
+		}
+		writer := bufio.NewWriterSize(f, 1024*1024*1024)
+		stop := status.RegisterTracer(writer)
+		closers = append(closers, func() {
+			stop()
+			writer.Flush()
+			f.Close()
+			log.I(ctx, "Trace profile written")
 		})
 	}
 	return func() {

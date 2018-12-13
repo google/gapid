@@ -40,6 +40,7 @@ var (
 	_ = replay.QueryIssues(API{})
 	_ = replay.QueryFramebufferAttachment(API{})
 	_ = replay.Support(API{})
+	_ = replay.QueryTimestamps(API{})
 )
 
 // GetReplayPriority returns a uint32 representing the preference for
@@ -711,6 +712,12 @@ type issuesRequest struct {
 	displayToSurface bool
 }
 
+type timestampsConfig struct {
+}
+
+type timestampsRequest struct {
+}
+
 func (a API) Replay(
 	ctx context.Context,
 	intent replay.Intent,
@@ -735,6 +742,8 @@ func (a API) Replay(
 	injector := &transform.Injector{}
 	// Gathers and reports any issues found.
 	var issues *findIssues
+
+	var timestamps *queryTimestamps
 
 	earlyTerminator, err := NewVulkanTerminator(ctx, intent.Capture)
 	if err != nil {
@@ -817,7 +826,16 @@ func (a API) Replay(
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
-
+		case timestampsRequest:
+			if timestamps == nil {
+				n, err := expandCommands(false)
+				if err != nil {
+					return err
+				}
+				timestamps = newQueryTimestamps(ctx, c, n)
+			}
+			timestamps.reportTo(rr.Result)
+			optimize = false
 		case framebufferRequest:
 
 			cfg := cfg.(drawConfig)
@@ -903,7 +921,12 @@ func (a API) Replay(
 	if issues != nil {
 		transforms.Add(issues) // Issue reporting required.
 	} else {
-		transforms.Add(earlyTerminator)
+		if timestamps != nil {
+			transforms.Add(timestamps)
+		} else {
+			transforms.Add(earlyTerminator)
+		}
+
 	}
 
 	if overdraw != nil {
@@ -1025,4 +1048,21 @@ func (a API) QueryIssues(
 		return nil, nil
 	}
 	return res.([]replay.Issue), nil
+}
+
+func (a API) QueryTimestamps(
+	ctx context.Context,
+	intent replay.Intent,
+	mgr replay.Manager,
+	hints *service.UsageHints) ([]replay.Timestamp, error) {
+
+	c, r := timestampsConfig{}, timestampsRequest{}
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := mgr.(replay.Exporter); ok {
+		return nil, nil
+	}
+	return res.([]replay.Timestamp), nil
 }

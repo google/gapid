@@ -19,12 +19,12 @@ import static java.util.logging.Level.INFO;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
+import com.google.gapid.util.MoreFutures;
 
 import java.io.File;
 import java.security.SecureRandom;
@@ -70,7 +70,7 @@ public class GapisProcess extends ChildProcess<Integer> {
   public GapisProcess(Settings settings, Listener listener) {
     super("gapis", settings);
     this.listener = (listener == null) ? Listener.NULL : listener;
-    connection = Futures.transform(start(), port -> {
+    connection = MoreFutures.transform(start(), port -> {
       LOG.log(INFO, "Established a new client connection to " + port);
       return GapisConnection.create(
           SERVER_HOST + ":" + port, authToken, HEARTBEAT_RATE_MS, con -> shutdown());

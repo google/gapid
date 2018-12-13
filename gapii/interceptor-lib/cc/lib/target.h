@@ -80,8 +80,7 @@ class Target {
   // jump to the specified target address if it is placed into the location
   // specified by the source address.
   virtual Error EmitTrampoline(const TrampolineConfig &config,
-                               CodeGenerator &codegen, void *source,
-                               void *target) = 0;
+                               CodeGenerator &codegen, void *target) = 0;
 
   // Rewrite the specified instruction read from "data + offset "into the code
   // generator with a set of instructions with the exact same effect but without
@@ -99,6 +98,13 @@ class Target {
   // the function pointers contain meta-data (e.g. thumb bit).
   virtual void *FixupCallbackFunction(void *old_function, void *new_function) {
     return new_function;
+  }
+
+  // Checks if the old function is a simple PLT type function where it is
+  // (likely) not possible to install a trampoline. Returns the address of the
+  // PLT target or old_function.
+  virtual void *CheckIsPLT(void *old_function, void *new_function) {
+    return old_function;
   }
 };
 

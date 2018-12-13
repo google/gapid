@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -51,22 +50,11 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
+	client, c, err := getGapisAndLoadCapture(ctx, verb.Gapis, GapirFlags{}, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
-
-	filepath, err := filepath.Abs(flags.Arg(0))
-	ctx = log.V{"filepath": filepath}.Bind(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Could not find capture file")
-	}
-
-	c, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to load the capture file")
-	}
 
 	if len(verb.At) == 0 {
 		boxedCapture, err := client.Get(ctx, c.Path(), nil)

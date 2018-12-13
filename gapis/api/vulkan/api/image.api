@@ -284,25 +284,26 @@ cmd void vkDestroyImage(
     VkImage             image,
     AllocationCallbacks pAllocator) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  if (image != as!VkImage(0)) {
-    imageObject := Images[image]
-    if (imageObject.BoundMemory != null) {
-      // If the memory is deleted first, then do not try to remove ourselves.
-      delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
-    }
-    delete(Images, image)
-    for _ , _ , v in ImageViews {
-      if v.Image != null {
-        if v.Image.VulkanHandle == image {
-          v.Image = null
+  if !(image in Images) { vkErrorInvalidImage(image) } else {
+    if (image != as!VkImage(0)) {
+      imageObject := Images[image]
+      if (imageObject.BoundMemory != null) {
+        // If the memory is deleted first, then do not try to remove ourselves.
+        delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
+      }
+      delete(Images, image)
+      for _ , _ , v in ImageViews {
+        if v.Image != null {
+          if v.Image.VulkanHandle == image {
+            v.Image = null
+          }
         }
       }
-    }
-    for i in (0 .. LastPresentInfo.PresentImageCount) {
-      if (LastPresentInfo.PresentImages[i] != null) {
-        if (LastPresentInfo.PresentImages[i].VulkanHandle == image) {
-          LastPresentInfo.PresentImages[i] = null
+      for i in (0 .. LastPresentInfo.PresentImageCount) {
+        if (LastPresentInfo.PresentImages[i] != null) {
+          if (LastPresentInfo.PresentImages[i].VulkanHandle == image) {
+            LastPresentInfo.PresentImages[i] = null
+          }
         }
       }
     }
@@ -330,60 +331,61 @@ cmd VkResult vkBindImageMemory(
     VkDeviceSize   memoryOffset) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  imageObject := Images[image]
-  imageObject.BoundMemory = DeviceMemories[memory]
-  imageObject.BoundMemoryOffset = memoryOffset
-  DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
+  if !(image in Images) { vkErrorInvalidImage(image) } else {
+    imageObject := Images[image]
+    imageObject.BoundMemory = DeviceMemories[memory]
+    imageObject.BoundMemoryOffset = memoryOffset
+    DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
 
-  for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
-    aspect := imageObject.Aspects[aspectBit]
-    for j in (0 .. imageObject.Info.ArrayLayers) {
-      for i in (0 .. imageObject.Info.MipLevels) {
-        level := aspect.Layers[j].Levels[i]
-        elementAndTexelBlockSize := getElementAndTexelBlockSize(imageObject.Info.Format)
-        depthElementSize := getDepthElementSize(imageObject.Info.Format, false)
-        // Roundup the width and height in the number of blocks.
-        widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
-        heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-        elementSize := switch (aspectBit) {
-          case VK_IMAGE_ASPECT_COLOR_BIT:
-            elementAndTexelBlockSize.ElementSize
-          case VK_IMAGE_ASPECT_DEPTH_BIT:
-            depthElementSize
-          case VK_IMAGE_ASPECT_STENCIL_BIT:
-            // stencil element is always 1 byte wide
-            as!u32(1)
-        }
-        tightlyPackedSize := widthInBlocks * heightInBlocks * level.Depth * elementSize
+    for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
+      aspect := imageObject.Aspects[aspectBit]
+      for j in (0 .. imageObject.Info.ArrayLayers) {
+        for i in (0 .. imageObject.Info.MipLevels) {
+          level := aspect.Layers[j].Levels[i]
+          elementAndTexelBlockSize := getElementAndTexelBlockSize(imageObject.Info.Format)
+          depthElementSize := getDepthElementSize(imageObject.Info.Format, false)
+          // Roundup the width and height in the number of blocks.
+          widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+          heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+          elementSize := switch (aspectBit) {
+            case VK_IMAGE_ASPECT_COLOR_BIT:
+              elementAndTexelBlockSize.ElementSize
+            case VK_IMAGE_ASPECT_DEPTH_BIT:
+              depthElementSize
+            case VK_IMAGE_ASPECT_STENCIL_BIT:
+              // stencil element is always 1 byte wide
+              as!u32(1)
+          }
+          tightlyPackedSize := widthInBlocks * heightInBlocks * level.Depth * elementSize
 
-        // If the image has LINEAR tiling and the image level has layout
-        // PREINITIALIZED and size larger than our calculated tightly packed
-        // size, link the data back to the bound device memory. Otherwise
-        // creates its own shadow memory pool.
-        // TODO: If the image as a whole requires more memory than we
-        // calculated, we should link the data back to the bound device memory
-        // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
-        // come up with a 'linear layout' in GAPID.
-        if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
-            (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
-            (level.LinearLayout != null) &&
-            (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
-          loffset := as!u64(memoryOffset + level.LinearLayout.offset)
-          lsize := as!u64(level.LinearLayout.size)
-          level.Data = imageObject.BoundMemory.Data[loffset:loffset + lsize]
-        } else {
-          level.Data = make!u8(tightlyPackedSize)
+          // If the image has LINEAR tiling and the image level has layout
+          // PREINITIALIZED and size larger than our calculated tightly packed
+          // size, link the data back to the bound device memory. Otherwise
+          // creates its own shadow memory pool.
+          // TODO: If the image as a whole requires more memory than we
+          // calculated, we should link the data back to the bound device memory
+          // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
+          // come up with a 'linear layout' in GAPID.
+          if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
+              (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
+              (level.LinearLayout != null) &&
+              (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
+            loffset := as!u64(memoryOffset + level.LinearLayout.offset)
+            lsize := as!u64(level.LinearLayout.size)
+            level.Data = imageObject.BoundMemory.Data[loffset:loffset + lsize]
+          } else {
+            level.Data = make!u8(tightlyPackedSize)
+          }
         }
       }
     }
-  }
 
-  if (Images[image].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
-    vkErrorExpectNVDedicatedlyAllocatedHandle("VkImage", as!u64(image))
-  }
-  if (Images[image].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
-    vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
+    if (Images[image].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
+      vkErrorExpectNVDedicatedlyAllocatedHandle("VkImage", as!u64(image))
+    }
+    if (Images[image].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
+      vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
+    }
   }
   return ?
 }
@@ -403,8 +405,10 @@ cmd VkResult vkBindImageMemory(
   ref!ImageObject                   Image
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   // Do not track dependency for the following back-references.
-  map!(VkDescriptorSet, map!(u32, map!(u32, u32))) DescriptorUsers
-  map!(VkFramebuffer, map!(u32, u32)) FramebufferUsers
+  @hidden @untrackedMap @untracked
+  map!(VkDescriptorSet, map!(u32, map!(u32, bool))) DescriptorUsers
+  @hidden @untrackedMap @untracked
+  map!(VkFramebuffer, map!(u32, bool)) FramebufferUsers
 }
 
 @threadSafety("system")
@@ -417,25 +421,36 @@ cmd VkResult vkCreateImageView(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageViewCreateInfo") }
   image_view_create_info := pCreateInfo[0]
+  // handle pNext
+  if image_view_create_info.pNext != null {
+    numPNext := numberOfPNext(image_view_create_info.pNext)
+    next := MutableVoidPtr(as!void*(image_view_create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkImageViewCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   handle := ?
-  if !(image_view_create_info.image in Images) { vkErrorInvalidImage(image_view_create_info.image) }
-  imageViewObject := new!ImageViewObject(Device: device,
-    VulkanHandle:           handle,
-    Image:                  Images[image_view_create_info.image],
-    Type:                   image_view_create_info.viewType,
-    Format:                 image_view_create_info.format,
-    Components:             image_view_create_info.components,
-    SubresourceRange:       image_view_create_info.subresourceRange
-  )
-  if ((0xFFFFFFFF - as!u32(imageViewObject.Image.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
-    vkErrorInvalidImageAspect(imageViewObject.Image.VulkanHandle,
-    	as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
+  if !(image_view_create_info.image in Images) { vkErrorInvalidImage(image_view_create_info.image) } else {
+    imageViewObject := new!ImageViewObject(Device: device,
+      VulkanHandle:           handle,
+      Image:                  Images[image_view_create_info.image],
+      Type:                   image_view_create_info.viewType,
+      Format:                 image_view_create_info.format,
+      Components:             image_view_create_info.components,
+      SubresourceRange:       image_view_create_info.subresourceRange
+    )
+    if ((0xFFFFFFFF - as!u32(imageViewObject.Image.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
+      vkErrorInvalidImageAspect(imageViewObject.Image.VulkanHandle,
+        as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
+    }
+    if pView == null { vkErrorNullPointer("VkImageView") }
+    pView[0] = handle
+    ImageViews[handle] = imageViewObject
   }
-  if pView == null { vkErrorNullPointer("VkImageView") }
-  pView[0] = handle
-  ImageViews[handle] = imageViewObject
-
   return ?
 }
 
@@ -455,25 +470,36 @@ cmd void vkDestroyImageView(
       if vkDesSet in DescriptorSets {
         desSetObj := DescriptorSets[vkDesSet]
         for _, binding, indices in bindingAndIndices {
-          switch desSetObj.Bindings[binding].BindingType {
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-              for _, _, index in indices {
-                desSetObj.Bindings[binding].ImageBinding[index].ImageView = as!VkImageView(0)
+          if binding in desSetObj.Bindings {
+            switch desSetObj.Bindings[binding].BindingType {
+              case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                  VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+                _ = indices
+                for _, index, _ in indices {
+                  if index in desSetObj.Bindings[binding].ImageBinding {
+                    if desSetObj.Bindings[binding].ImageBinding[index].ImageView == imageView {
+                      desSetObj.Bindings[binding].ImageBinding[index].ImageView = as!VkImageView(0)
+                    }
+                  }
+                }
               }
+              default: {
+                // do nothing
+              }
+            }
           }
         }
       }
     }
 
-    // Releae the binding with framebuffers
+    // Release the binding with framebuffers
     for _, vkFmBuf, attachmentIndices in viewObj.FramebufferUsers {
       if vkFmBuf in Framebuffers {
         fmBufObj := Framebuffers[vkFmBuf]
         if fmBufObj != null {
-          for _, _, index in attachmentIndices {
+          for _, index, _ in attachmentIndices {
             if index in fmBufObj.ImageAttachments {
               v := fmBufObj.ImageAttachments[index]
               if (v != null) && (v == viewObj) {
@@ -513,7 +539,8 @@ cmd void vkDestroyImageView(
   @unsued VkBool32                  UnnormalizedCoordinates
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   // Do not track dependency for the following back-references.
-  map!(VkDescriptorSet, map!(u32, map!(u32, u32))) DescriptorUsers
+  @hidden @untrackedMap @untracked
+  map!(VkDescriptorSet, map!(u32, map!(u32, bool))) DescriptorUsers
 }
 
 @threadSafety("system")
@@ -526,6 +553,17 @@ cmd VkResult vkCreateSampler(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSamplerCreateInfo") }
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkSamplerCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   sampler := new!SamplerObject(
     Device:                   device,
     MagFilter:                create_info.magFilter,
@@ -566,11 +604,19 @@ cmd void vkDestroySampler(
         if vkDesSet in DescriptorSets {
           desSetObj := DescriptorSets[vkDesSet]
           for _, binding, indices in bindingAndIndices {
-            switch desSetObj.Bindings[binding].BindingType {
-              case VK_DESCRIPTOR_TYPE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-              for _, _, index in indices {
-                desSetObj.Bindings[binding].ImageBinding[index].Sampler = as!VkSampler(0)
+            if binding in desSetObj.Bindings {
+              switch desSetObj.Bindings[binding].BindingType {
+                case VK_DESCRIPTOR_TYPE_SAMPLER,
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+                  for _, index, _ in indices {
+                    if desSetObj.Bindings[binding].ImageBinding[index].Sampler == sampler {
+                      desSetObj.Bindings[binding].ImageBinding[index].Sampler = as!VkSampler(0)
+                    }
+                  }
+                }
+                default: {
+                  // do nothing
+                }
               }
             }
           }
@@ -607,48 +653,14 @@ sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
   levelCount := imageSubresourceLevelCount(image, rng)
   for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
     if aspectBit in image.Aspects {
-      for _, i, layer in image.Aspects[aspectBit].Layers {
+      layers := image.Aspects[aspectBit].Layers
+      for _, i, layer in  layers {
         if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
           for _, k, level in layer.Levels {
             if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
               level.LastBoundQueue = queue
             }
           }
-        }
-      }
-    }
-  }
-}
-
-@spy_disabled
-sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  layerCount := imageSubresourceLayerCount(image, rng)
-  levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
-    for _, i, layer in image.Aspects[aspectBit].Layers {
-      if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
-        for _, k, level in layer.Levels {
-          if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
-            read(level.Data)
-          }
-        }
-      }
-    }
-  }
-}
-
-@spy_disabled
-sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  layerCount := imageSubresourceLayerCount(image, rng)
-  levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
-    if aspectBit in image.Aspects {
-      aspect := image.Aspects[aspectBit]
-      for layerIndex in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
-        layer := aspect.Layers[layerIndex]
-        for mipLevel in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
-          level := layer.Levels[mipLevel]
-          write(level.Data)
         }
       }
     }
@@ -690,11 +702,13 @@ sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng,
   levelCount := imageSubresourceLevelCount(img, rng)
   for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
     if (aspectBit in img.Aspects) {
+      aspects := img.Aspects[aspectBit]
       for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
-        if (layer in img.Aspects[aspectBit].Layers) {
+        if (layer in aspects.Layers) {
+          ll := aspects.Layers[layer]
           for level in (rng.baseMipLevel .. rng.baseMipLevel + levelCount) {
-            if (level in img.Aspects[aspectBit].Layers[layer].Levels) {
-              imgLevel := img.Aspects[aspectBit].Layers[layer].Levels[level]
+            if (level in ll.Levels) {
+              imgLevel := ll.Levels[level]
               imgLevel.Layout = newLayout
               imgLevel.LastBoundQueue = LastBoundQueue
             }

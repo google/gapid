@@ -155,6 +155,18 @@ cmd VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pImageFormatInfo == null { vkErrorNullPointer("const VkPhysicalDeviceImageFormatInfo2KHR") }
   if pImageFormatProperties == null { vkErrorNullPointer("VkImageFormatProperties2KHR") }
+  info := pImageFormatInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkPhysicalDeviceImageFormatInfo2KHR
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   pImageFormatProperties[0] = ?
   // TODO: handle pNext
   return ?
@@ -215,6 +227,19 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
     VkSparseImageFormatProperties2KHR*               pProperties) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   if pPropertyCount == null { vkErrorNullPointer("uint32_t") }
+  info := pFormatInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkPhysicalDeviceSparseImageFormatInfo2KHR
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   _ = pPropertyCount[0]
 
   if pProperties == null {

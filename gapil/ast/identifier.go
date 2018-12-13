@@ -44,6 +44,7 @@ const (
 	KeywordDefault   = "default"
 	KeywordDefine    = "define"
 	KeywordDelete    = "delete"
+	KeywordClear     = "clear"
 	KeywordElse      = "else"
 	KeywordEnum      = "enum"
 	KeywordExtern    = "extern"

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
@@ -222,6 +223,7 @@ func (t Textureʳ) SetResourceData(
 	data *api.ResourceData,
 	resources api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	return fmt.Errorf("SetResourceData is not supported for Texture")
@@ -313,6 +315,7 @@ func (s Shaderʳ) SetResourceData(
 	data *api.ResourceData,
 	resourceIDs api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	cmdIdx := at.Indices[0]
@@ -347,6 +350,23 @@ func (s Shaderʳ) SetResourceData(
 		if a, ok := c.Commands[i].(*GlShaderSource); ok {
 			edits(uint64(i), a.Replace(ctx, c, data))
 			return nil
+		}
+	}
+
+	// Reached the beginning of the trace, attempt to modify the shader in the initial state.
+	if state, ok := mutate(API{}).(*State); ok {
+		for _, c := range state.EGLContexts().All() {
+			if id.ID(c.ID()) == resource.Context.GetID().ID() {
+				if shader, ok := c.Objects().Shaders().Lookup(s.ID()); ok {
+					src := data.GetShader().Source
+					shader.SetSource(src)
+					if e := shader.CompileExtra(); !e.IsNil() {
+						e.SetSource(src)
+					}
+					return nil
+				}
+				break
+			}
 		}
 	}
 	return fmt.Errorf("No command to set data in")
@@ -612,6 +632,7 @@ func (p Programʳ) SetResourceData(
 	data *api.ResourceData,
 	resources api.ResourceMap,
 	edits api.ReplaceCallback,
+	mutate api.MutateInitialState,
 	r *path.ResolveConfig) error {
 
 	return fmt.Errorf("SetResourceData is not supported for Program")

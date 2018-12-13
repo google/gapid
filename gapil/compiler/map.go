@@ -106,10 +106,11 @@ func (c *C) defineMapTypes() {
 
 			name := fmt.Sprintf("%v_%v", api.Name(), t.Name())
 			mi.MapMethods = MapMethods{
-				Contains: c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
-				Index:    c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
-				Remove:   c.M.Function(c.T.Void, name+"_remove", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
-				Clear:    c.M.Function(c.T.Void, name+"_clear", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
+				Contains:  c.M.Function(c.T.Bool, name+"_contains", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+				Index:     c.M.Function(valPtrTy, name+"_index", c.T.Pointer(mi.Type), mi.Key, c.T.Bool).LinkPrivate().Inline(),
+				Remove:    c.M.Function(c.T.Void, name+"_remove", c.T.Pointer(mi.Type), mi.Key).LinkPrivate().Inline(),
+				Clear:     c.M.Function(c.T.Void, name+"_clear", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
+				ClearKeep: c.M.Function(c.T.Void, name+"_clear_keep", c.T.Pointer(mi.Type)).LinkPrivate().Inline(),
 			}
 
 			// Use the mangled name of the map to determine whether the map has
@@ -123,10 +124,11 @@ func (c *C) defineMapTypes() {
 				impl = &copy
 				impls[mangled] = impl
 				impl.MapMethods = MapMethods{
-					Contains: c.Method(true, mi.Type, c.T.Bool, "contains", mi.Key).LinkOnceODR(),
-					Index:    c.Method(false, mi.Type, valPtrTy, "index", mi.Key, c.T.Bool).LinkOnceODR(),
-					Remove:   c.Method(false, mi.Type, c.T.Void, "remove", mi.Key).LinkOnceODR(),
-					Clear:    c.Method(false, mi.Type, c.T.Void, "clear").LinkOnceODR(),
+					Contains:  c.Method(true, mi.Type, c.T.Bool, "contains", mi.Key).LinkOnceODR(),
+					Index:     c.Method(false, mi.Type, valPtrTy, "index", mi.Key, c.T.Bool).LinkOnceODR(),
+					Remove:    c.Method(false, mi.Type, c.T.Void, "remove", mi.Key).LinkOnceODR(),
+					Clear:     c.Method(false, mi.Type, c.T.Void, "clear").LinkOnceODR(),
+					ClearKeep: c.Method(false, mi.Type, c.T.Void, "clear_keep").LinkOnceODR(),
 				}
 				c.T.mapImpls = append(c.T.mapImpls, mapImpl{t.KeyType, t.ValueType, impl})
 			}
@@ -136,6 +138,7 @@ func (c *C) defineMapTypes() {
 			c.Delegate(mi.Index, impl.Index)
 			c.Delegate(mi.Remove, impl.Remove)
 			c.Delegate(mi.Clear, impl.Clear)
+			c.Delegate(mi.ClearKeep, impl.ClearKeep)
 
 			c.T.Maps[t] = mi
 		}
@@ -455,6 +458,30 @@ func (c *C) buildMap(keyTy, valTy semantic.Type, mi *MapInfo) {
 		c.Free(s, elements)
 		m.Index(0, MapCount).Store(s.Scalar(uint64(0)))
 		m.Index(0, MapCapacity).Store(s.Scalar(uint64(0)))
+	})
+
+	c.Build(mi.ClearKeep, func(s *S) {
+		m := s.Parameter(0).SetName("map")
+		s.Arena = m.Index(0, MapArena).Load().SetName("arena")
+
+		capacity := m.Index(0, MapCapacity).Load()
+		elements := m.Index(0, MapElements).Load()
+		if c.isRefCounted(keyTy) || c.isRefCounted(valTy) {
+			s.ForN(capacity, func(s *S, it *codegen.Value) *codegen.Value {
+				valid := elements.Index(it, "used").Load()
+				s.If(c.equal(s, valid, s.Scalar(mapElementFull)), func(s *S) {
+					if c.isRefCounted(keyTy) {
+						c.release(s, elements.Index(it, "k").Load(), keyTy)
+					}
+					if c.isRefCounted(valTy) {
+						c.release(s, elements.Index(it, "v").Load(), valTy)
+					}
+				})
+				elements.Index(it, "used").Store(s.Scalar(mapElementEmpty))
+				return nil
+			})
+		}
+		m.Index(0, MapCount).Store(s.Scalar(uint64(0)))
 	})
 }
 

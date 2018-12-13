@@ -130,6 +130,8 @@ func (c *Connection) encode(w binary.Writer, v reflect.Value) error {
 			w.Float32(float32(v.Float()))
 		case reflect.Float64:
 			w.Float64(v.Float())
+		case reflect.Bool:
+			w.Bool(v.Bool())
 		case reflect.Struct:
 			for i, count := 0, v.NumField(); i < count; i++ {
 				c.encode(w, v.Field(i))

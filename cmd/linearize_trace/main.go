@@ -68,11 +68,20 @@ func run(ctx context.Context) error {
 
 	log.I(ctx, "Generated %v initial commands", len(initialCmds))
 
-	if *nCommands == -1 {
-		capt.Commands = append(initialCmds, capt.Commands...)
+	if *nCommands < 0 {
+		if *nCommands == -1 {
+			capt.Commands = append(initialCmds, capt.Commands...)
+		} else {
+			return log.Errf(ctx, nil, "Invalid number of commands requested: %d", *nCommands)
+		}
 	} else {
-		capt.Commands = append(initialCmds, capt.Commands[0:*nCommands]...)
+		if *nCommands <= len(capt.Commands) {
+			capt.Commands = append(initialCmds, capt.Commands[0:*nCommands]...)
+		} else {
+			return log.Errf(ctx, nil, "Number of commands requested: %d exceeds the total number of commands in the original trace: %d", len(capt.Commands), *nCommands)
+		}
 	}
+
 	capt.InitialState = nil
 
 	f, err := os.OpenFile(*output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)

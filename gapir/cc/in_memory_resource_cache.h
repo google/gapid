@@ -105,7 +105,7 @@ class InMemoryResourceCache : public ResourceCache {
   // A map of cached resource identifiers to offsets on mBuffer.
   std::unordered_map<ResourceId, size_t> mCache;
 
-  // The base address and the size of the memory used for caching.
+  // The top address and the size of the memory used for caching.
   // This memory region is owned by the memory manager class, not by the cache
   // itself.
   uint8_t* mBuffer;
@@ -164,11 +164,8 @@ inline void InMemoryResourceCache::free(Block* block) {
 inline void InMemoryResourceCache::foreach_block(
     Block* first, const std::function<void(Block*)>& cb) {
   std::vector<Block*> blocks;
-  blocks.push_back(first);
+  cb(first);
   for (Block* block = first->next; block != first; block = block->next) {
-    blocks.push_back(block);
-  }
-  for (Block* block : blocks) {
     cb(block);
   }
 }

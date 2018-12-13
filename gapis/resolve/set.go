@@ -65,46 +65,12 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 		return nil, fmt.Errorf("Reports are immutable")
 
 	case *path.MultiResourceData:
-		meta, err := ResourceMeta(ctx, p.IDs, p.After, r)
-		if err != nil {
-			return nil, err
-		}
-
-		cmdIdx := p.After.Indices[0]
-		// If we change resource data, subcommands do not affect this, so change
-		// the main comand.
-
-		oldCmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
-		if err != nil {
-			return nil, err
-		}
-
-		cmds := make([]api.Cmd, len(oldCmds))
-		copy(cmds, oldCmds)
-
-		replaceCommands := func(where uint64, with interface{}) {
-			cmds[where] = with.(api.Cmd)
-		}
-
 		data, ok := val.(*api.MultiResourceData)
 		if !ok {
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
-		for i, resource := range meta.Resources {
-			if err := resource.SetResourceData(
-				ctx,
-				p.After,
-				data.Resources[i],
-				meta.IDMap,
-				replaceCommands,
-				r); err != nil {
-				return nil, err
-			}
-		}
-
-		// Store the new command list
-		c, err := changeCommands(ctx, a, p.After.Capture, cmds)
+		c, err := changeResources(ctx, a, p.After, p.IDs, data.Resources, r)
 		if err != nil {
 			return nil, err
 		}
@@ -118,48 +84,12 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 		}, nil
 
 	case *path.ResourceData:
-		meta, err := ResourceMeta(ctx, []*path.ID{p.ID}, p.After, r)
-		if err != nil {
-			return nil, err
-		}
-
-		cmdIdx := p.After.Indices[0]
-		// If we change resource data, subcommands do not affect this, so change
-		// the main command.
-
-		oldCmds, err := NCmds(ctx, p.After.Capture, cmdIdx+1)
-		if err != nil {
-			return nil, err
-		}
-
-		cmds := make([]api.Cmd, len(oldCmds))
-		copy(cmds, oldCmds)
-
-		replaceCommands := func(where uint64, with interface{}) {
-			cmds[where] = with.(api.Cmd)
-		}
-
 		data, ok := val.(*api.ResourceData)
 		if !ok {
 			return nil, fmt.Errorf("Expected ResourceData, got %T", val)
 		}
 
-		if len(meta.Resources) != 1 {
-			return nil, fmt.Errorf("Expected a single resource, got %d", len(meta.Resources))
-		}
-
-		if err := meta.Resources[0].SetResourceData(
-			ctx,
-			p.After,
-			data,
-			meta.IDMap,
-			replaceCommands,
-			r); err != nil {
-			return nil, err
-		}
-
-		// Store the new command list
-		c, err := changeCommands(ctx, a, p.After.Capture, cmds)
+		c, err := changeResources(ctx, a, p.After, []*path.ID{p.ID}, []*api.ResourceData{data}, r)
 		if err != nil {
 			return nil, err
 		}
@@ -359,6 +289,64 @@ func change(ctx context.Context, a arena.Arena, p path.Node, val interface{}, r 
 		}
 	}
 	return nil, fmt.Errorf("Unknown path type %T", p)
+}
+
+func changeResources(ctx context.Context, a arena.Arena, after *path.Command, ids []*path.ID, data []*api.ResourceData, r *path.ResolveConfig) (*path.Capture, error) {
+	meta, err := ResourceMeta(ctx, ids, after, r)
+	if err != nil {
+		return nil, err
+	}
+	if len(meta.Resources) != len(ids) {
+		return nil, fmt.Errorf("Expected %d resource(s), got %d", len(ids), len(meta.Resources))
+	}
+
+	cmdIdx := after.Indices[0]
+	// If we change resource data, subcommands do not affect this, so change
+	// the main command.
+
+	oldCmds, err := NCmds(ctx, after.Capture, cmdIdx+1)
+	if err != nil {
+		return nil, err
+	}
+
+	cmds := make([]api.Cmd, len(oldCmds))
+	copy(cmds, oldCmds)
+
+	replaceCommands := func(where uint64, with interface{}) {
+		cmds[where] = with.(api.Cmd)
+	}
+
+	oldCapt, err := capture.ResolveFromPath(ctx, after.Capture)
+	if err != nil {
+		return nil, err
+	}
+	var initialState *capture.InitialState
+	mutateInitialState := func(API api.API) api.State {
+		if initialState == nil {
+			if initialState = oldCapt.CloneInitialState(a); initialState == nil {
+				return nil
+			}
+		}
+		return initialState.APIs[API]
+	}
+
+	for i, resource := range meta.Resources {
+		if err := resource.SetResourceData(
+			ctx,
+			after,
+			data[i],
+			meta.IDMap,
+			replaceCommands,
+			mutateInitialState,
+			r); err != nil {
+			return nil, err
+		}
+	}
+
+	if initialState == nil {
+		initialState = oldCapt.InitialState
+	}
+	return capture.New(ctx, a, oldCapt.Name+"*", oldCapt.Header, initialState, cmds)
 }
 
 func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {

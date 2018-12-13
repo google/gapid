@@ -247,13 +247,34 @@ cmd VkResult vkCreateGraphicsPipelines(
     )
     obj.Device = device
     create_info := infos[i]
-    // TODO: create_info.pNext
+    // handle pNext
+    if create_info.pNext != null {
+      numPNext := numberOfPNext(create_info.pNext)
+      next := MutableVoidPtr(as!void*(create_info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkGraphicsPipelineCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
     obj.Flags = create_info.flags
 
     pipeline_shader_stage_create_infos :=
     create_info.pStages[0:create_info.stageCount]
     for j in (0 .. create_info.stageCount) {
       stage_create_info := pipeline_shader_stage_create_infos[j]
+      // handle shader stage pNext
+      if stage_create_info.pNext != null {
+        numPNext := numberOfPNext(stage_create_info.pNext)
+        next := MutableVoidPtr(as!void*(stage_create_info.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineShaderStageCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
       if !(stage_create_info.module in ShaderModules) { vkErrorInvalidShaderModule(stage_create_info.module) }
       stage_data := StageData(
         Stage:       stage_create_info.stage,
@@ -276,10 +297,20 @@ cmd VkResult vkCreateGraphicsPipelines(
     vertex_input_state := create_info.pVertexInputState[0]
     vertex_descriptions := vertex_input_state.pVertexBindingDescriptions[0:
     vertex_input_state.vertexBindingDescriptionCount]
-    // TODO: vertex_input_state.pNext
+    // handle vertex input state pNext
+    if vertex_input_state.pNext != null {
+      numPNext := numberOfPNext(vertex_input_state.pNext)
+      next := MutableVoidPtr(as!void*(vertex_input_state.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkPipelineVertexInputStateCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
     for b in (0 .. vertex_input_state.vertexBindingDescriptionCount) {
       vertex_binding := vertex_descriptions[b]
-      obj.VertexInputState.BindingDescriptions[vertex_binding.binding] = vertex_binding
+      obj.VertexInputState.BindingDescriptions[b] = vertex_binding
     }
 
     vertex_attributes := vertex_input_state.pVertexAttributeDescriptions[0:
@@ -293,18 +324,51 @@ cmd VkResult vkCreateGraphicsPipelines(
     input_assembly_state := create_info.pInputAssemblyState[0]
     obj.InputAssemblyState.Topology = input_assembly_state.topology
     obj.InputAssemblyState.PrimitiveRestartEnable = input_assembly_state.primitiveRestartEnable
+    // handle input assembly state pNext
+    if input_assembly_state.pNext != null {
+      numPNext := numberOfPNext(input_assembly_state.pNext)
+      next := MutableVoidPtr(as!void*(input_assembly_state.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkPipelineInputAssemblyStateCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
 
-    // TODO: pInputAssemblypNext
     if (create_info.pTessellationState != null) {
       tessellation_state := create_info.pTessellationState[0]
+      // handle tessellation state pNext
+      if tessellation_state.pNext != null {
+        numPNext := numberOfPNext(tessellation_state.pNext)
+        next := MutableVoidPtr(as!void*(tessellation_state.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineTessellationStateCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
+
       obj.TessellationState = new!TessellationStateData(
         PatchControlPoints: tessellation_state.patchControlPoints
       )
     }
     if (create_info.pViewportState != null) {
 
-      // TODO: pViewportpNext
       pipeline_viewport_state_create_info := create_info.pViewportState[0]
+      // viewport state pNext
+      if pipeline_viewport_state_create_info.pNext != null {
+        numPNext := numberOfPNext(pipeline_viewport_state_create_info.pNext)
+        next := MutableVoidPtr(as!void*(pipeline_viewport_state_create_info.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineViewportStateCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
+
 
       viewport_data := new!ViewportData()
 
@@ -347,7 +411,17 @@ cmd VkResult vkCreateGraphicsPipelines(
     obj.RasterizationState.DepthBiasSlopeFactor = rasterization_state.depthBiasSlopeFactor
     obj.RasterizationState.LineWidth = rasterization_state.lineWidth
 
-    // TODO _.pNext
+    // handle rasterization state pNext
+    if rasterization_state.pNext != null {
+      numPNext := numberOfPNext(rasterization_state.pNext)
+      next := MutableVoidPtr(as!void*(rasterization_state.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkPipelineRasterizationStateCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
 
     if (create_info.pMultisampleState != null) {
       multisample_state := create_info.pMultisampleState[0]
@@ -358,7 +432,17 @@ cmd VkResult vkCreateGraphicsPipelines(
         AlphaToCoverageEnable:  multisample_state.alphaToCoverageEnable,
         AlphaToOneEnable:       multisample_state.alphaToOneEnable
       )
-      // TODO: multisample_state.pNext
+      // handle multisample state pNext
+      if multisample_state.pNext != null {
+        numPNext := numberOfPNext(multisample_state.pNext)
+        next := MutableVoidPtr(as!void*(multisample_state.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineMultisampleStateCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
       if (multisample_state.pSampleMask != null) {
         num_samples := as!u32(multisample_state.rasterizationSamples)
         sizeof_samplemask := (num_samples + 31) / 32
@@ -371,8 +455,18 @@ cmd VkResult vkCreateGraphicsPipelines(
     }
 
     if (create_info.pDepthStencilState != null) {
-      // TODO: pDepthStencilpNext
       depth_stencil_state := create_info.pDepthStencilState[0]
+      // handle depth stencil state pNext
+      if depth_stencil_state.pNext != null {
+        numPNext := numberOfPNext(depth_stencil_state.pNext)
+        next := MutableVoidPtr(as!void*(depth_stencil_state.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineDepthStencilStateCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
       obj.DepthState = new!DepthData(
         DepthTestEnable:        depth_stencil_state.depthTestEnable,
         DepthWriteEnable:       depth_stencil_state.depthWriteEnable,
@@ -391,7 +485,17 @@ cmd VkResult vkCreateGraphicsPipelines(
         LogicOp:         color_blend_state.logicOp,
         BlendConstants:  color_blend_state.blendConstants
       )
-      // TODO: color_blend_state.pNext
+      // handle color blend state pNext
+      if color_blend_state.pNext != null {
+        numPNext := numberOfPNext(color_blend_state.pNext)
+        next := MutableVoidPtr(as!void*(color_blend_state.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineColorBlendStateCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
       attachments := color_blend_state.pAttachments[0:
       color_blend_state.attachmentCount]
       for k in (0 .. color_blend_state.attachmentCount) {
@@ -402,7 +506,17 @@ cmd VkResult vkCreateGraphicsPipelines(
     if (create_info.pDynamicState != null) {
       dynamic_state_info := create_info.pDynamicState[0]
       dynamic_data := new!DynamicData()
-      // TODO: dynamic_state_info.pNext
+      // handle dynamic_state_info.pNext
+      if dynamic_state_info.pNext != null {
+        numPNext := numberOfPNext(dynamic_state_info.pNext)
+        next := MutableVoidPtr(as!void*(dynamic_state_info.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkPipelineDynamicStateCreateInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
       states := dynamic_state_info.pDynamicStates[0:
       dynamic_state_info.dynamicStateCount]
       for k in (0 .. dynamic_state_info.dynamicStateCount) {
@@ -414,11 +528,8 @@ cmd VkResult vkCreateGraphicsPipelines(
     obj.RenderPass = RenderPasses[create_info.renderPass]
     obj.Subpass = create_info.subpass
     if ((as!u32(create_info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
-      if (create_info.basePipelineIndex != -1) {
-        obj.BasePipelineIndex = create_info.basePipelineIndex
-      } else {
-        obj.BasePipeline = create_info.basePipelineHandle
-      }
+      obj.BasePipelineIndex = create_info.basePipelineIndex
+      obj.BasePipeline = create_info.basePipelineHandle
     } else {
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
@@ -464,6 +575,17 @@ cmd VkResult vkCreateComputePipelines(
   infos := pCreateInfos[0:createInfoCount]
   for i in (0 .. createInfoCount) {
     info := infos[i]
+    // handle pNext
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkComputePipelineCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
     obj := new!ComputePipelineObject(
       PipelineCache:   PipelineCaches[pipelineCache],
       Device:          device,
@@ -471,6 +593,18 @@ cmd VkResult vkCreateComputePipelines(
       PipelineLayout:  PipelineLayouts[info.layout]
     )
     stage_create_info := infos[i].stage
+    // handle pNext
+    if stage_create_info.pNext != null {
+      numPNext := numberOfPNext(stage_create_info.pNext)
+      next := MutableVoidPtr(as!void*(stage_create_info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkPipelineShaderStageCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     stage_data := StageData(
       Stage:       stage_create_info.stage,
       Module:      ShaderModules[stage_create_info.module],
@@ -488,11 +622,8 @@ cmd VkResult vkCreateComputePipelines(
     }
     obj.Stage = stage_data
     if ((as!u32(info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
-      if (info.basePipelineIndex != -1) {
-        obj.BasePipelineIndex = info.basePipelineIndex
-      } else {
-        obj.BasePipeline = info.basePipelineHandle
-      }
+      obj.BasePipelineIndex = info.basePipelineIndex
+      obj.BasePipeline = info.basePipelineHandle
     } else {
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
@@ -551,6 +682,17 @@ cmd VkResult vkCreateShaderModule(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkShaderModuleCreateInfo") }
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkShaderModuleCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   num_words := as!u64(create_info.codeSize) / 4
   object := new!ShaderModuleObject(device, clone(create_info.pCode[0:num_words]))
@@ -593,6 +735,18 @@ cmd VkResult vkCreatePipelineCache(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkPipelineCacheCreateInfo") }
   create_info := pCreateInfo[0]
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkPipelineCacheCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   read(as!u8*(create_info.pInitialData)[0:create_info.initialDataSize])
   handle := ?
   if pPipelineCache == null { vkErrorNullPointer("VkPipelineCache") }
@@ -687,6 +841,11 @@ cmd void vkCmdBindPipeline(
 }
 
 sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
+      viewportCount := len(args.Viewports)
+      dyn := lastDynamicPipelineState()
+      for i in (0 .. viewportCount) {
+        dyn.Viewports[args.FirstViewport + as!u32(i)] = args.Viewports[as!u32(i)]
+      }
 }
 
 @threadSafety("app")
@@ -720,6 +879,11 @@ cmd void vkCmdSetViewport(
 }
 
 sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
+      scissorCount := len(args.Scissors)
+      dyn := lastDynamicPipelineState()
+      for i in (0 .. scissorCount) {
+        dyn.Scissors[args.FirstScissor + as!u32(i)] = args.Scissors[as!u32(i)]
+      }
 }
 
 @threadSafety("app")
@@ -752,6 +916,7 @@ cmd void vkCmdSetScissor(
 }
 
 sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
+  lastDynamicPipelineState().LineWidth = args.LineWidth
 }
 
 @threadSafety("app")
@@ -777,6 +942,10 @@ cmd void vkCmdSetLineWidth(
 }
 
 sub void dovkCmdSetDepthBias(ref!vkCmdSetDepthBiasArgs args) {
+  dyn := lastDynamicPipelineState()
+  dyn.DepthBiasConstantFactor = args.DepthBiasConstantFactor
+  dyn.DepthBiasClamp = args.DepthBiasClamp
+  dyn.DepthBiasSlopeFactor = args.DepthBiasSlopeFactor
 }
 
 @threadSafety("app")
@@ -809,6 +978,11 @@ cmd void vkCmdSetDepthBias(
 }
 
 sub void dovkCmdSetBlendConstants(ref!vkCmdSetBlendConstantsArgs args) {
+  dyn := lastDynamicPipelineState()
+  dyn.BlendConstants[0] = args.R
+  dyn.BlendConstants[1] = args.G
+  dyn.BlendConstants[2] = args.B
+  dyn.BlendConstants[3] = args.A
 }
 
 @threadSafety("app")
@@ -837,6 +1011,9 @@ cmd void vkCmdSetBlendConstants(
 }
 
 sub void dovkCmdSetDepthBounds(ref!vkCmdSetDepthBoundsArgs args) {
+  dyn := lastDynamicPipelineState()
+  dyn.MinDepthBounds = args.MinDepthBounds
+  dyn.MaxDepthBounds = args.MaxDepthBounds
 }
 
 @threadSafety("app")
@@ -864,6 +1041,13 @@ cmd void vkCmdSetDepthBounds(
 }
 
 sub void dovkCmdSetStencilCompareMask(ref!vkCmdSetStencilCompareMaskArgs args) {
+  dyn := lastDynamicPipelineState()
+  if (as!u32(args.FaceMask) & as!u32(VK_STENCIL_FACE_FRONT_BIT)) != as!u32(0) {
+    dyn.StencilFront.compareMask = args.CompareMask
+  }
+  if (as!u32(args.FaceMask) & as!u32(VK_STENCIL_FACE_BACK_BIT)) != as!u32(0) {
+    dyn.StencilBack.compareMask = args.CompareMask
+  }
 }
 
 @threadSafety("app")
@@ -892,6 +1076,13 @@ cmd void vkCmdSetStencilCompareMask(
 }
 
 sub void dovkCmdSetStencilWriteMask(ref!vkCmdSetStencilWriteMaskArgs args) {
+  dyn := lastDynamicPipelineState()
+  if (as!u32(args.FaceMask) & as!u32(VK_STENCIL_FACE_FRONT_BIT)) != as!u32(0) {
+    dyn.StencilFront.writeMask = args.WriteMask
+  }
+  if (as!u32(args.FaceMask) & as!u32(VK_STENCIL_FACE_BACK_BIT)) != as!u32(0) {
+    dyn.StencilBack.writeMask = args.WriteMask
+  }
 }
 
 @threadSafety("app")
@@ -920,6 +1111,13 @@ cmd void vkCmdSetStencilWriteMask(
 }
 
 sub void dovkCmdSetStencilReference(ref!vkCmdSetStencilReferenceArgs args) {
+  dyn := lastDynamicPipelineState()
+  if (as!u32(args.FaceMask) & as!u32(VK_STENCIL_FACE_FRONT_BIT)) != as!u32(0) {
+    dyn.StencilFront.reference = args.Reference
+  }
+  if (as!u32(args.FaceMask) & as!u32(VK_STENCIL_FACE_BACK_BIT)) != as!u32(0) {
+    dyn.StencilBack.reference = args.Reference
+  }
 }
 
 @threadSafety("app")
@@ -942,3 +1140,18 @@ cmd void vkCmdSetStencilReference(
   AddCommand(commandBuffer, cmd_vkCmdSetStencilReference, mapPos)
 }
 
+@internal class MutablePipelineLayout {
+  ref!PipelineLayoutObject Val
+}
+
+sub ref!PipelineLayoutObject boundPipelineLayout(VkPipelineBindPoint bindPoint) {
+  layout := MutablePipelineLayout(null)
+  switch bindPoint {
+    case VK_PIPELINE_BIND_POINT_COMPUTE:
+      layout.Val = lastComputeInfo().ComputePipeline.PipelineLayout
+    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      layout.Val = lastDrawInfo().GraphicsPipeline.Layout
+    default: {}
+  }
+  return layout.Val
+}

@@ -14,6 +14,7 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_context")
 load(":gapil.bzl", "ApicTemplate")
+load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def api_search_path(inputs):
     roots = {}
@@ -74,7 +75,6 @@ apic_binary = rule(
             default = Label("//cmd/apic:apic"),
         ),
     },
-    fragments = ["cpp"],
 )
 
 def _apic_compile_impl(ctx):
@@ -84,7 +84,8 @@ def _apic_compile_impl(ctx):
         apilist += api.includes.to_list()
     generated = depset()
 
-    target = ctx.fragments.cpp.cpu
+    cc_toolchain = find_cpp_toolchain(ctx)
+    target = cc_toolchain.cpu
     outputs = [ctx.new_file(ctx.label.name + ".o")]
     generated += outputs
 
@@ -162,8 +163,10 @@ apic_compile = rule(
             allow_files = True,
             default = Label("//cmd/apic:apic"),
         ),
+        "_cc_toolchain": attr.label(
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
+        ),
     },
-    fragments = ["cpp"],
 )
 
 def _apic_template_impl(ctx):

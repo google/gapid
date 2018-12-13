@@ -56,7 +56,10 @@ LINK_OPTS = select({
     ":android": [],
     #    ":windows": [],
     #    ":windows_msvc": [],
-    "//conditions:default": ["-lpthread", "-lm"],
+    "//conditions:default": [
+        "-lpthread",
+        "-lm",
+    ],
 })
 
 load(
@@ -196,8 +199,17 @@ objc_library(
 # name => (include path, imports)
 WELL_KNOWN_PROTO_MAP = {
     "any": ("google/protobuf/any.proto", []),
-    "api": ("google/protobuf/api.proto", ["source_context", "type"]),
-    "compiler_plugin": ("google/protobuf/compiler/plugin.proto", ["descriptor"]),
+    "api": (
+        "google/protobuf/api.proto",
+        [
+            "source_context",
+            "type",
+        ],
+    ),
+    "compiler_plugin": (
+        "google/protobuf/compiler/plugin.proto",
+        ["descriptor"],
+    ),
     "descriptor": ("google/protobuf/descriptor.proto", []),
     "duration": ("google/protobuf/duration.proto", []),
     "empty": ("google/protobuf/empty.proto", []),
@@ -205,7 +217,13 @@ WELL_KNOWN_PROTO_MAP = {
     "source_context": ("google/protobuf/source_context.proto", []),
     "struct": ("google/protobuf/struct.proto", []),
     "timestamp": ("google/protobuf/timestamp.proto", []),
-    "type": ("google/protobuf/type.proto", ["any", "source_context"]),
+    "type": (
+        "google/protobuf/type.proto",
+        [
+            "any",
+            "source_context",
+        ],
+    ),
     "wrappers": ("google/protobuf/wrappers.proto", []),
 }
 
@@ -252,8 +270,8 @@ internal_copied_filegroup(
 [proto_library(
     name = proto[0] + "_proto",
     srcs = [proto[1][0]],
-    deps = [dep + "_proto" for dep in proto[1][1]],
     visibility = ["//visibility:public"],
+    deps = [dep + "_proto" for dep in proto[1][1]],
 ) for proto in WELL_KNOWN_PROTO_MAP.items()]
 
 ################################################################################
@@ -493,11 +511,14 @@ cc_binary(
 cc_test(
     name = "win32_test",
     srcs = ["src/google/protobuf/stubs/io_win32_unittest.cc"],
+    tags = [
+        "manual",
+        "windows",
+    ],
     deps = [
         ":protobuf_lite",
         "//external:gtest_main",
     ],
-    tags = ["manual", "windows"],
 )
 
 cc_test(
@@ -612,7 +633,10 @@ java_library(
     ]) + [
         ":gen_well_known_protos_java",
     ],
-    javacopts = ["-source 6", "-target 6"],
+    javacopts = [
+        "-source 6",
+        "-target 6",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -621,7 +645,10 @@ java_library(
     srcs = glob([
         "java/util/src/main/java/com/google/protobuf/util/*.java",
     ]),
-    javacopts = ["-source 6", "-target 6"],
+    javacopts = [
+        "-source 6",
+        "-target 6",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "protobuf_java",

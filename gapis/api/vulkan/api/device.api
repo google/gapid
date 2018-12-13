@@ -129,10 +129,34 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   if data == null { vkErrorNullPointer("VkDeviceCreateInfo") }
   info := data[0]
 
-  // TODO: pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDeviceCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+
   queueCreateInfos := info.pQueueCreateInfos[0:info.queueCreateInfoCount]
   for i in (0 .. info.queueCreateInfoCount) {
     queue_info := queueCreateInfos[i]
+
+    // handle pNext 
+    if queue_info.pNext != null {
+      numPNext := numberOfPNext(queue_info.pNext)
+      next := MutableVoidPtr(as!void*(queue_info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkDeviceQueueCreateInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     queue_priorities := queue_info.pQueuePriorities[0:queue_info.queueCount]
     for j in (0 .. queue_info.queueCount) {
       object.Queues[len(object.Queues)] =

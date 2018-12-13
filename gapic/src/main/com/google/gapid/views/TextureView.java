@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
+import static com.google.gapid.widgets.Widgets.filling;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
@@ -76,6 +77,7 @@ import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -121,7 +123,10 @@ public class TextureView extends Composite
     textureTable = createTableViewer(tableAndOption, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
     imageProvider = new ImageProvider(models, textureTable, widgets.loading);
     initTextureSelector(textureTable, imageProvider);
-    Button showDeleted = createCheckbox(tableAndOption, "Show deleted textures", true);
+    Composite options =
+        createComposite(tableAndOption, filling(new RowLayout(SWT.HORIZONTAL), true, false));
+    Button showDeleted = createCheckbox(options, "Show deleted textures", true);
+    Button allContexts = createCheckbox(options, "Include all contexts", true);
 
     Composite imageAndToolbar = createComposite(splitter, new GridLayout(2, false));
     ToolBar toolBar = new ToolBar(imageAndToolbar, SWT.VERTICAL | SWT.FLAT);
@@ -130,7 +135,6 @@ public class TextureView extends Composite
     splitter.setWeights(models.settings.texturesSplitterWeights);
     addListener(SWT.Dispose, e -> models.settings.texturesSplitterWeights = splitter.getWeights());
 
-    showDeleted.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     textureTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     toolBar.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, false, true));
     imagePanel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -162,6 +166,20 @@ public class TextureView extends Composite
         textureTable.removeFilter(filterDeleted);
       } else {
         textureTable.addFilter(filterDeleted);
+      }
+    });
+
+    ViewerFilter filterContexts = new ViewerFilter() {
+      @Override
+      public boolean select(Viewer viewer, Object parentElement, Object element) {
+        return models.contexts.getSelectedContext().matches(((Data)element).info.getContext());
+      }
+    };
+    allContexts.addListener(SWT.Selection, e -> {
+      if (allContexts.getSelection()) {
+        textureTable.removeFilter(filterContexts);
+      } else {
+        textureTable.addFilter(filterContexts);
       }
     });
   }
