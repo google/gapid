@@ -133,9 +133,9 @@ class VkFormatProperties {
 }
 
 class VkExtent3D {
-  u32 Width
-  u32 Height
-  u32 Depth
+  u32 width
+  u32 height
+  u32 depth
 }
 
 class VkImageFormatProperties {
@@ -655,8 +655,8 @@ class VkOffset2D {
 }
 
 class VkExtent2D {
-  u32 Width
-  u32 Height
+  u32 width
+  u32 height
 }
 
 class VkRect2D {
@@ -1057,8 +1057,8 @@ class VkClearDepthStencilValue {
 // @union
 /// Union allowing specification of color, depth, and stencil color values. Actual value selected is based on attachment being cleared.
 class VkClearValue {
-  VkClearColorValue color
-//    VkClearDepthStencilValue                    depthStencil
+  VkClearColorValue        color
+  // VkClearDepthStencilValue depthStencil
 }
 
 class VkClearAttachment {

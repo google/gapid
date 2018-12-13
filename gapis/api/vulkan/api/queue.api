@@ -218,22 +218,22 @@ sub void addSparseImageMemoryBinding(VkImage image, VkSparseImageMemoryBind bind
   blockSize := img.MemoryRequirements.alignment
   if (aspect in img.SparseMemoryRequirements) {
     gran := img.SparseMemoryRequirements[aspect].formatProperties.imageGranularity
-    mipWidth := getMipSize(img.Info.Extent.Width, level)
-    mipHeight := getMipSize(img.Info.Extent.Height, level)
-    widthInBlocks := roundUpTo(mipWidth, gran.Width)
-    heightInBlocks := roundUpTo(mipHeight, gran.Height)
+    mipWidth := getMipSize(img.Info.Extent.width, level)
+    mipHeight := getMipSize(img.Info.Extent.height, level)
+    widthInBlocks := roundUpTo(mipWidth, gran.width)
+    heightInBlocks := roundUpTo(mipHeight, gran.height)
 
-    xe := roundUpTo(bind.extent.Width, gran.Width)
-    ye := roundUpTo(bind.extent.Height, gran.Height)
-    ze := roundUpTo(bind.extent.Depth, gran.Depth)
+    xe := roundUpTo(bind.extent.width, gran.width)
+    ye := roundUpTo(bind.extent.height, gran.height)
+    ze := roundUpTo(bind.extent.depth, gran.depth)
     for zi in (0 .. ze) {
       for yi in (0 .. ye) {
         for xi in (0 .. xe) {
           loc := xi + yi * widthInBlocks + zi * widthInBlocks * heightInBlocks
           offset := VkOffset3D(
-            x:  bind.offset.x + as!s32(xi * gran.Width),
-            y:  bind.offset.y + as!s32(yi * gran.Height),
-            z:  bind.offset.z + as!s32(zi * gran.Depth),
+            x:  bind.offset.x + as!s32(xi * gran.width),
+            y:  bind.offset.y + as!s32(yi * gran.height),
+            z:  bind.offset.z + as!s32(zi * gran.depth),
           )
           memOffset := as!u64(bind.memoryOffset + as!VkDeviceSize(loc) * blockSize)
           levelInfo.Blocks[memOffset] = new!SparseBoundImageBlockInfo(
@@ -278,7 +278,7 @@ cmd VkResult vkQueueBindSparse(
       bindsToQueue := new!SparseMemoryBinds()
       memoryBinds := bufferBindInfo.pBinds[0:bufferBindInfo.bindCount]
       for k in (0 .. bufferBindInfo.bindCount) {
-        if (memoryBinds[k].memory != as!VkDeviceMemory(0)) && 
+        if (memoryBinds[k].memory != as!VkDeviceMemory(0)) &&
             !(memoryBinds[k].memory in DeviceMemories) {
           vkErrorInvalidDeviceMemory(memoryBinds[k].memory)
         }
@@ -296,7 +296,7 @@ cmd VkResult vkQueueBindSparse(
       for k in (0 .. opaqueBindInfo.bindCount) {
         if (memoryBinds[k].memory != as!VkDeviceMemory(0)) &&
             !(memoryBinds[k].memory in DeviceMemories) {
-          vkErrorInvalidDeviceMemory(memoryBinds[k].memory) 
+          vkErrorInvalidDeviceMemory(memoryBinds[k].memory)
         }
         bindsToQueue.SparseMemoryBinds[k] = memoryBinds[k]
       }
@@ -311,8 +311,8 @@ cmd VkResult vkQueueBindSparse(
       imageMemoryBinds := imageBindInfo.pBinds[0:imageBindInfo.bindCount]
       for k in (0 .. imageBindInfo.bindCount) {
         if (imageMemoryBinds[k].memory != as!VkDeviceMemory(0)) &&
-              !(imageMemoryBinds[k].memory in DeviceMemories) { 
-            vkErrorInvalidDeviceMemory(imageMemoryBinds[k].memory) 
+              !(imageMemoryBinds[k].memory in DeviceMemories) {
+            vkErrorInvalidDeviceMemory(imageMemoryBinds[k].memory)
         }
         bindsToQueue.SparseImageMemoryBinds[k] = imageMemoryBinds[k]
       }

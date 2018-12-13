@@ -117,7 +117,7 @@ cmd VkResult vkCreateSwapchainKHR(
     Info:                   ImageInfo(
       ImageType:    VK_IMAGE_TYPE_2D,
       Format:       create_info.imageFormat,
-      Extent:       VkExtent3D(create_info.imageExtent.Width, create_info.imageExtent.Height, 1),
+      Extent:       VkExtent3D(create_info.imageExtent.width, create_info.imageExtent.height, 1),
       MipLevels:    1,
       ArrayLayers:  create_info.imageArrayLayers,
       Samples:      VK_SAMPLE_COUNT_1_BIT,
@@ -199,8 +199,8 @@ cmd VkResult vkGetSwapchainImagesKHR(
           ImageAspect:        as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
         )
         object.IsSwapchainImage = true
-        width := swapchainObject.Info.Extent.Width
-        height := swapchainObject.Info.Extent.Height
+        width := swapchainObject.Info.Extent.width
+        height := swapchainObject.Info.Extent.height
         format := swapchainObject.Info.Format
         layer := new!ImageLayer()
         level := new!ImageLevel(Width: width,Height:  height,Depth:  1,Layout:  VK_IMAGE_LAYOUT_UNDEFINED)

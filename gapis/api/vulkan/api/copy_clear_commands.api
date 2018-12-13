@@ -266,9 +266,9 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
       dstYStartInBlocks := as!u64(as!u64(region.dstOffset.y) / dstBlockHeight)
       dstZStart := as!u64(region.dstOffset.z)
 
-      extentXInBlocks := roundUpTo(region.extent.Width, as!u32(srcBlockWidth))
-      extentYInBlocks := roundUpTo(region.extent.Height, as!u32(srcBlockHeight))
-      extentZ := region.extent.Depth
+      extentXInBlocks := roundUpTo(region.extent.width, as!u32(srcBlockWidth))
+      extentYInBlocks := roundUpTo(region.extent.height, as!u32(srcBlockHeight))
+      extentZ := region.extent.depth
 
       for l in (0 .. region.srcSubresource.layerCount) {
         srcImageLevel := srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
@@ -489,11 +489,11 @@ class RowLengthAndImageHeight {
 
 sub RowLengthAndImageHeight getRowLengthAndImageHeight(VkBufferImageCopy region) {
   rowLength := switch region.bufferRowLength == 0 {
-    case true:  region.imageExtent.Width
+    case true:  region.imageExtent.width
     case false: region.bufferRowLength
   }
   imageHeight := switch region.bufferImageHeight == 0 {
-    case true:  region.imageExtent.Height
+    case true:  region.imageExtent.height
     case false: region.bufferImageHeight
   }
   return RowLengthAndImageHeight(rowLength, imageHeight)
@@ -533,11 +533,11 @@ sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
       }
       layerSize := rowLength * imageHeight * elementSize
       zStart := as!u64(region.imageOffset.z)
-      zEnd := zStart + as!u64(region.imageExtent.Depth)
+      zEnd := zStart + as!u64(region.imageExtent.depth)
       yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
-      yEnd := yStart + as!u64(region.imageExtent.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
+      yEnd := yStart + as!u64(region.imageExtent.height / elementAndTexelBlockSize.TexelBlockSize.Height)
       xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
-      xEnd := xStart + as!u64(region.imageExtent.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
+      xEnd := xStart + as!u64(region.imageExtent.width / elementAndTexelBlockSize.TexelBlockSize.Width)
       // When multiple layers are specified in the buffer image copy region,
       // Vulkan assumes the data of all the layers are placed continuously in
       // the source buffer memory.
