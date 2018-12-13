@@ -290,22 +290,55 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
       extentYInBlocks := roundUpTo(region.extent.Height, as!u32(srcBlockHeight))
       extentZ := region.extent.Depth
 
-      for l in (0 .. region.srcSubresource.layerCount) {
-        srcImageLevel := srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
-        dstImageLevel := dstImageObject.Aspects[aspectBit].Layers[dstBaseLayer + l].Levels[dstMipLevel]
+      srcImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.Width, srcMipLevel), as!u32(srcBlockWidth)))
+      srcImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.Height, srcMipLevel), as!u32(srcBlockHeight)))
+      dstImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.Width, dstMipLevel), as!u32(dstBlockWidth)))
+      dstImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.Height, dstMipLevel), as!u32(dstBlockHeight)))
 
-        srcImageLevelWidthInBlocks := as!u64(roundUpTo(srcImageLevel.Width, as!u32(srcBlockWidth)))
-        srcImageLevelHeightInBlocks := as!u64(roundUpTo(srcImageLevel.Height, as!u32(srcBlockHeight)))
-        dstImageLevelWidthInBlocks := as!u64(roundUpTo(dstImageLevel.Width, as!u32(dstBlockWidth)))
-        dstImageLevelHeightInBlocks := as!u64(roundUpTo(dstImageLevel.Height, as!u32(dstBlockHeight)))
+      minLayerCount := min!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
+      maxLayerCount := max!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
+
+      layerCount := switch srcImageObject.Info.ImageType == dstImageObject.Info.ImageType {
+        case true:
+          // Same type of image
+          minLayerCount
+        case false:
+          // Must be a 3D image <-> 2D array image copy, use the 2D array image's layer count
+          maxLayerCount
+      }
+
+      for l in (0 .. layerCount) {
+        srcImageLevel := switch srcImageObject.Info.ImageType {
+          case VK_IMAGE_TYPE_3D:
+            srcImageObject.Aspects[aspectBit].Layers[as!u32(0)].Levels[srcMipLevel]
+          default:
+            srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
+        }
+
+        dstImageLevel := switch dstImageObject.Info.ImageType {
+          case VK_IMAGE_TYPE_3D:
+            dstImageObject.Aspects[aspectBit].Layers[as!u32(0)].Levels[dstMipLevel]
+          default:
+            dstImageObject.Aspects[aspectBit].Layers[dstBaseLayer + l].Levels[dstMipLevel]
+        }
 
         for z in (0 .. extentZ) {
           for y in (0 .. extentYInBlocks) {
             copySize := as!u64(extentXInBlocks) * srcElementSize
             dstY := dstYStartInBlocks + as!u64(y)
-            dstZ := dstZStart + as!u64(z)
+            dstZ := switch dstImageObject.Info.ImageType {
+              case VK_IMAGE_TYPE_3D:
+                dstZStart + as!u64(z)
+              default:
+                dstZStart
+            }
             srcY := srcYStartInBlocks + as!u64(y)
-            srcZ := srcZStart + as!u64(z)
+            srcZ := switch srcImageObject.Info.ImageType {
+              case VK_IMAGE_TYPE_3D:
+                srcZStart + as!u64(z)
+              default:
+                srcZStart
+            }
             dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
             srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
             copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
