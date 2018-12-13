@@ -523,6 +523,14 @@ func (e externs) vkErrInvalidImageSubresource(img VkImage, subresourceType strin
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrImageMemoryNotBound(img VkImage) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("Image %v has no bound memory", uint64(img))
+	e.onVkError(issue)
+}
+
 func (e externs) vkErrInvalidDescriptorBindingType(set VkDescriptorSet, binding uint32, layoutType, updateType VkDescriptorType) {
 	var issue replay.Issue
 	issue.Command = e.cmdID

@@ -435,16 +435,28 @@ cmd VkResult vkCreateImageView(
 
   handle := ?
   if !(image_view_create_info.image in Images) { vkErrorInvalidImage(image_view_create_info.image) } else {
+    imageObject := Images[image_view_create_info.image]
     imageViewObject := new!ImageViewObject(Device: device,
       VulkanHandle:           handle,
-      Image:                  Images[image_view_create_info.image],
+      Image:                  imageObject,
       Type:                   image_view_create_info.viewType,
       Format:                 image_view_create_info.format,
       Components:             image_view_create_info.components,
       SubresourceRange:       image_view_create_info.subresourceRange
     )
-    if ((0xFFFFFFFF - as!u32(imageViewObject.Image.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
-      vkErrorInvalidImageAspect(imageViewObject.Image.VulkanHandle,
+
+    // Validate the following Valid Usage for VkImageViewCreateInfo: 
+    //  > If image is non-sparse then it must be bound completely and
+    //  > contiguously to a single VkDeviceMemory object.
+    // Checking this here also ensures correct dependencies from
+    // vkCreateImageView to vkBindImageMemory.
+    hasSparseBit := (as!u32(imageObject.Info.Flags) & as!u32(VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0
+    if (!hasSparseBit) && (imageObject.BoundMemory == null) {
+      vkErrorImageMemoryNotBound(image_view_create_info.image)
+    }
+
+    if ((0xFFFFFFFF - as!u32(imageObject.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
+      vkErrorInvalidImageAspect(imageObject.VulkanHandle,
         as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
     }
     if pView == null { vkErrorNullPointer("VkImageView") }
