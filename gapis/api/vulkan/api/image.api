@@ -77,6 +77,7 @@
   // If ever layer/level is set to the same queue, then set it here instead.
   // This can save expensive looping through Aspects/Layers/Levels
   @untracked @unused ref!QueueObject           LastBoundQueue
+  map!(VkImageView, ref!ImageViewObject)       Views
 }
 
 @internal class ImageAspect {
@@ -292,12 +293,8 @@ cmd void vkDestroyImage(
         delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
       }
       delete(Images, image)
-      for _ , _ , v in ImageViews {
-        if v.Image != null {
-          if v.Image.VulkanHandle == image {
-            v.Image = null
-          }
-        }
+      for _ , _ , v in imageObject.Views {
+        v.Image = null
       }
       for i in (0 .. LastPresentInfo.PresentImageCount) {
         if (LastPresentInfo.PresentImages[i] != null) {
@@ -462,6 +459,7 @@ cmd VkResult vkCreateImageView(
     if pView == null { vkErrorNullPointer("VkImageView") }
     pView[0] = handle
     ImageViews[handle] = imageViewObject
+    imageObject.Views[handle] = imageViewObject
   }
   return ?
 }
@@ -524,6 +522,7 @@ cmd void vkDestroyImageView(
     }
 
     delete(ImageViews, imageView)
+    delete(viewObj.Image.Views, imageView)
   }
 }
 
