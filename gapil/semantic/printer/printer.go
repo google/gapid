@@ -424,6 +424,10 @@ func (p *Printer) statement(n interface{}) bool {
 		p.WriteString(", ")
 		p.WriteExpression(n.Key)
 		p.WriteRune(')')
+	case *semantic.MapClear:
+		p.WriteString("clear(")
+		p.WriteExpression(n.Map)
+		p.WriteRune(')')
 	case *semantic.SliceAssign:
 		p.WriteExpression(n.To)
 		p.WriteString(n.Operator)

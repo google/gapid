@@ -43,7 +43,9 @@ import (
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/messages"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
@@ -235,14 +237,27 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	if _, err = capture.ResolveFromPath(ctx, p); err != nil {
 		return nil, err
 	}
+
 	// Pre-resolve the dependency graph.
-	crash.Go(func() {
+	if !config.DisableDeadCodeElimination {
 		newCtx := keys.Clone(context.Background(), ctx)
-		_, err = dependencygraph.GetFootprint(newCtx, p)
-		if err != nil {
-			log.E(newCtx, "Error resolve dependency graph: %v", err)
-		}
-	})
+		crash.Go(func() {
+			cctx := status.PutTask(newCtx, nil)
+			var err error
+			if config.NewDeadCodeElimination {
+				cfg := dependencygraph2.DependencyGraphConfig{
+					MergeSubCmdNodes:       true,
+					IncludeInitialCommands: true,
+				}
+				_, err = dependencygraph2.GetDependencyGraph(cctx, p, cfg)
+			} else {
+				_, err = dependencygraph.GetFootprint(cctx, p)
+			}
+			if err != nil {
+				log.E(newCtx, "Error resolve dependency graph: %v", err)
+			}
+		})
+	}
 	return p, nil
 }
 
@@ -534,6 +549,7 @@ func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
 		NoBuffer:              opts.NoBuffer,
 		HideUnknownExtensions: opts.HideUnknownExtensions,
 		StoreTimestamps:       opts.RecordTraceTimes,
+		PipeName:              opts.PipeName,
 	}
 }
 
@@ -676,4 +692,11 @@ func (s *server) UpdateSettings(ctx context.Context, settings *service.UpdateSet
 		adb.ADB = file.Abs(settings.Adb)
 	}
 	return nil
+}
+
+func (s *server) GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error) {
+	ctx = status.Start(ctx, "RPC GetTimestamps")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "GetTimestamps")
+	return replay.GetTimestamps(ctx, c, d)
 }

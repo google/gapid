@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -48,20 +47,11 @@ func (verb *memoryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, GapirFlags{}, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
+		return err
 	}
-
-	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
-	}
-
-	capture, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Errf(ctx, err, "LoadCapture(%v)", filepath)
-	}
+	defer client.Close()
 
 	if len(verb.At) == 0 {
 		boxedCapture, err := client.Get(ctx, capture.Path(), nil)

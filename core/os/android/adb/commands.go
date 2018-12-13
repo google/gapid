@@ -92,9 +92,9 @@ func (b *binding) InstallAPK(ctx context.Context, path string, reinstall bool, g
 	if reinstall {
 		args = append(args, "-r")
 	}
-	if grantPermissions && b.Instance().GetConfiguration().GetOS().GetMajorVersion() >= 6 {
-		// Starting with Android 6.0, permissions are not granted by default
-		// during installation. Before Android 6.0, the flag did not exist.
+	if grantPermissions && b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 23 {
+		// Starting with API 23, permissions are not granted by default
+		// during installation. Before API 23, the flag did not exist.
 		args = append(args, "-g")
 	}
 	args = append(args, path)
@@ -145,8 +145,8 @@ func (b *binding) StartActivityForDebug(ctx context.Context, a android.ActivityA
 // StartService launches the specified service action.
 func (b *binding) StartService(ctx context.Context, a android.ServiceAction, extras ...android.ActionExtra) error {
 	cmd := "start-foreground-service"
-	if b.Instance().GetConfiguration().GetOS().GetMajorVersion() < 8 {
-		// "am start-foreground-service" was added in 8.0 (API 26).
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() < 26 {
+		// "am start-foreground-service" was added in API 26.
 		cmd = "startservice"
 	}
 	args := append([]string{

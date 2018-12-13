@@ -52,6 +52,10 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
+	if count := uint64(len(allCmds)); cmdIdx >= count {
+		return nil, errPathOOB(cmdIdx, "Index", 0, count-1, r.Path)
+	}
+
 	sd, err := SyncData(ctx, r.Path.After.Capture)
 	if err != nil {
 		return nil, err

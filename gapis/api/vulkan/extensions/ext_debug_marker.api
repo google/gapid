@@ -128,7 +128,6 @@ sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer             commandBuffer,
     const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerBeginEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
@@ -138,11 +137,15 @@ cmd void vkCmdDebugMarkerBeginEXT(
   args.Color[2] = markerInfo.color[2]
   args.Color[3] = markerInfo.color[3]
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerBeginEXT))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerBeginEXT[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerBeginEXT))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerBeginEXT[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdDebugMarkerBeginEXT, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDebugMarkerBeginEXT, mapPos)
+  }
 }
 
 @internal class
@@ -160,14 +163,17 @@ sub void dovkCmdDebugMarkerEndEXT(ref!vkCmdDebugMarkerEndEXTArgs draw) {
 @no_replay
 cmd void vkCmdDebugMarkerEndEXT(
     VkCommandBuffer commandBuffer) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdDebugMarkerEndEXTArgs()
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdDebugMarkerEndEXTArgs()
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerEndEXT))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerEndEXT[mapPos] =
-  args
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerEndEXT))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerEndEXT[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdDebugMarkerEndEXT, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDebugMarkerEndEXT, mapPos)
+  }
 }
 
 @internal class
@@ -188,7 +194,6 @@ sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer             commandBuffer,
     const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerInsertEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
@@ -198,11 +203,15 @@ cmd void vkCmdDebugMarkerInsertEXT(
   args.Color[2] = markerInfo.color[2]
   args.Color[3] = markerInfo.color[3]
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerInsertEXT))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerInsertEXT[mapPos] =
-  args
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerInsertEXT))
+    CommandBuffers[commandBuffer].BufferCommands.vkCmdDebugMarkerInsertEXT[mapPos] =
+    args
 
-  AddCommand(commandBuffer, cmd_vkCmdDebugMarkerInsertEXT, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDebugMarkerInsertEXT, mapPos)
+  }
 }
 
 sub ref!VulkanDebugMarkerInfo updateDebugMarkerObjectName(

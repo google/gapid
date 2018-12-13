@@ -96,89 +96,132 @@ cmd VkResult vkQueueSubmit(
   enterSubcontext()
   for i in (0 .. submitCount) {
     info := submitInfo[i]
+
+    // handle pNext
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkQueueSubmitInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
+    wait_semaphores_all_valid := MutableBool(true)
     for j in (0 .. info.waitSemaphoreCount) {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Unsignal,    wait_semaphores[j],    null, as!VkFence(0))
+      if wait_semaphores_all_valid.b {
+        ws := wait_semaphores[j]
+        if !(ws in Semaphores) {
+          wait_semaphores_all_valid.b = false
+          vkErrorInvalidSemaphore(ws)
+        } else {
+          LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+          = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+            Unsignal,    ws,    null, as!VkFence(0))
+        }
+      }
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
 
     command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
+    command_buffers_all_valid := MutableBool(true)
 
     enterSubcontext()
     for j in (0 .. info.commandBufferCount) {
-      enterSubcontext()
-      cb := CommandBuffers[command_buffers[j]]
-      if cb.Recording != COMPLETED {
-        vkErrorCommandBufferIncomplete(command_buffers[j])
-      }
-      if (as!u32(cb.BeginInfo.Flags) & as!u32(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) != as!u32(0) {
-        cb.Recording = TO_BE_RESET
-      }
-      for k in (0 .. len(cb.CommandReferences)) {
-        ref := cb.CommandReferences[as!u32(k)]
-        LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-        = new!CommandReference(
-          ref.Buffer,
-          ref.CommandIndex,
-          ref.Type,
-          ref.MapIndex,
-          ref.SemaphoreUpdate,
-          ref.Semaphore,
-          ref.SparseBinds,
-          ref.SignalFence,
-        )
-        notifyPendingCommandAdded(queue)
-        if ref.Type == cmd_vkCmdExecuteCommands {
+      if command_buffers_all_valid.b {
+        if !(command_buffers[j] in CommandBuffers) {
+          command_buffers_all_valid.b = false
+          vkErrorInvalidCommandBuffer(command_buffers[j])
+        } else {
           enterSubcontext()
-          ec := cb.BufferCommands.vkCmdExecuteCommands[ref.MapIndex]
-          for l in (0 .. len(ec.CommandBuffers)) {
-            scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
-            if scb.Recording != COMPLETED {
-              vkErrorCommandBufferIncomplete(ec.CommandBuffers[as!u32(l)])
+          cb := CommandBuffers[command_buffers[j]]
+          if cb.Recording != COMPLETED {
+            vkErrorCommandBufferIncomplete(command_buffers[j])
+          }
+          if (as!u32(cb.BeginInfo.Flags) & as!u32(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) != as!u32(0) {
+            cb.Recording = TO_BE_RESET
+          }
+          numCmdRefs := len(cb.CommandReferences)
+          for k in (0 .. numCmdRefs) {
+            ref := cb.CommandReferences[as!u32(k)]
+            LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+            = new!CommandReference(
+              ref.Buffer,
+              ref.CommandIndex,
+              ref.Type,
+              ref.MapIndex,
+              ref.SemaphoreUpdate,
+              ref.Semaphore,
+              ref.SparseBinds,
+              ref.SignalFence,
+            )
+            notifyPendingCommandAdded(queue)
+            if ref.Type == cmd_vkCmdExecuteCommands {
+              enterSubcontext()
+              ec := cb.BufferCommands.vkCmdExecuteCommands[ref.MapIndex]
+              numCmdBufs := len(ec.CommandBuffers)
+              for l in (0 .. numCmdBufs) {
+                scb := CommandBuffers[ec.CommandBuffers[as!u32(l)]]
+                if scb.Recording != COMPLETED {
+                  vkErrorCommandBufferIncomplete(ec.CommandBuffers[as!u32(l)])
+                }
+                enterSubcontext()
+                numSubCmdRefs := len(scb.CommandReferences)
+                for c in (0 .. numSubCmdRefs) {
+                  sref := scb.CommandReferences[as!u32(c)]
+                  LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+                  = new!CommandReference(
+                    sref.Buffer,
+                    sref.CommandIndex,
+                    sref.Type,
+                    sref.MapIndex,
+                    sref.SemaphoreUpdate,
+                    sref.Semaphore,
+                    sref.SparseBinds,
+                    sref.SignalFence,
+                  )
+                  notifyPendingCommandAdded(queue)
+                }
+                leaveSubcontext()
+                nextSubcontext()
+              }
+              leaveSubcontext()
             }
-            enterSubcontext()
-            for c in (0 .. len(scb.CommandReferences)) {
-              sref := scb.CommandReferences[as!u32(c)]
-              LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-              = new!CommandReference(
-                sref.Buffer,
-                sref.CommandIndex,
-                sref.Type,
-                sref.MapIndex,
-                sref.SemaphoreUpdate,
-                sref.Semaphore,
-                sref.SparseBinds,
-                sref.SignalFence,
-              )
-              notifyPendingCommandAdded(queue)
-            }
-            leaveSubcontext()
-            nextSubcontext()
           }
           leaveSubcontext()
+          nextSubcontext()
         }
       }
-      leaveSubcontext()
-      nextSubcontext()
     }
     leaveSubcontext()
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
+    signal_semaphores_all_valid := MutableBool(true)
     for j in (0 .. info.signalSemaphoreCount) {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Signal,      signal_semaphores[j],  null, as!VkFence(0))
+      if signal_semaphores_all_valid.b {
+        ss := signal_semaphores[j]
+        if !(ss in Semaphores) {
+          signal_semaphores_all_valid.b = false
+          vkErrorInvalidSemaphore(ss)
+        } else {
+          LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+          = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+            Signal,      ss,  null, as!VkFence(0))
+        }
+      }
     }
     nextSubcontext()
   }
   leaveSubcontext()
   if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-      as!VkSemaphore(0), null, fence)
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
+        as!VkSemaphore(0), null, fence)
+    }
   }
 
   execPendingCommands(queue, true)
@@ -262,6 +305,18 @@ cmd VkResult vkQueueBindSparse(
   enterSubcontext()
   for i in (0 .. bindInfoCount) {
     info := infos[i]
+    // handle pNext
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkBindSparseInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
@@ -333,10 +388,11 @@ cmd VkResult vkQueueBindSparse(
   leaveSubcontext()
 
   if (fence != 0) { // 'fence' parameter, unrelated to 'fence' keyword below
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-    = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-      as!VkSemaphore(0), null, fence)
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
+      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
+        as!VkSemaphore(0), null, fence)
+    }
   }
 
   execPendingCommands(queue, true)

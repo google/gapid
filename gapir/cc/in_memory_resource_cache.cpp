@@ -156,14 +156,14 @@ bool InMemoryResourceCache::putCache(const Resource& resource,
 
   // Copy data.
   if (mHead->offset + resource.size <= mBufferSize) {
-    memcpy(mBuffer + mHead->offset, data, resource.size);
+    memcpy(mBuffer - mHead->offset - resource.size, data, resource.size);
   } else {
     // Wraps the end of the buffer
     const uint8_t* dst = reinterpret_cast<const uint8_t*>(data);
     size_t a = mBufferSize - mHead->offset;
     size_t b = resource.size - a;
-    memcpy(mBuffer + mHead->offset, dst, a);
-    memcpy(mBuffer, dst + a, b);
+    memcpy(mBuffer - mBufferSize, dst, a);
+    memcpy(mBuffer - b, dst + a, b);
   }
 
   // Move head on to the next block.
@@ -182,14 +182,14 @@ bool InMemoryResourceCache::loadCache(const Resource& resource, void* data) {
   // Cached resource found. Copy data.
   size_t offset = mCache.find(resource.id)->second;
   if (offset + resource.size <= mBufferSize) {
-    memcpy(data, mBuffer + offset, resource.size);
+    memcpy(data, mBuffer - offset - resource.size, resource.size);
   } else {
     // Wraps the end of the buffer
     uint8_t* dst = reinterpret_cast<uint8_t*>(data);
     size_t a = mBufferSize - offset;
     size_t b = resource.size - a;
-    memcpy(dst, mBuffer + offset, a);
-    memcpy(dst + a, mBuffer, b);
+    memcpy(dst, mBuffer - mBufferSize, a);
+    memcpy(dst + a, mBuffer - b, b);
   }
   return true;
 }

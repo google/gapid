@@ -49,12 +49,12 @@ public class FutureCache<K, V> {
   public ListenableFuture<V> get(K key) {
     // Look up the value in the cache using the executor.
     ListenableFuture<V> cacheLookUp = EXECUTOR.submit(() -> cache.getIfPresent(key));
-    return Futures.transformAsync(cacheLookUp, fromCache -> {
+    return MoreFutures.transformAsync(cacheLookUp, fromCache -> {
       if (fromCache != null) {
         return Futures.immediateFuture(fromCache);
       }
 
-      return Futures.transform(fetcher.apply(key), value -> {
+      return MoreFutures.transform(fetcher.apply(key), value -> {
         if (shouldCache.test(value)) {
           cache.put(key, value);
         }

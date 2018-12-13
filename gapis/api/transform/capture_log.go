@@ -28,6 +28,7 @@ type captureLog struct {
 	file   *os.File
 	header *capture.Header
 	cmds   []api.Cmd
+	ids    map[api.CmdID]api.CmdID
 }
 
 var (
@@ -46,12 +47,16 @@ func NewCaptureLog(ctx context.Context, sourceCapture *capture.Capture, path str
 		file:   f,
 		header: sourceCapture.Header,
 		cmds:   []api.Cmd{},
+		ids:    map[api.CmdID]api.CmdID{},
 	}
 }
 
 func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out Writer) {
 	// Don't write out the custom commands (e.g. replay.Custom)
 	if cmd.API() != nil {
+		if id.IsReal() {
+			t.ids[id] = api.CmdID(len(t.cmds))
+		}
 		t.cmds = append(t.cmds, cmd)
 	}
 	out.MutateAndWrite(ctx, id, cmd)
@@ -60,6 +65,20 @@ func (t *captureLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 func (t *captureLog) Flush(ctx context.Context, out Writer) {
 	a := arena.New()
 	defer a.Dispose()
+
+	for idx := range t.cmds {
+		cmd := t.cmds[idx].Clone(a)
+		t.cmds[idx] = cmd
+		if caller := cmd.Caller(); caller.IsReal() {
+			if id, ok := t.ids[caller]; ok {
+				cmd.SetCaller(id)
+			} else {
+				log.W(ctx, "Callee without caller %v: %v", caller, cmd)
+				cmd.SetCaller(api.CmdNoID)
+			}
+		}
+	}
+
 	capt, err := capture.New(ctx, a, "capturelog", t.header, nil, t.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)

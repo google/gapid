@@ -630,6 +630,11 @@ service Gapid {
   // GetProfile returns the pprof profile with the given name.
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
   }
+
+  // GetTimestamps returns the timestamps of the begin and end of execution of a
+  // command buffer.
+  rpc GetTimestamps(GetTimestampsRequest) returns (GetTimestampsResponse) {
+  }
 }
 
 message Error {
@@ -839,6 +844,8 @@ message ResourcesByType {
 message Resource {
   // The resource's unique identifier.
   path.ID ID = 1;
+  // The context that created this resource.
+  path.Context context = 8;
   // The resource identifier used for display.
   string handle = 2;
   // The resource label.
@@ -1045,6 +1052,8 @@ message TraceOptions {
   bool record_trace_times = 20;
   // Where should we save the capture file.
   string server_local_save_path = 21;
+  // Name of the pipe to connect/listen to.
+  string pipe_name = 22;
 }
 
 enum TraceEvent {
@@ -1110,4 +1119,38 @@ message DeviceAPITraceConfiguration {
   bool can_disable_pcs = 2;
   // Does this API support MEC.
   FeatureStatus mid_execution_capture_support = 3;
+}
+
+// GetTimestampsRequest is the request send to server to get the timestamps for
+// the commands in the capture.
+message GetTimestampsRequest {
+  path.Capture capture = 1;
+  path.Device device = 2;
+}
+
+// Timestamps describes the durations of commands execution, each of which
+// is specified in a TimestampsItem message.
+message Timestamps {
+  repeated TimestampsItem timestamps = 1;
+}
+
+// TimestampsItem represents one entry in a Timestamps report.
+// It describes the duratoin of execution time between the two commands
+// specified by "begin" and "end" fields.
+message TimestampsItem {
+  // The path of the command which begins the time measurement.
+  path.Command begin = 1;
+  // The path of the command which ends the time measurement.
+  path.Command end = 2;
+  // The duration in nanoseconds between the two commands specified.
+  uint64 time_in_nanoseconds = 3;
+}
+
+// GetTimestampsResponse is the response message server sends back which
+// contains the time duratoins for the commands when replay the trace.
+message GetTimestampsResponse {
+  oneof res {
+    Timestamps timestamps = 1;
+    Error error = 2;
+  }
 }

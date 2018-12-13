@@ -66,7 +66,17 @@ cmd VkResult vkCreateDescriptorSetLayout(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorSetLayoutCreateInfo") }
   info := pCreateInfo[0]
-  // TODO: info.pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDescriptorSetLayoutCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   count := info.bindingCount
   bindings := info.pBindings[0:count]
   descriptorSetLayout := new!DescriptorSetLayoutObject()
@@ -137,6 +147,17 @@ cmd VkResult vkCreateDescriptorPool(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorPoolCreateInfo") }
   info := pCreateInfo[0]
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDescriptorPoolCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   pool := new!DescriptorPoolObject(
     Device:   device,
     Flags:    info.flags,
@@ -146,7 +167,6 @@ cmd VkResult vkCreateDescriptorPool(
   for i in (0 .. info.poolSizeCount) {
     pool.Sizes[i] = sizes[i]
   }
-  // TODO: info.pNext
 
   handle := ?
   if pDescriptorPool == null { vkErrorNullPointer("VkDescriptorPool") }
@@ -219,13 +239,21 @@ cmd VkResult vkResetDescriptorPool(
 }
 
 @internal class DescriptorSetObject {
-  @unused VkDevice         Device
-  @unused VkDescriptorSet  VulkanHandle
-  @unused VkDescriptorPool DescriptorPool
+  @unused VkDevice                      Device
+  @unused VkDescriptorSet               VulkanHandle
+  @unused VkDescriptorPool              DescriptorPool
+
   // Map from a binding number to its bound array of buffers.
   map!(u32, ref!DescriptorBinding)      Bindings
-  ref!DescriptorSetLayoutObject     Layout
-  @unused ref!VulkanDebugMarkerInfo DebugInfo
+  ref!DescriptorSetLayoutObject         Layout
+  @unused ref!VulkanDebugMarkerInfo     DebugInfo
+
+  @untracked @untrackedMap @unused @hidden @nobox
+  map!(VkImage, ref!ImageCoverage)      LinkedImages
+  @untracked @untrackedMap @unused @hidden @nobox
+  map!(VkBuffer, bool)                  LinkedBuffers
+  @untracked @untrackedMap @unused @hidden @nobox
+  map!(VkCommandBuffer, bool)           CommandBufferUsers
 }
 
 @threadSafety("app")
@@ -237,7 +265,17 @@ cmd VkResult vkAllocateDescriptorSets(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pAllocateInfo == null { vkErrorNullPointer("VkDescriptorSetAllocateInfo") }
   info := pAllocateInfo[0]
-  // TODO: info.pNext
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for VkDescriptorSetAllocateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   count := info.descriptorSetCount
 
   layouts := info.pSetLayouts[0:count]
@@ -254,38 +292,6 @@ cmd VkResult vkAllocateDescriptorSets(
       pool := DescriptorPools[info.descriptorPool]
       pool.DescriptorSets[handle] = object
       object.Layout = DescriptorSetLayouts[layouts[i]]
-      for j in (0 .. object.Layout.MaximumBinding + 1) {
-        if j in object.Layout.Bindings {
-          binding := object.Layout.Bindings[j]
-          descriptorBinding := new!DescriptorBinding(
-            BindingType: binding.Type)
-          imageInfos := descriptorBinding.ImageBinding
-          bufferInfos := descriptorBinding.BufferBinding
-          bufferViews := descriptorBinding.BufferViewBindings
-          for k in (0 .. binding.Count) {
-            switch binding.Type {
-              case VK_DESCRIPTOR_TYPE_SAMPLER,
-                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                  VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-                imageInfos[k] = new!VkDescriptorImageInfo()
-              case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                  VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                bufferViews[k] = as!VkBufferView(0)
-              case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                bufferInfos[k] = new!VkDescriptorBufferInfo()
-            }
-          }
-          descriptorBinding.ImageBinding = imageInfos
-          descriptorBinding.BufferBinding = bufferInfos
-          descriptorBinding.BufferViewBindings = bufferViews
-          object.Bindings[j] = descriptorBinding
-        }
-      }
       DescriptorSets[handle] = object
     }
   }
@@ -530,15 +536,59 @@ cmd void vkUpdateDescriptorSets(
     u32                         descriptorCopyCount,
     const VkCopyDescriptorSet*  pDescriptorCopies) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
+  ws := pDescriptorWrites[0:descriptorWriteCount]
+  for i in (0 .. descriptorWriteCount) {
+    w := ws[i]
+    // handle VkWriteDescriptorSet pNext
+    if w.pNext != null {
+      numPNext := numberOfPNext(w.pNext)
+      next := MutableVoidPtr(as!void*(w.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkWriteDescriptorSet
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+
+  cs := pDescriptorCopies[0:descriptorCopyCount]
+  for i in (0 .. descriptorCopyCount) {
+    c := cs[i]
+    // handle VkCopyDescriptorSet pNext
+    if c.pNext != null {
+      numPNext := numberOfPNext(c.pNext)
+      next := MutableVoidPtr(as!void*(c.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // TODO: handle extensions for VkCopyDescriptorSet
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+
+  }
+
+  modifiedDescriptorSets := new!DescriptorSetSet()
 
   writes := RewriteWriteDescriptorSets(
     descriptorWriteCount,
     pDescriptorWrites)
   for _ , _ , w in writes {
+    modifiedDescriptorSets.val[w.DstSet] = true
     set := DescriptorSets[w.DstSet]
     binding := w.Binding
     arrayIndex := w.BindingArrayIndex
-    setBinding := set.Bindings[binding]
+    setBinding := switch set.Bindings[binding] == null {
+      case false:
+        set.Bindings[binding]
+      case true:
+        new!DescriptorBinding(BindingType: set.Layout.Bindings[binding].Type)
+    }
+    if set.Layout.Bindings[binding].Type != setBinding.BindingType {
+      vkErrInvalidDescriptorBindingType(set.VulkanHandle, binding, set.Layout.Bindings[binding].Type, setBinding.BindingType)
+    }
+
     switch w.Type {
       case VK_DESCRIPTOR_TYPE_SAMPLER,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -548,18 +598,17 @@ cmd void vkUpdateDescriptorSets(
             imageBinding := setBinding.ImageBinding
             imageBinding[arrayIndex] = w.ImageInfo
             setBinding.ImageBinding = imageBinding
+
             if w.ImageInfo.Sampler in Samplers {
               samObj := Samplers[w.ImageInfo.Sampler]
               if samObj != null {
-                samObj.DescriptorUsers[w.DstSet][binding][
-                  as!u32(len(samObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+                registerDescriptorUser!SamplerObject(samObj, w.DstSet, binding, arrayIndex)
               }
             }
             if w.ImageInfo.ImageView in ImageViews {
               viewObj := ImageViews[w.ImageInfo.ImageView]
               if viewObj != null {
-                viewObj.DescriptorUsers[w.DstSet][binding][
-                  as!u32(len(viewObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+                registerDescriptorUser!ImageViewObject(viewObj, w.DstSet, binding, arrayIndex)
               }
             }
           }
@@ -572,12 +621,11 @@ cmd void vkUpdateDescriptorSets(
             if w.BufferView in BufferViews {
               viewObj := BufferViews[w.BufferView]
               if viewObj != null {
-                viewObj.DescriptorUsers[w.DstSet][binding][
-                  as!u32(len(viewObj.DescriptorUsers[w.DstSet][binding]))] = arrayIndex
+                registerDescriptorUser!BufferViewObject(viewObj, w.DstSet, binding, arrayIndex)
               }
             }
           }
-      
+
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
@@ -594,10 +642,21 @@ cmd void vkUpdateDescriptorSets(
     descriptorCopyCount,
     pDescriptorCopies)
   for _ , _ , c in copies {
+    modifiedDescriptorSets.val[c.DstSet] = true
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
-    srcBinding := srcSet.Bindings[c.SrcBinding]
-    dstBinding := dstSet.Bindings[c.DstBinding]
+    srcBinding := switch (c.SrcBinding in srcSet.Bindings) {
+      case false:
+        srcSet.Bindings[c.SrcBinding]
+      case true:
+        new!DescriptorBinding(BindingType: srcSet.Layout.Bindings[c.SrcBinding].Type)
+    }
+    dstBinding := switch (c.DstBinding in dstSet.Bindings) {
+      case false:
+        dstSet.Bindings[c.DstBinding]
+      case true:
+        new!DescriptorBinding(BindingType: dstSet.Layout.Bindings[c.DstBinding].Type)
+    }
     switch (srcBinding.BindingType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -613,16 +672,14 @@ cmd void vkUpdateDescriptorSets(
         if vkSam in Samplers {
           samObj := Samplers[vkSam]
           if samObj != null {
-            samObj.DescriptorUsers[c.DstSet][c.DstBinding][
-              as!u32(len(samObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+            registerDescriptorUser!SamplerObject(samObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
           }
         }
         vkView := srcBinding.ImageBinding[c.SrcArrayIndex].ImageView
         if vkView in ImageViews {
           viewObj := ImageViews[vkView]
           if viewObj != null {
-            viewObj.DescriptorUsers[c.DstSet][c.DstBinding][
-              as!u32(len(viewObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+            registerDescriptorUser!ImageViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
           }
         }
       }
@@ -638,8 +695,7 @@ cmd void vkUpdateDescriptorSets(
         if vkView in BufferViews {
           viewObj := BufferViews[vkView]
           if viewObj != null {
-            viewObj.DescriptorUsers[c.DstSet][c.DstBinding][
-              as!u32(len(viewObj.DescriptorUsers[c.DstSet][c.DstBinding]))] = c.DstArrayIndex
+            registerDescriptorUser!BufferViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
           }
         }
       }
@@ -656,6 +712,79 @@ cmd void vkUpdateDescriptorSets(
     }
     dstSet.Bindings[c.DstBinding] = dstBinding
   }
+
+  // Then update the list of linked images and buffers for each modified
+  // descriptor sets. This is to avoid traveling all the bindings and array
+  // elements again when a command buffer binds these descriptor sets.
+  for _, set, _ in modifiedDescriptorSets.val {
+    setObj := DescriptorSets[set]
+
+    // TODO: Notify the command buffers that contain vkCmdBindDescriptorSets
+    // with the updated descriptor sets, if the descriptor sets' pools are
+    // created with VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT and
+    // their layouts created with
+    // VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT.
+    //for _, cb, _ in setObj.CommandBufferUsers {
+    //  if cb in CommandBuffers {
+    //    cbObj := CommandBuffers[cb]
+    //    delete(cbObj.ProcessedDescriptorSets, set)
+    //  }
+    //}
+    //clear(setObj.CommandBufferUsers)
+
+    clear(setObj.LinkedBuffers)
+    clear(setObj.LinkedImages)
+
+    for _, _, binding in setObj.Bindings {
+      switch binding.BindingType {
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+          VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+          for _, _, ib in binding.ImageBinding {
+            if ib.ImageView in ImageViews {
+              viewObj := ImageViews[ib.ImageView]
+              if viewObj.Image.VulkanHandle in Images {
+                imgObj := viewObj.Image
+                descriptorSetLinkImage(setObj, imgObj, viewObj.SubresourceRange)
+              }
+            }
+          }
+        }
+
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+          VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+          for _, _, bv in binding.BufferViewBindings {
+            if bv in BufferViews {
+              viewObj := BufferViews[bv]
+              if viewObj.Buffer.VulkanHandle in Buffers {
+                setObj.LinkedBuffers[viewObj.Buffer.VulkanHandle] = true
+              }
+            }
+          }
+        }
+
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+          for _, _, bb in binding.BufferBinding {
+            if bb.Buffer in Buffers {
+              setObj.LinkedBuffers[bb.Buffer] = true
+            }
+          }
+        }
+
+        case VK_DESCRIPTOR_TYPE_SAMPLER: {
+          // do nothing
+        }
+
+        default: {
+          // do nothing, we should never reach here.
+        }
+      }
+    }
+  }
 }
 
 /////////////////////////////
@@ -667,16 +796,17 @@ vkCmdBindDescriptorSetsArgs {
   VkPipelineBindPoint        PipelineBindPoint
   VkPipelineLayout           Layout
   u32                        FirstSet
-  map!(u32, VkDescriptorSet) DescriptorSets
-  map!(u32, u32)             DynamicOffsets
+  dense_map!(u32, VkDescriptorSet) DescriptorSets
+  dense_map!(u32, u32)             DynamicOffsets
 }
 
-@internal class 
+@internal class
 emptyBufferOffsets {
   map!(u32, map!(u32, map!(VkDeviceSize, bool))) BufferBindingOffsets
 }
 
-sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
+@spy_disabled
+sub void updateDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs args) {
   _ = PipelineLayouts[args.Layout]
   dynamic_offset_index := MutableU32(0)
 
@@ -697,13 +827,14 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
       drawInfo.BufferBindingOffsets
   }
 
-  for i in (0 .. len(args.DescriptorSets)) {
+  numDescSets := len(args.DescriptorSets)
+  for i in (0 .. numDescSets) {
     if args.DescriptorSets[as!u32(i)] in DescriptorSets {
       set := args.DescriptorSets[as!u32(i)]
       setObj := DescriptorSets[set]
-      currentDescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
+      currentDescriptorSets[args.FirstSet + as!u32(i)] = setObj
       desc_set_buf_offsets := bufferBindingOffsets[as!u32(i)+args.FirstSet]
-      hasBeenRead := switch (set in ProcessedDescriptorSets.val) {
+      hasBeenRead := switch (set in LastBoundDescriptorSetsBufferInfo) {
         case true:
           MutableBool(true)
         default:
@@ -712,11 +843,11 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
 
       existingOffsets := switch(hasBeenRead.b) {
         case true:
-          ProcessedDescriptorSets.val[set].bufferOffsets
+          LastBoundDescriptorSetsBufferInfo[set].bufferOffsets
         case false:
           emptyBufferOffsets().BufferBindingOffsets
       }
-      
+
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the Bindings in order of the binding number.
@@ -724,14 +855,15 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
         if (j in setObj.Bindings) && (setObj.Bindings[j] != null) {
           desc_binding_buf_offsets := desc_set_buf_offsets[as!u32(j)]
           binding := setObj.Bindings[j]
-          for k in (0 .. len(binding.BufferBinding)) {
-            bufferBinding := binding.BufferBinding[as!u32(k)]
+          numBufferBindings := len(binding.BufferBinding)
+          for k in (0 .. numBufferBindings) {
+            bufferInfo := binding.BufferBinding[as!u32(k)]
 
             binding_offset := switch binding.BindingType {
               case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferBinding.Offset
+                as!VkDeviceSize(args.DynamicOffsets[dynamic_offset_index.Val]) + bufferInfo.Offset
               default:
-                bufferBinding.Offset
+                bufferInfo.Offset
             }
             dynamic_offset_index.Val = switch binding.BindingType {
               case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
@@ -739,7 +871,6 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
               default:
                 dynamic_offset_index.Val
             }
-
             // If the offset has changed, then we may have to reprocess this
             // descriptor set.
             if hasBeenRead.b {
@@ -752,12 +883,11 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
               }
 
               if !hasBeenRead.b {
-                oldSets := ProcessedDescriptorSets.val[set].bufferOffsets
-                ProcessedDescriptorSets.val[set] = 
-                  ProcessedDescriptorSet(oldSets, true)
+                LastBoundDescriptorSetsBufferInfo[set].shouldReadBuffers = true
 
               }
             }
+
             desc_binding_buf_offsets[as!u32(k)] = binding_offset
           }
           desc_set_buf_offsets[as!u32(j)] = desc_binding_buf_offsets
@@ -766,6 +896,10 @@ sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
       bufferBindingOffsets[as!u32(i)+args.FirstSet] = desc_set_buf_offsets
     }
   }
+}
+
+sub void dovkCmdBindDescriptorSets(ref!vkCmdBindDescriptorSetsArgs args) {
+  updateDescriptorBufferBindingOffsets(args)
 }
 
 @threadSafety("app")
@@ -780,28 +914,50 @@ cmd void vkCmdBindDescriptorSets(
     const VkDescriptorSet* pDescriptorSets,
     u32                    dynamicOffsetCount,
     const u32*             pDynamicOffsets) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if pDescriptorSets == null { vkErrorNullPointer("VkDescriptorSet") }
-  sets := pDescriptorSets[0:descriptorSetCount]
-  args := new!vkCmdBindDescriptorSetsArgs(
-    PipelineBindPoint: pipelineBindPoint,
-    Layout:            layout,
-    FirstSet:          firstSet
-  )
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    cmdBuf := CommandBuffers[commandBuffer]
 
-  dynamic_offsets := pDynamicOffsets[0:dynamicOffsetCount]
-  for i in (0 .. dynamicOffsetCount) {
-    args.DynamicOffsets[i] = dynamic_offsets[i]
+    if pDescriptorSets == null { vkErrorNullPointer("VkDescriptorSet") }
+    sets := pDescriptorSets[0:descriptorSetCount]
+    args := new!vkCmdBindDescriptorSetsArgs(
+      PipelineBindPoint: pipelineBindPoint,
+      Layout:            layout,
+      FirstSet:          firstSet
+    )
+
+    dynamic_offsets := pDynamicOffsets[0:dynamicOffsetCount]
+    for i in (0 .. dynamicOffsetCount) {
+      args.DynamicOffsets[i] = dynamic_offsets[i]
+    }
+    for i in (0 .. descriptorSetCount) {
+      args.DescriptorSets[i] = sets[i]
+    }
+    for i in (0 .. descriptorSetCount) {
+      set := sets[i]
+      if !(set in cmdBuf.ProcessedDescriptorSets) {
+        if !(set in DescriptorSets) {
+          vkErrorInvalidDescriptorSet(set)
+        } else {
+          setObj := DescriptorSets[set]
+          for _, buf, _ in setObj.LinkedBuffers {
+            cmdBuf.TouchedBuffers[buf] = true
+          }
+          for _, img, cov in setObj.LinkedImages {
+            cmdBuf.TouchedImages[img] = cov
+          }
+          cmdBuf.ProcessedDescriptorSets[set] = true
+          DescriptorSets[set].CommandBufferUsers[commandBuffer] = true
+        }
+      }
+    }
+
+    bc := cmdBuf.BufferCommands.vkCmdBindDescriptorSets
+    mapPos := as!u32(len(bc))
+    bc[mapPos] = args
+    AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
   }
-  for i in (0 .. descriptorSetCount) {
-    args.DescriptorSets[i] = sets[i]
-  }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindDescriptorSets[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
 }
 
 @internal class
@@ -814,6 +970,11 @@ vkCmdPushConstantsArgs {
 }
 
 sub void dovkCmdPushConstants(ref!vkCmdPushConstantsArgs args) {
+  _ = PipelineLayouts[args.Layout]
+  pushConstants := lastPushConstants()
+  if pushConstants != null {
+    write(pushConstants.Data[args.Offset:args.Offset+args.Size])
+  }
 }
 
 @indirect("VkCommandBuffer", "VkDevice")
@@ -825,16 +986,49 @@ cmd void vkCmdPushConstants(
     u32                offset,
     u32                size,
     const void*        pValues) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdPushConstantsArgs(
-    layout,                stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
-  )
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdPushConstantsArgs(
+      layout,                stageFlags, offset, size, clone(as!u8*(pValues)[0:size])
+    )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdPushConstants[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
 
-  AddCommand(commandBuffer, cmd_vkCmdPushConstants, mapPos)
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdPushConstants))
+    cmdBuf.BufferCommands.vkCmdPushConstants[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdPushConstants, mapPos)
+  }
+}
+
+@spy_disabled
+sub void readPushConstants(VkPipelineBindPoint bindPoint) {
+  layout := boundPipelineLayout(bindPoint)
+  pushConstants := lastPushConstants()
+  if pushConstants != null {
+    for _, _, r in layout.PushConstantRanges {
+      read(pushConstants.Data[r.offset:r.offset+r.size])
+    }
+  }
+}
+
+
+// Util
+
+@spy_disabled
+sub void registerDescriptorUser!T(ref!T user, VkDescriptorSet descSet, u32 binding, u32 arrayIndex) {
+  if !(descSet in user.DescriptorUsers) {
+    bindings := user.DescriptorUsers[descSet]
+    user.DescriptorUsers[descSet] = bindings
+  }
+  bindings := user.DescriptorUsers[descSet]
+  if !(binding in bindings) {
+    indices := bindings[binding]
+    bindings[binding] = indices
+  }
+  indices := bindings[binding]
+  indices[arrayIndex] = true
 }
 
 // ----------------------------------------------------------------------------

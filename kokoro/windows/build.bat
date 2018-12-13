@@ -41,16 +41,12 @@ c:\tools\msys64\usr\bin\bash --login -c "pacman -R --noconfirm catgets libcatget
 c:\tools\msys64\usr\bin\bash --login -c "pacman -Syu --noconfirm"
 c:\tools\msys64\usr\bin\bash --login -c "pacman -Sy --noconfirm mingw-w64-x86_64-crt-git patch"
 c:\tools\msys64\usr\bin\bash --login -c "pacman -U --noconfirm mingw-w64-x86_64-gcc*-7.3.0-2-any.pkg.tar.xz"
-set PATH=c:\tools\msys64\mingw64\bin;%PATH%
-
-REM TODO set up msvc build env
-REM set Platform="X64"
-REM set PreferredToolArchitecture="x64"
-REM call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
+set BAZEL_SH=C:\tools\msys64\usr\bin\bash.exe
 
 REM Install Bazel.
-wget -q https://github.com/bazelbuild/bazel/releases/download/0.16.1/bazel-0.16.1-windows-x86_64.zip
-unzip -q bazel-0.16.1-windows-x86_64.zip
+wget -q https://github.com/bazelbuild/bazel/releases/download/0.20.0/bazel-0.20.0-windows-x86_64.zip
+unzip -q bazel-0.20.0-windows-x86_64.zip
 set PATH=C:\python27;%PATH%
 
 cd %SRC%

@@ -97,7 +97,7 @@ func (t *VulkanTerminator) Add(ctx context.Context, extraCommands int, id api.Cm
 }
 
 func walkCommands(s *State,
-	commands U32ːCommandReferenceʳᵐ,
+	commands U32ːCommandReferenceʳDense_ᵐ,
 	callback func(CommandReferenceʳ)) {
 	for _, c := range commands.Keys() {
 		callback(commands.Get(c))
@@ -254,7 +254,7 @@ func rebuildCommandBuffer(ctx context.Context,
 
 	if numSecondaryCommandsToCopy != 0 || numSecondaryCmdBuffersToCopy != 0 {
 		newCmdExecuteCommandsData := NewVkCmdExecuteCommandsArgs(a,
-			NewU32ːVkCommandBufferᵐ(a), // CommandBuffers
+			NewU32ːVkCommandBufferDense_ᵐ(a), // CommandBuffers
 		)
 		pcmd := commandBuffer.CommandReferences().Get(uint32(idx[0]))
 		execCmdData, ok := GetCommandArgs(ctx, pcmd, GetState(s)).(VkCmdExecuteCommandsArgsʳ)

@@ -138,7 +138,7 @@ public final class GapiPaths {
 
   private static GapiPaths fromRunfiles(File dir, File runfiles) {
     try {
-      return Files.readLines(runfiles, UTF_8, new LineProcessor<GapiPaths>() {
+      return Files.asCharSource(runfiles, UTF_8).readLines(new LineProcessor<GapiPaths>() {
         private File gapis, gapit, strings;
 
         @Override

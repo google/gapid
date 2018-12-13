@@ -14,6 +14,7 @@
 
 load("@gapid//:version.bzl", "version_define_copts")
 load("@gapid//tools/build/rules:common.bzl", "copy_exec")
+load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 _ANDROID_COPTS = [
     "-fdata-sections",
@@ -34,7 +35,7 @@ def cc_copts():
         "@gapid//tools/build:android-x86": _ANDROID_COPTS,
     })
 
-# Strip rule implementation, which invokes the fragment.cpp.strip_executable
+# Strip rule implementation, which invokes the cc_toolchain.strip_executable
 # to strip debugging information from binaries.
 def _strip_impl(ctx):
     if len(ctx.files.srcs) != 1:
@@ -49,15 +50,16 @@ def _strip_impl(ctx):
     out = ctx.new_file(ctx.label.name + extension)
 
     flags = []
-    if ctx.fragments.cpp.cpu == "k8" or ctx.fragments.cpp.cpu == "x64_windows":
+    cc_toolchain = find_cpp_toolchain(ctx)
+    if cc_toolchain.cpu == "k8" or cc_toolchain.cpu == "x64_windows":
         flags = ["--strip-unneeded", "-p"]
-    elif ctx.fragments.cpp.cpu == "darwin_x86_64":
+    elif cc_toolchain.cpu == "darwin_x86_64":
         flags = ["-x"]
     else:
-        fail("Unhandled CPU type in strip rule: " + ctx.fragments.cpp.cpu)
+        fail("Unhandled CPU type in strip rule: " + cc_toolchain.cpu)
 
     ctx.actions.run(
-        executable = ctx.fragments.cpp.strip_executable,
+        executable = cc_toolchain.strip_executable(),
         arguments = flags + ["-o", out.path, src.path],
         inputs = [src],
         outputs = [out],
@@ -80,9 +82,11 @@ strip = rule(
             mandatory = True,
             allow_empty = False,
         ),
+        "_cc_toolchain": attr.label(
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
+        ),
     },
     executable = True,
-    fragments = ["cpp"],
 )
 
 # Symbol rule implementation, which invokes the _dump_syms binary to generate
@@ -91,7 +95,8 @@ strip = rule(
 def _symbols_impl(ctx):
     out = ctx.new_file(ctx.label.name)
     bin = ctx.file.src
-    if ctx.fragments.cpp.cpu.startswith("darwin"):
+    cc_toolchain = find_cpp_toolchain(ctx)
+    if cc_toolchain.cpu.startswith("darwin"):
         dsym = ctx.actions.declare_directory(bin.basename + ".dSYM")
         ctx.actions.run_shell(
             command = "dsymutil  -o {} {}".format(dsym.path, bin.path),
@@ -127,8 +132,10 @@ _symbols = rule(
             allow_files = True,
             default = Label("@breakpad//:dump_syms"),
         ),
+        "_cc_toolchain": attr.label(
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
+        ),
     },
-    fragments = ["cpp"],
 )
 
 # Macro to replace cc_binary rules. Creates the following targets:

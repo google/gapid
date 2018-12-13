@@ -522,7 +522,7 @@
   {{else if IsMember           $}}{{Template "Go.Member" $}}
   {{else if IsGlobal           $}}{{Template "Go.Global" $}}
   {{else if IsParameter        $}}{{Template "Go.Parameter" $}}
-  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Getʷ(ϟctx, ϟw, int({{Template "Go.Read" $.Index}}))
+  {{else if IsArrayIndex       $}}{{Template "Go.Read" $.Array}}.Getʷ(ϟctx, ϟw, true, int({{Template "Go.Read" $.Index}}))
   {{else if IsMapIndex         $}}{{Template "Go.MapIndex" $}}
   {{else if IsMapContains      $}}{{Template "Go.MapContains" $}}
   {{else if IsLength           $}}{{Template "Go.Type" $.Type}}({{Template "Go.ReadLength" "Type" (TypeOf $.Object) "Value" $.Object}})
@@ -699,10 +699,8 @@
   {{$ty := $.Object | TypeOf | Unpack}}
   {{Template "Go.Read" $.Object}}§
   {{if IsReference $ty}}{{if GetAnnotation $ty.To "resource"}}.OnAccess(ϟg)§{{end}}{{end}}
-  .{{$.Field | GoPublicName}}§
-  {{if GetAnnotation $.Field "untracked"}}()
-  {{else}}ʷ(ϟctx, ϟw)
-  {{end}}
+  .{{$.Field | GoPublicName}}ʷ(ϟctx, ϟw, §
+  {{Template "Track" $.Field}})
 {{end}}
 
 
@@ -715,8 +713,8 @@
   {{AssertType $ "Global"}}
 
   {{if eq $.Name "$Thread"             }}ϟt
-  {{else if GetAnnotation $ "untracked"}}ϟs.{{$.Name | GoPublicName}}()
-  {{else                               }}ϟs.{{$.Name | GoPublicName}}ʷ(ϟctx, ϟw)
+  {{else                               }}ϟs.{{$.Name | GoPublicName}}ʷ(ϟctx, ϟw, §
+    {{Template "Track" $}})
   {{end}}
 {{end}}
 
@@ -728,12 +726,8 @@
 */}}
 {{define "Go.MapIndex"}}
   {{AssertType $ "MapIndex"}}
-
-  {{if Macro "IsUntrackedMap" $.Map}}
-    {{Template "Go.Read" $.Map}}.Get({{Template "Go.Read" $.Index}})
-  {{else}}
-    {{Template "Go.Read" $.Map}}.Getʷ(ϟctx, ϟw, {{Template "Go.Read" $.Index}})
-  {{end}}
+  {{Template "Go.Read" $.Map}}.Getʷ(ϟctx, ϟw, {{Template "TrackMap" $.Map}}, §
+    {{Template "Go.Read" $.Index}})
 {{end}}
 
 
@@ -745,11 +739,8 @@
 {{define "Go.MapContains"}}
   {{AssertType $ "MapContains"}}
 
-  {{if Macro "IsUntrackedMap" $.Map}}
-    {{Template "Go.Read" $.Map}}.Contains({{Template "Go.Read" $.Key}})
-  {{else}}
-    {{Template "Go.Read" $.Map}}.Containsʷ(ϟctx, ϟw, {{Template "Go.Read" $.Key}})
-  {{end}}
+  {{Template "Go.Read" $.Map}}.Containsʷ(ϟctx, ϟw, {{Template "TrackMap" $.Map}}, §
+    {{Template "Go.Read" $.Key}})
 {{end}}
 
 
@@ -767,11 +758,10 @@
   {{else if IsSlice       $ty}}{{Template "Go.Read" $.Value}}.Count()
   {{else if IsString      $ty}}len({{Template "Go.Read" $.Value}})
   {{else if IsMap         $ty}}
-    {{if Macro "IsUntrackedMap" $.Value}}
-      {{Template "Go.Read" $.Value}}.Len()
-    {{else}}
-      {{Template "Go.Read" $.Value}}.Lenʷ(ϟctx, ϟw)
-    {{end}}
+    {{Template "Go.Read" $.Value}}.Lenʷ(ϟctx, ϟw, §
+      {{if Macro "IsUntrackedMap" $.Value}}false§
+      {{else}}true§
+      {{end}})
   {{else                     }}{{Error "macro Go.ReadLength called with unsupported type: %v" $.Type}}
   {{end}}
 {{end}}
@@ -841,4 +831,32 @@
   {{else if IsMember $}}
     {{if GetAnnotation $.Field "untrackedMap"}}1{{end}}
   {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits "false" if $ is map marked with @untrackedMap; otherwise emits "true".
+  This works both for global variables and struct members.
+-------------------------------------------------------------------------------
+*/}}
+{{define "TrackMap"}}
+  {{/* Global map marked with @untrackedMap */}}
+  {{if GetAnnotation $ "untrackedMap"}}false§
+
+  {{/* Map field marked with @untrackedMap */}}
+  {{else if IsMember $}}
+    {{if GetAnnotation $.Field "untrackedMap"}}false{{else}}true{{end}}
+
+  {{else}}true§
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits "false" if $ is marked with @untracked;
+  otherwise emits "true".
+-------------------------------------------------------------------------------
+*/}}
+{{define "Track"}}
+  {{if GetAnnotation $ "untracked"}}false{{else}}true{{end}}
 {{end}}

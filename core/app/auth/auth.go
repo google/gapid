@@ -96,7 +96,7 @@ func GenTokenFile() (path string, token Token) {
 func ServerInterceptor(token Token) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if token != NoAuth {
-			md, ok := metadata.FromContext(ctx)
+			md, ok := metadata.FromIncomingContext(ctx)
 			if !ok {
 				return nil, ErrInvalidToken
 			}
@@ -116,10 +116,10 @@ func ServerInterceptor(token Token) grpc.UnaryServerInterceptor {
 func ClientInterceptor(token Token) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		if token != NoAuth {
-			if md, ok := metadata.FromContext(ctx); ok {
-				ctx = metadata.NewContext(ctx, metadata.Join(md, metadata.Pairs(rpcHeader, string(token))))
+			if md, ok := metadata.FromOutgoingContext(ctx); ok {
+				ctx = metadata.NewOutgoingContext(ctx, metadata.Join(md, metadata.Pairs(rpcHeader, string(token))))
 			} else {
-				ctx = metadata.NewContext(ctx, metadata.Pairs(rpcHeader, string(token)))
+				ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(rpcHeader, string(token)))
 			}
 		}
 		return invoker(ctx, method, req, reply, cc, opts...)

@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "llvm/MC/MCAsmBackend.h"
@@ -64,6 +65,12 @@ class CodeGenerator {
 
   std::string PrintInstruction(const llvm::MCInst &inst);
 
+  void ReserveRegister(unsigned int reg) { reserved_regs_.insert(reg); }
+
+  bool IsRegisterReserved(unsigned int reg) {
+    return reserved_regs_.find(reg) != reserved_regs_.end();
+  }
+
  private:
   CodeGenerator(const llvm::Triple &triple, size_t start_alignment);
 
@@ -86,6 +93,8 @@ class CodeGenerator {
   llvm::SmallVector<char, 32> code_;
   llvm::raw_svector_ostream code_stream_;
   llvm::SmallVector<llvm::MCFixup, 8> fixups_;
+
+  std::unordered_set<unsigned> reserved_regs_;
 };
 
 template <typename T, size_t A>

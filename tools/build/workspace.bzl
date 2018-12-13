@@ -20,15 +20,15 @@ load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
 load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
 # Defines the repositories for GAPID's dependencies, excluding the
 # go dependencies, which require @io_bazel_rules_go to be setup.
 #  android - if false, the Android NDK/SDK are not initialized.
-#  java_client - if false, the Java deps used by the client are not initialized.
 #  mingw - if false, our cc toolchain, which uses MinGW on Windows is not initialized.
 #  locals - can be used to provide local path overrides for repos:
 #     {"foo": "/path/to/foo"} would cause @foo to be a local repo based on /path/to/foo.
-def gapid_dependencies(android = True, java_client = True, mingw = True, locals = {}):
+def gapid_dependencies(android = True, mingw = True, locals = {}):
     #####################################################
     # Get repositories with workspace rules we need first
 
@@ -38,7 +38,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "bazelbuild",
         project = "rules_go",
-        commit = "43f31988275463369244ce1704b2e9fb95689e44",  # 0.15.0 + patches
+        commit = "01e5a9f8483167962eddd167f7689408bdeb4e76",  # 0.16.3
     )
 
     maybe_repository(
@@ -47,7 +47,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         locals = locals,
         organization = "bazelbuild",
         project = "bazel-gazelle",
-        commit = "6a1b93cc9b1c7e55e7d05a6d324bcf9d87ea3ab1",  # 0.14.0
+        commit = "c728ce9f663e2bff26361ba5978ec5c9e6816a3c",  # 0.15.0
     )
 
     maybe_repository(
@@ -136,7 +136,7 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
     )
 
     maybe_repository(
-        native.new_git_repository,
+        new_git_repository,
         name = "lss",
         locals = locals,
         remote = "https://chromium.googlesource.com/linux-syscall-support",
@@ -183,17 +183,6 @@ def gapid_dependencies(android = True, java_client = True, mingw = True, locals 
         commit = "5598462f987841f7c1abe9209650ea8d3e727b46",
         build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
     )
-
-    if java_client:
-        maybe_repository(
-            github_repository,
-            name = "com_github_grpc_java",
-            locals = locals,
-            organization = "grpc",
-            project = "grpc-java",
-            commit = "009c51f2f793aabf516db90a14a52da2b613aa21",
-            build_file = "@gapid//tools/build/third_party:grpc_java.BUILD",
-        )
 
     if android:
         maybe_repository(

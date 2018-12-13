@@ -210,6 +210,12 @@ func (s *scope) traverse(n semantic.Node) {
 	case *semantic.MapRemove:
 		// TODO: Put an entry that says the map did not contain the key.
 
+	case *semantic.MapClear:
+		m, set := s.valueOf(n.Map)
+		if m, ok := m.(*MapValue); ok {
+			set(m.Clear())
+		}
+
 	case *semantic.Abort:
 		s.abort = n
 

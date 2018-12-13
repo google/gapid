@@ -5,28 +5,6 @@
 	<classpathentry excluding="BUILD.bazel" kind="src" path="platform_src"/>
 	<classpathentry excluding="BUILD.bazel" kind="src" path="gapic/res"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry kind="lib" path="gapic/third_party/guava-20.0.jar" sourcepath="gapic/third_party/guava-20.0-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-context-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-context-1.0.1-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-core-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-core-1.0.1-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-okhttp-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-okhttp-1.0.1-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-protobuf-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-protobuf-1.0.1-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-protobuf-lite-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-protobuf-lite-1.0.1-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/grpc-stub-1.0.1.jar" sourcepath="gapic/third_party/grpc/grpc-stub-1.0.1-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/okhttp-2.5.0.jar" sourcepath="gapic/third_party/grpc/okhttp-2.5.0-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/grpc/okio-1.6.0.jar" sourcepath="gapic/third_party/grpc/okio-1.6.0-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.core.commands_3.8.0.v20160316-1921.jar" sourcepath="gapic/third_party/jface/org.eclipse.core.commands.source_3.8.0.v20160316-1921.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.core.runtime_3.12.0.v20160606-1342.jar" sourcepath="gapic/third_party/jface/org.eclipse.core.runtime.source_3.12.0.v20160606-1342.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.equinox.common_3.8.0.v20160509-1230.jar" sourcepath="gapic/third_party/jface/org.eclipse.equinox.common.source_3.8.0.v20160509-1230.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.jface_3.12.1.v20160923-1528.jar" sourcepath="gapic/third_party/jface/org.eclipse.jface.source_3.12.1.v20160923-1528.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.jface.databinding_1.8.1.v20161026-1531.jar" sourcepath="gapic/third_party/jface/org.eclipse.jface.databinding.source_1.8.1.v20161026-1531.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.jface.text_3.11.2.v20161113-1700.jar" sourcepath="gapic/third_party/jface/org.eclipse.jface.text.source_3.11.2.v20161113-1700.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.osgi_3.11.2.v20161107-1947.jar" sourcepath="gapic/third_party/jface/org.eclipse.osgi.source_3.11.2.v20161107-1947.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/jface/org.eclipse.text_3.6.0.v20160503-1849.jar" sourcepath="gapic/third_party/jface/org.eclipse.text.source_3.6.0.v20160503-1849.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/lwjgl/lwjgl-opengl.jar" sourcepath="gapic/third_party/lwjgl/lwjgl-opengl-sources.jar"/>
-	<classpathentry kind="lib" path="gapic/third_party/lwjgl/lwjgl.jar" sourcepath="gapic/third_party/lwjgl/lwjgl-sources.jar"/>
-	<classpathentry kind="lib" path="platform_lib/lwjgl-natives.jar"/>
-	<classpathentry kind="lib" path="platform_lib/lwjgl-opengl-natives.jar"/>
-	<classpathentry kind="lib" path="platform_lib/swt.jar" sourcepath="platform_lib/swt-src.zip"/>
 	<classpathentry kind="lib" path="bazel-bin/core/data/pod/libpod_proto-speed.jar" sourcepath="bazel-genfiles/core/data/pod/pod_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/core/image/libimage_proto-speed.jar" sourcepath="bazel-genfiles/core/image/image_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/core/log/log_pb/liblog_pb_proto-speed.jar" sourcepath="bazel-genfiles/core/log/log_pb/log_pb_proto-speed-src.jar"/>
@@ -43,5 +21,27 @@
 	<classpathentry kind="lib" path="bazel-bin/gapis/stringtable/libstringtable_proto-speed.jar" sourcepath="bazel-genfiles/gapis/stringtable/stringtable_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/vertex/libvertex_proto-speed.jar" sourcepath="bazel-genfiles/gapis/vertex/vertex_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapic/src/main/libservice_grpc.jar" sourcepath="bazel-bin/gapic/src/main/service_grpc-src-src.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_google_guava/jar/guava-27.0-jre.jar" sourcepath="bazel-external/com_google_guava/jar/guava-27.0-jre-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_squareup_okhttp/jar/okhttp-2.5.0.jar" sourcepath="bazel-external/com_squareup_okhttp/jar/okhttp-2.5.0-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_squareup_okio/jar/okio-1.6.0.jar" sourcepath="bazel-external/com_squareup_okio/jar/okio-1.6.0-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_context/jar/grpc-context-1.16.1.jar" sourcepath="bazel-external/io_grpc_context/jar/grpc-context-1.16.1-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_core/jar/grpc-core-1.16.1.jar" sourcepath="bazel-external/io_grpc_core/jar/grpc-core-1.16.1-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_okhttp/jar/grpc-okhttp-1.16.1.jar" sourcepath="bazel-external/io_grpc_okhttp/jar/grpc-okhttp-1.16.1-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_protobuf/jar/grpc-protobuf-1.16.1.jar" sourcepath="bazel-external/io_grpc_protobuf/jar/grpc-protobuf-1.16.1-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_protobuf_lite/jar/grpc-protobuf-lite-1.16.1.jar" sourcepath="bazel-external/io_grpc_protobuf_lite/jar/grpc-protobuf-lite-1.16.1-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_stub/jar/grpc-stub-1.16.1.jar" sourcepath="bazel-external/io_grpc_stub/jar/grpc-stub-1.16.1-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_opencensus_api/jar/opencensus-api-0.12.3.jar" sourcepath="bazel-external/io_opencensus_api/jar/opencensus-api-0.12.3-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_opencensus_contrib_grpc_metrics/jar/opencensus-contrib-grpc-metrics-0.12.3.jar" sourcepath="bazel-external/io_opencensus_contrib_grpc_metrics/jar/opencensus-contrib-grpc-metrics-0.12.3-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.core.commands.jar" sourcepath="bazel-external/jface/org.eclipse.core.commands-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.core.runtime.jar" sourcepath="bazel-external/jface/org.eclipse.core.runtime-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.equinox.common.jar" sourcepath="bazel-external/jface/org.eclipse.equinox.common-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.jface.databinding.jar" sourcepath="bazel-external/jface/org.eclipse.jface.databinding-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.jface.jar" sourcepath="bazel-external/jface/org.eclipse.jface-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.jface.text.jar" sourcepath="bazel-external/jface/org.eclipse.jface.text-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.osgi.jar" sourcepath="bazel-external/jface/org.eclipse.osgi-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.text.jar" sourcepath="bazel-external/jface/org.eclipse.text-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/org_lwjgl_core/jar/lwjgl-3.2.0.jar" sourcepath="bazel-external/org_lwjgl_core/jar/lwjgl-3.2.0-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/org_lwjgl_opengl/jar/lwjgl-opengl-3.2.0.jar" sourcepath="bazel-external/org_lwjgl_opengl/jar/lwjgl-opengl-3.2.0-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/swt/swt.jar" sourcepath="bazel-external/swt/src.zip"/>
 	<classpathentry kind="output" path="gapic/bin"/>
 </classpath>

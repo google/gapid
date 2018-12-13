@@ -143,7 +143,6 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
 
     // posix_memalign states that the alignment must be a multiple
     // of sizeof(void*).
-    align = std::max(align, static_cast<uint32_t>(sizeof(void*)));
     align = std::max(align, page_size_);
     allocation = allocate_aligned(round_up_to(size, page_size_), align);
     lock();
@@ -154,16 +153,21 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
     const uint32_t bucket = next_power_of_2(size) - kMinBlockSizePower - 1;
     const uint32_t block_size = 1 << (bucket + kMinBlockSizePower);
     block_data& data = blocks_[bucket];
+    chunk_header* header;
     lock();
     if (data.next) {
       // If there was a free block in the freelist, use that.
       allocation = data.next;
       data.next = data.next->next;
+      uintptr_t val = reinterpret_cast<uintptr_t>(allocation);
+      val &= kChunkMask;
+      header = reinterpret_cast<chunk_header*>(val);
     } else if (data.current_chunk) {
       // If there was no free block in the free-list, but we
       // have at least one free block in the current chunk
       // then use that.
       allocation = data.current_chunk + data.offset_of_next_allocation_in_chunk;
+      header = reinterpret_cast<chunk_header*>(data.current_chunk);
       data.offset_of_next_allocation_in_chunk += block_size;
       if (data.offset_of_next_allocation_in_chunk == kChunkSize) {
         // If this was the last block in the chunk, then stop using
@@ -184,12 +188,10 @@ void* Arena::allocate(uint32_t size, uint32_t align) {
       // The first allocation is offset by 1 block.
       allocation = data.current_chunk + block_size;
       data.offset_of_next_allocation_in_chunk = 2 * block_size;
+      header = reinterpret_cast<chunk_header*>(data.current_chunk);
     }
+    header->num_allocations += 1;
     unlock();
-    uintptr_t val = reinterpret_cast<uintptr_t>(allocation);
-    val &= kChunkMask;
-    chunk_header* header = reinterpret_cast<chunk_header*>(val);
-    header->num_allocations.fetch_add(1, std::memory_order_relaxed);
   }
   return allocation;
 }
@@ -239,7 +241,7 @@ void Arena::free(void* ptr) {
     uintptr_t val = reinterpret_cast<uintptr_t>(ptr);
     val &= kChunkMask;
     chunk_header* header = reinterpret_cast<chunk_header*>(val);
-    header->num_allocations.fetch_sub(1, std::memory_order_relaxed);
+    header->num_allocations -= 1;
     const uint16_t bucket = header->block_index;
 
     reinterpret_cast<free_list_node*>(ptr)->next = blocks_[bucket].next;

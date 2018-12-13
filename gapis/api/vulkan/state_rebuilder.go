@@ -290,8 +290,8 @@ func getPipelinesInOrder(s *State, compute bool) []VkPipeline {
 		}
 	}
 
-	numHandled := 0
 	for len(unhandledPipelines) != 0 {
+		numHandled := 0
 		for k, v := range unhandledPipelines {
 			handled := false
 			if v == 0 {
@@ -1717,7 +1717,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 					oldQueue = sparseQueue.VulkanHandle()
 				}
 				transitionInfo = append(transitionInfo, imageSubRangeInfo{
-					aspectMask:     VkImageAspectFlags(aspect),
+					aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
 					baseMipLevel:   level,
 					levelCount:     1,
 					baseArrayLayer: layer,
@@ -1729,7 +1729,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 				})
 				if q.Family() != imgLevel.LastBoundQueue().Family() {
 					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
-						aspectMask:     VkImageAspectFlags(aspect),
+						aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
 						baseMipLevel:   level,
 						levelCount:     1,
 						baseArrayLayer: layer,
@@ -1995,9 +1995,22 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 }
 
 func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
+
+	temporaryDescriptorSetLayouts := []VkDescriptorSetLayout{}
 	descriptorSets := []VkDescriptorSetLayout{}
 	for _, k := range pl.SetLayouts().Keys() {
-		descriptorSets = append(descriptorSets, pl.SetLayouts().Get(k).VulkanHandle())
+		if isDescriptorSetLayoutInState(pl.SetLayouts().Get(k), sb.oldState) {
+			descriptorSets = append(descriptorSets, pl.SetLayouts().Get(k).VulkanHandle())
+		} else {
+			temporaryDescriptorSetLayout := pl.SetLayouts().Get(k).Clone(sb.newState.Arena, api.CloneContext{})
+			temporaryDescriptorSetLayout.SetVulkanHandle(
+				VkDescriptorSetLayout(newUnusedID(true, func(x uint64) bool {
+					return GetState(sb.newState).DescriptorSetLayouts().Contains(VkDescriptorSetLayout(x))
+				})))
+			sb.createDescriptorSetLayout(temporaryDescriptorSetLayout)
+			descriptorSets = append(descriptorSets, temporaryDescriptorSetLayout.VulkanHandle())
+			temporaryDescriptorSetLayouts = append(temporaryDescriptorSetLayouts, temporaryDescriptorSetLayout.VulkanHandle())
+		}
 	}
 
 	sb.write(sb.cb.VkCreatePipelineLayout(
@@ -2017,6 +2030,14 @@ func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
 		sb.MustAllocWriteData(pl.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+
+	for _, td := range temporaryDescriptorSetLayouts {
+		sb.write(sb.cb.VkDestroyDescriptorSetLayout(
+			pl.Device(),
+			td,
+			memory.Nullptr,
+		))
+	}
 }
 
 func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
@@ -2095,6 +2116,16 @@ func isRenderPassInState(rp RenderPassObjectʳ, st *api.GlobalState) bool {
 	passes := GetState(st).RenderPasses()
 	if passes.Contains(rp.VulkanHandle()) {
 		if passes.Get(rp.VulkanHandle()) == rp {
+			return true
+		}
+	}
+	return false
+}
+
+func isDescriptorSetLayoutInState(dl DescriptorSetLayoutObjectʳ, st *api.GlobalState) bool {
+	layouts := GetState(st).DescriptorSetLayouts()
+	if layouts.Contains(dl.VulkanHandle()) {
+		if layouts.Get(dl.VulkanHandle()) == dl {
 			return true
 		}
 	}
@@ -2584,7 +2615,7 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 func (sb *stateBuilder) createFramebuffer(fb FramebufferObjectʳ) {
 	var temporaryRenderPass RenderPassObjectʳ
 	for _, v := range fb.ImageAttachments().All() {
-		if !GetState(sb.oldState).ImageViews().Contains(v.VulkanHandle()) {
+		if !GetState(sb.newState).ImageViews().Contains(v.VulkanHandle()) {
 			log.W(sb.ctx, "Image View %v is invalid, framebuffer %v will not be created", v.VulkanHandle(), fb.VulkanHandle())
 			return
 		}
@@ -2757,14 +2788,14 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 
-	anyActive := false
+	anyInitialized := false
 	for _, k := range qp.Status().All() {
-		if k != QueryStatus_QUERY_STATUS_INACTIVE {
-			anyActive = true
+		if k != QueryStatus_QUERY_STATUS_UNINITIALIZED {
+			anyInitialized = true
 			break
 		}
 	}
-	if !anyActive {
+	if !anyInitialized {
 		return
 	}
 	queue := sb.getQueueFor(
@@ -2778,18 +2809,20 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 	defer tsk.commit()
 	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
 		for i := uint32(0); i < qp.QueryCount(); i++ {
-			if qp.Status().Get(i) != QueryStatus_QUERY_STATUS_INACTIVE {
-				sb.write(sb.cb.VkCmdBeginQuery(
-					commandBuffer,
-					qp.VulkanHandle(),
-					i,
-					VkQueryControlFlags(0)))
-			}
-			if qp.Status().Get(i) == QueryStatus_QUERY_STATUS_COMPLETE {
-				sb.write(sb.cb.VkCmdEndQuery(
-					commandBuffer,
-					qp.VulkanHandle(),
-					i))
+			switch qp.Status().Get(i) {
+			case QueryStatus_QUERY_STATUS_UNINITIALIZED:
+				// do nothing
+			case QueryStatus_QUERY_STATUS_INACTIVE:
+				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
+			case QueryStatus_QUERY_STATUS_ACTIVE:
+				sb.write(sb.cb.VkCmdBeginQuery(commandBuffer, qp.VulkanHandle(), i, VkQueryControlFlags(0)))
+			case QueryStatus_QUERY_STATUS_COMPLETE:
+				if qp.QueryType() == VkQueryType_VK_QUERY_TYPE_TIMESTAMP {
+					sb.write(sb.cb.VkCmdWriteTimestamp(commandBuffer, VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, qp.VulkanHandle(), i))
+				} else {
+					sb.write(sb.cb.VkCmdBeginQuery(commandBuffer, qp.VulkanHandle(), i, VkQueryControlFlags(0)))
+					sb.write(sb.cb.VkCmdEndQuery(commandBuffer, qp.VulkanHandle(), i))
+				}
 			}
 		}
 	})

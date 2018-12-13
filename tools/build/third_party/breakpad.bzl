@@ -30,7 +30,7 @@ def _breakpad_impl(repository_ctx):
 
       bash_exe = repository_ctx.os.environ["BAZEL_SH"] if "BAZEL_SH" in repository_ctx.os.environ else "c:/tools/msys64/usr/bin/bash.exe"
       result = repository_ctx.execute([bash_exe, "-c",
-           "cd {} && /usr/bin/patch -p1 -i windows.patch".format(repository_ctx.path("."))])
+           "cd \"{}\" && /usr/bin/patch -p1 -i windows.patch".format(repository_ctx.path("."))])
       if result.return_code:
         fail("Failed to apply patch: (%d)\n%s" % (result.return_code, result.stderr))
 

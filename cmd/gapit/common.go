@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
@@ -151,6 +153,49 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 	}
 
 	return clientCloser{client, close}, nil
+}
+
+// getGapisAndLoadCapture connects to or creates a gapis server and loads a capture file or capture ID (depending on the CaptureFileFlags).
+// It returns the client rpc interface, the loaded path.Capture, and an error.
+func getGapisAndLoadCapture(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags, capturePathOrID string, captureFileFlags CaptureFileFlags) (client.Client, *path.Capture, error) {
+
+	var captureID id.ID
+	var capturePath string
+	var capture *path.Capture
+	var err error
+
+	// Check capturePathOrID first.
+	if captureFileFlags.CaptureID {
+		captureID, err = id.Parse(capturePathOrID)
+		if err != nil {
+			return nil, nil, log.Err(ctx, err, "Could not parse capture ID")
+		}
+	} else {
+		capturePath, err = filepath.Abs(capturePathOrID)
+		if err != nil {
+			return nil, nil, log.Err(ctx, err, "Could not find capture file")
+		}
+	}
+
+	// Get gapis.
+	client, err := getGapis(ctx, gapisFlags, gapirFlags)
+	if err != nil {
+		return nil, nil, log.Err(ctx, err, "Failed to connect to the GAPIS server")
+	}
+	// Note: call client.Close() if we don't return successfully.
+
+	// Get or load the capture.
+	if captureFileFlags.CaptureID {
+		capture = &path.Capture{ID: path.NewID(captureID)}
+	} else {
+		capture, err = client.LoadCapture(ctx, capturePath)
+		if err != nil {
+			client.Close()
+			return nil, nil, log.Err(ctx, err, "Failed to load the capture file")
+		}
+	}
+
+	return client, capture, nil
 }
 
 func getDevice(ctx context.Context, client client.Client, capture *path.Capture, flags GapirFlags) (*path.Device, error) {

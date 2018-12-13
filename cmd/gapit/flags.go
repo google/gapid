@@ -68,6 +68,9 @@ func (v PackagesOutput) String() string {
 }
 
 type (
+	CaptureFileFlags struct {
+		CaptureID bool `help:"if true then interpret the capture file argument as a capture ID that is already loaded in gapis"`
+	}
 	CommandFilterFlags struct {
 		Context int `help:"Filter to the i'th context."`
 	}
@@ -81,7 +84,7 @@ type (
 		Os     string            `help:"Os of the device to trace on."`
 		Env    flags.StringSlice `help:"List of environment variables to set, X=Y"`
 		Ssh    struct {
-			Config string `help: "The ssh config to use for finding remote devices"`
+			Config string `help:"The ssh config to use for finding remote devices"`
 		}
 	}
 	DevicesFlags struct {
@@ -111,6 +114,7 @@ type (
 		Out              string `help:"output report path"`
 		DisplayToSurface bool   `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
+		CaptureFileFlags
 	}
 	ExportReplayFlags struct {
 		Gapis          GapisFlags
@@ -119,6 +123,7 @@ type (
 		Out            string `help:"output directory for commands and assets"`
 		OutputFrames   bool   `help:"generate trace that output frames(disable diagnostics)"`
 		CommandFilterFlags
+		CaptureFileFlags
 	}
 	VideoFlags struct {
 		Gapis GapisFlags
@@ -139,17 +144,20 @@ type (
 		}
 		NoOpt bool `help:"disables optimization of the replay stream"`
 		CommandFilterFlags
+		CaptureFileFlags
 	}
 	DumpShadersFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
 		At    int `help:"command index to dump the resources after"`
+		CaptureFileFlags
 	}
 	DumpFBOFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
 		Out   string `help:"output framebuffer directory path"`
 		CommandFilterFlags
+		CaptureFileFlags
 	}
 	DumpFlags struct {
 		Gapis          GapisFlags
@@ -158,6 +166,7 @@ type (
 		ShowDeviceInfo bool `help:"if true then show originating device information."`
 		ShowABIInfo    bool `help:"if true then show information of the ABI used for the trace."`
 		Observations   ObservationFlags
+		CaptureFileFlags
 	}
 	CommandsFlags struct {
 		Gapis                  GapisFlags
@@ -184,17 +193,21 @@ type (
 		At                   int    `help:"command index to replace the resource(s) at"`
 		UpdateResourceBinary string `help:"shaders only. binary to run for every shader; consumes resource data from standard input and writes to standard output"`
 		OutputTraceFile      string `help:"file name for the updated trace"`
+		SkipOutput           bool   `help:"skip writing the modified trace to a file"`
+		CaptureFileFlags
 	}
 	StateFlags struct {
 		Gapis  GapisFlags
 		Gapir  GapirFlags
 		At     flags.U64Slice    `help:"command/subcommand index to get the state after. Empty for last"`
-		Depth  int               `help: "How many nodes deep should the state tree be displayed. -1 for all"`
-		Filter flags.StringSlice `help: "Which path through the tree should we filter to, default All"`
+		Depth  int               `help:"How many nodes deep should the state tree be displayed. -1 for all"`
+		Filter flags.StringSlice `help:"Which path through the tree should we filter to, default All"`
+		CaptureFileFlags
 	}
 	StressTestFlags struct {
 		Gapis GapisFlags
 		Gapir GapirFlags
+		CaptureFileFlags
 	}
 	TraceFlags struct {
 		DeviceFlags
@@ -237,6 +250,7 @@ type (
 		Local struct {
 			Port int `help:"connect to an application already running on the server using this port"`
 		}
+		PipeName string `help:"The name of the pipe to connect/listen to."`
 	}
 	BenchmarkFlags struct {
 		DeviceFlags
@@ -275,6 +289,7 @@ type (
 		}
 		DisplayToSurface bool `help:"display the frames rendered in the replay back to the surface"`
 		CommandFilterFlags
+		CaptureFileFlags
 	}
 	UnpackFlags struct {
 		Verbose bool `help:"if true, then output will not be truncated"`
@@ -285,10 +300,12 @@ type (
 			Start int `help:"frame to start stats from"`
 			Count int `help:"number of frames after Start to process: -1 for all frames"`
 		}
+		CaptureFileFlags
 	}
 	MemoryFlags struct {
 		Gapis GapisFlags
 		At    flags.U64Slice `help:"command/subcommand index to get the memory after. Empty for last"`
+		CaptureFileFlags
 	}
 	PipelineFlags struct {
 		Gapis GapisFlags
@@ -297,6 +314,7 @@ type (
 			Shaders bool `help:"print the disassembled shaders along with the bound descriptor values"`
 		}
 		Compute bool `help:"print out the most recently bound compute pipeline instead of graphics pipeline"`
+		CaptureFileFlags
 	}
 	TrimFlags struct {
 		Gapis         GapisFlags
@@ -309,5 +327,11 @@ type (
 		}
 		Out string `help:"gfxtrace file to save the trimmed capture"`
 		CommandFilterFlags
+		CaptureFileFlags
+	}
+	GetTimestampsFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		Out   string `help:"output file to save the profiling result"`
 	}
 )

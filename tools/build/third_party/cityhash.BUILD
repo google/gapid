@@ -32,9 +32,9 @@ cc_library(
         "src/city.cc",
     ],
     hdrs = [
+        "src/city.h",
         ":byteswap",
         ":config",
-        "src/city.h",
     ],
     copts = [
         "-Wno-parentheses",  # warning: suggest parentheses around '+' in operand of '&'

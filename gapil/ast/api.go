@@ -84,3 +84,10 @@ type Delete struct {
 }
 
 func (Delete) isNode() {}
+
+// Clear is the AST node that represents «clear(map)» statement
+type Clear struct {
+	Map Node
+}
+
+func (Clear) isNode() {}

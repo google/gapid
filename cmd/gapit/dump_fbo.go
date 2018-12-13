@@ -21,7 +21,6 @@ import (
 	"image"
 	"image/png"
 	"os"
-	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
@@ -73,12 +72,7 @@ func (verb *dumpFBOVerb) pngFrameSink(ctx context.Context, fileprefix string, vi
 	return srcErr
 }
 
-func (verb *dumpFBOVerb) frameSource(ctx context.Context, client client.Client, captureFilepath string) (videoFrameWriter, error) {
-
-	capture, err := client.LoadCapture(ctx, captureFilepath)
-	if err != nil {
-		return nil, log.Err(ctx, err, "Failed to load the capture file")
-	}
+func (verb *dumpFBOVerb) frameSource(ctx context.Context, client client.Client, capture *path.Capture) (videoFrameWriter, error) {
 
 	filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capture)
 	if err != nil {
@@ -132,14 +126,9 @@ func (verb *dumpFBOVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	capture, err := filepath.Abs(flags.Arg(0))
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Errf(ctx, err, "Could not find capture file: %v", flags.Arg(0))
-	}
-
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
 

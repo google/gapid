@@ -52,6 +52,7 @@ type Resource interface {
 		data *ResourceData,
 		resources ResourceMap,
 		edits ReplaceCallback,
+		mutate MutateInitialState,
 		r *path.ResolveConfig) error
 }
 
@@ -63,6 +64,9 @@ type ResourceMeta struct {
 
 // ReplaceCallback is called from SetResourceData to propagate changes to current command stream.
 type ReplaceCallback func(where uint64, with interface{})
+
+// MutateInitialState is called from SetResourceData to get a mutable instance of the initial state.
+type MutateInitialState func(API API) State
 
 // Interface compliance check
 var _ = image.Convertable((*ResourceData)(nil))

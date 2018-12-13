@@ -47,6 +47,9 @@ func (p *parser) requireStatement(b *cst.Branch) ast.Node {
 	if g := p.delete(b); g != nil {
 		return g
 	}
+	if g := p.clear(b); g != nil {
+		return g
+	}
 	if g := p.iteration(b); g != nil {
 		return g
 	}
@@ -172,6 +175,22 @@ func (p *parser) delete(b *cst.Branch) *ast.Delete {
 		f.Map = p.requireExpression(b)
 		p.requireOperator(ast.OpListSeparator, b)
 		f.Key = p.requireExpression(b)
+		p.requireOperator(ast.OpListEnd, b)
+	})
+	return f
+}
+
+// 'clear' ( expression )
+func (p *parser) clear(b *cst.Branch) *ast.Clear {
+	if !p.peekKeyword(ast.KeywordClear) {
+		return nil
+	}
+	f := &ast.Clear{}
+	p.ParseBranch(b, func(b *cst.Branch) {
+		p.mappings.Add(f, b)
+		p.requireKeyword(ast.KeywordClear, b)
+		p.requireOperator(ast.OpListStart, b)
+		f.Map = p.requireExpression(b)
 		p.requireOperator(ast.OpListEnd, b)
 	})
 	return f

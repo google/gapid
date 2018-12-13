@@ -472,22 +472,13 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			panic(err)
 		}
 		memory := allMemory.(*service.Memory)
-		gotMemory := sync.WaitGroup{}
-		for _, x := range memory.Reads {
-			gotMemory.Add(1)
-			go func(addr, size uint64) {
-				defer gotMemory.Done()
-				client.Get(ctx, commandToClick.MemoryAfter(0, addr, size).Path(), resolveConfig)
-			}(x.Base, x.Size)
+		var mem *service.MemoryRange
+		if len(memory.Reads) > 0 {
+			mem = memory.Reads[0]
+		} else if len(memory.Writes) > 0 {
+			mem = memory.Writes[0]
 		}
-		for _, x := range memory.Writes {
-			gotMemory.Add(1)
-			go func(addr, size uint64) {
-				defer gotMemory.Done()
-				client.Get(ctx, commandToClick.MemoryAfter(0, addr, size).Path(), resolveConfig)
-			}(x.Base, x.Size)
-		}
-		gotMemory.Wait()
+		client.Get(ctx, commandToClick.MemoryAfter(0, mem.Base, 64*1024).Path(), resolveConfig)
 	}()
 
 	// Get Resource Data (For each texture, and shader)
@@ -564,9 +555,9 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	traceMaxMemory := int64(0)
 
 	nonLoadingFrameTime := uint64(0)
-	// We assume that the last 10% of frames come from a non-loading screen
+	// We assume that the last 20% of frames come from a non-loading screen
 	if hasStateSerialization {
-		nFrames := len(frameTimes) / 20
+		nFrames := len(frameTimes) / 5
 		stableStart := frameTimes[len(frameTimes)-nFrames-1]
 		stableEnd := frameTimes[len(frameTimes)-1]
 		nonLoadingFrameTime = (stableEnd - stableStart) / uint64(nFrames)

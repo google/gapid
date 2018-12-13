@@ -29,7 +29,6 @@ package com.google.gapid.glcanvas;
 import static org.lwjgl.system.MemoryUtil.memAddress;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.internal.win32.OS;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.lwjgl.opengl.WGL;
@@ -90,9 +89,7 @@ public abstract class GlCanvas extends Canvas {
 
   private static int checkStyle(Composite parent, int style) {
     if (parent != null) {
-      if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION(6, 0)) {
-        parent.getDisplay().setData(USE_OWNDC_KEY, Boolean.TRUE);
-      }
+      parent.getDisplay().setData(USE_OWNDC_KEY, Boolean.TRUE);
     }
     return style;
   }

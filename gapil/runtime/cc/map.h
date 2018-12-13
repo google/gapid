@@ -141,6 +141,9 @@ class Map {
   // Removes the element with the given key from the map.
   inline void erase(const_iterator it);
 
+  // Clears the map, but does not free any of the memory.
+  inline void clear();
+
   // Returns a reference to the element with the given key, creating and
   // adding an element if one did not exist.
   template <typename T>
@@ -170,7 +173,8 @@ class Map {
     inline V* index(K, bool) __attribute__((always_inline));
     V lookup(K);
     void remove(K);
-    void clear();
+    void clear_for_delete();
+    void clear_keep();
     void reference();
     void release();
 
@@ -373,6 +377,11 @@ void Map<K, V, DENSE>::erase(const K& k) {
 template <typename K, typename V, bool DENSE>
 void Map<K, V, DENSE>::erase(const_iterator it) {
   ptr->remove(it->first);
+}
+
+template <typename K, typename V, bool DENSE>
+void Map<K, V, DENSE>::clear() {
+  ptr->clear_keep();
 }
 
 template <typename K, typename V, bool DENSE>

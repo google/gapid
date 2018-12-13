@@ -18,7 +18,6 @@ import (
 	"context"
 	"flag"
 	"io/ioutil"
-	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
@@ -45,21 +44,11 @@ func (verb *trimVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Errf(ctx, err, "Finding file: %v", flags.Arg(0))
-	}
-
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
-
-	capture, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Errf(ctx, err, "LoadCapture(%v)", filepath)
-	}
 
 	eofEvents, err := verb.eofEvents(ctx, capture, client)
 	if err != nil {

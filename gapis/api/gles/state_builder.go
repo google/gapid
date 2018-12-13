@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/compare"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/api"
+	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/value"
 )
@@ -50,6 +52,7 @@ type stateBuilder struct {
 // The segments of memory that were used to create these commands are returned
 // in the rangeList.
 func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.Cmd, interval.U64RangeList) {
+	start := time.Now()
 	s, hasState := oldState.APIs[ID].(*State)
 	if !hasState {
 		return nil, nil
@@ -102,33 +105,37 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	// Set the active context for each thread
 	sb.bindContexts(ctx, s)
 
-	// Verify that the recreated state matches the original desired state.
-	diffs := 0
-	compare.Compare(s, GetState(sb.newState), func(d compare.Path) {
-		if l := len(d); l > 1 {
-			last := d[l-2] // l-1: is the pool, l-2 is the memory.Slice.
-			if oldSlice, ok := last.Reference.(memory.Slice); ok {
-				if newSlice, ok := last.Value.(memory.Slice); ok {
-					old := AsU8ˢ(sb.tmpArena, oldSlice, sb.oldState.MemoryLayout)
-					new := AsU8ˢ(sb.tmpArena, newSlice, sb.newState.MemoryLayout)
-					if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
-						return // The pool IDs are different, but the resource IDs match exactly.
-					}
-					oldData := old.MustRead(ctx, nil, sb.oldState, nil)
-					newData := new.MustRead(ctx, nil, sb.newState, nil)
-					if reflect.DeepEqual(oldData, newData) {
-						return // The pool IDs are different, but the actual data matches exactly.
+	log.I(ctx, "State reconstruction took %v", time.Since(start))
+
+	if config.CheckRebuiltStateMatches {
+		// Verify that the recreated state matches the original desired state.
+		diffs := 0
+		compare.Compare(s, GetState(sb.newState), func(d compare.Path) {
+			if l := len(d); l > 1 {
+				last := d[l-2] // l-1: is the pool, l-2 is the memory.Slice.
+				if oldSlice, ok := last.Reference.(memory.Slice); ok {
+					if newSlice, ok := last.Value.(memory.Slice); ok {
+						old := AsU8ˢ(sb.tmpArena, oldSlice, sb.oldState.MemoryLayout)
+						new := AsU8ˢ(sb.tmpArena, newSlice, sb.newState.MemoryLayout)
+						if old.ResourceID(ctx, sb.oldState) == new.ResourceID(ctx, sb.newState) {
+							return // The pool IDs are different, but the resource IDs match exactly.
+						}
+						oldData := old.MustRead(ctx, nil, sb.oldState, nil)
+						newData := new.MustRead(ctx, nil, sb.newState, nil)
+						if reflect.DeepEqual(oldData, newData) {
+							return // The pool IDs are different, but the actual data matches exactly.
+						}
 					}
 				}
 			}
-		}
-		if diffs++; diffs <= maxDiffsLogged {
-			log.W(ctx, "Initial state: %v", d)
-		}
-	})
+			if diffs++; diffs <= maxDiffsLogged {
+				log.W(ctx, "Initial state: %v", d)
+			}
+		})
 
-	if diffs > maxDiffsLogged {
-		log.W(ctx, "Initial state: found an additional %d differences", diffs-maxDiffsLogged)
+		if diffs > maxDiffsLogged {
+			log.W(ctx, "Initial state: found an additional %d differences", diffs-maxDiffsLogged)
+		}
 	}
 
 	return sb.cmds, sb.memoryIntervals
@@ -177,10 +184,10 @@ func (sb *stateBuilder) write(ctx context.Context, cmd api.Cmd) {
 		fn(cmd)
 	}
 	sb.preCmd = sb.preCmd[:0]
-	if err := cmd.Mutate(ctx, api.CmdNoID, sb.newState, nil, nil); err != nil {
-		log.W(ctx, "Initial cmd %v: %v - %v", len(sb.cmds), cmd, err)
-	} else {
-		log.D(ctx, "Initial cmd %v: %v", len(sb.cmds), cmd)
+	if config.CheckRebuiltStateMatches {
+		if err := cmd.Mutate(ctx, api.CmdNoID, sb.newState, nil, nil); err != nil {
+			log.W(ctx, "Initial cmd %v: %v - %v", len(sb.cmds), cmd, err)
+		}
 	}
 	sb.cmds = append(sb.cmds, cmd)
 }

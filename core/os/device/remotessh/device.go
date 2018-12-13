@@ -47,7 +47,13 @@ type Device interface {
 	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
 	// WriteFile writes the given file into the given location on the remote device
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
+	// DefaultReplayCacheDir returns the default path for replay resource caches
+	DefaultReplayCacheDir() string
 }
+
+// MaxNumberOfSSHConnections defines the max number of ssh connections to each
+// ssh remote device that can be used to run commands concurrently.
+const MaxNumberOfSSHConnections = 15
 
 // binding represents an attached SSH client.
 type binding struct {
@@ -59,6 +65,63 @@ type binding struct {
 	// We duplicate OS here because we need to use it
 	// before we get the rest of the information
 	os device.OSKind
+
+	// pool to limit the maximum number of connections
+	ch chan int
+}
+
+type pooledSession struct {
+	ch      chan int
+	session *ssh.Session
+}
+
+func (p *pooledSession) kill() error {
+	select {
+	case <-p.ch:
+	default:
+	}
+	<-p.ch
+	return p.session.Signal(ssh.SIGSEGV)
+}
+
+func (p *pooledSession) wait() error {
+	ret := p.session.Wait()
+	select {
+	case <-p.ch:
+	default:
+	}
+	return ret
+}
+
+func newBinding(conn *ssh.Client, conf *Configuration, env *shell.Env) *binding {
+	b := &binding{
+		connection:    conn,
+		configuration: conf,
+		env:           env,
+		ch:            make(chan int, MaxNumberOfSSHConnections),
+		Simple: bind.Simple{
+			To: &device.Instance{
+				Serial:        "",
+				Configuration: &device.Configuration{},
+			},
+			LastStatus: bind.Status_Online,
+		},
+	}
+	return b
+}
+
+func (b *binding) newPooledSession() (*pooledSession, error) {
+	b.ch <- int(0)
+	session, err := b.connection.NewSession()
+	if err != nil {
+		<-b.ch
+		err = fmt.Errorf("New SSH Session Error: %v, Current maximum number of ssh connections GAPID can issue to each remote device is: %v", err, MaxNumberOfSSHConnections)
+		return nil, err
+	}
+	return &pooledSession{
+		ch:      b.ch,
+		session: session,
+	}, nil
 }
 
 var _ Device = &binding{}
@@ -145,18 +208,7 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		env.Add(e)
 	}
 
-	b := &binding{
-		connection:    connection,
-		configuration: &c,
-		env:           env,
-		Simple: bind.Simple{
-			To: &device.Instance{
-				Serial:        "",
-				Configuration: &device.Configuration{},
-			},
-			LastStatus: bind.Status_Online,
-		},
-	}
+	b := newBinding(connection, &c, env)
 
 	kind := device.UnknownOS
 
@@ -217,13 +269,20 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		panic(err)
 	}
 
-	b.To = &device
-	b.To.Name = c.Name
-
-	for i := range b.To.ID.Data {
+	device.Name = c.Name
+	device.GenID()
+	for i := range device.ID.Data {
 		// Flip some bits, since if you have a local & ssh device
 		// they would otherwise be the same
-		b.To.ID.Data[i] = 0x10 ^ b.To.ID.Data[i]
+		device.ID.Data[i] = 0x10 ^ device.ID.Data[i]
 	}
+
+	b.To = &device
+
 	return b, nil
+}
+
+// DefaultReplayCacheDir implements Device interface
+func (b *binding) DefaultReplayCacheDir() string {
+	return ""
 }

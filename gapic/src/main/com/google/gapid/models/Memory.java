@@ -32,6 +32,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Ranges;
 
 import org.eclipse.swt.widgets.Shell;
@@ -77,7 +78,7 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
 
   @Override
   protected ListenableFuture<Data> doLoad(Source source, Path.Device device) {
-    return Futures.transform(commands.getObservations(device, source.command),
+    return MoreFutures.transform(commands.getObservations(device, source.command),
         obs -> new Data(device, client, source, obs));
   }
 
@@ -169,12 +170,12 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
       }
 
       final int totalLength = length;
-      return Futures.transform(
+      return MoreFutures.transform(
           Futures.allAsList(futures), segments -> Segment.combine(segments, totalLength));
     }
 
     private ListenableFuture<Segment> getPage(long page, int offset, int length) {
-      return Futures.transform(getFromCacheOrServer(page),
+      return MoreFutures.transform(getFromCacheOrServer(page),
           memory -> memory.subSegment(offset, length));
     }
 
@@ -193,7 +194,7 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         return Futures.immediateFuture(cached);
       }
 
-      return Futures.transform(getFromServer(page), mem -> {
+      return MoreFutures.transform(getFromServer(page), mem -> {
         addToCache(page, mem);
         return mem;
       });
@@ -206,7 +207,7 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
     }
 
     private ListenableFuture<Segment> getFromServer(long page) {
-      return Futures.transform(
+      return MoreFutures.transform(
           client.get(memoryAfter(src.command, src.pool, getOffsetForPage(page), PAGE_SIZE), device),
           Segment::new);
     }

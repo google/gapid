@@ -333,12 +333,15 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
             void* pMemory;
             functions->vkMapMemory(device, allocatedMemory, 0, pagesize, 0, &pMemory);
 
-            mMemoryTracker.AddTrackingRange(pMemory, pagesize);
+            mMemoryTracker.TrackRange(pMemory, pagesize);
             memset(pMemory, 32, pagesize);
             functions->vkFreeMemory(device, allocatedMemory, nullptr);
-            const auto dirty_pages = mMemoryTracker.GetAndResetDirtyPagesInRange(pMemory, pagesize);
-            mMemoryTracker.RemoveTrackingRange(pMemory, pagesize);
-            m_coherent_memory_tracking_enabled = !dirty_pages.empty();
+            bool tracked = false;
+            mMemoryTracker.HandleAndClearDirtyIntersects(pMemory, pagesize, [&tracked](void*, size_t) {
+                tracked = true;
+            });
+            mMemoryTracker.UntrackRange(pMemory, pagesize);
+            m_coherent_memory_tracking_enabled = tracked;
             if (!m_coherent_memory_tracking_enabled) {
                 GAPID_WARNING("Memory tracker requested, but does not work on this system");
                 GAPID_WARNING("Falling back to non-tracked memory");

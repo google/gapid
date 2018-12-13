@@ -40,6 +40,10 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 		return nil, err
 	}
 
+	if count := uint64(len(allCmds)); cmdIdx >= count {
+		return nil, errPathOOB(cmdIdx, "Index", 0, count-1, p)
+	}
+
 	sd, err := SyncData(ctx, path.FindCapture(p))
 	if err != nil {
 		return nil, err

@@ -34,7 +34,7 @@ class TargetX86 : public Target {
       uintptr_t start_address) const override;
 
   Error EmitTrampoline(const TrampolineConfig &config, CodeGenerator &codegen,
-                       void *source, void *target) override;
+                       void *target) override;
 
   Error RewriteInstruction(const llvm::MCInst &inst, CodeGenerator &codegen,
                            void *data, size_t offset,

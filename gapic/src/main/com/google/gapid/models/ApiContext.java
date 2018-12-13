@@ -26,6 +26,7 @@ import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.MoreFutures;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -65,10 +66,10 @@ public class ApiContext
 
   @Override
   protected ListenableFuture<Contexts> doLoad(Path.Any path, Path.Device device) {
-    return Futures.transform(Futures.transformAsync(client.get(path, device), val -> {
+    return MoreFutures.transform(MoreFutures.transformAsync(client.get(path, device), val -> {
       List<ListenableFuture<ApiContext.IdAndContext>> contexts = Lists.newArrayList();
       for (Path.Context ctx : val.getContexts().getListList()) {
-        contexts.add(Futures.transform(client.get(context(ctx), device),
+        contexts.add(MoreFutures.transform(client.get(context(ctx), device),
             value -> new IdAndContext(ctx, value.getContext())));
       }
       return Futures.allAsList(contexts);
@@ -177,6 +178,11 @@ public class ApiContext
       public int hashCode() {
         return 0;
       }
+
+      @Override
+      public boolean matches(Path.Context path) {
+        return true;
+      }
     };
 
     private final Path.ID id;
@@ -271,6 +277,10 @@ public class ApiContext
     @Override
     public int hashCode() {
       return id.hashCode();
+    }
+
+    public boolean matches(Path.Context path) {
+      return Objects.equals(id, path.getID());
     }
   }
 

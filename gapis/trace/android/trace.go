@@ -31,6 +31,7 @@ import (
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/android/apk"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapidapk/pkginfo"
@@ -423,9 +424,22 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 		}
 	}
 
-	// Find the package by URI
-	re := regexp.MustCompile("([^:]*):([^/]*)/\\.?(.*)")
+	// Handle the special port:<pipe>:<abi> syntax.
+	re := regexp.MustCompile("^port:([^:\\s]+):([^:\\s]+)$")
 	match := re.FindStringSubmatch(o.URI)
+
+	if len(match) == 3 {
+		process, err := gapii.Connect(ctx, t.b, device.ABIByName(match[2]), match[1], o.GapiiOptions())
+		if err != nil {
+			cleanup()
+			return ret, nil, err
+		}
+		return process, cleanup, nil
+	}
+
+	// Find the package by URI
+	re = regexp.MustCompile("([^:]*):([^/]*)/\\.?(.*)")
+	match = re.FindStringSubmatch(o.URI)
 
 	if len(match) == 4 {
 		if err != nil {

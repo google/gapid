@@ -394,6 +394,7 @@
   {{else if IsMapAssign    $}}{{Template "C++.MapAssign" $}}
   {{else if IsSliceAssign  $}}{{Template "C++.SliceAssign" $}}
   {{else if IsMapRemove    $}}{{Template "C++.MapRemove" $}}
+  {{else if IsMapClear     $}}{{Template "C++.MapClear" $}}
   {{else if IsReturn       $}}{{Template "C++.Return" $}}
   {{else if IsBranch       $}}{{Template "C++.Branch" $}}
   {{else if IsSwitch       $}}{{Template "C++.Switch" $}}
@@ -490,6 +491,16 @@
   {{Template "C++.Read" $.Map}}.erase({{Template "C++.Read" $.Key}});
 {{end}}
 
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ logic to remove a map element.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.MapClear"}}
+  {{AssertType $ "MapClear"}}
+
+  {{Template "C++.Read" $.Map}}.clear();
+{{end}}
 
 {{/*
 -------------------------------------------------------------------------------

@@ -75,6 +75,10 @@ class ReplayRequest {
 
   // The list of resources (resource id, resource size) used by the replay
   std::vector<Resource> mResources;
+
+  // This is the payload provided by the server.
+  // mConstnatMemory/mInstructionList point into this payload.
+  std::unique_ptr<ReplayService::Payload> mPayload;
 };
 
 }  // namespace gapir

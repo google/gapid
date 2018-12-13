@@ -59,6 +59,7 @@ import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.Range;
 
@@ -516,7 +517,7 @@ public class ImagePanel extends Composite implements Loadable {
     for (int layer = 0; layer < image.getLayerCount(); layer++) {
       layerFutures.add(image.getImage(layer, level));
     }
-    ListenableFuture<LevelData> future = Futures.transform(Futures.allAsList(layerFutures), imageList -> {
+    ListenableFuture<LevelData> future = MoreFutures.transform(Futures.allAsList(layerFutures), imageList -> {
       Image[] images = imageList.toArray(new Image[imageList.size()]);
 
       Histogram histogram = getUnchecked(HISTOGRAM_CACHE, image.getLevelKey(level),

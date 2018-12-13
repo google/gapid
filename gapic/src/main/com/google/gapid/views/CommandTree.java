@@ -46,6 +46,7 @@ import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.SelectionHandler;
 import com.google.gapid.views.Formatter.StylingString;
 import com.google.gapid.widgets.LinkifiedTreeWithImages;
@@ -174,7 +175,7 @@ public class CommandTree extends Composite
         parent = selection;
       }
       searchController.start().listen(
-          Futures.transformAsync(models.commands.search(parent, text, regex),
+          MoreFutures.transformAsync(models.commands.search(parent, text, regex),
               r -> getTreePath(models.commands.getData(), Lists.newArrayList(),
                   r.getCommandTreeNode().getIndicesList().iterator())),
           new UiCallback<TreePath, TreePath>(tree, LOG) {
@@ -258,7 +259,7 @@ public class CommandTree extends Composite
         index.getNode().getIndicesList().iterator());
     if (index.isGroup()) {
       // Find the deepest group/node in the path that is not the last child of its parent.
-      result = Futures.transform(result, path -> {
+      result = MoreFutures.transform(result, path -> {
         while (path.getSegmentCount() > 0) {
           CommandStream.Node node = (CommandStream.Node)path.getLastSegment();
           if (!node.isLastChild()) {
@@ -279,10 +280,10 @@ public class CommandTree extends Composite
       TreePath result = new TreePath(path.toArray());
       // Ensure the last node in the path is loaded.
       return (load == null) ? Futures.immediateFuture(result) :
-          Futures.transform(load, ignored -> result);
+          MoreFutures.transform(load, ignored -> result);
     }
     return (load == null) ? getTreePathForLoadedNode(node, path, indices) :
-        Futures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
+        MoreFutures.transformAsync(load, loaded -> getTreePathForLoadedNode(loaded, path, indices));
   }
 
   private ListenableFuture<TreePath> getTreePathForLoadedNode(

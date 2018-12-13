@@ -243,9 +243,10 @@ cmd VkResult vkAcquireNextImageKHR(
     Semaphores[semaphore].Signaled = true
   }
   if (fence != 0) {
-    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) }
-    Fences[fence].Signaled = true
-    recordFenceSignal(fence)
+    if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
+      Fences[fence].Signaled = true
+      recordFenceSignal(fence)
+    }
   }
   Swapchains[swapchain].ImagesAcquired[imageIndex] = true
   recordAcquireNextImage(swapchain, imageIndex)
@@ -269,7 +270,24 @@ cmd VkResult vkQueuePresentKHR(
 
 
   info := pPresentInfo[0]
-  // TODO: handle pNext
+
+  // handle pNext
+  if info.pNext != null {
+    numPNext := numberOfPNext(info.pNext)
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // TODO: handle extensions for queue present
+      // Example: Device Gropu Extension
+      // switch sType {
+      //   case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: {
+      //   ext := as!VkDeviceGroupPresentInfoKHR*(next.Ptr)[0]
+      //  }
+      // }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
 
   if (info.pWaitSemaphores != null) {
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]

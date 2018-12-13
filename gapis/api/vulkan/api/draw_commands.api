@@ -51,9 +51,14 @@ vkCmdBindIndexBufferArgs {
 
 
 sub void dovkCmdBindIndexBuffer(ref!vkCmdBindIndexBufferArgs buffer) {
-  lastDrawInfo().BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
-    BoundBuffer(Buffers[buffer.Buffer], buffer.Offset, 0))
-  Buffers[buffer.Buffer].LastBoundQueue = LastBoundQueue
+  if !(buffer.Buffer in Buffers) {
+    vkErrorInvalidBuffer(buffer.Buffer)
+  } else {
+    buff := Buffers[buffer.Buffer]
+    lastDrawInfo().BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
+      BoundBuffer(buff, buffer.Offset, 0))
+    buff.LastBoundQueue = LastBoundQueue
+  }
 }
 
 
@@ -65,19 +70,23 @@ cmd void vkCmdBindIndexBuffer(
     VkBuffer        buffer,
     VkDeviceSize    offset,
     VkIndexType     indexType) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
-  args := new!vkCmdBindIndexBufferArgs(
-    Buffer:     buffer,
-    Offset:     offset,
-    IndexType:  indexType
-  )
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdBindIndexBufferArgs(
+      Buffer:     buffer,
+      Offset:     offset,
+      IndexType:  indexType
+    )
+    cmdBuf := CommandBuffers[commandBuffer]
+    cmdBuf.TouchedBuffers[buffer] = true
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindIndexBuffer))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindIndexBuffer[mapPos] =
-  args
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBindIndexBuffer))
+    cmdBuf.BufferCommands.vkCmdBindIndexBuffer[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdBindIndexBuffer, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdBindIndexBuffer, mapPos)
+  }
 }
 
 @internal class
@@ -94,12 +103,17 @@ class CmdBindBuffer {
 }
 
 sub void dovkCmdBindVertexBuffers(ref!vkCmdBindVertexBuffersArgs bind) {
-  for i in (0 .. len(bind.Buffers)) {
+  n := len(bind.Buffers)
+  for i in (0 .. n) {
     v := bind.Buffers[as!u32(i)]
-    lastDrawInfo().BoundVertexBuffers[as!u32(i) + bind.FirstBinding] = BoundBuffer(
-      Buffers[v], bind.Offsets[as!u32(i)],
-      Buffers[v].Info.Size - bind.Offsets[as!u32(i)])
-    Buffers[v].LastBoundQueue = LastBoundQueue
+    if !(v in Buffers) {
+      vkErrorInvalidBuffer(v)
+    } else {
+      lastDrawInfo().BoundVertexBuffers[as!u32(i) + bind.FirstBinding] = BoundBuffer(
+        Buffers[v], bind.Offsets[as!u32(i)],
+        Buffers[v].Info.Size - bind.Offsets[as!u32(i)])
+      Buffers[v].LastBoundQueue = LastBoundQueue
+    }
   }
 }
 
@@ -112,24 +126,29 @@ cmd void vkCmdBindVertexBuffers(
     u32                 bindingCount,
     const VkBuffer*     pBuffers,
     const VkDeviceSize* pOffsets) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdBindVertexBuffersArgs(
-    FirstBinding:  firstBinding,
-    BindingCount:  bindingCount
-  )
-  buffers := pBuffers[0:bindingCount]
-  offsets := pOffsets[0:bindingCount]
-  for i in (0 .. bindingCount) {
-    if !(buffers[i] in Buffers) { vkErrorInvalidBuffer(buffers[i]) }
-    args.Buffers[i] = buffers[i]
-    args.Offsets[i] = offsets[i]
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdBindVertexBuffersArgs(
+      FirstBinding:  firstBinding,
+      BindingCount:  bindingCount
+    )
+    buffers := pBuffers[0:bindingCount]
+    offsets := pOffsets[0:bindingCount]
+    for i in (0 .. bindingCount) {
+      if !(buffers[i] in Buffers) { vkErrorInvalidBuffer(buffers[i]) }
+      args.Buffers[i] = buffers[i]
+      args.Offsets[i] = offsets[i]
+    }
+    cmdBuf := CommandBuffers[commandBuffer]
+    for i in (0 .. bindingCount) {
+      cmdBuf.TouchedBuffers[buffers[i]] = true
+    }
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBindVertexBuffers))
+    cmdBuf.BufferCommands.vkCmdBindVertexBuffers[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdBindVertexBuffers, mapPos)
   }
-
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdBindVertexBuffers))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdBindVertexBuffers[mapPos] =
-  args
-
-  AddCommand(commandBuffer, cmd_vkCmdBindVertexBuffers, mapPos)
 }
 
 @internal class vkCmdDrawArgs {
@@ -141,6 +160,9 @@ cmd void vkCmdBindVertexBuffers(
 
 
 sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
+  readDrawState()
+  useRenderPass()
+
   readWriteMemoryInBoundGraphicsDescriptorSets()
   readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
@@ -157,14 +179,17 @@ cmd void vkCmdDraw(
     u32             instanceCount,
     u32             firstVertex,
     u32             firstInstance) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdDrawArgs(vertexCount, instanceCount, firstVertex, firstInstance)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdDrawArgs(vertexCount, instanceCount, firstVertex, firstInstance)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDraw))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDraw[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDraw))
+    cmdBuf.BufferCommands.vkCmdDraw[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdDraw, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDraw, mapPos)
+  }
 }
 
 @internal class
@@ -176,7 +201,8 @@ vkCmdDrawIndexedArgs {
   u32 FirstInstance
 }
 
-sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
+@spy_disabled
+sub void readBoundIndexBuffer(u32 indexCount, u32 firstIndex) {
   // Loop through the index buffer, and find the low and high
   // vertices. Then read all of the applicable vertex buffers.
   lastDraw := lastDrawInfo()
@@ -187,12 +213,17 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
     case VK_INDEX_TYPE_UINT32:
       as!VkDeviceSize(4)
   }
-
-  numBytes := as!VkDeviceSize(draw.IndexCount) * indexSize
-  startOffset := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(draw.FirstIndex))
+  numBytes := as!VkDeviceSize(indexCount) * indexSize
+  startOffset := lastDraw.BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(firstIndex))
 
   // Read the data of the index buffer.
   readMemoryInBuffer(indexBuffer, startOffset, numBytes)
+}
+
+sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
+  readDrawState()
+  useRenderPass()
+  readBoundIndexBuffer(draw.IndexCount, draw.FirstIndex)
   // Read the whole vertex buffer.
   readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
   readWriteMemoryInBoundGraphicsDescriptorSets()
@@ -211,20 +242,23 @@ cmd void vkCmdDrawIndexed(
     u32             firstIndex,
     s32             vertexOffset,
     u32             firstInstance) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args := new!vkCmdDrawIndexedArgs(
-    IndexCount:     indexCount,
-    InstanceCount:  instanceCount,
-    FirstIndex:     firstIndex,
-    VertexOffset:   vertexOffset,
-    FirstInstance:  firstInstance
-  )
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdDrawIndexedArgs(
+      IndexCount:     indexCount,
+      InstanceCount:  instanceCount,
+      FirstIndex:     firstIndex,
+      VertexOffset:   vertexOffset,
+      FirstInstance:  firstInstance
+    )
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexed))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexed[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndexed))
+    cmdBuf.BufferCommands.vkCmdDrawIndexed[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdDrawIndexed, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndexed, mapPos)
+  }
 }
 
 @internal class vkCmdDrawIndirectArgs {
@@ -234,12 +268,22 @@ cmd void vkCmdDrawIndexed(
   u32          Stride
 }
 
+@spy_disabled
+sub void readIndirectDrawBuffer(VkBuffer buf, VkDeviceSize offset, u32 drawCount, u32 stride) {
+  if !(buf in Buffers) {
+    vkErrorInvalidBuffer(buf)
+  } else {
+    command_size := as!VkDeviceSize(16)
+    indirect_buffer_read_size := as!VkDeviceSize((drawCount - 1) * stride) + command_size
+    readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size)
+  }
+}
+
 sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
+  useRenderPass()
   if draw.DrawCount > 0 {
     readWriteMemoryInBoundGraphicsDescriptorSets()
-    command_size := as!VkDeviceSize(16)
-    indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
-    readMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
+    readIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
@@ -257,15 +301,19 @@ cmd void vkCmdDrawIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
-  args := new!vkCmdDrawIndirectArgs(buffer, offset, drawCount, stride)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDrawIndirectArgs(buffer, offset, drawCount, stride)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndirect))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndirect[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
+    cmdBuf.TouchedBuffers[buffer] = true
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndirect))
+    cmdBuf.BufferCommands.vkCmdDrawIndirect[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdDrawIndirect, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndirect, mapPos)
+  }
 }
 
 @internal class vkCmdDrawIndexedIndirectArgs {
@@ -275,19 +323,30 @@ cmd void vkCmdDrawIndirect(
   u32          Stride
 }
 
+@spy_disabled
+sub void readIndexedIndirectDrawBuffer(VkBuffer buf, VkDeviceSize offset, u32 drawCount, u32 stride ) {
+    if !(buf in Buffers) {
+      vkErrorInvalidBuffer(buf)
+    } else {
+      command_size := as!VkDeviceSize(16)
+      indirect_buffer_read_size := as!VkDeviceSize((drawCount - 1) * stride) + command_size
+      readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size)
+      // Read through the whole index buffer.
+      indexBuffer := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Buffer
+      readMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
+    }
+}
+
 sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
+  useRenderPass()
   if draw.DrawCount > 0 {
+    ldi := lastDrawInfo()
     readWriteMemoryInBoundGraphicsDescriptorSets()
-    command_size := as!VkDeviceSize(16)
-    indirect_buffer_read_size := as!VkDeviceSize((draw.DrawCount - 1) * draw.Stride) + command_size
-    readMemoryInBuffer(Buffers[draw.Buffer], draw.Offset, indirect_buffer_read_size)
-    // Read through the whole index buffer.
-    indexBuffer := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Buffer
-    readMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
+    readIndexedIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
     // Read through all the vertex buffers.
     readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
-    lastDrawInfo().CommandParameters.DrawIndexedIndirect = draw
+    ldi.CommandParameters.DrawIndexedIndirect = draw
   }
 }
 
@@ -301,15 +360,19 @@ cmd void vkCmdDrawIndexedIndirect(
     VkDeviceSize    offset,
     u32             drawCount,
     u32             stride) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
-  args := new!vkCmdDrawIndexedIndirectArgs(buffer, offset, drawCount, stride)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDrawIndexedIndirectArgs(buffer, offset, drawCount, stride)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexedIndirect))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDrawIndexedIndirect[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
+    cmdBuf.TouchedBuffers[buffer] = true
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndexedIndirect))
+    cmdBuf.BufferCommands.vkCmdDrawIndexedIndirect[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdDrawIndexedIndirect, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndexedIndirect, mapPos)
+  }
 }
 
 @internal class vkCmdDispatchArgs {
@@ -319,6 +382,7 @@ cmd void vkCmdDrawIndexedIndirect(
 }
 
 sub void dovkCmdDispatch(ref!vkCmdDispatchArgs args) {
+  readComputeState()
   readWriteMemoryInBoundComputeDescriptorSets()
 }
 
@@ -331,15 +395,17 @@ cmd void vkCmdDispatch(
     u32             groupCountX,
     u32             groupCountY,
     u32             groupCountZ) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  args :=
-  new!vkCmdDispatchArgs(groupCountX, groupCountY, groupCountZ)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdDispatchArgs(groupCountX, groupCountY, groupCountZ)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatch))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatch[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDispatch))
+    cmdBuf.BufferCommands.vkCmdDispatch[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdDispatch, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDispatch, mapPos)
+  }
 }
 
 @internal
@@ -348,9 +414,15 @@ class vkCmdDispatchIndirectArgs {
   VkDeviceSize Offset
 }
 
-sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
+@spy_disabled
+sub void readIndirectDispatchBuffer(VkBuffer buf, VkDeviceSize offset) {
   command_size := as!VkDeviceSize(12)
-  readMemoryInBuffer(Buffers[dispatch.Buffer], dispatch.Offset, command_size)
+  readMemoryInBuffer(Buffers[buf], offset, command_size)
+}
+
+sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
+  readComputeState()
+  readIndirectDispatchBuffer(dispatch.Buffer, dispatch.Offset)
   readWriteMemoryInBoundComputeDescriptorSets()
 }
 
@@ -362,27 +434,138 @@ cmd void vkCmdDispatchIndirect(
     VkCommandBuffer commandBuffer,
     VkBuffer        buffer,
     VkDeviceSize    offset) {
-  if !(commandBuffer in CommandBuffers) { vkErrorInvalidCommandBuffer(commandBuffer) }
-  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
-  args := new!vkCmdDispatchIndirectArgs(buffer, offset)
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDispatchIndirectArgs(buffer, offset)
 
-  mapPos := as!u32(len(CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatchIndirect))
-  CommandBuffers[commandBuffer].BufferCommands.vkCmdDispatchIndirect[mapPos] =
-  args
+    cmdBuf := CommandBuffers[commandBuffer]
+    cmdBuf.TouchedBuffers[buffer] = true
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDispatchIndirect))
+    cmdBuf.BufferCommands.vkCmdDispatchIndirect[mapPos] = args
 
-  AddCommand(commandBuffer, cmd_vkCmdDispatchIndirect, mapPos)
+    AddCommand(commandBuffer, cmd_vkCmdDispatchIndirect, mapPos)
+  }
 }
 
+@spy_disabled
 sub void readWriteMemoryInBoundGraphicsDescriptorSets() {
+  ldi := lastDrawInfo()
   readWriteMemoryInBoundDescriptorSets(
-    lastDrawInfo().GraphicsPipeline.Layout,
-    lastDrawInfo().DescriptorSets,
-    lastDrawInfo().BufferBindingOffsets)
+    ldi.GraphicsPipeline.Layout,
+    ldi.DescriptorSets,
+    ldi.BufferBindingOffsets)
 }
 
+@spy_disabled
 sub void readWriteMemoryInBoundComputeDescriptorSets() {
+  lci := lastComputeInfo()
   readWriteMemoryInBoundDescriptorSets(
-    lastComputeInfo().ComputePipeline.PipelineLayout,
-    lastComputeInfo().DescriptorSets,
-    lastComputeInfo().BufferBindingOffsets)
+    lci.ComputePipeline.PipelineLayout,
+    lci.DescriptorSets,
+    lci.BufferBindingOffsets)
+}
+
+@internal class DynamicStateSet {
+  bool[9] contains
+}
+
+sub  ref!DynamicStateSet unpackDynamicState(ref!DynamicData data) {
+  obj := new!DynamicStateSet()
+  if data != null {
+    for _, _, s in data.DynamicStates {
+      if as!s32(s) < 9 {
+        obj.contains[as!s32(s)] = true
+      }
+    }
+  }
+  return obj
+}
+
+@spy_disabled
+sub void readComputeState() {
+  readPushConstants(VK_PIPELINE_BIND_POINT_COMPUTE)
+}
+
+@spy_disabled
+sub void readDrawState() {
+  info := lastDrawInfo()
+  pipeline := info.GraphicsPipeline
+
+  dynamicState := unpackDynamicState(pipeline.DynamicState)
+  dyn := lastDynamicPipelineState()
+
+  // read all viewports
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_VIEWPORT)] {
+    _ = len(dyn.Viewports)
+  } else {
+    _ = len(pipeline.ViewportState.Viewports)
+  }
+
+  // read all scissors
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_SCISSOR)] {
+    _ = len(dyn.Scissors)
+  } else {
+    _ = len(pipeline.ViewportState.Scissors)
+  }
+
+  // read line width
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_LINE_WIDTH)] {
+    _ = dyn.LineWidth
+  } else {
+    _ = pipeline.RasterizationState.LineWidth
+  }
+
+  // read depth bias
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_DEPTH_BIAS)] {
+    _ = dyn.DepthBiasConstantFactor
+    _ = dyn.DepthBiasClamp
+    _ = dyn.DepthBiasSlopeFactor
+  } else {
+    _ = pipeline.RasterizationState.DepthBiasConstantFactor
+    _ = pipeline.RasterizationState.DepthBiasClamp
+    _ = pipeline.RasterizationState.DepthBiasSlopeFactor
+  }
+
+  // read blend constants
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_BLEND_CONSTANTS)] {
+    _ = dyn.BlendConstants[0]
+    _ = dyn.BlendConstants[1]
+    _ = dyn.BlendConstants[2]
+    _ = dyn.BlendConstants[3]
+  } else {
+    _ = pipeline.ColorBlendState.BlendConstants[0]
+    _ = pipeline.ColorBlendState.BlendConstants[1]
+    _ = pipeline.ColorBlendState.BlendConstants[2]
+    _ = pipeline.ColorBlendState.BlendConstants[3]
+  }
+
+  // read depth bounds
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_BLEND_CONSTANTS)] {
+    _ = dyn.MinDepthBounds
+    _ = dyn.MaxDepthBounds
+  } else {
+    _ = pipeline.DepthState.MinDepthBounds
+    _ = pipeline.DepthState.MaxDepthBounds
+  }
+
+  // read stencil state
+  if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_BLEND_CONSTANTS)] {
+    _ = dyn.StencilFront.compareMask
+    _ = dyn.StencilFront.writeMask
+    _ = dyn.StencilFront.reference
+    _ = dyn.StencilBack.compareMask
+    _ = dyn.StencilBack.writeMask
+    _ = dyn.StencilBack.reference
+  } else {
+    _ = pipeline.DepthState.Front.compareMask
+    _ = pipeline.DepthState.Front.writeMask
+    _ = pipeline.DepthState.Front.reference
+    _ = pipeline.DepthState.Back.compareMask
+    _ = pipeline.DepthState.Back.writeMask
+    _ = pipeline.DepthState.Back.reference
+  }
+
+  readPushConstants(VK_PIPELINE_BIND_POINT_GRAPHICS)
 }
