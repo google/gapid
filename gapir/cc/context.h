@@ -59,11 +59,20 @@ class Context : private Renderer::Listener {
 
   // Run the interpreter over the opcode stream of the replay request and
   // returns true if the interpretation was successful false otherwise
-  bool interpret();
+  // If cleanup is false, then the next time this context is used,
+  // It will continue from where it was.
+  bool interpret(bool cleanup = true);
 
   // Renderer::Listener compliance
   virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
                               const char* msg) override;
+
+  // Initialize the context object with loading the replay request, setting up
+  // the memory manager, setting up the caches and prefetching the resources
+  bool initialize(const std::string& id);
+
+  // Clean up the context for the next replay.
+  bool cleanup();
 
  private:
   enum {
@@ -73,10 +82,6 @@ class Context : private Renderer::Listener {
 
   Context(ReplayService* srv, core::CrashHandler& crash_handler,
           ResourceLoader* resource_loader, MemoryManager* memory_manager);
-
-  // Initialize the context object with loading the replay request, setting up
-  // the memory manager, setting up the caches and prefetching the resources
-  bool initialize();
 
   // Register the callbacks for the interpreter (Gl functions, load resource,
   // post resource)

@@ -22,7 +22,8 @@
 
 namespace gapir {
 
-std::unique_ptr<ReplayService::Payload> ArchiveReplayService::getPayload() {
+std::unique_ptr<ReplayService::Payload> ArchiveReplayService::getPayload(
+    const std::string&) {
   std::fstream input(mFilePrefix, std::ios::in | std::ios::binary);
   std::unique_ptr<replay_service::Payload> payload(new replay_service::Payload);
   payload->ParseFromIstream(&input);

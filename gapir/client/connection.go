@@ -166,19 +166,44 @@ func (c *Connection) SendPayload(ctx context.Context, payload Payload) error {
 	return nil
 }
 
+// PrewarmReplay requests the GAPIR device to get itself into the given state
+func (c *Connection) PrewarmReplay(ctx context.Context, payload string, cleanup string) error {
+	if c.conn == nil || c.servClient == nil {
+		return log.Err(ctx, nil, "Gapir not connected")
+	}
+	if c.stream == nil {
+		return log.Err(ctx, nil, "Replay Communication not initiated")
+	}
+	PrerunReq := replaysrv.ReplayRequest{
+		Req: &replaysrv.ReplayRequest_Prewarm{
+			Prewarm: &replaysrv.PrewarmRequest{
+				PrerunId:  payload,
+				CleanupId: cleanup,
+			},
+		},
+	}
+	err := c.stream.Send(&PrerunReq)
+	if err != nil {
+		return log.Err(ctx, err, "Sending replay payload")
+	}
+	return nil
+}
+
 // ReplayResponseHandler handles all kinds of ReplayResponse messages received
 // from a connected GAPIR device.
 type ReplayResponseHandler interface {
 	// HandlePayloadRequest handles the given payload request message.
-	HandlePayloadRequest(context.Context, *Connection) error
-	// HandlePayloadRequest handles the given resource request message.
+	HandlePayloadRequest(context.Context, string, *Connection) error
+	// HandleResourceRequest handles the given resource request message.
 	HandleResourceRequest(context.Context, *ResourceRequest, *Connection) error
-	// HandlePayloadRequest handles the given crash dump message.
+	// HandleCrashDump handles the given crash dump message.
 	HandleCrashDump(context.Context, *CrashDump, *Connection) error
-	// HandlePayloadRequest handles the given post data message.
+	// HandlePostData handles the given post data message.
 	HandlePostData(context.Context, *PostData, *Connection) error
 	// HandleNotification handles the given notification message.
 	HandleNotification(context.Context, *Notification, *Connection) error
+	// HandleFinished handles the replay complete
+	HandleFinished(context.Context, error, *Connection) error
 }
 
 // HandleReplayCommunication handles the communication with the GAPIR device on
@@ -189,8 +214,8 @@ type ReplayResponseHandler interface {
 // corresponding given handler to process the type-checked message.
 func (c *Connection) HandleReplayCommunication(
 	ctx context.Context,
-	replayID string,
-	handler ReplayResponseHandler) error {
+	handler ReplayResponseHandler,
+	connected chan error) error {
 	ctx = log.Enter(ctx, "HandleReplayCommunication")
 	if c.conn == nil || c.servClient == nil {
 		return log.Errf(ctx, nil, "Gapir not connected")
@@ -200,11 +225,17 @@ func (c *Connection) HandleReplayCommunication(
 	// which is handling another replay communication will mess up the package
 	// order.
 	if c.stream != nil {
+		connected <- log.Errf(ctx, nil, "Connection: %v is handling another replay communication in another thread. Initiating a new replay on this Connection will mess up the package order for both the existing replay and the new replay", c)
 		return log.Errf(ctx, nil, "Connection: %v is handling another replay communication in another thread. Initiating a new replay on this Connection will mess up the package order for both the existing replay and the new replay", c)
 	}
-	if err := c.beginReplay(ctx, replayID); err != nil {
-		return err
+
+	ctx = c.attachAuthToken(ctx)
+	replayStream, err := c.servClient.Replay(ctx)
+	if err != nil {
+		return log.Err(ctx, err, "Gettting replay stream client")
 	}
+	c.stream = replayStream
+	connected <- nil
 	defer func() {
 		if c.stream != nil {
 			c.stream.CloseSend()
@@ -221,7 +252,7 @@ func (c *Connection) HandleReplayCommunication(
 		}
 		switch r.Res.(type) {
 		case *replaysrv.ReplayResponse_PayloadRequest:
-			if err := handler.HandlePayloadRequest(ctx, c); err != nil {
+			if err := handler.HandlePayloadRequest(ctx, r.GetPayloadRequest().GetPayloadId(), c); err != nil {
 				return log.Errf(ctx, err, "Handling replay payload request")
 			}
 		case *replaysrv.ReplayResponse_ResourceRequest:
@@ -243,34 +274,36 @@ func (c *Connection) HandleReplayCommunication(
 				return log.Errf(ctx, err, "Handling notification")
 			}
 		case *replaysrv.ReplayResponse_Finished:
-			log.D(ctx, "Replay Finished Response received")
-			return nil
+			if err := handler.HandleFinished(ctx, nil, c); err != nil {
+				return log.Errf(ctx, err, "Handling finished")
+			}
 		default:
 			return log.Errf(ctx, nil, "Unhandled ReplayResponse type")
 		}
 	}
 }
 
-// beginReplay begins a replay stream connection and attach the authentication,
+// BeginReplay begins a replay stream connection and attach the authentication,
 // if any, token in the metadata.
-func (c *Connection) beginReplay(ctx context.Context, id string) error {
+func (c *Connection) BeginReplay(ctx context.Context, id string, dep string) error {
 	ctx = log.Enter(ctx, "Starting replay on gapir device")
-	if c.servClient == nil || c.conn == nil {
+	if c.servClient == nil || c.conn == nil || c.stream == nil {
 		return log.Errf(ctx, nil, "Gapir not connected")
 	}
-	ctx = c.attachAuthToken(ctx)
-	replayStream, err := c.servClient.Replay(ctx)
-	if err != nil {
-		return log.Err(ctx, err, "Gettting replay stream client")
-	}
+
 	idReq := replaysrv.ReplayRequest{
-		Req: &replaysrv.ReplayRequest_ReplayId{ReplayId: id},
+		Req: &replaysrv.ReplayRequest_Replay{
+			Replay: &replaysrv.Replay{
+				ReplayId:    id,
+				DependentId: dep,
+			},
+		},
 	}
-	err = replayStream.Send(&idReq)
+	err := c.stream.Send(&idReq)
 	if err != nil {
 		return log.Err(ctx, err, "Sending replay id")
 	}
-	c.stream = replayStream
+
 	return nil
 }
 

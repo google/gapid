@@ -154,7 +154,7 @@ class ReplayService {
   ReplayService& operator=(ReplayService&&) = delete;
 
   // Gets a Payload. Returns nullptr in case of error.
-  virtual std::unique_ptr<Payload> getPayload() = 0;
+  virtual std::unique_ptr<Payload> getPayload(const std::string& id) = 0;
   // Get Resources. Returns nullptr in case of error.
   virtual std::unique_ptr<Resources> getResources(const Resource* resources,
                                                   size_t resCount) = 0;
@@ -172,6 +172,9 @@ class ReplayService {
                                 uint32_t api_index, uint64_t label,
                                 const std::string& msg, const void* data,
                                 uint32_t data_size) = 0;
+
+  // Returns the next replay request from the server.
+  virtual std::unique_ptr<replay_service::ReplayRequest> getReplayRequest() = 0;
 };
 }  // namespace gapir
 

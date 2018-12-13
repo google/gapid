@@ -168,7 +168,7 @@ func GetFootprint(ctx context.Context, c *path.Capture) (*Footprint, error) {
 		Capture: c,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Counld not get execution foot print: %v", err)
+		return nil, fmt.Errorf("Could not get execution foot print: %v", err)
 	}
 	return r.(*Footprint), nil
 }

@@ -88,7 +88,7 @@ func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Pa
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	b := builder.New(replayABI.MemoryLayout)
+	b := builder.New(replayABI.MemoryLayout, nil)
 
 	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
@@ -100,6 +100,7 @@ func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Pa
 			ctx,
 			intent,
 			m.key.config,
+			"",
 			requests,
 			d.Instance(),
 			c,

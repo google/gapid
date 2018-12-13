@@ -371,12 +371,44 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	status.Event(ctx, status.GlobalScope, "Load done, interaction starting %+v", verb.traceSizeInBytes)
 
+	// Sleep for 20 seconds
+	time.Sleep(20 * time.Second)
+
 	ctx = status.Start(oldCtx, "Interacting with frame")
 	// One interaction done
 	verb.interactionStartTime = time.Now()
+
 	interactionWG := sync.WaitGroup{}
+	// Get the framebuffer
 	interactionWG.Add(1)
+	go func() {
+		ctx = status.Start(oldCtx, "Getting Framebuffer")
+		defer status.Finish(ctx)
+		defer interactionWG.Done()
+		hints := &service.UsageHints{Primary: true}
+		settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
+		iip, err := client.GetFramebufferAttachment(ctx,
+			&service.ReplaySettings{
+				Device:                    device,
+				DisableReplayOptimization: verb.NoOpt,
+				DisplayToSurface:          false,
+			},
+			commandToClick, api.FramebufferAttachment_Color0, settings, hints)
+
+		iio, err := client.Get(ctx, iip.Path(), resolveConfig)
+		if err != nil {
+			return
+		}
+		ii := iio.(*img.Info)
+		dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), resolveConfig)
+		if err != nil {
+			panic(log.Errf(ctx, err, "Get frame image data failed"))
+		}
+		_, _, _ = int(ii.Width), int(ii.Height), dataO.([]byte)
+	}()
+
 	// Get state tree
+	interactionWG.Add(1)
 	go func() {
 		ctx = status.Start(oldCtx, "Resolving State Tree")
 		defer status.Finish(ctx)
@@ -417,34 +449,6 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			}(i)
 		}
 		gotNodes.Wait()
-	}()
-
-	// Get the framebuffer
-	interactionWG.Add(1)
-	go func() {
-		ctx = status.Start(oldCtx, "Getting Framebuffer")
-		defer status.Finish(ctx)
-		defer interactionWG.Done()
-		hints := &service.UsageHints{Primary: true}
-		settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
-		iip, err := client.GetFramebufferAttachment(ctx,
-			&service.ReplaySettings{
-				Device:                    device,
-				DisableReplayOptimization: verb.NoOpt,
-				DisplayToSurface:          false,
-			},
-			commandToClick, api.FramebufferAttachment_Color0, settings, hints)
-
-		iio, err := client.Get(ctx, iip.Path(), resolveConfig)
-		if err != nil {
-			return
-		}
-		ii := iio.(*img.Info)
-		dataO, err := client.Get(ctx, path.NewBlob(ii.Bytes.ID()).Path(), resolveConfig)
-		if err != nil {
-			panic(log.Errf(ctx, err, "Get frame image data failed"))
-		}
-		_, _, _ = int(ii.Width), int(ii.Height), dataO.([]byte)
 	}()
 
 	// Get the mesh

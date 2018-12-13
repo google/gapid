@@ -60,7 +60,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 		return err
 	}
 
-	b := builder.New(abi.MemoryLayout)
+	b := builder.New(abi.MemoryLayout, nil)
 
 	f(b)
 

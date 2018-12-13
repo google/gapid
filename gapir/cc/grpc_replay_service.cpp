@@ -26,16 +26,58 @@
 
 namespace gapir {
 
-std::unique_ptr<ReplayService::Payload> GrpcReplayService::getPayload() {
+void GrpcReplayService::handleCommunication(GrpcReplayService* _service) {
+  while (true) {
+    std::unique_ptr<replay_service::ReplayRequest> req =
+        std::unique_ptr<replay_service::ReplayRequest>(
+            new replay_service::ReplayRequest());
+    if (!_service->mGrpcStream->Read(req.get())) {
+      _service->mRequestSem.release();
+      _service->mDataSem.release();
+      return;
+    }
+    _service->mCommunicationLock.lock();
+    if (req->req_case() == replay_service::ReplayRequest::kReplay ||
+        req->req_case() == replay_service::ReplayRequest::kPrewarm) {
+      _service->mDeferredRequests.push_back(std::move(req));
+      _service->mRequestSem.release();
+    } else {
+      _service->mDeferredData.push_back(std::move(req));
+      _service->mDataSem.release();
+    }
+    _service->mCommunicationLock.unlock();
+  }
+}
+
+void GrpcReplayService::primeState(std::string prerun_id,
+                                   std::string cleanup_id) {
+  std::unique_ptr<replay_service::ReplayRequest> req =
+      std::unique_ptr<replay_service::ReplayRequest>(
+          new replay_service::ReplayRequest());
+  auto r = new replay_service::PrewarmRequest();
+  r->set_prerun_id(std::move(prerun_id));
+  r->set_cleanup_id(std::move(cleanup_id));
+  req->set_allocated_prewarm(r);
+  mCommunicationLock.lock();
+  mDeferredRequests.push_back(std::move(req));
+  mRequestSem.release();
+  mCommunicationLock.unlock();
+}
+
+std::unique_ptr<ReplayService::Payload> GrpcReplayService::getPayload(
+    const std::string& id) {
   // Send a replay response with payload request
   replay_service::ReplayResponse res;
-  res.set_allocated_payload_request(new replay_service::PayloadRequest());
+  auto plc = new replay_service::PayloadRequest();
+  plc->set_payload_id(id);
+  res.set_allocated_payload_request(plc);
   mGrpcStream->Write(res);
-  std::unique_ptr<replay_service::ReplayRequest> req(
-      new replay_service::ReplayRequest());
-  if (!mGrpcStream->Read(req.get())) {
+
+  std::unique_ptr<replay_service::ReplayRequest> req = getNonReplayRequest();
+  if (!req) {
     return nullptr;
   }
+
   if (req->req_case() != replay_service::ReplayRequest::kPayload) {
     return nullptr;
   }
@@ -60,9 +102,8 @@ std::unique_ptr<ReplayService::Resources> GrpcReplayService::getResources(
   }
   res.mutable_resource_request()->set_expected_total_size(totalSize);
   mGrpcStream->Write(res);
-  std::unique_ptr<replay_service::ReplayRequest> req(
-      new replay_service::ReplayRequest());
-  if (!mGrpcStream->Read(req.get())) {
+  std::unique_ptr<replay_service::ReplayRequest> req = getNonReplayRequest();
+  if (!req) {
     return nullptr;
   }
   if (req->req_case() != replay_service::ReplayRequest::kResources) {
@@ -116,6 +157,36 @@ bool GrpcReplayService::sendNotification(uint64_t id, uint32_t severity,
   notification->set_msg(msg);
   notification->set_data(data, data_size);
   return mGrpcStream->Write(res);
+}
+
+std::unique_ptr<replay_service::ReplayRequest>
+GrpcReplayService::getNonReplayRequest() {
+  mDataSem.acquire();
+  mCommunicationLock.lock();
+  if (mDeferredData.empty()) {
+    mDataSem.release();
+    mCommunicationLock.unlock();
+    return nullptr;
+  }
+  auto req = std::move(mDeferredData.front());
+  mDeferredData.pop_front();
+  mCommunicationLock.unlock();
+  return std::move(req);
+}
+
+std::unique_ptr<replay_service::ReplayRequest>
+GrpcReplayService::getReplayRequest() {
+  mRequestSem.acquire();
+  mCommunicationLock.lock();
+  if (mDeferredRequests.empty()) {
+    mRequestSem.release();
+    mCommunicationLock.unlock();
+    return nullptr;
+  }
+  auto req = std::move(mDeferredRequests.front());
+  mDeferredRequests.pop_front();
+  mCommunicationLock.unlock();
+  return std::move(req);
 }
 
 }  // namespace gapir

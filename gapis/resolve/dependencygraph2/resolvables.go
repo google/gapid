@@ -39,6 +39,21 @@ func GetDependencyGraph(ctx context.Context, c *path.Capture, config DependencyG
 	return obj.(DependencyGraph), nil
 }
 
+func TryGetDependencyGraph(ctx context.Context, c *path.Capture, config DependencyGraphConfig) (DependencyGraph, error) {
+	obj, err := database.GetOrBuild(ctx, &DependencyGraph2Resolvable{
+		Capture:                c,
+		IncludeInitialCommands: config.IncludeInitialCommands,
+		MergeSubCmdNodes:       config.MergeSubCmdNodes,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if obj == nil {
+		return nil, nil
+	}
+	return obj.(DependencyGraph), nil
+}
+
 func (r *DependencyGraph2Resolvable) Resolve(ctx context.Context) (interface{}, error) {
 	c, err := capture.ResolveFromPath(ctx, r.Capture)
 	if err != nil {

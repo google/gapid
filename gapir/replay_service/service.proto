@@ -42,11 +42,22 @@ message Resources {
   bytes data = 1;
 }
 
+message PrewarmRequest {
+  string prerun_id = 1;
+  string cleanup_id = 2;
+}
+
+message Replay {
+  string replay_id = 1;
+  string dependent_id = 2;
+}
+
 message ReplayRequest {
   oneof req {
-    string replay_id = 1;
-    Payload payload = 2;
-    Resources resources = 3;
+    Replay replay = 1;
+    PrewarmRequest prewarm = 2;
+    Payload payload = 3;
+    Resources resources = 4;
   }
 }
 
@@ -55,6 +66,7 @@ message Finished {
 }
 
 message PayloadRequest {
+  string payload_id = 1;
 }
 
 // ResourceRequest holds a list of IDs of the resources requested by the GAPIR

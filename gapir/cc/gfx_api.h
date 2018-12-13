@@ -28,6 +28,7 @@ class Stack;
 // Api is the abstract base class to all graphics APIs.
 class Api {
  public:
+  virtual ~Api() {}
   // Returns the unique identifier of the graphics API.
   // The pointer is guaranteed to be constant for all instances of the API.
   virtual const char* id() const = 0;

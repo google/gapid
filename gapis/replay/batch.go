@@ -28,8 +28,8 @@ import (
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
+	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/replay/builder"
-	"github.com/google/gapid/gapis/replay/executor"
 	"github.com/google/gapid/gapis/replay/scheduler"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
@@ -100,6 +100,131 @@ func (m *manager) batch(ctx context.Context, e []scheduler.Executable, b schedul
 	}
 }
 
+type InitialPayloadResult struct {
+	prerunID   string
+	cleanupID  string
+	oldBuilder *builder.Builder
+	oldState   *api.GlobalState
+}
+
+func (r *InitialPayloadResolvable) Resolve(
+	ctx context.Context) (interface{}, error) {
+
+	d := bind.GetRegistry(ctx).Device(r.DeviceID.ID())
+	captureID := r.CaptureID.ID()
+	generator := api.Find(api.ID(r.ApiID.ID())).(SplitGenerator)
+
+	ctx = status.Start(ctx, "Initial Payload")
+	defer status.Finish(ctx)
+
+	capturePath := path.NewCapture(captureID)
+	c, err := capture.ResolveFromPath(ctx, capturePath)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to load capture")
+	}
+
+	cml := c.Header.ABI.MemoryLayout
+	ctx = log.V{"capture memory layout": cml}.Bind(ctx)
+
+	deviceABIs := d.Instance().GetConfiguration().GetABIs()
+	if len(deviceABIs) == 0 {
+		return nil, log.Err(ctx, nil, "Replay device doesn't list any ABIs")
+	}
+
+	replayABI := findABI(cml, deviceABIs)
+	if replayABI == nil {
+		log.I(ctx, "Replay device does not have a memory layout matching device used to trace")
+		replayABI = deviceABIs[0]
+	}
+	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
+
+	b := builder.New(replayABI.MemoryLayout, nil)
+
+	out := &adapter{
+		state:   c.NewUninitializedState(ctx),
+		builder: b,
+	}
+	oldBuilder := b
+
+	generatorReplayTimer.Time(func() {
+		nctx := status.Start(ctx, "Generate Initial")
+		defer status.Finish(nctx)
+
+		err = generator.GetInitialPayload(
+			nctx,
+			capturePath,
+			d.Instance(),
+			out)
+	})
+	if err != nil {
+		return nil, log.Err(ctx, err, "Initial Payload returned error")
+	}
+
+	if config.DebugReplay {
+		log.I(ctx, "Building Initial Payload...")
+	}
+
+	var payload gapir.Payload
+	builderBuildTimer.Time(func() {
+		log.D(ctx, "Initial Payload:")
+		payload, _, _, err = b.Build(ctx)
+	})
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to build initial payload")
+	}
+
+	generatedState := c.NewUninitializedState(ctx)
+	generatedState.Memory = out.state.Memory.Clone()
+	// Clone serialized state, and initialize it for use.
+	for k, v := range out.state.APIs {
+		s := v.Clone(generatedState.Arena)
+		s.SetupInitialState(ctx)
+		generatedState.APIs[k] = s
+	}
+
+	b = builder.New(replayABI.MemoryLayout, oldBuilder)
+	out = &adapter{
+		state:   out.state,
+		builder: b,
+	}
+
+	generatorReplayTimer.Time(func() {
+		nctx := status.Start(ctx, "Generate Cleanup")
+		defer status.Finish(nctx)
+
+		err = generator.CleanupResources(
+			nctx,
+			d.Instance(),
+			out)
+	})
+	if err != nil {
+		return nil, log.Err(ctx, err, "Cleanup Payload returned error")
+	}
+
+	var cleanupPayload gapir.Payload
+	builderBuildTimer.Time(func() {
+		log.D(ctx, "Cleanup Payload:")
+		cleanupPayload, _, _, err = b.Build(ctx)
+	})
+
+	id, err := database.Store(ctx, &payload)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Storing warmup payload")
+	}
+
+	cleanID, err := database.Store(ctx, &cleanupPayload)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Storing cleanup payload")
+	}
+
+	return InitialPayloadResult{
+		prerunID:   id.String(),
+		cleanupID:  cleanID.String(),
+		oldBuilder: oldBuilder,
+		oldState:   generatedState,
+	}, nil
+}
+
 func (m *manager) execute(
 	ctx context.Context,
 	d bind.Device,
@@ -108,16 +233,16 @@ func (m *manager) execute(
 	generator Generator,
 	requests []RequestAndResult) error {
 
-	ctx = status.Start(ctx, "Batch (%d x config: %T%+v)", len(requests), cfg, cfg)
-	defer status.Finish(ctx)
-
-	executeCounter.Increment()
-
 	capturePath := path.NewCapture(captureID)
 	c, err := capture.ResolveFromPath(ctx, capturePath)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load capture")
 	}
+
+	ctx = status.Start(ctx, "Batch (%d x config: %T%+v)", len(requests), cfg, cfg)
+	defer status.Finish(ctx)
+
+	executeCounter.Increment()
 
 	ctx = capture.Put(ctx, capturePath)
 	ctx = log.V{
@@ -142,23 +267,71 @@ func (m *manager) execute(
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	b := builder.New(replayABI.MemoryLayout)
+	connection, err := m.connect(ctx, d, replayABI)
+	if err != nil {
+		return log.Err(ctx, err, "Failed to connect to device")
+	}
+
+	var depID string
+	var depBuilder *builder.Builder
+	var depState *api.GlobalState
+	if g, ok := generator.(SplitGenerator); ok {
+		a, ok := g.(api.API)
+		if ok {
+			ipl := InitialPayloadResolvable{
+				CaptureID: NewID(captureID),
+				ApiID:     NewID(id.ID(a.ID())),
+				DeviceID:  NewID(d.Instance().ID.ID()),
+			}
+			ipr, err := database.Build(ctx, &ipl)
+			if err != nil {
+				return err
+			}
+			i, ok := ipr.(InitialPayloadResult)
+			if !ok {
+				return log.Err(ctx, nil, "Invalid Initial Payload")
+			}
+
+			depID = i.prerunID
+			depBuilder = i.oldBuilder
+			depState = i.oldState
+
+			err = connection.PrewarmReplay(ctx, i.prerunID, i.cleanupID)
+			if err != nil {
+				return log.Err(ctx, err, "Replay returned error")
+			}
+		}
+	}
+
+	initState := c.NewUninitializedState(ctx)
+	if depState != nil {
+		initState.Memory = depState.Memory.Clone()
+		// Clone serialized state, and initialize it for use.
+		for k, v := range depState.APIs {
+			s := v.Clone(initState.Arena)
+			s.SetupInitialState(ctx)
+			initState.APIs[k] = s
+		}
+	}
+
+	b := builder.New(replayABI.MemoryLayout, depBuilder)
 
 	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
 	out := &adapter{
-		state:   c.NewUninitializedState(ctx).ReserveMemory(ranges),
+		state:   initState,
 		builder: b,
 	}
-
+	out.state.ReserveMemory(ranges)
 	generatorReplayTimer.Time(func() {
-		ctx := status.Start(ctx, "Generate")
-		defer status.Finish(ctx)
+		nctx := status.Start(ctx, "Generate")
+		defer status.Finish(nctx)
 
 		err = generator.Replay(
-			ctx,
+			nctx,
 			intent,
 			cfg,
+			depID,
 			requests,
 			d.Instance(),
 			c,
@@ -171,34 +344,24 @@ func (m *manager) execute(
 	if config.DebugReplay {
 		log.I(ctx, "Building payload...")
 	}
-
 	var payload gapir.Payload
 	var handlePost builder.PostDataHandler
 	var handleNotification builder.NotificationHandler
 	builderBuildTimer.Time(func() {
+		log.D(ctx, "Main Payload:")
 		payload, handlePost, handleNotification, err = b.Build(ctx)
 	})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
 
-	connection, err := m.gapir.Connect(ctx, d, replayABI)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to device")
-	}
-	defer connection.Close()
-
-	if config.DebugReplay {
-		log.I(ctx, "Sending payload")
-	}
-
 	if Events.OnReplay != nil {
 		Events.OnReplay(d, intent, cfg)
 	}
-
 	executeTimer.Time(func() {
-		err = executor.Execute(
+		err = Execute(
 			ctx,
+			depID,
 			payload,
 			handlePost,
 			handleNotification,

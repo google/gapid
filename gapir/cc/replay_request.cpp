@@ -31,15 +31,15 @@
 namespace gapir {
 
 std::unique_ptr<ReplayRequest> ReplayRequest::create(
-    ReplayService* srv, MemoryManager* memoryManager) {
+    ReplayService* srv, const std::string& id, MemoryManager* memoryManager) {
   // Request the replay data from the server.
   if (srv == nullptr) {
     GAPID_ERROR("Failed to create ReplayRequest: null ReplayService");
     return nullptr;  // no replay service.
   }
-  std::unique_ptr<ReplayService::Payload> payload = srv->getPayload();
+  std::unique_ptr<ReplayService::Payload> payload = srv->getPayload(id);
   if (payload == nullptr) {
-    GAPID_ERROR("Failed to create ReplayRequest: null Payload")
+    GAPID_ERROR("Failed to create ReplayRequest %s: null Payload", id.c_str())
     return nullptr;  // failed at getting payload.
   }
 

@@ -25,39 +25,41 @@ type mappedMemoryRange struct {
 	Target value.Pointer
 }
 
-type mappedMemoryRangeList []mappedMemoryRange
+// MappedMemoryRangeList represents a bunch of mapped memory ranges,
+// and the location that they are stored in the heap.
+type MappedMemoryRangeList []mappedMemoryRange
 
-// Length returns the number of ranges in the mappedMemoryRangeList.
-func (l *mappedMemoryRangeList) Length() int {
+// Length returns the number of ranges in the MappedMemoryRangeList.
+func (l *MappedMemoryRangeList) Length() int {
 	return len(*l)
 }
 
 // GetSpan returns the span of the range with the specified index in the
-// mappedMemoryRangeList.
-func (l *mappedMemoryRangeList) GetSpan(index int) interval.U64Span {
+// MappedMemoryRangeList.
+func (l *MappedMemoryRangeList) GetSpan(index int) interval.U64Span {
 	return (*l)[index].Span()
 }
 
 // SetSpan adjusts the range of the span with the specified index in the
-// mappedMemoryRangeList.
-func (l *mappedMemoryRangeList) SetSpan(index int, span interval.U64Span) {
+// MappedMemoryRangeList.
+func (l *MappedMemoryRangeList) SetSpan(index int, span interval.U64Span) {
 	(*l)[index].Range = memory.Range{Base: span.Start, Size: span.End - span.Start}
 }
 
-// New replaces specified index in the mappedMemoryRangeList.
-func (l *mappedMemoryRangeList) New(index int, span interval.U64Span) {
+// New replaces specified index in the MappedMemoryRangeList.
+func (l *MappedMemoryRangeList) New(index int, span interval.U64Span) {
 	(*l)[index] = mappedMemoryRange{
 		Range: memory.Range{Base: span.Start, Size: span.End - span.Start},
 	}
 }
 
-// Copy performs a copy of ranges within the mappedMemoryRangeList.
-func (l *mappedMemoryRangeList) Copy(to, from, count int) {
+// Copy performs a copy of ranges within the MappedMemoryRangeList.
+func (l *MappedMemoryRangeList) Copy(to, from, count int) {
 	copy((*l)[to:to+count], (*l)[from:from+count])
 }
 
-// Resize resizes the mappedMemoryRangeList to the specified length.
-func (l *mappedMemoryRangeList) Resize(length int) {
+// Resize resizes the MappedMemoryRangeList to the specified length.
+func (l *MappedMemoryRangeList) Resize(length int) {
 	if cap(*l) > length {
 		*l = (*l)[:length]
 	} else {
@@ -66,7 +68,7 @@ func (l *mappedMemoryRangeList) Resize(length int) {
 		if capacity < length {
 			capacity = length
 		}
-		*l = make(mappedMemoryRangeList, length, capacity)
+		*l = make(MappedMemoryRangeList, length, capacity)
 		copy(*l, old)
 	}
 }

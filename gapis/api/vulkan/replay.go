@@ -33,6 +33,7 @@ import (
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
@@ -718,10 +719,34 @@ type timestampsConfig struct {
 type timestampsRequest struct {
 }
 
+func (a API) GetInitialPayload(ctx context.Context,
+	capture *path.Capture,
+	device *device.Instance,
+	out transform.Writer) error {
+	transforms := transform.Transforms{}
+	transforms.Add(&makeAttachementReadable{})
+	transforms.Add(&dropInvalidDestroy{})
+	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
+	out.State().Allocator.ReserveRanges(im)
+
+	transforms.Transform(ctx, initialCmds, out)
+	return nil
+}
+
+func (a API) CleanupResources(ctx context.Context,
+	device *device.Instance,
+	out transform.Writer) error {
+	transforms := transform.Transforms{}
+	transforms.Add(&destroyResourcesAtEOS{})
+	transforms.Transform(ctx, []api.Cmd{}, out)
+	return nil
+}
+
 func (a API) Replay(
 	ctx context.Context,
 	intent replay.Intent,
 	cfg replay.Config,
+	dependentPayload string,
 	rrs []replay.RequestAndResult,
 	device *device.Instance,
 	c *capture.Capture,
@@ -758,6 +783,7 @@ func (a API) Replay(
 	numInitialCmdWithOpt := 0
 	initCmdExpandedWithoutOpt := false
 	numInitialCmdWithoutOpt := 0
+	newDCEexpanded := false
 	expandCommands := func(opt bool) (int, error) {
 		if opt && initCmdExpandedWithOpt {
 			return numInitialCmdWithOpt, nil
@@ -767,20 +793,34 @@ func (a API) Replay(
 		}
 		if opt {
 			if config.NewDeadCodeElimination {
-				if dceInfo.newDce == nil {
+				if dceInfo.newDce == nil && !newDCEexpanded {
 					cfg := dependencygraph2.DependencyGraphConfig{
 						MergeSubCmdNodes:       !config.DeadSubCmdElimination,
-						IncludeInitialCommands: true,
+						IncludeInitialCommands: dependentPayload == "",
 					}
-					graph, err := dependencygraph2.GetDependencyGraph(ctx, capture.Get(ctx), cfg)
+					graph, err := dependencygraph2.TryGetDependencyGraph(ctx, capture.Get(ctx), cfg)
 					if err != nil {
 						return 0, fmt.Errorf("Could not build dependency graph for DCE: %v", err)
 					}
-					dceInfo.newDce = dependencygraph2.NewDCEBuilder(graph)
+
+					if graph != nil {
+						log.I(ctx, "Got Dependency Graph")
+						dceInfo.newDce = dependencygraph2.NewDCEBuilder(graph)
+					} else {
+						log.I(ctx, "Dependency Graph still pending")
+					}
 				}
-				cmds = []api.Cmd{}
+				newDCEexpanded = true
+				if dceInfo.newDce != nil {
+					cmds = []api.Cmd{}
+				}
 				return 0, nil
 			} else {
+				// If we have a dependent payload, then we cannot use
+				// the DCE.
+				if dependentPayload != "" {
+					return 0, nil
+				}
 				// If we have not set up the dependency graph, do it now.
 				if dceInfo.ft == nil {
 					ft, err := dependencygraph.GetFootprint(ctx, intent.Capture)
@@ -796,12 +836,15 @@ func (a API) Replay(
 				return numInitialCmdWithOpt, nil
 			}
 		}
-		// If the capture contains initial state, prepend the commands to build the state.
-		initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
-		out.State().Allocator.ReserveRanges(im)
-		numInitialCmdWithoutOpt = len(initialCmds)
-		if len(initialCmds) > 0 {
-			cmds = append(initialCmds, cmds...)
+		// If we do not depend on another payload to get us into the right state,
+		// we should get ourselves into the intial state
+		if dependentPayload == "" {
+			initialCmds, im, _ := initialcmds.InitialCommands(ctx, intent.Capture)
+			out.State().Allocator.ReserveRanges(im)
+			numInitialCmdWithoutOpt = len(initialCmds)
+			if len(initialCmds) > 0 {
+				cmds = append(initialCmds, cmds...)
+			}
 		}
 		initCmdExpandedWithoutOpt = true
 		return numInitialCmdWithoutOpt, nil
@@ -861,9 +904,9 @@ func (a API) Replay(
 			}
 
 			if optimize {
-				if config.NewDeadCodeElimination {
+				if dceInfo.newDce != nil {
 					dceInfo.newDce.Request(ctx, api.SubCmdIdx{cmdid})
-				} else {
+				} else if (dceInfo.dce) != nil {
 					dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
 				}
 			}
@@ -903,9 +946,9 @@ func (a API) Replay(
 
 	// Use the dead code elimination pass
 	if optimize {
-		if config.NewDeadCodeElimination {
+		if dceInfo.newDce != nil {
 			transforms.Prepend(dceInfo.newDce)
-		} else {
+		} else if dceInfo.dce != nil {
 			transforms.Prepend(dceInfo.dce)
 		}
 	}

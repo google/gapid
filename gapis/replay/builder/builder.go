@@ -88,7 +88,7 @@ type Builder struct {
 	resources           []*gapir.ResourceInfo
 	reservedMemory      memory.RangeList // Reserved memory ranges for regular data.
 	pointerMemory       memory.RangeList // Reserved memory ranges for the pointer table.
-	mappedMemory        mappedMemoryRangeList
+	mappedMemory        MappedMemoryRangeList
 	instructions        []asm.Instruction
 	decoders            []postBackDecoder
 	notificationReaders []NotificationReader
@@ -98,6 +98,7 @@ type Builder struct {
 	cmdStart            int    // index of current commands's first instruction
 	pendingLabel        uint64 // label passed to BeginCommand written
 	lastLabel           uint64 // label of last CommitCommand written
+	volatileSpace       uint64 // Amount of volatile space already used
 
 	// Remappings is a map of a arbitrary keys to pointers. Typically, this is
 	// used as a map of observed values to values that are only known at replay
@@ -109,23 +110,45 @@ type Builder struct {
 
 // New returns a newly constructed Builder configured to replay on a target
 // with the specified MemoryLayout.
-func New(memoryLayout *device.MemoryLayout) *Builder {
+func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 	ptrAlignment := uint64(memoryLayout.GetPointer().GetAlignment())
+	var dependentMemory uint64
+	mappedMemory := MappedMemoryRangeList{}
+	remappings := make(map[interface{}]value.Pointer)
+	volatileSpace := uint64(0)
+	if dependent != nil {
+		dependentMemory = dependent.volatileSpace
+		volatileSpace = dependent.volatileSpace
+		mappedMemory = append(mappedMemory, dependent.mappedMemory...)
+		for k, v := range dependent.Remappings {
+			remappings[k] = v
+		}
+	}
+
 	return &Builder{
-		constantMemory:  newConstantEncoder(memoryLayout),
-		heap:            allocator{alignment: ptrAlignment},
+		constantMemory: newConstantEncoder(memoryLayout),
+		heap: allocator{
+			alignment: ptrAlignment,
+			size:      dependentMemory,
+			head:      dependentMemory,
+		},
 		temp:            allocator{alignment: ptrAlignment},
 		resourceIDToIdx: map[id.ID]uint32{},
 		threadIDToIdx:   map[uint64]uint32{},
 		resources:       []*gapir.ResourceInfo{},
 		reservedMemory:  memory.RangeList{},
 		pointerMemory:   memory.RangeList{},
-		mappedMemory:    mappedMemoryRangeList{},
+		mappedMemory:    mappedMemory,
 		instructions:    []asm.Instruction{},
 		memoryLayout:    memoryLayout,
 		lastLabel:       ^uint64(0),
-		Remappings:      make(map[interface{}]value.Pointer),
+		volatileSpace:   volatileSpace,
+		Remappings:      remappings,
 	}
+}
+
+func (b *Builder) MemoryRanges() MappedMemoryRangeList {
+	return b.mappedMemory
 }
 
 func (b *Builder) pushStack(t protocol.Type) {
@@ -618,13 +641,18 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		Resources:          b.resources,
 		Opcodes:            opcodes.Bytes(),
 	}
+	b.volatileSpace += vml.size
 
 	if config.DebugReplayBuilder {
-		log.I(ctx, "Stack size:           0x%x", payload.StackSize)
-		log.I(ctx, "Volatile memory size: 0x%x", payload.VolatileMemorySize)
-		log.I(ctx, "Constant memory size: 0x%x", len(payload.Constants))
-		log.I(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
-		log.I(ctx, "Resource count:         %d", len(payload.Resources))
+		log.E(ctx, "----------------------------------")
+		log.E(ctx, "Stack size:           0x%x", payload.StackSize)
+		log.E(ctx, "Volatile memory size: 0x%x", payload.VolatileMemorySize)
+		log.E(ctx, "Constant memory size: 0x%x", len(payload.Constants))
+		log.E(ctx, "Opcodes size:         0x%x", len(payload.Opcodes))
+		log.E(ctx, "Resource count:         %d", len(payload.Resources))
+		log.E(ctx, "Decoder count:         %d", len(b.decoders))
+		log.E(ctx, "Readers count:         %d", len(b.notificationReaders))
+		log.E(ctx, "----------------------------------")
 	}
 
 	// Make a copy of the reference of the finished decoder list to cut off the
@@ -702,6 +730,15 @@ func (b *Builder) layoutVolatileMemory(ctx context.Context, w binary.Writer) *vo
 	// Volatile memory layout:
 	//
 	//  low ┌──────────────────┐
+	//      │                  │
+	//      │                  │
+	//      │                  │
+	//      │                  │
+	//      │     dependent    │
+	//      │                  │
+	//      │                  │
+	//      │                  │
+	//      ├──────────────────┤
 	//      │       heap       │
 	//      ├──────────────────┤
 	//      │       temp       │
