@@ -53,6 +53,7 @@ extern void vkErrQueryNotInactive(VkQueryPool queryPool, u32 query)
 extern void vkErrQueryNotActive(VkQueryPool queryPool, u32 query)
 extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout)
 extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
+extern void vkErrImageMemoryNotBound(VkImage img)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
@@ -131,6 +132,10 @@ sub void vkErrorInvalidImageMipLevel(VkImage img, u32 level) {
 sub void vkErrorInvalidImageLayout(VkImage img, VkImageAspectFlagBits aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout) {
   vkErrInvalidImageLayout(img, as!u32(aspect), layer, level, layout, expectedLayout)
   // Continue the mutation as this may not cause problem.
+}
+
+sub void vkErrorImageMemoryNotBound(VkImage img) {
+  vkErrImageMemoryNotBound(img)
 }
 
 sub void vkErrorInvalidImageView(VkImageView view) {
