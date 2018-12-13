@@ -193,7 +193,7 @@ cmd VkResult ReplayCreateSwapchain(
     Info:                   ImageInfo(
       ImageType:    VK_IMAGE_TYPE_2D,
       Format:       create_info.imageFormat,
-      Extent:       VkExtent3D(create_info.imageExtent.Width, create_info.imageExtent.Height, 1),
+      Extent:       VkExtent3D(create_info.imageExtent.width, create_info.imageExtent.height, 1),
       MipLevels:    1,
       ArrayLayers:  create_info.imageArrayLayers,
       Samples:      VK_SAMPLE_COUNT_1_BIT,

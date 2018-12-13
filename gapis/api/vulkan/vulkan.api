@@ -67,6 +67,8 @@ import "api/util.api"
 
 import "extensions/ext_debug_marker.api"
 import "extensions/ext_debug_report.api"
+import "extensions/ext_debug_utils.api"
+import "extensions/amd_buffer_marker.api"
 import "extensions/khr_dedicated_allocation.api"
 import "extensions/khr_display.api"
 import "extensions/khr_display_swapchain.api"
@@ -193,6 +195,7 @@ class ExtensionSet {
 sub ref!ExtensionSet supportedInstanceExtensions() {
   supported := new!ExtensionSet()
   // Recognized instance extensions
+  supported.ExtensionNames["VK_EXT_debug_utils"] = true
   supported.ExtensionNames["VK_KHR_surface"] = true
   supported.ExtensionNames["VK_KHR_display"] = true
   supported.ExtensionNames["VK_EXT_debug_report"] = true
@@ -231,6 +234,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_maintenance3"] = true
   supported.ExtensionNames["VK_AMD_draw_indirect_count"] = true
   supported.ExtensionNames["VK_KHR_draw_indirect_count"] = true
+  supported.ExtensionNames["VK_AMD_buffer_marker"] = true
   return supported
 }
 

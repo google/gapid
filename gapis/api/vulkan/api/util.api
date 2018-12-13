@@ -296,9 +296,9 @@ sub VkDeviceSize inferImageLevelSize(ref!ImageObject img, u32 level) {
   level_size := MutableVkDeviceSize(0)
   if level < img_info.MipLevels {
     block_info := getElementAndTexelBlockSize(img_info.Format)
-    width := getMipSize(img_info.Extent.Width, level)
-    height := getMipSize(img_info.Extent.Height, level)
-    depth := getMipSize(img_info.Extent.Depth, level)
+    width := getMipSize(img_info.Extent.width, level)
+    height := getMipSize(img_info.Extent.height, level)
+    depth := getMipSize(img_info.Extent.depth, level)
     width_in_blocks := roundUpTo(width, block_info.TexelBlockSize.Width)
     height_in_blocks := roundUpTo(height, block_info.TexelBlockSize.Height)
     level_size.Val += as!VkDeviceSize(width_in_blocks * height_in_blocks * depth * block_info.ElementSize * img_info.ArrayLayers)

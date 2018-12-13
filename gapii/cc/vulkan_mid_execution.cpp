@@ -477,9 +477,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
 
       const uint32_t width =
-          subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, level);
+          subGetMipSize(nullptr, nullptr, info.mExtent.mwidth, level);
       const uint32_t height =
-          subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, level);
+          subGetMipSize(nullptr, nullptr, info.mExtent.mheight, level);
       const uint32_t width_in_blocks =
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
@@ -514,9 +514,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
 
       const uint32_t width_in_blocks =
-          subRoundUpTo(nullptr, nullptr, extent.mWidth, texel_width);
+          subRoundUpTo(nullptr, nullptr, extent.mwidth, texel_width);
       const uint32_t height_in_blocks =
-          subRoundUpTo(nullptr, nullptr, extent.mHeight, texel_height);
+          subRoundUpTo(nullptr, nullptr, extent.mheight, texel_height);
       const uint32_t element_size = get_element_size(format, aspect_bit, false);
 
       return pitch{
@@ -550,11 +550,11 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       const uint32_t texel_height =
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
       const uint32_t width =
-          subGetMipSize(nullptr, nullptr, extent.mWidth, mip_level);
+          subGetMipSize(nullptr, nullptr, extent.mwidth, mip_level);
       const uint32_t height =
-          subGetMipSize(nullptr, nullptr, extent.mHeight, mip_level);
+          subGetMipSize(nullptr, nullptr, extent.mheight, mip_level);
       const uint32_t depth =
-          subGetMipSize(nullptr, nullptr, extent.mDepth, mip_level);
+          subGetMipSize(nullptr, nullptr, extent.mdepth, mip_level);
       const uint32_t width_in_blocks =
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
@@ -953,9 +953,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           // larger row pitch and depth pitch
           pitch ep =
               extent_pitch(copy.mimageExtent, img->mInfo.mFormat, aspect_bit);
-          for (uint32_t zd = 0; zd < copy.mimageExtent.mDepth; zd++) {
+          for (uint32_t zd = 0; zd < copy.mimageExtent.mdepth; zd++) {
             for (uint32_t yd = 0;
-                 yd < subRoundUpTo(nullptr, nullptr, copy.mimageExtent.mHeight,
+                 yd < subRoundUpTo(nullptr, nullptr, copy.mimageExtent.mheight,
                                    bp.texel_height);
                  yd++) {
               uint32_t x =

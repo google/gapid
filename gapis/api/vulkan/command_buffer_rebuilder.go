@@ -1237,6 +1237,78 @@ func rebuildVkCmdDebugMarkerInsertEXT(
 			markerNameData.Data()).AddRead(markerInfoData.Data()), nil
 }
 
+func rebuildVkCmdBeginDebugUtilsLabelEXT(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdBeginDebugUtilsLabelEXTArgsʳ) (func(), api.Cmd, error) {
+
+	a := s.Arena // TODO: Should this be a seperate temporary arena?
+
+	markerNameData := s.AllocDataOrPanic(ctx, d.LabelName())
+	color := NewF32ː4ᵃ(a,
+		d.Color().Get(0),
+		d.Color().Get(1),
+		d.Color().Get(2),
+		d.Color().Get(3),
+	)
+	markerInfoData := s.AllocDataOrPanic(ctx,
+		NewVkDebugUtilsLabelEXT(a,
+			VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+			NewVoidᶜᵖ(memory.Nullptr),
+			NewCharᶜᵖ(markerNameData.Ptr()),
+			color,
+		))
+	return func() {
+			markerNameData.Free()
+			markerInfoData.Free()
+		}, cb.VkCmdDebugMarkerBeginEXT(commandBuffer, markerInfoData.Ptr()).AddRead(
+			markerNameData.Data()).AddRead(markerInfoData.Data()), nil
+}
+
+func rebuildVkCmdEndDebugUtilsLabelEXT(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdEndDebugUtilsLabelEXTArgsʳ) (func(), api.Cmd, error) {
+	return func() {}, cb.VkCmdEndDebugUtilsLabelEXT(commandBuffer), nil
+}
+
+func rebuildVkCmdInsertDebugUtilsLabelEXT(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdInsertDebugUtilsLabelEXTArgsʳ) (func(), api.Cmd, error) {
+
+	a := s.Arena // TODO: Should this be a seperate temporary arena?
+
+	markerNameData := s.AllocDataOrPanic(ctx, d.LabelName())
+	color := NewF32ː4ᵃ(a,
+		d.Color().Get(0),
+		d.Color().Get(1),
+		d.Color().Get(2),
+		d.Color().Get(3),
+	)
+	markerInfoData := s.AllocDataOrPanic(ctx,
+		NewVkDebugUtilsLabelEXT(a,
+			VkStructureType_VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT,
+			NewVoidᶜᵖ(memory.Nullptr),
+			NewCharᶜᵖ(markerNameData.Ptr()),
+			color,
+		))
+	return func() {
+			markerNameData.Free()
+			markerInfoData.Free()
+		}, cb.VkCmdDebugMarkerBeginEXT(commandBuffer, markerInfoData.Ptr()).AddRead(
+			markerNameData.Data()).AddRead(markerInfoData.Data()), nil
+}
+
 // GetCommandArgs takes a command reference and returns the command arguments
 // of that recorded command.
 func GetCommandArgs(ctx context.Context,
@@ -1348,6 +1420,12 @@ func GetCommandArgs(ctx context.Context,
 		return cmds.VkCmdDrawIndirectCountAMD().Get(cr.MapIndex())
 	case CommandType_cmd_vkCmdDrawIndexedIndirectCountAMD:
 		return cmds.VkCmdDrawIndexedIndirectCountAMD().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdBeginDebugUtilsLabelEXT:
+		return cmds.VkCmdBeginDebugUtilsLabelEXT().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdEndDebugUtilsLabelEXT:
+		return cmds.VkCmdEndDebugUtilsLabelEXT().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdInsertDebugUtilsLabelEXT:
+		return cmds.VkCmdInsertDebugUtilsLabelEXT().Get(cr.MapIndex())
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
@@ -1461,6 +1539,12 @@ func GetCommandFunction(cr *CommandReference) interface{} {
 		return subDovkCmdDrawIndirectCountAMD
 	case CommandType_cmd_vkCmdDrawIndexedIndirectCountAMD:
 		return subDovkCmdDrawIndexedIndirectCountAMD
+	case CommandType_cmd_vkCmdBeginDebugUtilsLabelEXT:
+		return subDovkCmdBeginDebugUtilsLabelEXT
+	case CommandType_cmd_vkCmdEndDebugUtilsLabelEXT:
+		return subDovkCmdEndDebugUtilsLabelEXT
+	case CommandType_cmd_vkCmdInsertDebugUtilsLabelEXT:
+		return subDovkCmdInsertDebugUtilsLabelEXT
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
@@ -1581,6 +1665,12 @@ func AddCommand(ctx context.Context,
 		return rebuildVkCmdDrawIndirectCountAMD(ctx, cb, commandBuffer, r, s, t)
 	case VkCmdDrawIndexedIndirectCountAMDArgsʳ:
 		return rebuildVkCmdDrawIndexedIndirectCountAMD(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdBeginDebugUtilsLabelEXTArgsʳ:
+		return rebuildVkCmdBeginDebugUtilsLabelEXT(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdEndDebugUtilsLabelEXTArgsʳ:
+		return rebuildVkCmdEndDebugUtilsLabelEXT(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdInsertDebugUtilsLabelEXTArgsʳ:
+		return rebuildVkCmdInsertDebugUtilsLabelEXT(ctx, cb, commandBuffer, r, s, t)
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)

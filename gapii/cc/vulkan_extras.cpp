@@ -88,8 +88,8 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
       return false;
     }
     image = mState.LastPresentInfo.mPresentImages[0];
-    *w = image->mInfo.mExtent.mWidth;
-    *h = image->mInfo.mExtent.mHeight;
+    *w = image->mInfo.mExtent.mwidth;
+    *h = image->mInfo.mExtent.mheight;
     // Swapchain images have only one miplevel.
     frame_buffer_img_level = 0;
     // There might be more than one array layers for swapchain images,

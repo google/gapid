@@ -219,9 +219,9 @@ cmd VkResult vkCreateImage(
     for j in (0 .. info.arrayLayers) {
       aspect.Layers[j] = new!ImageLayer()
       for i in (0 .. info.mipLevels) {
-        width := getMipSize(info.extent.Width, i)
-        height := getMipSize(info.extent.Height, i)
-        depth := getMipSize(info.extent.Depth, i)
+        width := getMipSize(info.extent.width, i)
+        height := getMipSize(info.extent.height, i)
+        depth := getMipSize(info.extent.depth, i)
         level := new!ImageLevel(
           Width: width,
           Height:  height,
