@@ -157,17 +157,7 @@ void Context::onDebugMessage(uint32_t severity, uint8_t api_index,
     str_msg = std::string(msg, len);
     msg = str_msg.data();
   }
-  switch (severity) {
-    case LOG_LEVEL_ERROR:
-      GAPID_ERROR("[%d]renderer: %s", label, msg);
-      break;
-    case LOG_LEVEL_WARNING:
-      GAPID_WARNING("[%d]renderer: %s", label, msg);
-      break;
-    default:
-      GAPID_DEBUG("[%d]renderer: %s", label, msg);
-      break;
-  }
+  GAPID_DEBUG("[%d]renderer: %s", label, msg);
   mSrv->sendNotification(mNumSentDebugMessages++, severity, api_index, label,
                          str_msg, nullptr, 0);
 }
