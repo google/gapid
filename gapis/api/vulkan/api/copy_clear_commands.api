@@ -290,10 +290,10 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
       extentYInBlocks := roundUpTo(region.extent.height, as!u32(srcBlockHeight))
       extentZ := region.extent.depth
 
-      srcImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.Width, srcMipLevel), as!u32(srcBlockWidth)))
-      srcImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.Height, srcMipLevel), as!u32(srcBlockHeight)))
-      dstImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.Width, dstMipLevel), as!u32(dstBlockWidth)))
-      dstImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.Height, dstMipLevel), as!u32(dstBlockHeight)))
+      srcImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.width, srcMipLevel), as!u32(srcBlockWidth)))
+      srcImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.height, srcMipLevel), as!u32(srcBlockHeight)))
+      dstImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.width, dstMipLevel), as!u32(dstBlockWidth)))
+      dstImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.height, dstMipLevel), as!u32(dstBlockHeight)))
 
       minLayerCount := min!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
       maxLayerCount := max!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
