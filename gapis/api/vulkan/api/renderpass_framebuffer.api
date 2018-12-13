@@ -403,7 +403,6 @@ cmd void vkCmdEndRenderPass(
   }
 }
 
-@spy_disabled
 sub void loadImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
@@ -426,7 +425,6 @@ sub void loadImageAttachment(u32 attachmentID) {
   }
 }
 
-@spy_disabled
 sub void storeImageAttachment(u32 attachmentID) {
   VK_ATTACHMENT_UNUSED := as!u32(0xFFFFFFFF)
   if attachmentID != VK_ATTACHMENT_UNUSED {
