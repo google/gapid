@@ -31,8 +31,8 @@ func undefinedFramebuffer(ctx context.Context, device *device.Instance) transfor
 		out.MutateAndWrite(ctx, id, cmd)
 		s := out.State()
 		c := GetContext(s, cmd.Thread())
-		if c.IsNil() || !c.Other().Initialized() {
-			return // We can't do anything without a context.
+		if c.IsNil() || !c.Other().Initialized() || c.Constants().MajorVersion() < 2 {
+			return // We can't do anything without a context or GLES 1.
 		}
 		if eglMakeCurrent, ok := cmd.(*EglMakeCurrent); ok && !seenSurfaces[eglMakeCurrent.Draw()] {
 			// Render the undefined pattern for new contexts.
