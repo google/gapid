@@ -34,6 +34,14 @@ import (
 	"github.com/google/gapid/gapidapk"
 )
 
+var (
+	getClassLoaderSignatures = []string{
+		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)Ljava/lang/ClassLoader;",
+		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;)Ljava/lang/ClassLoader;",
+		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/ClassLoader;",
+	}
+)
+
 func expect(r io.Reader, expected []byte) error {
 	got := make([]byte, len(expected))
 	if _, err := io.ReadFull(r, got); err != nil {
@@ -104,17 +112,12 @@ func waitForVulkanLoad(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventM
 		return nil, err
 	}
 
-	getClassLoader, err := conn.GetClassMethod(loaders.ClassID(), "getClassLoader",
-		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/ClassLoader;")
-	if err != nil {
-		getClassLoader, err = conn.GetClassMethod(loaders.ClassID(), "getClassLoader",
-			"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;)Ljava/lang/ClassLoader;")
-		if err != nil {
-			return nil, err
+	for _, sig := range getClassLoaderSignatures {
+		if getClassLoader, err := conn.GetClassMethod(loaders.ClassID(), "getClassLoader", sig); err == nil {
+			return conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID)
 		}
 	}
-
-	return conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID)
+	return nil, fmt.Errorf("no known ApplicationLoaders.getClassLoader method found")
 }
 
 // loadAndConnectViaJDWP connects to the application waiting for a JDWP
