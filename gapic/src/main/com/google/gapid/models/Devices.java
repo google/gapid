@@ -232,6 +232,9 @@ public class Devices {
     if (!os.getName().isEmpty()) {
       sb.append(" ").append(os.getName());
     }
+    if (os.getAPIVersion() != 0) {
+      sb.append(" API ").append(os.getAPIVersion());
+    }
     return sb;
   }
 
