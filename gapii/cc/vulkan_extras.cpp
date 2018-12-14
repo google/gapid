@@ -461,6 +461,8 @@ void VulkanSpy::untrackMappedCoherentMemory(CallObserver*, uint64_t start,
 
 void VulkanSpy::mapMemory(CallObserver*, void**, gapil::Slice<uint8_t>) {}
 void VulkanSpy::unmapMemory(CallObserver*, gapil::Slice<uint8_t>) {}
+void VulkanSpy::recordEventWait(CallObserver*, VkEvent) {}
+void VulkanSpy::recordEventSet(CallObserver*, VkEvent) {}
 void VulkanSpy::recordFenceSignal(CallObserver*, uint64_t) {}
 void VulkanSpy::recordFenceWait(CallObserver*, uint64_t) {}
 void VulkanSpy::recordFenceReset(CallObserver*, uint64_t) {}

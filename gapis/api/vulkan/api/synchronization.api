@@ -300,6 +300,7 @@ cmd VkResult vkSetEvent(
       execPendingCommands(queue, true)
     }
   }
+  recordEventSet(event)
   fence
   return ?
 }
@@ -404,6 +405,7 @@ sub void dovkCmdWaitEvents(ref!vkCmdWaitEventsArgs args) {
     event.SubmitQueue = LastBoundQueue.VulkanHandle
     if event.Signaled != true {
       LastBoundQueue.PendingEvents[e] = event
+      recordEventWait(e)
     }
   }
   if len(LastBoundQueue.PendingEvents) == 0 {
@@ -582,6 +584,8 @@ cmd void vkCmdPipelineBarrier(
   }
 }
 
+extern void recordEventWait(VkEvent event)
+extern void recordEventSet(VkEvent event)
 extern void recordFenceSignal(VkFence fence)
 extern void recordFenceWait(VkFence fence)
 extern void recordFenceReset(VkFence fence)

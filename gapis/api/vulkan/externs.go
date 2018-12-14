@@ -571,6 +571,20 @@ func (e externs) recordFenceReset(fence VkFence) {
 	}
 }
 
+type eventSignal uint64
+
+func (e externs) recordEventWait(event VkEvent) {
+	if e.w != nil {
+		e.w.OpenForwardDependency(e.ctx, eventSignal(event))
+	}
+}
+
+func (e externs) recordEventSet(event VkEvent) {
+	if e.w != nil {
+		e.w.CloseForwardDependency(e.ctx, eventSignal(event))
+	}
+}
+
 type swapchainImage struct {
 	swapchain  VkSwapchainKHR
 	imageIndex uint32
