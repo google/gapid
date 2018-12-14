@@ -1541,20 +1541,22 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	default:
 		return log.Errf(h.sb.ctx, nil, "invalid aspect: %v to render", job.renderTarget.aspect)
 	}
-	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
-		h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-			commandBuffer,
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkDependencyFlags(0),
-			0,
-			memory.Nullptr,
-			0,
-			memory.Nullptr,
-			uint32(len(dstBarriers)),
-			h.sb.MustAllocReadData(dstBarriers).Ptr(),
-		))
-	})
+	if len(dstBarriers) > 0 {
+		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+			h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
+				commandBuffer,
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+				VkDependencyFlags(0),
+				0,
+				memory.Nullptr,
+				0,
+				memory.Nullptr,
+				uint32(len(dstBarriers)),
+				h.sb.MustAllocReadData(dstBarriers).Ptr(),
+			))
+		})
+	}
 
 	return nil
 }
@@ -2330,7 +2332,7 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 				queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
 				dstImg.VulkanHandle(),                                                                                      // image
 				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-					VkImageAspectFlags(dst.dstAspect), // aspectMask
+					ipImageBarrierAspectFlags(dst.dstAspect, dstImg.Info().Fmt()), // aspectMask
 					0, // baseMipLevel
 					dstImg.Info().MipLevels(), // levelCount
 					0, // baseArrayLayer
@@ -2339,27 +2341,29 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 			)
 
 			postCopyDstImgBarriers := []VkImageMemoryBarrier{}
-			walkImageSubresourceRange(h.sb, dstImg, h.sb.imageWholeSubresourceRange(dstImg), func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
-				barrier := NewVkImageMemoryBarrier(h.sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-					0, // pNext
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-					VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // oldLayout
-					h.job.finalLayout.layoutOf(aspect, layer, level),                                                           // newLayout
-					queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
-					queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
-					dstImg.VulkanHandle(),                                                                                      // image
-					NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-						VkImageAspectFlags(aspect), // aspectMask
-						level, // baseMipLevel
-						1,     // levelCount
-						layer, // baseArrayLayer
-						1,     // layerCount
-					),
-				)
-				postCopyDstImgBarriers = append(postCopyDstImgBarriers, barrier)
-			})
+			for layer := uint32(0); layer < dstImg.Info().ArrayLayers(); layer++ {
+				for level := uint32(0); level < dstImg.Info().MipLevels(); level++ {
+					barrier := NewVkImageMemoryBarrier(h.sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+						0, // pNext
+						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+						VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // oldLayout
+						h.job.finalLayout.layoutOf(dst.dstAspect, layer, level),                                                    // newLayout
+						queueFamilyIgnore,                                                                                          // srcQueueFamilyIndex
+						queueFamilyIgnore,                                                                                          // dstQueueFamilyIndex
+						dstImg.VulkanHandle(),                                                                                      // image
+						NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+							ipImageBarrierAspectFlags(dst.dstAspect, dstImg.Info().Fmt()), // aspectMask
+							level, // baseMipLevel
+							1,     // levelCount
+							layer, // baseArrayLayer
+							1,     // layerCount
+						),
+					)
+					postCopyDstImgBarriers = append(postCopyDstImgBarriers, barrier)
+				}
+			}
 
 			for len(h.copies[dstImg]) != 0 && len(h.content[dstImg]) != 0 {
 				copies := []VkBufferImageCopy{}
