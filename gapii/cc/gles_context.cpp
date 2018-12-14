@@ -47,6 +47,8 @@
     auto str = mImports.glGetString(name);                               \
     if (uint32_t err = mImports.glGetError()) {                          \
       GAPID_WARNING("glGetString(" #name ") gave error 0x%x", err);      \
+    } else if (str == nullptr) {                                         \
+      GAPID_WARNING("glGetString(" #name ") returned null w/o error");   \
     } else {                                                             \
       *out = gapil::String(arena(), reinterpret_cast<const char*>(str)); \
     }                                                                    \
@@ -62,20 +64,26 @@ void GlesSpy::getContextConstants(Constants& out) {
   GET_STRING(GL_SHADING_LANGUAGE_VERSION, &out.mShadingLanguageVersion);
   GET_STRING(GL_VENDOR, &out.mVendor);
   GET_STRING(GL_VERSION, &out.mVersion);
+
   GLint major_version = 0;
   GLint minor_version = 0;
-  mImports.glGetError();  // Clear error state.
-  mImports.glGetIntegerv(GL_MAJOR_VERSION, &major_version);
-  mImports.glGetIntegerv(GL_MINOR_VERSION, &minor_version);
-  if (mImports.glGetError() != GL_NO_ERROR) {
-    // GL_MAJOR_VERSION/GL_MINOR_VERSION were introduced in GLES 3.0,
-    // so if the commands returned error we assume it is GLES 2.0.
-    major_version = 2;
-    minor_version = 0;
-    out.mMajorVersion = major_version;
-    out.mMinorVersion = minor_version;
+  if (out.mShadingLanguageVersion.length() == 0) {
+    major_version = 1;
+  } else {
+    mImports.glGetError();  // Clear error state.
+    mImports.glGetIntegerv(GL_MAJOR_VERSION, &major_version);
+    mImports.glGetIntegerv(GL_MINOR_VERSION, &minor_version);
+    if (mImports.glGetError() != GL_NO_ERROR) {
+      // GL_MAJOR_VERSION/GL_MINOR_VERSION were introduced in GLES 3.0,
+      // so if the commands returned error we assume it is GLES 2.0.
+      major_version = 2;
+      minor_version = 0;
+    }
   }
-  if (major_version > 3) {
+  out.mMajorVersion = major_version;
+  out.mMinorVersion = minor_version;
+
+  if (major_version >= 3) {
     int32_t c;
     GET(glGetIntegerv, GL_NUM_EXTENSIONS, &c);
     for (int32_t i = 0; i < c; i++) {
@@ -101,7 +109,8 @@ void GlesSpy::getContextConstants(Constants& out) {
           gapil::String(arena(), extension.c_str());
     }
   }
-  bool gles20 = true;
+
+  bool gles20 = major_version >= 2;
   bool gles30 =
       (major_version > 3) || (major_version == 3 && minor_version >= 0);
   bool gles31 =
@@ -177,7 +186,6 @@ void GlesSpy::getContextConstants(Constants& out) {
 
   // Constants defined in version 3.0.4 (August 27, 2014)
   if (gles30) {
-    GET(glGetIntegerv, GL_MAJOR_VERSION, &out.mMajorVersion);
     GET(glGetIntegerv, GL_MAX_3D_TEXTURE_SIZE, &out.mMax3dTextureSize);
     GET(glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS,
         &out.mMaxArrayTextureLayers);
@@ -219,7 +227,6 @@ void GlesSpy::getContextConstants(Constants& out) {
         &out.mMaxVertexUniformBlocks);
     GET(glGetIntegerv, GL_MAX_VERTEX_UNIFORM_COMPONENTS,
         &out.mMaxVertexUniformComponents);
-    GET(glGetIntegerv, GL_MINOR_VERSION, &out.mMinorVersion);
     GET(glGetIntegerv, GL_MIN_PROGRAM_TEXEL_OFFSET,
         &out.mMinProgramTexelOffset);
     GET(glGetIntegerv, GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
