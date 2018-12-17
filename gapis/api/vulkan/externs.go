@@ -200,12 +200,6 @@ func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInM
 		mem.Dataʷ(e.ctx, e.w, true).Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
 			Copy(e.ctx, U8ᵖ(mem.MappedLocationʷ(e.ctx, e.w, true)).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b, e.w)
 	}
-	if e.w != nil {
-		dstSlice := mem.Dataʷ(e.ctx, e.w, true).Slice(dstStart, dstStart+uint64(readSize))
-		srcSlice := U8ᵖ(mem.MappedLocationʷ(e.ctx, e.w, true)).Slice(srcStart, srcStart+uint64(readSize), l)
-		e.w.OnReadSlice(e.ctx, srcSlice)
-		e.w.OnWriteSlice(e.ctx, dstSlice)
-	}
 }
 func (e externs) untrackMappedCoherentMemory(start uint64, size memory.Size) {}
 
