@@ -391,6 +391,15 @@ func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSpar
 	return NilImageMemoryRequirementsʳ
 }
 
+func (e externs) fetchUsedDescriptors(ShaderModuleObjectʳ) DescriptorInfoʳ {
+	for _, ee := range e.cmd.Extras().All() {
+		if p, ok := ee.(DescriptorInfo); ok {
+			return MakeDescriptorInfoʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
+		}
+	}
+	return MakeDescriptorInfoʳ(e.s.Arena)
+}
+
 func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMemoryRequirements {
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID

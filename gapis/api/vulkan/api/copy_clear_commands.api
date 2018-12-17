@@ -42,14 +42,13 @@
   map!(u32, VkBufferCopy) CopyRegions
 }
 
-@spy_disabled
 sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
   if !(buffer.SrcBuffer in Buffers) { vkErrorInvalidBuffer(buffer.SrcBuffer) }
   if !(buffer.DstBuffer in Buffers) { vkErrorInvalidBuffer(buffer.DstBuffer) }
   sourceBuffer := Buffers[buffer.SrcBuffer]
   destBuffer := Buffers[buffer.DstBuffer]
   for _ , _ , region in buffer.CopyRegions {
-    readMemoryInBuffer(sourceBuffer, region.srcOffset, region.size)
+    readCoherentMemoryInBuffer(sourceBuffer)
     copyBufferToBuffer(destBuffer, region.dstOffset, sourceBuffer, region.srcOffset, region.size)
   }
 }
@@ -197,8 +196,6 @@ cmd void vkCmdCopyBuffer(
         vkErrorInvalidBuffer(dstBuffer)
       } else {
         cmdBuf := CommandBuffers[commandBuffer]
-        cmdBuf.TouchedBuffers[srcBuffer] = true
-        cmdBuf.TouchedBuffers[dstBuffer] = true
 
         args := new!vkCmdCopyBufferArgs(
           SrcBuffer:  srcBuffer,
@@ -228,17 +225,9 @@ class vkCmdCopyImageArgs {
 }
 
 @spy_disabled
-sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
-  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
-  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
+sub void trackVkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
-
-  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
-  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
-  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
-  // the changes in coherent memory to the UI's texture view.
-  readCoherentMemoryInImage(srcImageObject)
 
   srcFormat := srcImageObject.Info.Format
   srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
@@ -349,6 +338,19 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   }
 }
 
+sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
+  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
+  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
+  srcImageObject := Images[args.SrcImage]
+
+  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
+  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
+  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
+  // the changes in coherent memory to the UI's texture view.
+  readCoherentMemoryInImage(srcImageObject)
+  trackVkCmdCopyImage(args)
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -366,11 +368,9 @@ cmd void vkCmdCopyImage(
     if !(srcImage in Images) {
       vkErrorInvalidImage(srcImage)
     } else {
-      srcImgObj := Images[srcImage]
       if !(dstImage in Images) {
         vkErrorInvalidImage(dstImage)
       } else {
-        dstImgObj := Images[dstImage]
         cmdBuf := CommandBuffers[commandBuffer]
         args := new!vkCmdCopyImageArgs(
           SrcImage:        srcImage,
@@ -380,24 +380,8 @@ cmd void vkCmdCopyImage(
         )
         regions := pRegions[0:regionCount]
         for i in (0 .. regionCount) {
-          r := regions[i]
-          args.Regions[as!u32(i)] = r
-          commandBufferTouchImage(cmdBuf, srcImgObj,
-            VkImageSubresourceRange(
-              r.srcSubresource.aspectMask,
-              r.srcSubresource.mipLevel,
-              as!u32(1),
-              r.srcSubresource.baseArrayLayer,
-              r.srcSubresource.layerCount))
-          commandBufferTouchImage(cmdBuf, dstImgObj,
-            VkImageSubresourceRange(
-              r.dstSubresource.aspectMask,
-              r.dstSubresource.mipLevel,
-              as!u32(1),
-              r.dstSubresource.baseArrayLayer,
-              r.dstSubresource.layerCount))
+          args.Regions[i] = regions[i]
         }
-
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyImage))
         cmdBuf.BufferCommands.vkCmdCopyImage[mapPos] = args
 
@@ -418,17 +402,9 @@ class vkCmdBlitImageArgs {
 }
 
 @spy_disabled
-sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
-  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
-  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
+sub void trackVkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
-
-  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
-  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
-  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
-  // the changes in coherent memory to the UI's texture view.
-  readCoherentMemoryInImage(srcImageObject)
 
   srcFormat := srcImageObject.Info.Format
   srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
@@ -530,6 +506,19 @@ sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   }
 }
 
+sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
+  if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
+  if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
+  srcImageObject := Images[args.SrcImage]
+
+  // The following read on coherent memory of the source image does not affect the data in imageLevel.Data, as they are different memory spaces.
+  // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
+  // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
+  // the changes in coherent memory to the UI's texture view.
+  readCoherentMemoryInImage(srcImageObject)
+  trackVkCmdBlitImage(args)
+}
+
 @threadSafety("app")
 @indirect("VkCommandBuffer", "VkDevice")
 @threadsafe
@@ -548,11 +537,9 @@ cmd void vkCmdBlitImage(
     if !(srcImage in Images) {
       vkErrorInvalidImage(srcImage)
     } else {
-      srcImgObj := Images[srcImage]
       if !(dstImage in Images) {
         vkErrorInvalidImage(dstImage)
       } else {
-        dstImgObj := Images[dstImage]
         cmdBuf := CommandBuffers[commandBuffer]
         args := new!vkCmdBlitImageArgs(
           SrcImage:        srcImage,
@@ -561,26 +548,12 @@ cmd void vkCmdBlitImage(
           DstImageLayout:  dstImageLayout,
           Filter:          filter
         )
+
         regions := pRegions[0:regionCount]
         for i in (0 .. regionCount) {
           r := regions[i]
           args.Regions[as!u32(i)] = r
-          commandBufferTouchImage(cmdBuf, srcImgObj,
-            VkImageSubresourceRange(
-              r.srcSubresource.aspectMask,
-              r.srcSubresource.mipLevel,
-              as!u32(1),
-              r.srcSubresource.baseArrayLayer,
-              r.srcSubresource.layerCount))
-          commandBufferTouchImage(cmdBuf, dstImgObj,
-            VkImageSubresourceRange(
-              r.dstSubresource.aspectMask,
-              r.dstSubresource.mipLevel,
-              as!u32(1),
-              r.dstSubresource.baseArrayLayer,
-              r.dstSubresource.layerCount))
         }
-
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBlitImage))
         cmdBuf.BufferCommands.vkCmdBlitImage[mapPos] = args
 
@@ -712,9 +685,12 @@ class vkCmdCopyBufferToImageArgs {
   map!(u32, VkBufferImageCopy) Regions
 }
 
-@spy_disabled
+
 sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
-  copyImageBuffer(args.SrcBuffer, args.DstImage, args.Layout, args.Regions, true)
+  if (!args.SrcBuffer in Buffers) { vkErrorInvalidBuffer(args.SrcBuffer) } else {
+    readCoherentMemoryInBuffer(Buffers[args.SrcBuffer])
+    copyImageBuffer(args.SrcBuffer, args.DstImage, args.Layout, args.Regions, true)
+  }
 }
 
 @threadSafety("app")
@@ -736,9 +712,7 @@ cmd void vkCmdCopyBufferToImage(
       if !(dstImage in Images) {
         vkErrorInvalidImage(dstImage)
       } else {
-        dstImgObj := Images[dstImage]
         cmdBuf := CommandBuffers[commandBuffer]
-        cmdBuf.TouchedBuffers[srcBuffer] = true
 
         regions := pRegions[0:regionCount]
         read(regions)
@@ -746,12 +720,6 @@ cmd void vkCmdCopyBufferToImage(
         for i in (0 .. regionCount) {
           r := regions[i]
           args.Regions[as!u32(i)] = r
-          commandBufferTouchImage(cmdBuf, dstImgObj, VkImageSubresourceRange(
-              r.imageSubresource.aspectMask,
-              r.imageSubresource.mipLevel,
-              as!u32(1),
-              r.imageSubresource.baseArrayLayer,
-              r.imageSubresource.layerCount))
         }
 
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyBufferToImage))
@@ -771,9 +739,11 @@ class vkCmdCopyImageToBufferArgs {
   map!(u32, VkBufferImageCopy) Regions
 }
 
-@spy_disabled
 sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs args) {
-  copyImageBuffer(args.DstBuffer, args.SrcImage, args.SrcImageLayout, args.Regions, false)
+  if (!args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) } else {
+    readCoherentMemoryInImage(Images[args.SrcImage])
+    copyImageBuffer(args.DstBuffer, args.SrcImage, args.SrcImageLayout, args.Regions, false)
+  }
 }
 
 @threadSafety("app")
@@ -795,9 +765,7 @@ cmd void vkCmdCopyImageToBuffer(
       if !(srcImage in Images) {
         vkErrorInvalidImage(srcImage)
       } else {
-        srcImgObj := Images[srcImage]
         cmdBuf := CommandBuffers[commandBuffer]
-        cmdBuf.TouchedBuffers[dstBuffer] = true
 
         regions := pRegions[0:regionCount]
         args := new!vkCmdCopyImageToBufferArgs(
@@ -808,13 +776,6 @@ cmd void vkCmdCopyImageToBuffer(
         for i in (0 .. regionCount) {
           r := regions[i]
           args.Regions[as!u32(i)] = r
-          commandBufferTouchImage(cmdBuf, srcImgObj,
-            VkImageSubresourceRange(
-              r.imageSubresource.aspectMask,
-              r.imageSubresource.mipLevel,
-              as!u32(1),
-              r.imageSubresource.baseArrayLayer,
-              r.imageSubresource.layerCount))
         }
 
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdCopyImageToBuffer))
@@ -862,7 +823,6 @@ cmd void vkCmdUpdateBuffer(
       vkErrorInvalidBuffer(dstBuffer)
     } else {
       cmdBuf := CommandBuffers[commandBuffer]
-      cmdBuf.TouchedBuffers[dstBuffer] = true
 
       args := new!vkCmdUpdateBufferArgs(
         dstBuffer,
@@ -915,7 +875,6 @@ cmd void vkCmdFillBuffer(
       vkErrorInvalidBuffer(dstBuffer)
     } else {
       cmdBuf := CommandBuffers[commandBuffer]
-      cmdBuf.TouchedBuffers[dstBuffer] = true
 
       args := new!vkCmdFillBufferArgs(
         dstBuffer,
@@ -965,12 +924,10 @@ cmd void vkCmdClearColorImage(
     if !(image in Images) {
       vkErrorInvalidImage(image)
     } else {
-      imgObj := Images[image]
       if pColor == null {
         vkErrorNullPointer("VkClearColorValue")
       } else {
         cmdBuf := CommandBuffers[commandBuffer]
-
         color := pColor[0]
         ranges := pRanges[0:rangeCount]
         args := new!vkCmdClearColorImageArgs(
@@ -980,7 +937,6 @@ cmd void vkCmdClearColorImage(
         )
         for i in (0 .. rangeCount) {
           args.Ranges[as!u32(i)] = ranges[i]
-          commandBufferTouchImage(cmdBuf, imgObj, ranges[i])
         }
 
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdClearColorImage))
@@ -1025,12 +981,10 @@ cmd void vkCmdClearDepthStencilImage(
     if !(image in Images) {
       vkErrorInvalidImage(image)
     } else {
-      imgObj := Images[image]
       if pDepthStencil == null {
         vkErrorNullPointer("VkClearDepthStencilValue")
       } else {
         cmdBuf := CommandBuffers[commandBuffer]
-
         depthStencil := pDepthStencil[0]
         ranges := pRanges[0:rangeCount]
         args := new!vkCmdClearDepthStencilImageArgs(
@@ -1040,7 +994,6 @@ cmd void vkCmdClearDepthStencilImage(
         )
         for i in (0 .. rangeCount) {
           args.Ranges[as!u32(i)] = ranges[i]
-          commandBufferTouchImage(cmdBuf, imgObj, ranges[i])
         }
 
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdClearDepthStencilImage))
@@ -1102,7 +1055,6 @@ cmd void vkCmdClearAttachments(
   map!(u32, VkImageResolve) ResolveRegions
 }
 
-@spy_disabled
 sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
   if !(args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) }
   if !(args.DstImage in Images) { vkErrorInvalidImage(args.DstImage) }
@@ -1124,6 +1076,7 @@ sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
     dst := Images[args.DstImage]
 
     updateImageQueue(src, srcRange)
+    readCoherentMemoryInImage(src)
     readImageSubresource(src, srcRange)
     updateImageQueue(dst, dstRange)
     writeImageSubresource(dst, dstRange)
@@ -1147,12 +1100,9 @@ cmd void vkCmdResolveImage(
     if !(srcImage in Images) {
       vkErrorInvalidImage(srcImage)
     } else {
-      srcImg := Images[srcImage]
       if !(dstImage in Images) {
         vkErrorInvalidImage(dstImage)
       } else {
-        dstImg := Images[dstImage]
-
         cmdBuf := CommandBuffers[commandBuffer]
         args := new!vkCmdResolveImageArgs(
           SrcImage:        srcImage,
@@ -1163,21 +1113,6 @@ cmd void vkCmdResolveImage(
         regions := pRegions[0:regionCount]
         for i in (0 .. regionCount) {
           args.ResolveRegions[as!u32(i)] = regions[i]
-
-          srcRng := VkImageSubresourceRange(
-            regions[i].srcSubresource.aspectMask,
-            regions[i].srcSubresource.mipLevel,
-            1,
-            regions[i].srcSubresource.baseArrayLayer,
-            regions[i].srcSubresource.layerCount)
-          commandBufferTouchImage(cmdBuf, srcImg, srcRng)
-          dstRng := VkImageSubresourceRange(
-            regions[i].dstSubresource.aspectMask,
-            regions[i].dstSubresource.mipLevel,
-            1,
-            regions[i].dstSubresource.baseArrayLayer,
-            regions[i].dstSubresource.layerCount)
-          commandBufferTouchImage(cmdBuf, dstImg, dstRng)
         }
 
         mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdResolveImage))

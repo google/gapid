@@ -106,9 +106,14 @@
       ϟw api.StateWatcher, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
-    ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
-    {{Global "CurrentFunction" $}}
-    {{Template "Block" $.Block}}
+    {{if (GetAnnotation ($) "server_disabled")}}
+      // @server_disabled
+      return nil
+    {{else}}
+      ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+      {{Global "CurrentFunction" $}}
+      {{Template "Block" $.Block}}
+    {{end}}
   }
 {{end}}
 

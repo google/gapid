@@ -203,6 +203,7 @@ cmd void vkDestroyPipelineLayout(
   //       It will have been set for you correctly
   @unused s32                       BasePipelineIndex
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  @unused map!(u32, DescriptorUsage) UsedDescriptors
 }
 
 @resource
@@ -218,6 +219,7 @@ cmd void vkDestroyPipelineLayout(
   //       It will have been set for you correctly
   @unused s32                       BasePipelineIndex
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  @unused map!(u32, DescriptorUsage) UsedDescriptors
 }
 
 @internal
@@ -295,6 +297,10 @@ cmd VkResult vkCreateGraphicsPipelines(
         }
         spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
         stage_data.Specialization = spec_data
+      }
+      moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
+      for _, _, d in moduleDescriptors {
+        obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
       }
       obj.Stages[j] = stage_data
     }
@@ -543,6 +549,7 @@ cmd VkResult vkCreateGraphicsPipelines(
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
     }
+
     createdPipelines.Objects[i] = obj
   }
 
@@ -637,6 +644,10 @@ cmd VkResult vkCreateComputePipelines(
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
     }
+    moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
+    for _, _, d in moduleDescriptors {
+      obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
+    }
     created_pipelines.Objects[i] = obj
   }
 
@@ -673,12 +684,23 @@ cmd void vkDestroyPipeline(
 // Shader modules //
 ////////////////////
 
+@internal class DescriptorUsage {
+  u32 Set
+  u32 Binding
+  u32 DescriptorCount
+}
+
+@internal class DescriptorInfo {
+  map!(string, map!(u32, DescriptorUsage)) Descriptors
+}
+
 @resource
 @internal class ShaderModuleObject {
   @unused VkDevice                  Device
   @unused u32[]                     Words
   @unused VkShaderModule            VulkanHandle
   @unused ref!VulkanDebugMarkerInfo DebugInfo
+  @unused ref!DescriptorInfo        Descriptors
 }
 
 @indirect("VkDevice")
@@ -705,6 +727,7 @@ cmd VkResult vkCreateShaderModule(
 
   num_words := as!u64(create_info.codeSize) / 4
   object := new!ShaderModuleObject(device, clone(create_info.pCode[0:num_words]))
+  object.Descriptors = fetchUsedDescriptors(object)
 
   handle := ?
   if pShaderModule == null { vkErrorNullPointer("VkShaderModule") }
