@@ -89,8 +89,8 @@ import "errors.api"
 //  Extern functions  //
 ////////////////////////
 
-extern void mapMemory(void** mem, u8[] slice)
-extern void unmapMemory(u8[] slice)
+extern void mapMemory(VkDeviceMemory handle, void** mem, u8[] slice)
+extern void unmapMemory(VkDeviceMemory handle, u8[] slice)
 extern void trackMappedCoherentMemory(u64 start, size size)
 extern void readMappedCoherentMemory(VkDeviceMemory memory, u64 offset_in_mapped, size readSize)
 extern void untrackMappedCoherentMemory(u64 start, size size)
