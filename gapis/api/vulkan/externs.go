@@ -54,7 +54,9 @@ func (e externs) hasDynamicProperty(info VkPipelineDynamicStateCreateInfoᶜᵖ,
 	return false
 }
 
-func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
+type mappedMemory VkDeviceMemory
+
+func (e externs) mapMemory(handle VkDeviceMemory, value Voidᵖᵖ, slice memory.Slice) {
 	ctx := e.ctx
 	if b := e.b; b != nil {
 		switch e.cmd.(type) {
@@ -64,6 +66,9 @@ func (e externs) mapMemory(value Voidᵖᵖ, slice memory.Slice) {
 		default:
 			log.E(ctx, "mapBuffer extern called for unsupported command: %v", e.cmd)
 		}
+	}
+	if e.w != nil {
+		e.w.OpenForwardDependency(e.ctx, mappedMemory(handle))
 	}
 }
 
@@ -178,9 +183,12 @@ func (e externs) postBindSparse(binds QueuedSparseBindsʳ) {
 	}
 }
 
-func (e externs) unmapMemory(slice memory.Slice) {
+func (e externs) unmapMemory(handle VkDeviceMemory, slice memory.Slice) {
 	if b := e.b; b != nil {
 		b.UnmapMemory(memory.Range{Base: slice.Base(), Size: slice.Size()})
+	}
+	if e.w != nil {
+		e.w.CloseForwardDependency(e.ctx, mappedMemory(handle))
 	}
 }
 

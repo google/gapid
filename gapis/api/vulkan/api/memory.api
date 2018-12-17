@@ -131,7 +131,7 @@ cmd void vkFreeMemory(
 
     if (memoryObject.MappedSize != 0) {
       mappedLocation := as!u8*(memoryObject.MappedLocation)
-      unmapMemory(mappedLocation[0:memoryObject.MappedSize])
+      unmapMemory(memory, mappedLocation[0:memoryObject.MappedSize])
     }
     delete(DeviceMemories, memory)
   }
@@ -163,7 +163,7 @@ cmd VkResult vkMapMemory(
   memoryLocation := ?
   ppData[0] = memoryLocation
 
-  mapMemory(ppData, as!u8*(memoryLocation)[0:memoryObject.MappedSize])
+  mapMemory(memory, ppData, as!u8*(memoryLocation)[0:memoryObject.MappedSize])
   memoryObject.MappedLocation = memoryLocation
   if (IsMemoryCoherent(memoryObject)) {
     trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
@@ -184,7 +184,7 @@ cmd void vkUnmapMemory(
     readCoherentMemory(memoryObject, memoryObject.MappedOffset, memoryObject.MappedSize)
     untrackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
   }
-  unmapMemory(mappedLocation[0:memoryObject.MappedSize])
+  unmapMemory(memory, mappedLocation[0:memoryObject.MappedSize])
   memoryObject.MappedSize = 0
   memoryObject.MappedLocation = null
 }
