@@ -97,3 +97,9 @@ func (v Value) SetArrayValues(values interface{}) {
 		j.fail("Failed to set array (type %s) values (type %T): %v", arrayTy, values, err)
 	}
 }
+
+// Variable is a named Value.
+type Variable struct {
+	Value    Value
+	variable jdwp.VariableRequest
+}
