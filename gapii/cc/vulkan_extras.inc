@@ -98,3 +98,7 @@ void serializeGPUBuffers(StateSerializer* serializer);
 void walkImageSubRng(
     gapil::Ref<ImageObject> img, VkImageSubresourceRange rng,
     std::function<void(uint32_t aspect_bit, uint32_t layer, uint32_t level)> f);
+
+void parseShaderModule(
+    StageData* stage,
+    gapil::Ref<DescriptorInfo>& descriptors);

@@ -379,38 +379,6 @@ sub void touchImageCoverage(ref!ImageObject image, ref!ImageCoverage coverage, V
   }
 }
 
-sub void commandBufferTouchEntireImage(ref!CommandBufferObject cmdbuf, ref!ImageObject image) {
-  if !(image.VulkanHandle in cmdbuf.TouchedImages) {
-    cmdbuf.TouchedImages[image.VulkanHandle] = new!ImageCoverage()
-  }
-  coverage := cmdbuf.TouchedImages[image.VulkanHandle]
-  touchEntireImageCoverage(coverage)
-}
-
-sub void commandBufferTouchImage(ref!CommandBufferObject cmdbuf, ref!ImageObject image, VkImageSubresourceRange rng) {
-  if !(image.VulkanHandle in cmdbuf.TouchedImages) {
-    cmdbuf.TouchedImages[image.VulkanHandle] = new!ImageCoverage()
-  }
-  coverage := cmdbuf.TouchedImages[image.VulkanHandle]
-  touchImageCoverage(image, coverage, rng)
-}
-
-sub void descriptorSetLinkEntireImage(ref!DescriptorSetObject descSet, ref!ImageObject image) {
-  if !(image.VulkanHandle in descSet.LinkedImages) {
-    descSet.LinkedImages[image.VulkanHandle] = new!ImageCoverage()
-  }
-  coverage := descSet.LinkedImages[image.VulkanHandle]
-  touchEntireImageCoverage(coverage)
-}
-
-sub void descriptorSetLinkImage(ref!DescriptorSetObject descSet, ref!ImageObject image, VkImageSubresourceRange rng) {
-  if !(image.VulkanHandle in descSet.LinkedImages) {
-    descSet.LinkedImages[image.VulkanHandle] = new!ImageCoverage()
-  }
-  coverage := descSet.LinkedImages[image.VulkanHandle]
-  touchImageCoverage(image, coverage, rng)
-}
-
 @untracked @internal
 class DescriptorSetSet {
   @untrackedMap @untracked

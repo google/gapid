@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/stream"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
+	"github.com/google/gapid/gapis/shadertools"
 )
 
 type imagePrimer struct {
@@ -2829,13 +2830,37 @@ func vkCreateShaderModule(sb *stateBuilder, dev VkDevice, code []uint32, handle 
 		memory.Size(len(code)*4), // codeSize
 		NewU32ᶜᵖ(sb.MustAllocReadData(code).Ptr()), // pCode
 	)
-	sb.write(sb.cb.VkCreateShaderModule(
+
+	descriptors, err := shadertools.ParseAllDescriptorSets(code)
+	u := MakeDescriptorInfo(sb.ta)
+	dsc := u.Descriptors()
+	if err != nil {
+		log.E(sb.ctx, "Could not parse SPIR-V")
+	} else {
+		for name, desc := range descriptors {
+			d := NewU32ːDescriptorUsageᵐ(sb.ta)
+			for _, set := range desc {
+				for _, binding := range set {
+					d.Add(uint32(d.Len()),
+						NewDescriptorUsage(
+							sb.ta,
+							binding.Set,
+							binding.Binding,
+							binding.DescriptorCount))
+				}
+			}
+			dsc.Add(name, d)
+		}
+	}
+	csb := sb.cb.VkCreateShaderModule(
 		dev,
 		NewVkShaderModuleCreateInfoᶜᵖ(sb.MustAllocReadData(createInfo).Ptr()),
 		memory.Nullptr,
 		sb.MustAllocWriteData(handle).Ptr(),
 		VkResult_VK_SUCCESS,
-	))
+	)
+	csb.Extras().Add(u)
+	sb.write(csb)
 }
 
 func vkCreateDescriptorPool(sb *stateBuilder, dev VkDevice, flags VkDescriptorPoolCreateFlags, maxSet uint32, poolSizes []VkDescriptorPoolSize, handle VkDescriptorPool) {

@@ -49,6 +49,7 @@
   map!(VkSemaphore, ref!SemaphoreObject)                         PendingSemaphores
   @unused ref!VulkanDebugMarkerInfo                              DebugInfo
   @untracked @untrackedMap dense_map!(u32, ref!CommandReference) PendingCommands
+  @untracked @untrackedMap map!(VkBuffer, bool) ReadCoherentBuffers
 }
 
 @threadSafety("system")

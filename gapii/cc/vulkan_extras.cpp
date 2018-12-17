@@ -17,6 +17,8 @@
 #include "gapii/cc/vulkan_layer_extras.h"
 #include "gapii/cc/vulkan_spy.h"
 
+#include <third_party/SPIRV-Reflect/spirv_reflect.h>
+
 namespace gapii {
 
 struct destroyer {
@@ -646,6 +648,48 @@ gapil::Ref<LinearImageLayouts> VulkanSpy::fetchLinearImageSubresourceLayouts(
       });
   observer->encode(*layouts.get());
   return layouts;
+}
+
+gapil::Ref<DescriptorInfo> VulkanSpy::fetchUsedDescriptors(
+    CallObserver* observer, gapil::Ref<ShaderModuleObject> module) {
+  auto descriptors = gapil::Ref<DescriptorInfo>::create(arena());
+
+  spv_reflect::ShaderModule smod(module->mWords.size(), &module->mWords[0]);
+  for (uint32_t i = 0; i < smod.GetEntryPointCount(); ++i) {
+    const char* epName = smod.GetEntryPointName(i);
+    uint32_t count = 0;
+
+    if (SPV_REFLECT_RESULT_SUCCESS !=
+        smod.EnumerateEntryPointDescriptorSets(epName, &count, nullptr)) {
+      continue;
+    }
+    if (count == 0) {
+      continue;
+    }
+    std::vector<SpvReflectDescriptorSet*> sets;
+    sets.resize(count);
+    if (SPV_REFLECT_RESULT_SUCCESS !=
+        smod.EnumerateEntryPointDescriptorSets(epName, &count, sets.data())) {
+      continue;
+    }
+    descriptors->mDescriptors[gapil::String(arena(), epName)] =
+        U32ToDescriptorUsage(arena());
+    auto& desc = descriptors->mDescriptors[gapil::String(arena(), epName)];
+    for (auto& set : sets) {
+      for (size_t i = 0; i < set->binding_count; ++i) {
+        auto binding = set->bindings[i];
+        uint32_t count = 1;
+        for (size_t j = 0; j < binding->array.dims_count; ++j) {
+          count *= binding->array.dims[j];
+        }
+
+        desc[desc.count()] =
+            DescriptorUsage(binding->set, binding->binding, count);
+      }
+    }
+  }
+  observer->encode(*descriptors.get());
+  return descriptors;
 }
 
 // Override API functions

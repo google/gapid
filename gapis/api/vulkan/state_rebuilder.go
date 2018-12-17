@@ -2127,7 +2127,8 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 }
 
 func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
-	sb.write(sb.cb.VkCreateShaderModule(
+	sbExtra := sm.Descriptors().Get().Clone(sb.newState.Arena, api.CloneContext{})
+	csm := sb.cb.VkCreateShaderModule(
 		sm.Device(),
 		sb.MustAllocReadData(NewVkShaderModuleCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
@@ -2139,7 +2140,9 @@ func (sb *stateBuilder) createShaderModule(sm ShaderModuleObjectʳ) {
 		memory.Nullptr,
 		sb.MustAllocWriteData(sm.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
-	))
+	)
+	csm.Extras().Add(sbExtra)
+	sb.write(csm)
 }
 
 func isShaderModuleInState(sm ShaderModuleObjectʳ, st *api.GlobalState) bool {

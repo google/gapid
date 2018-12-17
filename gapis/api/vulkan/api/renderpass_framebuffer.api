@@ -310,18 +310,6 @@ cmd void vkCmdBeginRenderPass(
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
     cmdBuf := CommandBuffers[commandBuffer]
-    if (begin_info.framebuffer in Framebuffers) {
-      if (begin_info.renderPass in RenderPasses) {
-        fb := Framebuffers[begin_info.framebuffer]
-        for i in (0 .. len(fb.ImageAttachments)) {
-          att := fb.ImageAttachments[as!u32(i)]
-          if att.Image != null {
-            commandBufferTouchImage(cmdBuf, att.Image, att.SubresourceRange)
-          }
-        }
-      }
-    }
-
     args := new!vkCmdBeginRenderPassArgs(
       Contents:     contents,
       RenderPass:   begin_info.renderPass,
@@ -434,6 +422,7 @@ sub void loadImageAttachment(u32 attachmentID) {
     if attachment.Image != null {
       switch desc.loadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD: {
+          readCoherentMemoryInImage(attachment.Image)
           readImageView(attachment)
           updateImageViewQueue(attachment)
         }

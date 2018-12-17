@@ -119,6 +119,7 @@ extern ref!PhysicalDevicesFormatProperties fetchPhysicalDeviceFormatProperties(V
 extern ref!ImageMemoryRequirements fetchImageMemoryRequirements(VkDevice device, VkImage image, bool hasSparseBit)
 extern VkMemoryRequirements fetchBufferMemoryRequirements(VkDevice device, VkBuffer buffer)
 extern ref!LinearImageLayouts fetchLinearImageSubresourceLayouts(VkDevice device, ref!ImageObject image, VkImageSubresourceRange rng)
+extern ref!DescriptorInfo fetchUsedDescriptors(ref!ShaderModuleObject pipeline)
 
 ///////////////////////
 // Function pointers //
@@ -354,7 +355,6 @@ enum LastSubmissionType {
 @serialize LastSubmissionType                           LastSubmission
 @untrackedMap map!(VkQueue, ref!DynamicPipelineState)   LastDynamicPipelineStates
 @untrackedMap map!(VkQueue, ref!PushConstantInfo)       LastPushConstants
-@untrackedMap map!(VkDescriptorSet, ref!BoundDescriptorSetBufferInfo) LastBoundDescriptorSetsBufferInfo
 
 @hidden bool IsRebuilding
 

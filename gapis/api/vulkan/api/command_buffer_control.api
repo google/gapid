@@ -270,14 +270,6 @@ enum SemaphoreUpdate {
   @untracked @unused BufferCommands       BufferCommands
   @unused ref!CommandBufferBegin          BeginInfo
   @unused ref!VulkanDebugMarkerInfo       DebugInfo
-
-  // Caching touched resources to help the state tracking performance
-  @hidden @unused @untracked @untrackedMap @nobox
-  map!(VkImage, ref!ImageCoverage)        TouchedImages
-  @hidden @unused @untracked @untrackedMap @nobox
-  map!(VkBuffer, bool)                    TouchedBuffers
-  @hidden @unused @untracked @untrackedMap @nobox
-  map!(VkDescriptorSet, bool)             ProcessedDescriptorSets
 }
 
 sub void AddCommand(
@@ -522,9 +514,6 @@ sub void resetCommandBuffer(ref!CommandBufferObject obj) {
   resetBufferCommands(obj)
   clear(obj.CommandReferences)
   resetCmd(obj.VulkanHandle)
-  clear(obj.TouchedImages)
-  clear(obj.TouchedBuffers)
-  clear(obj.ProcessedDescriptorSets)
 }
 
 //////////////////////////////

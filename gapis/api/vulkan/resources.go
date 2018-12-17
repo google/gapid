@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"sort"
 
@@ -884,7 +885,7 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	cmd.Mutate(ctx, api.CmdNoID, state, nil, nil)
 
 	shader := data.GetShader()
-	var codeSlice interface{}
+	var codeSlice []uint32
 	var codeSize int
 	if shader.GetType() == api.ShaderType_Spirv {
 		assembledCode := shadertools.AssembleSpirvText(shader.Source)
@@ -895,10 +896,14 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 		if codeSize%4 != 0 {
 			log.E(ctx, "Invalid SPIR-V, number of bytes is not a multiple of 4")
 		}
-		codeSlice = []byte(shader.Source)
+		cs := []byte(shader.Source)
+		codeSlice = make([]uint32, len(cs)/4)
+		for i := range codeSlice {
+			codeSlice[i] = uint32(binary.LittleEndian.Uint32(cs[i*4 : (i+1)*4]))
+		}
 	}
 
-	if codeSlice == nil {
+	if len(codeSlice) == 0 {
 		log.E(ctx, "Failed at assembling new SPIR-V shader code. Shader module unchanged.")
 		return cmd
 	}
@@ -915,12 +920,39 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 	newCreateInfo := state.AllocDataOrPanic(ctx, createInfo)
 	newCmd := cb.VkCreateShaderModule(device, newCreateInfo.Ptr(), pAlloc, pShaderModule, result)
 
-	// Carry all non-observation extras through.
-	for _, e := range cmd.Extras().All() {
-		if _, ok := e.(*api.CmdObservations); !ok {
-			newCmd.Extras().Add(e)
+	descriptors, err := shadertools.ParseAllDescriptorSets(codeSlice)
+	u := MakeDescriptorInfo(c.Arena)
+	dsc := u.Descriptors()
+	if err != nil {
+		log.E(ctx, "Could not parse SPIR-V")
+	} else {
+		for name, desc := range descriptors {
+			d := NewU32ːDescriptorUsageᵐ(c.Arena)
+			for _, set := range desc {
+				for _, binding := range set {
+					d.Add(uint32(d.Len()),
+						NewDescriptorUsage(
+							c.Arena,
+							binding.Set,
+							binding.Binding,
+							binding.DescriptorCount))
+				}
+			}
+			dsc.Add(name, d)
 		}
 	}
+
+	// Carry all non-observation extras through,
+	// except for the Used descriptors
+	for _, e := range cmd.Extras().All() {
+		if _, ok := e.(*api.CmdObservations); !ok {
+			if _, ok := e.(DescriptorInfo); !ok {
+				newCmd.Extras().Add(e)
+			}
+		}
+	}
+	// Add our new used descriptors
+	newCmd.Extras().Add(u)
 
 	// Add observations
 	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())

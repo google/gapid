@@ -384,7 +384,6 @@ cmd void vkCmdCopyQueryPoolResults(
         vkErrorInvalidBuffer(dstBuffer)
       } else {
         cmdBuf := CommandBuffers[commandBuffer]
-        cmdBuf.TouchedBuffers[dstBuffer] = true
 
         args := new!vkCmdCopyQueryPoolResultsArgs(
           QueryPool:   queryPool,
