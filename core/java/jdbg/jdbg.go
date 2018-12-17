@@ -304,8 +304,8 @@ func (j *JDbg) String(val string) Value {
 	return j.object(str)
 }
 
-// findVar finds the variable with the given name in the given frame
-func (j *JDbg) findVar(name string, frame jdwp.FrameInfo) jdwp.VariableRequest {
+// findArg finds the argument with the given name/index in the given frame
+func (j *JDbg) findArg(name string, index int, frame jdwp.FrameInfo) jdwp.VariableRequest {
 	table, err := j.conn.VariableTable(
 		jdwp.ReferenceTypeID(frame.Location.Class),
 		frame.Location.Method)
@@ -323,39 +323,61 @@ func (j *JDbg) findVar(name string, frame jdwp.FrameInfo) jdwp.VariableRequest {
 		}
 	}
 
-	if variable.Index == -1 {
-		j.fail("Could not find variable with name %s", name)
+	if variable.Index != -1 {
+		return variable
 	}
+
+	// Fallback to looking for the argument by index.
+	slots := table.ArgumentSlots()
+
+	// Find the "this" argument. It is always labeled and the first argument slot.
+	thisSlot := -1
+	for i, slot := range slots {
+		if slot.Name == "this" {
+			thisSlot = i
+			break
+		}
+	}
+	if thisSlot < 0 {
+		j.fail("Could not find argument with name %s (no 'this' found)", name)
+	}
+
+	if thisSlot+1+index >= len(slots) {
+		j.fail("Could not find argument with name %s (not enough slots)", name)
+	}
+
+	variable.Index = slots[thisSlot+1+index].Slot
+	variable.Tag = slots[thisSlot+1+index].Signature[0]
 	return variable
 }
 
-// GetStackObject returns an object by name that exists in the current
-// stack-frame.
-func (j *JDbg) GetStackObject(name string) Value {
+// GetArgument returns the method argument of the given name and index. First,
+// this attempts to retrieve the argument by name, but falls back to looking for
+// the argument by index (e.g. in the case the names have been stripped from the
+// debug info).
+func (j *JDbg) GetArgument(name string, index int) Variable {
 	frames, err := j.conn.GetFrames(j.thread, 0, 1)
 	if err != nil {
 		j.fail("GetFrames() returned: %v", err)
 	}
-	variable := j.findVar(name, frames[0])
+	variable := j.findArg(name, index, frames[0])
 
 	values, err := j.conn.GetValues(j.thread, frames[0].Frame, []jdwp.VariableRequest{variable})
 	if err != nil {
 		j.fail("GetValues() returned: %v", err)
 	}
-	return j.value(values[0])
+	return Variable{j.value(values[0]), variable}
 }
 
-// SetStackObject sets and object in the current stack-frame to the
-// given value.
-func (j *JDbg) SetStackObject(name string, val Value) {
+// SetVariable sets the value of the given variable.
+func (j *JDbg) SetVariable(variable Variable, val Value) {
 	frames, err := j.conn.GetFrames(j.thread, 0, 1)
 	if err != nil {
 		j.fail("GetFrames() returned: %v", err)
 	}
 
-	variable := j.findVar(name, frames[0])
 	v := val.val.(jdwp.Value)
-	assign := jdwp.VariableAssignmentRequest{variable.Index, v}
+	assign := jdwp.VariableAssignmentRequest{variable.variable.Index, v}
 	err = j.conn.SetValues(j.thread, frames[0].Frame, []jdwp.VariableAssignmentRequest{assign})
 	if err != nil {
 		j.fail("GetValues() returned: %v", err)

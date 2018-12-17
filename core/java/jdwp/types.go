@@ -14,7 +14,10 @@
 
 package jdwp
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // TaggedObjectID is a type and object identifier pair.
 type TaggedObjectID struct {
@@ -146,3 +149,19 @@ func (i ArrayTypeID) String() string     { return fmt.Sprintf("ArrayTypeID<%d>",
 func (i MethodID) String() string        { return fmt.Sprintf("MethodID<%d>", uint64(i)) }
 func (i FieldID) String() string         { return fmt.Sprintf("FieldID<%d>", uint64(i)) }
 func (i FrameID) String() string         { return fmt.Sprintf("FrameID<%d>", uint64(i)) }
+
+// ArgumentSlots returns the slots that could possibly be method arguments.
+// Slots that could be method arguments are slots that are acessible at
+// location 0 and have a length > 0. Returns the result sorted by slot index.
+func (v *VariableTable) ArgumentSlots() []FrameVariable {
+	r := []FrameVariable{}
+	for _, slot := range v.Slots {
+		if slot.CodeIndex == 0 && slot.Length > 0 {
+			r = append(r, slot)
+		}
+	}
+	sort.Slice(r, func(i, j int) bool {
+		return r[i].Slot < r[j].Slot
+	})
+	return r
+}

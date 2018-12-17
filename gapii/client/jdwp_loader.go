@@ -35,10 +35,13 @@ import (
 )
 
 var (
-	getClassLoaderSignatures = []string{
-		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)Ljava/lang/ClassLoader;",
-		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;)Ljava/lang/ClassLoader;",
-		"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/ClassLoader;",
+	getClassLoaderSignatures = []struct {
+		signature string
+		argIndex  int
+	}{
+		{"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)Ljava/lang/ClassLoader;", 3},
+		{"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;Ljava/lang/String;)Ljava/lang/ClassLoader;", 3},
+		{"(Ljava/lang/String;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/ClassLoader;", 3},
 	}
 )
 
@@ -106,18 +109,19 @@ func waitForOnCreate(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventMet
 // and then suspends the thread.
 // This function is what is used to tell the vulkan loader where to search for
 // layers.
-func waitForVulkanLoad(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventMethodEntry, error) {
+func waitForVulkanLoad(ctx context.Context, conn *jdwp.Connection) (*jdwp.EventMethodEntry, int, error) {
 	loaders, err := conn.GetClassBySignature("Landroid/app/ApplicationLoaders;")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	for _, sig := range getClassLoaderSignatures {
-		if getClassLoader, err := conn.GetClassMethod(loaders.ClassID(), "getClassLoader", sig); err == nil {
-			return conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID)
+		if getClassLoader, err := conn.GetClassMethod(loaders.ClassID(), "getClassLoader", sig.signature); err == nil {
+			entry, err := conn.WaitForMethodEntry(ctx, loaders.ClassID(), getClassLoader.ID)
+			return entry, sig.argIndex, err
 		}
 	}
-	return nil, fmt.Errorf("no known ApplicationLoaders.getClassLoader method found")
+	return nil, 0, fmt.Errorf("no known ApplicationLoaders.getClassLoader method found")
 }
 
 // loadAndConnectViaJDWP connects to the application waiting for a JDWP
@@ -201,7 +205,7 @@ func (p *Process) loadAndConnectViaJDWP(
 	}
 
 	log.I(ctx, "Waiting for ApplicationLoaders.getClassLoader()")
-	getClassLoader, err := waitForVulkanLoad(ctx, conn)
+	getClassLoader, argIdx, err := waitForVulkanLoad(ctx, conn)
 	if err == nil {
 		// If err != nil that means we could not find or break in getClassLoader
 		// so we have no vulkan support.
@@ -212,8 +216,8 @@ func (p *Process) loadAndConnectViaJDWP(
 			}
 			libsPath := gapidAPK.LibsPath(abi)
 			newLibraryPath := j.String(":" + libsPath)
-			obj := j.GetStackObject("librarySearchPath").Call("concat", newLibraryPath)
-			j.SetStackObject("librarySearchPath", obj)
+			arg := j.GetArgument("librarySearchPath", argIdx)
+			j.SetVariable(arg, arg.Value.Call("concat", newLibraryPath))
 			return nil
 		})
 		if err != nil {
