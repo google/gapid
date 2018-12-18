@@ -953,9 +953,8 @@ cmd void vkCmdBindDescriptorSets(
       }
     }
 
-    bc := cmdBuf.BufferCommands.vkCmdBindDescriptorSets
-    mapPos := as!u32(len(bc))
-    bc[mapPos] = args
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdBindDescriptorSets))
+    cmdBuf.BufferCommands.vkCmdBindDescriptorSets[mapPos] = args
     AddCommand(commandBuffer, cmd_vkCmdBindDescriptorSets, mapPos)
   }
 }
