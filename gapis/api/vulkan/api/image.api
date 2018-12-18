@@ -73,7 +73,7 @@
   @unused ref!VulkanDebugMarkerInfo            DebugInfo
   VkMemoryRequirements                         MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements)   SparseMemoryRequirements
-  ref!DedicatedRequirementsKHR                 DedicatedRequirementsKHR
+  ref!DedicatedRequirements                    DedicatedRequirements
   // If ever layer/level is set to the same queue, then set it here instead.
   // This can save expensive looping through Aspects/Layers/Levels
   @untracked @unused ref!QueueObject           LastBoundQueue

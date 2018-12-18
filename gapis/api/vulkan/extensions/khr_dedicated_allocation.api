@@ -55,12 +55,3 @@ class VkMemoryDedicatedAllocationInfoKHR {
   VkImage         image
   VkBuffer        buffer
 }
-
-////////////////////
-// State tracking //
-////////////////////
-
-@internal class DedicatedRequirementsKHR {
-  VkBool32 PrefersDedicatedAllocation
-  VkBool32 RequiresDedicatedAllocation
-}

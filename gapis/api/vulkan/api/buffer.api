@@ -59,7 +59,7 @@
   @untracked @unused ref!QueueObject LastBoundQueue
   @unused ref!VulkanDebugMarkerInfo  DebugInfo
   VkMemoryRequirements               MemoryRequirements
-  ref!DedicatedRequirementsKHR       DedicatedRequirementsKHR
+  ref!DedicatedRequirements          DedicatedRequirements
 }
 
 @threadSafety("system")
