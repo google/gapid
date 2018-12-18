@@ -59,6 +59,7 @@
   @untracked @unused ref!QueueObject LastBoundQueue
   @unused ref!VulkanDebugMarkerInfo  DebugInfo
   VkMemoryRequirements               MemoryRequirements
+  // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!DedicatedRequirements          DedicatedRequirements
 }
 
@@ -238,6 +239,29 @@ cmd void vkDestroyBufferView(
   }
 }
 
+sub void BindBufferMemory(
+    VkBuffer       buffer,
+    VkDeviceMemory memory,
+    VkDeviceSize   memoryOffset) {
+  if !(memory in DeviceMemories) {
+    vkErrorInvalidDeviceMemory(memory)
+  } else {
+    if !(buffer in Buffers) {
+      vkErrorInvalidBuffer(buffer)
+    } else {
+      Buffers[buffer].Memory = DeviceMemories[memory]
+      Buffers[buffer].MemoryOffset = memoryOffset
+      DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
+      if (Buffers[buffer].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
+        vkErrorExpectNVDedicatedlyAllocatedHandle("VkBuffer", as!u64(buffer))
+      }
+      if (Buffers[buffer].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
+        vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
+      }
+    }
+  }
+}
+
 @indirect("VkDevice")
 cmd VkResult vkBindBufferMemory(
     VkDevice       device,
@@ -245,17 +269,50 @@ cmd VkResult vkBindBufferMemory(
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
-  if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
-  Buffers[buffer].Memory = DeviceMemories[memory]
-  Buffers[buffer].MemoryOffset = memoryOffset
-  DeviceMemories[memory].BoundObjects[as!u64(buffer)] = memoryOffset
-  if (Buffers[buffer].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
-    vkErrorExpectNVDedicatedlyAllocatedHandle("VkBuffer", as!u64(buffer))
-  }
-  if (Buffers[buffer].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
-    vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
-  }
+  BindBufferMemory(buffer, memory, memoryOffset)
   return ?
 }
 
+// ----------------------------------------------------------------------------
+// Vulkan 1.1 Commands
+// ----------------------------------------------------------------------------
+
+////////////
+// Buffer //
+////////////
+
+sub void BindBufferMemory2(
+    VkDevice                      device,
+    u32                           bindInfoCount,
+    const VkBindBufferMemoryInfo* pBindInfos) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pBindInfos == null {
+    vkErrorNullPointer("VkBindBufferMemoryInfo(KHR)")
+  } else {
+    infos := pBindInfos[0:bindInfoCount]
+    for i in (0 .. bindInfoCount) {
+      info := infos[i]
+      // handle pNext
+      if info.pNext != null {
+        numPNext := numberOfPNext(info.pNext)
+        next := MutableVoidPtr(as!void*(info.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkBindBufferMemoryInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
+      BindBufferMemory(info.buffer, info.memory, info.memoryOffset)
+    }
+  }
+}
+
+@indirect("VkDevice")
+cmd VkResult vkBindBufferMemory2(
+    VkDevice                      device,
+    u32                           bindInfoCount,
+    const VkBindBufferMemoryInfo* pBindInfos) {
+  BindBufferMemory2(device, bindInfoCount, pBindInfos)
+  return ?
+}

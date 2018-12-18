@@ -205,6 +205,12 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_NV_dedicated_allocation"] = true
   supported.ExtensionNames["VK_KHR_get_memory_requirements2"] = true
   supported.ExtensionNames["VK_KHR_dedicated_allocation"] = true
+  supported.ExtensionNames["VK_KHR_bind_memory2"] = true
+  supported.ExtensionNames["VK_KHR_storage_buffer_storage_class"] = true
+  supported.ExtensionNames["VK_KHR_variable_pointers"] = true
+  supported.ExtensionNames["VK_KHR_shader_draw_parameters"] = true
+  supported.ExtensionNames["VK_KHR_relaxed_block_layout"] = true
+  supported.ExtensionNames["VK_KHR_16bit_storage"] = true
   return supported
 }
 

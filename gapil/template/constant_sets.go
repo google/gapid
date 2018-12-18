@@ -185,10 +185,10 @@ func buildConstantSets(api *semantic.API, mappings *semantic.Mappings) *Constant
 				if !ok {
 					panic(fmt.Sprintf("Unsupported enum number type: %v", e.NumberType))
 				}
-				if l, ok := labels[value]; ok {
-					panic(fmt.Sprintf("Enum %v has multiple labels for value %v: %v, %v",
-						e.Named, value, l, entry.Named))
-				}
+				// In cases a constant value has multiple labels (multiple
+				// labels defining the same constant value in the same enum),
+				// the last label will be adopted as the name of the constant
+				// value.
 				labels[value] = string(entry.Named)
 			}
 			constsets[e] = b.addLabels(labels, e.IsBitfield)

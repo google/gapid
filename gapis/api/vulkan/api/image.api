@@ -73,6 +73,7 @@
   @unused ref!VulkanDebugMarkerInfo            DebugInfo
   VkMemoryRequirements                         MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements)   SparseMemoryRequirements
+  // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!DedicatedRequirements                    DedicatedRequirements
   // If ever layer/level is set to the same queue, then set it here instead.
   // This can save expensive looping through Aspects/Layers/Levels
@@ -320,6 +321,74 @@ cmd void vkGetImageSubresourceLayout(
   pLayout[0] = ?
 }
 
+sub void BindImageMemory(
+    VkImage        image,
+    VkDeviceMemory memory,
+    VkDeviceSize   memoryOffset) {
+  if !(memory in DeviceMemories) {
+    vkErrorInvalidDeviceMemory(memory)
+  } else {
+    if !(image in Images) {
+      vkErrorInvalidImage(image)
+    } else {
+      imageObject := Images[image]
+      imageObject.BoundMemory = DeviceMemories[memory]
+      imageObject.BoundMemoryOffset = memoryOffset
+      DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
+
+      for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
+        aspect := imageObject.Aspects[aspectBit]
+        for j in (0 .. imageObject.Info.ArrayLayers) {
+          for i in (0 .. imageObject.Info.MipLevels) {
+            level := aspect.Layers[j].Levels[i]
+            elementAndTexelBlockSize := getElementAndTexelBlockSize(imageObject.Info.Format)
+            depthElementSize := getDepthElementSize(imageObject.Info.Format, false)
+            // Roundup the width and height in the number of blocks.
+            widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+            heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+            elementSize := switch (aspectBit) {
+              case VK_IMAGE_ASPECT_COLOR_BIT:
+                elementAndTexelBlockSize.ElementSize
+              case VK_IMAGE_ASPECT_DEPTH_BIT:
+                depthElementSize
+              case VK_IMAGE_ASPECT_STENCIL_BIT:
+                // stencil element is always 1 byte wide
+                as!u32(1)
+            }
+            tightlyPackedSize := widthInBlocks * heightInBlocks * level.Depth * elementSize
+
+            // If the image has LINEAR tiling and the image level has layout
+            // PREINITIALIZED and size larger than our calculated tightly packed
+            // size, link the data back to the bound device memory. Otherwise
+            // creates its own shadow memory pool.
+            // TODO: If the image as a whole requires more memory than we
+            // calculated, we should link the data back to the bound device memory
+            // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
+            // come up with a 'linear layout' in GAPID.
+            if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
+                (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
+                (level.LinearLayout != null) &&
+                (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
+              loffset := as!u64(memoryOffset + level.LinearLayout.offset)
+              lsize := as!u64(level.LinearLayout.size)
+              level.Data = imageObject.BoundMemory.Data[loffset:loffset + lsize]
+            } else {
+              level.Data = make!u8(tightlyPackedSize)
+            }
+          }
+        }
+      }
+
+      if (Images[image].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
+        vkErrorExpectNVDedicatedlyAllocatedHandle("VkImage", as!u64(image))
+      }
+      if (Images[image].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
+        vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
+      }
+    }
+  }
+}
+
 @indirect("VkDevice")
 cmd VkResult vkBindImageMemory(
     VkDevice       device,
@@ -327,63 +396,7 @@ cmd VkResult vkBindImageMemory(
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
-  if !(image in Images) { vkErrorInvalidImage(image) } else {
-    imageObject := Images[image]
-    imageObject.BoundMemory = DeviceMemories[memory]
-    imageObject.BoundMemoryOffset = memoryOffset
-    DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
-
-    for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
-      aspect := imageObject.Aspects[aspectBit]
-      for j in (0 .. imageObject.Info.ArrayLayers) {
-        for i in (0 .. imageObject.Info.MipLevels) {
-          level := aspect.Layers[j].Levels[i]
-          elementAndTexelBlockSize := getElementAndTexelBlockSize(imageObject.Info.Format)
-          depthElementSize := getDepthElementSize(imageObject.Info.Format, false)
-          // Roundup the width and height in the number of blocks.
-          widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
-          heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-          elementSize := switch (aspectBit) {
-            case VK_IMAGE_ASPECT_COLOR_BIT:
-              elementAndTexelBlockSize.ElementSize
-            case VK_IMAGE_ASPECT_DEPTH_BIT:
-              depthElementSize
-            case VK_IMAGE_ASPECT_STENCIL_BIT:
-              // stencil element is always 1 byte wide
-              as!u32(1)
-          }
-          tightlyPackedSize := widthInBlocks * heightInBlocks * level.Depth * elementSize
-
-          // If the image has LINEAR tiling and the image level has layout
-          // PREINITIALIZED and size larger than our calculated tightly packed
-          // size, link the data back to the bound device memory. Otherwise
-          // creates its own shadow memory pool.
-          // TODO: If the image as a whole requires more memory than we
-          // calculated, we should link the data back to the bound device memory
-          // no matter whether the tiling is LINEAR or OPTIMAL. But we need to
-          // come up with a 'linear layout' in GAPID.
-          if (imageObject.Info.Tiling == VK_IMAGE_TILING_LINEAR) &&
-              (level.Layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
-              (level.LinearLayout != null) &&
-              (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
-            loffset := as!u64(memoryOffset + level.LinearLayout.offset)
-            lsize := as!u64(level.LinearLayout.size)
-            level.Data = imageObject.BoundMemory.Data[loffset:loffset + lsize]
-          } else {
-            level.Data = make!u8(tightlyPackedSize)
-          }
-        }
-      }
-    }
-
-    if (Images[image].Info.DedicatedAllocationNV != null) && (DeviceMemories[memory].DedicatedAllocationNV == null) {
-      vkErrorExpectNVDedicatedlyAllocatedHandle("VkImage", as!u64(image))
-    }
-    if (Images[image].Info.DedicatedAllocationNV == null) && (DeviceMemories[memory].DedicatedAllocationNV != null) {
-      vkErrorExpectNVDedicatedlyAllocatedHandle("VkDeviceMemory", as!u64(memory))
-    }
-  }
+  BindImageMemory(image, memory, memoryOffset)
   return ?
 }
 
@@ -730,4 +743,48 @@ sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng,
       }
     }
   }
+}
+
+// ----------------------------------------------------------------------------
+// Vulkan 1.1 Commands
+// ----------------------------------------------------------------------------
+
+///////////
+// Image //
+///////////
+
+sub void BindImageMemory2(
+    VkDevice                     device,
+    u32                          bindInfoCount,
+    const VkBindImageMemoryInfo* pBindInfos) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if pBindInfos == null {
+    vkErrorNullPointer("VkBindImageMemoryInfo(KHR)")
+  } else {
+    infos := pBindInfos[0:bindInfoCount]
+    for i in (0 .. bindInfoCount) {
+      info := infos[i]
+      // handle pNext
+      if info.pNext != null {
+        numPNext := numberOfPNext(info.pNext)
+        next := MutableVoidPtr(as!void*(info.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          _ = sType
+          // TODO: handle extensions for VkBindImageMemoryInfo
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
+      BindImageMemory(info.image, info.memory, info.memoryOffset)
+    }
+  }
+}
+
+@indirect("VkDevice")
+cmd VkResult vkBindImageMemory2(
+    VkDevice                     device,
+    u32                          bindInfoCount,
+    const VkBindImageMemoryInfo* pBindInfos) {
+  BindImageMemory2(device, bindInfoCount, pBindInfos)
+  return ?
 }

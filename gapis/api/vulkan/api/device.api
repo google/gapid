@@ -51,6 +51,10 @@
   @unused VkPhysicalDeviceFeatures   EnabledFeatures
   @unused VkDevice                   VulkanHandle
   @unused ref!VulkanDebugMarkerInfo  DebugInfo
+
+  // Vulkan 1.1
+  @unused ref!VariablePointerFeatures VariablePointerFeatures
+  @unused ref!HalfPrecisionStorageFeatures HalfPrecisionStorageFeatures
 }
 
 @indirect("VkDevice")
@@ -135,7 +139,24 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
+      switch sType {
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+          ext := as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0]
+          object.VariablePointerFeatures = new!VariablePointerFeatures(
+            VariablePointerStorageBuffer: ext.variablePointersStorageBuffer,
+            VariablePointers: ext.variablePointers)
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+          ext := as!VkPhysicalDevice16BitStorageFeatures*(next.Ptr)[0]
+          object.HalfPrecisionStorageFeatures = new!HalfPrecisionStorageFeatures(StorageBuffer16BitAccess: ext.storageBuffer16BitAccess,
+          UniformAndStorageBuffer16BitAccess: ext.uniformAndStorageBuffer16BitAccess,
+          StoragePushConstant16: ext.storagePushConstant16,
+          StorageInputOutput16: ext.storageInputOutput16)
+        }
+        default: {
+          // do nothing
+        }
+      }
       // TODO: handle extensions for VkDeviceCreateInfo
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
@@ -184,4 +205,16 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   }
 
   return object
+}
+
+@internal class VariablePointerFeatures {
+  VkBool32 VariablePointerStorageBuffer
+  VkBool32 VariablePointers
+}
+
+@internal class HalfPrecisionStorageFeatures{
+  VkBool32        StorageBuffer16BitAccess
+  VkBool32        UniformAndStorageBuffer16BitAccess
+  VkBool32        StoragePushConstant16
+  VkBool32        StorageInputOutput16
 }

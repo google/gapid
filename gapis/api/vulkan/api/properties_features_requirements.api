@@ -331,9 +331,31 @@ sub void GetPhysicalDeviceFeatures2(
   } else {
     if pFeatures == null {
       vkErrorNullPointer("VkPhysicalDeviceFeatures2(KHR)")
-    } else {
-      pFeatures[0] = ?
-      // TODO: handle pNext
+    }
+  }
+  fence
+  if (physicalDevice in PhysicalDevices) {
+    pFeatures[0] = ?
+    features := pFeatures[0]
+    // TODO: handle pNext
+    if features.pNext != null {
+      numPNext := numberOfPNext(
+        as!const void*(features.pNext))
+      next := MutableVoidPtr(as!void*(features.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        switch sType {
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+            ext := as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0]
+            _ = ext
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+            ext := as!VkPhysicalDevice16BitStorageFeatures*(next.Ptr)[0]
+            _ = ext
+          }
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
     }
   }
 }
@@ -509,6 +531,44 @@ cmd void vkGetPhysicalDeviceSparseImageFormatProperties2(
   GetPhysicalDeviceSparseImageFormatProperties2(
     physicalDevice, pFormatInfo, pPropertyCount, pProperties)
 }
+
+sub void GetPhysicalDeviceQueueFamilyProperties2(
+    VkPhysicalDevice          physicalDevice,
+    u32*                      pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2* pQueueFamilyProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pQueueFamilyPropertyCount == null { vkErrorNullPointer("uint32_t") }
+  _ = pQueueFamilyPropertyCount[0]
+
+  fence
+
+  if pQueueFamilyProperties == null {
+    pQueueFamilyPropertyCount[0] = ?
+  } else {
+    count := as!u32(?)
+    properties := pQueueFamilyProperties[0:count]
+    for i in (0 .. count) {
+      properties[i] = ?
+      // TODO: handle pNext
+    }
+    pQueueFamilyPropertyCount[0] = count
+    if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+    for i in (0 .. count) {
+      PhysicalDevices[physicalDevice].QueueFamilyProperties[i] = properties[i].queueFamilyProperties
+    }
+  }
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceQueueFamilyProperties2(
+    VkPhysicalDevice          physicalDevice,
+    u32*                      pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2* pQueueFamilyProperties) {
+  GetPhysicalDeviceQueueFamilyProperties2(
+    physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties)
+}
+
 
 ////////////
 // Buffer //
