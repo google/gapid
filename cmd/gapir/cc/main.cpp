@@ -200,12 +200,10 @@ void android_main(struct android_app* app) {
 
   bool alive = true;
   while (alive) {
-    int ident;
     int fdesc;
     int events;
     struct android_poll_source* source;
-    while ((ident = ALooper_pollAll(0, &fdesc, &events, (void**)&source)) >=
-           0) {
+    while (ALooper_pollAll(1000, &fdesc, &events, (void**)&source) >= 0) {
       // process this event
       if (source) {
         source->process(app, source);
