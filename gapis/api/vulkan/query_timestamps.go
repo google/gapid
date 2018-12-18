@@ -121,11 +121,11 @@ func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 	queryPoolHandleData := t.mustAllocData(ctx, s, queryPool)
 	queryPoolCreateInfo := t.mustAllocData(ctx, s, NewVkQueryPoolCreateInfo(s.Arena,
 		VkStructureType_VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, // sType
-		0, // pNext
-		0, // flags
+		0,                                   // pNext
+		0,                                   // flags
 		VkQueryType_VK_QUERY_TYPE_TIMESTAMP, // queryType
-		qSize, // queryCount
-		0,     // pipelineStatistics
+		qSize,                               // queryCount
+		0,                                   // pipelineStatistics
 	))
 
 	newCmd := cb.VkCreateQueryPool(
@@ -198,7 +198,7 @@ func (t *queryTimestamps) generateQueryCommand(ctx context.Context,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 		NewVoidᶜᵖ(memory.Nullptr),                                      // pNext
 		commandPool,                                                    // commandPool
-		VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, // level
+		VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY,           // level
 		1, // commandBufferCount
 	)
 	commandBufferAllocateInfoData := t.mustAllocData(ctx, s, commandBufferAllocateInfo)
@@ -347,9 +347,9 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 		}
 		newSubmitInfos[i] = NewVkSubmitInfo(s.Arena,
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			0, // pNext
-			si.WaitSemaphoreCount(),                    // waitSemaphoreCount
-			NewVkSemaphoreᶜᵖ(waitSemPtr),               // pWaitSemaphores
+			0,                            // pNext
+			si.WaitSemaphoreCount(),      // waitSemaphoreCount
+			NewVkSemaphoreᶜᵖ(waitSemPtr), // pWaitSemaphores
 			NewVkPipelineStageFlagsᶜᵖ(waitDstStagePtr), // pWaitDstStageMask
 			newCmdCount,                        // commandBufferCount
 			NewVkCommandBufferᶜᵖ(cmdBufferPtr), // pCommandBuffers

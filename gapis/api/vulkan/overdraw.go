@@ -577,13 +577,13 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 ) (stencilImage, error) {
 	imageCreateInfo := NewVkImageCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
-		0, // pNext
-		0, // flags
-		VkImageType_VK_IMAGE_TYPE_2D, // imageType
-		format, // format
+		0,                                  // pNext
+		0,                                  // flags
+		VkImageType_VK_IMAGE_TYPE_2D,       // imageType
+		format,                             // format
 		NewVkExtent3D(a, width, height, 1), // extent
-		1, // mipLevels
-		1, // arrayLevels
+		1,                                  // mipLevels
+		1,                                  // arrayLevels
 		VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT, // samples
 		VkImageTiling_VK_IMAGE_TILING_OPTIMAL,       // tiling
 		VkImageUsageFlags( // usage
@@ -592,8 +592,8 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 				VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
 				VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
 		VkSharingMode_VK_SHARING_MODE_EXCLUSIVE, // sharingMode
-		0, // queueFamilyIndexCount
-		0, // pQueueFamilyIndices
+		0,                                       // queueFamilyIndexCount
+		0,                                       // pQueueFamilyIndices
 		VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED, // initialLayout
 	)
 	imageCreateInfoData := alloc(imageCreateInfo)
@@ -674,9 +674,9 @@ func (*stencilOverdraw) createImageView(ctx context.Context,
 	imageObject := st.Images().Get(image)
 	createInfo := NewVkImageViewCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
-		0,     // pNext
-		0,     // flags
-		image, // image
+		0,                                     // pNext
+		0,                                     // flags
+		image,                                 // image
 		VkImageViewType_VK_IMAGE_VIEW_TYPE_2D, // viewType
 		imageObject.Info().Fmt(),              // format
 		NewVkComponentMapping(a,
@@ -687,10 +687,10 @@ func (*stencilOverdraw) createImageView(ctx context.Context,
 		), // components
 		NewVkImageSubresourceRange(a,
 			imageObject.ImageAspect(), // aspectMask
-			0, // baseMipLevel
-			1, // levelCount
-			0, // baseArrayLayer
-			1, // layerCount
+			0,                         // baseMipLevel
+			1,                         // levelCount
+			0,                         // baseArrayLayer
+			1,                         // layerCount
 		), // subresourceRange
 	)
 	createInfoData := alloc(createInfo)
@@ -768,10 +768,10 @@ func (*stencilOverdraw) createRenderPass(ctx context.Context,
 
 	renderPassCreateInfo := NewVkRenderPassCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
-		0,                                                       // pNext
-		0,                                                       // flags
-		newAttachmentsLen,                                       // attachmentCount
-		NewVkAttachmentDescriptionᶜᵖ(newAttachmentsData.Ptr()),  // pAttachments
+		0,                 // pNext
+		0,                 // flags
+		newAttachmentsLen, // attachmentCount
+		NewVkAttachmentDescriptionᶜᵖ(newAttachmentsData.Ptr()), // pAttachments
 		uint32(len(subpasses)),                                  // subpassCount
 		NewVkSubpassDescriptionᶜᵖ(subpassesData.Ptr()),          // pSubpasses
 		subpassDependenciesLen,                                  // dependencyCount
@@ -873,14 +873,14 @@ func (*stencilOverdraw) createFramebuffer(ctx context.Context,
 
 	createInfo := NewVkFramebufferCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, // sType
-		0,                                          // pNext
-		0,                                          // flags
-		renderPass,                                 // renderPass
-		uint32(len(newAttachments)),                // attachmentCount
+		0,                           // pNext
+		0,                           // flags
+		renderPass,                  // renderPass
+		uint32(len(newAttachments)), // attachmentCount
 		NewVkImageViewᶜᵖ(newAttachmentsData.Ptr()), // pAttachments
-		fbInfo.Width(),                             // width
-		fbInfo.Height(),                            // height
-		fbInfo.Layers(),                            // layers
+		fbInfo.Width(),  // width
+		fbInfo.Height(), // height
+		fbInfo.Layers(), // layers
 	)
 	createInfoData := alloc(createInfo)
 
@@ -1054,7 +1054,7 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 				0,            // flags
 				bindingCount, // vertexBindingDescriptionCount
 				NewVkVertexInputBindingDescriptionᶜᵖ(bindingPtr), // pVertexBindingDescriptions
-				attributeCount,                                   // vertexAttributeDescriptionCount
+				attributeCount, // vertexAttributeDescriptionCount
 				NewVkVertexInputAttributeDescriptionᶜᵖ(attributePtr), // pVertexAttributeDescriptions
 			)).Ptr()
 	}
@@ -1078,8 +1078,8 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 		tessellationPtr = allocAndRead(
 			NewVkPipelineTessellationStateCreateInfo(a,
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO, // sType
-				0, // pNext
-				0, // flags
+				0,                         // pNext
+				0,                         // flags
 				info.PatchControlPoints(), // patchControlPoints
 			)).Ptr()
 	}
@@ -1146,11 +1146,11 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 		stencilOp := NewVkStencilOpState(a,
 			0, // failOp
 			VkStencilOp_VK_STENCIL_OP_INCREMENT_AND_CLAMP, // passOp
-			0, // depthFailOp
+			0,                                // depthFailOp
 			VkCompareOp_VK_COMPARE_OP_ALWAYS, // compareOp
-			255, // compareMask
-			255, // writeMask
-			0,   // reference
+			255,                              // compareMask
+			255,                              // writeMask
+			0,                                // reference
 		)
 		state := MakeVkPipelineDepthStencilStateCreateInfo(a)
 		state.SetSType(
@@ -1219,9 +1219,9 @@ func (s *stencilOverdraw) createGraphicsPipelineCreateInfo(ctx context.Context,
 
 	return NewVkGraphicsPipelineCreateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // sType
-		0,                                                             // pNext
-		0,                                                             // flags
-		shaderStagesCount,                                             // stageCount
+		0,                 // pNext
+		0,                 // flags
+		shaderStagesCount, // stageCount
 		NewVkPipelineShaderStageCreateInfoᶜᵖ(shaderStagesPtr),         // pStages
 		NewVkPipelineVertexInputStateCreateInfoᶜᵖ(vertexInputPtr),     // pVertexInputState
 		NewVkPipelineInputAssemblyStateCreateInfoᶜᵖ(inputAssemblyPtr), // pInputAssemblyState
@@ -1303,7 +1303,7 @@ func (*stencilOverdraw) createSpecializationInfo(ctx context.Context,
 	data := info.Data().MustRead(ctx, nil, gs, nil)
 	return NewVkSpecializationInfoᶜᵖ(allocAndRead(
 		NewVkSpecializationInfo(a,
-			mapEntryCount,                                   // mapEntryCount
+			mapEntryCount, // mapEntryCount
 			NewVkSpecializationMapEntryᶜᵖ(mapEntries.Ptr()), // pMapEntries
 			memory.Size(len(data)),                          // dataSize,
 			NewVoidᶜᵖ(allocAndRead(data).Ptr()),             // pData
@@ -1346,8 +1346,8 @@ func (*stencilOverdraw) createDepthCopyBuffer(ctx context.Context,
 			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT|
 				VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT), // usage
 		VkSharingMode_VK_SHARING_MODE_EXCLUSIVE, // sharingMode
-		0, // queueFamilyIndexCount
-		0, // pQueueFamilyIndices
+		0,                                       // queueFamilyIndexCount
+		0,                                       // pQueueFamilyIndices
 	)
 	bufferInfoData := alloc(bufferInfo)
 
@@ -1470,11 +1470,11 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 	// Transition the src image in and out of the required layouts
 	imgBarriers0[0] = NewVkImageMemoryBarrier(a,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-		0,                                                           // pNext
-		allMemoryAccess,                                             // srcAccessMask
+		0,               // pNext
+		allMemoryAccess, // srcAccessMask
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // dstAccessMask
-		srcImgDesc.layout,                                           // oldLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,          // newLayout
+		srcImgDesc.layout, // oldLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // newLayout
 		^uint32(0),             // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
 		^uint32(0),             // dstQueueFamilyIndex
 		srcImg.VulkanHandle(),  // image
@@ -1489,13 +1489,13 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // srcAccessMask
-		allMemoryAccess,                                             // dstAccessMask
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,          // oldLayout
-		srcFinalLayout,                                              // newLayout
-		^uint32(0),                                                  // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
-		^uint32(0),                                                  // dstQueueFamilyIndex
-		srcImg.VulkanHandle(),                                       // image
-		srcImgDesc.subresource,                                      // subresourceRange
+		allMemoryAccess, // dstAccessMask
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldLayout
+		srcFinalLayout,         // newLayout
+		^uint32(0),             // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
+		^uint32(0),             // dstQueueFamilyIndex
+		srcImg.VulkanHandle(),  // image
+		srcImgDesc.subresource, // subresourceRange
 	)
 
 	// Transition the new image in and out of its required layouts
@@ -1504,8 +1504,8 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 		0,               // pNext
 		allMemoryAccess, // srcAccessMask
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // dstAccessMask
-		dstImgDesc.layout,                                            // oldLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,           // newLayout
+		dstImgDesc.layout, // oldLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // newLayout
 		^uint32(0),             // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
 		^uint32(0),             // dstQueueFamilyIndex
 		dstImg.VulkanHandle(),  // image
@@ -1521,13 +1521,13 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
 		0, // pNext
 		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
-		allMemoryAccess,                                    // dstAccessMask
+		allMemoryAccess, // dstAccessMask
 		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // oldLayout
-		dstFinalLayout,                                     // newLayout
-		^uint32(0),                                         // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
-		^uint32(0),                                         // dstQueueFamilyIndex
-		dstImg.VulkanHandle(),                              // image
-		dstImgDesc.subresource,                             // subresourceRange
+		dstFinalLayout,         // newLayout
+		^uint32(0),             // srcQueueFamilyIndex: VK_QUEUE_FAMILY_IGNORED
+		^uint32(0),             // dstQueueFamilyIndex
+		dstImg.VulkanHandle(),  // image
+		dstImgDesc.subresource, // subresourceRange
 	)
 
 	bufBarrier := NewVkBufferMemoryBarrier(a,
@@ -1550,7 +1550,7 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 			VkImageAspectFlags(srcImgDesc.aspect),   // aspectMask
 			srcImgDesc.subresource.BaseMipLevel(),   // mipLevel
 			srcImgDesc.subresource.BaseArrayLayer(), // baseArrayLayer
-			1, // layerCount
+			1,                                       // layerCount
 		), // srcSubresource
 		NewVkOffset3D(a, 0, 0, 0),                            // offset
 		NewVkExtent3D(a, extent.Width(), extent.Height(), 1), // extent
@@ -1564,7 +1564,7 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 			VkImageAspectFlags(dstImgDesc.aspect),   // aspectMask
 			dstImgDesc.subresource.BaseMipLevel(),   // mipLevel
 			dstImgDesc.subresource.BaseArrayLayer(), // baseArrayLayer
-			1, // layerCount
+			1,                                       // layerCount
 		), // srcSubresource
 		NewVkOffset3D(a, 0, 0, 0),                            // offset
 		NewVkExtent3D(a, extent.Width(), extent.Height(), 1), // extent
@@ -1580,12 +1580,12 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 		cb.VkCmdPipelineBarrier(cmdBuffer,
 			allCommandsStage, // srcStageMask
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_TRANSFER_BIT), // dstStageMask
-			0,              // dependencyFlags
-			0,              // memoryBarrierCount
-			memory.Nullptr, // pMemoryBarriers
-			0,              // bufferMemoryBarrierCount
-			memory.Nullptr, // pBufferMemoryBarriers
-			2,              // imageMemoryBarrierCount
+			0,                      // dependencyFlags
+			0,                      // memoryBarrierCount
+			memory.Nullptr,         // pMemoryBarriers
+			0,                      // bufferMemoryBarrierCount
+			memory.Nullptr,         // pBufferMemoryBarriers
+			2,                      // imageMemoryBarrierCount
 			imgBarriers0Data.Ptr(), // pImageMemoryBarriers
 		).AddRead(imgBarriers0Data.Data()),
 		cb.VkCmdCopyImageToBuffer(cmdBuffer,
@@ -1607,21 +1607,21 @@ func (s *stencilOverdraw) copyImageAspect(ctx context.Context,
 			memory.Nullptr,       // pImageMemoryBarriers
 		).AddRead(bufBarrierData.Data()),
 		cb.VkCmdCopyBufferToImage(cmdBuffer,
-			copyBuffer,                                         // srcBuffer
-			dstImg.VulkanHandle(),                              // dstImage
+			copyBuffer,            // srcBuffer
+			dstImg.VulkanHandle(), // dstImage
 			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // dstImageLayout
 			1,                // regionCount
 			biCopyData.Ptr(), // pRegions
 		).AddRead(biCopyData.Data()),
 		cb.VkCmdPipelineBarrier(cmdBuffer,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_TRANSFER_BIT), // srcStageMask
-			allCommandsStage, // dstStageMask
-			0,                // dependencyFlags
-			0,                // memoryBarrierCount
-			memory.Nullptr,   // pMemoryBarriers
-			0,                // bufferMemoryBarrierCount
-			memory.Nullptr,   // pBufferMemoryBarriers
-			2,                // imageMemoryBarrierCount
+			allCommandsStage,       // dstStageMask
+			0,                      // dependencyFlags
+			0,                      // memoryBarrierCount
+			memory.Nullptr,         // pMemoryBarriers
+			0,                      // bufferMemoryBarrierCount
+			memory.Nullptr,         // pBufferMemoryBarriers
+			2,                      // imageMemoryBarrierCount
 			imgBarriers1Data.Ptr(), // pImageMemoryBarriers
 		).AddRead(imgBarriers1Data.Data()),
 	)
@@ -2119,9 +2119,9 @@ func (s *stencilOverdraw) rewriteQueueSubmit(ctx context.Context,
 
 		newSubmitInfos[i] = NewVkSubmitInfo(a,
 			VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			0, // pNext
-			si.WaitSemaphoreCount(),                    // waitSemaphoreCount
-			NewVkSemaphoreᶜᵖ(waitSemPtr),               // pWaitSemaphores
+			0,                            // pNext
+			si.WaitSemaphoreCount(),      // waitSemaphoreCount
+			NewVkSemaphoreᶜᵖ(waitSemPtr), // pWaitSemaphores
 			NewVkPipelineStageFlagsᶜᵖ(waitDstStagePtr), // pWaitDstStageMask
 			si.CommandBufferCount(),                    // commandBufferCount
 			NewVkCommandBufferᶜᵖ(cmdBufferPtr),         // pCommandBuffers

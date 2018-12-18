@@ -52,7 +52,7 @@ func CommandThumbnail(
 	imageInfoPath, err := FramebufferAttachment(ctx,
 		&service.ReplaySettings{
 			DisableReplayOptimization: noOpt,
-			Device: r.GetReplayDevice(),
+			Device:                    r.GetReplayDevice(),
 		},
 		p,
 		api.FramebufferAttachment_Color0,

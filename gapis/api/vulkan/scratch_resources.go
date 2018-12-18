@@ -462,8 +462,8 @@ func (t *scratchTask) newBuffer(subRngs []bufferSubRangeFillInfo, usages ...VkBu
 				VkDeviceSize(size),                      // size
 				usageFlags,                              // usage
 				VkSharingMode_VK_SHARING_MODE_EXCLUSIVE, // sharingMode
-				0, // queueFamilyIndexCount
-				0, // pQueueFamilyIndices
+				0,                                       // queueFamilyIndexCount
+				0,                                       // pQueueFamilyIndices
 			)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(buffer).Ptr(),

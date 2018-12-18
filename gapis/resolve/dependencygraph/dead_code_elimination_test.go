@@ -41,11 +41,11 @@ func TestLivenessTree(t *testing.T) {
 	childB := dependencygraph.StateAddress(5)
 	tree := dependencygraph.NewLivenessTree(map[dependencygraph.StateAddress]dependencygraph.StateAddress{
 		dependencygraph.NullStateAddress: dependencygraph.NullStateAddress,
-		root:   dependencygraph.NullStateAddress,
-		child1: root,
-		child2: root,
-		childA: child1,
-		childB: child1,
+		root:                             dependencygraph.NullStateAddress,
+		child1:                           root,
+		child2:                           root,
+		childA:                           child1,
+		childB:                           child1,
 	})
 
 	tree.MarkLive(child1)

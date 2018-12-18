@@ -83,9 +83,9 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 						req.Attachment,        // api.FramebufferAttachment
 						fbInfo.Index,          // uint32
 						req.Settings.DrawMode, // service.DrawMode
-						true,  // disableReplayOptimization bool
-						false, // displayToSurface bool
-						nil,   // hints *service.UsageHints
+						true,                  // disableReplayOptimization bool
+						false,                 // displayToSurface bool
+						nil,                   // hints *service.UsageHints
 					)
 					return err
 				})

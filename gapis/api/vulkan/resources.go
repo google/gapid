@@ -1283,11 +1283,11 @@ func pipelineResourceData(ctx context.Context,
 	return &api.ResourceData{
 		Data: &api.ResourceData_Pipeline{
 			Pipeline: &api.Pipeline{
-				API:      path.NewAPI(id.ID(ID)),
-				Type:     pipeType,
-				Stages:   stages,
-				Bindings: bindingSlice,
-				Bound:    bound,
+				API:                       path.NewAPI(id.ID(ID)),
+				Type:                      pipeType,
+				Stages:                    stages,
+				Bindings:                  bindingSlice,
+				Bound:                     bound,
 				BindingTypeConstantsIndex: int32(VkDescriptorTypeConstants()),
 				ImageLayoutConstantsIndex: int32(VkImageLayoutConstants()),
 			},

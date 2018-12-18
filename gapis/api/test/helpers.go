@@ -85,11 +85,11 @@ func BuildComplex(a arena.Arena) Complex {
 			NewTestObject(a, 20),
 			NewTestObject(a, 30),
 		),
-		o,              // RefObject
-		o,              // RefObjectAlias
-		NilTestObjectʳ, // NilRefObject
-		m,              // Entries
-		m,              // EntriesAlias
+		o,                     // RefObject
+		o,                     // RefObjectAlias
+		NilTestObjectʳ,        // NilRefObject
+		m,                     // Entries
+		m,                     // EntriesAlias
 		NewU32ːTestObjectᵐ(a), // NilMap
 		NewU32ːTestObjectʳᵐ(a). // RefEntries
 					Add(0, o).
