@@ -259,7 +259,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			go func(i int) {
 				iip, err := client.GetFramebufferAttachment(ctx,
 					&service.ReplaySettings{
-						Device: device,
+						Device:                    device,
 						DisableReplayOptimization: verb.NoOpt,
 						DisplayToSurface:          false,
 					},
@@ -334,7 +334,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				gotNodes.Done()
 				iip, err := client.GetFramebufferAttachment(tnCtx,
 					&service.ReplaySettings{
-						Device: device,
+						Device:                    device,
 						DisableReplayOptimization: verb.NoOpt,
 						DisplayToSurface:          false,
 					},
@@ -429,7 +429,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		settings := &service.RenderSettings{MaxWidth: uint32(0xFFFFFFFF), MaxHeight: uint32(0xFFFFFFFF)}
 		iip, err := client.GetFramebufferAttachment(ctx,
 			&service.ReplaySettings{
-				Device: device,
+				Device:                    device,
 				DisableReplayOptimization: verb.NoOpt,
 				DisplayToSurface:          false,
 			},
@@ -835,24 +835,24 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 	traceDevice := found[0].device
 
 	options := &service.TraceOptions{
-		Device: traceDevice,
-		Apis:   []string{},
+		Device:                    traceDevice,
+		Apis:                      []string{},
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
-		Cwd:                   verb.WorkingDir,
-		Environment:           verb.Env,
-		Duration:              0,
-		ObserveFrameFrequency: 0,
-		ObserveDrawFrequency:  0,
-		StartFrame:            uint32(verb.StartFrame),
-		FramesToCapture:       uint32(verb.NumFrames),
-		DisablePcs:            true,
-		RecordErrorState:      false,
-		DeferStart:            false,
-		NoBuffer:              false,
-		HideUnknownExtensions: true,
-		RecordTraceTimes:      true,
-		ClearCache:            false,
-		ServerLocalSavePath:   out,
+		Cwd:                       verb.WorkingDir,
+		Environment:               verb.Env,
+		Duration:                  0,
+		ObserveFrameFrequency:     0,
+		ObserveDrawFrequency:      0,
+		StartFrame:                uint32(verb.StartFrame),
+		FramesToCapture:           uint32(verb.NumFrames),
+		DisablePcs:                true,
+		RecordErrorState:          false,
+		DeferStart:                false,
+		NoBuffer:                  false,
+		HideUnknownExtensions:     true,
+		RecordTraceTimes:          true,
+		ClearCache:                false,
+		ServerLocalSavePath:       out,
 	}
 	options.App = &service.TraceOptions_Uri{
 		uri,

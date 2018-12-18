@@ -80,7 +80,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 		for _, e := range eofEvents {
 			fbreqs = append(fbreqs, &service.GetFramebufferAttachmentRequest{
 				ReplaySettings: &service.ReplaySettings{
-					Device: device,
+					Device:                    device,
 					DisableReplayOptimization: true,
 				},
 				After:      e.Command,

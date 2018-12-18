@@ -80,10 +80,10 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 		}))
 	allocate := NewVkCommandBufferAllocateInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
-		0, // pNext
+		0,                      // pNext
 		modelCmdBufObj.Pool(),  // commandPool
 		modelCmdBufObj.Level(), // level
-		1, // commandBufferCount
+		1,                      // commandBufferCount
 	)
 	allocateData := s.AllocDataOrPanic(ctx, allocate)
 	cleanup = append(cleanup, func() { allocateData.Free() })
@@ -150,11 +150,11 @@ func rebuildVkCmdBeginRenderPass(
 
 	begin := NewVkRenderPassBeginInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
-		0,                                        // pNext
-		d.RenderPass(),                           // renderPass
-		d.Framebuffer(),                          // framebuffer
-		d.RenderArea(),                           // renderArea
-		uint32(len(clearValues)),                 // clearValueCount
+		0,                        // pNext
+		d.RenderPass(),           // renderPass
+		d.Framebuffer(),          // framebuffer
+		d.RenderArea(),           // renderArea
+		uint32(len(clearValues)), // clearValueCount
 		NewVkClearValueᶜᵖ(clearValuesData.Ptr()), // pClearValues
 	)
 	beginData := s.AllocDataOrPanic(ctx, begin)
