@@ -450,6 +450,10 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 			return ret, nil, err
 		}
 		pkg = packages.FindByName(match[2])
+		if pkg == nil {
+			cleanup()
+			return ret, nil, fmt.Errorf("Package '%v' not found", match[2])
+		}
 		a = pkg.ActivityActions.FindByName(match[1], match[3])
 		if a == nil {
 			lines := make([]string, len(pkg.ActivityActions))
