@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"math/bits"
-	"reflect"
 
 	"github.com/google/gapid/gapis/api"
 )
@@ -38,11 +37,12 @@ type FragWatcher interface {
 	OnEndCmd(ctx context.Context, cmdCtx CmdContext) map[NodeID][]FragmentAccess
 	OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subCmdCtx CmdContext)
 	OnEndSubCmd(ctx context.Context, cmdCtx CmdContext)
+	GetStateRefs() map[api.RefID]RefFrag
 }
 
 func NewFragWatcher() *fragWatcher {
 	return &fragWatcher{
-		stateRefs:        make(map[api.RefID]reflect.Type),
+		stateRefs:        make(map[api.RefID]RefFrag),
 		pendingFragments: make(map[api.RefID][]api.Fragment),
 		refWrites:        make(map[api.RefID]*refWrites),
 		refAccesses:      newRefAccesses(),
@@ -50,8 +50,13 @@ func NewFragWatcher() *fragWatcher {
 	}
 }
 
+type RefFrag struct {
+	RefID api.RefID
+	Frag  api.Fragment
+}
+
 type fragWatcher struct {
-	stateRefs        map[api.RefID]reflect.Type
+	stateRefs        map[api.RefID]RefFrag
 	pendingFragments map[api.RefID][]api.Fragment
 	refWrites        map[api.RefID]*refWrites
 	refAccesses      refAccesses
@@ -77,7 +82,7 @@ func (b *fragWatcher) OnReadFrag(ctx context.Context, cmdCtx CmdContext,
 	// Ignore reads to variables not accessed through an api.State object
 	if _, ok := b.stateRefs[ownerID]; !ok {
 		if _, ok := owner.(api.State); ok {
-			b.stateRefs[ownerID] = reflect.TypeOf(owner)
+			b.stateRefs[ownerID] = RefFrag{api.NilRefID, nil}
 		} else {
 			return
 		}
@@ -88,7 +93,7 @@ func (b *fragWatcher) OnReadFrag(ctx context.Context, cmdCtx CmdContext,
 	// `valueRef` are not ignored.
 	if valueID != api.NilRefID {
 		if _, ok := b.stateRefs[valueID]; !ok {
-			b.stateRefs[valueID] = reflect.TypeOf(value)
+			b.stateRefs[valueID] = RefFrag{ownerID, frag}
 		}
 	}
 
@@ -150,7 +155,7 @@ func (b *fragWatcher) OnWriteFrag(ctx context.Context, cmdCtx CmdContext,
 	// Ignore writes to variables not accessed through an api.State object
 	if _, ok := b.stateRefs[ownerID]; !ok {
 		if _, ok := owner.(api.State); ok {
-			b.stateRefs[ownerID] = reflect.TypeOf(owner)
+			b.stateRefs[ownerID] = RefFrag{api.NilRefID, nil}
 		} else {
 			return
 		}
@@ -161,7 +166,7 @@ func (b *fragWatcher) OnWriteFrag(ctx context.Context, cmdCtx CmdContext,
 	// `valueRef` are not ignored.
 	if newValID != api.NilRefID {
 		if _, ok := b.stateRefs[newValID]; ok {
-			b.stateRefs[newValID] = reflect.TypeOf(newVal)
+			b.stateRefs[newValID] = RefFrag{ownerID, frag}
 		}
 	}
 
@@ -384,6 +389,10 @@ func (b *fragWatcher) OnBeginSubCmd(ctx context.Context, cmdCtx CmdContext, subC
 
 func (b *fragWatcher) OnEndSubCmd(ctx context.Context, cmdCtx CmdContext) {
 	b.Flush(ctx, cmdCtx)
+}
+
+func (b *fragWatcher) GetStateRefs() map[api.RefID]RefFrag {
+	return b.stateRefs
 }
 
 type nodeSetEntry struct {
