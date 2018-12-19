@@ -453,7 +453,7 @@ func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindSer
 }
 
 func (s *grpcServer) UpdateSettings(ctx xctx.Context, req *service.UpdateSettingsRequest) (*service.UpdateSettingsResponse, error) {
-	defer s.inRPC()
+	defer s.inRPC()()
 	err := s.handler.UpdateSettings(s.bindCtx(ctx), req)
 	if err := service.NewError(err); err != nil {
 		return &service.UpdateSettingsResponse{Error: err}, nil
