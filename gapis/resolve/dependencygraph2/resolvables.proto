@@ -24,4 +24,5 @@ message DependencyGraph2Resolvable {
   bool includeInitialCommands = 2;
   bool mergeSubCmdNodes = 3;
   bool reverseDependencies = 4;
+  bool saveNodeAccesses = 5;
 }

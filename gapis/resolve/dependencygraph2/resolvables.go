@@ -31,6 +31,7 @@ func GetDependencyGraph(ctx context.Context, c *path.Capture, config DependencyG
 		IncludeInitialCommands: config.IncludeInitialCommands,
 		MergeSubCmdNodes:       config.MergeSubCmdNodes,
 		ReverseDependencies:    config.ReverseDependencies,
+		SaveNodeAccesses:       config.SaveNodeAccesses,
 	})
 	if err != nil {
 		return nil, err
@@ -55,6 +56,7 @@ func (r *DependencyGraph2Resolvable) Resolve(ctx context.Context) (interface{}, 
 		IncludeInitialCommands: r.IncludeInitialCommands,
 		MergeSubCmdNodes:       r.MergeSubCmdNodes,
 		ReverseDependencies:    r.ReverseDependencies,
+		SaveNodeAccesses:       r.SaveNodeAccesses,
 	}
 	return BuildDependencyGraph(ctx, config, c, initialCmds, initialRanges)
 }

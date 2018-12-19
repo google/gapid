@@ -363,6 +363,10 @@ func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 
 	b.LogStats(ctx, false)
 
+	if graph.config.SaveNodeAccesses {
+		graph.setStateRefs(b.fragWatcher.GetStateRefs())
+	}
+
 	return graph, nil
 }
 
