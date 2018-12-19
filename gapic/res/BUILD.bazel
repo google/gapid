@@ -20,7 +20,7 @@ load("//tools/build:rules.bzl", "copy_tree")
 copy_tree(
     name = "copy_resources",
     srcs = glob(["**/*"]),
-    strip = PACKAGE_NAME + "/",
+    strip = package_name() + "/",
     to = "java",
 )
 
