@@ -204,8 +204,8 @@ func postImageData(ctx context.Context,
 	level,
 	imgWidth,
 	imgHeight,
-	reqWidth,
-	reqHeight uint32,
+	requestWidth,
+	requestHeight uint32,
 	checkImage func(*image.Data) error,
 	out transform.Writer,
 	res replay.Result) {
@@ -239,10 +239,41 @@ func postImageData(ctx context.Context,
 		return
 	}
 
-	queue := imageObject.Aspects().Get(aspect).Layers().Get(0).Levels().Get(0).LastBoundQueue()
+	resolveSrcDepth := int32(0)
+	blitSrcDepth := int32(0)
+	copySrcDepth := int32(0)
+
+	if imageObject.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
+		resolveSrcDepth = int32(layer)
+		blitSrcDepth = int32(layer)
+		copySrcDepth = int32(layer)
+		layer = 0
+	}
+	resolveSrcLayer := layer
+	blitSrcLayer := layer
+	copySrcLayer := layer
+	if imageObject.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
+		resolveSrcLayer = layer
+		blitSrcDepth = 0
+		blitSrcLayer = 0
+		copySrcDepth = 0
+		copySrcLayer = 0
+	}
+	doBlit := !(requestWidth == imgWidth && requestHeight == imgHeight)
+	if doBlit {
+		copySrcDepth = 0
+		copySrcLayer = 0
+	}
+
+	origLayout := imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout()
+
+	queue := imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).LastBoundQueue()
 	if queue.IsNil() {
-		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
-		return
+		queue = imageObject.LastBoundQueue()
+		if queue.IsNil() {
+			res(nil, &service.ErrDataUnavailable{Reason: messages.ErrMessage("The target image object has not been bound with a vkQueue")})
+			return
+		}
 	}
 
 	vkQueue := queue.VulkanHandle()
@@ -250,9 +281,6 @@ func postImageData(ctx context.Context,
 	device := GetState(s).Devices().Get(vkDevice)
 	vkPhysicalDevice := device.PhysicalDevice()
 	physicalDevice := GetState(s).PhysicalDevices().Get(vkPhysicalDevice)
-
-	requestWidth := reqWidth
-	requestHeight := reqHeight
 
 	if properties, ok := physicalDevice.QueueFamilyProperties().Lookup(queue.Family()); ok {
 		if properties.QueueFlags()&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) == 0 {
@@ -446,12 +474,12 @@ func postImageData(ctx context.Context,
 		0, // bufferImageHeight
 		NewVkImageSubresourceLayers(a, // imageSubresource
 			VkImageAspectFlags(aspect), // aspectMask
-			0,                          // mipLevel
-			0,                          // baseArrayLayer
+			level,                      // mipLevel
+			copySrcLayer,               // baseArrayLayer
 			1,                          // layerCount
 		),
-		MakeVkOffset3D(a), // imageOffset
-		NewVkExtent3D(a, requestWidth, requestHeight, 1), // imageExtent
+		NewVkOffset3D(a, int32(0), int32(0), copySrcDepth), // imageOffset
+		NewVkExtent3D(a, requestWidth, requestHeight, 1),   // imageExtent
 	)
 	bufferImageCopyData := MustAllocData(ctx, s, bufferImageCopy)
 
@@ -590,9 +618,9 @@ func postImageData(ctx context.Context,
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT,
 		),
-		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT),                        // dstAccessMask
-		imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(), // oldLayout
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                                 // newLayout
+		VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT), // dstAccessMask
+		origLayout, // oldLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // newLayout
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
@@ -616,8 +644,8 @@ func postImageData(ctx context.Context,
 				VkAccessFlagBits_VK_ACCESS_SHADER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT|
 				VkAccessFlagBits_VK_ACCESS_TRANSFER_READ_BIT),
-		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,                                 // oldLayout
-		imageObject.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout(), // newLayout
+		VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, // oldLayout
+		origLayout,                 // newLayout
 		0xFFFFFFFF,                 // srcQueueFamilyIndex
 		0xFFFFFFFF,                 // dstQueueFamilyIndex
 		imageObject.VulkanHandle(), // image
@@ -636,12 +664,12 @@ func postImageData(ctx context.Context,
 		NewVkImageSubresourceLayers(a, // srcSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
-			0,                          // baseArrayLayer
+			blitSrcLayer,               // baseArrayLayer
 			1,                          // layerCount
 		),
 		NewVkOffset3Dː2ᵃ(a, // srcOffsets
-			MakeVkOffset3D(a),
-			NewVkOffset3D(a, int32(imgWidth), int32(imgHeight), 1),
+			NewVkOffset3D(a, int32(0), int32(0), blitSrcDepth),
+			NewVkOffset3D(a, int32(imgWidth), int32(imgHeight), blitSrcDepth+int32(1)),
 		),
 		NewVkImageSubresourceLayers(a, // dstSubresource
 			VkImageAspectFlags(aspect), // aspectMask
@@ -661,10 +689,10 @@ func postImageData(ctx context.Context,
 		NewVkImageSubresourceLayers(a, // srcSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
-			0,                          // baseArrayLayer
+			resolveSrcLayer,            // baseArrayLayer
 			1,                          // layerCount
 		),
-		MakeVkOffset3D(a), // srcOffset
+		NewVkOffset3D(a, int32(0), int32(0), resolveSrcDepth), // srcOffset
 		NewVkImageSubresourceLayers(a, // dstSubresource
 			VkImageAspectFlags(aspect), // aspectMask
 			0,                          // mipLevel
@@ -914,15 +942,10 @@ func postImageData(ctx context.Context,
 		filter = VkFilter_VK_FILTER_NEAREST
 	}
 
-	doBlit := true
-	copySrc := stagingImageID
-
-	if requestWidth == imgWidth && requestHeight == imgHeight {
-		doBlit = false
-		copySrc = blitSrcImage
-	}
+	copySrc := blitSrcImage
 
 	if doBlit {
+		copySrc = stagingImageID
 		writeEach(ctx, out,
 			cb.VkCmdBlitImage(
 				commandBufferID,

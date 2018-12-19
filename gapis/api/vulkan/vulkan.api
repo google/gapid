@@ -211,6 +211,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_shader_draw_parameters"] = true
   supported.ExtensionNames["VK_KHR_relaxed_block_layout"] = true
   supported.ExtensionNames["VK_KHR_16bit_storage"] = true
+  supported.ExtensionNames["VK_KHR_maintenance1"] = true
   return supported
 }
 

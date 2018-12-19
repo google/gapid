@@ -331,20 +331,20 @@ sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
     subpass := ldi.RenderPass.SubpassDescriptions[ldi.LastSubpass]
     for _ , _ , a in subpass.InputAttachments {
       attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
-      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
+      transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ColorAttachments {
       attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
-      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
+      transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     for _ , _ , a in subpass.ResolveAttachments {
       attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
-      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
+      transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
     if subpass.DepthStencilAttachment != null {
       dsRef := subpass.DepthStencilAttachment
       attachment := ldi.Framebuffer.ImageAttachments[dsRef.Attachment]
-      transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
+      transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
     }
   }
   popAndPushMarkerForNextSubpass(ldi.LastSubpass)
@@ -433,7 +433,7 @@ sub void storeImageAttachment(u32 attachmentID) {
     desc := ldi.RenderPass.AttachmentDescriptions[attachmentID]
     if attachment.Image != null {
       if desc.initialLayout != desc.finalLayout {
-        transitionImageLayout(attachment.Image, attachment.SubresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
+        transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, desc.finalLayout)
       }
       switch desc.storeOp {
         case VK_ATTACHMENT_STORE_OP_STORE: {
