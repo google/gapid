@@ -440,7 +440,7 @@ func (s *grpcServer) GetFramebufferAttachment(ctx xctx.Context, req *service.Get
 }
 
 func (s *grpcServer) GetLogStream(req *service.GetLogStreamRequest, server service.Gapid_GetLogStreamServer) error {
-	defer s.inRPC()()
+	// defer s.inRPC()() -- don't consider the log stream an inflight RPC.
 	ctx := server.Context()
 	h := log.NewHandler(func(m *log.Message) { server.Send(log_pb.From(m)) }, nil)
 	return s.handler.GetLogStream(s.bindCtx(ctx), h)
