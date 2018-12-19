@@ -143,6 +143,51 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
 
 #if TARGET_OS == GAPID_OS_ANDROID
 
+namespace {
+
+template <typename... Args>
+jobject jni_call_o(JNIEnv* env, jobject obj, const char* name, const char* sig,
+                   Args&&... args) {
+  jmethodID mid = env->GetMethodID(env->GetObjectClass(obj), name, sig);
+  return env->CallObjectMethod(obj, mid, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+int jni_call_i(JNIEnv* env, jobject obj, const char* name, const char* sig,
+               Args&&... args) {
+  jmethodID mid = env->GetMethodID(env->GetObjectClass(obj), name, sig);
+  return env->CallIntMethod(obj, mid, std::forward<Args>(args)...);
+}
+
+struct Options {
+  int idleTimeoutSec = 0;
+  std::string authToken = "";
+
+  static Options Parse(struct android_app* app) {
+    Options opts;
+
+    JNIEnv* env;
+    app->activity->vm->AttachCurrentThread(&env, 0);
+
+    jobject intent = jni_call_o(env, app->activity->clazz, "getIntent",
+                                "()Landroid/content/Intent;");
+    opts.idleTimeoutSec =
+        jni_call_i(env, intent, "getIntExtra", "(Ljava/lang/String;I)I",
+                   env->NewStringUTF("idle_timeout"), 0);
+    jobject token = jni_call_o(env, intent, "getStringExtra",
+                               "(Ljava/lang/String;)Ljava/lang/String;",
+                               env->NewStringUTF("auth_token"));
+    if (token != nullptr) {
+      const char* tmp = env->GetStringUTFChars((jstring)token, nullptr);
+      opts.authToken = tmp;
+      env->ReleaseStringUTFChars((jstring)token, tmp);
+    }
+
+    app->activity->vm->DetachCurrentThread();
+    return opts;
+  }
+};
+
 const char* pipeName() {
 #ifdef __x86_64
   return "gapir-x86-64";
@@ -167,6 +212,8 @@ void android_process(struct android_app* app, int32_t cmd) {
   }
 }
 
+}  // namespace
+
 // Main function for android
 void android_main(struct android_app* app) {
   MemoryManager memoryManager(memorySizes);
@@ -184,12 +231,12 @@ void android_main(struct android_app* app) {
       "Supported ABIs: %s\n",
       uri.c_str(), core::supportedABIs());
 
+  auto opts = Options::Parse(app);
   auto cache = InMemoryResourceCache::create(memoryManager.getTopAddress());
-  int idleTimeoutSec = 0;  // No timeout
   std::mutex lock;
   std::unique_ptr<Server> server =
-      Setup(uri.c_str(), nullptr, cache.get(), idleTimeoutSec, &crashHandler,
-            &memoryManager, &lock);
+      Setup(uri.c_str(), opts.authToken.c_str(), cache.get(),
+            opts.idleTimeoutSec, &crashHandler, &memoryManager, &lock);
   std::thread waiting_thread([&]() { server.get()->wait(); });
   if (chmod(socket_file_path.c_str(), S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH)) {
     GAPID_ERROR("Chmod failed!");
