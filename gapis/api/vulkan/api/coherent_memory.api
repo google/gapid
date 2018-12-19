@@ -214,8 +214,14 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
             }
             imageLevelWidthInBlocks := as!u64(roundUpTo(level.Width, as!u32(blockWidth)))
             imageLevelHeightInBlocks := as!u64(roundUpTo(level.Height, as!u32(blockHeight)))
-            start := as!u64(z0) * imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
-            end := as!u64(z1) * imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
+            depthPitch := switch level.LinearLayout {
+              case null:
+                imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
+              default:
+                as!u64(level.LinearLayout.depthPitch)
+            }
+            start := z0 * depthPitch
+            end := z1 * depthPitch
             if isWrite {
               write(level.Data[start:end])
             } else {
