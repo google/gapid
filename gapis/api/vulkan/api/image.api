@@ -522,7 +522,7 @@ cmd void vkDestroyImageView(
     }
 
     delete(ImageViews, imageView)
-    if (viewObj.Image && imageView in viewObj.Image.Views) {
+    if ((viewObj.Image != null) && (imageView in viewObj.Image.Views)) {
       delete(viewObj.Image.Views, imageView)
     }
   }
