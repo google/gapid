@@ -234,12 +234,12 @@ func Run(main task.Task) {
 	shutdown := func() {
 		shutdownOnce.Do(func() {
 			analytics.Flush()
-			LogHandler.Close()
 			cancel()
 			if !WaitForCleanup(rootCtx) {
-				fmt.Fprint(os.Stderr, "Timeout waiting for cleanup")
+				log.E(ctx, "Timeout waiting for cleanup")
 			}
 			endProfile()
+			LogHandler.Close()
 		})
 	}
 
