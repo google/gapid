@@ -190,6 +190,18 @@ func (b *graphBuilder) AddNodeDependencies(
 	b.depSlice = depSlice[:0]
 
 	b.graph.setDependencies(nodeID, newDepSlice)
+	if b.graph.config.SaveNodeAccesses {
+		initCmdNodeIDs := b.initCmdNodeIDs[nodeID]
+		initCmdNodeIDsCopy := make([]NodeID, len(initCmdNodeIDs))
+		copy(initCmdNodeIDsCopy, initCmdNodeIDs)
+		b.graph.setNodeAccesses(nodeID, NodeAccesses{
+			fragAccesses,
+			memAccesses,
+			forwardAccesses,
+			parent,
+			initCmdNodeIDsCopy,
+		})
+	}
 
 	stats.UniqueDeps = uint64(cap(newDepSlice))
 	b.stats.DepDist.Add(stats.UniqueDeps)
