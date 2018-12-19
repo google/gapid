@@ -161,8 +161,7 @@ void android_process(struct android_app* app, int32_t cmd) {
   switch (cmd) {
     case APP_CMD_INIT_WINDOW: {
       gapir::android_window = app->window;
-      __android_log_print(ANDROID_LOG_DEBUG, "GAPIR", "Received window: %p\n",
-                          gapir::android_window);
+      GAPID_DEBUG("Received window: %p\n", gapir::android_window);
       break;
     }
   }
@@ -179,11 +178,11 @@ void android_main(struct android_app* app) {
   std::string socket_file_path = internal_data_path + "/" + std::string(pipe);
   std::string uri = std::string("unix://") + socket_file_path;
 
-  __android_log_print(ANDROID_LOG_DEBUG, "GAPIR",
-                      "Started Graphics API Replay daemon.\n"
-                      "Listening on unix socket '%s'\n"
-                      "Supported ABIs: %s\n",
-                      uri.c_str(), core::supportedABIs());
+  GAPID_INFO(
+      "Started Graphics API Replay daemon.\n"
+      "Listening on unix socket '%s'\n"
+      "Supported ABIs: %s\n",
+      uri.c_str(), core::supportedABIs());
 
   auto cache = InMemoryResourceCache::create(memoryManager.getTopAddress());
   int idleTimeoutSec = 0;  // No timeout
