@@ -53,31 +53,49 @@ func Listen(ctx context.Context, addr string, cfg Config) error {
 // This is a blocking call.
 func NewWithListener(ctx context.Context, l net.Listener, cfg Config, srvChan chan<- *grpc.Server) error {
 	s := &grpcServer{
-		handler:   New(ctx, cfg),
-		bindCtx:   func(c context.Context) context.Context { return keys.Clone(c, ctx) },
-		keepAlive: make(chan struct{}, 1),
+		handler:      New(ctx, cfg),
+		bindCtx:      func(c context.Context) context.Context { return keys.Clone(c, ctx) },
+		keepAlive:    make(chan struct{}, 1),
+		interrupters: map[int]func(){},
 	}
-	return grpcutil.ServeWithListener(ctx, l, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
-		if addr, ok := listener.Addr().(*net.TCPAddr); ok {
-			// The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
-			fmt.Printf("Bound on port '%d'\n", addr.Port)
+
+	done := make(chan error)
+	ctx, stop := task.WithCancel(ctx)
+	crash.Go(func() {
+		done <- grpcutil.ServeWithListener(ctx, l, func(ctx context.Context, listener net.Listener, server *grpc.Server) error {
+			if addr, ok := listener.Addr().(*net.TCPAddr); ok {
+				// The following message is parsed by launchers to detect the selected port. DO NOT CHANGE!
+				fmt.Printf("Bound on port '%d'\n", addr.Port)
+			}
+			service.RegisterGapidServer(server, s)
+			if srvChan != nil {
+				srvChan <- server
+			}
+			if cfg.IdleTimeout != 0 {
+				crash.Go(func() { s.stopIfIdle(ctx, server, cfg.IdleTimeout, stop) })
+			}
+			return nil
+		}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
+	})
+
+	select {
+	case err := <-done:
+		return err
+	case <-task.ShouldStop(ctx):
+		for _, f := range s.interrupters {
+			f()
 		}
-		service.RegisterGapidServer(server, s)
-		if srvChan != nil {
-			srvChan <- server
-		}
-		if cfg.IdleTimeout != 0 {
-			crash.Go(func() { s.stopIfIdle(ctx, server, cfg.IdleTimeout) })
-		}
-		return nil
-	}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
+		return <-done
+	}
 }
 
 type grpcServer struct {
-	handler      Server
-	bindCtx      func(context.Context) context.Context
-	keepAlive    chan struct{}
-	inFlightRPCs uint32
+	handler         Server
+	bindCtx         func(context.Context) context.Context
+	keepAlive       chan struct{}
+	inFlightRPCs    uint32
+	interrupters    map[int]func()
+	lastInterrupter int
 }
 
 // inRPC should be called at the start of an RPC call. The returned function
@@ -100,7 +118,7 @@ func (s *grpcServer) inRPC() func() {
 // stopIfIdle calls GracefulStop on server if there are no writes the the
 // keepAlive chan within idleTimeout.
 // This function blocks until there's an idle timeout, or ctx is cancelled.
-func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTimeout time.Duration) {
+func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTimeout time.Duration, stop func()) {
 	// Split the idleTimeout into N smaller chunks, and check that there was
 	// no activity from the client in a contiguous N chunks of time.
 	// This avoids killing the server if the machine is suspended (where the
@@ -110,6 +128,7 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 
 	stoppedSignal, stopped := task.NewSignal()
 	defer func() {
+		stop()
 		server.GracefulStop()
 		stopped(ctx)
 	}()
@@ -136,6 +155,13 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 			idleTime = 0
 		}
 	}
+}
+
+func (s *grpcServer) addInterrupter(f func()) (remove func()) {
+	li := s.lastInterrupter
+	s.lastInterrupter++
+	s.interrupters[li] = f
+	return func() { delete(s.interrupters, li) }
 }
 
 func (s *grpcServer) Ping(ctx xctx.Context, req *service.PingRequest) (*service.PingResponse, error) {
@@ -441,7 +467,9 @@ func (s *grpcServer) GetFramebufferAttachment(ctx xctx.Context, req *service.Get
 
 func (s *grpcServer) GetLogStream(req *service.GetLogStreamRequest, server service.Gapid_GetLogStreamServer) error {
 	// defer s.inRPC()() -- don't consider the log stream an inflight RPC.
-	ctx := server.Context()
+	ctx, cancel := task.WithCancel(server.Context())
+	defer s.addInterrupter(cancel)()
+
 	h := log.NewHandler(func(m *log.Message) { server.Send(log_pb.From(m)) }, nil)
 	return s.handler.GetLogStream(s.bindCtx(ctx), h)
 }
