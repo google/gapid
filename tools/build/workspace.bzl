@@ -56,10 +56,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "google",
         project = "protobuf",
-        # Matches with GRPC
-        commit = "2761122b810fe8861004ae785cc3ab39f384d342",
-        # Override with our own BUILD file, to make the compiler/config selection work.
-        build_file = "@gapid//tools/build/third_party:protobuf.BUILD",
+        commit = "66dc42d891a4fc8e9190c524fd67961688a37bbe", # 3.6.1 + changes
     )
 
     maybe_repository(
