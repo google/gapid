@@ -246,7 +246,7 @@ func Run(main task.Task) {
 	defer shutdown()
 
 	// Add the abort and crash signal handlers
-	handleAbortSignals(shutdown)
+	handleAbortSignals(ctx, shutdown)
 	handleCrashSignals(ctx, shutdown)
 
 	// Now we are ready to run the main task

@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/google/gapid/core/app/crash"
@@ -84,15 +85,16 @@ func AddInterruptHandler(f func()) func() {
 	}
 }
 
-func handleAbortSignals(cancel task.CancelFunc) {
+func handleAbortSignals(ctx context.Context, cancel task.CancelFunc) {
 	// register a signal handler for exits
 	sigchan := make(chan os.Signal)
 	// Enable signal interception, no-op if already enabled.
-	// Note: for Unix, these signals translate to SIGINT and SIGKILL.
-	signal.Notify(sigchan, os.Interrupt, os.Kill)
+	signal.Notify(sigchan, os.Interrupt, os.Kill, syscall.SIGTERM)
 	// Run a goroutine that calls the cancel func if the signal is received
 	crash.Go(func() {
-		<-sigchan
+		s := <-sigchan
+		log.D(ctx, "Handling signal %v", s)
+
 		handled := false
 		for _, v := range interruptHandlers {
 			handled = true
