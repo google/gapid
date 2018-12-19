@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -294,7 +295,10 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	}
 
 	log.I(ctx, "Launching GAPIR...")
-	if err := d.StartActivity(ctx, *apk.ActivityActions[0]); err != nil {
+	if err := d.StartActivity(ctx, *apk.ActivityActions[0],
+		android.IntExtra{"idle_timeout", int(sessionTimeout / time.Second)},
+		android.StringExtra{"auth_token", string(s.auth)},
+	); err != nil {
 		return err
 	}
 
