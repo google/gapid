@@ -82,7 +82,7 @@ func (b *forwardWatcher) OpenForwardDependency(ctx context.Context, cmdCtx CmdCo
 	}
 
 	if _, ok := b.openForwardDependencies[dependencyID]; ok {
-		log.I(ctx, "OpenForwardDependency: Forward dependency opened multiple times before being closed. DependencyID: %v, close node: %v", dependencyID, cmdCtx.nodeID)
+		log.D(ctx, "OpenForwardDependency: Forward dependency opened multiple times before being closed. DependencyID: %v, close node: %v", dependencyID, cmdCtx.nodeID)
 	} else {
 		b.openForwardDependencies[dependencyID] = acc.Nodes
 	}
@@ -105,7 +105,7 @@ func (b *forwardWatcher) CloseForwardDependency(ctx context.Context, cmdCtx CmdC
 			Mode:         FORWARD_CLOSE,
 		})
 	} else {
-		log.I(ctx, "CloseForwardDependency: Forward dependency closed before being opened. DependencyID: %v, close node: %v", dependencyID, cmdCtx.nodeID)
+		log.D(ctx, "CloseForwardDependency: Forward dependency closed before being opened. DependencyID: %v, close node: %v", dependencyID, cmdCtx.nodeID)
 	}
 
 }
@@ -120,7 +120,7 @@ func (b *forwardWatcher) DropForwardDependency(ctx context.Context, cmdCtx CmdCo
 			Mode:         FORWARD_DROP,
 		})
 	} else {
-		log.I(ctx, "DropForwardDependency: Forward dependency dropped before being opened. DependencyID: %v, close node: %v", dependencyID, cmdCtx.nodeID)
+		log.D(ctx, "DropForwardDependency: Forward dependency dropped before being opened. DependencyID: %v, close node: %v", dependencyID, cmdCtx.nodeID)
 	}
 }
 

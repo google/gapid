@@ -57,7 +57,7 @@ func DCECapture(ctx context.Context, name string, p *path.Capture, requestedCmds
 	builder := NewDCEBuilder(graph)
 	for _, cmd := range requestedCmds {
 		id := cmd.Indices[0]
-		log.I(ctx, "Requested (%d) %v\n", id, c.Commands[id])
+		log.D(ctx, "Requested (%d) %v\n", id, c.Commands[id])
 		err := builder.Request(ctx, api.SubCmdIdx(cmd.Indices))
 		if err != nil {
 			return nil, err
@@ -352,7 +352,7 @@ func (b *DCEBuilder) processLiveObs(ctx context.Context, obs ObsNode) {
 // command index, to the DCE.
 func (b *DCEBuilder) Request(ctx context.Context, fci api.SubCmdIdx) error {
 	if config.DebugDeadCodeElimination {
-		log.I(ctx, "Requesting [%v] %v", fci[0], b.graph.GetCommand(api.CmdID(fci[0])))
+		log.D(ctx, "Requesting [%v] %v", fci[0], b.graph.GetCommand(api.CmdID(fci[0])))
 	}
 	nodeID := b.graph.GetCmdNodeID((api.CmdID)(fci[0]), fci[1:])
 	if nodeID == NodeNoID {
@@ -384,7 +384,7 @@ func (b *DCEBuilder) Flush(ctx context.Context, out transform.Writer) {
 		}
 		cmdID := b.OriginalCmdID(liveCmdID)
 		if config.DebugDeadCodeElimination {
-			log.I(ctx, "Flushing [%v / %v] %v", cmdID, liveCmdID, cmd)
+			log.D(ctx, "Flushing [%v / %v] %v", cmdID, liveCmdID, cmd)
 		}
 		out.MutateAndWrite(ctx, cmdID, cmd)
 	}
