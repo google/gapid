@@ -95,10 +95,18 @@ func (c *Client) getOrCreateSession(ctx context.Context, d bind.Device, abi *dev
 }
 
 func (c *Client) shutdown() {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	for _, s := range c.sessions {
+	for _, s := range c.getSessions() {
 		s.close()
 	}
-	c.sessions = nil
+}
+
+func (c *Client) getSessions() []*session {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	r := []*session{}
+	for _, s := range c.sessions {
+		r = append(r, s)
+	}
+	return r
 }
