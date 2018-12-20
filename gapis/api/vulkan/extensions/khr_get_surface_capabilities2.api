@@ -36,6 +36,10 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
+/////////////
+// Structs //
+/////////////
+
 @extension("VK_KHR_get_surface_capabilities2")
 class VkPhysicalDeviceSurfaceInfo2KHR {
   VkStructureType sType
@@ -56,6 +60,10 @@ class VkSurfaceFormat2KHR {
   void*              pNext
   VkSurfaceFormatKHR surfaceFormat
 }
+
+//////////////
+// Commands //
+//////////////
 
 @threadSafety("system")
 @indirect("VkPhysicalDevice", "VkInstance")

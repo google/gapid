@@ -36,6 +36,10 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
+/////////////
+// Structs //
+/////////////
+
 @extension("VK_KHR_get_memory_requirements2")
 class VkBufferMemoryRequirementsInfo2KHR {
   VkStructureType sType
@@ -71,54 +75,19 @@ class VkSparseImageMemoryRequirements2KHR {
   VkSparseImageMemoryRequirements memoryRequirements
 }
 
+//////////////
+// Commands //
+//////////////
+
 @extension("VK_KHR_get_memory_requirements2")
 @indirect("VkDevice")
 cmd void vkGetImageMemoryRequirements2KHR(
     VkDevice                                 device,
     const VkImageMemoryRequirementsInfo2KHR* pInfo,
     VkMemoryRequirements2KHR*                pMemoryRequirements) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
-  info := pInfo[0]
-  memReqs := pMemoryRequirements[0]
-  if memReqs.pNext != null {
-    nPNext := numberOfPNext(as!const void*(memReqs.pNext))
-    next := MutableVoidPtr(as!void*(memReqs.pNext))
-    for i in (0 .. nPNext) {
-      _ = as!const VkStructureType*(next.Ptr)[0]
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-    }
-  }
-
-  // TODO: handle pNext for 'info'
-  fence
-
-  if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements2KHR") }
-  pMemoryRequirements[0] = ?
-  memReq := pMemoryRequirements[0]
-
-  if !(info.image in Images) { vkErrorInvalidImage(info.image) }
-  // TODO: Drop the touch of the image object once we extract the memory
-  // requirement info out of the image object.
-  Images[info.image].MemoryRequirements = memReq.memoryRequirements
-
-  if memReq.pNext != null {
-    numPNext := numberOfPNext(as!const void*(memReq.pNext))
-    next := MutableVoidPtr(as!void*(memReq.pNext))
-    for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0]
-      switch sType {
-        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: {
-          ext := as!VkMemoryDedicatedRequirementsKHR(?)
-          Images[info.image].DedicatedRequirementsKHR = new!DedicatedRequirementsKHR(
-            PrefersDedicatedAllocation:   ext.prefersDedicatedAllocation,
-            RequiresDedicatedAllocation:  ext.requiresDedicatedAllocation,
-          )
-          as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0] = ext
-        }
-      }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-    }
-  }
+  GetImageMemoryRequirements2(device,
+    as!const VkImageMemoryRequirementsInfo2*(pInfo),
+    as!VkMemoryRequirements2*(pMemoryRequirements))
 }
 
 @extension("VK_KHR_get_memory_requirements2")
@@ -127,49 +96,9 @@ cmd void vkGetBufferMemoryRequirements2KHR(
     VkDevice                                  device,
     const VkBufferMemoryRequirementsInfo2KHR* pInfo,
     VkMemoryRequirements2KHR*                 pMemoryRequirements) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
-  info := pInfo[0]
-  // TODO: handle pNext
-
-  memReqs := pMemoryRequirements[0]
-  if memReqs.pNext != null {
-    nPNext := numberOfPNext(as!const void*(memReqs.pNext))
-    next := MutableVoidPtr(as!void*(memReqs.pNext))
-    for i in (0 .. nPNext) {
-      _ = as!const VkStructureType*(next.Ptr)[0]
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-    }
-  }
-
-  fence
-
-  if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements2KHR") }
-  pMemoryRequirements[0] = ?
-  // TODO: handle pNext for 'memReq'
-  memReq := pMemoryRequirements[0]
-  if !(info.buffer in Buffers) { vkErrorInvalidBuffer(info.buffer) }
-  // TODO: Do the touch of the buffer object once we extract the memory
-  // requirement info out of the buffer objectd.
-  Buffers[info.buffer].MemoryRequirements = memReq.memoryRequirements
-
-  if memReq.pNext != null {
-    numPNext := numberOfPNext(as!const void*(memReq.pNext))
-    next := MutableVoidPtr(as!void*(memReq.pNext))
-    for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0]
-      switch sType {
-        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR: {
-          ext := as!VkMemoryDedicatedRequirementsKHR(?)
-          Buffers[info.buffer].DedicatedRequirementsKHR = new!DedicatedRequirementsKHR(
-            PrefersDedicatedAllocation:   ext.prefersDedicatedAllocation,
-            RequiresDedicatedAllocation:  ext.requiresDedicatedAllocation,
-          )
-          as!VkMemoryDedicatedRequirementsKHR*(next.Ptr)[0] = ext
-        }
-      }
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
-    }
-  }
+  GetBufferMemoryRequirements2(device,
+    as!const VkBufferMemoryRequirementsInfo2*(pInfo),
+    as!VkMemoryRequirements2*(pMemoryRequirements))
 }
 
 @extension("VK_KHR_get_memory_requirements2")
@@ -179,38 +108,8 @@ cmd void vkGetImageSparseMemoryRequirements2KHR(
     const VkImageSparseMemoryRequirementsInfo2KHR* pInfo,
     u32*                                           pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2KHR*           pSparseMemoryRequirements) {
-  if !(device in Devices) { vkErrorInvalidDevice(device) }
-  info := pInfo[0]
-  image := info.image
-  if !(image in Images) { vkErrorInvalidImage(image) }
-  // handle pNext
-  if info.pNext != null {
-    numPNext := numberOfPNext(info.pNext)
-    next := MutableVoidPtr(as!void*(info.pNext))
-    for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkImageSparseMemoryRequirementsInfo2KHR
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
-    }
-  }
-  if pSparseMemoryRequirementCount == null { vkErrorNullPointer("uint32_t") }
-  read(pSparseMemoryRequirementCount[0:1])
-
-  fence
-
-  if pSparseMemoryRequirements == null {
-    pSparseMemoryRequirementCount[0] = ?
-  } else {
-    count := as!u32(?)
-    requirements := pSparseMemoryRequirements[0:count]
-    for i in (0 .. count) {
-      requirements[i] = ?
-      // TODO: handle pNext for 'requirements[i]'
-      aspect := requirements[i].memoryRequirements.formatProperties.aspectMask
-      // TODO: Drop the touch of the image object.
-      Images[image].SparseMemoryRequirements[as!u32(aspect)] = requirements[i].memoryRequirements
-    }
-    pSparseMemoryRequirementCount[0] = count
-  }
+  GetImageSparseMemoryRequirements2(device,
+    as!const VkImageSparseMemoryRequirementsInfo2*(pInfo),
+    pSparseMemoryRequirementCount,
+    as!VkSparseImageMemoryRequirements2*(pSparseMemoryRequirements))
 }
