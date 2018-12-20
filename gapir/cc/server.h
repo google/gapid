@@ -69,7 +69,7 @@ class GapirServiceImpl final : public replay_service::Gapir::Service {
                    WatchDogFeeder feed_watchdog)
       : mHandleReplay(handle_replay),
         mFeedWatchDog(feed_watchdog),
-        mGrpcServer(nullptr),
+        mServer(nullptr),
         mAuthToken(authToken == nullptr ? "" : authToken) {}
 
   // The thread-safe callback to process replay requests.
@@ -77,8 +77,8 @@ class GapirServiceImpl final : public replay_service::Gapir::Service {
   // The callback to feed idle time watch dog, it is to be called for every
   // valid Ping request.
   WatchDogFeeder mFeedWatchDog;
-  // The grpc server which is running this service implementation.
-  grpc::Server* mGrpcServer;
+  // The server which is running this service implementation.
+  Server* mServer;
   // The authentication token to be used for checking every request.
   std::string mAuthToken;
 };
@@ -119,8 +119,9 @@ class Server {
 
   // Shuts down the server, it waits for all RPC processing to finish.
   void shutdown() {
-    mShuttingDown.store(true);
-    mGrpcServer->Shutdown();
+    if (!mShuttingDown.exchange(true)) {
+      std::thread([this] { this->mGrpcServer->Shutdown(); }).detach();
+    }
   }
 
  private:
