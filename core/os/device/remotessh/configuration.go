@@ -28,17 +28,17 @@ type Configuration struct {
 	// The name to use for this connection
 	Name string
 	// The hostname to connect to
-	Host string
+	Host string `json:"host"`
 	// User is the username to use for login
-	User string
+	User string `json:"user"`
 	// Which port should be used
-	Port uint16
+	Port uint16 `json:"port,string"`
 	// The pem encoded public key file to use for the connection.
 	// If not specified uses ~/.ssh/id_rsa
-	Keyfile string
+	Keyfile string `json:"keyPath"`
 	// The known_hosts file to use for authentication. Defaults to
 	// ~/.ssh/known_hosts
-	KnownHosts string
+	KnownHosts string `json:"knownHostsPath"`
 	// Environment variables to set on the connection
 	Env []string
 }
