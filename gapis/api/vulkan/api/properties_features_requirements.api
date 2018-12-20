@@ -440,12 +440,47 @@ sub void GetPhysicalDeviceProperties2(
   if pProperties == null {
     vkErrorNullPointer("VkPhysicalDeviceProperties2")
   } else {
+    props := pProperties[0]
+    if props.pNext != null {
+      numPNext := numberOfPNext(as!const void*(props.pNext))
+      next := MutableVoidPtr(as!void*(props.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        switch sType {
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+            _ = as!VkPhysicalDevicePointClippingProperties*(next.Ptr)[0]
+          }
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+  fence
+  if pProperties != null {
     pProperties[0] = ?
-    // TODO: handle pNext
     if !(physicalDevice in PhysicalDevices) {
       vkErrorInvalidPhysicalDevice(physicalDevice)
     } else {
-      PhysicalDevices[physicalDevice].PhysicalDeviceProperties = pProperties[0].properties
+      props := pProperties[0]
+      phyDev := PhysicalDevices[physicalDevice]
+      phyDev.PhysicalDeviceProperties = props.properties
+      // TODO: handle pNext
+      if props.pNext != null {
+        numPNext := numberOfPNext(as!const void*(props.pNext))
+        next := MutableVoidPtr(as!void*(props.pNext))
+        for i in (0 .. numPNext) {
+          sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+          switch sType {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+              ext := as!VkPhysicalDevicePointClippingProperties*(next.Ptr)[0]
+              phyDev.PointClippingProperties = new!PointClippingProperties(
+                PointClippingBehavior: ext.pointClippingBehavior
+              )
+            }
+          }
+          next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+        }
+      }
     }
   }
 }

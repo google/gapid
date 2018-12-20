@@ -139,6 +139,8 @@ cmd void vkDestroyFramebuffer(
   @unused map!(u32, SubpassDescription)      SubpassDescriptions
   @unused map!(u32, VkSubpassDependency)     SubpassDependencies
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
+  // Vulkan 1.1 core
+  @unused ref!InputAttachmentAspectInfo      InputAttachmentAspectInfo
 }
 
 @threadSafety("system")
@@ -159,8 +161,28 @@ cmd VkResult vkCreateRenderPass(
     next := MutableVoidPtr(as!void*(info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkRenderPassCreateInfo
+      switch sType {
+        case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO: {
+          ext := as!VkRenderPassInputAttachmentAspectCreateInfo*(next.Ptr)[0]
+          renderPass.InputAttachmentAspectInfo = new!InputAttachmentAspectInfo()
+          if ext.aspectReferenceCount != as!u32(0) {
+            if ext.pAspectReferences == null {
+              vkErrorNullPointer("VkInputAttachmentAspectReference(KHR)")
+            } else {
+              for j in (0 .. ext.aspectReferenceCount) {
+                // The intput attachment aspect info is only cached but not used for now, so the
+                // dependency can be wrong as a draw call may depends on just one aspect of a
+                // depth stencil image, as specified in the input attachment aspect info, while
+                // GAPID will still treat both aspects as dependees.
+                // TODO: Once the CL that enables us getting used descriptors from shader is in,
+                // we can pull input_attachment_index from the information of the used descriptors
+                // then use the input attachment aspect info to fix the dependency.
+                renderPass.InputAttachmentAspectInfo.AspectReferences[j] = ext.pAspectReferences[0]
+              }
+            }
+          }
+        }
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -453,4 +475,12 @@ sub void useRenderPass() {
   // read and write InRenderPass to ensure dependencies between render pass commands
   _ = lastDrawInfo().InRenderPass
   lastDrawInfo().InRenderPass = true
+}
+
+// ----------------------------------------------------------------------------
+// Vulkan 1.1 Core
+// ----------------------------------------------------------------------------
+
+@internal class InputAttachmentAspectInfo{
+  @unused dense_map!(u32, VkInputAttachmentAspectReference) AspectReferences
 }

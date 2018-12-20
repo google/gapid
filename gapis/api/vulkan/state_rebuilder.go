@@ -2091,12 +2091,28 @@ func (sb *stateBuilder) createRenderPass(rp RenderPassObjectʳ) {
 		))
 	}
 
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !rp.InputAttachmentAspectInfo().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkRenderPassInputAttachmentAspectCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR, // sType
+				pNext, // pNext
+				uint32(rp.InputAttachmentAspectInfo().AspectReferences().Len()), // aspectReferenceCount
+				NewVkInputAttachmentAspectReferenceᶜᵖ(
+					sb.MustUnpackReadMap(
+						rp.InputAttachmentAspectInfo().AspectReferences().All(),
+					).Ptr(),
+				), // pAsepctReferences
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateRenderPass(
 		rp.Device(),
 		sb.MustAllocReadData(NewVkRenderPassCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, // sType
-			0, // pNext
-			0, // flags
+			pNext, // pNext
+			0,     // flags
 			uint32(rp.AttachmentDescriptions().Len()),                                                   // attachmentCount
 			NewVkAttachmentDescriptionᶜᵖ(sb.MustUnpackReadMap(rp.AttachmentDescriptions().All()).Ptr()), // pAttachments
 			uint32(len(subpassDescriptions)),                                                            // subpassCount
@@ -2351,11 +2367,21 @@ func (sb *stateBuilder) createGraphicsPipeline(gp GraphicsPipelineObjectʳ) {
 
 	tessellationState := NewVkPipelineTessellationStateCreateInfoᶜᵖ(memory.Nullptr)
 	if !gp.TessellationState().IsNil() {
+		pNext := NewVoidᶜᵖ(memory.Nullptr)
+		if !gp.TessellationState().TessellationDomainOriginState().IsNil() {
+			pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+				NewVkPipelineTessellationDomainOriginStateCreateInfo(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO, // sType
+					pNext, // pNext
+					gp.TessellationState().TessellationDomainOriginState().DomainOrigin(), // usage
+				),
+			).Ptr())
+		}
 		tessellationState = NewVkPipelineTessellationStateCreateInfoᶜᵖ(sb.MustAllocReadData(
 			NewVkPipelineTessellationStateCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO, // sType
-				0, // pNext
-				0, // flags
+				pNext, // pNext
+				0,     // flags
 				gp.TessellationState().PatchControlPoints(), // patchControlPoints
 			)).Ptr())
 	}
@@ -2552,11 +2578,22 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 		return
 	}
 
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !iv.UsageInfo().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkImageViewUsageCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO, // sType
+				pNext,                  // pNext
+				iv.UsageInfo().Usage(), // usage
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateImageView(
 		iv.Device(),
 		sb.MustAllocReadData(NewVkImageViewCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
-			0,                         // pNext
+			NewVoidᶜᵖ(pNext),          // pNext
 			0,                         // flags
 			iv.Image().VulkanHandle(), // image
 			iv.Type(),                 // viewType

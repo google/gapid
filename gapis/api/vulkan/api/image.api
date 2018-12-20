@@ -404,6 +404,9 @@ cmd VkResult vkBindImageMemory(
 // Image view //
 ////////////////
 
+@internal class ImageViewUsageInfo {
+  VkImageUsageFlags Usage
+}
 
 @internal class ImageViewObject {
   @unused VkDevice                  Device
@@ -419,6 +422,8 @@ cmd VkResult vkBindImageMemory(
   map!(VkDescriptorSet, map!(u32, map!(u32, bool))) DescriptorUsers
   @hidden @untrackedMap @untracked
   map!(VkFramebuffer, map!(u32, bool)) FramebufferUsers
+  // Vulkan 1.1 core
+  @unused ref!ImageViewUsageInfo UsageInfo
 }
 
 @threadSafety("system")
@@ -431,14 +436,25 @@ cmd VkResult vkCreateImageView(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageViewCreateInfo") }
   image_view_create_info := pCreateInfo[0]
+  imageViewObject := new!ImageViewObject(
+    Device:                 device,
+    Type:                   image_view_create_info.viewType,
+    Format:                 image_view_create_info.format,
+    Components:             image_view_create_info.components,
+    SubresourceRange:       image_view_create_info.subresourceRange
+  )
   // handle pNext
   if image_view_create_info.pNext != null {
     numPNext := numberOfPNext(image_view_create_info.pNext)
     next := MutableVoidPtr(as!void*(image_view_create_info.pNext))
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkImageViewCreateInfo
+      switch sType {
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
+          ext := as!VkImageViewUsageCreateInfo*(next.Ptr)[0:1][0]
+          imageViewObject.UsageInfo = new!ImageViewUsageInfo(Usage: ext.usage)
+        }
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -446,14 +462,7 @@ cmd VkResult vkCreateImageView(
   handle := ?
   if !(image_view_create_info.image in Images) { vkErrorInvalidImage(image_view_create_info.image) } else {
     imageObject := Images[image_view_create_info.image]
-    imageViewObject := new!ImageViewObject(Device: device,
-      VulkanHandle:           handle,
-      Image:                  imageObject,
-      Type:                   image_view_create_info.viewType,
-      Format:                 image_view_create_info.format,
-      Components:             image_view_create_info.components,
-      SubresourceRange:       image_view_create_info.subresourceRange
-    )
+    imageViewObject.Image = imageObject
 
     // Validate the following Valid Usage for VkImageViewCreateInfo: 
     //  > If image is non-sparse then it must be bound completely and
@@ -469,10 +478,14 @@ cmd VkResult vkCreateImageView(
       vkErrorInvalidImageAspect(imageObject.VulkanHandle,
         as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
     }
-    if pView == null { vkErrorNullPointer("VkImageView") }
-    pView[0] = handle
-    ImageViews[handle] = imageViewObject
     imageObject.Views[handle] = imageViewObject
+  }
+  if pView == null {
+    vkErrorNullPointer("VkImageView")
+  } else {
+    pView[0] = handle
+    imageViewObject.VulkanHandle = handle
+    ImageViews[handle] = imageViewObject
   }
   return ?
 }
@@ -765,7 +778,7 @@ sub void transitionImageViewLayout(
 }
 
 // ----------------------------------------------------------------------------
-// Vulkan 1.1 Commands
+// Vulkan 1.1 Core
 // ----------------------------------------------------------------------------
 
 ///////////

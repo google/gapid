@@ -207,6 +207,10 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   return object
 }
 
+// ----------------------------------------------------------------------------
+// Vulkan 1.1 Core
+// ----------------------------------------------------------------------------
+
 @internal class VariablePointerFeatures {
   VkBool32 VariablePointersStorageBuffer
   VkBool32 VariablePointers
