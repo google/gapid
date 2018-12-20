@@ -664,11 +664,35 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 		i++
 	}
 
+	pNext := NewVoidᵖ(memory.Nullptr)
+	if !d.VariablePointerFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceVariablePointerFeatures(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES, // sType
+				pNext, // pNext
+				d.VariablePointerFeatures().VariablePointersStorageBuffer(), // variablePointersStorageBuffer
+				d.VariablePointerFeatures().VariablePointers(),              // variablePointers
+			),
+		).Ptr())
+	}
+	if !d.HalfPrecisionStorageFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDevice16BitStorageFeatures(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES, // sType
+				pNext, // pNext
+				d.HalfPrecisionStorageFeatures().StorageBuffer16BitAccess(),           // storageBuffer16BitAccess
+				d.HalfPrecisionStorageFeatures().UniformAndStorageBuffer16BitAccess(), // uniformAndStorageBuffer16BitAccess
+				d.HalfPrecisionStorageFeatures().StoragePushConstant16(),              // storagePushConstant16
+				d.HalfPrecisionStorageFeatures().StorageInputOutput16(),               // storageInputOutput16
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
 		sb.MustAllocReadData(NewVkDeviceCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, // sType
-			0,                                  // pNext
+			NewVoidᶜᵖ(pNext),                   // pNext
 			0,                                  // flags
 			uint32(len(reorderedQueueCreates)), // queueCreateInfoCount
 			NewVkDeviceQueueCreateInfoᶜᵖ(sb.MustUnpackReadMap(reorderedQueueCreates).Ptr()), // pQueueCreateInfos

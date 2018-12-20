@@ -143,7 +143,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
           ext := as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0]
           object.VariablePointerFeatures = new!VariablePointerFeatures(
-            VariablePointerStorageBuffer: ext.variablePointersStorageBuffer,
+            VariablePointersStorageBuffer: ext.variablePointersStorageBuffer,
             VariablePointers: ext.variablePointers)
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
@@ -208,7 +208,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 }
 
 @internal class VariablePointerFeatures {
-  VkBool32 VariablePointerStorageBuffer
+  VkBool32 VariablePointersStorageBuffer
   VkBool32 VariablePointers
 }
 
