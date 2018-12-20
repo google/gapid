@@ -237,7 +237,11 @@ void android_main(struct android_app* app) {
   std::unique_ptr<Server> server =
       Setup(uri.c_str(), opts.authToken.c_str(), cache.get(),
             opts.idleTimeoutSec, &crashHandler, &memoryManager, &lock);
-  std::thread waiting_thread([&]() { server.get()->wait(); });
+  std::atomic<bool> serverIsDone(false);
+  std::thread waiting_thread([&]() {
+    server.get()->wait();
+    serverIsDone = true;
+  });
   if (chmod(socket_file_path.c_str(), S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH)) {
     GAPID_ERROR("Chmod failed!");
   }
@@ -260,6 +264,11 @@ void android_main(struct android_app* app) {
         alive = false;
         break;
       }
+    }
+
+    if (serverIsDone) {
+      unlink(socket_file_path.c_str());
+      alive = false;
     }
   }
   waiting_thread.join();
