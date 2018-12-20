@@ -93,9 +93,7 @@ Status GapirServiceImpl::Shutdown(ServerContext* context,
     return Status(grpc::StatusCode::UNAUTHENTICATED,
                   grpc::string("Invalid auth token"));
   }
-  if (mGrpcServer != nullptr) {
-    mGrpcServer->Shutdown();
-  }
+  mServer->shutdown();
   return Status::OK;
 }
 
@@ -133,7 +131,7 @@ std::unique_ptr<Server> Server::createAndStart(const char* uri,
     return nullptr;
   }
   server->mGrpcServer = std::move(grpcServer);
-  server->mServiceImpl->mGrpcServer = server->mGrpcServer.get();
+  server->mServiceImpl->mServer = server.get();
   return server;
 }
 
