@@ -180,7 +180,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "chaoticbob",
         project = "SPIRV-Reflect",
-        commit = "5598462f987841f7c1abe9209650ea8d3e727b46",
+        commit = "8fd9b11dbd217f6b02c9d6d4e364a7f0327b219a",
         build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
     )
 
