@@ -394,7 +394,6 @@ func (s *session) ping(ctx context.Context) (time.Duration, error) {
 }
 
 func (s *session) heartbeat(ctx context.Context, pingInterval time.Duration) {
-	defer s.close()
 	for {
 		select {
 		case <-task.ShouldStop(ctx):
@@ -403,6 +402,7 @@ func (s *session) heartbeat(ctx context.Context, pingInterval time.Duration) {
 			_, err := s.ping(ctx)
 			if err != nil {
 				log.E(ctx, "Error sending keep-alive ping. Error: %v", err)
+				s.close(ctx)
 				return
 			}
 		}
