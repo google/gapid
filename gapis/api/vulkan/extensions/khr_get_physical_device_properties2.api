@@ -166,27 +166,9 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
     VkPhysicalDevice             physicalDevice,
     u32*                         pQueueFamilyPropertyCount,
     VkQueueFamilyProperties2KHR* pQueueFamilyProperties) {
-  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
-  if pQueueFamilyPropertyCount == null { vkErrorNullPointer("uint32_t") }
-  _ = pQueueFamilyPropertyCount[0]
-
-  fence
-
-  if pQueueFamilyProperties == null {
-    pQueueFamilyPropertyCount[0] = ?
-  } else {
-    count := as!u32(?)
-    properties := pQueueFamilyProperties[0:count]
-    for i in (0 .. count) {
-      properties[i] = ?
-      // TODO: handle pNext
-    }
-    pQueueFamilyPropertyCount[0] = count
-    if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
-    for i in (0 .. count) {
-      PhysicalDevices[physicalDevice].QueueFamilyProperties[i] = properties[i].queueFamilyProperties
-    }
-  }
+  GetPhysicalDeviceQueueFamilyProperties2(
+    physicalDevice, pQueueFamilyPropertyCount,
+    as!VkQueueFamilyProperties2*(pQueueFamilyProperties))
 }
 
 @threadSafety("system")

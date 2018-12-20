@@ -53,6 +53,7 @@
   @hidden @nobox @internal u8[]     Data
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
+  // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationKHR
 }
 
