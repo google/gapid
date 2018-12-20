@@ -77,7 +77,7 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 		err = log.Errf(ctx, nil, "Cannot connect to device type %+v", d)
 	}
 	if err != nil {
-		s.close()
+		s.close(ctx)
 		return err
 	}
 
@@ -373,7 +373,8 @@ func (s *session) onClose(f func()) {
 	s.closeCBs = append(s.closeCBs, f)
 }
 
-func (s *session) close() {
+func (s *session) close(ctx context.Context) {
+	s.conn.Shutdown(ctx)
 	for _, f := range s.closeCBs {
 		f()
 	}
