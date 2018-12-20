@@ -19,7 +19,7 @@ const (
 	DebugReplay                = false
 	DebugReplayBuilder         = false
 	DisableDeadCodeElimination = false
-	NewDeadCodeElimination     = false
+	NewDeadCodeElimination     = true
 	DeadSubCmdElimination      = false
 	DebugDeadCodeElimination   = false
 	DebugDependencyGraph       = false
