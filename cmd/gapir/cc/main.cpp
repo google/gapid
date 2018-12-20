@@ -263,6 +263,7 @@ void android_main(struct android_app* app) {
     }
   }
   waiting_thread.join();
+  ANativeActivity_finish(app->activity);
 }
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
