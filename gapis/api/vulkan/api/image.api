@@ -745,6 +745,25 @@ sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng,
   }
 }
 
+sub void transitionImageViewLayout(
+    ref!ImageViewObject view,
+    VkImageLayout oldLayout,
+    VkImageLayout newLayout) {
+  if is2DView3DImage(view) {
+    rng := VkImageSubresourceRange(
+      aspectMask: view.SubresourceRange.aspectMask,
+      baseMipLevel: view.SubresourceRange.baseMipLevel,
+      levelCount: view.SubresourceRange.levelCount,
+      baseArrayLayer: 0,
+      layerCount: 1)
+    transitionImageLayout(
+      view.Image, rng, oldLayout, newLayout)
+  } else {
+    transitionImageLayout(
+      view.Image, view.SubresourceRange, oldLayout, newLayout)
+  }
+}
+
 // ----------------------------------------------------------------------------
 // Vulkan 1.1 Commands
 // ----------------------------------------------------------------------------
