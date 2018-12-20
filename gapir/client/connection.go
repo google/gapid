@@ -117,8 +117,10 @@ func (c *Connection) Shutdown(ctx context.Context) error {
 	if c.servClient == nil {
 		return log.Err(ctx, nil, "Gapir not connected")
 	}
-	ctx = c.attachAuthToken(ctx)
-	_, err := c.servClient.Shutdown(ctx, &replaysrv.ShutdownRequest{})
+
+	// Use a clean context, since ctx is most likely already cancelled.
+	sdCtx := c.attachAuthToken(context.Background())
+	_, err := c.servClient.Shutdown(sdCtx, &replaysrv.ShutdownRequest{})
 	if err != nil {
 		return log.Err(ctx, err, "Sending shutdown request")
 	}
