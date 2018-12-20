@@ -40,7 +40,9 @@ type Client struct {
 // New returns a newly construct Client.
 func New(ctx context.Context) *Client {
 	c := &Client{sessions: map[deviceArch]*session{}}
-	app.AddCleanup(ctx, c.shutdown)
+	app.AddCleanup(ctx, func() {
+		c.shutdown(ctx)
+	})
 	return c
 }
 
@@ -94,9 +96,9 @@ func (c *Client) getOrCreateSession(ctx context.Context, d bind.Device, abi *dev
 	return s, true, nil
 }
 
-func (c *Client) shutdown() {
+func (c *Client) shutdown(ctx context.Context) {
 	for _, s := range c.getSessions() {
-		s.close()
+		s.close(ctx)
 	}
 }
 
