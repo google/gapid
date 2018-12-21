@@ -63,6 +63,10 @@ import (
 	_ "github.com/google/gapid/gapis/api/all"
 )
 
+const (
+	FILE_SIZE_LIMIT_IN_BYTES = 2147483647
+)
+
 // Config holds the server configuration settings.
 type Config struct {
 	Info             *service.ServerInfo
@@ -299,17 +303,20 @@ func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*p
 	return trimmed, nil
 }
 
-func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture) (string, error) {
+func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture) ([]byte, error) {
 	ctx = status.Start(ctx, "RPC GetGraphVisualization")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetGraphVisualization")
 	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 	graphVisualization, err := graph_visualization.GetGraphVisualizationFromCapture(ctx, c)
 	if err != nil {
-		return "", err
+		return []byte{}, err
+	}
+	if len(graphVisualization) > FILE_SIZE_LIMIT_IN_BYTES {
+		return []byte{}, log.Errf(ctx, err, "The file size for graph visualization exceeds %d bytes", FILE_SIZE_LIMIT_IN_BYTES)
 	}
 	return graphVisualization, nil
 }
