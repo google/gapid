@@ -299,17 +299,19 @@ func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*p
 	return trimmed, nil
 }
 
-func (s *server) GetGraphVisualizationFile(ctx context.Context, p *path.Capture) (string, error) {
-	ctx = log.Enter(ctx, "Inside GetGraphVisualizationFile function")
+func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture) (string, error) {
+	ctx = status.Start(ctx, "RPC GetGraphVisualization")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "GetGraphVisualization")
 	c, err := capture.ResolveFromPath(ctx, p)
 	if err != nil {
 		return "", err
 	}
-	graphVisualizationFile, err := graph_visualization.GetGraphVisualizationFileFromCapture(ctx, c)
+	graphVisualization, err := graph_visualization.GetGraphVisualizationFromCapture(ctx, c)
 	if err != nil {
 		return "", err
 	}
-	return graphVisualizationFile, nil
+	return graphVisualization, nil
 }
 
 func (s *server) GetDevices(ctx context.Context) ([]*path.Device, error) {

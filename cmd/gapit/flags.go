@@ -335,9 +335,8 @@ type (
 		Out   string `help:"output file to save the profiling result"`
 	}
 
-	GraphVisualizationFlags struct {
+	CreateGraphVisualizationFlags struct {
 		Gapis GapisFlags
-		Gapir GapirFlags
-		Out   string `help:"path to Save Dot File"`
+		Out   string `help:"path to save graph visualization"`
 	}
 )
