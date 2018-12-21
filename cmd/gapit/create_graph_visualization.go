@@ -19,7 +19,6 @@ import (
 	"flag"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	"io/ioutil"
 	"os"
 )
 
@@ -50,7 +49,7 @@ func (verb *createGraphVisualizationVerb) Run(ctx context.Context, flags flag.Fl
 
 	graphVisualization, err := client.GetGraphVisualization(ctx, capture)
 	if err != nil {
-		return log.Errf(ctx, err, "ExportCapture(%v)", capture)
+		return log.Errf(ctx, err, "GetGraphVisualization(%v)", capture)
 	}
 
 	filePath := verb.Out
@@ -58,17 +57,15 @@ func (verb *createGraphVisualizationVerb) Run(ctx context.Context, flags flag.Fl
 		filePath = "graph_visualization.dot"
 	}
 
-	_, err = os.Stat(filePath)
-	if os.IsNotExist(err) {
-		file, err := os.Create(filePath)
-		if err != nil {
-			log.Errf(ctx, err, "Creating file (%v)", filePath)
-		}
-		defer file.Close()
+	file, err := os.Create(filePath)
+	if err != nil {
+		return log.Errf(ctx, err, "Creating file (%v)", filePath)
 	}
+	defer file.Close()
 
-	if err := ioutil.WriteFile(filePath, []byte(graphVisualization), 0666); err != nil {
-		return log.Errf(ctx, err, "Writing file: %v", filePath)
+	bytesWritten, err := file.Write(graphVisualization)
+	if err != nil {
+		return log.Errf(ctx, err, "Error after writing %d bytes to file", bytesWritten)
 	}
 	return nil
 }

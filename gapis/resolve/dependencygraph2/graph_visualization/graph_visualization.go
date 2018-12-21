@@ -22,11 +22,11 @@ import (
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 )
 
-func GetGraphVisualizationFromCapture(ctx context.Context, p *capture.Capture) (string, error) {
+func GetGraphVisualizationFromCapture(ctx context.Context, p *capture.Capture) ([]byte, error) {
 
 	config := dependencygraph2.DependencyGraphConfig{}
 	dependencyGraph, err := dependencygraph2.BuildDependencyGraph(ctx, config, p, []api.Cmd{}, interval.U64RangeList{})
 	_ = dependencyGraph
 
-	return "OutputFile", err
+	return []byte("OutputFile"), err
 }

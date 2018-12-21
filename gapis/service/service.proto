@@ -321,7 +321,7 @@ message GraphVisualizationRequest {
 }
 message GraphVisualizationResponse {
   oneof res {
-    string graphVisualization = 1;
+    bytes graphVisualization = 1;
     Error error = 2;
   }
 }
