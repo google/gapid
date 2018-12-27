@@ -46,6 +46,9 @@
   @unused ref!VulkanDebugMarkerInfo          DebugInfo
   @unused VkPhysicalDeviceProperties         PhysicalDeviceProperties
   @hidden @unused map!(VkFormat, VkFormatProperties) FormatProperties
+
+  // Vulkan 1.1 core
+  @unused ref!PointClippingProperties PointClippingProperties
 }
 
 @internal class PhysicalDevicesAndProperties {
@@ -116,3 +119,6 @@ cmd VkResult vkEnumeratePhysicalDevices(
   return ?
 }
 
+@internal class PointClippingProperties {
+  VkPointClippingBehavior PointClippingBehavior
+}

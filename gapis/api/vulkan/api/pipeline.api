@@ -118,8 +118,13 @@ cmd void vkDestroyPipelineLayout(
   @unused VkBool32            PrimitiveRestartEnable
 }
 
+@internal class TessellationDomainOriginState {
+  VkTessellationDomainOrigin DomainOrigin
+}
+
 @internal class TessellationStateData {
   @unused u32 PatchControlPoints
+  @unused ref!TessellationDomainOriginState TessellationDomainOriginState
 }
 
 @internal class ViewportData {
@@ -338,24 +343,28 @@ cmd VkResult vkCreateGraphicsPipelines(
 
     if (create_info.pTessellationState != null) {
       tessellation_state := create_info.pTessellationState[0]
+      obj.TessellationState = new!TessellationStateData(
+        PatchControlPoints: tessellation_state.patchControlPoints
+      )
       // handle tessellation state pNext
       if tessellation_state.pNext != null {
         numPNext := numberOfPNext(tessellation_state.pNext)
         next := MutableVoidPtr(as!void*(tessellation_state.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkPipelineTessellationStateCreateInfo
+          switch sType {
+            case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO: {
+              ext := as!VkPipelineTessellationDomainOriginStateCreateInfo*(next.Ptr)[0]
+              obj.TessellationState.TessellationDomainOriginState
+                = new!TessellationDomainOriginState(DomainOrigin: ext.domainOrigin)
+            }
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
-
-      obj.TessellationState = new!TessellationStateData(
-        PatchControlPoints: tessellation_state.patchControlPoints
-      )
     }
-    if (create_info.pViewportState != null) {
 
+    if (create_info.pViewportState != null) {
       pipeline_viewport_state_create_info := create_info.pViewportState[0]
       // viewport state pNext
       if pipeline_viewport_state_create_info.pNext != null {
