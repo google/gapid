@@ -49,6 +49,7 @@
 
   // Vulkan 1.1 core
   @unused ref!PointClippingProperties PointClippingProperties
+  @unused ref!Maintenance3Properties  Maintenance3Properties
 }
 
 @internal class PhysicalDevicesAndProperties {
@@ -121,4 +122,9 @@ cmd VkResult vkEnumeratePhysicalDevices(
 
 @internal class PointClippingProperties {
   VkPointClippingBehavior PointClippingBehavior
+}
+
+@internal class Maintenance3Properties {
+  u32          MaxPerSetDescriptors
+  VkDeviceSize MaxMemoryAllocationSize
 }

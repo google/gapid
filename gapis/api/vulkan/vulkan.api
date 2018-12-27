@@ -213,6 +213,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_16bit_storage"] = true
   supported.ExtensionNames["VK_KHR_maintenance1"] = true
   supported.ExtensionNames["VK_KHR_maintenance2"] = true
+  supported.ExtensionNames["VK_KHR_maintenance3"] = true
   return supported
 }
 

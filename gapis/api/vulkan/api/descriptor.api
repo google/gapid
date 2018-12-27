@@ -1038,8 +1038,7 @@ sub void registerDescriptorUser!T(ref!T user, VkDescriptorSet descSet, u32 bindi
 // Descriptor set layout //
 ///////////////////////////
 
-@indirect("VkDevice")
-cmd void vkGetDescriptorSetLayoutSupport(
+sub void GetDescriptorSetLayoutSupport(
     VkDevice                               device,
     const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
     VkDescriptorSetLayoutSupport*          pSupport) {
@@ -1047,9 +1046,38 @@ cmd void vkGetDescriptorSetLayoutSupport(
   if pCreateInfo == null { vkErrorNullPointer("VkDescriptorSetLayoutCreateInfo") }
   info := pCreateInfo[0]
   _ = info.pBindings[0:info.bindingCount]
-  // TODO: pNext pointer
-
+  // handle pNext pointer
+  if info.pNext != null {
+    numPNext := numberOfPNext(
+      as!const void*(info.pNext))
+    next := MutableVoidPtr(as!void*(info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+  fence
   support := ?
   if pSupport == null { vkErrorNullPointer("VkDescriptorSetLayoutSupport") }
   pSupport[0] = support
+  // handle pNext pointer
+  if support.pNext != null {
+    numPNext := numberOfPNext(
+      as!const void*(support.pNext))
+    next := MutableVoidPtr(as!void*(support.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+}
+
+@indirect("VkDevice")
+cmd void vkGetDescriptorSetLayoutSupport(
+    VkDevice                               device,
+    const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+    VkDescriptorSetLayoutSupport*          pSupport) {
+  GetDescriptorSetLayoutSupport(device, pCreateInfo, pSupport)
 }
