@@ -46,8 +46,8 @@ public interface GapidClient {
       Service.ImportCaptureRequest request);
   public ListenableFuture<Service.LoadCaptureResponse> loadCapture(
       Service.LoadCaptureRequest request);
-  public ListenableFuture<Service.ExportCaptureResponse> exportCapture(
-      Service.ExportCaptureRequest request);
+  public ListenableFuture<Service.SaveCaptureResponse> saveCapture(
+      Service.SaveCaptureRequest request);
   public ListenableFuture<Service.GetDevicesResponse> getDevices(Service.GetDevicesRequest request);
   public ListenableFuture<Service.GetDevicesForReplayResponse> getDevicesForReplay(
       Service.GetDevicesForReplayRequest request);

@@ -28,7 +28,6 @@ import com.google.gapid.proto.log.Log;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.CheckForUpdatesRequest;
 import com.google.gapid.proto.service.Service.ClientEventRequest;
-import com.google.gapid.proto.service.Service.ExportCaptureRequest;
 import com.google.gapid.proto.service.Service.FollowRequest;
 import com.google.gapid.proto.service.Service.GetAvailableStringTablesRequest;
 import com.google.gapid.proto.service.Service.GetDevicesForReplayRequest;
@@ -41,6 +40,7 @@ import com.google.gapid.proto.service.Service.ImportCaptureRequest;
 import com.google.gapid.proto.service.Service.LoadCaptureRequest;
 import com.google.gapid.proto.service.Service.Release;
 import com.google.gapid.proto.service.Service.ReplaySettings;
+import com.google.gapid.proto.service.Service.SaveCaptureRequest;
 import com.google.gapid.proto.service.Service.ServerInfo;
 import com.google.gapid.proto.service.Service.SetRequest;
 import com.google.gapid.proto.service.Service.Value;
@@ -160,13 +160,14 @@ public class Client {
             in -> Futures.immediateFuture(throwIfError(in.getCapture(), in.getError(), stack))));
   }
 
-  public ListenableFuture<byte[]> exportCapture(Path.Capture path) {
-    return call(() -> String.format("RPC->exportCapture(%s)", shortDebugString(path)),
+  public ListenableFuture<Void> saveCapture(Path.Capture capture, String path) {
+    return call(() -> String.format("RPC->exportCapture(%s, %s)", shortDebugString(capture), path),
         stack -> MoreFutures.transformAsync(
-            client.exportCapture(ExportCaptureRequest.newBuilder()
-                .setCapture(path)
+            client.saveCapture(SaveCaptureRequest.newBuilder()
+                .setCapture(capture)
+                .setPath(path)
                 .build()),
-            in -> immediateFuture(throwIfError(in.getData().toByteArray(), in.getError(), stack))));
+            in -> immediateFuture(throwIfError(null, in.getError(), stack))));
   }
 
   public ListenableFuture<List<Path.Device>> getDevices() {
