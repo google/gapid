@@ -36,7 +36,6 @@ import com.google.gapid.util.Loadable;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -150,18 +149,15 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
 
     settings.addToRecent(canonicalPath);
 
-    rpcController.start().listen(client.exportCapture(getData()),
-        new UiErrorCallback<byte[], Boolean, Exception>(shell, LOG) {
+    rpcController.start().listen(client.saveCapture(getData(), canonicalPath),
+        new UiErrorCallback<Void, Boolean, Exception>(shell, LOG) {
       @Override
-      protected ResultOrError<Boolean, Exception> onRpcThread(Rpc.Result<byte[]> result)
+      protected ResultOrError<Boolean, Exception> onRpcThread(Rpc.Result<Void> result)
           throws RpcException, ExecutionException {
         try {
-          byte[] data = result.get();
-          try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.write(data);
-          }
+          result.get();
           return success(true);
-        } catch (ExecutionException | RpcException | IOException e) {
+        } catch (ExecutionException | RpcException e) {
           return error(e);
         }
       }
