@@ -98,7 +98,7 @@ GetGlesProcAddressFunc* GetGlesProcAddress = getGlesProcAddress;
 bool hasGLorGLES() {
   return DlLoader::can_load(SYSTEM_LIB_PATH "libEGL.so") ||
          DlLoader::can_load(SYSTEM_LIB_PATH "libGLESv2.so") ||
-         DlLoader::can_load(SYSTEM_LIB_PATH SYSTEM_LIB_PATH "libGLESv1_CM.so");
+         DlLoader::can_load(SYSTEM_LIB_PATH "libGLESv1_CM.so");
 }
 
 }  // namespace core
