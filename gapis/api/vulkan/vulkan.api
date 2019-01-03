@@ -200,10 +200,10 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_android_surface"] = true
   supported.ExtensionNames["VK_KHR_win32_surface"] = true
   supported.ExtensionNames["VK_KHR_get_physical_device_properties2"] = true
-  supported.ExtensionNames["Vk_KHR_get_surface_capabilities2"] = true
-  supported.ExtensionNames["Vk_KHR_external_memory_capabilities"] = true
-  supported.ExtensionNames["Vk_KHR_external_semaphore_capabilities"] = true
-  supported.ExtensionNames["Vk_KHR_external_fence_capabilities"] = true
+  supported.ExtensionNames["VK_KHR_get_surface_capabilities2"] = true
+  supported.ExtensionNames["VK_KHR_external_memory_capabilities"] = true
+  supported.ExtensionNames["VK_KHR_external_semaphore_capabilities"] = true
+  supported.ExtensionNames["VK_KHR_external_fence_capabilities"] = true
   return supported
 }
 
