@@ -41,7 +41,7 @@ type ResolvedResources struct {
 func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.After.Capture, r.Config)
 
-	resources, err := buildResources(ctx, r.After)
+	resources, err := buildResources(ctx, r.After, r.Type)
 
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 	return resources, nil
 }
 
-func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, error) {
+func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*ResolvedResources, error) {
 	cmdIdx := p.Indices[0]
 
 	capture, err := capture.Resolve(ctx)
@@ -107,11 +107,13 @@ func buildResources(ctx context.Context, p *path.Command) (*ResolvedResources, e
 
 	resourceData := make(map[id.ID]interface{})
 	for k, v := range resources {
-		res, err := v.ResourceData(ctx, state)
-		if err != nil {
-			resourceData[k] = err
-		} else {
-			resourceData[k] = res
+		if v.ResourceType(ctx) == t {
+			res, err := v.ResourceData(ctx, state)
+			if err != nil {
+				resourceData[k] = err
+			} else {
+				resourceData[k] = res
+			}
 		}
 	}
 	return &ResolvedResources{idMap, resources, resourceData}, nil
@@ -129,7 +131,20 @@ func ResourceData(ctx context.Context, p *path.ResourceData, r *path.ResolveConf
 
 // Resolve implements the database.Resolver interface.
 func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.Path.After, Config: r.Config})
+	resTypes, err := Resources(ctx, r.Path.After.Capture, r.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	id := r.Path.ID.ID()
+
+	t, ok := resTypes.ResourcesToTypes[id.String()]
+
+	if !ok {
+		return nil, log.Errf(ctx, nil, "Could not find resource %v", id)
+	}
+
+	resources, err := database.Build(ctx, &AllResourceDataResolvable{After: r.Path.After, Type: t, Config: r.Config})
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +152,7 @@ func (r *ResourceDataResolvable) Resolve(ctx context.Context) (interface{}, erro
 	if !ok {
 		return nil, fmt.Errorf("Cannot resolve resources at command: %v", r.Path.After)
 	}
-	id := r.Path.ID.ID()
+
 	if val, ok := res.resourceData[id]; ok {
 		if err, isErr := val.(error); isErr {
 			return nil, err
