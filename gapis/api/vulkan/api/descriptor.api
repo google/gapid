@@ -729,26 +729,15 @@ emptyBufferOffsets {
 }
 
 sub void updateDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs args) {
-  _ = PipelineLayouts[args.Layout]
-
-  computeInfo := lastComputeInfo()
-  drawInfo := lastDrawInfo()
-
-  currentDescriptorSets := switch args.PipelineBindPoint {
-    case VK_PIPELINE_BIND_POINT_COMPUTE:
-      computeInfo.DescriptorSets
-    case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      drawInfo.DescriptorSets
-  }
-
-  numDescSets := len(args.DescriptorSets)
-  for i in (0 .. numDescSets) {
-    if args.DescriptorSets[as!u32(i)] in DescriptorSets {
-      set := args.DescriptorSets[as!u32(i)]
-      setObj := DescriptorSets[set]
-      if currentDescriptorSets[args.FirstSet + as!u32(i)] != setObj {
-        currentDescriptorSets[args.FirstSet + as!u32(i)] = setObj
-      }
+  if (args.PipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+    computeInfo := lastComputeInfo()
+    for _, i, set in  args.DescriptorSets {
+      computeInfo.DescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
+    }
+  } else {
+    drawInfo := lastDrawInfo()
+    for _, i, set in  args.DescriptorSets {
+      drawInfo.DescriptorSets[args.FirstSet + as!u32(i)] = DescriptorSets[set]
     }
   }
 
