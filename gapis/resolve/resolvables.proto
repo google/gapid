@@ -99,6 +99,7 @@ message ResourceDataResolvable {
 message AllResourceDataResolvable {
   path.Command after = 1;
   path.ResolveConfig config = 2;
+  api.ResourceType type = 3;
 }
 
 message ResourceMetaResolvable {

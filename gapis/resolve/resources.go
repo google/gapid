@@ -47,6 +47,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 
 	resources := []trackedResource{}
+	resourceTypes := map[string]api.ResourceType{}
 	seen := map[api.Resource]int{}
 
 	var currentCmdIndex uint64
@@ -63,13 +64,15 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		currentCmdResourceCount++
 		seen[res] = len(seen)
 		context := currentAPI.Context(ctx, state, currentThread)
-		resources = append(resources, trackedResource{
+		tr := trackedResource{
 			resource: res,
 			id:       genResourceID(currentCmdIndex, currentCmdResourceCount),
 			context:  r.Capture.Context(id.ID(context.ID())),
 			accesses: []uint64{currentCmdIndex},
 			created:  currentCmdIndex,
-		})
+		}
+		resources = append(resources, tr)
+		resourceTypes[tr.id.String()] = res.ResourceType(ctx)
 	}
 	state.OnResourceAccessed = func(r api.Resource) {
 		if index, ok := seen[r]; ok { // Update the list of accesses
@@ -128,6 +131,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	for _, v := range types {
 		out.Types = append(out.Types, v)
 	}
+	out.ResourcesToTypes = resourceTypes
 
 	return out, nil
 }

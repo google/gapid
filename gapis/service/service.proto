@@ -851,6 +851,7 @@ message RenderSettings {
 // Resources contains the full list of resources used by a capture.
 message Resources {
   repeated ResourcesByType types = 1;
+  map<string, api.ResourceType> resourcesToTypes = 2;
 }
 
 // ResourcesByType contains all resources of a specific type.
