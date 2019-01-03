@@ -338,10 +338,24 @@
   {{else if IsRead        $}}{{Template "Read" $}}
   {{else if IsAssign      $}}{{Template "Assign" $}}
   {{else if IsSliceAssign $}}{{Template "SliceAssign" $}}
+  {{else if IsCall        $}}{{Template "CallSub" $}}
   {{else                   }}{{Template "C++.Statement.Default" $}}
   {{end}}
 {{end}}
 
+
+{{/*
+-------------------------------------------------------------------------------
+  An override for the "C++.Call" macro.
+-------------------------------------------------------------------------------
+*/}}
+{{define "CallSub"}}
+  {{AssertType $ "Call"}}
+  {{if (and ($.Target.Function.Subroutine) (GetAnnotation $.Target.Function "spy_disabled")) }}
+   // spy_disabled
+  {{else                   }}{{Template "C++.Statement.Default" $}}
+  {{end}}
+{{end}}
 
 {{/*
 -------------------------------------------------------------------------------

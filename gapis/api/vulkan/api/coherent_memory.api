@@ -402,7 +402,7 @@ sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, 
 ///////////////////
 // DescriptorSet //
 ///////////////////
-@psy_disabled
+@spy_disabled
 sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
@@ -456,7 +456,6 @@ sub void writeMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, 
 /////////////////////
 
 // Bound descriptor sets
-
 sub void readWriteMemoryInBoundDescriptorSets(
     map!(u32, DescriptorUsage) usedDescriptors,
     map!(u32, ref!DescriptorSetObject) descriptorSets,
@@ -466,10 +465,11 @@ sub void readWriteMemoryInBoundDescriptorSets(
     if !(desc.Set in descriptorSets) { vkErrInvalidDescriptorArrayElement(as!u64(desc.Set), desc.Binding, desc.DescriptorCount) } else {
       descriptorSet := descriptorSets[desc.Set]
       if descriptorSet != null {
-        offsets := bufferBindingOffsets[desc.Set]
         readCoherentMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount)
-        readMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, offsets[desc.Binding])
-        writeMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, offsets[desc.Binding])
+        // Do not create a temporary for these bufferBindingOffsets, since the temporary
+        // will be created (an unused) on trace side as well.
+        readMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, bufferBindingOffsets[desc.Set][desc.Binding])
+        writeMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, bufferBindingOffsets[desc.Set][desc.Binding])
       }
     }
   }
