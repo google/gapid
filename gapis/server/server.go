@@ -307,11 +307,8 @@ func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture) ([]
 	ctx = status.Start(ctx, "RPC GetGraphVisualization")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetGraphVisualization")
-	c, err := capture.ResolveFromPath(ctx, p)
-	if err != nil {
-		return []byte{}, err
-	}
-	graphVisualization, err := graph_visualization.GetGraphVisualizationFromCapture(ctx, c)
+
+	graphVisualization, err := graph_visualization.GetGraphVisualizationFromCapture(ctx, p)
 	if err != nil {
 		return []byte{}, err
 	}

@@ -23,10 +23,9 @@ go_library(
     importpath = "github.com/google/gapid/gapis/resolve/dependencygraph2/graph_visualization",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/math/interval:go_default_library",
         "//gapis/api:go_default_library",
-        "//gapis/capture:go_default_library",
         "//gapis/resolve/dependencygraph2:go_default_library",
+        "//gapis/service/path:go_default_library",
     ],
 )
 
