@@ -27,7 +27,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/resolve"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
+	// "github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
@@ -707,7 +707,7 @@ func (API) MutateSubcommands(ctx context.Context, id api.CmdID, cmd api.Cmd,
 	return nil
 }
 
-// FootprintBuilder implements dependencygraph.FootprintBuilderProvider interface
-func (API) FootprintBuilder(ctx context.Context) dependencygraph.FootprintBuilder {
-	return newFootprintBuilder()
-}
+// // FootprintBuilder implements dependencygraph.FootprintBuilderProvider interface
+// func (API) FootprintBuilder(ctx context.Context) dependencygraph.FootprintBuilder {
+// 	return newFootprintBuilder()
+// }

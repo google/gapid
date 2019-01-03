@@ -625,11 +625,13 @@ sub void processMemoryBarriers(VkPipelineStageFlags       srcStageMask,
                                map!(u32, VkMemoryBarrier) memoryBarriers) {
   if len(memoryBarriers) > 0 {
     for _ , _ , img in Images {
-      for _ , _ , aspect in img.Aspects {
-        for _ , _ , layer in aspect.Layers {
-          for _ , _ , level in layer.Levels {
-            read(level.Data)
-            write(level.Data)
+      for _ , _ , plane in img.Planes {
+        for _ , _ , aspect in plane.Aspects {
+          for _ , _ , layer in aspect.Layers {
+            for _ , _ , level in layer.Levels {
+              read(level.Data)
+              write(level.Data)
+            }
           }
         }
       }

@@ -1,0 +1,192 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////
+// Enums //
+///////////
+
+enum VkSamplerYcbcrModelConversionKHR {
+  VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY_KHR   = 0,
+  VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY_KHR = 1,
+  VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709_KHR      = 2,
+  VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601_KHR      = 3,
+  VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_2020_KHR     = 4,
+}
+
+enum VkSamplerYcbcrRangeKHR {
+  VK_SAMPLER_YCBCR_RANGE_ITU_FULL_KHR   = 0,
+  VK_SAMPLER_YCBCR_RANGE_ITU_NARROW_KHR = 1,
+}
+
+enum VkChromaLocationKHR {
+  VK_CHROMA_LOCATION_COSITED_EVEN_KHR = 0,
+  VK_CHROMA_LOCATION_MIDPOINT_KHR = 1,
+}
+
+// Left updated in api/enums.api
+
+///////////////
+// Bitfields //
+///////////////
+
+// Updated in api/bitfields.api
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+class VkSamplerYcbcrConversionInfoKHR {
+    VkStructureType             sType
+    const void*                 pNext
+    VkSamplerYcbcrConversion    conversion
+}
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+class VkSamplerYcbcrConversionCreateInfoKHR {
+  VkStructureType               sType
+  const void*                   pNext
+  VkFormat                      format
+  VkSamplerYcbcrModelConversion ycbcrModel
+  VkSamplerYcbcrRange           ycbcrRange
+  VkComponentMapping            components
+  VkChromaLocation              xChromaOffset
+  VkChromaLocation              yChromaOffset
+  VkFilter                      chromaFilter
+  VkBool32                      forceExplicitReconstruction
+}
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+class VkBindImagePlaneMemoryInfoKHR {
+    VkStructureType          sType
+    const void*              pNext
+    VkImageAspectFlagBits    planeAspect
+}
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+class VkImagePlaneMemoryRequirementsInfoKHR {
+    VkStructureType          sType
+    const void*              pNext
+    VkImageAspectFlagBits    planeAspect
+}
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+class VkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR {
+    VkStructureType    sType
+    void*              pNext
+    VkBool32           samplerYcbcrConversion
+}
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+class VkSamplerYcbcrConversionImageFormatPropertiesKHR {
+  VkStructureType sType
+  void*           pNext
+  u32             combinedImageSamplerDescriptorCount
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+@indirect("VkDevice")
+cmd VkResult vkCreateSamplerYcbcrConversionKHR(
+    VkDevice                                    device,
+    const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkSamplerYcbcrConversion*                   pYcbcrConversion) {
+  CreateSamplerYcbcrConversion(
+      device, pCreateInfo, pAllocator, pYcbcrConversion)
+  return ?
+}
+
+@extension("VK_KHR_sampler_ycbcr_conversion")
+@indirect("VkDevice")
+cmd void vkDestroySamplerYcbcrConversionKHR(
+    VkDevice                                    device,
+    VkSamplerYcbcrConversion                    ycbcrConversion,
+    const VkAllocationCallbacks*                pAllocator) {
+  DestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator)
+}
+
+///////////
+// Utils //
+///////////
+
+sub u32 numberOfPlanes(VkFormat fmt) {
+  return switch fmt {
+    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM_KHR,
+    VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM_KHR,
+    VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM_KHR,
+    VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16_KHR,
+    VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16_KHR,
+    VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16_KHR,
+    VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16_KHR,
+    VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16_KHR,
+    VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16_KHR,
+    VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM_KHR,
+    VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM_KHR,
+    VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM_KHR:
+      as!u32(3)
+
+    case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM_KHR,
+    VK_FORMAT_G8_B8R8_2PLANE_420_UNORM_KHR,
+    VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16_KHR,
+    VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16_KHR,
+    VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16_KHR,
+    VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16_KHR,
+    VK_FORMAT_G16_B16R16_2PLANE_420_UNORM_KHR,
+    VK_FORMAT_G16_B16R16_2PLANE_422_UNORM_KHR:
+      as!u32(2)
+
+    case VK_FORMAT_G8B8G8R8_422_UNORM,
+    VK_FORMAT_B8G8R8G8_422_UNORM,
+    VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16,
+    VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,
+    VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16,
+    VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16,
+    VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,
+    VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16,
+    VK_FORMAT_G16B16G16R16_422_UNORM,
+    VK_FORMAT_B16G16R16G16_422_UNORM:
+      as!u32(1)
+
+    default:
+      as!u32(0)
+  }
+}

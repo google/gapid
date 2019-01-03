@@ -28,12 +28,20 @@ extern u32 numberOfPNext(const void* pNext)
   u32 Val
 }
 
+@internal class MutableU64 {
+  u64 Val
+}
+
 @interal class MutableVkDeviceSize {
   VkDeviceSize Val
 }
 
 @internal class MutableBool {
   bool b
+}
+
+@internal class MutableImagePlaneIndex {
+  ImagePlaneIndex Val
 }
 
 @internal
@@ -291,6 +299,11 @@ sub VkDeviceSize inferImageSize(ref!ImageObject img) {
   return img_size.Val
 }
 
+sub VkDeviceSize inferImagePlaneSize(ref!ImageObject img, ImagePlaneIndex planeIndex) {
+  // TODO: calculate image plane size.
+  return inferImageSize(img)
+}
+
 sub VkDeviceSize inferImageLevelSize(ref!ImageObject img, u32 level) {
   img_info := img.Info
   level_size := MutableVkDeviceSize(0)
@@ -347,22 +360,25 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
   }
 }
 
-@internal class AllBits {
-  @untrackedMap @untracked
-  map!(VkImageAspectFlags, ref!unpackedImageAspectFlagBits) allBits
-}
-
-@hidden @serialize @untracked
-AllBits allBits
-
-@internal class unpackedImageAspectFlagBits {
+@internal class ImageAspectBits {
   @untrackedMap @untracked
   dense_map!(u32, VkImageAspectFlagBits) Bits
 }
 
+@internal class unpackedImageAspectFlagBits {
+  @untrackedMap @untracked
+  map!(VkImageAspectFlags, ref!ImageAspectBits) ImageAspectFlagsToUnpackedBits
+}
+
+// Cache of unpacked VkImageAspectFlags
+@hidden @serialize @untracked
+unpackedImageAspectFlagBits cachedUnpackedImageAspectBits
+
+// A helper function to unpack VkImageAspectFlags into a list of
+// VkImageAspectFlagBits
 sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectFlags flag) {
-  if !(flag in allBits.allBits) {
-    m := new!unpackedImageAspectFlagBits()
+  if !(flag in cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits) {
+    m := new!ImageAspectBits()
     // Till Vulkan 1.1, seven bits are used for image aspects.
     // Update this accordingly if more image aspect flag bits are added to the spec
     for i in (0 .. 7) {
@@ -370,10 +386,116 @@ sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectF
         m.Bits[len(m.Bits)] = as!VkImageAspectFlagBits(1 << as!u32(i))
       }
     }
-    allBits.allBits[flag] = m
+    cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits[flag] = m
   }
- 
-  return allBits.allBits[flag].Bits
+
+  return cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits[flag].Bits
+}
+
+// A helper function that unpacks the given VkImageAspectFlags into a list of
+// VkImageAspectFlagBits which contains only the bits defined in Vulkan 1.0 core
+// spec, i.e.: VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_ASPECT_DEPTH_BIT,
+// VK_IMAGE_ASPECT_STENCIL_BIT and VK_IMAGE_ASPECT_METADATA_BIT.
+sub dense_map!(u32, VkImageAspectFlagBits) unpackVulkan10ImageAspectFlags(VkImageAspectFlags flag) {
+  return unpackImageAspectFlags(as!VkImageAspectFlags(as!u32(flag) & as!u32(0x0F)))
+}
+
+// A helper function that unpacks the given VkImageAspectFlags into a list of
+// VkImageAspectFlagBits which contains only the bits used to specify planes,
+// i.e: VK_IMAGE_ASPECT_PLANE_0_BIT, VK_IMAGE_ASPECT_PLANE_1_BIT and
+// VK_IMAGE_ASPECT_PLANE_2_BIT.
+sub dense_map!(u32, VkImageAspectFlagBits) unpackImagePlaneAspectFlags(VkImageAspectFlags flag) {
+  return unpackImageAspectFlags(as!VkImageAspectFlags(as!u32(flag) & as!u32(0xF0)))
+}
+
+// Get ImagePlaneIndex from a VkImageAspectFlagBits
+sub ImagePlaneIndex imagePlaneIndex(VkImageAspectFlagBits bit) {
+  return switch bit {
+    case VK_IMAGE_ASPECT_PLANE_0_BIT:
+      PLANE_INDEX_0
+    case VK_IMAGE_ASPECT_PLANE_1_BIT:
+      PLANE_INDEX_1
+    case VK_IMAGE_ASPECT_PLANE_2_BIT:
+      PLANE_INDEX_2
+    default:
+      PLANE_INDEX_ALL
+  }
+}
+
+// Get VkImageAspectFlagBits from ImagePlaneIndex
+sub VkImageAspectFlagBits imagePlaneAspectFlagBit(ImagePlaneIndex plane) {
+  return switch plane {
+    case PLANE_INDEX_0:
+      VK_IMAGE_ASPECT_PLANE_0_BIT
+    case PLANE_INDEX_1:
+      VK_IMAGE_ASPECT_PLANE_1_BIT
+    case PLANE_INDEX_2:
+      VK_IMAGE_ASPECT_PLANE_2_BIT
+    default:
+      as!VkImageAspectFlagBits(0)
+  }
+}
+
+@internal class ImagePlaneIndices {
+  @untracked @untracked
+  dense_map!(u32, ImagePlaneIndex) Indices
+}
+
+@internal class ImageFormatsAndPlaneIndices {
+  @untracked @untracked
+  map!(VkFormat, ref!ImagePlaneIndices) FormatsToPlaneIndices
+}
+
+// Cache of the plane indices of image formats.
+@hidden @serialize @untracked
+ImageFormatsAndPlaneIndices cachedImageFormatPlaneIndices
+
+sub dense_map!(u32, ImagePlaneIndex) imageFormatPlaneIndices(VkFormat fmt) {
+  if !(fmt in cachedImageFormatPlaneIndices.FormatsToPlaneIndices) {
+    m := new!ImagePlaneIndices()
+    n := numberOfPlanes(fmt)
+    if n > as!u32(0) {
+      for i in (0 .. n) {
+        m.Indices[i] = imagePlaneIndex(
+          as!VkImageAspectFlagBits(as!u32(VK_IMAGE_ASPECT_PLANE_0_BIT) << as!u32(i))
+        )
+      }
+    } else {
+      m.Indices[0] = PLANE_INDEX_ALL
+    }
+    cachedImageFormatPlaneIndices.FormatsToPlaneIndices[fmt] = m
+  }
+  return cachedImageFormatPlaneIndices.FormatsToPlaneIndices[fmt].Indices
+}
+
+// Returns a list of ImagePlaneIndex for NOT disjoint image, which always
+// contains only one element: PLANE_INDEX_ALL
+sub dense_map!(u32, ImagePlaneIndex) nonDisjointImagePlaneIndices() {
+  // It does not matter which specific format to use here.
+  return imageFormatPlaneIndices(VK_FORMAT_R32G32B32A32_UINT)
+}
+
+// Returns a list of ImagePlaneIndex for disjoint image, based on the given
+// aspect flags. If the given aspect flag contains plane bits, returns the
+// corresponding plane indices. If the given aspect flag contains only color
+// aspect bit, returns the plane indices for all the planes of the image format.
+// If the given aspect flag contains neither plane bits nor color aspect bit,
+// returns an empty list.
+sub dense_map!(u32, ImagePlaneIndex) disjointImagePlaneIndices(
+  ref!ImageObject img, VkImageAspectFlags flags) {
+  pBits := unpackImagePlaneAspectFlags(flags)
+  indices := new!ImagePlaneIndices()
+  if len(pBits) > 0 {
+    for _, _, pb in pBits {
+      indices.Indices[len(indices.Indices)] = imagePlaneIndex(pb)
+    }
+  } else {
+    if (as!u32(flags) & as!u32(VK_IMAGE_ASPECT_COLOR_BIT)) != as!u32(0) {
+      // Color aspect specified, all planes should be returned.
+      indices.Indices = imageFormatPlaneIndices(img.Info.Format)
+    }
+  }
+  return indices.Indices
 }
 
 @internal class emptyDenseMap {

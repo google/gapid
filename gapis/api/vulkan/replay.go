@@ -29,7 +29,6 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
@@ -126,14 +125,7 @@ type framebufferRequest struct {
 	displayToSurface bool
 }
 
-type deadCodeEliminationInfo struct {
-	dependencyGraph     *dependencygraph.DependencyGraph
-	deadCodeElimination *dependencygraph.DeadCodeElimination
-}
-
 type dCEInfo struct {
-	ft     *dependencygraph.Footprint
-	dce    *dependencygraph.DCE
 	newDce *dependencygraph2.DCEBuilder
 }
 
@@ -815,25 +807,6 @@ func (a API) Replay(
 					cmds = []api.Cmd{}
 				}
 				return 0, nil
-			} else {
-				// If we have a dependent payload, then we cannot use
-				// the DCE.
-				if dependentPayload != "" {
-					return 0, nil
-				}
-				// If we have not set up the dependency graph, do it now.
-				if dceInfo.ft == nil {
-					ft, err := dependencygraph.GetFootprint(ctx, intent.Capture)
-					if err != nil {
-						return 0, err
-					}
-					dceInfo.ft = ft
-					dceInfo.dce = dependencygraph.NewDCE(ctx, dceInfo.ft)
-				}
-				cmds = []api.Cmd{}
-				numInitialCmdWithOpt = dceInfo.ft.NumInitialCommands
-				initCmdExpandedWithOpt = true
-				return numInitialCmdWithOpt, nil
 			}
 		}
 		// If we do not depend on another payload to get us into the right state,
@@ -906,8 +879,8 @@ func (a API) Replay(
 			if optimize {
 				if dceInfo.newDce != nil {
 					dceInfo.newDce.Request(ctx, api.SubCmdIdx{cmdid})
-				} else if (dceInfo.dce) != nil {
-					dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
+				} else {
+					optimize = false
 				}
 			}
 
@@ -948,8 +921,6 @@ func (a API) Replay(
 	if optimize {
 		if dceInfo.newDce != nil {
 			transforms.Prepend(dceInfo.newDce)
-		} else if dceInfo.dce != nil {
-			transforms.Prepend(dceInfo.dce)
 		}
 	}
 

@@ -463,12 +463,13 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
     auto level_pitch = [this, &get_element_size](
                            gapil::Ref<gapii::ImageObject> img,
+                           uint32_t plane,
                            uint32_t aspect_bit, uint32_t layer,
                            uint32_t level) -> pitch {
       auto &info = img->mInfo;
-      auto &lev = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+      auto levelLinearLayoutInfo = subGetImageLevelLinearLayout(nullptr, nullptr, img, plane, aspect_bit, layer, level);
       const bool has_linear_layout =
-          (lev->mLinearLayout != nullptr) && (lev->mLinearLayout->msize != 0);
+          (levelLinearLayoutInfo != nullptr) && (levelLinearLayoutInfo->msize != 0);
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, info.mFormat);
       const uint32_t texel_width =
@@ -492,11 +493,11 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       pitch p{row_pitch,   depth_pitch,  0,           0,
               texel_width, texel_height, element_size};
       if (has_linear_layout) {
-        if (lev->mLinearLayout->mdepthPitch != 0) {
-          p.linear_layout_depth_pitch = lev->mLinearLayout->mdepthPitch;
+        if (levelLinearLayoutInfo->mdepthPitch != 0) {
+          p.linear_layout_depth_pitch = levelLinearLayoutInfo->mdepthPitch;
         }
-        if (lev->mLinearLayout->mrowPitch != 0) {
-          p.linear_layout_row_pitch = lev->mLinearLayout->mrowPitch;
+        if (levelLinearLayoutInfo->mrowPitch != 0) {
+          p.linear_layout_row_pitch = levelLinearLayoutInfo->mrowPitch;
         }
       }
       return p;
@@ -584,16 +585,20 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     std::unordered_map<ImageLevel *, byte_size_and_extent> level_sizes;
     walkImageSubRng(
         img, img_whole_rng,
-        [&serializer, &level_size, &img, &level_sizes](
-            uint32_t aspect, uint32_t layer, uint32_t level) {
-          auto img_level =
-              img->mAspects[aspect]->mLayers[layer]->mLevels[level];
+        [&serializer, &level_size, &img, &level_sizes, this](
+            uint32_t plane, uint32_t aspect, uint32_t layer,
+            uint32_t level) {
+          auto levelLinearLayoutInfo = subGetImageLevelLinearLayout(nullptr, nullptr, img, plane, aspect, layer, level);
+          auto img_level = img->mPlanes[plane]
+                               ->mAspects[aspect]
+                               ->mLayers[layer]
+                               ->mLevels[level];
           level_sizes[img_level.get()] =
               level_size(img->mInfo.mExtent, img->mInfo.mFormat, level, aspect);
           uint64_t pool_size = level_sizes[img_level.get()].level_size;
-          if (img_level->mLinearLayout != nullptr &&
-              img_level->mLinearLayout->msize > pool_size) {
-            pool_size = img_level->mLinearLayout->msize;
+          if (levelLinearLayoutInfo != nullptr &&
+              levelLinearLayoutInfo->msize > pool_size) {
+            pool_size = levelLinearLayoutInfo->msize;
           }
           serializer->encodeBuffer(pool_size, &img_level->mData, nullptr);
         });
@@ -611,7 +616,15 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     // swapchain ones), we can copy directly from all such images. Note that
     // later this fact soon will be changed.
 
-    bool denseBound = img->mBoundMemory != nullptr;
+    bool denseBound = [&img]() -> bool {
+      for (auto &p : img->mPlanes) {
+        if (p.second->mBoundMemory == nullptr) {
+          return false;
+        }
+      }
+      return true;
+    }();
+
     bool sparseBound = (img->mOpaqueSparseMemoryBindings.count() > 0) ||
                        (img->mSparseImageMemoryBindings.count() > 0);
     bool sparseBinding =
@@ -648,28 +661,32 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       } else {
         // If we are not sparsely-resident, then all memory must
         // be bound before we are used.
-        if (!IsFullyBound(0, img->mMemoryRequirements.msize,
-                          img->mOpaqueSparseMemoryBindings)) {
-          continue;
+        for (auto p : img->mPlanes) {
+          if (!IsFullyBound(0, p.second->mMemoryRequirements.msize, img->mOpaqueSparseMemoryBindings)) {
+            continue;
+          }
         }
       }
     }
 
     struct opaque_piece {
+      uint32_t plane;
       uint32_t aspect_bit;
       uint32_t layer;
       uint32_t level;
     };
     std::vector<opaque_piece> opaque_pieces;
     auto append_image_level_to_opaque_pieces =
-        [&img, &opaque_pieces](uint32_t aspect_bit, uint32_t layer,
-                               uint32_t level) {
-          auto &img_level =
-              img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+        [&img, &opaque_pieces](uint32_t plane, uint32_t aspect_bit,
+                               uint32_t layer, uint32_t level) {
+          auto &img_level = img->mPlanes[plane]
+                                ->mAspects[aspect_bit]
+                                ->mLayers[layer]
+                                ->mLevels[level];
           if (img_level->mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
             return;
           }
-          opaque_pieces.push_back(opaque_piece{aspect_bit, layer, level});
+          opaque_pieces.push_back(opaque_piece{plane, aspect_bit, layer, level});
         };
     if (denseBound || !sparseResidency) {
       walkImageSubRng(img, img_whole_rng, append_image_level_to_opaque_pieces);
@@ -731,7 +748,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       // queue families to queues
       std::unordered_map<uint32_t, gapil::Ref<QueueObject>> queues;
       for (auto &piece : opaque_pieces) {
-        auto img_level = img->mAspects[piece.aspect_bit]
+        auto img_level = img->mPlanes[piece.plane]->mAspects[piece.aspect_bit]
                              ->mLayers[piece.layer]
                              ->mLevels[piece.level];
         auto queue = GetQueue(mState.Queues, img->mDevice, img_level);
@@ -742,6 +759,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         if (queues.find(queue_family) == queues.end()) {
           queues[queue_family] = queue;
         }
+        // TODO: Handle multi-planar images. Currently the aspectMask we set in
+        // VkBufferImageCopy does not contain plane bits. Which means later when
+        // we rollout the copies, we do not have plane index.
         auto copy = VkBufferImageCopy{
             offset,  // bufferOffset
             0,       // bufferRowLength
@@ -770,7 +790,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             for (const auto &layer_i :
                  img->mSparseImageMemoryBindings[aspect_bit]->mLayers) {
               for (const auto &level_i : layer_i.second->mLevels) {
-                auto img_level = img->mAspects[aspect_bit]
+                auto img_level = img->mPlanes[ImagePlaneIndex::PLANE_INDEX_ALL]->mAspects[aspect_bit]
                                      ->mLayers[layer_i.first]
                                      ->mLevels[level_i.first];
                 auto queue = GetQueue(mState.Queues, img->mDevice, img_level);
@@ -826,11 +846,15 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         walkImageSubRng(
             img, img_whole_rng,
             [&img, &img_barriers, &old_layouts, queue_family](
-                uint32_t aspect_bit, uint32_t layer, uint32_t level) {
-              auto &img_level =
-                  img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+                uint32_t plane, uint32_t aspect_bit, uint32_t layer,
+                uint32_t level) {
+              auto &img_level = img->mPlanes[plane]
+                                    ->mAspects[aspect_bit]
+                                    ->mLayers[layer]
+                                    ->mLevels[level];
               if (img_level->mLastBoundQueue != nullptr &&
                   img_level->mLastBoundQueue->mFamily == queue_family) {
+                // TODO: Handle multi-planar images.
                 img_barriers.push_back(VkImageMemoryBarrier{
                     VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                     nullptr,
@@ -881,6 +905,12 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         size_t next_offset = (i == copies_in_order.size() - 1)
                                  ? offset
                                  : copies_in_order[i + 1].mbufferOffset;
+        // TODO: Handle multi-planar images. Currently there is no plane index
+        // information in the aspect mask of the VkBufferImageCopy struct, so
+        // we do not have the plane index here. For now we only support
+        // non-multi-planar images, so plane index should always be
+        // PLANE_INDEX_ALL.
+        const uint32_t plane_index = ImagePlaneIndex::PLANE_INDEX_ALL;
         const uint32_t aspect_bit =
             (uint32_t)copy.mimageSubresource.maspectMask;
         const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
@@ -917,14 +947,14 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           }
         }
 
-        auto bp = level_pitch(img, aspect_bit, array_layer, mip_level);
+        auto bp = level_pitch(img, plane_index, aspect_bit, array_layer, mip_level);
         if ((copy.mimageOffset.mx % bp.texel_width != 0) ||
             (copy.mimageOffset.my % bp.texel_height != 0)) {
           // We cannot place partial blocks
           return;
         }
         auto &img_level =
-            img->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level];
+            img->mPlanes[plane_index]->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level];
         // If the image has linear layout and its row pitch and depth pitch is
         // larger than the piches for tightly packed image, we need to set the
         // observation row by row. Otherwise, we can use just one observation

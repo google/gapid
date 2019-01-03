@@ -538,13 +538,15 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT,
 		VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		l := t.Aspects().Get(VkImageAspectFlagBits(t.ImageAspect())).Layers().Get(layer).Levels().Get(level)
+		l := t.Planes().Get(ImagePlaneIndex_PLANE_INDEX_ALL).Aspects().Get(VkImageAspectFlagBits(t.ImageAspect())).Layers().Get(layer).Levels().Get(level)
 		if l.Data().Size() == 0 {
 			return nil
 		}
-		ll := l.LinearLayout()
+		// TODO: Handle multi-planar images.
+		ll, err := subGetImageLevelLinearLayout(
+			ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, nil, t, ImagePlaneIndex_PLANE_INDEX_ALL, VkImageAspectFlagBits(t.ImageAspect()), layer, level)
 		expectedSize := format.Size(int(l.Width()), int(l.Height()), int(l.Depth()))
-		if ll.IsNil() || ll.Size() == VkDeviceSize(expectedSize) {
+		if err != nil || ll.IsNil() || ll.Size() == VkDeviceSize(expectedSize) {
 			return &image.Info{
 				Format: format,
 				Width:  l.Width(),
@@ -600,9 +602,9 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 		}
 
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT | VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		depthLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
+		depthLevel := t.Planes().Get(ImagePlaneIndex_PLANE_INDEX_ALL).Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT).Layers().Get(layer).Levels().Get(level)
 		depthDataResID := depthLevel.Data().ResourceID(ctx, s)
-		stencilLevel := t.Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers().Get(layer).Levels().Get(level)
+		stencilLevel := t.Planes().Get(ImagePlaneIndex_PLANE_INDEX_ALL).Aspects().Get(VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT).Layers().Get(layer).Levels().Get(level)
 		stencilDataResID := stencilLevel.Data().ResourceID(ctx, s)
 
 		var dStep, sStep int
@@ -681,6 +683,11 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
 	vkFmt := t.Info().Fmt()
+	fmtPlaneCount, _ := subNumberOfPlanes(ctx, nil, api.CmdNoID, nil, s, nil, 0, nil, nil, vkFmt)
+	if fmtPlaneCount > 0 {
+		log.E(ctx, "[Getting image resource data for image: %v], multi-planar images are not supported", t.VulkanHandle())
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
+	}
 	_, err := getImageFormatFromVulkanFormat(vkFmt)
 	if err != nil {
 		return nil, &service.ErrDataUnavailable{Reason: messages.ErrNoTextureData(t.ResourceHandle())}
@@ -1315,11 +1322,11 @@ func pipelineResourceData(ctx context.Context,
 	return &api.ResourceData{
 		Data: &api.ResourceData_Pipeline{
 			Pipeline: &api.Pipeline{
-				API:                       path.NewAPI(id.ID(ID)),
-				Type:                      pipeType,
-				Stages:                    stages,
-				Bindings:                  bindingSlice,
-				Bound:                     bound,
+				API:      path.NewAPI(id.ID(ID)),
+				Type:     pipeType,
+				Stages:   stages,
+				Bindings: bindingSlice,
+				Bound:    bound,
 				BindingTypeConstantsIndex: int32(VkDescriptorTypeConstants()),
 				ImageLayoutConstantsIndex: int32(VkImageLayoutConstants()),
 			},

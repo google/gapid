@@ -243,6 +243,9 @@ cmd VkResult vkQueueWaitIdle(
 
 sub void addSparseImageMemoryBinding(VkImage image, VkSparseImageMemoryBind bind) {
   img := Images[image]
+  // TODO: Handle multi-planar Images. Currently we only handle non-multi-planar
+  // images, which means the plane index should always be PLANE_INDEX_ALL
+  plane := PLANE_INDEX_ALL
   aspect := as!u32(bind.subresource.aspectMask)
   if !(aspect in img.SparseImageMemoryBindings) {
     img.SparseImageMemoryBindings[aspect] = new!SparseBoundImageAspectInfo()
@@ -259,7 +262,7 @@ sub void addSparseImageMemoryBinding(VkImage image, VkSparseImageMemoryBind bind
   }
   levelInfo := layerInfo.Levels[level]
 
-  blockSize := img.MemoryRequirements.alignment
+  blockSize := img.Planes[plane].MemoryRequirements.alignment
   if (aspect in img.SparseMemoryRequirements) {
     gran := img.SparseMemoryRequirements[aspect].formatProperties.imageGranularity
     mipWidth := getMipSize(img.Info.Extent.Width, level)

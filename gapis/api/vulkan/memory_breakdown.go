@@ -313,8 +313,12 @@ func (s *State) getAllocationBindings(allocation DeviceMemoryObject) ([]*api.Mem
 			binding.Size = uint64(buffer.Info().Size())
 			binding.Type = &api.MemoryBinding_Buffer{&api.NormalBinding{}}
 		} else if image, ok := s.Images().Lookup(VkImage(handle)); ok {
-			binding.Size = uint64(image.MemoryRequirements().Size())
-			binding.Type = &api.MemoryBinding_Image{&api.NormalBinding{}}
+			// TODO: Handle multi-planar images, currently only support single
+			// plane images.
+			if image.Planes().Contains(ImagePlaneIndex_PLANE_INDEX_ALL) {
+				binding.Size = uint64(image.Planes().Get(ImagePlaneIndex_PLANE_INDEX_ALL).MemoryRequirements().Size())
+				binding.Type = &api.MemoryBinding_Image{&api.NormalBinding{}}
+			}
 		} else {
 			return nil, fmt.Errorf("Bound object %v is not a buffer or an image", handle)
 		}

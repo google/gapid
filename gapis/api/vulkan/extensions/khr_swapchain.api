@@ -191,10 +191,9 @@ cmd VkResult vkGetSwapchainImagesKHR(
     for i in (0 .. count) {
       images[i] = ?
       if !(images[i] in Images) {
-        object := new!ImageObject(BoundMemory:  null,
+        object := new!ImageObject(
           Device:             device,
           VulkanHandle:       images[i],
-          BoundMemoryOffset:  0,
           Info:               swapchainObject.Info,
           ImageAspect:        as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
         )
@@ -210,9 +209,12 @@ cmd VkResult vkGetSwapchainImagesKHR(
         heightInBlocks := roundUpTo(height, elementAndTexelBlockSize.TexelBlockSize.Height)
         size := widthInBlocks * heightInBlocks * elementAndTexelBlockSize.ElementSize
         level.Data = make!u8(size)
-        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT] = new!ImageAspect()
-        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0] = layer
-        object.Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0].Levels[0] = level
+        object.Planes[PLANE_INDEX_ALL] = new!ImagePlane()
+        object.Planes[PLANE_INDEX_ALL].Aspects[VK_IMAGE_ASPECT_COLOR_BIT] = new!ImageAspect()
+        object.Planes[PLANE_INDEX_ALL].Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0] = layer
+        object.Planes[PLANE_INDEX_ALL].Aspects[VK_IMAGE_ASPECT_COLOR_BIT].Layers[0].Levels[0] = level
+        object.Planes[PLANE_INDEX_ALL].BoundMemory = null
+        object.Planes[PLANE_INDEX_ALL].BoundMemoryOffset = 0
         Images[images[i]] = object
       }
       swapchainObject.SwapchainImages[i] = Images[images[i]]
@@ -317,10 +319,12 @@ cmd VkResult vkQueuePresentKHR(
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
     image
     LastPresentInfo.PresentImageCount = LastPresentInfo.PresentImageCount + 1
-    for _ , _ , aspect in image.Aspects {
-      for _ , _ , layer in aspect.Layers {
-        for _ , _ , level in layer.Levels {
-          level.LastBoundQueue = Queues[queue]
+    for _ , _ , plane in image.Planes {
+      for _ , _ , aspect in plane.Aspects {
+        for _ , _ , layer in aspect.Layers {
+          for _ , _ , level in layer.Levels {
+            level.LastBoundQueue = Queues[queue]
+          }
         }
       }
     }

@@ -191,16 +191,18 @@ sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
 
 sub void readCoherentMemoryInImage(ref!ImageObject image) {
   if image != null {
-    mem := image.BoundMemory
-    if mem != null {
-      // Host access to image memory is only well-defined for images created with
-      // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
-      // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
-      // VK_IMAGE_LAYOUT_GENERAL layout.
-      // TODO: Complete the layout tracking logic then update this if statement
-      // to check the layout of the underlying image.
-      if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
-        readCoherentMemory(mem, image.BoundMemoryOffset, inferImageSize(image))
+    for _, planeIndex, plane in image.Planes {
+      mem := plane.BoundMemory
+      if mem != null {
+        // Host access to image memory is only well-defined for images created with
+        // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
+        // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
+        // VK_IMAGE_LAYOUT_GENERAL layout.
+        // TODO: Complete the layout tracking logic then update this if statement
+        // to check the layout of the underlying image.
+        if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
+          readCoherentMemory(mem, plane.BoundMemoryOffset, inferImagePlaneSize(image, planeIndex))
+        }
       }
     }
   }
@@ -222,39 +224,45 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
   blockWidth := as!u64(elementAndTexelBlockSize.TexelBlockSize.Width)
   blockHeight := as!u64(elementAndTexelBlockSize.TexelBlockSize.Height)
 
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
-    elementSize := switch (aspectBit) {
-      case VK_IMAGE_ASPECT_COLOR_BIT:
-        as!u64(elementAndTexelBlockSize.ElementSize)
-      case VK_IMAGE_ASPECT_DEPTH_BIT:
-        as!u64(depthElementSize)
-      case VK_IMAGE_ASPECT_STENCIL_BIT:
-        as!u64(1)
-    }
-    for _, i, layer in image.Aspects[aspectBit].Layers {
-      if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
-        for _, k, level in layer.Levels {
-          if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
-            z1 := switch (depthCount == VK_REMAINING_ARRAY_LAYERS) {
-              case true:
-                as!u64(level.Depth)
-              case false:
-                as!u64(baseDepth + depthCount)
-            }
-            imageLevelWidthInBlocks := as!u64(roundUpTo(level.Width, as!u32(blockWidth)))
-            imageLevelHeightInBlocks := as!u64(roundUpTo(level.Height, as!u32(blockHeight)))
-            depthPitch := switch level.LinearLayout {
-              case null:
-                imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
-              default:
-                as!u64(level.LinearLayout.depthPitch)
-            }
-            start := z0 * depthPitch
-            end := z1 * depthPitch
-            if isWrite {
-              write(level.Data[start:end])
-            } else {
-              read(level.Data[start:end])
+  planeIndices := getImagePlaneIndices(image, rng.aspectMask)
+  aspectBits := getImageVulkan10AspectBits(image, rng.aspectMask)
+
+  for _, _, planeIndex in planeIndices {
+    if planeIndex in image.Planes {
+      for _ , _ , aspectBit in aspectBits {
+        elementSize := switch (aspectBit) {
+          case VK_IMAGE_ASPECT_COLOR_BIT:
+            as!u64(elementAndTexelBlockSize.ElementSize)
+          case VK_IMAGE_ASPECT_DEPTH_BIT:
+            as!u64(depthElementSize)
+          case VK_IMAGE_ASPECT_STENCIL_BIT:
+            as!u64(1)
+        }
+        for _, i, layer in image.Planes[planeIndex].Aspects[aspectBit].Layers {
+          if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
+            for _, k, level in layer.Levels {
+              if (k >= rng.baseMipLevel) && (k < rng.baseMipLevel + levelCount) {
+                z1 := switch (depthCount == VK_REMAINING_ARRAY_LAYERS) {
+                  case true:
+                    as!u64(level.Depth)
+                  case false:
+                    as!u64(baseDepth + depthCount)
+                }
+                imageLevelWidthInBlocks := as!u64(roundUpTo(level.Width, as!u32(blockWidth)))
+                imageLevelHeightInBlocks := as!u64(roundUpTo(level.Height, as!u32(blockHeight)))
+                depthPitch := MutableU64(imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize)
+                linearLayoutInfo := getImageLevelLinearLayout(image, planeIndex, aspectBit, i, k)
+                if linearLayoutInfo != null {
+                  depthPitch.Val = as!u64(linearLayoutInfo.depthPitch)
+                }
+                start := z0 * depthPitch.Val
+                end := z1 * depthPitch.Val
+                if isWrite {
+                  write(level.Data[start:end])
+                } else {
+                  read(level.Data[start:end])
+                }
+              }
             }
           }
         }

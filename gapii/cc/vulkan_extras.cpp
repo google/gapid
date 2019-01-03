@@ -260,13 +260,15 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   };
   fn.vkBeginCommandBuffer(command_buffer, &command_buffer_begin_info);
 
+  // TODO: Handle multi-planar image correctly. Currently we only handle
+  // non-muti-planar images, so the plane index is always PLANE_INDEX_ALL.
   VkImageMemoryBarrier barriers[2] = {
       {VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,  // sType
        nullptr,                                                  // pNext
        (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) -
            1,                                          // srcAccessMask
        VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,  // dstAccessMask
-       image->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
+       image->mPlanes[ImagePlaneIndex::PLANE_INDEX_ALL]->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
            ->mLayers[frame_buffer_img_layer]
            ->mLevels[frame_buffer_img_level]
            ->mLayout,                                        // srcLayout
@@ -325,8 +327,10 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   barriers[0].mdstAccessMask =
       (VkAccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT << 1) - 1;
   barriers[0].moldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  // TODO: Handle multi-planar image correctly. Currently we only handle
+  // non-muti-planar images, so the plane index is always PLANE_INDEX_ALL.
   barriers[0].mnewLayout =
-      image->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
+      image->mPlanes[ImagePlaneIndex::PLANE_INDEX_ALL]->mAspects[VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT]
           ->mLayers[frame_buffer_img_layer]
           ->mLevels[frame_buffer_img_level]
           ->mLayout;
@@ -582,10 +586,50 @@ VulkanSpy::fetchPhysicalDeviceFormatProperties(
 }
 
 gapil::Ref<ImageMemoryRequirements> VulkanSpy::fetchImageMemoryRequirements(
-    CallObserver* observer, VkDevice device, VkImage image, bool hasSparseBit) {
+    CallObserver* observer, VkDevice device, VkImage image,
+    gapil::Map<uint32_t, uint32_t, true> planeIndices,
+    bool hasSparseBit) {
   auto reqs = gapil::Ref<ImageMemoryRequirements>::create(arena());
-  mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements(
-      device, image, &reqs->mMemoryRequirements);
+
+  if ((planeIndices.count() == 1) &&
+      (planeIndices[0] == ImagePlaneIndex::PLANE_INDEX_ALL)) {
+    VkMemoryRequirements rawReq{0};
+    mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements(
+        device, image,
+        &reqs->mPlaneIndicesToMemoryRequirements
+             [ImagePlaneIndex::PLANE_INDEX_ALL]);
+  } else {
+    for (auto pi : planeIndices) {
+      auto planeAspectBit = VkImageAspectFlagBits::VK_IMAGE_ASPECT_PLANE_0_BIT;
+      switch (pi.second) {
+        case ImagePlaneIndex::PLANE_INDEX_1:
+          planeAspectBit = VkImageAspectFlagBits::VK_IMAGE_ASPECT_PLANE_1_BIT;
+          break;
+        case ImagePlaneIndex::PLANE_INDEX_2:
+          planeAspectBit = VkImageAspectFlagBits::VK_IMAGE_ASPECT_PLANE_2_BIT;
+          break;
+        default:
+          break;
+      }
+      auto planeReqInfo = VkImagePlaneMemoryRequirementsInfo{
+          VkStructureType::
+              VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO,  // sType
+          nullptr,                                                     // pNext
+          planeAspectBit  // planeAspect
+      };
+      VkImageMemoryRequirementsInfo2 reqInfo2(
+          VkStructureType::
+              VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,  // sType
+          &planeReqInfo,                                           // pNext
+          image                                                    // image
+      );
+      VkMemoryRequirements2 rawReq2{0};
+      mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements2(
+          device, &reqInfo2, &rawReq2);
+      reqs->mPlaneIndicesToMemoryRequirements[pi.second] =
+          rawReq2.mmemoryRequirements;
+    }
+  }
   if (hasSparseBit) {
     uint32_t sparse_mem_req_count = 0;
     mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
@@ -620,19 +664,25 @@ gapil::Ref<LinearImageLayouts> VulkanSpy::fetchLinearImageSubresourceLayouts(
     CallObserver* observer, VkDevice device, gapil::Ref<ImageObject> image,
     VkImageSubresourceRange rng) {
   auto layouts = gapil::Ref<LinearImageLayouts>::create(arena());
+  // TODO: handle multi-planar images
   walkImageSubRng(
       image, rng,
-      [&layouts, device, &image, this](uint32_t aspect_bit, uint32_t layer,
+      [&layouts, device, &image, this](uint32_t plane, uint32_t aspect_bit, uint32_t layer,
                                        uint32_t level) {
+        //TODO: Handle multi-planar images
         VkImageSubresource subres(VkImageAspectFlags(aspect_bit),  // aspectMask
                                   level,                           // mipLevel
                                   layer                            // arrayLayer
         );
-        auto aspect_i = layouts->mAspectLayouts.find(aspect_bit);
-        if (aspect_i == layouts->mAspectLayouts.end()) {
-          layouts->mAspectLayouts[aspect_bit] =
+        auto aspect_i = layouts->mPlaneLayouts[plane]
+                            ->mAspectLayouts.find(aspect_bit);
+        if (aspect_i == layouts->mPlaneLayouts[plane]
+                            ->mAspectLayouts.end()) {
+          layouts->mPlaneLayouts[plane]
+              ->mAspectLayouts[aspect_bit] =
               gapil::Ref<LinearImageAspectLayouts>::create(arena());
-          aspect_i = layouts->mAspectLayouts.find(aspect_bit);
+          aspect_i = layouts->mPlaneLayouts[plane]
+                         ->mAspectLayouts.find(aspect_bit);
         }
         auto layer_i = aspect_i->second->mLayerLayouts.find(layer);
         if (layer_i == aspect_i->second->mLayerLayouts.end()) {
@@ -926,32 +976,39 @@ uint32_t VulkanSpy::numberOfPNext(CallObserver* observer, const void* pNext) {
 
 void VulkanSpy::walkImageSubRng(
     gapil::Ref<ImageObject> img, VkImageSubresourceRange rng,
-    std::function<void(uint32_t aspect_bit, uint32_t layer, uint32_t level)>
+    std::function<void(uint32_t plane, uint32_t aspect_bit, uint32_t layer, uint32_t level)>
         f) {
+  auto plane_map = subGetImagePlaneIndices(nullptr, nullptr, img, rng.maspectMask);
+  auto aspect_map = subGetImageVulkan10AspectBits(nullptr, nullptr, img, rng.maspectMask);
   uint32_t layer_count =
       subImageSubresourceLayerCount(nullptr, nullptr, img, rng);
   uint32_t level_count =
       subImageSubresourceLevelCount(nullptr, nullptr, img, rng);
-  auto aspect_map =
-      subUnpackImageAspectFlags(nullptr, nullptr, rng.maspectMask);
-  for (auto b : aspect_map) {
-    auto ai = img->mAspects.find(b.second);
-    if (ai == img->mAspects.end()) {
+
+  for (auto p : plane_map) {
+    auto pi = img->mPlanes.find(p.second);
+    if (pi == img->mPlanes.end()) {
       continue;
     }
-    for (uint32_t layer = rng.mbaseArrayLayer;
-         layer < rng.mbaseArrayLayer + layer_count; layer++) {
-      auto layi = ai->second->mLayers.find(layer);
-      if (layi == ai->second->mLayers.end()) {
+    for (auto a : aspect_map) {
+      auto ai = pi->second->mAspects.find(a.second);
+      if (ai == pi->second->mAspects.end()) {
         continue;
       }
-      for (uint32_t level = rng.mbaseMipLevel;
-           level < rng.mbaseMipLevel + level_count; level++) {
-        auto levi = layi->second->mLevels.find(level);
-        if (levi == layi->second->mLevels.end()) {
+      for (uint32_t layer = rng.mbaseArrayLayer;
+           layer < rng.mbaseArrayLayer + layer_count; layer++) {
+        auto layi = ai->second->mLayers.find(layer);
+        if (layi == ai->second->mLayers.end()) {
           continue;
         }
-        f(b.second, layer, level);
+        for (uint32_t level = rng.mbaseMipLevel;
+             level < rng.mbaseMipLevel + level_count; level++) {
+          auto levi = layi->second->mLevels.find(level);
+          if (levi == layi->second->mLevels.end()) {
+            continue;
+          }
+          f(p.second, a.second, layer, level);
+        }
       }
     }
   }

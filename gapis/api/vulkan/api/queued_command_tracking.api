@@ -106,16 +106,22 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
           for _ , img , binds in cmd.SparseBinds.OpaqueImageBinds {
             if (!img in Images) { vkErrorInvalidImage(img) }
             image := Images[img]
-            blockSize := image.MemoryRequirements.alignment
-            for _ , _ , bind in binds.SparseMemoryBinds {
-              numBlocks := (bind.size + blockSize - 1) / blockSize
-              memOffset := bind.memoryOffset
-              resOffset := bind.resourceOffset
-              for j in (0 .. numBlocks) {
-                image.OpaqueSparseMemoryBindings[as!u64(resOffset)] =
-                VkSparseMemoryBind(resOffset + (j * blockSize),
-                  blockSize,       bind.memory,                 memOffset + (j * blockSize),
-                  bind.flags)
+            // TODO: Handle multi-planar Images. Currently we only handle non-multi-planar
+            // images, which means the plane index should always be PLANE_INDEX_ALL
+            planeIndex := PLANE_INDEX_ALL
+            if planeIndex in image.Planes {
+              plane := image.Planes[planeIndex]
+              blockSize := plane.MemoryRequirements.alignment
+              for _ , _ , bind in binds.SparseMemoryBinds {
+                numBlocks := (bind.size + blockSize - 1) / blockSize
+                memOffset := bind.memoryOffset
+                resOffset := bind.resourceOffset
+                for j in (0 .. numBlocks) {
+                  image.OpaqueSparseMemoryBindings[as!u64(resOffset)] =
+                  VkSparseMemoryBind(resOffset + (j * blockSize),
+                    blockSize,       bind.memory,                 memOffset + (j * blockSize),
+                    bind.flags)
+                }
               }
             }
             // Creates the shadow image data memory here if has not been done so.
@@ -123,28 +129,32 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
             // and preinitialized images, we also create individual pool here.
             // TODO: Redirect to bound memories for the data of linear preinitialized
             // images.
-            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect) {
-              aspect := image.Aspects[aspectBit]
-              for lay in (0 .. image.Info.ArrayLayers) {
-                for lev in (0 .. image.Info.MipLevels) {
-                  level := aspect.Layers[lay].Levels[lev]
-                  if len(level.Data) == 0 {
-                    elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
-                    depthElementSize := getDepthElementSize(image.Info.Format, false)
-                    // Roundup the width and height in the number of blocks.
-                    widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
-                    heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-                    elementSize := switch (aspectBit) {
-                      case VK_IMAGE_ASPECT_COLOR_BIT:
-                        elementAndTexelBlockSize.ElementSize
-                      case VK_IMAGE_ASPECT_DEPTH_BIT:
-                        depthElementSize
-                      case VK_IMAGE_ASPECT_STENCIL_BIT:
-                        // stencil element is always 1 byte wide
-                        as!u32(1)
+            aspectBits := getImageVulkan10AspectBits(image, image.ImageAspect)
+            if planeIndex in image.Planes {
+              plane := image.Planes[planeIndex]
+              for _, _, aspectBit in aspectBits {
+                aspect := plane.Aspects[aspectBit]
+                for lay in (0 .. image.Info.ArrayLayers) {
+                  for lev in (0 .. image.Info.MipLevels) {
+                    level := aspect.Layers[lay].Levels[lev]
+                    if len(level.Data) == 0 {
+                      elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
+                      depthElementSize := getDepthElementSize(image.Info.Format, false)
+                      // Roundup the width and height in the number of blocks.
+                      widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+                      heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+                      elementSize := switch (aspectBit) {
+                        case VK_IMAGE_ASPECT_COLOR_BIT:
+                          elementAndTexelBlockSize.ElementSize
+                        case VK_IMAGE_ASPECT_DEPTH_BIT:
+                          depthElementSize
+                        case VK_IMAGE_ASPECT_STENCIL_BIT:
+                          // stencil element is always 1 byte wide
+                          as!u32(1)
+                      }
+                      size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+                      level.Data = make!u8(size)
                     }
-                    size := widthInBlocks * heightInBlocks * level.Depth * elementSize
-                    level.Data = make!u8(size)
                   }
                 }
               }
@@ -162,28 +172,35 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
             // and preinitialized images, we also create individual pool here.
             // TODO: Redirect to bound memories for the data of linear preinitialized
             // images.
-            for _, _, aspectBit in unpackImageAspectFlags(image.ImageAspect) {
-              aspect := image.Aspects[aspectBit]
-              for lay in (0 .. image.Info.ArrayLayers) {
-                for lev in (0 .. image.Info.MipLevels) {
-                  level := aspect.Layers[lay].Levels[lev]
-                  if len(level.Data) == 0 {
-                    elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
-                    depthElementSize := getDepthElementSize(image.Info.Format, false)
-                    // Roundup the width and height in the number of blocks.
-                    widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
-                    heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-                    elementSize := switch (aspectBit) {
-                      case VK_IMAGE_ASPECT_COLOR_BIT:
-                        elementAndTexelBlockSize.ElementSize
-                      case VK_IMAGE_ASPECT_DEPTH_BIT:
-                        depthElementSize
-                      case VK_IMAGE_ASPECT_STENCIL_BIT:
-                        // stencil element is always 1 byte wide
-                        as!u32(1)
+            planeIndices := getImagePlaneIndices(image, image.ImageAspect)
+            aspectBits := getImageVulkan10AspectBits(image, image.ImageAspect)
+            for _, _, planeIndex in planeIndices {
+              if planeIndex in image.Planes {
+                plane := image.Planes[planeIndex]
+                for _, _, aspectBit in aspectBits {
+                  aspect := plane.Aspects[aspectBit]
+                  for lay in (0 .. image.Info.ArrayLayers) {
+                    for lev in (0 .. image.Info.MipLevels) {
+                      level := aspect.Layers[lay].Levels[lev]
+                      if len(level.Data) == 0 {
+                        elementAndTexelBlockSize := getElementAndTexelBlockSize(image.Info.Format)
+                        depthElementSize := getDepthElementSize(image.Info.Format, false)
+                        // Roundup the width and height in the number of blocks.
+                        widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
+                        heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
+                        elementSize := switch (aspectBit) {
+                          case VK_IMAGE_ASPECT_COLOR_BIT:
+                            elementAndTexelBlockSize.ElementSize
+                          case VK_IMAGE_ASPECT_DEPTH_BIT:
+                            depthElementSize
+                          case VK_IMAGE_ASPECT_STENCIL_BIT:
+                            // stencil element is always 1 byte wide
+                            as!u32(1)
+                        }
+                        size := widthInBlocks * heightInBlocks * level.Depth * elementSize
+                        level.Data = make!u8(size)
+                      }
                     }
-                    size := widthInBlocks * heightInBlocks * level.Depth * elementSize
-                    level.Data = make!u8(size)
                   }
                 }
               }

@@ -273,7 +273,9 @@ cmd void vkGetImageMemoryRequirements(
     requirements := ?
     if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
     pMemoryRequirements[0] = requirements
-    Images[image].MemoryRequirements = requirements
+    if PLANE_INDEX_ALL in Images[image].Planes {
+      Images[image].Planes[PLANE_INDEX_ALL].MemoryRequirements = requirements
+    }
   }
 }
 
@@ -353,6 +355,10 @@ sub void GetPhysicalDeviceFeatures2(
             ext := as!VkPhysicalDevice16BitStorageFeatures*(next.Ptr)[0]
             _ = ext
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+            ext := as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
+            _ = ext
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -419,8 +425,19 @@ sub void GetPhysicalDeviceImageFormatProperties2(
   fence
   pImageFormatProperties[0] = ?
   props := pImageFormatProperties[0]
-  _ = props
-  // TODO: handle pNext in format properties
+  // handle pNext in format properties
+  if props.pNext != null {
+    numPNext := numberOfPNext(as!const void*(props.pNext))
+    next := MutableVoidPtr(props.pNext)
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
+          _ = as!VkSamplerYcbcrConversionImageFormatProperties*(next.Ptr)[0]
+        }
+      }
+    }
+  }
 }
 
 @threadSafety("system")
@@ -837,11 +854,18 @@ sub void GetImageMemoryRequirements2(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   info := pInfo[0]
   memReqs := pMemoryRequirements[0]
+  planeIndex := MutableImagePlaneIndex(PLANE_INDEX_ALL)
   if memReqs.pNext != null {
     nPNext := numberOfPNext(as!const void*(memReqs.pNext))
     next := MutableVoidPtr(as!void*(memReqs.pNext))
     for i in (0 .. nPNext) {
-      _ = as!const VkStructureType*(next.Ptr)[0]
+      sType := as!const VkStructureType*(next.Ptr)[0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
+          ext := as!VkImagePlaneMemoryRequirementsInfo*(next.Ptr)[0]
+          planeIndex.Val = imagePlaneIndex(ext.planeAspect)
+        }
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
   }
@@ -856,7 +880,9 @@ sub void GetImageMemoryRequirements2(
   if !(info.image in Images) { vkErrorInvalidImage(info.image) }
   // TODO: Drop the touch of the image object once we extract the memory
   // requirement info out of the image object.
-  Images[info.image].MemoryRequirements = memReq.memoryRequirements
+  if planeIndex.Val in Images[info.image].Planes {
+    Images[info.image].Planes[planeIndex.Val].MemoryRequirements = memReq.memoryRequirements
+  }
 
   if memReq.pNext != null {
     numPNext := numberOfPNext(as!const void*(memReq.pNext))

@@ -86,6 +86,7 @@ import "extensions/khr_external_fence_capabilities.api"
 import "extensions/khr_external_memory_capabilities.api"
 import "extensions/khr_external_semaphore_capabilities.api"
 import "extensions/khr_variable_pointers.api"
+import "extensions/khr_sampler_ycbcr_conversion.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -124,7 +125,7 @@ extern ref!PhysicalDevicesAndProperties fetchPhysicalDeviceProperties(VkInstance
 extern ref!PhysicalDevicesMemoryProperties fetchPhysicalDeviceMemoryProperties(VkInstance instance, VkPhysicalDevice[] devs)
 extern ref!PhysicalDevicesAndQueueFamilyProperties fetchPhysicalDeviceQueueFamilyProperties(VkInstance instance, VkPhysicalDevice[] devs)
 extern ref!PhysicalDevicesFormatProperties fetchPhysicalDeviceFormatProperties(VkInstance instance, VkPhysicalDevice[] devs)
-extern ref!ImageMemoryRequirements fetchImageMemoryRequirements(VkDevice device, VkImage image, bool hasSparseBit)
+extern ref!ImageMemoryRequirements fetchImageMemoryRequirements(VkDevice device, VkImage image, dense_map!(u32, ImagePlaneIndex) planes, bool hasSparseBit)
 extern VkMemoryRequirements fetchBufferMemoryRequirements(VkDevice device, VkBuffer buffer)
 extern ref!LinearImageLayouts fetchLinearImageSubresourceLayouts(VkDevice device, ref!ImageObject image, VkImageSubresourceRange rng)
 extern ref!DescriptorInfo fetchUsedDescriptors(ref!ShaderModuleObject pipeline)
@@ -226,6 +227,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_maintenance1"] = true
   supported.ExtensionNames["VK_KHR_maintenance2"] = true
   supported.ExtensionNames["VK_KHR_maintenance3"] = true
+  supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
   return supported
 }
 
@@ -357,6 +359,8 @@ enum LastSubmissionType {
 @handleMap @serialize map!(VkSwapchainKHR, ref!SwapchainObject)                     Swapchains
 @handleMap @serialize map!(VkDisplayModeKHR, ref!DisplayModeObject)                 DisplayModes
 @handleMap @serialize map!(VkDebugReportCallbackEXT, ref!DebugReportCallbackObject) DebugReportCallbacks
+// Vulkan 1.1 core
+@handleMap @serialize map!(VkSamplerYcbcrConversion, ref!SamplerYcbcrConversionObject) SamplerYcbcrConversions
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
 @serialize @untracked ref!QueueObject                   LastBoundQueue
