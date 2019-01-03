@@ -104,7 +104,8 @@ func run(ctx context.Context) error {
 	ctx = trace.PutManager(ctx, trace.New(ctx))
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	grpclog.SetLogger(log.From(ctx))
+	// Grpc is very verbose, turn that down
+	grpclog.SetLogger(log.From(ctx).SetFilter(log.SeverityFilter(log.Error)))
 
 	var hostDevice *path.Device
 
