@@ -36,6 +36,12 @@ type Logger struct {
 	values      *values
 }
 
+// SetFilter sets the filter for the logger
+func (l *Logger) SetFilter(f Filter) *Logger {
+	l.filter = f
+	return l
+}
+
 // From returns a new Logger from the context ctx.
 func From(ctx context.Context) *Logger {
 	return &Logger{
