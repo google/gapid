@@ -24,7 +24,7 @@ const (
 	VISITED_AND_USED = -1
 )
 
-type Node struct {
+type node struct {
 	inNeighbourIdToEdgeId  map[int]int
 	outNeighbourIdToEdgeId map[int]int
 	id                     int
@@ -34,160 +34,114 @@ type Node struct {
 	attributes             string
 }
 
-type Edge struct {
-	source *Node
-	sink   *Node
+type edge struct {
+	source *node
+	sink   *node
 	id     int
 	label  string
 }
 
-type Graph struct {
-	nodeIdToNode  map[int]*Node
-	edgeIdToEdge  map[int]*Edge
-	maxNodeId     int
-	maxEdgeId     int
-	numberOfNodes int
-	numberOfEdges int
+type graph struct {
+	nodeIdToNode map[int]*node
+	edgeIdToEdge map[int]*edge
+	maxNodeId    int
+	maxEdgeId    int
 }
 
-func createGraph(numberOfNodes int) *Graph {
-	newGraph := &Graph{nodeIdToNode: map[int]*Node{}, edgeIdToEdge: map[int]*Edge{}}
+func (g *graph) getNumberOfNodes() int {
+	return len(g.nodeIdToNode)
+}
+
+func (g *graph) getNumberOfEdges() int {
+	return len(g.edgeIdToEdge)
+}
+
+func createGraph(numberOfNodes int) *graph {
+	newGraph := &graph{nodeIdToNode: map[int]*node{}, edgeIdToEdge: map[int]*edge{}}
 	for i := 0; i < numberOfNodes; i++ {
-		newNode := &Node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{}, id: newGraph.maxNodeId + 1}
+		newNode := &node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{}, id: newGraph.maxNodeId + 1}
 		newGraph.nodeIdToNode[newNode.id] = newNode
-		newGraph.numberOfNodes++
 		newGraph.maxNodeId++
 	}
 	return newGraph
 }
 
-func (g *Graph) addNodeByDefault() int {
-	id := g.maxNodeId + 1
-	newNode := &Node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{}, id: id}
-	g.nodeIdToNode[id] = newNode
-	g.numberOfNodes++
-	g.maxNodeId++
-	return id
+func (g *graph) addNode(newNode *node) error {
+	if _, ok := g.nodeIdToNode[newNode.id]; ok {
+		return fmt.Errorf("Trying to add an existing node with id %d", newNode.id)
+	}
+
+	g.nodeIdToNode[newNode.id] = newNode
+	if newNode.id > g.maxNodeId {
+		g.maxNodeId = newNode.id
+	}
+	return nil
 }
 
-func (g *Graph) addNodeByIdAndLabel(id int, label string) bool {
-	if _, ok := g.nodeIdToNode[id]; ok {
-		return false
+func getNewNode(id int, label string) *node {
+	newNode := &node{
+		inNeighbourIdToEdgeId:  map[int]int{},
+		outNeighbourIdToEdgeId: map[int]int{},
+		id:                     id,
+		label:                  label,
 	}
-
-	newNode := &Node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{}, id: id, label: label}
-	g.nodeIdToNode[id] = newNode
-	g.numberOfNodes++
-	if id > g.maxNodeId {
-		g.maxNodeId = id
-	}
-	return true
+	return newNode
 }
 
-func (g *Graph) addNodeByIdAndLabelAndCommandTypeId(id int, label string, commandTypeId int) bool {
-	if _, ok := g.nodeIdToNode[id]; ok {
-		return false
-	}
-
-	newNode := &Node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{},
-		id: id, label: label, commandTypeId: commandTypeId}
-	g.nodeIdToNode[id] = newNode
-	g.numberOfNodes++
-	if id > g.maxNodeId {
-		g.maxNodeId = id
-	}
-	return true
-}
-
-func (g *Graph) addNodeByIdAndLabelAndCommandTypeIdAndAttributes(id int, label string, commandTypeId int, attributes string) bool {
-	if _, ok := g.nodeIdToNode[id]; ok {
-		return false
-	}
-
-	newNode := &Node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{},
-		id: id, label: label, commandTypeId: commandTypeId, attributes: attributes}
-	g.nodeIdToNode[id] = newNode
-	g.numberOfNodes++
-	if id > g.maxNodeId {
-		g.maxNodeId = id
-	}
-	return true
-}
-
-func (g *Graph) addNodeByIdAndLabelAndNameAndAttributes(id int, label string, name string, attributes string) bool {
-	if _, ok := g.nodeIdToNode[id]; ok {
-		return false
-	}
-
-	newNode := &Node{inNeighbourIdToEdgeId: map[int]int{}, outNeighbourIdToEdgeId: map[int]int{},
-		id: id, label: label, name: name, attributes: attributes}
-	g.nodeIdToNode[id] = newNode
-	g.numberOfNodes++
-	if id > g.maxNodeId {
-		g.maxNodeId = id
-	}
-	return true
-}
-
-func (g *Graph) addEdge(newEdge *Edge) bool {
+func (g *graph) addEdge(newEdge *edge) {
 	source, sink := newEdge.source, newEdge.sink
 	if _, ok := source.outNeighbourIdToEdgeId[sink.id]; ok {
-		return false
+		return
 	}
 
 	g.edgeIdToEdge[newEdge.id] = newEdge
-	g.numberOfEdges++
 	source.outNeighbourIdToEdgeId[sink.id] = newEdge.id
 	sink.inNeighbourIdToEdgeId[source.id] = newEdge.id
 	if newEdge.id > g.maxEdgeId {
 		g.maxEdgeId = newEdge.id
 	}
-	return true
 }
 
-func (g *Graph) addEdgeBetweenNodes(source, sink *Node) {
+func (g *graph) addEdgeBetweenNodes(source, sink *node) {
 	id := g.maxEdgeId + 1
-	newEdge := &Edge{source: source, sink: sink, id: id}
+	newEdge := &edge{source: source, sink: sink, id: id}
 	g.addEdge(newEdge)
 }
 
-func (g *Graph) addEdgeBetweenNodesById(idSource, idSink int) (int, bool) {
+func (g *graph) addEdgeBetweenNodesById(idSource, idSink int) error {
 	source, ok := g.nodeIdToNode[idSource]
-	if ok == false {
-		return 0, false
+	if !ok {
+		return fmt.Errorf("Adding edge from non-existent node with id %d\n", idSource)
 	}
 	sink, ok := g.nodeIdToNode[idSink]
-	if ok == false {
-		return 0, false
+	if !ok {
+		return fmt.Errorf("Adding edge to non-existent node with id %d\n", idSink)
 	}
 	id := g.maxEdgeId + 1
-	newEdge := &Edge{source: source, sink: sink, id: id}
+	newEdge := &edge{source: source, sink: sink, id: id}
 	g.addEdge(newEdge)
-	return id, true
+	return nil
 }
 
-func (g *Graph) removeEdgeById(id int) bool {
-	edge, ok := g.edgeIdToEdge[id]
-	if ok == false {
-		return false
+func (g *graph) removeEdgeById(id int) {
+	currentEdge, ok := g.edgeIdToEdge[id]
+	if !ok {
+		return
 	}
 
-	source, sink := edge.source, edge.sink
+	source, sink := currentEdge.source, currentEdge.sink
 	delete(source.outNeighbourIdToEdgeId, sink.id)
 	delete(sink.inNeighbourIdToEdgeId, source.id)
-
 	delete(g.edgeIdToEdge, id)
-	g.numberOfEdges--
-	return true
 }
 
-func (g *Graph) removeNodeById(id int) bool {
-	node, ok := g.nodeIdToNode[id]
-	if ok == false {
-		return false
+func (g *graph) removeNodeById(id int) {
+	currentNode, ok := g.nodeIdToNode[id]
+	if !ok {
+		return
 	}
 
-	in, out := node.inNeighbourIdToEdgeId, node.outNeighbourIdToEdgeId
+	in, out := currentNode.inNeighbourIdToEdgeId, currentNode.outNeighbourIdToEdgeId
 	for _, edgeId := range in {
 		g.removeEdgeById(edgeId)
 	}
@@ -195,66 +149,58 @@ func (g *Graph) removeNodeById(id int) bool {
 		g.removeEdgeById(edgeId)
 	}
 	delete(g.nodeIdToNode, id)
-	g.numberOfNodes--
-	return true
 }
 
-func (g *Graph) removeNodesWithZeroDegree() {
-	for id, node := range g.nodeIdToNode {
-		if (len(node.inNeighbourIdToEdgeId) + len(node.outNeighbourIdToEdgeId)) == 0 {
+func (g *graph) removeNodesWithZeroDegree() {
+	for id, currentNode := range g.nodeIdToNode {
+		if (len(currentNode.inNeighbourIdToEdgeId) + len(currentNode.outNeighbourIdToEdgeId)) == 0 {
 			g.removeNodeById(id)
 		}
 	}
 }
 
-func (g *Graph) addEdgesBetweenInNeighboursAndOutNeighbours(idNode int) bool {
-	node, ok := g.nodeIdToNode[idNode]
-	if ok == false {
-		return false
+func (g *graph) addEdgesBetweenInNeighboursAndOutNeighbours(idNode int) {
+	currentNode, ok := g.nodeIdToNode[idNode]
+	if !ok {
+		return
 	}
-	for idSource := range node.inNeighbourIdToEdgeId {
-		for idSink := range node.outNeighbourIdToEdgeId {
+	for idSource := range currentNode.inNeighbourIdToEdgeId {
+		for idSink := range currentNode.outNeighbourIdToEdgeId {
 			g.addEdgeBetweenNodesById(idSource, idSink)
 		}
 	}
-	return true
 }
 
-func (g *Graph) removeNodePreservingEdges(idNode int) bool {
-	if g.addEdgesBetweenInNeighboursAndOutNeighbours(idNode) == false {
-		return false
-	}
-	if g.removeNodeById(idNode) == false {
-		return false
-	}
-	return true
+func (g *graph) removeNodePreservingEdges(idNode int) {
+	g.addEdgesBetweenInNeighboursAndOutNeighbours(idNode)
+	g.removeNodeById(idNode)
 }
 
-func (g *Graph) traverseGraph(node *Node, visitTime, minVisitTime, idInStronglyConnectedComponents, visitedNodesId *[]int, currentId, currentTime *int) {
-	*visitedNodesId = append(*visitedNodesId, node.id)
-	(*visitTime)[node.id] = *currentTime
-	(*minVisitTime)[node.id] = *currentTime
+func (g *graph) traverseGraph(currentNode *node, visitTime, minVisitTime, idInStronglyConnectedComponents, visitedNodesId *[]int, currentId, currentTime *int) {
+	*visitedNodesId = append(*visitedNodesId, currentNode.id)
+	(*visitTime)[currentNode.id] = *currentTime
+	(*minVisitTime)[currentNode.id] = *currentTime
 	(*currentTime)++
 
-	for idNeighbour := range node.outNeighbourIdToEdgeId {
+	for idNeighbour := range currentNode.outNeighbourIdToEdgeId {
 		neighbour := g.nodeIdToNode[idNeighbour]
 		if (*visitTime)[neighbour.id] == NO_VISITED {
 			g.traverseGraph(neighbour, visitTime, minVisitTime, idInStronglyConnectedComponents, visitedNodesId, currentId, currentTime)
 		}
 		if (*visitTime)[neighbour.id] != VISITED_AND_USED {
-			if (*minVisitTime)[neighbour.id] < (*minVisitTime)[node.id] {
-				(*minVisitTime)[node.id] = (*minVisitTime)[neighbour.id]
+			if (*minVisitTime)[neighbour.id] < (*minVisitTime)[currentNode.id] {
+				(*minVisitTime)[currentNode.id] = (*minVisitTime)[neighbour.id]
 			}
 		}
 	}
 
-	if (*minVisitTime)[node.id] == (*visitTime)[node.id] {
+	if (*minVisitTime)[currentNode.id] == (*visitTime)[currentNode.id] {
 		for {
 			lastNodeId := (*visitedNodesId)[len(*visitedNodesId)-1]
 			(*visitTime)[lastNodeId] = VISITED_AND_USED
 			*visitedNodesId = (*visitedNodesId)[:len(*visitedNodesId)-1]
 			(*idInStronglyConnectedComponents)[lastNodeId] = *currentId
-			if lastNodeId == node.id {
+			if lastNodeId == currentNode.id {
 				break
 			}
 		}
@@ -262,7 +208,7 @@ func (g *Graph) traverseGraph(node *Node, visitTime, minVisitTime, idInStronglyC
 	}
 }
 
-func (g *Graph) getIdInStronglyConnectedComponents() []int {
+func (g *graph) getIdInStronglyConnectedComponents() []int {
 	currentId := 0
 	currentTime := 1
 	visitTime := make([]int, g.maxNodeId+1)
@@ -270,52 +216,53 @@ func (g *Graph) getIdInStronglyConnectedComponents() []int {
 	idInStronglyConnectedComponents := make([]int, g.maxNodeId+1)
 	visitedNodesId := make([]int, 0)
 
-	for _, node := range g.nodeIdToNode {
-		if visitTime[node.id] == NO_VISITED {
-			g.traverseGraph(node, &visitTime, &minVisitTime, &idInStronglyConnectedComponents, &visitedNodesId, &currentId, &currentTime)
+	for _, currentNode := range g.nodeIdToNode {
+		if visitTime[currentNode.id] == NO_VISITED {
+			g.traverseGraph(currentNode, &visitTime, &minVisitTime, &idInStronglyConnectedComponents, &visitedNodesId, &currentId, &currentTime)
 		}
 	}
 	return idInStronglyConnectedComponents
 }
 
-func (g *Graph) makeStronglyConnectedComponentsByCommandTypeId() {
+func (g *graph) makeStronglyConnectedComponentsByCommandTypeId() {
 	newGraph := createGraph(0)
-	for _, node := range g.nodeIdToNode {
-		newGraph.addNodeByIdAndLabel(node.commandTypeId, "")
+	for _, currentNode := range g.nodeIdToNode {
+		newNode := getNewNode(currentNode.commandTypeId, "")
+		newGraph.addNode(newNode)
 	}
 
-	for _, node := range g.nodeIdToNode {
-		for idNeighbour := range node.outNeighbourIdToEdgeId {
+	for _, currentNode := range g.nodeIdToNode {
+		for idNeighbour := range currentNode.outNeighbourIdToEdgeId {
 			neighbour := g.nodeIdToNode[idNeighbour]
-			newGraph.addEdgeBetweenNodesById(node.commandTypeId, neighbour.commandTypeId)
+			newGraph.addEdgeBetweenNodesById(currentNode.commandTypeId, neighbour.commandTypeId)
 		}
 	}
 	idInStronglyConnectedComponents := newGraph.getIdInStronglyConnectedComponents()
-	for _, node := range g.nodeIdToNode {
-		id := idInStronglyConnectedComponents[node.commandTypeId]
-		node.label = node.label + "/" + fmt.Sprintf("SCC%d", id)
+	for _, currentNode := range g.nodeIdToNode {
+		id := idInStronglyConnectedComponents[currentNode.commandTypeId]
+		currentNode.label = currentNode.label + "/" + fmt.Sprintf("SCC%d", id)
 	}
 }
 
-func (g *Graph) getEdgesInDotFormat() string {
+func (g *graph) getEdgesInDotFormat() string {
 	output := ""
-	for _, edge := range g.edgeIdToEdge {
-		lines := strconv.Itoa(edge.source.id) + " -> " + strconv.Itoa(edge.sink.id) + ";\n"
+	for _, currentEdge := range g.edgeIdToEdge {
+		lines := strconv.Itoa(currentEdge.source.id) + " -> " + strconv.Itoa(currentEdge.sink.id) + ";\n"
 		output += lines
 	}
 	return output
 }
 
-func (g *Graph) getNodesInDotFormat() string {
+func (g *graph) getNodesInDotFormat() string {
 	output := ""
-	for _, node := range g.nodeIdToNode {
-		lines := strconv.Itoa(node.id) + "[label=" + node.label + "]" + ";\n"
+	for _, currentNode := range g.nodeIdToNode {
+		lines := strconv.Itoa(currentNode.id) + "[label=" + currentNode.label + "]" + ";\n"
 		output += lines
 	}
 	return output
 }
 
-func (g *Graph) getGraphInDotFormat() string {
+func (g *graph) getGraphInDotFormat() string {
 	output := "digraph g {\n"
 	output += g.getNodesInDotFormat()
 	output += g.getEdgesInDotFormat()
@@ -323,18 +270,18 @@ func (g *Graph) getGraphInDotFormat() string {
 	return output
 }
 
-func (g *Graph) getGraphInPbtxtFormat() string {
+func (g *graph) getGraphInPbtxtFormat() string {
 	output := ""
-	for _, node := range g.nodeIdToNode {
+	for _, currentNode := range g.nodeIdToNode {
 		lines := "node {\n"
-		lines += "name: " + node.label + "\n"
-		lines += "op: " + node.label + "\n"
-		for idNeighbour := range node.inNeighbourIdToEdgeId {
+		lines += "name: \"" + currentNode.label + "\"\n"
+		lines += "op: \"" + currentNode.label + "\"\n"
+		for idNeighbour := range currentNode.inNeighbourIdToEdgeId {
 			neighbour := g.nodeIdToNode[idNeighbour]
-			lines += "input: " + neighbour.label + "\n"
+			lines += "input: \"" + neighbour.label + "\"\n"
 		}
 		lines += "attr {\n"
-		lines += "key: " + "\"" + node.name + "\"\n"
+		lines += "key: " + "\"" + currentNode.attributes + "\"\n"
 		lines += "}\n"
 
 		lines += "}\n"

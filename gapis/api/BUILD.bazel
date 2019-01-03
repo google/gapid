@@ -33,6 +33,7 @@ go_library(
         "cmd_service.go",
         "context.go",
         "doc.go",
+        "graph_visualization.go",
         "labeled.go",
         "memory_breakdown.go",
         "mesh.go",

@@ -64,6 +64,7 @@ go_library(
         "externs.go",
         "find_issues.go",
         "footprint_builder.go",
+        "graph_visualization.go",
         "image_primer.go",
         "image_primer_shaders.go",
         "mem_binding_list.go",
