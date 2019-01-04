@@ -171,7 +171,7 @@ GrpcReplayService::getNonReplayRequest() {
   auto req = std::move(mDeferredData.front());
   mDeferredData.pop_front();
   mCommunicationLock.unlock();
-  return std::move(req);
+  return req;
 }
 
 std::unique_ptr<replay_service::ReplayRequest>
@@ -186,7 +186,7 @@ GrpcReplayService::getReplayRequest() {
   auto req = std::move(mDeferredRequests.front());
   mDeferredRequests.pop_front();
   mCommunicationLock.unlock();
-  return std::move(req);
+  return req;
 }
 
 }  // namespace gapir
