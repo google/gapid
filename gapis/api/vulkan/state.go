@@ -54,19 +54,26 @@ func (st *State) getSubmitAttachmentInfo(attachment api.FramebufferAttachment) (
 		attachmentIndex := uint32(attachment - api.FramebufferAttachment_Color0)
 		if attRef, ok := subpassDesc.ColorAttachments().Lookup(attachmentIndex); ok {
 			if ca, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attRef.Attachment()); ok {
-				return ca.Image().Info().Extent().Width(),
-					ca.Image().Info().Extent().Height(),
-					ca.Image().Info().Fmt(),
-					attRef.Attachment(), true, nil
+				// This can occur if we destroy the image-view, we remove it from the framebuffer,
+				// but may not unbind the framebuffer.
+				if !ca.Image().IsNil() {
+					return ca.Image().Info().Extent().Width(),
+						ca.Image().Info().Extent().Height(),
+						ca.Image().Info().Fmt(),
+						attRef.Attachment(), true, nil
+				}
 			}
-
 		}
 	case api.FramebufferAttachment_Depth:
 		if !subpassDesc.DepthStencilAttachment().IsNil() && !lastDrawInfo.Framebuffer().IsNil() {
 			attRef := subpassDesc.DepthStencilAttachment()
 			if attachment, ok := lastDrawInfo.Framebuffer().ImageAttachments().Lookup(attRef.Attachment()); ok {
 				depthImg := attachment.Image()
-				return depthImg.Info().Extent().Width(), depthImg.Info().Extent().Height(), depthImg.Info().Fmt(), attRef.Attachment(), true, nil
+				// This can occur if we destroy the image-view, we remove it from the framebuffer,
+				// but may not unbind the framebuffer.
+				if !depthImg.IsNil() {
+					return depthImg.Info().Extent().Width(), depthImg.Info().Extent().Height(), depthImg.Info().Fmt(), attRef.Attachment(), true, nil
+				}
 			}
 		}
 	case api.FramebufferAttachment_Stencil:
