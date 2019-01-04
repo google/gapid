@@ -614,6 +614,155 @@ cmd void vkGetPhysicalDeviceQueueFamilyProperties2(
     physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties)
 }
 
+sub void GetPhysicalDeviceExternalBufferProperties(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+    VkExternalBufferProperties*                 pExternalBufferProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pExternalBufferInfo == null {
+    vkErrorNullPointer("const VkPhysicalDeviceExternalBufferInfo")
+  } else {
+    info := pExternalBufferInfo[0]
+    // handle pNext in pExternalBufferInfo
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // handle future extensions VkPhysicalDeviceExternalBufferInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+
+  fence
+
+  if pExternalBufferProperties == null { vkErrorNullPointer("VkExternalBufferProperties") }
+  pExternalBufferProperties[0] = ?
+  props := pExternalBufferProperties[0]
+  // handle pNext in pExternalBufferProperties
+  if props.pNext != null {
+    numPNext := numberOfPNext(as!const void*(props.pNext))
+    next := MutableVoidPtr(props.pNext)
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // handle future extensions for VkExternalBufferProperties
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceExternalBufferProperties(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+    VkExternalBufferProperties*                 pExternalBufferProperties) {
+  GetPhysicalDeviceExternalBufferProperties(
+    physicalDevice, pExternalBufferInfo, pExternalBufferProperties)
+}
+
+sub void GetPhysicalDeviceExternalSemaphoreProperties(
+      VkPhysicalDevice                              physicalDevice,
+      const VkPhysicalDeviceExternalSemaphoreInfo*  pExternalSemaphoreInfo,
+      VkExternalSemaphoreProperties*                pExternalSemaphoreProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pExternalSemaphoreInfo == null {
+    vkErrorNullPointer("const VkPhysicalDeviceExternalSemaphoreInfo")
+  } else {
+    info := pExternalSemaphoreInfo[0]
+    // handle pNext in pExternalSemaphoreInfo
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // handle future extensions for VkPhysicalDeviceExternalSemaphoreInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+
+  fence
+
+  if pExternalSemaphoreProperties == null { vkErrorNullPointer("VkExternalBufferProperties") }
+  pExternalSemaphoreProperties[0] = ?
+  props := pExternalSemaphoreProperties[0]
+  // handle pNext in pExternalSemaphoreProperties
+  if props.pNext != null {
+    numPNext := numberOfPNext(as!const void*(props.pNext))
+    next := MutableVoidPtr(props.pNext)
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // handle future extensions for VkExternalSemaphoreProperties
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceExternalSemaphoreProperties(
+    VkPhysicalDevice                                physicalDevice,
+    const VkPhysicalDeviceExternalSemaphoreInfo*    pExternalSemaphoreInfo,
+    VkExternalSemaphoreProperties*                  pExternalSemaphoreProperties) {
+  GetPhysicalDeviceExternalSemaphoreProperties(
+      physicalDevice, pExternalSemaphoreInfo, pExternalSemaphoreProperties)
+}
+
+sub void GetPhysicalDeviceExternalFenceProperties(
+      VkPhysicalDevice                          physicalDevice,
+      const VkPhysicalDeviceExternalFenceInfo*  pExternalFenceInfo,
+      VkExternalFenceProperties*                pExternalFenceProperties) {
+  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+  if pExternalFenceInfo == null {
+    vkErrorNullPointer("const VkPhysicalDeviceExternalFenceInfo")
+  } else {
+    info := pExternalFenceInfo[0]
+    // handle pNext in pExternalFenceInfo
+    if info.pNext != null {
+      numPNext := numberOfPNext(info.pNext)
+      next := MutableVoidPtr(as!void*(info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        _ = sType
+        // handle future extensions for VkPhysicalDeviceExternalFenceInfo
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+
+  fence
+
+  if pExternalFenceProperties == null { vkErrorNullPointer("VkExternalBufferProperties") }
+  pExternalFenceProperties[0] = ?
+  props := pExternalFenceProperties[0]
+  // handle pNext in pExternalFenceProperties
+  if props.pNext != null {
+    numPNext := numberOfPNext(as!const void*(props.pNext))
+    next := MutableVoidPtr(props.pNext)
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      _ = sType
+      // handle future extensions for VkExternalFenceProperties
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
+}
+
+@threadSafety("system")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceExternalFenceProperties(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceExternalFenceInfo*    pExternalFenceInfo,
+    VkExternalFenceProperties*                  pExternalFenceProperties) {
+  GetPhysicalDeviceExternalFenceProperties(
+      physicalDevice, pExternalFenceInfo, pExternalFenceProperties)
+}
 
 ////////////
 // Buffer //

@@ -1,0 +1,137 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////
+// Enums //
+///////////
+
+// Updated in api/enums.api
+
+///////////////
+// Bitfields //
+///////////////
+
+@extension("VK_KHR_external_memory_capabilities")
+bitfield VkExternalMemoryHandleTypeFlagBitsKHR {
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR                       = 0x00000001,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR                    = 0x00000002,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_KHR                = 0x00000004,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT_KHR                   = 0x00000008,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT_KHR               = 0x00000010,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHR                      = 0x00000020,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR                  = 0x00000040,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT_KHR                     = 0x00000200,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID_KHR = 0x00000400,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT_KHR             = 0x00000080,
+    VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT_KHR  = 0x00000100,
+}
+type VkFlags VkExternalMemoryHandleTypeFlagsKHR
+
+@extension("VK_KHR_external_memory_capabilities")
+bitfield VkExternalMemoryFeatureFlagBitsKHR {
+    VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_KHR = 0x00000001,
+    VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_KHR     = 0x00000002,
+    VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_KHR     = 0x00000004,
+}
+type VkFlags VkExternalMemoryFeatureFlagsKHR
+
+/////////////
+// Structs //
+/////////////
+
+@extension("VK_KHR_external_memory_capabilities")
+class VkExternalMemoryPropertiesKHR {
+    VkExternalMemoryFeatureFlags       externalMemoryFeatures
+    VkExternalMemoryHandleTypeFlags    exportFromImportedHandleTypes
+    VkExternalMemoryHandleTypeFlags    compatibleHandleTypes
+}
+
+@extension("VK_KHR_external_memory_capabilities")
+class VkPhysicalDeviceExternalImageFormatInfoKHR {
+    VkStructureType                       sType
+    const void*                           pNext
+    VkExternalMemoryHandleTypeFlagBits    handleType
+}
+
+@extension("VK_KHR_external_memory_capabilities")
+class VkExternalImageFormatPropertiesKHR {
+    VkStructureType               sType
+    void*                         pNext
+    VkExternalMemoryProperties    externalMemoryProperties
+}
+
+@extension("VK_KHR_external_memory_capabilities")
+class VkPhysicalDeviceExternalBufferInfoKHR {
+    VkStructureType                       sType
+    const void*                           pNext
+    VkBufferCreateFlags                   flags
+    VkBufferUsageFlags                    usage
+    VkExternalMemoryHandleTypeFlagBits    handleType
+}
+
+@extension("VK_KHR_external_memory_capabilities")
+class VkExternalBufferPropertiesKHR {
+    VkStructureType               sType
+    void*                         pNext
+    VkExternalMemoryProperties    externalMemoryProperties
+}
+
+@extension("VK_KHR_external_memory_capabilities")
+class VkPhysicalDeviceIDPropertiesKHR {
+    VkStructureType    sType
+    void*              pNext
+    u8[VK_UUID_SIZE]   deviceUUID
+    u8[VK_UUID_SIZE]   driverUUID
+    u8[VK_UUID_SIZE]   deviceLUID
+    u32                deviceNodeMask
+    VkBool32           deviceLUIDValid
+}
+
+//////////////
+// Commands //
+//////////////
+
+@extension("VK_KHR_external_memory_capabilities")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+    VkExternalBufferProperties*                 pExternalBufferProperties) {
+  GetPhysicalDeviceExternalBufferProperties(
+    physicalDevice, pExternalBufferInfo, pExternalBufferProperties)
+}

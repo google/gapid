@@ -78,6 +78,14 @@ import "extensions/khr_surface.api"
 import "extensions/khr_swapchain.api"
 import "extensions/nv_dedicated_allocation.api"
 import "extensions/virtual_swapchain.api"
+import "extensions/khr_maintenance2.api"
+import "extensions/khr_maintenance3.api"
+import "extensions/khr_bind_memory2.api"
+import "extensions/khr_16bit_storage.api"
+import "extensions/khr_external_fence_capabilities.api"
+import "extensions/khr_external_memory_capabilities.api"
+import "extensions/khr_external_semaphore_capabilities.api"
+import "extensions/khr_variable_pointers.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -192,7 +200,10 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_android_surface"] = true
   supported.ExtensionNames["VK_KHR_win32_surface"] = true
   supported.ExtensionNames["VK_KHR_get_physical_device_properties2"] = true
-  supported.ExtensionNames["Vk_KHR_get_surface_capabilities2"] = true
+  supported.ExtensionNames["VK_KHR_get_surface_capabilities2"] = true
+  supported.ExtensionNames["VK_KHR_external_memory_capabilities"] = true
+  supported.ExtensionNames["VK_KHR_external_semaphore_capabilities"] = true
+  supported.ExtensionNames["VK_KHR_external_fence_capabilities"] = true
   return supported
 }
 
