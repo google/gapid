@@ -755,7 +755,7 @@ sub void updateDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs ar
   trackDescriptorBufferBindingOffsets(args)
 }
 
-@spy_disabled
+@strict_dependency
 sub void trackDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs args) {
   _ = PipelineLayouts[args.Layout]
   dynamic_offset_index := MutableU32(0)
@@ -895,7 +895,7 @@ cmd void vkCmdPushConstants(
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void readPushConstants(VkPipelineBindPoint bindPoint) {
   layout := boundPipelineLayout(bindPoint)
   pushConstants := lastPushConstants()
@@ -909,7 +909,7 @@ sub void readPushConstants(VkPipelineBindPoint bindPoint) {
 
 // Util
 
-@spy_disabled
+@strict_dependency
 sub void registerDescriptorUser!T(ref!T user, VkDescriptorSet descSet, u32 binding, u32 arrayIndex) {
   if !(descSet in user.DescriptorUsers) {
     bindings := user.DescriptorUsers[descSet]

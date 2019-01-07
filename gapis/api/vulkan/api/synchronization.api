@@ -619,7 +619,7 @@ sub void processBarriers(VkPipelineStageFlags             srcStageMask,
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void processMemoryBarriers(VkPipelineStageFlags       srcStageMask,
                                VkPipelineStageFlags       dstStageMask,
                                map!(u32, VkMemoryBarrier) memoryBarriers) {
@@ -641,7 +641,7 @@ sub void processMemoryBarriers(VkPipelineStageFlags       srcStageMask,
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void processBufferBarriers(VkPipelineStageFlags             srcStageMask,
                                VkPipelineStageFlags             dstStageMask,
                                map!(u32, VkBufferMemoryBarrier) bufferBarriers) {
@@ -655,7 +655,7 @@ sub void processBufferBarriers(VkPipelineStageFlags             srcStageMask,
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void processImageBarrier(VkImageMemoryBarrier v, ref!ImageObject image) {
   if v.oldLayout != VK_IMAGE_LAYOUT_UNDEFINED {
     readImageSubresource(image, v.subresourceRange)

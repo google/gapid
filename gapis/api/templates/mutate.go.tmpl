@@ -106,14 +106,9 @@
       ϟw api.StateWatcher, §
       {{ForEach $.CallParameters "NameAndType" | JoinWith ", "}} §
     ) ({{if not (IsVoid $.Return.Type)}}{{Template "Go.Type" $.Return.Type}}, {{end}}error) {
-    {{if (GetAnnotation ($) "server_disabled")}}
-      // @server_disabled
-      return nil
-    {{else}}
-      ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
-      {{Global "CurrentFunction" $}}
-      {{Template "Block" $.Block}}
-    {{end}}
+    ϟl, ϟa := ϟg.MemoryLayout, ϟg.Arena; _, _ = ϟl, ϟa
+    {{Global "CurrentFunction" $}}
+    {{Template "Block" $.Block}}
   }
 {{end}}
 
@@ -353,7 +348,7 @@
   {{else if IsReturn       $}}{{Template "Return" $}}
   {{else if IsIteration    $}}{{Template "Iteration" $}}
   {{else if IsMapIteration $}}{{Template "MapIteration" $}}
-  {{else if IsCall         $}}{{Template "Go.Call" $}}
+  {{else if IsCall         $}}{{Template "Call" $}}
   {{else if IsRead         $}}{{Template "Go.Read" $.Slice}}.OnReadʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
   {{else if IsWrite        $}}{{Template "Go.Read" $.Slice}}.OnWriteʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
   {{else if IsFence        $}}{{Template "Fence" $}}
@@ -363,6 +358,25 @@
   {{end}}
 {{end}}
 
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the logic to potentially short-circuit a Go call.
+-------------------------------------------------------------------------------
+*/}}
+{{define "Call"}}
+ {{if (and ($.Target.Function.Subroutine) (GetAnnotation $.Target.Function "strict_dependency"))}}
+  if ϟw != nil {
+    {{Template "Go.Call" $}}
+  }
+  {{else if (and ($.Target.Function.Subroutine) (GetAnnotation $.Target.Function "relaxed_dependency"))}}
+  if ϟw == nil {
+    {{Template "Go.Call" $}}
+  }
+  {{else}}
+    {{Template "Go.Call" $}}
+  {{end}}
+{{end}}
 
 {{/*
 -------------------------------------------------------------------------------

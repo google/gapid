@@ -121,7 +121,7 @@ sub map!(VkDeviceSize, OpaqueResourceMemoryBoundPiece) getBufferBoundMemoryPiece
   return ret_val.Map
 }
 
-@spy_disabled
+@strict_dependency
 sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref!BufferObject srcBuf, VkDeviceSize srcOffset, VkDeviceSize size) {
   if (dstBuf.Memory != null) && (srcBuf.Memory != null) {
     // No sparse binding in either dst and src
@@ -224,7 +224,7 @@ class vkCmdCopyImageArgs {
   map!(u32, VkImageCopy) Regions
 }
 
-@spy_disabled
+@strict_dependency
 sub void trackVkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
@@ -401,7 +401,7 @@ class vkCmdBlitImageArgs {
   VkFilter               Filter
 }
 
-@spy_disabled
+@strict_dependency
 sub void trackVkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   srcImageObject := Images[args.SrcImage]
   dstImageObject := Images[args.DstImage]
@@ -581,7 +581,7 @@ sub RowLengthAndImageHeight getRowLengthAndImageHeight(VkBufferImageCopy region)
   return RowLengthAndImageHeight(rowLength, imageHeight)
 }
 
-@spy_disabled
+@strict_dependency
 sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, map!(u32, VkBufferImageCopy) regions, bool isSrcBuffer) {
   if !(image in Images) { vkErrorInvalidImage(image) }
   if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
@@ -794,7 +794,7 @@ cmd void vkCmdCopyImageToBuffer(
   u8[]         Data
 }
 
-@spy_disabled
+@strict_dependency
 sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   if !(args.DstBuffer in Buffers) { vkErrorInvalidBuffer(args.DstBuffer) }
   Buffers[args.DstBuffer].LastBoundQueue = LastBoundQueue
@@ -847,7 +847,7 @@ class vkCmdFillBufferArgs {
   u32          Data
 }
 
-@spy_disabled
+@strict_dependency
 sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   if !(args.Buffer in Buffers) { vkErrorInvalidBuffer(args.Buffer) }
   buf := Buffers[args.Buffer]
@@ -896,10 +896,10 @@ class vkCmdClearColorImageArgs {
   VkImage                            Image
   VkImageLayout                      ImageLayout
   VkClearColorValue                  Color
-  map!(u32, VkImageSubresourceRange) Ranges
+  dense_map!(u32, VkImageSubresourceRange) Ranges
 }
 
-@spy_disabled
+@strict_dependency
 sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
   if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
   image := Images[args.Image]
@@ -953,10 +953,10 @@ class vkCmdClearDepthStencilImageArgs {
   VkImage                            Image
   VkImageLayout                      ImageLayout
   VkClearDepthStencilValue           DepthStencil
-  map!(u32, VkImageSubresourceRange) Ranges
+  dense_map!(u32, VkImageSubresourceRange) Ranges
 }
 
-@spy_disabled
+@strict_dependency
 sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args) {
   if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
   image := Images[args.Image]
@@ -1007,11 +1007,11 @@ cmd void vkCmdClearDepthStencilImage(
 
 @internal
 class vkCmdClearAttachmentsArgs {
-  map!(u32, VkClearAttachment) Attachments
-  map!(u32, VkClearRect)       Rects
+  dense_map!(u32, VkClearAttachment) Attachments
+  dense_map!(u32, VkClearRect)       Rects
 }
 
-@spy_disabled
+@strict_dependency
 sub void dovkCmdClearAttachments(ref!vkCmdClearAttachmentsArgs args) {
   useRenderPass()
 }

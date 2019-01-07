@@ -51,7 +51,7 @@
   @unused ref!VulkanDebugMarkerInfo DebugInfo
 }
 
-@spy_disabled
+@strict_dependency
 sub void registerFramebufferUser(ref!ImageViewObject view, VkFramebuffer vkFb, u32 attachment) {
   if !(vkFb in view.FramebufferUsers) {
     f := view.FramebufferUsers[vkFb]
@@ -266,7 +266,7 @@ vkCmdBeginRenderPassArgs {
   VkRenderPass            RenderPass
   VkFramebuffer           Framebuffer
   VkRect2D                RenderArea
-  map!(u32, VkClearValue) ClearValues
+  dense_map!(u32, VkClearValue) ClearValues
 }
 
 sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
@@ -459,7 +459,7 @@ sub void storeImageAttachment(u32 attachmentID) {
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void useRenderPass() {
   // read and write InRenderPass to ensure dependencies between render pass commands
   _ = lastDrawInfo().InRenderPass

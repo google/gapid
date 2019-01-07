@@ -72,7 +72,7 @@ sub void readCoherentMemoryInBuffer(ref!BufferObject buffer) {
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, readOffset, readSize)
   for _, _, mp in memPieces {
@@ -81,7 +81,7 @@ sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, Vk
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDeviceSize size) {
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, offset, size)
   for _, _, mp in memPieces {
@@ -106,7 +106,7 @@ sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
   n := len(bufferBindings)
   for i in (0 .. n) {
@@ -125,7 +125,7 @@ sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffer
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
   n := len(bufferBindings)
   for i in (0 .. n) {
@@ -160,7 +160,7 @@ sub void readCoherentMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferVi
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   for _, _, v in bufferViews {
     if v in BufferViews {
@@ -173,7 +173,7 @@ sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
 }
 
 
-@spy_disabled
+@strict_dependency
 sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   for _, _, v in bufferViews {
     if v in BufferViews {
@@ -208,7 +208,7 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 
 // VkImageSubresourceRange data
 
-@spy_disabled
+@strict_dependency
 sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRange rng, u32 baseDepth, u32 depthCount, bool isWrite) {
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
   layerCount := imageSubresourceLayerCount(image, rng)
@@ -263,18 +263,18 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void accessImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, bool isWrite) {
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
   accessImageSubresourceSlice(image, rng, 0, VK_REMAINING_ARRAY_LAYERS, isWrite)
 }
 
-@spy_disabled
+@strict_dependency
 sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
   accessImageSubresource(image, rng, false)
 }
 
-@spy_disabled
+@strict_dependency
 sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
   accessImageSubresource(image, rng, true)
 }
@@ -284,7 +284,7 @@ sub bool is2DView3DImage(ref!ImageViewObject view) {
       ((view.Type == VK_IMAGE_VIEW_TYPE_2D) || (view.Type == VK_IMAGE_VIEW_TYPE_2D_ARRAY)))
 }
 
-@spy_disabled
+@strict_dependency
 sub void accessImageView(ref!ImageViewObject view, bool isWrite) {
   if is2DView3DImage(view) {
     rng := VkImageSubresourceRange(
@@ -301,17 +301,16 @@ sub void accessImageView(ref!ImageViewObject view, bool isWrite) {
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void readImageView(ref!ImageViewObject view) {
   accessImageView(view, false)
 }
 
-@spy_disabled
+@strict_dependency
 sub void writeImageView(ref!ImageViewObject view) {
   accessImageView(view, true)
 }
 
-@spy_disabled
 sub void updateImageViewQueue(ref!ImageViewObject view) {
   if is2DView3DImage(view) {
     rng := VkImageSubresourceRange(
@@ -328,7 +327,7 @@ sub void updateImageViewQueue(ref!ImageViewObject view) {
 
 // VkImageViews used as Framebuffer attachments are handled in
 // renderpass_framebuffer.api
-@server_disabled
+@relaxed_dependency
 sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
@@ -343,7 +342,7 @@ sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) 
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
@@ -357,7 +356,7 @@ sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBin
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
@@ -371,7 +370,7 @@ sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBi
   }
 }
 
-@server_disabled
+@relaxed_dependency
 sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
@@ -402,7 +401,7 @@ sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, 
 ///////////////////
 // DescriptorSet //
 ///////////////////
-@spy_disabled
+@strict_dependency
 sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
@@ -430,7 +429,7 @@ sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u
   }
 }
 
-@spy_disabled
+@strict_dependency
 sub void writeMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
@@ -475,7 +474,7 @@ sub void readWriteMemoryInBoundDescriptorSets(
   }
 }
 
-@server_disabled
+@relaxed_dependency
 sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
   ldi := lastDrawInfo()
   for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
@@ -491,7 +490,7 @@ sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 inst
     trackMemoryInCurrentPipelineBoundVertexBuffers(vertexCount, instanceCount, firstVertex, firstInstance)
 }
 
-@spy_disabled
+@strict_dependency
 sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
   ldi := lastDrawInfo()
   for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {

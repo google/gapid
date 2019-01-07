@@ -275,16 +275,22 @@ func rebuildVkCmdBindVertexBuffers(
 	s *api.GlobalState,
 	d VkCmdBindVertexBuffersArgsʳ) (func(), api.Cmd, error) {
 
-	for i, c := 0, d.Buffers().Len(); i < c; i++ {
-		buf := d.Buffers().Get(uint32(i))
+	buffers := []VkBuffer{}
+	offsets := []VkDeviceSize{}
+	for i := 0; i < d.BuffersOffsets().Len(); i++ {
+		bufOffset := d.BuffersOffsets().Get(uint32(i))
+		buf := d.BuffersOffsets().Get(uint32(i)).Buffer()
+		buffers = append(buffers, buf)
+		offsets = append(offsets, bufOffset.Offset())
 		if !GetState(s).Buffers().Contains(buf) {
 			return nil, nil, fmt.Errorf("Cannot find Buffer %v", buf)
 		}
 	}
 
-	bufferData, _ := unpackMap(ctx, s, d.Buffers())
-	offsetData, _ := unpackMap(ctx, s, d.Offsets())
+	bufferData := s.AllocDataOrPanic(ctx, buffers)
+	offsetData := s.AllocDataOrPanic(ctx, offsets)
 
+	
 	return func() {
 			bufferData.Free()
 			offsetData.Free()

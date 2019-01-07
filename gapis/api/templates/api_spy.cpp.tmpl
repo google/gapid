@@ -316,8 +316,8 @@
   {{$args      := Strings "CallObserver* observer" "const std::function<void()>& call" (Macro "C++.CallParameters" $) | JoinWith ", "}}
 
   {{Template "C++.SubReturnType" $}} {{$spyname}}::{{$name}}({{$args}}) {
-    {{if (GetAnnotation ($) "spy_disabled")}}
-      // @spy_disabled
+    {{if (GetAnnotation ($) "strict_dependency")}}
+      // @strict_dependency
     {{else}}
       {{Global "CurrentCommand" $}}
       {{Template "C++.Block" $.Block}}
@@ -351,8 +351,8 @@
 */}}
 {{define "CallSub"}}
   {{AssertType $ "Call"}}
-  {{if (and ($.Target.Function.Subroutine) (GetAnnotation $.Target.Function "spy_disabled")) }}
-   // spy_disabled
+  {{if (and ($.Target.Function.Subroutine) (GetAnnotation $.Target.Function "strict_dependency")) }}
+   // strict_dependency
   {{else                   }}{{Template "C++.Statement.Default" $}}
   {{end}}
 {{end}}

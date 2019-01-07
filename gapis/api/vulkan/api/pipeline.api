@@ -869,7 +869,7 @@ cmd void vkCmdBindPipeline(
 
 @internal class vkCmdSetViewportArgs {
   u32                   FirstViewport
-  map!(u32, VkViewport) Viewports
+  dense_map!(u32, VkViewport) Viewports
 }
 
 sub void dovkCmdSetViewport(ref!vkCmdSetViewportArgs args) {
@@ -907,7 +907,7 @@ cmd void vkCmdSetViewport(
 
 @internal class vkCmdSetScissorArgs {
   u32                 FirstScissor
-  map!(u32, VkRect2D) Scissors
+  dense_map!(u32, VkRect2D) Scissors
 }
 
 sub void dovkCmdSetScissor(ref!vkCmdSetScissorArgs args) {
