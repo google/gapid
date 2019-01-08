@@ -19,25 +19,59 @@ import (
 	"fmt"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
+)
+
+const (
+	EMPTY = "Empty"
 )
 
 func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyGraph) (*graph, error) {
 
 	currentGraph := createGraph(0)
-	currentHierarchy := &api.Hierarchy{}
+	idToBuilder := map[api.ID]api.GraphVisualizationBuilder{}
 
 	err := dependencyGraph.ForeachNode(
 		func(nodeId dependencygraph2.NodeID, dependencyNode dependencygraph2.Node) error {
 			if cmdNode, ok := dependencyNode.(dependencygraph2.CmdNode); ok {
+				if len(cmdNode.Index) == 0 {
+					return nil
+				}
 				cmdNodeId := cmdNode.Index[0]
 				command := dependencyGraph.GetCommand(api.CmdID(cmdNodeId))
-				commandName := command.CmdName()
+				if !api.CmdID(cmdNodeId).IsReal() {
+					return nil
+				}
 
 				if graphVisualizationAPI, ok := command.API().(api.GraphVisualizationAPI); ok {
-					label := graphVisualizationAPI.GetCommandLabel(currentHierarchy, command)
-					label += fmt.Sprintf("%s%d", commandName, cmdNodeId)
-					label += graphVisualizationAPI.GetSubCommandLabel(cmdNode.Index)
+					if _, ok := idToBuilder[command.API().ID()]; !ok {
+						idToBuilder[command.API().ID()] = graphVisualizationAPI.GetGraphVisualizationBuilder()
+					}
+					builder := idToBuilder[command.API().ID()]
+
+					label, name := "", ""
+					if len(cmdNode.Index) == 1 {
+						label = builder.GetCommandLabel(command, cmdNodeId)
+						name = command.CmdName()
+					} else if len(cmdNode.Index) > 1 {
+						commandName := fmt.Sprintf("%s_%d", command.CmdName(), cmdNodeId)
+						dependencyNodeAccesses := dependencyGraph.GetNodeAccesses(nodeId)
+						subCommandName := EMPTY
+						if len(dependencyNodeAccesses.InitCmdNodes) > 0 {
+							subCmdDependencyNode := dependencyGraph.GetNode(dependencyNodeAccesses.InitCmdNodes[0])
+							if subCmdNode, ok := subCmdDependencyNode.(dependencygraph2.CmdNode); ok {
+								if len(subCmdNode.Index) == 0 {
+									return nil
+								}
+								subCmdId := subCmdNode.Index[0]
+								subCmd := dependencyGraph.GetCommand(api.CmdID(subCmdId))
+								subCommandName = subCmd.CmdName()
+							}
+						}
+						label = builder.GetSubCommandLabel(cmdNode.Index, commandName, subCommandName)
+						name = subCommandName
+					}
 
 					attributes := ""
 					for _, parameter := range command.CmdParams() {
@@ -45,7 +79,7 @@ func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyG
 					}
 
 					newNode := getNewNode(int(nodeId), label)
-					newNode.name = commandName
+					newNode.name = name
 					newNode.attributes = attributes
 					currentGraph.addNode(newNode)
 				}
@@ -66,7 +100,7 @@ func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyG
 	return currentGraph, err
 }
 
-func GetGraphVisualizationFromCapture(ctx context.Context, p *path.Capture) ([]byte, error) {
+func GetGraphVisualizationFromCapture(ctx context.Context, p *path.Capture, format service.GraphFormat) ([]byte, error) {
 	config := dependencygraph2.DependencyGraphConfig{
 		SaveNodeAccesses:       true,
 		IncludeInitialCommands: true,
@@ -78,6 +112,12 @@ func GetGraphVisualizationFromCapture(ctx context.Context, p *path.Capture) ([]b
 
 	currentGraph, err := createGraphFromDependencyGraph(dependencyGraph)
 	currentGraph.removeNodesWithZeroDegree()
-	output := currentGraph.getGraphInPbtxtFormat()
+	output := ""
+	if format == service.GraphFormat_PBTXT {
+		output = currentGraph.getGraphInPbtxtFormat()
+	} else if format == service.GraphFormat_DOT {
+		output = currentGraph.getGraphInDotFormat()
+	}
+
 	return []byte(output), err
 }

@@ -16,6 +16,7 @@ package graph_visualization
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 )
 
@@ -176,14 +177,26 @@ func (g *graph) removeNodePreservingEdges(idNode int) {
 	g.removeNodeById(idNode)
 }
 
+type nodeSorter []*node
+
+func (input nodeSorter) Len() int {
+	return len(input)
+}
+func (input nodeSorter) Swap(i, j int) {
+	input[i], input[j] = input[j], input[i]
+}
+func (input nodeSorter) Less(i, j int) bool {
+	return input[i].id < input[j].id
+}
+
 func (g *graph) traverseGraph(currentNode *node, visitTime, minVisitTime, idInStronglyConnectedComponents, visitedNodesId *[]int, currentId, currentTime *int) {
 	*visitedNodesId = append(*visitedNodesId, currentNode.id)
 	(*visitTime)[currentNode.id] = *currentTime
 	(*minVisitTime)[currentNode.id] = *currentTime
 	(*currentTime)++
 
-	for idNeighbour := range currentNode.outNeighbourIdToEdgeId {
-		neighbour := g.nodeIdToNode[idNeighbour]
+	for neighbourId := range currentNode.outNeighbourIdToEdgeId {
+		neighbour := g.nodeIdToNode[neighbourId]
 		if (*visitTime)[neighbour.id] == NO_VISITED {
 			g.traverseGraph(neighbour, visitTime, minVisitTime, idInStronglyConnectedComponents, visitedNodesId, currentId, currentTime)
 		}
@@ -232,8 +245,8 @@ func (g *graph) makeStronglyConnectedComponentsByCommandTypeId() {
 	}
 
 	for _, currentNode := range g.nodeIdToNode {
-		for idNeighbour := range currentNode.outNeighbourIdToEdgeId {
-			neighbour := g.nodeIdToNode[idNeighbour]
+		for neighbourId := range currentNode.outNeighbourIdToEdgeId {
+			neighbour := g.nodeIdToNode[neighbourId]
 			newGraph.addEdgeBetweenNodesById(currentNode.commandTypeId, neighbour.commandTypeId)
 		}
 	}
@@ -271,13 +284,25 @@ func (g *graph) getGraphInDotFormat() string {
 }
 
 func (g *graph) getGraphInPbtxtFormat() string {
-	output := ""
+	nodes := []*node{}
 	for _, currentNode := range g.nodeIdToNode {
+		nodes = append(nodes, currentNode)
+	}
+	sort.Sort(nodeSorter(nodes))
+
+	output := ""
+	for _, currentNode := range nodes {
 		lines := "node {\n"
 		lines += "name: \"" + currentNode.label + "\"\n"
 		lines += "op: \"" + currentNode.label + "\"\n"
-		for idNeighbour := range currentNode.inNeighbourIdToEdgeId {
-			neighbour := g.nodeIdToNode[idNeighbour]
+
+		neighbours := []*node{}
+		for neighbourId := range currentNode.inNeighbourIdToEdgeId {
+			neighbours = append(neighbours, g.nodeIdToNode[neighbourId])
+		}
+		sort.Sort(nodeSorter(neighbours))
+
+		for _, neighbour := range neighbours {
 			lines += "input: \"" + neighbour.label + "\"\n"
 		}
 		lines += "attr {\n"
