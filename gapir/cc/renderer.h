@@ -30,6 +30,7 @@ class Renderer {
    public:
     virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
                                 const char* msg) = 0;
+    virtual ~Listener() {}
   };
 
   inline Renderer();

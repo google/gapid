@@ -53,7 +53,7 @@ class Context : private Renderer::Listener {
                                          ResourceLoader* resource_loader,
                                          MemoryManager* memory_manager);
 
-  ~Context();
+  virtual ~Context();
 
   void prefetch(ResourceCache* cache) const;
 
