@@ -28,6 +28,7 @@ import (
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/vulkan/loader"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
@@ -101,8 +102,8 @@ func (t *DesktopTracer) SplitPath(p string) (string, string) {
 	}
 }
 
-func (t *DesktopTracer) APITraceOptions(ctx context.Context) []tracer.APITraceOptions {
-	options := make([]tracer.APITraceOptions, 0, 1)
+func (t *DesktopTracer) APITraceOptions(ctx context.Context) []*service.DeviceAPITraceConfiguration {
+	options := make([]*service.DeviceAPITraceConfiguration, 0, 1)
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
 		options = append(options, tracer.VulkanTraceOptions())
 	}

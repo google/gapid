@@ -25,6 +25,7 @@ go_library(
         "//core/os/process:go_default_library",
         "//core/vulkan/loader:go_default_library",
         "//gapii/client:go_default_library",
+        "//gapis/service:go_default_library",
         "//gapis/trace/tracer:go_default_library",
     ],
 )

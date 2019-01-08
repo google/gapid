@@ -69,15 +69,7 @@ func DeviceTraceConfiguration(ctx context.Context, p *path.DeviceTraceConfigurat
 		HasCache:             c.HasCache,
 		CanSpecifyEnv:        c.CanSpecifyEnv,
 		PreferredRootUri:     c.PreferredRootUri,
-		Apis:                 make([]*service.DeviceAPITraceConfiguration, len(c.Apis)),
-	}
-
-	for i, opt := range c.Apis {
-		config.Apis[i] = &service.DeviceAPITraceConfiguration{
-			Api:                        opt.APIName,
-			CanDisablePcs:              opt.CanDisablePCS,
-			MidExecutionCaptureSupport: opt.MidExecutionCaptureSupport,
-		}
+		Apis:                 c.Apis,
 	}
 	return config, nil
 }

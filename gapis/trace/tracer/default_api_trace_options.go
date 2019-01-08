@@ -19,19 +19,19 @@ import (
 )
 
 // VulkanTraceOptions returns the default trace options for Vulkan.
-func VulkanTraceOptions() APITraceOptions {
-	return APITraceOptions{
-		APIName:                    "Vulkan",
-		CanDisablePCS:              false,
+func VulkanTraceOptions() *service.DeviceAPITraceConfiguration {
+	return &service.DeviceAPITraceConfiguration{
+		Api:                        "Vulkan",
+		CanDisablePcs:              false,
 		MidExecutionCaptureSupport: service.FeatureStatus_Supported,
 	}
 }
 
 // GLESTraceOptions returns the default trace options for GLES.
-func GLESTraceOptions() APITraceOptions {
-	return APITraceOptions{
-		APIName:                    "OpenGLES",
-		CanDisablePCS:              true,
+func GLESTraceOptions() *service.DeviceAPITraceConfiguration {
+	return &service.DeviceAPITraceConfiguration{
+		Api:                        "OpenGLES",
+		CanDisablePcs:              true,
 		MidExecutionCaptureSupport: service.FeatureStatus_Experimental,
 	}
 }

@@ -24,14 +24,6 @@ import (
 	"github.com/google/gapid/gapis/service"
 )
 
-// APITraceOptions represents API-sepcific trace options for a given
-// device.
-type APITraceOptions struct {
-	APIName                    string                // APIName is the name of the API in question
-	CanDisablePCS              bool                  // Does it make sense for this API to disable PCS
-	MidExecutionCaptureSupport service.FeatureStatus // Does this API support MEC
-}
-
 // TraceTargetTreeNode represents a node in the traceable application
 // Tree
 type TraceTargetTreeNode struct {
@@ -100,7 +92,7 @@ type Tracer interface {
 	PreferredRootUri(ctx context.Context) (string, error)
 
 	// TraceOptions returns API-specific trace options for this device
-	APITraceOptions(ctx context.Context) []APITraceOptions
+	APITraceOptions(ctx context.Context) []*service.DeviceAPITraceConfiguration
 	// GetTraceTargetNode returns a TraceTargetTreeNode for the given URI
 	// on the device
 	GetTraceTargetNode(ctx context.Context, uri string, iconDensity float32) (*TraceTargetTreeNode, error)
