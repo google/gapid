@@ -71,7 +71,7 @@ EOF
 
 # Fix up permissions (root ownership is faked below).
 find gapid/ -type f -exec chmod 644 {} +
-chmod 755 gapid/opt/gapid/gapi[drst]
+chmod 755 gapid/opt/gapid/gapi[drst] gapid/opt/gapid/device-info
 find gapid/ -type d -exec chmod 755 {} +
 find gapid/ -type d -exec chmod g-s {} +
 
