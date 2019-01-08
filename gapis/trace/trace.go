@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
@@ -71,13 +72,13 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 }
 
 type TraceConfig struct {
-	ServerLocalPath      bool                     // Are the paths server-local for this tracer
-	CanSpecifyCwd        bool                     // Does it make sense to specify a CWD for this device
-	CanUploadApplication bool                     // Does this device support app upload
-	CanSpecifyEnv        bool                     // Does this device support environment variables
-	HasCache             bool                     // Does this device have a clearable cache
-	PreferredRootUri     string                   // What URI is the preferred root
-	Apis                 []tracer.APITraceOptions // API specific tracing options
+	ServerLocalPath      bool                                   // Are the paths server-local for this tracer
+	CanSpecifyCwd        bool                                   // Does it make sense to specify a CWD for this device
+	CanUploadApplication bool                                   // Does this device support app upload
+	CanSpecifyEnv        bool                                   // Does this device support environment variables
+	HasCache             bool                                   // Does this device have a clearable cache
+	PreferredRootUri     string                                 // What URI is the preferred root
+	Apis                 []*service.DeviceAPITraceConfiguration // API specific tracing options
 }
 
 func TraceConfiguration(ctx context.Context, device *path.Device) (*TraceConfig, error) {

@@ -29,6 +29,7 @@ go_library(
         "//gapidapk:go_default_library",
         "//gapidapk/pkginfo:go_default_library",
         "//gapii/client:go_default_library",
+        "//gapis/service:go_default_library",
         "//gapis/trace/tracer:go_default_library",
     ],
 )

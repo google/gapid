@@ -36,6 +36,7 @@ import (
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapidapk/pkginfo"
 	gapii "github.com/google/gapid/gapii/client"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
@@ -121,8 +122,8 @@ func (t *androidTracer) PreferredRootUri(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (t *androidTracer) APITraceOptions(ctx context.Context) []tracer.APITraceOptions {
-	options := make([]tracer.APITraceOptions, 0, 2)
+func (t *androidTracer) APITraceOptions(ctx context.Context) []*service.DeviceAPITraceConfiguration {
+	options := make([]*service.DeviceAPITraceConfiguration, 0, 2)
 	if t.b.Instance().GetConfiguration().GetDrivers().GetOpengl().GetVersion() != "" {
 		options = append(options, tracer.GLESTraceOptions())
 	}
