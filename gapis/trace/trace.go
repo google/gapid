@@ -28,7 +28,7 @@ import (
 )
 
 func Trace(ctx context.Context, device *path.Device, start task.Signal, options *tracer.TraceOptions, written *int64) error {
-	var process *gapii.Process
+	var process tracer.Process
 	cleanup := func() {}
 	var err error
 	mgr := GetManager(ctx)
