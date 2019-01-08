@@ -303,12 +303,12 @@ func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*p
 	return trimmed, nil
 }
 
-func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture) ([]byte, error) {
+func (s *server) GetGraphVisualization(ctx context.Context, p *path.Capture, format service.GraphFormat) ([]byte, error) {
 	ctx = status.Start(ctx, "RPC GetGraphVisualization")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetGraphVisualization")
 
-	graphVisualization, err := graph_visualization.GetGraphVisualizationFromCapture(ctx, p)
+	graphVisualization, err := graph_visualization.GetGraphVisualizationFromCapture(ctx, p, format)
 	if err != nil {
 		return []byte{}, err
 	}

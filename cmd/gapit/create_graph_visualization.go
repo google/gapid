@@ -19,6 +19,7 @@ import (
 	"flag"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/service"
 	"os"
 )
 
@@ -38,6 +39,19 @@ func (verb *createGraphVisualizationVerb) Run(ctx context.Context, flags flag.Fl
 		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
 		return nil
 	}
+	if verb.Format == "" {
+		app.Usage(ctx, "specify an output format with --format <format> (supported formats: pbtxt and dot)")
+		return nil
+	}
+	var format service.GraphFormat
+	if verb.Format == "pbtxt" {
+		format = service.GraphFormat_PBTXT
+	} else if verb.Format == "dot" {
+		format = service.GraphFormat_DOT
+	} else {
+		app.Usage(ctx, "invalid format (supported formats: pbtxt and dot)")
+		return nil
+	}
 
 	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, GapirFlags{}, flags.Arg(0), CaptureFileFlags{})
 	if err != nil {
@@ -47,14 +61,14 @@ func (verb *createGraphVisualizationVerb) Run(ctx context.Context, flags flag.Fl
 
 	log.I(ctx, "Creating graph visualization file from capture id: %s", capture.ID)
 
-	graphVisualization, err := client.GetGraphVisualization(ctx, capture)
+	graphVisualization, err := client.GetGraphVisualization(ctx, capture, format)
 	if err != nil {
 		return log.Errf(ctx, err, "GetGraphVisualization(%v)", capture)
 	}
 
 	filePath := verb.Out
 	if filePath == "" {
-		filePath = "graph_visualization.dot"
+		filePath = "graph_visualization." + verb.Format
 	}
 
 	file, err := os.Create(filePath)

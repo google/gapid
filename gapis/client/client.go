@@ -485,9 +485,10 @@ func (c *client) GetTimestamps(ctx context.Context, capture *path.Capture, devic
 	return res, nil
 }
 
-func (c *client) GetGraphVisualization(ctx context.Context, capture *path.Capture) ([]byte, error) {
+func (c *client) GetGraphVisualization(ctx context.Context, capture *path.Capture, format service.GraphFormat) ([]byte, error) {
 	res, err := c.client.GetGraphVisualization(ctx, &service.GraphVisualizationRequest{
 		Capture: capture,
+		Format:  format,
 	})
 	if err != nil {
 		return []byte{}, err

@@ -48,8 +48,29 @@ func (h *Hierarchy) IncreaseIDByOne(level int) {
 	h.LevelsID[level-1]++
 }
 
-type GraphVisualizationAPI interface {
-	GetCommandLabel(currentHierarchy *Hierarchy, command Cmd) string
+type HierarchyNames struct {
+	BeginNameToLevel map[string]int
+	EndNameToLevel   map[string]int
+	NameOfLevels     []string
+}
 
-	GetSubCommandLabel(index SubCmdIdx) string
+func (hierarchyNames *HierarchyNames) GetName(level int) string {
+	return hierarchyNames.NameOfLevels[level-1]
+}
+
+func (hierarchyNames *HierarchyNames) PushBack(beginName, endName, name string) {
+	size := len(hierarchyNames.NameOfLevels) + 1
+	hierarchyNames.BeginNameToLevel[beginName] = size
+	hierarchyNames.EndNameToLevel[endName] = size
+	hierarchyNames.NameOfLevels = append(hierarchyNames.NameOfLevels, name)
+}
+
+type GraphVisualizationAPI interface {
+	GetGraphVisualizationBuilder() GraphVisualizationBuilder
+}
+
+type GraphVisualizationBuilder interface {
+	GetCommandLabel(command Cmd, commandNodeId uint64) string
+
+	GetSubCommandLabel(index SubCmdIdx, commandName string, subCommandName string) string
 }

@@ -316,8 +316,14 @@ message DCECaptureResponse {
   }
 }
 
+enum GraphFormat {
+  PBTXT = 0;
+  DOT = 1;
+}
+
 message GraphVisualizationRequest {
   path.Capture capture = 1;
+  GraphFormat format = 2;
 }
 message GraphVisualizationResponse {
   oneof res {
