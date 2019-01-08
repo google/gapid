@@ -202,7 +202,7 @@ func (t *DesktopTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 	return tttn, nil
 }
 
-func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (*gapii.Process, func(), error) {
+func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (tracer.Process, func(), error) {
 	env, err := t.b.GetEnv(ctx)
 	if err != nil {
 		return nil, nil, err

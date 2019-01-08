@@ -410,7 +410,7 @@ func (t *androidTracer) FindTraceTargets(ctx context.Context, str string) ([]*tr
 	return nodes, nil
 }
 
-func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (*gapii.Process, func(), error) {
+func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (tracer.Process, func(), error) {
 	var err error
 	cleanup := func() {}
 	var pkg *android.InstalledPackage

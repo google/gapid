@@ -23,6 +23,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/trace/tracer",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/event/task:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//gapii/client:go_default_library",
         "//gapis/service:go_default_library",
