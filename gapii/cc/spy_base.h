@@ -53,6 +53,7 @@ class PackEncoder;
 class SpyBase {
  public:
   SpyBase();
+  virtual ~SpyBase() {}
 
   void init(CallObserver* observer);
 
