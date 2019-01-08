@@ -114,27 +114,7 @@ public class MemoryView extends Composite
     super(parent, SWT.NONE);
     this.models = models;
 
-    memoryPanel = new MemoryPanel(this, new Loadable() {
-      @Override
-      public void startLoading() {
-        ifNotDisposed(loading, loading::startLoading);
-      }
-
-      @Override
-      public void stopLoading() {
-        scheduleIfNotDisposed(loading, () -> {
-          if (loading.isLoading()) {
-            loading.stopLoading();
-            memoryScroll.redraw();
-          }
-        });
-      }
-
-      @Override
-      public void showMessage(Message message) {
-        ifNotDisposed(loading, () -> loading.showMessage(message));
-      }
-    }, widgets);
+    memoryPanel = new MemoryPanel(this, widgets);
     setLayout(new GridLayout(1, true));
 
     selections = new Selections(this, this::setDataType, this::setObservation);
@@ -256,7 +236,27 @@ public class MemoryView extends Composite
     selections.setDataType(uiState.dataType);
     selections.setObservations(memory.getObservations());
 
-    memoryPanel.setModel(uiState.getMemoryModel(memory));
+    memoryPanel.setModel(uiState.getMemoryModel(memory, new Loadable() {
+      @Override
+      public void startLoading() {
+        ifNotDisposed(loading, loading::startLoading);
+      }
+
+      @Override
+      public void stopLoading() {
+        scheduleIfNotDisposed(loading, () -> {
+          if (loading.isLoading()) {
+            loading.stopLoading();
+            memoryScroll.redraw();
+          }
+        });
+      }
+
+      @Override
+      public void showMessage(Message message) {
+        ifNotDisposed(loading, () -> loading.showMessage(message));
+      }
+    }));
     memoryScroll.updateMinSize();
     goToAddress(address);
     selections.updateSelectedObservation(address);
@@ -396,8 +396,8 @@ public class MemoryView extends Composite
       return offset >= 0;
     }
 
-    public MemoryModel getMemoryModel(Memory.Data data) {
-      return dataType.getMemoryModel(data, offset);
+    public MemoryModel getMemoryModel(Memory.Data data, Loadable loadable) {
+      return dataType.getMemoryModel(data, loadable, offset);
     }
   }
 
@@ -407,42 +407,42 @@ public class MemoryView extends Composite
   private static enum DataType {
     Byte() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new ByteMemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new ByteMemoryModel(memory, loadable, offset);
       }
     }, Int16() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new Int16MemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new Int16MemoryModel(memory, loadable, offset);
       }
     }, Int32() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new Int32MemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new Int32MemoryModel(memory, loadable, offset);
       }
     }, Int64() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new Int64MemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new Int64MemoryModel(memory, loadable, offset);
       }
     }, Float16() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new Float16MemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new Float16MemoryModel(memory, loadable, offset);
       }
     }, Float32() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new Float32MemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new Float32MemoryModel(memory, loadable, offset);
       }
     }, Float64() {
       @Override
-      public MemoryModel getMemoryModel(Memory.Data memory, long offset) {
-        return new Float64MemoryModel(memory, offset);
+      public MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset) {
+        return new Float64MemoryModel(memory, loadable, offset);
       }
     };
 
-    public abstract MemoryModel getMemoryModel(Memory.Data memory, long offset);
+    public abstract MemoryModel getMemoryModel(Memory.Data memory, Loadable loadable, long offset);
 
     public static Combo createCombo(Composite parent) {
       Combo combo = createDropDown(parent);
@@ -464,15 +464,13 @@ public class MemoryView extends Composite
     public final BigInteger lineHeightBig;
     private final int[] charOffset = new int[256];
 
-    private final Loadable loadable;
     private final Theme theme;
     protected final CopyPaste copyPaste;
     private final Font font;
     protected MemoryModel model;
     protected Selection selection;
 
-    public MemoryPanel(Composite parent, Loadable loadable, Widgets widgets) {
-      this.loadable = loadable;
+    public MemoryPanel(Composite parent, Widgets widgets) {
       this.theme = widgets.theme;
       this.copyPaste = widgets.copypaste;
       font = theme.monoSpaceFont();
@@ -632,12 +630,12 @@ public class MemoryView extends Composite
 
       Color background = gc.getBackground();
       gc.setBackground(theme.memoryReadHighlight());
-      for (Selection read : model.getReads(startRow, endRow, loadable)) {
+      for (Selection read : model.getReads(startRow, endRow)) {
         highlight(gc, yOffset, read);
       }
 
       gc.setBackground(theme.memoryWriteHighlight());
-      for (Selection write : model.getWrites(startRow, endRow, loadable)) {
+      for (Selection write : model.getWrites(startRow, endRow)) {
         highlight(gc, yOffset, write);
       }
 
@@ -648,7 +646,7 @@ public class MemoryView extends Composite
       gc.setBackground(background);
 
       int y = getY(startRow, yOffset);
-      Iterator<Segment> it = model.getLines(startRow, endRow, loadable);
+      Iterator<Segment> it = model.getLines(startRow, endRow);
       for (; it.hasNext(); y += lineHeight) {
         Segment segment = it.next();
         gc.drawString(new String(segment.array, segment.offset, segment.count), 0, y, true);
@@ -697,7 +695,7 @@ public class MemoryView extends Composite
     /**
      * @return an {@link Iterator} over the given range of lines.
      */
-    public Iterator<Segment> getLines(long start, long end, Loadable loadable);
+    public Iterator<Segment> getLines(long start, long end);
 
     /**
      * @return the range of columns containing the given column that can be selected as a group.
@@ -707,17 +705,62 @@ public class MemoryView extends Composite
     /**
      * @return the read selections within the given range of rows.
      */
-    public List<Selection> getReads(long startRow, long endRow, Loadable loadable);
+    public List<Selection> getReads(long startRow, long endRow);
 
     /**
      * @return the write selections within the given range of rows.
      */
-    public List<Selection> getWrites(long startRow, long endRow, Loadable loadable);
+    public List<Selection> getWrites(long startRow, long endRow);
 
     /**
      * @return the given selected memory area as copy-paste content.
      */
     public CopyData[] getCopyData(Selection selection);
+  }
+
+  private static class SegmentLoader {
+    private final Memory.Data data;
+    private final Loadable loadable;
+    private long offset;
+    private int length;
+    private ListenableFuture<Memory.Segment> segment;
+
+    public SegmentLoader(Memory.Data data, Loadable loadable) {
+      this.data = data;
+      this.loadable = loadable;
+    }
+
+    public Memory.Segment load(long off, int len) {
+      if (segment == null || offset != off || length != len) {
+        segment = data.load(off, len);
+        offset = off;
+        length = len;
+
+        if (!segment.isDone()) {
+          loadable.startLoading();
+          segment.addListener(loadable::stopLoading, MoreExecutors.directExecutor());
+        }
+      }
+
+      if (segment.isDone()) {
+        try {
+          return Rpc.get(segment, 0, TimeUnit.MILLISECONDS);
+        } catch (RpcException e) {
+          if (e instanceof DataUnavailableException) {
+            loadable.showMessage(info(e));
+          } else {
+            loadable.showMessage(error(e));
+          }
+        } catch (TimeoutException e) {
+          throw new AssertionError(); // Should not happen.
+        } catch (ExecutionException e) {
+          throttleLogRpcError(LOG, "Unexpected error fetching memory", e);
+          loadable.showMessage(error("Unexpected error: " + e.getCause()));
+        }
+      }
+
+      return null;
+    }
   }
 
   /**
@@ -728,11 +771,13 @@ public class MemoryView extends Composite
     protected static final int BYTES_PER_ROW = 16;
 
     protected final Memory.Data data;
+    private final SegmentLoader loader;
     private final long alignOffset;
     private final long rows;
 
-    public FixedMemoryModel(Memory.Data data, long alignOffset) {
+    public FixedMemoryModel(Memory.Data data, Loadable loadable, long alignOffset) {
       this.data = data;
+      this.loader = new SegmentLoader(data, loadable);
       this.alignOffset = alignOffset;
       this.rows = UnsignedLong.fromLongBits(data.getEndAddress() - alignOffset).bigIntegerValue()
           .add(BigInteger.valueOf(BYTES_PER_ROW))
@@ -752,40 +797,17 @@ public class MemoryView extends Composite
       return rows;
     }
 
-    private Memory.Segment getMemorySegment(long startRow, long endRow, Loadable loadable) {
+    private Memory.Segment getMemorySegment(long startRow, long endRow) {
       if (startRow < 0 || endRow < startRow || endRow > getLineCount()) {
         throw new IndexOutOfBoundsException(
             "[" + startRow + ", " + endRow + ") outside of [0, " + getLineCount() + ")");
       }
-      ListenableFuture<Memory.Segment> future =
-          data.load(getAddress(startRow), (int)(endRow - startRow) * BYTES_PER_ROW);
-      Memory.Segment result = null;
-      if (future.isDone()) {
-        try {
-          result = Rpc.get(future, 0, TimeUnit.MILLISECONDS);
-          loadable.stopLoading();
-        } catch (RpcException e) {
-          if (e instanceof DataUnavailableException) {
-            loadable.showMessage(info(e));
-          } else {
-            loadable.showMessage(error(e));
-          }
-        } catch (TimeoutException e) {
-          throw new AssertionError(); // Should not happen.
-        } catch (ExecutionException e) {
-          throttleLogRpcError(LOG, "Unexpected error fetching memory", e);
-          loadable.showMessage(error("Unexpected error: " + e.getCause()));
-        }
-      } else {
-        loadable.startLoading();
-        future.addListener(loadable::stopLoading, MoreExecutors.directExecutor());
-      }
-      return result;
+      return loader.load(getAddress(startRow), (int)(endRow - startRow) * BYTES_PER_ROW);
     }
 
     @Override
-    public Iterator<Segment> getLines(long startRow, long endRow, Loadable loadable) {
-      Memory.Segment segment = getMemorySegment(startRow, endRow, loadable);
+    public Iterator<Segment> getLines(long startRow, long endRow) {
+      Memory.Segment segment = getMemorySegment(startRow, endRow);
       if (segment != null) {
         return getLines(startRow, endRow, segment);
       } else {
@@ -827,15 +849,15 @@ public class MemoryView extends Composite
     protected abstract IntRange[] getDataRanges();
 
     @Override
-    public List<Selection> getReads(long startRow, long endRow, Loadable loadable) {
-      Memory.Segment memory = getMemorySegment(startRow, endRow, loadable);
+    public List<Selection> getReads(long startRow, long endRow) {
+      Memory.Segment memory = getMemorySegment(startRow, endRow);
       return memory == null || !memory.hasReads() ? Collections.emptyList() :
           getSelections(memory.getReads(), startRow);
     }
 
     @Override
-    public List<Selection> getWrites(long startRow, long endRow, Loadable loadable) {
-      Memory.Segment memory = getMemorySegment(startRow, endRow, loadable);
+    public List<Selection> getWrites(long startRow, long endRow) {
+      Memory.Segment memory = getMemorySegment(startRow, endRow);
       return memory == null || !memory.hasWrites() ? Collections.emptyList() :
           getSelections(memory.getWrites(), startRow);
     }
@@ -882,8 +904,8 @@ public class MemoryView extends Composite
     protected final IntRange memoryRange;
 
     public CharBufferMemoryModel(
-        Memory.Data data, long offset, int charsPerRow, IntRange memoryRange) {
-      super(data, offset);
+        Memory.Data data, Loadable loadable, long offset, int charsPerRow, IntRange memoryRange) {
+      super(data, loadable, offset);
       this.charsPerRow = charsPerRow;
       this.memoryRange = memoryRange;
     }
@@ -987,8 +1009,8 @@ public class MemoryView extends Composite
     private static final IntRange ASCII_RANGE =
         new IntRange(ADDRESS_CHARS + BYTES_CHARS + ASCII_SEPARATOR, CHARS_PER_ROW);
 
-    public ByteMemoryModel(Memory.Data data, long offset) {
-      super(data, offset, CHARS_PER_ROW, BYTES_RANGE);
+    public ByteMemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, CHARS_PER_ROW, BYTES_RANGE);
     }
 
     @Override
@@ -1083,8 +1105,8 @@ public class MemoryView extends Composite
       return new IntRange(ADDRESS_CHARS + ITEM_SEPARATOR, ADDRESS_CHARS + itemChars(size));
     }
 
-    protected IntegersMemoryModel(Memory.Data data, long offset, int size) {
-      super(data, offset, charsPerRow(size), itemsRange(size));
+    protected IntegersMemoryModel(Memory.Data data, Loadable loadable, long offset, int size) {
+      super(data, loadable, offset, charsPerRow(size), itemsRange(size));
       this.size = size;
     }
 
@@ -1114,8 +1136,8 @@ public class MemoryView extends Composite
    * {@link IntegersMemoryModel} for 2 byte integers.
    */
   private static class Int16MemoryModel extends IntegersMemoryModel {
-    public Int16MemoryModel(Memory.Data data, long offset) {
-      super(data, offset, 2);
+    public Int16MemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, 2);
     }
   }
 
@@ -1123,8 +1145,8 @@ public class MemoryView extends Composite
    * {@link IntegersMemoryModel} for 4 byte integers.
    */
   private static class Int32MemoryModel extends IntegersMemoryModel {
-    public Int32MemoryModel(Memory.Data data, long offset) {
-      super(data, offset, 4);
+    public Int32MemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, 4);
     }
   }
 
@@ -1132,8 +1154,8 @@ public class MemoryView extends Composite
    * {@link IntegersMemoryModel} for 8 byte integers.
    */
   private static class Int64MemoryModel extends IntegersMemoryModel {
-    public Int64MemoryModel(Memory.Data data, long offset) {
-      super(data, offset, 8);
+    public Int64MemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, 8);
     }
   }
 
@@ -1152,8 +1174,8 @@ public class MemoryView extends Composite
     private static final IntRange FLOATS_RANGE =
         new IntRange(ADDRESS_CHARS + FLOAT_SEPARATOR, ADDRESS_CHARS + FLOATS_CHARS);
 
-    public Float16MemoryModel(Memory.Data data, long offset) {
-      super(data, offset, CHARS_PER_ROW, FLOATS_RANGE);
+    public Float16MemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, CHARS_PER_ROW, FLOATS_RANGE);
     }
 
     @Override
@@ -1188,8 +1210,8 @@ public class MemoryView extends Composite
     private static final IntRange FLOATS_RANGE =
         new IntRange(ADDRESS_CHARS + FLOAT_SEPARATOR, ADDRESS_CHARS + FLOATS_CHARS);
 
-    public Float32MemoryModel(Memory.Data data, long offset) {
-      super(data, offset, CHARS_PER_ROW, FLOATS_RANGE);
+    public Float32MemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, CHARS_PER_ROW, FLOATS_RANGE);
     }
 
     @Override
@@ -1225,8 +1247,8 @@ public class MemoryView extends Composite
     private static final IntRange DOUBLES_RANGE =
         new IntRange(ADDRESS_CHARS + DOUBLE_SEPARATOR, ADDRESS_CHARS + DOUBLES_CHARS);
 
-    public Float64MemoryModel(Memory.Data data, long offset) {
-      super(data, offset, CHARS_PER_ROW, DOUBLES_RANGE);
+    public Float64MemoryModel(Memory.Data data, Loadable loadable, long offset) {
+      super(data, loadable, offset, CHARS_PER_ROW, DOUBLES_RANGE);
     }
 
     @Override
