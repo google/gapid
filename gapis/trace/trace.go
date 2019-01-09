@@ -28,7 +28,8 @@ import (
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
-func Trace(ctx context.Context, device *path.Device, start task.Signal, options *tracer.TraceOptions, written *int64) error {
+func Trace(ctx context.Context, device *path.Device, start task.Signal, options *service.TraceOptions, written *int64) error {
+	gapiiOpts := tracer.GapiiOptions(options)
 	var process tracer.Process
 	cleanup := func() {}
 	mgr := GetManager(ctx)
@@ -44,11 +45,11 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 		return err
 	}
 
-	if options.Port != 0 {
+	if port := options.GetPort(); port != 0 {
 		if !config.ServerLocalPath {
 			return log.Errf(ctx, nil, "Cannot attach to a remote device by port")
 		}
-		process = &gapii.Process{Port: int(options.Port), Device: tracer.GetDevice(), Options: options.GapiiOptions()}
+		process = &gapii.Process{Port: int(port), Device: tracer.GetDevice(), Options: gapiiOpts}
 	} else {
 		process, cleanup, err = tracer.SetupTrace(ctx, options)
 	}
@@ -58,8 +59,8 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 	}
 	defer cleanup()
 
-	os.MkdirAll(filepath.Dir(options.WriteFile), 0755)
-	file, err := os.Create(options.WriteFile)
+	os.MkdirAll(filepath.Dir(options.ServerLocalSavePath), 0755)
+	file, err := os.Create(options.ServerLocalSavePath)
 	if err != nil {
 		return err
 	}

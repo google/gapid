@@ -55,7 +55,6 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
 	"github.com/google/gapid/gapis/trace"
-	"github.com/google/gapid/gapis/trace/tracer"
 
 	"github.com/google/go-github/github"
 
@@ -547,32 +546,6 @@ func (s *server) FindTraceTargets(ctx context.Context, req *service.FindTraceTar
 	return out, nil
 }
 
-func optionsToTraceOptions(opts *service.TraceOptions) tracer.TraceOptions {
-	return tracer.TraceOptions{
-		URI:                   opts.GetUri(),
-		UploadApplication:     opts.GetUploadApplication(),
-		Port:                  opts.GetPort(),
-		ClearCache:            opts.ClearCache,
-		APIs:                  opts.Apis,
-		WriteFile:             opts.ServerLocalSavePath,
-		AdditionalFlags:       opts.AdditionalCommandLineArgs,
-		CWD:                   opts.Cwd,
-		Environment:           opts.Environment,
-		Duration:              opts.Duration,
-		ObserveFrameFrequency: opts.ObserveFrameFrequency,
-		ObserveDrawFrequency:  opts.ObserveDrawFrequency,
-		StartFrame:            opts.StartFrame,
-		FramesToCapture:       opts.FramesToCapture,
-		DisablePCS:            opts.DisablePcs,
-		RecordErrorState:      opts.RecordErrorState,
-		DeferStart:            opts.DeferStart,
-		NoBuffer:              opts.NoBuffer,
-		HideUnknownExtensions: opts.HideUnknownExtensions,
-		StoreTimestamps:       opts.RecordTraceTimes,
-		PipeName:              opts.PipeName,
-	}
-}
-
 // traceHandler implements the TraceHandler interface
 // It wraps all of the state for a trace operation
 type traceHandler struct {
@@ -594,9 +567,8 @@ func (r *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusRe
 		return nil, log.Errf(r.ctx, nil, "Error initialize a running trace")
 	}
 	r.initialized = true
-	tracerOptions := optionsToTraceOptions(opts)
 	go func() {
-		r.err = trace.Trace(r.ctx, opts.Device, r.startSignal, &tracerOptions, &r.bytesWritten)
+		r.err = trace.Trace(r.ctx, opts.Device, r.startSignal, opts, &r.bytesWritten)
 		r.done = true
 		r.doneSignalFunc(r.ctx)
 	}()

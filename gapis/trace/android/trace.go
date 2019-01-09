@@ -247,7 +247,7 @@ func findBestAction(l []*pkginfo.Action) *pkginfo.Action {
 // If it is a zip file that contains an apk and an obb file
 // then we install them seperately.
 // Returns a function used to clean up the package and obb
-func (t *androidTracer) InstallPackage(ctx context.Context, o *tracer.TraceOptions) (*android.InstalledPackage, func(), error) {
+func (t *androidTracer) InstallPackage(ctx context.Context, o *service.TraceOptions) (*android.InstalledPackage, func(), error) {
 	tempDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return nil, nil, err
@@ -258,7 +258,7 @@ func (t *androidTracer) InstallPackage(ctx context.Context, o *tracer.TraceOptio
 	apkName := zipName
 	obbName := ""
 
-	if err = ioutil.WriteFile(zipName, o.UploadApplication, os.FileMode(0600)); err != nil {
+	if err = ioutil.WriteFile(zipName, o.GetUploadApplication(), os.FileMode(0600)); err != nil {
 		return nil, nil, err
 	}
 
@@ -392,13 +392,13 @@ func (t *androidTracer) FindTraceTargets(ctx context.Context, str string) ([]*tr
 	return nodes, nil
 }
 
-func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (tracer.Process, func(), error) {
+func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions) (tracer.Process, func(), error) {
 	var err error
 	cleanup := func() {}
 	var pkg *android.InstalledPackage
 	var a *android.ActivityAction
 	ret := &gapii.Process{}
-	if len(o.UploadApplication) > 0 {
+	if len(o.GetUploadApplication()) > 0 {
 		pkg, cleanup, err = t.InstallPackage(ctx, o)
 		if err != nil {
 			cleanup()
@@ -408,10 +408,10 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 
 	// Handle the special port:<pipe>:<abi> syntax.
 	re := regexp.MustCompile("^port:([^:\\s]+):([^:\\s]+)$")
-	match := re.FindStringSubmatch(o.URI)
+	match := re.FindStringSubmatch(o.GetUri())
 
 	if len(match) == 3 {
-		process, err := gapii.Connect(ctx, t.b, device.ABIByName(match[2]), match[1], o.GapiiOptions())
+		process, err := gapii.Connect(ctx, t.b, device.ABIByName(match[2]), match[1], tracer.GapiiOptions(o))
 		if err != nil {
 			cleanup()
 			return ret, nil, err
@@ -421,7 +421,7 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 
 	// Find the package by URI
 	re = regexp.MustCompile("([^:]*):([^/]*)/\\.?(.*)")
-	match = re.FindStringSubmatch(o.URI)
+	match = re.FindStringSubmatch(o.GetUri())
 
 	if len(match) == 4 {
 		if err != nil {
@@ -448,7 +448,7 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 				strings.Join(lines, "\n  "))
 		}
 	} else {
-		return ret, nil, fmt.Errorf("Could not find package matching %s", o.URI)
+		return ret, nil, fmt.Errorf("Could not find package matching %s", o.GetUri())
 	}
 
 	if !pkg.Debuggable {
@@ -479,8 +479,8 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 			t.b.TurnScreenOff(ctx)
 		}
 	}
-	log.I(ctx, "Starting with options %+v", o.GapiiOptions())
-	process, err := gapii.Start(ctx, pkg, a, o.GapiiOptions())
+	log.I(ctx, "Starting with options %+v", tracer.GapiiOptions(o))
+	process, err := gapii.Start(ctx, pkg, a, tracer.GapiiOptions(o))
 	if err != nil {
 		cleanup()
 		return ret, nil, err

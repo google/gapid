@@ -37,34 +37,6 @@ type TraceTargetTreeNode struct {
 	ExecutableName  string   // The friendly executable name for the trace node if it exists
 }
 
-// TraceOptions are the device specific parameters to start
-// a trace on the device.
-type TraceOptions struct {
-	URI               string   // What application should be traced
-	UploadApplication []byte   // This application should be uploaded and traced
-	Port              uint32   // Connect to a local port instead of launching anything
-	ClearCache        bool     // Should the cache be cleared on the device
-	PortFile          string   // What port file should be written to
-	APIs              []string // What apis should be traced
-	Environment       []string // Environment variables to set for the trace
-	WriteFile         string   // Where should we write the output
-	AdditionalFlags   string   // Additional flags to pass to the application
-	CWD               string   // What directory the application use as a CWD
-	PipeName          string   // The name of the pipe to connect/listen to.
-
-	Duration              float32 // How many seconds should we trace
-	ObserveFrameFrequency uint32  // How frequently should we do frame observations
-	ObserveDrawFrequency  uint32  // How frequently should we do draw observations
-	StartFrame            uint32  // What frame should we start capturing
-	FramesToCapture       uint32  // How many frames should we capture
-	DisablePCS            bool    // Should we disable PCS
-	RecordErrorState      bool    // Should we record the driver error state after each command
-	DeferStart            bool    // Should we record extra error state
-	NoBuffer              bool    // Disable buffering.
-	HideUnknownExtensions bool    // Hide unknown extensions from the application.
-	StoreTimestamps       bool    // Record trace timings into the capture.
-}
-
 // Process is a handle to an initialized trace that can be started.
 type Process interface {
 	// Capture connects to this trace and waits for a capture to be delivered.
@@ -89,16 +61,16 @@ type Tracer interface {
 	// SetupTrace starts the application on the device, and causes it to wait
 	// for the trace to be started. It returns the process that was created, as
 	// well as a function that can be used to clean up the device
-	SetupTrace(ctx context.Context, o *TraceOptions) (Process, func(), error)
+	SetupTrace(ctx context.Context, o *service.TraceOptions) (Process, func(), error)
 
 	// GetDevice returns the device associated with this tracer
 	GetDevice() bind.Device
 }
 
 // GapiiOptions converts the given TraceOptions to gapii.Options.
-func (o TraceOptions) GapiiOptions() gapii.Options {
+func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	apis := uint32(0)
-	for _, api := range o.APIs {
+	for _, api := range o.Apis {
 		if api == "OpenGLES" ||
 			api == "GVR" {
 			apis |= gapii.GlesAPI
@@ -110,7 +82,7 @@ func (o TraceOptions) GapiiOptions() gapii.Options {
 	}
 
 	flags := gapii.Flags(0)
-	if o.DisablePCS {
+	if o.DisablePcs {
 		flags |= gapii.DisablePrecompiledShaders
 	}
 	if o.RecordErrorState {
@@ -125,7 +97,7 @@ func (o TraceOptions) GapiiOptions() gapii.Options {
 	if o.HideUnknownExtensions {
 		flags |= gapii.HideUnknownExtensions
 	}
-	if o.StoreTimestamps {
+	if o.RecordTraceTimes {
 		flags |= gapii.StoreTimestamps
 	}
 
@@ -136,7 +108,7 @@ func (o TraceOptions) GapiiOptions() gapii.Options {
 		o.FramesToCapture,
 		apis,
 		flags,
-		o.AdditionalFlags,
+		o.AdditionalCommandLineArgs,
 		o.PipeName,
 	}
 }
