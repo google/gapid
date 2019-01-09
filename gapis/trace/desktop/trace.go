@@ -193,7 +193,7 @@ func (t *DesktopTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 	return tttn, nil
 }
 
-func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) (tracer.Process, func(), error) {
+func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions) (tracer.Process, func(), error) {
 	env, err := t.b.GetEnv(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -205,17 +205,17 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 		return nil, nil, err
 	}
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
-	args := r.FindAllString(o.AdditionalFlags, -1)
+	args := r.FindAllString(o.AdditionalCommandLineArgs, -1)
 
 	for _, x := range o.Environment {
 		env.Add(x)
 	}
 
-	boundPort, err := process.StartOnDevice(ctx, o.URI, process.StartOptions{
+	boundPort, err := process.StartOnDevice(ctx, o.GetUri(), process.StartOptions{
 		Env:        env,
 		Args:       args,
 		PortFile:   portFile,
-		WorkingDir: o.CWD,
+		WorkingDir: o.Cwd,
 		Device:     t.b,
 	})
 
@@ -224,6 +224,6 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 		panic(err)
 		return nil, nil, err
 	}
-	process := &gapii.Process{Port: boundPort, Device: t.b, Options: o.GapiiOptions()}
+	process := &gapii.Process{Port: boundPort, Device: t.b, Options: tracer.GapiiOptions(o)}
 	return process, func() { cleanup(ctx) }, nil
 }
