@@ -77,22 +77,8 @@ type Process interface {
 // Tracer is an option interface that a bind.Device can implement.
 // If it exists, it is used to set up and connect to a tracing application.
 type Tracer interface {
-	// IsServerLocal returns true if all paths on this device can be server-local
-	IsServerLocal() bool
-	// CanSpecifyCWD returns true if this device has the concept of a CWD
-	CanSpecifyCWD() bool
-	// CanUploadApplication returns true if an application can be uploaded to this device
-	CanUploadApplication() bool
-	// HasCache returns true if the device has an appliction cache that can be cleared
-	HasCache() bool
-	// CanSpecifyEnv() returns true if you can specify environment variables for the tracer
-	CanSpecifyEnv() bool
-
-	// PreferredRootUri returns the preferred path to search URIs
-	PreferredRootUri(ctx context.Context) (string, error)
-
-	// TraceOptions returns API-specific trace options for this device
-	APITraceOptions(ctx context.Context) []*service.DeviceAPITraceConfiguration
+	// TraceConfiguration returns the device's supported trace configuration.
+	TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error)
 	// GetTraceTargetNode returns a TraceTargetTreeNode for the given URI
 	// on the device
 	GetTraceTargetNode(ctx context.Context, uri string, iconDensity float32) (*TraceTargetTreeNode, error)

@@ -31,7 +31,6 @@ import (
 func Trace(ctx context.Context, device *path.Device, start task.Signal, options *tracer.TraceOptions, written *int64) error {
 	var process tracer.Process
 	cleanup := func() {}
-	var err error
 	mgr := GetManager(ctx)
 	if device == nil {
 		return log.Errf(ctx, nil, "Invalid device path")
@@ -40,9 +39,13 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 	if !ok {
 		return log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
 	}
+	config, err := tracer.TraceConfiguration(ctx)
+	if err != nil {
+		return err
+	}
 
 	if options.Port != 0 {
-		if !tracer.IsServerLocal() {
+		if !config.ServerLocalPath {
 			return log.Errf(ctx, nil, "Cannot attach to a remote device by port")
 		}
 		process = &gapii.Process{Port: int(options.Port), Device: tracer.GetDevice(), Options: options.GapiiOptions()}
@@ -71,38 +74,12 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 	return err
 }
 
-type TraceConfig struct {
-	ServerLocalPath      bool                                   // Are the paths server-local for this tracer
-	CanSpecifyCwd        bool                                   // Does it make sense to specify a CWD for this device
-	CanUploadApplication bool                                   // Does this device support app upload
-	CanSpecifyEnv        bool                                   // Does this device support environment variables
-	HasCache             bool                                   // Does this device have a clearable cache
-	PreferredRootUri     string                                 // What URI is the preferred root
-	Apis                 []*service.DeviceAPITraceConfiguration // API specific tracing options
-}
-
-func TraceConfiguration(ctx context.Context, device *path.Device) (*TraceConfig, error) {
+func TraceConfiguration(ctx context.Context, device *path.Device) (*service.DeviceTraceConfiguration, error) {
 	mgr := GetManager(ctx)
 	tracer, ok := mgr.tracers[device.ID.ID()]
 	if !ok {
 		return nil, log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
 	}
 
-	opts := tracer.APITraceOptions(ctx)
-	rooturi, err := tracer.PreferredRootUri(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	config := &TraceConfig{
-		ServerLocalPath:      tracer.IsServerLocal(),
-		CanSpecifyCwd:        tracer.CanSpecifyCWD(),
-		CanUploadApplication: tracer.CanUploadApplication(),
-		HasCache:             tracer.HasCache(),
-		CanSpecifyEnv:        tracer.CanSpecifyEnv(),
-		PreferredRootUri:     rooturi,
-		Apis:                 opts,
-	}
-
-	return config, nil
+	return tracer.TraceConfiguration(ctx)
 }
