@@ -44,29 +44,27 @@ func (t *DesktopTracer) GetDevice() bind.Device {
 	return t.b
 }
 
-// IsServerLocal returns true if all paths on this device can be server-local
-func (t *DesktopTracer) IsServerLocal() bool {
-	return true
-}
+// TraceConfiguration returns the device's supported trace configuration.
+func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
+	apis := make([]*service.DeviceAPITraceConfiguration, 0, 1)
+	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
+		apis = append(apis, tracer.VulkanTraceOptions())
+	}
 
-func (t *DesktopTracer) CanSpecifyCWD() bool {
-	return true
-}
+	preferredRoot, err := t.b.GetWorkingDirectory(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-func (t *DesktopTracer) CanSpecifyEnv() bool {
-	return true
-}
-
-func (t *DesktopTracer) CanUploadApplication() bool {
-	return false
-}
-
-func (t *DesktopTracer) HasCache() bool {
-	return false
-}
-
-func (t *DesktopTracer) CanUsePortFile() bool {
-	return true
+	return &service.DeviceTraceConfiguration{
+		Apis:                 apis,
+		ServerLocalPath:      true,
+		CanSpecifyCwd:        true,
+		CanUploadApplication: false,
+		CanSpecifyEnv:        true,
+		PreferredRootUri:     preferredRoot,
+		HasCache:             false,
+	}, nil
 }
 
 // JoinPath provides a path.Join() for this specific target
@@ -100,14 +98,6 @@ func (t *DesktopTracer) SplitPath(p string) (string, string) {
 	} else {
 		return path.Split(p)
 	}
-}
-
-func (t *DesktopTracer) APITraceOptions(ctx context.Context) []*service.DeviceAPITraceConfiguration {
-	options := make([]*service.DeviceAPITraceConfiguration, 0, 1)
-	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
-		options = append(options, tracer.VulkanTraceOptions())
-	}
-	return options
 }
 
 func (t *DesktopTracer) FindTraceTargets(ctx context.Context, str string) ([]*tracer.TraceTargetTreeNode, error) {
@@ -236,8 +226,4 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *tracer.TraceOptions) 
 	}
 	process := &gapii.Process{Port: boundPort, Device: t.b, Options: o.GapiiOptions()}
 	return process, func() { cleanup(ctx) }, nil
-}
-
-func (t *DesktopTracer) PreferredRootUri(ctx context.Context) (string, error) {
-	return t.b.GetWorkingDirectory(ctx)
 }

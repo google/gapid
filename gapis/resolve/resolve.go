@@ -56,22 +56,7 @@ func Device(ctx context.Context, p *path.Device, r *path.ResolveConfig) (*device
 
 // DeviceTraceConfiguration resolves and returns the trace config for a device.
 func DeviceTraceConfiguration(ctx context.Context, p *path.DeviceTraceConfiguration, r *path.ResolveConfig) (*service.DeviceTraceConfiguration, error) {
-	c, err := trace.TraceConfiguration(ctx, p.Device)
-
-	if err != nil {
-		return nil, err
-	}
-
-	config := &service.DeviceTraceConfiguration{
-		ServerLocalPath:      c.ServerLocalPath,
-		CanSpecifyCwd:        c.CanSpecifyCwd,
-		CanUploadApplication: c.CanUploadApplication,
-		HasCache:             c.HasCache,
-		CanSpecifyEnv:        c.CanSpecifyEnv,
-		PreferredRootUri:     c.PreferredRootUri,
-		Apis:                 c.Apis,
-	}
-	return config, nil
+	return trace.TraceConfiguration(ctx, p.Device)
 }
 
 // ImageInfo resolves and returns the ImageInfo from the path p.

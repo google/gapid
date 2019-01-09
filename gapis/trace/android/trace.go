@@ -93,44 +93,25 @@ func NewTracer(dev bind.Device) tracer.Tracer {
 	return &androidTracer{dev.(adb.Device), nil, 1.0, time.Time{}}
 }
 
-// IsServerLocal returns true if all paths on this device can be server-local
-func (t *androidTracer) IsServerLocal() bool {
-	return false
-}
-
-func (t *androidTracer) CanSpecifyCWD() bool {
-	return false
-}
-
-func (t *androidTracer) CanSpecifyEnv() bool {
-	return false
-}
-
-func (t *androidTracer) CanUploadApplication() bool {
-	return true
-}
-
-func (t *androidTracer) HasCache() bool {
-	return true
-}
-
-func (t *androidTracer) CanUsePortFile() bool {
-	return false
-}
-
-func (t *androidTracer) PreferredRootUri(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (t *androidTracer) APITraceOptions(ctx context.Context) []*service.DeviceAPITraceConfiguration {
-	options := make([]*service.DeviceAPITraceConfiguration, 0, 2)
+// TraceConfiguration returns the device's supported trace configuration.
+func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
+	apis := make([]*service.DeviceAPITraceConfiguration, 0, 2)
 	if t.b.Instance().GetConfiguration().GetDrivers().GetOpengl().GetVersion() != "" {
-		options = append(options, tracer.GLESTraceOptions())
+		apis = append(apis, tracer.GLESTraceOptions())
 	}
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
-		options = append(options, tracer.VulkanTraceOptions())
+		apis = append(apis, tracer.VulkanTraceOptions())
 	}
-	return options
+
+	return &service.DeviceTraceConfiguration{
+		Apis:                 apis,
+		ServerLocalPath:      false,
+		CanSpecifyCwd:        false,
+		CanUploadApplication: true,
+		CanSpecifyEnv:        false,
+		PreferredRootUri:     "",
+		HasCache:             true,
+	}, nil
 }
 
 func (t *androidTracer) GetTraceTargetNode(ctx context.Context, uri string, iconDensity float32) (*tracer.TraceTargetTreeNode, error) {
