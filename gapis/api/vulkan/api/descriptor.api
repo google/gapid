@@ -565,13 +565,11 @@ cmd void vkUpdateDescriptorSets(
 
   }
 
-  modifiedDescriptorSets := new!DescriptorSetSet()
 
   writes := RewriteWriteDescriptorSets(
     descriptorWriteCount,
     pDescriptorWrites)
   for _ , _ , w in writes {
-    modifiedDescriptorSets.val[w.DstSet] = true
     set := DescriptorSets[w.DstSet]
     binding := w.Binding
     arrayIndex := w.BindingArrayIndex
@@ -638,7 +636,6 @@ cmd void vkUpdateDescriptorSets(
     descriptorCopyCount,
     pDescriptorCopies)
   for _ , _ , c in copies {
-    modifiedDescriptorSets.val[c.DstSet] = true
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
     srcBinding := switch (c.SrcBinding in srcSet.Bindings) {

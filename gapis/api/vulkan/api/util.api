@@ -347,62 +347,6 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
   }
 }
 
-@internal class ImageCoverage {
-  bool Entire
-  dense_map!(u32, VkImageSubresourceRange) Ranges
-}
-
-sub void touchEntireImageCoverage(ref!ImageCoverage coverage) {
-  coverage.Entire = true
-}
-
-sub void touchImageCoverage(ref!ImageObject image, ref!ImageCoverage coverage, VkImageSubresourceRange rng) {
-  if !coverage.Entire {
-    if isEntireSubresource(image, rng) {
-      touchEntireImageCoverage(coverage)
-    } else {
-      b := MutableBool(false)
-      for _, _, r in coverage.Ranges {
-        if (r.aspectMask == rng.aspectMask) &&
-        (r.baseMipLevel == rng.baseMipLevel) &&
-        (r.levelCount == rng.levelCount) &&
-        (r.baseArrayLayer == rng.baseArrayLayer) &&
-        (r.layerCount == rng.layerCount) {
-          b.b = true
-        }
-      }
-      if !b.b {
-        pos := as!u32(len(coverage.Ranges))
-        coverage.Ranges[pos] = rng
-      }
-    }
-  }
-}
-
-@untracked @internal
-class DescriptorSetSet {
-  @untrackedMap @untracked
-  map!(VkDescriptorSet, bool) val
-}
-
-@untracked @internal
-class ImageSet {
-  @untrackedMap @untracked
-  map!(VkImage, bool) val
-}
-
-@untracked @internal
-class BufferSet {
-  @untrackedMap @untracked
-  map!(VkBuffer, bool) val
-}
-
-@untracked @internal
-class CommandBufferSet {
-  @untrackedMap @untracked
-  map!(VkCommandBuffer, bool) val
-}
-
 @internal class AllBits {
   @untrackedMap @untracked
   map!(VkImageAspectFlags, ref!unpackedImageAspectFlagBits) allBits
