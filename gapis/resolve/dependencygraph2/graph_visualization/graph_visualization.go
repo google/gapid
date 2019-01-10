@@ -27,10 +27,11 @@ const (
 	EMPTY = "Empty"
 )
 
-func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyGraph) (*graph, error) {
+func createGraphFromDependencyGraph(ctx context.Context, dependencyGraph dependencygraph2.DependencyGraph) (*graph, error) {
 
 	currentGraph := createGraph(0)
 	idToBuilder := map[api.ID]api.GraphVisualizationBuilder{}
+	commandNameAndIdToNodeId := map[string]int{}
 
 	err := dependencyGraph.ForeachNode(
 		func(nodeId dependencygraph2.NodeID, dependencyNode dependencygraph2.Node) error {
@@ -38,9 +39,9 @@ func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyG
 				if len(cmdNode.Index) == 0 {
 					return nil
 				}
-				cmdNodeId := cmdNode.Index[0]
-				command := dependencyGraph.GetCommand(api.CmdID(cmdNodeId))
-				if !api.CmdID(cmdNodeId).IsReal() {
+				cmdId := cmdNode.Index[0]
+				command := dependencyGraph.GetCommand(api.CmdID(cmdId))
+				if !api.CmdID(cmdId).IsReal() {
 					return nil
 				}
 
@@ -49,16 +50,23 @@ func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyG
 						idToBuilder[command.API().ID()] = graphVisualizationAPI.GetGraphVisualizationBuilder()
 					}
 					builder := idToBuilder[command.API().ID()]
+					commandNameAndId := fmt.Sprintf("%s_%d", command.CmdName(), cmdId)
+					isSubCommand, parentNodeId := false, 0
 
 					label, name := "", ""
 					if len(cmdNode.Index) == 1 {
-						label = builder.GetCommandLabel(command, cmdNodeId)
+						label = builder.GetCommandLabel(command, cmdId)
 						name = command.CmdName()
+						commandNameAndIdToNodeId[commandNameAndId] = int(nodeId)
 					} else if len(cmdNode.Index) > 1 {
-						commandName := fmt.Sprintf("%s_%d", command.CmdName(), cmdNodeId)
 						dependencyNodeAccesses := dependencyGraph.GetNodeAccesses(nodeId)
 						subCommandName := EMPTY
 						if len(dependencyNodeAccesses.InitCmdNodes) > 0 {
+							if id, ok := commandNameAndIdToNodeId[commandNameAndId]; ok {
+								isSubCommand = true
+								parentNodeId = id
+							}
+
 							subCmdDependencyNode := dependencyGraph.GetNode(dependencyNodeAccesses.InitCmdNodes[0])
 							if subCmdNode, ok := subCmdDependencyNode.(dependencygraph2.CmdNode); ok {
 								if len(subCmdNode.Index) == 0 {
@@ -69,7 +77,7 @@ func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyG
 								subCommandName = subCmd.CmdName()
 							}
 						}
-						label = builder.GetSubCommandLabel(cmdNode.Index, commandName, subCommandName)
+						label = builder.GetSubCommandLabel(cmdNode.Index, commandNameAndId, subCommandName)
 						name = subCommandName
 					}
 
@@ -81,6 +89,11 @@ func createGraphFromDependencyGraph(dependencyGraph dependencygraph2.DependencyG
 					newNode := getNewNode(int(nodeId), label)
 					newNode.name = name
 					newNode.attributes = attributes
+					newNode.isEndOfFrame = cmdNode.CmdFlags.IsEndOfFrame()
+					if isSubCommand {
+						parentNode := currentGraph.nodeIdToNode[parentNodeId]
+						parentNode.addSubCommandNode(newNode)
+					}
 					currentGraph.addNode(newNode)
 				}
 			}
@@ -110,14 +123,18 @@ func GetGraphVisualizationFromCapture(ctx context.Context, p *path.Capture, form
 		return []byte{}, err
 	}
 
-	currentGraph, err := createGraphFromDependencyGraph(dependencyGraph)
-	currentGraph.removeNodesWithZeroDegree()
-	output := ""
+	currentGraph, err := createGraphFromDependencyGraph(ctx, dependencyGraph)
+	if err != nil {
+		return []byte{}, err
+	}
+	currentGraph.joinNodesByFrame()
+	currentGraph.joinNodesWithZeroDegree()
+	output := []byte{}
 	if format == service.GraphFormat_PBTXT {
 		output = currentGraph.getGraphInPbtxtFormat()
 	} else if format == service.GraphFormat_DOT {
 		output = currentGraph.getGraphInDotFormat()
 	}
 
-	return []byte(output), err
+	return output, err
 }

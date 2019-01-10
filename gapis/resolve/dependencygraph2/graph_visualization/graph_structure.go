@@ -15,14 +15,16 @@
 package graph_visualization
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
-	"strconv"
 )
 
 const (
 	NO_VISITED       = 0
 	VISITED_AND_USED = -1
+	FRAME            = "FRAME"
+	UNUSED           = "UNUSED"
 )
 
 type node struct {
@@ -33,6 +35,8 @@ type node struct {
 	label                  string
 	name                   string
 	attributes             string
+	isEndOfFrame           bool
+	subCommandNodes        []*node
 }
 
 type edge struct {
@@ -87,6 +91,10 @@ func getNewNode(id int, label string) *node {
 		label:                  label,
 	}
 	return newNode
+}
+
+func (currentNode *node) addSubCommandNode(subCommandNode *node) {
+	currentNode.subCommandNodes = append(currentNode.subCommandNodes, subCommandNode)
 }
 
 func (g *graph) addEdge(newEdge *edge) {
@@ -257,60 +265,114 @@ func (g *graph) makeStronglyConnectedComponentsByCommandTypeId() {
 	}
 }
 
-func (g *graph) getEdgesInDotFormat() string {
-	output := ""
-	for _, currentEdge := range g.edgeIdToEdge {
-		lines := strconv.Itoa(currentEdge.source.id) + " -> " + strconv.Itoa(currentEdge.sink.id) + ";\n"
-		output += lines
+func (g *graph) bfs(sourceNode *node, visited []bool, visitedNodes *[]*node) {
+	head := len(*visitedNodes)
+	visited[sourceNode.id] = true
+	*visitedNodes = append(*visitedNodes, sourceNode)
+	for head < len(*visitedNodes) {
+		currentNode := (*visitedNodes)[head]
+		head++
+		neighbours := g.getSortedNeighbours(currentNode.outNeighbourIdToEdgeId)
+		for _, neighbour := range neighbours {
+			if !visited[neighbour.id] {
+				visited[neighbour.id] = true
+				*visitedNodes = append(*visitedNodes, neighbour)
+			}
+		}
+
+		for _, subCommandNode := range currentNode.subCommandNodes {
+			if !visited[subCommandNode.id] {
+				visited[subCommandNode.id] = true
+				*visitedNodes = append(*visitedNodes, subCommandNode)
+			}
+		}
 	}
-	return output
 }
 
-func (g *graph) getNodesInDotFormat() string {
-	output := ""
+func (g *graph) joinNodesByFrame() {
+	visited := make([]bool, g.maxNodeId+1)
+	frameNumber := 1
+	nodes := g.getSortedNodes()
+	for _, currentNode := range nodes {
+		if !visited[currentNode.id] && currentNode.isEndOfFrame {
+			visitedNodes := []*node{}
+			g.bfs(currentNode, visited, &visitedNodes)
+			for _, visitedNode := range visitedNodes {
+				visitedNode.label = fmt.Sprintf("%s%d/%s", FRAME, frameNumber, visitedNode.label)
+			}
+			frameNumber++
+		}
+	}
+}
+
+func (g *graph) joinNodesWithZeroDegree() {
 	for _, currentNode := range g.nodeIdToNode {
-		lines := strconv.Itoa(currentNode.id) + "[label=" + currentNode.label + "]" + ";\n"
-		output += lines
+		if (len(currentNode.inNeighbourIdToEdgeId) + len(currentNode.outNeighbourIdToEdgeId)) == 0 {
+			currentNode.label = UNUSED + "/" + currentNode.label
+		}
 	}
-	return output
 }
 
-func (g *graph) getGraphInDotFormat() string {
-	output := "digraph g {\n"
-	output += g.getNodesInDotFormat()
-	output += g.getEdgesInDotFormat()
-	output += "}\n"
-	return output
-}
-
-func (g *graph) getGraphInPbtxtFormat() string {
+func (g *graph) getSortedNodes() []*node {
 	nodes := []*node{}
 	for _, currentNode := range g.nodeIdToNode {
 		nodes = append(nodes, currentNode)
 	}
 	sort.Sort(nodeSorter(nodes))
+	return nodes
+}
 
-	output := ""
-	for _, currentNode := range nodes {
-		lines := "node {\n"
-		lines += "name: \"" + currentNode.label + "\"\n"
-		lines += "op: \"" + currentNode.label + "\"\n"
-
-		neighbours := []*node{}
-		for neighbourId := range currentNode.inNeighbourIdToEdgeId {
-			neighbours = append(neighbours, g.nodeIdToNode[neighbourId])
-		}
-		sort.Sort(nodeSorter(neighbours))
-
-		for _, neighbour := range neighbours {
-			lines += "input: \"" + neighbour.label + "\"\n"
-		}
-		lines += "attr {\n"
-		lines += "key: " + "\"" + currentNode.attributes + "\"\n"
-		lines += "}\n"
-
-		lines += "}\n"
-		output += lines
+func (g *graph) getSortedNeighbours(neighbourIdToEdgeId map[int]int) []*node {
+	neighbours := []*node{}
+	for neighbourId := range neighbourIdToEdgeId {
+		neighbours = append(neighbours, g.nodeIdToNode[neighbourId])
 	}
-	return output
+	sort.Sort(nodeSorter(neighbours))
+	return neighbours
+}
+
+func (g *graph) writeEdgesInDotFormat(output *bytes.Buffer) {
+	nodes := g.getSortedNodes()
+	for _, currentNode := range nodes {
+		inNeighbours := g.getSortedNeighbours(currentNode.inNeighbourIdToEdgeId)
+		for _, neighbour := range inNeighbours {
+			fmt.Fprintf(output, "%d -> %d;\n", neighbour.id, currentNode.id)
+		}
+	}
+}
+
+func (g *graph) writeNodesInDotFormat(output *bytes.Buffer) {
+	nodes := g.getSortedNodes()
+	for _, currentNode := range nodes {
+		fmt.Fprintf(output, "%d[label=%s];\n", currentNode.id, currentNode.label)
+	}
+}
+
+func (g *graph) getGraphInDotFormat() []byte {
+	var output bytes.Buffer
+	output.WriteString("digraph g {\n")
+	g.writeNodesInDotFormat(&output)
+	g.writeEdgesInDotFormat(&output)
+	output.WriteString("}\n")
+	return output.Bytes()
+}
+
+func (g *graph) getGraphInPbtxtFormat() []byte {
+	nodes := g.getSortedNodes()
+	var output bytes.Buffer
+	for _, currentNode := range nodes {
+		output.WriteString("node {\n")
+		output.WriteString("name: \"" + currentNode.label + "\"\n")
+		output.WriteString("op: \"" + currentNode.label + "\"\n")
+
+		neighbours := g.getSortedNeighbours(currentNode.inNeighbourIdToEdgeId)
+		for _, neighbour := range neighbours {
+			output.WriteString("input: \"" + neighbour.label + "\"\n")
+		}
+		output.WriteString("attr {\n")
+		output.WriteString("key: \"" + currentNode.attributes + "\"\n")
+		output.WriteString("}\n")
+		output.WriteString("}\n")
+	}
+	return output.Bytes()
 }
