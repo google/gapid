@@ -89,14 +89,14 @@ type dependencyGraphBuilder struct {
 
 // Build a new dependencyGraphBuilder.
 func newDependencyGraphBuilder(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd) *dependencyGraphBuilder {
+	c *capture.Capture, initialCmds []api.Cmd, state *api.GlobalState) *dependencyGraphBuilder {
 	builder := &dependencyGraphBuilder{}
 	builder.capture = c
 	builder.config = config
 	builder.fragWatcher = NewFragWatcher()
 	builder.memWatcher = NewMemWatcher()
 	builder.forwardWatcher = NewForwardWatcher()
-	builder.graphBuilder = NewGraphBuilder(ctx, config, c, initialCmds)
+	builder.graphBuilder = NewGraphBuilder(ctx, config, c, initialCmds, state)
 	return builder
 }
 
@@ -106,7 +106,7 @@ func (b *dependencyGraphBuilder) OnBeginCmd(ctx context.Context, cmdID api.CmdID
 		log.E(ctx, "OnBeginCmd called while processing another command")
 		b.subCmdStack = b.subCmdStack[:0]
 	}
-	cmdCtx := b.graphBuilder.GetCmdContext(cmdID, cmd)
+	cmdCtx := b.graphBuilder.GetCmdContext(ctx, cmdID, cmd)
 	b.graphBuilder.OnBeginCmd(ctx, cmdCtx)
 	b.fragWatcher.OnBeginCmd(ctx, cmdCtx)
 	b.memWatcher.OnBeginCmd(ctx, cmdCtx)
@@ -333,13 +333,13 @@ func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
 	c *capture.Capture, initialCmds []api.Cmd, initialRanges interval.U64RangeList) (DependencyGraph, error) {
 	ctx = status.Start(ctx, "BuildDependencyGraph")
 	defer status.Finish(ctx)
-	b := newDependencyGraphBuilder(ctx, config, c, initialCmds)
 	var state *api.GlobalState
 	if config.IncludeInitialCommands {
 		state = c.NewUninitializedState(ctx).ReserveMemory(initialRanges)
 	} else {
 		state = c.NewState(ctx)
 	}
+	b := newDependencyGraphBuilder(ctx, config, c, initialCmds, state)
 	mutate := func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		return cmd.Mutate(ctx, id, state, nil, b)
 	}

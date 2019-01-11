@@ -29,8 +29,9 @@ type GraphBuilder interface {
 		map[NodeID][]ForwardAccess)
 	BuildReverseDependencies()
 	GetCmdNodeID(api.CmdID, api.SubCmdIdx) NodeID
+	GetOrCreateCmdNodeID(context.Context, api.CmdID, api.SubCmdIdx, api.Cmd) NodeID
 	GetObsNodeIDs(api.CmdID, []api.CmdObservation, bool) []NodeID
-	GetCmdContext(api.CmdID, api.Cmd) CmdContext
+	GetCmdContext(context.Context, api.CmdID, api.Cmd) CmdContext
 	GetSubCmdContext(api.CmdID, api.SubCmdIdx) CmdContext
 	GetNodeStats(NodeID) *NodeStats
 	GetStats() *GraphBuilderStats
@@ -65,15 +66,17 @@ type graphBuilder struct {
 	subCmdContexts map[NodeID]CmdContext
 	initCmdNodeIDs map[NodeID][]NodeID
 	recordNodes    *RecordNodeTrie
+	state          *api.GlobalState
 }
 
 func NewGraphBuilder(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd) *graphBuilder {
+	c *capture.Capture, initialCmds []api.Cmd, state *api.GlobalState) *graphBuilder {
 	return &graphBuilder{
 		graph:          newDependencyGraph(ctx, config, c, initialCmds, []Node{}),
 		subCmdContexts: make(map[NodeID]CmdContext),
 		initCmdNodeIDs: make(map[NodeID][]NodeID),
 		recordNodes:    &RecordNodeTrie{},
+		state:          state,
 	}
 }
 
@@ -220,12 +223,19 @@ func (b *graphBuilder) GetCmdNodeID(cmdID api.CmdID, idx api.SubCmdIdx) NodeID {
 	if cmdID == api.CmdNoID {
 		return NodeNoID
 	}
+	return b.graph.GetCmdNodeID(cmdID, idx)
+}
+
+func (b *graphBuilder) GetOrCreateCmdNodeID(ctx context.Context, cmdID api.CmdID, idx api.SubCmdIdx, cmd api.Cmd) NodeID {
+	if cmdID == api.CmdNoID {
+		return NodeNoID
+	}
 	nodeID := b.graph.GetCmdNodeID(cmdID, idx)
 	if nodeID != NodeNoID {
 		return nodeID
 	}
 	fullIdx := append(api.SubCmdIdx{(uint64)(cmdID)}, idx...)
-	node := CmdNode{fullIdx}
+	node := CmdNode{fullIdx, cmd.CmdFlags(ctx, cmdID, b.state)}
 	return b.addNode(node)
 }
 
@@ -242,8 +252,8 @@ func (b *graphBuilder) GetObsNodeIDs(cmdID api.CmdID, obs []api.CmdObservation, 
 	return nodeIDs
 }
 
-func (b *graphBuilder) GetCmdContext(cmdID api.CmdID, cmd api.Cmd) CmdContext {
-	nodeID := b.GetCmdNodeID(cmdID, api.SubCmdIdx{})
+func (b *graphBuilder) GetCmdContext(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) CmdContext {
+	nodeID := b.GetOrCreateCmdNodeID(ctx, cmdID, api.SubCmdIdx{}, cmd)
 	stats := b.nodeStats[nodeID]
 	return CmdContext{cmdID, cmd, api.SubCmdIdx{}, nodeID, 0, NodeNoID, stats}
 }
@@ -253,7 +263,7 @@ func (b *graphBuilder) GetSubCmdContext(cmdID api.CmdID, idx api.SubCmdIdx) CmdC
 	nodeID := ancestors[len(idx)]
 	if nodeID == NodeNoID {
 		fullIdx := append(api.SubCmdIdx{(uint64)(cmdID)}, idx...)
-		node := CmdNode{fullIdx}
+		node := CmdNode{fullIdx, api.CmdFlags(0)}
 		nodeID = b.addNode(node)
 	}
 	parentID := NodeNoID
