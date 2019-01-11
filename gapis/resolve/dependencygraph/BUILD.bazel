@@ -57,14 +57,11 @@ go_proto_library(
 
 go_test(
     name = "go_default_test",
-    srcs = [
-        "dead_code_elimination_test.go",
-    ],
+    srcs = ["dead_code_elimination_test.go"],
     embed = [":go_default_library"],
     deps = [
         "//core/assert:go_default_library",
         "//core/log:go_default_library",
-        "//gapis/api:go_default_library",
         "//gapis/database:go_default_library",
     ],
 )
