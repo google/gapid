@@ -348,6 +348,7 @@ sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
     readWriteMemoryInBoundGraphicsDescriptorSets()
     readCoherentMemoryInBuffer(Buffers[draw.Buffer])
     readIndexedIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
+
     // Read through all the vertex buffers.
     readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
