@@ -627,6 +627,11 @@ cmd void vkUpdateDescriptorSets(
         bufferBindings := setBinding.BufferBinding
         bufferBindings[arrayIndex] = w.BufferInfo
         setBinding.BufferBinding = bufferBindings
+        for _, _, b in setBinding.BufferBinding {
+          if !b.Buffer in Buffers {
+            vkErrorInvalidBuffer(b.Buffer)
+          }
+        }
       }
     }
     set.Bindings[binding] = setBinding
@@ -701,6 +706,11 @@ cmd void vkUpdateDescriptorSets(
         bufferBinding[c.DstArrayIndex] =
         srcBinding.BufferBinding[c.SrcArrayIndex]
         dstBinding.BufferBinding = bufferBinding
+        for _, _, b in dstBinding.BufferBinding {
+          if !b.Buffer in Buffers {
+            vkErrorInvalidBuffer(b.Buffer)
+          }
+        }
       }
     }
     dstSet.Bindings[c.DstBinding] = dstBinding
