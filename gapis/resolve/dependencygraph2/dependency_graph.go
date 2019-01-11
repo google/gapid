@@ -31,7 +31,8 @@ type Node interface {
 
 // CmdNode is a dependency node corresponding to an API call
 type CmdNode struct {
-	Index api.SubCmdIdx
+	Index    api.SubCmdIdx
+	CmdFlags api.CmdFlags
 }
 
 func (CmdNode) dependencyNode() {}
