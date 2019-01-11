@@ -1138,6 +1138,8 @@ message DeviceAPITraceConfiguration {
   bool can_disable_pcs = 2;
   // Does this API support MEC.
   FeatureStatus mid_execution_capture_support = 3;
+  // Whether unsupported extensions can be enabled.
+  bool can_enable_unsupported_extensions = 4;
 }
 
 // GetTimestampsRequest is the request send to server to get the timestamps for

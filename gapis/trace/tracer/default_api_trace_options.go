@@ -21,17 +21,19 @@ import (
 // VulkanTraceOptions returns the default trace options for Vulkan.
 func VulkanTraceOptions() *service.DeviceAPITraceConfiguration {
 	return &service.DeviceAPITraceConfiguration{
-		Api:                        "Vulkan",
-		CanDisablePcs:              false,
-		MidExecutionCaptureSupport: service.FeatureStatus_Supported,
+		Api:                            "Vulkan",
+		CanDisablePcs:                  false,
+		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
+		CanEnableUnsupportedExtensions: true,
 	}
 }
 
 // GLESTraceOptions returns the default trace options for GLES.
 func GLESTraceOptions() *service.DeviceAPITraceConfiguration {
 	return &service.DeviceAPITraceConfiguration{
-		Api:                        "OpenGLES",
-		CanDisablePcs:              true,
-		MidExecutionCaptureSupport: service.FeatureStatus_Experimental,
+		Api:                            "OpenGLES",
+		CanDisablePcs:                  true,
+		MidExecutionCaptureSupport:     service.FeatureStatus_Experimental,
+		CanEnableUnsupportedExtensions: false,
 	}
 }

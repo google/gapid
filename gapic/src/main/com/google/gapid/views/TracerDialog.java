@@ -459,6 +459,10 @@ public class TracerDialog {
             config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported;
         fromBeginning.setEnabled(mec);
         fromBeginning.setSelection(!mec || !settings.traceMidExecution);
+
+        boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
+        hideUnknownExtensions.setEnabled(ext);
+        hideUnknownExtensions.setSelection(!ext || settings.traceHideUnknownExtensions);
       }
 
       private void updateDevicesDropDown(Settings settings) {
