@@ -117,6 +117,8 @@ message Blob {
 // Resolves to a service.Capture.
 message Capture {
   ID ID = 1;
+  // Whether to exclude the memory ranges when fetching this capture.
+  bool exclude_memory_ranges = 2;
 }
 
 // Command is the path to a command in the capture.
