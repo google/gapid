@@ -580,6 +580,9 @@ cmd void vkDestroyImageView(
   // Do not track dependency for the following back-references.
   @hidden @untrackedMap @untracked
   map!(VkDescriptorSet, map!(u32, map!(u32, bool))) DescriptorUsers
+
+  // Vulkan 1.1 core
+  @unused ref!SamplerYcbcrConversionObject YcbcrConversion
 }
 
 @threadSafety("system")
@@ -592,17 +595,6 @@ cmd VkResult vkCreateSampler(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSamplerCreateInfo") }
   create_info := pCreateInfo[0]
-  // handle pNext
-  if create_info.pNext != null {
-    numPNext := numberOfPNext(create_info.pNext)
-    next := MutableVoidPtr(as!void*(create_info.pNext))
-    for i in (0 .. numPNext) {
-      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-      _ = sType
-      // TODO: handle extensions for VkSamplerCreateInfo
-      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
-    }
-  }
   sampler := new!SamplerObject(
     Device:                   device,
     MagFilter:                create_info.magFilter,
@@ -621,6 +613,28 @@ cmd VkResult vkCreateSampler(
     BorderColor:              create_info.borderColor,
     UnnormalizedCoordinates:  create_info.unnormalizedCoordinates
   )
+  // handle pNext
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
+          ycbcrInfo := as!VkSamplerYcbcrConversionInfo*(next.Ptr)[0]
+          conversion := ycbcrInfo.conversion
+          if conversion in SamplerYcbcrConversions {
+            sampler.YcbcrConversion = SamplerYcbcrConversions[conversion]
+          }
+        }
+        default: {
+          // do nothing
+        }
+      }
+      // TODO: handle extensions for VkSamplerCreateInfo
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   handle := ?
   if pSampler == null { vkErrorNullPointer("VkSampler") }
   pSampler[0] = handle
@@ -802,8 +816,13 @@ sub void BindImageMemory2(
         next := MutableVoidPtr(as!void*(info.pNext))
         for i in (0 .. numPNext) {
           sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-          _ = sType
-          // TODO: handle extensions for VkBindImageMemoryInfo
+          switch sType {
+            case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
+              ext := as!VkBindImagePlaneMemoryInfo*(next.Ptr)[0]
+              // TODO: Handle Plane bind info
+              _ = ext
+            }
+          }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
@@ -819,4 +838,79 @@ cmd VkResult vkBindImageMemory2(
     const VkBindImageMemoryInfo* pBindInfos) {
   BindImageMemory2(device, bindInfoCount, pBindInfos)
   return ?
+}
+
+/////////////
+// Sampler //
+/////////////
+
+@internal class SamplerYcbcrConversionObject {
+  @unused VkSamplerYcbcrConversion      VulkanHandle
+  @unused VkDevice                      Device
+  @unused VkFormat                      Format
+  @unused VkSamplerYcbcrModelConversion YcbcrModel
+  @unused VkSamplerYcbcrRange           YcbcrRange
+  @unused VkComponentMapping            Components
+  @unused VkChromaLocation              XChromaOffset
+  @unused VkChromaLocation              YChromaOffset
+  @unused VkFilter                      ChromaFilter
+  @unused VkBool32                      ForceExplicitReconstruction
+}
+
+sub void CreateSamplerYcbcrConversion(
+  VkDevice                                  device,
+  const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
+  const VkAllocationCallbacks*              pAllocator,
+  VkSamplerYcbcrConversion*                 pYcbcrConversion) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  object := new!SamplerYcbcrConversionObject(Device: device)
+  if pCreateInfo == null {
+    vkErrorNullPointer("VkSamplerYcbcrConversionCreateInfo(KHR)")
+  } else {
+    createInfo := pCreateInfo[0]
+    object.Format = createInfo.format
+    object.YcbcrModel = createInfo.ycbcrModel
+    object.YcbcrRange = createInfo.ycbcrRange
+    object.Components = createInfo.components
+    object.XChromaOffset = createInfo.xChromaOffset
+    object.YChromaOffset = createInfo.yChromaOffset
+    object.ChromaFilter = createInfo.chromaFilter
+    object.ForceExplicitReconstruction = createInfo.forceExplicitReconstruction
+  }
+  fence
+  pYcbcrConversion[0] = ?
+  handle := pYcbcrConversion[0]
+  object.VulkanHandle = handle
+  SamplerYcbcrConversions[handle] = object
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd VkResult vkCreateSamplerYcbcrConversion(
+    VkDevice                                    device,
+    const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkSamplerYcbcrConversion*                   pYcbcrConversion) {
+  CreateSamplerYcbcrConversion(
+      device, pCreateInfo, pAllocator, pYcbcrConversion)
+  return ?
+}
+
+sub void DestroySamplerYcbcrConversion(
+    VkDevice                      device,
+    VkSamplerYcbcrConversion      ycbcrConversion,
+    const VkAllocationCallbacks*  pAllocator) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if ycbcrConversion in SamplerYcbcrConversions {
+    delete(SamplerYcbcrConversions, ycbcrConversion)
+  }
+}
+
+@threadSafety("system")
+@indirect("VkDevice")
+cmd void vkDestroySamplerYcbcrConversion(
+    VkDevice                                    device,
+    VkSamplerYcbcrConversion                    ycbcrConversion,
+    const VkAllocationCallbacks*                pAllocator) {
+  DestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator)
 }
