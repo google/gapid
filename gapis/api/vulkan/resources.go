@@ -940,6 +940,8 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 			}
 			dsc.Add(name, d)
 		}
+		// Add our new used descriptors
+		newCmd.Extras().Add(u)
 	}
 
 	// Carry all non-observation extras through,
@@ -951,8 +953,6 @@ func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture
 			}
 		}
 	}
-	// Add our new used descriptors
-	newCmd.Extras().Add(u)
 
 	// Add observations
 	newCmd.AddRead(newCreateInfo.Data()).AddRead(code.Data())
