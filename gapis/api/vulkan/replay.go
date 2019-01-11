@@ -29,7 +29,6 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
@@ -124,17 +123,6 @@ type framebufferRequest struct {
 	out              chan imgRes
 	wireframeOverlay bool
 	displayToSurface bool
-}
-
-type deadCodeEliminationInfo struct {
-	dependencyGraph     *dependencygraph.DependencyGraph
-	deadCodeElimination *dependencygraph.DeadCodeElimination
-}
-
-type dCEInfo struct {
-	ft     *dependencygraph.Footprint
-	dce    *dependencygraph.DCE
-	newDce *dependencygraph2.DCEBuilder
 }
 
 // color/depth/stencil attachment bit.
@@ -777,13 +765,13 @@ func (a API) Replay(
 
 	// Populate the dead-code eliminitation later, only once we are sure
 	// we will need it.
-	dceInfo := dCEInfo{}
+	var dceBuilder *dependencygraph2.DCEBuilder
 
 	initCmdExpandedWithOpt := false
 	numInitialCmdWithOpt := 0
 	initCmdExpandedWithoutOpt := false
 	numInitialCmdWithoutOpt := 0
-	newDCEexpanded := false
+	dceExpanded := false
 	expandCommands := func(opt bool) (int, error) {
 		if opt && initCmdExpandedWithOpt {
 			return numInitialCmdWithOpt, nil
@@ -792,49 +780,28 @@ func (a API) Replay(
 			return numInitialCmdWithoutOpt, nil
 		}
 		if opt {
-			if config.NewDeadCodeElimination {
-				if dceInfo.newDce == nil && !newDCEexpanded {
-					cfg := dependencygraph2.DependencyGraphConfig{
-						MergeSubCmdNodes:       !config.DeadSubCmdElimination,
-						IncludeInitialCommands: dependentPayload == "",
-					}
-					graph, err := dependencygraph2.TryGetDependencyGraph(ctx, capture.Get(ctx), cfg)
-					if err != nil {
-						return 0, fmt.Errorf("Could not build dependency graph for DCE: %v", err)
-					}
+			if dceBuilder == nil && !dceExpanded {
+				cfg := dependencygraph2.DependencyGraphConfig{
+					MergeSubCmdNodes:       !config.DeadSubCmdElimination,
+					IncludeInitialCommands: dependentPayload == "",
+				}
+				graph, err := dependencygraph2.TryGetDependencyGraph(ctx, capture.Get(ctx), cfg)
+				if err != nil {
+					return 0, fmt.Errorf("Could not build dependency graph for DCE: %v", err)
+				}
 
-					if graph != nil {
-						log.I(ctx, "Got Dependency Graph")
-						dceInfo.newDce = dependencygraph2.NewDCEBuilder(graph)
-					} else {
-						log.I(ctx, "Dependency Graph still pending")
-					}
+				if graph != nil {
+					log.I(ctx, "Got Dependency Graph")
+					dceBuilder = dependencygraph2.NewDCEBuilder(graph)
+				} else {
+					log.I(ctx, "Dependency Graph still pending")
 				}
-				newDCEexpanded = true
-				if dceInfo.newDce != nil {
-					cmds = []api.Cmd{}
-				}
-				return 0, nil
-			} else {
-				// If we have a dependent payload, then we cannot use
-				// the DCE.
-				if dependentPayload != "" {
-					return 0, nil
-				}
-				// If we have not set up the dependency graph, do it now.
-				if dceInfo.ft == nil {
-					ft, err := dependencygraph.GetFootprint(ctx, intent.Capture)
-					if err != nil {
-						return 0, err
-					}
-					dceInfo.ft = ft
-					dceInfo.dce = dependencygraph.NewDCE(ctx, dceInfo.ft)
-				}
-				cmds = []api.Cmd{}
-				numInitialCmdWithOpt = dceInfo.ft.NumInitialCommands
-				initCmdExpandedWithOpt = true
-				return numInitialCmdWithOpt, nil
 			}
+			dceExpanded = true
+			if dceBuilder != nil {
+				cmds = []api.Cmd{}
+			}
+			return 0, nil
 		}
 		// If we do not depend on another payload to get us into the right state,
 		// we should get ourselves into the intial state
@@ -904,10 +871,11 @@ func (a API) Replay(
 			}
 
 			if optimize {
-				if dceInfo.newDce != nil {
-					dceInfo.newDce.Request(ctx, api.SubCmdIdx{cmdid})
-				} else if (dceInfo.dce) != nil {
-					dceInfo.dce.Request(ctx, api.SubCmdIdx{cmdid})
+				// Should have been built in expandCommands()
+				if dceBuilder != nil {
+					dceBuilder.Request(ctx, api.SubCmdIdx{cmdid})
+				} else {
+					optimize = false
 				}
 			}
 
@@ -946,10 +914,10 @@ func (a API) Replay(
 
 	// Use the dead code elimination pass
 	if optimize {
-		if dceInfo.newDce != nil {
-			transforms.Prepend(dceInfo.newDce)
-		} else if dceInfo.dce != nil {
-			transforms.Prepend(dceInfo.dce)
+		if dceBuilder != nil {
+			transforms.Prepend(dceBuilder)
+		} else {
+			log.W(ctx, "Replay optimization enabled but cannot be done as dependency graph not ready")
 		}
 	}
 

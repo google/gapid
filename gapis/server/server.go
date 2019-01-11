@@ -48,7 +48,6 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
-	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2"
 	"github.com/google/gapid/gapis/resolve/dependencygraph2/graph_visualization"
 	"github.com/google/gapid/gapis/service"
@@ -248,15 +247,11 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 		crash.Go(func() {
 			cctx := status.PutTask(newCtx, nil)
 			var err error
-			if config.NewDeadCodeElimination {
-				cfg := dependencygraph2.DependencyGraphConfig{
-					MergeSubCmdNodes:       true,
-					IncludeInitialCommands: false,
-				}
-				_, err = dependencygraph2.GetDependencyGraph(cctx, p, cfg)
-			} else {
-				_, err = dependencygraph.GetFootprint(cctx, p)
+			cfg := dependencygraph2.DependencyGraphConfig{
+				MergeSubCmdNodes:       true,
+				IncludeInitialCommands: false,
 			}
+			_, err = dependencygraph2.GetDependencyGraph(cctx, p, cfg)
 			if err != nil {
 				log.E(newCtx, "Error resolve dependency graph: %v", err)
 			}

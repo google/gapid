@@ -63,7 +63,6 @@ go_library(
         "draw_call_mesh.go",
         "externs.go",
         "find_issues.go",
-        "footprint_builder.go",
         "graph_visualization.go",
         "image_primer.go",
         "image_primer_shaders.go",
@@ -121,7 +120,6 @@ go_library(
         "//gapis/replay/protocol:go_default_library",
         "//gapis/replay/value:go_default_library",
         "//gapis/resolve:go_default_library",
-        "//gapis/resolve/dependencygraph:go_default_library",
         "//gapis/resolve/dependencygraph2:go_default_library",
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service:go_default_library",
@@ -153,7 +151,6 @@ go_test(
     name = "go_default_test",
     srcs = [
         "externs_test.go",
-        "footprint_builder_test.go",
         "image_primer_shaders_test.go",
         "image_primer_test.go",
     ],
