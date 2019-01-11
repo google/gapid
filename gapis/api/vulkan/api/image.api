@@ -71,7 +71,7 @@
   VkImageAspectFlags                           ImageAspect
   map!(VkImageAspectFlagBits, ref!ImageAspect) Aspects
   @unused ref!VulkanDebugMarkerInfo            DebugInfo
-  VkMemoryRequirements                         MemoryRequirements
+  ref!ImageMemoryRequirements                  MemoryRequirements
   map!(u32, VkSparseImageMemoryRequirements)   SparseMemoryRequirements
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
   ref!DedicatedRequirements                    DedicatedRequirements
@@ -123,8 +123,8 @@
 }
 
 @internal class ImageMemoryRequirements {
-  VkMemoryRequirements                       MemoryRequirements
-  map!(u32, VkSparseImageMemoryRequirements) AspectBitsToSparseMemoryRequirements
+  map!(VkImageAspectFlagBits, VkMemoryRequirements) PlaneBitsToMemoryRequirements
+  map!(u32, VkSparseImageMemoryRequirements)        AspectBitsToSparseMemoryRequirements
 }
 
 @internal class LinearImageLayouts {
@@ -170,26 +170,7 @@ cmd VkResult vkCreateImage(
     imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
   }
 
-  imageAspect := as!VkImageAspectFlags(
-    switch info.format {
-      // Depth only
-      case VK_FORMAT_D16_UNORM,
-          VK_FORMAT_X8_D24_UNORM_PACK32,
-          VK_FORMAT_D32_SFLOAT:
-        VK_IMAGE_ASPECT_DEPTH_BIT
-      // Stencil only
-      case VK_FORMAT_S8_UINT:
-        VK_IMAGE_ASPECT_STENCIL_BIT
-      // Depth and Stencil
-      case VK_FORMAT_D16_UNORM_S8_UINT,
-          VK_FORMAT_D24_UNORM_S8_UINT,
-          VK_FORMAT_D32_SFLOAT_S8_UINT:
-        VK_IMAGE_ASPECT_DEPTH_BIT |
-        VK_IMAGE_ASPECT_STENCIL_BIT
-      // Others
-      default:
-        VK_IMAGE_ASPECT_COLOR_BIT
-    })
+  imageAspect := as!VkImageAspectFlags(getAspectBitsFromImageFormat(info.format))
 
   hasSparseBit := (as!u32(info.flags) & as!u32(VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0
 
@@ -241,14 +222,12 @@ cmd VkResult vkCreateImage(
     }
   }
 
-  memRequirements := fetchImageMemoryRequirements(device, handle, hasSparseBit)
+  object.MemoryRequirements = new!ImageMemoryRequirements()
   // If the vkCreateImage is inserted by GAPID (e.g. the staging image for
   // reading framebuffer), NO memory requirements will be returned.
-  if memRequirements != null {
-    object.MemoryRequirements = memRequirements.MemoryRequirements
-    if (hasSparseBit) {
-      object.SparseMemoryRequirements = memRequirements.AspectBitsToSparseMemoryRequirements
-    }
+  fetchedRequirements := fetchImageMemoryRequirements(device, handle, hasSparseBit)
+  if fetchedRequirements != null {
+    object.MemoryRequirements = fetchedRequirements
   }
 
   // If the image tiling is LINEAR, get the VkSubresourceLayout for each linear image level
@@ -704,7 +683,7 @@ sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
     ref!QueueObject queue) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+  for _ , _ , aspectBit in getAspectKeysWithAspectFlags(image, rng.aspectMask) {
     if aspectBit in image.Aspects {
       layers := image.Aspects[aspectBit].Layers
       for _, i, layer in  layers {
@@ -753,7 +732,7 @@ sub u32 imageSubresourceLevelCount(ref!ImageObject image, VkImageSubresourceRang
 sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng, VkImageLayout oldLayout, VkImageLayout newLayout) {
   layerCount := imageSubresourceLayerCount(img, rng)
   levelCount := imageSubresourceLevelCount(img, rng)
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+  for _ , _ , aspectBit in getAspectKeysWithAspectFlags(img, rng.aspectMask) {
     if (aspectBit in img.Aspects) {
       aspects := img.Aspects[aspectBit]
       for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
@@ -913,4 +892,97 @@ cmd void vkDestroySamplerYcbcrConversion(
     VkSamplerYcbcrConversion                    ycbcrConversion,
     const VkAllocationCallbacks*                pAllocator) {
   DestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator)
+}
+
+///////////
+// Utils //
+///////////
+
+sub bool isDisjointImage(ref!ImageObject img) {
+  return (as!u32(img.Info.Flags) & as!u32(VK_IMAGE_CREATE_DISJOINT_BIT)) != as!u32(0)
+}
+
+sub VkImageAspectFlagBits getAspectBitsFromImageFormat(VkFormat fmt) {
+  return switch fmt {
+    // Depth only
+    case VK_FORMAT_D16_UNORM,
+        VK_FORMAT_X8_D24_UNORM_PACK32,
+        VK_FORMAT_D32_SFLOAT:
+      VK_IMAGE_ASPECT_DEPTH_BIT
+    // Stencil only
+    case VK_FORMAT_S8_UINT:
+      VK_IMAGE_ASPECT_STENCIL_BIT
+    // Depth and stencil
+    case VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT:
+      VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+    // Multi-planar
+    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM_KHR,
+        VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM_KHR,
+        VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM_KHR,
+        VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16_KHR,
+        VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16_KHR,
+        VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16_KHR,
+        VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16_KHR,
+        VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16_KHR,
+        VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16_KHR,
+        VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM_KHR,
+        VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM_KHR,
+        VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM_KHR:
+      VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT
+
+    case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM_KHR,
+        VK_FORMAT_G8_B8R8_2PLANE_420_UNORM_KHR,
+        VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16_KHR,
+        VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16_KHR,
+        VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16_KHR,
+        VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16_KHR,
+        VK_FORMAT_G16_B16R16_2PLANE_420_UNORM_KHR,
+        VK_FORMAT_G16_B16R16_2PLANE_422_UNORM_KHR:
+      VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT
+
+    case VK_FORMAT_G8B8G8R8_422_UNORM,
+        VK_FORMAT_B8G8R8G8_422_UNORM,
+        VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16,
+        VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,
+        VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16,
+        VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16,
+        VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,
+        VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16,
+        VK_FORMAT_G16B16G16R16_422_UNORM,
+        VK_FORMAT_B16G16R16G16_422_UNORM:
+      VK_IMAGE_ASPECT_PLANE_0_BIT
+    // Others
+    default:
+      VK_IMAGE_ASPECT_COLOR_BIT
+  }
+}
+
+sub dense_map!(u32, VkImageAspectFlagBits) getAspectKeysWithAspectFlags(ref!ImageObject img, VkImageAspectFlags flags) {
+  keys := new!ImageAspectBits()
+  numPlanes := numberOfPlanes(img.Info.Format)
+  if numPlanes == as!u32(0) {
+    // single planar image
+    keys.Bits = unpackImageAspectFlags(flags)
+  } else {
+    // multiple planar image
+    if (as!u32(flags) & as!u32(VK_IMAGE_ASPECT_COLOR_BIT)) != as!u32(0) {
+      // Has COLOR bit, expand to all planes
+      keys.Bits = unpackImageAspectFlags(img.ImageAspect)
+    } else {
+      keys.Bits = unpackImageAspectFlags(flags)
+    }
+  }
+  return keys.Bits
+}
+
+sub VkMemoryRequirements getImagePlaneMemoryRequirements(ref!ImageObject img, VkImageAspectFlagBits plane) {
+  disjoint := isDisjointImage(img)
+  return switch disjoint {
+    case true:
+      img.MemoryRequirements.PlaneBitsToMemoryRequirements[plane]
+    default:
+      img.MemoryRequirements.PlaneBitsToMemoryRequirements[as!VkImageAspectFlagBits(0)]
+  }
 }

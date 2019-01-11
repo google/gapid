@@ -106,7 +106,8 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
           for _ , img , binds in cmd.SparseBinds.OpaqueImageBinds {
             if (!img in Images) { vkErrorInvalidImage(img) }
             image := Images[img]
-            blockSize := image.MemoryRequirements.alignment
+            // TODO: Handle multi-planar images
+            blockSize := getImagePlaneMemoryRequirements(image, as!VkImageAspectFlagBits(0)).alignment
             for _ , _ , bind in binds.SparseMemoryBinds {
               numBlocks := (bind.size + blockSize - 1) / blockSize
               memOffset := bind.memoryOffset

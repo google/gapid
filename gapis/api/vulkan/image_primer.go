@@ -55,7 +55,7 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 		return log.Errf(p.sb.ctx, nil, "[Priming image data by buffer->image copy] Nil queue")
 	}
 	job := newImagePrimerBufCopyJob(img, sameLayoutsOfImage(img))
-	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
+	for _, aspect := range p.sb.imageAspectFlagBits(img, img.ImageAspect()) {
 		job.addDst(p.sb.ctx, aspect, aspect, img)
 	}
 	bcs := newImagePrimerBufferCopySession(p.sb, job)
@@ -79,7 +79,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	renderTsk := p.sb.newScratchTaskOnQueue(queue.VulkanHandle())
 
 	copyJob := newImagePrimerBufCopyJob(img, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
-	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
+	for _, aspect := range p.sb.imageAspectFlagBits(img, img.ImageAspect()) {
 		stagingImgs, stagingImgMems, err := p.allocStagingImages(img, aspect)
 		if err != nil {
 			return log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by rendering]")
@@ -107,7 +107,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	}
 
 	renderJobs := []*ipRenderJob{}
-	for _, aspect := range p.sb.imageAspectFlagBits(img.ImageAspect()) {
+	for _, aspect := range p.sb.imageAspectFlagBits(img, img.ImageAspect()) {
 		for layer := uint32(0); layer < img.Info().ArrayLayers(); layer++ {
 			for level := uint32(0); level < img.Info().MipLevels(); level++ {
 				inputImageObjects := copyJob.srcAspectsToDsts[aspect].dstImgs
@@ -236,7 +236,9 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 	newImg := GetState(p.sb.newState).Images().Get(img.VulkanHandle())
 	newMem := newImg.BoundMemory()
 	boundOffset := img.BoundMemoryOffset()
-	boundSize := img.MemoryRequirements().Size()
+	// TODO: Handle multi-planar images
+	planeMemRequirements, _ := subGetImagePlaneMemoryRequirements(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	boundSize := planeMemRequirements.Size()
 	dat := p.sb.MustReserve(uint64(boundSize))
 
 	at := NewVoidᵖ(dat.Ptr())
@@ -350,7 +352,9 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 
 	dev := p.sb.s.Devices().Get(img.Device())
 	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
-	memTypeBits := img.MemoryRequirements().MemoryTypeBits()
+	// TODO: Handle multi-planar images
+	memRequirement, _ := subGetImagePlaneMemoryRequirements(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	memTypeBits := memRequirement.MemoryTypeBits()
 	memIndex := memoryTypeIndexFor(memTypeBits, phyDevMemProps, VkMemoryPropertyFlags(VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
 	if memIndex < 0 {
 		// fallback to use whatever type of memory available
@@ -2733,12 +2737,8 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 
 	if sb.s.Images().Contains(handle) {
 		obj := sb.s.Images().Get(handle)
-		imgMemReq := MakeImageMemoryRequirements(sb.newState.Arena)
-		imgMemReq.SetMemoryRequirements(obj.MemoryRequirements())
-		for bit, req := range obj.SparseMemoryRequirements().All() {
-			imgMemReq.AspectBitsToSparseMemoryRequirements().Add(bit, req)
-		}
-		create.Extras().Add(imgMemReq)
+		imgMemReq := obj.MemoryRequirements().Clone(sb.newState.Arena, api.CloneContext{})
+		create.Extras().Add(imgMemReq.Get())
 	}
 
 	sb.write(create)
@@ -2906,7 +2906,7 @@ func writeDescriptorSet(sb *stateBuilder, dev VkDevice, descSet VkDescriptorSet,
 func walkImageSubresourceRange(sb *stateBuilder, img ImageObjectʳ, rng VkImageSubresourceRange, f func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent)) {
 	layerCount, _ := subImageSubresourceLayerCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, img, rng)
 	levelCount, _ := subImageSubresourceLevelCount(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, img, rng)
-	for _, aspect := range sb.imageAspectFlagBits(rng.AspectMask()) {
+	for _, aspect := range sb.imageAspectFlagBits(img, rng.AspectMask()) {
 		for i := uint32(0); i < levelCount; i++ {
 			level := rng.BaseMipLevel() + i
 			levelSize := sb.levelSize(img.Info().Extent(), img.Info().Fmt(), level, aspect)

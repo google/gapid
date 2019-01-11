@@ -630,7 +630,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         bool is_valid = true;
         // If this is a sparsely resident image, then at least ALL metadata
         // must be bound.
-        for (const auto &requirements : img->mSparseMemoryRequirements) {
+        for (const auto &requirements :
+             img->mMemoryRequirements->mAspectBitsToSparseMemoryRequirements) {
           const auto &prop = requirements.second.mformatProperties;
           if (prop.maspectMask ==
               VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
@@ -648,8 +649,12 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       } else {
         // If we are not sparsely-resident, then all memory must
         // be bound before we are used.
-        if (!IsFullyBound(0, img->mMemoryRequirements.msize,
-                          img->mOpaqueSparseMemoryBindings)) {
+        // TODO: Handle multi-planar images
+        if (!IsFullyBound(
+                0,
+                img->mMemoryRequirements->mPlaneBitsToMemoryRequirements[0]
+                    .msize,
+                img->mOpaqueSparseMemoryBindings)) {
           continue;
         }
       }
@@ -674,7 +679,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     if (denseBound || !sparseResidency) {
       walkImageSubRng(img, img_whole_rng, append_image_level_to_opaque_pieces);
     } else {
-      for (const auto &req : img->mSparseMemoryRequirements) {
+      for (const auto &req :
+           img->mMemoryRequirements->mAspectBitsToSparseMemoryRequirements) {
         const auto &prop = req.second.mformatProperties;
         if (prop.maspectMask == img->mImageAspect) {
           if (prop.mflags & VkSparseImageFormatFlagBits::

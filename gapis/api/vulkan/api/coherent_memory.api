@@ -222,7 +222,7 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
   blockWidth := as!u64(elementAndTexelBlockSize.TexelBlockSize.Width)
   blockHeight := as!u64(elementAndTexelBlockSize.TexelBlockSize.Height)
 
-  for _ , _ , aspectBit in unpackImageAspectFlags(rng.aspectMask) {
+  for _ , _ , aspectBit in getAspectKeysWithAspectFlags(image, rng.aspectMask) {
     elementSize := switch (aspectBit) {
       case VK_IMAGE_ASPECT_COLOR_BIT:
         as!u64(elementAndTexelBlockSize.ElementSize)

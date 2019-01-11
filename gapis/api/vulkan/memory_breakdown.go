@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -196,7 +197,7 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 				VkSparseMemoryBindFlagBits_VK_SPARSE_MEMORY_BIND_METADATA_BIT)) !=
 				VkSparseMemoryBindFlags(0) {
 
-				reqs, ok := info.SparseMemoryRequirements().Lookup(
+				reqs, ok := info.MemoryRequirements().AspectBitsToSparseMemoryRequirements().Lookup(
 					uint32(VkImageAspectFlagBits_VK_IMAGE_ASPECT_METADATA_BIT))
 				if !ok {
 					return fmt.Errorf("Metadata binding present but no metadata sparse memory requirements for image %v", handle)
@@ -215,7 +216,7 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 				}
 			} else {
 				inMip := false
-				for aspects, reqs := range info.SparseMemoryRequirements().All() {
+				for aspects, reqs := range info.MemoryRequirements().AspectBitsToSparseMemoryRequirements().All() {
 					offset, arrayLayer, ok := checkMipTail(reqs)
 					if !ok {
 						continue
@@ -313,7 +314,9 @@ func (s *State) getAllocationBindings(allocation DeviceMemoryObject) ([]*api.Mem
 			binding.Size = uint64(buffer.Info().Size())
 			binding.Type = &api.MemoryBinding_Buffer{&api.NormalBinding{}}
 		} else if image, ok := s.Images().Lookup(VkImage(handle)); ok {
-			binding.Size = uint64(image.MemoryRequirements().Size())
+			ctx := context.Background()
+			memRequirement, _ := subGetImagePlaneMemoryRequirements(ctx, nil, api.CmdNoID, nil, nil, s, 0, nil, nil, image, VkImageAspectFlagBits(0))
+			binding.Size = uint64(memRequirement.Size())
 			binding.Type = &api.MemoryBinding_Image{&api.NormalBinding{}}
 		} else {
 			return nil, fmt.Errorf("Bound object %v is not a buffer or an image", handle)
