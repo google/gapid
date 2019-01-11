@@ -439,7 +439,7 @@ func insertVirtualSwapchainPNext(ctx context.Context, cmd api.Cmd, id api.CmdID,
 	pNextData := g.AllocDataOrPanic(ctx, NewVulkanStructHeader(
 		g.Arena,
 		virtualSwapchainStruct, // sType
-		0, // pNext
+		0,                      // pNext
 	))
 	if info.PNext().IsNullptr() {
 		info.SetPNext(NewVoidᶜᵖ(pNextData.Ptr()))
@@ -841,14 +841,14 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info().Fmt())
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
 	memoryObject := NewDeviceMemoryObjectʳ(arena,
-		a.Device(),                  // Device
-		memory,                      // VulkanHandle
-		imageSize,                   // AllocationSize
-		NewU64ːVkDeviceSizeᵐ(arena), // BoundObjects
-		0, // MappedOffset
-		0, // MappedSize
-		0, // MappedLocation
-		0, // MemoryTypeIndex
+		a.Device(),                        // Device
+		memory,                            // VulkanHandle
+		imageSize,                         // AllocationSize
+		NewU64ːVkDeviceSizeᵐ(arena),       // BoundObjects
+		0,                                 // MappedOffset
+		0,                                 // MappedSize
+		0,                                 // MappedLocation
+		0,                                 // MemoryTypeIndex
 		MakeU8ˢ(uint64(imageSize), s),     // Data
 		NilVulkanDebugMarkerInfoʳ,         // DebugInfo
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationNV
