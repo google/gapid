@@ -47,7 +47,7 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
       @Override
       public void onCaptureLoaded(Loadable.Message error) {
         if (error == null) {
-          load(getPath(capture.getData()), false);
+          load(getPath(capture.getData().path), false);
         } else {
           reset(false);
         }

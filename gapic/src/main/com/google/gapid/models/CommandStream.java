@@ -89,7 +89,7 @@ public class CommandStream
   @Override
   public void onCaptureLoaded(Loadable.Message error) {
     if (error == null && selection != null) {
-      selection = selection.withCapture(capture.getData());
+      selection = selection.withCapture(capture.getData().path);
       if (isLoaded()) {
         resolve(selection.getCommand(), node -> selectCommands(selection.withNode(node), true));
       }
@@ -115,7 +115,7 @@ public class CommandStream
       // Clear the node, so the selection will be re-resolved once the context has updated.
       selection = selection.withNode(null);
     }
-    load(commandTree(capture.getData(), ctx), false);
+    load(commandTree(capture.getData().path, ctx), false);
   }
 
   @Override

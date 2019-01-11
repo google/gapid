@@ -72,7 +72,7 @@ public class Devices {
       @Override
       public void onCaptureLoaded(Loadable.Message error) {
         if (error == null) {
-          loadReplayDevices(capture.getData());
+          loadReplayDevices(capture.getData().path);
         }
       }
     });
