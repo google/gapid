@@ -321,7 +321,7 @@ func (e externs) fetchUsedDescriptors(ShaderModuleObjectʳ) DescriptorInfoʳ {
 			return MakeDescriptorInfoʳ(e.s.Arena).Set(p).Clone(e.s.Arena, api.CloneContext{})
 		}
 	}
-	return MakeDescriptorInfoʳ(e.s.Arena)
+	return NilDescriptorInfoʳ
 }
 
 func (e externs) fetchBufferMemoryRequirements(dev VkDevice, buf VkBuffer) VkMemoryRequirements {

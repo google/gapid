@@ -254,6 +254,7 @@ cmd VkResult vkCreateGraphicsPipelines(
     )
     obj.Device = device
     create_info := infos[i]
+    obj.Layout = PipelineLayouts[create_info.layout]
     // handle pNext
     if create_info.pNext != null {
       numPNext := numberOfPNext(create_info.pNext)
@@ -298,9 +299,23 @@ cmd VkResult vkCreateGraphicsPipelines(
         spec_data.Data = clone(as!u8*(spec_info.pData)[0:spec_info.dataSize])
         stage_data.Specialization = spec_data
       }
-      moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
-      for _, _, d in moduleDescriptors {
-        obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
+      
+      if stage_data.Module.Descriptors != null {
+        moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
+        for _, _, d in moduleDescriptors {
+          obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
+        }
+      } else {
+        nSets := len(obj.Layout.SetLayouts)
+        for ii in (0 .. nSets) {
+          set := obj.Layout.SetLayouts[as!u32(ii)]
+          for _, k, v in set.Bindings {
+            obj.UsedDescriptors[len(obj.UsedDescriptors)] =
+              DescriptorUsage(Set: as!u32(ii),
+                Binding: k,
+                DescriptorCount: v.Count)
+          }
+        }
       }
       obj.Stages[j] = stage_data
     }
@@ -539,7 +554,7 @@ cmd VkResult vkCreateGraphicsPipelines(
       }
       obj.DynamicState = dynamic_data
     }
-    obj.Layout = PipelineLayouts[create_info.layout]
+
     obj.RenderPass = RenderPasses[create_info.renderPass]
     obj.Subpass = create_info.subpass
     if ((as!u32(create_info.flags) & as!u32(VK_PIPELINE_CREATE_DERIVATIVE_BIT)) != 0) {
@@ -644,9 +659,22 @@ cmd VkResult vkCreateComputePipelines(
       obj.BasePipelineIndex = 0
       obj.BasePipeline = as!VkPipeline(0)
     }
-    moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
-    for _, _, d in moduleDescriptors {
-      obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
+    if stage_data.Module.Descriptors != null {
+      moduleDescriptors := stage_data.Module.Descriptors.Descriptors[as!string(stage_create_info.pName)]
+      for _, _, d in moduleDescriptors {
+        obj.UsedDescriptors[len(obj.UsedDescriptors)] = d
+      }
+    } else {
+      nSets := len(obj.PipelineLayout.SetLayouts)
+      for ii in (0 .. nSets) {
+        set := obj.PipelineLayout.SetLayouts[as!u32(ii)]
+        for _, k, v in set.Bindings {
+          obj.UsedDescriptors[len(obj.UsedDescriptors)] =
+            DescriptorUsage(Set: as!u32(ii),
+              Binding: k,
+              DescriptorCount: v.Count)
+        }
+      }
     }
     created_pipelines.Objects[i] = obj
   }

@@ -655,6 +655,10 @@ gapil::Ref<DescriptorInfo> VulkanSpy::fetchUsedDescriptors(
   auto descriptors = gapil::Ref<DescriptorInfo>::create(arena());
 
   spv_reflect::ShaderModule smod(module->mWords.size(), &module->mWords[0]);
+  if (smod.GetResult() != SPV_REFLECT_RESULT_SUCCESS) {
+    return nullptr;
+  }
+
   for (uint32_t i = 0; i < smod.GetEntryPointCount(); ++i) {
     const char* epName = smod.GetEntryPointName(i);
     uint32_t count = 0;
