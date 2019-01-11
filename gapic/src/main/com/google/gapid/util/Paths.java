@@ -69,6 +69,14 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any capture(Path.ID id, boolean excludeObservations) {
+    return Path.Any.newBuilder()
+        .setCapture(Path.Capture.newBuilder()
+            .setID(id)
+            .setExcludeMemoryRanges(excludeObservations))
+        .build();
+  }
+
   public static Path.Any context(Path.Context ctx) {
     return Path.Any.newBuilder()
         .setContext(ctx)

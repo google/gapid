@@ -51,7 +51,7 @@ public class GotoCommand {
     if (dialog.open() == Window.OK) {
       models.commands.selectCommands(CommandIndex.forCommand(Path.Command.newBuilder()
           .addIndices(dialog.value)
-          .setCapture(models.capture.getData())
+          .setCapture(models.capture.getData().path)
           .build()), true);
     }
   }

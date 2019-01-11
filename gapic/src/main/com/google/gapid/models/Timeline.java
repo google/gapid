@@ -54,7 +54,7 @@ public class Timeline extends CaptureDependentModel<Timeline.Data, Timeline.List
 
   @Override
   public void onContextSelected(FilteringContext ctx) {
-    load(getPath(capture.getData()), false);
+    load(getPath(capture.getData().path), false);
   }
 
   @Override

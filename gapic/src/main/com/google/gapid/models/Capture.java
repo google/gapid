@@ -18,11 +18,13 @@ package com.google.gapid.models;
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
+import static com.google.gapid.util.Paths.capture;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static java.util.logging.Level.INFO;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -32,6 +34,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.server.Client.UnsupportedVersionException;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.util.MoreFutures;
 
 import org.eclipse.swt.widgets.Shell;
 
@@ -44,7 +47,7 @@ import java.util.logging.Logger;
 /**
  * Model containing information about the currently loaded trace.
  */
-public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Capture.Listener> {
+public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Capture.Listener> {
   protected static final Logger LOG = Logger.getLogger(Capture.class.getName());
 
   private final Settings settings;
@@ -66,7 +69,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
   }
 
   @Override
-  protected ListenableFuture<Path.Capture> doLoad(File file) {
+  protected ListenableFuture<Data> doLoad(File file) {
     if (!file.exists() || !file.canRead()) {
       return Futures.immediateFailedFuture(
           new Exception("Trace file does not exist or is not accessible"));
@@ -90,18 +93,20 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
     }
 
     settings.addToRecent(canonicalPath);
-    return client.loadCapture(canonicalPath);
+    return MoreFutures.transformAsync(client.loadCapture(canonicalPath), path ->
+      MoreFutures.transform(client.get(
+          capture(path.getID(), true), Path.Device.getDefaultInstance()),
+          val -> new Data(path, val.getCapture())));
   }
 
   @Override
-  protected ResultOrError<Path.Capture, Loadable.Message> processResult(
-      Rpc.Result<Path.Capture> result) {
+  protected ResultOrError<Data, Loadable.Message> processResult(Rpc.Result<Data> result) {
     try {
-      Path.Capture capturePath = result.get();
-      if (capturePath == null) {
+      Data data = result.get();
+      if (data == null || data.path == null) {
         return error(Loadable.Message.error("Invalid/Corrupted trace file!"));
       } else {
-        return success(capturePath);
+        return success(data);
       }
     } catch (UnsupportedVersionException e) {
       return error(Loadable.Message.error(e.getMessage()));
@@ -149,7 +154,7 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
 
     settings.addToRecent(canonicalPath);
 
-    rpcController.start().listen(client.saveCapture(getData(), canonicalPath),
+    rpcController.start().listen(client.saveCapture(getData().path, canonicalPath),
         new UiErrorCallback<Void, Boolean, Exception>(shell, LOG) {
       @Override
       protected ResultOrError<Boolean, Exception> onRpcThread(Rpc.Result<Void> result)
@@ -190,7 +195,18 @@ public class Capture extends ModelBase<Path.Capture, File, Loadable.Message, Cap
       name = newName;
     }
     listeners.fire().onCaptureLoadingStart(newName == null);
-    updateSuccess(newPath);
+    // TODO: maybe reload the capture?
+    updateSuccess(new Data(newPath, getData().capture));
+  }
+
+  public static class Data {
+    public final Path.Capture path;
+    public final Service.Capture capture;
+
+    public Data(Path.Capture path, Service.Capture capture) {
+      this.path = path;
+      this.capture = capture;
+    }
   }
 
   public static interface Listener extends Events.Listener {

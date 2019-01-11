@@ -49,7 +49,7 @@ public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Re
 
       @Override
       public void onContextSelected(FilteringContext ctx) {
-        load(getPath(capture.getData(), ctx), false);
+        load(getPath(capture.getData().path, ctx), false);
       }
     });
   }
