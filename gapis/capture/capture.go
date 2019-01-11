@@ -192,9 +192,12 @@ func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture
 	for i, a := range c.APIs {
 		apis[i] = &path.API{ID: path.NewID(id.ID(a.ID()))}
 	}
-	observations := make([]*service.MemoryRange, len(c.Observed))
-	for i, o := range c.Observed {
-		observations[i] = &service.MemoryRange{Base: o.First, Size: o.Count}
+	var observations []*service.MemoryRange
+	if !p.ExcludeMemoryRanges {
+		observations = make([]*service.MemoryRange, len(c.Observed))
+		for i, o := range c.Observed {
+			observations[i] = &service.MemoryRange{Base: o.First, Size: o.Count}
+		}
 	}
 	return &service.Capture{
 		Name:         c.Name,
