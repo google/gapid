@@ -15,6 +15,7 @@
 package graph_visualization
 
 import (
+	"github.com/google/gapid/gapis/api"
 	"reflect"
 	"sort"
 	"testing"
@@ -38,14 +39,15 @@ func getSortedKeysForNodes(input map[int]*node) []int {
 	return sortedKeys
 }
 
-func addNodeByIdAndLabel(g *graph, id int, label string) {
+func addNodeByIdAndName(g *graph, id int, name string) {
+	label := &api.Label{LevelsName: []string{name}}
 	newNode := getNewNode(id, label)
 	g.addNode(newNode)
 }
 
-func addNodeByIdAndLabelAndNameAndAttributes(g *graph, id int, label, name, attributes string) {
+func addNodeByIdAndNameAndAttributes(g *graph, id int, name, attributes string) {
+	label := &api.Label{LevelsName: []string{name}}
 	newNode := getNewNode(id, label)
-	newNode.name = name
 	newNode.attributes = attributes
 	g.addNode(newNode)
 }
@@ -71,12 +73,8 @@ func areEqualGraphs(t *testing.T, wantedGraph *graph, obtainedGraph *graph) bool
 	for _, id := range wantedSortedIdNodes {
 		wantedNode := wantedGraph.nodeIdToNode[id]
 		obtainedNode := obtainedGraph.nodeIdToNode[id]
-		if wantedNode.label != obtainedNode.label {
+		if !reflect.DeepEqual(wantedNode.label, obtainedNode.label) {
 			t.Errorf("The labels from nodes with ID %d are different %v != %v\n", id, wantedNode.label, obtainedNode.label)
-			return false
-		}
-		if wantedNode.name != obtainedNode.name {
-			t.Errorf("The names from nodes with ID %d are different %v != %v\n", id, wantedNode.name, obtainedNode.name)
 			return false
 		}
 		wantedInNeighbourIdSorted := getSortedKeys(wantedNode.inNeighbourIdToEdgeId)
@@ -98,32 +96,32 @@ func areEqualGraphs(t *testing.T, wantedGraph *graph, obtainedGraph *graph) bool
 func TestGraph1(t *testing.T) {
 
 	wantedGraph := createGraph(0)
-	addNodeByIdAndLabel(wantedGraph, 0, "A")
-	addNodeByIdAndLabel(wantedGraph, 1, "B")
-	addNodeByIdAndLabel(wantedGraph, 2, "C")
-	addNodeByIdAndLabel(wantedGraph, 3, "D")
-	addNodeByIdAndLabel(wantedGraph, 4, "E")
-	addNodeByIdAndLabel(wantedGraph, 5, "F")
-	addNodeByIdAndLabel(wantedGraph, 6, "G")
-	addNodeByIdAndLabel(wantedGraph, 7, "H")
-	addNodeByIdAndLabel(wantedGraph, 8, "I")
-	addNodeByIdAndLabel(wantedGraph, 9, "J")
+	addNodeByIdAndName(wantedGraph, 0, "A")
+	addNodeByIdAndName(wantedGraph, 1, "B")
+	addNodeByIdAndName(wantedGraph, 2, "C")
+	addNodeByIdAndName(wantedGraph, 3, "D")
+	addNodeByIdAndName(wantedGraph, 4, "E")
+	addNodeByIdAndName(wantedGraph, 5, "F")
+	addNodeByIdAndName(wantedGraph, 6, "G")
+	addNodeByIdAndName(wantedGraph, 7, "H")
+	addNodeByIdAndName(wantedGraph, 8, "I")
+	addNodeByIdAndName(wantedGraph, 9, "J")
 
 	obtainedGraph := createGraph(0)
-	addNodeByIdAndLabel(obtainedGraph, 0, "A")
-	addNodeByIdAndLabel(obtainedGraph, 1, "B")
-	addNodeByIdAndLabel(obtainedGraph, 2, "C")
-	addNodeByIdAndLabel(obtainedGraph, 3, "D")
-	addNodeByIdAndLabel(obtainedGraph, 4, "E")
-	addNodeByIdAndLabel(obtainedGraph, 5, "F")
-	addNodeByIdAndLabel(obtainedGraph, 6, "G")
-	addNodeByIdAndLabel(obtainedGraph, 7, "H")
-	addNodeByIdAndLabel(obtainedGraph, 8, "I")
-	addNodeByIdAndLabel(obtainedGraph, 9, "J")
+	addNodeByIdAndName(obtainedGraph, 0, "A")
+	addNodeByIdAndName(obtainedGraph, 1, "B")
+	addNodeByIdAndName(obtainedGraph, 2, "C")
+	addNodeByIdAndName(obtainedGraph, 3, "D")
+	addNodeByIdAndName(obtainedGraph, 4, "E")
+	addNodeByIdAndName(obtainedGraph, 5, "F")
+	addNodeByIdAndName(obtainedGraph, 6, "G")
+	addNodeByIdAndName(obtainedGraph, 7, "H")
+	addNodeByIdAndName(obtainedGraph, 8, "I")
+	addNodeByIdAndName(obtainedGraph, 9, "J")
 
-	addNodeByIdAndLabel(obtainedGraph, 10, "K")
-	addNodeByIdAndLabel(obtainedGraph, 11, "L")
-	addNodeByIdAndLabel(obtainedGraph, 12, "M")
+	addNodeByIdAndName(obtainedGraph, 10, "K")
+	addNodeByIdAndName(obtainedGraph, 11, "L")
+	addNodeByIdAndName(obtainedGraph, 12, "M")
 	obtainedGraph.removeNodeById(10)
 	obtainedGraph.removeNodeById(11)
 	obtainedGraph.removeNodeById(12)
@@ -132,9 +130,9 @@ func TestGraph1(t *testing.T) {
 		t.Errorf("The graphs are different\n")
 	}
 
-	addNodeByIdAndLabel(obtainedGraph, 10, "K")
-	addNodeByIdAndLabel(obtainedGraph, 11, "L")
-	addNodeByIdAndLabel(obtainedGraph, 12, "M")
+	addNodeByIdAndName(obtainedGraph, 10, "K")
+	addNodeByIdAndName(obtainedGraph, 11, "L")
+	addNodeByIdAndName(obtainedGraph, 12, "M")
 	obtainedGraph.addEdgeBetweenNodesById(10, 1)
 	obtainedGraph.addEdgeBetweenNodesById(10, 11)
 	obtainedGraph.addEdgeBetweenNodesById(10, 4)
@@ -156,26 +154,26 @@ func TestGraph2(t *testing.T) {
 
 	wantedGraph := createGraph(0)
 	obtainedGraph := createGraph(0)
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 0, "A", "vkCommandBuffer0", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 1, "A", "vkCommandBuffer1", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 2, "A", "vkCommandBuffer2", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 3, "A", "vkCommandBuffer3", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 4, "A", "vkCommandBuffer4", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 5, "A", "vkCommandBuffer5", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 6, "A", "vkCommandBuffer6", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 7, "A", "vkCommandBuffer7", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 0, "vkCommandBuffer0", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 1, "vkCommandBuffer1", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 2, "vkCommandBuffer2", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 3, "vkCommandBuffer3", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 4, "vkCommandBuffer4", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 5, "vkCommandBuffer5", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 6, "vkCommandBuffer6", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 7, "vkCommandBuffer7", "")
 	obtainedGraph.removeNodesWithZeroDegree()
 
 	if !areEqualGraphs(t, wantedGraph, obtainedGraph) {
 		t.Errorf("The graphs are different\n")
 	}
 
-	addNodeByIdAndLabelAndNameAndAttributes(wantedGraph, 0, "A", "vkCommandBuffer0", "")
-	addNodeByIdAndLabelAndNameAndAttributes(wantedGraph, 2, "B", "vkCommandBuffer2", "")
-	addNodeByIdAndLabelAndNameAndAttributes(wantedGraph, 6, "C", "vkCommandBuffer6", "")
-	addNodeByIdAndLabelAndNameAndAttributes(wantedGraph, 3, "D", "vkCommandBuffer3", "")
-	addNodeByIdAndLabelAndNameAndAttributes(wantedGraph, 4, "E", "vkCommandBuffer4", "")
-	addNodeByIdAndLabelAndNameAndAttributes(wantedGraph, 5, "F", "vkCommandBuffer5", "")
+	addNodeByIdAndNameAndAttributes(wantedGraph, 0, "vkCommandBuffer0", "")
+	addNodeByIdAndNameAndAttributes(wantedGraph, 2, "vkCommandBuffer2", "")
+	addNodeByIdAndNameAndAttributes(wantedGraph, 6, "vkCommandBuffer6", "")
+	addNodeByIdAndNameAndAttributes(wantedGraph, 3, "vkCommandBuffer3", "")
+	addNodeByIdAndNameAndAttributes(wantedGraph, 4, "vkCommandBuffer4", "")
+	addNodeByIdAndNameAndAttributes(wantedGraph, 5, "vkCommandBuffer5", "")
 	wantedGraph.addEdgeBetweenNodesById(0, 3)
 	wantedGraph.addEdgeBetweenNodesById(0, 4)
 	wantedGraph.addEdgeBetweenNodesById(0, 5)
@@ -186,13 +184,13 @@ func TestGraph2(t *testing.T) {
 	wantedGraph.addEdgeBetweenNodesById(6, 4)
 	wantedGraph.addEdgeBetweenNodesById(6, 5)
 
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 0, "A", "vkCommandBuffer0", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 2, "B", "vkCommandBuffer2", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 6, "C", "vkCommandBuffer6", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 3, "D", "vkCommandBuffer3", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 4, "E", "vkCommandBuffer4", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 5, "F", "vkCommandBuffer5", "")
-	addNodeByIdAndLabelAndNameAndAttributes(obtainedGraph, 1, "G", "vkCommandBuffer1", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 0, "vkCommandBuffer0", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 2, "vkCommandBuffer2", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 6, "vkCommandBuffer6", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 3, "vkCommandBuffer3", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 4, "vkCommandBuffer4", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 5, "vkCommandBuffer5", "")
+	addNodeByIdAndNameAndAttributes(obtainedGraph, 1, "vkCommandBuffer1", "")
 	obtainedGraph.addEdgeBetweenNodesById(0, 1)
 	obtainedGraph.addEdgeBetweenNodesById(2, 1)
 	obtainedGraph.addEdgeBetweenNodesById(6, 1)
@@ -220,12 +218,12 @@ func TestGraph3(t *testing.T) {
 		t.Errorf("The graphs are different\n")
 	}
 
-	addNodeByIdAndLabel(wantedGraph, 123456, "")
-	addNodeByIdAndLabel(wantedGraph, 10, "")
+	addNodeByIdAndName(wantedGraph, 123456, "")
+	addNodeByIdAndName(wantedGraph, 10, "")
 	wantedGraph.addEdgeBetweenNodesById(123456, 10)
 
-	addNodeByIdAndLabel(obtainedGraph, 123456, "")
-	addNodeByIdAndLabel(obtainedGraph, 10, "")
+	addNodeByIdAndName(obtainedGraph, 123456, "")
+	addNodeByIdAndName(obtainedGraph, 10, "")
 	obtainedGraph.addEdgeBetweenNodesById(10, 123456)
 	obtainedGraph.removeEdgeById(1)
 	obtainedGraph.addEdgeBetweenNodesById(123456, 10)
@@ -233,52 +231,4 @@ func TestGraph3(t *testing.T) {
 	if !areEqualGraphs(t, wantedGraph, obtainedGraph) {
 		t.Errorf("The graphs are different\n")
 	}
-}
-
-func TestGetIdInStronglyConnectedComponents(t *testing.T) {
-
-	currentGraph := createGraph(0)
-	numberOfNodes := 12
-	for id := 0; id < numberOfNodes; id++ {
-		addNodeByIdAndLabel(currentGraph, id, "")
-	}
-	currentGraph.addEdgeBetweenNodesById(0, 1)
-	currentGraph.addEdgeBetweenNodesById(1, 2)
-	currentGraph.addEdgeBetweenNodesById(2, 3)
-	currentGraph.addEdgeBetweenNodesById(3, 0)
-	currentGraph.addEdgeBetweenNodesById(3, 4)
-	currentGraph.addEdgeBetweenNodesById(3, 5)
-	currentGraph.addEdgeBetweenNodesById(3, 6)
-	currentGraph.addEdgeBetweenNodesById(4, 9)
-	currentGraph.addEdgeBetweenNodesById(4, 11)
-	currentGraph.addEdgeBetweenNodesById(11, 10)
-	currentGraph.addEdgeBetweenNodesById(11, 8)
-	currentGraph.addEdgeBetweenNodesById(6, 10)
-	currentGraph.addEdgeBetweenNodesById(6, 7)
-	currentGraph.addEdgeBetweenNodesById(7, 6)
-	currentGraph.addEdgeBetweenNodesById(10, 8)
-	currentGraph.addEdgeBetweenNodesById(8, 10)
-	currentGraph.addEdgeBetweenNodesById(7, 8)
-	currentGraph.addEdgeBetweenNodesById(8, 7)
-
-	idInStronglyConnectedComponents := currentGraph.getIdInStronglyConnectedComponents()
-	wantedStronglyConnectedComponentes := [][]int{
-		[]int{0, 1, 2, 3},
-		[]int{6, 7, 8, 10},
-		[]int{4},
-		[]int{5},
-		[]int{9},
-		[]int{11},
-	}
-	for _, currentScc := range wantedStronglyConnectedComponentes {
-		idInSccForNodes := map[int]bool{}
-		for _, idNode := range currentScc {
-			idInScc := idInStronglyConnectedComponents[idNode]
-			idInSccForNodes[idInScc] = true
-		}
-		if len(idInSccForNodes) != 1 {
-			t.Errorf("There are nodes belonging to different SCC %v", currentScc)
-		}
-	}
-
 }
