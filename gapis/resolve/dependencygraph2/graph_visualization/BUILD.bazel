@@ -17,6 +17,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "graph_algorithms.go",
+        "graph_output.go",
         "graph_structure.go",
         "graph_visualization.go",
     ],
@@ -32,6 +34,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["graph_structure_test.go"],
+    srcs = [
+        "graph_algorithms_test.go",
+        "graph_structure_test.go",
+    ],
     embed = [":go_default_library"],
+    deps = ["//gapis/api:go_default_library"],
 )

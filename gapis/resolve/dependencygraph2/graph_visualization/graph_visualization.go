@@ -53,10 +53,9 @@ func createGraphFromDependencyGraph(ctx context.Context, dependencyGraph depende
 					commandNameAndId := fmt.Sprintf("%s_%d", command.CmdName(), cmdId)
 					isSubCommand, parentNodeId := false, 0
 
-					label, name := "", ""
+					label := &api.Label{}
 					if len(cmdNode.Index) == 1 {
 						label = builder.GetCommandLabel(command, cmdId)
-						name = command.CmdName()
 						commandNameAndIdToNodeId[commandNameAndId] = int(nodeId)
 					} else if len(cmdNode.Index) > 1 {
 						dependencyNodeAccesses := dependencyGraph.GetNodeAccesses(nodeId)
@@ -77,8 +76,7 @@ func createGraphFromDependencyGraph(ctx context.Context, dependencyGraph depende
 								subCommandName = subCmd.CmdName()
 							}
 						}
-						label = builder.GetSubCommandLabel(cmdNode.Index, commandNameAndId, subCommandName)
-						name = subCommandName
+						label = builder.GetSubCommandLabel(cmdNode.Index, command.CmdName(), cmdId, subCommandName)
 					}
 
 					attributes := ""
@@ -87,7 +85,6 @@ func createGraphFromDependencyGraph(ctx context.Context, dependencyGraph depende
 					}
 
 					newNode := getNewNode(int(nodeId), label)
-					newNode.name = name
 					newNode.attributes = attributes
 					newNode.isEndOfFrame = cmdNode.CmdFlags.IsEndOfFrame()
 					if isSubCommand {
