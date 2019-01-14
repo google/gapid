@@ -301,18 +301,18 @@ func (e externs) fetchPhysicalDeviceFormatProperties(inst VkInstance, devs VkPhy
 	return NilPhysicalDevicesFormatPropertiesʳ
 }
 
-func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSparseBit bool) ImageMemoryRequirementsʳ {
+func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSparseBit bool) FetchedImageMemoryRequirementsʳ {
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
 	if e.cmdID == api.CmdNoID {
-		return NilImageMemoryRequirementsʳ
+		return NilFetchedImageMemoryRequirementsʳ
 	}
 	for _, ee := range e.cmd.Extras().All() {
-		if r, ok := ee.(ImageMemoryRequirements); ok {
-			return MakeImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
+		if r, ok := ee.(FetchedImageMemoryRequirements); ok {
+			return MakeFetchedImageMemoryRequirementsʳ(e.s.Arena).Set(r).Clone(e.s.Arena, api.CloneContext{})
 		}
 	}
-	return NilImageMemoryRequirementsʳ
+	return NilFetchedImageMemoryRequirementsʳ
 }
 
 func (e externs) fetchUsedDescriptors(ShaderModuleObjectʳ) DescriptorInfoʳ {

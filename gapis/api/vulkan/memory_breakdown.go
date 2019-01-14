@@ -148,13 +148,13 @@ func getAspects(aspects uint32) []api.AspectType {
 	return aspectTypes
 }
 
-func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
-	opaque := (info.Info().Flags() & VkImageCreateFlags(
+func (s sparseBindingMap) getImageSparseBindings(img ImageObjectʳ) error {
+	opaque := (img.Info().Flags() & VkImageCreateFlags(
 		VkImageCreateFlagBits_VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT)) ==
 		VkImageCreateFlags(0)
-	handle := uint64(info.VulkanHandle())
+	handle := uint64(img.VulkanHandle())
 	name := strconv.FormatUint(handle, 10)
-	for _, bind := range info.OpaqueSparseMemoryBindings().All() {
+	for _, bind := range img.OpaqueSparseMemoryBindings().All() {
 		if bind.Memory() == VkDeviceMemory(0) {
 			continue
 		}
@@ -188,7 +188,7 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 					arrayLayer = uint32(offset / reqs.ImageMipTailStride())
 					offset %= reqs.ImageMipTailStride()
 				}
-				if offset >= reqs.ImageMipTailSize() || arrayLayer >= info.Info().ArrayLayers() {
+				if offset >= reqs.ImageMipTailSize() || arrayLayer >= img.Info().ArrayLayers() {
 					return 0, 0, false
 				}
 				return uint64(offset), arrayLayer, true
@@ -197,8 +197,8 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 				VkSparseMemoryBindFlagBits_VK_SPARSE_MEMORY_BIND_METADATA_BIT)) !=
 				VkSparseMemoryBindFlags(0) {
 
-				reqs, ok := info.MemoryRequirements().AspectBitsToSparseMemoryRequirements().Lookup(
-					uint32(VkImageAspectFlagBits_VK_IMAGE_ASPECT_METADATA_BIT))
+				reqs, ok := img.SparseMemoryRequirements().Lookup(
+					VkImageAspectFlagBits_VK_IMAGE_ASPECT_METADATA_BIT)
 				if !ok {
 					return fmt.Errorf("Metadata binding present but no metadata sparse memory requirements for image %v", handle)
 				}
@@ -216,7 +216,7 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 				}
 			} else {
 				inMip := false
-				for aspects, reqs := range info.MemoryRequirements().AspectBitsToSparseMemoryRequirements().All() {
+				for aspects, reqs := range img.SparseMemoryRequirements().All() {
 					offset, arrayLayer, ok := checkMipTail(reqs)
 					if !ok {
 						continue
@@ -226,7 +226,7 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 						&api.SparseImageMetadataMipTail{
 							ArrayLayer: arrayLayer,
 							Offset:     offset,
-							Aspects:    getAspects(aspects),
+							Aspects:    getAspects(uint32(aspects)),
 						},
 					}
 					break
@@ -246,8 +246,8 @@ func (s sparseBindingMap) getImageSparseBindings(info ImageObjectʳ) error {
 		}
 		s[bind.Memory()] = append(v, &binding)
 	}
-	for aspects, layers := range info.SparseImageMemoryBindings().All() {
-		aspectTypes := getAspects(aspects)
+	for aspects, layers := range img.SparseImageMemoryBindings().All() {
+		aspectTypes := getAspects(uint32(aspects))
 		for layer, levels := range layers.Layers().All() {
 			for level, blocks := range levels.Levels().All() {
 				for _, block := range blocks.Blocks().All() {
@@ -315,7 +315,8 @@ func (s *State) getAllocationBindings(allocation DeviceMemoryObject) ([]*api.Mem
 			binding.Type = &api.MemoryBinding_Buffer{&api.NormalBinding{}}
 		} else if image, ok := s.Images().Lookup(VkImage(handle)); ok {
 			ctx := context.Background()
-			memRequirement, _ := subGetImagePlaneMemoryRequirements(ctx, nil, api.CmdNoID, nil, nil, s, 0, nil, nil, image, VkImageAspectFlagBits(0))
+			memInfo, _ := subGetImagePlaneMemoryInfo(ctx, nil, api.CmdNoID, nil, nil, s, 0, nil, nil, image, VkImageAspectFlagBits(0))
+			memRequirement := memInfo.MemoryRequirements()
 			binding.Size = uint64(memRequirement.Size())
 			binding.Type = &api.MemoryBinding_Image{&api.NormalBinding{}}
 		} else {

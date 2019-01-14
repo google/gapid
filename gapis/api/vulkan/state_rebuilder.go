@@ -1523,37 +1523,32 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	primeByPreinitialization := (!primeByBufCopy) && (!primeByRendering) && (!primeByImageStore) && (img.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (img.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
 
 	vkCreateImage(sb, img.Device(), img.Info(), img.VulkanHandle())
-	planeMemRequirements, _ := subGetImagePlaneMemoryRequirements(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	planeMemRequirements := planeMemInfo.MemoryRequirements()
 	vkGetImageMemoryRequirements(sb, img.Device(), img.VulkanHandle(), planeMemRequirements)
 
-	denseBound := !img.BoundMemory().IsNil()
-	sparseBound := img.SparseImageMemoryBindings().Len() > 0 ||
-		img.OpaqueSparseMemoryBindings().Len() > 0
-	sparseBinding :=
-		(uint64(img.Info().Flags()) &
-			uint64(VkImageCreateFlagBits_VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0
-	sparseResidency :=
-		sparseBinding &&
-			(uint64(img.Info().Flags())&
-				uint64(VkImageCreateFlagBits_VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT)) != 0
+	denseBound := isDenseBound(img)
+	sparseBound := isSparseBound(img)
+	sparseResidency := isSparseResidency(img)
 
 	// Dedicated allocation buffer/image must NOT be a sparse binding one.
 	// Checking the dedicated allocation info on both the memory and the buffer
 	// side, because we've found applications that do miss one of them.
-	dedicatedMemoryNV := !img.BoundMemory().IsNil() && (!img.Info().DedicatedAllocationNV().IsNil() || !img.BoundMemory().DedicatedAllocationNV().IsNil())
+	// TODO: Handle multi-planar images
+	dedicatedMemoryNV := !planeMemInfo.BoundMemory().IsNil() && (!img.Info().DedicatedAllocationNV().IsNil() || !planeMemInfo.BoundMemory().DedicatedAllocationNV().IsNil())
 	// Emit error message to report view if we found one of the dedicate allocation
 	// info struct is missing.
 	if dedicatedMemoryNV && img.Info().DedicatedAllocationNV().IsNil() {
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
 			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkImage", uint64(img.VulkanHandle()))
 	}
-	if dedicatedMemoryNV && img.BoundMemory().DedicatedAllocationNV().IsNil() {
+	if dedicatedMemoryNV && planeMemInfo.BoundMemory().DedicatedAllocationNV().IsNil() {
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(img.BoundMemory().VulkanHandle()))
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(planeMemInfo.BoundMemory().VulkanHandle()))
 	}
 
 	if dedicatedMemoryNV {
-		sb.createDeviceMemory(img.BoundMemory(), true)
+		sb.createDeviceMemory(planeMemInfo.BoundMemory(), true)
 	}
 
 	if !denseBound && !sparseBound {
@@ -1667,7 +1662,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 
 		if sparseResidency {
 			isMetadataBound := false
-			for _, req := range img.MemoryRequirements().AspectBitsToSparseMemoryRequirements().All() {
+			for _, req := range img.SparseMemoryRequirements().All() {
 				prop := req.FormatProperties()
 				if uint64(prop.AspectMask())&uint64(VkImageAspectFlagBits_VK_IMAGE_ASPECT_METADATA_BIT) != 0 {
 					isMetadataBound = IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings())
@@ -1677,7 +1672,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 				// If we have no metadata then the image can have no "real"
 				// contents
 			} else {
-				for _, req := range img.MemoryRequirements().AspectBitsToSparseMemoryRequirements().All() {
+				for _, req := range img.SparseMemoryRequirements().All() {
 					prop := req.FormatProperties()
 					if (uint64(prop.Flags()) & uint64(VkSparseImageFormatFlagBits_VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT)) != 0 {
 						if !IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
@@ -1711,19 +1706,22 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 			}
 		} else {
 			// TODO: Handle multi-planar images
-			planeMemRequirements, _ := subGetImagePlaneMemoryRequirements(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+			planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+			planeMemRequirements := planeMemInfo.MemoryRequirements()
 			if IsFullyBound(0, planeMemRequirements.Size(), img.OpaqueSparseMemoryBindings()) {
 				walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 			}
 		}
 	} else {
 		// Otherwise, we have no sparse bindings, we are either non-sparse, or empty.
-		if img.BoundMemory().IsNil() {
+		if !isDenseBound(img) {
 			return
 		}
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
+		// TODO: Handle multi-planar images
+		planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
 		vkBindImageMemory(sb, img.Device(), img.VulkanHandle(),
-			img.BoundMemory().VulkanHandle(), img.BoundMemoryOffset())
+			planeMemInfo.BoundMemory().VulkanHandle(), planeMemInfo.BoundMemoryOffset())
 	}
 	// opaqueRanges should contain all the bound image subresources by now.
 	if len(opaqueRanges) == 0 {

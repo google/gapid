@@ -581,9 +581,10 @@ VulkanSpy::fetchPhysicalDeviceFormatProperties(
   return props;
 }
 
-gapil::Ref<ImageMemoryRequirements> VulkanSpy::fetchImageMemoryRequirements(
-    CallObserver* observer, VkDevice device, VkImage image, bool hasSparseBit) {
-  auto reqs = gapil::Ref<ImageMemoryRequirements>::create(arena());
+gapil::Ref<FetchedImageMemoryRequirements>
+VulkanSpy::fetchImageMemoryRequirements(CallObserver* observer, VkDevice device,
+                                        VkImage image, bool hasSparseBit) {
+  auto reqs = gapil::Ref<FetchedImageMemoryRequirements>::create(arena());
   VkMemoryRequirements rawReq{0};
   mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements(
       device, image, &rawReq);

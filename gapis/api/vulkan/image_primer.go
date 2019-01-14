@@ -62,7 +62,7 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 	for _, rng := range opaqueBoundRanges {
 		bcs.collectCopiesFromSubresourceRange(rng)
 	}
-	if sparseResidency(img) {
+	if isSparseResidency(img) {
 		bcs.collectCopiesFromSparseImageBindings()
 	}
 	err := bcs.rolloutBufCopies(queue.VulkanHandle())
@@ -98,7 +98,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	for _, rng := range opaqueBoundRanges {
 		bcs.collectCopiesFromSubresourceRange(rng)
 	}
-	if sparseResidency(img) {
+	if isSparseResidency(img) {
 		bcs.collectCopiesFromSparseImageBindings()
 	}
 	err := bcs.rolloutBufCopies(queue.VulkanHandle())
@@ -179,7 +179,7 @@ func (p *imagePrimer) primeByImageStore(img ImageObjectʳ, opaqueBoundRanges []V
 			})
 	}
 
-	if sparseResidency(img) {
+	if isSparseResidency(img) {
 		walkSparseImageMemoryBindings(p.sb, img,
 			func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
 				storeJobs = append(storeJobs, &ipStoreJob{
@@ -234,10 +234,12 @@ func (p *imagePrimer) primeByPreinitialization(img ImageObjectʳ, opaqueBoundRan
 		return log.Err(p.sb.ctx, nil, "[Priming image data by pre-initialization] Nil queue")
 	}
 	newImg := GetState(p.sb.newState).Images().Get(img.VulkanHandle())
-	newMem := newImg.BoundMemory()
-	boundOffset := img.BoundMemoryOffset()
 	// TODO: Handle multi-planar images
-	planeMemRequirements, _ := subGetImagePlaneMemoryRequirements(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	newImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.newState, GetState(p.sb.newState), 0, nil, nil, newImg, VkImageAspectFlagBits(0))
+	newMem := newImgPlaneMemInfo.BoundMemory()
+	oldImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	boundOffset := oldImgPlaneMemInfo.BoundMemoryOffset()
+	planeMemRequirements := oldImgPlaneMemInfo.MemoryRequirements()
 	boundSize := planeMemRequirements.Size()
 	dat := p.sb.MustReserve(uint64(boundSize))
 
@@ -353,7 +355,8 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	dev := p.sb.s.Devices().Get(img.Device())
 	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
 	// TODO: Handle multi-planar images
-	memRequirement, _ := subGetImagePlaneMemoryRequirements(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	memInfo, _ := subGetImagePlaneMemoryInfo(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	memRequirement := memInfo.MemoryRequirements()
 	memTypeBits := memRequirement.MemoryTypeBits()
 	memIndex := memoryTypeIndexFor(memTypeBits, phyDevMemProps, VkMemoryPropertyFlags(VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
 	if memIndex < 0 {
@@ -2686,16 +2689,23 @@ func ebgrDataToRGB32SFloat(data []uint8, extent VkExtent3D) ([]uint8, VkFormat, 
 	return retData, dstFmt, nil
 }
 
-func denseBound(img ImageObjectʳ) bool {
-	return !img.BoundMemory().IsNil()
+func isDenseBound(img ImageObjectʳ) bool {
+	return img.PlaneMemoryInfo().Len() > 0 && func() bool {
+		for _, m := range img.PlaneMemoryInfo().All() {
+			if m.BoundMemory().IsNil() {
+				return false
+			}
+		}
+		return true
+	}()
 }
 
-func sparseBound(img ImageObjectʳ) bool {
-	return img.SparseImageMemoryBindings().Len() > 0 || img.OpaqueSparseMemoryBindings().Len() > 0
+func isSparseBound(img ImageObjectʳ) bool {
+	return (img.SparseImageMemoryBindings().Len() > 0 || img.OpaqueSparseMemoryBindings().Len() > 0) && ((uint64(img.Info().Flags()) & uint64(VkImageCreateFlagBits_VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0)
 }
 
-func sparseResidency(img ImageObjectʳ) bool {
-	return ((uint32(img.Info().Flags()) & uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0) &&
+func isSparseResidency(img ImageObjectʳ) bool {
+	return isSparseBound(img) &&
 		((uint32(img.Info().Flags()) & uint32(VkImageCreateFlagBits_VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT)) != 0)
 }
 
@@ -2737,8 +2747,14 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 
 	if sb.s.Images().Contains(handle) {
 		obj := sb.s.Images().Get(handle)
-		imgMemReq := obj.MemoryRequirements().Clone(sb.newState.Arena, api.CloneContext{})
-		create.Extras().Add(imgMemReq.Get())
+		fetchedReq := MakeFetchedImageMemoryRequirements(sb.newState.Arena)
+		for p, pmi := range obj.PlaneMemoryInfo().All() {
+			fetchedReq.PlaneBitsToMemoryRequirements().Add(p, pmi.MemoryRequirements())
+		}
+		for b, sparseReq := range obj.SparseMemoryRequirements().All() {
+			fetchedReq.AspectBitsToSparseMemoryRequirements().Add(b, sparseReq)
+		}
+		create.Extras().Add(fetchedReq)
 	}
 
 	sb.write(create)
