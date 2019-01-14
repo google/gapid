@@ -16,14 +16,80 @@
 	</natures>
 	<linkedResources>
 		<link>
-			<name>platform_lib</name>
-			<type>2</type>
-			<locationURI>GAPIC_PLATFORM_LIB</locationURI>
-		</link>
-		<link>
 			<name>platform_src</name>
 			<type>2</type>
 			<locationURI>GAPIC_PLATFORM_SRC</locationURI>
 		</link>
 	</linkedResources>
+	<filteredResources>
+		<filter>
+			<id>1555091862383</id>
+			<name></name>
+			<type>29</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.orFilterMatcher</id>
+				<arguments>
+					<matcher>
+						<id>org.eclipse.ui.ide.multiFilter</id>
+						<arguments>1.0-projectRelativePath-matches-false-false-bazel-bin</arguments>
+					</matcher>
+					<matcher>
+						<id>org.eclipse.ui.ide.multiFilter</id>
+						<arguments>1.0-projectRelativePath-matches-false-false-bazel-bin/*</arguments>
+					</matcher>
+					<matcher>
+						<id>org.eclipse.ui.ide.multiFilter</id>
+						<arguments>1.0-projectRelativePath-matches-false-false-bazel-genfiles</arguments>
+					</matcher>
+					<matcher>
+						<id>org.eclipse.ui.ide.multiFilter</id>
+						<arguments>1.0-projectRelativePath-matches-false-false-bazel-genfiles/*</arguments>
+					</matcher>
+					<matcher>
+						<id>org.eclipse.ui.ide.multiFilter</id>
+						<arguments>1.0-projectRelativePath-matches-false-false-bazel-external</arguments>
+					</matcher>
+					<matcher>
+						<id>org.eclipse.ui.ide.andFilterMatcher</id>
+						<arguments>
+							<matcher>
+								<id>org.eclipse.ui.ide.multiFilter</id>
+								<arguments>1.0-projectRelativePath-matches-false-false-bazel-external/*</arguments>
+							</matcher>
+							<matcher>
+								<id>org.eclipse.ui.ide.notFilterMatcher</id>
+								<arguments>
+									<matcher>
+										<id>org.eclipse.ui.ide.multiFilter</id>
+										<arguments>1.0-projectRelativePath-matches-false-false-bazel-external/gapid*</arguments>
+									</matcher>
+									<matcher>
+										<id>org.eclipse.ui.ide.multiFilter</id>
+										<arguments>1.0-projectRelativePath-matches-false-false-bazel-external/androidndk</arguments>
+									</matcher>
+									<matcher>
+										<id>org.eclipse.ui.ide.multiFilter</id>
+										<arguments>1.0-projectRelativePath-matches-false-false-bazel-external/androidsdk</arguments>
+									</matcher>
+									<matcher>
+										<id>org.eclipse.ui.ide.multiFilter</id>
+										<arguments>1.0-projectRelativePath-matches-false-false-bazel-external/llvm</arguments>
+									</matcher>
+								</arguments>
+							</matcher>
+						</arguments>
+					</matcher>
+					<matcher>
+						<id>org.eclipse.ui.ide.notFilterMatcher</id>
+						<arguments>
+							<matcher>
+								<id>org.eclipse.ui.ide.multiFilter</id>
+								<arguments>1.0-projectRelativePath-matches-false-false-bazel-*</arguments>
+							</matcher>
+						</arguments>
+					</matcher>
+				</arguments>
+			</matcher>
+		</filter>
+	</filteredResources>
 </projectDescription>
