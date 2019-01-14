@@ -37,6 +37,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
+import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable.Message;
@@ -59,6 +60,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
@@ -102,8 +104,8 @@ public class MainWindow extends ApplicationWindow {
     showLoadingMessage("Setting up UI...");
     initMenus(client, models, widgets);
 
-    LoadablePanel<GraphicsTraceView> mainUi = new LoadablePanel<GraphicsTraceView>(
-        mainArea, widgets, parent -> new GraphicsTraceView(parent, models, widgets));
+    LoadablePanel<MainViewContainer> mainUi = new LoadablePanel<MainViewContainer>(
+        mainArea, widgets, parent -> new MainViewContainer(parent, models, widgets));
     models.capture.addListener(new Capture.Listener() {
       @Override
       public void onCaptureLoadingStart(boolean maintainState) {
@@ -117,9 +119,11 @@ public class MainWindow extends ApplicationWindow {
         if (error != null) {
           mainUi.showMessage(error);
         } else {
-          mainUi.stopLoading();
-          mainUi.getContents().updateViewMenu(findMenu(MenuItems.VIEW_ID));
+          MainView view = mainUi.getContents().updateAndGet(
+              models.capture.getData().capture.getType());
+          view.updateViewMenu(findMenu(MenuItems.VIEW_ID));
           getMenuBarManager().update(true);
+          mainUi.stopLoading();
         }
       }
     });
@@ -352,6 +356,45 @@ public class MainWindow extends ApplicationWindow {
     return manager;
   }
 
+  private static class MainViewContainer extends Composite {
+    private final Models models;
+    private final Widgets widgets;
+
+    private Service.TraceType current;
+    private MainView view;
+
+    public MainViewContainer(Composite parent, Models models, Widgets widgets) {
+      super(parent, SWT.NONE);
+      this.models = models;
+      this.widgets = widgets;
+
+      setLayout(new FillLayout());
+    }
+
+    public MainView updateAndGet(Service.TraceType traceType) {
+      if (traceType == current) {
+        return view;
+      }
+      if (view != null) {
+        ((Control)view).dispose();
+      }
+
+      current = traceType;
+      switch (traceType) {
+        case Graphics:
+          view = new GraphicsTraceView(this, models, widgets);
+          break;
+        case Perfetto:
+          view = new PerfettoTraceView(this);
+          break;
+        default:
+          throw new AssertionError("Trace type not supported: " + traceType);
+      }
+      layout();
+      return view;
+    }
+  }
+
   /**
    * The menu items shown in the main application window menus.
    */
@@ -419,5 +462,12 @@ public class MainWindow extends ApplicationWindow {
       action.setAccelerator(accelerator);
       return action;
     }
+  }
+
+  /**
+   * Main view shown once a trace is loaded.
+   */
+  public static interface MainView {
+    public void updateViewMenu(MenuManager manager);
   }
 }

@@ -68,6 +68,14 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
     load(file, true);
   }
 
+  public boolean isGraphics() {
+    return isLoaded() && getData().capture.getType() == Service.TraceType.Graphics;
+  }
+
+  public boolean isPerfetto() {
+    return isLoaded() && getData().capture.getType() == Service.TraceType.Perfetto;
+  }
+
   @Override
   protected ListenableFuture<Data> doLoad(File file) {
     if (!file.exists() || !file.canRead()) {
