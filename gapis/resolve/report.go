@@ -53,7 +53,7 @@ func (r *ReportResolvable) newReportItem(s log.Severity, c uint64, m *stringtabl
 func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.Path.Capture, r.Config)
 
-	c, err := capture.Resolve(ctx)
+	c, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}

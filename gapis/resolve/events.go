@@ -26,7 +26,7 @@ import (
 
 // Events resolves and returns the event list from the path p.
 func Events(ctx context.Context, p *path.Events, r *path.ResolveConfig) (*service.Events, error) {
-	c, err := capture.ResolveFromPath(ctx, p.Capture)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
 	}

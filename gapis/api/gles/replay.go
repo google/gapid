@@ -125,7 +125,7 @@ func (a API) Replay(
 	dependentPayload string,
 	rrs []replay.RequestAndResult,
 	device *device.Instance,
-	capture *capture.Capture,
+	capture *capture.GraphicsCapture,
 	out transform.Writer) error {
 	if dependentPayload != "" {
 		return log.Errf(ctx, nil, "GLES does not support dependent payloads")

@@ -294,7 +294,7 @@ func (s *server) DCECapture(ctx context.Context, p *path.Capture, requested []*p
 	if err != nil {
 		return nil, err
 	}
-	trimmed, err := dependencygraph2.DCECapture(ctx, c.Name+"_dce", p, requested)
+	trimmed, err := dependencygraph2.DCECapture(ctx, c.Name()+"_dce", p, requested)
 	if err != nil {
 		return nil, err
 	}

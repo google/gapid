@@ -60,7 +60,7 @@ func (m *exportManager) Export(ctx context.Context, waitRequests int) (*gapir.Pa
 	d := bind.GetRegistry(ctx).Device(m.key.device)
 
 	capturePath := path.NewCapture(m.key.capture)
-	c, err := capture.ResolveFromPath(ctx, capturePath)
+	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to load capture")
 	}

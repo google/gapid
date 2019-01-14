@@ -47,7 +47,7 @@ type findIssues struct {
 	lastGlError   GLenum
 }
 
-func newFindIssues(ctx context.Context, c *capture.Capture, device *device.Instance) *findIssues {
+func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, device *device.Instance) *findIssues {
 	targetVersion, _ := ParseVersion(device.Configuration.Drivers.Opengl.Version)
 	transform := &findIssues{
 		state:         c.NewState(ctx),

@@ -182,7 +182,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 	p := r.Path
 	ctx = SetupContext(ctx, p.Capture, r.Config)
 
-	c, err := capture.Resolve(ctx)
+	c, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}

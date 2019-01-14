@@ -53,7 +53,7 @@ func (r *AllResourceDataResolvable) Resolve(ctx context.Context) (interface{}, e
 func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*ResolvedResources, error) {
 	cmdIdx := p.Indices[0]
 
-	capture, err := capture.Resolve(ctx)
+	capture, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -737,7 +737,7 @@ func (a API) Replay(
 	dependentPayload string,
 	rrs []replay.RequestAndResult,
 	device *device.Instance,
-	c *capture.Capture,
+	c *capture.GraphicsCapture,
 	out transform.Writer) error {
 	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)

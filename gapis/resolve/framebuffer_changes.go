@@ -64,7 +64,7 @@ const errNoAPI = fault.Const("Command has no API")
 func (r *FramebufferChangesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.Capture, r.Config)
 
-	c, err := capture.Resolve(ctx)
+	c, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}

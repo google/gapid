@@ -30,7 +30,7 @@ import (
 
 // Commands resolves and returns the command list from the path p.
 func Commands(ctx context.Context, p *path.Commands, r *path.ResolveConfig) (*service.Commands, error) {
-	c, err := capture.ResolveFromPath(ctx, p.Capture)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func Commands(ctx context.Context, p *path.Commands, r *path.ResolveConfig) (*se
 
 // Cmds resolves and returns the command list from the path p.
 func Cmds(ctx context.Context, p *path.Capture) ([]api.Cmd, error) {
-	c, err := capture.ResolveFromPath(ctx, p)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func Cmd(ctx context.Context, p *path.Command, r *path.ResolveConfig) (api.Cmd, 
 				found = true
 				cmdIdx = uint64(v.GeneratingCmd)
 				if cmdIdx == uint64(api.CmdNoID) {
-					capture, err := capture.ResolveFromPath(ctx, p.Capture)
+					capture, err := capture.ResolveGraphicsFromPath(ctx, p.Capture)
 					if err != nil {
 						return nil, err
 					}

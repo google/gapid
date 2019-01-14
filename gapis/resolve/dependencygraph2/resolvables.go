@@ -55,7 +55,7 @@ func TryGetDependencyGraph(ctx context.Context, c *path.Capture, config Dependen
 }
 
 func (r *DependencyGraph2Resolvable) Resolve(ctx context.Context) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, r.Capture)
+	c, err := capture.ResolveGraphicsFromPath(ctx, r.Capture)
 	if err != nil {
 		return nil, err
 	}

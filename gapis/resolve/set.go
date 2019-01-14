@@ -316,7 +316,7 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 		cmds[where] = with.(api.Cmd)
 	}
 
-	oldCapt, err := capture.ResolveFromPath(ctx, after.Capture)
+	oldCapt, err := capture.ResolveGraphicsFromPath(ctx, after.Capture)
 	if err != nil {
 		return nil, err
 	}
@@ -346,19 +346,25 @@ func changeResources(ctx context.Context, a arena.Arena, after *path.Command, id
 	if initialState == nil {
 		initialState = oldCapt.InitialState
 	}
-	return capture.New(ctx, a, oldCapt.Name+"*", oldCapt.Header, initialState, cmds)
+
+	gc, err := capture.NewGraphicsCapture(ctx, a, oldCapt.Name()+"*", oldCapt.Header, initialState, cmds)
+	if err != nil {
+		return nil, err
+	} else {
+		return capture.New(ctx, gc)
+	}
 }
 
 func changeCommands(ctx context.Context, a arena.Arena, p *path.Capture, newCmds []api.Cmd) (*path.Capture, error) {
-	old, err := capture.ResolveFromPath(ctx, p)
+	old, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	c, err := capture.New(ctx, a, old.Name+"*", old.Header, old.InitialState, newCmds)
+	c, err := capture.NewGraphicsCapture(ctx, a, old.Name()+"*", old.Header, old.InitialState, newCmds)
 	if err != nil {
 		return nil, err
 	}
-	return c, nil
+	return capture.New(ctx, c)
 }
 
 func setField(

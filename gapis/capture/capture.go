@@ -15,6 +15,7 @@
 package capture
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -22,19 +23,12 @@ import (
 	"os"
 	"sync"
 
-	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pack"
 	"github.com/google/gapid/core/data/protoconv"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/math/interval"
-	"github.com/google/gapid/core/memory/arena"
-	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
-	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
-	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/pkg/errors"
@@ -47,66 +41,22 @@ var (
 	captures     = []id.ID{}
 )
 
-const (
-	// CurrentCaptureVersion is incremented on breaking changes to the capture format.
-	// NB: Also update equally named field in spy_base.cpp
-	CurrentCaptureVersion int32 = 3
-)
-
-type ErrUnsupportedVersion struct{ Version int32 }
-
-func (e ErrUnsupportedVersion) Error() string {
-	return fmt.Sprintf("Unsupported capture format version: %+v", e.Version)
-}
-
-type Capture struct {
-	Name         string
-	Header       *Header
-	Commands     []api.Cmd
-	APIs         []api.API
-	Observed     interval.U64RangeList
-	InitialState *InitialState
-	Arena        arena.Arena
-	Messages     []*TraceMessage
-}
-
-type InitialState struct {
-	Memory []api.CmdObservation
-	APIs   map[api.API]api.State
+// Capture represents data from a trace.
+type Capture interface {
+	// Name returns the name of the capture.
+	Name() string
+	// Service returns the service.Capture description for this capture.
+	Service(ctx context.Context, p *path.Capture) *service.Capture
+	// Export exports the capture in binary format to the given writer.
+	Export(ctx context.Context, w io.Writer) error
 }
 
 func init() {
 	protoconv.Register(toProto, fromProto)
-	protoconv.Register(
-		func(ctx context.Context, in *InitialState) (*GlobalState, error) {
-			return &GlobalState{}, nil
-		},
-		func(ctx context.Context, in *GlobalState) (*InitialState, error) {
-			return &InitialState{APIs: map[api.API]api.State{}}, nil
-		},
-	)
 }
 
-// New returns a path to a new capture with the given name, header and commands,
-// using the arena a for allocations.
-// The new capture is stored in the database.
-func New(ctx context.Context, a arena.Arena, name string, header *Header, initialState *InitialState, cmds []api.Cmd) (*path.Capture, error) {
-	b := newBuilder(a)
-	if initialState != nil {
-		for _, state := range initialState.APIs {
-			b.addInitialState(ctx, state)
-		}
-		for _, mem := range initialState.Memory {
-			b.addInitialMemory(ctx, mem)
-		}
-	}
-	for _, cmd := range cmds {
-		b.addCmd(ctx, cmd)
-	}
-	hdr := *header
-	hdr.Version = CurrentCaptureVersion
-	c := b.build(name, &hdr)
-
+// New returns a path to a new capture stored in the database.
+func New(ctx context.Context, c Capture) (*path.Capture, error) {
 	id, err := database.Store(ctx, c)
 	if err != nil {
 		return nil, err
@@ -117,96 +67,6 @@ func New(ctx context.Context, a arena.Arena, name string, header *Header, initia
 	capturesLock.Unlock()
 
 	return &path.Capture{ID: path.NewID(id)}, nil
-}
-
-// NewState returns a new, default-initialized State object built for the
-// capture held by the context.
-func NewState(ctx context.Context) (*api.GlobalState, error) {
-	c, err := Resolve(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return c.NewState(ctx), nil
-}
-
-// NewUninitializedState returns a new, uninitialized GlobalState built for the
-// capture c. The returned state does not contain the capture's mid-execution
-// state.
-func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
-	freeList := memory.InvertMemoryRanges(c.Observed)
-	interval.Remove(&freeList, interval.U64Span{Start: 0, End: value.FirstValidAddress})
-	s := api.NewStateWithAllocator(
-		memory.NewBasicAllocator(freeList),
-		c.Header.ABI.MemoryLayout,
-	)
-	return s
-}
-
-// NewState returns a new, initialized GlobalState object built for the capture
-// c. If the capture contains a mid-execution state, then this will be copied
-// into the returned state.
-func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
-	out := c.NewUninitializedState(ctx)
-	if c.InitialState != nil {
-		ctx = status.Start(ctx, "CloneState")
-		defer status.Finish(ctx)
-
-		// Rebuild all the writes into the memory pools.
-		for _, m := range c.InitialState.Memory {
-			pool, _ := out.Memory.Get(memory.PoolID(m.Pool))
-			if pool == nil {
-				pool = out.Memory.NewAt(memory.PoolID(m.Pool))
-			}
-			pool.Write(m.Range.Base, memory.Resource(m.ID, m.Range.Size))
-		}
-		// Clone serialized state, and initialize it for use.
-		for k, v := range c.InitialState.APIs {
-			s := v.Clone(out.Arena)
-			s.SetupInitialState(ctx)
-			out.APIs[k.ID()] = s
-		}
-	}
-	return out
-}
-
-// CloneInitialState clones this capture's initial state and returns it.
-func (c *Capture) CloneInitialState(a arena.Arena) *InitialState {
-	if c.InitialState == nil {
-		return nil
-	}
-
-	is := &InitialState{
-		Memory: c.InitialState.Memory,
-		APIs:   make(map[api.API]api.State, len(c.InitialState.APIs)),
-	}
-	for api, s := range c.InitialState.APIs {
-		is.APIs[api] = s.Clone(a)
-	}
-
-	return is
-}
-
-// Service returns the service.Capture description for this capture.
-func (c *Capture) Service(ctx context.Context, p *path.Capture) *service.Capture {
-	apis := make([]*path.API, len(c.APIs))
-	for i, a := range c.APIs {
-		apis[i] = &path.API{ID: path.NewID(id.ID(a.ID()))}
-	}
-	var observations []*service.MemoryRange
-	if !p.ExcludeMemoryRanges {
-		observations = make([]*service.MemoryRange, len(c.Observed))
-		for i, o := range c.Observed {
-			observations[i] = &service.MemoryRange{Base: o.First, Size: o.Count}
-		}
-	}
-	return &service.Capture{
-		Name:         c.Name,
-		Device:       c.Header.Device,
-		ABI:          c.Header.ABI,
-		NumCommands:  uint64(len(c.Commands)),
-		APIs:         apis,
-		Observations: observations,
-	}
 }
 
 // Captures returns all the captures stored by the database by identifier.
@@ -221,17 +81,34 @@ func Captures() []*path.Capture {
 }
 
 // ResolveFromID resolves a single capture with the ID id.
-func ResolveFromID(ctx context.Context, id id.ID) (*Capture, error) {
+func ResolveFromID(ctx context.Context, id id.ID) (Capture, error) {
 	obj, err := database.Resolve(ctx, id)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Error resolving capture")
 	}
-	return obj.(*Capture), nil
+	return obj.(Capture), nil
+}
+
+// ResolveGraphicsFromID resolves a single graphics capture with the ID id.
+func ResolveGraphicsFromID(ctx context.Context, id id.ID) (*GraphicsCapture, error) {
+	c, err := ResolveFromID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if gc, ok := c.(*GraphicsCapture); ok {
+		return gc, nil
+	}
+	return nil, errors.New("not a graphics capture")
 }
 
 // ResolveFromPath resolves a single capture with the path p.
-func ResolveFromPath(ctx context.Context, p *path.Capture) (*Capture, error) {
+func ResolveFromPath(ctx context.Context, p *path.Capture) (Capture, error) {
 	return ResolveFromID(ctx, p.ID.ID())
+}
+
+// ResolveGraphicsFromPath resolves a single graphics capture with the path p.
+func ResolveGraphicsFromPath(ctx context.Context, p *path.Capture) (*GraphicsCapture, error) {
+	return ResolveGraphicsFromID(ctx, p.ID.ID())
 }
 
 // Import imports the capture by name and data, and stores it in the database.
@@ -266,27 +143,12 @@ func Export(ctx context.Context, p *path.Capture, w io.Writer) error {
 	return c.Export(ctx, w)
 }
 
-// Export encodes the given capture and associated resources
-// and writes it to the supplied io.Writer in the .gfxtrace format.
-func (c *Capture) Export(ctx context.Context, w io.Writer) error {
-	writer, err := pack.NewWriter(w)
-	if err != nil {
-		return err
-	}
-	e := newEncoder(c, writer)
-
-	// The encoder implements the ID Remapper interface,
-	// which protoconv functions need to handle resources.
-	ctx = id.PutRemapper(ctx, e)
-
-	return e.encode(ctx)
-}
-
 // Source represents the source of capture data.
 type Source interface {
 	// ReadCloser returns an io.ReadCloser instance, from which capture data
 	// can be read and closed after reading.
 	ReadCloser() (io.ReadCloser, error)
+	// Size returns the total size in bytes of this source.
 	Size() (uint64, error)
 }
 
@@ -304,6 +166,7 @@ func (b *Blob) ReadCloser() (io.ReadCloser, error) {
 	return blobReadCloser{bytes.NewReader(b.GetData())}, nil
 }
 
+// Size implements the Source interface.
 func (b *Blob) Size() (uint64, error) {
 	return uint64(len(b.GetData())), nil
 }
@@ -319,6 +182,7 @@ func (f *File) ReadCloser() (io.ReadCloser, error) {
 	return o, nil
 }
 
+// Size implements the Source interface.
 func (f *File) Size() (uint64, error) {
 	fi, err := os.Stat(f.GetPath())
 	if err != nil {
@@ -328,7 +192,7 @@ func (f *File) Size() (uint64, error) {
 
 }
 
-func toProto(ctx context.Context, c *Capture) (*Record, error) {
+func toProto(ctx context.Context, c Capture) (*Record, error) {
 	buf := bytes.Buffer{}
 	if err := c.Export(ctx, &buf); err != nil {
 		return nil, err
@@ -338,7 +202,7 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 		return nil, fmt.Errorf("Unable to store capture data: %v", err)
 	}
 	return &Record{
-		Name: c.Name,
+		Name: c.Name(),
 		Data: id[:],
 	}, nil
 }
@@ -349,6 +213,7 @@ type loggingRC struct {
 	rc         io.ReadCloser
 }
 
+// Read implements the io.Reader interface.
 func (l *loggingRC) Read(p []byte) (n int, err error) {
 	n, err = l.rc.Read(p)
 	l.total += uint64(n)
@@ -356,11 +221,26 @@ func (l *loggingRC) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Close implements the io.Closer interface.
 func (l *loggingRC) Close() error {
 	return l.rc.Close()
 }
 
-func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
+func open(ctx context.Context, src Source) (r *bufio.Reader, close func() error, err error) {
+	in, err := src.ReadCloser()
+	if err != nil {
+		return nil, nil, err
+	}
+	if size, err := src.Size(); err == nil {
+		in = &loggingRC{
+			onProgress: func(p uint64) { status.UpdateProgress(ctx, p, size) },
+			rc:         in,
+		}
+	}
+	return bufio.NewReader(in), in.Close, nil
+}
+
+func fromProto(ctx context.Context, r *Record) (Capture, error) {
 	ctx = status.Start(ctx, "Loading capture '%v'", r.Name)
 	defer status.Finish(ctx)
 
@@ -370,193 +250,20 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("Unable to load capture data source: %v", err)
 	}
-	dataSrc, ok := data.(Source)
+	src, ok := data.(Source)
 	if !ok {
 		return nil, fmt.Errorf("Unable to load capture data source: Failed to resolve capture.Source")
 	}
 
-	stopTiming := analytics.SendTiming("capture", "deserialize")
-	defer func() {
-		size := len(r.Data)
-		count := 0
-		if out != nil {
-			count = len(out.Commands)
-		}
-		stopTiming(analytics.Size(size), analytics.Count(count))
-	}()
-
-	a := arena.New()
-
-	// Bind the arena used to for all allocations for this capture.
-	ctx = arena.Put(ctx, a)
-
-	d := newDecoder(a)
-
-	// The decoder implements the ID Remapper interface,
-	// which protoconv functions need to handle resources.
-	ctx = id.PutRemapper(ctx, d)
-
-	readCloser, err := dataSrc.ReadCloser()
+	in, close, err := open(ctx, src)
 	if err != nil {
 		return nil, err
 	}
+	defer close()
 
-	if sz, err := dataSrc.Size(); err == nil {
-		oldReadCloser := readCloser
-		readCloser = &loggingRC{
-			func(p uint64) {
-				status.UpdateProgress(ctx, p, sz)
-			},
-			0,
-			oldReadCloser,
-		}
+	if isGFXTraceFormat(in) {
+		return deserializeGFXTrace(ctx, r, in)
 	}
 
-	defer readCloser.Close()
-
-	if err := pack.Read(ctx, readCloser, d, false); err != nil {
-		switch err := errors.Cause(err).(type) {
-		case pack.ErrUnsupportedVersion:
-			log.E(ctx, "%v", err)
-			switch {
-			case err.Version.Major > pack.MaxMajorVersion:
-				return nil, &service.ErrUnsupportedVersion{
-					Reason:        messages.ErrFileTooNew(),
-					SuggestUpdate: true,
-				}
-			case err.Version.Major < pack.MinMajorVersion:
-				return nil, &service.ErrUnsupportedVersion{
-					Reason: messages.ErrFileTooOld(),
-				}
-			default:
-				return nil, &service.ErrUnsupportedVersion{
-					Reason: messages.ErrFileCannotBeRead(),
-				}
-			}
-		case ErrUnsupportedVersion:
-			switch {
-			case err.Version > CurrentCaptureVersion:
-				return nil, &service.ErrUnsupportedVersion{
-					Reason:        messages.ErrFileTooNew(),
-					SuggestUpdate: true,
-				}
-			case err.Version < CurrentCaptureVersion:
-				return nil, &service.ErrUnsupportedVersion{
-					Reason: messages.ErrFileTooOld(),
-				}
-			default:
-				return nil, &service.ErrUnsupportedVersion{
-					Reason: messages.ErrFileCannotBeRead(),
-				}
-			}
-		}
-		return nil, err
-	}
-	d.flush(ctx)
-	if d.header == nil {
-		return nil, log.Err(ctx, nil, "Capture was missing header chunk")
-	}
-	return d.builder.build(r.Name, d.header), nil
-}
-
-type builder struct {
-	apis         []api.API
-	seenAPIs     map[api.ID]struct{}
-	observed     interval.U64RangeList
-	cmds         []api.Cmd
-	resIDs       []id.ID
-	initialState *InitialState
-	arena        arena.Arena
-	messages     []*TraceMessage
-}
-
-func newBuilder(a arena.Arena) *builder {
-	return &builder{
-		apis:         []api.API{},
-		seenAPIs:     map[api.ID]struct{}{},
-		observed:     interval.U64RangeList{},
-		cmds:         []api.Cmd{},
-		resIDs:       []id.ID{id.ID{}},
-		arena:        a,
-		initialState: &InitialState{APIs: map[api.API]api.State{}},
-	}
-}
-
-func (b *builder) addCmd(ctx context.Context, cmd api.Cmd) api.CmdID {
-	b.addAPI(ctx, cmd.API())
-	if observations := cmd.Extras().Observations(); observations != nil {
-		for i := range observations.Reads {
-			b.addObservation(ctx, &observations.Reads[i])
-		}
-		for i := range observations.Writes {
-			b.addObservation(ctx, &observations.Writes[i])
-		}
-	}
-	id := api.CmdID(len(b.cmds))
-	b.cmds = append(b.cmds, cmd)
-	return id
-}
-
-func (b *builder) addMessage(ctx context.Context, t *TraceMessage) {
-	b.messages = append(b.messages, &TraceMessage{Timestamp: t.Timestamp, Message: t.Message})
-}
-
-func (b *builder) addAPI(ctx context.Context, api api.API) {
-	if api != nil {
-		apiID := api.ID()
-		if _, found := b.seenAPIs[apiID]; !found {
-			b.seenAPIs[apiID] = struct{}{}
-			b.apis = append(b.apis, api)
-		}
-	}
-}
-
-func (b *builder) addObservation(ctx context.Context, o *api.CmdObservation) {
-	interval.Merge(&b.observed, o.Range.Span(), true)
-}
-
-func (b *builder) addRes(ctx context.Context, expectedIndex int64, data []byte) error {
-	dID, err := database.Store(ctx, data)
-	if err != nil {
-		return err
-	}
-	arrayIndex := int64(len(b.resIDs))
-	b.resIDs = append(b.resIDs, dID)
-	// If the Resource had the optional Index field, use it for verification.
-	if expectedIndex != 0 && arrayIndex != expectedIndex {
-		panic(fmt.Errorf("Resource has array index %v but we expected %v", arrayIndex, expectedIndex))
-	}
-	return nil
-}
-
-func (b *builder) addInitialState(ctx context.Context, state api.State) error {
-	if _, ok := b.initialState.APIs[state.API()]; ok {
-		return fmt.Errorf("We have more than one set of initial state for API %v", state.API())
-	}
-	b.initialState.APIs[state.API()] = state
-	b.addAPI(ctx, state.API())
-	return nil
-}
-
-func (b *builder) addInitialMemory(ctx context.Context, mem api.CmdObservation) error {
-	b.initialState.Memory = append(b.initialState.Memory, mem)
-	b.addObservation(ctx, &mem)
-	return nil
-}
-
-func (b *builder) build(name string, header *Header) *Capture {
-	for _, api := range b.apis {
-		analytics.SendEvent("capture", "uses-api", api.Name())
-	}
-	// TODO: Mark the arena as read-only.
-	return &Capture{
-		Name:         name,
-		Header:       header,
-		Commands:     b.cmds,
-		Observed:     b.observed,
-		APIs:         b.apis,
-		InitialState: b.initialState,
-		Arena:        b.arena,
-		Messages:     b.messages,
-	}
+	return nil, errors.New("Not a recognized capture format")
 }

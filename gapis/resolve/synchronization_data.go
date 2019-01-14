@@ -40,7 +40,7 @@ func SyncData(ctx context.Context, p *path.Capture) (*sync.Data, error) {
 
 // Resolve builds a SynchronizationResolvable object for the given capture
 func (r *SynchronizationResolvable) Resolve(ctx context.Context) (interface{}, error) {
-	capture, err := capture.ResolveFromPath(ctx, r.Capture)
+	capture, err := capture.ResolveGraphicsFromPath(ctx, r.Capture)
 	if err != nil {
 		return nil, err
 	}

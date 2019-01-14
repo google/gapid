@@ -49,7 +49,7 @@ func newStencilOverdraw() *stencilOverdraw {
 }
 
 func (s *stencilOverdraw) add(ctx context.Context, extraCommands uint64, after []uint64, capt *path.Capture, res replay.Result) {
-	c, err := capture.ResolveFromPath(ctx, capt)
+	c, err := capture.ResolveGraphicsFromPath(ctx, capt)
 	if err != nil {
 		res(nil, err)
 		return

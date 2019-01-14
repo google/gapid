@@ -12,13 +12,13 @@ import (
 )
 
 type encoder struct {
-	c      *Capture
+	c      *GraphicsCapture
 	w      *pack.Writer
 	cmdIDs map[api.Cmd]uint64
 	resIDs map[id.ID]int64
 }
 
-func newEncoder(c *Capture, w *pack.Writer) *encoder {
+func newEncoder(c *GraphicsCapture, w *pack.Writer) *encoder {
 	return &encoder{
 		c:      c,
 		w:      w,

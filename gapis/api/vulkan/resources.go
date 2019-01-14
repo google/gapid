@@ -859,7 +859,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 		return err
 	}
 
-	c, err := capture.ResolveFromPath(ctx, at.Capture)
+	c, err := capture.ResolveGraphicsFromPath(ctx, at.Capture)
 	if err != nil {
 		return err
 	}
@@ -878,7 +878,7 @@ func (shader ShaderModuleObjectʳ) SetResourceData(
 	return fmt.Errorf("No command to set data in")
 }
 
-func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
+func (cmd *VkCreateShaderModule) Replace(ctx context.Context, c *capture.GraphicsCapture, data *api.ResourceData) interface{} {
 	ctx = log.Enter(ctx, "VkCreateShaderModule.Replace()")
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: c.Arena} // TODO: We probably should have a new arena passed in here!
 	state := c.NewState(ctx)

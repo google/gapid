@@ -70,7 +70,7 @@ type graphBuilder struct {
 }
 
 func NewGraphBuilder(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd, state *api.GlobalState) *graphBuilder {
+	c *capture.GraphicsCapture, initialCmds []api.Cmd, state *api.GlobalState) *graphBuilder {
 	return &graphBuilder{
 		graph:          newDependencyGraph(ctx, config, c, initialCmds, []Node{}),
 		subCmdContexts: make(map[NodeID]CmdContext),

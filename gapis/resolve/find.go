@@ -89,7 +89,7 @@ func Find(ctx context.Context, req *service.FindRequest, h service.FindHandler) 
 
 		cmdTree := boxedCmdTree.(*commandTree)
 
-		c, err := capture.ResolveFromPath(ctx, cmdTree.path.Capture)
+		c, err := capture.ResolveGraphicsFromPath(ctx, cmdTree.path.Capture)
 		if err != nil {
 			return err
 		}

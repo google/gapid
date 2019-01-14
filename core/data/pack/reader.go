@@ -15,6 +15,7 @@
 package pack
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -24,6 +25,11 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/math/sint"
 	"github.com/pkg/errors"
+)
+
+const (
+	// maxHeaderSize is the size of the largest possible header.
+	maxHeaderSize = 16
 )
 
 // ErrUnknownType is the error returned by Reader.Unmarshal() when it
@@ -58,6 +64,15 @@ func Read(ctx context.Context, from io.Reader, events Events, forceDynamic bool)
 		}
 	}
 	return task.StopReason(ctx)
+}
+
+// CheckMagic checks whether the given stream starts with a pack header.
+// This function will peek the header from the stream without adjusting it's
+// position. The buffer on the reader needs to be at least maxHeaderSize bytes.
+func CheckMagic(from *bufio.Reader) bool {
+	buf, _ := from.Peek(maxHeaderSize)
+	_, err := parseVersion(buf)
+	return err == nil
 }
 
 // reader is the type for a pack file reader.
@@ -145,10 +160,17 @@ func (r *reader) unmarshal(ctx context.Context) (err error) {
 }
 
 func (r *reader) readHeader() (Version, error) {
-	if err := r.readN(16); err != nil {
+	if err := r.readN(maxHeaderSize); err != nil {
 		return Version{}, err
 	}
-	str := string(r.pb.Bytes())
+	return parseVersion(r.pb.Bytes())
+}
+
+func parseVersion(buf []byte) (Version, error) {
+	if len(buf) < maxHeaderSize {
+		return Version{}, ErrIncorrectMagic
+	}
+	str := string(buf)
 	if str[0:9] == "protopack" {
 		return Version{1, 0}, nil
 	}

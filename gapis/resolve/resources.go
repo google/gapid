@@ -41,7 +41,7 @@ func Resources(ctx context.Context, c *path.Capture, r *path.ResolveConfig) (*se
 func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.Capture, r.Config)
 
-	c, err := capture.Resolve(ctx)
+	c, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}

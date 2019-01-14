@@ -128,7 +128,7 @@ type DependencyGraph interface {
 	ForeachDependencyTo(tgt NodeID, cb func(NodeID) error) error
 
 	// Capture returns the capture whose dependencies are stored in this graph
-	Capture() *capture.Capture
+	Capture() *capture.GraphicsCapture
 
 	// GetCommand returns the command identified by the given CmdID
 	GetCommand(api.CmdID) api.Cmd
@@ -150,7 +150,7 @@ type obsNodeIDs struct {
 }
 
 type dependencyGraph struct {
-	capture          *capture.Capture
+	capture          *capture.GraphicsCapture
 	cmdNodeIDs       *api.SubCmdIdxTrie
 	initialCommands  []api.Cmd
 	nodes            []Node
@@ -165,7 +165,7 @@ type dependencyGraph struct {
 
 // newDependencyGraph constructs a new dependency graph
 func newDependencyGraph(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd, nodes []Node) *dependencyGraph {
+	c *capture.GraphicsCapture, initialCmds []api.Cmd, nodes []Node) *dependencyGraph {
 	g := &dependencyGraph{
 		capture:          c,
 		cmdNodeIDs:       new(api.SubCmdIdxTrie),
@@ -297,7 +297,7 @@ func (g *dependencyGraph) ForeachDependencyTo(tgt NodeID, cb func(NodeID) error)
 }
 
 // Capture returns the capture whose dependencies are stored in this graph
-func (g *dependencyGraph) Capture() *capture.Capture {
+func (g *dependencyGraph) Capture() *capture.GraphicsCapture {
 	return g.capture
 }
 

@@ -118,7 +118,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	defer status.Finish(ctx)
 
 	capturePath := path.NewCapture(captureID)
-	c, err := capture.ResolveFromPath(ctx, capturePath)
+	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to load capture")
 	}
@@ -234,7 +234,7 @@ func (m *manager) execute(
 	requests []RequestAndResult) error {
 
 	capturePath := path.NewCapture(captureID)
-	c, err := capture.ResolveFromPath(ctx, capturePath)
+	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to load capture")
 	}
