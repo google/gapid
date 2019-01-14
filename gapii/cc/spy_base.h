@@ -24,6 +24,7 @@
 #include "core/cc/assert.h"
 #include "core/cc/id.h"
 #include "core/cc/interval_list.h"
+#include "core/cc/recursive_spinlock.h"
 #include "core/cc/vector.h"
 
 #include "core/memory/arena/cc/arena.h"
@@ -211,9 +212,9 @@ class SpyBase {
   std::unordered_map<core::Id, int64_t> mResources;
   std::mutex mResourcesMutex;
 
-  // The mutex that should be locked for the duration of each of the intercepted
-  // commands.
-  std::recursive_mutex mMutex;
+  // The spinlock that should be locked for the duration of each of the
+  // intercepted commands.
+  core::RecursiveSpinLock mSpinLock;
 
   // True if we should observe the application pool.
   bool mObserveApplicationPool;
