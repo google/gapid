@@ -273,7 +273,12 @@ cmd void vkGetImageMemoryRequirements(
     requirements := ?
     if pMemoryRequirements == null { vkErrorNullPointer("VkMemoryRequirements") }
     pMemoryRequirements[0] = requirements
-    Images[image].MemoryRequirements.PlaneBitsToMemoryRequirements[as!VkImageAspectFlagBits(0)] = requirements
+    // This command can be only used for single-planar images
+    plane := as!VkImageAspectFlagBits(0)
+    if !(plane in Images[image].PlaneMemoryInfo) {
+      Images[image].PlaneMemoryInfo[plane] = new!ImagePlaneMemoryInfo()
+    }
+    Images[image].PlaneMemoryInfo[plane].MemoryRequirements = requirements
   }
 }
 
@@ -298,7 +303,7 @@ cmd void vkGetImageSparseMemoryRequirements(
     for i in (0 .. count) {
       requirements[i] = ?
       aspect := requirements[i].formatProperties.aspectMask
-      Images[image].MemoryRequirements.AspectBitsToSparseMemoryRequirements[as!u32(aspect)] = requirements[i]
+      Images[image].SparseMemoryRequirements[as!VkImageAspectFlagBits(aspect)] = requirements[i]
     }
     pSparseMemoryRequirementCount[0] = count
   }
@@ -878,7 +883,11 @@ sub void GetImageMemoryRequirements2(
   if !(info.image in Images) { vkErrorInvalidImage(info.image) }
   // TODO: Drop the touch of the image object once we extract the memory
   // requirement info out of the image object.
-  Images[info.image].MemoryRequirements.PlaneBitsToMemoryRequirements[as!VkImageAspectFlagBits(plane.Val)] = memReq.memoryRequirements
+  // TODO: Handle multi-planar images
+  if !(as!VkImageAspectFlagBits(plane.Val) in Images[info.image].PlaneMemoryInfo) {
+    Images[info.image].PlaneMemoryInfo[as!VkImageAspectFlagBits(plane.Val)] = new!ImagePlaneMemoryInfo()
+  }
+  Images[info.image].PlaneMemoryInfo[as!VkImageAspectFlagBits(plane.Val)].MemoryRequirements = memReq.memoryRequirements
 
   if memReq.pNext != null {
     numPNext := numberOfPNext(as!const void*(memReq.pNext))
@@ -944,7 +953,7 @@ sub void GetImageSparseMemoryRequirements2(
       // TODO: handle pNext for 'requirements[i]'
       aspect := requirements[i].memoryRequirements.formatProperties.aspectMask
       // TODO: Drop the touch of the image object.
-      Images[image].MemoryRequirements.AspectBitsToSparseMemoryRequirements[as!u32(aspect)] = requirements[i].memoryRequirements
+      Images[image].SparseMemoryRequirements[as!VkImageAspectFlagBits(aspect)] = requirements[i].memoryRequirements
     }
     pSparseMemoryRequirementCount[0] = count
   }

@@ -191,16 +191,18 @@ sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
 
 sub void readCoherentMemoryInImage(ref!ImageObject image) {
   if image != null {
-    mem := image.BoundMemory
-    if mem != null {
-      // Host access to image memory is only well-defined for images created with
-      // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
-      // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
-      // VK_IMAGE_LAYOUT_GENERAL layout.
-      // TODO: Complete the layout tracking logic then update this if statement
-      // to check the layout of the underlying image.
-      if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
-        readCoherentMemory(mem, image.BoundMemoryOffset, inferImageSize(image))
+    for _, _, m in image.PlaneMemoryInfo {
+      mem := m.BoundMemory
+      if mem != null {
+        // Host access to image memory is only well-defined for images created with
+        // VK_IMAGE_TILING_LINEAR tiling and for image subresources of those images
+        // which are currently in either VK_IMAGE_LAYOUT_PREINITIALIZED or
+        // VK_IMAGE_LAYOUT_GENERAL layout.
+        // TODO: Complete the layout tracking logic then update this if statement
+        // to check the layout of the underlying image.
+        if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
+          readCoherentMemory(mem, m.BoundMemoryOffset, inferImageSize(image))
+        }
       }
     }
   }

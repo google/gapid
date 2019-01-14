@@ -191,10 +191,9 @@ cmd VkResult vkGetSwapchainImagesKHR(
     for i in (0 .. count) {
       images[i] = ?
       if !(images[i] in Images) {
-        object := new!ImageObject(BoundMemory:  null,
+        object := new!ImageObject(
           Device:             device,
           VulkanHandle:       images[i],
-          BoundMemoryOffset:  0,
           Info:               swapchainObject.Info,
           ImageAspect:        as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
         )
