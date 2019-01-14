@@ -26,43 +26,28 @@ import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showSaveTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
+import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.Loadable.Message;
 import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.UpdateWatcher;
-import com.google.gapid.views.CommandTree;
-import com.google.gapid.views.ContextSelector;
-import com.google.gapid.views.FramebufferView;
-import com.google.gapid.views.GeometryView;
-import com.google.gapid.views.LogView;
-import com.google.gapid.views.MemoryView;
-import com.google.gapid.views.ReportView;
-import com.google.gapid.views.ShaderView;
-import com.google.gapid.views.StateView;
 import com.google.gapid.views.StatusBar;
-import com.google.gapid.views.Tab;
-import com.google.gapid.views.TextureView;
-import com.google.gapid.views.ThumbnailScrubber;
 import com.google.gapid.widgets.CopyPaste;
-import com.google.gapid.widgets.FixedTopSplitter;
-import com.google.gapid.widgets.TabArea;
-import com.google.gapid.widgets.TabArea.FolderInfo;
-import com.google.gapid.widgets.TabArea.Persistance;
-import com.google.gapid.widgets.TabArea.TabInfo;
+import com.google.gapid.widgets.LoadablePanel;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.action.Action;
@@ -70,6 +55,7 @@ import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
@@ -80,121 +66,113 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * The main {@link ApplicationWindow} containing all of the UI components.
  */
 public class MainWindow extends ApplicationWindow {
-  protected final Client client;
-  protected final ModelsAndWidgets maw;
-  protected Action gotoCommand, gotoMemory;
-  protected Action viewScrubber, viewLeft, viewRight;
-  protected final Map<MainTab.Type, Action> viewTabs = Maps.newHashMap();
-  protected final Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
-  protected Action editCopy;
-  private FixedTopSplitter splitter;
+  private final Settings settings;
+  private final Theme theme;
+  private Composite mainArea;
+  private LoadingScreen loadingScreen;
   private StatusBar statusBar;
-  protected TabArea tabs;
 
-  public MainWindow(Client client, ModelsAndWidgets maw) {
+  public MainWindow(Settings settings, Theme theme) {
     super(null);
-    this.client = client;
-    this.maw = maw;
+    this.settings = settings;
+    this.theme = theme;
 
     addMenuBar();
     setBlockOnOpen(true);
   }
 
-  /*
-  @Override
-  public int open() {
-    setBlockOnOpen(false);
-    super.open();
-    Shell shell = getShell();
-    Display display = shell.getDisplay();
-    while (!shell.isDisposed()) {
-      long start = System.nanoTime();
-      boolean sleep = !display.readAndDispatch();
-      long end = System.nanoTime();
-      System.err.println(TimeUnit.NANOSECONDS.toMillis(end - start) + " " + sleep);
-      if (sleep) {
-        display.sleep();
-      }
-    }
-    if (!display.isDisposed()) {
-      display.update();
-    }
-    return 0;
+  public void showLoadingMessage(String status) {
+    loadingScreen.setText(status);
   }
-  */
 
-  @Override
-  protected void configureShell(Shell shell) {
-    maw.init(shell);
-    viewScrubber.setChecked(!models().settings.hideScrubber);
-    viewLeft.setChecked(!models().settings.hideLeft);
-    viewRight.setChecked(!models().settings.hideRight);
-    for (String hidden : models().settings.hiddenTabs) {
-      try {
-        MainTab.Type type = MainTab.Type.valueOf(hidden);
-        viewTabs.get(type).setChecked(false);
-        hiddenTabs.add(type);
-      } catch (IllegalArgumentException e) {
-        // Ignore invalid tab names in the settings file.
-      }
-    }
+  public void initMainUi(Client client, Models models, Widgets widgets) {
+    Shell shell = getShell();
 
-    shell.setText(Messages.WINDOW_TITLE);
-    shell.setImages(widgets().theme.windowLogo());
+    initMenus(client, models, widgets);
 
-    super.configureShell(shell);
-
-    models().capture.addListener(new Capture.Listener() {
+    LoadablePanel<GraphicsTraceView> mainUi = new LoadablePanel<GraphicsTraceView>(
+        mainArea, widgets, parent -> new GraphicsTraceView(parent, models, widgets));
+    models.capture.addListener(new Capture.Listener() {
       @Override
       public void onCaptureLoadingStart(boolean maintainState) {
-        gotoCommand.setEnabled(false);
-        gotoMemory.setEnabled(false);
-      }
-    });
-    models().commands.addListener(new CommandStream.Listener() {
-      @Override
-      public void onCommandsLoaded() {
-        gotoCommand.setEnabled(models().commands.isLoaded());
-        gotoMemory.setEnabled(models().commands.getSelectedCommands() != null);
+        shell.setText(Messages.WINDOW_TITLE + " - " + models.capture.getName());
+        setTopControl(mainUi);
+        mainUi.startLoading();
       }
 
       @Override
-      public void onCommandsSelected(CommandIndex selection) {
-        gotoMemory.setEnabled(selection != null);
+      public void onCaptureLoaded(Message error) {
+        if (error != null) {
+          mainUi.showMessage(error);
+        } else {
+          mainUi.stopLoading();
+          mainUi.getContents().updateViewMenu(findMenu(MenuItems.VIEW_ID));
+          getMenuBarManager().update(true);
+        }
       }
     });
-    widgets().copypaste.addListener(new CopyPaste.Listener() {
-      @Override
-      public void onCopyEnabled(boolean enabled) {
-        editCopy.setEnabled(enabled);
-      }
-    });
-
-    shell.addListener(SWT.Move, e -> models().settings.windowLocation = shell.getLocation());
-    shell.addListener(SWT.Resize, e -> models().settings.windowSize = shell.getSize());
 
     if (OS.isMac) {
       MacApplication.init(shell.getDisplay(),
-          () -> showAbout(shell, models().analytics, widgets().theme),
-          () -> showSettingsDialog(shell, models(), widgets().theme),
-          file -> models().capture.loadCapture(new File(file)));
+          () -> showAbout(shell, models.analytics, widgets.theme),
+          () -> showSettingsDialog(shell, models, widgets.theme),
+          file -> models.capture.loadCapture(new File(file)));
     }
+
+    watchForUpdates(client, models);
+
+    showLoadingMessage("Ready! Please open or capture a trace file.");
+  }
+
+  private void watchForUpdates(Client client, Models models) {
+    new UpdateWatcher(models.settings, client, (release) -> {
+      scheduleIfNotDisposed(statusBar, () -> {
+        statusBar.setNotification("New update available", () -> {
+          Program.launch(release.getBrowserUrl());
+        });
+      });
+    });
+  }
+
+  @Override
+  protected void configureShell(Shell shell) {
+    shell.setText(Messages.WINDOW_TITLE);
+    shell.setImages(theme.windowLogo());
+
+    super.configureShell(shell);
+
+    shell.addListener(SWT.Move, e -> settings.windowLocation = shell.getLocation());
+    shell.addListener(SWT.Resize, e -> settings.windowSize = shell.getSize());
+  }
+
+  @Override
+  protected Control createContents(Composite shell) {
+    Composite parent = createComposite(shell, withMargin(new GridLayout(1, false), 0, 0));
+
+    mainArea = withLayoutData(
+        createComposite(parent, new StackLayout()), new GridData(SWT.FILL, SWT.FILL, true, true));
+    loadingScreen = new LoadingScreen(mainArea, theme);
+    setTopControl(loadingScreen);
+
+    statusBar = new StatusBar(parent);
+    statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
+    return parent;
+  }
+
+  protected void setTopControl(Control c) {
+    ((StackLayout)mainArea.getLayout()).topControl = c;
+    c.requestLayout();
   }
 
   @Override
   protected Point getInitialSize() {
-    Point size = models().settings.windowSize;
+    Point size = settings.windowSize;
     return (size != null) ? size : getDefaultInitialSize();
   }
 
@@ -205,7 +183,7 @@ public class MainWindow extends ApplicationWindow {
 
   @Override
   protected Point getInitialLocation(Point initialSize) {
-    Point location = models().settings.windowLocation;
+    Point location = settings.windowLocation;
     return (location != null) ? location : getDefaultInitialLocation(initialSize);
   }
 
@@ -219,118 +197,53 @@ public class MainWindow extends ApplicationWindow {
   @Override
   protected MenuManager createMenuManager() {
     MenuManager manager = new MenuManager();
-    manager.add(createFileMenu());
-    manager.add(createEditMenu());
-    manager.add(createGotoMenu());
-    manager.add(createViewMenu());
-    manager.add(createHelpMenu());
+
+    // Add a dummy file menu, so the UI doesn't move once the rest of the menus are created.
+    MenuManager file = new MenuManager("&File", MenuItems.FILE_ID);
+    file.add(MenuItems.FileExit.create(this::close));
+    manager.add(file);
+
     return manager;
   }
 
-  @Override
-  protected Control createContents(Composite parent) {
-    Composite shell = Widgets.createComposite(parent, new GridLayout(1, false));
-    new ContextSelector(shell, models())
-        .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-
-    splitter = new FixedTopSplitter(shell, models().settings.splitterTopHeight) {
-      @Override
-      protected Control createTopControl() {
-        return new ThumbnailScrubber(this, models(), widgets());
-      }
-
-      @Override
-      protected Control createBottomControl() {
-        tabs = new TabArea(this, new Persistance() {
-          @Override
-          public void store(FolderInfo[] folders) {
-            MainTab.store(models(), folders);
-          }
-
-          @Override
-          public FolderInfo[] restore() {
-            return MainTab.getFolders(models(), widgets(), hiddenTabs);
-          }
-        }, models().analytics);
-        tabs.setLeftVisible(!models().settings.hideLeft);
-        tabs.setRightVisible(!models().settings.hideRight);
-        return tabs;
-      }
-    };
-    splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    splitter.setTopVisible(!models().settings.hideScrubber);
-
-    statusBar = new StatusBar(shell);
-    statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
-
-    splitter.addListener(SWT.Dispose, e -> {
-      models().settings.splitterTopHeight = splitter.getTopHeight();
-    });
-
-    models().capture.addListener(new Capture.Listener() {
-      @Override
-      public void onCaptureLoadingStart(boolean maintainState) {
-        getShell().setText(Messages.WINDOW_TITLE + " - " + models().capture.getName());
-      }
-    });
-    models().follower.addListener(new Follower.Listener() {
-      @Override
-      public void onMemoryFollowed(Path.Memory path) {
-        tabs.showTab(MainTab.Type.Memory);
-      }
-
-      @Override
-      public void onStateFollowed(Path.Any path) {
-        tabs.showTab(MainTab.Type.ApiState);
-      }
-    });
-
-    watchForUpdates();
-
-    return shell;
+  private void initMenus(Client client, Models models, Widgets widgets) {
+    updateFileMenu(client, models, widgets);
+    MenuManager manager = getMenuBarManager();
+    manager.add(createEditMenu(models, widgets));
+    manager.add(createGotoMenu(models));
+    manager.add(createViewMenu());
+    manager.add(createHelpMenu(client, models, widgets));
+    manager.update(true);
   }
 
-  private void watchForUpdates() {
-    new UpdateWatcher(maw.models().settings, client, (release) -> {
-      scheduleIfNotDisposed(statusBar, () -> {
-        statusBar.setNotification("New update available", () -> {
-          Program.launch(release.getBrowserUrl());
-        });
-      });
-    });
+  protected MenuManager findMenu(String id) {
+    return (MenuManager)getMenuBarManager().find(id);
   }
 
-  @Override
-  public boolean close() {
-    if (super.close()) {
-      maw.dispose();
-      return true;
-    }
-    return false;
-  }
+  private MenuManager updateFileMenu(Client client, Models models, Widgets widgets) {
+    MenuManager manager = findMenu(MenuItems.FILE_ID);
+    manager.removeAll();
 
-  private MenuManager createFileMenu() {
-    MenuManager manager = new MenuManager("&File");
-    manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models())));
-    manager.add(MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models())));
-    manager.add(createOpenRecentMenu());
+    manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models)));
+    manager.add(MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models)));
+    manager.add(createOpenRecentMenu(models));
     manager.add(MenuItems.FileTrace.create(
-        () -> showTracingDialog(client, getShell(), models(), widgets())));
+        () -> showTracingDialog(client, getShell(), models, widgets)));
     manager.add(MenuItems.FileExit.create(() -> close()));
 
     return manager;
   }
 
-  private MenuManager createOpenRecentMenu() {
+  private static MenuManager createOpenRecentMenu(Models models) {
     MenuManager manager = new MenuManager("Open &Recent");
     manager.setRemoveAllWhenShown(true);
     manager.addMenuListener(m -> {
-      for (String file : models().settings.getRecent()) {
+      for (String file : models.settings.getRecent()) {
         m.add(new Action(file) {
           @Override
           public void run() {
-            models().analytics.postInteraction(View.Main, ClientAction.OpenRecent);
-            models().capture.loadCapture(new File(file));
+            models.analytics.postInteraction(View.Main, ClientAction.OpenRecent);
+            models.capture.loadCapture(new File(file));
           }
         });
       }
@@ -338,278 +251,83 @@ public class MainWindow extends ApplicationWindow {
     return manager;
   }
 
-  private MenuManager createEditMenu() {
+  private MenuManager createEditMenu(Models models, Widgets widgets) {
     MenuManager manager = new MenuManager("&Edit");
-    editCopy = MenuItems.EditCopy.create(() -> {
-      models().analytics.postInteraction(View.Main, ClientAction.Copy);
-      widgets().copypaste.doCopy();
+    Action editCopy = MenuItems.EditCopy.create(() -> {
+      models.analytics.postInteraction(View.Main, ClientAction.Copy);
+      widgets.copypaste.doCopy();
     });
 
     manager.add(editCopy);
     manager.add(MenuItems.EditSettings.create(
-        () -> showSettingsDialog(getShell(), models(), widgets().theme)));
+        () -> showSettingsDialog(getShell(), models, widgets.theme)));
 
     editCopy.setEnabled(false);
+    widgets.copypaste.addListener(new CopyPaste.Listener() {
+      @Override
+      public void onCopyEnabled(boolean enabled) {
+        editCopy.setEnabled(enabled);
+      }
+    });
 
     return manager;
   }
 
-  private MenuManager createGotoMenu() {
+  private MenuManager createGotoMenu(Models models) {
     MenuManager manager = new MenuManager("&Goto");
-    gotoCommand = MenuItems.GotoCommand.create(() -> showGotoCommandDialog(getShell(), models()));
-    gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models()));
+    Action gotoCommand = MenuItems.GotoCommand.create(() -> showGotoCommandDialog(getShell(), models));
+    Action gotoMemory = MenuItems.GotoMemory.create(() -> showGotoMemoryDialog(getShell(), models));
 
     manager.add(gotoCommand);
     manager.add(gotoMemory);
 
     gotoCommand.setEnabled(false);
     gotoMemory.setEnabled(false);
+    models.capture.addListener(new Capture.Listener() {
+      @Override
+      public void onCaptureLoadingStart(boolean maintainState) {
+        gotoCommand.setEnabled(false);
+        gotoMemory.setEnabled(false);
+      }
+    });
+    models.commands.addListener(new CommandStream.Listener() {
+      @Override
+      public void onCommandsLoaded() {
+        gotoCommand.setEnabled(models.commands.isLoaded());
+        gotoMemory.setEnabled(models.commands.getSelectedCommands() != null);
+      }
+
+      @Override
+      public void onCommandsSelected(CommandIndex selection) {
+        gotoMemory.setEnabled(selection != null);
+      }
+    });
 
     return manager;
   }
 
-  private MenuManager createViewMenu() {
-    MenuManager manager = new MenuManager("&View");
-    viewScrubber = MenuItems.ViewThumbnails.createCheckbox(show -> {
-      if (splitter != null) {
-        models().analytics.postInteraction(
-            View.FilmStrip, show ? ClientAction.Enable : ClientAction.Disable);
-        splitter.setTopVisible(show);
-        models().settings.hideScrubber = !show;
-      }
-    });
-    viewLeft = MenuItems.ViewLeft.createCheckbox(show -> {
-      if (tabs != null) {
-        models().analytics.postInteraction(
-            View.LeftTabs, show ? ClientAction.Enable : ClientAction.Disable);
-        tabs.setLeftVisible(show);
-        models().settings.hideLeft = !show;
-      }
-    });
-    viewRight = MenuItems.ViewRight.createCheckbox(show -> {
-      if (tabs != null) {
-        models().analytics.postInteraction(
-            View.RightTabs, show ? ClientAction.Enable : ClientAction.Disable);
-        tabs.setRightVisible(show);
-        models().settings.hideRight = !show;
-      }
-    });
-
-    manager.add(viewScrubber);
-    manager.add(viewLeft);
-    manager.add(viewRight);
-    manager.add(createViewTabsMenu());
+  private static MenuManager createViewMenu() {
+    MenuManager manager = new MenuManager("&View", MenuItems.VIEW_ID);
     return manager;
   }
 
-  private MenuManager createViewTabsMenu() {
-    MenuManager manager = new MenuManager("&Tabs");
-    for (MainTab.Type type : MainTab.Type.values()) {
-      Action action = type.createAction(shown -> {
-        models().analytics.postInteraction(
-            type.view, shown ? ClientAction.Enable : ClientAction.Disable);
-        if (shown) {
-          tabs.addNewTabToCenter(new MainTab(type, parent -> {
-            Tab tab = type.factory.create(parent, models(), widgets());
-            tab.reinitialize();
-            return tab.getControl();
-          }));
-          tabs.showTab(type);
-          hiddenTabs.remove(type);
-        } else {
-          tabs.removeTab(type);
-          hiddenTabs.add(type);
-        }
-        models().settings.hiddenTabs =
-            hiddenTabs.stream().map(MainTab.Type::name).toArray(n -> new String[n]);
-      });
-      manager.add(action);
-      viewTabs.put(type, action);
-    }
-    return manager;
-  }
-
-  private MenuManager createHelpMenu() {
+  private MenuManager createHelpMenu(Client client, Models models, Widgets widgets) {
     MenuManager manager = new MenuManager("&Help");
-    manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models().analytics)));
+    manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models.analytics)));
     manager.add(MenuItems.HelpAbout.create(
-        () -> showAbout(getShell(), models().analytics, widgets().theme)));
-    manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models().analytics)));
+        () -> showAbout(getShell(), models.analytics, widgets.theme)));
+    manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
     manager.add(MenuItems.HelpLicenses.create(
-        () -> showLicensesDialog(getShell(), models().analytics, widgets().theme)));
+        () -> showLicensesDialog(getShell(), models.analytics, widgets.theme)));
     manager.add(MenuItems.HelpWelcome.create(
-        () -> showWelcomeDialog(client, getShell(), models(), widgets())));
+        () -> showWelcomeDialog(client, getShell(), models, widgets)));
     return manager;
-  }
-
-  protected Models models() {
-    return maw.models();
-  }
-
-  protected Widgets widgets() {
-    return maw.widgets();
-  }
-
-  /**
-   * Manages the lifetime of the {@link Models} and {@link Widgets}.
-   */
-  public static interface ModelsAndWidgets {
-    /**
-     * Initializes the models and widgets for the given window shell.
-     */
-    public void init(Shell shell);
-
-    /**
-     * @return the {@link Models}.
-     */
-    public Models models();
-
-    /**
-     * @return the {@link Widgets}.
-     */
-    public Widgets widgets();
-
-    /**
-     * Disposes the models and widgets.
-     */
-    public void dispose();
-  }
-
-  /**
-   * Information about the tabs to be shown in the main window.
-   */
-  private static class MainTab extends TabInfo {
-    public MainTab(Type type, Function<Composite, Control> contentFactory) {
-      super(type, type.view, type.label, contentFactory);
-    }
-
-    public static FolderInfo[] getFolders(Models models, Widgets widgets, Set<Type> hidden) {
-      Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
-      allTabs.removeAll(hidden);
-      List<TabInfo> left = getTabs(models.settings.leftTabs, allTabs, models, widgets);
-      List<TabInfo> center = getTabs(models.settings.centerTabs, allTabs, models, widgets);
-      List<TabInfo> right = getTabs(models.settings.rightTabs, allTabs, models, widgets);
-
-      for (Type missing : allTabs) {
-        switch (missing.defaultLocation) {
-          case Left:
-            left.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, models, widgets).getControl()));
-            break;
-          case Center:
-            center.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, models, widgets).getControl()));
-            break;
-          case Right:
-            right.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, models, widgets).getControl()));
-            break;
-          default:
-            throw new AssertionError();
-        }
-      }
-
-      double[] weights = models.settings.tabWeights;
-      return new FolderInfo[] {
-          new FolderInfo(false, left.toArray(new TabInfo[left.size()]), weights[0]),
-          new FolderInfo(false, center.toArray(new TabInfo[center.size()]), weights[1]),
-          new FolderInfo(false, right.toArray(new TabInfo[right.size()]), weights[2]),
-      };
-    }
-
-    public static void store(Models models, FolderInfo[] folders) {
-      models.settings.leftTabs = getNames(folders[0].tabs);
-      models.settings.centerTabs = getNames(folders[1].tabs);
-      models.settings.rightTabs = getNames(folders[2].tabs);
-      models.settings.tabWeights = getWeights(folders);
-    }
-
-    private static String[] getNames(TabInfo[] tabs) {
-      return Arrays.stream(tabs).map(tab -> ((Type)tab.id).name()).toArray(len -> new String[len]);
-    }
-
-    private static double[] getWeights(FolderInfo[] folders) {
-      return new double[] { folders[0].weight, folders[1].weight, folders[2].weight };
-    }
-
-    private static List<TabInfo> getTabs(
-        String[] names, Set<Type> left, Models models, Widgets widgets) {
-
-      List<TabInfo> result = Lists.newArrayList();
-      for (String name : names) {
-        try {
-          Type type = Type.valueOf(name);
-          if (left.remove(type)) {
-            result.add(new MainTab(type,
-                parent -> type.factory.create(parent, models, widgets).getControl()));
-          }
-        } catch (IllegalArgumentException e) {
-          // Ignore incorrect names in the properties.
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Possible tab locations.
-     */
-    public static enum Location {
-      Left, Center, Right;
-    }
-
-    /**
-     * Information about the available tabs.
-     */
-    public static enum Type {
-      ApiCalls(Location.Left, View.Commands, "Commands", CommandTree::new),
-
-      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
-      Textures(Location.Center, View.Textures, "Textures", TextureView::new),
-      Geometry(Location.Center, View.Geometry, "Geometry", GeometryView::new),
-      Shaders(Location.Center, View.Shaders, "Shaders", ShaderView::new),
-      Report(Location.Center, View.Report, "Report", ReportView::new),
-      Log(Location.Center, View.Log, "Log", (p, m, w) -> new LogView(p, w)),
-
-      ApiState(Location.Right, View.State, "State", StateView::new),
-      Memory(Location.Right, View.Memory, "Memory", MemoryView::new);
-
-      public final Location defaultLocation;
-      public final View view;
-      public final String label;
-      public final TabFactory factory;
-
-      private Type(Location defaultLocation, View view, String label, TabFactory factory) {
-        this.defaultLocation = defaultLocation;
-        this.view = view;
-        this.label = label;
-        this.factory = factory;
-      }
-
-      public Action createAction(Consumer<Boolean> listener) {
-        Action action = new Action(null, IAction.AS_CHECK_BOX) {
-          @Override
-          public void run() {
-            listener.accept(isChecked());
-          }
-        };
-        action.setChecked(true);
-        action.setText(label);
-        return action;
-      }
-    }
-
-    /**
-     * Factory to create the UI components of a tab.
-     */
-    public static interface TabFactory {
-      public Tab create(Composite parent, Models models, Widgets widgets);
-    }
   }
 
   /**
    * The menu items shown in the main application window menus.
    */
-  private static enum MenuItems {
+  public static enum MenuItems {
     FileOpen("&Open", 'O'),
     FileSave("&Save", 'S'),
     FileTrace("Capture &Trace", 'T'),
@@ -631,6 +349,8 @@ public class MainWindow extends ApplicationWindow {
     HelpLicenses("&Licenses"),
     HelpWelcome("Show &Welcome Screen");
 
+    public static final String FILE_ID = "file";
+    public static final String VIEW_ID = "view";
 
     private final String label;
     private final int accelerator;

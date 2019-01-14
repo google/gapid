@@ -21,11 +21,12 @@ import static com.google.gapid.views.WelcomeDialog.showFirstTimeDialog;
 import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
+import com.google.common.base.Throwables;
+import com.google.gapid.Server.GapisInitException;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
-import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Crash2ExceptionHandler;
@@ -35,15 +36,14 @@ import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Scheduler;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
-import org.eclipse.jface.window.ApplicationWindow;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -51,29 +51,22 @@ import java.util.logging.Logger;
  * Main entry point of the application.
  */
 public class Main {
+  protected static final Logger LOG = Logger.getLogger(Main.class.getName());
+
   public static void main(String[] args) throws Exception {
     args = Flags.initFlags(ALL_FLAGS, args);
     Logging.init();
 
     Display.setAppName(Messages.WINDOW_TITLE);
     Display.setAppVersion(GAPID_VERSION.toString());
+
     Settings settings = Settings.load();
+    Theme theme = Theme.load(Display.getCurrent());
     ExceptionHandler handler = Crash2ExceptionHandler.register(settings);
 
-    Server server = new Server(settings);
-    AtomicReference<UI> uiRef = new AtomicReference<UI>(null);
     try {
-      server.connect((code, panic) -> {
-        UI ui = uiRef.get();
-        if (ui != null) {
-          ui.showServerDiedMessage(code, panic);
-        }
-      });
-      uiRef.set(new UI(settings, handler, server.getClient(), args));
-      uiRef.get().show();
+      new UI(settings, theme, handler, args).show();
     } finally {
-      uiRef.set(null);
-      server.disconnect();
       Scheduler.EXECUTOR.shutdownNow();
     }
   }
@@ -81,23 +74,30 @@ public class Main {
   /**
    * Manages the main UI.
    */
-  private static class UI implements MainWindow.ModelsAndWidgets {
-    protected static final Logger LOG = Logger.getLogger(UI.class.getName());
-
+  private static class UI implements GapisProcess.Listener {
     private final Settings settings;
+    private final Theme theme;
     private final ExceptionHandler handler;
-    private final Client client;
     private final String[] args;
-    private final ApplicationWindow window;
+    protected final MainWindow window;
+    private final Server server;
+
     private Models models;
     private Widgets widgets;
 
-    public UI(Settings settings, ExceptionHandler handler, Client client, String[] args) {
+    public UI(Settings settings, Theme theme, ExceptionHandler handler, String[] args) {
       this.settings = settings;
+      this.theme = theme;
       this.handler = handler;
-      this.client = client;
       this.args = args;
-      this.window = new MainWindow(client, this);
+      this.window = new MainWindow(settings, theme) {
+        @Override
+        public void create() {
+          super.create();
+          scheduleIfNotDisposed(getShell(), () -> Scheduler.EXECUTOR.execute(UI.this::startup));
+        }
+      };
+      server = new Server(settings);
 
       registerWindowExceptionHandler();
     }
@@ -115,66 +115,78 @@ public class Main {
     }
 
     public void show() {
-      window.open();
+      try {
+        window.open();
+      } finally {
+        server.disconnect();
+
+        if (widgets != null) {
+          widgets.dispose();
+          models.dispose();
+        }
+
+        models = null;
+        widgets = null;
+      }
     }
 
-    public void showServerDiedMessage(int code, String panic) {
+    protected void startup() {
+      try {
+        server.connect(this);
+        scheduleIfStillOpen(this::uiStartup);
+      } catch (GapisInitException e) {
+        onServerExit(-42, Throwables.getStackTraceAsString(e));
+      }
+    }
+
+    private void uiStartup(Shell shell) {
+      models = Models.create(shell, settings, handler, server.getClient());
+      widgets = Widgets.create(shell.getDisplay(), theme, server.getClient(), models);
+
+      Runnable onStart = () -> {
+        if (args.length == 1) {
+          models.capture.loadCapture(new File(args[0]));
+        } else if (!models.settings.skipWelcomeScreen) {
+          showWelcomeDialog(server.getClient(), window.getShell(), models, widgets);
+        }
+      };
+
+      window.initMainUi(server.getClient(), models, widgets);
+      if (models.settings.skipFirstRunDialog) {
+        shell.getDisplay().asyncExec(onStart);
+      } else {
+        shell.getDisplay().asyncExec(() -> showFirstTimeDialog(shell, models, widgets, onStart));
+      }
+    }
+
+    @Override
+    public void onStatus(String message) {
+      scheduleIfStillOpen(shell -> window.showLoadingMessage(message));
+    }
+
+    @Override
+    public void onServerExit(int code, String panic) {
+      scheduleIfStillOpen(shell ->
+        // TODO: try to restart the server?
+        showErrorDialog(shell, getAnalytics(),
+            "The gapis server has exited with an error code of: " + code, panic)
+      );
+    }
+
+    private void scheduleIfStillOpen(ShellRunnable run) {
       Shell shell = window.getShell();
       if (shell == null) {
         return;
       }
-
-      scheduleIfNotDisposed(shell, () -> {
-        // TODO: try to restart the server?
-        showErrorDialog(shell, getAnalytics(),
-            "The gapis server has exited with an error code of: " + code, panic);
-      });
-    }
-
-    @Override
-    public void init(Shell shell) {
-      models = Models.create(shell, settings, handler, client);
-      widgets = Widgets.create(shell.getDisplay(), client, models);
-
-      if (models.settings.skipFirstRunDialog) {
-        shell.getDisplay().asyncExec(this::startUp);
-      } else {
-        shell.getDisplay().asyncExec(
-            () -> showFirstTimeDialog(shell, models, widgets, this::startUp));
-      }
-    }
-
-    private void startUp() {
-      if (args.length == 1) {
-        models.capture.loadCapture(new File(args[0]));
-      } else if (!models.settings.skipWelcomeScreen) {
-        showWelcomeDialog(client, window.getShell(), models, widgets);
-      }
-    }
-
-    @Override
-    public Models models() {
-      return models;
-    }
-
-    @Override
-    public Widgets widgets() {
-      return widgets;
-    }
-
-    @Override
-    public void dispose() {
-      if (widgets != null) {
-        widgets.dispose();
-        models.dispose();
-      }
-
-      models = null;
-      widgets = null;
+      scheduleIfNotDisposed(shell, () -> run.run(shell));
     }
 
     private Analytics getAnalytics() {
       return (models == null) ? null : models.analytics;
+    }
+
+    private static interface ShellRunnable {
+      public void run(Shell shell);
     }
   }
 

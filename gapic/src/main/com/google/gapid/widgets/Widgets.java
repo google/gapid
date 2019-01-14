@@ -102,8 +102,7 @@ public class Widgets {
     this.editor = editor;
   }
 
-  public static Widgets create(Display display, Client client, Models models) {
-    Theme theme = Theme.load(display);
+  public static Widgets create(Display display, Theme theme, Client client, Models models) {
     CopyPaste copypaste = new CopyPaste(display);
     LoadingIndicator loading = new LoadingIndicator(display, theme);
     CommandEditor editor = new CommandEditor(client, models, theme);
