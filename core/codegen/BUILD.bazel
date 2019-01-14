@@ -39,7 +39,7 @@ go_library(
         "//core/app/linker:go_default_library",
         "//core/math/sint:go_default_library",
         "//core/os/device:go_default_library",
-        "@llvm//:go",  # keep
+        "@llvm//:go",
     ],
 )
 

@@ -16,6 +16,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to")
 
 # gazelle:prefix github.com/google/gapid
+# gazelle:resolve go llvm/bindings/go/llvm @llvm//:go
 
 gazelle(
     name = "gazelle",
