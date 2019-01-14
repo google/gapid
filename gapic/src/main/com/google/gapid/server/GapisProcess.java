@@ -70,6 +70,7 @@ public class GapisProcess extends ChildProcess<Integer> {
   public GapisProcess(Settings settings, Listener listener) {
     super("gapis", settings);
     this.listener = (listener == null) ? Listener.NULL : listener;
+    listener.onStatus("Starting gapis...");
     connection = MoreFutures.transform(start(), port -> {
       LOG.log(INFO, "Established a new client connection to " + port);
       return GapisConnection.create(
@@ -199,11 +200,17 @@ public class GapisProcess extends ChildProcess<Integer> {
   public static interface Listener {
     public static final Listener NULL = new Listener() {
       @Override
+      public void onStatus(String message) {
+        // Do nothing.
+      }
+
+      @Override
       public void onServerExit(int code, String panic) {
         // Do nothing.
       }
     };
 
+    public void onStatus(String message);
     public void onServerExit(int code, String panic);
   }
 

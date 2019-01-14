@@ -71,15 +71,18 @@ public class Server {
     connectToServer(listener);
     String status = "";
     try {
-      status = "fetch server info";
+      status = "Fetching server info";
+      listener.onStatus(status + "...");
       fetchServerInfo();
-      status = "fetch string table";
+      status = "Fetching string table";
+      listener.onStatus(status + "...");
       fetchStringTable();
-      status = "monitoring logs";
+      status = "Monitoring logs";
+      listener.onStatus(status + "...");
       client.streamLog(Logging::logMessage);
     } catch (ExecutionException | RpcException | TimeoutException e) {
       throw new GapisInitException(
-          GapisInitException.MESSAGE_FAILED_INIT, "Failed to " + status, e);
+          GapisInitException.MESSAGE_FAILED_INIT, "Failed: " + status, e);
     }
   }
 
@@ -115,6 +118,7 @@ public class Server {
     if (gapis.get().isEmpty()) {
       return new GapisProcess(settings, listener).connect();
     } else {
+      listener.onStatus("Connecting to gapis...");
       return GapisConnection.create(
           gapis.get(), gapisAuthToken.get(), 0, con -> listener.onServerExit(-1, null));
     }
