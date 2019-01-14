@@ -51,9 +51,9 @@ void SpyBase::init(CallObserver* observer) {
   mIsSuspended = false;
 }
 
-void SpyBase::lock(CallObserver* observer) { mMutex.lock(); }
+void SpyBase::lock(CallObserver* observer) { mSpinLock.Lock(); }
 
-void SpyBase::unlock() { mMutex.unlock(); }
+void SpyBase::unlock() { mSpinLock.Unlock(); }
 
 void SpyBase::abort() {
   GAPID_DEBUG("Command aborted");
