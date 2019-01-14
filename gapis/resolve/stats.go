@@ -33,7 +33,7 @@ func Stats(ctx context.Context, p *path.Stats, r *path.ResolveConfig) (*service.
 			return nil, err
 		}
 	}
-	c, err := capture.ResolveFromPath(ctx, p.Capture)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
 	}

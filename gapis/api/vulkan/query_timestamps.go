@@ -62,7 +62,7 @@ type queryTimestamps struct {
 	allocated    []*api.AllocResult
 }
 
-func newQueryTimestamps(ctx context.Context, c *capture.Capture, numInitialCmds int) *queryTimestamps {
+func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int) *queryTimestamps {
 	transform := &queryTimestamps{
 		commandPools: make(map[VkDevice]VkCommandPool),
 		queryPools:   make(map[VkQueue]*queryPoolInfo),

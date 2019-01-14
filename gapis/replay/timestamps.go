@@ -25,7 +25,7 @@ import (
 
 // GetTimestamps replays the trace and return the start and end timestamps for each commandbuffers
 func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.Device) (*service.GetTimestampsResponse, error) {
-	c, err := capture.ResolveFromPath(ctx, capturePath)
+	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return nil, err
 	}

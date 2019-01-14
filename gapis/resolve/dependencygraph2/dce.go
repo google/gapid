@@ -40,7 +40,7 @@ var (
 
 // DCECapture returns a new capture containing only the requested commands and their dependencies.
 func DCECapture(ctx context.Context, name string, p *path.Capture, requestedCmds []*path.Command) (*path.Capture, error) {
-	c, err := capture.ResolveFromPath(ctx, p)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,11 @@ func DCECapture(ctx context.Context, name string, p *path.Capture, requestedCmds
 	}
 	builder.Build(ctx)
 
-	return capture.New(ctx, arena.New(), name, c.Header, c.InitialState, builder.LiveCmds())
+	if gc, err := capture.NewGraphicsCapture(ctx, arena.New(), name, c.Header, c.InitialState, builder.LiveCmds()); err != nil {
+		return nil, err
+	} else {
+		return capture.New(ctx, gc)
+	}
 }
 
 // DCEBuilder tracks the data necessary to perform dead-command-eliminition on a capture

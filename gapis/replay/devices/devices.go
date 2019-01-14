@@ -33,7 +33,7 @@ import (
 // ForReplay returns a priority-sorted path list of devices that are capable of
 // replaying the capture c.
 func ForReplay(ctx context.Context, p *path.Capture) ([]*path.Device, error) {
-	c, err := capture.ResolveFromPath(ctx, p)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
 		return nil, err
 	}

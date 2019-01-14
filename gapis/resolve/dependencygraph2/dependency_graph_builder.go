@@ -64,7 +64,7 @@ const (
 type dependencyGraphBuilder struct {
 	// graph is the dependency graph being constructed
 	// graph *dependencyGraph
-	capture *capture.Capture
+	capture *capture.GraphicsCapture
 
 	config DependencyGraphConfig
 
@@ -89,7 +89,7 @@ type dependencyGraphBuilder struct {
 
 // Build a new dependencyGraphBuilder.
 func newDependencyGraphBuilder(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd, state *api.GlobalState) *dependencyGraphBuilder {
+	c *capture.GraphicsCapture, initialCmds []api.Cmd, state *api.GlobalState) *dependencyGraphBuilder {
 	builder := &dependencyGraphBuilder{}
 	builder.capture = c
 	builder.config = config
@@ -330,7 +330,7 @@ func (b *dependencyGraphBuilder) LogStats(ctx context.Context, full bool) {
 }
 
 func BuildDependencyGraph(ctx context.Context, config DependencyGraphConfig,
-	c *capture.Capture, initialCmds []api.Cmd, initialRanges interval.U64RangeList) (DependencyGraph, error) {
+	c *capture.GraphicsCapture, initialCmds []api.Cmd, initialRanges interval.U64RangeList) (DependencyGraph, error) {
 	ctx = status.Start(ctx, "BuildDependencyGraph")
 	defer status.Finish(ctx)
 	var state *api.GlobalState

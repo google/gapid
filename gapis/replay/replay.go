@@ -36,7 +36,7 @@ type Generator interface {
 		dependentPayload string,
 		requests []RequestAndResult,
 		device *device.Instance,
-		capture *capture.Capture,
+		capture *capture.GraphicsCapture,
 		out transform.Writer) error
 }
 

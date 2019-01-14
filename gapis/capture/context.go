@@ -40,6 +40,12 @@ func Get(ctx context.Context) *path.Capture {
 }
 
 // Resolve resolves the capture from a context previously annotated by Put.
-func Resolve(ctx context.Context) (*Capture, error) {
+func Resolve(ctx context.Context) (Capture, error) {
 	return ResolveFromPath(ctx, Get(ctx))
+}
+
+// ResolveGraphics resolves the capture from a context previously annotated by Put,
+// and ensures that it is a graphics capture.
+func ResolveGraphics(ctx context.Context) (*GraphicsCapture, error) {
+	return ResolveGraphicsFromPath(ctx, Get(ctx))
 }

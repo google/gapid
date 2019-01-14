@@ -336,7 +336,7 @@ func (s Shaderʳ) SetResourceData(
 		return err
 	}
 
-	c, err := capture.ResolveFromPath(ctx, capturePath)
+	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
 		return err
 	}
@@ -372,7 +372,7 @@ func (s Shaderʳ) SetResourceData(
 	return fmt.Errorf("No command to set data in")
 }
 
-func (a *GlShaderSource) Replace(ctx context.Context, c *capture.Capture, data *api.ResourceData) interface{} {
+func (a *GlShaderSource) Replace(ctx context.Context, c *capture.GraphicsCapture, data *api.ResourceData) interface{} {
 	state := c.NewState(ctx)
 	shader := data.GetShader()
 	source := shader.Source

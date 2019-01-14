@@ -162,7 +162,7 @@ func GetDependencyGraph(ctx context.Context, device *path.Device) (*DependencyGr
 func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = resolve.SetupContext(ctx, r.Capture, r.Config)
 
-	c, err := capture.Resolve(ctx)
+	c, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}

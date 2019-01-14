@@ -36,7 +36,7 @@ import (
 )
 
 func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out string, opts *service.ExportReplayOptions) error {
-	cap, err := capture.ResolveFromPath(ctx, c)
+	cap, err := capture.ResolveGraphicsFromPath(ctx, c)
 
 	if d == nil {
 		instance := *cap.Header.Device

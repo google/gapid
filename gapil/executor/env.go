@@ -129,7 +129,7 @@ func GetEnv(c unsafe.Pointer) *Env {
 }
 
 // NewEnv creates a new execution environment for the given capture.
-func (e *Executor) NewEnv(ctx context.Context, capture *capture.Capture) *Env {
+func (e *Executor) NewEnv(ctx context.Context, capture *capture.GraphicsCapture) *Env {
 	var id envID
 	var env *Env
 

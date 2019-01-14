@@ -91,7 +91,7 @@ func MutationCmdsFor(ctx context.Context, c *path.Capture, data *Data, cmds []ap
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
-	rc, err := capture.ResolveFromPath(ctx, c)
+	rc, err := capture.ResolveGraphicsFromPath(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	// This is where we want to handle sub-states
 	// This involves transforming the tree for the given Indices, and
 	//   then mutating that.
-	rc, err := capture.ResolveFromPath(ctx, c)
+	rc, err := capture.ResolveGraphicsFromPath(ctx, c)
 	if err != nil {
 		return err
 	}

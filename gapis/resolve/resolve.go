@@ -99,7 +99,7 @@ func Field(ctx context.Context, p *path.Field, r *path.ResolveConfig) (interface
 }
 
 func Messages(ctx context.Context, p *path.Messages) (interface{}, error) {
-	c, err := capture.ResolveFromPath(ctx, p.Capture)
+	c, err := capture.ResolveGraphicsFromPath(ctx, p.Capture)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func memoryLayout(ctx context.Context, p path.Node) (*device.MemoryLayout, error
 		return nil, errPathNoCapture(p)
 	}
 
-	c, err := capture.ResolveFromPath(ctx, cp)
+	c, err := capture.ResolveGraphicsFromPath(ctx, cp)
 	if err != nil {
 		return nil, err
 	}

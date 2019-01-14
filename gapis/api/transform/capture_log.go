@@ -37,7 +37,7 @@ var (
 
 // NewCaptureLog returns a Transformer that will log all commands passed through it
 // to the capture file at path.
-func NewCaptureLog(ctx context.Context, sourceCapture *capture.Capture, path string) Transformer {
+func NewCaptureLog(ctx context.Context, sourceCapture *capture.GraphicsCapture, path string) Transformer {
 	f, err := os.Create(path)
 	if err != nil {
 		log.E(ctx, "Failed to create replay capture file %v: %v", path, err)
@@ -79,14 +79,9 @@ func (t *captureLog) Flush(ctx context.Context, out Writer) {
 		}
 	}
 
-	capt, err := capture.New(ctx, a, "capturelog", t.header, nil, t.cmds)
+	c, err := capture.NewGraphicsCapture(ctx, a, "capturelog", t.header, nil, t.cmds)
 	if err != nil {
 		log.E(ctx, "Failed to create replay storage capture: %v", err)
-		return
-	}
-	c, err := capture.ResolveFromPath(ctx, capt)
-	if err != nil {
-		log.E(ctx, "Failed to resolve capture from path %v: %v", capt, err)
 		return
 	}
 	if err := c.Export(ctx, t.file); err != nil {
