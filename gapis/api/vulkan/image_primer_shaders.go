@@ -684,115 +684,166 @@ func ipComputeShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits, imageTyp
 	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
 		switch vkFmt {
 		case VkFormat_VK_FORMAT_R8_UINT,
-			VkFormat_VK_FORMAT_R8G8_UINT,
-			// VkFormat_VK_FORMAT_R8G8B8_UINT,
-			VkFormat_VK_FORMAT_R8G8B8A8_UINT,
-			// VkFormat_VK_FORMAT_B8G8R8_UINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_UINT,
 			VkFormat_VK_FORMAT_R16_UINT,
+			VkFormat_VK_FORMAT_R32_UINT:
+			valueStr = `uint r = data[buf_texel_index * 4];
+			uvec4 value = uvec4(r, 0, 0, 0);`
+		case VkFormat_VK_FORMAT_R8G8_UINT,
 			VkFormat_VK_FORMAT_R16G16_UINT,
-			// VkFormat_VK_FORMAT_R16G16B16_UINT,
+			VkFormat_VK_FORMAT_R32G32_UINT:
+			valueStr = `uint r = data[buf_texel_index * 4];
+			uint g = data[buf_texel_index * 4 + 1];
+			uvec4 value = uvec4(r, g, 0, 0);`
+
+		case VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+			VkFormat_VK_FORMAT_B8G8R8A8_UINT,
 			VkFormat_VK_FORMAT_R16G16B16A16_UINT,
-			VkFormat_VK_FORMAT_R32_UINT,
-			VkFormat_VK_FORMAT_R32G32_UINT,
-			// VkFormat_VK_FORMAT_R32G32B32_UINT,
 			VkFormat_VK_FORMAT_R32G32B32A32_UINT,
 			VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
 			VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
-			valueStr = `uvec4 value = texelFetch(data, int(buf_index)).rgba;`
+			valueStr = `uint r = data[buf_texel_index * 4];
+			uint g = data[buf_texel_index * 4 + 1];
+			uint b = data[buf_texel_index * 4 + 2];
+			uint a = data[buf_texel_index * 4 + 3];
+			uvec4 value = uvec4(r, g, b, a);`
 
 		case VkFormat_VK_FORMAT_R8_SINT,
-			VkFormat_VK_FORMAT_R8G8_SINT,
-			// VkFormat_VK_FORMAT_R8G8B8_SINT,
-			VkFormat_VK_FORMAT_R8G8B8A8_SINT,
-			// VkFormat_VK_FORMAT_B8G8R8_SINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_SINT,
 			VkFormat_VK_FORMAT_R16_SINT,
+			VkFormat_VK_FORMAT_R32_SINT:
+			valueStr = `int r = int(data[buf_texel_index * 4]);
+			ivec4 value = ivec4(r, 0, 0, 0);`
+
+		case VkFormat_VK_FORMAT_R8G8_SINT,
 			VkFormat_VK_FORMAT_R16G16_SINT,
-			// VkFormat_VK_FORMAT_R16G16B16_SINT,
+			VkFormat_VK_FORMAT_R32G32_SINT:
+			valueStr = `int r = int(data[buf_texel_index * 4]);
+			int g = int(data[buf_texel_index * 4 + 1]);
+			ivec4 value = ivec4(r, g, 0, 0);`
+
+		case VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+			VkFormat_VK_FORMAT_B8G8R8A8_SINT,
 			VkFormat_VK_FORMAT_R16G16B16A16_SINT,
-			VkFormat_VK_FORMAT_R32_SINT,
-			VkFormat_VK_FORMAT_R32G32_SINT,
-			// VkFormat_VK_FORMAT_R32G32B32_SINT,
 			VkFormat_VK_FORMAT_R32G32B32A32_SINT,
 			VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
 			VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
-			valueStr = `int r = int(texelFetch(data, int(buf_index)).r);
-			int g = int(texelFetch(data, int(buf_index)).g);
-			int b = int(texelFetch(data, int(buf_index)).b);
-			int a = int(texelFetch(data, int(buf_index)).a);
+			valueStr = `int r = int(data[buf_texel_index * 4]);
+			int g = int(data[buf_texel_index * 4 + 1]);
+			int b = int(data[buf_texel_index * 4 + 2]);
+			int a = int(data[buf_texel_index * 4 + 3]);
 			ivec4 value = ivec4(r, g, b, a);`
 
 		case VkFormat_VK_FORMAT_R8_UNORM,
-			VkFormat_VK_FORMAT_R8G8_UNORM,
-			// VkFormat_VK_FORMAT_R8G8B8_UNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
-			VkFormat_VK_FORMAT_B8G8R8_UNORM,
+			VkFormat_VK_FORMAT_R8_SRGB:
+			valueStr = `float r = data[buf_texel_index * 4] / 255.0;
+			vec4 value = vec4(r, 0.0, 0.0, 0.0);`
+
+		case VkFormat_VK_FORMAT_R8G8_UNORM,
+			VkFormat_VK_FORMAT_R8G8_SRGB:
+			valueStr = `float r = data[buf_texel_index * 4] / 255.0;
+			float g = data[buf_texel_index * 4 + 1] / 255.0;
+			vec4 value = vec4(r, g, 0.0, 0.0);`
+
+		case VkFormat_VK_FORMAT_B8G8R8_UNORM:
+			valueStr = `float r = data[buf_texel_index * 4] / 255.0;
+			float g = data[buf_texel_index * 4 + 1] / 255.0;
+			float b = data[buf_texel_index * 4 + 2] / 255.0;
+			vec4 value = vec4(r, g, b, 0.0);`
+
+		case VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
 			VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
-			VkFormat_VK_FORMAT_R8_SRGB,
-			VkFormat_VK_FORMAT_R8G8_SRGB,
-			// VkFormat_VK_FORMAT_R8G8B8_SRGB,
 			VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
-			// VkFormat_VK_FORMAT_B8G8R8_SRGB,
 			VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
 			VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
 			VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-			valueStr = `vec4 value = texelFetch(data, int(buf_index)).rgba/vec4(255.0, 255.0, 255.0, 255.0);`
+			valueStr = `float r = data[buf_texel_index * 4] / 255.0;
+			float g = data[buf_texel_index * 4 + 1] / 255.0;
+			float b = data[buf_texel_index * 4 + 2] / 255.0;
+			float a = data[buf_texel_index * 4 + 3] / 255.0;
+			vec4 value = vec4(r, g, b, a);`
 
-		case VkFormat_VK_FORMAT_R16_UNORM,
-			VkFormat_VK_FORMAT_R16G16_UNORM,
-			// VkFormat_VK_FORMAT_R16G16B16_UNORM,
-			VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
-			valueStr = `vec4 value = texelFetch(data, int(buf_index)).rgba/vec4(65535.0, 65535.0, 65535.0, 65535.0);`
+		case VkFormat_VK_FORMAT_R16_UNORM:
+			valueStr = `float r = data[buf_texel_index * 4] / 65535.0;
+			vec4 value = vec4(r, 0.0, 0.0, 0.0);`
+		case VkFormat_VK_FORMAT_R16G16_UNORM:
+			valueStr = `float r = data[buf_texel_index * 4] / 65535.0;
+			float g = data[buf_texel_index * 4 + 1] / 65535.0;
+			vec4 value = vec4(r, g, 0.0, 0.0);`
+		case VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+			valueStr = `float r = data[buf_texel_index * 4] / 65535.0;
+			float g = data[buf_texel_index * 4 + 1] / 65535.0;
+			float b = data[buf_texel_index * 4 + 2] / 65535.0;
+			float a = data[buf_texel_index * 4 + 3] / 65535.0;
+			vec4 value = vec4(r, g, b, a);`
 
 		case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
 			VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-			valueStr = `vec4 value = texelFetch(data, int(buf_index)).rgba/vec4(1023.0, 1023.0, 1023.0, 3.0);`
-
-		case VkFormat_VK_FORMAT_R8_SNORM,
-			VkFormat_VK_FORMAT_R8G8_SNORM,
-			// VkFormat_VK_FORMAT_R8G8B8_SNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
-			// VkFormat_VK_FORMAT_B8G8R8_SNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
-			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
-			valueStr = `float r = (int(texelFetch(data, int(buf_index)).r) * 2.0 + 1.0) / 255.0;
-			float g = (int(texelFetch(data, int(buf_index)).g) * 2.0 + 1.0) / 255.0;
-			float b = (int(texelFetch(data, int(buf_index)).b) * 2.0 + 1.0) / 255.0;
-			float a = (int(texelFetch(data, int(buf_index)).a) * 2.0 + 1.0) / 255.0;
+			valueStr = `float r = data[buf_texel_index * 4] / 1023.0;
+			float g = data[buf_texel_index * 4 + 1] / 1023.0;
+			float b = data[buf_texel_index * 4 + 2] / 1023.0;
+			float a = data[buf_texel_index * 4 + 3] / 3.0;
 			vec4 value = vec4(r, g, b, a);`
 
-		case VkFormat_VK_FORMAT_R16_SNORM,
-			VkFormat_VK_FORMAT_R16G16_SNORM,
-			// VkFormat_VK_FORMAT_R16G16B16_SNORM,
-			VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
-			valueStr = `float r = (int(texelFetch(data, int(buf_index)).r) * 2.0 + 1.0) / 65535.0;
-			float g = (int(texelFetch(data, int(buf_index)).g) * 2.0 + 1.0) / 65535.0;
-			float b = (int(texelFetch(data, int(buf_index)).b) * 2.0 + 1.0) / 65535.0;
-			float a = (int(texelFetch(data, int(buf_index)).a) * 2.0 + 1.0) / 65535.0;
+		case VkFormat_VK_FORMAT_R8_SNORM:
+			valueStr = `float r = (int(data[buf_texel_index * 4]) * 2.0 + 1.0) / 255.0;
+			vec4 value = vec4(r, 0.0, 0.0, 0.0);`
+
+		case VkFormat_VK_FORMAT_R8G8_SNORM:
+			valueStr = `float r = (int(data[buf_texel_index * 4]) * 2.0 + 1.0) / 255.0;
+			float g = (int(data[buf_texel_index * 4 + 1]) * 2.0 + 1.0) / 255.0;
+			vec4 value = vec4(r, g, 0.0, 0.0);`
+			// VkFormat_VK_FORMAT_R8G8B8_SNORM,
+		case VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+			valueStr = `float r = (int(data[buf_texel_index * 4]) * 2.0 + 1.0) / 255.0;
+			float g = (int(data[buf_texel_index * 4 + 1]) * 2.0 + 1.0) / 255.0;
+			float b = (int(data[buf_texel_index * 4 + 2]) * 2.0 + 1.0) / 255.0;
+			float a = (int(data[buf_texel_index * 4 + 3]) * 2.0 + 1.0) / 255.0;
+			vec4 value = vec4(r, g, b, a);`
+
+		case VkFormat_VK_FORMAT_R16_SNORM:
+			valueStr = `float r = (int(data[buf_texel_index * 4]) * 2.0 + 1.0) / 65535.0;
+			vec4 value = vec4(r, 0.0, 0.0, 0.0);`
+		case VkFormat_VK_FORMAT_R16G16_SNORM:
+			valueStr = `float r = (int(data[buf_texel_index * 4]) * 2.0 + 1.0) / 65535.0;
+			float g = (int(data[buf_texel_index * 4 + 1]) * 2.0 + 1.0) / 65535.0;
+			vec4 value = vec4(r, g, 0.0, 0.0);`
+		case VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+			valueStr = `float r = (int(data[buf_texel_index * 4]) * 2.0 + 1.0) / 65535.0;
+			float g = (int(data[buf_texel_index * 4 + 1]) * 2.0 + 1.0) / 65535.0;
+			float b = (int(data[buf_texel_index * 4 + 2]) * 2.0 + 1.0) / 65535.0;
+			float a = (int(data[buf_texel_index * 4 + 3]) * 2.0 + 1.0) / 65535.0;
 			vec4 value = vec4(r, g, b, a);`
 
 		// case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
 		// 	VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
 
 		case VkFormat_VK_FORMAT_R16_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16_SFLOAT,
+			VkFormat_VK_FORMAT_R32_SFLOAT:
+			valueStr = `float r = uintBitsToFloat(data[buf_texel_index * 4]);
+			vec4 value = vec4(r, 0.0, 0.0, 0.0);`
+		case VkFormat_VK_FORMAT_R16G16_SFLOAT,
+			VkFormat_VK_FORMAT_R32G32_SFLOAT:
 			// VkFormat_VK_FORMAT_R16G16B16_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
-			VkFormat_VK_FORMAT_R32_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32_SFLOAT,
+			valueStr = `float r = uintBitsToFloat(data[buf_texel_index * 4]);
+			float g = uintBitsToFloat(data[buf_texel_index * 4 + 1]);
+			vec4 value = vec4(r, g, 0.0, 0.0);`
+		case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
 			// VkFormat_VK_FORMAT_R32G32B32_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
 			// VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
-			VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
-			valueStr = `float r = uintBitsToFloat(texelFetch(data, int(buf_index)).r);
-			float g = uintBitsToFloat(texelFetch(data, int(buf_index)).g);
-			float b = uintBitsToFloat(texelFetch(data, int(buf_index)).b);
-			float a = uintBitsToFloat(texelFetch(data, int(buf_index)).a);
+			valueStr = `float r = uintBitsToFloat(data[buf_texel_index * 4]);
+			float g = uintBitsToFloat(data[buf_texel_index * 4 + 1]);
+			float b = uintBitsToFloat(data[buf_texel_index * 4 + 2]);
+			vec4 value = vec4(r, g, b, 0.0);`
+		case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+			VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT:
+			valueStr = `float r = uintBitsToFloat(data[buf_texel_index * 4]);
+			float g = uintBitsToFloat(data[buf_texel_index * 4 + 1]);
+			float b = uintBitsToFloat(data[buf_texel_index * 4 + 2]);
+			float a = uintBitsToFloat(data[buf_texel_index * 4 + 3]);
 			vec4 value = vec4(r, g, b, a);`
-
 		default:
 			return []uint32{}, fmt.Errorf("unsupported format: %v", vkFmt)
 		}
@@ -808,19 +859,21 @@ func ipComputeShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits, imageTyp
 	precision highp int;
 	layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 	layout (%s, set = 0, binding = 0) uniform %s img_output;
-	layout (set = 0, binding = 1) uniform usamplerBuffer data;
+	layout (set = 0, binding = 1) buffer SourceData {
+		uint data[];
+	};
 	layout (set = 0, binding = 2) uniform metadata {
 		%s
 		%s
-		uint offset;
+		uint texel_offset;
 		uint count;
 	};
 	void main() {
-		uint buf_index = gl_GlobalInvocationID.x;
-		if (buf_index >= count) {
+		uint buf_texel_index = gl_GlobalInvocationID.x;
+		if (buf_texel_index >= count) {
 			return;
 		}
-		uint linear_pos = buf_index + offset;
+		uint linear_pos = buf_texel_index + texel_offset;
 		%s
 		%s
 		imageStore(img_output, pos, value);

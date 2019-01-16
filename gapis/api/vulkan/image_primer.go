@@ -468,12 +468,12 @@ type ipStoreShaderInfo struct {
 }
 
 const (
-	ipStoreStorageImageBinding       = 0
-	ipStoreUniformTexelBufferBinding = 1
-	ipStoreUniformBufferBinding      = 2
-	specMaxTexelBufferElements       = 65536
-	specMaxComputeGlobalGroupCountX  = 65536
-	specMaxComputeLocalGroupSizeX    = 128
+	ipStoreStorageImageBinding      = 0
+	ipStoreStorageBufferBinding     = 1
+	ipStoreUniformBufferBinding     = 2
+	specMaxComputeGlobalGroupCountX = 65536
+	specMaxComputeLocalGroupSizeX   = 128
+	specMaxStorageBufferRange       = 1 << 27
 )
 
 // ipStoreTexelBufferStoreInfo contains the information to initiate one or more
@@ -491,6 +491,16 @@ type ipStoreTexelBufferStoreInfo struct {
 	// descriptor related
 	descSet  VkDescriptorSet
 	pipeline ComputePipelineObjectʳ
+}
+
+type ipStoreStorageBufferStoreInfo struct {
+	dev             VkDevice
+	data            []uint8
+	dataFormat      VkFormat
+	dataElementSize uint32
+	job             *ipStoreJob
+	descSet         VkDescriptorSet
+	pipeline        ComputePipelineObjectʳ
 }
 
 // ipStoreDispatchInfo contains the information to submit a dispatch to store
@@ -531,12 +541,6 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue VkQueue) error {
 
 	dev := job.storeTarget.Device()
 
-	phyDev := h.sb.s.Devices().Get(dev).PhysicalDevice()
-	maxTexelBufferElements := uint32(specMaxTexelBufferElements)
-	if h.sb.s.PhysicalDevices().Get(phyDev).PhysicalDeviceProperties().Limits().MaxTexelBufferElements() > specMaxTexelBufferElements {
-		maxTexelBufferElements = h.sb.s.PhysicalDevices().Get(phyDev).PhysicalDeviceProperties().Limits().MaxTexelBufferElements()
-	}
-
 	// create descriptor pool
 	if _, ok := h.descPools[dev]; !ok {
 		descPool := VkDescriptorPool(newUnusedID(true, func(x uint64) bool {
@@ -548,9 +552,11 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue VkQueue) error {
 				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, // Type
 				1, // descriptorCount
 			),
-			// for image data
+			// for image data, use storage type as storage buffer descriptors
+			// as the minimum max range is larger for storage buffer than
+			// uniform buffer.
 			NewVkDescriptorPoolSize(h.sb.ta,
-				VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, // Type
+				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, // Type
 				1, // descriptorCount
 			),
 			// for image dimension info
@@ -580,8 +586,8 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue VkQueue) error {
 				0, // pImmutableSamplers
 			),
 			NewVkDescriptorSetLayoutBinding(h.sb.ta,
-				ipStoreUniformTexelBufferBinding,                         // binding
-				VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, // descriptorType
+				ipStoreStorageBufferBinding,                        // binding
+				VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, // descriptorType
 				1, // descriptorCount
 				VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT), // stageFlags
 				0, // pImmutableSamplers
@@ -661,27 +667,17 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue VkQueue) error {
 		h.sb.ctx, nil, api.CmdNoID, nil, h.sb.oldState, nil, 0, nil, nil, unpackedFmt)
 	unpackedElementSize := unpackedElementAndTexelBlockSize.ElementSize()
 
-	// Using multiple texel buffers if necessary
-	texelBufferStart := uint32(0)
-	for texelBufferStart < uint32(len(unpacked)) {
-		texelBufferEnd := texelBufferStart + maxTexelBufferElements*unpackedElementSize
-		if texelBufferEnd > uint32(len(unpacked)) {
-			texelBufferEnd = uint32(len(unpacked))
-		}
-		texelOffset := texelBufferStart / unpackedElementSize
-		texelBufferStoreInfo := ipStoreTexelBufferStoreInfo{
-			dev:                 dev,
-			data:                unpacked[texelBufferStart:texelBufferEnd],
-			dataFormat:          unpackedFmt,
-			dataElementSize:     unpackedElementSize,
-			offsetInOpaqueBlock: texelOffset,
-			job:                 job,
-			descSet:             descSet,
-			pipeline:            pipeline,
-		}
-		h.storeThroughTexelBuffer(texelBufferStoreInfo, queue)
-		texelBufferStart = texelBufferEnd
+	storageBufferStoreInfo := ipStoreStorageBufferStoreInfo{
+		dev:             dev,
+		data:            unpacked,
+		dataFormat:      unpackedFmt,
+		dataElementSize: unpackedElementSize,
+		job:             job,
+		descSet:         descSet,
+		pipeline:        pipeline,
 	}
+	h.storeThroughStorageBuffer(storageBufferStoreInfo, queue)
+
 	return nil
 }
 
@@ -712,7 +708,7 @@ func (h *ipStoreHandler) free() {
 
 func (h *ipStoreHandler) dispatch(info ipStoreDispatchInfo, tsk *scratchTask) error {
 
-	// check the number of texel
+	// check the number of texel and the size of data
 	if uint32(len(info.data))%info.dataElementSize != 0 {
 		return log.Errf(h.sb.ctx, nil, "len(data): %v is not multiple times of the element size: %v", len(info.data), info.dataElementSize)
 	}
@@ -721,41 +717,27 @@ func (h *ipStoreHandler) dispatch(info ipStoreDispatchInfo, tsk *scratchTask) er
 	if texelCount > maxDispatchTexelCount {
 		return log.Errf(h.sb.ctx, nil, "number of texels: %v exceeds the limit: %v", uint32(len(info.data))/info.dataElementSize, maxDispatchTexelCount)
 	}
+	if len(info.data) > specMaxStorageBufferRange {
+		return log.Errf(h.sb.ctx, nil, "storage buffer descriptor range: %v exceeds the limit: %v", len(info.data), specMaxStorageBufferRange)
+	}
 
 	// data buffer and buffer view
 	dataBuf := tsk.newBuffer([]bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(info.data, 0)},
-		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
+		VkBufferUsageFlagBits_VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
 	tsk.deferUntilExecuted(func() {
 		h.sb.write(h.sb.cb.VkDestroyBuffer(info.dev, dataBuf, memory.Nullptr))
 	})
 	tsk.doOnCommitted(func() {
-		dataBufView := VkBufferView(newUnusedID(true, func(x uint64) bool {
-			return GetState(h.sb.newState).BufferViews().Contains(VkBufferView(x))
-		}))
-		h.sb.write(h.sb.cb.VkCreateBufferView(
-			info.dev,
-			h.sb.MustAllocReadData(
-				NewVkBufferViewCreateInfo(h.sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, // sType
-					0,                  // pNext
-					0,                  // flags
-					dataBuf,            // buffer
-					info.dataFormat,    // format
-					0,                  // offset
-					0xFFFFFFFFFFFFFFFF, // range
-				)).Ptr(),
-			memory.Nullptr,
-			h.sb.MustAllocWriteData(dataBufView).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
-		tsk.deferUntilExecuted(func() {
-			h.sb.write(h.sb.cb.VkDestroyBufferView(info.dev, dataBufView, memory.Nullptr))
-		})
-		writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreUniformTexelBufferBinding, 0,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		dataBufInfo := NewVkDescriptorBufferInfo(h.sb.ta,
+			dataBuf,                      // buffer
+			VkDeviceSize(0),              // offset
+			VkDeviceSize(len(info.data)), // range
+		)
+		writeDescriptorSet(h.sb, info.dev, info.descSet, ipStoreStorageBufferBinding, 0,
+			VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
 			[]VkDescriptorImageInfo{},
-			[]VkDescriptorBufferInfo{},
-			[]VkBufferView{dataBufView},
+			[]VkDescriptorBufferInfo{dataBufInfo},
+			[]VkBufferView{},
 		)
 	})
 
@@ -887,14 +869,19 @@ func (h *ipStoreHandler) dispatch(info ipStoreDispatchInfo, tsk *scratchTask) er
 	return nil
 }
 
-func (h *ipStoreHandler) storeThroughTexelBuffer(info ipStoreTexelBufferStoreInfo, queue VkQueue) {
+func (h *ipStoreHandler) storeThroughStorageBuffer(info ipStoreStorageBufferStoreInfo, queue VkQueue) {
 	dispatchStart := uint32(0)
+	// Each invocation processes only one texel.
 	maxDispatchTexelCount := specMaxComputeGlobalGroupCountX * specMaxComputeLocalGroupSizeX
 	maxDispatchSize := uint32(maxDispatchTexelCount) * info.dataElementSize
+	// Must not exceed the maximum storage buffer descriptor range.
+	if uint32(specMaxStorageBufferRange) < maxDispatchSize {
+		maxDispatchSize = uint32(specMaxStorageBufferRange) / info.dataElementSize * info.dataElementSize
+	}
 	// Need to reserve a buffer for metadata which can have at most 6 uint32.
-	maxScratchTexelBufferSize := scratchBufferSize - nextMultipleOf(6*4, 256)
-	if maxScratchTexelBufferSize < uint64(maxDispatchSize) {
-		maxDispatchSize = uint32(maxScratchTexelBufferSize) / info.dataElementSize * info.dataElementSize
+	maxScratchStorageBufferSize := scratchBufferSize - nextMultipleOf(6*4, 256)
+	if maxScratchStorageBufferSize < uint64(maxDispatchSize) {
+		maxDispatchSize = uint32(maxScratchStorageBufferSize) / info.dataElementSize * info.dataElementSize
 	}
 	for dispatchStart < uint32(len(info.data)) {
 		dispatchEnd := dispatchStart + maxDispatchSize
@@ -907,7 +894,7 @@ func (h *ipStoreHandler) storeThroughTexelBuffer(info ipStoreTexelBufferStoreInf
 			data:                info.data[dispatchStart:dispatchEnd],
 			dataFormat:          info.dataFormat,
 			dataElementSize:     info.dataElementSize,
-			offsetInOpaqueBlock: info.offsetInOpaqueBlock + dispatchStart/info.dataElementSize,
+			offsetInOpaqueBlock: dispatchStart / info.dataElementSize,
 			job:                 info.job,
 			descSet:             info.descSet,
 			pipelineLayout:      info.pipeline.PipelineLayout().VulkanHandle(),
