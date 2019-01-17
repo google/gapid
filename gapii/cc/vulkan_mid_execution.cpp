@@ -611,7 +611,11 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     // swapchain ones), we can copy directly from all such images. Note that
     // later this fact soon will be changed.
 
-    bool denseBound = img->mBoundMemory != nullptr;
+    // TODO: Handle multi-planar images
+    bool denseBound =
+        subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0) != nullptr &&
+        subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0)->mBoundMemory !=
+            nullptr;
     bool sparseBound = (img->mOpaqueSparseMemoryBindings.count() > 0) ||
                        (img->mSparseImageMemoryBindings.count() > 0);
     bool sparseBinding =
@@ -630,13 +634,12 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         bool is_valid = true;
         // If this is a sparsely resident image, then at least ALL metadata
         // must be bound.
-        for (const auto &requirements :
-             img->mMemoryRequirements->mAspectBitsToSparseMemoryRequirements) {
-          const auto &prop = requirements.second.mformatProperties;
+        for (const auto &req : img->mSparseMemoryRequirements) {
+          const auto &prop = req.second.mformatProperties;
           if (prop.maspectMask ==
               VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
-            if (!IsFullyBound(requirements.second.mimageMipTailOffset,
-                              requirements.second.mimageMipTailSize,
+            if (!IsFullyBound(req.second.mimageMipTailOffset,
+                              req.second.mimageMipTailSize,
                               img->mOpaqueSparseMemoryBindings)) {
               is_valid = false;
               break;
@@ -650,11 +653,10 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         // If we are not sparsely-resident, then all memory must
         // be bound before we are used.
         // TODO: Handle multi-planar images
-        if (!IsFullyBound(
-                0,
-                img->mMemoryRequirements->mPlaneBitsToMemoryRequirements[0]
-                    .msize,
-                img->mOpaqueSparseMemoryBindings)) {
+        auto planeMemInfo =
+            subGetImagePlaneMemoryInfo(nullptr, nullptr, img, 0);
+        if (!IsFullyBound(0, planeMemInfo->mMemoryRequirements.msize,
+                          img->mOpaqueSparseMemoryBindings)) {
           continue;
         }
       }
@@ -679,8 +681,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     if (denseBound || !sparseResidency) {
       walkImageSubRng(img, img_whole_rng, append_image_level_to_opaque_pieces);
     } else {
-      for (const auto &req :
-           img->mMemoryRequirements->mAspectBitsToSparseMemoryRequirements) {
+      for (const auto &req : img->mSparseMemoryRequirements) {
         const auto &prop = req.second.mformatProperties;
         if (prop.maspectMask == img->mImageAspect) {
           if (prop.mflags & VkSparseImageFormatFlagBits::

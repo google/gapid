@@ -58,27 +58,37 @@
 
 @resource
 @internal class ImageObject {
-  @unused VkDevice        Device
-  ref!DeviceMemoryObject  BoundMemory
-  VkDeviceSize            BoundMemoryOffset
+  @unused VkDevice                                              Device
+
+  // mapping from plane bits (0 for non-disjoint or single planar images) to memory information
+  map!(VkImageAspectFlagBits, ref!ImagePlaneMemoryInfo)         PlaneMemoryInfo
+
   // mapping from the resource offsets to the sparse bindings in the unit of sparse blocks
-  map!(u64, VkSparseMemoryBind) OpaqueSparseMemoryBindings
-  // mapping from image aspect flag bits to binding info
-  map!(u32, ref!SparseBoundImageAspectInfo)    SparseImageMemoryBindings
-  @unused bool                                 IsSwapchainImage
-  VkImage                                      VulkanHandle
-  ImageInfo                                    Info
-  VkImageAspectFlags                           ImageAspect
-  map!(VkImageAspectFlagBits, ref!ImageAspect) Aspects
-  @unused ref!VulkanDebugMarkerInfo            DebugInfo
-  ref!ImageMemoryRequirements                  MemoryRequirements
-  map!(u32, VkSparseImageMemoryRequirements)   SparseMemoryRequirements
+  map!(u64, VkSparseMemoryBind)                                 OpaqueSparseMemoryBindings
+
+  // mapping from image aspect flag bits to sparse binding info
+  map!(VkImageAspectFlagBits, ref!SparseBoundImageAspectInfo)   SparseImageMemoryBindings
+  @unused bool                                                  IsSwapchainImage
+  VkImage                                                       VulkanHandle
+  ImageInfo                                                     Info
+  VkImageAspectFlags                                            ImageAspect
+  map!(VkImageAspectFlagBits, ref!ImageAspect)                  Aspects
+  @unused ref!VulkanDebugMarkerInfo                             DebugInfo
+  map!(VkImageAspectFlagBits, VkSparseImageMemoryRequirements)  SparseMemoryRequirements
+
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
-  ref!DedicatedRequirements                    DedicatedRequirements
+  ref!DedicatedRequirements                                     DedicatedRequirements
+
   // If ever layer/level is set to the same queue, then set it here instead.
   // This can save expensive looping through Aspects/Layers/Levels
-  @untracked @unused ref!QueueObject           LastBoundQueue
-  map!(VkImageView, ref!ImageViewObject)       Views
+  @untracked @unused ref!QueueObject                            LastBoundQueue
+  map!(VkImageView, ref!ImageViewObject)                        Views
+}
+
+@internal class ImagePlaneMemoryInfo {
+  ref!DeviceMemoryObject  BoundMemory
+  VkDeviceSize            BoundMemoryOffset
+  VkMemoryRequirements    MemoryRequirements
 }
 
 @internal class ImageAspect {
@@ -122,9 +132,9 @@
   VkSparseMemoryBindFlags Flags
 }
 
-@internal class ImageMemoryRequirements {
-  map!(VkImageAspectFlagBits, VkMemoryRequirements) PlaneBitsToMemoryRequirements
-  map!(u32, VkSparseImageMemoryRequirements)        AspectBitsToSparseMemoryRequirements
+@internal class FetchedImageMemoryRequirements {
+  map!(VkImageAspectFlagBits, VkMemoryRequirements)             PlaneBitsToMemoryRequirements
+  map!(VkImageAspectFlagBits, VkSparseImageMemoryRequirements)  AspectBitsToSparseMemoryRequirements
 }
 
 @internal class LinearImageLayouts {
@@ -222,12 +232,19 @@ cmd VkResult vkCreateImage(
     }
   }
 
-  object.MemoryRequirements = new!ImageMemoryRequirements()
+  fetchedRequirements := fetchImageMemoryRequirements(device, handle, hasSparseBit)
   // If the vkCreateImage is inserted by GAPID (e.g. the staging image for
   // reading framebuffer), NO memory requirements will be returned.
-  fetchedRequirements := fetchImageMemoryRequirements(device, handle, hasSparseBit)
   if fetchedRequirements != null {
-    object.MemoryRequirements = fetchedRequirements
+    for _, p, _ in fetchedRequirements.PlaneBitsToMemoryRequirements {
+      if !(p in object.PlaneMemoryInfo) {
+        object.PlaneMemoryInfo[p] = new!ImagePlaneMemoryInfo()
+      }
+      object.PlaneMemoryInfo[p].MemoryRequirements = fetchedRequirements.PlaneBitsToMemoryRequirements[p]
+    }
+    for _, a, _ in fetchedRequirements.AspectBitsToSparseMemoryRequirements {
+      object.SparseMemoryRequirements[a] = fetchedRequirements.AspectBitsToSparseMemoryRequirements[a]
+    }
   }
 
   // If the image tiling is LINEAR, get the VkSubresourceLayout for each linear image level
@@ -268,9 +285,11 @@ cmd void vkDestroyImage(
   if !(image in Images) { vkErrorInvalidImage(image) } else {
     if (image != as!VkImage(0)) {
       imageObject := Images[image]
-      if (imageObject.BoundMemory != null) {
-        // If the memory is deleted first, then do not try to remove ourselves.
-        delete(imageObject.BoundMemory.BoundObjects, as!u64(image))
+      for _, _, m in imageObject.PlaneMemoryInfo {
+        if m.BoundMemory != null {
+          // If the memory is deleted first, then do not try to remove ourselves.
+          delete(m.BoundMemory.BoundObjects, as!u64(image))
+        }
       }
       delete(Images, image)
       for _ , _ , v in imageObject.Views {
@@ -311,8 +330,13 @@ sub void BindImageMemory(
       vkErrorInvalidImage(image)
     } else {
       imageObject := Images[image]
-      imageObject.BoundMemory = DeviceMemories[memory]
-      imageObject.BoundMemoryOffset = memoryOffset
+      // Must be a single planar image, the plane bit should always be zero
+      plane := as!VkImageAspectFlagBits(0)
+      if !(plane in imageObject.PlaneMemoryInfo) {
+        imageObject.PlaneMemoryInfo[plane] = new!ImagePlaneMemoryInfo()
+      }
+      imageObject.PlaneMemoryInfo[plane].BoundMemory = DeviceMemories[memory]
+      imageObject.PlaneMemoryInfo[plane].BoundMemoryOffset = memoryOffset
       DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
 
       for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
@@ -350,7 +374,7 @@ sub void BindImageMemory(
                 (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
               loffset := as!u64(memoryOffset + level.LinearLayout.offset)
               lsize := as!u64(level.LinearLayout.size)
-              level.Data = imageObject.BoundMemory.Data[loffset:loffset + lsize]
+              level.Data = getImagePlaneMemoryInfo(imageObject, plane).BoundMemory.Data[loffset:loffset + lsize]
             } else {
               level.Data = make!u8(tightlyPackedSize)
             }
@@ -449,15 +473,19 @@ cmd VkResult vkCreateImageView(
     // Checking this here also ensures correct dependencies from
     // vkCreateImageView to vkBindImageMemory.
     hasSparseBit := (as!u32(imageObject.Info.Flags) & as!u32(VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) != 0
-    if (!hasSparseBit) && (imageObject.BoundMemory == null) {
-      vkErrorImageMemoryNotBound(image_view_create_info.image)
+    // TODO: Handle multi-planar images
+    planeMemInfo := getImagePlaneMemoryInfo(imageObject, as!VkImageAspectFlagBits(0))
+    if planeMemInfo != null {
+      planeBoundMemory := planeMemInfo.BoundMemory
+      if (!hasSparseBit) && (planeBoundMemory != null) {
+        vkErrorImageMemoryNotBound(image_view_create_info.image)
+      }
+      if ((0xFFFFFFFF - as!u32(imageObject.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
+        vkErrorInvalidImageAspect(imageObject.VulkanHandle,
+          as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
+      }
+      imageObject.Views[handle] = imageViewObject
     }
-
-    if ((0xFFFFFFFF - as!u32(imageObject.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
-      vkErrorInvalidImageAspect(imageObject.VulkanHandle,
-        as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
-    }
-    imageObject.Views[handle] = imageViewObject
   }
   if pView == null {
     vkErrorNullPointer("VkImageView")
@@ -977,12 +1005,12 @@ sub dense_map!(u32, VkImageAspectFlagBits) getAspectKeysWithAspectFlags(ref!Imag
   return keys.Bits
 }
 
-sub VkMemoryRequirements getImagePlaneMemoryRequirements(ref!ImageObject img, VkImageAspectFlagBits plane) {
+sub ref!ImagePlaneMemoryInfo getImagePlaneMemoryInfo(ref!ImageObject img, VkImageAspectFlagBits plane) {
   disjoint := isDisjointImage(img)
   return switch disjoint {
     case true:
-      img.MemoryRequirements.PlaneBitsToMemoryRequirements[plane]
+      img.PlaneMemoryInfo[plane]
     default:
-      img.MemoryRequirements.PlaneBitsToMemoryRequirements[as!VkImageAspectFlagBits(0)]
+      img.PlaneMemoryInfo[as!VkImageAspectFlagBits(0)]
   }
 }
