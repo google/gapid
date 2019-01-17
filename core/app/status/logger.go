@@ -38,8 +38,9 @@ type statusLogger struct {
 	progressUpdateFreq time.Duration
 }
 
-func (statusLogger) OnTaskStart(ctx context.Context, t *Task) {
+func (l statusLogger) OnTaskStart(ctx context.Context, t *Task) {
 	log.I(ctx, "%v Started", t)
+	l.lastProgressUpdate[t] = time.Now()
 }
 
 func (l statusLogger) OnTaskProgress(ctx context.Context, t *Task) {
@@ -47,6 +48,14 @@ func (l statusLogger) OnTaskProgress(ctx context.Context, t *Task) {
 		log.I(ctx, "%v (%v%%) %v", t, t.Completion(), t.TimeSinceStart())
 		l.lastProgressUpdate[t] = time.Now()
 	}
+}
+
+func (l statusLogger) OnTaskBlock(ctx context.Context, t *Task) {
+	log.I(ctx, "%v Blocked", t)
+}
+
+func (l statusLogger) OnTaskUnblock(ctx context.Context, t *Task) {
+	log.I(ctx, "%v Unblocked", t)
 }
 
 func (l statusLogger) OnTaskFinish(ctx context.Context, t *Task) {

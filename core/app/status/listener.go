@@ -58,6 +58,8 @@ type Listener interface {
 	OnTaskFinish(context.Context, *Task)
 	OnEvent(context.Context, *Task, string, EventScope)
 	OnMemorySnapshot(context.Context, runtime.MemStats)
+	OnTaskBlock(context.Context, *Task)
+	OnTaskUnblock(context.Context, *Task)
 }
 
 // Unregister is the function returned by RegisterListener and is used to
@@ -91,6 +93,22 @@ func onTaskProgress(ctx context.Context, t *Task) {
 	defer listenerMutex.RUnlock()
 	for _, l := range listeners {
 		l.OnTaskProgress(ctx, t)
+	}
+}
+
+func onBlock(ctx context.Context, t *Task) {
+	listenerMutex.RLock()
+	defer listenerMutex.RUnlock()
+	for _, l := range listeners {
+		l.OnTaskBlock(ctx, t)
+	}
+}
+
+func onUnblock(ctx context.Context, t *Task) {
+	listenerMutex.RLock()
+	defer listenerMutex.RUnlock()
+	for _, l := range listeners {
+		l.OnTaskUnblock(ctx, t)
 	}
 }
 

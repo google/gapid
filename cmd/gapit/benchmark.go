@@ -78,6 +78,18 @@ type profileTask struct {
 	S         string `json:"s,omitempty"`
 }
 
+type u64List []uint64
+
+// Len is the number of elements in the collection.
+func (s u64List) Len() int { return len(s) }
+
+// Less reports whether the element with
+// index i should sort before the element with index j.
+func (s u64List) Less(i, j int) bool { return s[i] < s[j] }
+
+// Swap swaps the elements with indexes i and j.
+func (s u64List) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
 func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	oldCtx := ctx
 	ctx = status.Start(ctx, "Initializing GAPIS")
@@ -88,7 +100,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	verb.startTime = time.Now()
 
-	client, err := getGapis(ctx, GapisFlags{}, GapirFlags{})
+	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}

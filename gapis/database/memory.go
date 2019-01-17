@@ -247,8 +247,10 @@ func (d *memory) resolveLocked(ctx context.Context, id id.ID) (interface{}, erro
 
 	if finished := rs.finished; finished != nil {
 		if !build {
-			ctx = status.Start(ctx, "Wait DB Resolve<%T> %p", r.object, rs)
+			ctx = status.StartBackground(ctx, "Wait DB Resolve<%T> %p", r.object, rs)
 			defer status.Finish(ctx)
+			status.Block(ctx)
+			defer status.Unblock(ctx)
 		}
 
 		// Buildable has not yet finished.

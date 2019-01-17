@@ -46,6 +46,10 @@ func ForeachCmd(ctx context.Context, cmds []Cmd, cb func(context.Context, CmdID,
 
 	subctx := keys.Clone(context.Background(), ctx)
 	for i, c := range cmds {
+		// Only update once every 1000 commands
+		if (i % 1000) == 999 {
+			status.UpdateProgress(ctx, uint64(i), uint64(len(cmds)))
+		}
 		idx, cmd = CmdID(i), c
 		if err := cb(subctx, idx, cmd); err != nil {
 			if err != Break {

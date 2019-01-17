@@ -148,8 +148,10 @@ func getGapis(ctx context.Context, gapisFlags GapisFlags, gapirFlags GapirFlags)
 		}
 	})
 
-	if h := log.GetHandler(ctx); h != nil {
-		crash.Go(func() { client.GetLogStream(ctx, h) })
+	if !gapisFlags.DisableLog {
+		if h := log.GetHandler(ctx); h != nil {
+			crash.Go(func() { client.GetLogStream(ctx, h) })
+		}
 	}
 
 	return clientCloser{client, close}, nil

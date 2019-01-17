@@ -41,6 +41,7 @@ type Task struct {
 	completion float32
 	parent     *Task
 	children   map[*Task]struct{}
+	background bool
 	mutex      sync.RWMutex
 }
 
@@ -73,8 +74,20 @@ func (t *Task) String() string {
 // ID returns the task's unique identifier.
 func (t *Task) ID() uint64 { t.mutex.RLock(); defer t.mutex.RUnlock(); return t.id }
 
+// ParentID returns the ID of the parent task, or 0 if there is no parent
+func (t *Task) ParentID() uint64 {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	if t.parent != nil {
+		return t.parent.ID()
+	}
+	return 0
+}
+
 // Name returns the task's name.
 func (t *Task) Name() string { t.mutex.RLock(); defer t.mutex.RUnlock(); return t.name }
+
+func (t *Task) Background() bool { t.mutex.RLock(); defer t.mutex.RUnlock(); return t.background }
 
 // TimeSinceStart returns the time the task was started.
 func (t *Task) TimeSinceStart() time.Duration {
@@ -113,11 +126,35 @@ func Start(ctx context.Context, name string, args ...interface{}) context.Contex
 		parent = &app
 	}
 	t := &Task{
-		id:       atomic.AddUint64(&nextID, 1),
-		name:     fmt.Sprintf(name, args...),
-		begun:    time.Now(),
-		parent:   parent,
-		children: map[*Task]struct{}{},
+		id:         atomic.AddUint64(&nextID, 1),
+		name:       fmt.Sprintf(name, args...),
+		begun:      time.Now(),
+		parent:     parent,
+		children:   map[*Task]struct{}{},
+		background: false,
+	}
+	log.D(ctx, "Starting task: %s", t.name)
+
+	parent.add(t)
+	onTaskStart(ctx, t)
+	return PutTask(ctx, t)
+}
+
+// StartBackground returns a new context for a long running background task.
+// End() must be called with the returned context once the task has been
+// finished.
+func StartBackground(ctx context.Context, name string, args ...interface{}) context.Context {
+	parent := GetTask(ctx)
+	if parent == nil {
+		parent = &app
+	}
+	t := &Task{
+		id:         atomic.AddUint64(&nextID, 1),
+		name:       fmt.Sprintf(name, args...),
+		begun:      time.Now(),
+		parent:     parent,
+		children:   map[*Task]struct{}{},
+		background: true,
 	}
 	log.D(ctx, "Starting task: %s", t.name)
 
@@ -135,13 +172,31 @@ func Do(ctx context.Context, name string, block func(context.Context)) {
 
 // UpdateProgress updates the progress of the task started with Start().
 // n is the number of units of completion, which ranges from [0, outof).
-func UpdateProgress(ctx context.Context, n, outof int) {
+func UpdateProgress(ctx context.Context, n, outof uint64) {
 	t := GetTask(ctx)
 	if t == nil {
 		panic("status.UpdateProgress called with no corresponding status.Start")
 	}
 	t.completion = float32(n) / float32(outof)
 	onTaskProgress(ctx, t)
+}
+
+// Block marks the current task as blocked
+func Block(ctx context.Context) {
+	t := GetTask(ctx)
+	if t == nil {
+		panic("status.Block called with no corresponding status.Start")
+	}
+	onBlock(ctx, t)
+}
+
+// Block marks the current task as blocked
+func Unblock(ctx context.Context) {
+	t := GetTask(ctx)
+	if t == nil {
+		panic("status.Unblock called with no corresponding status.Start")
+	}
+	onUnblock(ctx, t)
 }
 
 // Finish marks the task started with Start() as finished.
