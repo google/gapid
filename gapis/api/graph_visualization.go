@@ -86,6 +86,24 @@ func (label *Label) GetCommandId() int {
 	return 0
 }
 
+// GetTopLevelName returns the name of the first level
+// corresponding to the top level in hierarchy.
+func (label *Label) GetTopLevelName() string {
+	if len(label.LevelsName) > 0 {
+		return label.LevelsName[0]
+	}
+	return ""
+}
+
+// GetTopLevelID returns the ID of the first level
+// corresponding to the top level in hierarchy.
+func (label *Label) GetTopLevelID() int {
+	if len(label.LevelsID) > 0 {
+		return label.LevelsID[0]
+	}
+	return 0
+}
+
 // GetLabelAsAString returns the Label as a string concatenating
 // names and ID for each level delimited by '/'.
 func (label *Label) GetLabelAsAString() string {

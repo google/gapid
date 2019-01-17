@@ -124,8 +124,16 @@ func GetGraphVisualizationFromCapture(ctx context.Context, p *path.Capture, form
 	if err != nil {
 		return []byte{}, err
 	}
+	currentGraph.assignColorToNodes()
 	currentGraph.joinNodesByFrame()
-	currentGraph.joinNodesWithZeroDegree()
+	currentGraph.joinNodesThatDoNotBelongToAnyFrame()
+
+	currentChunkConfig := chunkConfig{
+		maximumNumberOfNodesByLevel:   5,
+		minimumNumberOfNodesToBeChunk: 2,
+	}
+	currentGraph.makeChunks(currentChunkConfig)
+
 	output := []byte{}
 	if format == service.GraphFormat_PBTXT {
 		output = currentGraph.getGraphInPbtxtFormat()

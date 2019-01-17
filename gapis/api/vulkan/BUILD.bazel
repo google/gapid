@@ -151,6 +151,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "externs_test.go",
+        "graph_visualization_test.go",
         "image_primer_shaders_test.go",
         "image_primer_test.go",
     ],

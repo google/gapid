@@ -32,7 +32,7 @@ func (g *graph) writeEdgesInDotFormat(output *bytes.Buffer) {
 func (g *graph) writeNodesInDotFormat(output *bytes.Buffer) {
 	nodes := g.getSortedNodes()
 	for _, currentNode := range nodes {
-		fmt.Fprintf(output, "%d[label=%s];\n", currentNode.id, currentNode.label)
+		fmt.Fprintf(output, "%d[label=%s];\n", currentNode.id, currentNode.label.GetCommandName())
 	}
 }
 
@@ -56,6 +56,9 @@ func (g *graph) getGraphInPbtxtFormat() []byte {
 		neighbours := g.getSortedNeighbours(currentNode.inNeighbourIdToEdgeId)
 		for _, neighbour := range neighbours {
 			output.WriteString("input: \"" + neighbour.label.GetLabelAsAString() + "\"\n")
+		}
+		if currentNode.color != "" {
+			output.WriteString("device: \"" + currentNode.color + "\"\n")
 		}
 		output.WriteString("attr {\n")
 		output.WriteString("key: \"" + currentNode.attributes + "\"\n")

@@ -15,7 +15,24 @@
 package graph_visualization
 
 import (
+	"github.com/google/gapid/gapis/api"
+	"reflect"
 	"testing"
+)
+
+const (
+	VK_BEGIN_COMMAND_BUFFER   = "vkBeginCommandBuffer"
+	VK_CMD_BEGIN_RENDER_PASS  = "vkCmdBeginRenderPass"
+	VK_CMD_NEXT_SUBPASS       = "vkCmdNextSubpass"
+	VK_COMMAND_BUFFER         = "vkCommandBuffer"
+	VK_RENDER_PASS            = "vkRenderPass"
+	VK_SUBPASS                = "vkSubpass"
+	VK_END_COMMAND_BUFFER     = "vkEndCommandBuffer"
+	VK_CMD_END_RENDER_PASS    = "vkCmdEndRenderPass"
+	COMMAND_BUFFER            = "commandBuffer"
+	VK_CMD_DEBUG_MARKER_BEGIN = "vkCmdDebugMarkerBeginEXT"
+	VK_CMD_DEBUG_MARKER_END   = "vkCmdDebugMarkerEndEXT"
+	VK_CMD_DEBUG_MARKER       = "vkCmdDebugMarker"
 )
 
 func TestGetIdInStronglyConnectedComponents(t *testing.T) {
@@ -118,6 +135,120 @@ func TestBfs(t *testing.T) {
 			if len(numberComponent) != 1 {
 				t.Errorf("There are some nodes in different components")
 			}
+		}
+	}
+
+}
+
+func TestMakeChunks(t *testing.T) {
+	numberOfNodes := 30
+	currentGraph := createGraph(numberOfNodes)
+	auxiliarCommands := []string{
+		"SetBarrier",
+		"DrawIndex",
+		"SetScissor",
+		"SetIndexForDraw",
+	}
+	labels := []*api.Label{
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{0}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_BEGIN_COMMAND_BUFFER}, LevelsID: []int{1, 1}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_CMD_BEGIN_RENDER_PASS}, LevelsID: []int{1, 1, 2}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[1]}, LevelsID: []int{1, 1, 1, 3}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 1, 4}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 5}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 6}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 7}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 8}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 9}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 10}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 11}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 12}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 13}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 1, 2, 14}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{15}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{16}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{17}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{18}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{19}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{20}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{21}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 2, 1, 22}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 2, 2, 23}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 2, 3, 24}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 2, 4, 25}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 2, 5, 26}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_RENDER_PASS, VK_SUBPASS, auxiliarCommands[0]}, LevelsID: []int{1, 2, 6, 27}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{28}},
+		&api.Label{LevelsName: []string{auxiliarCommands[0]}, LevelsID: []int{29}},
+	}
+	nodes := []*node{}
+	for i := 0; i < numberOfNodes; i++ {
+		currentNode := currentGraph.nodeIdToNode[i+1]
+		currentNode.label = labels[i]
+		nodes = append(nodes, currentNode)
+	}
+
+	config := chunkConfig{
+		maximumNumberOfNodesByLevel:   5,
+		minimumNumberOfNodesToBeChunk: 2,
+	}
+	currentGraph.makeChunks(config)
+
+	wantedLabels := []*api.Label{
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 1, 0}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, VK_BEGIN_COMMAND_BUFFER}, LevelsID: []int{1, 1}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, VK_CMD_BEGIN_RENDER_PASS}, LevelsID: []int{1, 0, 1, 2}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, auxiliarCommands[1]},
+			LevelsID: []int{1, 0, 1, 0, 1, 3}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, auxiliarCommands[0]},
+			LevelsID: []int{1, 0, 1, 0, 1, 4}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 1, 5}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 1, 6}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 2, 7}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 2, 8}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 3, 9}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 3, 10}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 4, 11}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 4, 12}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 5, 13}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, VK_SUBPASS, SUPER + auxiliarCommands[0],
+			SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{1, 0, 1, 0, 2, 0, 5, 14}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 1, 15}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 2, 16}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 2, 17}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 3, 18}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 3, 19}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 4, 20}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 4, 21}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, SUPER + VK_SUBPASS, VK_SUBPASS,
+			auxiliarCommands[0]}, LevelsID: []int{1, 0, 2, 0, 1, 1, 22}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, SUPER + VK_SUBPASS, VK_SUBPASS,
+			auxiliarCommands[0]}, LevelsID: []int{1, 0, 2, 0, 1, 2, 23}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, SUPER + VK_SUBPASS, VK_SUBPASS,
+			auxiliarCommands[0]}, LevelsID: []int{1, 0, 2, 0, 2, 3, 24}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, SUPER + VK_SUBPASS, VK_SUBPASS,
+			auxiliarCommands[0]}, LevelsID: []int{1, 0, 2, 0, 2, 4, 25}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, SUPER + VK_SUBPASS, VK_SUBPASS,
+			auxiliarCommands[0]}, LevelsID: []int{1, 0, 2, 0, 3, 5, 26}},
+		&api.Label{LevelsName: []string{COMMAND_BUFFER, SUPER + VK_RENDER_PASS, VK_RENDER_PASS, SUPER + VK_SUBPASS, SUPER + VK_SUBPASS, VK_SUBPASS,
+			auxiliarCommands[0]}, LevelsID: []int{1, 0, 2, 0, 3, 6, 27}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 5, 28}},
+		&api.Label{LevelsName: []string{SUPER + auxiliarCommands[0], SUPER + auxiliarCommands[0], auxiliarCommands[0]}, LevelsID: []int{0, 5, 29}},
+	}
+	for i := range wantedLabels {
+		if !reflect.DeepEqual(wantedLabels[i], nodes[i].label) {
+			t.Errorf("The label for the node with id %d is different\n", i)
+			t.Errorf("Wanted %v\n", wantedLabels[i])
+			t.Errorf("Obtained %v\n", nodes[i].label)
 		}
 	}
 
