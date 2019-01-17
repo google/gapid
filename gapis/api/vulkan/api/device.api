@@ -55,6 +55,7 @@
   // Vulkan 1.1
   @unused ref!VariablePointerFeatures VariablePointerFeatures
   @unused ref!HalfPrecisionStorageFeatures HalfPrecisionStorageFeatures
+  @unused ref!SamplerYcbcrConversionFeatures SamplerYcbcrConversionFeatures
 }
 
 @indirect("VkDevice")
@@ -153,6 +154,11 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           StoragePushConstant16: ext.storagePushConstant16,
           StorageInputOutput16: ext.storageInputOutput16)
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+          ext := as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
+          object.SamplerYcbcrConversionFeatures = new!SamplerYcbcrConversionFeatures(
+            SamplerYcbcrConversion: ext.samplerYcbcrConversion)
+        }
         default: {
           // do nothing
         }
@@ -212,8 +218,8 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
 // ----------------------------------------------------------------------------
 
 @internal class VariablePointerFeatures {
-  VkBool32 VariablePointersStorageBuffer
-  VkBool32 VariablePointers
+  VkBool32        VariablePointersStorageBuffer
+  VkBool32        VariablePointers
 }
 
 @internal class HalfPrecisionStorageFeatures{
@@ -221,4 +227,8 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   VkBool32        UniformAndStorageBuffer16BitAccess
   VkBool32        StoragePushConstant16
   VkBool32        StorageInputOutput16
+}
+
+@internal class SamplerYcbcrConversionFeatures {
+  VkBool32        SamplerYcbcrConversion
 }

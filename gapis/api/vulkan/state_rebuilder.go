@@ -687,6 +687,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.SamplerYcbcrConversionFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceSamplerYcbcrConversionFeatures(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES, // sType
+				pNext, // pNext
+				d.SamplerYcbcrConversionFeatures().SamplerYcbcrConversion(), // samplerYcbcrConversion
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
@@ -1752,6 +1761,10 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 					newQueue:       q.VulkanHandle(),
 				})
 				if q.Family() != imgLevel.LastBoundQueue().Family() {
+					newQueueObj := imgLevel.LastBoundQueue()
+					if newQueueObj.IsNil() {
+						newQueueObj = img.LastBoundQueue()
+					}
 					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
 						aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
 						baseMipLevel:   level,

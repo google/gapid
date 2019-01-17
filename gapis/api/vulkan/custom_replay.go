@@ -237,6 +237,13 @@ func (i VkDebugReportCallbackEXT) remap(api.Cmd, *api.GlobalState) (key interfac
 	return
 }
 
+func (i VkSamplerYcbcrConversion) remap(api.Cmd, *api.GlobalState) (key interface{}, remap bool) {
+	if i != 0 {
+		key, remap = i, true
+	}
+	return
+}
+
 func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
 	// Hijack VkCreateInstance's Mutate() method entirely with our ReplayCreateVkInstance's Mutate().
