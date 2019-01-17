@@ -51,9 +51,75 @@ type labelForVulkanCommands struct {
 	subCommandIndexNameToHierarchyLabel map[string]*api.Label
 	commandBufferIdToHierarchy          map[VkCommandBuffer]*api.Hierarchy
 	commandBufferIdToOrderNumber        map[VkCommandBuffer]int
-	labelsInsideDebugMarkers            []*api.Label
-	positionOfDebugMarkersBegin         []int
-	numberOfDebugMarker                 int
+	nameAndIdToDebugMarkerStack         map[string]*debugMarkerStack
+}
+
+type debugMarkerStack struct {
+	// positionsOfDebugMarkersBegin is used like a stack, representing the position
+	// of debug_marker_begin commands in labels to access fast to its Label.
+	positionsOfDebugMarkersBegin []int
+
+	// labels are all labels from commands considered.
+	labels []*api.Label
+
+	// debugMarkerID is the unique ID assigned to debug_markers created.
+	debugMarkerID int
+}
+
+func (dm *debugMarkerStack) getSize() int {
+	return len(dm.positionsOfDebugMarkersBegin)
+}
+
+// top returns the Label of the last debug_marker_begin command if exists.
+func (dm *debugMarkerStack) top() *api.Label {
+	if dm.getSize() > 0 {
+		position := dm.positionsOfDebugMarkersBegin[dm.getSize()-1]
+		if position < len(dm.labels) {
+			return dm.labels[position]
+		}
+	}
+	return &api.Label{}
+}
+
+func (dm *debugMarkerStack) pop() {
+	if dm.getSize() > 0 {
+		dm.positionsOfDebugMarkersBegin = dm.positionsOfDebugMarkersBegin[:dm.getSize()-1]
+	}
+}
+
+func (dm *debugMarkerStack) push(label *api.Label) {
+	dm.labels = append(dm.labels, label)
+	if label.GetCommandName() == VK_CMD_DEBUG_MARKER_BEGIN {
+		dm.positionsOfDebugMarkersBegin = append(dm.positionsOfDebugMarkersBegin, len(dm.labels)-1)
+	}
+}
+
+// addDebugMarker adds a new debug marker from the last debug_marker_begin Label to the current Label.
+func (dm *debugMarkerStack) addDebugMarker() {
+	position := dm.positionsOfDebugMarkersBegin[dm.getSize()-1]
+	size := dm.labels[position].GetSize()
+	dm.debugMarkerID++
+	for i := position; i < len(dm.labels); i++ {
+		dm.labels[i].Insert(size-1, VK_CMD_DEBUG_MARKER, dm.debugMarkerID)
+	}
+}
+
+func (dm *debugMarkerStack) checkDebugMarkers(label *api.Label) {
+	// It preserves Labels with no-decreasing sizes in the stack of debug_markers_begin avoiding
+	// insert debug markers in Labels with smaller sizes that would break the levels of hierarchy.
+	for dm.getSize() > 0 && label.GetSize() < dm.top().GetSize() {
+		dm.pop()
+	}
+	dm.push(label)
+
+	if label.GetCommandName() == VK_CMD_DEBUG_MARKER_END {
+		if dm.getSize() > 0 {
+			if label.GetSize() == dm.top().GetSize() && getMaxCommonPrefix(label, dm.top()) == label.GetSize()-1 {
+				dm.addDebugMarker()
+			}
+			dm.pop()
+		}
+	}
 }
 
 func getCommandHierarchyNames() *api.HierarchyNames {
@@ -88,55 +154,6 @@ func getMaxCommonPrefix(label1 *api.Label, label2 *api.Label) int {
 	return size
 }
 
-func addDebugMarker(builder *labelForVulkanCommands, from, to int) {
-	level := builder.labelsInsideDebugMarkers[len(builder.labelsInsideDebugMarkers)-1].GetSize() - 1
-	builder.numberOfDebugMarker++
-	for i := from; i <= to; i++ {
-		builder.labelsInsideDebugMarkers[i].Insert(level, VK_CMD_DEBUG_MARKER, builder.numberOfDebugMarker)
-	}
-}
-
-func checkDebugMarkers(builder *labelForVulkanCommands, currentLabel *api.Label) {
-	commandName := currentLabel.GetCommandName()
-	positionOfLastDebugMarkerBegin := 0
-	labelOfLastDebugMarkerBegin := &api.Label{}
-	if len(builder.positionOfDebugMarkersBegin) > 0 {
-		positionOfLastDebugMarkerBegin = builder.positionOfDebugMarkersBegin[len(builder.positionOfDebugMarkersBegin)-1]
-		labelOfLastDebugMarkerBegin = builder.labelsInsideDebugMarkers[positionOfLastDebugMarkerBegin]
-	}
-
-	if commandName == VK_CMD_DEBUG_MARKER_BEGIN {
-		if len(builder.positionOfDebugMarkersBegin) > 0 {
-			if currentLabel.GetSize() < labelOfLastDebugMarkerBegin.GetSize() {
-				builder.positionOfDebugMarkersBegin = builder.positionOfDebugMarkersBegin[:len(builder.positionOfDebugMarkersBegin)-1]
-			}
-		}
-		builder.labelsInsideDebugMarkers = append(builder.labelsInsideDebugMarkers, currentLabel)
-		builder.positionOfDebugMarkersBegin = append(builder.positionOfDebugMarkersBegin, len(builder.labelsInsideDebugMarkers)-1)
-
-	} else if commandName == VK_CMD_DEBUG_MARKER_END {
-
-		if len(builder.positionOfDebugMarkersBegin) > 0 {
-			if currentLabel.GetSize() != labelOfLastDebugMarkerBegin.GetSize() {
-				builder.positionOfDebugMarkersBegin = builder.positionOfDebugMarkersBegin[:len(builder.positionOfDebugMarkersBegin)-1]
-
-			} else if getMaxCommonPrefix(labelOfLastDebugMarkerBegin, currentLabel) == currentLabel.GetSize()-1 {
-				builder.labelsInsideDebugMarkers = append(builder.labelsInsideDebugMarkers, currentLabel)
-				builder.positionOfDebugMarkersBegin = append(builder.positionOfDebugMarkersBegin, len(builder.labelsInsideDebugMarkers)-1)
-				addDebugMarker(builder, positionOfLastDebugMarkerBegin, len(builder.labelsInsideDebugMarkers)-1)
-				builder.positionOfDebugMarkersBegin = builder.positionOfDebugMarkersBegin[:len(builder.positionOfDebugMarkersBegin)-1]
-			}
-		}
-
-	} else if len(builder.positionOfDebugMarkersBegin) > 0 {
-		if currentLabel.GetSize() < labelOfLastDebugMarkerBegin.GetSize() {
-			builder.positionOfDebugMarkersBegin = builder.positionOfDebugMarkersBegin[:len(builder.positionOfDebugMarkersBegin)-1]
-		} else {
-			builder.labelsInsideDebugMarkers = append(builder.labelsInsideDebugMarkers, currentLabel)
-		}
-	}
-}
-
 func getCommandBufferId(command api.Cmd) (VkCommandBuffer, bool) {
 	parameters := command.CmdParams()
 	for _, parameter := range parameters {
@@ -151,6 +168,7 @@ func getCommandBufferId(command api.Cmd) (VkCommandBuffer, bool) {
 func (builder *labelForVulkanCommands) GetCommandLabel(command api.Cmd, cmdId uint64) *api.Label {
 	label := &api.Label{}
 	commandName := command.CmdName()
+	nameAndId := ""
 	if commandBufferId, ok := getCommandBufferId(command); ok {
 		hierarchy, ok := builder.commandBufferIdToHierarchy[commandBufferId]
 		if !ok {
@@ -161,10 +179,18 @@ func (builder *labelForVulkanCommands) GetCommandLabel(command api.Cmd, cmdId ui
 		label.PushBack(COMMAND_BUFFER, builder.commandBufferIdToOrderNumber[commandBufferId])
 		label.PushBackLabel(getLabelFromHierarchy(commandName, commandHierarchyNames, hierarchy))
 		label.PushBack(commandName, int(cmdId))
+		nameAndId = fmt.Sprintf("%s%d", COMMAND_BUFFER, builder.commandBufferIdToOrderNumber[commandBufferId])
 	} else {
 		label.PushBack(commandName, int(cmdId))
+		nameAndId = fmt.Sprintf("%s%d", commandName, cmdId)
 	}
-	checkDebugMarkers(builder, label)
+
+	currentDebugMarker, ok := builder.nameAndIdToDebugMarkerStack[nameAndId]
+	if !ok {
+		currentDebugMarker = &debugMarkerStack{}
+		builder.nameAndIdToDebugMarkerStack[nameAndId] = currentDebugMarker
+	}
+	currentDebugMarker.checkDebugMarkers(label)
 	return label
 }
 
@@ -193,9 +219,15 @@ func (builder *labelForVulkanCommands) GetSubCommandLabel(index api.SubCmdIdx, c
 	labelFromHierarchy := getLabelFromHierarchy(subCommandName, subCommandHierarchyNames, hierarchy)
 	labelFromHierarchy.PushBack(subCommandName, int(index[len(index)-1]))
 	builder.subCommandIndexNameToHierarchyLabel[subCommandIndexName.String()] = labelFromHierarchy
-
 	label.PushBackLabel(labelFromHierarchy)
-	checkDebugMarkers(builder, label)
+
+	nameAndId := fmt.Sprintf("%s%d", commandName, cmdId)
+	currentDebugMarker, ok := builder.nameAndIdToDebugMarkerStack[nameAndId]
+	if !ok {
+		currentDebugMarker = &debugMarkerStack{}
+		builder.nameAndIdToDebugMarkerStack[nameAndId] = currentDebugMarker
+	}
+	currentDebugMarker.checkDebugMarkers(label)
 	return label
 }
 
@@ -233,5 +265,6 @@ func (API) GetGraphVisualizationBuilder() api.GraphVisualizationBuilder {
 		subCommandIndexNameToHierarchyLabel: map[string]*api.Label{},
 		commandBufferIdToHierarchy:          map[VkCommandBuffer]*api.Hierarchy{},
 		commandBufferIdToOrderNumber:        map[VkCommandBuffer]int{},
+		nameAndIdToDebugMarkerStack:         map[string]*debugMarkerStack{},
 	}
 }

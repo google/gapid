@@ -93,6 +93,7 @@ go_test(
     srcs = [
         "cmd_id_group_test.go",
         "cmd_service_test.go",
+        "graph_visualization_test.go",
         "subcmd_idx_test.go",
         "subcmd_idx_trie_test.go",
     ],

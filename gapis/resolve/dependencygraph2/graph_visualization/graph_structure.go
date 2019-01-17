@@ -29,6 +29,7 @@ type node struct {
 	attributes             string
 	isEndOfFrame           bool
 	subCommandNodes        []*node
+	color                  string
 }
 
 type edge struct {

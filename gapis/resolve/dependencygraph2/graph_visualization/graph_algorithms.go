@@ -15,6 +15,8 @@
 package graph_visualization
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/google/gapid/gapis/api"
 )
 
@@ -23,6 +25,7 @@ const (
 	VISITED_AND_USED = -1
 	FRAME            = "FRAME"
 	UNUSED           = "UNUSED"
+	SUPER            = "SUPER"
 )
 
 // It is used to find the Strongly Connected Components (SCC) in a directed graph based on Tarjan algorithm
@@ -150,5 +153,144 @@ func (g *graph) joinNodesWithZeroDegree() {
 		if (len(currentNode.inNeighbourIdToEdgeId) + len(currentNode.outNeighbourIdToEdgeId)) == 0 {
 			currentNode.label.PushFront(UNUSED, 0)
 		}
+	}
+}
+
+func (g *graph) assignColorToNodes() {
+	for _, currentNode := range g.nodeIdToNode {
+		currentNode.color = currentNode.label.GetTopLevelName()
+	}
+}
+
+func (g *graph) joinNodesThatDoNotBelongToAnyFrame() {
+	for _, currentNode := range g.nodeIdToNode {
+		if currentNode.label.GetSize() > 0 && currentNode.label.GetTopLevelName() != FRAME {
+			currentNode.label.PushFront(UNUSED, 0)
+		}
+	}
+}
+
+type chunkConfig struct {
+	maximumNumberOfNodesByLevel   int
+	minimumNumberOfNodesToBeChunk int
+}
+
+type chunk struct {
+	// levelIDToPosition maps a single levelID from Label to a position in
+	// the range [0, 1, 2, 3, ...].
+	levelIDToPosition map[int]int
+
+	// positionToChunksID are the chunks ID obtained from the K-ary tree built
+	// for the range [0, 1, 2, 3, ...].
+	positionToChunksID [][]int
+
+	// built checks if the K-ary tree was built for this chunk.
+	built bool
+
+	// config contains the minimum number of nodes to build the K-ary tree and also
+	// the value of k, which is called maximum number of nodes by level.
+	config chunkConfig
+}
+
+// assignChunksIDToNodesInTheKaryTreeBuilt builds a K-ary tree for the range of
+// nodes ID [left, left+1, left+2, ..... , right-1, right] (chunk). Then it assigns
+// the chunks ID for the nodes ID obtained from the K-ary tree.
+func (c *chunk) assignChunksIDToNodesInTheKaryTreeBuilt(left, right int, currentChunksID *[]int) {
+
+	// Base case: if the number of nodes ID in the current chunk is at most K,
+	// then the currentChunksID is assigned to nodes ID.
+	if (right - left + 1) <= c.config.maximumNumberOfNodesByLevel {
+		for i := left; i <= right; i++ {
+			c.positionToChunksID[i] = make([]int, len(*currentChunksID))
+			copy(c.positionToChunksID[i], *currentChunksID)
+		}
+	} else {
+		// General case: It creates at most K smaller chunks as balanced as possible
+		// and build the K-ary tree for each of them.
+
+		// It is append to give ID to the smaller chunks.
+		*currentChunksID = append(*currentChunksID, 1)
+		// It computes the ceiling to take all nodes ID of the current chunk
+		chunkSize := (right - left + 1 + c.config.maximumNumberOfNodesByLevel - 1) / c.config.maximumNumberOfNodesByLevel
+		newLeft := left
+		newRight := newLeft + chunkSize - 1
+		chunkID := 1
+		for newLeft <= right {
+			if newRight > right {
+				newRight = right
+			}
+			// It assigns the ID for the new smaller chunk.
+			(*currentChunksID)[len(*currentChunksID)-1] = chunkID
+			// Call recursively to build the K-ary tree for the new smaller chunk.
+			c.assignChunksIDToNodesInTheKaryTreeBuilt(newLeft, newRight, currentChunksID)
+			newLeft = newRight + 1
+			newRight = newLeft + chunkSize - 1
+			chunkID++
+		}
+		// It removes the last element before go backwards in the recursion.
+		*currentChunksID = (*currentChunksID)[:len(*currentChunksID)-1]
+	}
+}
+
+func (g *graph) makeChunks(config chunkConfig) {
+
+	// This first part builds an implicit tree of nodes defined like a pair
+	// {key -> set_of_values}. The key of a node is a string and the set_of_values
+	// is a set of integers being LevelsID from Labels. For each level i in
+	// Label starting from top level, a new node is created with:
+	// key = LevelsName[0] + levelsID[0] + / + LevelsName[1] + LevelsID[1] + /  + ... + LevelsName[i],
+	// where '+' means concatenation and LevelsID[i] is inserted in set_of_values,
+	// if the node with such key already exists only the LevelsID[i] is inserted.
+	nodes := g.getSortedNodes()
+	labelAsAStringToChunk := map[string]*chunk{}
+	for _, currentNode := range nodes {
+		var labelAsAString bytes.Buffer
+		for i, name := range currentNode.label.LevelsName {
+			id := currentNode.label.LevelsID[i]
+			labelAsAString.WriteString(name)
+			if name != FRAME {
+				currentChunk, ok := labelAsAStringToChunk[labelAsAString.String()]
+				if !ok {
+					currentChunk = &chunk{levelIDToPosition: map[int]int{}, config: config}
+					labelAsAStringToChunk[labelAsAString.String()] = currentChunk
+				}
+				if _, ok := currentChunk.levelIDToPosition[id]; !ok {
+					currentChunk.levelIDToPosition[id] = len(currentChunk.levelIDToPosition)
+				}
+			}
+			fmt.Fprintf(&labelAsAString, "%d/", id)
+		}
+	}
+
+	// This second part builds a K-ary tree for each set_of_values in nodes of the
+	// implicit tree built in the first part. In a K-ary tree every node consist
+	// of at most K children (chunks).
+	for _, currentNode := range nodes {
+		var labelAsAString bytes.Buffer
+		newLabel := &api.Label{}
+		for i, name := range currentNode.label.LevelsName {
+			id := currentNode.label.LevelsID[i]
+			labelAsAString.WriteString(name)
+			if name != FRAME {
+				currentChunk := labelAsAStringToChunk[labelAsAString.String()]
+				chunkSize := len(currentChunk.levelIDToPosition)
+				if chunkSize >= currentChunk.config.minimumNumberOfNodesToBeChunk {
+					if !currentChunk.built {
+						currentChunk.built = true
+						currentChunk.positionToChunksID = make([][]int, chunkSize)
+						currentChunksID := make([]int, 1)
+						currentChunk.assignChunksIDToNodesInTheKaryTreeBuilt(0, chunkSize-1, &currentChunksID)
+					}
+					position := currentChunk.levelIDToPosition[id]
+					newLevelsID := currentChunk.positionToChunksID[position]
+					for _, id := range newLevelsID {
+						newLabel.PushBack(SUPER+name, id)
+					}
+				}
+			}
+			fmt.Fprintf(&labelAsAString, "%d/", id)
+			newLabel.PushBack(name, id)
+		}
+		currentNode.label = newLabel
 	}
 }
