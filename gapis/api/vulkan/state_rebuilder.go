@@ -1403,9 +1403,10 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 	}
 }
 
-func (sb *stateBuilder) imageAspectFlagBits(flag VkImageAspectFlags) []VkImageAspectFlagBits {
+func (sb *stateBuilder) imageAspectFlagBits(img ImageObjectʳ, flag VkImageAspectFlags) []VkImageAspectFlagBits {
 	bits := []VkImageAspectFlagBits{}
-	b, _ := subUnpackImageAspectFlags(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, flag)
+	b, _ := subGetAspectKeysWithAspectFlags(
+		sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, flag)
 	for _, bit := range b.All() {
 		bits = append(bits, bit)
 	}
@@ -1522,7 +1523,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	primeByPreinitialization := (!primeByBufCopy) && (!primeByRendering) && (!primeByImageStore) && (img.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (img.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
 
 	vkCreateImage(sb, img.Device(), img.Info(), img.VulkanHandle())
-	vkGetImageMemoryRequirements(sb, img.Device(), img.VulkanHandle(), img.MemoryRequirements())
+	planeMemRequirements, _ := subGetImagePlaneMemoryRequirements(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+	vkGetImageMemoryRequirements(sb, img.Device(), img.VulkanHandle(), planeMemRequirements)
 
 	denseBound := !img.BoundMemory().IsNil()
 	sparseBound := img.SparseImageMemoryBindings().Len() > 0 ||
@@ -1665,7 +1667,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 
 		if sparseResidency {
 			isMetadataBound := false
-			for _, req := range img.SparseMemoryRequirements().All() {
+			for _, req := range img.MemoryRequirements().AspectBitsToSparseMemoryRequirements().All() {
 				prop := req.FormatProperties()
 				if uint64(prop.AspectMask())&uint64(VkImageAspectFlagBits_VK_IMAGE_ASPECT_METADATA_BIT) != 0 {
 					isMetadataBound = IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings())
@@ -1675,7 +1677,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 				// If we have no metadata then the image can have no "real"
 				// contents
 			} else {
-				for _, req := range img.SparseMemoryRequirements().All() {
+				for _, req := range img.MemoryRequirements().AspectBitsToSparseMemoryRequirements().All() {
 					prop := req.FormatProperties()
 					if (uint64(prop.Flags()) & uint64(VkSparseImageFormatFlagBits_VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT)) != 0 {
 						if !IsFullyBound(req.ImageMipTailOffset(), req.ImageMipTailSize(), img.OpaqueSparseMemoryBindings()) {
@@ -1708,7 +1710,9 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 				}
 			}
 		} else {
-			if IsFullyBound(0, img.MemoryRequirements().Size(), img.OpaqueSparseMemoryBindings()) {
+			// TODO: Handle multi-planar images
+			planeMemRequirements, _ := subGetImagePlaneMemoryRequirements(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
+			if IsFullyBound(0, planeMemRequirements.Size(), img.OpaqueSparseMemoryBindings()) {
 				walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 			}
 		}

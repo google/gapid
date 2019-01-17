@@ -245,7 +245,9 @@ sub void trackVkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
     srcMipLevel := region.srcSubresource.mipLevel
     dstMipLevel := region.dstSubresource.mipLevel
 
-    for _ , _ , aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask) {
+    // TODO: Handle multi-planar image correctly. The dst image aspect must
+    // ether match or contains only COLOR_BIT with a compatible format.
+    for _ , _ , aspectBit in getAspectKeysWithAspectFlags(srcImageObject, region.srcSubresource.aspectMask) {
       srcElementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
           as!u64(srcElementAndTexelBlockSize.ElementSize)
@@ -421,7 +423,9 @@ sub void trackVkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
     srcMipLevel := region.srcSubresource.mipLevel
     dstMipLevel := region.dstSubresource.mipLevel
 
-    for _ , _ , aspectBit in unpackImageAspectFlags(region.srcSubresource.aspectMask) {
+    // TODO: Handle multi-planar image correctly. The dst image aspect must
+    // ether match or contains only COLOR_BIT with a compatible format.
+    for _ , _ , aspectBit in getAspectKeysWithAspectFlags(srcImageObject, region.srcSubresource.aspectMask) {
       srcElementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
           as!u64(srcElementAndTexelBlockSize.ElementSize)
@@ -598,7 +602,8 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
     rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
     imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
     // The VkImageSubresourceLayer used for buffer image copy should specify only one aspect bit.
-    for _ , _ , aspectBit in unpackImageAspectFlags(region.imageSubresource.aspectMask) {
+    // TODO: Handle multi-planar image correctly.
+    for _ , _ , aspectBit in getAspectKeysWithAspectFlags(imageObject, region.imageSubresource.aspectMask) {
       elementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
           as!u64(elementAndTexelBlockSize.ElementSize)

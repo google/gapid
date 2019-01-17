@@ -347,22 +347,25 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
   }
 }
 
-@internal class AllBits {
-  @untrackedMap @untracked
-  map!(VkImageAspectFlags, ref!unpackedImageAspectFlagBits) allBits
-}
-
-@hidden @serialize @untracked
-AllBits allBits
-
-@internal class unpackedImageAspectFlagBits {
+@internal class ImageAspectBits {
   @untrackedMap @untracked
   dense_map!(u32, VkImageAspectFlagBits) Bits
 }
 
+@internal class unpackedImageAspectFlagBits {
+  @untrackedMap @untracked
+  map!(VkImageAspectFlags, ref!ImageAspectBits) ImageAspectFlagsToUnpackedBits
+}
+
+// Cache of unpacked VkImageAspectFlags
+@hidden @serialize @untracked
+unpackedImageAspectFlagBits cachedUnpackedImageAspectBits
+
+// A helper function to unpack VkImageAspectFlags into a list of
+// VkImageAspectFlagBits
 sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectFlags flag) {
-  if !(flag in allBits.allBits) {
-    m := new!unpackedImageAspectFlagBits()
+  if !(flag in cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits) {
+    m := new!ImageAspectBits()
     // Till Vulkan 1.1, seven bits are used for image aspects.
     // Update this accordingly if more image aspect flag bits are added to the spec
     for i in (0 .. 7) {
@@ -370,10 +373,10 @@ sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectF
         m.Bits[len(m.Bits)] = as!VkImageAspectFlagBits(1 << as!u32(i))
       }
     }
-    allBits.allBits[flag] = m
+    cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits[flag] = m
   }
- 
-  return allBits.allBits[flag].Bits
+
+  return cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits[flag].Bits
 }
 
 @internal class emptyDenseMap {
