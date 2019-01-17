@@ -148,7 +148,7 @@ func (c *Capture) NewUninitializedState(ctx context.Context) *api.GlobalState {
 func (c *Capture) NewState(ctx context.Context) *api.GlobalState {
 	out := c.NewUninitializedState(ctx)
 	if c.InitialState != nil {
-		ctx = status.Start(ctx, "BuildInitialCommands")
+		ctx = status.Start(ctx, "CloneState")
 		defer status.Finish(ctx)
 
 		// Rebuild all the writes into the memory pools.
@@ -287,6 +287,7 @@ type Source interface {
 	// ReadCloser returns an io.ReadCloser instance, from which capture data
 	// can be read and closed after reading.
 	ReadCloser() (io.ReadCloser, error)
+	Size() (uint64, error)
 }
 
 // blobReadCloser implements the Source interface, it represents the capture
@@ -303,6 +304,10 @@ func (b *Blob) ReadCloser() (io.ReadCloser, error) {
 	return blobReadCloser{bytes.NewReader(b.GetData())}, nil
 }
 
+func (b *Blob) Size() (uint64, error) {
+	return uint64(len(b.GetData())), nil
+}
+
 // ReadCloser implements the Source interface.
 func (f *File) ReadCloser() (io.ReadCloser, error) {
 	o, err := os.Open(f.GetPath())
@@ -312,6 +317,15 @@ func (f *File) ReadCloser() (io.ReadCloser, error) {
 		}
 	}
 	return o, nil
+}
+
+func (f *File) Size() (uint64, error) {
+	fi, err := os.Stat(f.GetPath())
+	if err != nil {
+		return 0, err
+	}
+	return uint64(fi.Size()), nil
+
 }
 
 func toProto(ctx context.Context, c *Capture) (*Record, error) {
@@ -327,6 +341,23 @@ func toProto(ctx context.Context, c *Capture) (*Record, error) {
 		Name: c.Name,
 		Data: id[:],
 	}, nil
+}
+
+type loggingRC struct {
+	onProgress func(uint64)
+	total      uint64
+	rc         io.ReadCloser
+}
+
+func (l *loggingRC) Read(p []byte) (n int, err error) {
+	n, err = l.rc.Read(p)
+	l.total += uint64(n)
+	l.onProgress(l.total)
+	return n, err
+}
+
+func (l *loggingRC) Close() error {
+	return l.rc.Close()
 }
 
 func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
@@ -369,6 +400,18 @@ func fromProto(ctx context.Context, r *Record) (out *Capture, err error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if sz, err := dataSrc.Size(); err == nil {
+		oldReadCloser := readCloser
+		readCloser = &loggingRC{
+			func(p uint64) {
+				status.UpdateProgress(ctx, p, sz)
+			},
+			0,
+			oldReadCloser,
+		}
+	}
+
 	defer readCloser.Close()
 
 	if err := pack.Read(ctx, readCloser, d, false); err != nil {

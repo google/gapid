@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/api"
@@ -106,8 +107,15 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 	}
 
 	resourceData := make(map[id.ID]interface{})
+	i := uint64(0)
 	for k, v := range resources {
 		if v.ResourceType(ctx) == t {
+			// To prevent too much spam, only log 1% of the data
+			if i%100 == 1 || i == uint64(len(resources))-1 {
+				status.UpdateProgress(ctx, i, uint64(len(resources)))
+			}
+			i++
+
 			res, err := v.ResourceData(ctx, state)
 			if err != nil {
 				resourceData[k] = err

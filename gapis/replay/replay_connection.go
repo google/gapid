@@ -189,7 +189,7 @@ func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *de
 	crash.Go(func() {
 		// This shouldn't be sitting on this context
 		cctx := status.PutTask(cctx, nil)
-		cctx = status.Start(cctx, "Handle Replay Communication")
+		cctx = status.StartBackground(cctx, "Handle Replay Communication")
 		defer status.Finish(cctx)
 		// Kick the communication handler
 		err := conn.HandleReplayCommunication(

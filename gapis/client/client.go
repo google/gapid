@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/google/gapid/core/event"
 	"github.com/google/gapid/core/event/task"
@@ -172,6 +173,52 @@ func (c *client) Profile(
 	stop = func() error {
 		// Tell the server we want to stop profiling.
 		if err := stream.Send(&service.ProfileRequest{}); err != nil {
+			return err
+		}
+		return waitForEOF()
+	}
+
+	return stop, nil
+}
+
+func (c *client) Status(
+	ctx context.Context, snapshotInterval uint32, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) (stop func() error, err error) {
+
+	stream, err := c.client.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &service.ServerStatusRequest{Enable: true, MemorySnapshotInterval: snapshotInterval, StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
+
+	if err := stream.Send(req); err != nil {
+		return nil, err
+	}
+
+	waitForEOF := task.Async(ctx, func(ctx context.Context) error {
+		for {
+			r, err := stream.Recv()
+			if err != nil {
+				if errors.Cause(err) == io.EOF {
+					return nil
+				}
+				return err
+			}
+			if _, ok := r.Res.(*service.ServerStatusResponse_Task); ok {
+				if f != nil {
+					f(r.GetTask())
+				}
+			} else if _, ok := r.Res.(*service.ServerStatusResponse_Memory); ok {
+				if m != nil {
+					m(r.GetMemory())
+				}
+			}
+		}
+	})
+
+	stop = func() error {
+		// Tell the server we want to stop profiling.
+		if err := stream.Send(&service.ServerStatusRequest{}); err != nil {
 			return err
 		}
 		return waitForEOF()

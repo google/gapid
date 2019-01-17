@@ -96,10 +96,11 @@ type (
 		Trace string `help:"_produce a trace file"`
 	}
 	GapisFlags struct {
-		Profile ProfileFlags
-		Port    int    `help:"gapis tcp port to connect to, 0 means start new instance."`
-		Args    string `help:"_The arguments to be passed to gapis"`
-		Token   string `help:"_The auth token to use when connecting to an existing server."`
+		Profile    ProfileFlags
+		Port       int    `help:"gapis tcp port to connect to, 0 means start new instance."`
+		Args       string `help:"_The arguments to be passed to gapis"`
+		Token      string `help:"_The auth token to use when connecting to an existing server."`
+		DisableLog bool   `help:"_Disable the log output"`
 	}
 	GapirFlags struct {
 		DeviceFlags
@@ -254,6 +255,8 @@ type (
 	}
 	BenchmarkFlags struct {
 		DeviceFlags
+		Gapis          GapisFlags
+		Gapir          GapirFlags
 		NumFrames      int    `help:"how many frames to capture"`
 		AdditionalArgs string `help:"additional arguments to pass to the application"`
 		WorkingDir     string `help:"working directory for the application"`
@@ -262,6 +265,11 @@ type (
 		DumpTrace      string `help:"dump a systrace of gapis"`
 		StartFrame     int    `help:"perform a MEC trace starting at this frame"`
 		NoOpt          bool   `help:"disables optimization of the replay stream"`
+	}
+
+	StatusFlags struct {
+		Gapis                GapisFlags
+		StatusUpdateInterval int `help:"Provides status updates at the given interval (in ms)"`
 	}
 
 	PackagesFlags struct {

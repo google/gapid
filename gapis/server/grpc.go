@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/context/keys"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -329,6 +330,53 @@ func (s *grpcServer) Profile(stream service.Gapid_ProfileServer) error {
 	}
 }
 
+func (s *grpcServer) Status(stream service.Gapid_StatusServer) error {
+	defer s.inRPC()()
+	ctx := s.bindCtx(stream.Context())
+
+	// stop stops any running status requests
+	stop := func() error { return nil }
+	defer stop()
+	for {
+		// Grab an incoming request.
+		req, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		// If there are no profile modes in the request, then the RPC can finish.
+		if !req.Enable {
+			break
+		}
+		if stop != nil {
+			stop()
+		}
+
+		f := func(t *service.TaskUpdate) {
+			stream.Send(&service.ServerStatusResponse{
+				Res: &service.ServerStatusResponse_Task{t},
+			})
+		}
+		m := func(t *service.MemoryStatus) {
+			stream.Send(&service.ServerStatusResponse{
+				Res: &service.ServerStatusResponse_Memory{t},
+			})
+		}
+
+		// Start the profile.
+		stop, err = s.handler.Status(ctx,
+			req.MemorySnapshotInterval,
+			time.Duration(float32(time.Second)*req.StatusUpdateFrequency),
+			f,
+			m,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *grpcServer) GetPerformanceCounters(ctx xctx.Context, req *service.GetPerformanceCountersRequest) (*service.GetPerformanceCountersResponse, error) {
 	defer s.inRPC()()
 	data, err := s.handler.GetPerformanceCounters(s.bindCtx(ctx))
@@ -533,6 +581,8 @@ func (s *grpcServer) FindTraceTargets(ctx xctx.Context, req *service.FindTraceTa
 
 func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {
 	ctx := s.bindCtx(conn.Context())
+	ctx = status.Start(ctx, "Tracing")
+	defer status.Finish(ctx)
 	t, err := s.handler.Trace(ctx)
 	if err != nil {
 		return err

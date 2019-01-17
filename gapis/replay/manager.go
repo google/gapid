@@ -93,6 +93,8 @@ func (m *manager) Replay(
 
 	ctx = status.Start(ctx, "Replay Request")
 	defer status.Finish(ctx)
+	status.Block(ctx)
+	defer status.Unblock(ctx)
 
 	log.D(ctx, "Replay request")
 	s, err := m.scheduler(ctx, intent.Device.ID.ID())

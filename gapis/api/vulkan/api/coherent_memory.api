@@ -172,7 +172,6 @@ sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   }
 }
 
-
 @spy_disabled
 sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
   for _, _, v in bufferViews {

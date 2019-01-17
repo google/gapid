@@ -221,6 +221,41 @@ message GetProfileResponse {
   }
 }
 
+enum TaskStatus {
+  STARTING = 0;
+  FINISHED = 1;
+  PROGRESS = 2;
+  BLOCKED = 3;
+  UNBLOCKED = 4;
+  EVENT = 5;
+}
+
+message TaskUpdate {
+  TaskStatus status = 1;
+  uint64 id = 2;
+  uint64 parent = 3;
+  string name = 4;
+  int32 complete_percent = 5;
+  bool background = 6;
+  string event = 7;
+}
+
+message MemoryStatus {
+}
+
+message ServerStatusRequest {
+  bool enable = 1;
+  uint32 memory_snapshot_interval = 2;
+  float status_update_frequency = 3;
+}
+
+message ServerStatusResponse {
+  oneof res {
+    TaskUpdate task = 1;
+    MemoryStatus memory = 2;
+  }
+}
+
 message GetAvailableStringTablesRequest {
 }
 message GetAvailableStringTablesResponse {
@@ -630,6 +665,10 @@ service Gapid {
 
   // Updates environment settings.
   rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
+  }
+
+  // Status returns a stream of Status events that are occuring on the server
+  rpc Status(stream ServerStatusRequest) returns (stream ServerStatusResponse) {
   }
 
   ///////////////////////////////////////////////////////////////

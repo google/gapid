@@ -624,7 +624,10 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 
 	vml := b.layoutVolatileMemory(ctx, w)
 
-	for _, i := range b.instructions {
+	for index, i := range b.instructions {
+		if (index%10000 == 9999) || (index == len(b.instructions)-1) {
+			status.UpdateProgress(ctx, uint64(index), uint64(len(b.instructions)))
+		}
 		if label, ok := i.(asm.Label); ok {
 			id = label.Value
 		}

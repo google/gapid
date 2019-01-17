@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/data/protoutil"
@@ -133,6 +134,9 @@ type Service interface {
 	// until stop is called.
 	// This is a debug API, and may be removed in the future.
 	Profile(ctx context.Context, pprof, trace io.Writer, memorySnapshotInterval uint32) (stop func() error, err error)
+
+	// Status starts resolving status events. It calls f for every update and m for every memory update.
+	Status(ctx context.Context, snapshotInterval uint32, statusUpdateFrequency time.Duration, f func(*TaskUpdate), m func(*MemoryStatus)) (stop func() error, err error)
 
 	// GetPerformanceCounters returns the values of all global counters as
 	// a string.
