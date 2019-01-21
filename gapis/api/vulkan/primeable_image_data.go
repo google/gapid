@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/google/gapid/core/log"
@@ -94,7 +95,13 @@ func (pi *ipPrimeableByRendering) primingQueue() VkQueue { return pi.queue }
 
 func (pi *ipPrimeableByRendering) prime(srcLayout, dstLayout ipLayoutInfo) error {
 	oldStateImgObj := GetState(pi.p.sb.oldState).Images().Get(pi.img)
+	if oldStateImgObj.IsNil() {
+		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in old state"), "[Priming by rendering, image: %v]", pi.img)
+	}
 	newStateImgObj := GetState(pi.p.sb.newState).Images().Get(pi.img)
+	if newStateImgObj.IsNil() {
+		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in new state"), "[Priming by rendering, image: %v]", pi.img)
+	}
 	renderTsk := pi.p.sb.newScratchTaskOnQueue(pi.queue)
 	renderJobs := []*ipRenderJob{}
 	for _, aspect := range pi.p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
@@ -158,12 +165,23 @@ func (pi *ipPrimeableByBufferImageStore) primingQueue() VkQueue { return pi.queu
 
 func (pi *ipPrimeableByBufferImageStore) prime(srcLayout, dstLayout ipLayoutInfo) error {
 	oldStateImgObj := GetState(pi.p.sb.oldState).Images().Get(pi.img)
+	if oldStateImgObj.IsNil() {
+		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in old state"), "[Priming by buffer imageStore, img: %v]", pi.img)
+	}
 	newStateImgObj := GetState(pi.p.sb.newState).Images().Get(pi.img)
+	if newStateImgObj.IsNil() {
+		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in new state"), "[Priming by buffer imageStore, img: %v]", pi.img)
+	}
 	storeJobs := []*ipStoreJob{}
 	for _, rng := range pi.opaqueBoundRanges {
 		walkImageSubresourceRange(pi.p.sb, oldStateImgObj, rng,
 			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
 				storeJobs = append(storeJobs, &ipStoreJob{
+					// Use oldStateImgObj as target as later the store handler
+					// will fetch the source data from the shadow memory of the
+					// store target object. Note the Vulkan handle of the old
+					// state image object is same as the handle of the new state
+					// image object.
 					storeTarget:       oldStateImgObj,
 					aspect:            aspect,
 					layer:             layer,
@@ -213,7 +231,7 @@ func (pi *ipPrimeableByBufferImageStore) prime(srcLayout, dstLayout ipLayoutInfo
 	for _, job := range storeJobs {
 		err := pi.p.sh.store(job, pi.queue)
 		if err != nil {
-			log.E(pi.p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by imageStore] %v", job.storeTarget.VulkanHandle(), job.aspect, job.layer, job.level, job.opaqueBlockOffset, job.opaqueBlockExtent, err)
+			log.E(pi.p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by buffer imageStore] %v", job.storeTarget.VulkanHandle(), job.aspect, job.layer, job.level, job.opaqueBlockOffset, job.opaqueBlockExtent, err)
 		}
 	}
 
@@ -241,7 +259,13 @@ func (pi *ipPrimeableByPreinitialization) primingQueue() VkQueue { return pi.que
 
 func (pi *ipPrimeableByPreinitialization) prime(srcLayout, dstLayout ipLayoutInfo) error {
 	oldStateImgObj := GetState(pi.p.sb.oldState).Images().Get(pi.img)
+	if oldStateImgObj.IsNil() {
+		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in old state"), "[Priming by preinitialization, image: %v]", pi.img)
+	}
 	newStateImgObj := GetState(pi.p.sb.newState).Images().Get(pi.img)
+	if newStateImgObj.IsNil() {
+		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in new state"), "[Priming by preinitialization, image: %v]", pi.img)
+	}
 	// TODO: Handle multi-planar images
 	newImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(pi.p.sb.ctx, nil, api.CmdNoID, nil, pi.p.sb.newState, GetState(pi.p.sb.newState), 0, nil, nil, newStateImgObj, VkImageAspectFlagBits(0))
 	newMem := newImgPlaneMemInfo.BoundMemory()
