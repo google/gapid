@@ -89,6 +89,8 @@ func (pi *ipPrimeableByRendering) free() {
 		}
 	})
 	freeTsk.commit()
+	// Avoid the double free causing issue.
+	pi.freeCallbacks = nil
 }
 
 func (pi *ipPrimeableByRendering) primingQueue() VkQueue { return pi.queue }
