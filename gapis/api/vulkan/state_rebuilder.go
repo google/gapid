@@ -1277,10 +1277,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 			log.E(sb.ctx, "[Priming data for buffer: %v]: %v", buffer.VulkanHandle(), err)
 		}
 	}()
+	// scratch buffer will be automatically destroyed when the task is done
 	scratchBuffer := tsk.newBuffer(contents, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-	tsk.deferUntilExecuted(func() {
-		sb.write(sb.cb.VkDestroyBuffer(buffer.Device(), scratchBuffer, memory.Nullptr))
-	})
 
 	newFamilyIndex := queueFamilyIgnore
 	if oldFamilyIndex != queueFamilyIgnore {
@@ -1779,13 +1777,13 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 
 	primeable, err := imgPrimer.newPrimeableImageData(img.VulkanHandle(), opaqueRanges, true)
 	if err != nil {
-		log.Errf(sb.ctx, err, "Create primeable image data")
+		log.E(sb.ctx, "Create primeable image data: %v", err)
 		return
 	}
 	defer primeable.free()
 	err = primeable.prime(useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
 	if err != nil {
-		log.Errf(sb.ctx, err, "Priming image data")
+		log.E(sb.ctx, "Priming image data: %v", err)
 		return
 	}
 

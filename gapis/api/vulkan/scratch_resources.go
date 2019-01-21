@@ -480,6 +480,9 @@ func (t *scratchTask) newBuffer(subRngs []bufferSubRangeFillInfo, usages ...VkBu
 
 	t.buffers[buffer] = scratchBufferInfo{data: subRngs, size: size, allocationSize: allocSize}
 	t.totalAllocationSize += allocSize
+	t.deferUntilExecuted(func() {
+		sb.write(sb.cb.VkDestroyBuffer(dev, buffer, memory.Nullptr))
+	})
 	return buffer
 }
 
