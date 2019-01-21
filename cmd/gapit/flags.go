@@ -270,6 +270,7 @@ type (
 	StatusFlags struct {
 		Gapis                GapisFlags
 		StatusUpdateInterval int `help:"Provides status updates at the given interval (in ms)"`
+		MemoryUpdateInterval int `help:"Provides memory updates at the given interval (in ms)"`
 	}
 
 	PackagesFlags struct {

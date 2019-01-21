@@ -136,7 +136,11 @@ type Service interface {
 	Profile(ctx context.Context, pprof, trace io.Writer, memorySnapshotInterval uint32) (stop func() error, err error)
 
 	// Status starts resolving status events. It calls f for every update and m for every memory update.
-	Status(ctx context.Context, snapshotInterval uint32, statusUpdateFrequency time.Duration, f func(*TaskUpdate), m func(*MemoryStatus)) (stop func() error, err error)
+	Status(ctx context.Context,
+		snapshotInterval time.Duration,
+		statusUpdateFrequency time.Duration,
+		f func(*TaskUpdate),
+		m func(*MemoryStatus)) (stop func() error, err error)
 
 	// GetPerformanceCounters returns the values of all global counters as
 	// a string.

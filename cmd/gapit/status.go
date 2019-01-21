@@ -59,6 +59,22 @@ func clear() {
 	}
 }
 
+func readableBytes(nBytes uint64) string {
+	suffixes := []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}
+	i := 0
+	nBytesRemainder := uint64(0)
+	for nBytes > 1024 {
+		nBytesRemainder = nBytes & 0x3FF
+		nBytes >>= 10
+		i++
+	}
+	if i == 0 {
+		return fmt.Sprintf("%v%v", nBytes, suffixes[i])
+	} else {
+		return fmt.Sprintf("%.3f%v", float32(nBytes)+(float32(nBytesRemainder)/1024.0), suffixes[i])
+	}
+}
+
 func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
 	if err != nil {
@@ -85,6 +101,8 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	ancestors := make(map[uint64][]uint64)
 	activeTasks := make(map[uint64]*tsk)
 	totalBlocked := 0
+	currentMemoryUsage := uint64(0)
+	maxMemoryUsage := uint64(0)
 
 	var findTask func(map[uint64]*tsk, []uint64) *tsk
 
@@ -142,6 +160,7 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			statusMutex.Lock()
 			defer statusMutex.Unlock()
 			clear()
+			fmt.Printf("Memory Usage: %v  Max: %v\n", readableBytes(currentMemoryUsage), readableBytes(maxMemoryUsage))
 			fmt.Printf("Active Tasks: \n")
 			print(activeTasks, 1, false)
 			fmt.Printf("Background Tasks: \n")
@@ -152,7 +171,8 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	})
 	defer stopPolling()
 
-	endStat, err := client.Status(ctx, 0,
+	endStat, err := client.Status(ctx,
+		time.Duration(verb.MemoryUpdateInterval/2)*time.Millisecond,
 		time.Duration(verb.StatusUpdateInterval/2)*time.Millisecond,
 		func(tu *service.TaskUpdate) {
 			statusMutex.Lock()
@@ -288,7 +308,12 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			} else if tu.Status == service.TaskStatus_EVENT {
 				fmt.Printf("EVENT--> %+v\n", tu.Event)
 			}
-		}, nil)
+		}, func(tu *service.MemoryStatus) {
+			if tu.TotalHeap > maxMemoryUsage {
+				maxMemoryUsage = tu.TotalHeap
+			}
+			currentMemoryUsage = tu.TotalHeap
+		})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to the GAPIS status stream")
 	}

@@ -365,7 +365,7 @@ func (s *grpcServer) Status(stream service.Gapid_StatusServer) error {
 
 		// Start the profile.
 		stop, err = s.handler.Status(ctx,
-			req.MemorySnapshotInterval,
+			time.Duration(float32(time.Second)*req.MemorySnapshotInterval),
 			time.Duration(float32(time.Second)*req.StatusUpdateFrequency),
 			f,
 			m,
