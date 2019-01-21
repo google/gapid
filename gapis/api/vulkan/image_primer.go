@@ -54,7 +54,7 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 	if queue.IsNil() {
 		return log.Errf(p.sb.ctx, nil, "[Priming image data by buffer->image copy] Nil queue")
 	}
-	job := newImagePrimerBufCopyJob(img, sameLayoutsOfImage(img))
+	job := newImagePrimerBufCopyJob(img)
 	for _, aspect := range p.sb.imageAspectFlagBits(img, img.ImageAspect()) {
 		job.addDst(p.sb.ctx, aspect, aspect, img)
 	}
@@ -65,7 +65,7 @@ func (p *imagePrimer) primeByBufferCopy(img ImageObjectʳ, opaqueBoundRanges []V
 	if isSparseResidency(img) {
 		bcs.collectCopiesFromSparseImageBindings()
 	}
-	err := bcs.rolloutBufCopies(queue.VulkanHandle())
+	err := bcs.rolloutBufCopies(queue.VulkanHandle(), useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
 	if err != nil {
 		return log.Errf(p.sb.ctx, err, "[Rolling out the buf->img copy commands for image: %v]", img.VulkanHandle())
 	}
@@ -78,19 +78,14 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	}
 	renderTsk := p.sb.newScratchTaskOnQueue(queue.VulkanHandle())
 
-	copyJob := newImagePrimerBufCopyJob(img, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+	copyJob := newImagePrimerBufCopyJob(img)
 	for _, aspect := range p.sb.imageAspectFlagBits(img, img.ImageAspect()) {
-		stagingImgs, stagingImgMems, err := p.allocStagingImages(img, aspect)
+		stagingImgs, freeStagingImgs, err := p.allocStagingImages(img, aspect)
 		if err != nil {
 			return log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by rendering]")
 		}
 		renderTsk.deferUntilExecuted(func() {
-			for _, img := range stagingImgs {
-				p.sb.write(p.sb.cb.VkDestroyImage(img.Device(), img.VulkanHandle(), memory.Nullptr))
-			}
-			for _, mem := range stagingImgMems {
-				p.sb.write(p.sb.cb.VkFreeMemory(mem.Device(), mem.VulkanHandle(), memory.Nullptr))
-			}
+			freeStagingImgs()
 		})
 		copyJob.addDst(p.sb.ctx, aspect, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, stagingImgs...)
 	}
@@ -101,7 +96,7 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 	if isSparseResidency(img) {
 		bcs.collectCopiesFromSparseImageBindings()
 	}
-	err := bcs.rolloutBufCopies(queue.VulkanHandle())
+	err := bcs.rolloutBufCopies(queue.VulkanHandle(), useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
 	if err != nil {
 		return log.Errf(p.sb.ctx, err, "[Rolling out the buf->img copy commands for staging images]")
 	}
@@ -113,14 +108,13 @@ func (p *imagePrimer) primeByRendering(img ImageObjectʳ, opaqueBoundRanges []Vk
 				inputImageObjects := copyJob.srcAspectsToDsts[aspect].dstImgs
 				inputImages := make([]ipRenderImage, len(inputImageObjects))
 				for i, iimg := range inputImageObjects {
-					layout := copyJob.finalLayout.layoutOf(VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, layer, level)
 					inputImages[i] = ipRenderImage{
 						image:         iimg,
 						aspect:        VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
 						layer:         layer,
 						level:         level,
-						initialLayout: layout,
-						finalLayout:   layout,
+						initialLayout: VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						finalLayout:   VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 					}
 				}
 				renderJobs = append(renderJobs, &ipRenderJob{
@@ -311,23 +305,23 @@ func (p *imagePrimer) free() {
 
 // internal functions of image primer
 
-func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspectFlagBits) ([]ImageObjectʳ, []DeviceMemoryObjectʳ, error) {
+func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspectFlagBits) ([]ImageObjectʳ, func(), error) {
 	stagingImgs := []ImageObjectʳ{}
 	stagingMems := []DeviceMemoryObjectʳ{}
 
 	srcElementAndTexelInfo, err := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img.Info().Fmt())
 	if err != nil {
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting element size and texel block info]")
+		return []ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "[Getting element size and texel block info]")
 	}
 	if srcElementAndTexelInfo.TexelBlockSize().Width() != 1 || srcElementAndTexelInfo.TexelBlockSize().Height() != 1 {
 		// compressed formats are not supported
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "allocating staging images for compressed format images is not supported")
+		return []ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "allocating staging images for compressed format images is not supported")
 	}
 	srcElementSize := srcElementAndTexelInfo.ElementSize()
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
 		srcElementSize, err = subGetDepthElementSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img.Info().Fmt(), false)
 		if err != nil {
-			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting element size for depth aspect] %v", err)
+			return []ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "[Getting element size for depth aspect] %v", err)
 		}
 	} else if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 		srcElementSize = 1
@@ -342,7 +336,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		stagingImgFormat = stagingDepthStencilImageBufferFormat
 	}
 	if stagingImgFormat == VkFormat_VK_FORMAT_UNDEFINED {
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, nil, "unsupported aspect: %v", aspect)
+		return []ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, nil, "unsupported aspect: %v", aspect)
 	}
 	stagingElementInfo, _ := subGetElementAndTexelBlockSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, stagingImgFormat)
 	stagingElementSize := stagingElementInfo.ElementSize()
@@ -364,7 +358,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		memIndex = memoryTypeIndexFor(memTypeBits, phyDevMemProps, VkMemoryPropertyFlags(0))
 	}
 	if memIndex < 0 {
-		return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, nil, "can't find an appropriate memory type index")
+		return []ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, nil, "can't find an appropriate memory type index")
 	}
 
 	covered := uint32(0)
@@ -379,7 +373,7 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 
 		stagingImgSize, err := subInferImageSize(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, stagingImg)
 		if err != nil {
-			return []ImageObjectʳ{}, []DeviceMemoryObjectʳ{}, log.Errf(p.sb.ctx, err, "[Getting staging image size]")
+			return []ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "[Getting staging image size]")
 		}
 		memHandle := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
 			return GetState(p.sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
@@ -400,7 +394,16 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 		stagingMems = append(stagingMems, mem)
 		covered += stagingElementSize
 	}
-	return stagingImgs, stagingMems, nil
+
+	free := func() {
+		for _, img := range stagingImgs {
+			p.sb.write(p.sb.cb.VkDestroyImage(img.Device(), img.VulkanHandle(), memory.Nullptr))
+		}
+		for _, mem := range stagingMems {
+			p.sb.write(p.sb.cb.VkFreeMemory(mem.Device(), mem.VulkanHandle(), memory.Nullptr))
+		}
+	}
+	return stagingImgs, free, nil
 }
 
 type ipLayoutInfo interface {
@@ -2205,7 +2208,6 @@ func (h *ipRenderHandler) getOrCreateDescriptorSetLayout(descSetInfo ipRenderDes
 type ipBufCopyJob struct {
 	srcAspectsToDsts map[VkImageAspectFlagBits]*ipBufCopyDst
 	srcImg           ImageObjectʳ
-	finalLayout      ipLayoutInfo
 }
 
 // ipBufCopyDst contains a list of dst images whose dst aspect will be written
@@ -2215,10 +2217,9 @@ type ipBufCopyDst struct {
 	dstAspect VkImageAspectFlagBits
 }
 
-func newImagePrimerBufCopyJob(srcImg ImageObjectʳ, finalLayout ipLayoutInfo) *ipBufCopyJob {
+func newImagePrimerBufCopyJob(srcImg ImageObjectʳ) *ipBufCopyJob {
 	return &ipBufCopyJob{
 		srcAspectsToDsts: map[VkImageAspectFlagBits]*ipBufCopyDst{},
-		finalLayout:      finalLayout,
 		srcImg:           srcImg,
 	}
 }
@@ -2317,7 +2318,7 @@ func (h *ipBufferCopySession) collectCopiesFromSparseImageBindings() {
 		})
 }
 
-func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
+func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue, initLayouts, finalLayouts ipLayoutInfo) error {
 
 	if h.totalSize == 0 || len(h.copies) == 0 || len(h.content) == 0 {
 		return log.Errf(h.sb.ctx, nil, "no content for buf->img copy")
@@ -2329,24 +2330,30 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 
 	for _, dst := range h.job.srcAspectsToDsts {
 		for _, dstImg := range dst.dstImgs {
-			preCopyDstImgBarrier := NewVkImageMemoryBarrier(h.sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-				0, // pNext
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-				VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-				VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,            // oldLayout
-				VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // newLayout
-				queueFamilyIgnore,     // srcQueueFamilyIndex
-				queueFamilyIgnore,     // dstQueueFamilyIndex
-				dstImg.VulkanHandle(), // image
-				NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
-					ipImageBarrierAspectFlags(dst.dstAspect, dstImg.Info().Fmt()), // aspectMask
-					0,                           // baseMipLevel
-					dstImg.Info().MipLevels(),   // levelCount
-					0,                           // baseArrayLayer
-					dstImg.Info().ArrayLayers(), // layerCount
-				),
-			)
+			preCopyDstImgBarriers := []VkImageMemoryBarrier{}
+			for layer := uint32(0); layer < dstImg.Info().ArrayLayers(); layer++ {
+				for level := uint32(0); level < dstImg.Info().MipLevels(); level++ {
+					barrier := NewVkImageMemoryBarrier(h.sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+						0, // pNext
+						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+						initLayouts.layoutOf(dst.dstAspect, layer, level),                                                          // oldLayout
+						VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // newLayout
+						queueFamilyIgnore,     // srcQueueFamilyIndex
+						queueFamilyIgnore,     // dstQueueFamilyIndex
+						dstImg.VulkanHandle(), // image
+						NewVkImageSubresourceRange(h.sb.ta, // subresourceRange
+							ipImageBarrierAspectFlags(dst.dstAspect, dstImg.Info().Fmt()), // aspectMask
+							level, // baseMipLevel
+							1,     // levelCount
+							layer, // baseArrayLayer
+							1,     // layerCount
+						),
+					)
+					preCopyDstImgBarriers = append(preCopyDstImgBarriers, barrier)
+				}
+			}
 
 			postCopyDstImgBarriers := []VkImageMemoryBarrier{}
 			for layer := uint32(0); layer < dstImg.Info().ArrayLayers(); layer++ {
@@ -2357,7 +2364,7 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
 						VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
 						VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,                                                         // oldLayout
-						h.job.finalLayout.layoutOf(dst.dstAspect, layer, level),                                                    // newLayout
+						finalLayouts.layoutOf(dst.dstAspect, layer, level),                                                         // newLayout
 						queueFamilyIgnore,     // srcQueueFamilyIndex
 						queueFamilyIgnore,     // dstQueueFamilyIndex
 						dstImg.VulkanHandle(), // image
@@ -2424,8 +2431,8 @@ func (h *ipBufferCopySession) rolloutBufCopies(queue VkQueue) error {
 								0,                       // offset
 								VkDeviceSize(bufOffset), // size
 							)).Ptr(),
-						uint32(1),
-						h.sb.MustAllocReadData(preCopyDstImgBarrier).Ptr(),
+						uint32(len(preCopyDstImgBarriers)),
+						h.sb.MustAllocReadData(preCopyDstImgBarriers).Ptr(),
 					))
 				})
 

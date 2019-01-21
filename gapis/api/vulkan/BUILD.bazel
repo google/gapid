@@ -69,6 +69,7 @@ go_library(
         "mem_binding_list.go",
         "memory_breakdown.go",
         "overdraw.go",
+        "primeable_image_data.go",
         "query_timestamps.go",
         "read_framebuffer.go",
         "replay.go",
