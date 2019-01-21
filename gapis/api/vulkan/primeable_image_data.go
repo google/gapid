@@ -77,23 +77,17 @@ type ipPrimeableByRendering struct {
 	freeCallbacks        []func()
 	queue                VkQueue
 	renderTaskCommitLock sync.Mutex
-	lastRenderTask       *scratchTask
 }
 
 func (pi *ipPrimeableByRendering) free() {
-	pi.renderTaskCommitLock.Lock()
-	pi.renderTaskCommitLock.Unlock()
-	if pi.lastRenderTask == nil {
+	// staging images and memories will not be freed immediately, but wait until all the tasks on its queue are finished.
+	freeTsk := pi.p.sb.newScratchTaskOnQueue(pi.queue)
+	freeTsk.deferUntilExecuted(func() {
 		for _, f := range pi.freeCallbacks {
 			f()
 		}
-	} else {
-		pi.lastRenderTask.deferUntilExecuted(func() {
-			for _, f := range pi.freeCallbacks {
-				f()
-			}
-		})
-	}
+	})
+	freeTsk.commit()
 }
 
 func (pi *ipPrimeableByRendering) primingQueue() VkQueue { return pi.queue }
@@ -102,13 +96,6 @@ func (pi *ipPrimeableByRendering) prime(srcLayout, dstLayout ipLayoutInfo) error
 	oldStateImgObj := GetState(pi.p.sb.oldState).Images().Get(pi.img)
 	newStateImgObj := GetState(pi.p.sb.newState).Images().Get(pi.img)
 	renderTsk := pi.p.sb.newScratchTaskOnQueue(pi.queue)
-	renderTsk.deferUntilExecuted(func() {
-		pi.renderTaskCommitLock.Lock()
-		defer pi.renderTaskCommitLock.Unlock()
-		if pi.lastRenderTask == renderTsk {
-			pi.lastRenderTask = nil
-		}
-	})
 	renderJobs := []*ipRenderJob{}
 	for _, aspect := range pi.p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
 		for layer := uint32(0); layer < oldStateImgObj.Info().ArrayLayers(); layer++ {
@@ -150,12 +137,9 @@ func (pi *ipPrimeableByRendering) prime(srcLayout, dstLayout ipLayoutInfo) error
 				renderJob.renderTarget.level, err)
 		}
 	}
-	pi.renderTaskCommitLock.Lock()
-	defer pi.renderTaskCommitLock.Unlock()
 	if err := renderTsk.commit(); err != nil {
 		return log.Errf(pi.p.sb.ctx, err, "[Committing scratch task for priming image: %v data by rendering]", pi.img)
 	}
-	pi.lastRenderTask = renderTsk
 	return nil
 }
 
