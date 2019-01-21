@@ -62,3 +62,26 @@ func (t Pipeline_Type) Format(f fmt.State, c rune) {
 func (t StageType) Format(f fmt.State, c rune) {
 	fmt.Fprint(f, strings.Title(strings.ToLower(t.String())))
 }
+
+func (x ShaderType) Extension() string {
+	switch x {
+	case ShaderType_Vertex:
+		return "vert"
+	case ShaderType_Geometry:
+		return "geom"
+	case ShaderType_TessControl:
+		return "tessc"
+	case ShaderType_TessEvaluation:
+		return "tesse"
+	case ShaderType_Fragment:
+		return "frag"
+	case ShaderType_Compute:
+		return "comp"
+	case ShaderType_Spirv:
+		return "spvasm"
+	case ShaderType_SpirvBinary:
+		return "spv"
+	default:
+		return "unknown"
+	}
+}
