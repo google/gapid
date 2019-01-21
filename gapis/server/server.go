@@ -578,12 +578,15 @@ func (l *statusListener) OnEvent(ctx context.Context, task *status.Task, event s
 	}
 }
 
-func (l *statusListener) OnMemorySnapshot(context.Context, runtime.MemStats) {
-	l.m(&service.MemoryStatus{})
+func (l *statusListener) OnMemorySnapshot(ctx context.Context, stats runtime.MemStats) {
+	l.m(&service.MemoryStatus{
+		TotalHeap: stats.Alloc,
+	})
 }
 
 func (s *server) Status(
-	ctx context.Context, snapshotInterval uint32,
+	ctx context.Context,
+	snapshotInterval time.Duration,
 	statusUpdateFrequency time.Duration,
 	f func(*service.TaskUpdate),
 	m func(*service.MemoryStatus)) (func() error, error) {

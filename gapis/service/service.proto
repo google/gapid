@@ -241,11 +241,12 @@ message TaskUpdate {
 }
 
 message MemoryStatus {
+  uint64 totalHeap = 1;
 }
 
 message ServerStatusRequest {
   bool enable = 1;
-  uint32 memory_snapshot_interval = 2;
+  float memory_snapshot_interval = 2;
   float status_update_frequency = 3;
 }
 

@@ -182,14 +182,14 @@ func (c *client) Profile(
 }
 
 func (c *client) Status(
-	ctx context.Context, snapshotInterval uint32, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) (stop func() error, err error) {
+	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) (stop func() error, err error) {
 
 	stream, err := c.client.Status(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	req := &service.ServerStatusRequest{Enable: true, MemorySnapshotInterval: snapshotInterval, StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
+	req := &service.ServerStatusRequest{Enable: true, MemorySnapshotInterval: float32(snapshotInterval.Seconds()), StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
 
 	if err := stream.Send(req); err != nil {
 		return nil, err
