@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
@@ -53,28 +52,18 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return nil
 	}
 
-	filepath, err := filepath.Abs(flags.Arg(0))
+	client, capture, err := getGapisAndLoadCapture(ctx, verb.Gapis, verb.Gapir, flags.Arg(0), verb.CaptureFileFlags)
 	if err != nil {
-		return log.Err(ctx, err, "Could not find capture file")
-	}
-
-	client, err := getGapis(ctx, verb.Gapis, verb.Gapir)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
+		return err
 	}
 	defer client.Close()
 
-	c, err := client.LoadCapture(ctx, filepath)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to load the capture file")
-	}
-
-	filter, err := verb.commandFilter(ctx, client, c)
+	filter, err := verb.commandFilter(ctx, client, capture)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build the CommandFilter")
 	}
 
-	treePath := c.CommandTree(filter)
+	treePath := capture.CommandTree(filter)
 	treePath.GroupByApi = verb.GroupByAPI
 	treePath.GroupByContext = verb.GroupByContext
 	treePath.GroupByThread = verb.GroupByThread

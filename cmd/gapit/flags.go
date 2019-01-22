@@ -185,6 +185,7 @@ type (
 		AllowIncompleteFrame   bool   `help:"_Make a group for incomplete frames"`
 		Observations           ObservationFlags
 		CommandFilterFlags
+		CaptureFileFlags
 	}
 	ReplaceResourceFlags struct {
 		Gapis                GapisFlags
