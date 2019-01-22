@@ -65,8 +65,6 @@ func (verb *screenshotVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer client.Close()
 
-	log.I(ctx, "Getting screenshot from capture id: %s", capture.ID)
-
 	device, err := getDevice(ctx, client, capture, verb.Gapir)
 	if err != nil {
 		return err

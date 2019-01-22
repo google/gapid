@@ -197,6 +197,8 @@ func getGapisAndLoadCapture(ctx context.Context, gapisFlags GapisFlags, gapirFla
 		}
 	}
 
+	log.I(ctx, "Loaded capture; id: %s", capture.ID)
+
 	return client, capture, nil
 }
 
