@@ -325,8 +325,9 @@ func (pi *ipPrimeableByPreinitialization) prime(srcLayout, dstLayout ipLayoutInf
 // state image object, which is on the host accessible space. If fromHostData is
 // false, the image data will be collected from the device memory.
 func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkImageSubresourceRange, fromHostData bool) (primeableImageData, error) {
-	nilQueueErr := log.Err(p.sb.ctx, nil, "Nil Queue")
-	notImplErr := log.Err(p.sb.ctx, nil, "Not Implemented")
+	nilQueueErr := fmt.Errorf("Nil Queue")
+	notImplErr := fmt.Errorf("Not Implemented")
+	queueNotExistInNewState := func(q VkQueue) error { return fmt.Errorf("Queue: %v does not exist in new state", q) }
 
 	oldStateImgObj := GetState(p.sb.oldState).Images().Get(img)
 	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
@@ -407,12 +408,90 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 
 	primeByImageStore := (!primeByCopy) && (!primeByRendering) && ((oldStateImgObj.Info().Usage() & storageBit) != 0)
 	if primeByImageStore {
-		if fromHostData {
-			queue := getQueueForPriming(p.sb, oldStateImgObj, VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
-			if queue.IsNil() {
-				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by host data imageStore operation, image: %v]", img)
+		queue := getQueueForPriming(p.sb, oldStateImgObj, VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by host data imageStore operation, image: %v]", img)
+		}
+		if !GetState(p.sb.newState).Queues().Contains(queue.VulkanHandle()) {
+			return nil, log.Errf(p.sb.ctx, queueNotExistInNewState(queue.VulkanHandle()), "[Building primeable image data that can be primed by host data imageStore operation, image: %v]", img)
+		}
+		primeable := &ipPrimeableByImageStore{p: p, img: img, queue: queue.VulkanHandle()}
+
+		// helper types and functions about image view.
+		type imageViewInfo struct {
+			image  VkImage
+			aspect VkImageAspectFlagBits
+			layer  uint32
+			level  uint32
+		}
+		createdImageViews := map[imageViewInfo]ImageViewObjectʳ{}
+
+		getViewType := func(imgType VkImageType) VkImageViewType {
+			switch imgType {
+			case VkImageType_VK_IMAGE_TYPE_1D:
+				return VkImageViewType_VK_IMAGE_VIEW_TYPE_1D
+			case VkImageType_VK_IMAGE_TYPE_2D:
+				return VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
+			case VkImageType_VK_IMAGE_TYPE_3D:
+				return VkImageViewType_VK_IMAGE_VIEW_TYPE_3D
 			}
-			primeable := &ipPrimeableByImageStore{p: p, img: img, queue: queue.VulkanHandle()}
+			return VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
+		}
+
+		getOrCreateImageView := func(info imageViewInfo) (ImageViewObjectʳ, error) {
+			if _, ok := createdImageViews[info]; ok {
+				return createdImageViews[info], nil
+			}
+			imgObj := GetState(p.sb.newState).Images().Get(info.image)
+			if imgObj.IsNil() {
+				return ImageViewObjectʳ{}, log.Errf(p.sb.ctx,
+					fmt.Errorf("Nil Image Object"),
+					"[Creating image view with info: %v]", info)
+			}
+			view, freeView, err := p.createImageViewForImageSubresource(imgObj,
+				info.aspect, info.layer, info.level, getViewType(imgObj.Info().ImageType()))
+			if err != nil {
+				return ImageViewObjectʳ{}, log.Errf(p.sb.ctx, err,
+					"[Creating image view with info: %v]", info)
+			}
+			createdImageViews[info] = view
+			primeable.freeCallbacks = append(primeable.freeCallbacks, freeView)
+			return view, nil
+		}
+
+		addStoreJob := func(outputImage, inputImage VkImage, outputAspect, inputAspect VkImageAspectFlagBits,
+			layer, level uint32, inputIndex int, offset VkOffset3D, extent VkExtent3D) error {
+			storeJob := ipImageStoreJob{
+				inputIndex: inputIndex,
+				offset:     offset,
+				extent:     extent,
+			}
+			outputView, err := getOrCreateImageView(imageViewInfo{
+				image:  outputImage,
+				aspect: outputAspect,
+				layer:  layer,
+				level:  level,
+			})
+			if err != nil {
+				return log.Errf(p.sb.ctx, err, "[Getting output image view, image: %v, aspect: %v, layer: %v, level: %v]", outputImage, outputAspect, layer, level)
+			}
+			storeJob.output = outputView
+			inputView, err := getOrCreateImageView(imageViewInfo{
+				image:  inputImage,
+				aspect: inputAspect,
+				layer:  layer,
+				level:  level,
+			})
+			if err != nil {
+				return log.Errf(p.sb.ctx, err, "[Getting input image view, image: %v, aspect: %v, layer: %v, level: %v]", inputImage, inputAspect, layer, level)
+			}
+			storeJob.input = inputView
+			primeable.storeJobs = append(primeable.storeJobs, storeJob)
+			return nil
+		}
+
+		if fromHostData {
+			// Build image store primeable from host data
 			copyJob := newImagePrimerBufferImageCopyJob(oldStateImgObj)
 			aspects := map[VkImage]VkImageAspectFlagBits{}
 			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
@@ -448,86 +527,103 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 				return nil, log.Errf(p.sb.ctx, err, "[Rolling out buf->img copy commands for staging images, building primeable data (by image store) for image: %v]", img)
 			}
 
-			type imageViewInfo struct {
-				image  VkImage
-				aspect VkImageAspectFlagBits
-				layer  uint32
-				level  uint32
-			}
-			createdImageViews := map[imageViewInfo]ImageViewObjectʳ{}
-
-			getViewType := func(imgType VkImageType) VkImageViewType {
-				switch imgType {
-				case VkImageType_VK_IMAGE_TYPE_1D:
-					return VkImageViewType_VK_IMAGE_VIEW_TYPE_1D
-				case VkImageType_VK_IMAGE_TYPE_2D:
-					return VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
-				case VkImageType_VK_IMAGE_TYPE_3D:
-					return VkImageViewType_VK_IMAGE_VIEW_TYPE_3D
-				}
-				return VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
-			}
-
-			getOrCreateImageView := func(info imageViewInfo) (ImageViewObjectʳ, error) {
-				if _, ok := createdImageViews[info]; ok {
-					return createdImageViews[info], nil
-				}
-				imgObj := GetState(p.sb.newState).Images().Get(info.image)
-				if imgObj.IsNil() {
-					return ImageViewObjectʳ{}, log.Errf(p.sb.ctx,
-						fmt.Errorf("Nil Image Object"),
-						"[Creating image view with info: %v]", info)
-				}
-				view, freeView, err := p.createImageViewForImageSubresource(imgObj,
-					info.aspect, info.layer, info.level, getViewType(imgObj.Info().ImageType()))
-				if err != nil {
-					return ImageViewObjectʳ{}, log.Errf(p.sb.ctx, err,
-						"[Creating image view with info: %v]", info)
-				}
-				createdImageViews[info] = view
-				primeable.freeCallbacks = append(primeable.freeCallbacks, freeView)
-				return view, nil
-			}
-
 			for stagingImgObj, copies := range bcs.copies {
 				outputAspect := aspects[stagingImgObj.VulkanHandle()]
 				for _, copy := range copies {
-					storeJob := ipImageStoreJob{
-						inputIndex: bcs.indices[stagingImgObj],
-						offset:     copy.ImageOffset(),
-						extent:     copy.ImageExtent(),
-					}
 					layer := copy.ImageSubresource().BaseArrayLayer()
 					level := copy.ImageSubresource().MipLevel()
-					outputView, err := getOrCreateImageView(imageViewInfo{
-						image:  img,
-						aspect: outputAspect,
-						layer:  layer,
-						level:  level,
-					})
+					err := addStoreJob(
+						img, stagingImgObj.VulkanHandle(), outputAspect,
+						VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+						layer, level, bcs.indices[stagingImgObj],
+						copy.ImageOffset(), copy.ImageExtent())
 					if err != nil {
-						log.E(p.sb.ctx, "[Getting output image view for building primeable image data (by image store): %v]", err)
+						log.E(p.sb.ctx, "[Building image store jobs for building primeable image data (by image store): %v]", err)
 						continue
 					}
-					storeJob.output = outputView
-					inputView, err := getOrCreateImageView(imageViewInfo{
-						image:  stagingImgObj.VulkanHandle(),
-						aspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
-						layer:  layer,
-						level:  level,
-					})
-					if err != nil {
-						log.E(p.sb.ctx, "[Getting input image view for building primeable image data (by image store): %v]", err)
-						continue
-					}
-					storeJob.input = inputView
-					primeable.storeJobs = append(primeable.storeJobs, storeJob)
 				}
 			}
 			return primeable, nil
 
 		} else {
-			return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data that can be primed by device data imageLoad/Store operation, image: %v]", img)
+			// Build image store primeable from device data
+			stagingImg, freeStagingImg, err := p.createSameStagingImage(oldStateImgObj, VkImageLayout_VK_IMAGE_LAYOUT_GENERAL)
+			if err != nil {
+				return nil, log.Errf(p.sb.ctx, err, "[Creating staging image for priming image data by imageStore operation from device data, image: %v]", img)
+			}
+			primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImg)
+			for _, r := range opaqueBoundRanges {
+				walkImageSubresourceRange(p.sb, oldStateImgObj, r,
+					func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+						err := addStoreJob(
+							img, stagingImg.VulkanHandle(), aspect, aspect,
+							layer, level, 0, MakeVkOffset3D(p.sb.ta),
+							NewVkExtent3D(p.sb.ta,
+								uint32(levelSize.width),
+								uint32(levelSize.height),
+								uint32(levelSize.depth),
+							),
+						)
+						if err != nil {
+							log.E(p.sb.ctx, "[Building image store job for normal bound subresource: %v] err: %v", r, err)
+							return
+						}
+					})
+			}
+			if isSparseResidency(oldStateImgObj) {
+				walkSparseImageMemoryBindings(p.sb, oldStateImgObj,
+					func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+						err := addStoreJob(
+							img, stagingImg.VulkanHandle(), aspect, aspect,
+							layer, level, 0, blockData.Offset(), blockData.Extent(),
+						)
+						if err != nil {
+							log.E(p.sb.ctx, "[Building image store job for sparse residency bound block: %v] err: %v", blockData, err)
+							return
+						}
+					})
+			}
+
+			imgPreLoadStoreTransitionInfo := []imageSubRangeInfo{}
+			imgPostLoadStoreTransitionInfo := []imageSubRangeInfo{}
+			currentLayouts := sameLayoutsOfImage(oldStateImgObj)
+			walkImageSubresourceRange(p.sb, oldStateImgObj, p.sb.imageWholeSubresourceRange(oldStateImgObj),
+				func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
+					info := imageSubRangeInfo{
+						aspectMask:     VkImageAspectFlags(aspect),
+						baseMipLevel:   level,
+						levelCount:     1,
+						baseArrayLayer: layer,
+						layerCount:     1,
+						oldLayout:      currentLayouts.layoutOf(aspect, layer, level),
+						newLayout:      VkImageLayout_VK_IMAGE_LAYOUT_GENERAL,
+						oldQueue:       queue.VulkanHandle(),
+						newQueue:       queue.VulkanHandle(),
+					}
+					imgPreLoadStoreTransitionInfo = append(imgPreLoadStoreTransitionInfo, info)
+					info.oldLayout = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
+					info.newLayout = currentLayouts.layoutOf(aspect, layer, level)
+				})
+			p.sb.changeImageSubRangeLayoutAndOwnership(img, imgPreLoadStoreTransitionInfo)
+
+			// store the data to the staging images, which is exactly the opposite
+			// of priming.
+			for _, pjob := range primeable.storeJobs {
+				bjob := pjob
+				bjob.input = pjob.output
+				bjob.output = pjob.input
+				aspect := VkImageAspectFlagBits(bjob.output.SubresourceRange().AspectMask())
+				layer := bjob.output.SubresourceRange().BaseArrayLayer()
+				level := bjob.output.SubresourceRange().BaseMipLevel()
+				err := p.sh.store(bjob, queue.VulkanHandle())
+				if err != nil {
+					return nil, log.Errf(p.sb.ctx, err, "[Building imageStore primeable image data from device data, filling data to staging image: %v, from image: %v, aspect: %v, layer: %v, level: %v, offset: %v, extent: %v]", bjob.output.Image().VulkanHandle(), bjob.input.Image().VulkanHandle(), aspect, layer, level, bjob.offset, bjob.extent)
+				}
+			}
+
+			p.sb.changeImageSubRangeLayoutAndOwnership(img, imgPostLoadStoreTransitionInfo)
+
+			return primeable, nil
 		}
 	}
 
