@@ -486,6 +486,9 @@ type statusListener struct {
 }
 
 func (l *statusListener) OnTaskStart(ctx context.Context, task *status.Task) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
+
 	l.f(&service.TaskUpdate{
 		Status:          service.TaskStatus_STARTING,
 		Id:              task.ID(),
@@ -494,8 +497,6 @@ func (l *statusListener) OnTaskStart(ctx context.Context, task *status.Task) {
 		CompletePercent: 0,
 		Background:      task.Background(),
 	})
-	l.progressMutex.Lock()
-	defer l.progressMutex.Unlock()
 	l.lastProgressUpdate[task] = time.Now()
 }
 
@@ -518,6 +519,9 @@ func (l *statusListener) OnTaskProgress(ctx context.Context, task *status.Task) 
 }
 
 func (l *statusListener) OnTaskBlock(ctx context.Context, task *status.Task) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
+
 	l.f(&service.TaskUpdate{
 		Status:          service.TaskStatus_BLOCKED,
 		Id:              task.ID(),
@@ -529,6 +533,9 @@ func (l *statusListener) OnTaskBlock(ctx context.Context, task *status.Task) {
 }
 
 func (l *statusListener) OnTaskUnblock(ctx context.Context, task *status.Task) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
+
 	l.f(&service.TaskUpdate{
 		Status:          service.TaskStatus_UNBLOCKED,
 		Id:              task.ID(),
@@ -540,6 +547,8 @@ func (l *statusListener) OnTaskUnblock(ctx context.Context, task *status.Task) {
 }
 
 func (l *statusListener) OnTaskFinish(ctx context.Context, task *status.Task) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
 
 	l.f(&service.TaskUpdate{
 		Status:          service.TaskStatus_FINISHED,
@@ -549,12 +558,14 @@ func (l *statusListener) OnTaskFinish(ctx context.Context, task *status.Task) {
 		CompletePercent: 100,
 		Background:      task.Background(),
 	})
-	l.progressMutex.Lock()
-	defer l.progressMutex.Unlock()
 	delete(l.lastProgressUpdate, task)
+
 }
 
 func (l *statusListener) OnEvent(ctx context.Context, task *status.Task, event string, scope status.EventScope) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
+
 	if task != nil {
 		l.f(&service.TaskUpdate{
 			Status:          service.TaskStatus_EVENT,
@@ -579,41 +590,37 @@ func (l *statusListener) OnEvent(ctx context.Context, task *status.Task, event s
 }
 
 func (l *statusListener) OnMemorySnapshot(ctx context.Context, stats runtime.MemStats) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
+
 	l.m(&service.MemoryStatus{
 		TotalHeap: stats.Alloc,
 	})
 }
 
-func (s *server) Status(
-	ctx context.Context,
-	snapshotInterval time.Duration,
-	statusUpdateFrequency time.Duration,
-	f func(*service.TaskUpdate),
-	m func(*service.MemoryStatus)) (func() error, error) {
-	l := &statusListener{f, m, make(map[*status.Task]time.Time), statusUpdateFrequency, sync.Mutex{}}
+func (s *server) Status(ctx context.Context, snapshotInterval, statusInterval time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) error {
+	ctx = status.StartBackground(ctx, "RPC Status")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "Status")
+	l := &statusListener{f, m, make(map[*status.Task]time.Time), statusInterval, sync.Mutex{}}
 	unregister := status.RegisterListener(l)
-	stop := func() error {
-		unregister()
-		return nil
-	}
+	defer unregister()
 
 	if snapshotInterval > 0 {
 		// Poll the memory. This will block until the context is cancelled.
-		msi := time.Second * time.Duration(snapshotInterval)
 		stopSnapshot := task.Async(ctx, func(ctx context.Context) error {
-			return task.Poll(ctx, msi, func(ctx context.Context) error {
+			return task.Poll(ctx, snapshotInterval, func(ctx context.Context) error {
 				status.SnapshotMemory(ctx)
 				return nil
 			})
 		})
-		oldStop := stop
-		stop = func() error {
-			oldStop()
-			stopSnapshot()
-			return nil
-		}
+		defer stopSnapshot()
 	}
-	return stop, nil
+
+	select {
+	case <-task.ShouldStop(ctx):
+	}
+	return task.StopReason(ctx)
 }
 
 func (s *server) GetPerformanceCounters(ctx context.Context) (string, error) {
