@@ -330,51 +330,39 @@ func (s *grpcServer) Profile(stream service.Gapid_ProfileServer) error {
 	}
 }
 
-func (s *grpcServer) Status(stream service.Gapid_StatusServer) error {
-	defer s.inRPC()()
-	ctx := s.bindCtx(stream.Context())
+func (s *grpcServer) Status(req *service.ServerStatusRequest, stream service.Gapid_StatusServer) error {
+	// defer s.inRPC()() -- don't consider the log stream an inflight RPC.
+	ctx, cancel := task.WithCancel(stream.Context())
+	defer s.addInterrupter(cancel)()
 
-	// stop stops any running status requests
-	stop := func() error { return nil }
-	defer stop()
-	for {
-		// Grab an incoming request.
-		req, err := stream.Recv()
-		if err != nil {
-			return err
-		}
-
-		// If there are no profile modes in the request, then the RPC can finish.
-		if !req.Enable {
-			break
-		}
-		if stop != nil {
-			stop()
-		}
-
-		f := func(t *service.TaskUpdate) {
-			stream.Send(&service.ServerStatusResponse{
-				Res: &service.ServerStatusResponse_Task{t},
-			})
-		}
-		m := func(t *service.MemoryStatus) {
-			stream.Send(&service.ServerStatusResponse{
-				Res: &service.ServerStatusResponse_Memory{t},
-			})
-		}
-
-		// Start the profile.
-		stop, err = s.handler.Status(ctx,
-			time.Duration(float32(time.Second)*req.MemorySnapshotInterval),
-			time.Duration(float32(time.Second)*req.StatusUpdateFrequency),
-			f,
-			m,
-		)
-		if err != nil {
-			return err
+	c := make(chan error)
+	f := func(t *service.TaskUpdate) {
+		if err := stream.Send(&service.ServerStatusResponse{
+			Res: &service.ServerStatusResponse_Task{t},
+		}); err != nil {
+			c <- err
+			cancel()
 		}
 	}
-	return nil
+	m := func(t *service.MemoryStatus) {
+		if err := stream.Send(&service.ServerStatusResponse{
+			Res: &service.ServerStatusResponse_Memory{t},
+		}); err != nil {
+			c <- err
+			cancel()
+		}
+	}
+	err := s.handler.Status(s.bindCtx(ctx),
+		time.Duration(float32(time.Second)*req.MemorySnapshotInterval),
+		time.Duration(float32(time.Second)*req.StatusUpdateFrequency),
+		f, m)
+
+	if err == nil {
+		select {
+		case err = <-c:
+		}
+	}
+	return err
 }
 
 func (s *grpcServer) GetPerformanceCounters(ctx xctx.Context, req *service.GetPerformanceCountersRequest) (*service.GetPerformanceCountersResponse, error) {

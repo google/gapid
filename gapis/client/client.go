@@ -185,49 +185,35 @@ func (c *client) Profile(
 }
 
 func (c *client) Status(
-	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) (stop func() error, err error) {
+	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) error {
 
-	stream, err := c.client.Status(ctx)
+	req := &service.ServerStatusRequest{MemorySnapshotInterval: float32(snapshotInterval.Seconds()), StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
+
+	stream, err := c.client.Status(ctx, req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	req := &service.ServerStatusRequest{Enable: true, MemorySnapshotInterval: float32(snapshotInterval.Seconds()), StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
-
-	if err := stream.Send(req); err != nil {
-		return nil, err
-	}
-
-	waitForEOF := task.Async(ctx, func(ctx context.Context) error {
-		for {
-			r, err := stream.Recv()
-			if err != nil {
-				if errors.Cause(err) == io.EOF {
-					return nil
-				}
-				return err
+	for {
+		r, err := stream.Recv()
+		if err != nil {
+			if errors.Cause(err) == io.EOF {
+				return nil
 			}
-			if _, ok := r.Res.(*service.ServerStatusResponse_Task); ok {
-				if f != nil {
-					f(r.GetTask())
-				}
-			} else if _, ok := r.Res.(*service.ServerStatusResponse_Memory); ok {
-				if m != nil {
-					m(r.GetMemory())
-				}
-			}
-		}
-	})
-
-	stop = func() error {
-		// Tell the server we want to stop profiling.
-		if err := stream.Send(&service.ServerStatusRequest{}); err != nil {
 			return err
 		}
-		return waitForEOF()
+		if _, ok := r.Res.(*service.ServerStatusResponse_Task); ok {
+			if f != nil {
+				f(r.GetTask())
+			}
+		} else if _, ok := r.Res.(*service.ServerStatusResponse_Memory); ok {
+			if m != nil {
+				m(r.GetMemory())
+			}
+		}
 	}
 
-	return stop, nil
+	return nil
 }
 
 func (c *client) GetPerformanceCounters(ctx context.Context) (string, error) {
