@@ -93,12 +93,13 @@ func (p *imagePrimer) createImageAndBindMemory(dev VkDevice, info ImageInfo, mem
 	return img, mem, nil
 }
 
-// createSameStagingImage creates an image with the same image info as the given
-// image, and create backing memory for the new image and bind the image with
-// the created memory (sparse binding not supported). Returns the created image
-// object in the new state of the stateBuilder in the image primer, a function
-// to destroy the new created image and backing memory, and an error.
-func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ) (ImageObjectʳ, func(), error) {
+// createSameStagingImage creates an image with the same image info (except
+// initial layout) as the given image along with the given initial layout, and
+// create backing memory for the new image and bind the image with the created
+// memory (sparse binding not supported). Returns the created image object in
+// the new state of the stateBuilder in the image primer, a function to destroy
+// the new created image and backing memory, and an error.
+func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ, initialLayout VkImageLayout) (ImageObjectʳ, func(), error) {
 	dev := p.sb.s.Devices().Get(img.Device())
 	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
 	// TODO: Handle multi-planar images
@@ -113,7 +114,10 @@ func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ) (ImageObjectʳ, 
 		return ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, fmt.Errorf("can't find an appropriate memory type index"), "[Creatig staging image same as image: %v]", img.VulkanHandle())
 	}
 
-	stagingImg, stagingImgMem, err := p.createImageAndBindMemory(img.Device(), img.Info(), memIndex)
+	createInfo := img.Info()
+	createInfo.SetInitialLayout(initialLayout)
+
+	stagingImg, stagingImgMem, err := p.createImageAndBindMemory(img.Device(), createInfo, memIndex)
 	if err != nil {
 		return ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "[Creating staging image same as image: %v]", img.VulkanHandle())
 	}
