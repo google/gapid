@@ -1512,16 +1512,6 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		return
 	}
 
-	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
-
-	isDepth := (img.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
-	primeByBufCopy := (img.Info().Usage()&transDstBit) != 0 && (!isDepth)
-	primeByRendering := (!primeByBufCopy) && ((img.Info().Usage() & attBits) != 0)
-	primeByImageStore := (!primeByBufCopy) && (!primeByRendering) && ((img.Info().Usage() & storageBit) != 0)
-	primeByPreinitialization := (!primeByBufCopy) && (!primeByRendering) && (!primeByImageStore) && (img.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (img.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
-
 	vkCreateImage(sb, img.Device(), img.Info(), img.VulkanHandle())
 	planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
 	planeMemRequirements := planeMemInfo.MemoryRequirements()
@@ -1787,36 +1777,19 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	}
 	// We have to handle the above cases at some point.
 
-	var err error
-	var queue QueueObjectʳ
-	queueCandidates := []QueueObjectʳ{}
-	for _, q := range sb.imageAllLastBoundQueues(img) {
-		queueCandidates = append(queueCandidates, sb.s.Queues().Get(q))
-	}
-
-	prime := func(flagBits VkQueueFlagBits, primerFunc func(ImageObjectʳ, []VkImageSubresourceRange, QueueObjectʳ) error) error {
-		queue = sb.getQueueFor(flagBits, queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()), img.Device(), queueCandidates...)
-		if queue.IsNil() {
-			return log.Errf(sb.ctx, nil, "cannot get a proper queue to prime data")
-		}
-		return primerFunc(img, opaqueRanges, queue)
-	}
-
-	if primeByBufCopy {
-		err = prime(VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT, imgPrimer.primeByBufferCopy)
-	} else if primeByRendering {
-		err = prime(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT, imgPrimer.primeByRendering)
-	} else if primeByImageStore {
-		err = prime(VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT, imgPrimer.primeByImageStore)
-	} else if primeByPreinitialization {
-		err = prime(VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT, imgPrimer.primeByPreinitialization)
-	} else {
-		err = log.Errf(sb.ctx, nil, "There is no valid way to prime data into image: %v", img.VulkanHandle())
-	}
+	primeable, err := imgPrimer.newPrimeableImageData(img.VulkanHandle(), opaqueRanges, true)
 	if err != nil {
-		log.E(sb.ctx, "[Priming the data of image: %v] %v", img.VulkanHandle(), err)
+		log.Errf(sb.ctx, err, "Create primeable image data")
 		return
 	}
+	defer primeable.free()
+	err = primeable.prime(useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
+	if err != nil {
+		log.Errf(sb.ctx, err, "Priming image data")
+		return
+	}
+
+	queue := sb.s.Queues().Get(primeable.primingQueue())
 
 	if !queue.IsNil() {
 		// Image data priming is recorded successfully, check if we need to
