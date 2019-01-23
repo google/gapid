@@ -323,12 +323,51 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.CmdBehav
 	b.Write(g, data)
 }
 
+func (pipeline Pipelineʳ) Uniforms() []Uniform {
+	uniforms := make([]Uniform, 0)
+	if pipeline.IsNil() {
+		return uniforms
+	}
+	// TODO: These might not all be necessary.
+	uniforms = append(uniforms, pipeline.VertexShader().Uniforms()...)
+	uniforms = append(uniforms, pipeline.TessControlShader().Uniforms()...)
+	uniforms = append(uniforms, pipeline.TessEvaluationShader().Uniforms()...)
+	uniforms = append(uniforms, pipeline.GeometryShader().Uniforms()...)
+	uniforms = append(uniforms, pipeline.FragmentShader().Uniforms()...)
+	uniforms = append(uniforms, pipeline.ComputeShader().Uniforms()...)
+	return uniforms
+}
+
+func (program Programʳ) Uniforms() []Uniform {
+	if program.IsNil() {
+		return make([]Uniform, 0)
+	}
+	uniforms := make([]Uniform, 0, len(program.UniformLocations().All()))
+	for _, u := range program.UniformLocations().All() {
+		uniforms = append(uniforms, u)
+	}
+	return uniforms
+}
+
 func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *api.GlobalState, c Contextʳ) (stateKeys []dependencygraph.StateKey) {
-	// Look for samplers used by the current program.
-	if c.Bound().Program().IsNil() {
+
+	// Look for samplers used by the current program/pipeline.
+
+	// Get the uniforms in use.
+	uniforms := make([]Uniform, 0)
+
+	if !c.Bound().Program().IsNil() {
+		// The bound Program is used if present.
+		uniforms = c.Bound().Program().Uniforms()
+	} else if !c.Bound().Pipeline().IsNil() {
+		// Otherwise, the bound Pipeline is used, if present.
+		uniforms = c.Bound().Pipeline().Uniforms()
+	} else {
+		// Otherwise, there is no bound Program nor Pipeline; no texture reads.
 		return
 	}
-	for _, uniform := range c.Bound().Program().UniformLocations().All() {
+
+	for _, uniform := range uniforms {
 		if uniform.Type() == GLenum_GL_FLOAT_VEC4 || uniform.Type() == GLenum_GL_FLOAT_MAT4 {
 			continue // Optimization - skip the two most common types which we know are not samplers.
 		}
