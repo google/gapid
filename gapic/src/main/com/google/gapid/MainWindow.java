@@ -15,6 +15,9 @@
  */
 package com.google.gapid;
 
+import java.util.logging.Logger;
+import static java.util.logging.Level.WARNING;
+
 import static com.google.gapid.views.AboutDialog.showAbout;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.AboutDialog.showLogDir;
@@ -44,6 +47,8 @@ import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.UpdateWatcher;
+import com.google.gapid.util.StatusSummaryUpdater;
+import com.google.gapid.util.StatusWatcher;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.LoadablePanel;
@@ -72,6 +77,8 @@ import java.util.function.Consumer;
  * The main {@link ApplicationWindow} containing all of the UI components.
  */
 public class MainWindow extends ApplicationWindow {
+  private static final Logger LOG = Logger.getLogger(MainWindow.class.getName());
+
   private final Settings settings;
   private final Theme theme;
   private Composite mainArea;
@@ -126,6 +133,7 @@ public class MainWindow extends ApplicationWindow {
     }
 
     watchForUpdates(client, models);
+    trackServerStatus();
 
     showLoadingMessage("Ready! Please open or capture a trace file.");
   }
@@ -133,11 +141,30 @@ public class MainWindow extends ApplicationWindow {
   private void watchForUpdates(Client client, Models models) {
     new UpdateWatcher(models.settings, client, (release) -> {
       scheduleIfNotDisposed(statusBar, () -> {
-        statusBar.setNotification("New update available", () -> {
+        statusBar.setNotification("New update available", 60.0f, () -> {
           Program.launch(release.getBrowserUrl());
         });
       });
     });
+  }
+
+  private void trackServerStatus() {
+    StatusWatcher.setListener(new StatusSummaryUpdater((summary) -> {
+      scheduleIfNotDisposed(statusBar, () -> {
+        String s = String.format("<%s/%s>   ",
+          StatusSummaryUpdater.BytesToHuman(summary.usedMemory),
+          StatusSummaryUpdater.BytesToHuman(summary.maxMemory));
+        if (summary.longestTask.length == 1) {
+          s += summary.longestTask[0];
+        } else {
+          s += summary.longestTask[0] + " ... " + summary.longestTask[summary.longestTask.length - 1];
+        }
+        if (summary.longestTaskProgress != 0) {
+          s += String.format("<%d%%>", summary.longestTaskProgress);
+        }
+        statusBar.setNotification(s, 0, () -> {});
+      });
+    }));
   }
 
   @Override

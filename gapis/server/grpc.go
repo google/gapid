@@ -330,50 +330,51 @@ func (s *grpcServer) Profile(stream service.Gapid_ProfileServer) error {
 	}
 }
 
-func (s *grpcServer) Status(stream service.Gapid_StatusServer) error {
-	defer s.inRPC()()
+func (s *grpcServer) Status(req *service.ServerStatusRequest, stream service.Gapid_StatusServer) error {
+	// defer s.inRPC()() -- don't consider the log stream an inflight RPC.
 	ctx := s.bindCtx(stream.Context())
+	c := make(chan error)
 
-	// stop stops any running status requests
-	stop := func() error { return nil }
-	defer stop()
-	for {
-		// Grab an incoming request.
-		req, err := stream.Recv()
-		if err != nil {
-			return err
+	f := func(t *service.TaskUpdate) {
+		if err := stream.Send(&service.ServerStatusResponse{
+			Res: &service.ServerStatusResponse_Task{t},
+		}); err != nil {
+			c <- err
 		}
+	}
 
-		// If there are no profile modes in the request, then the RPC can finish.
-		if !req.Enable {
-			break
+	m := func(t *service.MemoryStatus) {
+		if err := stream.Send(&service.ServerStatusResponse{
+			Res: &service.ServerStatusResponse_Memory{t},
+		}); err != nil {
+			c <- err
 		}
-		if stop != nil {
-			stop()
-		}
-
-		f := func(t *service.TaskUpdate) {
-			stream.Send(&service.ServerStatusResponse{
-				Res: &service.ServerStatusResponse_Task{t},
-			})
-		}
-		m := func(t *service.MemoryStatus) {
-			stream.Send(&service.ServerStatusResponse{
-				Res: &service.ServerStatusResponse_Memory{t},
-			})
-		}
-
-		// Start the profile.
-		stop, err = s.handler.Status(ctx,
+	}
+	oldctx := ctx
+	ctx, cancel := context.WithCancel(ctx)
+	// Start the profile.
+	crash.Go(func() {
+		err := s.handler.Status(ctx,
 			time.Duration(float32(time.Second)*req.MemorySnapshotInterval),
 			time.Duration(float32(time.Second)*req.StatusUpdateFrequency),
 			f,
 			m,
 		)
 		if err != nil {
-			return err
+			c <- err
 		}
+	})
+
+	select {
+	case err := <-c:
+		cancel()
+		if err == io.EOF {
+			return nil
+		}
+	case <-oldctx.Done():
+		cancel()
 	}
+
 	return nil
 }
 

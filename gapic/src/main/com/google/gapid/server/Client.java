@@ -251,6 +251,14 @@ public class Client {
     return client.streamLog(onLogMessage);
   }
 
+  public ListenableFuture<Void> streamStatus(Service.ServerStatusRequest request,
+    Consumer<Service.ServerStatusResponse> onStatus) {
+    LOG.log(FINE, "RPC->streamStatus()");
+    Stack stack = new Stack(() -> "RPC->streamStatus()");
+    
+    return client.streamStatus(request, onStatus);
+  }
+
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
     LOG.log(FINE, "RPC->find({0})", request);

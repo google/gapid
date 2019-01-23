@@ -32,11 +32,12 @@ import org.eclipse.swt.widgets.Link;
 public class StatusBar extends Composite {
   private final Label status;
   private final Link notification;
+  private long nextUpdateMillis;
   private Runnable onNotificationClick;
 
   public StatusBar(Composite parent) {
     super(parent, SWT.NONE);
-
+    nextUpdateMillis = 0;
     setLayout(withMargin(new GridLayout(2, false), 0, 0));
 
     status = Widgets.createLabel(this, "");
@@ -54,11 +55,19 @@ public class StatusBar extends Composite {
    * Updates the notification to the given text.
    *
    * @param text the notification text.
+   * @param pin how many seconds the notification text should be pinned to this value
    * @param onClick the optional notifiction click handler.
    */
-  public void setNotification(String text, Runnable onClick) {
+  public void setNotification(String text, float pin, Runnable onClick) {
+    long currentTime = System.currentTimeMillis();
+    if (currentTime < nextUpdateMillis) {
+      return;
+    }
     notification.setText((onClick != null) ? "<a>" + text + "</a>" : text);
     onNotificationClick = onClick;
     layout();
+    if (pin != 0.0) {
+      nextUpdateMillis = currentTime + (long)(pin * 1000);
+    }
   }
 }

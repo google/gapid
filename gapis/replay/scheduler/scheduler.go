@@ -105,7 +105,7 @@ func (s *Scheduler) Schedule(ctx context.Context, t Task, b Batch) (val interfac
 }
 
 func (s *Scheduler) run(ctx context.Context) {
-	ctx = status.Start(ctx, "Replay Scheduler")
+	ctx = status.StartBackground(ctx, "Replay Scheduler")
 	defer status.Finish(ctx)
 
 	bins := map[Batch]*bin{}

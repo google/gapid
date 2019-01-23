@@ -30,10 +30,13 @@ import com.google.gapid.rpc.RpcException;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapisConnection;
 import com.google.gapid.server.GapisProcess;
+import com.google.gapid.server.GapidClient;
+
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Version;
+import com.google.gapid.util.StatusWatcher;
 
 import java.io.IOException;
 import java.util.List;
@@ -50,6 +53,9 @@ public class Server {
   private static final int FETCH_INFO_TIMEOUT_MS = 3000;
   private static final int FETCH_STRING_TABLE_TIMEOUT_MS = 3000;
 
+  private static final float STATUS_UPDATE_INTERVAL = 0.5f;
+  private static final float MEMORY_UPDATE_INTERVAL = 1.0f;
+
   public static final Flag<String> gapis = Flags.value(
       "gapis", "", "<host:port> of the gapis server to connect to.");
 
@@ -62,7 +68,7 @@ public class Server {
   private final Settings settings;
   private GapisConnection gapisConnection;
   private Client client;
-
+  
   public Server(Settings settings) {
     this.settings = settings;
   }
@@ -80,6 +86,12 @@ public class Server {
       status = "Monitoring logs";
       listener.onStatus(status + "...");
       client.streamLog(Logging::logMessage);
+      
+      client.streamStatus(Service.ServerStatusRequest.newBuilder()
+        .setStatusUpdateFrequency(STATUS_UPDATE_INTERVAL)
+        .setMemorySnapshotInterval(1.0f)
+        .build(), StatusWatcher::notifyMessage);
+
     } catch (ExecutionException | RpcException | TimeoutException e) {
       throw new GapisInitException(
           GapisInitException.MESSAGE_FAILED_INIT, "Failed: " + status, e);

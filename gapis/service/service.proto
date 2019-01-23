@@ -245,9 +245,8 @@ message MemoryStatus {
 }
 
 message ServerStatusRequest {
-  bool enable = 1;
-  float memory_snapshot_interval = 2;
-  float status_update_frequency = 3;
+  float memory_snapshot_interval = 1;
+  float status_update_frequency = 2;
 }
 
 message ServerStatusResponse {
@@ -669,7 +668,7 @@ service Gapid {
   }
 
   // Status returns a stream of Status events that are occuring on the server
-  rpc Status(stream ServerStatusRequest) returns (stream ServerStatusResponse) {
+  rpc Status(ServerStatusRequest) returns (stream ServerStatusResponse) {
   }
 
   ///////////////////////////////////////////////////////////////
