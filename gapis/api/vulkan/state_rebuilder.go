@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/google/gapid/core/data/id"
@@ -44,7 +45,7 @@ type stateBuilder struct {
 	extraReadIDsAndRanges []idAndRng
 	memoryIntervals       interval.U64RangeList
 	ta                    arena.Arena // temporary arena
-	scratchResources      map[VkDevice]map[uint32]*queueFamilyScratchResources
+	scratchRes            *scratchResources
 }
 
 type stateBuilderOutput interface {
@@ -113,15 +114,15 @@ type idAndRng struct {
 func (s *State) newStateBuilder(ctx context.Context, out stateBuilderOutput) *stateBuilder {
 	newState := out.getNewState()
 	return &stateBuilder{
-		ctx:              ctx,
-		s:                s,
-		oldState:         out.getOldState(),
-		newState:         newState,
-		out:              out,
-		cb:               CommandBuilder{Thread: 0, Arena: newState.Arena},
-		memoryIntervals:  interval.U64RangeList{},
-		ta:               arena.New(),
-		scratchResources: map[VkDevice]map[uint32]*queueFamilyScratchResources{},
+		ctx:             ctx,
+		s:               s,
+		oldState:        out.getOldState(),
+		newState:        newState,
+		out:             out,
+		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
+		memoryIntervals: interval.U64RangeList{},
+		ta:              arena.New(),
+		scratchRes:      newScratchResources(),
 	}
 }
 
@@ -182,7 +183,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 
 	{
 		imgPrimer := newImagePrimer(sb)
-		defer imgPrimer.free()
+		defer imgPrimer.Free()
 		for _, img := range s.Images().Keys() {
 			sb.createImage(s.Images().Get(img), imgPrimer)
 		}
@@ -268,8 +269,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 	}
 
-	sb.flushAllScratchResources()
-	sb.freeAllScratchResources()
+	sb.scratchRes.Free(sb)
 
 	return out.cmds, sb.memoryIntervals
 }
@@ -726,6 +726,8 @@ func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
 	))
 }
 
+func (sb *stateBuilder) transitImageLayoutTransferImageOwnership(image VkImage)
+
 type imageSubRangeInfo struct {
 	aspectMask     VkImageAspectFlags
 	baseMipLevel   uint32
@@ -783,8 +785,8 @@ func (sb *stateBuilder) changeImageSubRangeLayoutAndOwnership(image VkImage, sub
 	}
 
 	for oldQ, barriers := range releaseBarriers {
-		tsk := sb.newScratchTaskOnQueue(oldQ)
-		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, oldQ)
+		queueHandler.RecordCommands(sb, "", func(commandBuffer VkCommandBuffer) {
 			sb.write(sb.cb.VkCmdPipelineBarrier(
 				commandBuffer,
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -798,15 +800,15 @@ func (sb *stateBuilder) changeImageSubRangeLayoutAndOwnership(image VkImage, sub
 				sb.MustAllocReadData(barriers).Ptr(),
 			))
 		})
-		tsk.commit()
 		// Need to block the GPU execution to synchronize the queue family
 		// acquire - release operations.
-		sb.flushQueueFamilyScratchResources(oldQ)
+		queueHandler.Submit(sb)
+		queueHandler.WaitUntilFinish(sb)
 	}
 
 	for newQ, barriers := range acquireBarriers {
-		tsk := sb.newScratchTaskOnQueue(newQ)
-		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+		queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, newQ)
+		queueHandler.RecordCommands(sb, "", func(commandBuffer VkCommandBuffer) {
 			sb.write(sb.cb.VkCmdPipelineBarrier(
 				commandBuffer,
 				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -820,7 +822,6 @@ func (sb *stateBuilder) changeImageSubRangeLayoutAndOwnership(image VkImage, sub
 				sb.MustAllocReadData(barriers).Ptr(),
 			))
 		})
-		tsk.commit()
 	}
 }
 
@@ -1162,7 +1163,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		return
 	}
 
-	contents := []bufferSubRangeFillInfo{}
+	contents := []hashedDataAndOffset{}
 
 	copies := []VkBufferCopy{}
 	offset := VkDeviceSize(0)
@@ -1235,7 +1236,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
 					uint64(bind.MemoryOffset()),
 					uint64(bind.MemoryOffset()+size))
-				contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
+				hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
+				contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
 				copies = append(copies, NewVkBufferCopy(sb.ta,
 					offset,                // srcOffset
 					bind.ResourceOffset(), // dstOffset
@@ -1263,7 +1265,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		dataSlice := buffer.Memory().Data().Slice(
 			uint64(buffer.MemoryOffset()),
 			uint64(buffer.MemoryOffset()+size))
-		contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
+		hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
+		contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
 		copies = append(copies, NewVkBufferCopy(sb.ta,
 			offset, // srcOffset
 			0,      // dstOffset
@@ -1271,21 +1274,26 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		))
 	}
 
-	tsk := sb.newScratchTaskOnQueue(queue.VulkanHandle())
+	tsk := newQueueCommandBatch(
+		fmt.Sprintf("Prime buffer: %v's data", buffer.VulkanHandle()),
+	)
 	defer func() {
-		if err := tsk.commit(); err != nil {
+		if err := tsk.Commit(sb, sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())); err != nil {
 			log.E(sb.ctx, "[Priming data for buffer: %v]: %v", buffer.VulkanHandle(), err)
 		}
 	}()
 	// scratch buffer will be automatically destroyed when the task is done
-	scratchBuffer := tsk.newBuffer(contents, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+	scratchBuffer := tsk.NewScratchBuffer(sb, "buf->buf copy staginig buffer",
+		sb.scratchRes.GetMemory(sb, buffer.Device()),
+		buffer.Device(), VkBufferUsageFlags(
+			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT), contents...)
 
 	newFamilyIndex := queueFamilyIgnore
 	if oldFamilyIndex != queueFamilyIgnore {
 		newFamilyIndex = queue.Family()
 	}
 
-	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+	tsk.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
 		sb.write(sb.cb.VkCmdPipelineBarrier(
 			commandBuffer,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -1617,13 +1625,13 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 			1,
 			sb.MustAllocReadData(
 				NewVkBindSparseInfo(sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // // sType
-					0, // // pNext
-					0, // // waitSemaphoreCount
-					0, // // pWaitSemaphores
-					0, // // bufferBindCount
-					0, // // pBufferBinds
-					1, // // imageOpaqueBindCount
+					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // sType
+					0, // pNext
+					0, // waitSemaphoreCount
+					0, // pWaitSemaphores
+					0, // bufferBindCount
+					0, // pBufferBinds
+					1, // imageOpaqueBindCount
 					NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pImageOpaqueBinds
 						NewVkSparseImageOpaqueMemoryBindInfo(sb.ta,
 							img.VulkanHandle(), // image
@@ -1780,8 +1788,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		log.E(sb.ctx, "Create primeable image data: %v", err)
 		return
 	}
-	defer primeable.free()
-	err = primeable.prime(useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
+	defer primeable.free(sb)
+	err = primeable.prime(sb, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
 	if err != nil {
 		log.E(sb.ctx, "Priming image data: %v", err)
 		return
@@ -2855,9 +2863,10 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 		return
 	}
 
-	tsk := sb.newScratchTaskOnQueue(queue.VulkanHandle())
-	defer tsk.commit()
-	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())
+	queueHandler.RecordCommands(sb, debugMarkerName(
+		"restoring query states",
+	), func(commandBuffer VkCommandBuffer) {
 		for i := uint32(0); i < qp.QueryCount(); i++ {
 			switch qp.Status().Get(i) {
 			case QueryStatus_QUERY_STATUS_UNINITIALIZED:

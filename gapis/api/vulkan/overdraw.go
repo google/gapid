@@ -1643,50 +1643,103 @@ func (s *stencilOverdraw) renderAspect(ctx context.Context,
 ) error {
 	sb := st.newStateBuilder(ctx, newTransformerOutput(out))
 	ip := newImagePrimer(sb)
-	queueScratch := sb.getQueueFamilyScratchResources(queue)
-	queueScratch.commandBuffers[queue] = cmdBuffer
-	scratchTask := sb.newScratchTaskOnQueue(queue)
-
-	renderJob := &ipRenderJob{
-		inputAttachmentImages: []ipRenderImage{
-			ipRenderImage{
-				image:         srcImg.image,
-				aspect:        srcImg.aspect,
-				layer:         srcImg.subresource.BaseArrayLayer(),
-				level:         srcImg.subresource.BaseMipLevel(),
-				initialLayout: srcImg.layout,
-				finalLayout:   srcImg.layout,
-			},
-		},
-		renderTarget: ipRenderImage{
-			image:         dstImg.image,
-			aspect:        dstImg.aspect,
-			layer:         dstImg.subresource.BaseArrayLayer(),
-			level:         dstImg.subresource.BaseMipLevel(),
-			initialLayout: dstImg.layout,
-			finalLayout:   dstImg.layout,
-		},
-		inputFormat: inputFormat,
-	}
-
-	err := ip.rh.render(renderJob, scratchTask)
+	queueHandler, err := newQueueCommandHandler(sb, queue, cmdBuffer)
 	if err != nil {
-		return err
+		return log.Errf(sb.ctx, err, "failed at creating queue command handler")
 	}
+	dstLayer := dstImg.subresource.BaseArrayLayer()
+	if srcImg.subresource.BaseArrayLayer() != dstLayer {
+		return fmt.Errorf("input attachment and render target layer do not match")
+	}
+	dstLevel := dstImg.subresource.BaseMipLevel()
+	if srcImg.subresource.BaseMipLevel() != dstLevel {
+		return fmt.Errorf("input attachment and render target mip level do not match")
+	}
+	sizes := sb.levelSize(dstImg.image.Info().Extent(),
+		dstImg.image.Info().Fmt(), dstLevel, dstImg.aspect)
+	recipe := ipRenderRecipe{
+		inputAttachmentImage:  srcImg.image.VulkanHandle(),
+		inputAttachmentAspect: srcImg.aspect,
+		renderImage:           dstImg.image.VulkanHandle(),
+		renderAspect:          dstImg.aspect,
+		layer:                 dstLayer,
+		level:                 dstLevel,
+		renderRectX:           int32(0),
+		renderRectY:           int32(0),
+		renderRectWidth:       uint32(sizes.width),
+		renderRectHeight:      uint32(sizes.height),
+		wordIndex:             uint32(0),
+		framebufferWidth:      uint32(sizes.width),
+		framebufferHeight:     uint32(sizes.height),
+	}
+	renderKitBuilder := ip.GetRenderKitBuilder(device)
+	kits, err := renderKitBuilder.BuildRenderKits(sb, recipe)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at building render kits")
+	}
+	if len(kits) != 1 {
+		return fmt.Errorf("unexpected length of render kits, actual: %v, expected: 1", len(kits))
+	}
+	renderingLayout := ipRenderColorOutputLayout
+	if (dstImg.image.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0 {
+		renderingLayout = ipRenderDepthStencilOutputLayout
+	}
+
+	inputPreBarrier := ipImageSubresourceLayoutTransitionBarrier(sb,
+		srcImg.image,
+		srcImg.aspect,
+		srcImg.subresource.BaseArrayLayer(),
+		srcImg.subresource.BaseMipLevel(),
+		srcImg.layout,
+		ipRenderInputAttachmentLayout,
+	)
+	inputPostBarrier := ipImageSubresourceLayoutTransitionBarrier(sb,
+		srcImg.image,
+		srcImg.aspect,
+		srcImg.subresource.BaseArrayLayer(),
+		srcImg.subresource.BaseMipLevel(),
+		ipRenderInputAttachmentLayout,
+		srcImg.layout,
+	)
+	outputPreBarrier := ipImageSubresourceLayoutTransitionBarrier(sb,
+		dstImg.image,
+		dstImg.aspect,
+		dstImg.subresource.BaseArrayLayer(),
+		dstImg.subresource.BaseMipLevel(),
+		dstImg.layout,
+		renderingLayout,
+	)
+	outputPostBarrier := ipImageSubresourceLayoutTransitionBarrier(sb,
+		dstImg.image,
+		dstImg.aspect,
+		dstImg.subresource.BaseArrayLayer(),
+		dstImg.subresource.BaseMipLevel(),
+		renderingLayout,
+		dstImg.layout,
+	)
+
+	err = ipRecordImageMemoryBarriers(sb, queueHandler, inputPreBarrier, outputPreBarrier)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at recording pre rendering image layout transition")
+	}
+	renderCmds := kits[0].BuildRenderCommands(sb)
+	err = renderCmds.Commit(sb, queueHandler)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at commiting rendering commands")
+	}
+	err = ipRecordImageMemoryBarriers(sb, queueHandler, inputPostBarrier, outputPostBarrier)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at recording post rendering image layout transition")
+	}
+
 	// Make sure it doesn't use temporary memory as that would cause a flush of the scratch resources
-	queueScratch.memorySize = scratchTask.totalAllocationSize
+	// queueScratch.memorySize = scratchTask.totalAllocationSize
 
-	scratchTask.commit()
+	queueHandler.RecordPostExecuted(func() { ip.Free() })
 	addCleanup(func() {
-		ip.free()
-		writeEach(ctx, out, cb.VkFreeMemory(device, queueScratch.memory, memory.Nullptr))
+		queueHandler.Submit(sb)
+		queueHandler.WaitUntilFinish(sb)
 	})
-
-	cleanup := queueScratch.postExecuted[queue]
-	// Make sure the cleanups are executed in the right order
-	for i := len(cleanup) - 1; i >= 0; i-- {
-		addCleanup(cleanup[i])
-	}
 
 	return nil
 }

@@ -15,475 +15,446 @@
 package vulkan
 
 import (
+	"context"
+	"fmt"
+	"sort"
+
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
 )
 
 const (
-	scratchBufferSize = uint64(64 * 1024 * 1024)
+	scratchMemorySize      = 64 * 1024 * 1204
+	scratchBufferAlignment = 256
 )
 
-// queueFamilyScratchResources holds the scratch resources for a queue family.
-// It manages the creation/destroy of a command pool, a fixed-size memory,
-// command buffers for each queue of this family, the usage of the fixed-size
-// memory and the submission of the commands buffers.
-type queueFamilyScratchResources struct {
-	sb             *stateBuilder
-	device         VkDevice
-	queueFamily    uint32
-	commandPool    VkCommandPool
-	commandBuffers map[VkQueue]VkCommandBuffer
-	memory         VkDeviceMemory
-	memorySize     uint64
-	allocated      uint64
-	postExecuted   map[VkQueue][]func()
+// scratchResources holds a pool of flushing memory and command pool which can
+// be used to allocate temporary memory and command buffers. It also contains
+// a queue command handler for each queue.
+type scratchResources struct {
+	memories             map[VkDevice]*flushingMemory
+	commandPools         map[VkDevice]map[uint32]VkCommandPool
+	queueCommandHandlers map[VkQueue]*queueCommandHandler
 }
 
-// getQueueFamilyScratchResources returns the scratch resources for the family
-// of the given queue. If such a queeuFamilyScratchResources does not exist,
-// it will create one and return it.
-func (sb *stateBuilder) getQueueFamilyScratchResources(queue VkQueue) *queueFamilyScratchResources {
-	dev := sb.s.Queues().Get(queue).Device()
-	family := sb.s.Queues().Get(queue).Family()
-	if _, ok := sb.scratchResources[dev]; !ok {
-		sb.scratchResources[dev] = map[uint32]*queueFamilyScratchResources{}
+func newScratchResources() *scratchResources {
+	return &scratchResources{
+		memories:             map[VkDevice]*flushingMemory{},
+		commandPools:         map[VkDevice]map[uint32]VkCommandPool{},
+		queueCommandHandlers: map[VkQueue]*queueCommandHandler{},
 	}
-	if _, ok := sb.scratchResources[dev][family]; !ok {
-		sb.scratchResources[dev][family] = &queueFamilyScratchResources{
-			sb:             sb,
-			device:         dev,
-			queueFamily:    family,
-			commandPool:    VkCommandPool(0),
-			commandBuffers: map[VkQueue]VkCommandBuffer{},
-			memory:         VkDeviceMemory(0),
-			memorySize:     bufferAllocationSize(scratchBufferSize),
-			allocated:      uint64(0),
-			postExecuted:   map[VkQueue][]func(){},
+}
+
+// Free frees first submit all the pending commands held by all the queue
+// command handlers, then free all the memories and command pools.
+func (res *scratchResources) Free(sb *stateBuilder) {
+	for q, h := range res.queueCommandHandlers {
+		err := h.Submit(sb)
+		if err != nil {
+			panic(err)
 		}
-	}
-	return sb.scratchResources[dev][family]
-}
-
-// flushAllScratchResources submits all the comamnd buffers of all the queue
-// family scratch resources, and calls all the after-executed callbacks.
-func (sb *stateBuilder) flushAllScratchResources() {
-	for _, familyInfo := range sb.scratchResources {
-		for _, qr := range familyInfo {
-			qr.flush()
+		err = h.WaitUntilFinish(sb)
+		if err != nil {
+			panic(err)
 		}
+		delete(res.queueCommandHandlers, q)
 	}
-}
-
-// freeAllScratchResources frees all the command pool, memory, etc of all the
-// queue family scratch resources.
-func (sb *stateBuilder) freeAllScratchResources() {
-	for _, familyInfo := range sb.scratchResources {
-		for _, qr := range familyInfo {
-			qr.free()
+	for dev, mem := range res.memories {
+		mem.Free(sb)
+		delete(res.memories, dev)
+	}
+	for dev, families := range res.commandPools {
+		for _, pool := range families {
+			sb.write(sb.cb.VkDestroyCommandPool(dev, pool, memory.Nullptr))
 		}
+		delete(res.commandPools, dev)
 	}
 }
 
-// flushQueueFamilyScratchResources submits all the command buffers of the
-// scratch resources of the given queue's family, and also calls all the
-// after-executed callbacks registered on that queue family.
-func (sb *stateBuilder) flushQueueFamilyScratchResources(queue VkQueue) {
-	qr := sb.getQueueFamilyScratchResources(queue)
-	qr.flush()
+// GetCommandPool returns a command pool for the given device and queue family
+// index, if such a pool has been created before in this scratch resources, the
+// existing one will be returned, otherwise a new one will be created.
+func (res *scratchResources) GetCommandPool(sb *stateBuilder, dev VkDevice, queueFamilyIndex uint32) VkCommandPool {
+	if _, ok := res.commandPools[dev]; !ok {
+		res.commandPools[dev] = map[uint32]VkCommandPool{}
+	}
+	if _, ok := res.commandPools[dev][queueFamilyIndex]; !ok {
+		// create new command pool
+		commandPool := VkCommandPool(newUnusedID(true, func(x uint64) bool {
+			return sb.s.CommandPools().Contains(VkCommandPool(x)) || GetState(sb.newState).CommandPools().Contains(VkCommandPool(x))
+		}))
+		sb.write(sb.cb.VkCreateCommandPool(
+			dev,
+			sb.MustAllocReadData(NewVkCommandPoolCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // sType
+				0, // pNext
+				VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT), // flags
+				queueFamilyIndex, // queueFamilyIndex
+			)).Ptr(),
+			memory.Nullptr,
+			sb.MustAllocWriteData(commandPool).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+		res.commandPools[dev][queueFamilyIndex] = commandPool
+	}
+	return res.commandPools[dev][queueFamilyIndex]
 }
 
-// getCommandPool returns the scratch command pool of this queue family
-// scratch resource, creates one if it does not exist before.
-func (qr *queueFamilyScratchResources) getCommandPool() VkCommandPool {
-	if qr.commandPool != VkCommandPool(0) {
-		return qr.commandPool
-	}
-	sb := qr.sb
-	commandPoolID := VkCommandPool(newUnusedID(true, func(x uint64) bool {
-		return sb.s.CommandPools().Contains(VkCommandPool(x)) || GetState(sb.newState).CommandPools().Contains(VkCommandPool(x))
+// AllocateCommandBuffer returns a new allocated command buffer from a command
+// pool which is created with the given device and queue family index.
+func (res *scratchResources) AllocateCommandBuffer(sb *stateBuilder, dev VkDevice, queueFamilyIndex uint32) VkCommandBuffer {
+	commandBuffer := VkCommandBuffer(newUnusedID(true, func(x uint64) bool {
+		return sb.s.CommandBuffers().Contains(VkCommandBuffer(x)) || GetState(sb.newState).CommandBuffers().Contains(VkCommandBuffer(x))
 	}))
-	sb.write(sb.cb.VkCreateCommandPool(
-		qr.device,
-		sb.MustAllocReadData(NewVkCommandPoolCreateInfo(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, // sType
+	sb.write(sb.cb.VkAllocateCommandBuffers(
+		dev,
+		sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(sb.ta,
+			VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
 			0, // pNext
-			VkCommandPoolCreateFlags(VkCommandPoolCreateFlagBits_VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT), // flags
-			qr.queueFamily, // queueFamilyIndex
+			res.GetCommandPool(sb, dev, queueFamilyIndex),        // commandPool
+			VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, // level
+			uint32(1), // commandBufferCount
 		)).Ptr(),
-		memory.Nullptr,
-		sb.MustAllocWriteData(commandPoolID).Ptr(),
+		sb.MustAllocWriteData(commandBuffer).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
-	qr.commandPool = commandPoolID
-	return qr.commandPool
-}
-
-// getCommandPool returns the scratch command buffer for the given queue,
-// creates one if it does not exist before.
-func (qr *queueFamilyScratchResources) getCommandBuffer(queue VkQueue) VkCommandBuffer {
-	sb := qr.sb
-	commandPool := qr.getCommandPool()
-	if _, ok := qr.commandBuffers[queue]; !ok {
-		commandBufferID := VkCommandBuffer(newUnusedID(true, func(x uint64) bool {
-			return sb.s.CommandBuffers().Contains(VkCommandBuffer(x)) || GetState(sb.newState).CommandBuffers().Contains(VkCommandBuffer(x))
-		}))
-		sb.write(sb.cb.VkAllocateCommandBuffers(
-			qr.device,
-			sb.MustAllocReadData(NewVkCommandBufferAllocateInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // sType
-				0,           // pNext
-				commandPool, // commandPool
-				VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, // level
-				uint32(1), // commandBufferCount
-			)).Ptr(),
-			sb.MustAllocWriteData(commandBufferID).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
-		qr.commandBuffers[queue] = commandBufferID
-	}
-	commandBuffer := qr.commandBuffers[queue]
-	if GetState(sb.newState).CommandBuffers().Get(commandBuffer).Recording() != RecordingState_RECORDING {
-		sb.write(sb.cb.VkBeginCommandBuffer(
-			commandBuffer,
-			sb.MustAllocReadData(NewVkCommandBufferBeginInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-				0, // pNext
-				VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT), // flags
-				0, // pInheritanceInfo
-			)).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
-	}
+	scratchResName := debugMarkerName("scratch resource")
+	attachDebugMarkerName(sb, scratchResName, dev, commandBuffer)
 	return commandBuffer
 }
 
-// getDeviceMemory returns the fixed-size scratch memory of this scratch
-// resource, creates one if it does not exist before.
-func (qr *queueFamilyScratchResources) getDeviceMemory() VkDeviceMemory {
-	if qr.memory == VkDeviceMemory(0) {
-		qr.memory = qr.newDeviceMemory(qr.memorySize)
-		qr.allocated = uint64(0)
+// GetMemory returns a flushing memory for temporary memory allocation created
+// from the given device. If such a flushing memory has been created before, the
+// existing memory will be returned, otherwise a new one will be created.
+func (res *scratchResources) GetMemory(sb *stateBuilder, dev VkDevice) *flushingMemory {
+	if _, ok := res.memories[dev]; ok {
+		return res.memories[dev]
 	}
-	return qr.memory
+	mem := newFlushingMemory(sb, dev, scratchMemorySize, scratchBufferAlignment,
+		debugMarkerName(fmt.Sprintf("scratchMemory dev: %v", dev)))
+	res.memories[dev] = mem
+	return mem
 }
 
-// newDeviceMemory creates a device memory with the given size.
-func (qr *queueFamilyScratchResources) newDeviceMemory(size uint64) VkDeviceMemory {
-	sb := qr.sb
-	dev := qr.device
-	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-		return sb.s.DeviceMemories().Contains(VkDeviceMemory(x)) || GetState(sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
-	}))
-	memoryTypeIndex := sb.GetScratchBufferMemoryIndex(sb.s.Devices().Get(dev))
-	size = nextMultipleOf(size, 256)
-	sb.write(sb.cb.VkAllocateMemory(
-		dev,
-		NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
-			NewVkMemoryAllocateInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
-				0,                  // pNext
-				VkDeviceSize(size), // allocationSize
-				memoryTypeIndex,    // memoryTypeIndex
-			)).Ptr()),
-		memory.Nullptr,
-		sb.MustAllocWriteData(deviceMemory).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-	return deviceMemory
+// GetQueueCommandHandler returns a queue command handler for the given queue,
+// which means the commands recorded or committed to that command handler will
+// be submitted to the given queue. If such a queue has been created before, that
+// one will be returned, otherwise a new one will be returned.
+func (res *scratchResources) GetQueueCommandHandler(sb *stateBuilder, queue VkQueue) *queueCommandHandler {
+	if _, ok := res.queueCommandHandlers[queue]; ok {
+		return res.queueCommandHandlers[queue]
+	}
+	queueObj := GetState(sb.newState).Queues().Get(queue)
+	commandBuffer := res.AllocateCommandBuffer(sb, queueObj.Device(), queueObj.Family())
+	handler, err := newQueueCommandHandler(sb, queue, commandBuffer)
+	if err != nil {
+		panic(err)
+	}
+	res.queueCommandHandlers[queue] = handler
+	return handler
 }
 
-// bindAndFillBuffers takes a list of buffer info, bind them with memory and
-// fill them. If the total allocation size of the buffers can be fit in the
-// fixed-size memory, bind with the fixed-size memory, returns the memory handle
-// and false. A flush on this scratch resource may be triggered if the remaining
-// space of the fixed-size memory is not large enough. If the total allocation
-// size is greater than the fixed-size memory size, a temporary device memory
-// will be created and returned with boolean value: true to indicate a temporary
-// device memory is created.
-func (qr *queueFamilyScratchResources) bindAndFillBuffers(totalAllocationSize uint64, buffers map[VkBuffer]scratchBufferInfo) (VkDeviceMemory, bool) {
-	sb := qr.sb
-	dev := qr.device
-	var deviceMemory VkDeviceMemory
-	var allocated uint64
-	var usingTempMem bool
-	if totalAllocationSize > qr.memorySize {
-		deviceMemory = qr.newDeviceMemory(totalAllocationSize)
-		allocated = uint64(0)
-		usingTempMem = true
-	} else {
-		// Use the fixed-size scratch memory
-		if totalAllocationSize+qr.allocated > qr.memorySize {
-			qr.flush()
-			return qr.bindAndFillBuffers(totalAllocationSize, buffers)
+type bufferFlushInfo struct {
+	buffer     VkBuffer
+	dataSlices []hashedDataAndOffset
+}
+
+func flushDataToBuffers(sb *stateBuilder, alignment uint64, info ...bufferFlushInfo) error {
+	memoryFlushes := map[VkDeviceMemory][]hashedDataAndOffset{}
+
+	for _, bfi := range info {
+		if !GetState(sb.newState).Buffers().Contains(bfi.buffer) {
+			return log.Errf(sb.ctx, nil, "Buffer: %v not found in the new state of stateBuilder", bfi.buffer)
 		}
-		deviceMemory = qr.getDeviceMemory()
-		allocated = qr.allocated
-		usingTempMem = false
-		if totalAllocationSize == uint64(0) || len(buffers) == 0 {
-			return deviceMemory, usingTempMem
+		buf := GetState(sb.newState).Buffers().Get(bfi.buffer)
+		if buf.Memory().IsNil() {
+			return log.Errf(sb.ctx, nil, "Buffer: %v not bound with memory or is sparsely bound", bfi.buffer)
+		}
+		mem := buf.Memory().VulkanHandle()
+		for _, s := range bfi.dataSlices {
+			memoryFlushes[mem] = append(memoryFlushes[mem], hashedDataAndOffset{
+				offset: s.offset + uint64(buf.MemoryOffset()),
+				data:   s.data,
+			})
 		}
 	}
-	atData := sb.MustReserve(totalAllocationSize)
+
+	for m, f := range memoryFlushes {
+		err := flushDataToMemory(sb, m, alignment, f...)
+		if err != nil {
+			return log.Errf(sb.ctx, err, "flush data to buffer's bound memory")
+		}
+	}
+	return nil
+}
+
+// hashedData is a pair of hashed data ID and its size.
+type hashedData struct {
+	hash id.ID
+	size uint64
+}
+
+// newHashedDataFromeBytes creates a new hashedData from raw bytes
+func newHashedDataFromBytes(ctx context.Context, b []byte) hashedData {
+	hash, err := database.Store(ctx, b)
+	if err != nil {
+		panic(err)
+	}
+	return hashedData{
+		hash: hash,
+		size: uint64(len(b)),
+	}
+}
+
+// newHashedDataFromSlice creates a new hashedData from U8ˢ
+func newHashedDataFromSlice(ctx context.Context, sliceSrcState *api.GlobalState, slice U8ˢ) hashedData {
+	return hashedData{
+		hash: slice.ResourceID(ctx, sliceSrcState),
+		size: slice.Size(),
+	}
+}
+
+// hashedDataAndOffset is a pair of offset and hashed data
+type hashedDataAndOffset struct {
+	offset uint64
+	data   hashedData
+}
+
+func newHashedDataAndOffset(data hashedData, offset uint64) hashedDataAndOffset {
+	return hashedDataAndOffset{
+		offset: offset,
+		data:   data,
+	}
+}
+
+// flushDataToMemory takes a list of hashed data with offsets in device memory
+// space and, flush the data to the given device memory based on the
+// corresponding offsets.
+func flushDataToMemory(sb *stateBuilder, deviceMemory VkDeviceMemory, alignment uint64, dataSlices ...hashedDataAndOffset) error {
+	if len(dataSlices) == 0 {
+		return nil
+	}
+	if !GetState(sb.newState).DeviceMemories().Contains(deviceMemory) {
+		return fmt.Errorf("DeviceMemory: %v not found in the new state of stateBuilder", deviceMemory)
+	}
+	dev := GetState(sb.newState).DeviceMemories().Get(deviceMemory).Device()
+	sort.Slice(dataSlices, func(i, j int) bool { return dataSlices[i].offset < dataSlices[j].offset })
+	begin := dataSlices[0].offset / alignment * alignment
+	end := nextMultipleOf(dataSlices[len(dataSlices)-1].offset+dataSlices[len(dataSlices)-1].data.size, 256)
+	atData := sb.MustReserve(end - begin)
 	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
 	sb.write(sb.cb.VkMapMemory(
-		dev, deviceMemory, VkDeviceSize(allocated), VkDeviceSize(totalAllocationSize),
+		dev, deviceMemory, VkDeviceSize(begin), VkDeviceSize(end-begin),
 		VkMemoryMapFlags(0), ptrAtData.Ptr(), VkResult_VK_SUCCESS,
 	).AddRead(ptrAtData.Data()).AddWrite(ptrAtData.Data()))
 	ptrAtData.Free()
 
-	bufBindingOffset := allocated
-	for buf, info := range buffers {
-		sb.write(sb.cb.VkBindBufferMemory(
-			dev, buf, deviceMemory, VkDeviceSize(bufBindingOffset), VkResult_VK_SUCCESS))
-		for _, r := range info.data {
-			var hash id.ID
-			var err error
-			if r.hasNewData {
-				hash, err = database.Store(sb.ctx, r.data)
-				if err != nil {
-					panic(err)
-				}
-			} else {
-				hash = r.hash
-			}
-			sb.ReadDataAt(hash, atData.Address()+bufBindingOffset-allocated+r.rng.First, r.rng.Count)
-		}
-		bufBindingOffset += info.allocationSize
+	for _, f := range dataSlices {
+		sb.ReadDataAt(f.data.hash, atData.Address()+f.offset-begin, f.data.size)
 	}
 	sb.write(sb.cb.VkFlushMappedMemoryRanges(
-		dev,
-		1,
+		dev, 1,
 		sb.MustAllocReadData(NewVkMappedMemoryRange(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-			0,                                 // pNext
-			deviceMemory,                      // memory
-			VkDeviceSize(allocated),           // offset
-			VkDeviceSize(totalAllocationSize), // size
+			0,                       // pNext
+			deviceMemory,            // memory
+			VkDeviceSize(begin),     // offset
+			VkDeviceSize(end-begin), // size
 		)).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
 	sb.write(sb.cb.VkUnmapMemory(dev, deviceMemory))
 	atData.Free()
-
-	if !usingTempMem {
-		qr.allocated += totalAllocationSize
-	}
-	return deviceMemory, usingTempMem
-}
-
-// flush submits all the command buffers of this scratch resource, waits until
-// all the submitted commands finish, resets the command buffer, clear the
-// usage of the fixed-size memory, and carry out the after-executed callbacks
-// registered on this queue family scratch resource.
-func (qr *queueFamilyScratchResources) flush() {
-	sb := qr.sb
-	for q, cb := range qr.commandBuffers {
-		// Do not submit executed commandbuffer, state rebuilding does not reuse
-		// recorded commands in command buffers.
-		if GetState(sb.newState).CommandBuffers().Get(cb).Recording() != RecordingState_RECORDING {
-			continue
-		}
-		sb.write(sb.cb.VkEndCommandBuffer(
-			cb,
-			VkResult_VK_SUCCESS,
-		))
-
-		sb.write(sb.cb.VkQueueSubmit(
-			q,
-			1,
-			sb.MustAllocReadData(NewVkSubmitInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
-				0, // pNext
-				0, // waitSemaphoreCount
-				0, // pWaitSemaphores
-				0, // pWaitDstStageMask
-				1, // commandBufferCount
-				NewVkCommandBufferᶜᵖ(sb.MustAllocReadData(cb).Ptr()), // pCommandBuffers
-				0, // signalSemaphoreCount
-				0, // pSignalSemaphores
-			)).Ptr(),
-			VkFence(0),
-			VkResult_VK_SUCCESS,
-		))
-	}
-	for q, cb := range qr.commandBuffers {
-		sb.write(sb.cb.VkQueueWaitIdle(q, VkResult_VK_SUCCESS))
-		sb.write(sb.cb.VkResetCommandBuffer(
-			cb, VkCommandBufferResetFlags(VkCommandBufferResetFlagBits_VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT),
-			VkResult_VK_SUCCESS,
-		))
-	}
-	qr.allocated = 0
-	for q, fs := range qr.postExecuted {
-		for _, f := range fs {
-			f()
-		}
-		qr.postExecuted[q] = []func(){}
-	}
-}
-
-// free frees the command pool, command buffers and device memory of this
-// queue family scratch resource.
-func (qr *queueFamilyScratchResources) free() {
-	sb := qr.sb
-	sb.write(sb.cb.VkDestroyCommandPool(qr.device, qr.commandPool, memory.Nullptr))
-	qr.commandPool = VkCommandPool(0)
-	qr.commandBuffers = map[VkQueue]VkCommandBuffer{}
-	sb.write(sb.cb.VkFreeMemory(qr.device, qr.memory, memory.Nullptr))
-	qr.memory = VkDeviceMemory(0)
-	qr.allocated = uint64(0)
-}
-
-// scratchTask wraps a set of buffers and command buffer commands which will be
-// used together for host and GPU execution. Buffers in a scratchTask will be
-// be allocated altogether, and command buffer commands will be submitted
-// altogether after all the buffers are properly allocated. It is guaranteed
-// that at the submission time of the command buffer commands, the buffers are
-// allocated and available to be accessed by the commands. ScratchTask also
-// holds callbacks for the host side commands to be carried out before the
-// submission of the comamnd buffer commands, and after the execution of the
-// commands.
-type scratchTask struct {
-	sb                  *stateBuilder
-	buffers             map[VkBuffer]scratchBufferInfo
-	totalAllocationSize uint64
-	queue               VkQueue
-	onCommit            []func()
-	cmdBufRecorded      []func(VkCommandBuffer)
-	defered             []func()
-}
-
-type scratchBufferInfo struct {
-	data           []bufferSubRangeFillInfo
-	size           uint64
-	allocationSize uint64
-}
-
-// newScratchTaskOnQueue creates a new scratchTask for the given queue, all the
-// commands to be recorded in the returned task will be submitted to the given
-// queue, and all the scratch resources, e.g. scratch memory, will be provided
-// by the queue family scratch resource of the given queue.
-func (sb *stateBuilder) newScratchTaskOnQueue(queue VkQueue) *scratchTask {
-	return &scratchTask{
-		sb:                  sb,
-		buffers:             map[VkBuffer]scratchBufferInfo{},
-		totalAllocationSize: uint64(0),
-		queue:               queue,
-		onCommit:            []func(){},
-		cmdBufRecorded:      []func(VkCommandBuffer){},
-		defered:             []func(){},
-	}
-}
-
-// commit closes a scratchTask, tries to allocate memory for its buffers,
-// carries out the callbacks before the command buffer comamnds submission, add
-// the command buffer commands to the command, and pass the after-execution
-// callbacks to the after-execution callback queue.
-func (t *scratchTask) commit() error {
-	sb := t.sb
-	res := sb.getQueueFamilyScratchResources(t.queue)
-	if mem, isTemp := res.bindAndFillBuffers(t.totalAllocationSize, t.buffers); isTemp {
-		// The fixed size scratch buffer is not large enough for the allocation,
-		// temporary device memory is created for this task, need to free the
-		// memory after the task is done.
-		t.deferUntilExecuted(func() {
-			sb.write(sb.cb.VkFreeMemory(res.device, mem, memory.Nullptr))
-		})
-		defer res.flush()
-	}
-	for _, f := range t.onCommit {
-		f()
-	}
-	cb := res.getCommandBuffer(t.queue)
-	for _, f := range t.cmdBufRecorded {
-		f(cb)
-	}
-	// pass the after-execution callbacks in the reverse order.
-	for i := len(t.defered) - 1; i >= 0; i-- {
-		res.postExecuted[t.queue] = append(res.postExecuted[t.queue], t.defered[i])
-	}
 	return nil
 }
 
-// doOnCommitted register callbacks to be called when this scratchTask is
-// closed i.e. when onCommit() is called. Callbacks will be called in the order
-// in the argument list, and the calling order of doOnCommited.
-func (t *scratchTask) doOnCommitted(f ...func()) *scratchTask {
-	t.onCommit = append(t.onCommit, f...)
-	return t
+// flushableResource is an interface for resources providers that controlls
+// the life time of the resources offered by those providers.
+type flushableResource interface {
+	flush(*stateBuilder)
+	AddUser(flushableResourceUser)
+	DropUser(flushableResourceUser)
 }
 
-// recordCmdBufCommand register callbacks to be called when this scratchTask is
-// committed, and after all buffers are allocated properly. A command buffer
-// will be given to each callback. Callbacks will be called in the same order
-// of recordCmdBufCommand being called and the argument list.
-func (t *scratchTask) recordCmdBufCommand(f ...func(cb VkCommandBuffer)) *scratchTask {
-	t.cmdBufRecorded = append(t.cmdBufRecorded, f...)
-	return t
+// flushableResourceUser is an interface for types that can cache the resources
+// provided by flushableResource interface.
+type flushableResourceUser interface {
+	OnResourceFlush(*stateBuilder, flushableResource)
 }
 
-// deferUntilExecuted register callbacks to be called when the execution of the
-// command buffer commands of this scratchTask is fully finished. Note that the
-// callbacks will be called in the reverse order of deferUntilExecuted being
-// called and the argument list.
-func (t *scratchTask) deferUntilExecuted(f ...func()) *scratchTask {
-	t.defered = append(t.defered, f...)
-	return t
+// flushablePiece is an interface for resources provided by flushableResource
+// interfaces, which can be used to query the provider of this piece of
+// resource, and check if this piece of resource is still valid to use.
+type flushablePiece interface {
+	IsValid() bool
+	Owner() flushableResource
 }
 
-// newBuffer creates a new VkBuffer with the given content and usage bits. The
-// content will NOT be filled to the buffer until this scratchTask is committed,
-// i.e. onCommit() being called. A VkBuffer will always be returned.
-func (t *scratchTask) newBuffer(subRngs []bufferSubRangeFillInfo, usages ...VkBufferUsageFlagBits) VkBuffer {
-	sb := t.sb
-	size := uint64(0)
-	for _, r := range subRngs {
-		if r.rng.Span().End > size {
-			size = r.rng.Span().End
+// flushingMemory only guarantees the validity of the last allocated space, each
+// incoming allocation request can cause a flush of pre-allocated data. Users of
+// flushingMemory should register themself with AddUser() methods, and their
+// OnResourceFlush() method will be call before a flush of allocated spaces is
+// to occur.
+type flushingMemory struct {
+	size        uint64
+	allocated   uint64
+	alignment   uint64
+	mem         VkDeviceMemory
+	users       map[flushableResourceUser]struct{}
+	newMem      func(*stateBuilder, uint64, debugMarkerName) VkDeviceMemory
+	freeMem     func(*stateBuilder, VkDeviceMemory)
+	name        debugMarkerName
+	validPieces []*flushingMemoryAllocationResult
+}
+
+func newFlushingMemory(sb *stateBuilder, dev VkDevice, initialSize uint64, alignment uint64, name debugMarkerName) *flushingMemory {
+	newMem := func(sb *stateBuilder, size uint64, nm debugMarkerName) VkDeviceMemory {
+		deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+			return GetState(sb.oldState).DeviceMemories().Contains(VkDeviceMemory(x)) || GetState(sb.newState).DeviceMemories().Contains(VkDeviceMemory(x))
+		}))
+		memoryTypeIndex := sb.GetScratchBufferMemoryIndex(GetState(sb.newState).Devices().Get(dev))
+		size = nextMultipleOf(size, alignment)
+		sb.write(sb.cb.VkAllocateMemory(
+			dev,
+			NewVkMemoryAllocateInfoᶜᵖ(sb.MustAllocReadData(
+				NewVkMemoryAllocateInfo(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, // sType
+					0,                  // pNext
+					VkDeviceSize(size), // allocationSize
+					memoryTypeIndex,    // memoryTypeIndex
+				)).Ptr()),
+			memory.Nullptr,
+			sb.MustAllocWriteData(deviceMemory).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+		if len(nm) > 0 {
+			attachDebugMarkerName(sb, nm, dev, deviceMemory)
 		}
+		return deviceMemory
 	}
-	size = nextMultipleOf(size, 256)
-	buffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
-		return sb.s.Buffers().Contains(VkBuffer(x)) || GetState(sb.newState).Buffers().Contains(VkBuffer(x))
-	}))
-	usageFlags := VkBufferUsageFlags(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-	for _, u := range usages {
-		usageFlags |= VkBufferUsageFlags(u)
+	freeMem := func(sb *stateBuilder, mem VkDeviceMemory) {
+		sb.write(sb.cb.VkFreeMemory(dev, mem, memory.Nullptr))
 	}
-	dev := sb.s.Queues().Get(t.queue).Device()
-	sb.write(sb.cb.VkCreateBuffer(
-		dev,
-		sb.MustAllocReadData(
-			NewVkBufferCreateInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
-				0,                                       // pNext
-				0,                                       // flags
-				VkDeviceSize(size),                      // size
-				usageFlags,                              // usage
-				VkSharingMode_VK_SHARING_MODE_EXCLUSIVE, // sharingMode
-				0,                                       // queueFamilyIndexCount
-				0,                                       // pQueueFamilyIndices
-			)).Ptr(),
-		memory.Nullptr,
-		sb.MustAllocWriteData(buffer).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-	allocSize := bufferAllocationSize(size)
 
-	sb.write(sb.cb.VkGetBufferMemoryRequirements(
-		dev,
-		buffer,
-		sb.MustAllocWriteData(NewVkMemoryRequirements(sb.ta,
-			VkDeviceSize(allocSize), VkDeviceSize(256), 0xFFFFFFFF)).Ptr(),
-	))
+	initialSize = nextMultipleOf(initialSize, alignment)
+	return &flushingMemory{
+		size:        initialSize,
+		allocated:   0,
+		alignment:   alignment,
+		mem:         newMem(sb, initialSize, name),
+		users:       map[flushableResourceUser]struct{}{},
+		newMem:      newMem,
+		freeMem:     freeMem,
+		name:        name,
+		validPieces: []*flushingMemoryAllocationResult{},
+	}
+}
 
-	t.buffers[buffer] = scratchBufferInfo{data: subRngs, size: size, allocationSize: allocSize}
-	t.totalAllocationSize += allocSize
-	t.deferUntilExecuted(func() {
-		sb.write(sb.cb.VkDestroyBuffer(dev, buffer, memory.Nullptr))
-	})
-	return buffer
+// flushingMemoryAllocationResult contains the allocated device memory and
+// offset for a memory reservation request, and also implements flushablePiece
+// interface.
+type flushingMemoryAllocationResult struct {
+	valid  bool
+	mem    VkDeviceMemory
+	offset uint64
+	owner  flushableResource
+}
+
+// IsValid impelements the flushablePiece interface
+func (r *flushingMemoryAllocationResult) IsValid() bool {
+	return r.valid
+}
+
+// Owner impelements the flushablePiece interface
+func (r *flushingMemoryAllocationResult) Owner() flushableResource {
+	return r.owner
+}
+
+// Memory returns the backing device memory of an allocation result.
+func (r *flushingMemoryAllocationResult) Memory() VkDeviceMemory {
+	return r.mem
+}
+
+// Offset returns the offset in the backing device memory for an allocation.
+func (r *flushingMemoryAllocationResult) Offset() uint64 {
+	return r.offset
+}
+
+// Allocate issues an request of memory allocation with the given size, and
+// returns an allocation results with device memory and offset to tell the
+// valid range to use for the caller. However, this may trigger a flush for the
+// previously allocated memory ranges.
+func (m *flushingMemory) Allocate(sb *stateBuilder, size uint64) (*flushingMemoryAllocationResult, error) {
+	size = nextMultipleOf(size, m.alignment)
+	if size > m.size {
+		// Need expand the size of this memory
+		size = nextMultipleOf(size, m.alignment)
+		m.expand(sb, size)
+		return m.Allocate(sb, size)
+	} else if size+m.allocated > m.size {
+		// Need scratch
+		m.flush(sb)
+		return m.Allocate(sb, size)
+	}
+	offset := m.allocated
+	m.allocated += size
+	res := &flushingMemoryAllocationResult{
+		valid:  true,
+		mem:    m.mem,
+		offset: offset,
+		owner:  m,
+	}
+	m.validPieces = append(m.validPieces, res)
+	return res, nil
+}
+
+func (m *flushingMemory) flush(sb *stateBuilder) {
+	for u := range m.users {
+		u.OnResourceFlush(sb, m)
+	}
+	for _, p := range m.validPieces {
+		p.valid = false
+	}
+	m.validPieces = []*flushingMemoryAllocationResult{}
+	m.allocated = 0
+}
+
+// Flush trigger a flush of previous allocated memory ranges.
+func (m *flushingMemory) Flush(sb *stateBuilder) {
+	m.flush(sb)
+}
+
+func (m *flushingMemory) expand(sb *stateBuilder, size uint64) {
+	// flush then reallocate memory
+	m.flush(sb)
+	m.freeMem(sb, m.mem)
+	m.mem = m.newMem(sb, size, m.name)
+	m.size = size
+}
+
+func (m *flushingMemory) Free(sb *stateBuilder) {
+	m.flush(sb)
+	if m.mem != VkDeviceMemory(0) {
+		m.freeMem(sb, m.mem)
+		m.mem = VkDeviceMemory(0)
+	}
+	m.size = 0
+	m.users = nil
+}
+
+// AddUser registers a user of the memory ranges allocated from this flushing memory
+func (m *flushingMemory) AddUser(user flushableResourceUser) {
+	m.users[user] = struct{}{}
+}
+
+// DropUSer removes a user from the user list of this flushing memory
+func (m *flushingMemory) DropUser(user flushableResourceUser) {
+	if _, ok := m.users[user]; ok {
+		delete(m.users, user)
+	}
 }
 
 // bufferAllocationSize returns the memory allocation size for the given buffer
@@ -492,6 +463,6 @@ func (t *scratchTask) newBuffer(subRngs []bufferSubRangeFillInfo, usages ...VkBu
 // overallocate by a factor of 2. This should be enough.
 // Align to 0x100 to make validation layers happy. Assuming the buffer memory
 // requirement has an alignment value compatible with 0x100.
-func bufferAllocationSize(bufferSize uint64) uint64 {
-	return nextMultipleOf(bufferSize*2, 256)
+func bufferAllocationSize(bufferSize uint64, alignment uint64) uint64 {
+	return nextMultipleOf(bufferSize*2, alignment)
 }

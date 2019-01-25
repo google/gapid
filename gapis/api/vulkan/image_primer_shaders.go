@@ -821,7 +821,7 @@ func ipComputeShaderSpirv(
 	layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 	layout (%s, set = 0, binding = %d) uniform %s%s output_img;
 	layout (%s, set = 0, binding = %d) uniform %s%s input_img;
-	layout (push_constant) uniform metadata2 {
+	layout (push_constant) uniform metadata {
 		uint offset_x;
 		uint offset_y;
 		uint offset_z;
@@ -836,8 +836,8 @@ func ipComputeShaderSpirv(
 		%s
 		imageStore(output_img, pos, color);
 	}
-	`, outputFmtStr, ipImageStoreOutputImageBinding, outputG, imgTypeStr,
-		inputFmtStr, ipImageStoreInputImageBinding, inputG, imgTypeStr,
+	`, outputFmtStr, ipStoreOutputImageBinding, outputG, imgTypeStr,
+		inputFmtStr, ipStoreInputImageBinding, inputG, imgTypeStr,
 		pos, color)
 
 	opt := shadertools.CompileOptions{
