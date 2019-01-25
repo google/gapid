@@ -65,6 +65,7 @@ go_library(
         "find_issues.go",
         "graph_visualization.go",
         "image_primer.go",
+        "image_primer_device_copy.go",
         "image_primer_host_copy.go",
         "image_primer_render.go",
         "image_primer_resources.go",
