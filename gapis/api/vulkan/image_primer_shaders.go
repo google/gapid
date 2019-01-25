@@ -20,13 +20,21 @@ import (
 	"github.com/google/gapid/gapis/shadertools"
 )
 
-// ipVertexShaderSpirv returns a pass-through vertex shader in SPIR-V words.
-func ipVertexShaderSpirv() ([]uint32, error) {
+// ipRenderVertexShaderSpirv returns a vertex shader for priming by rendering
+// with hard-coded vertex data, in SPIR-V words.
+func ipRenderVertexShaderSpirv() ([]uint32, error) {
 	return shadertools.CompileGlsl(
 		`#version 450
-layout(location = 0) in vec3 position;
+vec2 positions[6] = vec2[](
+	vec2(1.0, 1.0),
+	vec2(-1.0, -1.0),
+	vec2(-1.0, 1.0),
+	vec2(1.0, 1.0),
+	vec2(1.0, -1.0),
+	vec2(-1.0, -1.0)
+);
 void main() {
-	gl_Position = vec4(position, 1.0);
+	gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 }`,
 		shadertools.CompileOptions{
 			ShaderType: shadertools.TypeVertex,
@@ -34,32 +42,29 @@ void main() {
 		})
 }
 
-// ipFragmentShaderSpirv returns the fragment shader to be used for priming
-// image data through rendering in SPIR-V words.
-func ipFragmentShaderSpirv(vkFmt VkFormat, aspect VkImageAspectFlagBits) ([]uint32, error) {
-	switch aspect {
-	// Render color data
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
-		switch vkFmt {
-		case VkFormat_VK_FORMAT_R8_UINT,
-			VkFormat_VK_FORMAT_R8G8_UINT,
-			VkFormat_VK_FORMAT_R8G8B8_UINT,
-			VkFormat_VK_FORMAT_R8G8B8A8_UINT,
-			VkFormat_VK_FORMAT_B8G8R8_UINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_UINT,
-			VkFormat_VK_FORMAT_R16_UINT,
-			VkFormat_VK_FORMAT_R16G16_UINT,
-			VkFormat_VK_FORMAT_R16G16B16_UINT,
-			VkFormat_VK_FORMAT_R16G16B16A16_UINT,
-			VkFormat_VK_FORMAT_R32_UINT,
-			VkFormat_VK_FORMAT_R32G32_UINT,
-			VkFormat_VK_FORMAT_R32G32B32_UINT,
-			VkFormat_VK_FORMAT_R32G32B32A32_UINT,
-			VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
-			VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+// ipRenderColorShaderSpirv returns a fragment shader for priming by rendering
+// for color aspect data, in SPIR-V words.
+func ipRenderColorShaderSpirv(vkFmt VkFormat) ([]uint32, error) {
+	switch vkFmt {
+	case VkFormat_VK_FORMAT_R8_UINT,
+		VkFormat_VK_FORMAT_R8G8_UINT,
+		VkFormat_VK_FORMAT_R8G8B8_UINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_R16_UINT,
+		VkFormat_VK_FORMAT_R16G16_UINT,
+		VkFormat_VK_FORMAT_R16G16B16_UINT,
+		VkFormat_VK_FORMAT_R16G16B16A16_UINT,
+		VkFormat_VK_FORMAT_R32_UINT,
+		VkFormat_VK_FORMAT_R32G32_UINT,
+		VkFormat_VK_FORMAT_R32G32B32_UINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 layout(location = 0) out uvec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
@@ -69,30 +74,30 @@ void main() {
 	out_color.b = subpassLoad(in_color).b;
 	out_color.a = subpassLoad(in_color).a;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R8_SINT,
-			VkFormat_VK_FORMAT_R8G8_SINT,
-			VkFormat_VK_FORMAT_R8G8B8_SINT,
-			VkFormat_VK_FORMAT_R8G8B8A8_SINT,
-			VkFormat_VK_FORMAT_B8G8R8_SINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_SINT,
-			VkFormat_VK_FORMAT_R16_SINT,
-			VkFormat_VK_FORMAT_R16G16_SINT,
-			VkFormat_VK_FORMAT_R16G16B16_SINT,
-			VkFormat_VK_FORMAT_R16G16B16A16_SINT,
-			VkFormat_VK_FORMAT_R32_SINT,
-			VkFormat_VK_FORMAT_R32G32_SINT,
-			VkFormat_VK_FORMAT_R32G32B32_SINT,
-			VkFormat_VK_FORMAT_R32G32B32A32_SINT,
-			VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
-			VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R8_SINT,
+		VkFormat_VK_FORMAT_R8G8_SINT,
+		VkFormat_VK_FORMAT_R8G8B8_SINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_R16_SINT,
+		VkFormat_VK_FORMAT_R16G16_SINT,
+		VkFormat_VK_FORMAT_R16G16B16_SINT,
+		VkFormat_VK_FORMAT_R16G16B16A16_SINT,
+		VkFormat_VK_FORMAT_R32_SINT,
+		VkFormat_VK_FORMAT_R32G32_SINT,
+		VkFormat_VK_FORMAT_R32G32B32_SINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_SINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_SINT_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 layout(location = 0) out ivec4 out_color;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_color;
@@ -102,27 +107,27 @@ void main() {
 	out_color.b = int(subpassLoad(in_color).b);
 	out_color.a = int(subpassLoad(in_color).a);
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R8_UNORM,
-			VkFormat_VK_FORMAT_R8G8_UNORM,
-			VkFormat_VK_FORMAT_R8G8B8_UNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
-			VkFormat_VK_FORMAT_B8G8R8_UNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
-			VkFormat_VK_FORMAT_R8_SRGB,
-			VkFormat_VK_FORMAT_R8G8_SRGB,
-			VkFormat_VK_FORMAT_R8G8B8_SRGB,
-			VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
-			VkFormat_VK_FORMAT_B8G8R8_SRGB,
-			VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
-			VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
-			VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_R8_SRGB,
+		VkFormat_VK_FORMAT_R8G8_SRGB,
+		VkFormat_VK_FORMAT_R8G8B8_SRGB,
+		VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
+		VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -133,17 +138,17 @@ void main() {
 	out_color.b = subpassLoad(in_color).b/255.0;
 	out_color.a = subpassLoad(in_color).a/255.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R16_UNORM,
-			VkFormat_VK_FORMAT_R16G16_UNORM,
-			VkFormat_VK_FORMAT_R16G16B16_UNORM,
-			VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R16_UNORM,
+		VkFormat_VK_FORMAT_R16G16_UNORM,
+		VkFormat_VK_FORMAT_R16G16B16_UNORM,
+		VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -154,16 +159,16 @@ void main() {
 	out_color.b = subpassLoad(in_color).b/65535.0;
 	out_color.a = subpassLoad(in_color).a/65535.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R4G4_UNORM_PACK8,
-			VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16,
-			VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R4G4_UNORM_PACK8,
+		VkFormat_VK_FORMAT_R4G4B4A4_UNORM_PACK16,
+		VkFormat_VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -174,15 +179,15 @@ void main() {
 	out_color.b = subpassLoad(in_color).b/15.0;
 	out_color.a = subpassLoad(in_color).a/15.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16,
-			VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R5G6B5_UNORM_PACK16,
+		VkFormat_VK_FORMAT_B5G6R5_UNORM_PACK16:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -192,16 +197,16 @@ void main() {
 	out_color.g = subpassLoad(in_color).g/63.0;
 	out_color.b = subpassLoad(in_color).b/31.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16,
-			VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16,
-			VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R5G5B5A1_UNORM_PACK16,
+		VkFormat_VK_FORMAT_B5G5R5A1_UNORM_PACK16,
+		VkFormat_VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -212,15 +217,15 @@ void main() {
 	out_color.b = subpassLoad(in_color).b/31.0;
 	out_color.a = subpassLoad(in_color).a/1.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -231,20 +236,20 @@ void main() {
 	out_color.b = subpassLoad(in_color).b/1023.0;
 	out_color.a = subpassLoad(in_color).a/3.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R8_SNORM,
-			VkFormat_VK_FORMAT_R8G8_SNORM,
-			VkFormat_VK_FORMAT_R8G8B8_SNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
-			VkFormat_VK_FORMAT_B8G8R8_SNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
-			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R8_SNORM,
+		VkFormat_VK_FORMAT_R8G8_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -258,17 +263,17 @@ void main() {
 	out_color.b = snorm(subpassLoad(in_color).b, 255.0);
 	out_color.a = snorm(subpassLoad(in_color).a, 255.0);
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R16_SNORM,
-			VkFormat_VK_FORMAT_R16G16_SNORM,
-			VkFormat_VK_FORMAT_R16G16B16_SNORM,
-			VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R16_SNORM,
+		VkFormat_VK_FORMAT_R16G16_SNORM,
+		VkFormat_VK_FORMAT_R16G16B16_SNORM,
+		VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -282,15 +287,15 @@ void main() {
 	out_color.b = snorm(subpassLoad(in_color).b, 65535.0);
 	out_color.a = snorm(subpassLoad(in_color).a, 65535.0);
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_A2R10G10B10_SNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -304,23 +309,23 @@ void main() {
 	out_color.b = snorm(subpassLoad(in_color).b, 1023.0);
 	out_color.a = snorm(subpassLoad(in_color).a, 1.0);
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_R16_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16B16_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
-			VkFormat_VK_FORMAT_R32_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32B32_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
-			VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32,
-			VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_R16_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16B16_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+		VkFormat_VK_FORMAT_R32_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32B32_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
+		VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+		VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 layout(location = 0) out vec4 out_color;
@@ -331,22 +336,23 @@ void main() {
 	out_color.b = uintBitsToFloat(subpassLoad(in_color).b);
 	out_color.a = uintBitsToFloat(subpassLoad(in_color).a);
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		default:
-			return []uint32{}, fmt.Errorf("%v is not supported", vkFmt)
-		}
+	}
+	return []uint32{}, fmt.Errorf("%v is not supported", vkFmt)
+}
 
-	// Render depth data
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
-		switch vkFmt {
-		case VkFormat_VK_FORMAT_D16_UNORM,
-			VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
-			return shadertools.CompileGlsl(
-				`#version 450
+// ipRenderDepthShaderSpirv returns a fragment shader for priming by rendering
+// for depth aspect data, in SPIR-V words.
+func ipRenderDepthShaderSpirv(vkFmt VkFormat) ([]uint32, error) {
+	switch vkFmt {
+	case VkFormat_VK_FORMAT_D16_UNORM,
+		VkFormat_VK_FORMAT_D16_UNORM_S8_UINT:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 out float gl_FragDepth;
@@ -354,19 +360,19 @@ layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput i
 void main() {
 	gl_FragDepth = subpassLoad(in_depth).r / 65535.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
-			VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
-			return shadertools.CompileGlsl(
-				// When doing a buffer-image copy for these
-				// formats, the 8 MSBs of the 32 bits are
-				// undefined, so in case those values came from
-				// such a source, mask them out.
-				`#version 450
+	case VkFormat_VK_FORMAT_D24_UNORM_S8_UINT,
+		VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32:
+		return shadertools.CompileGlsl(
+			// When doing a buffer-image copy for these
+			// formats, the 8 MSBs of the 32 bits are
+			// undefined, so in case those values came from
+			// such a source, mask them out.
+			`#version 450
 precision highp int;
 precision highp float;
 out float gl_FragDepth;
@@ -374,15 +380,15 @@ layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput i
 void main() {
 	gl_FragDepth = (subpassLoad(in_depth).r & 0x00FFFFFF) / 16777215.0;
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		case VkFormat_VK_FORMAT_D32_SFLOAT,
-			VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
-			return shadertools.CompileGlsl(
-				`#version 450
+	case VkFormat_VK_FORMAT_D32_SFLOAT,
+		VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT:
+		return shadertools.CompileGlsl(
+			`#version 450
 precision highp int;
 precision highp float;
 out float gl_FragDepth;
@@ -390,37 +396,34 @@ layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput i
 void main() {
 	gl_FragDepth = uintBitsToFloat(subpassLoad(in_depth).r);
 }`,
-				shadertools.CompileOptions{
-					ShaderType: shadertools.TypeFragment,
-					ClientType: shadertools.Vulkan,
-				})
+			shadertools.CompileOptions{
+				ShaderType: shadertools.TypeFragment,
+				ClientType: shadertools.Vulkan,
+			})
 
-		default:
-			return []uint32{}, fmt.Errorf("%v is not supported", vkFmt)
-		}
+	}
+	return []uint32{}, fmt.Errorf("%v is not supported", vkFmt)
+}
 
-	// Render stencil data
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		return shadertools.CompileGlsl(
-			`#version 450
+// ipRenderStencilShaderSpirv returns a fragment shader for priming by rendering
+// for stencil aspect data, in SPIR-V words.
+func ipRenderStencilShaderSpirv() ([]uint32, error) {
+
+	return shadertools.CompileGlsl(
+		`#version 450
 precision highp int;
 layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
-layout(binding = 1, set = 0) uniform mask_data { uint current_bit;};
+layout (push_constant) uniform mask_data { uint current_bit; };
 void main() {
   uint stencil_value = subpassLoad(in_stencil).r;
   if ((stencil_value & (0x1 << current_bit)) == 0) {
     discard;
   }
 }`,
-			shadertools.CompileOptions{
-				ShaderType: shadertools.TypeFragment,
-				ClientType: shadertools.Vulkan,
-			})
-
-	// other aspect data
-	default:
-		return []uint32{}, fmt.Errorf("%v is not supported", aspect)
-	}
+		shadertools.CompileOptions{
+			ShaderType: shadertools.TypeFragment,
+			ClientType: shadertools.Vulkan,
+		})
 }
 
 // ipComputeShaderSpirv returns the compute shader to be used for priming image
@@ -818,7 +821,7 @@ func ipComputeShaderSpirv(
 	layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 	layout (%s, set = 0, binding = %d) uniform %s%s output_img;
 	layout (%s, set = 0, binding = %d) uniform %s%s input_img;
-	layout (set = 0, binding = 2) uniform metadata {
+	layout (push_constant) uniform metadata2 {
 		uint offset_x;
 		uint offset_y;
 		uint offset_z;
