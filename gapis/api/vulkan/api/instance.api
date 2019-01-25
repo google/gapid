@@ -72,6 +72,9 @@ cmd void vkDestroyInstance(
     VkInstance                   instance,
     AllocationCallbacks          pAllocator) {
   delete(Instances, instance)
+  for _, device, _ in PhysicalDevices {
+    delete(PhysicalDevices, device)
+  }
 }
 
 @indirect("VkInstance")
