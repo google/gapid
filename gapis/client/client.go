@@ -458,7 +458,7 @@ func (c *client) Trace(ctx context.Context) (service.TraceHandler, error) {
 	return &traceHandler{res}, nil
 }
 
-func (t *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusResponse, error) {
+func (t *traceHandler) Initialize(ctx context.Context, opts *service.TraceOptions) (*service.StatusResponse, error) {
 	err := t.conn.Send(
 		&service.TraceRequest{
 			Action: &service.TraceRequest_Initialize{
@@ -475,7 +475,7 @@ func (t *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusRe
 	return res.GetStatus(), nil
 }
 
-func (t *traceHandler) Event(evt service.TraceEvent) (*service.StatusResponse, error) {
+func (t *traceHandler) Event(ctx context.Context, evt service.TraceEvent) (*service.StatusResponse, error) {
 	err := t.conn.Send(
 		&service.TraceRequest{
 			Action: &service.TraceRequest_QueryEvent{
@@ -492,7 +492,7 @@ func (t *traceHandler) Event(evt service.TraceEvent) (*service.StatusResponse, e
 	return res.GetStatus(), nil
 }
 
-func (t *traceHandler) Dispose() {
+func (t *traceHandler) Dispose(ctx context.Context) {
 	t.conn.CloseSend()
 }
 

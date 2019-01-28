@@ -213,13 +213,13 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if err != nil {
 		return err
 	}
-	defer handler.Dispose()
+	defer handler.Dispose(ctx)
 
 	defer app.AddInterruptHandler(func() {
-		handler.Dispose()
+		handler.Dispose(ctx)
 	})()
 
-	status, err := handler.Initialize(options)
+	status, err := handler.Initialize(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	handlerInstalled := false
 
 	return task.Retry(ctx, 0, time.Second*3, func(ctx context.Context) (retry bool, err error) {
-		status, err = handler.Event(service.TraceEvent_Status)
+		status, err = handler.Event(ctx, service.TraceEvent_Status)
 		if err == io.EOF {
 			return true, nil
 		}
@@ -247,11 +247,11 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 					if options.DeferStart {
 						println("Press enter to start capturing...")
 						_, _ = reader.ReadString('\n')
-						_, _ = handler.Event(service.TraceEvent_Begin)
+						_, _ = handler.Event(ctx, service.TraceEvent_Begin)
 					}
 					println("Press enter to stop capturing...")
 					_, _ = reader.ReadString('\n')
-					handler.Event(service.TraceEvent_Stop)
+					handler.Event(ctx, service.TraceEvent_Stop)
 				})
 				handlerInstalled = true
 			}

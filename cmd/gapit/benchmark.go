@@ -888,20 +888,20 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 	if err != nil {
 		return err
 	}
-	defer handler.Dispose()
+	defer handler.Dispose(ctx)
 
 	defer app.AddInterruptHandler(func() {
-		handler.Dispose()
+		handler.Dispose(ctx)
 	})()
 
-	status, err := handler.Initialize(options)
+	status, err := handler.Initialize(ctx, options)
 	if err != nil {
 		return err
 	}
 	verb.traceInitializedTime = time.Now()
 
 	return task.Retry(ctx, 0, time.Second*3, func(ctx context.Context) (retry bool, err error) {
-		status, err = handler.Event(service.TraceEvent_Status)
+		status, err = handler.Event(ctx, service.TraceEvent_Status)
 		if err == io.EOF {
 			return true, nil
 		}

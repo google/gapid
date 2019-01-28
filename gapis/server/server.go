@@ -687,28 +687,29 @@ func (s *server) FindTraceTargets(ctx context.Context, req *service.FindTraceTar
 // traceHandler implements the TraceHandler interface
 // It wraps all of the state for a trace operation
 type traceHandler struct {
-	ctx            context.Context
-	initialized    bool               // Has the trace been initialized yet
-	started        bool               // Has the trace been started yet
-	done           bool               // Has the trace been finished
-	err            error              // Was there an error to report at next request
-	bytesWritten   int64              // How many bytes have been written so far
-	startSignal    task.Signal        // If we are in MEC this signal will start the trace
-	startFunc      task.Task          // This is the function to go with the above signal.
-	stopFunc       context.CancelFunc // stopFunc can be used to stop/clean up the trace
-	doneSignal     task.Signal        // doneSignal can be waited on to make sure the trace is actually done
-	doneSignalFunc task.Task          // doneSignalFunc is called when tracing finished normally
+	initialized    bool        // Has the trace been initialized yet
+	started        bool        // Has the trace been started yet
+	done           bool        // Has the trace been finished
+	err            error       // Was there an error to report at next request
+	bytesWritten   int64       // How many bytes have been written so far
+	startSignal    task.Signal // If we are in MEC this signal will start the trace
+	startFunc      task.Task   // This is the function to go with the above signal.
+	stopFunc       task.Task   // stopFunc can be used to stop/clean up the trace
+	doneSignal     task.Signal // doneSignal can be waited on to make sure the trace is actually done
+	doneSignalFunc task.Task   // doneSignalFunc is called when tracing finished normally
 }
 
-func (r *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusResponse, error) {
+func (r *traceHandler) Initialize(ctx context.Context, opts *service.TraceOptions) (*service.StatusResponse, error) {
 	if r.initialized {
-		return nil, log.Errf(r.ctx, nil, "Error initialize a running trace")
+		return nil, log.Errf(ctx, nil, "Error initialize a running trace")
 	}
 	r.initialized = true
+	ctx, stop := context.WithCancel(ctx)
+	r.stopFunc = func(ctx context.Context) error { stop(); return nil }
 	go func() {
-		r.err = trace.Trace(r.ctx, opts.Device, r.startSignal, opts, &r.bytesWritten)
+		r.err = trace.Trace(ctx, opts.Device, r.startSignal, opts, &r.bytesWritten)
 		r.done = true
-		r.doneSignalFunc(r.ctx)
+		r.doneSignalFunc(ctx)
 	}()
 
 	stat := service.TraceStatus_Initializing
@@ -724,27 +725,27 @@ func (r *traceHandler) Initialize(opts *service.TraceOptions) (*service.StatusRe
 	return resp, nil
 }
 
-func (r *traceHandler) Event(req service.TraceEvent) (*service.StatusResponse, error) {
+func (r *traceHandler) Event(ctx context.Context, req service.TraceEvent) (*service.StatusResponse, error) {
 	if !r.initialized {
-		return nil, log.Errf(r.ctx, nil, "Cannot get/change status of an uninitialized trace")
+		return nil, log.Errf(ctx, nil, "Cannot get/change status of an uninitialized trace")
 	}
 	if r.err != nil {
-		return nil, log.Errf(r.ctx, r.err, "Tracing Failed")
+		return nil, log.Errf(ctx, r.err, "Tracing Failed")
 	}
 
 	switch req {
 	case service.TraceEvent_Begin:
 		if r.started {
-			return nil, log.Errf(r.ctx, nil, "Invalid to start an already running trace")
+			return nil, log.Errf(ctx, nil, "Invalid to start an already running trace")
 		}
-		r.startFunc(r.ctx)
+		r.startFunc(ctx)
 		r.started = true
 	case service.TraceEvent_Stop:
 		if !r.started {
-			return nil, log.Errf(r.ctx, nil, "Cannot end a trace that was not started")
+			return nil, log.Errf(ctx, nil, "Cannot end a trace that was not started")
 		}
-		r.stopFunc()
-		r.doneSignal.Wait(r.ctx)
+		r.stopFunc(ctx)
+		r.doneSignal.Wait(ctx)
 	case service.TraceEvent_Status:
 		// intentionally empty
 	}
@@ -777,28 +778,21 @@ func (r *traceHandler) Event(req service.TraceEvent) (*service.StatusResponse, e
 	return resp, nil
 }
 
-func (r *traceHandler) Dispose() {
-	r.stopFunc()
+func (r *traceHandler) Dispose(ctx context.Context) {
+	r.stopFunc(ctx)
 	return
 
 }
 
 func (s *server) Trace(ctx context.Context) (service.TraceHandler, error) {
 	startSignal, startFunc := task.NewSignal()
-	ctx, stop := context.WithCancel(ctx)
 	doneSignal, doneSigFunc := task.NewSignal()
 	return &traceHandler{
-		ctx,
-		false,
-		false,
-		false,
-		nil,
-		0,
-		startSignal,
-		startFunc,
-		stop,
-		doneSignal,
-		doneSigFunc,
+		startSignal:    startSignal,
+		startFunc:      startFunc,
+		doneSignal:     doneSignal,
+		doneSignalFunc: doneSigFunc,
+		stopFunc:       doneSigFunc,
 	}, nil
 }
 
