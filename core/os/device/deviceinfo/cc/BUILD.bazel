@@ -17,7 +17,10 @@ load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "mm_libra
 mm_library(
     name = "darwin_query",
     srcs = glob(["osx/*.mm"]),
-    copts = cc_copts(),
+    copts = cc_copts() + [
+        # Avoid OpenGL deprecation error.
+        "-DGL_SILENCE_DEPRECATION",
+    ],
     copy_hdrs = ["query.h"],
     deps = ["//core/os/device:device_cc_proto"],
 )
