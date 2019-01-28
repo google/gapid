@@ -28,7 +28,7 @@ import (
 	"github.com/google/gapid/gapis/trace/tracer"
 )
 
-func Trace(ctx context.Context, device *path.Device, start task.Signal, options *service.TraceOptions, written *int64) error {
+func Trace(ctx context.Context, device *path.Device, start task.Signal, stop task.Signal, options *service.TraceOptions, written *int64) error {
 	gapiiOpts := tracer.GapiiOptions(options)
 	var process tracer.Process
 	cleanup := func() {}
@@ -71,7 +71,7 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, options 
 		ctx, _ = task.WithTimeout(ctx, time.Duration(options.Duration)*time.Second)
 	}
 
-	_, err = process.Capture(ctx, start, file, written)
+	_, err = process.Capture(ctx, start, stop, file, written)
 	return err
 }
 

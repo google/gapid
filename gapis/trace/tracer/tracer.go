@@ -42,8 +42,10 @@ type Process interface {
 	// Capture connects to this trace and waits for a capture to be delivered.
 	// It copies the capture into the supplied writer.
 	// If the process was started with the DeferStart flag, then tracing will wait
-	// until s is fired.
-	Capture(ctx context.Context, s task.Signal, w io.Writer, written *int64) (size int64, err error)
+	// until start is fired.
+	// Capturing will stop when the stop signal is fired (clean stop) or the
+	// context is cancelled (abort).
+	Capture(ctx context.Context, start task.Signal, stop task.Signal, w io.Writer, written *int64) (size int64, err error)
 }
 
 // Tracer is an option interface that a bind.Device can implement.

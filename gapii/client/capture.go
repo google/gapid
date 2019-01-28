@@ -148,8 +148,10 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 // delivered using the specified capture options o.
 // It copies the capture into the supplied writer.
 // If the process was started with the DeferStart flag, then tracing will wait
-// until s is fired.
-func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer, written *int64) (size int64, err error) {
+// until start is fired.
+// Capturing will stop when the stop signal is fired (clean stop) or the
+// context is cancelled (abort).
+func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, w io.Writer, written *int64) (size int64, err error) {
 	stopTiming := analytics.SendTiming("trace", "duration")
 	defer func() {
 		stopTiming(analytics.Size(size))
@@ -180,12 +182,12 @@ func (p *Process) Capture(ctx context.Context, s task.Signal, w io.Writer, writt
 	var count siSize
 	started := false
 	for {
-		if task.Stopped(ctx) {
+		if task.Stopped(ctx) || stop.Fired() {
 			log.I(ctx, "Stop: %v", count)
 			break
 		}
 		if (p.Options.Flags & DeferStart) != 0 {
-			if !started && s.Fired() {
+			if !started && start.Fired() {
 				started = true
 				w := endian.Writer(conn, device.LittleEndian)
 				w.Uint32(startMidExecutionCapture)
