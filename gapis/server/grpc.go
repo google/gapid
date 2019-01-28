@@ -587,7 +587,7 @@ func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {
 	if err != nil {
 		return err
 	}
-	defer t.Dispose()
+	defer t.Dispose(ctx)
 
 	for {
 		req, err := conn.Recv()
@@ -600,7 +600,7 @@ func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {
 
 		switch r := req.Action.(type) {
 		case *service.TraceRequest_Initialize:
-			resp, err := t.Initialize(r.Initialize)
+			resp, err := t.Initialize(ctx, r.Initialize)
 			if err := service.NewError(err); err != nil {
 				r := service.TraceResponse{Res: &service.TraceResponse_Error{
 					Error: err,
@@ -610,7 +610,7 @@ func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {
 			}
 			conn.Send(&service.TraceResponse{Res: &service.TraceResponse_Status{Status: resp}})
 		case *service.TraceRequest_QueryEvent:
-			resp, err := t.Event(r.QueryEvent)
+			resp, err := t.Event(ctx, r.QueryEvent)
 			if err := service.NewError(err); err != nil {
 				r := service.TraceResponse{Res: &service.TraceResponse_Error{
 					Error: err,

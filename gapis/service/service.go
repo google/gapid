@@ -176,9 +176,9 @@ type Service interface {
 }
 
 type TraceHandler interface {
-	Initialize(*TraceOptions) (*StatusResponse, error)
-	Event(TraceEvent) (*StatusResponse, error)
-	Dispose()
+	Initialize(context.Context, *TraceOptions) (*StatusResponse, error)
+	Event(context.Context, TraceEvent) (*StatusResponse, error)
+	Dispose(context.Context)
 }
 
 // FindHandler is the handler of found items using Service.Find.
