@@ -704,10 +704,10 @@ func (r *traceHandler) Initialize(ctx context.Context, opts *service.TraceOption
 		return nil, log.Errf(ctx, nil, "Error initialize a running trace")
 	}
 	r.initialized = true
-	ctx, stop := context.WithCancel(ctx)
-	r.stopFunc = func(ctx context.Context) error { stop(); return nil }
+	stopSignal, stopFunc := task.NewSignal()
+	r.stopFunc = stopFunc
 	go func() {
-		r.err = trace.Trace(ctx, opts.Device, r.startSignal, opts, &r.bytesWritten)
+		r.err = trace.Trace(ctx, opts.Device, r.startSignal, stopSignal, opts, &r.bytesWritten)
 		r.done = true
 		r.doneSignalFunc(ctx)
 	}()
@@ -779,7 +779,9 @@ func (r *traceHandler) Event(ctx context.Context, req service.TraceEvent) (*serv
 }
 
 func (r *traceHandler) Dispose(ctx context.Context) {
-	r.stopFunc(ctx)
+	if !r.done {
+		r.stopFunc(ctx)
+	}
 	return
 
 }
