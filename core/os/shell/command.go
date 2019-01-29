@@ -104,8 +104,8 @@ func (cmd Cmd) With(args ...string) Cmd {
 	return cmd
 }
 
-// Run executes the command, and blocks until it completes or the context is cancelled.
-func (cmd Cmd) Run(ctx context.Context) error {
+// Start executes the command and returns immediately.
+func (cmd Cmd) Start(ctx context.Context) (Process, error) {
 	// Deliberately a value receiver so the cmd object can be updated prior to execution
 	if cmd.Target == nil {
 		cmd.Target = LocalTarget
@@ -139,7 +139,12 @@ func (cmd Cmd) Run(ctx context.Context) error {
 	if cmd.Verbosity {
 		log.I(ctx, "Exec: %v", cmd)
 	}
-	process, err := cmd.Target.Start(cmd)
+	return cmd.Target.Start(cmd)
+}
+
+// Run executes the command, and blocks until it completes or the context is cancelled.
+func (cmd Cmd) Run(ctx context.Context) error {
+	process, err := cmd.Start(ctx)
 	if err != nil {
 		return log.From(ctx).Err(err, "Failed to start process")
 	}
