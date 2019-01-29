@@ -15,7 +15,7 @@
 # True source of GAPID versions.
 # Increment these numbers immediately after releasing a new version.
 GAPID_VERSION_MAJOR="1"
-GAPID_VERSION_MINOR="2"
+GAPID_VERSION_MINOR="3"
 GAPID_VERSION_POINT="1"
 
 # See bazel.rc. Can be overriden on the command line with:
