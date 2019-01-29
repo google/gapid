@@ -26,6 +26,7 @@ cc_toolchain_suite(
 cc_toolchain(
     name = "cc-compiler-mingw",
     all_files = ":empty",
+    compiler = "mingw",
     compiler_files = ":empty",
     cpu = "x64_windows",
     dwp_files = ":empty",
