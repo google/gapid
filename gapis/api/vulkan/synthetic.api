@@ -40,7 +40,8 @@ cmd VkResult ReplayCreateVkDevice(
   // vkCreateDevice() in vulkan.api. Change both together.
 
   device := createDeviceObject(pCreateInfo)
-  device.PhysicalDevice = physicalDevice
+  // TODO(awoloszyn): mGPU
+  device.PhysicalDevices[0] = physicalDevice
 
   handle := ?
   if pDevice == null {vkErrorNullPointer("VkDevice")}

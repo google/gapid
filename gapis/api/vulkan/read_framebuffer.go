@@ -279,7 +279,8 @@ func postImageData(ctx context.Context,
 	vkQueue := queue.VulkanHandle()
 	vkDevice := queue.Device()
 	device := GetState(s).Devices().Get(vkDevice)
-	vkPhysicalDevice := device.PhysicalDevice()
+	// TODO(awoloszyn): mGPU
+	vkPhysicalDevice := device.PhysicalDevices().Get(0)
 	physicalDevice := GetState(s).PhysicalDevices().Get(vkPhysicalDevice)
 
 	if properties, ok := physicalDevice.QueueFamilyProperties().Lookup(queue.Family()); ok {

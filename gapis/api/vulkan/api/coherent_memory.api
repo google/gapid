@@ -40,8 +40,9 @@
 // Memory //
 ////////////
 
-sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize) {
-  if IsMemoryCoherent(memory) && (memory.MappedLocation != null) {
+sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffset, VkDeviceSize readSize,
+      u32 deviceIndex) {
+  if IsMemoryCoherent(memory, deviceIndex) && (memory.MappedLocation != null) {
     offset_in_mapped := deviceMemoryOffsetToMappedSpace(memory, readOffset)
     if offset_in_mapped != as!VkDeviceSize(0xFFFFFFFFFFFFFFFF) {
       read_size_in_mapped := switch (
@@ -54,7 +55,7 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
       }
       if (offset_in_mapped + read_size_in_mapped) > offset_in_mapped {
         readMappedCoherentMemory(memory.VulkanHandle, as!u64(offset_in_mapped),
-          as!size(read_size_in_mapped))
+          as!size(read_size_in_mapped), deviceIndex)
       }
     }
   }
@@ -65,32 +66,32 @@ sub void readCoherentMemory(ref!DeviceMemoryObject memory, VkDeviceSize readOffs
 // Buffer //
 ////////////
 
-sub void readCoherentMemoryInBuffer(ref!BufferObject buffer) {
+sub void readCoherentMemoryInBuffer(ref!BufferObject buffer, u32 deviceIndex) {
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, as!VkDeviceSize(0), as!VkDeviceSize(0xFFFFFFFFFFFFFFFF))
   for _, _, mp in memPieces {
-    readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size)
+    readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size, deviceIndex)
   }
 }
 
 @spy_disabled
-sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize) {
+sub void readMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize readOffset, VkDeviceSize readSize, u32 deviceIndex) {
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, readOffset, readSize)
   for _, _, mp in memPieces {
-    readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size)
-    read(mp.DeviceMemory.Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
+    readCoherentMemory(mp.DeviceMemory, mp.MemoryOffset, mp.Size, deviceIndex)
+    read(mp.DeviceMemory.DeviceGroupMemories[deviceIndex].Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
   }
 }
 
 @spy_disabled
-sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDeviceSize size) {
+sub void writeMemoryInBuffer(ref!BufferObject buffer, VkDeviceSize offset, VkDeviceSize size, u32 deviceIndex) {
   memPieces := getBufferBoundMemoryPiecesInRange(buffer, offset, size)
   for _, _, mp in memPieces {
-    write(mp.DeviceMemory.Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
+    write(mp.DeviceMemory.DeviceGroupMemories[deviceIndex].Data[mp.MemoryOffset:mp.MemoryOffset+mp.Size])
   }
 }
 
 // VkDescriptorBufferInfo binding
-sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings) {
+sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, u32 deviceIndex) {
   n := len(bufferBindings)
   rcb := LastBoundQueue.ReadCoherentBuffers
   for i in (0 .. n) {
@@ -99,7 +100,7 @@ sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo
       if !(descBufferInfo.Buffer in rcb) {
         if (descBufferInfo.Buffer in Buffers) {
           rcb[descBufferInfo.Buffer] = true
-          readCoherentMemoryInBuffer(Buffers[descBufferInfo.Buffer])
+          readCoherentMemoryInBuffer(Buffers[descBufferInfo.Buffer], deviceIndex)
         }
       }
     }
@@ -107,7 +108,7 @@ sub void readCoherentMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo
 }
 
 @spy_disabled
-sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
+sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets, u32 deviceIndex) {
   n := len(bufferBindings)
   for i in (0 .. n) {
     descBufferInfo := bufferBindings[as!u32(i)]
@@ -119,14 +120,14 @@ sub void readMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffer
           case false:
             descBufferInfo.Offset
         }
-        readMemoryInBuffer(Buffers[descBufferInfo.Buffer], offset, descBufferInfo.Range)
+        readMemoryInBuffer(Buffers[descBufferInfo.Buffer], offset, descBufferInfo.Range, deviceIndex)
       }
     }
   }
 }
 
 @spy_disabled
-sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets) {
+sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) bufferBindings, map!(u32, VkDeviceSize) bufferBindingOffsets, u32 deviceIndex) {
   n := len(bufferBindings)
   for i in (0 .. n) {
     bufferBinding := bufferBindings[as!u32(i)]
@@ -138,14 +139,14 @@ sub void writeMemoryInBufferBindings(map!(u32, ref!VkDescriptorBufferInfo) buffe
           case false:
             bufferBinding.Offset
         }
-        writeMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range)
+        writeMemoryInBuffer(Buffers[bufferBinding.Buffer], offset, bufferBinding.Range, deviceIndex)
       }
     }
   }
 }
 
 // VkBufferView binding
-sub void readCoherentMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+sub void readCoherentMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews, u32 deviceIndex) {
   rcb := LastBoundQueue.ReadCoherentBuffers
   for _, _, v in bufferViews {
     if v in BufferViews {
@@ -153,7 +154,7 @@ sub void readCoherentMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferVi
       if !(view.Buffer.VulkanHandle in rcb) {
         if (view.Buffer.VulkanHandle in Buffers) {
           LastBoundQueue.ReadCoherentBuffers[view.Buffer.VulkanHandle] = true
-          readCoherentMemoryInBuffer(view.Buffer)
+          readCoherentMemoryInBuffer(view.Buffer, deviceIndex)
         }
       }
     }
@@ -161,24 +162,24 @@ sub void readCoherentMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferVi
 }
 
 @spy_disabled
-sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+sub void readMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews, u32 deviceIndex) {
   for _, _, v in bufferViews {
     if v in BufferViews {
       view := BufferViews[v]
       if (view.Buffer.VulkanHandle in Buffers) {
-        readMemoryInBuffer(view.Buffer, view.Offset, view.Range)
+        readMemoryInBuffer(view.Buffer, view.Offset, view.Range, deviceIndex)
       }
     }
   }
 }
 
 @spy_disabled
-sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
+sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews, u32 deviceIndex) {
   for _, _, v in bufferViews {
     if v in BufferViews {
       view := BufferViews[v]
       if (view.Buffer.VulkanHandle in Buffers) {
-        writeMemoryInBuffer(view.Buffer, view.Offset, view.Range)
+        writeMemoryInBuffer(view.Buffer, view.Offset, view.Range, deviceIndex)
       }
     }
   }
@@ -188,7 +189,7 @@ sub void writeMemoryInBufferViewBindings(map!(u32, VkBufferView) bufferViews) {
 // Image //
 ///////////
 
-sub void readCoherentMemoryInImage(ref!ImageObject image) {
+sub void readCoherentMemoryInImage(ref!ImageObject image, u32 deviceIndex) {
   if image != null {
     for _, _, m in image.PlaneMemoryInfo {
       mem := m.BoundMemory
@@ -200,7 +201,7 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
         // TODO: Complete the layout tracking logic then update this if statement
         // to check the layout of the underlying image.
         if image.Info.Tiling == VK_IMAGE_TILING_LINEAR {
-          readCoherentMemory(mem, m.BoundMemoryOffset, inferImageSize(image))
+          readCoherentMemory(mem, m.BoundMemoryOffset, inferImageSize(image), deviceIndex)
         }
       }
     }
@@ -210,8 +211,9 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 // VkImageSubresourceRange data
 
 @spy_disabled
-sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRange rng, u32 baseDepth, u32 depthCount, bool isWrite) {
+sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRange rng, u32 baseDepth, u32 depthCount, u32 deviceIndex, bool isWrite) {
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
+  readCoherentMemoryInImage(image, deviceIndex)
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
 
@@ -265,19 +267,19 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
 }
 
 @spy_disabled
-sub void accessImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, bool isWrite) {
+sub void accessImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, u32 deviceIndex, bool isWrite) {
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
-  accessImageSubresourceSlice(image, rng, 0, VK_REMAINING_ARRAY_LAYERS, isWrite)
+  accessImageSubresourceSlice(image, rng, 0, VK_REMAINING_ARRAY_LAYERS, deviceIndex, isWrite)
 }
 
 @spy_disabled
-sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  accessImageSubresource(image, rng, false)
+sub void readImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, u32 deviceIndex) {
+  accessImageSubresource(image, rng, deviceIndex, false)
 }
 
 @spy_disabled
-sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng) {
-  accessImageSubresource(image, rng, true)
+sub void writeImageSubresource(ref!ImageObject image, VkImageSubresourceRange rng, u32 deviceIndex) {
+  accessImageSubresource(image, rng, deviceIndex, true)
 }
 
 sub bool is2DView3DImage(ref!ImageViewObject view) {
@@ -286,7 +288,7 @@ sub bool is2DView3DImage(ref!ImageViewObject view) {
 }
 
 @spy_disabled
-sub void accessImageView(ref!ImageViewObject view, bool isWrite) {
+sub void accessImageView(ref!ImageViewObject view, u32 deviceIndex, bool isWrite) {
   if is2DView3DImage(view) {
     rng := VkImageSubresourceRange(
           aspectMask: view.SubresourceRange.aspectMask,
@@ -296,20 +298,20 @@ sub void accessImageView(ref!ImageViewObject view, bool isWrite) {
           layerCount: 1)
     baseDepth := view.SubresourceRange.baseArrayLayer
     depthCount := view.SubresourceRange.layerCount
-    accessImageSubresourceSlice(view.Image, rng, baseDepth, depthCount, isWrite)
+    accessImageSubresourceSlice(view.Image, rng, baseDepth, depthCount, deviceIndex, isWrite)
   } else {
-    accessImageSubresource(view.Image, view.SubresourceRange, isWrite)
+    accessImageSubresource(view.Image, view.SubresourceRange, deviceIndex, isWrite)
   }
 }
 
 @spy_disabled
-sub void readImageView(ref!ImageViewObject view) {
-  accessImageView(view, false)
+sub void readImageView(ref!ImageViewObject view, u32 deviceIndex) {
+  accessImageView(view, deviceIndex, false)
 }
 
 @spy_disabled
-sub void writeImageView(ref!ImageViewObject view) {
-  accessImageView(view, true)
+sub void writeImageView(ref!ImageViewObject view, u32 deviceIndex) {
+  accessImageView(view, deviceIndex, true)
 }
 
 @spy_disabled
@@ -330,7 +332,7 @@ sub void updateImageViewQueue(ref!ImageViewObject view) {
 // VkImageViews used as Framebuffer attachments are handled in
 // renderpass_framebuffer.api
 @server_disabled
-sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
+sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings, u32 deviceIndex) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
     if v.ImageView != as!VkImageView(0) {
@@ -338,42 +340,42 @@ sub void readCoherentMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) 
         view := ImageViews[v.ImageView]
         updateImageViewQueue(view)
         imageObj := view.Image
-        readCoherentMemoryInImage(imageObj)
+        readCoherentMemoryInImage(imageObj, deviceIndex)
       }
     }
   }
 }
 
 @spy_disabled
-sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
+sub void readMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings, u32 deviceIndex) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
     if v.ImageView != as!VkImageView(0) {
       if (v.ImageView in ImageViews) {
         view := ImageViews[v.ImageView]
         updateImageViewQueue(view)
-        readImageView(view)
+        readImageView(view, deviceIndex)
       }
     }
   }
 }
 
 @spy_disabled
-sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings) {
+sub void writeMemoryInImageBindings(map!(u32, ref!VkDescriptorImageInfo) imageBindings, u32 deviceIndex) {
   for _, _, v in imageBindings {
     _ = Samplers[v.Sampler]
     if v.ImageView != as!VkImageView(0) {
       if (v.ImageView in ImageViews) {
         view := ImageViews[v.ImageView]
         updateImageViewQueue(view)
-        writeImageView(view)
+        writeImageView(view, deviceIndex)
       }
     }
   }
 }
 
 @server_disabled
-sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount) {
+sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, u32 deviceIndex) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
     if binding != null {
@@ -383,17 +385,17 @@ sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, 
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            readCoherentMemoryInBufferBindings(binding.BufferBinding)
+            readCoherentMemoryInBufferBindings(binding.BufferBinding, deviceIndex)
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            readCoherentMemoryInBufferViewBindings(binding.BufferViewBindings)
+            readCoherentMemoryInBufferViewBindings(binding.BufferViewBindings, deviceIndex)
         case
           VK_DESCRIPTOR_TYPE_SAMPLER,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
           VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-          readCoherentMemoryInImageBindings(binding.ImageBinding)
+          readCoherentMemoryInImageBindings(binding.ImageBinding, deviceIndex)
         default: {}
       }
     }
@@ -404,7 +406,7 @@ sub void readCoherentMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, 
 // DescriptorSet //
 ///////////////////
 @spy_disabled
-sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets) {
+sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets, u32 deviceIndex) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
     if binding != null {
@@ -414,17 +416,17 @@ sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            readMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets)
+            readMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets, deviceIndex)
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            readMemoryInBufferViewBindings(binding.BufferViewBindings)
+            readMemoryInBufferViewBindings(binding.BufferViewBindings, deviceIndex)
         case
           VK_DESCRIPTOR_TYPE_SAMPLER,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
           VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-          readMemoryInImageBindings(binding.ImageBinding)
+          readMemoryInImageBindings(binding.ImageBinding, deviceIndex)
         default: {}
       }
     }
@@ -432,7 +434,7 @@ sub void readMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u
 }
 
 @spy_disabled
-sub void writeMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets) {
+sub void writeMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, u32 arrayCount, map!(u32, VkDeviceSize) bufferBindingOffsets, u32 deviceIndex) {
   if descriptor_set != null {
     binding := descriptor_set.Bindings[b]
     if binding != null {
@@ -440,11 +442,11 @@ sub void writeMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, 
         case
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            writeMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets)
+            writeMemoryInBufferBindings(binding.BufferBinding, bufferBindingOffsets, deviceIndex)
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            writeMemoryInBufferViewBindings(binding.BufferViewBindings)
+            writeMemoryInBufferViewBindings(binding.BufferViewBindings, deviceIndex)
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            writeMemoryInImageBindings(binding.ImageBinding)
+            writeMemoryInImageBindings(binding.ImageBinding, deviceIndex)
         default: {}
       }
     }
@@ -460,40 +462,41 @@ sub void writeMemoryInDescriptor(ref!DescriptorSetObject descriptor_set, u32 b, 
 sub void readWriteMemoryInBoundDescriptorSets(
     map!(u32, DescriptorUsage) usedDescriptors,
     map!(u32, ref!DescriptorSetObject) descriptorSets,
-    map!(u32, map!(u32, map!(u32, VkDeviceSize))) bufferBindingOffsets) {
+    map!(u32, map!(u32, map!(u32, VkDeviceSize))) bufferBindingOffsets,
+    u32 deviceIndex) {
 
   for _, _, desc in usedDescriptors {
     if !(desc.Set in descriptorSets) { vkErrInvalidDescriptorArrayElement(as!u64(desc.Set), desc.Binding, desc.DescriptorCount) } else {
       descriptorSet := descriptorSets[desc.Set]
       if descriptorSet != null {
-        readCoherentMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount)
+        readCoherentMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, deviceIndex)
         // Do not create a temporary for these bufferBindingOffsets, since the temporary
         // will be created (an unused) on trace side as well.
-        readMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, bufferBindingOffsets[desc.Set][desc.Binding])
-        writeMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, bufferBindingOffsets[desc.Set][desc.Binding])
+        readMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, bufferBindingOffsets[desc.Set][desc.Binding], deviceIndex)
+        writeMemoryInDescriptor(descriptorSet, desc.Binding, desc.DescriptorCount, bufferBindingOffsets[desc.Set][desc.Binding], deviceIndex)
       }
     }
   }
 }
 
 @server_disabled
-sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
+sub void readCoherentMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance, u32 deviceIndex) {
   ldi := lastDrawInfo()
   for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
     bound_vertex_buffer := ldi.BoundVertexBuffers[vertex_binding.binding]
     backing_buf := bound_vertex_buffer.Buffer
-    readCoherentMemoryInBuffer(backing_buf)
+    readCoherentMemoryInBuffer(backing_buf, deviceIndex)
   }
 }
 
 // Bound vertex/index buffers
-sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
-    readCoherentMemoryInCurrentPipelineBoundVertexBuffers(vertexCount, instanceCount, firstVertex, firstInstance)
-    trackMemoryInCurrentPipelineBoundVertexBuffers(vertexCount, instanceCount, firstVertex, firstInstance)
+sub void readMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance, u32 deviceIndex) {
+    readCoherentMemoryInCurrentPipelineBoundVertexBuffers(vertexCount, instanceCount, firstVertex, firstInstance, deviceIndex)
+    trackMemoryInCurrentPipelineBoundVertexBuffers(vertexCount, instanceCount, firstVertex, firstInstance, deviceIndex)
 }
 
 @spy_disabled
-sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance) {
+sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 instanceCount, u32 firstVertex, u32 firstInstance, u32 deviceIndex) {
   ldi := lastDrawInfo()
   for _ , _ , vertex_binding in ldi.GraphicsPipeline.VertexInputState.BindingDescriptions {
     if vertex_binding.binding in ldi.BoundVertexBuffers {
@@ -519,7 +522,7 @@ sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 ins
           case false:
             as!VkDeviceSize(num_vertices * vertex_binding.stride)
         }
-        readMemoryInBuffer(backing_buf, start_offset, num)
+        readMemoryInBuffer(backing_buf, start_offset, num, deviceIndex)
       }
     }
   }
@@ -530,8 +533,8 @@ sub void trackMemoryInCurrentPipelineBoundVertexBuffers(u32 vertexCount, u32 ins
 // Util //
 //////////
 
-sub bool IsMemoryCoherent(ref!DeviceMemoryObject memory) {
-  physical_device := PhysicalDevices[Devices[memory.Device].PhysicalDevice]
+sub bool IsMemoryCoherent(ref!DeviceMemoryObject memory, u32 deviceIndex) {
+  physical_device := PhysicalDevices[Devices[memory.Device].PhysicalDevices[deviceIndex]]
   return 0 != (as!u32(physical_device.MemoryProperties.memoryTypes[memory.MemoryTypeIndex].propertyFlags) &
   as!u32(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
 }

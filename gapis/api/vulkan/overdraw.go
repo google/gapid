@@ -444,7 +444,8 @@ func (s *stencilOverdraw) getBestStencilFormat(ctx context.Context,
 	preferred VkFormat,
 ) (VkFormat, error) {
 	deviceInfo := st.Devices().Get(device)
-	physicalDeviceInfo := st.PhysicalDevices().Get(deviceInfo.PhysicalDevice())
+	//TODO(awoloszyn): mGpu
+	physicalDeviceInfo := st.PhysicalDevices().Get(deviceInfo.PhysicalDevices().Get(0))
 	formatProps := physicalDeviceInfo.FormatProperties()
 	// It should have an entry for every format
 	if !formatProps.Contains(VkFormat_VK_FORMAT_UNDEFINED) {
@@ -617,11 +618,12 @@ func (*stencilOverdraw) createImage(ctx context.Context,
 		return stencilImage{}, fmt.Errorf("Invalid device %v",
 			device)
 	}
+	// TODO(awoloszyn): mGPU
 	physicalDeviceInfo, ok := st.PhysicalDevices().Lookup(
-		deviceInfo.PhysicalDevice())
+		deviceInfo.PhysicalDevices().Get(0))
 	if !ok {
 		return stencilImage{}, fmt.Errorf("Invalid physical device %v",
-			deviceInfo.PhysicalDevice())
+			deviceInfo.PhysicalDevices().Get(0))
 	}
 	physicalDeviceMemoryPropertiesData := alloc(physicalDeviceInfo.MemoryProperties())
 
@@ -1352,9 +1354,11 @@ func (*stencilOverdraw) createDepthCopyBuffer(ctx context.Context,
 	bufferInfoData := alloc(bufferInfo)
 
 	bufferMemoryTypeIndex := uint32(0)
+	// TODO(awoloszyn): mGPU
 	physicalDevice := st.PhysicalDevices().Get(
-		st.Devices().Get(device).PhysicalDevice(),
+		st.Devices().Get(device).PhysicalDevices().Get(0),
 	)
+
 	for i := uint32(0); i < physicalDevice.MemoryProperties().MemoryTypeCount(); i++ {
 		t := physicalDevice.MemoryProperties().MemoryTypes().Get(int(i))
 		if 0 != (t.PropertyFlags() & VkMemoryPropertyFlags(

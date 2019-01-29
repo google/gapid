@@ -422,14 +422,14 @@ sub void loadImageAttachment(u32 attachmentID) {
     if attachment.Image != null {
       switch desc.loadOp {
         case VK_ATTACHMENT_LOAD_OP_LOAD: {
-          readCoherentMemoryInImage(attachment.Image)
-          readImageView(attachment)
+          readCoherentMemoryInImage(attachment.Image, LastBoundQueue.CurrentDeviceIndex)
+          readImageView(attachment, LastBoundQueue.CurrentDeviceIndex)
           updateImageViewQueue(attachment)
         }
         default: {
           // write to the attachment image, to prevent any dependencies on previous writes
           updateImageViewQueue(attachment)
-          writeImageView(attachment)
+          writeImageView(attachment, LastBoundQueue.CurrentDeviceIndex)
         }
       }
     }
@@ -448,7 +448,7 @@ sub void storeImageAttachment(u32 attachmentID) {
       }
       switch desc.storeOp {
         case VK_ATTACHMENT_STORE_OP_STORE: {
-          writeImageView(attachment)
+          writeImageView(attachment, LastBoundQueue.CurrentDeviceIndex)
           updateImageViewQueue(attachment)
         }
         default: {

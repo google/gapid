@@ -102,7 +102,9 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   // draw-level observations.
 
   VkDevice device = image->mDevice;
-  VkPhysicalDevice physical_device = mState.Devices[device]->mPhysicalDevice;
+  // TODO(awoloszyn): mGPU
+  VkPhysicalDevice physical_device =
+      mState.Devices[device]->mPhysicalDevices[0];
   VkInstance instance = mState.PhysicalDevices[physical_device]->mInstance;
   VkQueue queue = mState.LastPresentInfo.mQueue;
   uint32_t queue_family = mState.Queues[queue]->mFamily;
@@ -426,10 +428,12 @@ void VulkanSpy::trackMappedCoherentMemory(CallObserver*, uint64_t start,
 #endif  // COHERENT_TRACKING_ENABLED
 }
 
+// TODO(awoloszyn): Multi GPU actually use the device_index
 void VulkanSpy::readMappedCoherentMemory(CallObserver* observer,
                                          VkDeviceMemory memory,
                                          uint64_t offset_in_mapped,
-                                         size_val readSize) {
+                                         size_val readSize,
+                                         uint32_t /*device_index*/) {
   auto& memory_object = mState.DeviceMemories[memory];
   const auto mapped_location = (uint64_t)(memory_object->mMappedLocation);
   void* offset_addr = (void*)(offset_in_mapped + mapped_location);
@@ -899,14 +903,19 @@ uint32_t VulkanSpy::SpyOverride_vkAllocateMemory(
     const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
   uint32_t r = mImports.mVkDeviceFunctions[device].vkAllocateMemory(
       device, pAllocateInfo, pAllocator, pMemory);
-  auto l_physical_device =
-      mState.PhysicalDevices[mState.Devices[device]->mPhysicalDevice];
-  if (0 !=
-      (l_physical_device->mMemoryProperties
-           .mmemoryTypes[pAllocateInfo->mmemoryTypeIndex]
-           .mpropertyFlags &
-       ((uint32_t)(
-           VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))) {
+  bool is_host_coherent = false;
+  for (auto phys_dev : mState.Devices[device]->mPhysicalDevices) {
+    auto l_physical_device = mState.PhysicalDevices[phys_dev.second];
+    if (0 != (l_physical_device->mMemoryProperties
+                  .mmemoryTypes[pAllocateInfo->mmemoryTypeIndex]
+                  .mpropertyFlags &
+              ((uint32_t)(VkMemoryPropertyFlagBits::
+                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))) {
+      is_host_coherent = true;
+    }
+  }
+
+  if (is_host_coherent) {
     // This is host-coherent memory. Some drivers actually allocate these pages
     // on-demand. This forces all of the pages to be created. This is needed as
     // our coherent memory tracker relies on page-faults which interferes with

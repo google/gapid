@@ -101,7 +101,7 @@ import "errors.api"
 extern void mapMemory(VkDeviceMemory handle, void** mem, u8[] slice)
 extern void unmapMemory(VkDeviceMemory handle, u8[] slice)
 extern void trackMappedCoherentMemory(u64 start, size size)
-extern void readMappedCoherentMemory(VkDeviceMemory memory, u64 offset_in_mapped, size readSize)
+extern void readMappedCoherentMemory(VkDeviceMemory memory, u64 offset_in_mapped, size readSize, u32 deviceIndex)
 extern void untrackMappedCoherentMemory(u64 start, size size)
 extern bool hasDynamicProperty(const VkPipelineDynamicStateCreateInfo* info, VkDynamicState state)
 extern void notifyPendingCommandAdded(VkQueue queue)
@@ -429,7 +429,7 @@ sub ref!PushConstantInfo lastPushConstants() {
   if LastBoundQueue != null {
     if !(LastBoundQueue.VulkanHandle in LastPushConstants) {
       dev := Devices[LastBoundQueue.Device]
-      physDev := PhysicalDevices[dev.PhysicalDevice]
+      physDev := PhysicalDevices[dev.PhysicalDevices[LastBoundQueue.CurrentDeviceIndex]]
       LastPushConstants[LastBoundQueue.VulkanHandle] = new!PushConstantInfo(make!u8(physDev.PhysicalDeviceProperties.limits.maxPushConstantsSize))
     }
   }

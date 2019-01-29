@@ -42,6 +42,7 @@
 
 sub void execPendingCommands(VkQueue queue, bool isRoot) {
   q := Queues[queue]
+  q.CurrentDeviceIndex = 0
   newCmds := emptyDenseMap().m
   signaledQueues := queueMap().m
   processSubcommand := MutableBool()

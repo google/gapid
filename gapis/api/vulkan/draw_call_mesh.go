@@ -195,7 +195,8 @@ func getIndicesData(ctx context.Context, s *api.GlobalState, thread uint64, boun
 		// In the order of the offsets in the buffer
 		for _, bufOffset := range backingMemoryPieces.Keys() {
 			piece := backingMemoryPieces.Get(bufOffset)
-			data, err := piece.DeviceMemory().Data().Slice(
+			// TODO(awoloszyn): mGPU
+			data, err := piece.DeviceMemory().DeviceGroupMemories().Get(0).Data().Slice(
 				uint64(piece.MemoryOffset()),
 				uint64(piece.MemoryOffset()+piece.Size())).Read(ctx, nil, s, nil)
 			if err != nil {
@@ -351,7 +352,8 @@ func getVerticesData(ctx context.Context, s *api.GlobalState, thread uint64,
 	for _, bo := range backingMemoryPieces.Keys() {
 		ds := uint64(backingMemoryPieces.Get(bo).MemoryOffset())
 		de := uint64(backingMemoryPieces.Get(bo).Size()) + ds
-		data, err := backingMemoryPieces.Get(bo).DeviceMemory().Data().Slice(ds, de).Read(ctx, nil, s, nil)
+		// TODO(awoloszyn): mGPU
+		data, err := backingMemoryPieces.Get(bo).DeviceMemory().DeviceGroupMemories().Get(0).Data().Slice(ds, de).Read(ctx, nil, s, nil)
 		if err != nil {
 			return nil, err
 		}

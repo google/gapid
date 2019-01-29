@@ -319,9 +319,11 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
   for (auto &mem : mState.DeviceMemories) {
     auto &memory = mem.second;
-    serializer->encodeBuffer(memory->mAllocationSize, &memory->mData, nullptr);
+    // TODO(awoloszyn): mGPU
+    serializer->encodeBuffer(memory->mAllocationSize,
+                             &memory->mDeviceGroupMemories[0]->mData, nullptr);
     if (memory->mMappedLocation != nullptr) {
-      if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
+      if (subIsMemoryCoherent(nullptr, nullptr, memory, 0)) {
         trackMappedCoherentMemory(
             nullptr, reinterpret_cast<uint64_t>(memory->mMappedLocation),
             memory->mMappedSize);
@@ -384,11 +386,13 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         continue;
       }
       auto &deviceMemory = mState.DeviceMemories[bind.mmemory];
-      StagingBuffer stage(
-          arena(), device_functions, buf->mDevice,
-          mState.PhysicalDevices[mState.Devices[buf->mDevice]->mPhysicalDevice]
-              ->mMemoryProperties,
-          bind.msize);
+      // TODO(awoloszyn): mGPU
+      StagingBuffer stage(arena(), device_functions, buf->mDevice,
+                          mState
+                              .PhysicalDevices[mState.Devices[buf->mDevice]
+                                                   ->mPhysicalDevices[0]]
+                              ->mMemoryProperties,
+                          bind.msize);
       StagingCommandBuffer commandBuffer(
           device_functions, buf->mDevice,
           GetQueue(mState.Queues, buf->mDevice, buf)->mFamily);
@@ -423,7 +427,9 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       void *pData = stage.GetMappedMemory();
       memory::Observation observation;
       observation.set_base(bind.mmemoryOffset);
-      observation.set_pool(deviceMemory->mData.pool_id());
+      // TODO(awoloszyn): mGPU
+      observation.set_pool(
+          deviceMemory->mDeviceGroupMemories[0]->mData.pool_id());
       serializer->sendData(&observation, true, pData, bind.msize);
     }
   }
@@ -815,11 +821,13 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         }
       }
 
-      StagingBuffer stage(
-          arena(), device_functions, img->mDevice,
-          mState.PhysicalDevices[mState.Devices[img->mDevice]->mPhysicalDevice]
-              ->mMemoryProperties,
-          offset);
+      // TODO(awoloszyn): mGPU
+      StagingBuffer stage(arena(), device_functions, img->mDevice,
+                          mState
+                              .PhysicalDevices[mState.Devices[img->mDevice]
+                                                   ->mPhysicalDevices[0]]
+                              ->mMemoryProperties,
+                          offset);
 
       auto copyImageToBuffer = [&img, &img_whole_rng, &stage, &device_functions,
                                 this](

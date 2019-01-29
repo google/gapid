@@ -289,7 +289,8 @@ func (s *State) getMemoryTypeFlags(device VkDevice, typeIndex uint32) (VkMemoryP
 	if deviceObject.IsNil() {
 		return VkMemoryPropertyFlags(0), fmt.Errorf("Failed to find device %v", device)
 	}
-	physicalDevice := deviceObject.PhysicalDevice()
+	// TODO(awoloszyn): mGPU
+	physicalDevice := deviceObject.PhysicalDevices().Get(0)
 	physicalDeviceObject := s.PhysicalDevices().Get(physicalDevice)
 	if physicalDeviceObject.IsNil() {
 		return VkMemoryPropertyFlags(0), fmt.Errorf("Failed to find physical device %v", physicalDevice)

@@ -110,7 +110,7 @@ PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetDeviceProcAddr(VkDevice device, c
     {{end}}
     // This is not strictly correct, but some applications incorrectly
     // call vkGetDeviceProcAddr, when they actually mean vkGetInstanceProcAddr.
-    PFN_vkVoidFunction f = SpyOverride_vkGetInstanceProcAddr(mState.PhysicalDevices[mState.Devices[device]->mPhysicalDevice]->mInstance, pName);
+    PFN_vkVoidFunction f = SpyOverride_vkGetInstanceProcAddr(mState.PhysicalDevices[mState.Devices[device]->mPhysicalDevices[0]]->mInstance, pName);
 
     // If we do not support the function as an instance function OR a device function, then defer to the actual device.
     // It is likely that this will cause a failure in the future, as we will miss any state

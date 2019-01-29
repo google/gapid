@@ -104,7 +104,8 @@ func (st *State) getPresentAttachmentInfo(attachment api.FramebufferAttachment) 
 			queue := st.Queues().Get(st.LastPresentInfo().Queue())
 			vkDevice := queue.Device()
 			device := st.Devices().Get(vkDevice)
-			vkPhysicalDevice := device.PhysicalDevice()
+			// TODO(awoloszyn): mGPU
+			vkPhysicalDevice := device.PhysicalDevices().Get(0)
 			physicalDevice := st.PhysicalDevices().Get(vkPhysicalDevice)
 			if properties, ok := physicalDevice.QueueFamilyProperties().Lookup(queue.Family()); ok {
 				if properties.QueueFlags()&VkQueueFlags(VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT) != 0 {

@@ -374,7 +374,7 @@ sub void BindImageMemory(
                 (as!u64(level.LinearLayout.size) > as!u64(tightlyPackedSize)) {
               loffset := as!u64(memoryOffset + level.LinearLayout.offset)
               lsize := as!u64(level.LinearLayout.size)
-              level.Data = getImagePlaneMemoryInfo(imageObject, plane).BoundMemory.Data[loffset:loffset + lsize]
+              level.Data = getImagePlaneMemoryInfo(imageObject, plane).BoundMemory.DeviceGroupMemories[0].Data[loffset:loffset + lsize]
             } else {
               level.Data = make!u8(tightlyPackedSize)
             }

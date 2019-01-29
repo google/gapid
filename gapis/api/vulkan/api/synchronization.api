@@ -635,8 +635,8 @@ sub void processMemoryBarriers(VkPipelineStageFlags       srcStageMask,
       }
     }
     for _ , _ , mem in DeviceMemories {
-      read(mem.Data)
-      write(mem.Data)
+      read(mem.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data)
+      write(mem.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data)
     }
   }
 }
@@ -648,8 +648,8 @@ sub void processBufferBarriers(VkPipelineStageFlags             srcStageMask,
   for _ , _ , v in bufferBarriers {
     if !(v.buffer in Buffers) { vkErrorInvalidBuffer(v.buffer) } else {
       buf := Buffers[v.buffer]
-      readMemoryInBuffer(buf, v.offset, v.size)
-      writeMemoryInBuffer(buf, v.offset, v.size)
+      readMemoryInBuffer(buf, v.offset, v.size, LastBoundQueue.CurrentDeviceIndex)
+      writeMemoryInBuffer(buf, v.offset, v.size, LastBoundQueue.CurrentDeviceIndex)
       // TODO (#2395): transition queue family ownership
     }
   }
@@ -658,8 +658,8 @@ sub void processBufferBarriers(VkPipelineStageFlags             srcStageMask,
 @spy_disabled
 sub void processImageBarrier(VkImageMemoryBarrier v, ref!ImageObject image) {
   if v.oldLayout != VK_IMAGE_LAYOUT_UNDEFINED {
-    readImageSubresource(image, v.subresourceRange)
+    readImageSubresource(image, v.subresourceRange, LastBoundQueue.CurrentDeviceIndex)
   }
-  writeImageSubresource(image, v.subresourceRange)
+  writeImageSubresource(image, v.subresourceRange, LastBoundQueue.CurrentDeviceIndex)
   // TODO (#2395): transition queue family ownership
 }

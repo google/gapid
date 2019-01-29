@@ -352,7 +352,7 @@ sub void dovkCmdCopyQueryPoolResults(ref!vkCmdCopyQueryPoolResultsArgs args) {
   for i in (0 .. args.QueryCount) {
     if buf != null {
       dstOffset := args.DstOffset + as!VkDeviceSize(i) * args.Stride
-      writeMemoryInBuffer(buf, dstOffset, dstSize)
+      writeMemoryInBuffer(buf, dstOffset, dstSize, LastBoundQueue.CurrentDeviceIndex)
     }
 
     query := i + args.FirstQuery

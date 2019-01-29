@@ -97,7 +97,8 @@ func (p *imagePrimer) allocStagingImages(img ImageObjectʳ, aspect VkImageAspect
 	stagingInfo.SetUsage(VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT))
 
 	dev := p.sb.s.Devices().Get(img.Device())
-	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
+	//TODO(awoloszyn): mGpu
+	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevices().Get(0)).MemoryProperties()
 	// TODO: Handle multi-planar images
 	memInfo, _ := subGetImagePlaneMemoryInfo(p.sb.ctx, nil, api.CmdNoID, nil, p.sb.oldState, GetState(p.sb.oldState), 0, nil, nil, img, VkImageAspectFlagBits(0))
 	memRequirement := memInfo.MemoryRequirements()
@@ -284,7 +285,8 @@ func (h *ipStoreHandler) store(job *ipStoreJob, queue VkQueue) error {
 
 	dev := job.storeTarget.Device()
 
-	phyDev := h.sb.s.Devices().Get(dev).PhysicalDevice()
+	// TODO(awoloszyn): mGPU
+	phyDev := h.sb.s.Devices().Get(dev).PhysicalDevices().Get(0)
 	maxTexelBufferElements := uint32(specMaxTexelBufferElements)
 	if h.sb.s.PhysicalDevices().Get(phyDev).PhysicalDeviceProperties().Limits().MaxTexelBufferElements() > specMaxTexelBufferElements {
 		maxTexelBufferElements = h.sb.s.PhysicalDevices().Get(phyDev).PhysicalDeviceProperties().Limits().MaxTexelBufferElements()

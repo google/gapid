@@ -458,7 +458,8 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		queueFamilyIndex := queue.Family()
 		vkDevice := queue.Device()
 		device := GetState(s).Devices().Get(vkDevice)
-		vkPhysicalDevice := device.PhysicalDevice()
+		// TODO(awoloszyn): mGPU
+		vkPhysicalDevice := device.PhysicalDevices().Get(0)
 		physicalDevice := GetState(s).PhysicalDevices().Get(vkPhysicalDevice)
 		timestampPeriod := physicalDevice.PhysicalDeviceProperties().Limits().TimestampPeriod()
 

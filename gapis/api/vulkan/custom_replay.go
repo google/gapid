@@ -840,6 +840,10 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 	imageHeight := imageObject.Info().Extent().Height()
 	imageFormat, err := getImageFormatFromVulkanFormat(imageObject.Info().Fmt())
 	imageSize := VkDeviceSize(imageFormat.Size(int(imageWidth), int(imageHeight), 1))
+	// TODO(awoloszyn): mGPU
+	memoryData := NewU32ːDeviceMemoryDataʳDense_ᵐ(arena)
+	memoryData.Add(0, NewDeviceMemoryDataʳ(arena,
+		MakeU8ˢ(uint64(imageSize), s)))
 	memoryObject := NewDeviceMemoryObjectʳ(arena,
 		a.Device(),                        // Device
 		memory,                            // VulkanHandle
@@ -849,7 +853,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		0,                                 // MappedSize
 		0,                                 // MappedLocation
 		0,                                 // MemoryTypeIndex
-		MakeU8ˢ(uint64(imageSize), s),     // Data
+		memoryData,                        // Data
 		NilVulkanDebugMarkerInfoʳ,         // DebugInfo
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationNV
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationKHR

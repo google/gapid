@@ -698,7 +698,7 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 	}
 
 	sb.write(sb.cb.VkCreateDevice(
-		d.PhysicalDevice(),
+		d.PhysicalDevices().Get(0),
 		sb.MustAllocReadData(NewVkDeviceCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, // sType
 			NewVoidᶜᵖ(pNext),                   // pNext
@@ -969,7 +969,8 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 }
 
 func (sb *stateBuilder) GetScratchBufferMemoryIndex(device DeviceObjectʳ) uint32 {
-	physicalDeviceObject := sb.s.PhysicalDevices().Get(device.PhysicalDevice())
+	//TODO(awoloszyn):mGPU
+	physicalDeviceObject := sb.s.PhysicalDevices().Get(device.PhysicalDevices().Get(0))
 
 	typeBits := uint32((uint64(1) << uint64(physicalDeviceObject.MemoryProperties().MemoryTypeCount())) - 1)
 	if sb.s.TransferBufferMemoryRequirements().Contains(device.VulkanHandle()) {
@@ -1064,7 +1065,8 @@ func (sb *stateBuilder) getQueueFor(queueFlagBits VkQueueFlagBits, queueFamilyIn
 	}
 	flagPass := func(q QueueObjectʳ) bool {
 		dev := sb.s.Devices().Get(q.Device())
-		phyDev := sb.s.PhysicalDevices().Get(dev.PhysicalDevice())
+		// TODO(awoloszyn): mGPU
+		phyDev := sb.s.PhysicalDevices().Get(dev.PhysicalDevices().Get(0))
 		familyProp := phyDev.QueueFamilyProperties().Get(q.Family())
 		if uint32(familyProp.QueueFlags())&uint32(queueFlagBits) != 0 {
 			return true
@@ -1232,7 +1234,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		if sparseResidency || IsFullyBound(0, buffer.Info().Size(), buffer.SparseMemoryBindings()) {
 			for _, bind := range buffer.SparseMemoryBindings().All() {
 				size := bind.Size()
-				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
+				// TODO(awoloszyn): mGPU
+				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).DeviceGroupMemories().Get(0).Data().Slice(
 					uint64(bind.MemoryOffset()),
 					uint64(bind.MemoryOffset()+size))
 				contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
@@ -1260,7 +1263,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		))
 
 		size := buffer.Info().Size()
-		dataSlice := buffer.Memory().Data().Slice(
+		// TODO(awoloszyn): mGPU
+		dataSlice := buffer.Memory().DeviceGroupMemories().Get(0).Data().Slice(
 			uint64(buffer.MemoryOffset()),
 			uint64(buffer.MemoryOffset()+size))
 		contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))

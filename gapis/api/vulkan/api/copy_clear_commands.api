@@ -48,7 +48,7 @@ sub void dovkCmdCopyBuffer(ref!vkCmdCopyBufferArgs buffer) {
   sourceBuffer := Buffers[buffer.SrcBuffer]
   destBuffer := Buffers[buffer.DstBuffer]
   for _ , _ , region in buffer.CopyRegions {
-    readCoherentMemoryInBuffer(sourceBuffer)
+    readCoherentMemoryInBuffer(sourceBuffer, LastBoundQueue.CurrentDeviceIndex)
     copyBufferToBuffer(destBuffer, region.dstOffset, sourceBuffer, region.srcOffset, region.size)
   }
 }
@@ -130,7 +130,7 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
     srcMemEnd := min!VkDeviceSize(srcMemOffset + size, srcBuf.Memory.AllocationSize)
     dstMemEnd := min!VkDeviceSize(dstMemOffset + size, dstBuf.Memory.AllocationSize)
     if (srcMemOffset < srcMemEnd) && (dstMemOffset < dstMemEnd) {
-      copy(dstBuf.Memory.Data[dstMemOffset:dstMemEnd], srcBuf.Memory.Data[srcMemOffset:srcMemEnd])
+      copy(dstBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[dstMemOffset:dstMemEnd], srcBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[srcMemOffset:srcMemEnd])
     }
 
   } else if (dstBuf.Memory != null) && (len(srcBuf.SparseMemoryBindings) != 0) {
@@ -141,8 +141,8 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
         dstMemOffset := as!u64((smp.ResourceOffset - srcOffset) + dstOffset)
         if dstMemOffset < as!u64(dstBuf.Memory.AllocationSize) {
           memSize := min!u64(as!u64(smp.Size), as!u64(dstBuf.Memory.AllocationSize) - dstMemOffset)
-          copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
-            srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
+          copy(dstBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[dstMemOffset:dstMemOffset + memSize],
+            srcBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[srcMemOffset:srcMemOffset + memSize])
         }
       }
 
@@ -154,8 +154,8 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
           srcMemOffset := (dmp.ResourceOffset - dstOffset) + srcOffset
           if srcMemOffset < as!VkDeviceSize(srcBuf.Memory.AllocationSize) {
             memSize := min!VkDeviceSize(dmp.Size, as!VkDeviceSize(srcBuf.Memory.AllocationSize) - srcMemOffset)
-            copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
-              srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
+            copy(dstBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[dstMemOffset:dstMemOffset + memSize],
+              srcBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[srcMemOffset:srcMemOffset + memSize])
           }
         }
 
@@ -170,8 +170,8 @@ sub void copyBufferToBuffer(ref!BufferObject dstBuf, VkDeviceSize dstOffset, ref
               srcMemOffset := as!u64(smp.MemoryOffset)
               dstMemOffset := as!u64((smp.ResourceOffset - tmpSrcOffset) + dmp.ResourceOffset)
               memSize := as!u64(smp.Size)
-              copy(dstBuf.Memory.Data[dstMemOffset:dstMemOffset + memSize],
-                srcBuf.Memory.Data[srcMemOffset:srcMemOffset + memSize])
+              copy(dstBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[dstMemOffset:dstMemOffset + memSize],
+                srcBuf.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[srcMemOffset:srcMemOffset + memSize])
             }
           }
         }
@@ -349,7 +349,7 @@ sub void dovkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
   // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
   // the changes in coherent memory to the UI's texture view.
-  readCoherentMemoryInImage(srcImageObject)
+  readCoherentMemoryInImage(srcImageObject, LastBoundQueue.CurrentDeviceIndex)
   trackVkCmdCopyImage(args)
 }
 
@@ -519,7 +519,7 @@ sub void dovkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
   // But such a read is necessary if the backing memory of the source image is coherent, as we need the read observations on all memory changes
   // in order to replay correctly. However, as the UI's texture data comes from imageLevel.Data, just using the following call will not bring
   // the changes in coherent memory to the UI's texture view.
-  readCoherentMemoryInImage(srcImageObject)
+  readCoherentMemoryInImage(srcImageObject, LastBoundQueue.CurrentDeviceIndex)
   trackVkCmdBlitImage(args)
 }
 
@@ -641,7 +641,7 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
                 imgStart := as!VkDeviceSize((rowStartBlock + x) * elementSizeInImage)
                 rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
                 bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-                readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
+                readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize), LastBoundQueue.CurrentDeviceIndex)
                 // Discard the 4th byte in the buffer for current pixel.
                 bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
                 for _ , _ , piece in bufMemPieces {
@@ -650,9 +650,9 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
                   imgPieceStart := (piece.ResourceOffset - bufStart) + imgStart
                   imgPieceEnd := imgPieceStart + piece.Size
                   if isSrcBuffer {
-                    copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
+                    copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[bufMemStart:bufMemEnd])
                   } else {
-                    copy(piece.DeviceMemory.Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
+                    copy(piece.DeviceMemory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
                   }
                 }
               }
@@ -661,7 +661,7 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
               imgStart := (rowStartBlock + xStart) * elementSize
               rowStartInExtent := rowStartBlockInExtent * elementSize
               bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-              readMemoryInBuffer(bufferObject, bufStart, copySize)
+              readMemoryInBuffer(bufferObject, bufStart, copySize, LastBoundQueue.CurrentDeviceIndex)
               bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
               for _ , _ , piece in bufMemPieces {
                 bufMemStart := piece.MemoryOffset
@@ -669,9 +669,9 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
                 imgPieceStart := as!u64(piece.ResourceOffset - bufStart) + imgStart
                 imgPieceEnd := imgPieceStart + as!u64(piece.Size)
                 if isSrcBuffer {
-                  copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
+                  copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[bufMemStart:bufMemEnd])
                 } else {
-                  copy(piece.DeviceMemory.Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
+                  copy(piece.DeviceMemory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
                 }
               }
             }
@@ -693,7 +693,7 @@ class vkCmdCopyBufferToImageArgs {
 
 sub void dovkCmdCopyBufferToImage(ref!vkCmdCopyBufferToImageArgs args) {
   if (!args.SrcBuffer in Buffers) { vkErrorInvalidBuffer(args.SrcBuffer) } else {
-    readCoherentMemoryInBuffer(Buffers[args.SrcBuffer])
+    readCoherentMemoryInBuffer(Buffers[args.SrcBuffer], LastBoundQueue.CurrentDeviceIndex)
     copyImageBuffer(args.SrcBuffer, args.DstImage, args.Layout, args.Regions, true)
   }
 }
@@ -746,7 +746,7 @@ class vkCmdCopyImageToBufferArgs {
 
 sub void dovkCmdCopyImageToBuffer(ref!vkCmdCopyImageToBufferArgs args) {
   if (!args.SrcImage in Images) { vkErrorInvalidImage(args.SrcImage) } else {
-    readCoherentMemoryInImage(Images[args.SrcImage])
+    readCoherentMemoryInImage(Images[args.SrcImage], LastBoundQueue.CurrentDeviceIndex)
     copyImageBuffer(args.DstBuffer, args.SrcImage, args.SrcImageLayout, args.Regions, false)
   }
 }
@@ -808,7 +808,7 @@ sub void dovkCmdUpdateBuffer(ref!vkCmdUpdateBufferArgs args) {
   for _ , _ , p in bufPieces {
     srcOffset := p.ResourceOffset - args.DstOffset
     size := min!VkDeviceSize(p.Size, as!VkDeviceSize(len(args.Data)) - srcOffset)
-    copy(buff.Memory.Data[p.MemoryOffset:p.MemoryOffset + size], args.Data[srcOffset:srcOffset + size])
+    copy(buff.Memory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[p.MemoryOffset:p.MemoryOffset + size], args.Data[srcOffset:srcOffset + size])
   }
 }
 
@@ -858,8 +858,8 @@ sub void dovkCmdFillBuffer(ref!vkCmdFillBufferArgs args) {
   buf := Buffers[args.Buffer]
   bufPieces := getBufferBoundMemoryPiecesInRange(buf, args.DstOffset, args.Size)
   for _ , _ , p in bufPieces {
-    if as!VkDeviceSize(len(p.DeviceMemory.Data)) >= (p.MemoryOffset + p.Size) {
-      write(p.DeviceMemory.Data[p.MemoryOffset: p.MemoryOffset + p.Size])
+    if as!VkDeviceSize(len(p.DeviceMemory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data)) >= (p.MemoryOffset + p.Size) {
+      write(p.DeviceMemory.DeviceGroupMemories[LastBoundQueue.CurrentDeviceIndex].Data[p.MemoryOffset: p.MemoryOffset + p.Size])
     }
   }
 }
@@ -909,7 +909,7 @@ sub void dovkCmdClearColorImage(ref!vkCmdClearColorImageArgs args) {
   if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
   image := Images[args.Image]
   for _, _, r in args.Ranges {
-    writeImageSubresource(image, r)
+    writeImageSubresource(image, r, LastBoundQueue.CurrentDeviceIndex)
   }
 }
 
@@ -966,7 +966,7 @@ sub void dovkCmdClearDepthStencilImage(ref!vkCmdClearDepthStencilImageArgs args)
   if !(args.Image in Images) { vkErrorInvalidImage(args.Image) }
   image := Images[args.Image]
   for _, _, r in args.Ranges {
-    writeImageSubresource(image, r)
+    writeImageSubresource(image, r, LastBoundQueue.CurrentDeviceIndex)
   }
 }
 
@@ -1081,10 +1081,10 @@ sub void dovkCmdResolveImage(ref!vkCmdResolveImageArgs args) {
     dst := Images[args.DstImage]
 
     updateImageQueue(src, srcRange)
-    readCoherentMemoryInImage(src)
-    readImageSubresource(src, srcRange)
+    readCoherentMemoryInImage(src, LastBoundQueue.CurrentDeviceIndex)
+    readImageSubresource(src, srcRange, LastBoundQueue.CurrentDeviceIndex)
     updateImageQueue(dst, dstRange)
-    writeImageSubresource(dst, dstRange)
+    writeImageSubresource(dst, dstRange, LastBoundQueue.CurrentDeviceIndex)
   }
 }
 

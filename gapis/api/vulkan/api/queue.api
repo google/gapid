@@ -47,6 +47,7 @@
   @unused VkQueue                                                VulkanHandle
   map!(VkEvent, ref!EventObject)                                 PendingEvents
   map!(VkSemaphore, ref!SemaphoreObject)                         PendingSemaphores
+  @unused u32                                                    CurrentDeviceIndex
   @unused ref!VulkanDebugMarkerInfo                              DebugInfo
   @untracked @untrackedMap dense_map!(u32, ref!CommandReference) PendingCommands
   @untracked @untrackedMap map!(VkBuffer, bool) ReadCoherentBuffers
@@ -69,7 +70,9 @@ cmd void vkGetDeviceQueue(
       VulkanHandle:  id)
     dev := Devices[device]
     dev.QueueObjects[len(dev.QueueObjects)] = Queues[id]
-    _ = PhysicalDevices[dev.PhysicalDevice].QueueFamilyProperties[queueFamilyIndex]
+    for _, _, d in dev.PhysicalDevices {
+      _ = PhysicalDevices[d].QueueFamilyProperties[queueFamilyIndex]
+    }
   }
   if pQueue == null { vkErrorNullPointer("VkQueue") }
   pQueue[0] = id

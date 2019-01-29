@@ -193,7 +193,9 @@ func (e externs) unmapMemory(handle VkDeviceMemory, slice memory.Slice) {
 }
 
 func (e externs) trackMappedCoherentMemory(start uint64, size memory.Size) {}
-func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInMapped uint64, readSize memory.Size) {
+
+// TODO(awoloszyn): mGPU
+func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInMapped uint64, readSize memory.Size, deviceIndex uint32) {
 	l := e.s.MemoryLayout
 	mem := GetState(e.s).DeviceMemoriesʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, memoryHandle)
 	mappedOffset := uint64(mem.MappedOffsetʷ(e.ctx, e.w, true))
@@ -204,8 +206,9 @@ func (e externs) readMappedCoherentMemory(memoryHandle VkDeviceMemory, offsetInM
 	absSrcMemRng := memory.Range{Base: absSrcStart, Size: uint64(readSize)}
 
 	writeRngList := e.s.Memory.ApplicationPool().Slice(absSrcMemRng).ValidRanges()
+	// TODO(awoloszyn): mGPU
 	for _, r := range writeRngList {
-		mem.Dataʷ(e.ctx, e.w, true).Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
+		mem.DeviceGroupMemoriesʷ(e.ctx, e.w, true).Getʷ(e.ctx, e.w, true, 0).Dataʷ(e.ctx, e.w, true).Slice(dstStart+r.Base, dstStart+r.Base+r.Size).
 			Copy(e.ctx, U8ᵖ(mem.MappedLocationʷ(e.ctx, e.w, true)).Slice(srcStart+r.Base, srcStart+r.Base+r.Size, l), e.cmd, e.s, e.b, e.w)
 	}
 }

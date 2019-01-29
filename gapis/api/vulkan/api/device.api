@@ -43,14 +43,14 @@
 }
 
 @internal class DeviceObject {
-  VkPhysicalDevice                   PhysicalDevice
-  @unused map!(u32, string)          EnabledExtensions
-  @unused map!(u32, string)          EnabledLayers
-  @unused map!(u32, QueueInfo)       Queues
-  @unused map!(u32, ref!QueueObject) QueueObjects
-  @unused VkPhysicalDeviceFeatures   EnabledFeatures
-  @unused VkDevice                   VulkanHandle
-  @unused ref!VulkanDebugMarkerInfo  DebugInfo
+  @unused map!(u32, VkPhysicalDevice) PhysicalDevices
+  @unused map!(u32, string)           EnabledExtensions
+  @unused map!(u32, string)           EnabledLayers
+  @unused map!(u32, QueueInfo)        Queues
+  @unused map!(u32, ref!QueueObject)  QueueObjects
+  @unused VkPhysicalDeviceFeatures    EnabledFeatures
+  @unused VkDevice                    VulkanHandle
+  @unused ref!VulkanDebugMarkerInfo   DebugInfo
 
   // Vulkan 1.1
   @unused ref!VariablePointerFeatures VariablePointerFeatures
@@ -81,7 +81,7 @@ cmd VkResult vkCreateDevice(
   // replayCreateVkDevice() in synthetic.api. Change both together.
   device := createDeviceObject(pCreateInfo)
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
-  device.PhysicalDevice = physicalDevice
+  device.PhysicalDevices[0] = physicalDevice
 
   handle := ?
   if pDevice == null { vkErrorNullPointer("VkDevice*") }

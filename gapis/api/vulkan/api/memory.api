@@ -40,6 +40,10 @@
 // Device memory //
 ///////////////////
 
+@internal class DeviceMemoryData {
+  @hidden @nobox @internal u8[] Data
+}
+
 @internal class DeviceMemoryObject {
   VkDevice                Device
   @unused VkDeviceMemory  VulkanHandle
@@ -50,7 +54,7 @@
   void*                   MappedLocation
   u32                     MemoryTypeIndex
   @spy_disabled
-  @hidden @nobox @internal u8[]     Data
+  dense_map!(u32, ref!DeviceMemoryData) DeviceGroupMemories
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   ref!MemoryDedicatedAllocationInfo DedicatedAllocationNV
   // Vulkan 1.1 promoted from extension: VK_KHR_dedicated_allocation
@@ -83,7 +87,9 @@ cmd VkResult vkAllocateMemory(
     MappedLocation:   null,
     MemoryTypeIndex:  allocateInfo.memoryTypeIndex
   )
-  memoryObject.Data = make!u8(allocateInfo.allocationSize)
+  memoryObject.DeviceGroupMemories[0] = new!DeviceMemoryData(
+        Data: make!u8(allocateInfo.allocationSize)
+  )
 
   // Handle pNext
   if allocateInfo.pNext != null {
@@ -166,8 +172,10 @@ cmd VkResult vkMapMemory(
 
   mapMemory(memory, ppData, as!u8*(memoryLocation)[0:memoryObject.MappedSize])
   memoryObject.MappedLocation = memoryLocation
-  if (IsMemoryCoherent(memoryObject)) {
-    trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  for _, j, _ in memoryObject.DeviceGroupMemories {
+    if (IsMemoryCoherent(memoryObject, j)) {
+      trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+    }
   }
   return ?
 }
@@ -181,9 +189,10 @@ cmd void vkUnmapMemory(
   if !(memory in DeviceMemories) { vkErrorInvalidDeviceMemory(memory) }
   memoryObject := DeviceMemories[memory]
   mappedLocation := as!u8*(memoryObject.MappedLocation)
-  if (IsMemoryCoherent(memoryObject)) {
-    readCoherentMemory(memoryObject, memoryObject.MappedOffset, memoryObject.MappedSize)
-    untrackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+  for _, j, _ in memoryObject.DeviceGroupMemories {
+    if (IsMemoryCoherent(memoryObject, j)) {
+      trackMappedCoherentMemory(as!u64(memoryObject.MappedLocation), as!size(memoryObject.MappedSize))
+    }
   }
   unmapMemory(memory, mappedLocation[0:memoryObject.MappedSize])
   memoryObject.MappedSize = 0
@@ -218,15 +227,17 @@ cmd VkResult vkFlushMappedMemoryRanges(
     // TODO: Log errors if flush offset - mapped offset is negative or
     // flushRange.size is out of bounds.
 
-    if (IsMemoryCoherent(memoryObject)) {
-      readCoherentMemory(memoryObject, flushRange.offset, flushRange.size)
-    } else {
-      if (flushRange.size == 0xFFFFFFFFFFFFFFFF) {
-        // copy() contains an implicit read observation
-        copy(memoryObject.Data[flushRange.offset:memoryObject.MappedOffset + memoryObject.MappedSize], (mappedLocation)[flushStart:memoryObject.MappedSize])
+    for _, j, _ in memoryObject.DeviceGroupMemories {
+      if (IsMemoryCoherent(memoryObject, j)) {
+        readCoherentMemory(memoryObject, flushRange.offset, flushRange.size, j)
       } else {
-        // copy() contains an implicit read observation
-        copy(memoryObject.Data[flushRange.offset:flushRange.offset + flushRange.size], (mappedLocation)[flushStart:flushStart + flushRange.size])
+        if (flushRange.size == 0xFFFFFFFFFFFFFFFF) {
+          // copy() contains an implicit read observation
+          copy(memoryObject.DeviceGroupMemories[j].Data[flushRange.offset:memoryObject.MappedOffset + memoryObject.MappedSize], (mappedLocation)[flushStart:memoryObject.MappedSize])
+        } else {
+          // copy() contains an implicit read observation
+          copy(memoryObject.DeviceGroupMemories[j].Data[flushRange.offset:flushRange.offset + flushRange.size], (mappedLocation)[flushStart:flushStart + flushRange.size])
+        }
       }
     }
   }

@@ -159,7 +159,7 @@ sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
   useRenderPass()
 
   readWriteMemoryInBoundGraphicsDescriptorSets()
-  readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
+  readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance, LastBoundQueue.CurrentDeviceIndex)
   clearLastDrawInfoDrawCommandParameters()
   lastDrawInfo().CommandParameters.Draw = draw
 }
@@ -200,7 +200,7 @@ vkCmdDrawIndexedArgs {
 sub void readCoherentMemoryInBoundIndexBuffer() {
   lastDraw := lastDrawInfo()
   indexBuffer := lastDraw.BoundIndexBuffer.BoundBuffer.Buffer
-  readCoherentMemoryInBuffer(indexBuffer)
+  readCoherentMemoryInBuffer(indexBuffer, LastBoundQueue.CurrentDeviceIndex)
 }
 
 @spy_disabled
@@ -219,7 +219,7 @@ sub void readBoundIndexBuffer(u32 indexCount, u32 firstIndex) {
   startOffset := lastDraw.BoundIndexBuffer.BoundBuffer.Offset + (indexSize * as!VkDeviceSize(firstIndex))
 
   // Read the data of the index buffer.
-  readMemoryInBuffer(indexBuffer, startOffset, numBytes)
+  readMemoryInBuffer(indexBuffer, startOffset, numBytes, LastBoundQueue.CurrentDeviceIndex)
 }
 
 sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
@@ -228,7 +228,7 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
   readCoherentMemoryInBoundIndexBuffer()
   readBoundIndexBuffer(draw.IndexCount, draw.FirstIndex)
   // Read the whole vertex buffer.
-  readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
+  readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance, LastBoundQueue.CurrentDeviceIndex)
   readWriteMemoryInBoundGraphicsDescriptorSets()
   clearLastDrawInfoDrawCommandParameters()
   lastDrawInfo().CommandParameters.DrawIndexed = draw
@@ -278,7 +278,7 @@ sub void readIndirectDrawBuffer(VkBuffer buf, VkDeviceSize offset, u32 drawCount
   } else {
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((drawCount - 1) * stride) + command_size
-    readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size)
+    readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size, LastBoundQueue.CurrentDeviceIndex)
   }
 }
 
@@ -288,7 +288,7 @@ sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
     readWriteMemoryInBoundGraphicsDescriptorSets()
     readIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
-    readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+    readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0, LastBoundQueue.CurrentDeviceIndex)
     clearLastDrawInfoDrawCommandParameters()
     lastDrawInfo().CommandParameters.DrawIndirect = draw
   }
@@ -332,12 +332,12 @@ sub void readIndexedIndirectDrawBuffer(VkBuffer buf, VkDeviceSize offset, u32 dr
     } else {
       command_size := as!VkDeviceSize(16)
       indirect_buffer_read_size := as!VkDeviceSize((drawCount - 1) * stride) + command_size
-      readCoherentMemoryInBuffer(Buffers[buf])
-      readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size)
+      readCoherentMemoryInBuffer(Buffers[buf], LastBoundQueue.CurrentDeviceIndex)
+      readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size, LastBoundQueue.CurrentDeviceIndex)
       // Read through the whole index buffer.
       indexBuffer := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Buffer
-      readCoherentMemoryInBuffer(indexBuffer)
-      readMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size)
+      readCoherentMemoryInBuffer(indexBuffer, LastBoundQueue.CurrentDeviceIndex)
+      readMemoryInBuffer(indexBuffer, 0, indexBuffer.Info.Size, LastBoundQueue.CurrentDeviceIndex)
     }
 }
 
@@ -346,11 +346,11 @@ sub void dovkCmdDrawIndexedIndirect(ref!vkCmdDrawIndexedIndirectArgs draw) {
   if draw.DrawCount > 0 {
     ldi := lastDrawInfo()
     readWriteMemoryInBoundGraphicsDescriptorSets()
-    readCoherentMemoryInBuffer(Buffers[draw.Buffer])
+    readCoherentMemoryInBuffer(Buffers[draw.Buffer], LastBoundQueue.CurrentDeviceIndex)
     readIndexedIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.DrawCount, draw.Stride)
 
     // Read through all the vertex buffers.
-    readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+    readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0, LastBoundQueue.CurrentDeviceIndex)
     clearLastDrawInfoDrawCommandParameters()
     ldi.CommandParameters.DrawIndexedIndirect = draw
   }
@@ -421,8 +421,8 @@ class vkCmdDispatchIndirectArgs {
 
 sub void readIndirectDispatchBuffer(VkBuffer buf, VkDeviceSize offset) {
   command_size := as!VkDeviceSize(12)
-  readCoherentMemoryInBuffer(Buffers[buf])
-  readMemoryInBuffer(Buffers[buf], offset, command_size)
+  readCoherentMemoryInBuffer(Buffers[buf], LastBoundQueue.CurrentDeviceIndex)
+  readMemoryInBuffer(Buffers[buf], offset, command_size, LastBoundQueue.CurrentDeviceIndex)
 }
 
 sub void dovkCmdDispatchIndirect(ref!vkCmdDispatchIndirectArgs dispatch) {
@@ -458,7 +458,8 @@ sub void readWriteMemoryInBoundGraphicsDescriptorSets() {
   readWriteMemoryInBoundDescriptorSets(
     ldi.GraphicsPipeline.UsedDescriptors,
     ldi.DescriptorSets,
-    ldi.BufferBindingOffsets)
+    ldi.BufferBindingOffsets,
+    LastBoundQueue.CurrentDeviceIndex)
 }
 
 sub void readWriteMemoryInBoundComputeDescriptorSets() {
@@ -466,7 +467,8 @@ sub void readWriteMemoryInBoundComputeDescriptorSets() {
   readWriteMemoryInBoundDescriptorSets(
     lci.ComputePipeline.UsedDescriptors,
     lci.DescriptorSets,
-    lci.BufferBindingOffsets)
+    lci.BufferBindingOffsets,
+    LastBoundQueue.CurrentDeviceIndex)
 }
 
 @internal class DynamicStateSet {

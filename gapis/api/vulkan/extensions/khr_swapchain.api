@@ -311,7 +311,8 @@ cmd VkResult vkQueuePresentKHR(
         levelCount:      image.Info.MipLevels,
         baseArrayLayer:  0,
         layerCount:      image.Info.ArrayLayers)
-    readImageSubresource(image, rng)
+    //TODO(awoloszyn): MultiGPU: Fix this
+    readImageSubresource(image, rng, 0)
     updateImageQueue(image, rng)
     LastPresentInfo.PresentImages[LastPresentInfo.PresentImageCount] =
     image
