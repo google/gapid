@@ -266,6 +266,7 @@ type (
 		DumpTrace      string `help:"dump a systrace of gapis"`
 		StartFrame     int    `help:"perform a MEC trace starting at this frame"`
 		NoOpt          bool   `help:"disables optimization of the replay stream"`
+		OutputCSV      bool   `help:"outputs data in CSV-friendly format"`
 	}
 
 	StatusFlags struct {
