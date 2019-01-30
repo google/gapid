@@ -53,6 +53,8 @@ apic_template(
     api = ":api",
     templates = [
         "//gapis/api/templates:api",
+        "//gapis/api/templates:api_types",
+        "//gapis/api/templates:api_memory_box",
         "//gapis/api/templates:mutate",
         "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",
@@ -98,7 +100,9 @@ go_library(
         "//gapis/resolve:go_default_library",
         "//gapis/resolve/cmdgrouper:go_default_library",
         "//gapis/service:go_default_library",
+        "//gapis/service/memory_box:go_default_library",  #keep
         "//gapis/service/path:go_default_library",
+        "//gapis/service/types:go_default_library",  #keep
         "//gapis/stringtable:go_default_library",  # keep
     ],
 )

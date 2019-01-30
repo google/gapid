@@ -1,0 +1,266 @@
+{{/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/* ---- Includes ---- */}}
+{{Include "go_common.tmpl"}}
+{{Include "c_common.tmpl"}}
+
+{{$ | Macro "api_types.go" | GoFmt | Write "api_types.go"}}
+
+{{define "api_types.go"}}
+  {{AssertType $ "API"}}
+
+
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+¶
+
+import (
+    "reflect"
+
+    ϟt "github.com/google/gapid/gapis/service/types"
+)
+
+
+const api_index       = uint64({{$.Index}}) << 59
+const pseudonym_index = uint64(1 << 55)
+const reference_index = uint64(2 << 55)
+const pointer_index   = uint64(3 << 55)
+const map_index       = uint64(4 << 55)
+const struct_index    = uint64(5 << 55)
+const array_index     = uint64(6 << 55)
+const enum_index      = uint64(7 << 55)
+const slice_index     = uint64(8 << 55)
+
+  {{range $i, $c := $.Pseudonyms}}
+    {{Template "DeclarePseudonym" "Index" $i "Type" $c}}
+  {{end}}
+¶
+  {{range $i, $c := $.Pointers}}
+    {{Template "DeclarePointer" "Index" $i "Type" $c}}
+  {{end}}
+¶
+  {{range $i, $c := $.Classes}}
+    {{Template "DeclareClass" "Index" $i "Type" $c}}
+  {{end}}
+¶
+  {{range $i, $c := $.StaticArrays}}
+      {{Template "DeclareArray" "Index" $i "Type" $c}}
+  {{end}}
+¶
+  {{range $i, $c := $.Enums}}
+      {{Template "DeclareEnum" "Index" $i "Type" $c}}
+  {{end}}
+¶
+  {{range $i, $c := $.Slices}}
+      {{Template "DeclareSlice" "Index" $i "Type" $c}}
+  {{end}}
+¶
+  func init() {
+    {{range $c := $.Pseudonyms}}
+      {{Template "InsertType" $c | JoinWith "\n"}}
+    {{end}}
+    {{range $c := $.Pointers}}
+      {{Template "InsertType" $c | JoinWith "\n"}}
+    {{end}}
+    {{range $c := $.Classes}}
+      {{Template "InsertType" $c | JoinWith "\n"}}
+    {{end}}
+    {{range $c := $.StaticArrays}}
+        {{Template "InsertType" $c | JoinWith "\n"}}
+    {{end}}
+    {{range $c := $.Enums}}
+        {{Template "InsertType" $c | JoinWith "\n"}}
+    {{end}}
+    {{range $c := $.Slices}}
+        {{Template "InsertType" $c | JoinWith "\n"}}
+    {{end}}
+  }
+{{end}}
+
+{{define "Index"}}
+  (api_index | {{$.Type}}_index | {{$.Index}})
+{{end}}
+
+{{define "GetIndex"}}
+  {{if IsVoid (Underlying $)}} 0
+  {{else if IsBool $}} ϟt.BoolType
+  {{else if IsInt $}} ϟt.IntType
+  {{else if IsUint $}} ϟt.UintType
+  {{else if IsSize $}} ϟt.SizeType
+  {{else if IsChar $}} ϟt.CharType
+  {{else if IsU8 $}} ϟt.Uint8Type
+  {{else if IsS8 $}} ϟt.Int8Type
+  {{else if IsU16 $}} ϟt.Uint16Type
+  {{else if IsS16 $}} ϟt.Int16Type
+  {{else if IsF32 $}} ϟt.Float32Type
+  {{else if IsU32 $}} ϟt.Uint32Type
+  {{else if IsS32 $}} ϟt.Int32Type
+  {{else if IsF64 $}} ϟt.Float64Type
+  {{else if IsU64 $}} ϟt.Uint64Type
+  {{else if IsS64 $}} ϟt.Int64Type
+  {{else if IsString $}} ϟt.StringType
+  {{else}}
+     {{$ty := Macro "Go.Type"  $}}
+     {{$ty}}TypeIndex
+  {{end}}
+{{end}}
+
+{{define "InsertType"}}
+  {{if IsVoid        (Underlying $)}}
+  {{else}}
+    {{$ptr_ty     := Macro "Go.Type"   $}}
+    {
+      var temp {{$ptr_ty}}
+      ϟt.AddType({{$ptr_ty}}TypeIndex, Get{{$ptr_ty}}Type(), reflect.TypeOf(temp))
+    }
+
+  {{end}}
+{{end}}
+
+{{define "DeclarePointer"}}
+  {{$ptr_ty     := Macro "Go.Type"   $.Type}}
+  const {{$ptr_ty}}TypeIndex = {{Template "Index" "Type" "pointer" "Index" $.Index}}
+  func ({{$ptr_ty}}) GetTypeIndex() uint64 {
+    return {{$ptr_ty}}TypeIndex
+  }
+  func Get{{$ptr_ty}}Type() *ϟt.Type {
+    return &ϟt.Type{
+      TypeId: {{$ptr_ty}}TypeIndex,
+      Name: "{{Template "Go.Type" $.Type.To}}*",
+      Ty: &ϟt.Type_Pointer{
+          &ϟt.PointerType{
+            Pointee: {{Template "GetIndex" $.Type.To}},
+            IsConst: {{if $.Type.Const}}true{{else}}false{{end}},
+          },
+        },
+    }
+  }
+¶
+{{end}}
+
+{{define "DeclarePseudonym"}}
+  {{     if IsVoid        (Underlying $.Type)}}
+  {{else if IsReference   (Underlying $.Type)}}
+  {{else if IsMap         (Underlying $.Type)}}
+  {{else}}
+  {{$ptr_ty     := Macro "Go.Type"   $.Type}}
+    const {{$ptr_ty}}TypeIndex = {{Template "Index" "Type" "pseudonym" "Index" $.Index}}
+    func ({{$ptr_ty}}) GetTypeIndex() uint64 {
+      return {{$ptr_ty}}TypeIndex
+    }
+    func Get{{$ptr_ty}}Type() *ϟt.Type {
+      return &ϟt.Type{
+        TypeId: {{$ptr_ty}}TypeIndex,
+        Name: "{{Template "Go.Type" $.Type}}",
+        Ty: &ϟt.Type_Pseudonym{
+          &ϟt.PseudonymType{ Underlying: {{Template "GetIndex" $.Type.To}} },
+        },
+      }
+    }
+  {{end}}
+¶
+{{end}}
+
+
+{{define "DeclareStructField"}}
+  {{if not (or (IsReference (Underlying $.Type)) (IsMap (Underlying $.Type)))}}
+  &ϟt.StructField {
+    Name: "{{$.Name}}",
+    Type: {{Template "GetIndex" $.Type}},
+  },
+  {{end}}
+{{end}}
+
+
+{{define "DeclareClass"}}
+  {{$ptr_ty     := Macro "Go.Type"   $.Type}}
+  const {{$ptr_ty}}TypeIndex = {{Template "Index" "Type" "struct" "Index" $.Index}}
+  func ({{$ptr_ty}}) GetTypeIndex() uint64 {
+    return {{$ptr_ty}}TypeIndex
+  }
+  func Get{{$ptr_ty}}Type() *ϟt.Type {
+    return &ϟt.Type{
+      TypeId: {{$ptr_ty}}TypeIndex,
+      Name: "{{Template "Go.Type" $.Type}}",
+      Ty: &ϟt.Type_Struct {
+        &ϟt.StructType {
+          Fields: []*ϟt.StructField {
+            {{ForEach $.Type.Fields "DeclareStructField" | JoinWith "\n"}}
+          },
+        },
+      },
+    }
+  }
+¶
+{{end}}
+
+{{define "DeclareArray"}}
+  {{$ptr_ty     := Macro "Go.Type"   $.Type}}
+  const {{$ptr_ty}}TypeIndex = {{Template "Index" "Type" "array" "Index" $.Index}}
+  func ({{$ptr_ty}}) GetTypeIndex() uint64 {
+    return {{$ptr_ty}}TypeIndex
+  }
+  func Get{{$ptr_ty}}Type() *ϟt.Type {
+   return &ϟt.Type{
+     TypeId: {{$ptr_ty}}TypeIndex,
+     Name: "{{Template "Go.Type" $.Type}}",
+     Ty: &ϟt.Type_Array{
+       &ϟt.ArrayType{
+         ElementType: {{Template "GetIndex" $.Type.ValueType}},
+         Size: {{$.Type.Size}},
+       },
+     },
+   }
+  }
+¶
+
+{{end}}
+
+{{define "DeclareEnum"}}
+  {{$ptr_ty     := Macro "Go.Type"   $.Type}}
+  const {{$ptr_ty}}TypeIndex = {{Template "Index" "Type" "enum" "Index" $.Index}}
+  func ({{$ptr_ty}}) GetTypeIndex() uint64 {
+    return {{$ptr_ty}}TypeIndex
+  }
+  func Get{{$ptr_ty}}Type() *ϟt.Type {
+    return &ϟt.Type{
+      TypeId: {{$ptr_ty}}TypeIndex,
+      Name: "E_{{Template "Go.Type" $.Type}}",
+      Ty: &ϟt.Type_Enum{
+        &ϟt.EnumType{ Underlying: {{Template "GetIndex" $.Type.NumberType}} },
+      },
+    }
+  }
+¶
+{{end}}
+
+{{define "DeclareSlice"}}
+  {{$ptr_ty     := Macro "Go.Type"   $.Type}}
+  const {{$ptr_ty}}TypeIndex = {{Template "Index" "Type" "slice" "Index" $.Index}}
+  func ({{$ptr_ty}}) GetTypeIndex() uint64 {
+    return {{$ptr_ty}}TypeIndex
+  }
+  func Get{{$ptr_ty}}Type() *ϟt.Type {
+    return &ϟt.Type{
+      TypeId: {{$ptr_ty}}TypeIndex,
+      Name: "{{Template "Go.Type" $.Type.To}}&",
+      Ty: &ϟt.Type_Slice{
+        &ϟt.SliceType{ Underlying: {{Template "GetIndex" $.Type.To}} },
+      },
+    }
+  }
+¶
+{{end}}

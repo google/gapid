@@ -17,6 +17,7 @@ syntax = "proto3";
 import "core/image/image.proto";
 import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
+import "gapis/service/types/types.proto";
 import "gapis/vertex/vertex.proto";
 
 package api;
@@ -47,6 +48,8 @@ message Parameter {
   box.Value value = 2;
   // The possible alternative named values for the parameter.
   path.ConstantSet constants = 3;
+  // The type of this parameter
+  path.Type type = 4;
 }
 
 // DrawPrimitive is an enumerator of primitive draw modes

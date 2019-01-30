@@ -21,6 +21,7 @@ import (
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/service/types"
 )
 
 // CmdToService returns the service command representing command c.
@@ -35,9 +36,14 @@ func CmdToService(c Cmd) (*Command, error) {
 	}
 
 	for _, p := range c.CmdParams() {
+		t, err := types.GetTypeIndex(p.Get())
+		if err != nil {
+			return nil, err
+		}
 		param := &Parameter{
 			Name:  p.Name,
 			Value: box.NewValue(p.Get()),
+			Type:  &path.Type{TypeIndex: t},
 		}
 		if p.Constants > 0 {
 			param.Constants = out.API.ConstantSet(p.Constants)

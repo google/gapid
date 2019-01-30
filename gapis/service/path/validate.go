@@ -319,3 +319,11 @@ func (n *Stats) Validate() error {
 func (n *Thumbnail) Validate() error {
 	return checkNotNilAndValidate(n, protoutil.OneOf(n.Object), "object")
 }
+
+// Validate checks the path is valid.
+func (n *Type) Validate() error {
+	if n != nil {
+		return nil
+	}
+	return fmt.Errorf("Invalid path '%v': type must not be nil", n)
+}

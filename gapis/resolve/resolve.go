@@ -33,6 +33,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/service/types"
 	"github.com/google/gapid/gapis/trace"
 )
 
@@ -96,6 +97,10 @@ func Field(ctx context.Context, p *path.Field, r *path.ResolveConfig) (interface
 		return nil, err
 	}
 	return v.Interface(), nil
+}
+
+func Type(ctx context.Context, p *path.Type, r *path.ResolveConfig) (interface{}, error) {
+	return types.GetType(p.TypeIndex)
 }
 
 func Messages(ctx context.Context, p *path.Messages) (interface{}, error) {
@@ -354,6 +359,8 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return Thumbnail(ctx, p, r)
 	case *path.Stats:
 		return Stats(ctx, p, r)
+	case *path.Type:
+		return Type(ctx, p, r)
 	default:
 		return nil, fmt.Errorf("Unknown path type %T", p)
 	}

@@ -1,0 +1,87 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "core/data/pod/pod.proto";
+
+package types;
+option java_package = "com.google.gapid.proto.service.types";
+option java_outer_classname = "TypeInfo";
+option go_package = "github.com/google/gapid/gapis/service/types";
+
+message Type {
+  uint64 type_id = 1;
+  string name = 2;
+  oneof ty {
+    pod.Type pod = 3;
+    PointerType pointer = 4;
+    SliceType slice = 5;
+    ReferenceType reference = 6;
+    StructType struct = 7;
+    MapType map = 8;
+    ArrayType array = 9;
+    PseudonymType pseudonym = 10;
+    EnumType enum
+    = 11;
+    SizedType sized = 12;
+  }
+}
+
+message StructType {
+  repeated StructField fields = 1;
+}
+
+message StructField {
+  string name = 1;
+  uint64 type = 2;
+}
+
+message ArrayType {
+  uint64 element_type = 1;
+  uint64 size = 2;
+}
+
+message MapType {
+  uint64 key_type = 1;
+  uint64 value_type = 2;
+}
+
+message PointerType {
+  uint64 pointee = 1;
+  bool is_const = 3;
+}
+
+message ReferenceType {
+  uint64 referee = 1;
+}
+
+message SliceType {
+  uint64 underlying = 1;
+}
+
+message PseudonymType {
+  uint64 underlying = 1;
+}
+
+message EnumType {
+  uint64 underlying = 1;
+}
+
+enum SizedType {
+  sized_int = 0;
+  sized_uint = 1;
+  sized_size = 2;
+  sized_char = 3;
+}

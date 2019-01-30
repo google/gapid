@@ -60,6 +60,11 @@ alias(
 )
 
 alias(
+    name = "apic",
+    actual = "//cmd/apic",
+)
+
+alias(
     name = "enum_lookup",
     actual = "//cmd/enum_lookup",
 )

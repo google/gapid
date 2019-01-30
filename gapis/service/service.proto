@@ -20,7 +20,9 @@ import "core/os/device/device.proto";
 import "gapis/api/service.proto";
 import "gapis/perfetto/service/perfetto.proto";
 import "gapis/service/box/box.proto";
+import "gapis/service/memory_box/box.proto";
 import "gapis/service/path/path.proto";
+import "gapis/service/types/types.proto";
 import "gapis/service/severity/severity.proto";
 import "gapis/stringtable/stringtable.proto";
 import "perfetto/config/perfetto_config.proto";
@@ -111,6 +113,8 @@ message Value {
     image.Info image_info = 40;
 
     box.Value box = 50;
+
+    types.Type type = 60;
   }
 }
 
@@ -1251,4 +1255,8 @@ message GetTimestampsResponse {
     Timestamps timestamps = 1;
     Error error = 2;
   }
+}
+
+// Passes the current command, unmodified
+message Pass {
 }
