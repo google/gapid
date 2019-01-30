@@ -56,7 +56,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 	// Ensure the capture can be read by resolving it now.
-	capt, err := capture.ResolveFromPath(ctx, p)
+	capt, err := capture.ResolveGraphicsFromPath(ctx, p)
 	if err != nil {
 		return err
 	}
