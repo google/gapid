@@ -1257,7 +1257,7 @@ import (
     return s
   }
 
-  // Index returns a sub-slice to the i'th element in this {{$slice_ty}}.
+  // Index returns a sub-slice to the ith element in this {{$slice_ty}}.
   func (s {{$slice_ty}}) Index(i uint64) {{$slice_ty}} {
     return s.Slice(i, i+1)
   }

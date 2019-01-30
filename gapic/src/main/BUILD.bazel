@@ -64,6 +64,7 @@ java_library(
         "//gapis/service:service_java_proto",
         "//gapis/service/box:box_java_proto",
         "//gapis/service/path:path_java_proto",
+        "//gapis/service/types:types_java_proto",
         "//gapis/stringtable:stringtable_java_proto",
         "//gapis/vertex:vertex_java_proto",
         "@perfetto//:config_java_proto",

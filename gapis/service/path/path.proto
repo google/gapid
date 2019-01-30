@@ -64,6 +64,7 @@ message Any {
     StateTreeNodeForPath state_tree_node_for_path = 36;
     Stats stats = 37;
     Thumbnail thumbnail = 38;
+    Type type = 39;
   }
 }
 
@@ -171,6 +172,11 @@ message Events {
 message Parameter {
   string name = 1;
   Command command = 2;
+}
+
+// Type is the path to a type used in an API.
+message Type {
+  uint64 type_index = 1;
 }
 
 // Result is the path to the result value of a command.

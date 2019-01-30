@@ -31,6 +31,7 @@ import (
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/service/severity"
+	"github.com/google/gapid/gapis/service/types"
 	"github.com/google/gapid/gapis/stringtable"
 )
 
@@ -286,6 +287,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_MultiResourceData{v}}
 	case *DeviceTraceConfiguration:
 		return &Value{Val: &Value_TraceConfig{v}}
+	case *types.Type:
+		return &Value{Val: &Value_Type{v}}
 
 	default:
 		if v := box.NewValue(v); v != nil {
