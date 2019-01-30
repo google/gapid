@@ -502,14 +502,18 @@ sub void readDrawState() {
   if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_VIEWPORT)] {
     _ = len(dyn.Viewports)
   } else {
-    _ = len(pipeline.ViewportState.Viewports)
+    if pipeline.ViewportState != null {
+      _ = len(pipeline.ViewportState.Viewports)
+    }
   }
 
   // read all scissors
   if dynamicState.contains[as!u32(VK_DYNAMIC_STATE_SCISSOR)] {
     _ = len(dyn.Scissors)
   } else {
-    _ = len(pipeline.ViewportState.Scissors)
+    if pipeline.ViewportState != null {
+      _ = len(pipeline.ViewportState.Scissors)
+    }
   }
 
   // read line width
@@ -537,10 +541,12 @@ sub void readDrawState() {
     _ = dyn.BlendConstants[2]
     _ = dyn.BlendConstants[3]
   } else {
-    _ = pipeline.ColorBlendState.BlendConstants[0]
-    _ = pipeline.ColorBlendState.BlendConstants[1]
-    _ = pipeline.ColorBlendState.BlendConstants[2]
-    _ = pipeline.ColorBlendState.BlendConstants[3]
+    if pipeline.ColorBlendState != null {
+      _ = pipeline.ColorBlendState.BlendConstants[0]
+      _ = pipeline.ColorBlendState.BlendConstants[1]
+      _ = pipeline.ColorBlendState.BlendConstants[2]
+      _ = pipeline.ColorBlendState.BlendConstants[3]
+    }
   }
 
   // read depth bounds
@@ -548,8 +554,10 @@ sub void readDrawState() {
     _ = dyn.MinDepthBounds
     _ = dyn.MaxDepthBounds
   } else {
-    _ = pipeline.DepthState.MinDepthBounds
-    _ = pipeline.DepthState.MaxDepthBounds
+    if pipeline.DepthState != null {
+      _ = pipeline.DepthState.MinDepthBounds
+      _ = pipeline.DepthState.MaxDepthBounds
+    }
   }
 
   // read stencil state
@@ -561,12 +569,14 @@ sub void readDrawState() {
     _ = dyn.StencilBack.writeMask
     _ = dyn.StencilBack.reference
   } else {
-    _ = pipeline.DepthState.Front.compareMask
-    _ = pipeline.DepthState.Front.writeMask
-    _ = pipeline.DepthState.Front.reference
-    _ = pipeline.DepthState.Back.compareMask
-    _ = pipeline.DepthState.Back.writeMask
-    _ = pipeline.DepthState.Back.reference
+    if pipeline.DepthState != null {
+      _ = pipeline.DepthState.Front.compareMask
+      _ = pipeline.DepthState.Front.writeMask
+      _ = pipeline.DepthState.Front.reference
+      _ = pipeline.DepthState.Back.compareMask
+      _ = pipeline.DepthState.Back.writeMask
+      _ = pipeline.DepthState.Back.reference
+    }
   }
 
   readPushConstants(VK_PIPELINE_BIND_POINT_GRAPHICS)
