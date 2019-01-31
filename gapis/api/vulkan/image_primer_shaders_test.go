@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -23,7 +24,7 @@ import (
 
 func TestVertexShader(t *testing.T) {
 	ctx := log.Testing(t)
-	_, err := ipVertexShaderSpirv()
+	_, err := ipRenderVertexShaderSpirv()
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 }
 
@@ -131,7 +132,17 @@ func TestFragmentShader(t *testing.T) {
 		{VkFormat_VK_FORMAT_D32_SFLOAT_S8_UINT, VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT},
 	} {
 		ctx := log.Testing(t)
-		_, err := ipFragmentShaderSpirv(info.format, info.aspect)
+		var err error
+		switch info.aspect {
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+			_, err = ipRenderColorShaderSpirv(info.format)
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
+			_, err = ipRenderDepthShaderSpirv(info.format)
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+			_, err = ipRenderStencilShaderSpirv()
+		default:
+			err = fmt.Errorf("Unsupported aspect")
+		}
 		assert.For(ctx, "err").ThatError(err).Succeeded()
 	}
 }

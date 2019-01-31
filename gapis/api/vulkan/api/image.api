@@ -477,7 +477,7 @@ cmd VkResult vkCreateImageView(
     planeMemInfo := getImagePlaneMemoryInfo(imageObject, as!VkImageAspectFlagBits(0))
     if planeMemInfo != null {
       planeBoundMemory := planeMemInfo.BoundMemory
-      if (!hasSparseBit) && (planeBoundMemory != null) {
+      if (!hasSparseBit) && (planeBoundMemory == null) {
         vkErrorImageMemoryNotBound(image_view_create_info.image)
       }
       if ((0xFFFFFFFF - as!u32(imageObject.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {

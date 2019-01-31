@@ -93,12 +93,13 @@ func (p *imagePrimer) createImageAndBindMemory(dev VkDevice, info ImageInfo, mem
 	return img, mem, nil
 }
 
-// createSameStagingImage creates an image with the same image info as the given
-// image, and create backing memory for the new image and bind the image with
-// the created memory (sparse binding not supported). Returns the created image
-// object in the new state of the stateBuilder in the image primer, a function
-// to destroy the new created image and backing memory, and an error.
-func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ) (ImageObjectʳ, func(), error) {
+// createSameStagingImage creates an image with the same image info (except
+// initial layout) as the given image along with the given initial layout, and
+// create backing memory for the new image and bind the image with the created
+// memory (sparse binding not supported). Returns the created image object in
+// the new state of the stateBuilder in the image primer, a function to destroy
+// the new created image and backing memory, and an error.
+func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ, initialLayout VkImageLayout) (ImageObjectʳ, func(), error) {
 	dev := p.sb.s.Devices().Get(img.Device())
 	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
 	// TODO: Handle multi-planar images
@@ -113,7 +114,10 @@ func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ) (ImageObjectʳ, 
 		return ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, fmt.Errorf("can't find an appropriate memory type index"), "[Creatig staging image same as image: %v]", img.VulkanHandle())
 	}
 
-	stagingImg, stagingImgMem, err := p.createImageAndBindMemory(img.Device(), img.Info(), memIndex)
+	createInfo := img.Info()
+	createInfo.SetInitialLayout(initialLayout)
+
+	stagingImg, stagingImgMem, err := p.createImageAndBindMemory(img.Device(), createInfo, memIndex)
 	if err != nil {
 		return ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "[Creating staging image same as image: %v]", img.VulkanHandle())
 	}
@@ -409,12 +413,26 @@ func (h *ipImageStoreHandler) store(job ipImageStoreJob, queue VkQueue) error {
 	descSet := h.descSets[dev]
 
 	// Create compute pipeline
+	metaData := make([]uint32, 0, 6)
+	metaData = append(metaData,
+		uint32(job.offset.X()),
+		uint32(job.offset.Y()),
+		uint32(job.offset.Z()),
+		uint32(job.inputIndex),
+	)
+	var db bytes.Buffer
+	binary.Write(&db, binary.LittleEndian, metaData)
 	if _, ok := h.pipelineLayouts[dev]; !ok {
 		pipelineLayoutHandle := VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 			return GetState(h.sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
 		}))
 		vkCreatePipelineLayout(h.sb, dev, []VkDescriptorSetLayout{h.descSetLayouts[dev]},
-			[]VkPushConstantRange{}, pipelineLayoutHandle)
+			[]VkPushConstantRange{
+				NewVkPushConstantRange(h.sb.ta,
+					VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT), // stageFlags
+					0,                       // offset
+					uint32(len(db.Bytes())), // size
+				)}, pipelineLayoutHandle)
 		h.pipelineLayouts[dev] = pipelineLayoutHandle
 	}
 	pipelineLayoutHandle := h.pipelineLayouts[dev]
@@ -453,21 +471,6 @@ func (h *ipImageStoreHandler) store(job ipImageStoreJob, queue VkQueue) error {
 
 	tsk := h.sb.newScratchTaskOnQueue(queue)
 
-	// meta data uniform buffer
-	metaData := make([]uint32, 0, 6)
-	metaData = append(metaData,
-		uint32(job.offset.X()),
-		uint32(job.offset.Y()),
-		uint32(job.offset.Z()),
-		uint32(job.inputIndex),
-	)
-	var db bytes.Buffer
-	binary.Write(&db, binary.LittleEndian, metaData)
-	metadataBuf := tsk.newBuffer(
-		[]bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(db.Bytes(), 0)},
-		VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-	// scratch task buffer will be destroyed when scratch task finishes.
-
 	// update descriptor sets
 	tsk.doOnCommitted(func() {
 		writeDescriptorSet(h.sb, dev, descSet, ipImageStoreOutputImageBinding, 0,
@@ -488,18 +491,6 @@ func (h *ipImageStoreHandler) store(job ipImageStoreJob, queue VkQueue) error {
 				),
 			}, []VkDescriptorBufferInfo{}, []VkBufferView{},
 		)
-		writeDescriptorSet(h.sb, dev, descSet, ipImageStoreUniformBufferBinding, 0,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			[]VkDescriptorImageInfo{},
-			[]VkDescriptorBufferInfo{
-				NewVkDescriptorBufferInfo(h.sb.ta,
-					metadataBuf,        // Buffer
-					0,                  // Offset
-					0xFFFFFFFFFFFFFFFF, // Range
-				),
-			},
-			[]VkBufferView{},
-		)
 	})
 
 	// command buffer commands
@@ -515,6 +506,14 @@ func (h *ipImageStoreHandler) store(job ipImageStoreJob, queue VkQueue) error {
 			pipelineLayoutHandle,
 			0, 1, h.sb.MustAllocReadData(descSet).Ptr(),
 			0, NewU32ᶜᵖ(memory.Nullptr),
+		))
+		h.sb.write(h.sb.cb.VkCmdPushConstants(
+			commandBuffer,
+			pipelineLayoutHandle,
+			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT),
+			0,
+			uint32(len(db.Bytes())),
+			NewCharᶜᵖ(h.sb.MustAllocReadData(db.Bytes()).Ptr()),
 		))
 		groupCountX := job.extent.Width()
 		groupCountY := job.extent.Height()
@@ -640,13 +639,12 @@ type ipRenderImage struct {
 
 const (
 	ipRenderInputAttachmentBinding = 0
-	ipRenderUniformBufferBinding   = 1
 )
 
 type ipRenderDescriptorSetInfo struct {
 	dev                 VkDevice
 	numInputAttachments int
-	numUniformBuffers   int
+	pushConstant        bool
 }
 
 type ipRenderPassInfo struct {
@@ -757,7 +755,7 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	if job.renderTarget.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
 		// If the render target aspect is stencil, an uniform buffer is required
 		// to store the stencil bit index value.
-		descSetInfo.numUniformBuffers = 1
+		descSetInfo.pushConstant = true
 	}
 	descPool := h.createDescriptorPool(descSetInfo)
 	if !descPool.IsNil() {
@@ -822,33 +820,6 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 		writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderInputAttachmentBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, imgInfoList, []VkDescriptorBufferInfo{}, []VkBufferView{})
 	})
 
-	var stencilIndexBuf VkBuffer
-	if job.renderTarget.aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT {
-		// write the uniform buffer for rendering stencil value.
-		stencilBitIndices := []uint32{0}
-		var sbic bytes.Buffer
-		binary.Write(&sbic, binary.LittleEndian, stencilBitIndices)
-		stencilIndexBuf = tsk.newBuffer(
-			[]bufferSubRangeFillInfo{newBufferSubRangeFillInfoFromNewData(sbic.Bytes(), 0)},
-			VkBufferUsageFlagBits_VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)
-		// tsk.deferUntilExecuted(func() {
-		// 	h.sb.write(h.sb.cb.VkDestroyBuffer(dev, stencilIndexBuf, memory.Nullptr))
-		// })
-
-		bufInfoList := []VkDescriptorBufferInfo{
-			NewVkDescriptorBufferInfo(h.sb.ta,
-				stencilIndexBuf, // Buffer
-				0,               // Offset
-				4,               // Range
-			),
-		}
-
-		tsk.doOnCommitted(func() {
-			writeDescriptorSet(h.sb, dev, descSet.VulkanHandle(), ipRenderUniformBufferBinding, 0, VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, []VkDescriptorImageInfo{}, bufInfoList, []VkBufferView{})
-		})
-	}
-
 	renderPassInfo := ipRenderPassInfo{
 		dev:                         dev,
 		numInputAttachments:         len(job.inputAttachmentImages),
@@ -905,31 +876,6 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 	if err != nil {
 		return log.Errf(h.sb.ctx, err, "[Getting graphics pipeline]")
 	}
-
-	if h.vertexBufferFillInfo == nil {
-		var vc bytes.Buffer
-		binary.Write(&vc, binary.LittleEndian, []float32{
-			// positions, offset: 0 bytes
-			1.0, 1.0, 0.0, -1.0, -1.0, 0.0, -1.0, 1.0, 0.0, 1.0, -1.0, 0.0,
-		})
-		i := newBufferSubRangeFillInfoFromNewData(vc.Bytes(), 0)
-		h.vertexBufferFillInfo = &i
-		h.vertexBufferFillInfo.storeNewData(h.sb)
-	}
-	// scratch vertex buffer will be destroyed automatically when the task is done.
-	vertexBuf := tsk.newBuffer([]bufferSubRangeFillInfo{*h.vertexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-
-	if h.indexBufferFillInfo == nil {
-		var ic bytes.Buffer
-		binary.Write(&ic, binary.LittleEndian, []uint32{
-			0, 1, 2, 0, 3, 1,
-		})
-		i := newBufferSubRangeFillInfoFromNewData(ic.Bytes(), 0)
-		h.indexBufferFillInfo = &i
-		h.indexBufferFillInfo.storeNewData(h.sb)
-	}
-	// scratch index buffer will be destroyed automatically when the task is done.
-	indexBuf := tsk.newBuffer([]bufferSubRangeFillInfo{*h.indexBufferFillInfo}, VkBufferUsageFlagBits_VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
 
 	inputSrcBarriers := []VkImageMemoryBarrier{}
 	dstBarriers := []VkImageMemoryBarrier{}
@@ -996,30 +942,6 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			job.renderTarget.layer, // baseArrayLayer
 			1,                      // layerCount
 		))
-	bufBarriers := []VkBufferMemoryBarrier{
-		NewVkBufferMemoryBarrier(h.sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-			0, // pNext
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT),                                        // dstAccessMask
-			queueFamilyIgnore, // srcQueueFamilyIndex
-			queueFamilyIgnore, // dstQueueFamilyIndex
-			vertexBuf,         // buffer
-			0,                 // offset
-			VkDeviceSize(h.vertexBufferFillInfo.size()), // size
-		),
-		NewVkBufferMemoryBarrier(h.sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-			0, // pNext
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-			VkAccessFlags(VkAccessFlagBits_VK_ACCESS_INDEX_READ_BIT),                                                   // dstAccessMask
-			queueFamilyIgnore, // srcQueueFamilyIndex
-			queueFamilyIgnore, // dstQueueFamilyIndex
-			indexBuf,          // buffer
-			0,                 // offset
-			VkDeviceSize(h.indexBufferFillInfo.size()), // size
-		),
-	}
 
 	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
 		h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
@@ -1029,8 +951,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			VkDependencyFlags(0),
 			uint32(0),
 			memory.Nullptr,
-			uint32(len(bufBarriers)),
-			h.sb.MustAllocReadData(bufBarriers).Ptr(),
+			uint32(0),
+			memory.Nullptr,
 			uint32(len(append(inputSrcBarriers, outputBarrier))),
 			h.sb.MustAllocReadData(append(inputSrcBarriers, outputBarrier)).Ptr(),
 		))
@@ -1046,8 +968,6 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 			descSet:          descSet,
 			pipelineLayout:   pipelineLayout,
 			pipeline:         pipeline,
-			vertexBuf:        vertexBuf,
-			indexBuf:         indexBuf,
 			aspect:           job.renderTarget.aspect,
 			width:            uint32(targetLevelSize.width),
 			height:           uint32(targetLevelSize.height),
@@ -1069,19 +989,8 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 					VkDependencyFlags(0),
 					uint32(0),
 					memory.Nullptr,
-					uint32(1),
-					h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
-						NewVkBufferMemoryBarrier(h.sb.ta,
-							VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-							0, // pNext
-							VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT),                                               // dstAccessMask
-							queueFamilyIgnore,                // srcQueueFamilyIndex
-							queueFamilyIgnore,                // dstQueueFamilyIndex
-							stencilIndexBuf,                  // buffer
-							0,                                // offset
-							VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
-						)}).Ptr(),
+					uint32(0),
+					memory.Nullptr,
 					uint32(1),
 					h.sb.MustAllocReadData([]VkImageMemoryBarrier{
 						NewVkImageMemoryBarrier(h.sb.ta,
@@ -1103,33 +1012,18 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 							),
 						)}).Ptr(),
 				))
-				h.sb.write(h.sb.cb.VkCmdUpdateBuffer(
+
+				// Create compute pipeline
+				stencilIndex := []uint32{i}
+				var sib bytes.Buffer
+				binary.Write(&sib, binary.LittleEndian, stencilIndex)
+				h.sb.write(h.sb.cb.VkCmdPushConstants(
 					commandBuffer,
-					stencilIndexBuf,
-					0, 4, NewVoidᶜᵖ(h.sb.MustAllocReadData([]uint32{i}).Ptr()),
-				))
-				h.sb.write(h.sb.cb.VkCmdPipelineBarrier(
-					commandBuffer,
-					VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-					VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-					VkDependencyFlags(0),
-					uint32(0),
-					memory.Nullptr,
-					uint32(1),
-					h.sb.MustAllocReadData([]VkBufferMemoryBarrier{
-						NewVkBufferMemoryBarrier(h.sb.ta,
-							VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-							0, // pNext
-							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_TRANSFER_WRITE_BIT), // srcAccessMask
-							VkAccessFlags(VkAccessFlagBits_VK_ACCESS_UNIFORM_READ_BIT),   // dstAccessMask
-							queueFamilyIgnore,                // srcQueueFamilyIndex
-							queueFamilyIgnore,                // dstQueueFamilyIndex
-							stencilIndexBuf,                  // buffer
-							0,                                // offset
-							VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
-						)}).Ptr(),
-					uint32(0),
-					memory.Nullptr,
+					pipelineLayout.VulkanHandle(),
+					VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT),
+					0,
+					4,
+					NewCharᶜᵖ(h.sb.MustAllocReadData(sib.Bytes()).Ptr()),
 				))
 			})
 			drawInfo := ipRenderDrawInfo{
@@ -1139,8 +1033,6 @@ func (h *ipRenderHandler) render(job *ipRenderJob, tsk *scratchTask) error {
 				descSet:          descSet,
 				pipelineLayout:   pipelineLayout,
 				pipeline:         pipeline,
-				vertexBuf:        vertexBuf,
-				indexBuf:         indexBuf,
 				aspect:           VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT,
 				width:            uint32(targetLevelSize.width),
 				height:           uint32(targetLevelSize.height),
@@ -1203,8 +1095,6 @@ type ipRenderDrawInfo struct {
 	descSet          DescriptorSetObjectʳ
 	pipelineLayout   PipelineLayoutObjectʳ
 	pipeline         GraphicsPipelineObjectʳ
-	vertexBuf        VkBuffer
-	indexBuf         VkBuffer
 	aspect           VkImageAspectFlagBits
 	width            uint32
 	height           uint32
@@ -1265,18 +1155,6 @@ func (h *ipRenderHandler) beginRenderPassAndDraw(info ipRenderDrawInfo) {
 			VkPipelineBindPoint_VK_PIPELINE_BIND_POINT_GRAPHICS,
 			info.pipeline.VulkanHandle(),
 		))
-		h.sb.write(h.sb.cb.VkCmdBindVertexBuffers(
-			commandBuffer,
-			0, 1,
-			h.sb.MustAllocReadData(info.vertexBuf).Ptr(),
-			h.sb.MustAllocReadData(VkDeviceSize(0)).Ptr(),
-		))
-		h.sb.write(h.sb.cb.VkCmdBindIndexBuffer(
-			commandBuffer,
-			info.indexBuf,
-			VkDeviceSize(0),
-			VkIndexType_VK_INDEX_TYPE_UINT32,
-		))
 		h.sb.write(h.sb.cb.VkCmdSetViewport(
 			commandBuffer,
 			uint32(0),
@@ -1318,9 +1196,9 @@ func (h *ipRenderHandler) beginRenderPassAndDraw(info ipRenderDrawInfo) {
 			0,
 			NewU32ᶜᵖ(memory.Nullptr),
 		))
-		h.sb.write(h.sb.cb.VkCmdDrawIndexed(
+		h.sb.write(h.sb.cb.VkCmdDraw(
 			commandBuffer,
-			6, 1, 0, 0, 0,
+			6, 1, 0, 0,
 		))
 		h.sb.write(h.sb.cb.VkCmdEndRenderPass(commandBuffer))
 	})
@@ -1407,12 +1285,6 @@ func (h *ipRenderHandler) createDescriptorPool(descSetInfo ipRenderDescriptorSet
 		poolSizes = append(poolSizes, NewVkDescriptorPoolSize(h.sb.ta,
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, // Type
 			uint32(descSetInfo.numInputAttachments),              // descriptorCount
-		))
-	}
-	if descSetInfo.numUniformBuffers != 0 {
-		poolSizes = append(poolSizes, NewVkDescriptorPoolSize(h.sb.ta,
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // Type
-			uint32(descSetInfo.numUniformBuffers),              // descriptorCount
 		))
 	}
 
@@ -1535,9 +1407,18 @@ func (h *ipRenderHandler) getOrCreateShaderModule(info ipRenderShaderInfo) (Shad
 	var err error
 	code := []uint32{}
 	if info.isVertex {
-		code, err = ipVertexShaderSpirv()
+		code, err = ipRenderVertexShaderSpirv()
 	} else {
-		code, err = ipFragmentShaderSpirv(info.format, info.aspect)
+		switch info.aspect {
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
+			code, err = ipRenderColorShaderSpirv(info.format)
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
+			code, err = ipRenderDepthShaderSpirv(info.format)
+		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
+			code, err = ipRenderStencilShaderSpirv()
+		default:
+			err = fmt.Errorf("Unsupported aspect bit: %v", info.aspect)
+		}
 	}
 	if err != nil {
 		return NilShaderModuleObjectʳ, log.Errf(h.sb.ctx, err, "[Generating shader SPIR-V for: %v]", info)
@@ -1651,25 +1532,10 @@ func (h *ipRenderHandler) getOrCreateGraphicsPipeline(info ipGfxPipelineInfo, re
 				VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // sType
 				0, // pNext
 				0, // flags
-				1, // vertexBindingDescriptionCount
-				NewVkVertexInputBindingDescriptionᶜᵖ(h.sb.MustAllocReadData( // pVertexBindingDescriptions
-					[]VkVertexInputBindingDescription{
-						NewVkVertexInputBindingDescription(h.sb.ta,
-							0,  // binding
-							12, // stride
-							0,  // inputRate
-						),
-					}).Ptr()),
-				1, // vertexAttributeDescriptionCount
-				NewVkVertexInputAttributeDescriptionᶜᵖ(h.sb.MustAllocReadData( // pVertexAttributeDescriptions
-					[]VkVertexInputAttributeDescription{
-						NewVkVertexInputAttributeDescription(h.sb.ta,
-							0,                                   // location
-							0,                                   // binding
-							VkFormat_VK_FORMAT_R32G32B32_SFLOAT, // format
-							0,                                   // offset
-						),
-					}).Ptr()),
+				0, // vertexBindingDescriptionCount
+				NewVkVertexInputBindingDescriptionᶜᵖ(memory.Nullptr), // pVertexBindingDescriptions
+				0, // vertexAttributeDescriptionCouny
+				NewVkVertexInputAttributeDescriptionᶜᵖ(memory.Nullptr),
 			)).Ptr()),
 		NewVkPipelineInputAssemblyStateCreateInfoᶜᵖ(h.sb.MustAllocReadData( // pInputAssemblyState
 			NewVkPipelineInputAssemblyStateCreateInfo(h.sb.ta,
@@ -1780,7 +1646,19 @@ func (h *ipRenderHandler) getOrCreatePipelineLayout(descSetInfo ipRenderDescript
 		return GetState(h.sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x))
 	}))
 	descriptorSet := h.getOrCreateDescriptorSetLayout(descSetInfo)
-	vkCreatePipelineLayout(h.sb, descSetInfo.dev, []VkDescriptorSetLayout{descriptorSet.VulkanHandle()}, []VkPushConstantRange{}, handle)
+	pushConstantRanges := []VkPushConstantRange{}
+	if descSetInfo.pushConstant {
+		pushConstantRanges = append(pushConstantRanges, NewVkPushConstantRange(h.sb.ta,
+			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT), // stageFlags
+			0, // offset
+			4, // size
+		))
+	}
+	vkCreatePipelineLayout(h.sb, descSetInfo.dev,
+		[]VkDescriptorSetLayout{descriptorSet.VulkanHandle()},
+		pushConstantRanges,
+		handle,
+	)
 	h.pipelineLayouts[descSetInfo] = GetState(h.sb.newState).PipelineLayouts().Get(handle)
 	return h.pipelineLayouts[descSetInfo]
 }
@@ -1801,15 +1679,6 @@ func (h *ipRenderHandler) getOrCreateDescriptorSetLayout(descSetInfo ipRenderDes
 			ipRenderInputAttachmentBinding,                                         // binding
 			VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,                   // descriptorType
 			uint32(descSetInfo.numInputAttachments),                                // descriptorCount
-			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT), // stageFlags
-			0, // pImmutableSamplers
-		))
-	}
-	if descSetInfo.numUniformBuffers != 0 {
-		bindings = append(bindings, NewVkDescriptorSetLayoutBinding(h.sb.ta,
-			ipRenderUniformBufferBinding,                                           // binding
-			VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,                     // descriptorType
-			uint32(descSetInfo.numUniformBuffers),                                  // descriptorCount
 			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT), // stageFlags
 			0, // pImmutableSamplers
 		))
@@ -2035,11 +1904,9 @@ func (h *ipBufferImageCopySession) rolloutBufCopies(queue VkQueue, initLayouts, 
 				bufOffset := uint64(0)
 				tsk := h.sb.newScratchTaskOnQueue(queue)
 				addIthCopyAndContent := func(i int) {
-					// copy := h.copies[dstImg][i]
 					copy := notProcessedCopies[i]
 					copy.SetBufferOffset(VkDeviceSize(bufOffset))
 					copies = append(copies, copy)
-					// content := h.content[dstImg][i]
 					content := notProcessedContent[i]
 					content.setOffsetInBuffer(bufOffset)
 					bufContent = append(bufContent, content)
