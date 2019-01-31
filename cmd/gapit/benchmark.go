@@ -512,9 +512,9 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		for _, types := range resources.GetTypes() {
 			for ii, v := range types.GetResources() {
 				if (types.Type == api.ResourceType_TextureResource ||
-					types.Type == api.ResourceType_ShaderResource ||
-					types.Type == api.ResourceType_ProgramResource) &&
-					ii < 30 {
+						types.Type == api.ResourceType_ShaderResource ||
+						types.Type == api.ResourceType_ProgramResource) &&
+						ii < 30 {
 					gotResources.Add(1)
 					go func(id *path.ID) {
 						defer gotResources.Done()
@@ -593,8 +593,8 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		if verb.OutputCSV {
 			csvWriter := csv.NewWriter(os.Stdout)
 			header := []string{
-				"Trace Time (ms)","Trace Size","Trace Frames","State Serialization (ms)","Trace Frame Time (ms)","Interactive (ms)",
-				"Caching Done (ms)","Interaction (ms)","Max Memory","Before MEC Frame Time (ms)","Trailing Frame Time (ms)"}
+				"Trace Time (ms)", "Trace Size", "Trace Frames", "State Serialization (ms)", "Trace Frame Time (ms)", "Interactive (ms)",
+				"Caching Done (ms)", "Interaction (ms)", "Max Memory", "Before MEC Frame Time (ms)", "Trailing Frame Time (ms)"}
 			csvWriter.Write(header)
 			record := []string{
 				fmt.Sprint(float64(verb.traceDoneTime.Sub(verb.beforeStartTraceTime).Nanoseconds()) / float64(time.Millisecond)),
@@ -611,7 +611,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			}
 			csvWriter.Write(record)
 			csvWriter.Flush()
-		}	else {
+		} else {
 			w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
 			fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive")
 			fmt.Fprintln(w, "----------\t----------\t------------\t-------------------\t----------------\t-----------")
