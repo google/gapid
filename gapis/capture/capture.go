@@ -52,12 +52,12 @@ type Capture interface {
 }
 
 func init() {
-	protoconv.Register(toProto, fromProto)
+	protoconv.Register(toProtoWrapped, fromProtoWrapped)
 }
 
 // New returns a path to a new capture stored in the database.
 func New(ctx context.Context, c Capture) (*path.Capture, error) {
-	id, err := database.Store(ctx, c)
+	id, err := database.Store(ctx, wrapper{c})
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func ResolveFromID(ctx context.Context, id id.ID) (Capture, error) {
 	if err != nil {
 		return nil, log.Err(ctx, err, "Error resolving capture")
 	}
-	return obj.(Capture), nil
+	return obj.(wrapper).c, nil
 }
 
 // ResolveGraphicsFromID resolves a single graphics capture with the ID id.
@@ -189,7 +189,6 @@ func (f *File) Size() (uint64, error) {
 		return 0, err
 	}
 	return uint64(fi.Size()), nil
-
 }
 
 func toProto(ctx context.Context, c Capture) (*Record, error) {
@@ -266,4 +265,19 @@ func fromProto(ctx context.Context, r *Record) (Capture, error) {
 	}
 
 	return nil, errors.New("Not a recognized capture format")
+}
+
+// wrapper wraps a Capture. This is needed because protoconv, which is used by
+// the database, doesn't support interfaces.
+type wrapper struct {
+	c Capture
+}
+
+func toProtoWrapped(ctx context.Context, w wrapper) (*Record, error) {
+	return toProto(ctx, w.c)
+}
+
+func fromProtoWrapped(ctx context.Context, r *Record) (wrapper, error) {
+	c, err := fromProto(ctx, r)
+	return wrapper{c}, err
 }
