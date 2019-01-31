@@ -48,13 +48,23 @@ func getQueueForPriming(sb *stateBuilder, oldStateImgObj ImageObjectʳ, queueFla
 		oldStateImgObj.Device(), queueCandidates...)
 }
 
+func deferUntilAllCommittedExecuted(sb *stateBuilder, queue VkQueue, f ...func()) {
+	tsk := sb.newScratchTaskOnQueue(queue)
+	tsk.deferUntilExecuted(func() {
+		for _, ff := range f {
+			ff()
+		}
+	})
+	tsk.commit()
+}
+
 // ipPrimeableByBufferCopy contains the data for priming through buffer image
 // copy host data.
 type ipPrimeableByBufferCopy struct {
 	p           *imagePrimer
 	img         VkImage
 	queue       VkQueue
-	copySession *ipBufferCopySession
+	copySession *ipBufferImageCopySession
 }
 
 func (pi *ipPrimeableByBufferCopy) prime(srcLayout, dstLayout ipLayoutInfo) error {
@@ -82,13 +92,7 @@ type ipPrimeableByRendering struct {
 
 func (pi *ipPrimeableByRendering) free() {
 	// staging images and memories will not be freed immediately, but wait until all the tasks on its queue are finished.
-	freeTsk := pi.p.sb.newScratchTaskOnQueue(pi.queue)
-	freeTsk.deferUntilExecuted(func() {
-		for _, f := range pi.freeCallbacks {
-			f()
-		}
-	})
-	freeTsk.commit()
+	deferUntilAllCommittedExecuted(pi.p.sb, pi.queue, pi.freeCallbacks...)
 	// Avoid the double free causing issue.
 	pi.freeCallbacks = nil
 }
@@ -152,20 +156,27 @@ func (pi *ipPrimeableByRendering) prime(srcLayout, dstLayout ipLayoutInfo) error
 	return nil
 }
 
-// ipPrimeableByBufferImageStore contains the data for priming through
-// imageStore operations with buffer whose data from the host side.
-type ipPrimeableByBufferImageStore struct {
-	p                 *imagePrimer
-	img               VkImage
-	opaqueBoundRanges []VkImageSubresourceRange
-	queue             VkQueue
+// ipPrimeableByImageStore contains the data for priming through
+// imageStore operations.
+type ipPrimeableByImageStore struct {
+	p             *imagePrimer
+	img           VkImage
+	queue         VkQueue
+	storeJobs     []ipImageStoreJob
+	freeCallbacks []func()
 }
 
-func (pi *ipPrimeableByBufferImageStore) free() {}
+func (pi *ipPrimeableByImageStore) free() {
+	// staging images and memories will not be freed immediately, but wait until
+	// all the tasks committed before calling free on its queue are finished.
+	deferUntilAllCommittedExecuted(pi.p.sb, pi.queue, pi.freeCallbacks...)
+	// Avoid the double free causing issue.
+	pi.freeCallbacks = nil
+}
 
-func (pi *ipPrimeableByBufferImageStore) primingQueue() VkQueue { return pi.queue }
+func (pi *ipPrimeableByImageStore) primingQueue() VkQueue { return pi.queue }
 
-func (pi *ipPrimeableByBufferImageStore) prime(srcLayout, dstLayout ipLayoutInfo) error {
+func (pi *ipPrimeableByImageStore) prime(srcLayout, dstLayout ipLayoutInfo) error {
 	oldStateImgObj := GetState(pi.p.sb.oldState).Images().Get(pi.img)
 	if oldStateImgObj.IsNil() {
 		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in old state"), "[Priming by buffer imageStore, img: %v]", pi.img)
@@ -173,43 +184,6 @@ func (pi *ipPrimeableByBufferImageStore) prime(srcLayout, dstLayout ipLayoutInfo
 	newStateImgObj := GetState(pi.p.sb.newState).Images().Get(pi.img)
 	if newStateImgObj.IsNil() {
 		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in new state"), "[Priming by buffer imageStore, img: %v]", pi.img)
-	}
-	storeJobs := []*ipStoreJob{}
-	for _, rng := range pi.opaqueBoundRanges {
-		walkImageSubresourceRange(pi.p.sb, oldStateImgObj, rng,
-			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-				storeJobs = append(storeJobs, &ipStoreJob{
-					// Use oldStateImgObj as target as later the store handler
-					// will fetch the source data from the shadow memory of the
-					// store target object. Note the Vulkan handle of the old
-					// state image object is same as the handle of the new state
-					// image object.
-					storeTarget:       oldStateImgObj,
-					aspect:            aspect,
-					layer:             layer,
-					level:             level,
-					opaqueBlockOffset: MakeVkOffset3D(pi.p.sb.ta),
-					opaqueBlockExtent: NewVkExtent3D(pi.p.sb.ta,
-						uint32(levelSize.width),
-						uint32(levelSize.height),
-						uint32(levelSize.depth),
-					),
-				})
-			})
-	}
-
-	if isSparseResidency(oldStateImgObj) {
-		walkSparseImageMemoryBindings(pi.p.sb, oldStateImgObj,
-			func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
-				storeJobs = append(storeJobs, &ipStoreJob{
-					storeTarget:       oldStateImgObj,
-					aspect:            aspect,
-					layer:             layer,
-					level:             level,
-					opaqueBlockOffset: blockData.Offset(),
-					opaqueBlockExtent: blockData.Extent(),
-				})
-			})
 	}
 	whole := pi.p.sb.imageWholeSubresourceRange(newStateImgObj)
 	transitionInfo := []imageSubRangeInfo{}
@@ -230,10 +204,14 @@ func (pi *ipPrimeableByBufferImageStore) prime(srcLayout, dstLayout ipLayoutInfo
 	})
 	pi.p.sb.changeImageSubRangeLayoutAndOwnership(newStateImgObj.VulkanHandle(), transitionInfo)
 
-	for _, job := range storeJobs {
+	for _, job := range pi.storeJobs {
 		err := pi.p.sh.store(job, pi.queue)
 		if err != nil {
-			log.E(pi.p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by buffer imageStore] %v", job.storeTarget.VulkanHandle(), job.aspect, job.layer, job.level, job.opaqueBlockOffset, job.opaqueBlockExtent, err)
+			aspect := VkImageAspectFlagBits(job.output.SubresourceRange().AspectMask())
+			layer := job.output.SubresourceRange().BaseArrayLayer()
+			level := job.output.SubresourceRange().BaseMipLevel()
+			log.E(pi.p.sb.ctx, "[Priming image: %v aspect: %v, layer: %v, level: %v, offset: %v, extent: %v data by imageStore] %v",
+				job.output.Image().VulkanHandle(), aspect, layer, level, job.offset, job.extent, err)
 		}
 	}
 
@@ -365,11 +343,11 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			if queue.IsNil() {
 				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by buffer -> image copy, image: %v]", img)
 			}
-			job := newImagePrimerBufCopyJob(oldStateImgObj)
+			job := newImagePrimerBufferImageCopyJob(oldStateImgObj)
 			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
 				job.addDst(p.sb.ctx, aspect, aspect, oldStateImgObj)
 			}
-			bcs := newImagePrimerBufferCopySession(p.sb, job)
+			bcs := newImagePrimerBufferImageCopySession(p.sb, job)
 			for _, rng := range opaqueBoundRanges {
 				bcs.collectCopiesFromSubresourceRange(rng)
 			}
@@ -391,9 +369,13 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering host data: %v]", img)
 			}
 			primeable := &ipPrimeableByRendering{p: p, img: img, stagingImages: map[VkImageAspectFlagBits][]ImageObjectʳ{}, queue: queue.VulkanHandle()}
-			copyJob := newImagePrimerBufCopyJob(oldStateImgObj)
+			copyJob := newImagePrimerBufferImageCopyJob(oldStateImgObj)
 			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
-				stagingImgs, freeStagingImgs, err := p.allocStagingImages(oldStateImgObj, aspect)
+				stagingImgs, freeStagingImgs, err := p.create32BitUintColorStagingImagesForAspect(
+					oldStateImgObj, aspect, VkImageUsageFlags(
+						VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
+							VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT|
+							VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT))
 				if err != nil {
 					// Free allocated staging images in case of error
 					primeable.free()
@@ -403,7 +385,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 				primeable.stagingImages[aspect] = stagingImgs
 				primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImgs)
 			}
-			bcs := newImagePrimerBufferCopySession(p.sb, copyJob)
+			bcs := newImagePrimerBufferImageCopySession(p.sb, copyJob)
 			for _, rng := range opaqueBoundRanges {
 				bcs.collectCopiesFromSubresourceRange(rng)
 			}
@@ -414,7 +396,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			if err != nil {
 				// Free allocated staging images in case of error.
 				primeable.free()
-				return nil, log.Errf(p.sb.ctx, err, "[Rolling out the buf->img copy commands for staging images, building primeable data for image: %v]", img)
+				return nil, log.Errf(p.sb.ctx, err, "[Rolling out buf->img copy commands for staging images, building primeable data (by rendering) for image: %v]", img)
 			}
 			return primeable, nil
 
@@ -430,7 +412,120 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			if queue.IsNil() {
 				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by host data imageStore operation, image: %v]", img)
 			}
-			return &ipPrimeableByBufferImageStore{p: p, img: img, opaqueBoundRanges: opaqueBoundRanges, queue: queue.VulkanHandle()}, nil
+			primeable := &ipPrimeableByImageStore{p: p, img: img, queue: queue.VulkanHandle()}
+			copyJob := newImagePrimerBufferImageCopyJob(oldStateImgObj)
+			aspects := map[VkImage]VkImageAspectFlagBits{}
+			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
+				stagingImgs, freeStagingImgs, err := p.create32BitUintColorStagingImagesForAspect(
+					oldStateImgObj, aspect, VkImageUsageFlags(
+						VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
+							VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT))
+				if err != nil {
+					// Free allocated staging images in case of error
+					primeable.free()
+					return nil, log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by imageStore operation from host data, image: %v, aspect: %v]", img, aspect)
+				}
+				copyJob.addDst(p.sb.ctx, aspect, VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT, stagingImgs...)
+				primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImgs)
+				for _, s := range stagingImgs {
+					aspects[s.VulkanHandle()] = aspect
+				}
+			}
+			bcs := newImagePrimerBufferImageCopySession(p.sb, copyJob)
+			for _, rng := range opaqueBoundRanges {
+				bcs.collectCopiesFromSubresourceRange(rng)
+			}
+			if isSparseResidency(oldStateImgObj) {
+				bcs.collectCopiesFromSparseImageBindings()
+			}
+			err := bcs.rolloutBufCopies(queue.VulkanHandle(),
+				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
+				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_GENERAL))
+			if err != nil {
+				log.E(p.sb.ctx, "Error at rolling buf image copy: %v", err)
+				// Free staging images in case of error
+				primeable.free()
+				return nil, log.Errf(p.sb.ctx, err, "[Rolling out buf->img copy commands for staging images, building primeable data (by image store) for image: %v]", img)
+			}
+
+			type imageViewInfo struct {
+				image  VkImage
+				aspect VkImageAspectFlagBits
+				layer  uint32
+				level  uint32
+			}
+			createdImageViews := map[imageViewInfo]ImageViewObjectʳ{}
+
+			getViewType := func(imgType VkImageType) VkImageViewType {
+				switch imgType {
+				case VkImageType_VK_IMAGE_TYPE_1D:
+					return VkImageViewType_VK_IMAGE_VIEW_TYPE_1D
+				case VkImageType_VK_IMAGE_TYPE_2D:
+					return VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
+				case VkImageType_VK_IMAGE_TYPE_3D:
+					return VkImageViewType_VK_IMAGE_VIEW_TYPE_3D
+				}
+				return VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
+			}
+
+			getOrCreateImageView := func(info imageViewInfo) (ImageViewObjectʳ, error) {
+				if _, ok := createdImageViews[info]; ok {
+					return createdImageViews[info], nil
+				}
+				imgObj := GetState(p.sb.newState).Images().Get(info.image)
+				if imgObj.IsNil() {
+					return ImageViewObjectʳ{}, log.Errf(p.sb.ctx,
+						fmt.Errorf("Nil Image Object"),
+						"[Creating image view with info: %v]", info)
+				}
+				view, freeView, err := p.createImageViewForImageSubresource(imgObj,
+					info.aspect, info.layer, info.level, getViewType(imgObj.Info().ImageType()))
+				if err != nil {
+					return ImageViewObjectʳ{}, log.Errf(p.sb.ctx, err,
+						"[Creating image view with info: %v]", info)
+				}
+				createdImageViews[info] = view
+				primeable.freeCallbacks = append(primeable.freeCallbacks, freeView)
+				return view, nil
+			}
+
+			for stagingImgObj, copies := range bcs.copies {
+				outputAspect := aspects[stagingImgObj.VulkanHandle()]
+				for _, copy := range copies {
+					storeJob := ipImageStoreJob{
+						inputIndex: bcs.indices[stagingImgObj],
+						offset:     copy.ImageOffset(),
+						extent:     copy.ImageExtent(),
+					}
+					layer := copy.ImageSubresource().BaseArrayLayer()
+					level := copy.ImageSubresource().MipLevel()
+					outputView, err := getOrCreateImageView(imageViewInfo{
+						image:  img,
+						aspect: outputAspect,
+						layer:  layer,
+						level:  level,
+					})
+					if err != nil {
+						log.E(p.sb.ctx, "[Getting output image view for building primeable image data (by image store): %v]", err)
+						continue
+					}
+					storeJob.output = outputView
+					inputView, err := getOrCreateImageView(imageViewInfo{
+						image:  stagingImgObj.VulkanHandle(),
+						aspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+						layer:  layer,
+						level:  level,
+					})
+					if err != nil {
+						log.E(p.sb.ctx, "[Getting input image view for building primeable image data (by image store): %v]", err)
+						continue
+					}
+					storeJob.input = inputView
+					primeable.storeJobs = append(primeable.storeJobs, storeJob)
+				}
+			}
+			return primeable, nil
+
 		} else {
 			return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data that can be primed by device data imageLoad/Store operation, image: %v]", img)
 		}
