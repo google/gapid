@@ -592,7 +592,6 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		if verb.OutputCSV {
 			csvWriter := csv.NewWriter(os.Stdout)
-			defer csvWriter.Flush()
 			header := []string{
 				"Trace Time (ms)","Trace Size","Trace Frames","State Serialization (ms)","Trace Frame Time (ms)","Interactive (ms)",
 				"Caching Done (ms)","Interaction (ms)","Max Memory","Before MEC Frame Time (ms)","Trailing Frame Time (ms)"}
@@ -611,6 +610,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				fmt.Sprint(float64(nonLoadingFrameTime) / float64(time.Millisecond)),
 			}
 			csvWriter.Write(record)
+			csvWriter.Flush()
 		}	else {
 			w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
 			fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive")
