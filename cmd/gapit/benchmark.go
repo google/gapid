@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -511,9 +512,9 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		for _, types := range resources.GetTypes() {
 			for ii, v := range types.GetResources() {
 				if (types.Type == api.ResourceType_TextureResource ||
-					types.Type == api.ResourceType_ShaderResource ||
-					types.Type == api.ResourceType_ProgramResource) &&
-					ii < 30 {
+						types.Type == api.ResourceType_ShaderResource ||
+						types.Type == api.ResourceType_ProgramResource) &&
+						ii < 30 {
 					gotResources.Add(1)
 					go func(id *path.ID) {
 						defer gotResources.Done()
@@ -585,34 +586,57 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	ctx = oldCtx
 	writeOutput := func() {
-		w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
-		fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive")
-		fmt.Fprintln(w, "----------\t----------\t------------\t-------------------\t----------------\t-----------")
-		fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
-			verb.traceDoneTime.Sub(verb.beforeStartTraceTime),
-			verb.traceSizeInBytes,
-			verb.traceFrames,
-			time.Duration(stateTime)*time.Nanosecond,
-			time.Duration(frameTime)*time.Nanosecond,
-			verb.gapisInteractiveTime.Sub(verb.traceDoneTime),
-		)
-		w.Flush()
 		preMecFramerate := float64(stateBuildStartTime - traceStartTimestamp)
 		if verb.StartFrame > 0 {
 			preMecFramerate = preMecFramerate / float64(verb.StartFrame)
 		}
-		fmt.Fprintln(os.Stdout, "")
-		w = tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
-		fmt.Fprintln(w, "Caching Done\tInteraction\tMax Memory\tBefore MEC Frame Time\tTrailing Frame Time")
-		fmt.Fprintln(w, "------------\t-----------\t----------\t---------------------\t-----------------")
-		fmt.Fprintf(w, "%+v\t%+v\t%+v\t%+v\t%+v\n",
-			verb.gapisCachingDoneTime.Sub(verb.traceDoneTime),
-			verb.interactionDoneTime.Sub(verb.interactionStartTime),
-			traceMaxMemory,
-			time.Duration(preMecFramerate)*time.Nanosecond,
-			time.Duration(nonLoadingFrameTime)*time.Nanosecond,
-		)
-		w.Flush()
+		if verb.OutputCSV {
+			csvWriter := csv.NewWriter(os.Stdout)
+			header := []string{
+				"Trace Time (ms)", "Trace Size", "Trace Frames", "State Serialization (ms)", "Trace Frame Time (ms)", "Interactive (ms)",
+				"Caching Done (ms)", "Interaction (ms)", "Max Memory", "Before MEC Frame Time (ms)", "Trailing Frame Time (ms)"}
+			csvWriter.Write(header)
+			record := []string{
+				fmt.Sprint(float64(verb.traceDoneTime.Sub(verb.beforeStartTraceTime).Nanoseconds()) / float64(time.Millisecond)),
+				fmt.Sprint(verb.traceSizeInBytes),
+				fmt.Sprint(verb.traceFrames),
+				fmt.Sprint(stateTime / float64(time.Millisecond)),
+				fmt.Sprint(frameTime / float64(time.Millisecond)),
+				fmt.Sprint(float64(verb.gapisInteractiveTime.Sub(verb.traceDoneTime).Nanoseconds()) / float64(time.Millisecond)),
+				fmt.Sprint(float64(verb.gapisCachingDoneTime.Sub(verb.traceDoneTime).Nanoseconds()) / float64(time.Millisecond)),
+				fmt.Sprint(float64(verb.interactionDoneTime.Sub(verb.interactionStartTime).Nanoseconds()) / float64(time.Millisecond)),
+				fmt.Sprint(traceMaxMemory),
+				fmt.Sprint(preMecFramerate / float64(time.Millisecond)),
+				fmt.Sprint(float64(nonLoadingFrameTime) / float64(time.Millisecond)),
+			}
+			csvWriter.Write(record)
+			csvWriter.Flush()
+		} else {
+			w := tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
+			fmt.Fprintln(w, "Trace Time\tTrace Size\tTrace Frames\tState Serialization\tTrace Frame Time\tInteractive")
+			fmt.Fprintln(w, "----------\t----------\t------------\t-------------------\t----------------\t-----------")
+			fmt.Fprintf(w, "%v\t%v\t%v\t%v\t%v\t%v\n",
+				verb.traceDoneTime.Sub(verb.beforeStartTraceTime),
+				verb.traceSizeInBytes,
+				verb.traceFrames,
+				time.Duration(stateTime)*time.Nanosecond,
+				time.Duration(frameTime)*time.Nanosecond,
+				verb.gapisInteractiveTime.Sub(verb.traceDoneTime),
+			)
+			w.Flush()
+			fmt.Fprintln(os.Stdout, "")
+			w = tabwriter.NewWriter(os.Stdout, 4, 4, 3, ' ', 0)
+			fmt.Fprintln(w, "Caching Done\tInteraction\tMax Memory\tBefore MEC Frame Time\tTrailing Frame Time")
+			fmt.Fprintln(w, "------------\t-----------\t----------\t---------------------\t-----------------")
+			fmt.Fprintf(w, "%+v\t%+v\t%+v\t%+v\t%+v\n",
+				verb.gapisCachingDoneTime.Sub(verb.traceDoneTime),
+				verb.interactionDoneTime.Sub(verb.interactionStartTime),
+				traceMaxMemory,
+				time.Duration(preMecFramerate)*time.Nanosecond,
+				time.Duration(nonLoadingFrameTime)*time.Nanosecond,
+			)
+			w.Flush()
+		}
 	}
 
 	writeTrace = func(path string, gapisTrace, gapitTrace *bytes.Buffer) error {
