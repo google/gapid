@@ -43,6 +43,7 @@ import com.google.gapid.util.Loadable.Message;
 import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
+import com.google.gapid.util.StatusWatcher;
 import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
@@ -76,7 +77,7 @@ public class MainWindow extends ApplicationWindow {
   private final Theme theme;
   private Composite mainArea;
   private LoadingScreen loadingScreen;
-  private StatusBar statusBar;
+  protected StatusBar statusBar;
 
   public MainWindow(Settings settings, Theme theme) {
     super(null);
@@ -94,6 +95,7 @@ public class MainWindow extends ApplicationWindow {
   public void initMainUi(Client client, Models models, Widgets widgets) {
     Shell shell = getShell();
 
+    showLoadingMessage("Setting up UI...");
     initMenus(client, models, widgets);
 
     LoadablePanel<GraphicsTraceView> mainUi = new LoadablePanel<GraphicsTraceView>(
@@ -125,7 +127,15 @@ public class MainWindow extends ApplicationWindow {
           file -> models.capture.loadCapture(new File(file)));
     }
 
+    if (settings.autoCheckForUpdates) {
+      // Only show the status message if we're actually checking for updates. watchForUpdates only
+      //schedules a periodic check to see if we should check for updates and if so, checks.
+      showLoadingMessage("Watching for updates...");
+    }
     watchForUpdates(client, models);
+
+    showLoadingMessage("Tracking server status...");
+    trackServerStatus(client);
 
     showLoadingMessage("Ready! Please open or capture a trace file.");
   }
@@ -137,6 +147,20 @@ public class MainWindow extends ApplicationWindow {
           Program.launch(release.getBrowserUrl());
         });
       });
+    });
+  }
+
+  private void trackServerStatus(Client client) {
+    new StatusWatcher(client, new StatusWatcher.Listener() {
+      @Override
+      public void onStatus(String status) {
+        scheduleIfNotDisposed(statusBar, () -> statusBar.setServerStatus(status));
+      }
+
+      @Override
+      public void onHeap(long heap) {
+        scheduleIfNotDisposed(statusBar, () -> statusBar.setServerHeapSize(heap));
+      }
     });
   }
 
@@ -160,7 +184,7 @@ public class MainWindow extends ApplicationWindow {
     loadingScreen = new LoadingScreen(mainArea, theme);
     setTopControl(loadingScreen);
 
-    statusBar = new StatusBar(parent);
+    statusBar = new StatusBar(parent, theme);
     statusBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
     return parent;
   }

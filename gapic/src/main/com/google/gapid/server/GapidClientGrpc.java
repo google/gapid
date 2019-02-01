@@ -170,6 +170,15 @@ public class GapidClientGrpc implements GapidClient {
   }
 
   @Override
+  public ListenableFuture<Void> streamStatus(
+      Service.ServerStatusRequest request, Consumer<Service.ServerStatusResponse> onStatus) {
+    StreamHandler<Service.ServerStatusResponse> handler = StreamHandler.wrap(onStatus);
+    stub.status(request, handler);
+    return handler.future;
+  }
+
+
+  @Override
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
     StreamHandler<Service.FindResponse> handler = StreamHandler.wrap(onResult);

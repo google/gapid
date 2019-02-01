@@ -132,6 +132,8 @@ public interface Theme {
   @RGB(argb = 0x80000000) public Color histogramCurtain();
   @RGB(argb = 0xc0202020) public Color histogramArrow();
 
+  @RGB(argb = 0xffcccccc) public Color statusBarMemoryBar();
+
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();
