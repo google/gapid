@@ -251,6 +251,15 @@ public class Client {
     return client.streamLog(onLogMessage);
   }
 
+  public ListenableFuture<Void> streamStatus(
+      float memoryS, float statusS, Consumer<Service.ServerStatusResponse> onStatus) {
+    LOG.log(FINE, "RPC->streamStatus({}, {})", new Object[] { memoryS, statusS });
+    return client.streamStatus(Service.ServerStatusRequest.newBuilder()
+        .setMemorySnapshotInterval(memoryS)
+        .setStatusUpdateFrequency(statusS)
+        .build(), onStatus);
+  }
+
   public ListenableFuture<Void> streamSearch(
       Service.FindRequest request, Consumer<Service.FindResponse> onResult) {
     LOG.log(FINE, "RPC->find({0})", request);
