@@ -170,7 +170,7 @@ func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, o
 			return
 		}
 
-		if t.targetVersion.IsES {
+		if !t.targetVersion.IsES {
 			// Check we are able to convert this GLES shader to desktop GL.
 			opts := shadertools.ConvertOptions{
 				ShaderType:        st,
