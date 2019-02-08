@@ -39,6 +39,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         organization = "bazelbuild",
         project = "rules_go",
         commit = "01e5a9f8483167962eddd167f7689408bdeb4e76",  # 0.16.3
+        sha256 = "bd99a7620fd57d536103eedabd128e1ff95bd028a8cc2abbcdcf8c3026264fcc",
     )
 
     maybe_repository(
@@ -48,6 +49,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         organization = "bazelbuild",
         project = "bazel-gazelle",
         commit = "c728ce9f663e2bff26361ba5978ec5c9e6816a3c",  # 0.15.0
+        sha256 = "f7a066602430b3ccd3ab9db1aaf3197037d12af0cd82206cccf8961c3bfedb3b",
     )
 
     maybe_repository(
@@ -57,6 +59,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         organization = "google",
         project = "protobuf",
         commit = "66dc42d891a4fc8e9190c524fd67961688a37bbe", # 3.6.1 + changes
+        sha256 = "23dcfef4adf06e1db7f1d391c035896a92eec546fff5ef9244b6e7b9ee24aa66",
     )
 
     maybe_repository(
@@ -69,6 +72,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         commit = "bd44e485f69d70ca4095cea92decd98de3892aa6",
         # Override with our own BUILD file, to make Android build work.
         build_file = "@gapid//tools/build/third_party:grpc_c++.BUILD",
+        sha256 = "486ed046515f167e0e818442df9eaf91658b1bb29804eb2cf7caf276b4720083",
     )
     grpc_deps(locals)
 
@@ -82,6 +86,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         organization = "google",
         project = "googletest",
         commit = "62dbaa2947f7d058ea7e16703faea69b1134b024",
+        sha256 = "c86258bf52616f5fa52a622ba58ce700eb2dd9f6ec15ff13ad2b2a579afb9c67",
     )
 
     maybe_repository(
@@ -92,6 +97,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "astc-encoder",
         commit = "b6bf6e7a523ddafdb8cfdc84b068d8fe70ffb45e",
         build_file = "@gapid//tools/build/third_party:astc-encoder.BUILD",
+        sha256 = "7877eb08c61d8b258c5d4690e924090cb7f303e8be6d74e9a9a611d3177bb5ae",
     )
 
     maybe_repository(
@@ -110,6 +116,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "cityhash",
         commit = "8af9b8c2b889d80c22d6bc26ba0df1afb79a30db",
         build_file = "@gapid//tools/build/third_party:cityhash.BUILD",
+        sha256 = "3524f5ed43143974a29fddeeece29c8b6348f05db08dd180452da01a2837ddce",
     )
 
     maybe_repository(
@@ -120,6 +127,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "glslang",
         commit = "97e35420a62e112de57a31b265e020662883ef8f",
         build_file = "@gapid//tools/build/third_party:glslang.BUILD",
+        sha256 = "4d73467f35b8ac15cc06206cbd8be2802afc630bbfc4e9504b81e711457dde49",
     )
 
     maybe_repository(
@@ -130,6 +138,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "llvm",
         commit = "e562960fe303c0ffab6f3458fcdb1544b56fd81e",
         build_file = "@gapid//tools/build/third_party:llvm.BUILD",
+        sha256 = "3ef3d905849d547b6481b16d8e7b473a84efafbe90131e7bc90a0c6aae4cd8e6",
     )
 
     maybe_repository(
@@ -149,6 +158,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "SPIRV-Headers",
         commit = "9f6846f973a1ef53790e75b9190820ab1557434f",
         build_file = "@gapid//tools/build/third_party:spirv-headers.BUILD",
+        sha256 = "1980cefd605c440241f5c948eb4446412166b6df1ad133bf74c47180939477d5",
     )
 
     maybe_repository(
@@ -159,6 +169,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "SPIRV-Cross",
         commit = "d3b966322d04efbc27c70e2ea8da36eb9c29eb1b",
         build_file = "@gapid//tools/build/third_party:spirv-cross.BUILD",
+        sha256 = "4034d65cc94c0b2e0cbe94706b1425a28ccf2691011da1a1e800812f12313108",
     )
 
     maybe_repository(
@@ -169,6 +180,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "SPIRV-Tools",
         commit = "8d8a71278bf9e83dd0fb30d5474386d30870b74d",
         build_file = "@gapid//tools/build/third_party:spirv-tools.BUILD",
+        sha256 = "8b1dfe726ea9047ef679baf2d40dfbf090e70406512358d236e54a8234e71eae",
     )
 
     maybe_repository(
@@ -179,6 +191,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         project = "SPIRV-Reflect",
         commit = "8fd9b11dbd217f6b02c9d6d4e364a7f0327b219a",
         build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
+        sha256 = "7d0a3f9f12075c5b30fce8bd30cb34409cfb23f93a0cb8758c0c354248d8ea29",
     )
 
     if android:

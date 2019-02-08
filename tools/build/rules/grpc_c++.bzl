@@ -338,6 +338,7 @@ def grpc_deps(locals = {}):
         project = "zlib",
         commit = "cacf7f1d4e3d44d871b605da3b647f07d718623f",
         build_file = "@com_github_grpc_grpc//third_party:zlib.BUILD",
+        sha256 = "1cce3828ec2ba80ff8a4cac0ab5aa03756026517154c4b450e617ede751d41bd",
     )
 
     maybe_repository(github_repository,
@@ -347,6 +348,7 @@ def grpc_deps(locals = {}):
         project = "googletest",
         commit = "ec44c6c1675c25b9827aacd08c02433cccde7780",
         build_file = "@com_github_grpc_grpc//third_party:gtest.BUILD",
+        sha256 = "bc258fff04a6511e7106a1575bb514a185935041b2c16affb799e0567393ec30",
     )
 
     maybe_repository(github_repository,
@@ -355,6 +357,7 @@ def grpc_deps(locals = {}):
         organization = "gflags",
         project = "gflags",
         commit = "30dbc81fb5ffdc98ea9b14b1918bfe4e8779b26e",
+        sha256 = "16903f6bb63c00689eee3bf7fb4b8f242934f6c839ce3afc5690f71b712187f9",
     )
 
     maybe_repository(github_repository,
@@ -364,6 +367,7 @@ def grpc_deps(locals = {}):
         project = "benchmark",
         commit = "5b7683f49e1e9223cf9927b24f6fd3d6bd82e3f8",
         build_file = "@com_github_grpc_grpc//third_party:benchmark.BUILD",
+        sha256 = "866d3c8cadb3323251d4fe0e989ea0df51f30660badb73dad0f2d11e5bf1770f",
     )
 
     maybe_repository(github_repository,
@@ -373,6 +377,7 @@ def grpc_deps(locals = {}):
         project = "c-ares",
         commit = "3be1924221e1326df520f8498d704a5c4c8d0cce",
         build_file = "@com_github_grpc_grpc//third_party:cares/cares.BUILD",
+        sha256 = "932bf7e593d4683fce44fd26920f27d4f0c229113338e4f6d351e35d4d7c7a39",
     )
 
     maybe_repository(github_repository,
@@ -381,6 +386,7 @@ def grpc_deps(locals = {}):
         organization = "abseil",
         project = "abseil-cpp",
         commit = "cc4bed2d74f7c8717e31f9579214ab52a9c9c610",
+        sha256 = "2e1573146ee96ea7a88628210984675597eeb741ec3662e6a254f23b168b406c",
     )
 
     maybe_repository(github_repository,
@@ -389,4 +395,5 @@ def grpc_deps(locals = {}):
         organization = "bazelbuild",
         project = "bazel-toolchains",
         commit = "b850ccdf53fed1ccab7670f52d6b297d74348d1b",
+        sha256 = "3433b9292fe4bfdc39f9e60e251311f2e88aa734181749ae87af73eada730a94",
     )
