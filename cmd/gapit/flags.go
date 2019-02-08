@@ -124,6 +124,8 @@ type (
 		OriginalDevice bool   `help:"export replay for the original device"`
 		Out            string `help:"output directory for commands and assets"`
 		OutputFrames   bool   `help:"generate trace that output frames(disable diagnostics)"`
+		Apk            string `help:"(experimental) name of the stand-alone APK created to perform the replay. This name must be <app_package>.apk (e.g. com.example.replay.apk)"`
+		SdkPath        string `help:"Path to Android SDK directory (default: ANDROID_SDK_HOME environment variable)"`
 		CommandFilterFlags
 		CaptureFileFlags
 	}
@@ -354,5 +356,12 @@ type (
 	}
 
 	SmokeTestsFlags struct {
+	}
+
+	Trace2apkFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+		CommandFilterFlags
+		CaptureFileFlags
 	}
 )

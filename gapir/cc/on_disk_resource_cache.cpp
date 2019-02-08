@@ -60,7 +60,7 @@ int mkdirAll(const std::string& path) {
 
 }  // anonymous namespace
 
-std::unique_ptr<OnDiskResourceCache> OnDiskResourceCache::create(
+std::unique_ptr<ResourceCache> OnDiskResourceCache::create(
     const std::string& path, bool cleanUp) {
   if (0 != mkdirAll(path)) {
     GAPID_WARNING(
@@ -72,7 +72,7 @@ std::unique_ptr<OnDiskResourceCache> OnDiskResourceCache::create(
       diskPath.push_back(PATH_DELIMITER);
     }
 
-    return std::unique_ptr<OnDiskResourceCache>(
+    return std::unique_ptr<ResourceCache>(
         new OnDiskResourceCache(std::move(diskPath), cleanUp));
   }
 }
