@@ -35,6 +35,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         project = "grpc-java",
         commit = "009c51f2f793aabf516db90a14a52da2b613aa21",
         build_file = "@gapid//tools/build/third_party:grpc_java.BUILD",
+        sha256 = "ffb06532376cfc78742d2ac5cbf244deb2885d0464ac8ab51de0dfdf408ec517"
     )
 
     if not no_maven:
