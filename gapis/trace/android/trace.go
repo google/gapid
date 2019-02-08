@@ -423,9 +423,6 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	match = re.FindStringSubmatch(o.GetUri())
 
 	if len(match) == 4 {
-		if err != nil {
-			return ret, nil, err
-		}
 		packages, err := t.b.InstalledPackages(ctx)
 		if err != nil {
 			return ret, nil, err
