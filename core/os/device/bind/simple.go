@@ -44,6 +44,9 @@ func (b *Simple) String() string {
 	return b.To.Serial
 }
 
+// CanTrace returns true if this device can be used to take a trace
+func (b *Simple) CanTrace() bool { return true }
+
 // Instance implements the Device interface returning the Information in the To field.
 func (b *Simple) Instance() *device.Instance { return b.To }
 

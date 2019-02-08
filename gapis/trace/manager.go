@@ -46,6 +46,9 @@ func New(ctx context.Context) *Manager {
 }
 
 func (m *Manager) createTracer(ctx context.Context, dev bind.Device) {
+	if !dev.CanTrace() {
+		return
+	}
 	deviceID := dev.Instance().ID.ID()
 	log.I(ctx, "New trace scheduler for device: %v %v", deviceID, dev.Instance().Name)
 	m.mutex.Lock()
@@ -58,6 +61,9 @@ func (m *Manager) createTracer(ctx context.Context, dev bind.Device) {
 }
 
 func (m *Manager) destroyTracer(ctx context.Context, dev bind.Device) {
+	if !dev.CanTrace() {
+		return
+	}
 	deviceID := dev.Instance().ID.ID()
 	log.I(ctx, "Destroying trace scheduler for device: %v", deviceID)
 	m.mutex.Lock()

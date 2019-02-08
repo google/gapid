@@ -35,6 +35,14 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
+type mockDevice struct {
+	bind.Simple
+}
+
+func (*mockDevice) CanTrace() bool {
+	return false
+}
+
 func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out string, opts *service.ExportReplayOptions) error {
 	cap, err := capture.ResolveGraphicsFromPath(ctx, c)
 
@@ -42,7 +50,8 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 		instance := *cap.Header.Device
 		instance.Name = "mock-" + instance.Name
 		instance.GenID()
-		dev := &bind.Simple{To: &instance}
+		dev := &mockDevice{}
+		dev.To = &instance
 		bind.GetRegistry(ctx).AddDevice(ctx, dev)
 		d = path.NewDevice(dev.Instance().ID.ID())
 	}

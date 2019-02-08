@@ -53,4 +53,6 @@ type Device interface {
 	IsDirectory(ctx context.Context, path string) (bool, error)
 	// GetWorkingDirectory returns the directory that this device considers CWD
 	GetWorkingDirectory(ctx context.Context) (string, error)
+	// CanTrace returns true if this device can be used to take a trace
+	CanTrace() bool
 }
