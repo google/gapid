@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -46,6 +47,8 @@ func init() {
 	})
 }
 
+type target func(opts *service.TraceOptions)
+
 func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
 	if err != nil {
@@ -63,32 +66,26 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		traceURI = flags.Arg(0)
 	}
 
-	var traceDevice *path.Device
 	out := "capture.gfxtrace"
-	var port uint32
-	var uri string
+	var target target
 
 	if verb.Local.Port != 0 {
 		serverInfo, err := client.GetServerInfo(ctx)
 		if err != nil {
 			return err
 		}
-		traceDevice = serverInfo.GetServerLocalDevice()
+		traceDevice := serverInfo.GetServerLocalDevice()
 		if traceDevice.GetID() == nil {
 			return fmt.Errorf("The server was not started with a local device for tracing")
 		}
-		port = uint32(verb.Local.Port)
-	} else {
-		type info struct {
-			uri        string
-			device     *path.Device
-			deviceName string
-			name       string
+		target = func(opts *service.TraceOptions) {
+			opts.Device = traceDevice
+			opts.App = &service.TraceOptions_Port{
+				Port: uint32(verb.Local.Port),
+			}
 		}
-		var found []info
-
+	} else {
 		// Find the actual trace URI from all of the devices
-
 		devices, err := filterDevices(ctx, &verb.DeviceFlags, client)
 		if err != nil {
 			return err
@@ -99,12 +96,32 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 
 		if len(devices) == 1 && strings.HasPrefix(traceURI, "port:") {
-			found = append(found, info{
-				uri:    traceURI,
-				device: devices[0],
-				name:   "capture",
-			})
+			target = func(opts *service.TraceOptions) {
+				opts.Device = devices[0]
+				opts.App = &service.TraceOptions_Uri{
+					Uri: traceURI,
+				}
+			}
+		} else if len(devices) == 1 && strings.HasPrefix(traceURI, "apk:") {
+			data, err := ioutil.ReadFile(traceURI[4:])
+			if err != nil {
+				return log.Errf(ctx, err, "Failed to read APK at %s", traceURI[4:])
+			}
+			target = func(opts *service.TraceOptions) {
+				opts.Device = devices[0]
+				opts.App = &service.TraceOptions_UploadApplication{
+					UploadApplication: data,
+				}
+			}
 		} else {
+			type info struct {
+				uri        string
+				device     *path.Device
+				deviceName string
+				name       string
+			}
+			var found []info
+
 			for _, dev := range devices {
 				targets, err := client.FindTraceTargets(ctx, &service.FindTraceTargetsRequest{
 					Device: dev,
@@ -137,28 +154,32 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 					})
 				}
 			}
-		}
 
-		if len(found) == 0 {
-			return fmt.Errorf("Could not find %+v to trace on any device", traceURI)
-		}
-
-		if len(found) > 1 {
-			sb := strings.Builder{}
-			fmt.Fprintf(&sb, "Found %v candidates: \n", traceURI)
-			for i, f := range found {
-				if i == 0 || found[i-1].deviceName != f.deviceName {
-					fmt.Fprintf(&sb, "  %v:\n", f.deviceName)
-				}
-				fmt.Fprintf(&sb, "    %v\n", f.uri)
+			if len(found) == 0 {
+				return fmt.Errorf("Could not find %+v to trace on any device", traceURI)
 			}
-			return log.Errf(ctx, nil, "%v", sb.String())
-		}
 
-		fmt.Printf("Tracing %+v\n", found[0].uri)
-		out = found[0].name + ".gfxtrace"
-		uri = found[0].uri
-		traceDevice = found[0].device
+			if len(found) > 1 {
+				sb := strings.Builder{}
+				fmt.Fprintf(&sb, "Found %v candidates: \n", traceURI)
+				for i, f := range found {
+					if i == 0 || found[i-1].deviceName != f.deviceName {
+						fmt.Fprintf(&sb, "  %v:\n", f.deviceName)
+					}
+					fmt.Fprintf(&sb, "    %v\n", f.uri)
+				}
+				return log.Errf(ctx, nil, "%v", sb.String())
+			}
+
+			fmt.Printf("Tracing %+v\n", found[0].uri)
+			out = found[0].name + ".gfxtrace"
+			target = func(opts *service.TraceOptions) {
+				opts.Device = found[0].device
+				opts.App = &service.TraceOptions_Uri{
+					Uri: found[0].uri,
+				}
+			}
+		}
 	}
 
 	if verb.Out != "" {
@@ -166,7 +187,6 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	options := &service.TraceOptions{
-		Device:                    traceDevice,
 		Apis:                      []string{},
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
 		Cwd:                       verb.WorkingDir,
@@ -186,16 +206,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		ServerLocalSavePath:       out,
 		PipeName:                  verb.PipeName,
 	}
-
-	if uri != "" {
-		options.App = &service.TraceOptions_Uri{
-			uri,
-		}
-	} else {
-		options.App = &service.TraceOptions_Port{
-			port,
-		}
-	}
+	target(options)
 
 	switch verb.API {
 	case "vulkan":
