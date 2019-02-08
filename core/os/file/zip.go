@@ -42,8 +42,12 @@ func ZIP(out io.Writer, in Path) error {
 		if r == "." {
 			r = in.Basename()
 		}
-
-		fw, err := w.Create(r)
+		h, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+		h.Name = r
+		fw, err := w.CreateHeader(h)
 		if err != nil {
 			return err
 		}
