@@ -401,7 +401,6 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	if len(o.GetUploadApplication()) > 0 {
 		pkg, cleanup, err = t.InstallPackage(ctx, o)
 		if err != nil {
-			cleanup()
 			return ret, nil, err
 		}
 	}
