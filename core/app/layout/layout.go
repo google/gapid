@@ -126,7 +126,7 @@ var osToDir = map[device.OSKind]string{
 }
 
 func (l pkgLayout) Gapir(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	if hostOS(ctx) == abi.OS {
+	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.root.Join(withExecutablePlatformSuffix("gapir", hostOS(ctx))), nil
 	}
 	return l.root.Join(osToDir[abi.OS], withExecutablePlatformSuffix("gapir", abi.OS)), nil
@@ -141,7 +141,7 @@ func (l pkgLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Path, er
 }
 
 func (l pkgLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
-	if hostOS(ctx) == abi.OS {
+	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.root.Join("lib", withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
 	}
 	return l.root.Join(osToDir[abi.OS], "lib", withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)), nil
@@ -361,7 +361,7 @@ func (l *ZipLayout) Gapit(ctx context.Context) (*zip.File, error) {
 
 // Gapir returns the path to the gapir binary in this layout.
 func (l *ZipLayout) Gapir(ctx context.Context, abi *device.ABI) (*zip.File, error) {
-	if l.os == abi.OS {
+	if abi == nil || l.os == abi.OS {
 		return l.file(withExecutablePlatformSuffix("gapir", l.os))
 	}
 	return l.file(osToDir[abi.OS] + "/" + withExecutablePlatformSuffix("gapir", abi.OS))
@@ -379,7 +379,7 @@ func (l *ZipLayout) GapidApk(ctx context.Context, abi *device.ABI) (*zip.File, e
 
 // Library returns the path to the requested library.
 func (l *ZipLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI) (*zip.File, error) {
-	if l.os == abi.OS {
+	if abi == nil || l.os == abi.OS {
 		return l.file("lib/" + withLibraryPlatformSuffix(libTypeToName[lib], l.os))
 	}
 	return l.file(osToDir[abi.OS] + "lib/" + withLibraryPlatformSuffix(libTypeToName[lib], abi.OS))
