@@ -341,14 +341,6 @@ def grpc_deps(locals = {}):
     )
 
     maybe_repository(github_repository,
-        name = "com_google_protobuf",
-        locals = locals,
-        organization = "google",
-        project = "protobuf",
-        commit = "2761122b810fe8861004ae785cc3ab39f384d342",
-    )
-
-    maybe_repository(github_repository,
         name = "com_github_google_googletest",
         locals = locals,
         organization = "google",
