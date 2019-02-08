@@ -512,9 +512,9 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		for _, types := range resources.GetTypes() {
 			for ii, v := range types.GetResources() {
 				if (types.Type == api.ResourceType_TextureResource ||
-						types.Type == api.ResourceType_ShaderResource ||
-						types.Type == api.ResourceType_ProgramResource) &&
-						ii < 30 {
+					types.Type == api.ResourceType_ShaderResource ||
+					types.Type == api.ResourceType_ProgramResource) &&
+					ii < 30 {
 					gotResources.Add(1)
 					go func(id *path.ID) {
 						defer gotResources.Done()
