@@ -67,9 +67,10 @@ def _github_repository_impl(ctx):
     commit = ctx.attr.commit,
   )
   ctx.download_and_extract(
-    url=args.url,
-    type=args.type,
-    stripPrefix=args.strip_prefix,
+    url = args.url,
+    type = args.type,
+    stripPrefix = args.strip_prefix,
+    sha256 = ctx.attr.sha256,
   )
   _add_build_file(ctx)
 
@@ -80,6 +81,7 @@ _github_repository = repository_rule(
         project = attr.string(mandatory = True),
         branch = attr.string(),
         commit = attr.string(),
+        sha256 = attr.string(),
     ),
 )
 
