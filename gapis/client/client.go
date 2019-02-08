@@ -109,6 +109,9 @@ func (c *client) Set(ctx context.Context, p *path.Any, v interface{}, r *path.Re
 	if err != nil {
 		return nil, err
 	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
 	return res.GetPath(), nil
 }
 
