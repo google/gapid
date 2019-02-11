@@ -27,6 +27,8 @@ import "core/os/device/device.proto";
 message Input {
   // Subject is the stash id of the trace subject.
   string subject = 1;
+  // Gapis is the stash id of the graphics server tool to use.
+  string gapis = 8;
   // Gapit is the stash id of the graphics analysis tool to use.
   string gapit = 2;
   // GapidApk is the stash id of the gapid.apk to use.
