@@ -232,6 +232,7 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
       case VK_IMAGE_ASPECT_STENCIL_BIT:
         as!u64(1)
     }
+    if !aspectBit in image.Aspects { vkErrorInvalidImageAspect(image.VulkanHandle, aspectBit) } else {
     for _, i, layer in image.Aspects[aspectBit].Layers {
       if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
         for _, k, level in layer.Levels {
@@ -261,7 +262,7 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
         }
       }
     }
-  }
+  }}
 }
 
 @spy_disabled
