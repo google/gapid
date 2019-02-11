@@ -124,12 +124,8 @@ func run(ctx context.Context) error {
 	}
 
 	if *remoteSSHConfig != "" {
-		f, err := os.Open(*remoteSSHConfig)
-		if err != nil {
-			return err
-		}
 		wg.Add(1)
-		crash.Go(func() { getRemoteSSHDevices(ctx, r, f, wg.Done) })
+		crash.Go(func() { monitorRemoteSSHDevices(ctx, r, wg.Done) })
 	}
 
 	deviceScanDone, onDeviceScanDone := task.NewSignal()
@@ -173,15 +169,35 @@ func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone func(
 	}
 }
 
-func getRemoteSSHDevices(ctx context.Context, r *bind.Registry, f io.Reader, scanDone func()) {
-	// Populate the registry with all the existing devices.
-	defer scanDone() // Signal that we have a primed registry.
-
-	if devs, err := remotessh.Devices(ctx, f); err == nil {
-		for _, d := range devs {
-			r.AddDevice(ctx, d)
-			r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
+func monitorRemoteSSHDevices(ctx context.Context, r *bind.Registry, scanDone func()) {
+	getRemoteSSHConfig := func() ([]io.ReadCloser, error) {
+		f, err := os.Open(*remoteSSHConfig)
+		if err != nil {
+			return nil, err
 		}
+		return []io.ReadCloser{f}, nil
+	}
+
+	func() {
+		// Populate the registry with all the existing devices.
+		defer scanDone() // Signal that we have a primed registry.
+
+		f, err := getRemoteSSHConfig()
+		if err != nil {
+			log.E(ctx, "Could not open remote ssh config")
+			return
+		}
+
+		if devs, err := remotessh.Devices(ctx, f); err == nil {
+			for _, d := range devs {
+				r.AddDevice(ctx, d)
+				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
+			}
+		}
+	}()
+
+	if err := remotessh.Monitor(ctx, r, time.Second*15, getRemoteSSHConfig); err != nil {
+		log.W(ctx, "Could not scan for remote SSH devices. Error: %v", err)
 	}
 }
 

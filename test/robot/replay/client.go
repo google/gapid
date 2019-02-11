@@ -66,9 +66,9 @@ func (c *client) onDeviceAdded(ctx context.Context, host *device.Instance, targe
 			target.Shell("am", "force-stop", "com.google.android.gapid.armeabi").Run(ctx)
 		}()
 		defer job.UnlockDevice(ctx, target)
-		if target.Status() != bind.Status_Online {
+		if target.Status(ctx) != bind.Status_Online {
 			log.I(ctx, "Trying to replay %s on %s not started, device status %s",
-				t.Input.Trace, target.Instance().GetSerial(), target.Status().String())
+				t.Input.Trace, target.Instance().GetSerial(), target.Status(ctx).String())
 			return nil
 		}
 		return c.replay(ctx, t)
