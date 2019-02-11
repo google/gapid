@@ -236,7 +236,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	log.I(ctx, "Trace Status %+v", status)
 
-	handlerInstalled := false
+	handlerInstalled := verb.For > 0
 
 	return task.Retry(ctx, 0, time.Second*3, func(ctx context.Context) (retry bool, err error) {
 		status, err = handler.Event(ctx, service.TraceEvent_Status)
