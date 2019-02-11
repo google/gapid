@@ -56,9 +56,14 @@ func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.Device
 		return nil, err
 	}
 
+	isLocal, err := t.b.IsLocal(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &service.DeviceTraceConfiguration{
 		Apis:                 apis,
-		ServerLocalPath:      true,
+		ServerLocalPath:      isLocal,
 		CanSpecifyCwd:        true,
 		CanUploadApplication: false,
 		CanSpecifyEnv:        true,

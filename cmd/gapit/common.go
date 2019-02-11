@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -294,7 +295,7 @@ func getDesktopTraceDevice(ctx context.Context, flags GapiiFlags) (bind.Device, 
 			return nil, err
 		}
 
-		devices, err := remotessh.Devices(ctx, f)
+		devices, err := remotessh.Devices(ctx, []io.ReadCloser{f})
 		if err != nil {
 			return nil, err
 		}

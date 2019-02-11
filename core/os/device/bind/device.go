@@ -26,7 +26,7 @@ type Device interface {
 	// Instance returns the instance information for this device.
 	Instance() *device.Instance
 	// State returns the last known connected status of the device.
-	Status() Status
+	Status(ctx context.Context) Status
 	// Shell is a helper that builds a shell.Cmd with d.ShellTarget() as its target
 	Shell(name string, args ...string) shell.Cmd
 	// TempFile creates a temporary file on the given Device. It returns the
@@ -53,6 +53,8 @@ type Device interface {
 	IsDirectory(ctx context.Context, path string) (bool, error)
 	// GetWorkingDirectory returns the directory that this device considers CWD
 	GetWorkingDirectory(ctx context.Context) (string, error)
+	// IsLocal returns true if this tracer is local
+	IsLocal(ctx context.Context) (bool, error)
 	// CanTrace returns true if this device can be used to take a trace
 	CanTrace() bool
 }

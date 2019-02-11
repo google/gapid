@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
+	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text"
 )
@@ -130,6 +131,14 @@ func (t sshShellTarget) Start(cmd shell.Cmd) (shell.Process, error) {
 func (t sshShellTarget) String() string {
 	c := t.b.configuration
 	return c.User + "@" + c.Host + ": " + t.b.String()
+}
+
+func (b binding) Status(ctx context.Context) bind.Status {
+	_, err := b.Shell("echo", "Hello World").Call(ctx)
+	if err != nil {
+		return bind.Status_Offline
+	}
+	return bind.Status_Online
 }
 
 // Shell implements the Device interface returning commands that will error if run.

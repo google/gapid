@@ -23,9 +23,12 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/google/gapid/core/app/layout"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -50,6 +53,11 @@ type Device interface {
 	// DefaultReplayCacheDir returns the default path for replay resource caches
 	DefaultReplayCacheDir() string
 }
+
+const (
+	// Frequency at which to print scan errors
+	printScanErrorsEveryNSeconds = 120
+)
 
 // MaxNumberOfSSHConnections defines the max number of ssh connections to each
 // ssh remote device that can be used to run commands concurrently.
@@ -124,24 +132,126 @@ func (b *binding) newPooledSession() (*pooledSession, error) {
 	}, nil
 }
 
+// Interface check
 var _ Device = &binding{}
 
-// Devices returns the list of reachable SSH devices.
-func Devices(ctx context.Context, configuration io.Reader) ([]bind.Device, error) {
-	configurations, err := ReadConfigurations(configuration)
+var (
+	// Registry of all the discovered devices.
+	registry = bind.NewRegistry()
+
+	// cache is a map of device names to fully resolved bindings.
+	cache      = map[string]*binding{}
+	cacheMutex sync.Mutex // Guards cache.
+)
+
+func readConfigs(rcs []io.ReadCloser) ([]Configuration, error) {
+	defer func() {
+		for _, rc := range rcs {
+			rc.Close()
+		}
+	}()
+	configs := []Configuration{}
+	for _, rc := range rcs {
+		configurations, err := ReadConfigurations(rc)
+		if err != nil {
+			return nil, err
+		}
+		configs = append(configs, configurations...)
+	}
+	return configs, nil
+}
+
+// Monitor updates the registry with devices that are added and removed at the
+// specified interval. Monitor returns once the context is cancelled.
+func Monitor(ctx context.Context, r *bind.Registry, interval time.Duration, conf func() ([]io.ReadCloser, error)) error {
+	unlisten := registry.Listen(bind.NewDeviceListener(r.AddDevice, r.RemoveDevice))
+	defer unlisten()
+
+	for _, d := range registry.Devices() {
+		r.AddDevice(ctx, d)
+	}
+
+	var lastErrorPrinted time.Time
+	for {
+		if err := func() error {
+			rcs, err := conf()
+			if err != nil {
+				return err
+			}
+			configs, err := readConfigs(rcs)
+			if err != nil {
+				return err
+			}
+			return scanDevices(ctx, configs)
+		}(); err != nil {
+			if time.Since(lastErrorPrinted).Seconds() > printScanErrorsEveryNSeconds {
+				log.E(ctx, "Error scanning remote ssh devices: %v", err)
+				lastErrorPrinted = time.Now()
+			}
+		} else {
+			lastErrorPrinted = time.Time{}
+		}
+
+		select {
+		case <-task.ShouldStop(ctx):
+			return nil
+		case <-time.After(interval):
+		}
+	}
+}
+
+// Devices returns the list of attached ssh devices.
+func Devices(ctx context.Context, configuration []io.ReadCloser) ([]bind.Device, error) {
+	configs, err := readConfigs(configuration)
 	if err != nil {
 		return nil, err
 	}
 
-	devices := make([]bind.Device, 0, len(configurations))
+	if err := scanDevices(ctx, configs); err != nil {
+		return nil, err
+	}
+	devs := registry.Devices()
+	out := make([]bind.Device, len(devs))
+	for i, d := range devs {
+		out[i] = d
+	}
+	return out, nil
+}
+
+func scanDevices(ctx context.Context, configurations []Configuration) error {
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+	allConfigs := make(map[string]bool)
 
 	for _, cfg := range configurations {
-		if device, err := GetConnectedDevice(ctx, cfg); err == nil {
-			devices = append(devices, device)
+		allConfigs[cfg.Name] = true
+
+		// If this device already exists, see if we
+		// can/have to remove it
+		if cached, ok := cache[cfg.Name]; ok {
+			if !deviceStillConnected(ctx, cached) {
+				delete(cache, cfg.Name)
+				registry.RemoveDevice(ctx, cached)
+			}
+		} else {
+			if device, err := GetConnectedDevice(ctx, cfg); err == nil {
+				registry.AddDevice(ctx, device)
+				cache[cfg.Name] = device.(*binding)
+			}
 		}
 	}
 
-	return devices, nil
+	for name, dev := range cache {
+		if _, ok := allConfigs[name]; !ok {
+			delete(cache, name)
+			registry.RemoveDevice(ctx, dev)
+		}
+	}
+	return nil
+}
+
+func deviceStillConnected(ctx context.Context, d *binding) bool {
+	return d.Status(ctx) == bind.Status_Online
 }
 
 // getSSHAgent returns a connection to a local SSH agent, if one exists.

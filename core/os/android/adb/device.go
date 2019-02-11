@@ -217,7 +217,7 @@ func scanDevices(ctx context.Context) error {
 
 	for serial, status := range parsed {
 		cached, ok := cache[serial]
-		if !ok || status != cached.Status() {
+		if !ok || status != cached.Status(ctx) {
 			device, err := newDevice(ctx, serial, status)
 			if err != nil {
 				return err
@@ -297,6 +297,10 @@ func (b *binding) NativeBridgeABI(ctx context.Context, emulated *device.ABI) *de
 		return emulated
 	}
 	return native
+}
+
+func (b *binding) IsLocal(ctx context.Context) (bool, error) {
+	return true, nil
 }
 
 var abiToISAs = []struct {

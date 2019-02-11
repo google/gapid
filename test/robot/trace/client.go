@@ -65,9 +65,9 @@ func (c *client) onDeviceAdded(ctx context.Context, host *device.Instance, targe
 	traceOnTarget := func(ctx context.Context, t *Task) error {
 		job.LockDevice(ctx, target)
 		defer job.UnlockDevice(ctx, target)
-		if target.Status() != bind.Status_Online {
+		if target.Status(ctx) != bind.Status_Online {
 			log.I(ctx, "Trying to trace %s on %s not started, device status %s",
-				t.Input.Subject, target.Instance().GetSerial(), target.Status().String())
+				t.Input.Subject, target.Instance().GetSerial(), target.Status(ctx).String())
 			return nil
 		}
 		return c.trace(ctx, target, t)
