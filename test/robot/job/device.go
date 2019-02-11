@@ -106,7 +106,7 @@ func (l *devices) get(ctx context.Context, info *device.Instance) (*Device, erro
 	entry := l.find(ctx, info)
 	if entry == nil {
 		entry = &Device{
-			Id:          l.uniqueName(ctx, info.Id.ID().String()),
+			Id:          l.uniqueName(ctx, info.ID.ID().String()),
 			Information: info,
 		}
 		if err := l.ledger.Add(ctx, entry); err != nil {
