@@ -128,7 +128,9 @@ func (a *artifacts) get(ctx context.Context, id string, builderAbi *device.ABI) 
 	l := layout.NewZipLayout(zipFile, builderAbi.OS)
 
 	toolSet := ToolSet{Abi: builderAbi, Host: new(HostToolSet)}
-	if toolSet.Host.Gapir, err = a.getID(ctx, l.Gapir, "gapir"); err != nil {
+	if toolSet.Host.Gapir, err = a.getID(ctx, func(ctx context.Context) (*zip.File, error) {
+		return l.Gapir(ctx, nil)
+	}, "gapir"); err != nil {
 		return nil, err
 	}
 	if toolSet.Host.Gapis, err = a.getID(ctx, l.Gapis, "gapis"); err != nil {
@@ -138,7 +140,7 @@ func (a *artifacts) get(ctx context.Context, id string, builderAbi *device.ABI) 
 		return nil, err
 	}
 	if toolSet.Host.VirtualSwapChainLib, err = a.getID(ctx, func(ctx context.Context) (*zip.File, error) {
-		return l.Library(ctx, layout.LibVirtualSwapChain)
+		return l.Library(ctx, layout.LibVirtualSwapChain, nil)
 	}, "libVirtualSwapChain"); err != nil {
 		return nil, err
 	}
