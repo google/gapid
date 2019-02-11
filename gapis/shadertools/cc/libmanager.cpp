@@ -317,23 +317,34 @@ code_with_debug_info_t* convertGlsl(const char* input, size_t length,
     result->disassembly_string = new char[tmp.length() + 1];
     strcpy(result->disassembly_string, tmp.c_str());
   }
+  // Sometimes SPIR-V cross throws exceptions. \o/
+  // This is a big hammer, but should handle all of the cases
+  try {
+    std::string source =
+        spirv2glsl(std::move(spirv_new), options->target_glsl_version,
+                   options->strip_optimizations);
 
-  std::string source =
-      spirv2glsl(std::move(spirv_new), options->target_glsl_version,
-                 options->strip_optimizations);
+    result->source_code = new char[source.length() + 1];
+    strcpy(result->source_code, source.c_str());
+    result->source_code[source.length()] = '\0';
 
-  result->source_code = new char[source.length() + 1];
-  strcpy(result->source_code, source.c_str());
-  result->source_code[source.length()] = '\0';
+    // check if changed source code compiles again
+    if (options->check_after_changes) {
+      parseGlslang(result->source_code, nullptr, &err_msg, options->shader_type,
+                   OPENGL, false);
+    }
 
-  // check if changed source code compiles again
-  if (options->check_after_changes) {
-    parseGlslang(result->source_code, nullptr, &err_msg, options->shader_type,
-                 OPENGL, false);
-  }
-
-  if (!err_msg.empty()) {
-    set_error_msg(result, "Failed to parse modified source code:\n" + err_msg);
+    if (!err_msg.empty()) {
+      set_error_msg(result,
+                    "Failed to parse modified source code:\n" + err_msg);
+      return result;
+    }
+  } catch (const std::runtime_error& e) {
+    set_error_msg(result, std::string("Exception thrown from spirv-cross: \n") +
+                              e.what());
+    return result;
+  } catch (...) {
+    set_error_msg(result, "Unknown thrown from spirv-cross\n");
     return result;
   }
 
