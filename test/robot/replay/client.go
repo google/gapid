@@ -120,7 +120,7 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	if err != nil {
 		return nil, err
 	}
-	gapir, err := extractedLayout.Gapir(ctx)
+	gapir, err := extractedLayout.Gapir(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
