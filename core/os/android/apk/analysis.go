@@ -68,3 +68,15 @@ func engine(files []*zip.File) string {
 	}
 	return "<unknown>"
 }
+
+func (i *Information) URI() string {
+	var uri string
+	if i.Action != "" {
+		uri = i.Action + ":"
+	}
+	uri += i.Package
+	if i.Activity != "" {
+		uri += "/" + i.Activity
+	}
+	return uri
+}
