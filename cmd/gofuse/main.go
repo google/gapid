@@ -162,7 +162,7 @@ func run() error {
 	// ...which includes all externals
 
 	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/execroot/gapid
-	bazelGapidResolved, err := filepath.EvalSymlinks(filepath.Join(projectRoot, "bazel-gapid"))
+	bazelGapidResolved, err := filepath.EvalSymlinks(filepath.Join(projectRoot, "bazel-out"))
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func run() error {
 	}
 
 	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/
-	bazelCacheDir := filepath.Dir(filepath.Dir(bazelGapidResolved))
+	bazelCacheDir := filepath.Dir(filepath.Dir(filepath.Dir(bazelGapidResolved)))
 
 	// E.g. /home/paulthomson/.cache/bazel/_bazel_paulthomson/1234/external
 	bazelExternals := filepath.Join(bazelCacheDir, "external")
