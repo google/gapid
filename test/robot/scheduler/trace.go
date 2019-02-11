@@ -33,6 +33,7 @@ func (s schedule) doTrace(ctx context.Context, subj *monitor.Subject, tools *bui
 	input := &trace.Input{
 		Subject:  subj.Id,
 		Obb:      subj.Obb,
+		Gapis:    tools.Host.Gapis,
 		Gapit:    tools.Host.Gapit,
 		GapidApk: androidTools.GapidApk,
 		Package:  s.pkg.Id,

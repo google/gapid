@@ -119,6 +119,11 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		return nil, err
 	}
 
+	gapis, err := extractedLayout.Gapis(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	gapit, err := extractedLayout.Gapit(ctx)
 	if err != nil {
 		return nil, err
@@ -135,6 +140,9 @@ func doTrace(ctx context.Context, action string, in *Input, store *stash.Client,
 		file.RemoveAll(extractedDir)
 	}()
 	if err := store.GetFile(ctx, in.Subject, subject); err != nil {
+		return nil, err
+	}
+	if err := store.GetFile(ctx, in.Gapis, gapis); err != nil {
 		return nil, err
 	}
 	if err := store.GetFile(ctx, in.Gapit, gapit); err != nil {
