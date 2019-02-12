@@ -244,57 +244,6 @@ func (p *imagePrimer) Create32BitUintColorStagingImagesForAspect(img ImageObject
 	return stagingImgs, free, nil
 }
 
-// ipQueueFamilyOwnershipInfo contains the queue family index, indexed by image
-// subresource
-type ipQueueFamilyOwnershipInfo interface {
-	queueFamily(aspect VkImageAspectFlagBits, layer, level uint32) uint32
-}
-
-// ipQueueFamilyOwnershipInfoFromImage gets the queue family index for image
-// subresources according to an image object.
-type ipQueueFamilyOwnershipInfoFromImage struct {
-	img ImageObjectʳ
-}
-
-func (i *ipQueueFamilyOwnershipInfoFromImage) queueFamily(aspect VkImageAspectFlagBits, layer, level uint32) uint32 {
-	if !i.img.LastBoundQueue().IsNil() {
-		return i.img.LastBoundQueue().Family()
-	}
-	if _, ok := i.img.Aspects().Lookup(aspect); !ok {
-		return uint32(0)
-	}
-	if _, ok := i.img.Aspects().Get(aspect).Layers().Lookup(layer); !ok {
-		return uint32(0)
-	}
-	if _, ok := i.img.Aspects().Get(aspect).Layers().Get(layer).Levels().Lookup(level); !ok {
-		return uint32(0)
-	}
-	return i.img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).LastBoundQueue().Family()
-}
-
-// sameQueueFamilyOwnershipOfImage creates an ipQueueFamilyOwnershipInfo, which
-// when being queried, returns the queue family index of image subresource
-// according to the given image object.
-func sameQueueFamilyOwnershipOfImage(img ImageObjectʳ) ipQueueFamilyOwnershipInfo {
-	return &ipQueueFamilyOwnershipInfoFromImage{img: img}
-}
-
-// ipQueueFamilyOwnershipInfoFromQueue, when queried for queue family index,
-// always returns the queue family index of the cached queue object.
-type ipQueueFamilyOwnershipInfoFromQueue struct {
-	queue QueueObjectʳ
-}
-
-func (i *ipQueueFamilyOwnershipInfoFromQueue) queueFamily(aspect VkImageAspectFlagBits, layer, level uint32) uint32 {
-	return i.queue.Family()
-}
-
-// sameQueueFamilyOfQueue creates an ipQueueFamilyOwnershipInfo, which when
-// being queried, returns the queue family index of the given queue object.
-func sameQueueFamilyOfQueue(queue QueueObjectʳ) ipQueueFamilyOwnershipInfo {
-	return &ipQueueFamilyOwnershipInfoFromQueue{queue: queue}
-}
-
 // ipLayoutInfo contains the layout info index by the image subresource.
 type ipLayoutInfo interface {
 	layoutOf(aspect VkImageAspectFlagBits, layer, level uint32) VkImageLayout
@@ -578,20 +527,20 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
-				pNext,                                                                 // pNext
-				info.Flags(),                                                          // flags
-				info.ImageType(),                                                      // imageType
-				info.Fmt(),                                                            // format
-				info.Extent(),                                                         // extent
-				info.MipLevels(),                                                      // mipLevels
-				info.ArrayLayers(),                                                    // arrayLayers
-				info.Samples(),                                                        // samples
-				info.Tiling(),                                                         // tiling
-				info.Usage(),                                                          // usage
-				info.SharingMode(),                                                    // sharingMode
-				uint32(info.QueueFamilyIndices().Len()),                               // queueFamilyIndexCount
+				pNext,                                   // pNext
+				info.Flags(),                            // flags
+				info.ImageType(),                        // imageType
+				info.Fmt(),                              // format
+				info.Extent(),                           // extent
+				info.MipLevels(),                        // mipLevels
+				info.ArrayLayers(),                      // arrayLayers
+				info.Samples(),                          // samples
+				info.Tiling(),                           // tiling
+				info.Usage(),                            // usage
+				info.SharingMode(),                      // sharingMode
+				uint32(info.QueueFamilyIndices().Len()), // queueFamilyIndexCount
 				NewU32ᶜᵖ(sb.MustUnpackReadMap(info.QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
-				info.InitialLayout(),                                                  // initialLayout
+				info.InitialLayout(), // initialLayout
 			)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(handle).Ptr(),
@@ -646,9 +595,9 @@ func vkCreateDescriptorSetLayout(sb *stateBuilder, dev VkDevice, bindings []VkDe
 		dev,
 		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // sType
-			0, // pNext
-			0, // flags
-			uint32(len(bindings)),                                                   // bindingCount
+			0,                     // pNext
+			0,                     // flags
+			uint32(len(bindings)), // bindingCount
 			NewVkDescriptorSetLayoutBindingᶜᵖ(sb.MustAllocReadData(bindings).Ptr()), // pBindings
 		)).Ptr(),
 		NewVoidᶜᵖ(memory.Nullptr),
@@ -675,9 +624,9 @@ func vkAllocateDescriptorSet(sb *stateBuilder, dev VkDevice, pool VkDescriptorPo
 func vkCreatePipelineLayout(sb *stateBuilder, dev VkDevice, setLayouts []VkDescriptorSetLayout, pushConstantRanges []VkPushConstantRange, handle VkPipelineLayout) {
 	createInfo := NewVkPipelineLayoutCreateInfo(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, // sType
-		0, // pNext
-		0, // flags
-		uint32(len(setLayouts)),                                                  // setLayoutCount
+		0,                       // pNext
+		0,                       // flags
+		uint32(len(setLayouts)), // setLayoutCount
 		NewVkDescriptorSetLayoutᶜᵖ(sb.MustAllocReadData(setLayouts).Ptr()),       // pSetLayouts
 		uint32(len(pushConstantRanges)),                                          // pushConstantRangeCount
 		NewVkPushConstantRangeᶜᵖ(sb.MustAllocReadData(pushConstantRanges).Ptr()), // pPushConstantRanges
@@ -694,9 +643,9 @@ func vkCreatePipelineLayout(sb *stateBuilder, dev VkDevice, setLayouts []VkDescr
 func vkCreateShaderModule(sb *stateBuilder, dev VkDevice, code []uint32, handle VkShaderModule) {
 	createInfo := NewVkShaderModuleCreateInfo(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
-		0, // pNext
-		0, // flags
-		memory.Size(len(code)*4),                   // codeSize
+		0,                        // pNext
+		0,                        // flags
+		memory.Size(len(code)*4), // codeSize
 		NewU32ᶜᵖ(sb.MustAllocReadData(code).Ptr()), // pCode
 	)
 
@@ -737,10 +686,10 @@ func vkCreateDescriptorPool(sb *stateBuilder, dev VkDevice, flags VkDescriptorPo
 		dev,
 		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, // sType
-			0,                                                                // pNext
-			flags,                                                            // flags
-			maxSet,                                                           // maxSets
-			uint32(len(poolSizes)),                                           // poolSizeCount
+			0,                      // pNext
+			flags,                  // flags
+			maxSet,                 // maxSets
+			uint32(len(poolSizes)), // poolSizeCount
 			NewVkDescriptorPoolSizeᶜᵖ(sb.MustAllocReadData(poolSizes).Ptr()), // pPoolSizes
 		)).Ptr(),
 		memory.Nullptr,
@@ -1021,10 +970,10 @@ func ipCreateImageView(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info 
 		NewVkImageViewCreateInfoᶜᵖ(sb.MustAllocReadData(
 			NewVkImageViewCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
-				0,                                                           // pNext
-				0,                                                           // flags
-				info.image,                                                  // image
-				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,                       // viewType
+				0,                                     // pNext
+				0,                                     // flags
+				info.image,                            // image
+				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D, // viewType
 				GetState(sb.newState).Images().Get(info.image).Info().Fmt(), // format
 				NewVkComponentMapping(sb.ta, // components
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // r
