@@ -324,7 +324,7 @@ func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.CmdBehav
 }
 
 func (pipeline Pipelineʳ) Uniforms() []Uniform {
-	uniforms := make([]Uniform, 0)
+	var uniforms []Uniform
 	if pipeline.IsNil() {
 		return uniforms
 	}
@@ -340,7 +340,7 @@ func (pipeline Pipelineʳ) Uniforms() []Uniform {
 
 func (program Programʳ) Uniforms() []Uniform {
 	if program.IsNil() {
-		return make([]Uniform, 0)
+		return nil
 	}
 	uniforms := make([]Uniform, 0, len(program.UniformLocations().All()))
 	for _, u := range program.UniformLocations().All() {
@@ -354,7 +354,7 @@ func getAllUsedTextureData(ctx context.Context, cmd api.Cmd, id api.CmdID, s *ap
 	// Look for samplers used by the current program/pipeline.
 
 	// Get the uniforms in use.
-	uniforms := make([]Uniform, 0)
+	var uniforms []Uniform
 
 	if !c.Bound().Program().IsNil() {
 		// The bound Program is used if present.
