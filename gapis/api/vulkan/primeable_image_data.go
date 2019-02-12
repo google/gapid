@@ -213,75 +213,40 @@ func (pi *ipPrimeableByPreinitialization) prime(sb *stateBuilder, srcLayout, dst
 	}
 	newStateImgObj := GetState(sb.newState).Images().Get(pi.img)
 	if newStateImgObj.IsNil() {
-		return log.Errf(pi.p.sb.ctx, fmt.Errorf("Nil Image in new state"), "[Priming by preinitialization, image: %v]", pi.img)
+		return log.Errf(sb.ctx, fmt.Errorf("Nil Image in new state"), "[Priming by preinitialization, image: %v]", pi.img)
 	}
 	// TODO: Handle multi-planar images
-	newImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(pi.p.sb.ctx, nil, api.CmdNoID, nil, pi.p.sb.newState, GetState(pi.p.sb.newState), 0, nil, nil, newStateImgObj, VkImageAspectFlagBits(0))
+	newImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, sb.newState, GetState(sb.newState), 0, nil, nil, newStateImgObj, VkImageAspectFlagBits(0))
 	newMem := newImgPlaneMemInfo.BoundMemory()
-	oldImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(pi.p.sb.ctx, nil, api.CmdNoID, nil, pi.p.sb.oldState, GetState(pi.p.sb.oldState), 0, nil, nil, oldStateImgObj, VkImageAspectFlagBits(0))
+	oldImgPlaneMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, oldStateImgObj, VkImageAspectFlagBits(0))
 	boundOffset := oldImgPlaneMemInfo.BoundMemoryOffset()
-	planeMemRequirements := oldImgPlaneMemInfo.MemoryRequirements()
-	boundSize := planeMemRequirements.Size()
-	dat := pi.p.sb.MustReserve(uint64(boundSize))
+	dataAndSlices := []hashedDataAndOffset{}
 
-	at := NewVoidᵖ(dat.Ptr())
-	atdata := pi.p.sb.newState.AllocDataOrPanic(pi.p.sb.ctx, at)
-	pi.p.sb.write(pi.p.sb.cb.VkMapMemory(
-		newMem.Device(),
-		newMem.VulkanHandle(),
-		boundOffset,
-		boundSize,
-		VkMemoryMapFlags(0),
-		atdata.Ptr(),
-		VkResult_VK_SUCCESS,
-	).AddRead(atdata.Data()).AddWrite(atdata.Data()))
-	atdata.Free()
-
-	transitionInfo := []imageSubRangeInfo{}
 	for _, rng := range pi.opaqueBoundRanges {
-		walkImageSubresourceRange(pi.p.sb, oldStateImgObj, rng,
+		walkImageSubresourceRange(sb, oldStateImgObj, rng,
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				origLevel := oldStateImgObj.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
 				origDataSlice := origLevel.Data()
 				linearLayout := origLevel.LinearLayout()
-
-				pi.p.sb.ReadDataAt(origDataSlice.ResourceID(pi.p.sb.ctx, pi.p.sb.oldState), uint64(linearLayout.Offset())+dat.Address(), origDataSlice.Size())
-
-				transitionInfo = append(transitionInfo, imageSubRangeInfo{
-					aspectMask:     VkImageAspectFlags(aspect),
-					baseMipLevel:   level,
-					levelCount:     1,
-					baseArrayLayer: layer,
-					layerCount:     1,
-					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED,
-					newLayout:      dstLayout.layoutOf(aspect, layer, level),
-					oldQueue:       pi.queue,
-					newQueue:       pi.queue,
-				})
+				hashed := newHashedDataFromSlice(sb.ctx, sb.oldState, origDataSlice)
+				dataAndSlices = append(dataAndSlices, newHashedDataAndOffset(hashed, uint64(boundOffset+linearLayout.Offset())))
+				if srcLayout.layoutOf(aspect, layer, level) != VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED {
+					log.E(sb.ctx, "Error: Priming image data by preinitialization, image source layout is not VK_IMAGE_LAYOUT_PREINITIALIZED, img: %v, aspect: %v, layer: %v, level: %v", newStateImgObj.VulkanHandle(), aspect, layer, level)
+				}
 			})
 	}
 
-	pi.p.sb.write(pi.p.sb.cb.VkFlushMappedMemoryRanges(
-		newMem.Device(),
-		1,
-		pi.p.sb.MustAllocReadData(NewVkMappedMemoryRange(pi.p.sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
-			0,                     // pNext
-			newMem.VulkanHandle(), // memory
-			0,                     // offset
-			boundSize,             // size
-		)).Ptr(),
-		VkResult_VK_SUCCESS,
-	))
-	dat.Free()
+	err := flushDataToMemory(sb, newMem.VulkanHandle(), 1, dataAndSlices...)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at flushing data to the backing memory")
+	}
 
-	pi.p.sb.write(pi.p.sb.cb.VkUnmapMemory(
-		newMem.Device(),
-		newMem.VulkanHandle(),
-	))
-
-	pi.p.sb.changeImageSubRangeLayoutAndOwnership(pi.img, transitionInfo)
-
+	barriers := ipImageLayoutTransitionBarriers(sb, newStateImgObj, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED), dstLayout)
+	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, pi.queue)
+	err = ipRecordImageMemoryBarriers(sb, queueHandler, barriers...)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at post memory mapping image layout transition")
+	}
 	return nil
 }
 
@@ -395,7 +360,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 
 			hostCopyRecipes := map[VkImageAspectFlagBits][]*ipHostCopyRecipe{}
 			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
-				stagingImgs, freeStagingImgs, err := p.create32BitUintColorStagingImagesForAspect(
+				stagingImgs, freeStagingImgs, err := p.Create32BitUintColorStagingImagesForAspect(
 					oldStateImgObj, aspect, VkImageUsageFlags(
 						VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
 							VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT|
@@ -545,7 +510,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			stagingImages := map[VkImageAspectFlagBits][]ImageObjectʳ{}
 			hostCopyRecipes := map[VkImageAspectFlagBits][]*ipHostCopyRecipe{}
 			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
-				stagingImgs, freeStagingImgs, err := p.create32BitUintColorStagingImagesForAspect(
+				stagingImgs, freeStagingImgs, err := p.Create32BitUintColorStagingImagesForAspect(
 					oldStateImgObj, aspect, VkImageUsageFlags(
 						VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
 							VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT))
@@ -670,7 +635,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			primeable.kits = kits
 			return primeable, nil
 		} else {
-			stagingImg, freeStagingImg, err := p.createSameStagingImage(oldStateImgObj, VkImageLayout_VK_IMAGE_LAYOUT_GENERAL)
+			stagingImg, freeStagingImg, err := p.CreateSameStagingImage(oldStateImgObj, VkImageLayout_VK_IMAGE_LAYOUT_GENERAL)
 			if err != nil {
 				return nil, log.Errf(p.sb.ctx, err, "[Creating staging image for priming image data by imageStore operation from device data, image: %v]", img)
 			}

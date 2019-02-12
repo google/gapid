@@ -272,15 +272,25 @@ func flushDataToMemory(sb *stateBuilder, deviceMemory VkDeviceMemory, alignment 
 }
 
 // flushableResource is an interface for resources providers that controlls
-// the life time of the resources offered by those providers.
+// the life time of the resources offered by those providers. Users of the
+// resource reserved by a flushableResource should register themselves with
+// AddUser method to the flushableResource, and when they are done with the
+// reserved piece of resource, the users should use DropUser to indicate the
+// piece of resource can be recycled without notifying the user. When a flush
+// is triggered (either explicitly by an entity out of the flushableResource, or
+// implicitly by an internal logic of the flushableResource), all the users will
+// be called with OnResourceFlush method, then all the previously reserved
+// pieces of resources will be recycled and become invalid to access.
 type flushableResource interface {
 	flush(*stateBuilder)
 	AddUser(flushableResourceUser)
 	DropUser(flushableResourceUser)
 }
 
-// flushableResourceUser is an interface for types that can cache the resources
-// provided by flushableResource interface.
+// flushableResourceUser is an interface for types that can use the resources
+// provided by flushableResource interface. When flush method is called on
+// a flushableResource, the OnResourceFlush method will be called on the
+// flushableResourceUser to process the pieces of resources this user uses.
 type flushableResourceUser interface {
 	OnResourceFlush(*stateBuilder, flushableResource)
 }
@@ -411,6 +421,7 @@ func (m *flushingMemory) Allocate(sb *stateBuilder, size uint64) (*flushingMemor
 	return res, nil
 }
 
+// flush implements the flushableResource interface.
 func (m *flushingMemory) flush(sb *stateBuilder) {
 	for u := range m.users {
 		u.OnResourceFlush(sb, m)
@@ -427,6 +438,9 @@ func (m *flushingMemory) Flush(sb *stateBuilder) {
 	m.flush(sb)
 }
 
+// expand replace the backing Vulkan device memory with a larger one. It will
+// trigger a flush, destroy the existing device memory and create one with the
+// given size.
 func (m *flushingMemory) expand(sb *stateBuilder, size uint64) {
 	// flush then reallocate memory
 	m.flush(sb)
@@ -435,6 +449,8 @@ func (m *flushingMemory) expand(sb *stateBuilder, size uint64) {
 	m.size = size
 }
 
+// Free flushes all the memory ranges allocated by this flushing memory and
+// destroy the backing device memory handle.
 func (m *flushingMemory) Free(sb *stateBuilder) {
 	m.flush(sb)
 	if m.mem != VkDeviceMemory(0) {

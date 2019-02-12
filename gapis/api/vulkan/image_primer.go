@@ -27,8 +27,8 @@ import (
 	"github.com/google/gapid/gapis/shadertools"
 )
 
-// imagePrimer holds the resources needed for building commands to prime image
-// data
+// imagePrimer can create staging images and manages a series of image priming
+// kit builders
 type imagePrimer struct {
 	sb               *stateBuilder
 	hostCopyBuilders map[VkDevice]*ipHostCopyKitBuilder
@@ -127,13 +127,13 @@ func (p *imagePrimer) createImageAndBindMemory(dev VkDevice, info ImageInfo, mem
 	return img, mem, nil
 }
 
-// createSameStagingImage creates an image with the same image info (except
+// CreateSameStagingImage creates an image with the same image info (except
 // initial layout) as the given image along with the given initial layout, and
 // create backing memory for the new image and bind the image with the created
 // memory (sparse binding not supported). Returns the created image object in
 // the new state of the stateBuilder in the image primer, a function to destroy
 // the new created image and backing memory, and an error.
-func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ, initialLayout VkImageLayout) (ImageObjectʳ, func(), error) {
+func (p *imagePrimer) CreateSameStagingImage(img ImageObjectʳ, initialLayout VkImageLayout) (ImageObjectʳ, func(), error) {
 	dev := p.sb.s.Devices().Get(img.Device())
 	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
 	// TODO: Handle multi-planar images
@@ -161,13 +161,13 @@ func (p *imagePrimer) createSameStagingImage(img ImageObjectʳ, initialLayout Vk
 	}, nil
 }
 
-// create32BitUintColorStagingImagesForAspect creates stagining images with format
+// Create32BitUintColorStagingImagesForAspect creates stagining images with format
 // RGBA32_UINT for the given image's specific, allocated backing memory for the
 // new created images and bind memory for them, returns the created image
 // objects in the new state of the state builder of the current image primer, a
 // function to destroy the created image and backing memories, and an error in
 // case of any error occur.
-func (p *imagePrimer) create32BitUintColorStagingImagesForAspect(img ImageObjectʳ, aspect VkImageAspectFlagBits, usages VkImageUsageFlags) ([]ImageObjectʳ, func(), error) {
+func (p *imagePrimer) Create32BitUintColorStagingImagesForAspect(img ImageObjectʳ, aspect VkImageAspectFlagBits, usages VkImageUsageFlags) ([]ImageObjectʳ, func(), error) {
 	stagingImgs := []ImageObjectʳ{}
 	stagingMems := []DeviceMemoryObjectʳ{}
 
@@ -244,10 +244,14 @@ func (p *imagePrimer) create32BitUintColorStagingImagesForAspect(img ImageObject
 	return stagingImgs, free, nil
 }
 
+// ipQueueFamilyOwnershipInfo contains the queue family index, indexed by image
+// subresource
 type ipQueueFamilyOwnershipInfo interface {
 	queueFamily(aspect VkImageAspectFlagBits, layer, level uint32) uint32
 }
 
+// ipQueueFamilyOwnershipInfoFromImage gets the queue family index for image
+// subresources according to an image object.
 type ipQueueFamilyOwnershipInfoFromImage struct {
 	img ImageObjectʳ
 }
@@ -268,10 +272,15 @@ func (i *ipQueueFamilyOwnershipInfoFromImage) queueFamily(aspect VkImageAspectFl
 	return i.img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).LastBoundQueue().Family()
 }
 
+// sameQueueFamilyOwnershipOfImage creates an ipQueueFamilyOwnershipInfo, which
+// when being queried, returns the queue family index of image subresource
+// according to the given image object.
 func sameQueueFamilyOwnershipOfImage(img ImageObjectʳ) ipQueueFamilyOwnershipInfo {
 	return &ipQueueFamilyOwnershipInfoFromImage{img: img}
 }
 
+// ipQueueFamilyOwnershipInfoFromQueue, when queried for queue family index,
+// always returns the queue family index of the cached queue object.
 type ipQueueFamilyOwnershipInfoFromQueue struct {
 	queue QueueObjectʳ
 }
@@ -280,10 +289,13 @@ func (i *ipQueueFamilyOwnershipInfoFromQueue) queueFamily(aspect VkImageAspectFl
 	return i.queue.Family()
 }
 
+// sameQueueFamilyOfQueue creates an ipQueueFamilyOwnershipInfo, which when
+// being queried, returns the queue family index of the given queue object.
 func sameQueueFamilyOfQueue(queue QueueObjectʳ) ipQueueFamilyOwnershipInfo {
 	return &ipQueueFamilyOwnershipInfoFromQueue{queue: queue}
 }
 
+// ipLayoutInfo contains the layout info index by the image subresource.
 type ipLayoutInfo interface {
 	layoutOf(aspect VkImageAspectFlagBits, layer, level uint32) VkImageLayout
 }
@@ -305,6 +317,8 @@ func (i *ipLayoutInfoFromImage) layoutOf(aspect VkImageAspectFlagBits, layer, le
 	return i.img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level).Layout()
 }
 
+// sameLayoutsOfImage creates an ipLayoutInfo, which when being queried, always
+// returns the layout of the corresponding subresource in given image object.
 func sameLayoutsOfImage(img ImageObjectʳ) ipLayoutInfo {
 	return &ipLayoutInfoFromImage{img: img}
 }
@@ -317,10 +331,15 @@ func (i *ipLayoutInfoFromLayout) layoutOf(aspect VkImageAspectFlagBits, layer, l
 	return i.layout
 }
 
+// useSpecifiedLayout creates an ipLayoutInfo, which when being queried, always
+// returns the given layout, for any given image subresource.
 func useSpecifiedLayout(layout VkImageLayout) ipLayoutInfo {
 	return &ipLayoutInfoFromLayout{layout: layout}
 }
 
+// ipImageSubresourceLayoutTransitionBarrier returns a VkImageMemoryBarrier
+// built for layout transition of the subresource of the given image object
+// specified with aspect bit, layer and level.
 func ipImageSubresourceLayoutTransitionBarrier(sb *stateBuilder, imgObj ImageObjectʳ, aspect VkImageAspectFlagBits, layer, level uint32, oldLayout, newLayout VkImageLayout) VkImageMemoryBarrier {
 	return NewVkImageMemoryBarrier(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
@@ -342,6 +361,9 @@ func ipImageSubresourceLayoutTransitionBarrier(sb *stateBuilder, imgObj ImageObj
 	)
 }
 
+// ipImageLayoutTransitionBarriers returns a list of VkImageMemoryBarrier to
+// transition all the subresources of the given image object, from the
+// oldLayouts to newLayouts.
 func ipImageLayoutTransitionBarriers(sb *stateBuilder, imgObj ImageObjectʳ, oldLayouts, newLayouts ipLayoutInfo) []VkImageMemoryBarrier {
 	barriers := []VkImageMemoryBarrier{}
 	walkImageSubresourceRange(sb, imgObj, sb.imageWholeSubresourceRange(imgObj),
@@ -359,6 +381,9 @@ func ipImageLayoutTransitionBarriers(sb *stateBuilder, imgObj ImageObjectʳ, old
 	return barriers
 }
 
+// ipRecordImageMemoryBarriers records a VkCmdPipelineBarrier with a list of
+// VkImageMemoryBarrier to the command buffer of the given queue command
+// handler.
 func ipRecordImageMemoryBarriers(sb *stateBuilder, queueHandler *queueCommandHandler, barriers ...VkImageMemoryBarrier) error {
 	err := queueHandler.RecordCommands(sb, "", func(commandBuffer VkCommandBuffer) {
 		sb.write(sb.cb.VkCmdPipelineBarrier(
@@ -553,20 +578,20 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, // sType
-				pNext,                                   // pNext
-				info.Flags(),                            // flags
-				info.ImageType(),                        // imageType
-				info.Fmt(),                              // format
-				info.Extent(),                           // extent
-				info.MipLevels(),                        // mipLevels
-				info.ArrayLayers(),                      // arrayLayers
-				info.Samples(),                          // samples
-				info.Tiling(),                           // tiling
-				info.Usage(),                            // usage
-				info.SharingMode(),                      // sharingMode
-				uint32(info.QueueFamilyIndices().Len()), // queueFamilyIndexCount
+				pNext,                                                                 // pNext
+				info.Flags(),                                                          // flags
+				info.ImageType(),                                                      // imageType
+				info.Fmt(),                                                            // format
+				info.Extent(),                                                         // extent
+				info.MipLevels(),                                                      // mipLevels
+				info.ArrayLayers(),                                                    // arrayLayers
+				info.Samples(),                                                        // samples
+				info.Tiling(),                                                         // tiling
+				info.Usage(),                                                          // usage
+				info.SharingMode(),                                                    // sharingMode
+				uint32(info.QueueFamilyIndices().Len()),                               // queueFamilyIndexCount
 				NewU32ᶜᵖ(sb.MustUnpackReadMap(info.QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
-				info.InitialLayout(), // initialLayout
+				info.InitialLayout(),                                                  // initialLayout
 			)).Ptr(),
 		memory.Nullptr,
 		sb.MustAllocWriteData(handle).Ptr(),
@@ -621,9 +646,9 @@ func vkCreateDescriptorSetLayout(sb *stateBuilder, dev VkDevice, bindings []VkDe
 		dev,
 		sb.MustAllocReadData(NewVkDescriptorSetLayoutCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // sType
-			0,                     // pNext
-			0,                     // flags
-			uint32(len(bindings)), // bindingCount
+			0, // pNext
+			0, // flags
+			uint32(len(bindings)),                                                   // bindingCount
 			NewVkDescriptorSetLayoutBindingᶜᵖ(sb.MustAllocReadData(bindings).Ptr()), // pBindings
 		)).Ptr(),
 		NewVoidᶜᵖ(memory.Nullptr),
@@ -650,9 +675,9 @@ func vkAllocateDescriptorSet(sb *stateBuilder, dev VkDevice, pool VkDescriptorPo
 func vkCreatePipelineLayout(sb *stateBuilder, dev VkDevice, setLayouts []VkDescriptorSetLayout, pushConstantRanges []VkPushConstantRange, handle VkPipelineLayout) {
 	createInfo := NewVkPipelineLayoutCreateInfo(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, // sType
-		0,                       // pNext
-		0,                       // flags
-		uint32(len(setLayouts)), // setLayoutCount
+		0, // pNext
+		0, // flags
+		uint32(len(setLayouts)),                                                  // setLayoutCount
 		NewVkDescriptorSetLayoutᶜᵖ(sb.MustAllocReadData(setLayouts).Ptr()),       // pSetLayouts
 		uint32(len(pushConstantRanges)),                                          // pushConstantRangeCount
 		NewVkPushConstantRangeᶜᵖ(sb.MustAllocReadData(pushConstantRanges).Ptr()), // pPushConstantRanges
@@ -669,9 +694,9 @@ func vkCreatePipelineLayout(sb *stateBuilder, dev VkDevice, setLayouts []VkDescr
 func vkCreateShaderModule(sb *stateBuilder, dev VkDevice, code []uint32, handle VkShaderModule) {
 	createInfo := NewVkShaderModuleCreateInfo(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, // sType
-		0,                        // pNext
-		0,                        // flags
-		memory.Size(len(code)*4), // codeSize
+		0, // pNext
+		0, // flags
+		memory.Size(len(code)*4),                   // codeSize
 		NewU32ᶜᵖ(sb.MustAllocReadData(code).Ptr()), // pCode
 	)
 
@@ -712,10 +737,10 @@ func vkCreateDescriptorPool(sb *stateBuilder, dev VkDevice, flags VkDescriptorPo
 		dev,
 		sb.MustAllocReadData(NewVkDescriptorPoolCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, // sType
-			0,                      // pNext
-			flags,                  // flags
-			maxSet,                 // maxSets
-			uint32(len(poolSizes)), // poolSizeCount
+			0,                                                                // pNext
+			flags,                                                            // flags
+			maxSet,                                                           // maxSets
+			uint32(len(poolSizes)),                                           // poolSizeCount
 			NewVkDescriptorPoolSizeᶜᵖ(sb.MustAllocReadData(poolSizes).Ptr()), // pPoolSizes
 		)).Ptr(),
 		memory.Nullptr,
@@ -842,8 +867,8 @@ func debugReportObjectType(object interface{}) VkDebugReportObjectTypeEXT {
 	return VkDebugReportObjectTypeEXT_VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT
 }
 
-// attachDebugMarkerName writes VkDebugMarkerSetObjectNameEXT command to specify
-// a debug marker name to the given Vulkan handle object.
+// attachDebugMarkerName writes a VkDebugMarkerSetObjectNameEXT command to
+// specify a debug marker name to the given Vulkan handle object.
 func attachDebugMarkerName(sb *stateBuilder, nm debugMarkerName, dev VkDevice, object interface{}) error {
 	objectType := debugReportObjectType(object)
 	if objectType == VkDebugReportObjectTypeEXT_VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT {
@@ -869,7 +894,21 @@ func attachDebugMarkerName(sb *stateBuilder, nm debugMarkerName, dev VkDevice, o
 	return nil
 }
 
-func ipCreateDescriptorSetLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info descriptorSetLayoutInfo) VkDescriptorSetLayout {
+// ipDescriptorSetLayoutBindingInfo describes a binding for descriptor set
+// binding used to create descriptor set layout.
+type ipDescriptorSetLayoutBindingInfo struct {
+	descriptorType VkDescriptorType
+	count          uint32
+	stages         VkShaderStageFlags
+}
+
+// ipDescriptorSetLayoutInfo contains the descriptor set binding used to create
+// descriptor set layout for image priming.
+type ipDescriptorSetLayoutInfo struct {
+	bindings map[uint32]ipDescriptorSetLayoutBindingInfo
+}
+
+func ipCreateDescriptorSetLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info ipDescriptorSetLayoutInfo) VkDescriptorSetLayout {
 	bindings := []VkDescriptorSetLayoutBinding{}
 	for b, bInfo := range info.bindings {
 		bindings = append(bindings,
@@ -912,6 +951,8 @@ func ipCreatePipelineLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice, 
 	return handle
 }
 
+// ipShaderModuleInfo contains all the information used to select a image
+// priming shader.
 type ipShaderModuleInfo struct {
 	stage        VkShaderStageFlagBits
 	inputFormat  VkFormat
@@ -961,6 +1002,8 @@ func ipCreateShaderModule(sb *stateBuilder, nm debugMarkerName, dev VkDevice, in
 	return handle, nil
 }
 
+// ipImageView contains all the information about the image subresource to
+// create a image view for image priming
 type ipImageViewInfo struct {
 	image  VkImage
 	aspect VkImageAspectFlagBits
@@ -978,10 +1021,10 @@ func ipCreateImageView(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info 
 		NewVkImageViewCreateInfoᶜᵖ(sb.MustAllocReadData(
 			NewVkImageViewCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
-				0,                                     // pNext
-				0,                                     // flags
-				info.image,                            // image
-				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D, // viewType
+				0,                                                           // pNext
+				0,                                                           // flags
+				info.image,                                                  // image
+				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D,                       // viewType
 				GetState(sb.newState).Images().Get(info.image).Info().Fmt(), // format
 				NewVkComponentMapping(sb.ta, // components
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // r
