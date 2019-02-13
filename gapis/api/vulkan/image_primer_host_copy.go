@@ -118,11 +118,22 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 	}
 	srcImgLevel := srcImgObj.Aspects().Get(srcAspect).Layers().Get(
 		subAspect.layer).Levels().Get(subAspect.level)
+	srcDataOffset := uint64(sb.levelSize(NewVkExtent3D(sb.ta,
+		uint32(subAspect.offsetX),
+		uint32(subAspect.offsetY),
+		uint32(subAspect.offsetZ),
+	), srcVkFmt, 0, srcAspect).levelSize)
+	srcDataSize := uint64(sb.levelSize(NewVkExtent3D(sb.ta,
+		uint32(subAspect.extentWidth),
+		uint32(subAspect.extentHeight),
+		uint32(subAspect.extentDepth),
+	), srcVkFmt, 0, srcAspect).levelSize)
+	srcDataSlice := srcImgLevel.Data().Slice(srcDataOffset, srcDataOffset+srcDataSize)
 	unpackedData := []uint8{}
 	if srcVkFmt != dstVkFmt {
 		// dstImg format is different with the srcImage format, the dst image
 		// should be a staging image.
-		data := srcImgLevel.Data().MustRead(sb.ctx, nil, sb.oldState, nil)
+		data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
 		if srcVkFmt == VkFormat_VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 {
 			data, srcVkFmt, err = ebgrDataToRGB32SFloat(data,
 				NewVkExtent3D(sb.ta,
@@ -144,11 +155,7 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 		// be used directly, except when the src image is a dpeth 24 UNORM one.
 		if (srcVkFmt == VkFormat_VK_FORMAT_D24_UNORM_S8_UINT) ||
 			(srcVkFmt == VkFormat_VK_FORMAT_X8_D24_UNORM_PACK32) {
-			data := srcImgLevel.Data().MustRead(sb.ctx, nil, sb.oldState, nil)
-			// data, err := src.data.Bytes(sb.ctx)
-			if err != nil {
-				return kitPiece, log.Errf(sb.ctx, err, "failed at resolving the source data")
-			}
+			data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
 			unpackedData, _, err = unpackDataForPriming(sb.ctx, data, srcVkFmt, srcAspect)
 			if err != nil {
 				return kitPiece, log.Errf(sb.ctx, err, "[Unpacking data from format: %v aspect: %v]", srcVkFmt, srcAspect)
@@ -158,15 +165,21 @@ func (kb *ipHostCopyKitBuilder) buildHostCopyKitPiece(
 	if len(unpackedData) != 0 {
 		extendToMultipleOf8(&unpackedData)
 		kitPiece.data = newHashedDataFromBytes(sb.ctx, unpackedData)
-	} else if srcImgLevel.Data().Size()%8 != 0 {
-		data := srcImgLevel.Data().MustRead(sb.ctx, nil, sb.oldState, nil)
+		if err := checkHostCopyPieceDataSize(sb, dstVkFmt, dstAspect, kitPiece); err != nil {
+			return kitPiece, log.Errf(sb.ctx, err, "failed at checking unpacked data size, unpacked from: %v", srcVkFmt)
+		}
+	} else if srcDataSlice.Size()%8 != 0 {
+		data := srcDataSlice.MustRead(sb.ctx, nil, sb.oldState, nil)
 		extendToMultipleOf8(&data)
 		kitPiece.data = newHashedDataFromBytes(sb.ctx, data)
+		if err := checkHostCopyPieceDataSize(sb, dstVkFmt, dstAspect, kitPiece); err != nil {
+			return kitPiece, log.Errf(sb.ctx, err, "failed at checking unpacked data size, extended original data")
+		}
 	} else {
-		kitPiece.data = newHashedDataFromSlice(sb.ctx, sb.oldState, srcImgLevel.Data())
-	}
-	if err := checkHostCopyPieceDataSize(sb, dstVkFmt, dstAspect, kitPiece); err != nil {
-		return kitPiece, log.Errf(sb.ctx, err, "failed at checking unpacked data size")
+		kitPiece.data = newHashedDataFromSlice(sb.ctx, sb.oldState, srcDataSlice)
+		if err := checkHostCopyPieceDataSize(sb, dstVkFmt, dstAspect, kitPiece); err != nil {
+			return kitPiece, log.Errf(sb.ctx, err, "failed at checking unpacked data size, unchanged original data")
+		}
 	}
 	return kitPiece, nil
 }
@@ -187,13 +200,11 @@ type ipHostCopyKitPiece struct {
 }
 
 func checkHostCopyPieceDataSize(sb *stateBuilder, format VkFormat, aspect VkImageAspectFlagBits, p ipHostCopyKitPiece) error {
-	levelSize := sb.levelSize(
-		NewVkExtent3D(sb.ta, p.extentWidth, p.extentHeight, p.extentDepth),
-		format, 0, aspect,
-	)
+	extent := NewVkExtent3D(sb.ta, p.extentWidth, p.extentHeight, p.extentDepth)
+	levelSize := sb.levelSize(extent, format, 0, aspect)
 	if p.data.size != levelSize.alignedLevelSizeInBuf {
-		return fmt.Errorf("size of data does not match with expectation, actual: %v, expected: %v, format: %v, aspect: %v", p.data.size,
-			levelSize.alignedLevelSizeInBuf, format, aspect)
+		return fmt.Errorf("size of data does not match with expectation, actual: %v, expected: %v, format: %v, aspect: %v, extent: %v", p.data.size,
+			levelSize.alignedLevelSizeInBuf, format, aspect, extent)
 	}
 	return nil
 }
@@ -269,7 +280,7 @@ func (kit ipHostCopyKit) BuildHostCopyCommands(sb *stateBuilder) *queueCommandBa
 			commandBuffer,
 			scratchBuf,
 			kit.dstImage,
-			VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			ipHostCopyImageLayout,
 			uint32(len(copies)),
 			sb.MustAllocReadData(copies).Ptr(),
 		))

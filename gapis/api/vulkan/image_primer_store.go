@@ -29,7 +29,7 @@ const (
 	ipStoreMaxComputeGroupCountX        = 65536
 	ipStoreMaxComputeGroupCountY        = 65536
 	ipStoreMaxComputeGroupCountZ        = 65536
-	ipStoreInitialDescriptorSetPoolSize = 256
+	ipStoreInitialDescriptorSetPoolSize = 16
 	ipStoreImageLayout                  = VkImageLayout_VK_IMAGE_LAYOUT_GENERAL
 )
 
@@ -90,7 +90,10 @@ func newImagePrimerStoreKitBuilder(sb *stateBuilder, dev VkDevice) *ipStoreKitBu
 	}
 	builder.descriptorSetLayout = ipCreateDescriptorSetLayout(sb, builder.nm, dev, descriptorSetLayoutInfoForStore)
 	builder.descSetPool = newHomoDescriptorSetPool(sb, builder.nm, dev, builder.descriptorSetLayout, ipStoreInitialDescriptorSetPoolSize, false)
-	builder.pipelineLayout = ipCreatePipelineLayout(sb, builder.nm, dev, []VkDescriptorSetLayout{builder.descriptorSetLayout}, 4*4)
+	builder.pipelineLayout = ipCreatePipelineLayout(sb, builder.nm, dev,
+		[]VkDescriptorSetLayout{builder.descriptorSetLayout},
+		VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT),
+		4*4)
 	return builder
 }
 

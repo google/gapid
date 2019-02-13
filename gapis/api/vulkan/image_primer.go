@@ -117,6 +117,9 @@ func (p *imagePrimer) createImageAndBindMemory(dev VkDevice, info ImageInfo, mem
 	// TODO: Insert opcodes to determine the allocation size dynamically on the
 	// replay side.
 	allocSize := VkDeviceSize(imgSize * 2)
+	if allocSize < VkDeviceSize(65536*info.Extent().Depth()) {
+		allocSize = VkDeviceSize(65536 * info.Extent().Depth())
+	}
 	if allocSize < VkDeviceSize(256*1024) {
 		allocSize = VkDeviceSize(256 * 1024)
 	}
@@ -133,7 +136,7 @@ func (p *imagePrimer) createImageAndBindMemory(dev VkDevice, info ImageInfo, mem
 // memory (sparse binding not supported). Returns the created image object in
 // the new state of the stateBuilder in the image primer, a function to destroy
 // the new created image and backing memory, and an error.
-func (p *imagePrimer) CreateSameStagingImage(img ImageObjectʳ, initialLayout VkImageLayout) (ImageObjectʳ, func(), error) {
+func (p *imagePrimer) CreateSameStagingImage(img ImageObjectʳ) (ImageObjectʳ, func(), error) {
 	dev := p.sb.s.Devices().Get(img.Device())
 	phyDevMemProps := p.sb.s.PhysicalDevices().Get(dev.PhysicalDevice()).MemoryProperties()
 	// TODO: Handle multi-planar images
@@ -148,10 +151,7 @@ func (p *imagePrimer) CreateSameStagingImage(img ImageObjectʳ, initialLayout Vk
 		return ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, fmt.Errorf("can't find an appropriate memory type index"), "[Creatig staging image same as image: %v]", img.VulkanHandle())
 	}
 
-	createInfo := img.Info()
-	createInfo.SetInitialLayout(initialLayout)
-
-	stagingImg, stagingImgMem, err := p.createImageAndBindMemory(img.Device(), createInfo, memIndex)
+	stagingImg, stagingImgMem, err := p.createImageAndBindMemory(img.Device(), img.Info(), memIndex)
 	if err != nil {
 		return ImageObjectʳ{}, func() {}, log.Errf(p.sb.ctx, err, "[Creating staging image same as image: %v]", img.VulkanHandle())
 	}
@@ -880,7 +880,9 @@ func ipCreateDescriptorSetLayout(sb *stateBuilder, nm debugMarkerName, dev VkDev
 	return handle
 }
 
-func ipCreatePipelineLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice, descSetLayouts []VkDescriptorSetLayout, pushConstantSize uint32) VkPipelineLayout {
+func ipCreatePipelineLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice,
+	descSetLayouts []VkDescriptorSetLayout, pushConstantStages VkShaderStageFlags,
+	pushConstantSize uint32) VkPipelineLayout {
 	handle := VkPipelineLayout(newUnusedID(true, func(x uint64) bool {
 		return GetState(sb.newState).PipelineLayouts().Contains(VkPipelineLayout(x)) ||
 			GetState(sb.oldState).PipelineLayouts().Contains(VkPipelineLayout(x))
@@ -888,9 +890,9 @@ func ipCreatePipelineLayout(sb *stateBuilder, nm debugMarkerName, dev VkDevice, 
 	vkCreatePipelineLayout(sb, dev,
 		descSetLayouts,
 		[]VkPushConstantRange{NewVkPushConstantRange(sb.ta,
-			VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT), // stageFlags
-			0,                // offset
-			pushConstantSize, // size
+			pushConstantStages, // stageFlags
+			0,                  // offset
+			pushConstantSize,   // size
 		)},
 		handle,
 	)
@@ -961,6 +963,13 @@ type ipImageViewInfo struct {
 }
 
 func ipCreateImageView(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info ipImageViewInfo) VkImageView {
+	imgObj := GetState(sb.newState).Images().Get(info.image)
+	viewType := VkImageViewType_VK_IMAGE_VIEW_TYPE_2D
+	if imgObj.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_3D {
+		viewType = VkImageViewType_VK_IMAGE_VIEW_TYPE_3D
+	} else if imgObj.Info().ImageType() == VkImageType_VK_IMAGE_TYPE_1D {
+		viewType = VkImageViewType_VK_IMAGE_VIEW_TYPE_1D
+	}
 	handle := VkImageView(newUnusedID(true, func(x uint64) bool {
 		return GetState(sb.newState).ImageViews().Contains(VkImageView(x)) ||
 			GetState(sb.oldState).ImageViews().Contains(VkImageView(x))
@@ -970,10 +979,10 @@ func ipCreateImageView(sb *stateBuilder, nm debugMarkerName, dev VkDevice, info 
 		NewVkImageViewCreateInfoᶜᵖ(sb.MustAllocReadData(
 			NewVkImageViewCreateInfo(sb.ta,
 				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
-				0,                                     // pNext
-				0,                                     // flags
-				info.image,                            // image
-				VkImageViewType_VK_IMAGE_VIEW_TYPE_2D, // viewType
+				0,          // pNext
+				0,          // flags
+				info.image, // image
+				viewType,   // viewType
 				GetState(sb.newState).Images().Get(info.image).Info().Fmt(), // format
 				NewVkComponentMapping(sb.ta, // components
 					VkComponentSwizzle_VK_COMPONENT_SWIZZLE_IDENTITY, // r

@@ -451,7 +451,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			copy := &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: copyKits}
 			err = copy.prime(p.sb,
 				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
-				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+				useSpecifiedLayout(ipRenderInputAttachmentLayout))
 			if err != nil {
 				return nil, log.Errf(p.sb.ctx, err, "failed at roll out the host data copy to staging images")
 			}
@@ -585,10 +585,6 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 					// e.g. all layers and levels have UNDEFINED layout.
 					if r != nil {
 						copyList = append(copyList, *r)
-					} else {
-						log.E(p.sb.ctx, "nil r: aspect: %v", aspect)
-						log.E(p.sb.ctx, "nil r: index: %v", i)
-						log.E(p.sb.ctx, "image level: %v", oldStateImgObj.Aspects().Get(aspect).Layers().Get(0).Levels().Get(0).Get())
 					}
 				}
 			}
@@ -600,7 +596,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			copy := &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: copyKits}
 			err = copy.prime(p.sb,
 				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
-				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
+				useSpecifiedLayout(ipStoreImageLayout))
 			if err != nil {
 				return nil, log.Errf(p.sb.ctx, err, "failed at roll out the host data copy to staging images")
 			}
@@ -635,7 +631,7 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 			primeable.kits = kits
 			return primeable, nil
 		} else {
-			stagingImg, freeStagingImg, err := p.CreateSameStagingImage(oldStateImgObj, VkImageLayout_VK_IMAGE_LAYOUT_GENERAL)
+			stagingImg, freeStagingImg, err := p.CreateSameStagingImage(oldStateImgObj)
 			if err != nil {
 				return nil, log.Errf(p.sb.ctx, err, "[Creating staging image for priming image data by imageStore operation from device data, image: %v]", img)
 			}

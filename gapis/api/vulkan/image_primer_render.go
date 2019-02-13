@@ -25,7 +25,7 @@ import (
 
 const (
 	ipRenderInputAttachmentBinding       = 0
-	ipRenderInitialDescriptorSetPoolSize = 256
+	ipRenderInitialDescriptorSetPoolSize = 16
 	ipRenderInputAttachmentIndex         = 0
 	ipRenderOutputAttachmentIndex        = 1
 	ipRenderInputAttachmentLayout        = VkImageLayout_VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -92,7 +92,9 @@ func newImagePrimerRenderKitBuilder(sb *stateBuilder, dev VkDevice) *ipRenderKit
 	}
 	builder.descriptorSetLayout = ipCreateDescriptorSetLayout(sb, builder.nm, dev, descriptorSetLayoutInfoForRender)
 	builder.descSetPool = newHomoDescriptorSetPool(sb, builder.nm, dev, builder.descriptorSetLayout, ipRenderInitialDescriptorSetPoolSize, false)
-	builder.pipelineLayout = ipCreatePipelineLayout(sb, builder.nm, dev, []VkDescriptorSetLayout{builder.descriptorSetLayout}, 4)
+	builder.pipelineLayout = ipCreatePipelineLayout(sb, builder.nm, dev,
+		[]VkDescriptorSetLayout{builder.descriptorSetLayout},
+		VkShaderStageFlags(VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT), 4)
 	return builder
 }
 
