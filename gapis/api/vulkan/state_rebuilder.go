@@ -780,7 +780,7 @@ func (sb *stateBuilder) transferImageQueueFamilyOwnership(infos ...imageQueueFam
 		acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
 	}
 
-	releaseHandlers := make([]*queueCommandHandler, len(releaseBarriers))
+	releaseHandlers := make([]*queueCommandHandler, 0, len(releaseBarriers))
 	for releaseQ, barriers := range releaseBarriers {
 		releaseHandler := sb.scratchRes.GetQueueCommandHandler(sb, releaseQ)
 		err := ipRecordImageMemoryBarriers(sb, releaseHandler, barriers...)
