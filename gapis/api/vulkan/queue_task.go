@@ -265,12 +265,6 @@ func (qcb *queueCommandBatch) NewScratchBuffer(sb *stateBuilder, name debugMarke
 		qcb.scratchBuffers[mem] = []bufferFlushInfo{}
 	}
 	qcb.scratchBuffers[mem] = append(qcb.scratchBuffers[mem], flush)
-	// qcb.DoOnCommit(func(handler *queueCommandHandler) {
-	// 	mem.AddUser(handler)
-	// 	handler.RecordPostExecuted(func() {
-	// 		mem.DropUser(handler)
-	// 	})
-	// })
 	qcb.DeferToPostExecuted(func() {
 		sb.write(sb.cb.VkDestroyBuffer(dev, buffer, memory.Nullptr))
 	})
@@ -309,6 +303,11 @@ func (qcb *queueCommandBatch) Commit(sb *stateBuilder, handler *queueCommandHand
 		globalOffset := allocationResult.Offset()
 		for i, info := range bufs {
 			bufObj := GetState(sb.newState).Buffers().Get(info.buffer)
+			sb.write(sb.cb.VkGetBufferMemoryRequirements(
+				bufObj.Device(),
+				info.buffer,
+				sb.MustAllocWriteData(MakeVkMemoryRequirements(sb.ta)).Ptr(),
+			))
 			sb.write(sb.cb.VkBindBufferMemory(
 				bufObj.Device(),
 				info.buffer,

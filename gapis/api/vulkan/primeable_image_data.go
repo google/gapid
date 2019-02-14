@@ -579,8 +579,8 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 				})
 			}
 			copyList := make([]ipHostCopyRecipe, 0, len(hostCopyRecipes)*2)
-			for aspect, rs := range hostCopyRecipes {
-				for i, r := range rs {
+			for _, rs := range hostCopyRecipes {
+				for _, r := range rs {
 					// recipe pointer can be nil if the aspect has no real data
 					// e.g. all layers and levels have UNDEFINED layout.
 					if r != nil {

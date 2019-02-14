@@ -2848,8 +2848,10 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 			case QueryStatus_QUERY_STATUS_INACTIVE:
 				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
 			case QueryStatus_QUERY_STATUS_ACTIVE:
+				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
 				sb.write(sb.cb.VkCmdBeginQuery(commandBuffer, qp.VulkanHandle(), i, VkQueryControlFlags(0)))
 			case QueryStatus_QUERY_STATUS_COMPLETE:
+				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
 				if qp.QueryType() == VkQueryType_VK_QUERY_TYPE_TIMESTAMP {
 					sb.write(sb.cb.VkCmdWriteTimestamp(commandBuffer, VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, qp.VulkanHandle(), i))
 				} else {
