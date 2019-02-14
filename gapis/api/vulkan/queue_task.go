@@ -29,6 +29,16 @@ const (
 	submittedState
 )
 
+// queueCommandHandler is a pair of VkQueue and VkCommandBuffer and other
+// related resources used to record command buffer commands and submit the
+// commands to queue. The queueCommandHandler is initialized in recording state,
+// and after Submit method being called, will be transitioned to submitted
+// state, then after WaitUntilFinish method being called, will be transitioned
+// back to recording state. queueCommandHandler implements flushableResourceUser
+// interface, all the used flushablePiece for the current recording/submitted
+// commands are stored in dependentFlushablePieces. Callbacks in postExecuted
+// will be called in REVERSED order when the commands recorded are executed,
+// i.e.: after WaitUntilFinish being called.
 type queueCommandHandler struct {
 	state                    queueCommandHandlerState
 	queue                    VkQueue
@@ -56,6 +66,9 @@ func newQueueCommandHandler(sb *stateBuilder, queue VkQueue, commandBuffer VkCom
 	return handler, nil
 }
 
+// RecordCommands records one or more commands to the command buffer of this
+// queueCommandHandler. It also allow the caller to assign a debug group name
+// for the commmands.
 func (h *queueCommandHandler) RecordCommands(sb *stateBuilder, name debugMarkerName, f ...func(VkCommandBuffer)) error {
 	if h.state != recordingState {
 		return fmt.Errorf("queue command handler is not in recording state")
@@ -100,6 +113,9 @@ func (h *queueCommandHandler) RecordCommands(sb *stateBuilder, name debugMarkerN
 	return nil
 }
 
+// Submit submits the command buffer of this queueCommandHandler to the queue
+// of this queueCommandHandler. It changes the queueCommandHandler state from
+// recording to submitted.
 func (h *queueCommandHandler) Submit(sb *stateBuilder) error {
 	for _, p := range h.dependentFlushablePieces {
 		if !p.IsValid() {
@@ -134,6 +150,11 @@ func (h *queueCommandHandler) Submit(sb *stateBuilder) error {
 	return nil
 }
 
+// WaitUntilFinish calls VkQueueWaitIdle on the queue of this
+// queueCommandHandler. It will also rollout the post execute callbacks in the
+// REVERSED order, and reset the command buffer so that it can be used for
+// recording again. It changes the state of the queueCommandHandler state from
+// submitted to recording.
 func (h *queueCommandHandler) WaitUntilFinish(sb *stateBuilder) error {
 	for _, p := range h.dependentFlushablePieces {
 		if !p.IsValid() {
@@ -158,6 +179,8 @@ func (h *queueCommandHandler) WaitUntilFinish(sb *stateBuilder) error {
 	return nil
 }
 
+// RecordPostExecuted records callbacks to be run after the current command
+// buffer commands be submitted and executed.
 func (h *queueCommandHandler) RecordPostExecuted(f ...func()) error {
 	if h.state != recordingState {
 		return fmt.Errorf("queue command handler is not in recording state")
@@ -166,14 +189,17 @@ func (h *queueCommandHandler) RecordPostExecuted(f ...func()) error {
 	return nil
 }
 
+// Device returns the device of the queue of this queue command handler
 func (h *queueCommandHandler) Device(sb *stateBuilder) VkDevice {
 	return GetState(sb.newState).Queues().Get(h.queue).Device()
 }
 
+// Queue returns the queue of this queue command handler
 func (h *queueCommandHandler) Queue() VkQueue {
 	return h.queue
 }
 
+// QueueFamily returns the queue family index of this queue command handler
 func (h *queueCommandHandler) QueueFamily(sb *stateBuilder) uint32 {
 	return GetState(sb.newState).Queues().Get(h.queue).Family()
 }
@@ -190,6 +216,8 @@ func (h *queueCommandHandler) OnResourceFlush(sb *stateBuilder, res flushableRes
 	}
 }
 
+// AddDependentFlushablePieces add flushablePieces as dependent pieces by the
+// current recorded command buffer commands.
 func (h *queueCommandHandler) AddDependentFlushablePieces(p ...flushablePiece) {
 	for _, fp := range p {
 		fp.Owner().AddUser(h)
@@ -198,6 +226,9 @@ func (h *queueCommandHandler) AddDependentFlushablePieces(p ...flushablePiece) {
 	h.dependentFlushablePieces = append(h.dependentFlushablePieces, p...)
 }
 
+// queueCommandBatch contains a batch of command buffer commands, which can be
+// committed to queueCommandHandler. It can create scratch buffer for its
+// command buffer commands to use.
 type queueCommandBatch struct {
 	name           debugMarkerName
 	scratchBuffers map[*flushingMemory][]bufferFlushInfo
@@ -216,6 +247,9 @@ func newQueueCommandBatch(name string) *queueCommandBatch {
 	}
 }
 
+// NewScratchBuffer returns a new VkBuffer for the commands in this batch to
+// use, it will be bound to memory and flushed with the given data, when this
+// batch is committed to a queueCommandHandler
 func (qcb *queueCommandBatch) NewScratchBuffer(sb *stateBuilder, name debugMarkerName, mem *flushingMemory, dev VkDevice, usages VkBufferUsageFlags, data ...hashedDataAndOffset) VkBuffer {
 	size := uint64(0)
 	for _, d := range data {
@@ -271,18 +305,29 @@ func (qcb *queueCommandBatch) NewScratchBuffer(sb *stateBuilder, name debugMarke
 	return buffer
 }
 
+// DoOnCommit records callbacks to run when this batch is committed to a
+// queueCommandHandler.
 func (qcb *queueCommandBatch) DoOnCommit(f ...func(handler *queueCommandHandler)) {
 	qcb.onCommit = append(qcb.onCommit, f...)
 }
 
+// DeferToPostExecuted records callbacks to be passed to queueComamndHandlers
+// as post executed callbacks, which means, they will be called when the
+// commands in this batch are executed.
 func (qcb *queueCommandBatch) DeferToPostExecuted(f ...func()) {
 	qcb.postExecuted = append(qcb.postExecuted, f...)
 }
 
+// RecordCommandsOnCommit records command buffer commands for this batch, which
+// in turn will be transferred to queueCommandHandler when this batch is
+// committed.
 func (qcb *queueCommandBatch) RecordCommandsOnCommit(f ...func(VkCommandBuffer)) {
 	qcb.records = append(qcb.records, f...)
 }
 
+// Commit pass the commands in this batch to a queueCommandHandler, along with
+// the post execution callbacks. It also bind the scratch buffer, if any, with'
+// scratch memories, and flush the scratch buffers with data.
 func (qcb *queueCommandBatch) Commit(sb *stateBuilder, handler *queueCommandHandler) error {
 	for mem, bufs := range qcb.scratchBuffers {
 		relativeOffsets := []uint64{}
