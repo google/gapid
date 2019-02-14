@@ -302,17 +302,17 @@ func buildReplayEnumeratePhysicalDevices(
 
 // dropInvalidDestroy is a transformation that drops all VkDestroyXXX commands
 // whose destroying targets are not recorded in the state.
-type dropInvalidDestroy struct{}
+type dropInvalidDestroy struct{ tag string }
 
 func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
 	l := s.MemoryLayout
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 	warnDropCmd := func(handles ...interface{}) {
-		log.W(ctx, "Dropping [%d]:%v because the creation of %v was not recorded", id, cmd, handles)
+		log.W(ctx, "[%v] Dropping [%d]:%v because the creation of %v was not recorded", t.tag, id, cmd, handles)
 	}
 	warnModCmd := func(handles ...interface{}) {
-		log.W(ctx, "Modifing [%d]:%v to remove the reference to %v because the creation of them were not recorded", id, cmd, handles)
+		log.W(ctx, "[%v] Modifing [%d]:%v to remove the reference to %v because the creation of them were not recorded", t.tag, id, cmd, handles)
 	}
 	switch cmd := cmd.(type) {
 	case *VkDestroyInstance:
@@ -713,7 +713,7 @@ func (a API) GetInitialPayload(ctx context.Context,
 	out transform.Writer) error {
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
-	transforms.Add(&dropInvalidDestroy{})
+	transforms.Add(&dropInvalidDestroy{tag: "GetInitialPayload"})
 	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
 	out.State().Allocator.ReserveRanges(im)
 
@@ -749,7 +749,7 @@ func (a API) Replay(
 
 	transforms := transform.Transforms{}
 	transforms.Add(&makeAttachementReadable{})
-	transforms.Add(&dropInvalidDestroy{})
+	transforms.Add(&dropInvalidDestroy{tag: "Replay"})
 
 	readFramebuffer := newReadFramebuffer(ctx)
 	injector := &transform.Injector{}

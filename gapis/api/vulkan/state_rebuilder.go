@@ -16,6 +16,7 @@ package vulkan
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/google/gapid/core/data/id"
@@ -44,7 +45,7 @@ type stateBuilder struct {
 	extraReadIDsAndRanges []idAndRng
 	memoryIntervals       interval.U64RangeList
 	ta                    arena.Arena // temporary arena
-	scratchResources      map[VkDevice]map[uint32]*queueFamilyScratchResources
+	scratchRes            *scratchResources
 }
 
 type stateBuilderOutput interface {
@@ -113,15 +114,15 @@ type idAndRng struct {
 func (s *State) newStateBuilder(ctx context.Context, out stateBuilderOutput) *stateBuilder {
 	newState := out.getNewState()
 	return &stateBuilder{
-		ctx:              ctx,
-		s:                s,
-		oldState:         out.getOldState(),
-		newState:         newState,
-		out:              out,
-		cb:               CommandBuilder{Thread: 0, Arena: newState.Arena},
-		memoryIntervals:  interval.U64RangeList{},
-		ta:               arena.New(),
-		scratchResources: map[VkDevice]map[uint32]*queueFamilyScratchResources{},
+		ctx:             ctx,
+		s:               s,
+		oldState:        out.getOldState(),
+		newState:        newState,
+		out:             out,
+		cb:              CommandBuilder{Thread: 0, Arena: newState.Arena},
+		memoryIntervals: interval.U64RangeList{},
+		ta:              arena.New(),
+		scratchRes:      newScratchResources(),
 	}
 }
 
@@ -182,7 +183,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 
 	{
 		imgPrimer := newImagePrimer(sb)
-		defer imgPrimer.free()
+		defer imgPrimer.Free()
 		for _, img := range s.Images().Keys() {
 			sb.createImage(s.Images().Get(img), imgPrimer)
 		}
@@ -268,8 +269,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
 	}
 
-	sb.flushAllScratchResources()
-	sb.freeAllScratchResources()
+	sb.scratchRes.Free(sb)
 
 	return out.cmds, sb.memoryIntervals
 }
@@ -726,6 +726,89 @@ func (sb *stateBuilder) createQueue(q QueueObjectʳ) {
 	))
 }
 
+type imageQueueFamilyTransferInfo struct {
+	image      VkImage
+	aspectMask VkImageAspectFlags
+	layer      uint32
+	level      uint32
+	layout     VkImageLayout
+	oldQueue   VkQueue
+	newQueue   VkQueue
+}
+
+func (sb *stateBuilder) transferImageQueueFamilyOwnership(infos ...imageQueueFamilyTransferInfo) error {
+	makeBarrier := func(info imageQueueFamilyTransferInfo) VkImageMemoryBarrier {
+		newFamily := GetState(sb.newState).Queues().Get(info.newQueue).Family()
+		oldFamily := newFamily
+		if info.oldQueue != VkQueue(0) {
+			oldFamily = sb.s.Queues().Get(info.oldQueue).Family()
+		}
+		return NewVkImageMemoryBarrier(sb.ta,
+			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
+			0, // pNext
+			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+			info.layout, // oldLayout
+			info.layout, // newLayout
+			oldFamily,   // srcQueueFamilyIndex
+			newFamily,   // dstQueueFamilyIndex
+			info.image,  // image
+			NewVkImageSubresourceRange(sb.ta,
+				info.aspectMask,
+				info.level,
+				1,
+				info.layer,
+				1,
+			), // subresourceRange
+		)
+	}
+
+	releaseBarriers := map[VkQueue][]VkImageMemoryBarrier{}
+	acquireBarriers := map[VkQueue][]VkImageMemoryBarrier{}
+	for _, info := range infos {
+		if info.oldQueue == VkQueue(0) {
+			// no need to transfer
+			continue
+		}
+		oldFamily := GetState(sb.newState).Queues().Get(info.oldQueue).Family()
+		newFamily := GetState(sb.newState).Queues().Get(info.newQueue).Family()
+		if oldFamily == newFamily {
+			// no need to transfer
+			continue
+		}
+		releaseBarriers[info.oldQueue] = append(releaseBarriers[info.oldQueue], makeBarrier(info))
+		acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
+	}
+
+	releaseHandlers := make([]*queueCommandHandler, 0, len(releaseBarriers))
+	for releaseQ, barriers := range releaseBarriers {
+		releaseHandler := sb.scratchRes.GetQueueCommandHandler(sb, releaseQ)
+		err := ipRecordImageMemoryBarriers(sb, releaseHandler, barriers...)
+		if err != nil {
+			return log.Errf(sb.ctx, err, "Error at recording queue family ownership releasing barriers")
+		}
+		releaseHandlers = append(releaseHandlers, releaseHandler)
+	}
+	// force synchronization to make sure the releasing is done
+	for _, h := range releaseHandlers {
+		h.Submit(sb)
+	}
+	for _, h := range releaseHandlers {
+		h.WaitUntilFinish(sb)
+	}
+
+	for acquireQ, barriers := range acquireBarriers {
+		acquireHandler := sb.scratchRes.GetQueueCommandHandler(sb, acquireQ)
+		err := ipRecordImageMemoryBarriers(sb, acquireHandler, barriers...)
+		if err != nil {
+			return log.Errf(sb.ctx, err, "Error at recording queue family ownership acquiring barriers")
+		}
+	}
+	return nil
+}
+
+func (sb *stateBuilder) transitImageLayoutTransferImageOwnership(image VkImage)
+
 type imageSubRangeInfo struct {
 	aspectMask     VkImageAspectFlags
 	baseMipLevel   uint32
@@ -736,92 +819,6 @@ type imageSubRangeInfo struct {
 	newLayout      VkImageLayout
 	oldQueue       VkQueue
 	newQueue       VkQueue
-}
-
-func (sb *stateBuilder) changeImageSubRangeLayoutAndOwnership(image VkImage, subRngInfo []imageSubRangeInfo) {
-	makeBarrier := func(info imageSubRangeInfo) VkImageMemoryBarrier {
-		newFamily := sb.s.Queues().Get(info.newQueue).Family()
-		oldFamily := newFamily
-		if info.oldQueue != VkQueue(0) {
-			oldFamily = sb.s.Queues().Get(info.oldQueue).Family()
-		}
-		return NewVkImageMemoryBarrier(sb.ta,
-			VkStructureType_VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, // sType
-			0, // pNext
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-			VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-			info.oldLayout, // oldLayout
-			info.newLayout, // newLayout
-			oldFamily,      // srcQueueFamilyIndex
-			newFamily,      // dstQueueFamilyIndex
-			image,          // image
-			NewVkImageSubresourceRange(sb.ta,
-				info.aspectMask,
-				info.baseMipLevel,
-				info.levelCount,
-				info.baseArrayLayer,
-				info.layerCount,
-			), // subresourceRange
-		)
-	}
-
-	releaseBarriers := map[VkQueue][]VkImageMemoryBarrier{}
-	acquireBarriers := map[VkQueue][]VkImageMemoryBarrier{}
-	for _, info := range subRngInfo {
-		if info.oldQueue == VkQueue(0) {
-			acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
-			continue
-		}
-		oldFamily := sb.s.Queues().Get(info.oldQueue).Family()
-		newFamily := sb.s.Queues().Get(info.newQueue).Family()
-		if oldFamily == newFamily {
-			acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
-			continue
-		}
-		releaseBarriers[info.oldQueue] = append(releaseBarriers[info.oldQueue], makeBarrier(info))
-		acquireBarriers[info.newQueue] = append(acquireBarriers[info.newQueue], makeBarrier(info))
-	}
-
-	for oldQ, barriers := range releaseBarriers {
-		tsk := sb.newScratchTaskOnQueue(oldQ)
-		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
-			sb.write(sb.cb.VkCmdPipelineBarrier(
-				commandBuffer,
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkDependencyFlags(0),
-				0,
-				memory.Nullptr,
-				0,
-				memory.Nullptr,
-				uint32(len(barriers)),
-				sb.MustAllocReadData(barriers).Ptr(),
-			))
-		})
-		tsk.commit()
-		// Need to block the GPU execution to synchronize the queue family
-		// acquire - release operations.
-		sb.flushQueueFamilyScratchResources(oldQ)
-	}
-
-	for newQ, barriers := range acquireBarriers {
-		tsk := sb.newScratchTaskOnQueue(newQ)
-		tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
-			sb.write(sb.cb.VkCmdPipelineBarrier(
-				commandBuffer,
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-				VkDependencyFlags(0),
-				0,
-				memory.Nullptr,
-				0,
-				memory.Nullptr,
-				uint32(len(barriers)),
-				sb.MustAllocReadData(barriers).Ptr(),
-			))
-		})
-		tsk.commit()
-	}
 }
 
 func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
@@ -876,50 +873,41 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		sb.MustAllocWriteData(images).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+
 	for _, v := range swp.SwapchainImages().All() {
-		layoutTransitionInfo := []imageSubRangeInfo{}
-		ownerTransferInfo := []imageSubRangeInfo{}
+		layoutBarriers := ipImageLayoutTransitionBarriers(sb, v, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(v))
+		layoutQueue := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+			queueFamilyIndicesToU32Slice(v.Info().QueueFamilyIndices()),
+			v.Device(),
+			v.LastBoundQueue())
+		if layoutQueue.IsNil() {
+			log.E(sb.ctx, "could not get a queue for swapchain image layout transition")
+			return
+		}
+		queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, layoutQueue.VulkanHandle())
+		err := ipRecordImageMemoryBarriers(sb, queueHandler, layoutBarriers...)
+		if err != nil {
+			log.E(sb.ctx, "failed at swapchain image layout transition, err: %v", err)
+		}
+
+		ownerTransferInfo := []imageQueueFamilyTransferInfo{}
 		walkImageSubresourceRange(sb, v, sb.imageWholeSubresourceRange(v),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				l := v.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
-				if l.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || l.LastBoundQueue() == NilQueueObjectʳ {
-					return
-				}
-				q := sb.getQueueFor(
-					VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
-					queueFamilyIndicesToU32Slice(v.Info().QueueFamilyIndices()),
-					v.Device(),
-					l.LastBoundQueue())
-				if q.IsNil() {
-					return
-				}
-				layoutTransitionInfo = append(layoutTransitionInfo, imageSubRangeInfo{
-					aspectMask:     VkImageAspectFlags(aspect),
-					baseMipLevel:   level,
-					levelCount:     1,
-					baseArrayLayer: layer,
-					layerCount:     1,
-					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
-					newLayout:      l.Layout(),
-					oldQueue:       VkQueue(0),
-					newQueue:       q.VulkanHandle(),
-				})
-				if q.Family() != l.LastBoundQueue().Family() {
-					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
-						aspectMask:     VkImageAspectFlags(aspect),
-						baseMipLevel:   level,
-						levelCount:     1,
-						baseArrayLayer: layer,
-						layerCount:     1,
-						oldLayout:      l.Layout(),
-						newLayout:      l.Layout(),
-						oldQueue:       q.VulkanHandle(),
-						newQueue:       l.LastBoundQueue().VulkanHandle(),
+				if !l.LastBoundQueue().IsNil() && (layoutQueue.Family() != l.LastBoundQueue().Family()) {
+					ownerTransferInfo = append(ownerTransferInfo, imageQueueFamilyTransferInfo{
+						image:      v.VulkanHandle(),
+						aspectMask: VkImageAspectFlags(aspect),
+						layer:      layer,
+						level:      level,
+						layout:     l.Layout(),
+						oldQueue:   layoutQueue.VulkanHandle(),
+						newQueue:   l.LastBoundQueue().VulkanHandle(),
 					})
 				}
 			})
-		sb.changeImageSubRangeLayoutAndOwnership(v.VulkanHandle(), layoutTransitionInfo)
-		sb.changeImageSubRangeLayoutAndOwnership(v.VulkanHandle(), ownerTransferInfo)
+		sb.transferImageQueueFamilyOwnership(ownerTransferInfo...)
 	}
 }
 
@@ -1162,7 +1150,7 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		return
 	}
 
-	contents := []bufferSubRangeFillInfo{}
+	contents := []hashedDataAndOffset{}
 
 	copies := []VkBufferCopy{}
 	offset := VkDeviceSize(0)
@@ -1235,7 +1223,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
 					uint64(bind.MemoryOffset()),
 					uint64(bind.MemoryOffset()+size))
-				contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
+				hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
+				contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
 				copies = append(copies, NewVkBufferCopy(sb.ta,
 					offset,                // srcOffset
 					bind.ResourceOffset(), // dstOffset
@@ -1263,7 +1252,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		dataSlice := buffer.Memory().Data().Slice(
 			uint64(buffer.MemoryOffset()),
 			uint64(buffer.MemoryOffset()+size))
-		contents = append(contents, newBufferSubRangeFillInfoFromSlice(sb, dataSlice, uint64(offset)))
+		hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
+		contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
 		copies = append(copies, NewVkBufferCopy(sb.ta,
 			offset, // srcOffset
 			0,      // dstOffset
@@ -1271,21 +1261,26 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		))
 	}
 
-	tsk := sb.newScratchTaskOnQueue(queue.VulkanHandle())
+	tsk := newQueueCommandBatch(
+		fmt.Sprintf("Prime buffer: %v's data", buffer.VulkanHandle()),
+	)
 	defer func() {
-		if err := tsk.commit(); err != nil {
+		if err := tsk.Commit(sb, sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())); err != nil {
 			log.E(sb.ctx, "[Priming data for buffer: %v]: %v", buffer.VulkanHandle(), err)
 		}
 	}()
 	// scratch buffer will be automatically destroyed when the task is done
-	scratchBuffer := tsk.newBuffer(contents, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+	scratchBuffer := tsk.NewScratchBuffer(sb, "buf->buf copy staginig buffer",
+		sb.scratchRes.GetMemory(sb, buffer.Device()),
+		buffer.Device(), VkBufferUsageFlags(
+			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT), contents...)
 
 	newFamilyIndex := queueFamilyIgnore
 	if oldFamilyIndex != queueFamilyIgnore {
 		newFamilyIndex = queue.Family()
 	}
 
-	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+	tsk.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
 		sb.write(sb.cb.VkCmdPipelineBarrier(
 			commandBuffer,
 			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
@@ -1617,13 +1612,13 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 			1,
 			sb.MustAllocReadData(
 				NewVkBindSparseInfo(sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // // sType
-					0, // // pNext
-					0, // // waitSemaphoreCount
-					0, // // pWaitSemaphores
-					0, // // bufferBindCount
-					0, // // pBufferBinds
-					1, // // imageOpaqueBindCount
+					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // sType
+					0, // pNext
+					0, // waitSemaphoreCount
+					0, // pWaitSemaphores
+					0, // bufferBindCount
+					0, // pBufferBinds
+					1, // imageOpaqueBindCount
 					NewVkSparseImageOpaqueMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pImageOpaqueBinds
 						NewVkSparseImageOpaqueMemoryBindInfo(sb.ta,
 							img.VulkanHandle(), // image
@@ -1719,8 +1714,22 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 
 	// We don't currently prime the data in any of these formats.
 	if img.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-		transitionInfo := []imageSubRangeInfo{}
-		ownerTransferInfo := []imageSubRangeInfo{}
+		layoutBarriers := ipImageLayoutTransitionBarriers(sb, img, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
+		layoutQueue := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
+			queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
+			img.Device(), img.LastBoundQueue())
+		if layoutQueue.IsNil() {
+			log.E(sb.ctx, "could not get queue fro image layout transition: img %v", img.VulkanHandle())
+			return
+		}
+		layoutHandler := sb.scratchRes.GetQueueCommandHandler(sb, layoutQueue.VulkanHandle())
+		err := ipRecordImageMemoryBarriers(sb, layoutHandler, layoutBarriers...)
+		if err != nil {
+			log.E(sb.ctx, "could not record barriers to transition image layout for MS image, err: %v", err)
+		}
+
+		ownerTransferInfo := []imageQueueFamilyTransferInfo{}
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
 				// No need to handle for undefined layout
@@ -1728,48 +1737,22 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || imgLevel.LastBoundQueue().IsNil() {
 					return
 				}
-				q := sb.getQueueFor(
-					VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT,
-					queueFamilyIndicesToU32Slice(img.Info().QueueFamilyIndices()),
-					img.Device(), imgLevel.LastBoundQueue())
-				if q.IsNil() {
-					return
-				}
-				oldQueue := VkQueue(0)
-				if !sparseQueue.IsNil() {
-					oldQueue = sparseQueue.VulkanHandle()
-				}
-				transitionInfo = append(transitionInfo, imageSubRangeInfo{
-					aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
-					baseMipLevel:   level,
-					levelCount:     1,
-					baseArrayLayer: layer,
-					layerCount:     1,
-					oldLayout:      VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED,
-					newLayout:      imgLevel.Layout(),
-					oldQueue:       oldQueue,
-					newQueue:       q.VulkanHandle(),
-				})
-				if q.Family() != imgLevel.LastBoundQueue().Family() {
-					newQueueObj := imgLevel.LastBoundQueue()
-					if newQueueObj.IsNil() {
-						newQueueObj = img.LastBoundQueue()
-					}
-					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
-						aspectMask:     ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
-						baseMipLevel:   level,
-						levelCount:     1,
-						baseArrayLayer: layer,
-						layerCount:     1,
-						oldLayout:      imgLevel.Layout(),
-						newLayout:      imgLevel.Layout(),
-						oldQueue:       q.VulkanHandle(),
-						newQueue:       imgLevel.LastBoundQueue().VulkanHandle(),
+				if !imgLevel.LastBoundQueue().IsNil() && (imgLevel.LastBoundQueue().Family() != layoutQueue.Family()) {
+					ownerTransferInfo = append(ownerTransferInfo, imageQueueFamilyTransferInfo{
+						image:      img.VulkanHandle(),
+						aspectMask: ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
+						layer:      layer,
+						level:      level,
+						layout:     imgLevel.Layout(),
+						oldQueue:   layoutQueue.VulkanHandle(),
+						newQueue:   imgLevel.LastBoundQueue().VulkanHandle(),
 					})
 				}
 			})
-		sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), transitionInfo)
-		sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), ownerTransferInfo)
+		err = sb.transferImageQueueFamilyOwnership(ownerTransferInfo...)
+		if err != nil {
+			log.E(sb.ctx, "failed at transferring queue family ownership for MS image, err: %v", err)
+		}
 		log.E(sb.ctx, "[Priming the data of image: %v] priming data for MS images not implemented", img.VulkanHandle())
 		return
 	}
@@ -1780,41 +1763,40 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 		log.E(sb.ctx, "Create primeable image data: %v", err)
 		return
 	}
-	defer primeable.free()
-	err = primeable.prime(useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED), sameLayoutsOfImage(img))
+	defer primeable.free(sb)
+	err = primeable.prime(sb, useSpecifiedLayout(img.Info().InitialLayout()), sameLayoutsOfImage(img))
 	if err != nil {
 		log.E(sb.ctx, "Priming image data: %v", err)
 		return
 	}
 
-	queue := sb.s.Queues().Get(primeable.primingQueue())
+	queue := GetState(sb.newState).Queues().Get(primeable.primingQueue())
 
 	if !queue.IsNil() {
-		// Image data priming is recorded successfully, check if we need to
-		// to transfer the queue family ownership
-		ownerTransferInfo := []imageSubRangeInfo{}
+		ownerTransferInfo := []imageQueueFamilyTransferInfo{}
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img),
 			func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
-				// No need to handle for undefined layout
 				imgLevel := img.Aspects().Get(aspect).Layers().Get(layer).Levels().Get(level)
-				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || imgLevel.LastBoundQueue().IsNil() {
+				if imgLevel.Layout() == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED {
 					return
 				}
-				if queue.Family() != imgLevel.LastBoundQueue().Family() {
-					ownerTransferInfo = append(ownerTransferInfo, imageSubRangeInfo{
-						aspectMask:     VkImageAspectFlags(aspect),
-						baseMipLevel:   level,
-						levelCount:     1,
-						baseArrayLayer: layer,
-						layerCount:     1,
-						oldLayout:      imgLevel.Layout(),
-						newLayout:      imgLevel.Layout(),
-						oldQueue:       queue.VulkanHandle(),
-						newQueue:       imgLevel.LastBoundQueue().VulkanHandle(),
+				toQ := img.LastBoundQueue()
+				if toQ.IsNil() {
+					toQ = imgLevel.LastBoundQueue()
+				}
+				if queue.Family() != toQ.Family() {
+					ownerTransferInfo = append(ownerTransferInfo, imageQueueFamilyTransferInfo{
+						image:      img.VulkanHandle(),
+						aspectMask: ipImageBarrierAspectFlags(aspect, img.Info().Fmt()),
+						layer:      layer,
+						level:      level,
+						layout:     imgLevel.Layout(),
+						oldQueue:   queue.VulkanHandle(),
+						newQueue:   toQ.VulkanHandle(),
 					})
 				}
 			})
-		sb.changeImageSubRangeLayoutAndOwnership(img.VulkanHandle(), ownerTransferInfo)
+		sb.transferImageQueueFamilyOwnership(ownerTransferInfo...)
 	}
 }
 
@@ -2855,9 +2837,10 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 		return
 	}
 
-	tsk := sb.newScratchTaskOnQueue(queue.VulkanHandle())
-	defer tsk.commit()
-	tsk.recordCmdBufCommand(func(commandBuffer VkCommandBuffer) {
+	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())
+	queueHandler.RecordCommands(sb, debugMarkerName(
+		"restoring query states",
+	), func(commandBuffer VkCommandBuffer) {
 		for i := uint32(0); i < qp.QueryCount(); i++ {
 			switch qp.Status().Get(i) {
 			case QueryStatus_QUERY_STATUS_UNINITIALIZED:
@@ -2865,8 +2848,10 @@ func (sb *stateBuilder) createQueryPool(qp QueryPoolObjectʳ) {
 			case QueryStatus_QUERY_STATUS_INACTIVE:
 				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
 			case QueryStatus_QUERY_STATUS_ACTIVE:
+				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
 				sb.write(sb.cb.VkCmdBeginQuery(commandBuffer, qp.VulkanHandle(), i, VkQueryControlFlags(0)))
 			case QueryStatus_QUERY_STATUS_COMPLETE:
+				sb.write(sb.cb.VkCmdResetQueryPool(commandBuffer, qp.VulkanHandle(), i, 1))
 				if qp.QueryType() == VkQueryType_VK_QUERY_TYPE_TIMESTAMP {
 					sb.write(sb.cb.VkCmdWriteTimestamp(commandBuffer, VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, qp.VulkanHandle(), i))
 				} else {
