@@ -55,7 +55,10 @@ def cc_dynamic_library(name, exports = "", visibility = ["//visibility:private"]
         name = name + ".so",
         srcs = [":" + name + "_syms"],
         deps = deps + [name + ".ldscript"],
-        linkopts = linkopts + ["-Wl,--version-script", "$(location " + name + ".ldscript)"],
+        linkopts = linkopts + [
+            "-Wl,--version-script", "$(location " + name + ".ldscript)",
+            "-Wl,-z,defs",
+        ],
         linkshared = 1,
         visibility = ["//visibility:private"],
         **kwargs
