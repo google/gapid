@@ -1,7 +1,7 @@
 {
   "file_format_version" : "1.0.0",
   "layer": {
-    "name": "VkGraphicsSpy",
+    "name": "GraphicsSpy",
     "type": "GLOBAL",
     "library_path": "<library>",
     "api_version" : "1.0.5",
@@ -25,4 +25,3 @@
     ]
   }
 }
-

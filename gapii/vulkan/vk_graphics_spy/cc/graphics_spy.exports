@@ -1,5 +1,5 @@
-VkGraphicsSpyGetDeviceProcAddr
-VkGraphicsSpyGetInstanceProcAddr
+GraphicsSpyGetDeviceProcAddr
+GraphicsSpyGetInstanceProcAddr
 vkEnumerateInstanceLayerProperties
 vkEnumerateInstanceExtensionProperties
 vkEnumerateDeviceLayerProperties

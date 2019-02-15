@@ -78,7 +78,7 @@ bool vkLayersAndExtensions(
     auto& l = inst_layer_props[i];
     uint32_t ext_count = 0;
     // Skip our layers.
-    if (!strcmp(l.layerName, "VkGraphicsSpy") ||
+    if (!strcmp(l.layerName, "GraphicsSpy") ||
         !strcmp(l.layerName, "VirtualSwapchain")) {
       continue;
     }

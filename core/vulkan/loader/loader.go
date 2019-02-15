@@ -141,8 +141,8 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 		c(ctx)
 	}
 	env.Set("LD_PRELOAD", lib).
-		AddPathStart("VK_INSTANCE_LAYERS", "VkGraphicsSpy").
-		AddPathStart("VK_DEVICE_LAYERS", "VkGraphicsSpy").
+		AddPathStart("VK_INSTANCE_LAYERS", "GraphicsSpy").
+		AddPathStart("VK_DEVICE_LAYERS", "GraphicsSpy").
 		Set("GAPII_PORT_FILE", f)
 	if abi.OS == device.Windows {
 		// Adds the extra MSYS DLL dependencies onto the path.
