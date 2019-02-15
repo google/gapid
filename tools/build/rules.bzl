@@ -19,6 +19,7 @@ load("//tools/build/rules:common.bzl", "generate", "copy", "copy_to", "copy_tree
 load("//tools/build/rules:dynlib.bzl", "android_dynamic_library", "cc_dynamic_library")
 load("//tools/build/rules:embed.bzl", "embed")
 load("//tools/build/rules:filehash.bzl", "filehash")
+load("//tools/build/rules:jni.bzl", "jni_library")
 load("//tools/build/rules:gapil.bzl", "api_library", "api_template")
 load("//tools/build/rules:go.bzl", "go_stripped_binary")
 load("//tools/build/rules:grpc.bzl", "java_grpc_library")
