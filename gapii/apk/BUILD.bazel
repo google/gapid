@@ -27,7 +27,7 @@ android_native(
 )
 
 android_native(
-    name = "VkLayerGraphicsSpy",
+    name = "VkLayer_GraphicsSpy",
     visibility = ["//visibility:public"],
-    deps = ["//gapii/vulkan/vk_graphics_spy/cc:libVkLayerGraphicsSpy"],
+    deps = ["//gapii/vulkan/vk_graphics_spy/cc:libVkLayer_GraphicsSpy"],
 )
