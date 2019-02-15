@@ -15,6 +15,7 @@
  */
 
 #include <dlfcn.h>
+#include <cstring>
 
 #include "vulkan/vulkan.h"
 
@@ -49,12 +50,34 @@ GraphicsSpyGetInstanceProcAddr(VkInstance instance, const char* funcName) {
   return nullptr;
 }
 
+// This should probably match the struct in vulkan_extras.cpp's
+// SpyOverride_vkEnumerateInstanceLayerProperties.
+static const VkLayerProperties global_layer_properties[] = {{
+    "GraphicsSpy",
+    VK_VERSION_MAJOR(1) | VK_VERSION_MINOR(0) | 5,
+    1,
+    "vulkan_trace",
+}};
+
+static VkResult get_layer_properties(uint32_t* pCount,
+                                     VkLayerProperties* pProperties) {
+  if (pProperties == NULL) {
+    *pCount = 1;
+    return VK_SUCCESS;
+  }
+
+  if (pCount == 0) {
+    return VK_INCOMPLETE;
+  }
+  *pCount = 1;
+  memcpy(pProperties, global_layer_properties, sizeof(global_layer_properties));
+  return VK_SUCCESS;
+}
+
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateInstanceLayerProperties(uint32_t* pCount,
                                    VkLayerProperties* pProperties) {
-  PROC(vkEnumerateInstanceLayerProperties)(pCount, pProperties);
-  *pCount = 0;
-  return VK_SUCCESS;
+  return get_layer_properties(pCount, pProperties);
 }
 
 // On Android this must also be defined, even if we have 0
@@ -62,16 +85,13 @@ vkEnumerateInstanceLayerProperties(uint32_t* pCount,
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateInstanceExtensionProperties(const char* pLayerName, uint32_t* pCount,
                                        VkExtensionProperties* pProperties) {
-  PROC(vkEnumerateInstanceExtensionProperties)(pLayerName, pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
     VkPhysicalDevice device, uint32_t* pCount, VkLayerProperties* pProperties) {
-  PROC(vkEnumerateDeviceLayerProperties)(device, pCount, pProperties);
-  *pCount = 0;
-  return VK_SUCCESS;
+  return get_layer_properties(pCount, pProperties);
 }
 
 // On android this must also be defined, even if we have 0
@@ -80,8 +100,6 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(VkPhysicalDevice device,
                                      const char* pLayerName, uint32_t* pCount,
                                      VkExtensionProperties* pProperties) {
-  PROC(vkEnumerateDeviceExtensionProperties)
-  (device, pLayerName, pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
 }
