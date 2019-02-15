@@ -100,3 +100,31 @@ config_setting(
         "NO_ANDROID": "1",
     },
 )
+
+cc_library(
+    name = "jni",
+    hdrs = [
+        "jni.h",
+        "jni_md.h",
+    ],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "copy_jni.h",
+    srcs = ["@bazel_tools//tools/jdk:jni_header"],
+    outs = ["jni.h"],
+    cmd = "cp -f $< $@",
+)
+
+genrule(
+    name = "copy_jni_md.h",
+    srcs = select({
+        ":linux": ["@bazel_tools//tools/jdk:jni_md_header-linux"],
+        ":windows": ["@bazel_tools//tools/jdk:jni_md_header-windows"],
+        ":darwin": ["@bazel_tools//tools/jdk:jni_md_header-darwin"],
+    }),
+    outs = ["jni_md.h"],
+    cmd = "cp -f $< $@",
+)
