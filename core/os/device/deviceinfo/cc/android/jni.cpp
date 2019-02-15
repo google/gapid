@@ -22,9 +22,7 @@ extern "C" {
 
 jbyteArray Java_com_google_android_gapid_DeviceInfoService_getDeviceInfo(
     JNIEnv* env) {
-  JavaVM* vm = nullptr;
-  env->GetJavaVM(&vm);
-  auto device_instance = get_device_instance(vm);
+  auto device_instance = get_device_instance();
   auto out = env->NewByteArray(device_instance.size);
   auto data = reinterpret_cast<jbyte*>(device_instance.data);
   env->SetByteArrayRegion(out, 0, device_instance.size, data);

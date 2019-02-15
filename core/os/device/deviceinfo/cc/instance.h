@@ -29,7 +29,7 @@ typedef struct {
   size_t size;
 } device_instance;
 
-device_instance get_device_instance(void* platform_data);
+device_instance get_device_instance();
 const char* get_device_instance_error();
 void free_device_instance(device_instance);
 
