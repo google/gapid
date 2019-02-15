@@ -14,72 +14,14 @@
  * limitations under the License.
  */
 
-#include "vulkan/vulkan.h"
+#include <dlfcn.h>
 
-#if defined(_WIN32)
-#define VK_LAYER_EXPORT __declspec(dllexport)
-#elif defined(__GNUC__)
-#define VK_LAYER_EXPORT __attribute__((visibility("default")))
-#else
-#define VK_LAYER_EXPORT
-#endif
+#include "vulkan/vulkan.h"
 
 extern "C" {
 
+#define VK_LAYER_EXPORT __attribute__((visibility("default")))
 typedef void *(*eglGetProcAddress)(char const *procname);
-
-#ifdef _WIN32
-#include <windows.h>
-#include <cstdio>
-// On windows we do not have linker namespaces, we also don't have a
-// convenient way to have already loaded libgapii.dll. In this case
-// we can just LoadModule(libgapii.dll) and get the pointers from there.
-#define PROC(name)                                          \
-  static PFN_##name fn = (PFN_##name)getProcAddress(#name); \
-  if (fn != nullptr) return fn
-
-HMODULE LoadGAPIIDLL() {
-  char path[MAX_PATH] = {'\0'};
-  HMODULE this_module = GetModuleHandle("libVkLayer_GraphicsSpy.dll");
-  const char libgapii[] = "libgapii.dll";
-  if (this_module == NULL) {
-    fprintf(stderr, "Could not find libVkLayer_GraphicsSpy.dll\n");
-    return 0;
-  }
-  SetLastError(0);
-  DWORD num_characters = GetModuleFileName(this_module, path, MAX_PATH);
-  if (GetLastError() != 0) {
-    fprintf(stderr, "Could not the path to libVkLayer_GraphicsSpy.dll\n");
-    return 0;
-  }
-  for (DWORD i = num_characters - 1; i >= 0; --i) {
-    // Wipe out the file-name but keep the directory name if we can.
-    if (path[i] == '\\') {
-      path[i] = '\0';
-    }
-    num_characters = i + 1;
-  }
-
-  if (num_characters + strlen(libgapii) + 1 > MAX_PATH) {
-    fprintf(stderr, "Path too long\n");
-    return 0;
-  }
-  // Append "libgapii.dll" to the full path of libVKLayer_GraphicsSpy
-  memcpy(path + num_characters, libgapii, strlen(libgapii) + 1);
-  return LoadLibrary(path);
-}
-
-FARPROC getProcAddress(const char *name) {
-  static HMODULE libgapii = LoadGAPIIDLL();
-  if (libgapii != NULL) {
-    return GetProcAddress(libgapii, name);
-  }
-  return NULL;
-}
-
-#else
-
-#include <dlfcn.h>
 
 #define PROC(name)                                                       \
   static PFN_##name fn = (PFN_##name)(getProcAddress()("gapid_" #name)); \
@@ -94,7 +36,6 @@ eglGetProcAddress getProcAddress() {
       (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
   return pa;
 }
-#endif
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 GraphicsSpyGetDeviceProcAddr(VkDevice dev, const char *funcName) {
