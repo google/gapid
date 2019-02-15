@@ -127,7 +127,7 @@ void createGlContext() {
   return;
 }
 
-bool createContext(void* platform_data) {
+bool createContext() {
   if (gContextRefCount++ > 0) {
     return true;
   }

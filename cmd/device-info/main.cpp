@@ -50,7 +50,7 @@ int main(int argc, char const *argv[]) {
     }
   }
 
-  device_instance instance = get_device_instance(nullptr);
+  device_instance instance = get_device_instance();
   if (output_binary) {
 #if _WIN32
     _setmode(_fileno(stdout), _O_BINARY);

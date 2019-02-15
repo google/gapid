@@ -15,7 +15,6 @@
  */
 
 #include "egl_lite.h"
-#include "jni_helpers.h"
 
 #include "../query.h"
 
@@ -24,9 +23,10 @@
 #include "core/cc/log.h"
 
 #include <cstring>
+#include <sstream>
 
 #include <android/log.h>
-#include <jni.h>
+#include <sys/system_properties.h>
 
 #define LOG_ERR(...) \
   __android_log_print(ANDROID_LOG_ERROR, "GAPID", __VA_ARGS__);
@@ -176,7 +176,7 @@ void destroyContext() {
   }
 }
 
-bool createContext(void* platform_data) {
+bool createContext() {
   if (gContextRefCount++ > 0) {
     return true;
   }
@@ -185,12 +185,6 @@ bool createContext(void* platform_data) {
   gContext.mSurface = nullptr;
   gContext.mContext = nullptr;
   gContext.mNumCores = 0;
-
-  if (platform_data == nullptr) {
-    snprintf(gContext.mError, sizeof(gContext.mError),
-             "platform_data was nullptr");
-    return false;
-  }
 
 #define RESOLVE(name, pfun)                                            \
   auto name = reinterpret_cast<pfun>(core::GetGlesProcAddress(#name)); \
@@ -271,48 +265,39 @@ bool createContext(void* platform_data) {
 
 #undef CHECK
 
-#define CHECK(x)                                                              \
-  if (!x) {                                                                   \
-    snprintf(gContext.mError, sizeof(gContext.mError), "JNI error:\n   " #x); \
-    destroyContext();                                                         \
-    return false;                                                             \
-  }
+#define GET_PROP(name, trans)                            \
+  do {                                                   \
+    char _v[PROP_VALUE_MAX] = {0};                       \
+    if (__system_property_get(name, _v) == 0) {          \
+      snprintf(gContext.mError, sizeof(gContext.mError), \
+               "Failed reading property %s", name);      \
+      destroyContext();                                  \
+      return false;                                      \
+    }                                                    \
+    trans;                                               \
+  } while (0)
 
-  JavaVM* vm = reinterpret_cast<JavaVM*>(platform_data);
-  JNIEnv* env = nullptr;
-  auto res = vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-  bool shouldDetach = false;
-  switch (res) {
-    case JNI_OK:
-      break;
-    case JNI_EDETACHED:
-      res = vm->AttachCurrentThread(&env, nullptr);
-      if (res != 0) {
-        snprintf(gContext.mError, sizeof(gContext.mError),
-                 "Failed to attach thread to JavaVM. (%d)", res);
-        destroyContext();
-        return false;
-      }
-      shouldDetach = true;
-      break;
-    default:
-      snprintf(gContext.mError, sizeof(gContext.mError),
-               "Failed to get Java env. (%d)", res);
-      destroyContext();
-      return false;
-  }
+#define GET_STRING_PROP(n, t) GET_PROP(n, t = _v)
+#define GET_INT_PROP(n, t) GET_PROP(n, t = atoi(_v))
+#define GET_STRING_LIST_PROP(n, t)      \
+  do {                                  \
+    std::string _l, _t;                 \
+    GET_STRING_PROP(n, _l);             \
+    std::istringstream _s(_l);          \
+    while (std::getline(_s, _t, ',')) { \
+      t.push_back(_t);                  \
+    }                                   \
+  } while (0)
 
   std::string manufacturer;
   std::string model;
 
-  Class build(env, "android/os/Build");
-  CHECK(build.get_field("SUPPORTED_ABIS", gContext.mSupportedABIs));
-  CHECK(build.get_field("HOST", gContext.mHost));
-  CHECK(build.get_field("SERIAL", gContext.mSerial));
-  CHECK(build.get_field("MANUFACTURER", manufacturer));
-  CHECK(build.get_field("MODEL", model));
-  CHECK(build.get_field("HARDWARE", gContext.mHardware));
-  CHECK(build.get_field("DISPLAY", gContext.mOSBuild));
+  GET_STRING_LIST_PROP("ro.product.cpu.abilist", gContext.mSupportedABIs);
+  GET_STRING_PROP("ro.build.host", gContext.mHost);
+  GET_STRING_PROP("ro.product.manufacturer", manufacturer);
+  GET_STRING_PROP("ro.product.model", model);
+  GET_STRING_PROP("ro.hardware", gContext.mHardware);
+  GET_STRING_PROP("ro.build.display.id", gContext.mOSBuild);
 
   if (model != "") {
     if (manufacturer != "") {
@@ -322,15 +307,8 @@ bool createContext(void* platform_data) {
     }
   }
 
-  Class version(env, "android/os/Build$VERSION");
-  CHECK(version.get_field("RELEASE", gContext.mOSName));
-  CHECK(version.get_field("SDK_INT", gContext.mOSVersion));
-
-  if (shouldDetach) {
-    vm->DetachCurrentThread();
-  }
-
-#undef CHECK
+  GET_STRING_PROP("ro.build.version.release", gContext.mOSName);
+  GET_INT_PROP("ro.build.version.sdk", gContext.mOSVersion);
 
   if (gContext.mSupportedABIs.size() > 0) {
     auto primaryABI = gContext.mSupportedABIs[0];

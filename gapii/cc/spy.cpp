@@ -52,18 +52,12 @@
 #include <sys/prctl.h>
 
 static std::unique_ptr<gapii::Installer> gInstaller;
-static JavaVM* gJavaVM = nullptr;
 
 extern "C" jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   GAPID_INFO("JNI_OnLoad() was called. vm = %p", vm);
-  gJavaVM = vm;
   gapii::Spy::get();  // Construct the spy.
   return JNI_VERSION_1_6;
 }
-
-void* queryPlatformData() { return gJavaVM; }
-#else   // TARGET_OS == GAPID_OS_ANDROID
-void* queryPlatformData() { return nullptr; }
 #endif  // TARGET_OS == GAPID_OS_ANDROID
 
 using namespace gapii::GLenum;
@@ -196,8 +190,7 @@ Spy::Spy()
   // deviceinfo queries want to call into EGL / GL commands which will be
   // patched.
   query::Option query_opt;
-  SpyBase::set_device_instance(
-      query::getDeviceInstance(query_opt, queryPlatformData()));
+  SpyBase::set_device_instance(query::getDeviceInstance(query_opt));
   SpyBase::set_current_abi(query::currentABI());
   if (!SpyBase::writeHeader()) {
     GAPID_ERROR("Failed at writing trace header.");

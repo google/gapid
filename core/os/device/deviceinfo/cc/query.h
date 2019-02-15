@@ -64,7 +64,7 @@ struct Option {
 
 // getDeviceInstance returns the device::Instance proto message for the
 // current device. It must be freed with delete.
-device::Instance* getDeviceInstance(const Option& opt, void* platform_data);
+device::Instance* getDeviceInstance(const Option& opt);
 
 // updateVulkanPhysicalDevices modifies the given device::Instance by adding
 // device::VulkanPhysicalDevice to the device::Instance. If a
@@ -112,7 +112,7 @@ bool hasGLorGLES();
 // The functions below are used by getDeviceInstance(), and are implemented
 // in the target-dependent sub-directories.
 
-bool createContext(void* platform_data);
+bool createContext();
 const char* contextError();
 void destroyContext();
 

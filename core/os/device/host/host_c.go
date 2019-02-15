@@ -26,7 +26,7 @@ import (
 )
 
 func getHostDevice() device.Instance {
-	s := C.get_device_instance(nil)
+	s := C.get_device_instance()
 	defer C.free_device_instance(s)
 	if s.data == nil {
 		panic(fmt.Errorf("Failed to get host machine information: %v",
