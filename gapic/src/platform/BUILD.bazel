@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools/build:rules.bzl", "jni_library")
+
 java_library(
     name = "platform",
     srcs = select({
@@ -21,7 +23,7 @@ java_library(
     }),
     resource_strip_prefix = "gapic/src/platform/",
     resources = select({
-        "//tools/build:linux": [":liblinux_glcanvas.so"],
+        "//tools/build:linux": [":liblinux_glcanvas"],
         "//conditions:default": [],
     }),
     visibility = ["//visibility:public"],
@@ -31,31 +33,13 @@ java_library(
     ],
 )
 
-cc_binary(
-    name = "liblinux_glcanvas.so",
-    srcs = [
-        "jni.h",
-        "jni_md.h",
-        "linux/glcanvas.cc",
-    ],
-    includes = ["."],
+jni_library(
+    name = "liblinux_glcanvas",
+    srcs = ["linux/glcanvas.cc"],
     linkopts = [
         "-lGL",
         "-lX11",
     ],
-    linkshared = 1,
-)
-
-genrule(
-    name = "copy_jni.h",
-    srcs = ["@bazel_tools//tools/jdk:jni_header"],
-    outs = ["jni.h"],
-    cmd = "cp -f $< $@",
-)
-
-genrule(
-    name = "copy_jni_md.h",
-    srcs = ["@bazel_tools//tools/jdk:jni_md_header-linux"],
-    outs = ["jni_md.h"],
-    cmd = "cp -f $< $@",
+    visibility = ["//visibility:private"],
+    exports = "linux/glcanvas.exports",
 )
