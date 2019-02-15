@@ -54,7 +54,7 @@
   namespace {«
 ¶
   const char kVirtualSwapchainLayerName[] = "VirtualSwapchain";
-  const char kVkGraphicsSpyLayerName[] = "VkGraphicsSpy";
+  const char kGraphicsSpyLayerName[] = "GraphicsSpy";
   const char kValidationMetaLayerName[] = "VK_LAYER_LUNARG_standard_validation";
   const char* kValidationLayerNames[] = {
     "VK_LAYER_GOOGLE_threading",
@@ -105,12 +105,12 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
                                       pCreateInfo->ppEnabledExtensionNames +
                                           pCreateInfo->enabledExtensionCount);
   extensions.reserve(pCreateInfo->enabledExtensionCount + 1);
-  // Drop the VkGraphicsSpy layer and validation layers if requested.
+  // Drop the GraphicsSpy layer and validation layers if requested.
   layers.erase(
       std::remove_if(
           layers.begin(), layers.end(),
           [dropValidationLayersAndDebugReport](const char* layer) -> bool {
-            if (strcmp(kVkGraphicsSpyLayerName, layer) == 0) {
+            if (strcmp(kGraphicsSpyLayerName, layer) == 0) {
               return true;
             }
             if (dropValidationLayersAndDebugReport) {

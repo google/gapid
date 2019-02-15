@@ -38,7 +38,7 @@ cc_library(
 android_dynamic_library(
     name = "libVkLayer_GraphicsSpy",
     visibility = ["//visibility:public"],
-    exports = "vk_graphics_spy.exports",
+    exports = "graphics_spy.exports",
     deps = [":cc"],
 )
 

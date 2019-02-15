@@ -76,10 +76,10 @@ device::Instance* getDeviceInstance(const Option& opt);
 // ID re-hashed with the new content. Returns true if Vulkan physical device
 // info is fetched successfully and device::Instance updated, otherwise returns
 // false and keeps the device::Instance unchanged. Caution: When called with
-// VkGraphicsSpy layer loaded i.e. during tracing, the function pointer to a
-// layer under VkGraphicsSpy must be passed in. Resolving the Vulkan function
-// addresses from loader will cause a infinite calling stack and may deadlock
-// in the loader.
+// GraphicsSpy layer loaded i.e. during tracing, the function pointer to a layer
+// under GraphicsSpy must be passed in. Resolving the Vulkan function addresses
+// from loader will cause a infinite calling stack and may deadlock in the
+// loader.
 bool updateVulkanDriver(
     device::Instance* inst, size_t vk_inst_handle = 0,
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);

@@ -97,13 +97,13 @@ eglGetProcAddress getProcAddress() {
 #endif
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-VkGraphicsSpyGetDeviceProcAddr(VkDevice dev, const char *funcName) {
+GraphicsSpyGetDeviceProcAddr(VkDevice dev, const char *funcName) {
   PROC(vkGetDeviceProcAddr)(dev, funcName);
   return nullptr;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-VkGraphicsSpyGetInstanceProcAddr(VkInstance instance, const char *funcName) {
+GraphicsSpyGetInstanceProcAddr(VkInstance instance, const char *funcName) {
   PROC(vkGetInstanceProcAddr)(instance, funcName);
   return nullptr;
 }

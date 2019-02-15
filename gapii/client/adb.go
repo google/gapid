@@ -203,10 +203,10 @@ func Connect(ctx context.Context, d adb.Device, abi *device.ABI, pipe string, o 
 
 // reserveVulkanDevice reserves the given device for starting Vulkan trace and
 // set the implicit Vulkan layers property to let the Vulkan loader loads
-// VkGraphicsSpy layer. It returns the mutex which reserves the device and error.
+// GraphicsSpy layer. It returns the mutex which reserves the device and error.
 func reserveVulkanDevice(ctx context.Context, d adb.Device) (*flock.Mutex, error) {
 	m := flock.Lock(d.Instance().GetSerial())
-	if err := d.SetSystemProperty(ctx, vkImplicitLayersProp, "VkGraphicsSpy"); err != nil {
+	if err := d.SetSystemProperty(ctx, vkImplicitLayersProp, "GraphicsSpy"); err != nil {
 		return nil, log.Err(ctx, err, "Setting up vulkan layer")
 	}
 	return m, nil

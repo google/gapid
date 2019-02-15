@@ -716,7 +716,7 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceLayerProperties(
   }
   *pCount = 1;
   memset(pProperties, 0x00, sizeof(*pProperties));
-  strcpy((char*)pProperties->mlayerName, "VkGraphicsSpy");
+  strcpy((char*)pProperties->mlayerName, "GraphicsSpy");
   pProperties->mspecVersion = VK_VERSION_MAJOR(1) | VK_VERSION_MINOR(0) | 5;
   pProperties->mimplementationVersion = 1;
   strcpy((char*)pProperties->mdescription, "vulkan_trace");
@@ -734,7 +734,7 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceLayerProperties(
   }
   *pCount = 1;
   memset(pProperties, 0x00, sizeof(*pProperties));
-  strcpy((char*)pProperties->mlayerName, "VkGraphicsSpy");
+  strcpy((char*)pProperties->mlayerName, "GraphicsSpy");
   pProperties->mspecVersion = VK_VERSION_MAJOR(1) | VK_VERSION_MINOR(0) | 5;
   pProperties->mimplementationVersion = 1;
   strcpy((char*)pProperties->mdescription, "vulkan_trace");
