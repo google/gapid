@@ -21,7 +21,7 @@
 extern "C" {
 
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
-typedef void *(*eglGetProcAddress)(char const *procname);
+typedef void* (*eglGetProcAddress)(const char* procname);
 
 #define PROC(name)                                                       \
   static PFN_##name fn = (PFN_##name)(getProcAddress()("gapid_" #name)); \
@@ -31,27 +31,27 @@ typedef void *(*eglGetProcAddress)(char const *procname);
 // but since we already have it loaded, and libEGL.so hooked,
 // we can use eglGetProcAddress to find the functions.
 eglGetProcAddress getProcAddress() {
-  static void *libegl = dlopen("libEGL.so", RTLD_NOW);
+  static void* libegl = dlopen("libEGL.so", RTLD_NOW);
   static eglGetProcAddress pa =
       (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
   return pa;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-GraphicsSpyGetDeviceProcAddr(VkDevice dev, const char *funcName) {
+GraphicsSpyGetDeviceProcAddr(VkDevice dev, const char* funcName) {
   PROC(vkGetDeviceProcAddr)(dev, funcName);
   return nullptr;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-GraphicsSpyGetInstanceProcAddr(VkInstance instance, const char *funcName) {
+GraphicsSpyGetInstanceProcAddr(VkInstance instance, const char* funcName) {
   PROC(vkGetInstanceProcAddr)(instance, funcName);
   return nullptr;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceLayerProperties(uint32_t *pCount,
-                                   VkLayerProperties *pProperties) {
+vkEnumerateInstanceLayerProperties(uint32_t* pCount,
+                                   VkLayerProperties* pProperties) {
   PROC(vkEnumerateInstanceLayerProperties)(pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
@@ -60,15 +60,15 @@ vkEnumerateInstanceLayerProperties(uint32_t *pCount,
 // On Android this must also be defined, even if we have 0
 // layers to expose.
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pCount,
-                                       VkExtensionProperties *pProperties) {
+vkEnumerateInstanceExtensionProperties(const char* pLayerName, uint32_t* pCount,
+                                       VkExtensionProperties* pProperties) {
   PROC(vkEnumerateInstanceExtensionProperties)(pLayerName, pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice device, uint32_t *pCount, VkLayerProperties *pProperties) {
+    VkPhysicalDevice device, uint32_t* pCount, VkLayerProperties* pProperties) {
   PROC(vkEnumerateDeviceLayerProperties)(device, pCount, pProperties);
   *pCount = 0;
   return VK_SUCCESS;
@@ -78,8 +78,8 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
 // layers to expose.
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(VkPhysicalDevice device,
-                                     const char *pLayerName, uint32_t *pCount,
-                                     VkExtensionProperties *pProperties) {
+                                     const char* pLayerName, uint32_t* pCount,
+                                     VkExtensionProperties* pProperties) {
   PROC(vkEnumerateDeviceExtensionProperties)
   (device, pLayerName, pCount, pProperties);
   *pCount = 0;
