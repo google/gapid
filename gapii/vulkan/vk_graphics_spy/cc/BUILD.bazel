@@ -29,7 +29,10 @@ cc_library(
         "//tools/build:darwin": [],
         "//tools/build:windows": [],
         # Android.
-        "//conditions:default": ["-ldl"],
+        "//conditions:default": [
+            "-ldl",
+            "-llog",
+        ],
     }),
     visibility = ["//visibility:public"],
     deps = ["//core/vulkan/cc/include/vulkan"],

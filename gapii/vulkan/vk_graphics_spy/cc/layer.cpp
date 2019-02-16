@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#include <alloca.h>
+#include <android/log.h>
 #include <dlfcn.h>
 #include <cstring>
 
+#include <unistd.h>
 #include "vulkan/vulkan.h"
 
 extern "C" {
@@ -24,18 +27,30 @@ extern "C" {
 #define VK_LAYER_EXPORT __attribute__((visibility("default")))
 typedef void* (*eglGetProcAddress)(const char* procname);
 
-#define PROC(name)                                                       \
-  static PFN_##name fn = (PFN_##name)(getProcAddress()("gapid_" #name)); \
+#define LOG_DEBUG(fmt, ...) \
+  __android_log_print(ANDROID_LOG_DEBUG, "GAPID", fmt, ##__VA_ARGS__)
+
+#define PROC(name)                                                     \
+  static PFN_##name fn = (PFN_##name)(getProcAddress("gapid_" #name)); \
   if (fn != nullptr) return fn
 
-// On android due to linker namespaces we cannot open libgapii.so,
-// but since we already have it loaded, and libEGL.so hooked,
-// we can use eglGetProcAddress to find the functions.
-eglGetProcAddress getProcAddress() {
+static void* getLibGapii();
+
+// Up to and including Android P, libgapii, which contains the actual layer
+// functions, is loaded via JDWP. Thus, use libEGL's eglGetProcAddress to find
+// the functions. Starting with Q, libgapii will not be loaded via JDWP
+// anymore, so we load it here if eglGetProcAddress can't find the symbol.
+static void* getProcAddress(const char* name) {
   static void* libegl = dlopen("libEGL.so", RTLD_NOW);
   static eglGetProcAddress pa =
       (eglGetProcAddress)dlsym(libegl, "eglGetProcAddress");
-  return pa;
+
+  LOG_DEBUG("Looking for function %s", name);
+  void* result = pa(name);
+  if (result == nullptr) {
+    result = dlsym(getLibGapii(), name);
+  }
+  return result;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
@@ -103,4 +118,25 @@ vkEnumerateDeviceExtensionProperties(VkPhysicalDevice device,
   *pCount = 0;
   return VK_SUCCESS;
 }
+
+static void* getLibGapii() {
+  static void* libgapii = nullptr;
+  if (libgapii == nullptr) {
+    Dl_info me;
+    dladdr((void*)GraphicsSpyGetDeviceProcAddr, &me);
+    if (me.dli_fname != nullptr) {
+      const char* base = strrchr(me.dli_fname, '/');
+      if (base != nullptr) {
+        int baseLen = base - me.dli_fname + 1;
+        char* name = static_cast<char*>(alloca(baseLen + 12 /*"libgapii.so"*/));
+        memcpy(name, me.dli_fname, baseLen);
+        strncpy(name + baseLen, "libgapii.so", 12);
+        LOG_DEBUG("Loading gapii at %s", name);
+        libgapii = dlopen(name, RTLD_NOW);
+      }
+    }
+  }
+  return libgapii;
+}
+
 }  // extern "C"
