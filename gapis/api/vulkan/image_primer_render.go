@@ -321,10 +321,10 @@ func (kit ipRenderKit) BuildRenderCommands(sb *stateBuilder) *queueCommandBatch 
 		))
 	})
 	if kit.stencil {
-		for i := uint32(0); i < uint32(8); i++ {
-			var stencilIndexData bytes.Buffer
-			binary.Write(&stencilIndexData, binary.LittleEndian, []uint32{i})
-			cmdBatch.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
+		cmdBatch.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
+			for i := uint32(0); i < uint32(8); i++ {
+				var stencilIndexData bytes.Buffer
+				binary.Write(&stencilIndexData, binary.LittleEndian, []uint32{i})
 				sb.write(sb.cb.VkCmdSetStencilWriteMask(
 					commandBuffer,
 					VkStencilFaceFlags(VkStencilFaceFlagBits_VK_STENCIL_FRONT_AND_BACK),
@@ -343,8 +343,12 @@ func (kit ipRenderKit) BuildRenderCommands(sb *stateBuilder) *queueCommandBatch 
 					4,
 					NewCharᶜᵖ(sb.MustAllocReadData(stencilIndexData.Bytes()).Ptr()),
 				))
-			})
-		}
+				sb.write(sb.cb.VkCmdDraw(
+					commandBuffer,
+					6, 1, 0, 0,
+				))
+			}
+		})
 
 	} else {
 		cmdBatch.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {

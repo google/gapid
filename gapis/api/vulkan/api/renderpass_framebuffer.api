@@ -280,6 +280,7 @@ sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
   for i in (0 .. n) {
     loadImageAttachment(as!u32(i))
   }
+  transitionSubpassAttachmentLayouts(ldi.LastSubpass)
   pushRenderPassMarker(args.RenderPass)
 }
 
@@ -333,30 +334,35 @@ vkCmdNextSubpassArgs {
   VkSubpassContents Contents
 }
 
-sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
-  useRenderPass()
+sub void transitionSubpassAttachmentLayouts(u32 subpass) {
   ldi := lastDrawInfo()
-  ldi.LastSubpass += 1
-  if ldi.LastSubpass < len(ldi.RenderPass.SubpassDescriptions) {
-    subpass := ldi.RenderPass.SubpassDescriptions[ldi.LastSubpass]
-    for _ , _ , a in subpass.InputAttachments {
+  if subpass < len(ldi.RenderPass.SubpassDescriptions) {
+    subpassDesc := ldi.RenderPass.SubpassDescriptions[subpass]
+    for _, _, a in subpassDesc.InputAttachments {
       attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
-    for _ , _ , a in subpass.ColorAttachments {
+    for _ , _ , a in subpassDesc.ColorAttachments {
       attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
-    for _ , _ , a in subpass.ResolveAttachments {
+    for _ , _ , a in subpassDesc.ResolveAttachments {
       attachment := ldi.Framebuffer.ImageAttachments[a.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, a.Layout)
     }
-    if subpass.DepthStencilAttachment != null {
-      dsRef := subpass.DepthStencilAttachment
+    if subpassDesc.DepthStencilAttachment != null {
+      dsRef := subpassDesc.DepthStencilAttachment
       attachment := ldi.Framebuffer.ImageAttachments[dsRef.Attachment]
       transitionImageViewLayout(attachment, VK_IMAGE_LAYOUT_UNDEFINED, dsRef.Layout)
     }
   }
+}
+
+sub void dovkCmdNextSubpass(ref!vkCmdNextSubpassArgs Unused) {
+  useRenderPass()
+  ldi := lastDrawInfo()
+  ldi.LastSubpass += 1
+  transitionSubpassAttachmentLayouts(ldi.LastSubpass)
   popAndPushMarkerForNextSubpass(ldi.LastSubpass)
 }
 
