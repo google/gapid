@@ -351,4 +351,7 @@ type (
 		Out    string `help:"path to save graph visualization"`
 		Format string `help:"output format of the graph: 'pbtxt' (Tensorboard) or 'dot' (Graphviz)"`
 	}
+
+	SmokeTestFlags struct {
+	}
 )
