@@ -29,10 +29,10 @@ import (
 	"github.com/google/gapid/core/app"
 )
 
-type smokeTestVerb struct{ SmokeTestFlags }
+type smokeTestsVerb struct{ SmokeTestsFlags }
 
 func init() {
-	verb := &smokeTestVerb{}
+	verb := &smokeTestsVerb{}
 	app.AddVerb(&app.Verb{
 		Name:      "smoke_test",
 		ShortHelp: "Run smoke tests on a set of traces using the gapit command found in PATH",
@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-func (verb *smokeTestVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+func (verb *smokeTestsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "Exactly one argument expected: path to directory containing traces to run smoke tests on")
 		return nil

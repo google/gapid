@@ -352,6 +352,6 @@ type (
 		Format string `help:"output format of the graph: 'pbtxt' (Tensorboard) or 'dot' (Graphviz)"`
 	}
 
-	SmokeTestFlags struct {
+	SmokeTestsFlags struct {
 	}
 )
