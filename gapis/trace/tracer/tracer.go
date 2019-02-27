@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device/bind"
 	gapii "github.com/google/gapid/gapii/client"
@@ -63,7 +64,7 @@ type Tracer interface {
 	// SetupTrace starts the application on the device, and causes it to wait
 	// for the trace to be started. It returns the process that was created, as
 	// well as a function that can be used to clean up the device
-	SetupTrace(ctx context.Context, o *service.TraceOptions) (Process, func(), error)
+	SetupTrace(ctx context.Context, o *service.TraceOptions) (Process, app.Cleanup, error)
 
 	// GetDevice returns the device associated with this tracer
 	GetDevice() bind.Device

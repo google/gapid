@@ -20,6 +20,7 @@ go_library(
     importpath = "github.com/google/gapid/core/vulkan/loader",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app:go_default_library",
         "//core/app/layout:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",

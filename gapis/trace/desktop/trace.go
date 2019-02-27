@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/process"
@@ -198,14 +199,14 @@ func (t *DesktopTracer) GetTraceTargetNode(ctx context.Context, uri string, icon
 	return tttn, nil
 }
 
-func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions) (tracer.Process, func(), error) {
+func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions) (tracer.Process, app.Cleanup, error) {
 	env, err := t.b.GetEnv(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanup, portFile, err := loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
 	if err != nil {
-		cleanup(ctx)
+		cleanup.Invoke(ctx)
 		panic(err)
 		return nil, nil, err
 	}
@@ -225,10 +226,10 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	})
 
 	if err != nil {
-		cleanup(ctx)
+		cleanup.Invoke(ctx)
 		panic(err)
 		return nil, nil, err
 	}
 	process := &gapii.Process{Port: boundPort, Device: t.b, Options: tracer.GapiiOptions(o)}
-	return process, func() { cleanup(ctx) }, nil
+	return process, cleanup, nil
 }
