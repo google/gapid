@@ -59,7 +59,7 @@ type Process struct {
 // Start launches an activity on an android device with the GAPII interceptor
 // enabled using the gapid.apk built for the ABI matching the specified action and device.
 // GAPII will attempt to connect back on the returned host port to write the trace.
-func Start(ctx context.Context, p *android.InstalledPackage, a *android.ActivityAction, o Options) (*Process, error) {
+func Start(ctx context.Context, p *android.InstalledPackage, a *android.ActivityAction, o Options) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
 	if a != nil {
 		ctx = log.V{"activity": a.Activity}.Bind(ctx)
@@ -79,7 +79,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 
 	log.I(ctx, "Turning device screen on")
 	if err := d.TurnScreenOn(ctx); err != nil {
-		return nil, log.Err(ctx, err, "Couldn't turn device screen on")
+		return nil, nil, log.Err(ctx, err, "Couldn't turn device screen on")
 	}
 
 	log.I(ctx, "Checking for lockscreen")
@@ -88,18 +88,18 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		log.W(ctx, "Couldn't determine lockscreen state: %v", err)
 	}
 	if locked {
-		return nil, log.Err(ctx, nil, "Cannot trace app on locked device")
+		return nil, nil, log.Err(ctx, nil, "Cannot trace app on locked device")
 	}
 
 	port, err := adb.LocalFreeTCPPort()
 	if err != nil {
-		return nil, log.Err(ctx, err, "Finding free port for gapii")
+		return nil, nil, log.Err(ctx, err, "Finding free port for gapii")
 	}
 
 	log.I(ctx, "Checking gapid.apk is installed")
 	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
-		return nil, log.Err(ctx, err, "Installing gapid.apk")
+		return nil, nil, log.Err(ctx, err, "Installing gapid.apk")
 	}
 
 	ctx = log.V{"port": port}.Bind(ctx)
@@ -110,8 +110,11 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		pipe = o.PipeName
 	}
 	if err := d.Forward(ctx, adb.TCPPort(port), adb.NamedAbstractSocket(pipe)); err != nil {
-		return nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
+		return nil, nil, log.Err(ctx, err, "Setting up port forwarding for gapii")
 	}
+	cleanup := app.Cleanup(func(ctx context.Context) {
+		d.RemoveForward(ctx, port)
+	})
 
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
@@ -120,13 +123,11 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	if o.APIs&VulkanAPI != uint32(0) {
 		m, err = reserveVulkanDevice(ctx, d)
 		if err != nil {
-			d.RemoveForward(ctx, port)
-			return nil, log.Err(ctx, err, "Setting up for tracing Vulkan")
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up for tracing Vulkan")
 		}
 	}
 
-	app.AddCleanup(ctx, func() {
-		d.RemoveForward(ctx, port)
+	cleanup = cleanup.Then(func(ctx context.Context) {
 		releaseVulkanDevice(ctx, d, m)
 	})
 
@@ -138,7 +139,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	if a != nil {
 		log.I(ctx, "Starting activity in debug mode")
 		if err := d.StartActivityForDebug(ctx, *a, additionalArgs...); err != nil {
-			return nil, log.Err(ctx, err, "Starting activity in debug mode")
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity in debug mode")
 		}
 	} else {
 		log.I(ctx, "No start activity selected - trying to attach...")
@@ -151,7 +152,7 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		pid, err = p.Pid(ctx)
 	}
 	if err != nil {
-		return nil, log.Err(ctx, err, "Getting pid")
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Getting pid")
 	}
 	ctx = log.V{"pid": pid}.Bind(ctx)
 
@@ -161,10 +162,10 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		Options: o,
 	}
 	if err := process.loadAndConnectViaJDWP(ctx, apk, pid, d); err != nil {
-		return nil, err
+		return nil, cleanup.Invoke(ctx), err
 	}
 
-	return process, nil
+	return process, cleanup, nil
 }
 
 // Connect connects to an app that is already setup to trace. This is similar to

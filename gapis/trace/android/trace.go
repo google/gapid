@@ -473,11 +473,11 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 			t.b.TurnScreenOff(ctx)
 		})
 	}
+
 	log.I(ctx, "Starting with options %+v", tracer.GapiiOptions(o))
-	process, err := gapii.Start(ctx, pkg, a, tracer.GapiiOptions(o))
+	process, gapiiCleanup, err := gapii.Start(ctx, pkg, a, tracer.GapiiOptions(o))
 	if err != nil {
 		return ret, cleanup.Invoke(ctx), err
 	}
-
-	return process, cleanup, nil
+	return process, cleanup.Then(gapiiCleanup), nil
 }
