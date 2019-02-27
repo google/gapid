@@ -38,7 +38,6 @@ go_library(
         "replace_resource.go",
         "report.go",
         "screenshot.go",
-        "smoke_tests.go",
         "state.go",
         "stats.go",
         "status.go",
