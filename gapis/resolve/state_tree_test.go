@@ -197,7 +197,11 @@ func TestStateTreeNode(t *testing.T) {
 	ctx := log.Testing(t)
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	header := capture.Header{ABI: device.AndroidARM64v8a}
-	c, err := capture.New(ctx, arena.New(), "test-capture", &header, nil, []api.Cmd{})
+	cap, err := capture.NewGraphicsCapture(ctx, arena.New(), "test-capture", &header, nil, []api.Cmd{})
+	if err != nil {
+		panic(err)
+	}
+	c, err := cap.Path(ctx)
 	if err != nil {
 		panic(err)
 	}

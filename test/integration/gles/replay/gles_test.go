@@ -91,7 +91,7 @@ func maybeExportCapture(ctx context.Context, c *path.Capture) {
 	}
 	cap, err := capture.ResolveFromPath(ctx, c)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
-	f, err := os.Create(filepath.Join(*exportCaptures, cap.Name+".gfxtrace"))
+	f, err := os.Create(filepath.Join(*exportCaptures, cap.Name()+".gfxtrace"))
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 	defer f.Close()
 	err = capture.Export(ctx, c, f)
@@ -118,11 +118,12 @@ func mergeCaptures(ctx context.Context, captures ...*path.Capture) *path.Capture
 	for i, path := range captures {
 		c, err := capture.ResolveFromPath(ctx, path)
 		assert.For(ctx, "err").ThatError(err).Succeeded()
-		lists = append(lists, c.Commands)
-		remainingCmds += len(c.Commands)
+		gc := c.(*capture.GraphicsCapture)
+		lists = append(lists, gc.Commands)
+		remainingCmds += len(gc.Commands)
 		threads = append(threads, uint64(0x10000+i))
 		if i == 0 {
-			d = c.Header.Device
+			d = gc.Header.Device
 		}
 	}
 

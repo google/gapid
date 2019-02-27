@@ -319,7 +319,7 @@ func (t test) run(ctx context.Context) (succeeded bool) {
 
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-	c := &capture.Capture{}
+	c := &capture.GraphicsCapture{}
 
 	processor := gapil.NewProcessor()
 	processor.Loader = gapil.NewDataLoader([]byte(t.src))

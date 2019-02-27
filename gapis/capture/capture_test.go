@@ -33,8 +33,12 @@ func TestCaptureExportImport(t *testing.T) {
 	ctx = database.Put(ctx, database.NewInMemory(ctx))
 	header := &capture.Header{ABI: device.WindowsX86_64}
 	cmds := []api.Cmd{test.Cmds.A, test.Cmds.B}
-	p, err := capture.New(ctx, arena.New(), "test", header, nil, cmds)
+	c, err := capture.NewGraphicsCapture(ctx, arena.New(), "test", header, nil, cmds)
 	if !assert.For(ctx, "capture.New").ThatError(err).Succeeded() {
+		return
+	}
+	p, err := c.Path(ctx)
+	if !assert.For(ctx, "capture.Path").ThatError(err).Succeeded() {
 		return
 	}
 	ctx = capture.Put(ctx, p)
@@ -56,5 +60,5 @@ func TestCaptureExportImport(t *testing.T) {
 		return
 	}
 
-	assert.For(ctx, "got").That(ic.Commands).CustomDeepEquals(cmds, test.Cmds.IgnoreArena)
+	assert.For(ctx, "got").That(ic.(*capture.GraphicsCapture).Commands).CustomDeepEquals(cmds, test.Cmds.IgnoreArena)
 }

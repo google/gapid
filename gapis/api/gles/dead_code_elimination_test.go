@@ -225,14 +225,19 @@ func TestDeadCommandRemoval(t *testing.T) {
 		cmds := append(prologue, testCmds...)
 
 		h := &capture.Header{ABI: device.WindowsX86_64}
-		capturePath, err := capture.New(ctx, a, name, h, nil, cmds)
+		cap, err := capture.NewGraphicsCapture(ctx, a, name, h, nil, cmds)
+		if err != nil {
+			panic(err)
+		}
+		capturePath, err := cap.Path(ctx)
 		if err != nil {
 			panic(err)
 		}
 		ctx = capture.Put(ctx, capturePath)
 
 		// First verify the commands mutate without errors
-		c, _ := capture.Resolve(ctx)
+		uc, _ := capture.Resolve(ctx)
+		c := uc.(*capture.GraphicsCapture)
 		s := c.NewState(ctx)
 		err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 			if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
