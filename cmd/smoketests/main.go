@@ -91,8 +91,7 @@ func run(ctx context.Context) error {
 			return err
 		}
 		os.Chdir(tracewd)
-		err = testTrace(ctx, &nbErr, tracepath)
-		if err != nil {
+		if err := testTrace(ctx, &nbErr, tracepath); err != nil {
 			return err
 		}
 		os.Chdir(startwd)
@@ -116,55 +115,29 @@ func run(ctx context.Context) error {
 }
 
 func testTrace(ctx context.Context, nbErr *int, tracepath string) error {
+
+	// The trace basename is used for some commands argument
 	trace := filepath.Base(tracepath)
-	var err error
-	err = gapit(ctx, nbErr, "commands", tracepath)
-	if err != nil {
-		return err
+
+	tests := [][]string{
+		{"commands", tracepath},
+		{"create_graph_visualization", "-format", "dot", "-out", trace + ".dot", tracepath},
+		{"dump", tracepath},
+		{"dump_fbo", tracepath},
+		{"dump_pipeline", tracepath},
+		{"dump_replay", tracepath},
+		{"dump_resources", tracepath},
+		{"export_replay", tracepath},
+		{"memory", tracepath},
+		{"stats", tracepath},
+		{"trim", tracepath},
+		{"unpack", tracepath},
 	}
-	err = gapit(ctx, nbErr, "create_graph_visualization", "-format", "dot", "-out", trace+".dot", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "dump", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "dump_fbo", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "dump_pipeline", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "dump_replay", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "dump_resources", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "export_replay", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "memory", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "stats", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "trim", tracepath)
-	if err != nil {
-		return err
-	}
-	err = gapit(ctx, nbErr, "unpack", tracepath)
-	if err != nil {
-		return err
+
+	for _, test := range tests {
+		if err := gapit(ctx, nbErr, test...); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -196,8 +169,7 @@ func gapit(ctx context.Context, nbErr *int, args ...string) error {
 
 	// Write output in log
 	verb := args[0]
-	err = ioutil.WriteFile(verb+".log", output, 0666)
-	if err != nil {
+	if err := ioutil.WriteFile(verb+".log", output, 0666); err != nil {
 		return err
 	}
 
