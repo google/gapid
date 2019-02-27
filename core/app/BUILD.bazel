@@ -19,6 +19,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "atexit.go",
+        "cleanup.go",
         "default_version.go",
         "doc.go",
         "flags.go",
