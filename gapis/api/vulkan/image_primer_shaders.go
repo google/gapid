@@ -426,6 +426,283 @@ void main() {
 		})
 }
 
+func storageImageFormat(format VkFormat) (string, error) {
+	switch format {
+	// uint formats
+	case VkFormat_VK_FORMAT_R8_UINT:
+		return "r8ui", nil
+	case VkFormat_VK_FORMAT_R16_UINT:
+		return "r16ui", nil
+	case VkFormat_VK_FORMAT_R32_UINT:
+		return "r32ui", nil
+
+	case VkFormat_VK_FORMAT_R8G8_UINT:
+		return "rg8ui", nil
+	case VkFormat_VK_FORMAT_R16G16_UINT:
+		return "rg16ui", nil
+	case VkFormat_VK_FORMAT_R32G32_UINT:
+		return "rg32ui", nil
+
+	case VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32:
+		return "rgba8ui", nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_UINT:
+		return "rgba16ui", nil
+	case VkFormat_VK_FORMAT_R32G32B32A32_UINT:
+		return "rgba32ui", nil
+
+	case VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		return "rgb10_a2ui", nil
+
+	// sint formats
+	case VkFormat_VK_FORMAT_R8_SINT:
+		return "r8i", nil
+	case VkFormat_VK_FORMAT_R16_SINT:
+		return "r16i", nil
+	case VkFormat_VK_FORMAT_R32_SINT:
+		return "r32i", nil
+
+	case VkFormat_VK_FORMAT_R8G8_SINT:
+		return "rg8i", nil
+	case VkFormat_VK_FORMAT_R16G16_SINT:
+		return "rg16i", nil
+	case VkFormat_VK_FORMAT_R32G32_SINT:
+		return "rg32i", nil
+
+	case VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32:
+		return "rgba8i", nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_SINT:
+		return "rgba16i", nil
+	case VkFormat_VK_FORMAT_R32G32B32A32_SINT:
+		return "rgba32i", nil
+
+	// unorm formats
+	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8_SRGB:
+		return "r8", nil
+	case VkFormat_VK_FORMAT_R16_UNORM:
+		return "r16", nil
+
+	case VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_SRGB:
+		return "rg8", nil
+	case VkFormat_VK_FORMAT_R16G16_UNORM:
+		return "rg16", nil
+
+	case VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8A8_SRGB:
+		return "rgba8", nil
+
+	case VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
+		return "rgba16", nil
+
+	case VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+		return "rgba8", nil
+
+	case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+		return "rgb10_a2", nil
+
+	// snorm formats
+	case VkFormat_VK_FORMAT_R8_SNORM:
+		return "r8_snorm", nil
+	case VkFormat_VK_FORMAT_R16_SNORM:
+		return "r16_snorm", nil
+
+	case VkFormat_VK_FORMAT_R8G8_SNORM:
+		return "rg8_snorm", nil
+	case VkFormat_VK_FORMAT_R16G16_SNORM:
+		return "rg16_snorm", nil
+
+	case VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+		return "rgba8_snorm", nil
+	case VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
+		return "rgba16_snorm", nil
+
+	// float formats
+	case VkFormat_VK_FORMAT_R16_SFLOAT:
+		return "r16f", nil
+	case VkFormat_VK_FORMAT_R32_SFLOAT:
+		return "r32f", nil
+
+	case VkFormat_VK_FORMAT_R16G16_SFLOAT:
+		return "rg16f", nil
+	case VkFormat_VK_FORMAT_R32G32_SFLOAT:
+		return "rg32f", nil
+
+	case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
+		return "rgba16f", nil
+	case VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT:
+		return "rgba32f", nil
+
+	case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+		return "r11f_g11f_b10f", nil
+	}
+	return "", fmt.Errorf("Unsupported format: %v", format)
+}
+
+func storageImageUnit(format VkFormat) (string, error) {
+	switch format {
+	// uint formats
+	case VkFormat_VK_FORMAT_R8_UINT,
+		VkFormat_VK_FORMAT_R16_UINT,
+		VkFormat_VK_FORMAT_R32_UINT,
+		VkFormat_VK_FORMAT_R8G8_UINT,
+		VkFormat_VK_FORMAT_R16G16_UINT,
+		VkFormat_VK_FORMAT_R32G32_UINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_UINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		return "u", nil
+
+	// sint formats
+	case VkFormat_VK_FORMAT_R8_SINT,
+		VkFormat_VK_FORMAT_R16_SINT,
+		VkFormat_VK_FORMAT_R32_SINT,
+		VkFormat_VK_FORMAT_R8G8_SINT,
+		VkFormat_VK_FORMAT_R16G16_SINT,
+		VkFormat_VK_FORMAT_R32G32_SINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_SINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SINT:
+		return "i", nil
+
+	// unorm formats
+	case VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8_SRGB,
+		VkFormat_VK_FORMAT_R16_UNORM,
+		VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_SRGB,
+		VkFormat_VK_FORMAT_R16G16_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
+		VkFormat_VK_FORMAT_R16G16B16A16_UNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+		// snorm formats
+		VkFormat_VK_FORMAT_R8_SNORM,
+		VkFormat_VK_FORMAT_R16_SNORM,
+		VkFormat_VK_FORMAT_R8G8_SNORM,
+		VkFormat_VK_FORMAT_R16G16_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_SNORM,
+		// float formats
+		VkFormat_VK_FORMAT_R16_SFLOAT,
+		VkFormat_VK_FORMAT_R32_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32_SFLOAT,
+		VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
+		VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+		return "", nil
+	}
+	return "", fmt.Errorf("Not supported format: %v", format)
+}
+
+func storageImageType(ty VkImageType) (string, error) {
+	switch ty {
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		return "image1D", nil
+	case VkImageType_VK_IMAGE_TYPE_2D:
+		return "image2D", nil
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		return "image3D", nil
+	}
+	return "", fmt.Errorf("Not supported image type: %v", ty)
+}
+
+func storageImageGetPosition(ty VkImageType) (string, error) {
+	switch ty {
+	case VkImageType_VK_IMAGE_TYPE_1D:
+		return `int pos = x;`, nil
+	case VkImageType_VK_IMAGE_TYPE_2D:
+		return `ivec2 pos = ivec2(x, y);`, nil
+	case VkImageType_VK_IMAGE_TYPE_3D:
+		return `ivec3 pos = ivec3(x, y, z);`, nil
+	}
+	return "", fmt.Errorf("Not supported image type: %v", ty)
+}
+
+// ipComputeCopySpirv returns the compute shader to be used for priming image
+// data by copying a storage image.
+func ipComputeCopySpirv(
+	format VkFormat, aspect VkImageAspectFlagBits, imageType VkImageType) ([]uint32, error) {
+	if aspect != VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT {
+		return []uint32{}, fmt.Errorf("Aspect other than COLOR is not supported")
+	}
+
+	fmtStr, err := storageImageFormat(format)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("Generating image format string, err: %v", err)
+	}
+
+	pos, err := storageImageGetPosition(imageType)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("Generating position, err: %v", err)
+	}
+
+	unit, err := storageImageUnit(format)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("Getting image unit, err: %v", err)
+	}
+
+	imgTypeStr, err := storageImageType(imageType)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("Generating image type string, err: %v", err)
+	}
+
+	// Generate source code
+	source := fmt.Sprintf(
+		`#version 450
+	precision highp int;
+	layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+	layout (%s, set = 0, binding = %d) uniform %s%s output_img;
+	layout (%s, set = 0, binding = %d) uniform %s%s input_img;
+	layout (push_constant) uniform metadata {
+		uint offset_x;
+		uint offset_y;
+		uint offset_z;
+		// Reserved for handling image formats wider than 32 bit per channel
+		uint input_img_index;
+	};
+	void main() {
+		int x = int(gl_GlobalInvocationID.x + offset_x);
+		int y = int(gl_GlobalInvocationID.y + offset_y);
+		int z = int(gl_GlobalInvocationID.z + offset_z);
+		%s
+		imageStore(output_img, pos, imageLoad(input_img, pos));
+	}
+	`, fmtStr, ipStoreOutputImageBinding, unit, imgTypeStr,
+		fmtStr, ipStoreInputImageBinding, unit, imgTypeStr,
+		pos)
+	opt := shadertools.CompileOptions{
+		ShaderType: shadertools.TypeCompute,
+		ClientType: shadertools.Vulkan,
+	}
+	return shadertools.CompileGlsl(source, opt)
+}
+
 // ipComputeShaderSpirv returns the compute shader to be used for priming image
 // data through imageStore operation.
 func ipComputeShaderSpirv(
@@ -437,226 +714,8 @@ func ipComputeShaderSpirv(
 		return []uint32{}, fmt.Errorf("Aspect other than COLOR is not supported")
 	}
 
-	fmtStr := func(format VkFormat) (string, error) {
-		switch format {
-		// uint formats
-		case VkFormat_VK_FORMAT_R8_UINT:
-			return "r8ui", nil
-		case VkFormat_VK_FORMAT_R16_UINT:
-			return "r16ui", nil
-		case VkFormat_VK_FORMAT_R32_UINT:
-			return "r32ui", nil
-
-		case VkFormat_VK_FORMAT_R8G8_UINT:
-			return "rg8ui", nil
-		case VkFormat_VK_FORMAT_R16G16_UINT:
-			return "rg16ui", nil
-		case VkFormat_VK_FORMAT_R32G32_UINT:
-			return "rg32ui", nil
-
-		case VkFormat_VK_FORMAT_R8G8B8A8_UINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_UINT,
-			VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32:
-			return "rgba8ui", nil
-		case VkFormat_VK_FORMAT_R16G16B16A16_UINT:
-			return "rgba16ui", nil
-		case VkFormat_VK_FORMAT_R32G32B32A32_UINT:
-			return "rgba32ui", nil
-
-		case VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
-			return "rgb10_a2ui", nil
-
-		// sint formats
-		case VkFormat_VK_FORMAT_R8_SINT:
-			return "r8i", nil
-		case VkFormat_VK_FORMAT_R16_SINT:
-			return "r16i", nil
-		case VkFormat_VK_FORMAT_R32_SINT:
-			return "r32i", nil
-
-		case VkFormat_VK_FORMAT_R8G8_SINT:
-			return "rg8i", nil
-		case VkFormat_VK_FORMAT_R16G16_SINT:
-			return "rg16i", nil
-		case VkFormat_VK_FORMAT_R32G32_SINT:
-			return "rg32i", nil
-
-		case VkFormat_VK_FORMAT_R8G8B8A8_SINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_SINT,
-			VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32:
-			return "rgba8i", nil
-		case VkFormat_VK_FORMAT_R16G16B16A16_SINT:
-			return "rgba16i", nil
-		case VkFormat_VK_FORMAT_R32G32B32A32_SINT:
-			return "rgba32i", nil
-
-		// unorm formats
-		case VkFormat_VK_FORMAT_R8_UNORM,
-			VkFormat_VK_FORMAT_R8_SRGB:
-			return "r8", nil
-		case VkFormat_VK_FORMAT_R16_UNORM:
-			return "r16", nil
-
-		case VkFormat_VK_FORMAT_R8G8_UNORM,
-			VkFormat_VK_FORMAT_R8G8_SRGB:
-			return "rg8", nil
-		case VkFormat_VK_FORMAT_R16G16_UNORM:
-			return "rg16", nil
-
-		case VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
-			VkFormat_VK_FORMAT_B8G8R8A8_SRGB:
-			return "rgba8", nil
-
-		case VkFormat_VK_FORMAT_R16G16B16A16_UNORM:
-			return "rgba16", nil
-
-		case VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
-			VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-			return "rgba8", nil
-
-		case VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-			return "rgb10_a2", nil
-
-		// snorm formats
-		case VkFormat_VK_FORMAT_R8_SNORM:
-			return "r8_snorm", nil
-		case VkFormat_VK_FORMAT_R16_SNORM:
-			return "r16_snorm", nil
-
-		case VkFormat_VK_FORMAT_R8G8_SNORM:
-			return "rg8_snorm", nil
-		case VkFormat_VK_FORMAT_R16G16_SNORM:
-			return "rg16_snorm", nil
-
-		case VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
-			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32:
-			return "rgba8_snorm", nil
-		case VkFormat_VK_FORMAT_R16G16B16A16_SNORM:
-			return "rgba16_snorm", nil
-
-		// float formats
-		case VkFormat_VK_FORMAT_R16_SFLOAT:
-			return "r16f", nil
-		case VkFormat_VK_FORMAT_R32_SFLOAT:
-			return "r32f", nil
-
-		case VkFormat_VK_FORMAT_R16G16_SFLOAT:
-			return "rg16f", nil
-		case VkFormat_VK_FORMAT_R32G32_SFLOAT:
-			return "rg32f", nil
-
-		case VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT:
-			return "rgba16f", nil
-		case VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT:
-			return "rgba32f", nil
-
-		case VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
-			return "r11f_g11f_b10f", nil
-		}
-		return "", fmt.Errorf("Unsupported format: %v", format)
-	}
-
-	fmtG := func(format VkFormat) (string, error) {
-		switch format {
-		// uint formats
-		case VkFormat_VK_FORMAT_R8_UINT,
-			VkFormat_VK_FORMAT_R16_UINT,
-			VkFormat_VK_FORMAT_R32_UINT,
-			VkFormat_VK_FORMAT_R8G8_UINT,
-			VkFormat_VK_FORMAT_R16G16_UINT,
-			VkFormat_VK_FORMAT_R32G32_UINT,
-			VkFormat_VK_FORMAT_R8G8B8A8_UINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_UINT,
-			VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
-			VkFormat_VK_FORMAT_R16G16B16A16_UINT,
-			VkFormat_VK_FORMAT_R32G32B32A32_UINT,
-			VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32:
-			return "u", nil
-
-		// sint formats
-		case VkFormat_VK_FORMAT_R8_SINT,
-			VkFormat_VK_FORMAT_R16_SINT,
-			VkFormat_VK_FORMAT_R32_SINT,
-			VkFormat_VK_FORMAT_R8G8_SINT,
-			VkFormat_VK_FORMAT_R16G16_SINT,
-			VkFormat_VK_FORMAT_R32G32_SINT,
-			VkFormat_VK_FORMAT_R8G8B8A8_SINT,
-			VkFormat_VK_FORMAT_B8G8R8A8_SINT,
-			VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
-			VkFormat_VK_FORMAT_R16G16B16A16_SINT,
-			VkFormat_VK_FORMAT_R32G32B32A32_SINT:
-			return "i", nil
-
-		// unorm formats
-		case VkFormat_VK_FORMAT_R8_UNORM,
-			VkFormat_VK_FORMAT_R8_SRGB,
-			VkFormat_VK_FORMAT_R16_UNORM,
-			VkFormat_VK_FORMAT_R8G8_UNORM,
-			VkFormat_VK_FORMAT_R8G8_SRGB,
-			VkFormat_VK_FORMAT_R16G16_UNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
-			VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
-			VkFormat_VK_FORMAT_R16G16B16A16_UNORM,
-			VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
-			VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32,
-			VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-			VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-			// snorm formats
-			VkFormat_VK_FORMAT_R8_SNORM,
-			VkFormat_VK_FORMAT_R16_SNORM,
-			VkFormat_VK_FORMAT_R8G8_SNORM,
-			VkFormat_VK_FORMAT_R16G16_SNORM,
-			VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
-			VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
-			VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32,
-			VkFormat_VK_FORMAT_R16G16B16A16_SNORM,
-			// float formats
-			VkFormat_VK_FORMAT_R16_SFLOAT,
-			VkFormat_VK_FORMAT_R32_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32_SFLOAT,
-			VkFormat_VK_FORMAT_R16G16B16A16_SFLOAT,
-			VkFormat_VK_FORMAT_R32G32B32A32_SFLOAT,
-			VkFormat_VK_FORMAT_B10G11R11_UFLOAT_PACK32:
-			return "", nil
-		}
-		return "", fmt.Errorf("Not supported format: %v", format)
-	}
-
-	typeStr := func(ty VkImageType) (string, error) {
-		switch ty {
-		case VkImageType_VK_IMAGE_TYPE_1D:
-			return "image1D", nil
-		case VkImageType_VK_IMAGE_TYPE_2D:
-			return "image2D", nil
-		case VkImageType_VK_IMAGE_TYPE_3D:
-			return "image3D", nil
-		}
-		return "", fmt.Errorf("Not supported image type: %v", ty)
-	}
-
-	posStr := func(ty VkImageType) (string, error) {
-		switch ty {
-		case VkImageType_VK_IMAGE_TYPE_1D:
-			return `int pos = x;`, nil
-		case VkImageType_VK_IMAGE_TYPE_2D:
-			return `ivec2 pos = ivec2(x, y);`, nil
-		case VkImageType_VK_IMAGE_TYPE_3D:
-			return `ivec3 pos = ivec3(x, y, z);`, nil
-		}
-		return "", fmt.Errorf("Not supported image type: %v", ty)
-	}
-
 	colorStr := func(inputFmt, outputFmt VkFormat) (string, error) {
-		inputG, err := fmtG(inputFmt)
+		inputG, err := storageImageUnit(inputFmt)
 		if err != nil {
 			return "", err
 		}
@@ -785,27 +844,27 @@ func ipComputeShaderSpirv(
 		return "", fmt.Errorf("Unsupported format, input fomrat: %v, output format: %v", inputFmt, outputFmt)
 	}
 
-	outputFmtStr, err := fmtStr(outputFormat)
+	outputFmtStr, err := storageImageFormat(outputFormat)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("Generating output image format string, err: %v", err)
 	}
-	inputFmtStr, err := fmtStr(inputFormat)
+	inputFmtStr, err := storageImageFormat(inputFormat)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("Generating input image format string, err: %v", err)
 	}
-	outputG, err := fmtG(outputFormat)
+	outputG, err := storageImageUnit(outputFormat)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("Generating output image unit format string, err: %v", err)
 	}
-	inputG, err := fmtG(inputFormat)
+	inputG, err := storageImageUnit(inputFormat)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("Generating input image unit format string, err: %v", err)
 	}
-	imgTypeStr, err := typeStr(imageType)
+	imgTypeStr, err := storageImageType(imageType)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("Generating image type string, err: %v", err)
 	}
-	pos, err := posStr(imageType)
+	pos, err := storageImageGetPosition(imageType)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("Generating position, err: %v", err)
 	}
