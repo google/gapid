@@ -20,6 +20,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/trace/android",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app:go_default_library",
         "//core/log:go_default_library",
         "//core/os/android:go_default_library",
         "//core/os/android/adb:go_default_library",

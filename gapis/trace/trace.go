@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	gapii "github.com/google/gapid/gapii/client"
@@ -31,7 +32,7 @@ import (
 func Trace(ctx context.Context, device *path.Device, start task.Signal, stop task.Signal, options *service.TraceOptions, written *int64) error {
 	gapiiOpts := tracer.GapiiOptions(options)
 	var process tracer.Process
-	cleanup := func() {}
+	var cleanup app.Cleanup
 	mgr := GetManager(ctx)
 	if device == nil {
 		return log.Errf(ctx, nil, "Invalid device path")
@@ -57,7 +58,7 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, stop tas
 	if err != nil {
 		return log.Errf(ctx, err, "Could not start trace")
 	}
-	defer cleanup()
+	defer cleanup.Invoke(ctx)
 
 	os.MkdirAll(filepath.Dir(options.ServerLocalSavePath), 0755)
 	file, err := os.Create(options.ServerLocalSavePath)

@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
@@ -47,7 +48,7 @@ type Device interface {
 	PushFile(ctx context.Context, sourcePath, destPath string) error
 	// MakeTempDir makes a temporary directory, and returns the
 	// path, as well as a function to call to clean it up.
-	MakeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
+	MakeTempDir(ctx context.Context) (string, app.Cleanup, error)
 	// WriteFile writes the given file into the given location on the remote device
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
 	// DefaultReplayCacheDir returns the default path for replay resource caches

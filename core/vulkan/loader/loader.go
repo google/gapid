@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -35,7 +36,7 @@ import (
 type deviceReplaySetup interface {
 	// makeTempDir returns a path to a created temporary. The returned function
 	// can be called to clean up the temporary directory.
-	makeTempDir(ctx context.Context) (string, func(ctx context.Context), error)
+	makeTempDir(ctx context.Context) (string, app.Cleanup, error)
 
 	// initializeLibrary takes a library, and if necessary copies it
 	// into the given temporary directory. It returns the library
@@ -52,7 +53,7 @@ type remoteSetup struct {
 	abi    *device.ABI
 }
 
-func (r *remoteSetup) makeTempDir(ctx context.Context) (string, func(ctx context.Context), error) {
+func (r *remoteSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
 	return r.device.MakeTempDir(ctx)
 }
 
@@ -80,7 +81,7 @@ type localSetup struct {
 	abi *device.ABI
 }
 
-func (*localSetup) makeTempDir(ctx context.Context) (string, func(ctx context.Context), error) {
+func (*localSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
 	tempdir, err := ioutil.TempDir("", "temp")
 	if err != nil {
 		return "", nil, err
@@ -108,7 +109,7 @@ func (*localSetup) finalizeJSON(ctx context.Context, jsonName string, content st
 // SetupTrace sets up the environment for tracing a local app. Returns a
 // clean-up function to be called after the trace completes, and a temporary
 // filename that can be used to find the port if stdout fails, or an error.
-func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (func(ctx context.Context), string, error) {
+func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, string, error) {
 	var setup deviceReplaySetup
 	if dev, ok := d.(remotessh.Device); ok {
 		setup = &remoteSetup{dev, abi}
@@ -117,29 +118,23 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 	}
 	tempdir, cleanup, err := setup.makeTempDir(ctx)
 	if err != nil {
-		return func(ctx context.Context) {}, "", err
+		return nil, "", err
 	}
 
 	lib, json, err := findLibraryAndJSON(ctx, setup, tempdir, layout.LibGraphicsSpy)
 	var f string
 	if err != nil {
-		return func(ctx context.Context) {}, f, err
+		return cleanup.Invoke(ctx), f, err
 	}
 	err = setupJSON(ctx, lib, json, setup, tempdir, env)
 	if err != nil {
-		cleanup(ctx)
-		return nil, "", err
+		return cleanup.Invoke(ctx), "", err
 	}
 	f, c, err := d.TempFile(ctx)
 	if err != nil {
-		cleanup(ctx)
-		return nil, "", err
+		return cleanup.Invoke(ctx), "", err
 	}
-	o := cleanup
-	cleanup = func(ctx context.Context) {
-		o(ctx)
-		c(ctx)
-	}
+	cleanup = cleanup.Then(c)
 	env.Set("LD_PRELOAD", lib).
 		AddPathStart("VK_INSTANCE_LAYERS", "GraphicsSpy").
 		AddPathStart("VK_DEVICE_LAYERS", "GraphicsSpy").
@@ -158,7 +153,7 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 
 // SetupReplay sets up the environment for a desktop. Returns a clean-up
 // function to be called after replay completes, or an error.
-func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (func(ctx context.Context), error) {
+func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
 	var setup deviceReplaySetup
 	if dev, ok := d.(remotessh.Device); ok {
 		setup = &remoteSetup{dev, abi}
@@ -172,13 +167,11 @@ func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell
 
 	lib, json, err := findLibraryAndJSON(ctx, setup, tempdir, layout.LibVirtualSwapChain)
 	if err != nil {
-		cleanup(ctx)
-		return nil, err
+		return cleanup.Invoke(ctx), err
 	}
 
 	if err = setupJSON(ctx, lib, json, setup, tempdir, env); err != nil {
-		cleanup(ctx)
-		return nil, err
+		return cleanup.Invoke(ctx), err
 	}
 
 	return cleanup, nil

@@ -137,7 +137,7 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 	if err != nil {
 		return err
 	}
-	s.onClose(func() { sessionCleanup(ctx) })
+	s.onClose(func() { sessionCleanup.Invoke(ctx) })
 
 	parser := func(severity log.Severity) io.WriteCloser {
 		h := log.GetHandler(ctx)
@@ -220,7 +220,7 @@ func (s *session) newHost(ctx context.Context, d bind.Device, abi *device.ABI, l
 	if err != nil {
 		return err
 	}
-	s.onClose(func() { cleanup(ctx) })
+	s.onClose(func() { cleanup.Invoke(ctx) })
 
 	parser := func(severity log.Severity) io.WriteCloser {
 		h := log.GetHandler(ctx)
