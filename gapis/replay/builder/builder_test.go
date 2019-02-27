@@ -155,7 +155,7 @@ func TestCommitCommand(t *testing.T) {
 			},
 		},
 	} {
-		b := New(device.Little32)
+		b := New(device.Little32, nil)
 		test.f(b)
 		assert.For(ctx, test.name).ThatSlice(b.instructions).Equals(test.expected)
 	}
@@ -201,7 +201,7 @@ func TestRevertCommand(t *testing.T) {
 			},
 		},
 	} {
-		b := New(device.Little32)
+		b := New(device.Little32, nil)
 		test.f(b)
 
 		assert.For(ctx, test.name).ThatSlice(b.instructions).Equals(test.expected)
@@ -233,7 +233,7 @@ func TestRevertPostbackCommand(t *testing.T) {
 		},
 	} {
 		ctx := log.Enter(ctx, test.name)
-		b := New(device.Little32)
+		b := New(device.Little32, nil)
 		test.f(b)
 		assert.For(ctx, "inst").ThatSlice(b.instructions).Equals(test.expected)
 	}
@@ -317,7 +317,7 @@ func TestMapMemory(t *testing.T) {
 		},
 	} {
 		ctx := log.Enter(ctx, test.name)
-		b := New(device.Little32)
+		b := New(device.Little32, nil)
 		test.f(b)
 		assert.For(ctx, "inst").ThatSlice(b.instructions).Equals(test.expected)
 	}

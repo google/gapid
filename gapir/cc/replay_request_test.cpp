@@ -58,7 +58,7 @@ TEST(ReplayRequestTestStatic, Create) {
   std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
   auto replayRequest =
-      ReplayRequest::create(mock_srv.get(), memoryManager.get());
+      ReplayRequest::create(mock_srv.get(), "id", memoryManager.get());
 
   EXPECT_THAT(replayRequest, NotNull());
 
@@ -82,7 +82,7 @@ TEST(ReplayRequestTestStatic, CreateErrorGet) {
   std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
 
   auto replayRequest =
-      ReplayRequest::create(mock_srv.get(), memoryManager.get());
+      ReplayRequest::create(mock_srv.get(), "payload_id", memoryManager.get());
 
   EXPECT_EQ(nullptr, replayRequest);
 }

@@ -53,7 +53,7 @@ func TestExecutor(t *testing.T) {
 	// represent addresses in the ARM abi
 	ptrA := uint64(0x0000000004030000)
 
-	c := &capture.Capture{
+	c := &capture.GraphicsCapture{
 		Observed: interval.U64RangeList{
 			{First: ptrA, Count: 0x10000},
 		},
@@ -2055,7 +2055,7 @@ type test struct {
 	settings compiler.Settings
 }
 
-func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
+func (t test) run(ctx context.Context, c capture.Capture) (succeeded bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			panic(fmt.Errorf("Panic in test '%v':\n%v", t.name, r))
@@ -2079,7 +2079,7 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	}
 
 	exec := executor.New(program, false)
-	env := exec.NewEnv(ctx, c)
+	env := exec.NewEnv(ctx, c.(*capture.GraphicsCapture))
 	defer env.Dispose()
 
 	if t.dump {
@@ -2132,8 +2132,8 @@ func (t test) run(ctx context.Context, c *capture.Capture) (succeeded bool) {
 	}
 
 	stats := env.Arena.Stats()
-	numContextAllocs := 3               // gapil_create_context: context, next_pool_id, globals
-	numMemBlocks := c.Observed.Length() // observation allocations
+	numContextAllocs := 3                                          // gapil_create_context: context, next_pool_id, globals
+	numMemBlocks := c.(*capture.GraphicsCapture).Observed.Length() // observation allocations
 	numOtherAllocs := numMemBlocks + numContextAllocs
 	if !assert.For(ctx, "Allocations").That(stats.NumAllocations - numOtherAllocs).Equals(t.expected.numAllocs) {
 		log.I(ctx, "Allocations: %v\n", stats)

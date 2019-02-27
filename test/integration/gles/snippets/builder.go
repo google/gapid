@@ -73,11 +73,15 @@ func (b *Builder) Capture(ctx context.Context, name string) *path.Capture {
 		Device: b.device,
 		ABI:    b.abi,
 	}
-	out, err := capture.New(ctx, b.CB.Arena, name, h, nil, b.Cmds)
+	out, err := capture.NewGraphicsCapture(ctx, b.CB.Arena, name, h, nil, b.Cmds)
 	if err != nil {
 		panic(err)
 	}
-	return out
+	path, err := out.Path(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return path
 }
 
 func (b *Builder) newID() uint {

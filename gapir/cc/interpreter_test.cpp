@@ -43,9 +43,8 @@ class InterpreterTest : public ::testing::Test {
   virtual void SetUp() {
     std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
     mMemoryManager.reset(new MemoryManager(memorySizes));
-    auto callback = [](Interpreter*, uint8_t) { return false; };
-    mInterpreter.reset(new Interpreter(crash_handler, mMemoryManager.get(),
-                                       STACK_SIZE, std::move(callback)));
+    mInterpreter.reset(
+        new Interpreter(crash_handler, mMemoryManager.get(), STACK_SIZE));
   }
 
   core::CrashHandler crash_handler;
