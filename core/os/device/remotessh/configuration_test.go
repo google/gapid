@@ -30,27 +30,25 @@ func TestReadConfiguration(t *testing.T) {
 [
 	{
 		"Name": "name",
-		"Host": "localhost",
-		"Port": 22,
-		"User": "me",
-		"Keyfile": "~/.ssh/id_rsa",
-		"KnownHosts": "~/.ssh/known_hosts",
-		"UseSSHAgent": true
+		"host": "localhost",
+		"port": "22",
+		"user": "me",
+		"keyPath": "~/.ssh/id_rsa",
+		"knownHostsPath": "~/.ssh/known_hosts"
 	},
 	{
 		"Name": "FirstConnection",
-		"User": "me",
-		"Host": "example.com",
-		"Port": 443,
-		"Keyfile": "~/.ssh/id_rsa",
-		"KnownHosts": "~/.ssh/known_hosts"
+		"user": "me",
+		"host": "example.com",
+		"port": "443",
+		"keyPath": "~/.ssh/id_rsa",
+		"knownHostsPath": "~/.ssh/known_hosts"
 	},
 	{
 		"Name": "Connection2",
-		"Keyfile": "id_dsa",
-		"KnownHosts": "someFile",
-		"UseSSHAgent": false,
-		"User": "me"
+		"keyPath": "id_dsa",
+		"knownHostsPath": "someFile",
+		"user": "me"
 	}
 ]
 `
