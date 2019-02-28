@@ -30,8 +30,9 @@ import (
 )
 
 var (
-	tracesArg = flag.String("traces", "traces", "The directory containing traces to run smoke tests on")
 	gapitArg  = flag.String("gapit", "gapit", "Path to gapit executable")
+	keepArg   = flag.Bool("keep", false, "Keep the temporary directory even if no errors are found")
+	tracesArg = flag.String("traces", "traces", "The directory containing traces to run smoke tests on")
 )
 
 func main() {
@@ -111,14 +112,18 @@ func run(ctx context.Context) error {
 		return errors.New("No file ending with '.gfxtrace' found in trace directory")
 	}
 
-	if nbErr > 0 {
-		errStr := "error"
-		if nbErr > 1 {
-			errStr = "errors"
-		}
-		log.I(ctx, "%d %s found, see logs in %s", nbErr, errStr, tmpdir)
+	// Print number of errors
+	errStr := "error"
+	if nbErr > 1 {
+		errStr = "errors"
+	}
+	log.I(ctx, "%d %s found", nbErr, errStr)
+
+	// Temporary directory is kept if there are errors or if the user
+	// explicitely asked to keep it
+	if nbErr > 0 || *keepArg {
+		log.I(ctx, "See logs in %s", tmpdir)
 	} else {
-		// Temporary directory is removed only when there are no errors
 		os.RemoveAll(tmpdir)
 	}
 	return nil
