@@ -166,6 +166,31 @@ func (e *backgroundConnection) HandleResourceRequest(ctx context.Context, req *g
 	return nil
 }
 
+// MakeBackgroundConnection creates a connection to the replay device that persists in the background.
+func MakeBackgroundConnection(ctx context.Context, device bind.Device, conn *gapir.Connection, replayABI *device.ABI) (*backgroundConnection, error) {
+	bgc := &backgroundConnection{conn: conn, ABI: replayABI, OS: device.Instance().GetConfiguration().GetOS()}
+	c := make(chan error)
+	cctx := keys.Clone(context.Background(), ctx)
+	crash.Go(func() {
+		// This shouldn't be sitting on this context
+		cctx := status.PutTask(cctx, nil)
+		cctx = status.StartBackground(cctx, "Handle Replay Communication")
+		defer status.Finish(cctx)
+		// Kick the communication handler
+		err := conn.HandleReplayCommunication(
+			cctx, bgc, c)
+		if err != nil {
+			log.E(cctx, "Error communication with gapir: %v", err)
+		}
+	})
+	err := <-c
+	if err != nil {
+		return nil, err
+	}
+	return bgc, nil
+}
+
+// Creates a background connection to execute commands
 func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *device.ABI) (*backgroundConnection, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -181,26 +206,7 @@ func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *de
 	if err != nil {
 		return nil, err
 	}
-
-	bgc := &backgroundConnection{conn: conn, ABI: replayABI, OS: device.Instance().GetConfiguration().GetOS()}
+	bgc, err := MakeBackgroundConnection(ctx, device, conn, replayABI)
 	m.connections[device.Instance().ID.ID()] = bgc
-	c := make(chan error)
-	cctx := keys.Clone(context.Background(), ctx)
-	crash.Go(func() {
-		// This shouldn't be sitting on this context
-		cctx := status.PutTask(cctx, nil)
-		cctx = status.StartBackground(cctx, "Handle Replay Communication")
-		defer status.Finish(cctx)
-		// Kick the communication handler
-		err := conn.HandleReplayCommunication(
-			cctx, bgc, c)
-		if err != nil {
-			log.E(cctx, "Error communication with gapir: %v", err)
-		}
-	})
-	err = <-c
-	if err != nil {
-		return nil, err
-	}
 	return bgc, nil
 }
