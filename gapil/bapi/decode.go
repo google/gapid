@@ -1712,6 +1712,8 @@ func (d *decoder) astNode(p *ASTNode) ast.Node {
 		return d.astCase(p.Case)
 	case *ASTNode_Class:
 		return d.astClass(p.Class)
+	case *ASTNode_Clear:
+		return d.astClear(p.Clear)
 	case *ASTNode_DeclareLocal:
 		return d.astDeclareLocal(p.DeclareLocal)
 	case *ASTNode_Default:
