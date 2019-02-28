@@ -58,8 +58,8 @@ class GrpcReplayService : public ReplayService {
   virtual ~GrpcReplayService() override {
     if (mGrpcStream != nullptr) {
       this->sendReplayFinished();
+      mCommunicationThread.join();
     }
-    mCommunicationThread.join();
   }
 
   GrpcReplayService(const GrpcReplayService&) = delete;
@@ -95,7 +95,9 @@ class GrpcReplayService : public ReplayService {
 
  protected:
   GrpcReplayService(ReplayGrpcStream* stream) : mGrpcStream(stream) {
-    mCommunicationThread = std::thread(&handleCommunication, this);
+    if (mGrpcStream != nullptr) {
+      mCommunicationThread = std::thread(&handleCommunication, this);
+    }
   }
 
   std::unique_ptr<replay_service::ReplayRequest> getNonReplayRequest();
