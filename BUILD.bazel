@@ -72,6 +72,7 @@ copy_to(
         "//cmd/gapit",
         "//tools/build:build.properties",
         "//cmd/device-info:device-info",
+        "//cmd/smoketests:smoketests",
     ] + select({
         "//tools/build:no-android": [],
         "//conditions:default": [
