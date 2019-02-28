@@ -42,7 +42,13 @@ func main() {
 
 func run(ctx context.Context) error {
 
-	// Check arguments
+	// Record starting working directory
+	startwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Trace directory argument
 	traceFilemode, err := os.Lstat(*tracesArg)
 	if err != nil {
 		return err
@@ -50,14 +56,18 @@ func run(ctx context.Context) error {
 	if !traceFilemode.IsDir() {
 		return errors.New("Trace path given in argument is not a directory")
 	}
-	tracedir := *tracesArg
+	traceDir := *tracesArg
+	if !filepath.IsAbs(traceDir) {
+		traceDir = filepath.Join(startwd, traceDir)
+	}
 
+	// Gapit path argument
 	gapitPath := *gapitArg
-
-	// Record starting working directory
-	startwd, err := os.Getwd()
-	if err != nil {
-		return err
+	// We assume gapitPath is found in PATH environment unless it
+	// contains a separator, in which case we make it absolute
+	hasSeparator := strings.ContainsAny(gapitPath, string(filepath.Separator))
+	if hasSeparator && !filepath.IsAbs(gapitPath) {
+		gapitPath = filepath.Join(startwd, gapitPath)
 	}
 
 	// Create temporary directory
@@ -67,10 +77,7 @@ func run(ctx context.Context) error {
 	}
 
 	// For each trace, run gapit tests
-	if !filepath.IsAbs(tracedir) {
-		tracedir = filepath.Join(startwd, tracedir)
-	}
-	traces, err := ioutil.ReadDir(tracedir)
+	traces, err := ioutil.ReadDir(traceDir)
 	atLeastOneTraceFound := false
 	nbErr := 0
 
@@ -89,7 +96,7 @@ func run(ctx context.Context) error {
 
 		// Run smoke tests on trace under temporary directory
 		tracewd := filepath.Join(tmpdir, trace)
-		tracepath := filepath.Join(tracedir, trace)
+		tracepath := filepath.Join(traceDir, trace)
 		if err := os.Mkdir(tracewd, 0777); err != nil {
 			return err
 		}
