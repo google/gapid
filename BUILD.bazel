@@ -195,7 +195,6 @@ test_suite(
         "//gapis/replay/scheduler:go_default_test",
         "//gapis/resolve:go_default_test",
         "//gapis/resolve/dependencygraph:go_default_test",
-        "//gapis/resolve/dependencygraph2:go_default_test",
         "//gapis/resolve/dependencygraph2/graph_visualization:go_default_test",
         "//gapis/service/box:go_default_test",
         "//gapis/shadertools:go_default_test",
@@ -209,5 +208,7 @@ test_suite(
         "//test/integration/service:go_default_test",
         "//test/robot/stash/grpc:go_default_test",
         # __END_TESTS
+        # TODO(awoloszyn): RE-enable this once https://github.com/google/gapid/issues/2640 is fixed
+        # "//gapis/resolve/dependencygraph2:go_default_test",
     ],
 )
