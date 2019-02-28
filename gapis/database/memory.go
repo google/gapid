@@ -41,6 +41,9 @@ func NewInMemory(ctx context.Context) Database {
 var sha1Pool = sync.Pool{New: func() interface{} { return sha1.New() }}
 
 func generateID(ty recordType, encoded []byte) id.ID {
+	if ty == blobFunc {
+		ty = blob
+	}
 	h := sha1Pool.Get().(hash.Hash)
 	h.Reset()
 	h.Write([]byte(ty))

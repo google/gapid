@@ -26,7 +26,8 @@ import (
 // Database is the interface to a resource store.
 type Database interface {
 	// Store adds a key-value pair to the database.
-	// It is an error if the id is already mapped to an object.
+	// If the id is already mapped to an object,
+	// then nothing is stored.
 	Store(context.Context, interface{}) (id.ID, error)
 	// Resolve attempts to resolve the final value associated with an id.
 	// It will traverse all Resolvable objects, blocking until they are ready.
