@@ -114,7 +114,7 @@ func (verb *trimVerb) eofEvents(ctx context.Context, capture *path.Capture, clie
 func (verb *trimVerb) getDCERequest(eofEvents []*service.Event, p *path.Capture) []*path.Command {
 	frameCount := verb.Frames.Count
 	if frameCount < 0 {
-		frameCount = len(eofEvents) - verb.Frames.Start + 1
+		frameCount = len(eofEvents) - verb.Frames.Start
 	}
 	dceRequest := make([]*path.Command, 0, frameCount+len(verb.ExtraCommands))
 	for i := 0; i < frameCount; i++ {
