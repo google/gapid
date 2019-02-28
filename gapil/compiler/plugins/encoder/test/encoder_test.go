@@ -181,7 +181,7 @@ func TestMapTypes(t *testing.T) {
 	class := pb.MapTypes{
 		A: &pb.Sint64ToSint64Map{
 			ReferenceID: 1,
-			Keys:        []int64{20, 10, 30},
+			Keys:        []int64{10, 20, 30},
 			Values:      []int64{200, 100, 300},
 		},
 		B: &pb.StringToStringMap{
