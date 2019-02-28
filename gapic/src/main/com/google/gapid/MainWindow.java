@@ -237,7 +237,7 @@ public class MainWindow extends ApplicationWindow {
     manager.add(createGotoMenu(models));
     manager.add(createViewMenu());
     manager.add(createHelpMenu(client, models, widgets));
-    manager.update(true);
+    manager.updateAll(true);
   }
 
   protected MenuManager findMenu(String id) {
