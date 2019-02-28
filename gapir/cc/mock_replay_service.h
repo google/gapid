@@ -30,7 +30,8 @@ namespace test {
 class MockReplayService : public GrpcReplayService {
  public:
   MockReplayService() : GrpcReplayService(nullptr) {}
-  MOCK_METHOD0(getPayload, std::unique_ptr<ReplayService::Payload>());
+  MOCK_METHOD1(getPayload,
+               std::unique_ptr<ReplayService::Payload>(const std::string&));
   MOCK_METHOD2(getResources, std::unique_ptr<ReplayService::Resources>(
                                  const Resource* resources, size_t resSize));
   MOCK_METHOD1(mockedSendPosts, bool(ReplayService::Posts*));

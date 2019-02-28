@@ -170,7 +170,7 @@ Interpreter::Result Interpreter::call(uint32_t opcode) {
     if (mRendererFunctions.count(api) > 0) {
       func = mRendererFunctions[api]->lookup(id);
     } else {
-      if (apiRequestCallback(this, api)) {
+      if (apiRequestCallback && apiRequestCallback(this, api)) {
         func = mRendererFunctions[api]->lookup(id);
       } else {
         GAPID_WARNING("[%u]Error setting up renderer functions for api: %u",
