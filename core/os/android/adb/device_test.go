@@ -39,6 +39,7 @@ func TestParseDevices(t_ *testing.T) {
 				MajorVersion: 6,
 				MinorVersion: 0,
 				PointVersion: 1,
+				APIVersion:   26,
 			},
 			Hardware: &device.Hardware{
 				Name: "hammerhead",

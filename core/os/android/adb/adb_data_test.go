@@ -206,6 +206,8 @@ untagSocket(48) failed with errno -22
 		stub.Regex(`adb -s .* shell getprop ro\.build\.version\.release`, stub.Respond("6.0.1")),
 		stub.Regex(`adb -s .* shell getprop ro\.build\.description`, stub.Respond("hammerhead-user 6.0.1 MMB29Q 2480792 release-keys")),
 		stub.Regex(`adb -s .* shell getprop ro\.product\.cpu\.abi`, stub.Respond("armeabi-v7a")),
+		stub.Regex(`adb -s .* shell getprop ro\.build\.version\.sdk`, stub.Respond("26")),
+
 		stub.Regex(`adb -s .* shell input .*`, stub.Respond("")),
 	)
 }
