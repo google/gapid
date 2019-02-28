@@ -18,11 +18,19 @@ import (
 	"context"
 	"flag"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device/bind"
+	gapir "github.com/google/gapid/gapir/client"
+	"github.com/google/gapid/gapis/database"
+	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/replay/value"
 )
 
 func TestMain(m *testing.M) {
@@ -31,83 +39,82 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	cancel()
 	app.WaitForCleanup(ctx)
-	_ = code
-	//os.Exit(code)
-	os.Exit(-1)
+	os.Exit(code)
 }
 
 func doReplay(t *testing.T, f func(*builder.Builder)) error {
-	// TODO(awoloszyn): Fix this replay test. The executor API
-	//   has changed, and uses a background connection,
-	//   which is not exposed.
-	/*
-		ctx := log.Testing(t)
+	ctx := log.Testing(t)
 
-		r := bind.NewRegistry()
-		ctx = bind.PutRegistry(ctx, r)
+	r := bind.NewRegistry()
+	ctx = bind.PutRegistry(ctx, r)
 
-		ctx = database.Put(ctx, database.NewInMemory(ctx))
+	ctx = database.Put(ctx, database.NewInMemory(ctx))
 
-		device := bind.Host(ctx)
-		client := gapir.New(ctx)
-		abi := device.Instance().GetConfiguration().PreferredABI(nil)
-		os := device.Instance().GetConfiguration().GetOS()
-		connection, err := client.Connect(ctx, device, abi)
-		if err != nil {
-			t.Errorf("Failed to connect to '%v': %v", device, err)
-			return err
-		}
+	device := bind.Host(ctx)
+	client := gapir.New(ctx)
+	abi := device.Instance().GetConfiguration().PreferredABI(nil)
+	os := device.Instance().GetConfiguration().GetOS()
+	connection, err := client.Connect(ctx, device, abi)
+	if err != nil {
+		t.Errorf("Failed to connect to '%v': %v", device, err)
+		return err
+	}
+	bgc, err := replay.MakeBackgroundConnection(ctx, device, connection, abi)
+	if err != nil {
+		t.Errorf("Failed to set up background connection to '%v': %v", device, err)
+		return err
+	}
 
-		b := builder.New(abi.MemoryLayout, nil)
+	b := builder.New(abi.MemoryLayout, nil)
 
-		f(b)
+	f(b)
 
-		payload, decoder, notification, err := b.Build(ctx)
-		if err != nil {
-			t.Errorf("Build failed with error: %v", err)
-			return err
-		}
+	payload, decoder, notification, err := b.Build(ctx)
+	if err != nil {
+		t.Errorf("Build failed with error: %v", err)
+		return err
+	}
 
-		err = replay.Execute(ctx, payload, decoder, notification, connection, abi.MemoryLayout, os)
-		if err != nil {
-			t.Errorf("Executor failed with error: %v", err)
-			return err
-		}
-	*/
+	err = replay.Execute(ctx, "", payload, decoder, notification, bgc, abi.MemoryLayout, os)
+	if err != nil {
+		t.Errorf("Executor failed with error: %v", err)
+		return err
+	}
+
 	return nil
 }
 
 func TestPostbackString(t *testing.T) {
-	/*	expected := "γειά σου κόσμος"
+	expected := "γειά σου κόσμος"
 
-		done := make(chan struct{})
+	done := make(chan struct{})
 
-		if doReplay(t, func(b *builder.Builder) {
-			ptr := b.String(expected)
-			b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) {
-				defer close(done)
-				if err != nil {
-					t.Errorf("Postback returned error: %v", err)
-					return
-				}
-				data := make([]byte, len(expected))
-				r.Data(data)
-				err = r.Error()
-				if err != nil {
-					t.Errorf("Postback returned error: %v", err)
-					return
-				}
-				if expected != string(data) {
-					t.Errorf("Postback data was not as expected. Expected: %v. Got: %v", expected, data)
-				}
-			})
-		}) == nil {
-			<-done
-		}*/
+	if doReplay(t, func(b *builder.Builder) {
+		ptr := b.String(expected)
+		b.Post(ptr, uint64(len(expected)), func(r binary.Reader, err error) {
+			defer close(done)
+			if err != nil {
+				t.Errorf("Postback returned error: %v", err)
+				return
+			}
+			data := make([]byte, len(expected))
+			r.Data(data)
+			err = r.Error()
+			if err != nil {
+				t.Errorf("Postback returned error: %v", err)
+				return
+			}
+			if expected != string(data) {
+				t.Errorf("Postback data was not as expected. Expected: %v. Got: %v", expected, data)
+			}
+		})
+	}) == nil {
+		<-done
+	}
 }
 
 func TestMultiPostback(t *testing.T) {
-	/*done := make(chan struct{})
+	done := make(chan struct{})
 
 	if doReplay(t, func(b *builder.Builder) {
 		ptr := b.AllocateTemporaryMemory(8)
@@ -171,5 +178,4 @@ func TestMultiPostback(t *testing.T) {
 	}) == nil {
 		<-done
 	}
-	*/
 }
