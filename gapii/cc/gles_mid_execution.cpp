@@ -648,8 +648,13 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
   img.height = h;
   img.data.reset(new std::vector<uint8_t>(size));
   GAPID_DEBUG("ReadPixels: Reading %dx%d at %d bytes", w, h, size);
-  imports.glReadnPixels(0, 0, w, h, img.dataFormat, img.dataType,
-                        img.data->size(), img.data->data());
+  if (imports.glReadnPixels) {
+    imports.glReadnPixels(0, 0, w, h, img.dataFormat, img.dataType,
+                          img.data->size(), img.data->data());
+  } else {
+    imports.glReadPixels(0, 0, w, h, img.dataFormat, img.dataType,
+                         img.data->data());
+  }
   CHECK_GL_ERROR("ReadPixels: Failed to read pixels");
   return img;
 }
