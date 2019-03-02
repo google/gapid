@@ -419,7 +419,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     case GL_RED_EXT: switch type {
       case GL_UNSIGNED_BYTE: GL_R8
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_R16F
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_R16F
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_R32F
       default: GL_NONE
@@ -428,7 +428,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     case GL_RG_EXT: switch type {
       case GL_UNSIGNED_BYTE: GL_RG8
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_RG16F
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_RG16F
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_RG32F
       default: GL_NONE
@@ -439,7 +439,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
       @if(Extension.GL_EXT_texture_type_2_10_10_10_REV)
       case GL_UNSIGNED_INT_2_10_10_10_REV: GL_RGB10
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_RGB16F
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_RGB16F
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_RGB32F
       default: GL_NONE
@@ -451,7 +451,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
       @if(Extension.GL_EXT_texture_type_2_10_10_10_REV)
       case GL_UNSIGNED_INT_2_10_10_10_REV: GL_RGB10_A2
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_RGBA16F
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_RGBA16F
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_RGBA32F
       default: GL_NONE
@@ -470,7 +470,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     case GL_LUMINANCE_ALPHA: switch type {
       case GL_UNSIGNED_BYTE: GL_LUMINANCE8_ALPHA8_EXT
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_LUMINANCE_ALPHA16F_EXT
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_LUMINANCE_ALPHA16F_EXT
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_LUMINANCE_ALPHA32F_EXT
       default: GL_NONE
@@ -478,7 +478,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     case GL_LUMINANCE: switch type {
       case GL_UNSIGNED_BYTE: GL_LUMINANCE8_EXT
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_LUMINANCE16F_EXT
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_LUMINANCE16F_EXT
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_LUMINANCE32F_EXT
       default: GL_NONE
@@ -486,7 +486,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     case GL_ALPHA: switch type {
       case GL_UNSIGNED_BYTE: GL_ALPHA8_EXT
       @if(Extension.GL_OES_texture_half_float)
-      case GL_HALF_FLOAT_OES: GL_ALPHA16F_EXT
+      case GL_HALF_FLOAT, GL_HALF_FLOAT_OES: GL_ALPHA16F_EXT
       @if(Extension.GL_OES_texture_float)
       case GL_FLOAT: GL_ALPHA32F_EXT
       default: GL_NONE
