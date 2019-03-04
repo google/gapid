@@ -64,6 +64,14 @@ echo $(date): Run smoketests...
 bazel-bin/cmd/smoketests/linux_amd64_stripped/smoketests -gapit bazel-bin/pkg/gapit -traces test/traces
 echo $(date): Smoketests completed.
 
+$BUILD_ROOT/bazel/bin/bazel \
+    --output_base="${TMP}/bazel_out" \
+    test tests -c opt --config symbols \
+    --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+    --define GAPID_BUILD_SHA="$BUILD_SHA" \
+    --test_tag_filters=-needs_gpu
+echo $(date): Tests completed.
+
 # Build the release packages.
 mkdir $BUILD_ROOT/out
 $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
