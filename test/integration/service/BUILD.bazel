@@ -25,7 +25,10 @@ go_test(
     name = "go_default_test",
     srcs = ["service_test.go"],
     embed = [":go_default_library"],
-    tags = ["integration"],
+    tags = [
+        "integration",
+        "needs_gpu",
+    ],
     deps = [
         "//core/app/auth:go_default_library",
         "//core/assert:go_default_library",
