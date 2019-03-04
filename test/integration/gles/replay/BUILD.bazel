@@ -69,6 +69,7 @@ go_test(
     tags = [
         "integration",
         "manual",
+        "needs_gpu",
     ],
     deps = [
         "//core/assert:go_default_library",
