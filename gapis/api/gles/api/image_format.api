@@ -459,7 +459,7 @@ sub GLenum GetSizedFormatFromTuple(GLenum unsizedFormat, GLenum type) {
     @if(Extension.GL_OES_depth_texture)
     case GL_DEPTH_COMPONENT: switch type {
       case GL_UNSIGNED_SHORT: GL_DEPTH_COMPONENT16
-      case GL_UNSIGNED_INT: GL_DEPTH_COMPONENT32
+      case GL_UNSIGNED_INT: GL_DEPTH_COMPONENT24
       default: GL_NONE
     }
     @if(Extension.GL_OES_packed_depth_stencil)
