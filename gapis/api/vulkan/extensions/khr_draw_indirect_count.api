@@ -1,0 +1,151 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_KHR_draw_indirect_count") define VK_KHR_DRAW_INDIRECT_COUNT_SPEC_VERSION 1
+@extension("VK_KHR_draw_indirect_count") define VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME "VK_KHR_draw_indirect_count"
+
+@internal class vkCmdDrawIndirectCountKHRArgs {
+  VkBuffer     Buffer
+  VkDeviceSize Offset
+  VkBuffer     CountBuffer
+  VkDeviceSize CountBufferOffset
+  u32          MaxDrawCount
+  u32          Stride
+}
+
+// Only call this if draw.MaxDrawCount > 0
+sub void dovkCmdDrawIndirectCountCOMMON!T(T draw) {
+  useRenderPass()
+  readWriteMemoryInBoundGraphicsDescriptorSets()
+  readIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.MaxDrawCount, draw.Stride)
+  readMemoryInBuffer(Buffers[draw.CountBuffer], draw.CountBufferOffset, 4)
+  readCoherentMemoryInBuffer(Buffers[draw.CountBuffer])
+  // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
+  readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+  clearLastDrawInfoDrawCommandParameters()
+}
+
+sub void dovkCmdDrawIndirectCountKHR(ref!vkCmdDrawIndirectCountKHRArgs draw) {
+  if draw.MaxDrawCount > 0 {
+    dovkCmdDrawIndirectCountCOMMON!ref!vkCmdDrawIndirectCountKHRArgs(draw)
+    lastDrawInfo().CommandParameters.DrawIndirectCountKHR = draw
+  }
+}
+
+// Only call this if draw.MaxDrawCount > 0
+sub void dovkCmdDrawIndexedIndirectCountCOMMON!T(T draw) {
+  useRenderPass()
+  readWriteMemoryInBoundGraphicsDescriptorSets()
+  readIndirectDrawBuffer(draw.Buffer, draw.Offset, draw.MaxDrawCount, draw.Stride)
+  readMemoryInBuffer(Buffers[draw.CountBuffer], draw.CountBufferOffset, 4)
+  readCoherentMemoryInBuffer(Buffers[draw.CountBuffer])
+  
+  readCoherentMemoryInBoundIndexBuffer()
+  indexBuffer := lastDrawInfo().BoundIndexBuffer.BoundBuffer.Buffer
+  readMemoryInBuffer(indexBuffer, 0, 0xFFFFFFFF)
+
+  // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
+  readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
+  clearLastDrawInfoDrawCommandParameters()
+}
+
+
+@internal class vkCmdDrawIndexedIndirectCountKHRArgs {
+  VkBuffer     Buffer
+  VkDeviceSize Offset
+  VkBuffer     CountBuffer
+  VkDeviceSize CountBufferOffset
+  u32          MaxDrawCount
+  u32          Stride
+}
+
+sub void dovkCmdDrawIndexedIndirectCountKHR(ref!vkCmdDrawIndexedIndirectCountKHRArgs draw) {
+  if draw.MaxDrawCount > 0 {
+    dovkCmdDrawIndexedIndirectCountCOMMON!ref!vkCmdDrawIndexedIndirectCountKHRArgs(draw)
+    lastDrawInfo().CommandParameters.DrawIndexedIndirectCountKHR = draw
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
+@threadsafe
+cmd void vkCmdDrawIndirectCountKHR(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    VkBuffer        countBuffer,
+    VkDeviceSize    countOffset,
+    u32             maxDrawCount,
+    u32             stride) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    if !(countBuffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDrawIndirectCountKHRArgs(
+        buffer,
+        offset,
+        countBuffer,
+        countOffset,
+        maxDrawCount,
+        stride)
+
+    cmdBuf := CommandBuffers[commandBuffer]
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndirectCountKHR))
+    cmdBuf.BufferCommands.vkCmdDrawIndirectCountKHR[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndirectCountKHR, mapPos)
+  }
+}
+
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
+@threadsafe
+cmd void vkCmdDrawIndexedIndirectCountKHR(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    VkBuffer        countBuffer,
+    VkDeviceSize    countOffset,
+    u32             maxDrawCount,
+    u32             stride) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    if !(countBuffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDrawIndexedIndirectCountKHRArgs(
+        buffer,
+        offset,
+        countBuffer,
+        countOffset,
+        maxDrawCount,
+        stride)
+
+    cmdBuf := CommandBuffers[commandBuffer]
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndexedIndirectCountKHR))
+    cmdBuf.BufferCommands.vkCmdDrawIndexedIndirectCountKHR[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndexedIndirectCountKHR, mapPos)
+  }
+}

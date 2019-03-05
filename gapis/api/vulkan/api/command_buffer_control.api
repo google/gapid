@@ -136,53 +136,57 @@ enum RecordingState {
 }
 
 enum CommandType {
-  cmd_vkCmdBindPipeline           = 0,
-  cmd_vkCmdSetViewport            = 1,
-  cmd_vkCmdSetScissor             = 2,
-  cmd_vkCmdSetLineWidth           = 3,
-  cmd_vkCmdSetDepthBias           = 4,
-  cmd_vkCmdSetBlendConstants      = 5,
-  cmd_vkCmdSetDepthBounds         = 6,
-  cmd_vkCmdSetStencilCompareMask  = 7,
-  cmd_vkCmdSetStencilWriteMask    = 8,
-  cmd_vkCmdSetStencilReference    = 9,
-  cmd_vkCmdBindDescriptorSets     = 10,
-  cmd_vkCmdBindIndexBuffer        = 11,
-  cmd_vkCmdBindVertexBuffers      = 12,
-  cmd_vkCmdDraw                   = 13,
-  cmd_vkCmdDrawIndexed            = 14,
-  cmd_vkCmdDrawIndirect           = 15,
-  cmd_vkCmdDrawIndexedIndirect    = 16,
-  cmd_vkCmdDispatch               = 17,
-  cmd_vkCmdDispatchIndirect       = 18,
-  cmd_vkCmdCopyBuffer             = 19,
-  cmd_vkCmdCopyImage              = 20,
-  cmd_vkCmdBlitImage              = 21,
-  cmd_vkCmdCopyBufferToImage      = 22,
-  cmd_vkCmdCopyImageToBuffer      = 23,
-  cmd_vkCmdUpdateBuffer           = 24,
-  cmd_vkCmdFillBuffer             = 25,
-  cmd_vkCmdClearColorImage        = 26,
-  cmd_vkCmdClearDepthStencilImage = 27,
-  cmd_vkCmdClearAttachments       = 28,
-  cmd_vkCmdResolveImage           = 29,
-  cmd_vkCmdSetEvent               = 30,
-  cmd_vkCmdResetEvent             = 31,
-  cmd_vkCmdWaitEvents             = 32,
-  cmd_vkCmdPipelineBarrier        = 33,
-  cmd_vkCmdBeginQuery             = 34,
-  cmd_vkCmdEndQuery               = 35,
-  cmd_vkCmdResetQueryPool         = 36,
-  cmd_vkCmdWriteTimestamp         = 37,
-  cmd_vkCmdCopyQueryPoolResults   = 38,
-  cmd_vkCmdPushConstants          = 39,
-  cmd_vkCmdBeginRenderPass        = 40,
-  cmd_vkCmdNextSubpass            = 41,
-  cmd_vkCmdEndRenderPass          = 42,
-  cmd_vkCmdExecuteCommands        = 43,
-  cmd_vkCmdDebugMarkerBeginEXT    = 44,
-  cmd_vkCmdDebugMarkerEndEXT      = 45,
-  cmd_vkCmdDebugMarkerInsertEXT   = 46,
+  cmd_vkCmdBindPipeline                  = 0,
+  cmd_vkCmdSetViewport                   = 1,
+  cmd_vkCmdSetScissor                    = 2,
+  cmd_vkCmdSetLineWidth                  = 3,
+  cmd_vkCmdSetDepthBias                  = 4,
+  cmd_vkCmdSetBlendConstants             = 5,
+  cmd_vkCmdSetDepthBounds                = 6,
+  cmd_vkCmdSetStencilCompareMask         = 7,
+  cmd_vkCmdSetStencilWriteMask           = 8,
+  cmd_vkCmdSetStencilReference           = 9,
+  cmd_vkCmdBindDescriptorSets            = 10,
+  cmd_vkCmdBindIndexBuffer               = 11,
+  cmd_vkCmdBindVertexBuffers             = 12,
+  cmd_vkCmdDraw                          = 13,
+  cmd_vkCmdDrawIndexed                   = 14,
+  cmd_vkCmdDrawIndirect                  = 15,
+  cmd_vkCmdDrawIndexedIndirect           = 16,
+  cmd_vkCmdDispatch                      = 17,
+  cmd_vkCmdDispatchIndirect              = 18,
+  cmd_vkCmdCopyBuffer                    = 19,
+  cmd_vkCmdCopyImage                     = 20,
+  cmd_vkCmdBlitImage                     = 21,
+  cmd_vkCmdCopyBufferToImage             = 22,
+  cmd_vkCmdCopyImageToBuffer             = 23,
+  cmd_vkCmdUpdateBuffer                  = 24,
+  cmd_vkCmdFillBuffer                    = 25,
+  cmd_vkCmdClearColorImage               = 26,
+  cmd_vkCmdClearDepthStencilImage        = 27,
+  cmd_vkCmdClearAttachments              = 28,
+  cmd_vkCmdResolveImage                  = 29,
+  cmd_vkCmdSetEvent                      = 30,
+  cmd_vkCmdResetEvent                    = 31,
+  cmd_vkCmdWaitEvents                    = 32,
+  cmd_vkCmdPipelineBarrier               = 33,
+  cmd_vkCmdBeginQuery                    = 34,
+  cmd_vkCmdEndQuery                      = 35,
+  cmd_vkCmdResetQueryPool                = 36,
+  cmd_vkCmdWriteTimestamp                = 37,
+  cmd_vkCmdCopyQueryPoolResults          = 38,
+  cmd_vkCmdPushConstants                 = 39,
+  cmd_vkCmdBeginRenderPass               = 40,
+  cmd_vkCmdNextSubpass                   = 41,
+  cmd_vkCmdEndRenderPass                 = 42,
+  cmd_vkCmdExecuteCommands               = 43,
+  cmd_vkCmdDebugMarkerBeginEXT           = 44,
+  cmd_vkCmdDebugMarkerEndEXT             = 45,
+  cmd_vkCmdDebugMarkerInsertEXT          = 46,
+  cmd_vkCmdDrawIndirectCountKHR          = 47,
+  cmd_vkCmdDrawIndexedIndirectCountKHR   = 48,
+  cmd_vkCmdDrawIndirectCountAMD          = 49,
+  cmd_vkCmdDrawIndexedIndirectCountAMD   = 50,
   cmd_vkNoCommand                 = 0xFFFFFFFF
 }
 
@@ -257,6 +261,10 @@ enum SemaphoreUpdate {
   @untrackedMap dense_map!(u32, ref!vkCmdDebugMarkerBeginEXTArgs)    vkCmdDebugMarkerBeginEXT
   @untrackedMap dense_map!(u32, ref!vkCmdDebugMarkerEndEXTArgs)      vkCmdDebugMarkerEndEXT
   @untrackedMap dense_map!(u32, ref!vkCmdDebugMarkerInsertEXTArgs)   vkCmdDebugMarkerInsertEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndirectCountKHRArgs)   vkCmdDrawIndirectCountKHR
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndexedIndirectCountKHRArgs)   vkCmdDrawIndexedIndirectCountKHR
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndirectCountAMDArgs)   vkCmdDrawIndirectCountAMD
+  @untrackedMap dense_map!(u32, ref!vkCmdDrawIndexedIndirectCountAMDArgs)   vkCmdDrawIndexedIndirectCountAMD
 }
 
 @internal class CommandBufferObject {
@@ -505,6 +513,10 @@ sub void resetBufferCommands(ref!CommandBufferObject obj) {
   clear(obj.BufferCommands.vkCmdDebugMarkerBeginEXT)
   clear(obj.BufferCommands.vkCmdDebugMarkerEndEXT)
   clear(obj.BufferCommands.vkCmdDebugMarkerInsertEXT)
+  clear(obj.BufferCommands.vkCmdDrawIndirectCountKHR)
+  clear(obj.BufferCommands.vkCmdDrawIndexedIndirectCountKHR)
+  clear(obj.BufferCommands.vkCmdDrawIndirectCountAMD)
+  clear(obj.BufferCommands.vkCmdDrawIndexedIndirectCountAMD)
 }
 
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {

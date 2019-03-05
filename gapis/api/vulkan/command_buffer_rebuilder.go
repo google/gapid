@@ -725,6 +725,102 @@ func rebuildVkCmdDrawIndexedIndirect(
 	), nil
 }
 
+func rebuildVkCmdDrawIndirectCountKHR(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdDrawIndirectCountKHRArgsʳ) (func(), api.Cmd, error) {
+	if !GetState(s).Buffers().Contains(d.Buffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.Buffer())
+	}
+	if !GetState(s).Buffers().Contains(d.CountBuffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Count Buffer %v", d.Buffer())
+	}
+
+	return func() {}, cb.VkCmdDrawIndirectCountKHR(commandBuffer,
+		d.Buffer(),
+		d.Offset(),
+		d.CountBuffer(),
+		d.CountBufferOffset(),
+		d.MaxDrawCount(),
+		d.Stride(),
+	), nil
+}
+
+func rebuildVkCmdDrawIndexedIndirectCountKHR(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdDrawIndexedIndirectCountKHRArgsʳ) (func(), api.Cmd, error) {
+	if !GetState(s).Buffers().Contains(d.Buffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.Buffer())
+	}
+	if !GetState(s).Buffers().Contains(d.CountBuffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Count Buffer %v", d.Buffer())
+	}
+
+	return func() {}, cb.VkCmdDrawIndexedIndirectCountKHR(commandBuffer,
+		d.Buffer(),
+		d.Offset(),
+		d.CountBuffer(),
+		d.CountBufferOffset(),
+		d.MaxDrawCount(),
+		d.Stride(),
+	), nil
+}
+
+func rebuildVkCmdDrawIndirectCountAMD(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdDrawIndirectCountAMDArgsʳ) (func(), api.Cmd, error) {
+	if !GetState(s).Buffers().Contains(d.Buffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.Buffer())
+	}
+	if !GetState(s).Buffers().Contains(d.CountBuffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Count Buffer %v", d.Buffer())
+	}
+
+	return func() {}, cb.VkCmdDrawIndirectCountAMD(commandBuffer,
+		d.Buffer(),
+		d.Offset(),
+		d.CountBuffer(),
+		d.CountBufferOffset(),
+		d.MaxDrawCount(),
+		d.Stride(),
+	), nil
+}
+
+func rebuildVkCmdDrawIndexedIndirectCountAMD(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdDrawIndexedIndirectCountAMDArgsʳ) (func(), api.Cmd, error) {
+	if !GetState(s).Buffers().Contains(d.Buffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Buffer %v", d.Buffer())
+	}
+	if !GetState(s).Buffers().Contains(d.CountBuffer()) {
+		return nil, nil, fmt.Errorf("Cannot find Count Buffer %v", d.Buffer())
+	}
+
+	return func() {}, cb.VkCmdDrawIndexedIndirectCountAMD(commandBuffer,
+		d.Buffer(),
+		d.Offset(),
+		d.CountBuffer(),
+		d.CountBufferOffset(),
+		d.MaxDrawCount(),
+		d.Stride(),
+	), nil
+}
+
 func rebuildVkCmdDrawIndirect(
 	ctx context.Context,
 	cb CommandBuilder,
@@ -1244,6 +1340,14 @@ func GetCommandArgs(ctx context.Context,
 		return cmds.VkCmdDebugMarkerEndEXT().Get(cr.MapIndex())
 	case CommandType_cmd_vkCmdDebugMarkerInsertEXT:
 		return cmds.VkCmdDebugMarkerInsertEXT().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdDrawIndirectCountKHR:
+		return cmds.VkCmdDrawIndirectCountKHR().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdDrawIndexedIndirectCountKHR:
+		return cmds.VkCmdDrawIndexedIndirectCountKHR().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdDrawIndirectCountAMD:
+		return cmds.VkCmdDrawIndirectCountAMD().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdDrawIndexedIndirectCountAMD:
+		return cmds.VkCmdDrawIndexedIndirectCountAMD().Get(cr.MapIndex())
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
@@ -1349,6 +1453,14 @@ func GetCommandFunction(cr *CommandReference) interface{} {
 		return subDovkCmdDebugMarkerEndEXT
 	case CommandType_cmd_vkCmdDebugMarkerInsertEXT:
 		return subDovkCmdDebugMarkerInsertEXT
+	case CommandType_cmd_vkCmdDrawIndirectCountKHR:
+		return subDovkCmdDrawIndirectCountKHR
+	case CommandType_cmd_vkCmdDrawIndexedIndirectCountKHR:
+		return subDovkCmdDrawIndexedIndirectCountKHR
+	case CommandType_cmd_vkCmdDrawIndirectCountAMD:
+		return subDovkCmdDrawIndirectCountAMD
+	case CommandType_cmd_vkCmdDrawIndexedIndirectCountAMD:
+		return subDovkCmdDrawIndexedIndirectCountAMD
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
@@ -1461,6 +1573,14 @@ func AddCommand(ctx context.Context,
 		return rebuildVkCmdDebugMarkerEndEXT(ctx, cb, commandBuffer, r, s, t)
 	case VkCmdDebugMarkerInsertEXTArgsʳ:
 		return rebuildVkCmdDebugMarkerInsertEXT(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdDrawIndirectCountKHRArgsʳ:
+		return rebuildVkCmdDrawIndirectCountKHR(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdDrawIndexedIndirectCountKHRArgsʳ:
+		return rebuildVkCmdDrawIndexedIndirectCountKHR(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdDrawIndirectCountAMDArgsʳ:
+		return rebuildVkCmdDrawIndirectCountAMD(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdDrawIndexedIndirectCountAMDArgsʳ:
+		return rebuildVkCmdDrawIndexedIndirectCountAMD(ctx, cb, commandBuffer, r, s, t)
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)

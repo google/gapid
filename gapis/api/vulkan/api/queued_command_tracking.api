@@ -314,6 +314,14 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdDebugMarkerEndEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerEndEXT[reference.MapIndex])
     case cmd_vkCmdDebugMarkerInsertEXT:
       dovkCmdDebugMarkerInsertEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDebugMarkerInsertEXT[reference.MapIndex])
+    case cmd_vkCmdDrawIndirectCountKHR:
+      dovkCmdDrawIndirectCountKHR(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndirectCountKHR[reference.MapIndex])
+    case cmd_vkCmdDrawIndexedIndirectCountKHR:
+      dovkCmdDrawIndexedIndirectCountKHR(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndexedIndirectCountKHR[reference.MapIndex])
+    case cmd_vkCmdDrawIndirectCountAMD:
+      dovkCmdDrawIndirectCountAMD(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndirectCountAMD[reference.MapIndex])
+    case cmd_vkCmdDrawIndexedIndirectCountAMD:
+      dovkCmdDrawIndexedIndirectCountAMD(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndexedIndirectCountAMD[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }
