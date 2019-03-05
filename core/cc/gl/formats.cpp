@@ -93,7 +93,7 @@ bool getDepthStencilFormat(int d, int s, uint32_t& depth, uint32_t& stencil) {
           stencil = GL_DEPTH24_STENCIL8;
           return true;
         case 32:
-          depth = GL_DEPTH24_STENCIL8;
+          depth = GL_DEPTH32F_STENCIL8;
           stencil = GL_DEPTH32F_STENCIL8;
           return true;
       }
