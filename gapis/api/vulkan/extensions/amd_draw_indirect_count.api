@@ -1,0 +1,121 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///////////////
+// Constants //
+///////////////
+
+@extension("VK_AMD_draw_indirect_count") define VK_AMD_DRAW_INDIRECT_COUNT_SPEC_VERSION 1
+@extension("VK_AMD_draw_indirect_count") define VK_AMD_DRAW_INDIRECT_COUNT_EXTENSION_NAME "VK_AMD_draw_indirect_count"
+
+@internal class vkCmdDrawIndirectCountAMDArgs {
+  VkBuffer     Buffer
+  VkDeviceSize Offset
+  VkBuffer     CountBuffer
+  VkDeviceSize CountBufferOffset
+  u32          MaxDrawCount
+  u32          Stride
+}
+
+sub void dovkCmdDrawIndirectCountAMD(ref!vkCmdDrawIndirectCountAMDArgs draw) {
+  if draw.MaxDrawCount > 0 {
+    dovkCmdDrawIndirectCountCOMMON!ref!vkCmdDrawIndirectCountAMDArgs(draw)
+    lastDrawInfo().CommandParameters.DrawIndirectCountAMD = draw
+  }
+}
+
+sub void dovkCmdDrawIndexedIndirectCountAMD(ref!vkCmdDrawIndexedIndirectCountAMDArgs draw) {
+  if draw.MaxDrawCount > 0 {
+    dovkCmdDrawIndexedIndirectCountCOMMON!ref!vkCmdDrawIndexedIndirectCountAMDArgs(draw)
+    lastDrawInfo().CommandParameters.DrawIndexedIndirectCountAMD = draw
+  }
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
+@threadsafe
+cmd void vkCmdDrawIndirectCountAMD(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    VkBuffer        countBuffer,
+    VkDeviceSize    countOffset,
+    u32             maxDrawCount,
+    u32             stride) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    if !(countBuffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDrawIndirectCountAMDArgs(
+        buffer,
+        offset,
+        countBuffer,
+        countOffset,
+        maxDrawCount,
+        stride)
+
+    cmdBuf := CommandBuffers[commandBuffer]
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndirectCountAMD))
+    cmdBuf.BufferCommands.vkCmdDrawIndirectCountAMD[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndirectCountAMD, mapPos)
+  }
+}
+
+
+@internal class vkCmdDrawIndexedIndirectCountAMDArgs {
+  VkBuffer     Buffer
+  VkDeviceSize Offset
+  VkBuffer     CountBuffer
+  VkDeviceSize CountBufferOffset
+  u32          MaxDrawCount
+  u32          Stride
+}
+
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
+@threadsafe
+cmd void vkCmdDrawIndexedIndirectCountAMD(
+    VkCommandBuffer commandBuffer,
+    VkBuffer        buffer,
+    VkDeviceSize    offset,
+    VkBuffer        countBuffer,
+    VkDeviceSize    countOffset,
+    u32             maxDrawCount,
+    u32             stride) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    if !(buffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    if !(countBuffer in Buffers) { vkErrorInvalidBuffer(buffer) }
+    args := new!vkCmdDrawIndexedIndirectCountAMDArgs(
+        buffer,
+        offset,
+        countBuffer,
+        countOffset,
+        maxDrawCount,
+        stride)
+
+    cmdBuf := CommandBuffers[commandBuffer]
+
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDrawIndexedIndirectCountAMD))
+    cmdBuf.BufferCommands.vkCmdDrawIndexedIndirectCountAMD[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdDrawIndexedIndirectCountAMD, mapPos)
+  }
+}

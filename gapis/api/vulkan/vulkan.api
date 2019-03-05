@@ -87,6 +87,8 @@ import "extensions/khr_external_memory_capabilities.api"
 import "extensions/khr_external_semaphore_capabilities.api"
 import "extensions/khr_variable_pointers.api"
 import "extensions/khr_sampler_ycbcr_conversion.api"
+import "extensions/amd_draw_indirect_count.api"
+import "extensions/khr_draw_indirect_count.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -227,6 +229,8 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_maintenance1"] = true
   supported.ExtensionNames["VK_KHR_maintenance2"] = true
   supported.ExtensionNames["VK_KHR_maintenance3"] = true
+  supported.ExtensionNames["VK_AMD_draw_indirect_count"] = true
+  supported.ExtensionNames["VK_KHR_draw_indirect_count"] = true
   return supported
 }
 
@@ -237,10 +241,14 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
 // This contains the draw command parameters. Only one of the draw data should be
 // valid at a time. Others should be null.
 @internal class DrawParameters {
-  ref!vkCmdDrawArgs                Draw
-  ref!vkCmdDrawIndexedArgs         DrawIndexed
-  ref!vkCmdDrawIndirectArgs        DrawIndirect
-  ref!vkCmdDrawIndexedIndirectArgs DrawIndexedIndirect
+  ref!vkCmdDrawArgs                         Draw
+  ref!vkCmdDrawIndexedArgs                  DrawIndexed
+  ref!vkCmdDrawIndirectArgs                 DrawIndirect
+  ref!vkCmdDrawIndexedIndirectArgs          DrawIndexedIndirect
+  ref!vkCmdDrawIndirectCountKHRArgs         DrawIndirectCountKHR
+  ref!vkCmdDrawIndexedIndirectCountKHRArgs  DrawIndexedIndirectCountKHR
+  ref!vkCmdDrawIndirectCountAMDArgs         DrawIndirectCountAMD
+  ref!vkCmdDrawIndexedIndirectCountAMDArgs  DrawIndexedIndirectCountAMD
 }
 
 // This contains the information about a draw
@@ -407,6 +415,10 @@ sub void clearLastDrawInfoDrawCommandParameters() {
   lastDrawInfo().CommandParameters.DrawIndexed = null
   lastDrawInfo().CommandParameters.DrawIndirect = null
   lastDrawInfo().CommandParameters.DrawIndexedIndirect = null
+  lastDrawInfo().CommandParameters.DrawIndirectCountKHR = null
+  lastDrawInfo().CommandParameters.DrawIndexedIndirectCountKHR = null
+  lastDrawInfo().CommandParameters.DrawIndirectCountAMD = null
+  lastDrawInfo().CommandParameters.DrawIndexedIndirectCountAMD = null
 }
 
 sub ref!ComputeInfo lastComputeInfo() {

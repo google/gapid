@@ -271,7 +271,6 @@ cmd void vkCmdDrawIndexed(
   u32          Stride
 }
 
-@spy_disabled
 sub void readIndirectDrawBuffer(VkBuffer buf, VkDeviceSize offset, u32 drawCount, u32 stride) {
   if !(buf in Buffers) {
     vkErrorInvalidBuffer(buf)
@@ -279,6 +278,7 @@ sub void readIndirectDrawBuffer(VkBuffer buf, VkDeviceSize offset, u32 drawCount
     command_size := as!VkDeviceSize(16)
     indirect_buffer_read_size := as!VkDeviceSize((drawCount - 1) * stride) + command_size
     readMemoryInBuffer(Buffers[buf], offset, indirect_buffer_read_size)
+    readCoherentMemoryInBuffer(Buffers[buf])
   }
 }
 

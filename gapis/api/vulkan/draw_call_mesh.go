@@ -157,6 +157,14 @@ func drawCallMesh(ctx context.Context, dc *VkQueueSubmit, p *path.Mesh, r *path.
 		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndirect not implemented")
 	} else if p := lastDrawInfo.CommandParameters().DrawIndexedIndirect(); !p.IsNil() {
 		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndexedIndirect not implemented")
+	} else if p := lastDrawInfo.CommandParameters().DrawIndirectCountKHR(); !p.IsNil() {
+		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndirectCountKHR not implemented")
+	} else if p := lastDrawInfo.CommandParameters().DrawIndexedIndirectCountKHR(); !p.IsNil() {
+		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndexedIndirectCountKHR not implemented")
+	} else if p := lastDrawInfo.CommandParameters().DrawIndirectCountAMD(); !p.IsNil() {
+		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndirectCountAMD not implemented")
+	} else if p := lastDrawInfo.CommandParameters().DrawIndexedIndirectCountAMD(); !p.IsNil() {
+		return nil, fmt.Errorf("Draw mesh for vkCmdDrawIndexedIndirectCountAMD not implemented")
 	}
 
 	guessSemantics(vb, p.Options.Hints())
