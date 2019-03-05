@@ -22,10 +22,13 @@ import (
 
 // fbai is the result getFramebufferAttachmentInfo.
 type fbai struct {
-	width        uint32
-	height       uint32
-	format       GLenum // sized
-	multisampled bool
+	width          uint32
+	height         uint32
+	sizedFormat    GLenum
+	internalFormat GLenum // These are GL_NONE, unless the attachement is a texture
+	format         GLenum // that was initialized with a buffer of this internal
+	ty             GLenum // format, format and type.
+	multisampled   bool
 }
 
 func attachmentToEnum(a api.FramebufferAttachment) (GLenum, error) {
@@ -93,7 +96,7 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 				t.ID(), a.TextureLevel(), a.TextureLayer())
 		}
 		multisampled := l.Samples() > 0
-		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), multisampled}, nil
+		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), l.InternalFormat(), l.DataFormat(), l.DataType(), multisampled}, nil
 	case GLenum_GL_RENDERBUFFER:
 		r := a.Renderbuffer()
 		l := r.Image()
@@ -101,7 +104,7 @@ func (s *State) getFramebufferAttachmentInfo(thread uint64, fb FramebufferId, at
 			return fbai{}, fmt.Errorf("Renderbuffer %v does not have any image date", r.ID())
 		}
 		multisampled := l.Samples() > 0
-		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), multisampled}, nil
+		return fbai{uint32(l.Width()), uint32(l.Height()), l.SizedFormat(), GLenum_GL_NONE, GLenum_GL_NONE, GLenum_GL_NONE, multisampled}, nil
 	default:
 		return fbai{}, fmt.Errorf("Unknown framebuffer attachment type %T", a.Type())
 	}

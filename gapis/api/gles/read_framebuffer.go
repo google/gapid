@@ -108,7 +108,7 @@ func postFBData(ctx context.Context,
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 		return
 	}
-	if fbai.format == 0 {
+	if fbai.sizedFormat == 0 {
 		log.W(ctx, "Failed to read framebuffer after cmd %v: no image format", id)
 		res(nil, &service.ErrDataUnavailable{Reason: messages.ErrFramebufferUnavailable()})
 		return
@@ -134,7 +134,7 @@ func postFBData(ctx context.Context,
 	defer t.revert(ctx)
 	t.glBindFramebuffer_Read(ctx, fb)
 
-	unsizedFormat, ty := getUnsizedFormatAndType(fbai.format)
+	unsizedFormat, ty := getUnsizedFormatAndType(fbai.sizedFormat)
 
 	imgFmt, err := getImageFormat(unsizedFormat, ty)
 	if err != nil {
@@ -227,7 +227,7 @@ func postFBData(ctx context.Context,
 		}
 
 		mutateAndWriteEach(ctx, out, dID,
-			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(inW), GLsizei(inH)),
+			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.sizedFormat, GLsizei(inW), GLsizei(inH)),
 			cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, GLenum_GL_RENDERBUFFER, renderbufferID),
 			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(inW), GLint(inH), bufferBits, GLenum_GL_NEAREST),
 		)
@@ -264,7 +264,7 @@ func postFBData(ctx context.Context,
 		}
 
 		mutateAndWriteEach(ctx, out, dID,
-			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.format, GLsizei(outW), GLsizei(outH)),
+			cb.GlRenderbufferStorage(GLenum_GL_RENDERBUFFER, fbai.sizedFormat, GLsizei(outW), GLsizei(outH)),
 			cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, attachment, GLenum_GL_RENDERBUFFER, renderbufferID),
 			cb.GlBlitFramebuffer(0, 0, GLint(inW), GLint(inH), 0, 0, GLint(outW), GLint(outH), bufferBits, sampling),
 		)
@@ -272,7 +272,7 @@ func postFBData(ctx context.Context,
 	}
 
 	if hasDepth && version.IsES {
-		copyDepthToColorGLES(ctx, dID, thread, s, out, t, fbai.format, inW, inH)
+		copyDepthToColorGLES(ctx, dID, thread, s, out, t, fbai, inW, inH)
 	}
 
 	if needFBQuery {

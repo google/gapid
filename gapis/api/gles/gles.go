@@ -231,13 +231,13 @@ func GetFramebufferAttachmentInfoByID(
 	}
 
 	fbai, err := s.getFramebufferAttachmentInfo(thread, fb, glAtt)
-	if fbai.format == 0 {
+	if fbai.sizedFormat == 0 {
 		return api.FramebufferAttachmentInfo{}, fmt.Errorf("No format set")
 	}
 	if err != nil {
 		return api.FramebufferAttachmentInfo{}, err
 	}
-	fmt, ty := getUnsizedFormatAndType(fbai.format)
+	fmt, ty := getUnsizedFormatAndType(fbai.sizedFormat)
 	f, err := getImageFormat(fmt, ty)
 	if err != nil {
 		return api.FramebufferAttachmentInfo{}, err
