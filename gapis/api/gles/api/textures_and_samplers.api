@@ -124,6 +124,12 @@ class Image {
   //   (sizedFormat, GL_NONE) - Compressed data.
   @unused GLenum DataFormat
   @unused GLenum DataType
+
+  // The internal format as specified by the application. It may be
+  // the same as SizedFormat, if the application requested a sized
+  // format, but may be unsized and different from SizedFormat, or
+  // GL_NONE for compressed textures and non texture images.
+  @unused GLenum InternalFormat
 }
 
 @internal
@@ -446,6 +452,7 @@ sub void TexImage(TexImageFlags  flags,
           Samples: samples,
           FixedSampleLocations: fixedsamplelocations,
           SizedFormat: sfBox.SizedFormat,
+          InternalFormat: sized_format,
           DataFormat: data_format,
           DataType: data_type))
       }
@@ -1031,6 +1038,7 @@ cmd void glGenerateMipmap(GLenum target) {
             Width: max!GLsizei(1, width),
             Height: max!GLsizei(1, height),
             SizedFormat: base.SizedFormat,
+            InternalFormat: base.InternalFormat,
             DataFormat: base.DataFormat,
             DataType: base.DataType)
           // Set state first so that the command below knowns image size.

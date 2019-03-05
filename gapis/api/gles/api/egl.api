@@ -433,11 +433,12 @@ cmd EGLImageKHR eglCreateImageKHR(EGLDisplay      display,
       eglImage.Extra = info
       for i in 0 .. max!u32(info.LayerCount, 1) {
         image := new!Image(
-          Width:        as!GLsizei(info.Width),
-          Height:       as!GLsizei(info.Height),
-          SizedFormat:  sf,
-          DataFormat:   sfInfo.UnsizedFormat,
-          DataType:     sfInfo.DataType,
+          Width:          as!GLsizei(info.Width),
+          Height:         as!GLsizei(info.Height),
+          SizedFormat:    sf,
+          InternalFormat: sf,
+          DataFormat:     sfInfo.UnsizedFormat,
+          DataType:       sfInfo.DataType,
         )
         size := uncompressedImageSize(image.Width, image.Height, image.DataFormat, image.DataType)
         image.Data = make!u8(size)
