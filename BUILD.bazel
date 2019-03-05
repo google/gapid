@@ -53,6 +53,11 @@ alias(
     actual = "//cmd/enum_lookup",
 )
 
+alias(
+    name = "smoketests",
+    actual = "//cmd/smoketests",
+)
+
 # Rules to build the expected installed structure for running
 filegroup(
     name = "pkg",
@@ -72,7 +77,6 @@ copy_to(
         "//cmd/gapit",
         "//tools/build:build.properties",
         "//cmd/device-info:device-info",
-        "//cmd/smoketests:smoketests",
     ] + select({
         "//tools/build:no-android": [],
         "//conditions:default": [
