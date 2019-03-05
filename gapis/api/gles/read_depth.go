@@ -26,7 +26,7 @@ import (
 // current read framebuffer into an new framebuffer (which is left bound as the
 // read framebuffer upon exit) as the color attachment in R32F format, allowing
 // it to be read via glReadPixels.
-func copyDepthToColorGLES(ctx context.Context, dID api.CmdID, thread uint64, s *api.GlobalState, out transform.Writer, t *tweaker, format GLenum, width, height int32) {
+func copyDepthToColorGLES(ctx context.Context, dID api.CmdID, thread uint64, s *api.GlobalState, out transform.Writer, t *tweaker, fbai fbai, width, height int32) {
 	const (
 		aScreenCoordsLocation AttributeLocation = 0
 		aScreenCoords                           = "aScreenCoords"
@@ -71,7 +71,11 @@ func copyDepthToColorGLES(ctx context.Context, dID api.CmdID, thread uint64, s *
 	t.glBindTexture_2D(ctx, tex)
 	out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MIN_FILTER, GLint(GLenum_GL_NEAREST)))
 	out.MutateAndWrite(ctx, dID, cb.GlTexParameteri(GLenum_GL_TEXTURE_2D, GLenum_GL_TEXTURE_MAG_FILTER, GLint(GLenum_GL_NEAREST)))
-	out.MutateAndWrite(ctx, dID, cb.GlTexStorage2D(GLenum_GL_TEXTURE_2D, 1, format, ws, hs))
+	if fbai.internalFormat != GLenum_GL_NONE && fbai.internalFormat != fbai.sizedFormat {
+		out.MutateAndWrite(ctx, dID, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(fbai.internalFormat), ws, hs, 0, fbai.format, fbai.ty, memory.Nullptr))
+	} else {
+		out.MutateAndWrite(ctx, dID, cb.GlTexStorage2D(GLenum_GL_TEXTURE_2D, 1, fbai.sizedFormat, ws, hs))
+	}
 	t.glBindFramebuffer_Draw(ctx, fb)
 	out.MutateAndWrite(ctx, dID, cb.GlFramebufferTexture2D(GLenum_GL_DRAW_FRAMEBUFFER, GLenum_GL_DEPTH_ATTACHMENT, GLenum_GL_TEXTURE_2D, tex, 0))
 	out.MutateAndWrite(ctx, dID, cb.GlBlitFramebuffer(0, 0, wi, hi, 0, 0, wi, hi, GLbitfield_GL_DEPTH_BUFFER_BIT, GLenum_GL_NEAREST))
