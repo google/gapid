@@ -66,7 +66,8 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
   private final MessageProvider messages = new MessageProvider();
   private final LoadablePanel<SashForm> loading;
   private final TreeViewer viewer;
-  private final Text reportDetails;
+  private final Composite detailsGroup;
+  private Text reportDetails;
 
   public ReportView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
@@ -81,8 +82,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
     ViewLabelProvider labelProvider = new ViewLabelProvider(viewer, widgets.theme, messages);
     viewer.setLabelProvider(labelProvider);
 
-    Composite detailsGroup = Widgets.createGroup(splitter, "Details");
-    reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.H_SCROLL | SWT.V_SCROLL);
+    detailsGroup = Widgets.createGroup(splitter, "Details");
 
     splitter.setWeights(models.settings.reportSplitterWeights);
 
@@ -110,12 +110,20 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
           item = item.getParentItem();
         }
         if (item != null) {
-          reportDetails.setText(((Group)item.getData()).name);
-          reportDetails.requestLayout();
+          getDetails().setText(((Group)item.getData()).name);
+          getDetails().requestLayout();
         }
       }
     });
     addListener(SWT.Dispose, e -> models.settings.reportSplitterWeights = splitter.getWeights());
+  }
+
+  private Text getDetails() {
+    // Lazy init'ed due to https://github.com/google/gapid/issues/2624
+    if (reportDetails == null) {
+      reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.H_SCROLL | SWT.V_SCROLL);
+    }
+    return reportDetails;
   }
 
   @Override
@@ -149,7 +157,7 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
   @Override
   public void onReportLoaded() {
     messages.clear();
-    reportDetails.setText("");
+    getDetails().setText("");
     if (models.reports.isLoaded()) {
       updateReport();
     } else {
