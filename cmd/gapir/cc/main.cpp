@@ -380,7 +380,8 @@ void android_main(struct android_app* app) {
     int events;
     const int timeoutMilliseconds = 1000;
     struct android_poll_source* source;
-    while (ALooper_pollAll(timeoutMilliseconds, &fdesc, &events, (void**)&source) >= 0) {
+    while (ALooper_pollAll(timeoutMilliseconds, &fdesc, &events,
+                           (void**)&source) >= 0) {
       // process this event
       if (source) {
         source->process(app, source);
