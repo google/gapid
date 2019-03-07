@@ -74,6 +74,8 @@ func NewWithListener(ctx context.Context, l net.Listener, cfg Config, srvChan ch
 			}
 			if cfg.IdleTimeout != 0 {
 				crash.Go(func() { s.stopIfIdle(ctx, server, cfg.IdleTimeout, stop) })
+			} else {
+				crash.Go(func() { s.stopOnInterrupt(ctx, server, stop) })
 			}
 			return nil
 		}, grpc.UnaryInterceptor(auth.ServerInterceptor(cfg.AuthToken)))
@@ -117,7 +119,7 @@ func (s *grpcServer) inRPC() func() {
 }
 
 // stopIfIdle calls GracefulStop on server if there are no writes the the
-// keepAlive chan within idleTimeout.
+// keepAlive chan within idleTimeout or if the current process is interrupted.
 // This function blocks until there's an idle timeout, or ctx is cancelled.
 func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTimeout time.Duration, stop func()) {
 	// Split the idleTimeout into N smaller chunks, and check that there was
@@ -156,6 +158,21 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 			idleTime = 0
 		}
 	}
+}
+
+// stopOnInterrupt calls GracefulStop on server if the current process is interrupted.
+func (s *grpcServer) stopOnInterrupt(ctx context.Context, server *grpc.Server, stop func()) {
+	stoppedSignal, stopped := task.NewSignal()
+	defer func() {
+		stop()
+		server.GracefulStop()
+		stopped(ctx)
+	}()
+
+	// Wait for the server to stop before terminating the app.
+	app.AddCleanupSignal(stoppedSignal)
+
+	<-task.ShouldStop(ctx)
 }
 
 func (s *grpcServer) addInterrupter(f func()) (remove func()) {
