@@ -374,6 +374,7 @@ void android_main(struct android_app* app) {
 
   app->onAppCmd = android_process;
 
+  bool finishing = false;
   bool alive = true;
   while (alive) {
     int fdesc;
@@ -388,22 +389,29 @@ void android_main(struct android_app* app) {
       }
       if (app->destroyRequested) {
         // Clean up and exit the main loop
-        unlink(socket_file_path.c_str());
         server->shutdown();
         alive = false;
         break;
       }
     }
 
-    if (serverIsDone) {
+    if (serverIsDone && !finishing) {
       // Start termination of the app
       ANativeActivity_finish(app->activity);
+
       // Note that we need to keep on polling events, eventually APP_CMD_DESTROY
       // will pop-up after which app->destroyRequested will be true, enabling us
       // to properly exit the main loop.
+
+      // Meanwhile, remember that we are finishing to avoid calling
+      // ANativeActivity_finish() several times.
+      finishing = true;
     }
   }
+
+  // Final clean up
   waiting_thread.join();
+  unlink(socket_file_path.c_str());
   GAPID_INFO("End of Graphics API Replay");
   return;
 }
