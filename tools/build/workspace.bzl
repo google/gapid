@@ -189,9 +189,9 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "chaoticbob",
         project = "SPIRV-Reflect",
-        commit = "8fd9b11dbd217f6b02c9d6d4e364a7f0327b219a",
+        commit = "a861e587bdc924c49272873bbc1744928bc51aac",
         build_file = "@gapid//tools/build/third_party:spirv-reflect.BUILD",
-        sha256 = "7d0a3f9f12075c5b30fce8bd30cb34409cfb23f93a0cb8758c0c354248d8ea29",
+        sha256 = "da636883f8d31fa5d1a8722374b92e76bc1f19ec7c125882c843079623f1c13a",
     )
 
     if android:
