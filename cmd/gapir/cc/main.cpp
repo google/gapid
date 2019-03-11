@@ -374,31 +374,46 @@ void android_main(struct android_app* app) {
 
   app->onAppCmd = android_process;
 
+  bool finishing = false;
   bool alive = true;
   while (alive) {
     int fdesc;
     int events;
+    const int timeoutMilliseconds = 1000;
     struct android_poll_source* source;
-    while (ALooper_pollAll(1000, &fdesc, &events, (void**)&source) >= 0) {
+    while (ALooper_pollAll(timeoutMilliseconds, &fdesc, &events,
+                           (void**)&source) >= 0) {
       // process this event
       if (source) {
         source->process(app, source);
       }
       if (app->destroyRequested) {
-        unlink(socket_file_path.c_str());
+        // Clean up and exit the main loop
         server->shutdown();
         alive = false;
         break;
       }
     }
 
-    if (serverIsDone) {
-      unlink(socket_file_path.c_str());
-      alive = false;
+    if (serverIsDone && !finishing) {
+      // Start termination of the app
+      ANativeActivity_finish(app->activity);
+
+      // Note that we need to keep on polling events, eventually APP_CMD_DESTROY
+      // will pop-up after which app->destroyRequested will be true, enabling us
+      // to properly exit the main loop.
+
+      // Meanwhile, remember that we are finishing to avoid calling
+      // ANativeActivity_finish() several times.
+      finishing = true;
     }
   }
+
+  // Final clean up
   waiting_thread.join();
-  ANativeActivity_finish(app->activity);
+  unlink(socket_file_path.c_str());
+  GAPID_INFO("End of Graphics API Replay");
+  return;
 }
 
 #else  // TARGET_OS == GAPID_OS_ANDROID
