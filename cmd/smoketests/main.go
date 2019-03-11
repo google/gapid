@@ -113,9 +113,9 @@ func run(ctx context.Context) error {
 	}
 
 	// Print number of errors
-	errStr := "error"
-	if nbErr > 1 {
-		errStr = "errors"
+	errStr := "errors"
+	if nbErr == 1 {
+		errStr = "error"
 	}
 	log.I(ctx, "%d %s found", nbErr, errStr)
 
