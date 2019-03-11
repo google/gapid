@@ -296,3 +296,69 @@ func TestComputeCopyShader(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderByCopyShader(t *testing.T) {
+	formats := []VkFormat{
+		VkFormat_VK_FORMAT_R8_UINT,
+		VkFormat_VK_FORMAT_R16_UINT,
+		VkFormat_VK_FORMAT_R32_UINT,
+		VkFormat_VK_FORMAT_R8G8_UINT,
+		VkFormat_VK_FORMAT_R16G16_UINT,
+		VkFormat_VK_FORMAT_R32G32_UINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_UINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_UINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_UINT_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_UINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_UINT,
+		VkFormat_VK_FORMAT_A2R10G10B10_UINT_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UINT_PACK32,
+		VkFormat_VK_FORMAT_R8_SINT,
+		VkFormat_VK_FORMAT_R16_SINT,
+		VkFormat_VK_FORMAT_R32_SINT,
+		VkFormat_VK_FORMAT_R8G8_SINT,
+		VkFormat_VK_FORMAT_R16G16_SINT,
+		VkFormat_VK_FORMAT_R32G32_SINT,
+		VkFormat_VK_FORMAT_R8G8B8A8_SINT,
+		VkFormat_VK_FORMAT_B8G8R8A8_SINT,
+		VkFormat_VK_FORMAT_A8B8G8R8_SINT_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_SINT,
+		VkFormat_VK_FORMAT_R32G32B32A32_SINT,
+		VkFormat_VK_FORMAT_R8_UNORM,
+		VkFormat_VK_FORMAT_R8_SRGB,
+		VkFormat_VK_FORMAT_R16_UNORM,
+		VkFormat_VK_FORMAT_R8G8_UNORM,
+		VkFormat_VK_FORMAT_R8G8_SRGB,
+		VkFormat_VK_FORMAT_R16G16_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_UNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_UNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SRGB,
+		VkFormat_VK_FORMAT_B8G8R8A8_SRGB,
+		VkFormat_VK_FORMAT_R16G16B16A16_UNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A8B8G8R8_SRGB_PACK32,
+		VkFormat_VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+		VkFormat_VK_FORMAT_R8_SNORM,
+		VkFormat_VK_FORMAT_R16_SNORM,
+		VkFormat_VK_FORMAT_R8G8_SNORM,
+		VkFormat_VK_FORMAT_R16G16_SNORM,
+		VkFormat_VK_FORMAT_R8G8B8A8_SNORM,
+		VkFormat_VK_FORMAT_B8G8R8A8_SNORM,
+		VkFormat_VK_FORMAT_A8B8G8R8_SNORM_PACK32,
+		VkFormat_VK_FORMAT_R16G16B16A16_SNORM,
+	}
+
+	ctx := log.Testing(t)
+
+	// same input output format
+	for _, f := range formats {
+		_, err := ipCopyByRenderShaderSpirv(f)
+		assert.For(ctx, "err").ThatError(err).Succeeded()
+	}
+}
+func TestRenderStencilByCopyShader(t *testing.T) {
+	ctx := log.Testing(t)
+
+	_, err := ipRenderStencilShaderSpirv()
+	assert.For(ctx, "err").ThatError(err).Succeeded()
+}

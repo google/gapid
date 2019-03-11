@@ -703,6 +703,50 @@ func ipComputeCopySpirv(
 	return shadertools.CompileGlsl(source, opt)
 }
 
+func ipCopyByRenderShaderSpirv(format VkFormat) ([]uint32, error) {
+	unit, err := storageImageUnit(format)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("Getting image unit, err: %v", err)
+	}
+
+	source := fmt.Sprintf(
+		`#version 450
+	precision highp int;
+	precision highp float;
+	layout(location = 0) out %svec4 out_color;
+	layout(input_attachment_index = 0, binding = 0, set = 0) uniform %ssubpassInput in_color;
+	void main() {
+		out_color = subpassLoad(in_color);
+	}`, unit, unit)
+
+	opt := shadertools.CompileOptions{
+		ShaderType: shadertools.TypeFragment,
+		ClientType: shadertools.Vulkan,
+	}
+	return shadertools.CompileGlsl(source, opt)
+}
+
+func ipCopyStencilByRenderShaderSpirv(format VkFormat) ([]uint32, error) {
+	source := fmt.Sprintf(
+		`#version 450
+	precision highp int;
+	precision highp float;
+	layout(input_attachment_index = 0, binding = 0, set = 0) uniform usubpassInput in_stencil;
+	layout (push_constant) uniform mask_data { uint current_bit; };
+	void main() {
+		uint stencil_value = subpassLoad(in_stencil).r;
+		if ((stencil_value & (0x1 << current_bit)) == 0) {
+			discard;
+		}
+	}`)
+
+	opt := shadertools.CompileOptions{
+		ShaderType: shadertools.TypeFragment,
+		ClientType: shadertools.Vulkan,
+	}
+	return shadertools.CompileGlsl(source, opt)
+}
+
 // ipComputeShaderSpirv returns the compute shader to be used for priming image
 // data through imageStore operation.
 func ipComputeShaderSpirv(
