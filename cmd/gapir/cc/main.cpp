@@ -445,8 +445,48 @@ struct Options {
   const char* replayArchive = nullptr;
   const char* postbackDirectory = "";
   bool version = false;
+  bool help = false;
 
   OnDiskCache onDiskCacheOptions;
+
+  static void PrintHelp() {
+    printf("gapir: gapir is a VM for the graphics api debugger system\n");
+    printf("Usage: gapir [args]\n");
+    printf("Args:\n");
+    printf("  --replay-archive string\n");
+    printf("    Path to an archive directory to replay, and then exit\n");
+    printf("  --postback-dir string\n");
+    printf(
+        "    Path to a directory to use for outputs of the replay-archive\n");
+    printf("  --auth-token-file string\n");
+    printf("    Path to the a file containing the authentication token\n");
+    printf("  --enable-disk-cache\n");
+    printf(
+        "    If set, then gapir will create and use a disk cache for "
+        "resources.\n");
+    printf("  --disk-cache-path string\n");
+    printf("    Path to a directory that will be used for the disk cache.\n");
+    printf("    If it contains an existing cache, that will be used\n");
+    printf("    If unset, the disk cache will default to a temp directory\n");
+    printf("  --cleanup-disk-cache\n");
+    printf("    If set, the disk cache will be deleted when gapir exits.\n");
+    printf("  --port int\n");
+    printf("    The port to use when listening for connections\n");
+    printf("  --log-level <F|E|W|I|D|V>\n");
+    printf("    Sets the log level for gapir.\n");
+    printf("  --log string\n");
+    printf("    Sets the path for the log file\n");
+    printf("  --idle-timeout-sec int\n");
+    printf(
+        "    Timeout if gapir has not received communication from the server "
+        "(default infinity)\n");
+    printf("  --wait-for-debugger\n");
+    printf(
+        "    Causes gapir to pause on init, and wait for a debugger to "
+        "connect\n");
+    printf("   -h,-help,--help\n");
+    printf("    Prints this elp text and exits.\n");
+  }
 
   static Options Parse(int argc, const char* argv[]) {
     Options opts;
@@ -528,6 +568,9 @@ struct Options {
         opts.waitForDebugger = true;
       } else if (strcmp(argv[i], "--version") == 0) {
         opts.version = true;
+      } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0 ||
+                 strcmp(argv[i], "--help") == 0) {
+        opts.help = true;
       } else {
         GAPID_FATAL("Unknown argument: %s", argv[i]);
       }
@@ -737,7 +780,10 @@ int main(int argc, const char* argv[]) {
     GAPID_INFO("Waiting for debugger to attach");
     core::Debugger::waitForAttach();
   }
-  if (opts.version) {
+  if (opts.help) {
+    Options::PrintHelp();
+    return EXIT_SUCCESS;
+  } else if (opts.version) {
     printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
     return EXIT_SUCCESS;
   } else if (opts.mode == Options::kConflict) {
