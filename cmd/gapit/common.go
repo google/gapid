@@ -269,6 +269,10 @@ func getDevice(ctx context.Context, client client.Client, capture *path.Capture,
 		return selected, nil
 	}
 
+	if flags.NoFallback {
+		return nil, log.Err(ctx, nil, "Could not find the requested device.")
+	}
+
 	log.W(ctx, "No compatible devices found. Attempting to use the first device anyway...")
 
 	paths, err = client.GetDevices(ctx)
