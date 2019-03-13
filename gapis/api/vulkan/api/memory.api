@@ -211,7 +211,7 @@ cmd VkResult vkFlushMappedMemoryRanges(
       }
     }
 
-    if !(flushRange.memory in DeviceMemories) { vkErrorInvalidDeviceMemory(flushRange.memory) }
+    if !(flushRange.memory in DeviceMemories) { vkErrorInvalidDeviceMemory(flushRange.memory) } else {
     memoryObject := DeviceMemories[flushRange.memory]
     mappedLocation := as!u8*(memoryObject.MappedLocation)
     flushStart := flushRange.offset - memoryObject.MappedOffset
@@ -228,7 +228,7 @@ cmd VkResult vkFlushMappedMemoryRanges(
         // copy() contains an implicit read observation
         copy(memoryObject.Data[flushRange.offset:flushRange.offset + flushRange.size], (mappedLocation)[flushStart:flushStart + flushRange.size])
       }
-    }
+    }}
   }
   return ?
 }
