@@ -25,6 +25,7 @@ import (
 	"image/png"
 	"io"
 	"os"
+	fp "path/filepath"
 	"strings"
 	"sync/atomic"
 
@@ -263,7 +264,7 @@ func (verb *videoVerb) writeFrames(ctx context.Context, filepath string, vidFun 
 	if outFile == "" && filepath == "" {
 		return fmt.Errorf("need output file argument")
 	} else if outFile == "" {
-		outFile = file.Abs(filepath).ChangeExt("").System()
+		outFile = file.Abs(fp.Base(filepath)).ChangeExt("").System()
 	} else {
 		pth := file.Abs(outFile)
 		if pth.Ext() != "" && !strings.EqualFold(pth.Ext(), ".png") {
@@ -311,7 +312,7 @@ func (verb *videoVerb) encodeVideo(ctx context.Context, filepath string, vidFun 
 	if out == "" && filepath == "" {
 		return fmt.Errorf("need output file argument")
 	} else if out == "" {
-		out = file.Abs(filepath).ChangeExt(".mp4").System()
+		out = file.Abs(fp.Base(filepath)).ChangeExt(".mp4").System()
 	}
 	mpg, err := os.Create(out)
 	if err != nil {
