@@ -79,9 +79,9 @@ type (
 		Data   bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
 	}
 	DeviceFlags struct {
-		Device string            `help:"Device to trace on. Either 'host' or the friendly name of the device"`
-		Serial string            `help:"Serial of the device to trace on."`
-		Os     string            `help:"Os of the device to trace on."`
+		Device string            `help:"Device to use. Either 'host' or the friendly name of the device"`
+		Serial string            `help:"Serial of the device to use."`
+		Os     string            `help:"Os of the device to use."`
 		Env    flags.StringSlice `help:"List of environment variables to set, X=Y"`
 		Ssh    struct {
 			Config string `help:"The ssh config to use for finding remote devices"`
