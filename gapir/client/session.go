@@ -374,7 +374,9 @@ func (s *session) onClose(f func()) {
 }
 
 func (s *session) close(ctx context.Context) {
-	s.conn.Shutdown(ctx)
+	if s.conn != nil {
+		s.conn.Shutdown(ctx)
+	}
 	for _, f := range s.closeCBs {
 		f()
 	}
