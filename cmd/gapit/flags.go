@@ -104,7 +104,8 @@ type (
 	}
 	GapirFlags struct {
 		DeviceFlags
-		Args string `help:"_The arguments to be passed to gapir"`
+		NoFallback bool   `help:"Do not fallback to another device if the requested one could not be found"`
+		Args       string `help:"_The arguments to be passed to gapir"`
 	}
 	GapiiFlags struct {
 		DeviceFlags
