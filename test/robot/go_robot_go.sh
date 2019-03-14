@@ -129,8 +129,8 @@ function pack_local() {
   cp bazel-bin/pkg/gapir ${BUILD_BOT_DIR}/gapid/
   cp bazel-bin/pkg/gapis ${BUILD_BOT_DIR}/gapid/
   cp bazel-bin/pkg/gapit ${BUILD_BOT_DIR}/gapid/
-  cp bazel-bin/pkg/gapid-aarch64.apk ${BUILD_BOT_DIR}/gapid/android-armv8a/
-  cp bazel-bin/pkg/gapid-armeabi.apk ${BUILD_BOT_DIR}/gapid/android-armv7a/
+  cp bazel-bin/pkg/gapid-arm64-v8a.apk ${BUILD_BOT_DIR}/gapid/android-armv8a/
+  cp bazel-bin/pkg/gapid-armeabi-v7a.apk ${BUILD_BOT_DIR}/gapid/android-armv7a/
   cp bazel-bin/pkg/gapid-x86.apk ${BUILD_BOT_DIR}/gapid/android-x86/
   if [[ -z "$(git status -z | tr -d \0)" ]]; then
     BUILD_BOT_CL="$(git log --pretty="format:%H" -1 .)"
