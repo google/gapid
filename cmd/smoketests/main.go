@@ -153,9 +153,10 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 	trace := filepath.Base(tracepath)
 
 	tests := [][]string{
+
 		{"commands", tracepath},
 		{"commands", "-context", "0", tracepath},
-		{"commands", "-context", "42", tracepath},
+		{"commands", "-context", "1000", tracepath},
 		{"commands", "-groupbyapi", tracepath},
 		{"commands", "-groupbycontext", tracepath},
 		{"commands", "-groupbydrawcall", tracepath},
@@ -213,8 +214,8 @@ func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) er
 	}
 
 	// Write output in log
-	verb := args[0]
-	if err := ioutil.WriteFile(verb+".log", output, 0666); err != nil {
+	logFilename := strings.Join(argsWithoutTrace, "_") + ".log"
+	if err := ioutil.WriteFile(logFilename, output, 0666); err != nil {
 		return err
 	}
 
