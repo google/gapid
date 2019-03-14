@@ -49,13 +49,10 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 		if err != nil {
 			return nil, log.Err(ctx, err, "Failed to load the contexts")
 		}
-		numContexts := len(contexts.(*service.Contexts).List)
-		// f.Context is an ID, so it must be strictly inferior to numContexts
-		if f.Context < numContexts {
-			filter.Context = contexts.(*service.Contexts).List[f.Context].ID
-		} else {
-			return nil, log.Errf(ctx, err, "Context %d is out of range [0..%d]", f.Context, numContexts-1)
+		if n := len(contexts.(*service.Contexts).List); f.Context >= n {
+			return nil, log.Errf(ctx, err, "Context %d is out of range [0..%d]", f.Context, n-1)
 		}
+		filter.Context = contexts.(*service.Contexts).List[f.Context].ID
 	}
 	return filter, nil
 }
