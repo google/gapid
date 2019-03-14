@@ -54,8 +54,7 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 		if f.Context < numContexts {
 			filter.Context = contexts.(*service.Contexts).List[f.Context].ID
 		} else {
-			msg := fmt.Sprintf("Context %d is out of range [0..%d]", f.Context, numContexts-1)
-			return nil, log.Err(ctx, err, msg)
+			return nil, log.Errf(ctx, err, "Context %d is out of range [0..%d]", f.Context, numContexts-1)
 		}
 	}
 	return filter, nil
