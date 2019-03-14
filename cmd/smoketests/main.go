@@ -21,8 +21,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 
@@ -41,7 +43,23 @@ func main() {
 	app.Run(run)
 }
 
+func sigInt(c chan os.Signal) {
+	s := <-c
+	log.Fatal("Received signal: ", s)
+}
+
 func run(ctx context.Context) error {
+
+	// Register SIGINT handler
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go sigInt(signalChan)
+
+	// Check argument
+	filemode, err := os.Lstat(*path)
+	if err != nil {
+		return err
+	}
 
 	// Record starting working directory
 	startwd, err := os.Getwd()
