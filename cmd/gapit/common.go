@@ -45,14 +45,15 @@ import (
 func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Service, p *path.Capture) (*path.CommandFilter, error) {
 	filter := &path.CommandFilter{}
 	if f.Context >= 0 {
-		contexts, err := client.Get(ctx, p.Contexts().Path(), nil)
+		boxedContexts, err := client.Get(ctx, p.Contexts().Path(), nil)
 		if err != nil {
 			return nil, log.Err(ctx, err, "Failed to load the contexts")
 		}
-		if n := len(contexts.(*service.Contexts).List); f.Context >= n {
+		contexts := boxedContexts.(*service.Contexts)
+		if n := len(contexts.List); f.Context >= n {
 			return nil, log.Errf(ctx, err, "Context %d is out of range [0..%d]", f.Context, n-1)
 		}
-		filter.Context = contexts.(*service.Contexts).List[f.Context].ID
+		filter.Context = contexts.List[f.Context].ID
 	}
 	return filter, nil
 }
