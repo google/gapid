@@ -30,7 +30,9 @@ import (
 )
 
 var (
-	path = flag.String("traces", "traces", "The directory containing traces to run smoke tests on")
+	gapitArg  = flag.String("gapit", "gapit", "Path to gapit executable")
+	keepArg   = flag.Bool("keep", false, "Keep the temporary directory even if no errors are found")
+	tracesArg = flag.String("traces", "traces", "The directory containing traces to run smoke tests on")
 )
 
 func main() {
@@ -41,20 +43,32 @@ func main() {
 
 func run(ctx context.Context) error {
 
-	// Check argument
-	filemode, err := os.Lstat(*path)
-	if err != nil {
-		return err
-	}
-	if !filemode.IsDir() {
-		return errors.New("Path given in argument is not a directory")
-	}
-	tracedir := *path
-
 	// Record starting working directory
 	startwd, err := os.Getwd()
 	if err != nil {
 		return err
+	}
+
+	// Trace directory argument
+	traceFilemode, err := os.Lstat(*tracesArg)
+	if err != nil {
+		return err
+	}
+	if !traceFilemode.IsDir() {
+		return errors.New("Trace path given in argument is not a directory")
+	}
+	traceDir := *tracesArg
+	if !filepath.IsAbs(traceDir) {
+		traceDir = filepath.Join(startwd, traceDir)
+	}
+
+	// Gapit path argument
+	gapitPath := *gapitArg
+	// We assume gapitPath is found in PATH environment unless it
+	// contains a separator, in which case we make it absolute
+	hasSeparator := strings.ContainsAny(gapitPath, string(filepath.Separator))
+	if hasSeparator && !filepath.IsAbs(gapitPath) {
+		gapitPath = filepath.Join(startwd, gapitPath)
 	}
 
 	// Create temporary directory
@@ -64,10 +78,7 @@ func run(ctx context.Context) error {
 	}
 
 	// For each trace, run gapit tests
-	if !filepath.IsAbs(tracedir) {
-		tracedir = filepath.Join(startwd, tracedir)
-	}
-	traces, err := ioutil.ReadDir(tracedir)
+	traces, err := ioutil.ReadDir(traceDir)
 	atLeastOneTraceFound := false
 	nbErr := 0
 
@@ -86,12 +97,12 @@ func run(ctx context.Context) error {
 
 		// Run smoke tests on trace under temporary directory
 		tracewd := filepath.Join(tmpdir, trace)
-		tracepath := filepath.Join(tracedir, trace)
+		tracepath := filepath.Join(traceDir, trace)
 		if err := os.Mkdir(tracewd, 0777); err != nil {
 			return err
 		}
 		os.Chdir(tracewd)
-		if err := testTrace(ctx, &nbErr, tracepath); err != nil {
+		if err := testTrace(ctx, &nbErr, gapitPath, tracepath); err != nil {
 			return err
 		}
 		os.Chdir(startwd)
@@ -101,20 +112,24 @@ func run(ctx context.Context) error {
 		return errors.New("No file ending with '.gfxtrace' found in trace directory")
 	}
 
-	if nbErr > 0 {
-		errStr := "error"
-		if nbErr > 1 {
-			errStr = "errors"
-		}
-		log.I(ctx, "%d %s found, see logs in %s", nbErr, errStr, tmpdir)
+	// Print number of errors
+	errStr := "errors"
+	if nbErr == 1 {
+		errStr = "error"
+	}
+	log.I(ctx, "%d %s found", nbErr, errStr)
+
+	// Temporary directory is kept if there are errors or if the user
+	// explicitely asked to keep it
+	if nbErr > 0 || *keepArg {
+		log.I(ctx, "See logs in %s", tmpdir)
 	} else {
-		// Temporary directory is removed only when there are no errors
 		os.RemoveAll(tmpdir)
 	}
 	return nil
 }
 
-func testTrace(ctx context.Context, nbErr *int, tracepath string) error {
+func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath string) error {
 
 	// The trace basename is used for some commands argument
 	trace := filepath.Base(tracepath)
@@ -135,7 +150,7 @@ func testTrace(ctx context.Context, nbErr *int, tracepath string) error {
 	}
 
 	for _, test := range tests {
-		if err := gapit(ctx, nbErr, test...); err != nil {
+		if err := gapit(ctx, nbErr, gapitPath, test...); err != nil {
 			return err
 		}
 	}
@@ -143,16 +158,16 @@ func testTrace(ctx context.Context, nbErr *int, tracepath string) error {
 	return nil
 }
 
-func gapit(ctx context.Context, nbErr *int, args ...string) error {
+func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) error {
 	// Print command description
 	arglen := len(args)
 	argsWithoutTrace := args[:arglen-1]
 	trace := filepath.Base(args[arglen-1])
-	printCmd := "gapit " + strings.Join(argsWithoutTrace, " ") + " " + trace
+	printCmd := gapitPath + " " + strings.Join(argsWithoutTrace, " ") + " " + trace
 	log.I(ctx, "run: %s", printCmd)
 
 	// Execute, check error, print status
-	cmd := exec.Command("gapit", args...)
+	cmd := exec.Command(gapitPath, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
