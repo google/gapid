@@ -473,6 +473,9 @@ sub void GetPhysicalDeviceProperties2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
             _ = as!VkPhysicalDeviceMaintenance3Properties*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+            _ = as!VkPhysicalDeviceIDProperties*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -506,6 +509,8 @@ sub void GetPhysicalDeviceProperties2(
                 MaxPerSetDescriptors: ext.maxPerSetDescriptors,
                 MaxMemoryAllocationSize: ext.maxMemoryAllocationSize,
               )
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
             }
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
