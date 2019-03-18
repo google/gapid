@@ -88,6 +88,10 @@ public class MainWindow extends ApplicationWindow {
     setBlockOnOpen(true);
   }
 
+  public StatusBar getStatusBar() {
+    return statusBar;
+  }
+
   public void showLoadingMessage(String status) {
     loadingScreen.setText(status);
   }
