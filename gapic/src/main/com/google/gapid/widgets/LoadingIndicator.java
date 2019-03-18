@@ -41,6 +41,7 @@ public class LoadingIndicator {
   private static final int LARGE_SIZE = 32;
   private static final int SIZE_THRESHOLD = 3 * LARGE_SIZE / 2;
   private static final int SMALL_SIZE = 16;
+  private static final int TEXT_MARGIN = 5;
 
   private final Display display;
   private final Image[] icons;
@@ -55,13 +56,23 @@ public class LoadingIndicator {
     this.refresh = theme.refresh();
   }
 
-  public void paint(GC g, int x, int y, Point size) {
-    paint(g, x, y, size.x, size.y);
+  public void paint(GC g, int x, int y, Point size, String text) {
+    paint(g, x, y, size.x, size.y, text);
   }
 
-  public void paint(GC g, int x, int y, int w, int h) {
-    Image image = (Math.min(w, h) < SIZE_THRESHOLD) ? getCurrentSmallFrame() : getCurrentFrame();
-    paint(image, g, x, y, w, h);
+  public void paint(GC g, int x, int y, int w, int h, String text) {
+    int textWidth = 0, textHeight = 0;
+    if (!text.isEmpty()) {
+      Point textSize = g.textExtent(text);
+      textWidth = textSize.x + TEXT_MARGIN;
+      textHeight = textSize.y;
+    }
+    Image image =
+        (Math.min(w - textWidth, h) < SIZE_THRESHOLD) ? getCurrentSmallFrame() : getCurrentFrame();
+    int ix = paint(image, g, x, y, w - textWidth, h);
+    if (!text.isEmpty()) {
+      g.drawText(text, ix + TEXT_MARGIN, y + (h - textHeight) / 2, SWT.DRAW_TRANSPARENT);
+    }
   }
 
   public void paintRefresh(GC g, int x, int y, Point size) {
@@ -72,10 +83,11 @@ public class LoadingIndicator {
     paint(refresh, g, x, y, w, h);
   }
 
-  private static void paint(Image image, GC g, int x, int y, int w, int h) {
+  private static int paint(Image image, GC g, int x, int y, int w, int h) {
     Rectangle s = image.getBounds();
     g.drawImage(image, 0, 0, s.width, s.height,
         x + (w - s.width) / 2, y + (h - s.height) / 2, s.width, s.height);
+    return x + (w - s.width) / 2 + s.width;
   }
 
   public Image getCurrentFrame() {
@@ -144,7 +156,7 @@ public class LoadingIndicator {
       super(parent, SWT.DOUBLE_BUFFERED);
       addListener(SWT.Paint, e -> {
         if (loading) {
-          paint(e.gc, 0, 0, getSize());
+          paint(e.gc, 0, 0, getSize(), "");
           scheduleForRedraw(this);
         } else if (showRefresh) {
           paintRefresh(e.gc, 0, 0, getSize());

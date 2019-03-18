@@ -39,7 +39,7 @@ public class LoadablePanel<C extends Control> extends Composite implements Loada
   private static final int LOADING_INDICATOR_DELAY_MS = 500;
 
   private final Widgets widgets;
-  private final Control loading;
+  private final LoadingWidget loading;
   private final MessageWidget message;
   private final C contents;
   private boolean shouldShowLoading;
@@ -97,10 +97,17 @@ public class LoadablePanel<C extends Control> extends Composite implements Loada
 
   @Override
   public void showMessage(MessageType type, String text) {
-    shouldShowLoading = false;
-    message.setText(text, getImage(type));
-    getLayout().topControl = message;
-    requestLayout();
+    if (type == MessageType.Loading) {
+      shouldShowLoading = true;
+      loading.setText(text);
+      getLayout().topControl = loading;
+      requestLayout();
+    } else {
+      shouldShowLoading = false;
+      message.setText(text, getImage(type));
+      getLayout().topControl = message;
+      requestLayout();
+    }
   }
 
   private Image getImage(MessageType type) {
@@ -112,13 +119,20 @@ public class LoadablePanel<C extends Control> extends Composite implements Loada
   }
 
   private static class LoadingWidget extends Canvas {
+    private String text = "";
+
     public LoadingWidget(Composite parent, LoadingIndicator loading) {
       super(parent, SWT.DOUBLE_BUFFERED);
 
       addListener(SWT.Paint, e -> {
-        loading.paint(e.gc, 0, 0, getSize());
+        loading.paint(e.gc, 0, 0, getSize(), text);
         loading.scheduleForRedraw(() -> redrawIfNotDisposed(this));
       });
+    }
+
+    public void setText(String text) {
+      this.text = text;
+      redraw();
     }
   }
 
