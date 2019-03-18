@@ -141,7 +141,7 @@ public class Main {
     }
 
     private void uiStartup(Shell shell) {
-      models = Models.create(shell, settings, handler, server.getClient());
+      models = Models.create(shell, settings, handler, server.getClient(), window.getStatusBar());
       widgets = Widgets.create(shell.getDisplay(), theme, server.getClient(), models);
 
       Runnable onStart = () -> {
