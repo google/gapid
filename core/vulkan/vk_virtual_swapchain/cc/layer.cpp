@@ -321,30 +321,31 @@ static const VkLayerProperties global_layer_properties[] = {{
     "Virtual Swapchain Layer",
 }};
 
-VkResult get_layer_properties(uint32_t *pCount,
+VkResult get_layer_properties(uint32_t *pPropertyCount,
                               VkLayerProperties *pProperties) {
   if (pProperties == NULL) {
-    *pCount = 1;
+    *pPropertyCount = 1;
     return VK_SUCCESS;
   }
 
-  if (pCount == 0) {
+  if (pPropertyCount == 0) {
     return VK_INCOMPLETE;
   }
-  *pCount = 1;
+  *pPropertyCount = 1;
   memcpy(pProperties, global_layer_properties, sizeof(global_layer_properties));
   return VK_SUCCESS;
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceLayerProperties(uint32_t *pCount,
+vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
                                    VkLayerProperties *pProperties) {
-  return get_layer_properties(pCount, pProperties);
+  return get_layer_properties(pPropertyCount, pProperties);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice, uint32_t *pCount, VkLayerProperties *pProperties) {
-  return get_layer_properties(pCount, pProperties);
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateDeviceLayerProperties(VkPhysicalDevice, uint32_t *pPropertyCount,
+                                 VkLayerProperties *pProperties) {
+  return get_layer_properties(pPropertyCount, pProperties);
 }
 
 // Overload EnumeratePhysicalDevices, this is entirely for
@@ -414,6 +415,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceExtensionProperties(
       physicalDevice, pLayerName, pPropertyCount, pProperties);
 }
 
+// Overload vkEnumerateInstanceExtensionProperties
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateInstanceExtensionProperties(
+    const char * /*pLayerName*/, uint32_t *pPropertyCount,
+    VkExtensionProperties * /*pProperties*/) {
+  *pPropertyCount = 0;
+  return VK_SUCCESS;
+}
+
 VKAPI_ATTR void VKAPI_CALL vkFreeCommandBuffers(
     VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
     const VkCommandBuffer *pCommandBuffers) {
@@ -423,14 +433,6 @@ VKAPI_ATTR void VKAPI_CALL vkFreeCommandBuffers(
   }
   GetGlobalContext().GetDeviceData(device)->vkFreeCommandBuffers(
       device, commandPool, commandBufferCount, pCommandBuffers);
-}
-
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceExtensionProperties(
-    const char * /*pLayerName*/, uint32_t *pCount,
-    VkExtensionProperties * /*pProperties*/) {
-  *pCount = 0;
-  return VK_SUCCESS;
 }
 
 // Overload GetInstanceProcAddr.
@@ -558,39 +560,42 @@ VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL LAYER_NAME_FUNCTION(
 }
 
 // Documentation is sparse for Android, looking at libvulkan.so
-// These 4 function must be defined in order for this to even
+// These 4 functions must be defined in order for this to even
 // be considered for loading.
 #if defined(__ANDROID__)
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceLayerProperties(uint32_t *pCount,
+vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
                                    VkLayerProperties *pProperties) {
-  return swapchain::vkEnumerateInstanceLayerProperties(pCount, pProperties);
+  return swapchain::vkEnumerateInstanceLayerProperties(pPropertyCount,
+                                                       pProperties);
 }
 
 // On Android this must also be defined, even if we have 0
 // layers to expose.
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pCount,
+vkEnumerateInstanceExtensionProperties(const char *pLayerName,
+                                       uint32_t *pPropertyCount,
                                        VkExtensionProperties *pProperties) {
-  return swapchain::vkEnumerateInstanceExtensionProperties(pLayerName, pCount,
-                                                           pProperties);
+  return swapchain::vkEnumerateInstanceExtensionProperties(
+      pLayerName, pPropertyCount, pProperties);
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice physicalDevice, uint32_t *pCount,
+    VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount,
     VkLayerProperties *pProperties) {
-  return swapchain::vkEnumerateDeviceLayerProperties(physicalDevice, pCount,
-                                                     pProperties);
+  return swapchain::vkEnumerateDeviceLayerProperties(
+      physicalDevice, pPropertyCount, pProperties);
 }
 
 // On Android this must also be defined, even if we have 0
 // layers to expose.
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
-                                     const char *pLayerName, uint32_t *pCount,
+                                     const char *pLayerName,
+                                     uint32_t *pPropertyCount,
                                      VkExtensionProperties *pProperties) {
   return swapchain::vkEnumerateDeviceExtensionProperties(
-      physicalDevice, pLayerName, pCount, pProperties);
+      physicalDevice, pLayerName, pPropertyCount, pProperties);
 }
 #endif
 }
