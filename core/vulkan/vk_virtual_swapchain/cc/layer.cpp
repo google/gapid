@@ -444,13 +444,15 @@ vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
   return reinterpret_cast<PFN_vkVoidFunction>(func)
 
   INTERCEPT(vkGetInstanceProcAddr);
+
   INTERCEPT(vkCreateDevice);
   INTERCEPT(vkCreateInstance);
   INTERCEPT(vkDestroyInstance);
-  INTERCEPT(vkEnumeratePhysicalDevices);
   INTERCEPT(vkEnumerateDeviceExtensionProperties);
-  INTERCEPT(vkEnumerateInstanceLayerProperties);
   INTERCEPT(vkEnumerateDeviceLayerProperties);
+  INTERCEPT(vkEnumerateInstanceExtensionProperties);
+  INTERCEPT(vkEnumerateInstanceLayerProperties);
+  INTERCEPT(vkEnumeratePhysicalDevices);
 
   // From here on down these are what is needed for
   // swapchain/surface support.
