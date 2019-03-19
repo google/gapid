@@ -96,8 +96,8 @@ func LibraryName(lib LibraryType, abi *device.ABI) string {
 }
 
 var abiToApk = map[device.Architecture]string{
-	device.ARMv7a: "gapid-armeabi.apk",
-	device.ARMv8a: "gapid-aarch64.apk",
+	device.ARMv7a: "gapid-armeabi-v7a.apk",
+	device.ARMv8a: "gapid-arm64-v8a.apk",
 	device.X86:    "gapid-x86.apk",
 }
 

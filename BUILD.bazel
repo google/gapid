@@ -86,8 +86,8 @@ copy_to(
         ],
     }),
     rename = {
-        "armeabi-v7a.apk": "gapid-armeabi.apk",
-        "arm64-v8a.apk": "gapid-aarch64.apk",
+        "armeabi-v7a.apk": "gapid-armeabi-v7a.apk",
+        "arm64-v8a.apk": "gapid-arm64-v8a.apk",
         "x86.apk": "gapid-x86.apk",
     },
     to = "pkg",

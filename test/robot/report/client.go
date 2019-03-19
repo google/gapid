@@ -62,8 +62,8 @@ func (c *client) onDeviceAdded(ctx context.Context, host *device.Instance, targe
 		defer func() {
 			// HACK: kill gapid.apk manually for now as subsequent reports/replays may freeze the app.
 			// Remove when https://github.com/google/gapid/issues/1666 is fixed.
-			target.Shell("am", "force-stop", "com.google.android.gapid.aarch64").Run(ctx)
-			target.Shell("am", "force-stop", "com.google.android.gapid.armeabi").Run(ctx)
+			target.Shell("am", "force-stop", "com.google.android.gapid.arm64v8a").Run(ctx)
+			target.Shell("am", "force-stop", "com.google.android.gapid.armeabiv7a").Run(ctx)
 		}()
 		defer job.UnlockDevice(ctx, target)
 		if target.Status(ctx) != bind.Status_Online {

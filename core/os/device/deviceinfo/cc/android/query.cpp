@@ -51,7 +51,7 @@ void abiByName(const std::string name, device::ABI* abi) {
   abi->set_name(name);
   abi->set_os(device::Android);
 
-  if (name == "armeabi" || name == "armeabi-v7a") {
+  if (name == "armeabi-v7a") {
     // http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
     // 4 DATA TYPES AND ALIGNMENT
     auto memory_layout = new device::MemoryLayout();
@@ -312,7 +312,7 @@ bool createContext() {
 
   if (gContext.mSupportedABIs.size() > 0) {
     auto primaryABI = gContext.mSupportedABIs[0];
-    if (primaryABI == "armeabi" || primaryABI == "armeabi-v7a") {
+    if (primaryABI == "armeabi-v7a") {
       gContext.mCpuArchitecture = device::ARMv7a;
     } else if (primaryABI == "arm64-v8a") {
       gContext.mCpuArchitecture = device::ARMv8a;
@@ -435,7 +435,7 @@ int numABIs() { return gContext.mSupportedABIs.size(); }
 device::ABI* currentABI() {
   device::ABI* out = new device::ABI();
 #if defined(__arm__)
-  abiByName("armeabi", out);
+  abiByName("armeabi-v7a", out);
 #elif defined(__aarch64__)
   abiByName("arm64-v8a", out);
 #elif defined(__i686__)
