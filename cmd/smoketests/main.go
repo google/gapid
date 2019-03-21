@@ -19,14 +19,16 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/gapid/core/app"
-	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -41,7 +43,23 @@ func main() {
 	app.Run(run)
 }
 
+func sigInt(c chan os.Signal) {
+	s := <-c
+	log.Fatal("Received signal: ", s)
+}
+
 func run(ctx context.Context) error {
+
+	// Register SIGINT handler
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go sigInt(signalChan)
+
+	// Check argument
+	filemode, err := os.Lstat(*path)
+	if err != nil {
+		return err
+	}
 
 	// Record starting working directory
 	startwd, err := os.Getwd()
@@ -135,7 +153,21 @@ func testTrace(ctx context.Context, nbErr *int, gapitPath string, tracepath stri
 	trace := filepath.Base(tracepath)
 
 	tests := [][]string{
+
 		{"commands", tracepath},
+		{"commands", "-context", "0", tracepath},
+		{"commands", "-context", "1000", tracepath},
+		{"commands", "-groupbyapi", tracepath},
+		{"commands", "-groupbycontext", tracepath},
+		{"commands", "-groupbydrawcall", tracepath},
+		{"commands", "-groupbyframe", tracepath},
+		{"commands", "-groupbythread", tracepath},
+		{"commands", "-groupbyusermarkers", tracepath},
+		{"commands", "-maxchildren", "1", tracepath},
+		{"commands", "-name", "glBindFramebuffer", tracepath},
+		{"commands", "-observations-ranges", tracepath},
+		{"commands", "-observations-data", tracepath},
+		{"commands", "-raw", tracepath},
 		{"create_graph_visualization", "-format", "dot", "-out", trace + ".dot", tracepath},
 		{"dump", tracepath},
 		{"dump_fbo", tracepath},
@@ -163,8 +195,7 @@ func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) er
 	arglen := len(args)
 	argsWithoutTrace := args[:arglen-1]
 	trace := filepath.Base(args[arglen-1])
-	printCmd := gapitPath + " " + strings.Join(argsWithoutTrace, " ") + " " + trace
-	log.I(ctx, "run: %s", printCmd)
+	printCmd := "gapit " + strings.Join(argsWithoutTrace, " ") + " " + trace
 
 	// Execute, check error, print status
 	cmd := exec.Command(gapitPath, args...)
@@ -172,19 +203,19 @@ func gapit(ctx context.Context, nbErr *int, gapitPath string, args ...string) er
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
 			// Here the gapit command raised an error
-			log.I(ctx, "ERROR %s", printCmd)
+			fmt.Printf("FAIL %s\n", printCmd)
 			*nbErr += 1
 		} else {
 			// Here the error comes from somewhere else
 			return err
 		}
 	} else {
-		log.I(ctx, "OK %s", printCmd)
+		fmt.Printf("PASS %s\n", printCmd)
 	}
 
 	// Write output in log
-	verb := args[0]
-	if err := ioutil.WriteFile(verb+".log", output, 0666); err != nil {
+	logFilename := strings.Join(argsWithoutTrace, "_") + ".log"
+	if err := ioutil.WriteFile(logFilename, output, 0666); err != nil {
 		return err
 	}
 
