@@ -299,6 +299,16 @@ bool createContext() {
   GET_STRING_PROP("ro.hardware", gContext.mHardware);
   GET_STRING_PROP("ro.build.display.id", gContext.mOSBuild);
 
+  // Supported ABI may list 'armeabi' in addition to 'armeabi-v7a', in order to
+  // avoid to detect 'armeabi' special case all over the place, we just sanitize
+  // the list here by removing 'armeabi'.
+  for (int i = 0; i < gContext.mSupportedABIs.size(); i++) {
+    if (gContext.mSupportedABIs[i] == "armeabi") {
+      gContext.mSupportedABIs.erase(gContext.mSupportedABIs.begin() + i);
+      break;
+    }
+  }
+
   if (model != "") {
     if (manufacturer != "") {
       gContext.mHardware = manufacturer + " " + model;
