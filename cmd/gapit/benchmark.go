@@ -125,8 +125,11 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		defer func() {
 			stopGapitTrace()
 			stopGapisTrace()
-			if err := writeTrace(verb.DumpTrace, gapisTrace, gapitTrace); err != nil {
-				log.E(ctx, "Failed to write trace: %v", err)
+			// writeTrace may not be initialized yet
+			if writeTrace != nil {
+				if err := writeTrace(verb.DumpTrace, gapisTrace, gapitTrace); err != nil {
+					log.E(ctx, "Failed to write trace: %v", err)
+				}
 			}
 		}()
 	}
