@@ -583,25 +583,27 @@ VulkanSpy::fetchPhysicalDeviceFormatProperties(
 
 gapil::Ref<FetchedImageMemoryRequirements>
 VulkanSpy::fetchImageMemoryRequirements(CallObserver* observer, VkDevice device,
-                                        VkImage image, bool hasSparseBit) {
+                                        gapil::Ref<ImageObject> image,
+                                        bool hasSparseBit) {
   auto reqs = gapil::Ref<FetchedImageMemoryRequirements>::create(arena());
   VkMemoryRequirements rawReq{0};
   mImports.mVkDeviceFunctions[device].vkGetImageMemoryRequirements(
-      device, image, &rawReq);
+      device, image->mVulkanHandle, &rawReq);
   // TODO: Handle multi-planar images
   reqs->mPlaneBitsToMemoryRequirements[0] = rawReq;
   if (hasSparseBit) {
     uint32_t sparse_mem_req_count = 0;
     mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
-        device, image, &sparse_mem_req_count, nullptr);
+        device, image->mVulkanHandle, &sparse_mem_req_count, nullptr);
     core::Arena arena;
     std::vector<VkSparseImageMemoryRequirements> sparse_mem_reqs(
         sparse_mem_req_count, VkSparseImageMemoryRequirements(&arena));
     mImports.mVkDeviceFunctions[device].vkGetImageSparseMemoryRequirements(
-        device, image, &sparse_mem_req_count, sparse_mem_reqs.data());
+        device, image->mVulkanHandle, &sparse_mem_req_count,
+        sparse_mem_reqs.data());
     for (VkSparseImageMemoryRequirements& req : sparse_mem_reqs) {
       auto aspect_map = subUnpackImageAspectFlags(
-          nullptr, nullptr, req.mformatProperties.maspectMask);
+          nullptr, nullptr, image, req.mformatProperties.maspectMask);
       for (auto aspect : aspect_map) {
         reqs->mAspectBitsToSparseMemoryRequirements[aspect.second] = req;
       }
@@ -941,7 +943,7 @@ void VulkanSpy::walkImageSubRng(
   uint32_t level_count =
       subImageSubresourceLevelCount(nullptr, nullptr, img, rng);
   auto aspect_map =
-      subUnpackImageAspectFlags(nullptr, nullptr, rng.maspectMask);
+      subUnpackImageAspectFlags(nullptr, nullptr, img, rng.maspectMask);
   for (auto b : aspect_map) {
     auto ai = img->mAspects.find(b.second);
     if (ai == img->mAspects.end()) {

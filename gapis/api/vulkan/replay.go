@@ -542,6 +542,11 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		out.MutateAndWrite(ctx, id, cb.VkDestroySemaphore(object.Device(), handle, p))
 	}
 
+	// SamplerYcbcrConversions
+	for handle, object := range so.SamplerYcbcrConversions().All() {
+		out.MutateAndWrite(ctx, id, cb.VkDestroySamplerYcbcrConversion(object.Device(), handle, p))
+	}
+
 	// Framebuffers, samplers.
 	for handle, object := range so.Framebuffers().All() {
 		out.MutateAndWrite(ctx, id, cb.VkDestroyFramebuffer(object.Device(), handle, p))

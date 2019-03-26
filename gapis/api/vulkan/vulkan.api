@@ -128,7 +128,7 @@ extern ref!PhysicalDevicesAndProperties fetchPhysicalDeviceProperties(VkInstance
 extern ref!PhysicalDevicesMemoryProperties fetchPhysicalDeviceMemoryProperties(VkInstance instance, VkPhysicalDevice[] devs)
 extern ref!PhysicalDevicesAndQueueFamilyProperties fetchPhysicalDeviceQueueFamilyProperties(VkInstance instance, VkPhysicalDevice[] devs)
 extern ref!PhysicalDevicesFormatProperties fetchPhysicalDeviceFormatProperties(VkInstance instance, VkPhysicalDevice[] devs)
-extern ref!FetchedImageMemoryRequirements fetchImageMemoryRequirements(VkDevice device, VkImage image, bool hasSparseBit)
+extern ref!FetchedImageMemoryRequirements fetchImageMemoryRequirements(VkDevice device, ref!ImageObject image, bool hasSparseBit)
 extern VkMemoryRequirements fetchBufferMemoryRequirements(VkDevice device, VkBuffer buffer)
 extern ref!LinearImageLayouts fetchLinearImageSubresourceLayouts(VkDevice device, ref!ImageObject image, VkImageSubresourceRange rng)
 extern ref!DescriptorInfo fetchUsedDescriptors(ref!ShaderModuleObject pipeline)
@@ -236,6 +236,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_GGP_frame_token"] = true
   supported.ExtensionNames["VK_AMD_draw_indirect_count"] = true
   supported.ExtensionNames["VK_KHR_draw_indirect_count"] = true
+  supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
   return supported
 }
 

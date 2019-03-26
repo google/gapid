@@ -435,16 +435,12 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
     auto get_element_size = [this](uint32_t format, uint32_t aspect_bit,
                                    bool in_buffer) -> uint32_t {
-      switch (aspect_bit) {
-        case VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT:
-          return subGetElementAndTexelBlockSize(nullptr, nullptr, format)
-              .mElementSize;
-        case VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT:
-          return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
-        case VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT:
-          return 1;
+      if (VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT == aspect_bit) {
+        return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
       }
-      return 0;
+      return subGetElementAndTexelBlockSizeForAspect(nullptr, nullptr, format,
+                                                     aspect_bit)
+          .mElementSize;
     };
 
     auto next_multiple_of_8 = [](size_t value) -> size_t {
@@ -469,17 +465,22 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       auto &lev = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
       const bool has_linear_layout =
           (lev->mLinearLayout != nullptr) && (lev->mLinearLayout->msize != 0);
-      auto elementAndTexelBlockSize =
-          subGetElementAndTexelBlockSize(nullptr, nullptr, info.mFormat);
+      auto elementAndTexelBlockSize = subGetElementAndTexelBlockSizeForAspect(
+          nullptr, nullptr, info.mFormat, aspect_bit);
+      auto divisor =
+          subGetAspectSizeDivisor(nullptr, nullptr, info.mFormat, aspect_bit);
+
       const uint32_t texel_width =
           elementAndTexelBlockSize.mTexelBlockSize.mWidth;
       const uint32_t texel_height =
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
 
       const uint32_t width =
-          subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, level);
+          subGetMipSize(nullptr, nullptr, info.mExtent.mWidth, level) /
+          divisor.mWidth;
       const uint32_t height =
-          subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, level);
+          subGetMipSize(nullptr, nullptr, info.mExtent.mHeight, level) /
+          divisor.mHeight;
       const uint32_t width_in_blocks =
           subRoundUpTo(nullptr, nullptr, width, texel_width);
       const uint32_t height_in_blocks =
@@ -506,17 +507,21 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     auto extent_pitch = [this, &get_element_size](
                             const VkExtent3D &extent, uint32_t format,
                             uint32_t aspect_bit) -> pitch {
-      auto elementAndTexelBlockSize =
-          subGetElementAndTexelBlockSize(nullptr, nullptr, format);
+      auto elementAndTexelBlockSize = subGetElementAndTexelBlockSizeForAspect(
+          nullptr, nullptr, format, aspect_bit);
+      auto divisor =
+          subGetAspectSizeDivisor(nullptr, nullptr, format, aspect_bit);
       const uint32_t texel_width =
           elementAndTexelBlockSize.mTexelBlockSize.mWidth;
       const uint32_t texel_height =
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
 
       const uint32_t width_in_blocks =
-          subRoundUpTo(nullptr, nullptr, extent.mWidth, texel_width);
+          subRoundUpTo(nullptr, nullptr, extent.mWidth, texel_width) /
+          divisor.mWidth;
       const uint32_t height_in_blocks =
-          subRoundUpTo(nullptr, nullptr, extent.mHeight, texel_height);
+          subRoundUpTo(nullptr, nullptr, extent.mHeight, texel_height) /
+          divisor.mHeight;
       const uint32_t element_size = get_element_size(format, aspect_bit, false);
 
       return pitch{
@@ -540,19 +545,26 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
     auto level_size = [this, &get_element_size, &next_multiple_of_8](
                           const VkExtent3D &extent, uint32_t format,
-                          uint32_t mip_level,
-                          uint32_t aspect_bit) -> byte_size_and_extent {
+                          uint32_t mip_level, uint32_t aspect_bit,
+                          bool account_for_plane) -> byte_size_and_extent {
       auto elementAndTexelBlockSize =
           subGetElementAndTexelBlockSize(nullptr, nullptr, format);
-
+      auto divisor =
+          subGetAspectSizeDivisor(nullptr, nullptr, format, aspect_bit);
+      if (!account_for_plane) {
+        divisor.mWidth = 1;
+        divisor.mHeight = 1;
+      }
       const uint32_t texel_width =
           elementAndTexelBlockSize.mTexelBlockSize.mWidth;
       const uint32_t texel_height =
           elementAndTexelBlockSize.mTexelBlockSize.mHeight;
       const uint32_t width =
-          subGetMipSize(nullptr, nullptr, extent.mWidth, mip_level);
+          subGetMipSize(nullptr, nullptr, extent.mWidth, mip_level) /
+          divisor.mWidth;
       const uint32_t height =
-          subGetMipSize(nullptr, nullptr, extent.mHeight, mip_level);
+          subGetMipSize(nullptr, nullptr, extent.mHeight, mip_level) /
+          divisor.mHeight;
       const uint32_t depth =
           subGetMipSize(nullptr, nullptr, extent.mDepth, mip_level);
       const uint32_t width_in_blocks =
@@ -588,8 +600,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             uint32_t aspect, uint32_t layer, uint32_t level) {
           auto img_level =
               img->mAspects[aspect]->mLayers[layer]->mLevels[level];
-          level_sizes[img_level.get()] =
-              level_size(img->mInfo.mExtent, img->mInfo.mFormat, level, aspect);
+          level_sizes[img_level.get()] = level_size(
+              img->mInfo.mExtent, img->mInfo.mFormat, level, aspect, true);
           uint64_t pool_size = level_sizes[img_level.get()].level_size;
           if (img_level->mLinearLayout != nullptr &&
               img_level->mLinearLayout->msize > pool_size) {
@@ -769,8 +781,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       }
 
       if (sparseResidency) {
-        for (auto &aspect_i :
-             subUnpackImageAspectFlags(nullptr, nullptr, img->mImageAspect)) {
+        for (auto &aspect_i : subUnpackImageAspectFlags(nullptr, nullptr, img,
+                                                        img->mImageAspect)) {
           uint32_t aspect_bit = aspect_i.second;
           if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
               img->mSparseImageMemoryBindings.end()) {
@@ -806,7 +818,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
                   copies_in_order.push_back(copy);
                   byte_size_and_extent e =
                       level_size(block_i.second->mExtent, image_info.mFormat, 0,
-                                 aspect_bit);
+                                 aspect_bit, false);
                   offset += e.aligned_level_size_in_buf;
                 }
               }
@@ -892,8 +904,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             (uint32_t)copy.mimageSubresource.maspectMask;
         const uint32_t mip_level = copy.mimageSubresource.mmipLevel;
         const uint32_t array_layer = copy.mimageSubresource.mbaseArrayLayer;
-        byte_size_and_extent e =
-            level_size(copy.mimageExtent, image_info.mFormat, 0, aspect_bit);
+        byte_size_and_extent e = level_size(
+            copy.mimageExtent, image_info.mFormat, 0, aspect_bit, false);
 
         if ((image_info.mFormat == VkFormat::VK_FORMAT_X8_D24_UNORM_PACK32 ||
              image_info.mFormat == VkFormat::VK_FORMAT_D24_UNORM_S8_UINT) &&

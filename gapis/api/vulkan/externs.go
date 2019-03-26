@@ -301,7 +301,7 @@ func (e externs) fetchPhysicalDeviceFormatProperties(inst VkInstance, devs VkPhy
 	return NilPhysicalDevicesFormatPropertiesʳ
 }
 
-func (e externs) fetchImageMemoryRequirements(dev VkDevice, img VkImage, hasSparseBit bool) FetchedImageMemoryRequirementsʳ {
+func (e externs) fetchImageMemoryRequirements(dev VkDevice, img ImageObjectʳ, hasSparseBit bool) FetchedImageMemoryRequirementsʳ {
 	// Only fetch memory requirements for application commands, skip any commands
 	// inserted by GAPID
 	if e.cmdID == api.CmdNoID {
