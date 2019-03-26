@@ -16,7 +16,8 @@ package device
 
 var (
 	UnknownABI = abi("unknown", UnknownOS, UnknownArchitecture, &MemoryLayout{})
-
+	// Keep this one in, some applications incorrectly advertise arm, when they mean armv7
+	AndroidARM      = abi("armeabi", Android, ARMv7a, ARMv7aLayout)
 	AndroidARMv7a   = abi("armeabi-v7a", Android, ARMv7a, ARMv7aLayout)
 	AndroidARM64v8a = abi("arm64-v8a", Android, ARMv8a, ARM64v8aLayout)
 	AndroidX86      = abi("x86", Android, X86, X86IA32Layout)
