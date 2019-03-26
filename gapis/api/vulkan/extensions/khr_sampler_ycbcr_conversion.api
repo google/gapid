@@ -131,7 +131,7 @@ cmd VkResult vkCreateSamplerYcbcrConversionKHR(
     const VkAllocationCallbacks*                pAllocator,
     VkSamplerYcbcrConversion*                   pYcbcrConversion) {
   CreateSamplerYcbcrConversion(
-      device, pCreateInfo, pAllocator, pYcbcrConversion)
+      device, pCreateInfo, pAllocator, pYcbcrConversion, true)
   return ?
 }
 
@@ -173,18 +173,6 @@ sub u32 numberOfPlanes(VkFormat fmt) {
     VK_FORMAT_G16_B16R16_2PLANE_420_UNORM_KHR,
     VK_FORMAT_G16_B16R16_2PLANE_422_UNORM_KHR:
       as!u32(2)
-
-    case VK_FORMAT_G8B8G8R8_422_UNORM,
-    VK_FORMAT_B8G8R8G8_422_UNORM,
-    VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16,
-    VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,
-    VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16,
-    VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16,
-    VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,
-    VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16,
-    VK_FORMAT_G16B16G16R16_422_UNORM,
-    VK_FORMAT_B16G16R16G16_422_UNORM:
-      as!u32(1)
 
     default:
       as!u32(0)
