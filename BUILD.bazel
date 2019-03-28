@@ -16,7 +16,10 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to")
 
 # gazelle:prefix github.com/google/gapid
-# gazelle:resolve go llvm/bindings/go/llvm @llvm//:go
+# gazelle:resolve go    go    llvm/bindings/go/llvm                 @llvm//:go
+# gazelle:resolve go    go    perfetto_pb                           @perfetto//:go_default_library
+# gazelle:resolve proto proto perfetto/config/perfetto_config.proto @perfetto//:config_proto
+# gazelle:resolve proto go    perfetto/config/perfetto_config.proto @perfetto//:go_default_library
 
 gazelle(
     name = "gazelle",
