@@ -534,3 +534,17 @@ func (c *client) GetGraphVisualization(ctx context.Context, capture *path.Captur
 	}
 	return res.GetGraphVisualization(), nil
 }
+
+func (c *client) PerfettoQuery(ctx context.Context, capture *path.Capture, query string) (*service.PerfettoQueryResult, error) {
+	res, err := c.client.PerfettoQuery(ctx, &service.PerfettoQueryRequest{
+		Capture: capture,
+		Query:   query,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetResult(), nil
+}

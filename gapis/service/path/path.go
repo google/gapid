@@ -167,135 +167,135 @@ func (n *StateTreeNode) SetParent(p Node)             {}
 func (n *StateTreeNodeForPath) SetParent(p Node)      {}
 func (n *Stats) SetParent(p Node)                     { n.Capture, _ = p.(*Capture) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n ArrayIndex) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v[%v]", n.Parent(), n.Index)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n API) Format(f fmt.State, c rune) { fmt.Fprintf(f, "api<%v>", n.ID) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n As) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.as<%v>", n.Parent(), protoutil.OneOf(n.To))
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Blob) Format(f fmt.State, c rune) { fmt.Fprintf(f, "blob<%x>", n.ID) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Capture) Format(f fmt.State, c rune) { fmt.Fprintf(f, "capture<%x>", n.ID) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n ConstantSet) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.constant-set<%v>", n.Parent(), n.Index)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Command) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.commands[%v]", n.Parent(), printIndices(n.Indices))
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Commands) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.commands[%v-%v]", n.Parent(), printIndices(n.From), printIndices(n.To))
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n CommandTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.command-tree", n.Capture) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n CommandTreeNode) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "command-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n CommandTreeNodeForCommand) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.command-tree-node<%v>", n.Command, n.Tree)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Context) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.[%x]", n.Parent(), n.ID) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Contexts) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.contexts", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Device) Format(f fmt.State, c rune) { fmt.Fprintf(f, "device<%x>", n.ID) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Events) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.events", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Field) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n GlobalState) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.global-state", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n ImageInfo) Format(f fmt.State, c rune) { fmt.Fprintf(f, "image-info<%x>", n.ID) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n MapIndex) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v[%x]", n.Parent(), n.Key) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Memory) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.memory-after", n.Parent()) }
 
 // Format implements fmt.Formatter to print the message path.
 func (n Messages) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.messages", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Mesh) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.mesh", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Parameter) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.%v", n.Parent(), n.Name) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Report) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.report", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n ResourceData) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.ID)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n MultiResourceData) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.IDs)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Resources) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.resources", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Result) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.result", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Slice) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v[%v:%v]", n.Parent(), n.Start, n.End)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n State) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.state<context: %v>", n.Parent(), n.Context)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n StateTree) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.tree", n.State) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n StateTreeNode) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "state-tree<%v>[%v]", n.Tree, printIndices(n.Indices))
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n StateTreeNodeForPath) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "state-tree-for<%v, %v>", n.Tree, n.Member)
 }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Stats) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.stats", n.Parent()) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (n Thumbnail) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.thumbnail", n.Parent()) }
 
 func (n *As) SetParent(p Node) {
@@ -440,7 +440,7 @@ func oneOfNode(v interface{}) Node {
 // Node returns the path node for p.
 func (p *Any) Node() Node { return oneOfNode(p.Path) }
 
-// Format implements fmt.Formatter to print the version.
+// Format implements fmt.Formatter to print the path.
 func (p *Any) Format(f fmt.State, c rune) {
 	fmt.Fprint(f, p.Node())
 }

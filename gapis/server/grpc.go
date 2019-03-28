@@ -637,3 +637,11 @@ func (s *grpcServer) GetTimestamps(ctx xctx.Context, req *service.GetTimestampsR
 	}
 	return data.(*service.GetTimestampsResponse), nil
 }
+
+func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryRequest) (*service.PerfettoQueryResponse, error) {
+	data, err := s.handler.PerfettoQuery(s.bindCtx(ctx), req.Capture, req.Query)
+	if err := service.NewError(err); err != nil {
+		return &service.PerfettoQueryResponse{Res: &service.PerfettoQueryResponse_Error{Error: err}}, nil
+	}
+	return &service.PerfettoQueryResponse{Res: &service.PerfettoQueryResponse_Result{Result: data}}, nil
+}

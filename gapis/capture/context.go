@@ -49,3 +49,9 @@ func Resolve(ctx context.Context) (Capture, error) {
 func ResolveGraphics(ctx context.Context) (*GraphicsCapture, error) {
 	return ResolveGraphicsFromPath(ctx, Get(ctx))
 }
+
+// ResolvePerfetto resolves the capture from a context previously annotated by Put,
+// and ensures that it is a perfetto capture.
+func ResolvePerfetto(ctx context.Context) (*PerfettoCapture, error) {
+	return ResolvePerfettoFromPath(ctx, Get(ctx))
+}

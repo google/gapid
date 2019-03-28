@@ -101,6 +101,18 @@ func ResolveGraphicsFromID(ctx context.Context, id id.ID) (*GraphicsCapture, err
 	return nil, errors.New("not a graphics capture")
 }
 
+// ResolvePerfettoFromID resolves a single perfetto capture with the ID id.
+func ResolvePerfettoFromID(ctx context.Context, id id.ID) (*PerfettoCapture, error) {
+	c, err := ResolveFromID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if pc, ok := c.(*PerfettoCapture); ok {
+		return pc, nil
+	}
+	return nil, errors.New("not a Perfetto capture")
+}
+
 // ResolveFromPath resolves a single capture with the path p.
 func ResolveFromPath(ctx context.Context, p *path.Capture) (Capture, error) {
 	return ResolveFromID(ctx, p.ID.ID())
@@ -109,6 +121,11 @@ func ResolveFromPath(ctx context.Context, p *path.Capture) (Capture, error) {
 // ResolveGraphicsFromPath resolves a single graphics capture with the path p.
 func ResolveGraphicsFromPath(ctx context.Context, p *path.Capture) (*GraphicsCapture, error) {
 	return ResolveGraphicsFromID(ctx, p.ID.ID())
+}
+
+// ResolvePerfettoFromPath resolves a single perfetto capture with the path p.
+func ResolvePerfettoFromPath(ctx context.Context, p *path.Capture) (*PerfettoCapture, error) {
+	return ResolvePerfettoFromID(ctx, p.ID.ID())
 }
 
 // Import imports the capture by name and data, and stores it in the database.

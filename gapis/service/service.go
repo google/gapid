@@ -173,6 +173,9 @@ type Service interface {
 	UpdateSettings(ctx context.Context, req *UpdateSettingsRequest) error
 
 	GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error)
+
+	// Run a perfetto query
+	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*PerfettoQueryResult, error)
 }
 
 type TraceHandler interface {
