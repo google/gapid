@@ -122,6 +122,7 @@ cmd void vkDestroyDevice(
 @threadSafety("system")
 @indirect("VkDevice")
 @threadsafe
+@alive
 cmd VkResult vkDeviceWaitIdle(
     VkDevice device) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
