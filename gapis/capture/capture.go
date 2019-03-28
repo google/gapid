@@ -260,11 +260,14 @@ func fromProto(ctx context.Context, r *Record) (Capture, error) {
 	}
 	defer close()
 
-	if isGFXTraceFormat(in) {
+	switch {
+	case isGFXTraceFormat(in):
 		return deserializeGFXTrace(ctx, r, in)
+	case isPerfettoTraceFormat(in):
+		return deserializePerfettoTrace(ctx, r, in)
+	default:
+		return nil, fmt.Errorf("Not a recognized capture format")
 	}
-
-	return nil, errors.New("Not a recognized capture format")
 }
 
 // wrapper wraps a Capture. This is needed because protoconv, which is used by

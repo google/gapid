@@ -188,6 +188,7 @@ func (c *GraphicsCapture) Service(ctx context.Context, p *path.Capture) *service
 		}
 	}
 	return &service.Capture{
+		Type:         service.TraceType_Graphics,
 		Name:         c.name,
 		Device:       c.Header.Device,
 		ABI:          c.Header.ABI,
