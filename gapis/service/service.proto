@@ -556,6 +556,18 @@ message UpdateSettingsResponse {
   Error error = 1;
 }
 
+message PerfettoQueryRequest {
+  path.Capture capture = 1;
+  string query = 2;
+}
+
+message PerfettoQueryResponse {
+  oneof res {
+    PerfettoQueryResult result = 1;
+    Error error = 2;
+  }
+}
+
 // Gapid is the RPC service to the GAPIS server.
 service Gapid {
   // Ping is a no-op function that returns immediately.
@@ -693,6 +705,11 @@ service Gapid {
 
   // Status returns a stream of Status events that are occuring on the server
   rpc Status(ServerStatusRequest) returns (stream ServerStatusResponse) {
+  }
+
+  // Runs a Perfetto Query. This is done separatly from .Get, because the query
+  // results should not be cached, as they can change due to 'update' queries.
+  rpc PerfettoQuery(PerfettoQueryRequest) returns (PerfettoQueryResponse) {
   }
 
   ///////////////////////////////////////////////////////////////
