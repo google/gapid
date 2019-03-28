@@ -777,8 +777,15 @@ message ErrUnsupportedVersion {
   bool suggest_update = 2;
 }
 
+enum TraceType {
+  Graphics = 0;
+  Perfetto = 1;
+}
+
 // Capture describes single capture file held by the server.
 message Capture {
+  // The type of this capture.
+  TraceType type = 7;
   // Name given to the capture. e.g. "KittyWorld"
   string name = 1;
   // Information about the device used to create the capture.
