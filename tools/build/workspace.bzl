@@ -19,6 +19,7 @@ load("@gapid//tools/build:cc_toolchain.bzl", "cc_configure")
 load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
+load("@gapid//tools/build/third_party:perfetto.bzl", "perfetto")
 load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
@@ -148,6 +149,12 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         remote = "https://chromium.googlesource.com/linux-syscall-support",
         commit = "e6527b0cd469e3ff5764785dadcb39bf7d787154",
         build_file = "@gapid//tools/build/third_party:lss.BUILD",
+    )
+
+    maybe_repository(
+        perfetto,
+        name = "perfetto",
+        locals = locals,
     )
 
     maybe_repository(
