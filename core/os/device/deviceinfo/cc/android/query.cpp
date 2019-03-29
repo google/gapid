@@ -145,6 +145,7 @@ struct Context {
   int mOSVersionMinor;
   std::vector<std::string> mSupportedABIs;
   device::Architecture mCpuArchitecture;
+  std::string eglExtensions;
 };
 
 static Context gContext;
@@ -198,6 +199,7 @@ bool createContext() {
   RESOLVE(eglCreatePbufferSurface, PFNEGLCREATEPBUFFERSURFACE);
   RESOLVE(eglMakeCurrent, PFNEGLMAKECURRENT);
   RESOLVE(eglGetDisplay, PFNEGLGETDISPLAY);
+  RESOLVE(eglQueryString, PFNEGLQUERYSTRING);
 
 #undef RESOLVE
 
@@ -215,9 +217,19 @@ bool createContext() {
 
   CHECK(auto display = eglGetDisplay(EGL_DEFAULT_DISPLAY));
 
-  CHECK(eglInitialize(display, nullptr, nullptr));
+  EGLint major, minor;
+  CHECK(eglInitialize(display, &major, &minor));
 
   gContext.mDisplay = display;
+
+  if (major > 1 || minor >= 5) {
+    // Client extensions (null display) were added in EGL 1.5.
+    CHECK(auto exts = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS));
+    gContext.eglExtensions.append(exts);
+    gContext.eglExtensions.append(" ");
+  }
+  CHECK(auto exts = eglQueryString(display, EGL_EXTENSIONS));
+  gContext.eglExtensions.append(exts);
 
   CHECK(eglBindAPI(EGL_OPENGL_ES_API));
 
@@ -479,5 +491,15 @@ int osMajor() { return gContext.mOSVersionMajor; }
 int osMinor() { return gContext.mOSVersionMinor; }
 
 int osPoint() { return 0; }
+
+void glDriverPlatform(device::OpenGLDriver* driver) {
+  std::istringstream iss(gContext.eglExtensions);
+  std::string extension;
+  while (std::getline(iss, extension, ' ')) {
+    if (extension != "") {
+      driver->add_extensions(extension);
+    }
+  }
+}
 
 }  // namespace query

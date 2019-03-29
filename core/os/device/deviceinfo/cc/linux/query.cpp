@@ -294,4 +294,6 @@ int osMinor() { return 0; }
 
 int osPoint() { return 0; }
 
+void glDriverPlatform(device::OpenGLDriver*) {}
+
 }  // namespace query

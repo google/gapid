@@ -235,4 +235,6 @@ int osMinor() { return gContext.mOsVersion.dwMinorVersion; }
 
 int osPoint() { return gContext.mOsVersion.dwBuildNumber; }
 
+void glDriverPlatform(device::OpenGLDriver*) {}
+
 }  // namespace query
