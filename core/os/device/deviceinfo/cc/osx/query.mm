@@ -166,4 +166,6 @@ int osMinor() { return gContext.mOsVersion.minorVersion; }
 
 int osPoint() { return gContext.mOsVersion.patchVersion; }
 
+void glDriverPlatform(device::OpenGLDriver*) {}
+
 }  // namespace query

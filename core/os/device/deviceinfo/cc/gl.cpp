@@ -92,6 +92,8 @@ void glDriver(device::OpenGLDriver* driver) {
       maxtransformfeedbackseparateattribs);
   driver->set_max_transform_feedback_interleaved_components(
       maxtransformfeedbackinterleavedcomponents);
+
+  glDriverPlatform(driver);
 }
 
 }  // namespace query
