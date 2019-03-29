@@ -22,11 +22,13 @@ go_library(
         "device.go",
         "doc.go",
         "installed_package.go",
+        "layers.go",
     ],
     embed = [":android_go_proto"],
     importpath = "github.com/google/gapid/core/os/android",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",

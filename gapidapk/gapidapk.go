@@ -192,6 +192,9 @@ const (
 
 	// LibInterceptorName is the name of the interceptor dynamic library file.
 	LibInterceptorName = "libinterceptor.so"
+
+	// GraphicsSpyLayerName is the name of the graphics spy layer.
+	GraphicsSpyLayerName = "GraphicsSpy"
 )
 
 // PackageName returns the full package name of the GAPID apk for the given ABI.
@@ -203,5 +206,14 @@ func PackageName(abi *device.ABI) string {
 		return "com.google.android.gapid.arm64v8a"
 	default:
 		return fmt.Sprintf("com.google.android.gapid.%v", abi.Name)
+	}
+}
+
+// LayerName returns the name of the layer to use for Vulkan vs GLES.
+func LayerName(vulkan bool) string {
+	if vulkan {
+		return GraphicsSpyLayerName
+	} else {
+		return LibGAPIIName
 	}
 }

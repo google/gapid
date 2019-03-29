@@ -116,6 +116,18 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		d.RemoveForward(ctx, port)
 	})
 
+	isVulkan := o.APIs&VulkanAPI != uint32(0)
+	useLayers := android.SupportsLayersViaSystemSettings(d)
+
+	if useLayers {
+		log.I(ctx, "Setting up Layer")
+		cu, err := android.SetupLayer(ctx, d, p.Name, gapidapk.PackageName(abi), gapidapk.LayerName(isVulkan), isVulkan)
+		if err != nil {
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up the layer")
+		}
+		cleanup = cleanup.Then(cu)
+	}
+
 	// FileDir may fail here. This happens if/when the app is non-debuggable.
 	// Don't set up vulkan tracing here, since the loader will not try and load the layer
 	// if we aren't debuggable regardless.
@@ -137,9 +149,16 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 	}
 
 	if a != nil {
-		log.I(ctx, "Starting activity in debug mode")
-		if err := d.StartActivityForDebug(ctx, *a, additionalArgs...); err != nil {
-			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity in debug mode")
+		if useLayers {
+			log.I(ctx, "Starting activity")
+			if err := d.StartActivity(ctx, *a, additionalArgs...); err != nil {
+				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity")
+			}
+		} else {
+			log.I(ctx, "Starting activity in debug mode")
+			if err := d.StartActivityForDebug(ctx, *a, additionalArgs...); err != nil {
+				return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting activity in debug mode")
+			}
 		}
 	} else {
 		log.I(ctx, "No start activity selected - trying to attach...")
@@ -161,8 +180,10 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 		Device:  d,
 		Options: o,
 	}
-	if err := process.loadAndConnectViaJDWP(ctx, apk, pid, d); err != nil {
-		return nil, cleanup.Invoke(ctx), err
+	if !useLayers {
+		if err := process.loadAndConnectViaJDWP(ctx, apk, pid, d); err != nil {
+			return nil, cleanup.Invoke(ctx), err
+		}
 	}
 
 	return process, cleanup, nil

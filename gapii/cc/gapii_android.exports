@@ -1,4 +1,6 @@
 JNI_OnLoad
+AndroidGLESLayer_GetProcAddress
+AndroidGLESLayer_Initialize
 gapid_vkGetDeviceProcAddr
 gapid_vkGetInstanceProcAddr
 gapid_vkEnumerateInstanceLayerProperties
