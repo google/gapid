@@ -53,6 +53,7 @@ const EGLint EGL_OPENGL_ES_API = 0x30A0;
 const EGLNativeDisplayType EGL_DEFAULT_DISPLAY = nullptr;
 const EGLContext EGL_NO_CONTEXT = 0;
 const EGLDisplay EGL_NO_DISPLAY = 0;
+const EGLSurface EGL_NO_SURFACE = 0;
 
 typedef EGLBoolean (*PFNEGLBINDAPI)(EGLenum api);
 typedef EGLBoolean (*PFNEGLCHOOSECONFIG)(EGLDisplay display,
@@ -77,5 +78,6 @@ typedef EGLSurface (*PFNEGLCREATEPBUFFERSURFACE)(EGLDisplay display,
                                                  EGLConfig config,
                                                  const EGLint* attrib_list);
 typedef const char* (*PFNEGLQUERYSTRING)(EGLDisplay display, EGLint name);
+typedef EGLBoolean (*PFNEGLRELEASETHREAD)();
 
 #endif  // GAPID_CORE_OS_DEVICEINFO_ANDROID_EGL_LITE

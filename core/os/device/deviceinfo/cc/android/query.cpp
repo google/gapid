@@ -156,14 +156,20 @@ void destroyContext() {
     return;
   }
 
+  auto eglMakeCurrent = reinterpret_cast<PFNEGLMAKECURRENT>(
+      core::GetGlesProcAddress("eglMakeCurrent"));
   auto eglDestroyContext = reinterpret_cast<PFNEGLDESTROYCONTEXT>(
       core::GetGlesProcAddress("eglDestroyContext"));
   auto eglDestroySurface = reinterpret_cast<PFNEGLDESTROYSURFACE>(
       core::GetGlesProcAddress("eglDestroySurface"));
   auto eglTerminate = reinterpret_cast<PFNEGLTERMINATE>(
       core::GetGlesProcAddress("eglTerminate"));
+  auto eglReleaseThread = reinterpret_cast<PFNEGLRELEASETHREAD>(
+      core::GetGlesProcAddress("eglReleaseThread"));
 
   if (gContext.mContext) {
+    eglMakeCurrent(gContext.mDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE,
+                   EGL_NO_CONTEXT);
     eglDestroyContext(gContext.mDisplay, gContext.mContext);
     gContext.mContext = 0;
   }
@@ -172,6 +178,7 @@ void destroyContext() {
     gContext.mSurface = 0;
   }
   if (gContext.mDisplay) {
+    eglReleaseThread();
     eglTerminate(gContext.mDisplay);
     gContext.mDisplay = nullptr;
   }
