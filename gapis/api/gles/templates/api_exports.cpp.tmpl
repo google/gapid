@@ -94,8 +94,8 @@ Symbol kGLESExports[] = {
       {{$name := Macro "CmdName" $c}}
       {{$imports := print (Title (Global "API")) "Spy::imports()"}}
       EXPORT {{Template "C++.ReturnType" $c}} STDCALL {{$name}}({{Template "C++.CallParameters" $c}}) {
-        Spy* s = Spy::get();
         GAPID_DEBUG({{Template "C++.PrintfCommandCall" $c}});
+        Spy* s = Spy::get();
         auto spy_ctx = s->enter("{{$name}}", GlesAPI);
         {{if not (IsVoid $c.Return.Type)}}auto _result_ = §{{end}}
         s->{{$name}}({{Macro "C++.CallArguments" $c | Strings "spy_ctx" | JoinWith ", "}});
