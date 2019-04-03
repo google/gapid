@@ -43,9 +43,17 @@ $BUILD_ROOT/bazel/bin/bazel \
     build -c opt --config symbols \
     --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
     --define GAPID_BUILD_SHA="$BUILD_SHA" \
-    //:pkg //cmd/gapir/cc:gapir.sym
+    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests:smoketests
 echo $(date): Build completed.
+
+# Smoketests
+echo $(date): Run smoketests...
+# Using "bazel run //cmd/smoketests seems to make 'bazel-bin/pkg/gapit'
+# disappear, hence we call the binary directly
+bazel-bin/cmd/smoketests/linux_amd64_stripped/smoketests -gapit bazel-bin/pkg/gapit -traces test/traces
+echo $(date): Smoketests completed.
 
 # Build the release packages.
 mkdir $BUILD_ROOT/out
 $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
+

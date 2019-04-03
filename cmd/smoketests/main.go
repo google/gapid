@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -29,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/log"
 )
 
 var (
@@ -43,9 +43,9 @@ func main() {
 	app.Run(run)
 }
 
-func sigInt(c chan os.Signal) {
+func sigInt(ctx context.Context, c chan os.Signal) {
 	s := <-c
-	log.Fatal("Received signal: ", s)
+	log.F(ctx, true, "Received signal: ", s)
 }
 
 func run(ctx context.Context) error {
@@ -53,13 +53,13 @@ func run(ctx context.Context) error {
 	// Register SIGINT handler
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
-	go sigInt(signalChan)
+	go sigInt(ctx, signalChan)
 
 	// Check argument
-	filemode, err := os.Lstat(*path)
-	if err != nil {
-		return err
-	}
+	// filemode, err := os.Lstat(*path)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Record starting working directory
 	startwd, err := os.Getwd()
