@@ -24,6 +24,12 @@ curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.20.0/ba
 mkdir bazel
 bash bazel-0.20.0-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
+# Get GCC 7
+sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+sudo apt-get -q update
+sudo apt-get -qy install gcc-7 g++-7
+export CC=/usr/bin/gcc-7
+
 # Setup environment.
 export ANDROID_NDK_HOME=/opt/android-ndk-r16b
 
