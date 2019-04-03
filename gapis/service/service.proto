@@ -68,6 +68,30 @@ message Devices {
 message Events {
   repeated Event list = 1;
 }
+// This needs to be binary compatible with perfetto.protos.RawQueryResult.
+message PerfettoQueryResult {
+  message ColumnDesc {
+    string name = 1;
+    enum Type {
+      UNKNOWN = 0;
+      LONG = 1;
+      DOUBLE = 2;
+      STRING = 3;
+    }
+    Type type = 2;
+  }
+  message ColumnValues {
+    repeated int64 long_values = 1;
+    repeated double double_values = 2;
+    repeated string string_values = 3;
+    repeated bool is_nulls = 4;
+  }
+  repeated ColumnDesc column_descriptors = 1;
+  uint64 num_records = 2;
+  repeated ColumnValues columns = 3;
+  string error = 4;
+  uint64 execution_time_ns = 5;
+}
 message StringTableInfos {
   repeated stringtable.Info list = 1;
 }
