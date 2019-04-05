@@ -449,26 +449,28 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 				match[1], match[3],
 				strings.Join(lines, "\n  "))
 		}
-	} else {
+	} else if o.Type != service.TraceType_Perfetto || len(o.GetUri()) != 0 {
 		return ret, nil, fmt.Errorf("Could not find package matching %s", o.GetUri())
 	}
 
-	if !pkg.Debuggable {
-		err = t.b.Root(ctx)
-		switch err {
-		case nil:
-		case adb.ErrDeviceNotRooted:
-			return ret, cleanup.Invoke(ctx), err
-		default:
-			return ret, cleanup.Invoke(ctx), fmt.Errorf("Failed to restart ADB as root: %v", err)
+	if pkg != nil {
+		if !pkg.Debuggable {
+			err = t.b.Root(ctx)
+			switch err {
+			case nil:
+			case adb.ErrDeviceNotRooted:
+				return ret, cleanup.Invoke(ctx), err
+			default:
+				return ret, cleanup.Invoke(ctx), fmt.Errorf("Failed to restart ADB as root: %v", err)
+			}
+			log.I(ctx, "Device is rooted")
 		}
-		log.I(ctx, "Device is rooted")
-	}
 
-	if o.ClearCache {
-		log.I(ctx, "Clearing package cache")
-		if err := pkg.ClearCache(ctx); err != nil {
-			return ret, nil, err
+		if o.ClearCache {
+			log.I(ctx, "Clearing package cache")
+			if err := pkg.ClearCache(ctx); err != nil {
+				return ret, nil, err
+			}
 		}
 	}
 

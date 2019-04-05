@@ -26,6 +26,7 @@ func VulkanTraceOptions() *service.TraceTypeCapabilities {
 		CanDisablePcs:                  false,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: true,
+		RequiresApplication:            true,
 	}
 }
 
@@ -37,6 +38,7 @@ func GLESTraceOptions() *service.TraceTypeCapabilities {
 		CanDisablePcs:                  true,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Experimental,
 		CanEnableUnsupportedExtensions: false,
+		RequiresApplication:            true,
 	}
 }
 
@@ -47,5 +49,6 @@ func PerfettoTraceOptions() *service.TraceTypeCapabilities {
 		CanDisablePcs:                  false,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: false,
+		RequiresApplication:            false,
 	}
 }

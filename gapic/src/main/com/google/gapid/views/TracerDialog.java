@@ -582,9 +582,10 @@ public class TracerDialog {
       }
 
       public boolean isReady() {
-        return getSelectedDevice() != null && getSelectedApi() != null &&
-            !traceTarget.getText().isEmpty() && !directory.getText().isEmpty() &&
-            !file.getText().isEmpty();
+        TraceTypeCapabilities config = getSelectedApi();
+        return getSelectedDevice() != null && config != null &&
+            (!config.getRequiresApplication() || !traceTarget.getText().isEmpty()) &&
+            !directory.getText().isEmpty() && !file.getText().isEmpty();
       }
 
       public void addModifyListener(Listener listener) {
