@@ -28,6 +28,7 @@ go_library(
         "inputs.go",
         "installed_package.go",
         "logcat.go",
+        "perfetto.go",
         "screen.go",
     ],
     importpath = "github.com/google/gapid/core/os/android/adb",
@@ -44,6 +45,8 @@ go_library(
         "//core/os/device/bind:go_default_library",
         "//core/os/file:go_default_library",
         "//core/os/shell:go_default_library",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@perfetto//:go_default_library",
     ],
 )
 

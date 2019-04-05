@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"time"
 
+	"perfetto_pb"
+
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
@@ -91,6 +94,8 @@ type Device interface {
 	// DeleteSystemSetting removes the system setting with with the given
 	// namespaced key.
 	DeleteSystemSetting(ctx context.Context, namespace, key string) error
+	// StartPerfettoTrace starts a perfetto trace.
+	StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error
 }
 
 // LogcatMessage represents a single logcat message.
