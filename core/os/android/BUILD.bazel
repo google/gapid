@@ -29,9 +29,11 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/app:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "@perfetto//:go_default_library",
     ],
 )
 

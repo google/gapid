@@ -55,6 +55,7 @@ proto_library(
         "//gapis/service/path:path_proto",
         "//gapis/service/severity:severity_proto",
         "//gapis/stringtable:stringtable_proto",
+        "@perfetto//:config_proto",
     ],
 )
 
@@ -73,6 +74,7 @@ go_proto_library(
         "//gapis/service/path:go_default_library",
         "//gapis/service/severity:go_default_library",
         "//gapis/stringtable:go_default_library",
+        "@perfetto//:go_default_library",
     ],
 )
 

@@ -769,6 +769,7 @@ func (r *traceHandler) Event(ctx context.Context, req service.TraceEvent) (*serv
 	}
 
 	if r.started {
+		// TODO: this is not a good way to signal that we are ready to capture.
 		if bytes == 0 {
 			status = service.TraceStatus_Initializing
 		} else {

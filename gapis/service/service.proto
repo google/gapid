@@ -22,6 +22,7 @@ import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
 import "gapis/service/severity/severity.proto";
 import "gapis/stringtable/stringtable.proto";
+import "perfetto/config/perfetto_config.proto";
 
 package service;
 option java_package = "com.google.gapid.proto.service";
@@ -1163,6 +1164,8 @@ message TraceOptions {
   string server_local_save_path = 21;
   // Name of the pipe to connect/listen to.
   string pipe_name = 22;
+  // The config to use if doing a Perfetto trace.
+  perfetto.protos.TraceConfig perfetto_config = 24;
 }
 
 enum TraceEvent {
