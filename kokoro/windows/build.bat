@@ -66,7 +66,7 @@ if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 
 REM Smoketests
-%BUILD_ROOT%\bazel\bin\bazel run -c opt //cmd/smoketests -- -gapit %SRC%\bazel-bin\pkg\gapit -traces %SRC%\test\traces
+%SRC%\bazel-bin\cmd\smoketests\windows_amd64_stripped\smoketests -gapit bazel-bin\pkg\gapit -traces test\traces
 echo %DATE% %TIME%
 
 REM Build the release packages.
