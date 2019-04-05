@@ -67,6 +67,7 @@ public class Settings {
   public int[] shaderSplitterWeights = new int[] { 70, 30 };
   public int[] texturesSplitterWeights = new int[] { 20, 80 };
   public String traceDevice = "";
+  public String traceType = "Graphics";
   public String traceApi = "";
   public String traceUri = "";
   public String traceArguments = "";
@@ -217,6 +218,7 @@ public class Settings {
     texturesSplitterWeights =
         getIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
     traceDevice = properties.getProperty("trace.device", traceDevice);
+    traceType = properties.getProperty("trace.type", traceType);
     traceApi = properties.getProperty("trace.api", traceApi);
     traceUri = properties.getProperty("trace.uri", traceUri);
     traceArguments = properties.getProperty("trace.arguments", traceArguments);
@@ -260,6 +262,7 @@ public class Settings {
     setIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
     setIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
     properties.setProperty("trace.device", traceDevice);
+    properties.setProperty("trace.type", traceType);
     properties.setProperty("trace.api", traceApi);
     properties.setProperty("trace.uri", traceUri);
     properties.setProperty("trace.arguments", traceArguments);

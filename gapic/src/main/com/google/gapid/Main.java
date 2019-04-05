@@ -36,6 +36,7 @@ import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.Scheduler;
+import com.google.gapid.views.TracerDialog;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
@@ -206,5 +207,6 @@ public class Main {
     Logging.logDir,
     Follower.logFollowRequests,
     Server.useCache,
+    TracerDialog.perfettoConfig,
   };
 }
