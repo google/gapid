@@ -27,7 +27,7 @@ extern "C" {
 
 typedef void* processor;
 
-processor new_processor(uint64_t window_size_ns);
+processor new_processor();
 bool parse_data(processor processor, const void* data, size_t size);
 void execute_query(processor processor, int id, const char* query);
 void delete_processor(processor processor);

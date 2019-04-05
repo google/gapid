@@ -28,16 +28,13 @@ namespace pp = perfetto::protos;
 // Callback back into go.
 extern "C" void on_query_complete(int id, void* data, long unsigned int size);
 
-processor new_processor(uint64_t window_size_ns) {
+processor new_processor() {
   ptp::Config config;
-  config.window_size_ns = window_size_ns;
-
   return ptp::TraceProcessor::CreateInstance(config).release();
 }
 
 bool parse_data(processor processor, const void* data, size_t size) {
   ptp::TraceProcessor* p = static_cast<ptp::TraceProcessor*>(processor);
-  // TODO: do we need this copy?
   std::unique_ptr<uint8_t[]> buf(new uint8_t[size]);
   memcpy(buf.get(), data, size);
   if (!p->Parse(std::move(buf), size)) {
