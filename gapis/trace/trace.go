@@ -46,6 +46,10 @@ func Trace(ctx context.Context, device *path.Device, start task.Signal, stop tas
 		return err
 	}
 
+	if !isSupported(config, options) {
+		return log.Errf(ctx, nil, "Cannot take the requested type of trace on this device")
+	}
+
 	if port := options.GetPort(); port != 0 {
 		if !config.ServerLocalPath {
 			return log.Errf(ctx, nil, "Cannot attach to a remote device by port")
@@ -84,4 +88,20 @@ func TraceConfiguration(ctx context.Context, device *path.Device) (*service.Devi
 	}
 
 	return tracer.TraceConfiguration(ctx)
+}
+
+func isSupported(config *service.DeviceTraceConfiguration, options *service.TraceOptions) bool {
+	numApis := len(options.Apis)
+
+	// We don't support tracing more than one API at this time.
+	if numApis > 1 {
+		return false
+	}
+
+	for _, c := range config.Apis {
+		if c.Type == options.Type && (numApis < 1 || options.Apis[0] == c.Api) {
+			return true
+		}
+	}
+	return false
 }
