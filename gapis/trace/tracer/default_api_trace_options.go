@@ -39,3 +39,13 @@ func GLESTraceOptions() *service.TraceTypeCapabilities {
 		CanEnableUnsupportedExtensions: false,
 	}
 }
+
+// PerfettoTraceOptions returns the default trace options for Perfetto.
+func PerfettoTraceOptions() *service.TraceTypeCapabilities {
+	return &service.TraceTypeCapabilities{
+		Type:                           service.TraceType_Perfetto,
+		CanDisablePcs:                  false,
+		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
+		CanEnableUnsupportedExtensions: false,
+	}
+}
