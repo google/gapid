@@ -47,7 +47,7 @@ type Result struct {
 }
 
 func NewProcessor(ctx context.Context, data []byte) (*Processor, error) {
-	p := C.new_processor(60 * 1000 * 1000 * 1000)
+	p := C.new_processor()
 	log.D(ctx, "[perfetto] Parsing %d bytes", len(data))
 	if !C.parse_data(p, unsafe.Pointer(&data[0]), C.size_t(len(data))) {
 		log.W(ctx, "[perfetto] Parsing failed")
