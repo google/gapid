@@ -96,7 +96,7 @@ func NewTracer(dev bind.Device) tracer.Tracer {
 
 // TraceConfiguration returns the device's supported trace configuration.
 func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
-	apis := make([]*service.DeviceAPITraceConfiguration, 0, 2)
+	apis := make([]*service.TraceTypeCapabilities, 0, 2)
 	if t.b.Instance().GetConfiguration().GetDrivers().GetOpengl().GetVersion() != "" {
 		apis = append(apis, tracer.GLESTraceOptions())
 	}

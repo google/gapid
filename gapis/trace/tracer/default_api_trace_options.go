@@ -19,8 +19,9 @@ import (
 )
 
 // VulkanTraceOptions returns the default trace options for Vulkan.
-func VulkanTraceOptions() *service.DeviceAPITraceConfiguration {
-	return &service.DeviceAPITraceConfiguration{
+func VulkanTraceOptions() *service.TraceTypeCapabilities {
+	return &service.TraceTypeCapabilities{
+		Type:                           service.TraceType_Graphics,
 		Api:                            "Vulkan",
 		CanDisablePcs:                  false,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
@@ -29,8 +30,9 @@ func VulkanTraceOptions() *service.DeviceAPITraceConfiguration {
 }
 
 // GLESTraceOptions returns the default trace options for GLES.
-func GLESTraceOptions() *service.DeviceAPITraceConfiguration {
-	return &service.DeviceAPITraceConfiguration{
+func GLESTraceOptions() *service.TraceTypeCapabilities {
+	return &service.TraceTypeCapabilities{
+		Type:                           service.TraceType_Graphics,
 		Api:                            "OpenGLES",
 		CanDisablePcs:                  true,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Experimental,
