@@ -126,22 +126,15 @@ func Start(ctx context.Context, p *android.InstalledPackage, a *android.Activity
 			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up the layer")
 		}
 		cleanup = cleanup.Then(cu)
-	}
-
-	// FileDir may fail here. This happens if/when the app is non-debuggable.
-	// Don't set up vulkan tracing here, since the loader will not try and load the layer
-	// if we aren't debuggable regardless.
-	var m *flock.Mutex
-	if o.APIs&VulkanAPI != uint32(0) {
-		m, err = reserveVulkanDevice(ctx, d)
+	} else if isVulkan {
+		m, err := reserveVulkanDevice(ctx, d)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Setting up for tracing Vulkan")
 		}
+		cleanup = cleanup.Then(func(ctx context.Context) {
+			releaseVulkanDevice(ctx, d, m)
+		})
 	}
-
-	cleanup = cleanup.Then(func(ctx context.Context) {
-		releaseVulkanDevice(ctx, d, m)
-	})
 
 	var additionalArgs []android.ActionExtra
 	if o.AdditionalFlags != "" {
