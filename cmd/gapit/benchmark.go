@@ -387,7 +387,18 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	status.Event(ctx, status.GlobalScope, "Load done, interaction starting %+v", verb.traceSizeInBytes)
 
-	// Sleep for 20 seconds
+	// Sleep for 20 seconds so that the server is idle before we do
+	// the last part of the benchmark. When we open a trace we, in the
+	// background, generate the Dependency Graph. If we start making
+	// requests before that is done, we will skew the benchmarking
+	// results for 2 reasons:
+	//
+	//  1. Because the CPU will be under load for building the Dep
+	//  graph
+	//
+	//  2. Because requests that normally use the dep graph (getting
+	//  the framebuffer observations in this case) won't take
+	//  advantage of it.
 	time.Sleep(20 * time.Second)
 
 	ctx = status.Start(oldCtx, "Interacting with frame")
@@ -501,6 +512,9 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			mem = memory.Reads[0]
 		} else if len(memory.Writes) > 0 {
 			mem = memory.Writes[0]
+		} else {
+			log.I(ctx, "No memory observations.")
+			return
 		}
 		client.Get(ctx, commandToClick.MemoryAfter(0, mem.Base, 64*1024).Path(), resolveConfig)
 	}()
