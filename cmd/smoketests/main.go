@@ -55,12 +55,6 @@ func run(ctx context.Context) error {
 	signal.Notify(signalChan, os.Interrupt)
 	go sigInt(ctx, signalChan)
 
-	// Check argument
-	// filemode, err := os.Lstat(*path)
-	// if err != nil {
-	// 	return err
-	// }
-
 	// Record starting working directory
 	startwd, err := os.Getwd()
 	if err != nil {
@@ -83,7 +77,7 @@ func run(ctx context.Context) error {
 	// Gapit path argument
 	gapitPath := *gapitArg
 	// We assume gapitPath is found in PATH environment unless it
-	// contains a separator, in which case we make it absolute
+	// contains a separator, in which case we treat it as a path
 	hasSeparator := strings.ContainsAny(gapitPath, string(filepath.Separator))
 	if hasSeparator && !filepath.IsAbs(gapitPath) {
 		gapitPath = filepath.Join(startwd, gapitPath)
