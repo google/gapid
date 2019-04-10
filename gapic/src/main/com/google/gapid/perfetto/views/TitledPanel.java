@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.rpc;
+package com.google.gapid.perfetto.views;
 
-public class RpcException extends Exception {
-  public RpcException(String message) {
-    super(message);
-  }
+import com.google.gapid.perfetto.canvas.Panel;
+import com.google.gapid.perfetto.canvas.RenderContext;
 
-  public RpcException(String message, Throwable cause) {
-    super(message, cause);
-  }
+/**
+ * A {@link Panel} with a title and subtitle.
+ */
+public interface TitledPanel extends Panel {
+  public String getTitle();
+  public default String getSubTitle() { return ""; }
+  @SuppressWarnings("unused")
+  public default void decorateTitle(RenderContext ctx, Repainter repainter) { /* do nothing */ }
 }
