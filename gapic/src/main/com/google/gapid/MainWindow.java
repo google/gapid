@@ -385,7 +385,7 @@ public class MainWindow extends ApplicationWindow {
           view = new GraphicsTraceView(this, models, widgets);
           break;
         case Perfetto:
-          view = new PerfettoTraceView(this);
+          view = new PerfettoTraceView(this, models, widgets);
           break;
         default:
           throw new AssertionError("Trace type not supported: " + traceType);
