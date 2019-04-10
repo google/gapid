@@ -24,6 +24,8 @@ import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientEventRequest;
 import com.google.gapid.proto.service.Service.ClientEventResponse;
+import com.google.gapid.proto.service.Service.PerfettoQueryRequest;
+import com.google.gapid.proto.service.Service.PerfettoQueryResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
 import com.google.gapid.proto.service.Service.TraceTargetTreeNodeRequest;
 import com.google.gapid.proto.service.Service.TraceTargetTreeNodeResponse;
@@ -160,6 +162,11 @@ public class GapidClientGrpc implements GapidClient {
   @Override
   public ListenableFuture<UpdateSettingsResponse> updateSettings(UpdateSettingsRequest request) {
     return client.updateSettings(request);
+  }
+
+  @Override
+  public ListenableFuture<PerfettoQueryResponse> perfettoQuery(PerfettoQueryRequest request) {
+    return client.perfettoQuery(request);
   }
 
   @Override

@@ -60,6 +60,7 @@ java_library(
         "//gapidapk/pkginfo:pkginfo_java_proto",
         "//gapis/api:api_java_proto",
         "//gapis/memory:memory_java_proto",
+        "//gapis/perfetto/service:perfetto_java_proto",
         "//gapis/service:service_java_proto",
         "//gapis/service/box:box_java_proto",
         "//gapis/service/path:path_java_proto",
