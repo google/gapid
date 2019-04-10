@@ -37,12 +37,13 @@ public class Models {
   public final ConstantSets constants;
   public final Geometries geos;
   public final Memory memory;
+  public final Perfetto perfetto;
   public final StatusBar status; // The "model" part of this "widget".
 
   public Models(Settings settings, Analytics analytics, Follower follower, Capture capture,
       Devices devices, CommandStream commands, ApiContext contexts, Timeline timeline,
       Resources resources, ApiState state, Reports reports, ImagesModel images,
-      ConstantSets constants, Geometries geos, Memory memory, StatusBar status) {
+      ConstantSets constants, Geometries geos, Memory memory, Perfetto perfetto, StatusBar status) {
     this.settings = settings;
     this.analytics = analytics;
     this.follower = follower;
@@ -58,6 +59,7 @@ public class Models {
     this.constants = constants;
     this.geos = geos;
     this.memory = memory;
+    this.perfetto = perfetto;
     this.status = status;
   }
 
@@ -79,8 +81,9 @@ public class Models {
     ImagesModel images = new ImagesModel(client, devices, capture, settings);
     Geometries geometries = new Geometries(shell, analytics, client, devices, commands);
     Memory memory = new Memory(shell, analytics, client, devices, commands);
+    Perfetto perfetto = new Perfetto(shell, analytics, client, capture, status);
     return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
-        resources, state, reports, images, constants, geometries, memory, status);
+        resources, state, reports, images, constants, geometries, memory, perfetto, status);
   }
 
   public void dispose() {

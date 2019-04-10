@@ -43,6 +43,7 @@ import org.eclipse.swt.widgets.Link;
 public class StatusBar extends Composite {
   private final Composite serverStatus;
   private final HeapStatus heap;
+  private final Label serverPrefix;
   private final Label server;
   private final Link notification;
   private Runnable onNotificationClick = null;
@@ -58,6 +59,7 @@ public class StatusBar extends Composite {
     createLabel(serverStatus, "Server:");
     heap = new HeapStatus(serverStatus, theme);
     withLayoutData(new Label(serverStatus, SWT.SEPARATOR | SWT.VERTICAL), new RowData(SWT.DEFAULT, 1));
+    serverPrefix = createLabel(serverStatus, "");
     server = createLabel(serverStatus, "");
     serverStatus.setVisible(false);
 
@@ -77,6 +79,12 @@ public class StatusBar extends Composite {
   public void setNotification(String text, Runnable onClick) {
     notification.setText((onClick != null) ? "<a>" + text + "</a>" : text);
     onNotificationClick = onClick;
+    layout();
+  }
+
+  public void setServerStatusPrefix(String text) {
+    serverStatus.setVisible(true);
+    serverPrefix.setText(text);
     layout();
   }
 

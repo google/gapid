@@ -246,6 +246,17 @@ public class Client {
 
   }
 
+  public ListenableFuture<Service.PerfettoQueryResult> perfettoQuery(
+      Path.Capture capture, String query) {
+    return call(() -> String.format("RPC->perfettoQuery(%s, %s)", shortDebugString(capture), query),
+        stack -> MoreFutures.transformAsync(
+            client.perfettoQuery(Service.PerfettoQueryRequest.newBuilder()
+                .setCapture(capture)
+                .setQuery(query)
+                .build()),
+            in -> immediateFuture(throwIfError(in.getResult(), in.getError(), stack))));
+  }
+
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
     LOG.log(FINE, "RPC->getLogStream()");
     return client.streamLog(onLogMessage);
