@@ -122,7 +122,7 @@ public class MainWindow extends ApplicationWindow {
           MainView view = mainUi.getContents().updateAndGet(
               models.capture.getData().capture.getType());
           view.updateViewMenu(findMenu(MenuItems.VIEW_ID));
-          getMenuBarManager().update(true);
+          getMenuBarManager().updateAll(true);
           mainUi.stopLoading();
         }
       }
@@ -413,6 +413,7 @@ public class MainWindow extends ApplicationWindow {
     ViewThumbnails("Show Filmstrip"),
     ViewLeft("Show Left Tabs"),
     ViewRight("Show Right Tabs"),
+    ViewDarkMode("Dark Mode", 'D'),
 
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),

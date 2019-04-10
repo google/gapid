@@ -28,10 +28,15 @@ import org.eclipse.jface.viewers.StyledString.Styler;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Resource;
 import org.eclipse.swt.widgets.Display;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -39,6 +44,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -144,6 +150,8 @@ public interface Theme {
   @Text(Text.Mono) public Font monoSpaceFont();
   @Text(Text.Big) public Font bigBoldFont();
 
+  @TTF(ttf = "material_icons.ttf", name = "Material Icons", size = 18) public Font materialIcons();
+
   public void dispose();
 
   public static Theme load(Display display) {
@@ -240,6 +248,17 @@ public interface Theme {
     public static final int Mono = 1, Big = 2;
 
     public int value();
+  }
+
+  /**
+   * Annotation for a font resource loaded from a TTF file.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  public static @interface TTF {
+    public String ttf();
+    public String name();
+    public int size();
   }
 
   /**
@@ -371,6 +390,30 @@ public interface Theme {
             resources.put(method.getName(), font);
             return true;
           }
+        }
+      }
+
+      TTF ttf = method.getDeclaredAnnotation(TTF.class);
+      if (ttf != null) {
+        URL url = Resources.getResource("fonts/" + ttf.ttf());
+        if (url == null) {
+          return false;
+        }
+        try {
+          File fontFile = File.createTempFile(method.getName(), ".ttf");
+          fontFile.deleteOnExit();
+          try (OutputStream out = new FileOutputStream(fontFile)) {
+            Resources.copy(url, out);
+          }
+          if (!display.loadFont(fontFile.getAbsolutePath())) {
+            return false;
+          }
+          resources.put(method.getName(),
+              new Font(display, new FontData(ttf.name(), ttf.size(), SWT.NORMAL)));
+          return true;
+        } catch (IOException e) {
+          e.printStackTrace();
+          return false;
         }
       }
       return false;

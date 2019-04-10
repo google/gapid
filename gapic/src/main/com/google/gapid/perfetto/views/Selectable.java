@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Google Inc.
+ * Copyright (C) 2019 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.rpc;
+package com.google.gapid.perfetto.views;
 
-public class RpcException extends Exception {
-  public RpcException(String message) {
-    super(message);
-  }
+import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.models.Selection;
 
-  public RpcException(String message, Throwable cause) {
-    super(message, cause);
+/**
+ * {@link Panel} that can contribute to the current selection. Use as a {@link Panel.Visitor}.
+ */
+public interface Selectable {
+  public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts);
+
+  public static enum Kind {
+    // Order as shown in the UI.
+    Thread, ThreadState, Cpu;
   }
 }

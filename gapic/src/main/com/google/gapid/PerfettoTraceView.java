@@ -17,25 +17,54 @@ package com.google.gapid;
 
 import com.google.gapid.models.Models;
 import com.google.gapid.perfetto.QueryViewer;
+import com.google.gapid.perfetto.TraceView;
+import com.google.gapid.perfetto.views.StyleConstants;
 import com.google.gapid.widgets.Widgets;
 
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 
 /**
  * Main view shown when a Perfetto trace is loaded.
  */
 public class PerfettoTraceView extends Composite implements MainWindow.MainView {
+  private final Models models;
+
   public PerfettoTraceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
+    this.models = models;
+
     setLayout(new FillLayout());
-    new QueryViewer(this, models);
+
+    TabFolder folder = new TabFolder(this, SWT.TOP);
+    TabItem main = new TabItem(folder, SWT.NONE);
+    main.setText("Perfetto");
+    main.setControl(new TraceView(folder, models, widgets));
+
+    TabItem query = new TabItem(folder, SWT.NONE);
+    query.setText("Query");
+    query.setControl(new QueryViewer(folder, models));
   }
 
   @Override
   public void updateViewMenu(MenuManager manager) {
     manager.removeAll();
+
+    Action darkMode = MainWindow.MenuItems.ViewDarkMode.createCheckbox((dark) -> {
+      models.settings.perfettoDarkMode = dark;
+      StyleConstants.setDark(dark);
+      Rectangle size = getClientArea();
+      redraw(size.x, size.y, size.width, size.height, true);
+    });
+    darkMode.setChecked(models.settings.perfettoDarkMode);
+    StyleConstants.setDark(models.settings.perfettoDarkMode);
+
+    manager.add(darkMode);
   }
 }

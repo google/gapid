@@ -27,12 +27,11 @@ import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.Service.PerfettoQueryResult;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
-import com.google.gapid.util.Loadable.Message;
+import com.google.gapid.util.Loadable;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.IStructuredContentProvider;
@@ -54,6 +53,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Allows the user to execute manual queries.
+ */
 public class QueryViewer extends Composite implements Capture.Listener, Perfetto.Listener {
   protected static final Logger LOG = Logger.getLogger(QueryViewer.class.getName());
 
@@ -97,7 +99,7 @@ public class QueryViewer extends Composite implements Capture.Listener, Perfetto
   }
 
   @Override
-  public void onPerfettoLoaded(Message error) {
+  public void onPerfettoLoaded(Loadable.Message error) {
     run.setEnabled(error == null);
   }
 
@@ -205,7 +207,7 @@ public class QueryViewer extends Composite implements Capture.Listener, Perfetto
     public final Service.PerfettoQueryResult result;
     public final int row;
 
-    public Row(PerfettoQueryResult result, int row) {
+    public Row(Service.PerfettoQueryResult result, int row) {
       this.result = result;
       this.row = row;
     }
