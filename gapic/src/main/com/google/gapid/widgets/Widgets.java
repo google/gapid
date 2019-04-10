@@ -74,6 +74,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -446,13 +447,17 @@ public class Widgets {
   }
 
   @SafeVarargs
-  public static <T> void sorting(
-      TableViewer table, ColumnAndComparator<T>... columns) {
+  public static <T> void sorting(TableViewer table, ColumnAndComparator<T>... columns) {
+    sorting(table, Arrays.asList(columns));
+  }
+
+  public static <T> void sorting(TableViewer table, List<ColumnAndComparator<T>> columns) {
     int[] sortState = { 0, SWT.UP };
-    for (int i = 0; i < columns.length; i++) {
+    for (int i = 0; i < columns.size(); i++) {
       final int idx = i;
-      columns[idx].getColumn().addListener(SWT.Selection, e -> {
-        table.getTable().setSortColumn(columns[idx].getColumn());
+      final ColumnAndComparator<T> column = columns.get(i);
+      column.getColumn().addListener(SWT.Selection, e -> {
+        table.getTable().setSortColumn(column.getColumn());
         if (idx == sortState[0]) {
           sortState[1] = (sortState[1] == SWT.UP) ? SWT.DOWN : SWT.UP;
           table.getTable().setSortDirection(sortState[1]);
@@ -462,13 +467,13 @@ public class Widgets {
           sortState[1] = SWT.UP;
         }
 
-        table.setComparator(columns[idx].getComparator(sortState[1] == SWT.DOWN));
+        table.setComparator(column.getComparator(sortState[1] == SWT.DOWN));
       });
     }
 
-    table.getTable().setSortColumn(columns[0].getColumn());
+    table.getTable().setSortColumn(columns.get(0).getColumn());
     table.getTable().setSortDirection(SWT.UP);
-    table.setComparator(columns[0].getComparator(false));
+    table.setComparator(columns.get(0).getComparator(false));
   }
 
   public static void packColumns(Table table) {

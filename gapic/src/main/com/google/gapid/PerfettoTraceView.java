@@ -15,16 +15,23 @@
  */
 package com.google.gapid;
 
+import com.google.gapid.models.Models;
+import com.google.gapid.perfetto.QueryViewer;
+import com.google.gapid.widgets.Widgets;
+
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 
 /**
  * Main view shown when a Perfetto trace is loaded.
  */
 public class PerfettoTraceView extends Composite implements MainWindow.MainView {
-  public PerfettoTraceView(Composite parent) {
+  public PerfettoTraceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
+    setLayout(new FillLayout());
+    new QueryViewer(this, models);
   }
 
   @Override
