@@ -61,10 +61,13 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
-    //:pkg //cmd/gapir/cc:gapir.sym
+    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
-cd %BUILD_ROOT%
+
+REM Smoketests
+%SRC%\bazel-bin\cmd\smoketests\windows_amd64_stripped\smoketests -gapit bazel-bin\pkg\gapit -traces test\traces
+echo %DATE% %TIME%
 
 REM Build the release packages.
 mkdir %BUILD_ROOT%\out

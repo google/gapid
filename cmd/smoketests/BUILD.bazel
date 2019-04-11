@@ -19,7 +19,10 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/google/gapid/cmd/smoketests",
     visibility = ["//visibility:private"],
-    deps = ["//core/app:go_default_library"],
+    deps = [
+        "//core/app:go_default_library",
+        "//core/log:go_default_library",
+    ],
 )
 
 go_binary(
