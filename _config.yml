@@ -14,8 +14,8 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 title: Graphics API Debugger
-baseurl: "/gapid"
-url: "https://google.github.io/gapid" # the base hostname & protocol for your site, e.g. http://example.com
+baseurl: "/"
+url: "https://gapid.dev" # the base hostname & protocol for your site, e.g. http://example.com
 project-url: "https://github.com/google/gapid"
 markdown: kramdown
 sass:
