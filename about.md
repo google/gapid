@@ -20,12 +20,12 @@ GAPID can also visualize the textures, shaders and draw call geometry used by th
 
 ## API support
 
-|                              | Android | Windows | macOS  | Linux
-| ---------------------------- | ------- | ------- |------- | ------
-| OpenGL ES - Trace            |   ✓     |         |        |
-| OpenGL ES - Replay           |         |   ✓     |   ✓    |   ✓
-| Vulkan - Trace               |   ✓     |   ✓     |        |   ✓
-| Vulkan - Replay <sup>*</sup> |   ✓     |   ✓     |        |   ✓
+|                              | Android | Windows | macOS  | Linux | Stadia
+| ---------------------------- | ------- | ------- |------- | ----- | ------
+| OpenGL ES - Trace            |   ✓     |         |        |       |
+| OpenGL ES - Replay           |   ✓     |   ✓     |   ✓    |   ✓   |
+| Vulkan - Trace               |   ✓     |   ✓     |        |   ✓   |   ✓
+| Vulkan - Replay <sup>*</sup> |   ✓     |   ✓     |        |   ✓   |   ✓
 
 <sup>*</sup> Vulkan replay currently needs to be performed on the same device used to trace.
 
