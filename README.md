@@ -15,7 +15,7 @@
 
 ## Documentation
 
-**[User documentation can be found here.](https://google.github.io/gapid/about)**
+**[User documentation can be found at gapid.dev](https://gapid.dev)**
 
 ## About
 
@@ -27,25 +27,25 @@ GAPID can also trace any desktop Vulkan application.
 <table>
   <tr>
     <td>
-      <a href="https://google.github.io/gapid/images/screenshots/framebuffer.png">
-        <img src="https://google.github.io/gapid/images/screenshots/framebuffer_thumb.jpg" alt="Screenshot 1">
+      <a href="https://gapid.dev/images/screenshots/framebuffer.png">
+        <img src="https://gapid.dev/images/screenshots/framebuffer_thumb.jpg" alt="Screenshot 1">
       </a>
     </td>
     <td>
-      <a href="https://google.github.io/gapid/images/screenshots/geometry.png">
-        <img src="https://google.github.io/gapid/images/screenshots/geometry_thumb.jpg" alt="Screenshot 2">
+      <a href="https://gapid.dev/images/screenshots/geometry.png">
+        <img src="https://gapid.dev/images/screenshots/geometry_thumb.jpg" alt="Screenshot 2">
       </a>
     </td>
   </tr>
   <tr>
     <td>
-      <a href="https://google.github.io/gapid/images/screenshots/textures.png">
-        <img src="https://google.github.io/gapid/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
+      <a href="https://gapid.dev/gapid/images/screenshots/textures.png">
+        <img src="https://gapid.dev/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
       </a>
     </td>
     <td>
-      <a href="https://google.github.io/gapid/images/screenshots/shaders.png">
-        <img src="https://google.github.io/gapid/images/screenshots/shaders_thumb.jpg" alt="Screenshot 4">
+      <a href="https://gapid.dev/images/screenshots/shaders.png">
+        <img src="https://gapid.dev/images/screenshots/shaders_thumb.jpg" alt="Screenshot 4">
       </a>
     </td>
   </tr>
