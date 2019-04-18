@@ -212,10 +212,9 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	case "vulkan":
 		options.Apis = []string{"Vulkan"}
 	case "gles":
-		// TODO: Separate these two out once we can trace Vulkan with OpenGL ES.
-		options.Apis = []string{"OpenGLES", "GVR"}
+		options.Apis = []string{"OpenGLES"}
 	case "":
-		options.Apis = []string{"Vulkan", "OpenGLES", "GVR"}
+		options.Apis = []string{"Vulkan", "OpenGLES"}
 	default:
 		return fmt.Errorf("Unknown API %s", verb.API)
 	}
