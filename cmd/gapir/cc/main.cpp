@@ -748,7 +748,8 @@ std::unique_ptr<ResourceCache> createCache(
       exit(0);
     }
   }
-  return std::move(onDiskCache);
+
+  return onDiskCache;
 #else   // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   if (onDiskCacheOpts.enabled) {
     GAPID_WARNING(
