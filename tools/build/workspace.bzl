@@ -211,7 +211,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
             native.android_ndk_repository,
             name = "androidndk",
             locals = locals,
-            api_level = 21, # This is the minimum API
+            api_level = 23, # This is the minimum API
         )
 
         maybe_repository(
