@@ -16,9 +16,12 @@ package file
 
 import (
 	"archive/zip"
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ZIP zips the given input file/directory to the given writer.
@@ -65,4 +68,55 @@ func ZIP(out io.Writer, in Path) error {
 	}
 
 	return w.Close()
+}
+
+// Unzip extract a ZIP archive, creating all elements under outputDir
+func Unzip(ctx context.Context, archive string, outputDir string) error {
+	z, err := zip.OpenReader(archive)
+	if err != nil {
+		return err
+	}
+	defer z.Close()
+
+	// Protect from ZipSlip, see https://snyk.io/research/zip-slip-vulnerability
+	prefix := ""
+	if filepath.Clean(outputDir) != "." {
+		prefix = filepath.Clean(outputDir) + string(os.PathSeparator)
+	}
+
+	for _, f := range z.File {
+		destPath := filepath.Join(outputDir, f.Name)
+
+		if !strings.HasPrefix(destPath, prefix) {
+			return fmt.Errorf("ZipSlip: illegal file path: %s", destPath)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(destPath, os.ModePerm)
+			continue
+		} else {
+			parentDir := filepath.Dir(destPath)
+			os.MkdirAll(parentDir, os.ModePerm)
+		}
+
+		destFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+
+		fContent, err := f.Open()
+		if err != nil {
+			destFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(destFile, fContent)
+		destFile.Close()
+		fContent.Close()
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
 }

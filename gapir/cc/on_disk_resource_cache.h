@@ -38,8 +38,8 @@ class OnDiskResourceCache : public ResourceCache {
  public:
   // Creates new disk cache with the specified base path. If the base path is
   // not readable or it can't be created then returns the fall back provider.
-  static std::unique_ptr<OnDiskResourceCache> create(const std::string& path,
-                                                     bool cleanUp);
+  static std::unique_ptr<ResourceCache> create(const std::string& path,
+                                               bool cleanUp);
 
   virtual ~OnDiskResourceCache() {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX

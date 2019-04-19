@@ -210,6 +210,10 @@ Archive::Archive(const std::string& archiveName)
     GAPID_FATAL("Unable to open archive index file %s", indexFilename.c_str());
   }
 
+  // Linux fopen() with mode "a" leads to reads from the beginning of file, but
+  // this is not true on Android, hence the explicit rewind() here
+  rewind(mIndexFile);
+
   // Load the archive index in memory.
   for (;;) {
     uint32_t idSize;

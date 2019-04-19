@@ -82,7 +82,10 @@ cc_library(
         "//tools/build:darwin": glob(["osx/*.cpp"]),
         "//tools/build:windows": glob(["windows/*.cpp"]),
         # Android
-        "//conditions:default": glob(["android/*.cpp"]),
+        "//conditions:default": glob([
+            "android/*.cpp",
+            "android/*.h",
+        ]),
     }) + [
         ":gles_cc",
         ":gles_h",
