@@ -40,6 +40,10 @@
 ¶
   #define __STDC_FORMAT_MACROS
   #include <inttypes.h>
+
+#if TARGET_OS == GAPID_OS_ANDROID
+#include <android/trace.h>
+#endif  // TARGET_OS == GAPID_OS_ANDROID
 ¶
   {{$api := Title (Global "API")}}
 
@@ -133,6 +137,10 @@
     if (stack->isValid()) {
       GAPID_DEBUG({{Template "C++.PrintfCommandCallWithLabel" $}});
 
+      #if TARGET_OS == GAPID_OS_ANDROID
+      ATrace_beginSection("{{$name}}");
+      #endif  // TARGET_OS == GAPID_OS_ANDROID
+
       {{if GetAnnotation $ "indirect"}}
         {{$args := (GetAnnotation $ "indirect").Arguments}}
         {{$elem := (index $.CallParameters 0).Name}}
@@ -183,6 +191,11 @@
       } else {
         GAPID_ERROR("Attempted to call unsupported function {{$name}}");
       }
+
+      #if TARGET_OS == GAPID_OS_ANDROID
+      ATrace_endSection();
+      #endif  // TARGET_OS == GAPID_OS_ANDROID
+
       return true;
     } else {
       GAPID_ERROR("Error during calling function {{$name}}");
