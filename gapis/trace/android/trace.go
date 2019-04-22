@@ -104,7 +104,7 @@ func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.Device
 	if len(t.b.Instance().GetConfiguration().GetDrivers().GetVulkan().GetPhysicalDevices()) > 0 {
 		apis = append(apis, tracer.VulkanTraceOptions())
 	}
-	if t.b.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 28 {
+	if t.b.Instance().SupportsPerfetto() {
 		apis = append(apis, tracer.PerfettoTraceOptions())
 	}
 
