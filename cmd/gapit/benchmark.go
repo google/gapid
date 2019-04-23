@@ -918,7 +918,7 @@ func (verb *benchmarkVerb) doTrace(ctx context.Context, client client.Client, tr
 	case "vulkan":
 		options.Apis = []string{"Vulkan"}
 	case "gles":
-		options.Apis = []string{"OpenGLES", "GVR"}
+		options.Apis = []string{"OpenGLES"}
 	case "":
 		return fmt.Errorf("Please specify one of vulkan or gles for an api")
 	default:
