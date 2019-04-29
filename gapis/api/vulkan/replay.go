@@ -684,6 +684,10 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
 		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR)
+	case *VkCreateStreamDescriptorSurfaceGGP:
+		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
+		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
+		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP)
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }

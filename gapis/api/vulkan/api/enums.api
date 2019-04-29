@@ -330,6 +330,11 @@ enum VkStructureType {
 
   // Virtual Swapchain
   VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT                               = 0xFFFFFFAA,
+
+  // @extension("VK_GGP_frame_token")
+  VK_STRUCTURE_TYPE_PRESENT_FRAME_TOKEN_GGP                   = 1000191000,
+  // @extension("VK_GGP_stream_descriptor_surface")
+  VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP = 1000049000,
 }
 
 @analyze_usage

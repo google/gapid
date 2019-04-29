@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,25 +17,19 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "ggp_trace.go",
-        "trace.go",
+        "device.go",
+        "doc.go",
+        "parse.go",
     ],
-    importpath = "github.com/google/gapid/gapis/trace/desktop",
+    importpath = "github.com/google/gapid/core/os/device/ggp",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/app:go_default_library",
-        "//core/app/crash:go_default_library",
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
-        "//core/os/device/ggp:go_default_library",
-        "//core/os/process:go_default_library",
+        "//core/os/device/remotessh:go_default_library",
+        "//core/os/file:go_default_library",
         "//core/os/shell:go_default_library",
-        "//core/text:go_default_library",
-        "//core/vulkan/loader:go_default_library",
-        "//gapii/client:go_default_library",
-        "//gapis/service:go_default_library",
-        "//gapis/trace/tracer:go_default_library",
     ],
 )

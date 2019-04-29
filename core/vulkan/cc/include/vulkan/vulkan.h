@@ -235,6 +235,7 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV = 1000026000,
     VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV = 1000026001,
     VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV = 1000026002,
+    VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP = 1000049000,
     VK_STRUCTURE_TYPE_BEGIN_RANGE = VK_STRUCTURE_TYPE_APPLICATION_INFO,
     VK_STRUCTURE_TYPE_END_RANGE = VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO,
     VK_STRUCTURE_TYPE_RANGE_SIZE = (VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO - VK_STRUCTURE_TYPE_APPLICATION_INFO + 1),
@@ -3688,6 +3689,30 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateAndroidSurfaceKHR(
     VkSurfaceKHR*                               pSurface);
 #endif
 #endif /* VK_USE_PLATFORM_ANDROID_KHR */
+
+#define VK_USE_PLATFORM_GGP 1
+#ifdef VK_USE_PLATFORM_GGP
+
+#define VK_GGP_stream_descriptor_surface 1
+#define VK_GGP_STREAM_DESCRIPTOR_SURFACE_SPEC_VERSION 1
+#define VK_GGP_STREAM_DESCRIPTOR_SURFACE_EXTENSION_NAME "VK_GGP_stream_descriptor_surface"
+typedef VkFlags VkStreamDescriptorSurfaceCreateFlagsGGP;
+typedef struct VkStreamDescriptorSurfaceCreateInfoGGP {
+    VkStructureType                            sType;
+    const void*                                pNext;
+    VkStreamDescriptorSurfaceCreateFlagsGGP    flags;
+    uint32_t                                   streamDescriptor;
+} VkStreamDescriptorSurfaceCreateInfoGGP;
+typedef VkResult (VKAPI_PTR *PFN_vkCreateStreamDescriptorSurfaceGGP)(VkInstance instance, const VkStreamDescriptorSurfaceCreateInfoGGP* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface);
+#ifndef VK_NO_PROTOTYPES
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateStreamDescriptorSurfaceGGP(
+    VkInstance                                  instance,
+    const VkStreamDescriptorSurfaceCreateInfoGGP* pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkSurfaceKHR*                               pSurface);
+#endif
+
+#endif /* VK_USE_PLATFORM_GGP */
 
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 #define VK_KHR_win32_surface 1

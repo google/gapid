@@ -138,6 +138,9 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
 #ifdef VK_USE_PLATFORM_ANDROID_KHR
   GET_PROC(vkCreateAndroidSurfaceKHR);
 #endif
+#ifdef VK_USE_PLATFORM_GGP
+  GET_PROC(vkCreateStreamDescriptorSurfaceGGP);
+#endif
 #ifdef VK_USE_PLATFORM_XCB_KHR
   GET_PROC(vkCreateXcbSurfaceKHR);
 #endif
@@ -494,6 +497,8 @@ vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
   INTERCEPT_SURFACE(vkCreateWin32SurfaceKHR);
   INTERCEPT_SURFACE(vkCreateXcbSurfaceKHR);
   INTERCEPT_SURFACE(vkCreateXlibSurfaceKHR);
+  INTERCEPT_SURFACE(vkCreateStreamDescriptorSurfaceGGP);
+
 #undef INTERCEPT_SURFACE
   // If we are calling a non-overloaded function then we have to
   // return the "next" in the chain. On vkCreateInstance we stored this in

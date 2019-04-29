@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Description:
+#
+# Gapid is a graphics API debugger.
+
+licenses(["notice"])  # Apache 2.0
+
+exports_files(["LICENSE"])
+
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to")
 

@@ -167,7 +167,7 @@ func (b binding) createWindowsTempDirectory(ctx context.Context) (string, app.Cl
 // full path, and a function that can be called to clean up the directory.
 func (b binding) MakeTempDir(ctx context.Context) (string, app.Cleanup, error) {
 	switch b.os {
-	case device.Linux, device.OSX:
+	case device.Linux, device.OSX, device.Stadia:
 		return b.createPosixTempDirectory(ctx)
 	case device.Windows:
 		return b.createWindowsTempDirectory(ctx)
@@ -196,10 +196,11 @@ func (b binding) PushFile(ctx context.Context, source, dest string) error {
 		return err
 	}
 	mode := permission.Mode()
-	// If we are on windows pushing to Linux, we lose the executable
+	// If we are on windows pushing to Posix, we lose the executable
 	// bit, get it back.
 	if (b.os == device.Linux ||
-		b.os == device.OSX) &&
+		b.os == device.OSX ||
+		b.os == device.Stadia) &&
 		runtime.GOOS == "windows" {
 		mode |= 0550
 	}
