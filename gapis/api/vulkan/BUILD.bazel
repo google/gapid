@@ -25,6 +25,7 @@ filegroup(
         "linux/*.api",
         "windows/*.api",
         "android/*.api",
+        "ggp/*.api",
     ]),
     visibility = ["//visibility:public"],
 )

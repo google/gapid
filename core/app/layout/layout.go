@@ -119,17 +119,24 @@ func (l pkgLayout) Gapit(ctx context.Context) (file.Path, error) {
 	return l.root.Join(withExecutablePlatformSuffix("gapit", hostOS(ctx))), nil
 }
 
-var osToDir = map[device.OSKind]string{
-	device.Linux:   "linux",
-	device.OSX:     "macos",
-	device.Windows: "windows",
+func osToDir(k device.OSKind) string {
+	if device.IsLinuxLike(k) {
+		return "linux"
+	}
+	if k == device.OSX {
+		return "macos"
+	}
+	if k == device.Windows {
+		return "windows"
+	}
+	return ""
 }
 
 func (l pkgLayout) Gapir(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.root.Join(withExecutablePlatformSuffix("gapir", hostOS(ctx))), nil
 	}
-	return l.root.Join(osToDir[abi.OS], withExecutablePlatformSuffix("gapir", abi.OS)), nil
+	return l.root.Join(osToDir(abi.OS), withExecutablePlatformSuffix("gapir", abi.OS)), nil
 }
 
 func (l pkgLayout) Gapis(ctx context.Context) (file.Path, error) {
@@ -144,7 +151,7 @@ func (l pkgLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI
 	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.root.Join("lib", withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
 	}
-	return l.root.Join(osToDir[abi.OS], "lib", withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)), nil
+	return l.root.Join(osToDir(abi.OS), "lib", withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)), nil
 }
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
@@ -159,7 +166,7 @@ func (l pkgLayout) DeviceInfo(ctx context.Context, os device.OSKind) (file.Path,
 	if hostOS(ctx) == os {
 		return l.root.Join(withExecutablePlatformSuffix("device-info", os)), nil
 	}
-	return l.root.Join(osToDir[os], withExecutablePlatformSuffix("device-info", os)), nil
+	return l.root.Join(osToDir(os), withExecutablePlatformSuffix("device-info", os)), nil
 }
 
 // NewPkgLayout returns a FileLayout rooted at the given directory with the standard package layout.
@@ -364,7 +371,7 @@ func (l *ZipLayout) Gapir(ctx context.Context, abi *device.ABI) (*zip.File, erro
 	if abi == nil || l.os == abi.OS {
 		return l.file(withExecutablePlatformSuffix("gapir", l.os))
 	}
-	return l.file(osToDir[abi.OS] + "/" + withExecutablePlatformSuffix("gapir", abi.OS))
+	return l.file(osToDir(abi.OS) + "/" + withExecutablePlatformSuffix("gapir", abi.OS))
 }
 
 // Gapis returns the path to the gapis binary in this layout.
@@ -382,7 +389,7 @@ func (l *ZipLayout) Library(ctx context.Context, lib LibraryType, abi *device.AB
 	if abi == nil || l.os == abi.OS {
 		return l.file("lib/" + withLibraryPlatformSuffix(libTypeToName[lib], l.os))
 	}
-	return l.file(osToDir[abi.OS] + "lib/" + withLibraryPlatformSuffix(libTypeToName[lib], abi.OS))
+	return l.file(osToDir(abi.OS) + "lib/" + withLibraryPlatformSuffix(libTypeToName[lib], abi.OS))
 }
 
 // Json returns the path to the Vulkan layer JSON definition for the given library.
@@ -395,5 +402,5 @@ func (l *ZipLayout) DeviceInfo(ctx context.Context, os device.OSKind) (*zip.File
 	if l.os == os {
 		return l.file(withExecutablePlatformSuffix("device-info", os))
 	}
-	return l.file(osToDir[os] + "/" + withExecutablePlatformSuffix("device-info", os))
+	return l.file(osToDir(os) + "/" + withExecutablePlatformSuffix("device-info", os))
 }

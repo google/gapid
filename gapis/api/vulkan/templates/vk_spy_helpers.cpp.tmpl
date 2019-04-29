@@ -145,8 +145,6 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
         get_instance_proc_addr(0, "vkCreateInstance"));
 
     mImports.pfn_vkCreateInstance = create_instance;
-    mImports.pfn_vkEnumerateInstanceExtensionProperties \
-        = reinterpret_cast<gapii::VulkanImports::PFNVKENUMERATEINSTANCEEXTENSIONPROPERTIES>(get_instance_proc_addr(0, "vkEnumerateInstanceExtensionProperties"));
 
     if (create_instance == NULL) {
         return VkResult::VK_ERROR_INITIALIZATION_FAILED;
@@ -158,6 +156,9 @@ uint32_t VulkanSpy::SpyOverride_vkCreateInstance(
 
     // Actually call vkCreateInstance, and keep track of the result.
     uint32_t result = create_instance(pCreateInfo, pAllocator, pInstance);
+
+    mImports.pfn_vkEnumerateInstanceExtensionProperties \
+        = reinterpret_cast<gapii::VulkanImports::PFNVKENUMERATEINSTANCEEXTENSIONPROPERTIES>(get_instance_proc_addr(*pInstance, "vkEnumerateInstanceExtensionProperties"));
 
     // Send a header with Vulkan info added if we haven't done so.
     const device::Drivers& drivers =

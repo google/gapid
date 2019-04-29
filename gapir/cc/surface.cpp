@@ -173,6 +173,8 @@ void* createXcbWindow(uint32_t width, uint32_t height) {
   window_create_flag.Wait();
   return window_info.window ? (void*)&window_info : nullptr;
 }
+
+static const int32_t stream_index = 0;
 #elif TARGET_OS == GAPID_OS_WINDOWS
 static Win32WindowInfo window_info;
 
@@ -255,6 +257,8 @@ const void* CreateSurface(uint32_t width, uint32_t height, SurfaceType& type) {
     case SurfaceType::Unknown:
       type = SurfaceType::Xcb;
       return createXcbWindow(width, height);
+    case SurfaceType::Ggp:
+      return (const void*)&stream_index;
 #elif TARGET_OS == GAPID_OS_WINDOWS
     case SurfaceType::Win32:
     case SurfaceType::Unknown:

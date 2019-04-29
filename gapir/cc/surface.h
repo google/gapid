@@ -45,12 +45,7 @@ struct Win32WindowInfo {
 };
 #endif
 
-enum SurfaceType {
-  Unknown,
-  Android,
-  Win32,
-  Xcb,
-};
+enum SurfaceType { Unknown, Android, Win32, Xcb, Ggp };
 
 // Get the platform-specific data pointer to create the surface
 const void* CreateSurface(uint32_t width, uint32_t height, SurfaceType& type);
