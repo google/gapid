@@ -62,7 +62,7 @@ public class Main {
     Display.setAppVersion(GAPID_VERSION.toString());
 
     Settings settings = Settings.load();
-    Theme theme = Theme.load(Display.getCurrent());
+    Theme theme = Theme.load(Display.getDefault());
     ExceptionHandler handler = Crash2ExceptionHandler.register(settings);
 
     try {
