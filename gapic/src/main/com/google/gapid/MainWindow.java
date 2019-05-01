@@ -119,7 +119,7 @@ public class MainWindow extends ApplicationWindow {
         } else {
           mainUi.stopLoading();
           mainUi.getContents().updateViewMenu(findMenu(MenuItems.VIEW_ID));
-          getMenuBarManager().update(true);
+          getMenuBarManager().updateAll(true);
         }
       }
     });
