@@ -67,6 +67,11 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
   }
 
   @Override
+  protected boolean shouldLoad(Capture c) {
+    return c.isGraphics();
+  }
+
+  @Override
   protected Data unbox(Service.Value value, Path.Device device) {
     return new Data(device, value.getResources());
   }

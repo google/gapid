@@ -46,7 +46,7 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
 
       @Override
       public void onCaptureLoaded(Loadable.Message error) {
-        if (error == null) {
+        if (error == null && shouldLoad(capture)) {
           load(getPath(capture.getData().path), false);
         } else {
           reset(false);
@@ -63,6 +63,11 @@ abstract class CaptureDependentModel<T extends DeviceDependentModel.Data, L exte
   protected void reset(boolean maintainState) {
     reset();
   }
+
+  /**
+   * Whether this model should be loaded for the given capture.
+   */
+  protected abstract boolean shouldLoad(Capture capture);
 
   public abstract static class ForValue<T extends Data, L extends Events.Listener>
       extends CaptureDependentModel<T, L> {

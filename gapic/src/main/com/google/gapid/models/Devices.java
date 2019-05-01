@@ -71,7 +71,7 @@ public class Devices {
 
       @Override
       public void onCaptureLoaded(Loadable.Message error) {
-        if (error == null) {
+        if (error == null && capture.isGraphics()) {
           loadReplayDevices(capture.getData().path);
         }
       }

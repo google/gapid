@@ -111,7 +111,9 @@ public abstract class HorizontalList extends Composite {
   }
 
   public void repaint() {
-    canvas.redraw();
+    if (!isDisposed()) {
+      canvas.redraw();
+    }
   }
 
   public int getItemAt(int x) {

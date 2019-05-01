@@ -115,8 +115,18 @@ public class TracerDialog {
   public static void showOpenTraceDialog(Shell shell, Models models) {
     models.analytics.postInteraction(View.Main, ClientAction.Open);
     FileDialog dialog = new FileDialog(shell, SWT.OPEN);
-    dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
-    dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
+    dialog.setFilterNames(new String[] {
+        "Trace Files (*.gfxtrace, *.perfetto)",
+        "Graphics Traces (*.gfxtrace)",
+        "Perfetto Traces (*.perfetto)",
+        "All Files"
+    });
+    dialog.setFilterExtensions(new String[] {
+        "*.gfxtrace;*.perfetto",
+        "*.gfxtrace",
+        "*.perfetto",
+        "*"
+    });
     dialog.setFilterPath(models.settings.lastOpenDir);
     String result = dialog.open();
     if (result != null) {
@@ -126,9 +136,12 @@ public class TracerDialog {
 
   public static void showSaveTraceDialog(Shell shell, Models models) {
     models.analytics.postInteraction(View.Main, ClientAction.Save);
+    boolean isPerfetto = models.capture.isPerfetto();
     FileDialog dialog = new FileDialog(shell, SWT.SAVE);
-    dialog.setFilterNames(new String[] { "Trace Files (*.gfxtrace)", "All Files" });
-    dialog.setFilterExtensions(new String[] { "*.gfxtrace", "*" });
+    dialog.setFilterNames(new String[] {
+        "Trace Files (" + (isPerfetto ? "*.perfetto" : "*.gfxtrace") + ")", "All Files"
+    });
+    dialog.setFilterExtensions(new String[] { isPerfetto ? "*.perfetto" : "*.gfxtrace", "*" });
     dialog.setFilterPath(models.settings.lastOpenDir);
     String result = dialog.open();
     if (result != null) {
