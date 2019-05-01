@@ -60,7 +60,7 @@ import java.util.function.Function;
 /**
  * Main view shown when a graphics trace is loaded.
  */
-public class GraphicsTraceView extends Composite {
+public class GraphicsTraceView extends Composite implements MainWindow.MainView {
   private final Models models;
   private final Widgets widgets;
   protected final Set<MainTab.Type> hiddenTabs;
@@ -134,6 +134,7 @@ public class GraphicsTraceView extends Composite {
     return hiddenTabs;
   }
 
+  @Override
   public void updateViewMenu(MenuManager manager) {
     manager.removeAll();
 

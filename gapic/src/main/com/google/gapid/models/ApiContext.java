@@ -65,6 +65,11 @@ public class ApiContext
   }
 
   @Override
+  protected boolean shouldLoad(Capture capture) {
+    return capture.isGraphics();
+  }
+
+  @Override
   protected ListenableFuture<Contexts> doLoad(Path.Any path, Path.Device device) {
     return MoreFutures.transform(MoreFutures.transformAsync(client.get(path, device), val -> {
       List<ListenableFuture<ApiContext.IdAndContext>> contexts = Lists.newArrayList();

@@ -64,6 +64,11 @@ public class Timeline extends CaptureDependentModel<Timeline.Data, Timeline.List
   }
 
   @Override
+  protected boolean shouldLoad(Capture c) {
+    return c.isGraphics();
+  }
+
+  @Override
   protected ListenableFuture<Data> doLoad(Path.Any path, Path.Device device) {
     return MoreFutures.transform(
         client.get(path, device), v -> new Data(device, v.getEvents().getListList()));
