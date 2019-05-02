@@ -24,7 +24,7 @@ load("@gapid//tools/build:workspace_gapic.bzl", "gapic_dependencies", "gapic_thi
 gapic_dependencies()
 gapic_third_party()
 
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 go_rules_dependencies()
 go_register_toolchains()
