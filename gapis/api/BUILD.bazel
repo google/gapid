@@ -130,7 +130,6 @@ cc_proto_library(
 
 go_proto_library(
     name = "api_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "github.com/google/gapid/gapis/api",
     proto = ":api_proto",
     visibility = ["//visibility:public"],

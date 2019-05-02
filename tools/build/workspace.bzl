@@ -39,8 +39,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "bazelbuild",
         project = "rules_go",
-        commit = "01e5a9f8483167962eddd167f7689408bdeb4e76",  # 0.16.3
-        sha256 = "bd99a7620fd57d536103eedabd128e1ff95bd028a8cc2abbcdcf8c3026264fcc",
+        commit = "3c34e66b0507056e83bcbd9c963ab9d7e6cb049f",  # 0.18.3
+        sha256 = "eee73ae5c29e421b2bfda62fef86ce266a942f66f19ccb4dfb03b4fa428986a5",
     )
 
     maybe_repository(
@@ -49,8 +49,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "bazelbuild",
         project = "bazel-gazelle",
-        commit = "c728ce9f663e2bff26361ba5978ec5c9e6816a3c",  # 0.15.0
-        sha256 = "f7a066602430b3ccd3ab9db1aaf3197037d12af0cd82206cccf8961c3bfedb3b",
+        commit = "e443c54b396a236e0d3823f46c6a931e1c9939f2",  # 0.17.0
+        sha256 = "ca6dcacc34c159784f01f557dbb0dc5d1772d3b28f1145b51f888ecb3694af1a",
     )
 
     maybe_repository(
