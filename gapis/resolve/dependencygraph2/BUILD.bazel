@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -64,22 +64,21 @@ go_proto_library(
     deps = ["//gapis/service/path:go_default_library"],
 )
 
-# //TODO(awoloszyn): Re-enable this test to fix
-# https://github.com/google/gapid/issues/2640
-# gazelle:exclude dependency_graph_test.go
-#go_test(
-#    name = "go_default_test",
-#    srcs = ["dependency_graph_test.go"],
-#    embed = [":go_default_library"],
-#    deps = [
-#        "//core/assert:go_default_library",
-#        "//core/memory/arena:go_default_library",
-#        "//core/os/device:go_default_library",
-#        "//gapis/api:go_default_library",
-#        "//gapis/capture:go_default_library",
-#        "//gapis/replay/builder:go_default_library",
-#    ],
-#)
+go_test(
+    name = "go_default_test",
+    srcs = ["dependency_graph_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//core/assert:go_default_library",
+        "//core/log:go_default_library",
+        "//core/memory/arena:go_default_library",
+        "//core/os/device:go_default_library",
+        "//gapis/api:go_default_library",
+        "//gapis/capture:go_default_library",
+        "//gapis/replay/builder:go_default_library",
+        "//gapis/service/path:go_default_library",
+    ],
+)
 
 proto_library(
     name = "dependencygraph2_proto",
