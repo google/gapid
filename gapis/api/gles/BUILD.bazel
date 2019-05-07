@@ -66,6 +66,7 @@ go_library(
         "find_issues.go",
         "gles.go",
         "glsl.go",
+        "graph_visualization.go",
         "guess_semantics.go",
         "helpers.go",
         "image.go",
