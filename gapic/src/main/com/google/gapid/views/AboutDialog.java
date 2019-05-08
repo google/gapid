@@ -16,7 +16,6 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
-import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTextbox;
@@ -28,17 +27,24 @@ import com.google.gapid.models.Info;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.OS;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.dnd.Clipboard;
+import org.eclipse.swt.dnd.TextTransfer;
+import org.eclipse.swt.dnd.Transfer;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
@@ -49,6 +55,7 @@ import java.util.logging.Logger;
  * Dialog showing some basic info about our application.
  */
 public class AboutDialog {
+  protected static final Clipboard cb = new Clipboard(Display.getCurrent());
   private static final String HELP_URL = "https://google.github.io/gapid";
   private static final Logger LOG = Logger.getLogger(AboutDialog.class.getName());
 
@@ -81,12 +88,30 @@ public class AboutDialog {
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
 
-        Composite container = createComposite(area, centered(new RowLayout(SWT.VERTICAL)));
-        container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true));
+        GridLayout gridLayout = new GridLayout(2, false);
+        gridLayout.horizontalSpacing = 30;
+        Composite container = createComposite(area, gridLayout);
+        container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false));
 
-        createLabel(container, "", theme.dialogLogo());
+        Label logo = createLabel(container, "", theme.dialogLogo());
+        logo.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
+
         Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
         title.setFont(theme.bigBoldFont());
+        title.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
+
+        createLabel(container, "").setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true, 2, 1));
+        Label clipboard = createLabel(container, "", theme.clipboard());
+        clipboard.addMouseListener(new MouseAdapter() {
+          @Override
+          public void mouseDown (MouseEvent e) {
+            String textData = "Version " + GAPID_VERSION;
+            TextTransfer textTransfer = TextTransfer.getInstance();
+            cb.setContents(new Object[]{textData}, new Transfer[]{textTransfer});
+          }
+        });
+        clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));
+
         createForegroundLabel(container, "Version " + GAPID_VERSION);
         createForegroundLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
