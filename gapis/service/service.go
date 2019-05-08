@@ -27,6 +27,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/memory"
+	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service/box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/service/severity"
@@ -175,7 +176,7 @@ type Service interface {
 	GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error)
 
 	// Run a perfetto query
-	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*PerfettoQueryResult, error)
+	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error)
 }
 
 type TraceHandler interface {

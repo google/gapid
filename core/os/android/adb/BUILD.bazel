@@ -46,7 +46,7 @@ go_library(
         "//core/os/file:go_default_library",
         "//core/os/shell:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
-        "@perfetto//:go_default_library",
+        "@perfetto//:config_go_proto",
     ],
 )
 

@@ -24,6 +24,7 @@ cc_library(
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     deps = [
+        "//gapis/perfetto/service:perfetto_cc_proto",
         "@perfetto//:trace_processor",
     ],
 )

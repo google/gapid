@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"perfetto_pb"
+	perfetto_pb "perfetto/config"
 
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"

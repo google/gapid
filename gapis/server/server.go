@@ -47,6 +47,7 @@ import (
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/messages"
+	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/devices"
 	"github.com/google/gapid/gapis/resolve"
@@ -835,7 +836,7 @@ func (s *server) GetTimestamps(ctx context.Context, c *path.Capture, d *path.Dev
 	return replay.GetTimestamps(ctx, c, d)
 }
 
-func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*service.PerfettoQueryResult, error) {
+func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error) {
 	ctx = status.Start(ctx, "RPC PerfettoQuery")
 	defer status.Finish(ctx)
 
@@ -845,7 +846,9 @@ func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query strin
 		return nil, err
 	}
 
-	res := p.Processor.Query(query)
-	res.Ready.Wait(ctx)
-	return &res.Result, nil
+	res, err := p.Processor.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
