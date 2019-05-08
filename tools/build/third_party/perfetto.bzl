@@ -17,7 +17,7 @@
 
 PACKAGES = [
     struct(
-        url = "https://android.googlesource.com/platform/external/perfetto/+archive/7b0c9453e8d31c03d16cd1d94bd17a96fb9fe3ef.tar.gz",
+        url = "https://android.googlesource.com/platform/external/perfetto/+archive/826c8d4342d321fb921cf6e0704fe482c7a58348.tar.gz",
         sha = "",
         strip = "",
         out = ".",
@@ -48,8 +48,6 @@ def _perfetto_impl(ctx):
     ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:perfetto.BUILD"), "BUILD.bazel")
     ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:sqlite.BUILD"), "sqlite/BUILD.bazel")
 
-    # JSON stub, so we don't need to build json_cpp.
-    ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:json_trace_parser_stub.cc"), "src/trace_processor/json_trace_parser_stub.cc")
     # Link protos into a bazel C++ friendly namespace.
     ctx.symlink("protos/perfetto", "perfetto")
 

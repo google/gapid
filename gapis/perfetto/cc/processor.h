@@ -27,9 +27,14 @@ extern "C" {
 
 typedef void* processor;
 
+typedef struct {
+  size_t size;
+  uint8_t* data;
+} result;
+
 processor new_processor();
 bool parse_data(processor processor, const void* data, size_t size);
-void execute_query(processor processor, int id, const char* query);
+result execute_query(processor processor, const char* query);
 void delete_processor(processor processor);
 
 #ifdef __cplusplus

@@ -21,7 +21,7 @@ import (
 	"io"
 	"strings"
 
-	"perfetto_pb"
+	perfetto_pb "perfetto/config"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app/crash"

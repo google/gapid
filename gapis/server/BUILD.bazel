@@ -47,6 +47,7 @@ go_library(
         "//gapis/config:go_default_library",
         "//gapis/database:go_default_library",
         "//gapis/messages:go_default_library",
+        "//gapis/perfetto/service:go_default_library",
         "//gapis/replay:go_default_library",
         "//gapis/replay/devices:go_default_library",
         "//gapis/resolve:go_default_library",

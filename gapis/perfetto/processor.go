@@ -19,31 +19,17 @@ package perfetto
 import "C"
 import (
 	"context"
-	"fmt"
 	"sync"
-	"sync/atomic"
 	"unsafe"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/gapis/service"
-)
-
-var (
-	lastQueryId    int32
-	pendingQueries sync.Map
+	"github.com/google/gapid/gapis/perfetto/service"
 )
 
 type Processor struct {
 	handle C.processor
 	mutex  sync.Mutex
-}
-
-type Result struct {
-	Ready  task.Signal
-	Result service.PerfettoQueryResult
-	done   task.Task
 }
 
 func NewProcessor(ctx context.Context, data []byte) (*Processor, error) {
@@ -57,38 +43,23 @@ func NewProcessor(ctx context.Context, data []byte) (*Processor, error) {
 	return &Processor{handle: p}, nil
 }
 
-func (p *Processor) Query(q string) *Result {
+func (p *Processor) Query(q string) (*service.QueryResult, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	s, done := task.NewSignal()
-	r := &Result{
-		Ready: s,
-		done:  done,
-	}
-	id := atomic.AddInt32(&lastQueryId, 1)
-	pendingQueries.Store(id, r)
+	r := &service.QueryResult{}
 
 	qPtr := C.CString(q)
-	C.execute_query(p.handle, C.int(id), qPtr)
+	res := C.execute_query(p.handle, qPtr)
+	// Convert the cgo memory pointer to a go slice and parse the proto.
+	err := proto.Unmarshal((*[1 << 31]byte)(unsafe.Pointer(res.data))[:int(res.size)], r)
+	C.free(unsafe.Pointer(res.data))
 	C.free(unsafe.Pointer(qPtr))
 
-	return r
+	return r, err
 }
 
 func (p *Processor) Close() {
 	C.delete_processor(p.handle)
 	p.handle = nil
-}
-
-//export on_query_complete
-func on_query_complete(id C.int, data unsafe.Pointer, size C.ulong) {
-	if rp, ok := pendingQueries.Load(int32(id)); ok {
-		r := rp.(*Result)
-		pendingQueries.Delete(int32(id))
-		if err := proto.Unmarshal((*[1 << 31]byte)(data)[:int(size)], &r.Result); err != nil {
-			r.Result.Error = fmt.Sprintf("Failed to parse proto response: %v")
-		}
-		r.done(nil)
-	}
 }

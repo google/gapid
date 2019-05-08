@@ -25,6 +25,7 @@ import (
 	"github.com/google/gapid/core/log/log_pb"
 	"github.com/google/gapid/core/net/grpcutil"
 	"github.com/google/gapid/gapis/api"
+	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/stringtable"
@@ -535,7 +536,7 @@ func (c *client) GetGraphVisualization(ctx context.Context, capture *path.Captur
 	return res.GetGraphVisualization(), nil
 }
 
-func (c *client) PerfettoQuery(ctx context.Context, capture *path.Capture, query string) (*service.PerfettoQueryResult, error) {
+func (c *client) PerfettoQuery(ctx context.Context, capture *path.Capture, query string) (*perfetto.QueryResult, error) {
 	res, err := c.client.PerfettoQuery(ctx, &service.PerfettoQueryRequest{
 		Capture: capture,
 		Query:   query,

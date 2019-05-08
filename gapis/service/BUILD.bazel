@@ -35,6 +35,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/memory:go_default_library",
+        "//gapis/perfetto/service:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/service/severity:go_default_library",
@@ -51,11 +52,12 @@ proto_library(
         "//core/log/log_pb:log_pb_proto",
         "//core/os/device:device_proto",
         "//gapis/api:api_proto",
+        "//gapis/perfetto/service:service_proto",
         "//gapis/service/box:box_proto",
         "//gapis/service/path:path_proto",
         "//gapis/service/severity:severity_proto",
         "//gapis/stringtable:stringtable_proto",
-        "@perfetto//:config_proto",
+        "@perfetto//:config_combined_proto",
     ],
 )
 
@@ -70,11 +72,12 @@ go_proto_library(
         "//core/log/log_pb:go_default_library",
         "//core/os/device:go_default_library",
         "//gapis/api:go_default_library",
+        "//gapis/perfetto/service:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/service/severity:go_default_library",
         "//gapis/stringtable:go_default_library",
-        "@perfetto//:go_default_library",
+        "@perfetto//:config_go_proto",
     ],
 )
 
