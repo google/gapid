@@ -14,7 +14,7 @@
 
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@gapid//tools/build/rules:grpc_c++.bzl", "cc_grpc_library")
+load("@gapid//tools/build:rules.bzl", "cc_copts", "cc_grpc_library")
 
 proto_library(
     name = "replay_service_proto",
@@ -42,9 +42,14 @@ go_library(
 
 cc_grpc_library(
     name = "proto",
-    dep_cc_proto_libs = ["//gapis/service/severity:severity_cc_proto"],
-    proto = ["replay_service_proto"],
+    srcs = [":replay_service_proto"],
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
+    deps = [
+        "//gapis/service/severity:severity_cc_proto",
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 cc_library(
