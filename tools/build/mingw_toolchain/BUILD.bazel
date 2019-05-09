@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load(":toolchain.bzl", "cc_toolchain_config")
+
 package(default_visibility = ["//visibility:public"])
 
 cc_toolchain_suite(
@@ -23,19 +25,20 @@ cc_toolchain_suite(
     },
 )
 
+cc_toolchain_config(
+    name = "cc-config",
+)
+
 cc_toolchain(
     name = "cc-compiler-mingw",
     all_files = ":empty",
-    compiler = "mingw",
     compiler_files = ":empty",
-    cpu = "x64_windows",
     dwp_files = ":empty",
-    dynamic_runtime_libs = [":empty"],
     linker_files = ":empty",
     objcopy_files = ":empty",
-    static_runtime_libs = [":empty"],
     strip_files = ":empty",
     supports_param_files = 1,
+    toolchain_config = ":cc-config",
 )
 
 toolchain(
