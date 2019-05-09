@@ -1,0 +1,293 @@
+# Copyright (C) 2019 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Template Skylark file defining the MinGW toolchain config.
+# "%{FOO}" things are replaced by the repository rule.
+
+load("@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
+    "action_config",
+    "artifact_name_pattern",
+    "env_entry",
+    "env_set",
+    "feature",
+    "feature_set",
+    "flag_group",
+    "flag_set",
+    "make_variable",
+    "tool",
+    "tool_path",
+    "with_feature_set",
+)
+load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
+
+def _flags(flags):
+    return [flag_group(flags = flags)]
+
+def _impl(ctx):
+    toolchain_identifier = "mingw"
+    host_system_name = "local"
+    target_system_name = "local"
+    target_cpu = "x64_windows"
+    target_libc = "mingw"
+    compiler = "mingw"
+    abi_version = "local"
+    abi_libc_version = "local"
+    cc_target_os = None
+    builtin_sysroot = None
+
+    all_compile_actions = [
+        ACTION_NAMES.c_compile,
+        ACTION_NAMES.cpp_compile,
+        ACTION_NAMES.linkstamp_compile,
+        ACTION_NAMES.assemble,
+        ACTION_NAMES.preprocess_assemble,
+        ACTION_NAMES.cpp_header_parsing,
+        ACTION_NAMES.cpp_module_compile,
+        ACTION_NAMES.cpp_module_codegen,
+        ACTION_NAMES.clif_match,
+        ACTION_NAMES.lto_backend,
+    ]
+
+    all_cpp_compile_actions = [
+        ACTION_NAMES.cpp_compile,
+        ACTION_NAMES.linkstamp_compile,
+        ACTION_NAMES.cpp_header_parsing,
+        ACTION_NAMES.cpp_module_compile,
+        ACTION_NAMES.cpp_module_codegen,
+        ACTION_NAMES.clif_match,
+    ]
+
+    all_link_actions = [
+        ACTION_NAMES.cpp_link_executable,
+        ACTION_NAMES.cpp_link_dynamic_library,
+        ACTION_NAMES.cpp_link_nodeps_dynamic_library,
+    ]
+
+    all_actions = [
+        ACTION_NAMES.c_compile,
+        ACTION_NAMES.cpp_compile,
+        ACTION_NAMES.linkstamp_compile,
+        ACTION_NAMES.cc_flags_make_variable,
+        ACTION_NAMES.cpp_module_codegen,
+        ACTION_NAMES.cpp_header_parsing,
+        ACTION_NAMES.cpp_module_compile,
+        ACTION_NAMES.assemble,
+        ACTION_NAMES.preprocess_assemble,
+        ACTION_NAMES.lto_indexing,
+        ACTION_NAMES.lto_backend,
+        ACTION_NAMES.cpp_link_executable,
+        ACTION_NAMES.cpp_link_dynamic_library,
+        ACTION_NAMES.cpp_link_nodeps_dynamic_library,
+        ACTION_NAMES.cpp_link_static_library,
+        ACTION_NAMES.strip,
+        ACTION_NAMES.objc_archive,
+        ACTION_NAMES.objc_compile,
+        ACTION_NAMES.objc_executable,
+        ACTION_NAMES.objc_fully_link,
+        ACTION_NAMES.objcpp_compile,
+        ACTION_NAMES.objcpp_executable,
+        ACTION_NAMES.clif_match,
+    ]
+
+    action_configs = []
+
+    default_compile_flags_feature = feature(
+        name = "default_compile_flags",
+        enabled = True,
+        flag_sets = [
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = _flags([
+                    "-DNTDDI_VERSION=NTDDI_VISTA",
+                    # _WIN32_WINNT_VISTA: 0x0600
+                    "-D_WIN32_WINNT=0x0600",
+                ]),
+            ),
+            flag_set(
+                actions = all_cpp_compile_actions,
+                flag_groups = _flags(["-std=gnu++0x"]),
+            ),
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = _flags(["-g"]),
+                with_features = [with_feature_set(features = ["dbg"])],
+            ),
+            flag_set(
+                actions = all_compile_actions,
+                flag_groups = _flags([
+                    "-g0",
+                    "-O2",
+                    "-DNDEBUG",
+                    "-ffunction-sections",
+                    "-fdata-sections",
+                ]),
+                with_features = [with_feature_set(features = ["opt"])],
+            ),
+        ],
+    )
+
+    default_link_flags_feature = feature(
+        name = "default_link_flags",
+        enabled = True,
+        flag_sets = [
+            flag_set(
+                actions = all_link_actions,
+                flag_groups = _flags([
+                    "-static",
+                    "-Wl,--build-id",
+                    "-lstdc++",
+                ]),
+            ),
+            flag_set(
+                actions = all_link_actions,
+                flag_groups = _flags(["-Wl,--gc-sections"]),
+                with_features = [with_feature_set(features = ["opt"])],
+            ),
+        ],
+    )
+
+    objcopy_embed_flags_feature = feature(
+        name = "objcopy_embed_flags",
+        enabled = True,
+        flag_sets = [
+            flag_set(
+                actions = ["objcopy_embed_data"],
+                flag_groups = _flags([ "-I", "binary" ]),
+            ),
+        ],
+    )
+
+    mingw_env_feature = feature(
+        name = "mingw_env",
+        enabled = True,
+        env_sets = [
+            env_set(
+                actions = all_actions,
+                env_entries = [
+                    env_entry(
+                        key = "PATH",
+                        value = "%{BINDIR}",
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    features = [
+        feature(name = "fastbuild"),
+        feature(name = "dbg"),
+        feature(name = "opt"),
+        #feature(name = "supports_dynamic_linker", enabled = True),
+        #feature(name = "supports_pic", enabled = True),
+        feature(name = "targets_windows", enabled = True),
+
+        default_compile_flags_feature,
+        default_link_flags_feature,
+        objcopy_embed_flags_feature,
+        mingw_env_feature,
+    ]
+
+    cxx_builtin_include_directories = [
+        %{CXX_BUILTIN_INCLUDE_DIRECTORIES}
+    ]
+
+    artifact_name_patterns = [
+        artifact_name_pattern(
+            category_name = "executable",
+            prefix = "",
+            extension = ".exe",
+        ),
+    ]
+
+    make_variables = []
+
+    tool_paths = [
+        tool_path(
+            name = "ar",
+            path = "%{AR_WRAPPER}",
+        ),
+        tool_path(
+            name = "compat-ld",
+            path = "%{BINDIR}/ld.exe",
+        ),
+        tool_path(
+            name = "cpp",
+            path = "%{BINDIR}/cpp.exe",
+        ),
+        tool_path(
+            name = "dwp",
+            path = "%{BINDIR}/dwp.exe",
+        ),
+        tool_path(
+            name = "gcc",
+            path = "%{GCC_WRAPPER}",
+        ),
+        tool_path(
+            name = "gcov",
+            path = "%{BINDIR}/gcov.exe",
+        ),
+        tool_path(
+            name = "ld",
+            path = "%{BINDIR}/ld.exe",
+        ),
+        tool_path(
+            name = "nm",
+            path = "%{BINDIR}/nm.exe",
+        ),
+        tool_path(
+            name = "objcopy",
+            path = "%{BINDIR}/objcopy.exe",
+        ),
+        tool_path(
+            name = "objdump",
+            path = "%{BINDIR}/objdump.exe",
+        ),
+        tool_path(
+            name = "strip",
+            path = "%{BINDIR}/strip.exe",
+        ),
+    ]
+
+    out = ctx.actions.declare_file(ctx.label.name)
+    ctx.actions.write(out, "Fake executable")
+    return [
+        cc_common.create_cc_toolchain_config_info(
+            ctx = ctx,
+            features = features,
+            action_configs = action_configs,
+            artifact_name_patterns = artifact_name_patterns,
+            cxx_builtin_include_directories = cxx_builtin_include_directories,
+            toolchain_identifier = toolchain_identifier,
+            host_system_name = host_system_name,
+            target_system_name = target_system_name,
+            target_cpu = target_cpu,
+            target_libc = target_libc,
+            compiler = compiler,
+            abi_version = abi_version,
+            abi_libc_version = abi_libc_version,
+            tool_paths = tool_paths,
+            make_variables = make_variables,
+            builtin_sysroot = builtin_sysroot,
+            cc_target_os = cc_target_os
+        ),
+        DefaultInfo(
+            executable = out,
+        ),
+    ]
+
+cc_toolchain_config =  rule(
+    implementation = _impl,
+    provides = [CcToolchainConfigInfo],
+    executable = True,
+)
