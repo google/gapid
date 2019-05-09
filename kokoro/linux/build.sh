@@ -20,9 +20,9 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
 
 # Get bazel.
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.20.0/bazel-0.20.0-installer-linux-x86_64.sh
+curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-installer-linux-x86_64.sh
 mkdir bazel
-bash bazel-0.20.0-installer-linux-x86_64.sh --prefix=$PWD/bazel
+bash bazel-0.25.1-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
 # Get GCC 7
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -56,4 +56,3 @@ echo $(date): Smoketests completed.
 # Build the release packages.
 mkdir $BUILD_ROOT/out
 $SRC/kokoro/linux/package.sh $BUILD_ROOT/out
-
