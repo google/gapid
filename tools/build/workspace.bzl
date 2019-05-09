@@ -20,8 +20,8 @@ load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
 load("@gapid//tools/build/third_party:perfetto.bzl", "perfetto")
-load("@gapid//tools/build/rules:grpc_c++.bzl", "grpc_deps")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Defines the repositories for GAPID's dependencies, excluding the
 # go dependencies, which require @io_bazel_rules_go to be setup.
@@ -69,13 +69,11 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "grpc",
         project = "grpc",
-        # v1.11.0
-        commit = "bd44e485f69d70ca4095cea92decd98de3892aa6",
-        # Override with our own BUILD file, to make Android build work.
-        build_file = "@gapid//tools/build/third_party:grpc_c++.BUILD",
-        sha256 = "486ed046515f167e0e818442df9eaf91658b1bb29804eb2cf7caf276b4720083",
+        # v1.20.1
+        commit = "7741e806a213cba63c96234f16d712a8aa101a49",
+        sha256 = "9ed7d944d8d07deac365c9edcda10ce8159c1436119e1b0792a1e830cb20606c",
     )
-    grpc_deps(locals)
+    _grpc_deps(locals)
 
     ###########################################
     # Now get all our other non-go dependencies
@@ -230,3 +228,62 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
     if mingw:
         cc_configure()
+
+# Function to setup all the GRPC deps and bindings.
+def _grpc_deps(locals):
+    maybe_repository(http_archive,
+        name = "boringssl",
+        locals = locals,
+        # on the master-with-bazel branch
+        url = "https://boringssl.googlesource.com/boringssl/+archive/afc30d43eef92979b05776ec0963c9cede5fb80f.tar.gz",
+    )
+
+    maybe_repository(github_repository,
+        name = "net_zlib", # name used by rules_go
+        locals = locals,
+        organization = "madler",
+        project = "zlib",
+        commit = "cacf7f1d4e3d44d871b605da3b647f07d718623f",
+        build_file = "@com_github_grpc_grpc//third_party:zlib.BUILD",
+        sha256 = "1cce3828ec2ba80ff8a4cac0ab5aa03756026517154c4b450e617ede751d41bd",
+    )
+
+    maybe_repository(github_repository,
+        name = "com_github_nanopb_nanopb",
+        locals = locals,
+        organization = "nanopb",
+        project = "nanopb",
+        commit = "f8ac463766281625ad710900479130c7fcb4d63b",
+        build_file = "@com_github_grpc_grpc//third_party:nanopb.BUILD",
+        sha256 = "e7e635b26fa11246e8fd1c46df141d2f094a659b905ac61e957234018308f883",
+    )
+
+    native.bind(
+        name = "libssl",
+        actual = "@boringssl//:ssl",
+    )
+
+    native.bind(
+        name = "zlib",
+        actual = "@net_zlib//:z",
+    )
+
+    native.bind(
+        name = "nanopb",
+        actual = "@com_github_nanopb_nanopb//:nanopb",
+    )
+
+    native.bind(
+        name = "protobuf",
+        actual = "@com_google_protobuf//:protobuf",
+    )
+
+    native.bind(
+        name = "protobuf_clib",
+        actual = "@com_google_protobuf//:protoc_lib",
+    )
+
+    native.bind(
+        name = "protobuf_headers",
+        actual = "@com_google_protobuf//:protobuf_headers",
+    )

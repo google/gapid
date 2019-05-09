@@ -38,6 +38,9 @@ build --nolegacy_whole_archive
 # Sets the go +build tags to use during compilation.
 build --define gotags=analytics,crashreporting
 
+# Disable c-ares for grpc.
+build --define grpc_no_ares=true
+
 # Config used by the build servers to dump symbols.
 build:symbols --copt="-g"
 
