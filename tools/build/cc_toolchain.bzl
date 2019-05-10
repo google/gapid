@@ -72,7 +72,7 @@ def _configure_windows_toolchain(repository_ctx):
     })
     _compile_wrapper(repository_ctx, cc, "ar_wrapper")
 
-    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:BUILD.bazel"), "BUILD")
+    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:mingw.BUILD"), "BUILD.bazel")
     repository_ctx.template("toolchain.bzl", Label("@gapid//tools/build/mingw_toolchain:toolchain.bzl.in"), {
         "%{BINDIR}": str(cc.dirname),
         "%{GCC_WRAPPER}": str(repository_ctx.path("gcc_wrapper.exe")),
