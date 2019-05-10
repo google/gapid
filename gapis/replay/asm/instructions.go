@@ -351,3 +351,20 @@ type SwitchThread struct {
 func (a SwitchThread) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.SwitchThread{Index: a.Index}.Encode(w)
 }
+
+// AddJumpLabel
+type AddJumpLabel struct {
+	Label uint32
+}
+
+func (a AddJumpLabel) Encode(r value.PointerResolver, w binary.Writer) error {
+	return opcode.AddJumpLabel{Label: a.Label}.Encode(w)
+}
+
+type JumpNZ struct {
+	Label uint32
+}
+
+func (a JumpNZ) Encode(r value.PointerResolver, w binary.Writer) error {
+	return opcode.JumpNZ{Label: a.Label}.Encode(w)
+}

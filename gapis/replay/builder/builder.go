@@ -277,8 +277,11 @@ func (b *Builder) CommitCommand() {
 				b.instructions[s.idx] = i
 				pop--
 			}
-		case asm.Clone, asm.Push, asm.Load: // Remove unused clones, pushes, loads
+		// case asm.Clone, asm.Push, asm.Load: // Remove unused clones, pushes, loads
+		case asm.Push:
 			b.instructions[s.idx] = asm.Nop{}
+			pop--
+		case asm.Clone, asm.Load:
 			pop--
 		}
 	}
@@ -505,6 +508,28 @@ func (b *Builder) Push(val value.Value) {
 			Value: val,
 		})
 	}
+}
+
+// Dec pop the value from top of stack, decrease by num and push back the result
+// to the top of the stack
+func (b *Builder) Dec(num int32) {
+	b.instructions = append(b.instructions, asm.Push{
+		Value: value.S32(-num),
+	}, asm.Add{
+		Count: 2,
+	})
+}
+
+func (b *Builder) AddJumpLabel(label uint32) {
+	b.instructions = append(b.instructions, asm.AddJumpLabel{
+		Label: label,
+	})
+}
+
+func (b *Builder) JumpNZ(label uint32) {
+	b.instructions = append(b.instructions, asm.JumpNZ{
+		Label: label,
+	})
 }
 
 // Pop removes the top count values from the top of the stack.

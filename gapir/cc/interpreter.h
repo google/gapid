@@ -142,7 +142,8 @@ class Interpreter {
   Result add(uint32_t opcode);
   Result label(uint32_t opcode);
   Result switchThread(uint32_t opcode);
-
+  Result addJumpLabel(uint32_t opcode);
+  Result jumpNZ(uint32_t opcode);
   // Returns true, if address..address+size(type) is "constant" memory.
   bool isConstantAddressForType(const void* address, BaseType type) const;
 
@@ -196,6 +197,9 @@ class Interpreter {
 
   // The thread pool used to interpret on different threads.
   ThreadPool mThreadPool;
+
+  // Jump ID to instruction ID
+  std::unordered_map<uint32_t, uint32_t> mJumpLables;
 };
 
 inline bool Interpreter::isConstantAddressForType(const void* address,

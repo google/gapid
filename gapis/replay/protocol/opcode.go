@@ -37,6 +37,8 @@ const (
 	OpAdd          = Opcode(14)
 	OpLabel        = Opcode(15)
 	OpSwitchThread = Opcode(16)
+	OpAddJumpLabel = Opcode(17)
+	OpJumpNZ       = Opcode(18)
 )
 
 // String returns the human-readable name of the opcode.
@@ -76,6 +78,10 @@ func (t Opcode) String() string {
 		return "Label"
 	case OpSwitchThread:
 		return "SwitchThread"
+	case OpAddJumpLabel:
+		return "AddJumpLabel"
+	case OpJumpNZ:
+		return "JumpNZ"
 	default:
 		panic(fmt.Errorf("Unknown Opcode %d", uint32(t)))
 	}

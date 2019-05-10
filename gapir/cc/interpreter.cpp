@@ -469,6 +469,22 @@ Interpreter::Result Interpreter::switchThread(uint32_t opcode) {
   return CHANGE_THREAD;
 }
 
+Interpreter::Result Interpreter::addJumpLabel(uint32_t opcode) {
+  auto jump_id = extract26bitData(opcode);
+  mJumpLables[jump_id] = mCurrentInstruction;
+  return SUCCESS;
+}
+
+Interpreter::Result Interpreter::jumpNZ(uint32_t opcode) {
+  auto jump_id = extract26bitData(opcode);
+  auto should_jump = mStack.pop<int32_t>();
+  if (should_jump != 0) {
+    mCurrentInstruction = mJumpLables[jump_id];
+  }
+
+  return SUCCESS;
+}
+
 #define DEBUG_OPCODE(name, value) GAPID_VERBOSE(name)
 #define DEBUG_OPCODE_26(name, value) \
   GAPID_VERBOSE(name "(%#010x)", value& DATA_MASK26)
@@ -531,6 +547,12 @@ Interpreter::Result Interpreter::interpret(uint32_t opcode) {
     case InstructionCode::SWITCH_THREAD:
       DEBUG_OPCODE_26("SWITCH_THREAD", opcode);
       return this->switchThread(opcode);
+    case InstructionCode::ADD_JUMP_LABEL:
+      DEBUG_OPCODE_26("ADD_JUMP_LABEL", opcode);
+      return this->addJumpLabel(opcode);
+    case InstructionCode::JUMP_NZ:
+      DEBUG_OPCODE_26("JUMP_NZ", opcode);
+      return this->jumpNZ(opcode);
     default:
       GAPID_WARNING("Unknown opcode! %#010x", opcode);
       return ERROR;
