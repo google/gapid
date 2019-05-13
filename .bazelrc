@@ -33,7 +33,7 @@ build --define GAPID_BUILD_NUMBER=0 --define GAPID_BUILD_SHA=developer
 
 # Without this, bazel wraps each cc_library with "--whole-archive" flags for the
 # linker when building the dynamic library, which leads to over-bloated libs.
-build --nolegacy_whole_archive
+build --incompatible_remove_legacy_whole_archive
 
 # Sets the go +build tags to use during compilation.
 build --define gotags=analytics,crashreporting
