@@ -29,6 +29,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "api_file",
+    srcs = ["vulkan.api"],
+    visibility = ["//visibility:public"],
+)
+
 api_library(
     name = "api",
     api = "vulkan.api",
