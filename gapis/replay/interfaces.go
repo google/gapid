@@ -86,7 +86,8 @@ type Profiler interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
-		hints *service.UsageHints) error
+		hints *service.UsageHints,
+		overrides *path.OverrideConfig) error
 }
 
 // Issue represents a single replay issue reported by QueryIssues.
