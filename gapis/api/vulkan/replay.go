@@ -725,6 +725,7 @@ func uniqueConfig() replay.Config {
 }
 
 type profileRequest struct {
+	overrides *path.OverrideConfig
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1116,10 +1117,11 @@ func (a API) Profile(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
-	hints *service.UsageHints) error {
+	hints *service.UsageHints,
+	overrides *path.OverrideConfig) error {
 
 	c := uniqueConfig()
-	r := profileRequest{}
+	r := profileRequest{overrides}
 
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	return err

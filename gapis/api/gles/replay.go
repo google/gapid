@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
@@ -71,7 +72,9 @@ type framebufferRequest struct {
 	wireframeOverlay bool
 }
 
-type profileRequest struct{}
+type profileRequest struct {
+	overrides *path.OverrideConfig
+}
 
 // GetReplayPriority returns a uint32 representing the preference for
 // replaying this trace on the given device.
@@ -358,10 +361,11 @@ func (a API) Profile(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
-	hints *service.UsageHints) error {
+	hints *service.UsageHints,
+	overrides *path.OverrideConfig) error {
 
 	c := uniqueConfig()
-	r := profileRequest{}
+	r := profileRequest{overrides}
 
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	return err
