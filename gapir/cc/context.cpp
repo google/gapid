@@ -201,6 +201,26 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                                });
 
   interpreter->registerBuiltin(
+      Gles::INDEX, Builtins::ReplayFrameDelimiter,
+      [this](uint32_t label, Stack* stack, bool) {
+        uint32_t id = stack->pop<uint32_t>();
+        if (stack->isValid()) {
+          GAPID_INFO("[%u]replayFrameDelimiter(%u)", label, id);
+          auto found = mGlesRenderers.find(id);
+          if (found == mGlesRenderers.end()) {
+            GAPID_ERROR("replayFrameDelimiter has no renderer at ID: %u", id);
+            return false;
+          }
+          found->second->frameDelimiter();
+          return true;
+        } else {
+          GAPID_WARNING(
+              "[%u]Error during calling function replayFrameDelimiter", label);
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
       Gles::INDEX, Builtins::ReplayCreateRenderer,
       [this](uint32_t label, Stack* stack, bool) {
         uint32_t id = stack->pop<uint32_t>();

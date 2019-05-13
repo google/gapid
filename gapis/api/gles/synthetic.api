@@ -38,6 +38,10 @@ cmd void replayChangeBackbuffer(u32     rendererID,
 @synthetic
 cmd EGLImageKHR replayCreateExternalImage(u32 rendererID, TextureId texture) { return ? }
 
+// replayFrameDelimiter replay a call that acts as a frame delimiter, e.g. eglSwapBuffers()
+@synthetic
+cmd void replayFrameDelimiter(u32 rendererID) { }
+
 @synthetic
 cmd void startTimer(u8 index) { }
 

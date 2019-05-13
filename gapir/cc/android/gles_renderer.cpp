@@ -36,6 +36,7 @@ class GlesRendererImpl : public GlesRenderer {
   virtual void bind(bool resetViewportScissor) override;
   virtual void unbind() override;
   virtual void* createExternalImage(uint32_t texture) override;
+  virtual bool frameDelimiter() override;
   virtual const char* name() override;
   virtual const char* extensions() override;
   virtual const char* vendor() override;
@@ -203,6 +204,15 @@ void* GlesRendererImpl::createExternalImage(uint32_t texture) {
   return mApi.mFunctionStubs.eglCreateImageKHR(
       mDisplay, mContext, EGL_GL_TEXTURE_2D_KHR,
       (EGLClientBuffer)(uint64_t)texture, nullptr);
+}
+
+bool GlesRendererImpl::frameDelimiter() {
+  if (mSurface != nullptr) {
+    eglSwapBuffers(mDisplay, mSurface);
+    EGL_CHECK_ERROR("Failed to swap buffers");
+    return true;
+  }
+  return false;
 }
 
 const char* GlesRendererImpl::name() {

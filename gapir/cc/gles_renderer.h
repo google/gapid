@@ -76,6 +76,9 @@ class GlesRenderer : public Renderer {
 
   // Creates an external image backed by the given texture.
   virtual void* createExternalImage(uint32_t texture) { return nullptr; }
+
+  // Perform a call that acts as a frame delimiter, typically swapBuffers
+  virtual bool frameDelimiter() { return true; }
 };
 
 inline GlesRenderer::Backbuffer::Format::Format()
