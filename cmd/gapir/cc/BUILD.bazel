@@ -14,22 +14,34 @@
 
 load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_stripped_binary")
 
-cc_stripped_binary(
-    name = "gapir",
+cc_library(
+    name = "cc",
     srcs = ["main.cpp"],
     copts = cc_copts(),
+    deps = [
+        "//gapir/cc:gapir",
+    ] + select({
+        "//tools/build:linux": [],
+        "//tools/build:windows": [],
+        "//tools/build:darwin": [],
+        # Android
+        "//conditions:default": [
+            "@android_native_app_glue//:native_app_glue",
+        ],
+    }),
+)
+
+cc_stripped_binary(
+    name = "gapir",
+    copts = cc_copts(),
     visibility = ["//visibility:public"],
-    deps = ["//gapir/cc:gapir"],
+    deps = [":cc"],
 )
 
 android_dynamic_library(
     name = "libgapir",
-    srcs = ["main.cpp"],
     copts = cc_copts(),
     visibility = ["//visibility:public"],
     exports = "gapir.exports",
-    deps = [
-        "//gapir/cc:gapir",
-        "@android_native_app_glue//:native_app_glue",
-    ],
+    deps = [":cc"],
 )
