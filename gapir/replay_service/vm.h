@@ -42,7 +42,7 @@ enum class Opcode {
   ADD = 14,
   LABEL = 15,
   SWITCH_THREAD = 16,
-  ADD_JUMP_LABEL = 17,
+  JUMP_LABEL = 17,
   JUMP_NZ = 18,
 };
 

@@ -142,7 +142,7 @@ class Interpreter {
   Result add(uint32_t opcode);
   Result label(uint32_t opcode);
   Result switchThread(uint32_t opcode);
-  Result addJumpLabel(uint32_t opcode);
+  Result jumpLabel(uint32_t opcode);
   Result jumpNZ(uint32_t opcode);
   // Returns true, if address..address+size(type) is "constant" memory.
   bool isConstantAddressForType(const void* address, BaseType type) const;

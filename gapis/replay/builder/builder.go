@@ -278,10 +278,8 @@ func (b *Builder) CommitCommand() {
 				pop--
 			}
 		// case asm.Clone, asm.Push, asm.Load: // Remove unused clones, pushes, loads
-		case asm.Push:
+		case asm.Push, asm.Clone, asm.Load:
 			b.instructions[s.idx] = asm.Nop{}
-			pop--
-		case asm.Clone, asm.Load:
 			pop--
 		}
 	}
@@ -510,23 +508,31 @@ func (b *Builder) Push(val value.Value) {
 	}
 }
 
-// Dec pop the value from top of stack, decrease by num and push back the result
-// to the top of the stack
-func (b *Builder) Dec(num int32) {
+// Sub pops the value from top of stack, substracts by num and pushes back
+// the result to the top of the stack.
+func (b *Builder) Sub(num int32) {
 	b.instructions = append(b.instructions, asm.Push{
 		Value: value.S32(-num),
 	}, asm.Add{
 		Count: 2,
 	})
+	sidx := len(b.stack) - 1
+	// Change ownership of the top stack value to the add instruction.
+	b.stack[sidx].idx = len(b.instructions)
 }
 
-func (b *Builder) AddJumpLabel(label uint32) {
-	b.instructions = append(b.instructions, asm.AddJumpLabel{
+// JumpLabel adds a jump label to the instructions so that later can
+// jump to that label and start execution from this label.
+func (b *Builder) JumpLabel(label uint32) {
+	b.instructions = append(b.instructions, asm.JumpLabel{
 		Label: label,
 	})
 }
 
+// JumpNZ jumps to the instruction specified label if the value
+// on top of the stack is not zero. Otherwise it will be be a Nop.
 func (b *Builder) JumpNZ(label uint32) {
+	b.popStack()
 	b.instructions = append(b.instructions, asm.JumpNZ{
 		Label: label,
 	})

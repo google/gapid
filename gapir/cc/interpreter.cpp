@@ -469,20 +469,25 @@ Interpreter::Result Interpreter::switchThread(uint32_t opcode) {
   return CHANGE_THREAD;
 }
 
-Interpreter::Result Interpreter::addJumpLabel(uint32_t opcode) {
+Interpreter::Result Interpreter::jumpLabel(uint32_t opcode) {
   auto jump_id = extract26bitData(opcode);
   mJumpLables[jump_id] = mCurrentInstruction;
-  return SUCCESS;
+  return mStack.isValid() ? SUCCESS : ERROR;
 }
 
 Interpreter::Result Interpreter::jumpNZ(uint32_t opcode) {
   auto jump_id = extract26bitData(opcode);
   auto should_jump = mStack.pop<int32_t>();
+  if (!mStack.isEmpty()) {
+    GAPID_WARNING("Error: stack is not empty before jumping to label %d",
+                  jump_id);
+    return ERROR;
+  }
   if (should_jump != 0) {
     mCurrentInstruction = mJumpLables[jump_id];
   }
 
-  return SUCCESS;
+  return mStack.isValid() ? SUCCESS : ERROR;
 }
 
 #define DEBUG_OPCODE(name, value) GAPID_VERBOSE(name)
@@ -547,9 +552,9 @@ Interpreter::Result Interpreter::interpret(uint32_t opcode) {
     case InstructionCode::SWITCH_THREAD:
       DEBUG_OPCODE_26("SWITCH_THREAD", opcode);
       return this->switchThread(opcode);
-    case InstructionCode::ADD_JUMP_LABEL:
-      DEBUG_OPCODE_26("ADD_JUMP_LABEL", opcode);
-      return this->addJumpLabel(opcode);
+    case InstructionCode::JUMP_LABEL:
+      DEBUG_OPCODE_26("JUMP_LABEL", opcode);
+      return this->jumpLabel(opcode);
     case InstructionCode::JUMP_NZ:
       DEBUG_OPCODE_26("JUMP_NZ", opcode);
       return this->jumpNZ(opcode);

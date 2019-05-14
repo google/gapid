@@ -37,7 +37,7 @@ const (
 	OpAdd          = Opcode(14)
 	OpLabel        = Opcode(15)
 	OpSwitchThread = Opcode(16)
-	OpAddJumpLabel = Opcode(17)
+	OpJumpLabel    = Opcode(17)
 	OpJumpNZ       = Opcode(18)
 )
 
@@ -78,8 +78,8 @@ func (t Opcode) String() string {
 		return "Label"
 	case OpSwitchThread:
 		return "SwitchThread"
-	case OpAddJumpLabel:
-		return "AddJumpLabel"
+	case OpJumpLabel:
+		return "JumpLabel"
 	case OpJumpNZ:
 		return "JumpNZ"
 	default:

@@ -310,15 +310,15 @@ func (c SwitchThread) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
-// AddJumpLabel represents the AddJumpLabel virtual machine opcode.
-type AddJumpLabel struct {
+// JumpLabel represents the JumpLabel virtual machine opcode.
+type JumpLabel struct {
 	Label uint32 // 26 bit jump label.
 }
 
-func (c AddJumpLabel) String() string { return fmt.Sprintf("AddJumpLabel(Label: 0x%x)", c.Label) }
+func (c JumpLabel) String() string { return fmt.Sprintf("JumpLabel(Label: 0x%x)", c.Label) }
 
-func (c AddJumpLabel) Encode(w binary.Writer) error {
-	w.Uint32(packCX(protocol.OpAddJumpLabel, c.Label))
+func (c JumpLabel) Encode(w binary.Writer) error {
+	w.Uint32(packCX(protocol.OpJumpLabel, c.Label))
 	return w.Error()
 }
 

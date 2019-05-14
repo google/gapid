@@ -183,6 +183,9 @@ class Stack {
   // call.
   void pushFrom(BaseType type, const void* data);
 
+  // Returns true if the stack is empty false otherwise.
+  bool isEmpty() const { return mTop == 0; }
+
  private:
   // Check that the stack is valid and a pop is allowed (non-empty).
   bool popCheck(const char* what);
