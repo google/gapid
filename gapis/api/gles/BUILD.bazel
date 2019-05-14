@@ -172,6 +172,7 @@ go_test(
     srcs = [
         "compat_test.go",
         "dead_code_elimination_test.go",
+        "dependencygraph2_test.go",
         "markers_test.go",
         "stub_program_test.go",
     ],
@@ -188,5 +189,6 @@ go_test(
         "//gapis/database:go_default_library",
         "//gapis/memory:go_default_library",
         "//gapis/resolve/dependencygraph:go_default_library",
+        "//gapis/resolve/dependencygraph2:go_default_library",
     ],
 )
