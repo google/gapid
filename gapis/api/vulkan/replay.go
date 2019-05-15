@@ -932,6 +932,21 @@ func (a API) Replay(
 			}
 			profile.Res = append(profile.Res, rr.Result)
 			optimize = false
+			if req.overrides.GetViewportSize() {
+				transforms.Add(minimizeViewport(ctx))
+			}
+			if req.overrides.GetTextureSize() {
+				transforms.Add(minimizeTextures(ctx))
+			}
+			if req.overrides.GetSampling() {
+				transforms.Add(simplifySampling(ctx))
+			}
+			if req.overrides.GetFragmentShader() {
+				transforms.Add(simplifyFragmentShader(ctx))
+			}
+			if req.overrides.GetVertexCount() {
+				transforms.Add(setVertexCountToOne(ctx))
+			}
 		}
 	}
 
