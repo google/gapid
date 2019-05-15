@@ -38,23 +38,34 @@ sh bazel-0.25.1-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 export DEVELOPER_DIR=/Applications/Xcode_8.2.app/Contents/Developer
 
 cd $SRC
-
-# Invoke the build.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
-echo $(date): Starting build...
-# "--strategy CppLink=local" disables the sandbox when linking, which is
-# required for the symbol dumping to work, as the linker *always* puts absolute
-# paths to the .a files into the debug section of the executable.
-$BUILD_ROOT/bazel/bin/bazel \
-    --output_base="${TMP}/bazel_out" \
-    build -c opt --config symbols \
-    --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-    --define GAPID_BUILD_SHA="$BUILD_SHA" \
-    --strategy CppLink=local \
-    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests:smoketests
-echo $(date): Build completed.
 
-# Smoketests
+function build {
+  echo $(date): Starting build for $@...
+  # "--strategy CppLink=local" disables the sandbox when linking, which is
+  # required for the symbol dumping to work, as the linker *always* puts absolute
+  # paths to the .a files into the debug section of the executable.
+  $BUILD_ROOT/bazel/bin/bazel \
+      --output_base="${TMP}/bazel_out" \
+      build -c opt --config symbols \
+      --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+      --define GAPID_BUILD_SHA="$BUILD_SHA" \
+      --strategy CppLink=local \
+      $@
+  echo $(date): Build completed.
+}
+
+# Build each API package separately first, as the go-compiler needs ~8GB of
+# RAM for each of the big API packages.
+for api in gles vulkan gvr; do
+  build //gapis/api/$api:go_default_library
+done
+
+# Build the package and symbol file.
+build //:pkg //cmd/gapir/cc:gapir.sym
+
+# Build and run the smoketests.
+build //cmd/smoketests:smoketests
 echo $(date): Run smoketests...
 # Using "bazel run //cmd/smoketests seems to make 'bazel-bin/pkg/gapit'
 # disappear, hence we call the binary directly

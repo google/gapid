@@ -34,19 +34,30 @@ export CC=/usr/bin/gcc-7
 export ANDROID_NDK_HOME=/opt/android-ndk-r16b
 
 cd $SRC
-
-# Invoke the build.
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
-echo $(date): Starting build...
-$BUILD_ROOT/bazel/bin/bazel \
+
+function build {
+  echo $(date): Starting build for $@...
+  $BUILD_ROOT/bazel/bin/bazel \
     --output_base="${TMP}/bazel_out" \
     build -c opt --config symbols \
     --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
     --define GAPID_BUILD_SHA="$BUILD_SHA" \
-    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests:smoketests
-echo $(date): Build completed.
+    $@
+  echo $(date): Build completed.
+}
 
-# Smoketests
+# Build each API package separately first, as the go-compiler needs ~8GB of
+# RAM for each of the big API packages.
+for api in gles vulkan gvr; do
+  build //gapis/api/$api:go_default_library
+done
+
+# Build the package and symbol file.
+build //:pkg //cmd/gapir/cc:gapir.sym
+
+# Build and run the smoketests.
+build //cmd/smoketests:smoketests
 echo $(date): Run smoketests...
 # Using "bazel run //cmd/smoketests seems to make 'bazel-bin/pkg/gapit'
 # disappear, hence we call the binary directly
