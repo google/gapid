@@ -77,12 +77,6 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		out = f
 	}
 
-	boxedRes, err := client.GetTimestamps(ctx, capturePath, device)
-	if err != nil {
-		return log.Err(ctx, err, "Failed to get the timestamps")
-	}
-	res := boxedRes.(*service.GetTimestampsResponse)
-
 	reportWriter := csv.NewWriter(out)
 	defer reportWriter.Flush()
 
@@ -95,16 +89,23 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return strings.Trim(strings.Join(strings.Fields(fmt.Sprint(cmd.Indices)), "."), "[]")
 	}
 
-	if ts := res.GetTimestamps(); ts != nil {
-		for _, t := range ts.Timestamps {
-			begin := cmdToString(t.Begin)
-			end := cmdToString(t.End)
-			record := []string{begin, end, fmt.Sprint(t.TimeInNanoseconds)}
-			if err := reportWriter.Write(record); err != nil {
-				log.Err(ctx, err, "Failed to write record")
-			}
-		}
+	req := &service.GetTimestampsRequest{
+		Capture: capturePath,
+		Device:  device,
 	}
 
+	client.GetTimestamps(ctx, req, func(r *service.GetTimestampsResponse) error {
+		if ts := r.GetTimestamps(); ts != nil {
+			for _, t := range ts.Timestamps {
+				begin := cmdToString(t.Begin)
+				end := cmdToString(t.End)
+				record := []string{begin, end, fmt.Sprint(t.TimeInNanoseconds)}
+				if err := reportWriter.Write(record); err != nil {
+					log.Err(ctx, err, "Failed to write record")
+				}
+			}
+		}
+		return nil
+	})
 	return nil
 }

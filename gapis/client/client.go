@@ -511,15 +511,13 @@ func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettings
 	return nil
 }
 
-func (c *client) GetTimestamps(ctx context.Context, capture *path.Capture, device *path.Device) (interface{}, error) {
-	res, err := c.client.GetTimestamps(ctx, &service.GetTimestampsRequest{
-		Capture: capture,
-		Device:  device,
-	})
+func (c *client) GetTimestamps(ctx context.Context, req *service.GetTimestampsRequest, handler service.TimeStampsHandler) error {
+	stream, err := c.client.GetTimestamps(ctx, req)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return res, nil
+	h := func(ctx context.Context, m *service.GetTimestampsResponse) error { return handler(m) }
+	return event.Feed(ctx, event.AsHandler(ctx, h), grpcutil.ToProducer(stream))
 }
 
 func (c *client) GetGraphVisualization(ctx context.Context, capture *path.Capture, format service.GraphFormat) ([]byte, error) {

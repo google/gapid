@@ -708,9 +708,10 @@ service Gapid {
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
   }
 
-  // GetTimestamps returns the timestamps of the begin and end of execution of a
-  // command buffer.
-  rpc GetTimestamps(GetTimestampsRequest) returns (GetTimestampsResponse) {
+  // GetTimestamps returns a stream contains the timestamps of the begin
+  // and end of execution of a command buffer.
+  rpc GetTimestamps(GetTimestampsRequest)
+      returns (stream GetTimestampsResponse) {
   }
 }
 
