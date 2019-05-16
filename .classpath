@@ -10,7 +10,7 @@
 	<classpathentry kind="lib" path="bazel-bin/core/log/log_pb/liblog_pb_proto-speed.jar" sourcepath="bazel-genfiles/core/log/log_pb/log_pb_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/core/os/device/libdevice_proto-speed.jar" sourcepath="bazel-genfiles/core/os/device/device_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/core/stream/libstream_proto-speed.jar" sourcepath="bazel-genfiles/core/stream/stream_proto-speed-src.jar"/>
-	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libconfig_proto-speed.jar" sourcepath="bazel-genfiles/external/perfetto/config_proto-speed-src.jar"/>
+	<classpathentry kind="lib" path="bazel-bin/external/perfetto/libconfig_combined_proto-speed.jar" sourcepath="bazel-genfiles/external/perfetto/config_combined_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/external/com_google_protobuf/libprotobuf_java.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapidapk/pkginfo/libpkginfo_proto-speed.jar" sourcepath="bazel-genfiles/gapidapk/pkginfo/pkginfo_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/api/libapi_proto-speed.jar" sourcepath="bazel-genfiles/gapis/api/api_proto-speed-src.jar"/>
