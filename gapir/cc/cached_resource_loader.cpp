@@ -17,6 +17,8 @@
 #include "cached_resource_loader.h"
 #include "resource.h"
 
+#include "core/cc/assert.h"
+
 #include <utility>
 #include <vector>
 
@@ -57,15 +59,14 @@ bool CachedResourceLoader::load(const Resource* resources, size_t count,
     return false;  // Not enough space
   }
 
-  bool succeeded = true;
-
   ResourceLoadingBatch batch;
   uint8_t* dst = reinterpret_cast<uint8_t*>(target);
   for (size_t i = 0; i < count; i++) {
     const auto& r = resources[i];
     // Check cache first
     if (mCache->hasCache(r)) {
-      succeeded &= mCache->loadCache(r, static_cast<void*>(dst));
+      bool cache_load_success = mCache->loadCache(r, static_cast<void*>(dst));
+      GAPID_ASSERT(cache_load_success);
       dst += r.size;
       continue;
     }
