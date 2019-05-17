@@ -35,6 +35,13 @@ const (
 	SimpleList
 )
 
+const (
+	ExportPlain ExportMode = iota
+	ExportDiagnostics
+	ExportFrames
+	ExportTimestamps
+)
+
 type VideoType uint8
 
 var videoTypeNames = map[VideoType]string{
@@ -65,6 +72,22 @@ func (v *PackagesOutput) Choose(c interface{}) {
 }
 func (v PackagesOutput) String() string {
 	return packagesOutputNames[v]
+}
+
+type ExportMode uint8
+
+var exportModeNames = map[ExportMode]string{
+	ExportPlain:       "plain",
+	ExportDiagnostics: "diagnostics",
+	ExportFrames:      "frames",
+	ExportTimestamps:  "timestamps",
+}
+
+func (v *ExportMode) Choose(c interface{}) {
+	*v = c.(ExportMode)
+}
+func (v ExportMode) String() string {
+	return exportModeNames[v]
 }
 
 type (
@@ -121,11 +144,11 @@ type (
 	ExportReplayFlags struct {
 		Gapis          GapisFlags
 		Gapir          GapirFlags
-		OriginalDevice bool   `help:"export replay for the original device"`
-		Out            string `help:"output directory for commands and assets"`
-		OutputFrames   bool   `help:"generate trace that output frames(disable diagnostics)"`
-		Apk            string `help:"(experimental) name of the stand-alone APK created to perform the replay. This name must be <app_package>.apk (e.g. com.example.replay.apk)"`
-		SdkPath        string `help:"Path to Android SDK directory (default: ANDROID_SDK_HOME environment variable)"`
+		OriginalDevice bool       `help:"export replay for the original device"`
+		Out            string     `help:"output directory for commands and assets"`
+		Mode           ExportMode `help:"generate special purposed trace"`
+		Apk            string     `help:"(experimental) name of the stand-alone APK created to perform the replay. This name must be <app_package>.apk (e.g. com.example.replay.apk)"`
+		SdkPath        string     `help:"Path to Android SDK directory (default: ANDROID_SDK_HOME environment variable)"`
 		CommandFilterFlags
 		CaptureFileFlags
 	}

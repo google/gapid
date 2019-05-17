@@ -88,7 +88,11 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 	}
 
 	var fbreqs []*service.GetFramebufferAttachmentRequest
-	if verb.OutputFrames {
+	var tsreq *service.GetTimestampsRequest
+	switch verb.Mode {
+	case ExportPlain, ExportDiagnostics:
+		// It's the default, do nothing.
+	case ExportFrames:
 		filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capturePath)
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't get filter")
@@ -118,10 +122,14 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 				Hints:      nil,
 			})
 		}
+	case ExportTimestamps:
+		// There are no useful field in GetTimestampsRequest as of now.
+		tsreq = &service.GetTimestampsRequest{}
 	}
 
 	opts := &service.ExportReplayOptions{
 		GetFramebufferAttachmentRequests: fbreqs,
+		GetTimestampsRequest:             tsreq,
 	}
 
 	if err := client.ExportReplay(ctx, capturePath, device, verb.Out, opts); err != nil {
