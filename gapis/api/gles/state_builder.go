@@ -530,7 +530,7 @@ func (sb *stateBuilder) renderbufferObject(ctx context.Context, rb Renderbuffer�
 	write(ctx, cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, id))
 
 	if img := rb.Image(); !img.IsNil() {
-		fmt, w, h := img.SizedFormat(), img.Width(), img.Height()
+		fmt, w, h := img.getCorrectInternalFormat(), img.Width(), img.Height()
 		write(ctx, cb.GlRenderbufferStorageMultisample(GLenum_GL_RENDERBUFFER, img.Samples(), fmt, w, h)) // GLES30
 
 		// Fill the renderbuffer with data using a framebuffer blit
@@ -548,7 +548,8 @@ func (sb *stateBuilder) renderbufferObject(ctx context.Context, rb Renderbuffer�
 
 			// Upload data and blit it to our renderbuffer
 			att := GLenum_GL_COLOR_ATTACHMENT0 // TODO: Consider depth
-			write(ctx, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(fmt), w, h, 0, img.DataFormat(), img.DataType(), sb.readsSlice(ctx, img.Data())))
+			dataFormat, dataType := img.getUnsizedFormatAndType()
+			write(ctx, cb.GlTexImage2D(GLenum_GL_TEXTURE_2D, 0, GLint(fmt), w, h, 0, dataFormat, dataType, sb.readsSlice(ctx, img.Data())))
 			write(ctx, cb.GlFramebufferTexture2D(GLenum_GL_READ_FRAMEBUFFER, att, GLenum_GL_TEXTURE_2D, tex, 0))
 			write(ctx, cb.GlFramebufferRenderbuffer(GLenum_GL_DRAW_FRAMEBUFFER, att, GLenum_GL_RENDERBUFFER, id))
 			write(ctx, cb.GlScissor(0, 0, w, h))
@@ -854,10 +855,9 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 		// The dimensions are fully specified by the EGLimage
 	} else if t.ImmutableFormat() == GLboolean_GL_TRUE {
 		img := t.Levels().Get(0).Layers().Get(0) // Must exist
-		lvl, fmt := GLsizei(t.Levels().Len()), internalFormat(img.SizedFormat())
+		lvl, fmt := GLsizei(t.Levels().Len()), img.getCorrectInternalFormat()
 		w, h, d := img.Width(), img.Height(), GLsizei(t.Levels().Get(0).Layers().Len())
 		samples, fixed := img.Samples(), img.FixedSampleLocations()
-
 		if isMultisample {
 			if isArray || is3D {
 				write(ctx, cb.GlTexStorage3DMultisample(target, samples, fmt, w, h, d, fixed))
@@ -874,7 +874,7 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 	} else if isArray || is3D {
 		for lvl, levelObject := range t.Levels().All() {
 			img := levelObject.Layers().Get(0) // Must exist, all layers must be consistent.
-			fmt, w, h, d := internalFormat(img.SizedFormat()), img.Width(), img.Height(), GLsizei(levelObject.Layers().Len())
+			fmt, w, h, d := img.getCorrectInternalFormat(), img.Width(), img.Height(), GLsizei(levelObject.Layers().Len())
 			dataFormat, dataType := img.getUnsizedFormatAndType()
 			if isCompressed(img) {
 				dataSize := GLsizei(img.Data().Size()) * d
@@ -887,12 +887,13 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 		for lvl, levelObject := range t.Levels().All() {
 			for layer, img := range levelObject.Layers().All() {
 				// NB: Each face of cubemap faces can technically have different format and size.
-				fmt, w, h := internalFormat(img.SizedFormat()), img.Width(), img.Height()
+				fmt, w, h := img.getCorrectInternalFormat(), img.Width(), img.Height()
 				dataFormat, dataType := img.getUnsizedFormatAndType()
 				target := target
 				if target == GLenum_GL_TEXTURE_CUBE_MAP {
 					target = GLenum_GL_TEXTURE_CUBE_MAP_POSITIVE_X + GLenum(layer%6)
 				}
+
 				if isCompressed(img) {
 					write(ctx, cb.GlCompressedTexImage2D(target, lvl, fmt, w, h, 0, GLsizei(img.Data().Size()), memory.Nullptr))
 				} else {
@@ -905,7 +906,7 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 	// Upload the layers one by one
 	for lvl, levelObject := range t.Levels().All() {
 		for layer, img := range levelObject.Layers().All() {
-			fmt, w, h, d := internalFormat(img.SizedFormat()), img.Width(), img.Height(), GLsizei(1)
+			fmt, w, h, d := img.getCorrectInternalFormat(), img.Width(), img.Height(), GLsizei(1)
 			dataFormat, dataType := img.getUnsizedFormatAndType()
 			dataSize, data := GLsizei(img.Data().Size()), sb.readsSlice(ctx, img.Data())
 
@@ -968,21 +969,6 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 	}
 	if t.MaxAnisotropy() != 1.0 {
 		write(ctx, cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(t.MaxAnisotropy())))
-	}
-}
-
-// internalFormat returns the correct format to use for texture data upload calls (e.g. glTexImage2d).
-// See image_format.api:GetSizedFormatFromTuple.
-func internalFormat(fmt GLenum) GLenum {
-	switch fmt {
-	case GLenum_GL_LUMINANCE8_ALPHA8_EXT, GLenum_GL_LUMINANCE_ALPHA16F_EXT, GLenum_GL_LUMINANCE_ALPHA32F_EXT:
-		return GLenum_GL_LUMINANCE_ALPHA
-	case GLenum_GL_LUMINANCE8_EXT, GLenum_GL_LUMINANCE16F_EXT, GLenum_GL_LUMINANCE32F_EXT:
-		return GLenum_GL_LUMINANCE
-	case GLenum_GL_ALPHA8_EXT, GLenum_GL_ALPHA16F_EXT, GLenum_GL_ALPHA32F_EXT:
-		return GLenum_GL_ALPHA
-	default:
-		return fmt
 	}
 }
 
