@@ -36,9 +36,17 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
+@internal class ApplicationInfo {
+  @unused string ApplicationName
+  @unused u32 ApplicationVersion
+  @unused string EngineName
+  @unused u32 EngineVersion
+  @unused u32 ApiVersion  // The api version the app requested when setting up the instance
+}
+
 // Internal struct for holding useful instance level information from VkInstanceCreateInfo.
 @internal class InstanceObject {
-  @unused u32                       ApiVersion        // The api version the app requested when setting up the instance
+  @unused ref!ApplicationInfo       ApplicationInfo
   @unused map!(u32, string)         EnabledExtensions // Map from enabled extension index to extension name
   @unused map!(u32, string)         EnabledLayers
   @unused VkInstance                VulkanHandle
@@ -105,10 +113,8 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
     }
   }
 
-  if (info.pApplicationInfo != null) {
-    object.ApiVersion = readVkApplicationInfo(info.pApplicationInfo)
-  } else {
-    object.ApiVersion = 0
+  if info.pApplicationInfo != null {
+    object.ApplicationInfo = readVkApplicationInfo(info.pApplicationInfo)
   }
 
   layerNames := info.ppEnabledLayerNames[0:info.enabledLayerCount]
@@ -131,7 +137,8 @@ sub ref!InstanceObject createInstanceObject(const VkInstanceCreateInfo* createIn
 }
 
 // Marks the fields that need to be observed in a VkApplicationInfo struct and returns the API version.
-sub u32 readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
+sub ref!ApplicationInfo readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
+  object := new!ApplicationInfo()
   info := applicationInfo[0]
 
   // handle pNext
@@ -146,11 +153,15 @@ sub u32 readVkApplicationInfo(const VkApplicationInfo* applicationInfo) {
     }
   }
 
-  if (info.pApplicationName != null) {
-    _ = as!string(info.pApplicationName)
+  object.ApplicationVersion = info.applicationVersion
+  object.EngineVersion = info.engineVersion
+  object.ApiVersion = info.apiVersion
+
+  if info.pApplicationName != null {
+    object.ApplicationName = as!string(info.pApplicationName)
   }
-  if (info.pEngineName != null) {
-    _ = as!string(info.pEngineName)
+  if info.pEngineName != null {
+    object.EngineName = as!string(info.pEngineName)
   }
-  return info.apiVersion
+  return object
 }
