@@ -26,11 +26,47 @@ import (
 	"github.com/google/gapid/gapis/api"
 )
 
+func isUnsizedFormat(fmt GLenum) bool {
+	switch fmt {
+	case GLenum_GL_RGB, GLenum_GL_RGBA, GLenum_GL_LUMINANCE_ALPHA, GLenum_GL_LUMINANCE, GLenum_GL_ALPHA, GLenum_GL_DEPTH_COMPONENT, GLenum_GL_DEPTH_STENCIL:
+		return true
+	default:
+		return false
+	}
+}
+
+// getCorrectInternalFormat returns the correct format to use for texture data upload calls (e.g. glTexImage2d).
+// See image_format.api:GetSizedFormatFromTuple.
+func (img Imageʳ) getCorrectInternalFormat() GLenum {
+	internalFormat := img.InternalFormat()
+	if isUnsizedFormat(internalFormat) {
+		return internalFormat
+	}
+
+	sizedFormat := img.SizedFormat()
+	switch sizedFormat {
+	case GLenum_GL_LUMINANCE8_ALPHA8_EXT, GLenum_GL_LUMINANCE_ALPHA16F_EXT, GLenum_GL_LUMINANCE_ALPHA32F_EXT:
+		return GLenum_GL_LUMINANCE_ALPHA
+	case GLenum_GL_LUMINANCE8_EXT, GLenum_GL_LUMINANCE16F_EXT, GLenum_GL_LUMINANCE32F_EXT:
+		return GLenum_GL_LUMINANCE
+	case GLenum_GL_ALPHA8_EXT, GLenum_GL_ALPHA16F_EXT, GLenum_GL_ALPHA32F_EXT:
+		return GLenum_GL_ALPHA
+	default:
+		return sizedFormat
+	}
+}
+
 func (i Imageʳ) getUnsizedFormatAndType() (unsizedFormat, ty GLenum) {
 	if i.DataFormat() == 0 && i.DataType() == 0 {
 		return getUnsizedFormatAndType(i.SizedFormat())
 	}
-	return i.DataFormat(), i.DataType()
+
+	dataType := i.DataType()
+	if i.InternalFormat() == GLenum_GL_DEPTH_COMPONENT && dataType == GLenum_GL_FLOAT {
+		dataType = GLenum_GL_UNSIGNED_INT
+	}
+
+	return i.DataFormat(), dataType
 }
 
 func cubemapFaceToLayer(target GLenum) GLint {
