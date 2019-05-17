@@ -23,7 +23,10 @@ android_native(
 android_native(
     name = "interceptor",
     visibility = ["//visibility:public"],
-    deps = ["//gapii/interceptor-lib/cc:libinterceptor"],
+    deps = select({
+        "//tools/build:libinterceptor-from-source": ["//gapii/interceptor-lib/cc:libinterceptor"],
+        "//conditions:default": ["@libinterceptor//:libinterceptor"],
+    }),
 )
 
 android_native(
