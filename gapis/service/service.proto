@@ -329,6 +329,7 @@ message ExportReplayOptions {
   path.Report report = 1;
   repeated GetFramebufferAttachmentRequest get_framebuffer_attachment_requests =
       2;
+  GetTimestampsRequest get_timestamps_request = 3;
 }
 
 message ExportReplayRequest {

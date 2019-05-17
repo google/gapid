@@ -60,8 +60,8 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 
 	var queries []func(mgr replay.Manager) error
 	switch {
-	case opts.Report != nil && len(opts.GetFramebufferAttachmentRequests) > 0:
-		return log.Errf(ctx, nil, "Report and Framebuffer requests are not compatible.")
+	case opts.Report != nil && len(opts.GetFramebufferAttachmentRequests) > 0 && opts.GetTimestampsRequest != nil:
+		return log.Errf(ctx, nil, "at most one of the request should be specified")
 	case opts.GetFramebufferAttachmentRequests != nil:
 		r := &path.ResolveConfig{ReplayDevice: d}
 		changes, err := resolve.FramebufferChanges(ctx, c, r)
@@ -99,6 +99,17 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 					return err
 				})
 			}
+		}
+	case opts.GetTimestampsRequest != nil:
+		for _, a := range cap.APIs {
+			a, ok := a.(replay.QueryTimestamps)
+			if !ok {
+				continue
+			}
+			queries = append(queries, func(mgr replay.Manager) error {
+				_, err := a.QueryTimestamps(ctx, intent, mgr, nil)
+				return err
+			})
 		}
 	case opts.Report != nil:
 		// TODO(hysw): Add a simple replay request that output commands as
