@@ -17,13 +17,16 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterTrack;
+import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
-public class CounterPanel extends TrackPanel {
+public class CounterPanel extends TrackPanel implements Selectable {
   private static final double HEIGHT = 30;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -121,6 +124,12 @@ public class CounterPanel extends TrackPanel {
         hovered = null;
       }
     };
+  }
+
+  @Override
+  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
+    builder.add(Kind.Counter, transform(
+        track.getValues(state.getQueryEngine(), ts), data -> new CounterTrack.Values(name, data)));
   }
 
   private static class HoverCard {
