@@ -54,8 +54,14 @@ type queryPoolInfo struct {
 	results   []timestampRecord
 }
 
+// commandPoolKey is used to find a command pool suitable for a specific queue family
+type commandPoolKey struct {
+	device      VkDevice
+	queueFamily uint32
+}
+
 type queryTimestamps struct {
-	commandPools map[VkDevice]VkCommandPool
+	commandPools map[commandPoolKey]VkCommandPool
 	queryPools   map[VkQueue]*queryPoolInfo
 	replayResult []replay.Result
 	timestamps   []replay.Timestamp
@@ -64,7 +70,7 @@ type queryTimestamps struct {
 
 func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int) *queryTimestamps {
 	transform := &queryTimestamps{
-		commandPools: make(map[VkDevice]VkCommandPool),
+		commandPools: make(map[commandPoolKey]VkCommandPool),
 		queryPools:   make(map[VkQueue]*queryPoolInfo),
 	}
 	return transform
@@ -147,9 +153,10 @@ func (t *queryTimestamps) createCommandpoolIfNeeded(ctx context.Context,
 	out transform.Writer,
 	device VkDevice,
 	queueFamilyIndex uint32) VkCommandPool {
+	key := commandPoolKey{device, queueFamilyIndex}
 	s := out.State()
 
-	if cp, ok := t.commandPools[device]; ok {
+	if cp, ok := t.commandPools[key]; ok {
 		if GetState(s).CommandPools().Contains(VkCommandPool(cp)) {
 			return cp
 		}
@@ -182,7 +189,7 @@ func (t *queryTimestamps) createCommandpoolIfNeeded(ctx context.Context,
 	)
 	out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
 
-	t.commandPools[device] = commandPoolID
+	t.commandPools[key] = commandPoolID
 	return commandPoolID
 }
 
