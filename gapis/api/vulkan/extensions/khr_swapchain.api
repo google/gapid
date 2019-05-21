@@ -111,6 +111,22 @@ cmd VkResult vkCreateSwapchainKHR(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
   create_info := pCreateInfo[0]
+  if create_info.pNext != null {
+    numPNext := numberOfPNext(create_info.pNext)
+    next := MutableVoidPtr(as!void*(create_info.pNext))
+    for i in (0 .. numPNext) {
+      sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+      switch sType {
+        case VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT: {
+          ext := as!VirtualSwapchainPNext*(next.Ptr)[0:1][0]
+          if ext.surfaceCreateInfo != null {
+            _ = as!VkStructureType*(ext.surfaceCreateInfo)[0:1][0]
+          }
+        }
+      }
+      next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+    }
+  }
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
 
   swapchainObject := new!SwapchainObject(Device: device,
