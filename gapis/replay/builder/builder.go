@@ -277,8 +277,7 @@ func (b *Builder) CommitCommand() {
 				b.instructions[s.idx] = i
 				pop--
 			}
-		// case asm.Clone, asm.Push, asm.Load: // Remove unused clones, pushes, loads
-		case asm.Push, asm.Clone, asm.Load:
+		case asm.Clone, asm.Push, asm.Load: // Remove unused clones, pushes, loads
 			b.instructions[s.idx] = asm.Nop{}
 			pop--
 		}
