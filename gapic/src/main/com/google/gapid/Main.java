@@ -157,7 +157,7 @@ public class Main {
       }
 
       // Add the links on Loading Screen after the server set up.
-      window.updateLoadingScreen(server.getClient(), window.getShell(), models, widgets);
+      window.updateLoadingScreen(server.getClient(), models, widgets);
     }
 
     @Override

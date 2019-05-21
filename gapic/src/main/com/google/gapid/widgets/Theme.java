@@ -54,6 +54,7 @@ import java.util.Map;
  * {@link Color colors}, etc.).
  */
 public interface Theme {
+  @Icon(file = "add.png") public Image add();
   @Icon(file = "android.png", color = 0x335577) public Image androidLogo();
   @Icon(file = "arrow.png") public Image arrow();
   @Icon(file = "arrow_drop_down.png") public Image arrowDropDownLight();
@@ -77,12 +78,14 @@ public interface Theme {
   @Icon(file = "lit.png") public Image lit();
   @Icon(file = "logo_128.png") public Image dialogLogo();
   @Icon(file = "normals.png") public Image normals();
+  @Icon(file = "open.png") public Image open();
   @Icon(file = "overdraw.png") public Image overdraw();
   @Icon(file = "point_cloud.png") public Image pointCloud();
   @Icon(file = "range_start.png") public Image rangeStartLight();
   @Icon(file = "range_end.png") public Image rangeEndLight();
   @Icon(file = "range_start.png", color = 0xFFFFFF) public Image rangeStartDark();
   @Icon(file = "range_end.png", color = 0xFFFFFF) public Image rangeEndDark();
+  @Icon(file = "recent.png") public Image recent();
   @Icon(file = "refresh.png") public Image refresh();
   @Icon(file = "save.png") public Image save();
   @Icon(file = "settings.png") public Image settings();

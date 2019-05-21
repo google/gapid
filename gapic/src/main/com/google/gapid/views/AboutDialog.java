@@ -27,7 +27,6 @@ import com.google.gapid.models.Info;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MouseAdapter;
 import com.google.gapid.util.OS;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
@@ -37,10 +36,10 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.dnd.TextTransfer;
 import org.eclipse.swt.dnd.Transfer;
-import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -89,7 +88,8 @@ public class AboutDialog {
         Composite area = (Composite)super.createDialogArea(parent);
 
         GridLayout gridLayout = new GridLayout(2, false);
-        gridLayout.horizontalSpacing = 30;
+        gridLayout.horizontalSpacing = 20;
+        gridLayout.verticalSpacing = 5;
         Composite container = createComposite(area, gridLayout);
         container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false));
 
@@ -101,15 +101,12 @@ public class AboutDialog {
         title.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
 
         createLabel(container, "").setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true, 2, 1));
-        Label clipboard = createLabel(container, "", theme.clipboard());
-        clipboard.addMouseListener(new MouseAdapter() {
-          @Override
-          public void mouseDown (MouseEvent e) {
-            String textData = "Version " + GAPID_VERSION;
-            TextTransfer textTransfer = TextTransfer.getInstance();
-            cb.setContents(new Object[]{textData}, new Transfer[]{textTransfer});
-          }
+        Button clipboard = com.google.gapid.widgets.Widgets.createButton(container, "", e -> {
+          String textData = "Version " + GAPID_VERSION;
+          TextTransfer textTransfer = TextTransfer.getInstance();
+          cb.setContents(new Object[]{textData}, new Transfer[]{textTransfer});
         });
+        clipboard.setImage(theme.clipboard());
         clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));
 
         createForegroundLabel(container, "Version " + GAPID_VERSION);

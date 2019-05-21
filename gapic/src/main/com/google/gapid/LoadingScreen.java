@@ -15,9 +15,9 @@
  */
 package com.google.gapid;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.util.GeoUtils.bottomLeft;
-import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -41,7 +41,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
 
@@ -50,13 +49,18 @@ import java.io.File;
  */
 public class LoadingScreen extends Composite {
   private final Label statusLabel;
-  private final Composite container;
+  private final Composite optionsContainer;
+  private Label recentIcon;
+  private Link recentLink;
+  private Models models;
+  private Client client;
+  private Widgets widgets;
 
   public LoadingScreen(Composite parent, Theme theme) {
     super(parent, SWT.NONE);
     setLayout(CenteringLayout.goldenRatio());
 
-    container = Widgets.createComposite(this, new GridLayout(1, false));
+    Composite container = Widgets.createComposite(this, new GridLayout(1, false));
     createLabel(container, "", theme.dialogLogo())
         .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
@@ -70,7 +74,12 @@ public class LoadingScreen extends Composite {
 
     statusLabel = createLabel(container, "Starting up...");
     statusLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-    statusLabel.setVisible(false);
+
+    GridLayout gridLayout = new GridLayout(3, false);
+    gridLayout.horizontalSpacing = 15;
+    optionsContainer = Widgets.createComposite(container, gridLayout);
+    optionsContainer.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+    this.createOptions(theme);
   }
 
   public void setText(String status) {
@@ -78,32 +87,57 @@ public class LoadingScreen extends Composite {
     statusLabel.requestLayout();
   }
 
-  public void createLinks(Client client, Shell shell, Models models, Widgets widgets) {
-    createLink(container, "<a>Open Trace...</a>", e -> {
-      showOpenTraceDialog(getShell(), models);
-    });
+  /**
+   * Hide the messaging box and display the links after server set up.
+   */
+  @SuppressWarnings("hiding")
+  public void showOptions(Client client, Models models, Widgets widgets) {
+    this.client = client;
+    this.models = models;
+    this.widgets = widgets;
 
-    String[] files = models.settings.getRecent();
-    if (files.length > 0) {
-      createLink(container, "<a>Open Recent...</a>", e -> {
-        Menu popup = new Menu(container);
-        for (String file : models.settings.recentFiles) {
-          createMenuItem(popup, file, 0, ev -> {
-            models.analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
-            models.capture.loadCapture(new File(file));
-          });
-        }
-        popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
-
-        popup.setLocation(container.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
-        popup.setVisible(true);
-      });
+    statusLabel.setVisible(false);
+    optionsContainer.setVisible(true);
+    if (models.settings.getRecent().length <= 0) {
+      recentLink.setVisible(false);
+      recentIcon.setVisible(false);
     }
+  }
 
-    createLink(container, "<a>Capture Trace...</a>", e -> {
-      showTracingDialog(client, shell, models, widgets);
+  /**
+   * Initialize the links for layout settings. Hide them until server set up.
+   */
+  private void createOptions(Theme theme) {
+    createLabel(optionsContainer, "", theme.add());
+    createLink(optionsContainer, "<a>Capture a new trace</a>", e -> {
+      showTracingDialog(checkNotNull(client), getShell(), checkNotNull(models), checkNotNull(widgets));
+    });
+    Label captureHint = createLabel(optionsContainer, "Ctrl + T");
+    captureHint.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
+    captureHint.setForeground(theme.welcomeVersionColor());
+
+    createLabel(optionsContainer, "", theme.open());
+    createLink(optionsContainer, "<a>Open an existing trace</a>", e -> {
+      showOpenTraceDialog(getShell(), checkNotNull(this.models));
+    });
+    Label openHint = createLabel(optionsContainer, "Ctrl + O");
+    openHint.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, true, false));
+    openHint.setForeground(theme.welcomeVersionColor());
+
+    recentIcon = createLabel(optionsContainer, "", theme.recent());
+    recentLink = createLink(optionsContainer, "<a>Recent traces</a>", e -> {
+      Menu popup = new Menu(optionsContainer);
+      for (String file : checkNotNull(models).settings.recentFiles) {
+        createMenuItem(popup, file, 0, ev -> {
+          checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
+          checkNotNull(models).capture.loadCapture(new File(file));
+        });
+      }
+      popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
+      popup.setLocation(optionsContainer.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
+      popup.setVisible(true);
     });
 
-    createLink(container, "<a>Help...</a>", e -> showHelp(models.analytics));
+    optionsContainer.setVisible(false);
   }
 }

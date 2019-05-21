@@ -98,8 +98,8 @@ public class MainWindow extends ApplicationWindow {
     loadingScreen.setText(status);
   }
 
-  public void updateLoadingScreen(Client client, Shell shell, Models models, Widgets widgets) {
-    this.loadingScreen.createLinks(client, shell, models, widgets);
+  public void updateLoadingScreen(Client client, Models models, Widgets widgets) {
+    this.loadingScreen.showOptions(client, models, widgets);
   }
 
   public void initMainUi(Client client, Models models, Widgets widgets) {
