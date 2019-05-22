@@ -445,12 +445,34 @@ func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
 		enabledExtensions = append(enabledExtensions, NewCharᶜᵖ(sb.MustAllocReadData(ext).Ptr()))
 	}
 
+	appInfo := memory.Nullptr
+	if !inst.ApplicationInfo().IsNil() {
+		appName := memory.Nullptr
+		if inst.ApplicationInfo().ApplicationName() != "" {
+			appName = NewCharᶜᵖ(sb.MustAllocReadData(inst.ApplicationInfo().ApplicationName()).Ptr())
+		}
+		engineName := memory.Nullptr
+		if inst.ApplicationInfo().EngineName() != "" {
+			engineName = NewCharᶜᵖ(sb.MustAllocReadData(inst.ApplicationInfo().EngineName()).Ptr())
+		}
+		appInfo = sb.MustAllocReadData(
+			NewVkApplicationInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_APPLICATION_INFO, // sType
+				0,                  // pNext
+				NewCharᶜᵖ(appName), // applicationName
+				inst.ApplicationInfo().ApplicationVersion(), // applicationVersion
+				NewCharᶜᵖ(engineName),                       // engineName
+				inst.ApplicationInfo().EngineVersion(),      // engineVersion
+				inst.ApplicationInfo().ApiVersion(),         // apiVersion
+			)).Ptr()
+	}
+
 	sb.write(sb.cb.VkCreateInstance(
 		sb.MustAllocReadData(NewVkInstanceCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, // sType
 			0,                                  // pNext
 			0,                                  // flags
-			0,                                  // pApplicationInfo
+			NewVkApplicationInfoᶜᵖ(appInfo),    // pApplicationInfo
 			uint32(inst.EnabledLayers().Len()), // enabledLayerCount
 			NewCharᶜᵖᶜᵖ(sb.MustAllocReadData(enabledLayers).Ptr()),     // ppEnabledLayerNames
 			uint32(inst.EnabledExtensions().Len()),                     // enabledExtensionCount
