@@ -38,9 +38,8 @@ class MockReplayService : public GrpcReplayService {
   bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override {
     return mockedSendPosts(posts.get());
   }
-  MOCK_METHOD7(sendNotification,
-               bool(uint64_t, uint32_t, uint32_t, uint64_t, const std::string&,
-                    const void*, uint32_t));
+  MOCK_METHOD7(sendErrorMsg, bool(uint64_t, uint32_t, uint32_t, uint64_t,
+                                  const std::string&, const void*, uint32_t));
 };
 }  // namespace test
 }  // namespace gapir

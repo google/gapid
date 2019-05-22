@@ -278,12 +278,16 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.RegisterNotificationReader(func(n gapir.Notification) {
 			vkApi := API{}
-			if uint8(n.GetApiIndex()) != vkApi.Index() {
+			eMsg := n.GetErrorMsg()
+			if eMsg == nil {
+				return
+			}
+			if uint8(eMsg.GetApiIndex()) != vkApi.Index() {
 				return
 			}
 			var issue replay.Issue
-			msg := n.GetMsg()
-			label := n.GetLabel()
+			msg := eMsg.GetMsg()
+			label := eMsg.GetLabel()
 			if int(label) < t.numInitialCmds {
 				// The debug report is issued for state rebuilding command
 				// TODO: Fix all the errors reported for initial commands.
@@ -296,7 +300,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 				issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
 				issue.Error = fmt.Errorf("%s", msg)
 			}
-			issue.Severity = service.Severity(uint32(n.GetSeverity()))
+			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
 			t.issues = append(t.issues, issue)
 		})
 		// Since the PostBack function is called before the replay target has actually arrived at the post command,

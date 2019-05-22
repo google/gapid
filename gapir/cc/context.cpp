@@ -168,8 +168,8 @@ void Context::onDebugMessage(uint32_t severity, uint8_t api_index,
     msg = str_msg.data();
   }
   GAPID_DEBUG("[%d]renderer: %s", label, msg);
-  mSrv->sendNotification(mNumSentDebugMessages++, severity, api_index, label,
-                         str_msg, nullptr, 0);
+  mSrv->sendErrorMsg(mNumSentDebugMessages++, severity, api_index, label,
+                     str_msg, nullptr, 0);
 }
 
 void Context::registerCallbacks(Interpreter* interpreter) {
@@ -178,6 +178,11 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                                Interpreter::POST_FUNCTION_ID,
                                [this](uint32_t label, Stack* stack, bool) {
                                  return this->postData(stack);
+                               });
+  interpreter->registerBuiltin(Interpreter::GLOBAL_INDEX,
+                               Interpreter::NOTIFICATION_FUNCTION_ID,
+                               [this](uint32_t label, Stack* stack, bool) {
+                                 return this->sendNotificationData(stack);
                                });
   interpreter->registerBuiltin(Interpreter::GLOBAL_INDEX,
                                Interpreter::RESOURCE_FUNCTION_ID,
@@ -790,6 +795,20 @@ bool Context::stopTimer(Stack* stack, bool pushReturn) {
     GAPID_WARNING("Error while calling function StopTimer");
   }
   return false;
+}
+
+bool Context::sendNotificationData(Stack* stack) {
+  GAPID_WARNING("Sending notification data via gPRC service.");
+  const uint32_t count = stack->pop<uint32_t>();
+  const void* address = stack->pop<const void*>();
+  auto label = mInterpreter->getLabel();
+
+  if (!stack->isValid()) {
+    GAPID_WARNING("Stack is invalid during sendNotificationData");
+    return false;
+  }
+
+  return mSrv->sendNotificationData(0, label, address, count);
 }
 
 }  // namespace gapir

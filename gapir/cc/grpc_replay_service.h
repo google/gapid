@@ -84,10 +84,13 @@ class GrpcReplayService : public ReplayService {
                      uint32_t crash_size) override;
   // Sends post data. Returns true if succeeded, otherwise returns false.
   bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
+  // Sends error message notification. Returns true if succeeded, otherwise
+  // returns false.
+  bool sendErrorMsg(uint64_t id, uint32_t severity, uint32_t api_index,
+                    uint64_t label, const std::string& msg, const void* data,
+                    uint32_t data_size) override;
   // Sends notification. Returns true if succeeded, otherwise returns false.
-  bool sendNotification(uint64_t id, uint32_t severity, uint32_t api_index,
-                        uint64_t label, const std::string& msg,
-                        const void* data, uint32_t data_size) override;
+  bool sendNotificationData(uint64_t, uint64_t, const void*, uint32_t) override;
 
   std::unique_ptr<replay_service::ReplayRequest> getReplayRequest() override;
 

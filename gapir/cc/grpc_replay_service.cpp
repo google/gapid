@@ -134,10 +134,10 @@ bool GrpcReplayService::sendPosts(std::unique_ptr<ReplayService::Posts> posts) {
   return mGrpcStream->Write(res);
 }
 
-bool GrpcReplayService::sendNotification(uint64_t id, uint32_t severity,
-                                         uint32_t api_index, uint64_t label,
-                                         const std::string& msg,
-                                         const void* data, uint32_t data_size) {
+bool GrpcReplayService::sendErrorMsg(uint64_t id, uint32_t severity,
+                                     uint32_t api_index, uint64_t label,
+                                     const std::string& msg, const void* data,
+                                     uint32_t data_size) {
   using severity::Severity;
   const Severity log_levels[] = {
       Severity::FatalLevel, Severity::ErrorLevel, Severity::WarningLevel,
@@ -150,12 +150,25 @@ bool GrpcReplayService::sendNotification(uint64_t id, uint32_t severity,
 
   replay_service::ReplayResponse res;
   auto* notification = res.mutable_notification();
-  notification->set_id(id);
-  notification->set_severity(sev);
-  notification->set_api_index(api_index);
-  notification->set_label(label);
-  notification->set_msg(msg);
-  notification->set_data(data, data_size);
+  auto* error_msg = notification->mutable_error_msg();
+  error_msg->set_id(id);
+  error_msg->set_severity(sev);
+  error_msg->set_api_index(api_index);
+  error_msg->set_label(label);
+  error_msg->set_msg(msg);
+  error_msg->set_data(data, data_size);
+  return mGrpcStream->Write(res);
+}
+
+bool GrpcReplayService::sendNotificationData(uint64_t id, uint64_t label,
+                                             const void* data,
+                                             uint32_t data_size) {
+  replay_service::ReplayResponse res;
+  auto* notification = res.mutable_notification();
+  auto* notification_data = notification->mutable_data();
+  notification_data->set_id(id);
+  notification_data->set_label(label);
+  notification_data->set_data(data, data_size);
   return mGrpcStream->Write(res);
 }
 
