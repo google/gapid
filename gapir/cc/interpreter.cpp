@@ -301,6 +301,10 @@ Interpreter::Result Interpreter::post() {
   return this->call(Interpreter::POST_FUNCTION_ID);
 }
 
+Interpreter::Result Interpreter::notification() {
+  return this->call(Interpreter::NOTIFICATION_FUNCTION_ID);
+}
+
 Interpreter::Result Interpreter::copy(uint32_t opcode) {
   uint32_t count = extract26bitData(opcode);
   void* target = mStack.pop<void*>();

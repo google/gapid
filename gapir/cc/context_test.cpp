@@ -249,8 +249,7 @@ TEST_F(ContextTest, Notification) {
         context->onDebugMessage(severity, api_index, msg.c_str());
         return true;
       }));
-  EXPECT_CALL(*mSrv,
-              sendNotification(0, severity, api_index, 0, msg, IsNull(), 0))
+  EXPECT_CALL(*mSrv, sendErrorMsg(0, severity, api_index, 0, msg, IsNull(), 0))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(context->interpret());

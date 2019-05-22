@@ -57,9 +57,9 @@ class AssetReplayService : public ReplayService {
 
   bool sendPosts(std::unique_ptr<Posts> posts) override { return true; }
 
-  bool sendNotification(uint64_t id, uint32_t severity, uint32_t api_index,
-                        uint64_t label, const std::string& msg,
-                        const void* data, uint32_t data_size) override {
+  bool sendErrorMsg(uint64_t id, uint32_t severity, uint32_t api_index,
+                    uint64_t label, const std::string& msg, const void* data,
+                    uint32_t data_size) override {
     return true;
   }
 

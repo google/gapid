@@ -167,11 +167,15 @@ class ReplayService {
                              const void* crash_data, uint32_t crash_size) = 0;
   // Sends post data. Returns true if succeeded, otherwise returns false.
   virtual bool sendPosts(std::unique_ptr<Posts> posts) = 0;
-  // Sends notification. Returns true if succeeded, otherwise returns false.
-  virtual bool sendNotification(uint64_t id, uint32_t severity,
-                                uint32_t api_index, uint64_t label,
-                                const std::string& msg, const void* data,
-                                uint32_t data_size) = 0;
+  // Sends error message notification. Returns true if succeeded,
+  // otherwise returns false.
+  virtual bool sendErrorMsg(uint64_t id, uint32_t severity, uint32_t api_index,
+                            uint64_t label, const std::string& msg,
+                            const void* data, uint32_t data_size) = 0;
+  // Sends data notification. Returns true if succeeded, otherwise returns
+  // false.
+  virtual bool sendNotificationData(uint64_t id, uint64_t label,
+                                    const void* data, uint32_t data_size) = 0;
 
   // Returns the next replay request from the server.
   virtual std::unique_ptr<replay_service::ReplayRequest> getReplayRequest() = 0;
