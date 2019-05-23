@@ -89,6 +89,7 @@ import "extensions/khr_variable_pointers.api"
 import "extensions/khr_sampler_ycbcr_conversion.api"
 import "extensions/amd_draw_indirect_count.api"
 import "extensions/khr_draw_indirect_count.api"
+import "extensions/khr_image_format_list.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -237,6 +238,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_AMD_draw_indirect_count"] = true
   supported.ExtensionNames["VK_KHR_draw_indirect_count"] = true
   supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
+  supported.ExtensionNames["VK_KHR_image_format_list"] = true
   return supported
 }
 
