@@ -523,6 +523,17 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		).Ptr())
 	}
 
+	if !info.ViewFormatList().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkImageFormatListCreateInfoKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
+				pNext, // pNext
+				uint32(info.ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
+				NewVkFormatᶜᵖ(sb.MustUnpackReadMap(info.ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
+			),
+		).Ptr())
+	}
+
 	create := sb.cb.VkCreateImage(
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(sb.ta,

@@ -865,6 +865,19 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		swp.Info().Extent().Width(),
 		swp.Info().Extent().Height(),
 	)
+
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !swp.Info().ViewFormatList().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkImageFormatListCreateInfoKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
+				pNext, // pNext
+				uint32(swp.Info().ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
+				NewVkFormatᶜᵖ(sb.MustUnpackReadMap(swp.Info().ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateSwapchainKHR(
 		swp.Device(),
 		sb.MustAllocReadData(NewVkSwapchainCreateInfoKHR(sb.ta,

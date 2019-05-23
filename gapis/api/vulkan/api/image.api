@@ -54,6 +54,7 @@
   map!(u32, u32)                                 QueueFamilyIndices
   VkImageLayout                                  InitialLayout
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
+  ref!ImageFormatList                            ViewFormatList
 }
 
 @resource
@@ -196,6 +197,17 @@ cmd VkResult vkCreateImage(
           imageInfo.DedicatedAllocationNV = new!DedicatedAllocationBufferImageCreateInfoNV(
             DedicatedAllocation: ext.dedicatedAllocation
           )
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: {
+           ext := as!VkImageFormatListCreateInfoKHR*(next.Ptr)[0]
+           ifl := new!ImageFormatList()
+           if (ext.viewFormatCount > 0) {
+            formats := ext.pViewFormats[0:ext.viewFormatCount]
+            for j in (0 .. ext.viewFormatCount) {
+              ifl.viewFormats[j] = formats[j]
+            }
+           }
+           imageInfo.ViewFormatList = ifl
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
