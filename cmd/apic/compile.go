@@ -28,9 +28,7 @@ import (
 	"github.com/google/gapid/gapil/compiler"
 	"github.com/google/gapid/gapil/compiler/mangling/c"
 	"github.com/google/gapid/gapil/compiler/mangling/ia64"
-	"github.com/google/gapid/gapil/compiler/plugins/cloner"
 	"github.com/google/gapid/gapil/compiler/plugins/encoder"
-	"github.com/google/gapid/gapil/compiler/plugins/replay"
 	"github.com/google/gapid/gapil/resolver"
 )
 
@@ -141,10 +139,12 @@ func (v *compileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		settings.Plugins = append(settings.Plugins, encoder.Plugin())
 	}
 	if v.Emit.Clone {
-		settings.Plugins = append(settings.Plugins, cloner.Plugin())
+		//settings.Plugins = append(settings.Plugins, cloner.Plugin())
+		return fmt.Errorf("The clone plugin is disabled in the apic build")
 	}
 	if v.Emit.Replay {
-		settings.Plugins = append(settings.Plugins, replay.Plugin(nil))
+		//settings.Plugins = append(settings.Plugins, replay.Plugin(nil))
+		return fmt.Errorf("The replay plugin is disabled in the apic build")
 	}
 
 	switch v.Symbols {
