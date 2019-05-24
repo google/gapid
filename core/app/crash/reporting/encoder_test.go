@@ -32,7 +32,7 @@ func TestEncoder(t *testing.T) {
 		osVersion:  "10",
 	}.encodeStacktrace("foo1.bar 10:20\nfoo2.bar 20:30")
 	if assert.For(ctx, "err").ThatError(err).Succeeded() {
-		assert.For(ctx, "ty").ThatString(ty).Equals("multipart/form-data; boundary=" + multipartBoundary)
+		assert.For(ctx, "ty").ThatString(ty).Equals("multipart/form-data; boundary=\"" + multipartBoundary + "\"")
 		bytes, err := ioutil.ReadAll(r)
 		if assert.For(ctx, "ReadAll").ThatError(err).Succeeded() {
 			expect := "--" + multipartBoundary + "\r\n" +
