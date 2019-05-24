@@ -23,6 +23,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapir"
 )
 
 type tyLaunchArgsKey string
@@ -52,7 +53,7 @@ type deviceArch struct {
 }
 
 // Connect opens a connection to the replay device.
-func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (*Connection, error) {
+func (c *Client) Connect(ctx context.Context, d bind.Device, abi *device.ABI) (gapir.Connection, error) {
 	ctx = status.Start(ctx, "Connect")
 	defer status.Finish(ctx)
 

@@ -21,8 +21,8 @@ import (
 
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapir"
 	replaysrv "github.com/google/gapid/gapir/replay_service"
-	"github.com/google/gapid/gapis/service/severity"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -34,41 +34,15 @@ const (
 	gapirAuthTokenMetaDataName = "gapir-auth-token"
 )
 
-// Type alias to avoid GAPIS code from using gRPC generated code directly. Only
-// the types aliased here can be used by GAPIS code.
-type (
-	// ResourceInfo contains Id and Size information of a resource.
-	ResourceInfo = replaysrv.ResourceInfo
-	// Resources contains a list of byte arrays Data each represent the data of a resource
-	Resources = replaysrv.Resources
-	// Payload contains StackSize, VolatileMemorySize, Constants, a list of information of Resources, and Opcodes for replay in bytes.
-	Payload = replaysrv.Payload
-	// ResourceRequest contains the total expected size of requested resources data in bytes and the Ids of the resources to be requested.
-	ResourceRequest = replaysrv.ResourceRequest
-	// CrashDump contains the Filepath of the crash dump file on GAPIR device, and the CrashData in bytes
-	CrashDump = replaysrv.CrashDump
-	// PostData contains a list of PostDataPieces, each piece contains an Id in string and Data in bytes
-	PostData = replaysrv.PostData
-	// Notification contains an Id, the ApiIndex, Label, Msg in string and arbitary Data in bytes.
-	Notification = replaysrv.Notification
-	// Severity represents the severity level of notification messages. It uses the same enum as gapis
-	Severity = severity.Severity
-)
-
-// Connection represents a connection between GAPIS and GAPIR. It wraps the
-// internal gRPC connections and holds authentication token. A new Connection
-// should be created only by client.Client.
-// TODO: The functionality of replay stream and Ping/Shutdown can be separated.
-// The GAPIS code should only use the replay stream, Ping/Shutdown should be
-// managed by client.session.
-type Connection struct {
+// connection implements the gapir.Connection interface.
+type connection struct {
 	conn       *grpc.ClientConn
 	servClient replaysrv.GapirClient
 	stream     replaysrv.Gapir_ReplayClient
 	authToken  auth.Token
 }
 
-func newConnection(addr string, authToken auth.Token, timeout time.Duration) (*Connection, error) {
+func newConnection(addr string, authToken auth.Token, timeout time.Duration) (*connection, error) {
 	conn, err := grpc.Dial(addr,
 		grpc.WithInsecure(),
 		grpc.WithBlock(),
@@ -78,11 +52,11 @@ func newConnection(addr string, authToken auth.Token, timeout time.Duration) (*C
 		return nil, err
 	}
 	s := replaysrv.NewGapirClient(conn)
-	return &Connection{conn: conn, servClient: s, authToken: authToken}, nil
+	return &connection{conn: conn, servClient: s, authToken: authToken}, nil
 }
 
 // Close shutdown the GAPIR connection.
-func (c *Connection) Close() {
+func (c *connection) Close() {
 	if c.stream != nil {
 		c.stream.CloseSend()
 	}
@@ -96,7 +70,7 @@ func (c *Connection) Close() {
 
 // Ping sends a ping to the connected GAPIR device and expect a response to make
 // sure the connection is alive.
-func (c *Connection) Ping(ctx context.Context) error {
+func (c *connection) Ping(ctx context.Context) error {
 	if c.servClient == nil {
 		return log.Err(ctx, nil, "Gapir not connected")
 	}
@@ -113,7 +87,7 @@ func (c *Connection) Ping(ctx context.Context) error {
 
 // Shutdown sends a signal to the connected GAPIR device to shutdown the
 // connection server.
-func (c *Connection) Shutdown(ctx context.Context) error {
+func (c *connection) Shutdown(ctx context.Context) error {
 	if c.servClient == nil {
 		return log.Err(ctx, nil, "Gapir not connected")
 	}
@@ -128,7 +102,7 @@ func (c *Connection) Shutdown(ctx context.Context) error {
 }
 
 // SendResources sends the given resources data to the connected GAPIR device.
-func (c *Connection) SendResources(ctx context.Context, resources []byte) error {
+func (c *connection) SendResources(ctx context.Context, resources []byte) error {
 	if c.conn == nil || c.servClient == nil {
 		return log.Err(ctx, nil, "Gapir not connected")
 	}
@@ -147,7 +121,7 @@ func (c *Connection) SendResources(ctx context.Context, resources []byte) error 
 }
 
 // SendPayload sends the given payload to the connected GAPIR device.
-func (c *Connection) SendPayload(ctx context.Context, payload Payload) error {
+func (c *connection) SendPayload(ctx context.Context, payload gapir.Payload) error {
 	if c.conn == nil || c.servClient == nil {
 		return log.Err(ctx, nil, "Gapir not connected")
 	}
@@ -167,7 +141,7 @@ func (c *Connection) SendPayload(ctx context.Context, payload Payload) error {
 }
 
 // PrewarmReplay requests the GAPIR device to get itself into the given state
-func (c *Connection) PrewarmReplay(ctx context.Context, payload string, cleanup string) error {
+func (c *connection) PrewarmReplay(ctx context.Context, payload string, cleanup string) error {
 	if c.conn == nil || c.servClient == nil {
 		return log.Err(ctx, nil, "Gapir not connected")
 	}
@@ -189,32 +163,15 @@ func (c *Connection) PrewarmReplay(ctx context.Context, payload string, cleanup 
 	return nil
 }
 
-// ReplayResponseHandler handles all kinds of ReplayResponse messages received
-// from a connected GAPIR device.
-type ReplayResponseHandler interface {
-	// HandlePayloadRequest handles the given payload request message.
-	HandlePayloadRequest(context.Context, string, *Connection) error
-	// HandleResourceRequest handles the given resource request message.
-	HandleResourceRequest(context.Context, *ResourceRequest, *Connection) error
-	// HandleCrashDump handles the given crash dump message.
-	HandleCrashDump(context.Context, *CrashDump, *Connection) error
-	// HandlePostData handles the given post data message.
-	HandlePostData(context.Context, *PostData, *Connection) error
-	// HandleNotification handles the given notification message.
-	HandleNotification(context.Context, *Notification, *Connection) error
-	// HandleFinished handles the replay complete
-	HandleFinished(context.Context, error, *Connection) error
-}
-
 // HandleReplayCommunication handles the communication with the GAPIR device on
 // a replay stream connection. It sends a replay request with the given
 // replayID to the connected GAPIR device, expects the device to request payload
 // and sends the given payload to the device. Then for each received message
 // from the device, it determines the type of the message and pass it to the
 // corresponding given handler to process the type-checked message.
-func (c *Connection) HandleReplayCommunication(
+func (c *connection) HandleReplayCommunication(
 	ctx context.Context,
-	handler ReplayResponseHandler,
+	handler gapir.ReplayResponseHandler,
 	connected chan error) error {
 	ctx = log.Enter(ctx, "HandleReplayCommunication")
 	if c.conn == nil || c.servClient == nil {
@@ -285,7 +242,7 @@ func (c *Connection) HandleReplayCommunication(
 
 // BeginReplay begins a replay stream connection and attach the authentication,
 // if any, token in the metadata.
-func (c *Connection) BeginReplay(ctx context.Context, id string, dep string) error {
+func (c *connection) BeginReplay(ctx context.Context, id string, dep string) error {
 	ctx = log.Enter(ctx, "Starting replay on gapir device")
 	if c.servClient == nil || c.conn == nil || c.stream == nil {
 		return log.Errf(ctx, nil, "Gapir not connected")
@@ -310,7 +267,7 @@ func (c *Connection) BeginReplay(ctx context.Context, id string, dep string) err
 // attachAuthToken attaches authentication token to the context as metadata, if
 // the authentication token is not empty, and returns the new context. If the
 // authentication token is empty, returns the original context.
-func (c *Connection) attachAuthToken(ctx context.Context) context.Context {
+func (c *connection) attachAuthToken(ctx context.Context) context.Context {
 	if len(c.authToken) != 0 {
 		return metadata.NewOutgoingContext(ctx,
 			metadata.Pairs(gapirAuthTokenMetaDataName, string(c.authToken)))
