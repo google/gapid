@@ -56,3 +56,8 @@ class Complex {
   ref!TestList             Cycle
   map!(u32, ref!NestedRef) NestedRefs
 }
+
+enum TestEnum {
+  FOO = 1,
+  BAR = 2,
+}
