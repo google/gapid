@@ -30,8 +30,10 @@ sudo apt-get -q update
 sudo apt-get -qy install gcc-7 g++-7
 export CC=/usr/bin/gcc-7
 
-# Setup environment.
-export ANDROID_NDK_HOME=/opt/android-ndk-r16b
+# Get the Android NDK
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r18b-linux-x86_64.zip
+unzip android-ndk-r18b-linux-x86_64.zip
+export ANDROID_NDK_HOME=$PWD/android-ndk-r18b
 
 cd $SRC
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
