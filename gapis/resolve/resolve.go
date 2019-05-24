@@ -339,6 +339,8 @@ func ResolveInternal(ctx context.Context, p path.Node, r *path.ResolveConfig) (i
 		return Messages(ctx, p)
 	case *path.Parameter:
 		return Parameter(ctx, p, r)
+	case *path.Perfetto:
+		return Perfetto(ctx, p, r)
 	case *path.Report:
 		return Report(ctx, p, r)
 	case *path.ResourceData:

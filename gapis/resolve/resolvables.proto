@@ -143,3 +143,8 @@ message DeleteResolvable {
   path.Any path = 1;
   path.ResolveConfig config = 2;
 }
+
+message PerfettoResolvable {
+  path.Perfetto path = 1;
+  path.ResolveConfig config = 2;
+}

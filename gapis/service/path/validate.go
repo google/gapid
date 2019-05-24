@@ -252,6 +252,11 @@ func (n *Parameter) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *Perfetto) Validate() error {
+	return checkNotNilAndValidate(n, n.Capture, "capture")
+}
+
+// Validate checks the path is valid.
 func (n *Report) Validate() error {
 	return checkNotNilAndValidate(n, n.Capture, "capture")
 }

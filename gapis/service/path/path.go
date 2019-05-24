@@ -83,6 +83,7 @@ func (n *MemoryAsType) Path() *Any              { return &Any{Path: &Any_MemoryA
 func (n *Mesh) Path() *Any                      { return &Any{Path: &Any_Mesh{n}} }
 func (n *Metrics) Path() *Any                   { return &Any{Path: &Any_Metrics{n}} }
 func (n *Parameter) Path() *Any                 { return &Any{Path: &Any_Parameter{n}} }
+func (n *Perfetto) Path() *Any                  { return &Any{Path: &Any_Perfetto{n}} }
 func (n *Report) Path() *Any                    { return &Any{Path: &Any_Report{n}} }
 func (n *ResourceData) Path() *Any              { return &Any{Path: &Any_ResourceData{n}} }
 func (n *Messages) Path() *Any                  { return &Any{Path: &Any_Messages{n}} }
@@ -125,6 +126,7 @@ func (n Mesh) Parent() Node                      { return oneOfNode(n.Object) }
 func (n Metrics) Parent() Node                   { return n.Command }
 func (n Messages) Parent() Node                  { return n.Capture }
 func (n Parameter) Parent() Node                 { return n.Command }
+func (n Perfetto) Parent() Node                  { return n.Capture }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
 func (n MultiResourceData) Parent() Node         { return n.After }
@@ -161,6 +163,7 @@ func (n *MemoryAsType) SetParent(p Node)              { n.After, _ = p.(*Command
 func (n *Metrics) SetParent(p Node)                   { n.Command, _ = p.(*Command) }
 func (n *Messages) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
+func (n *Perfetto) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
 func (n *MultiResourceData) SetParent(p Node)         { n.After, _ = p.(*Command) }
