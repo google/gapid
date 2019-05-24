@@ -24,7 +24,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/gapir/client"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
@@ -77,7 +77,7 @@ func (test test) check(ctx context.Context, ca, ra *device.MemoryLayout) {
 	assert.For(ctx, "Constants").ThatSlice(payload.Constants).Equals(test.expected.constants)
 }
 
-func checkResource(ctx context.Context, gotInfos []*client.ResourceInfo, expectedIDs []id.ID) {
+func checkResource(ctx context.Context, gotInfos []*gapir.ResourceInfo, expectedIDs []id.ID) {
 	var err error
 
 	got := make([]interface{}, len(gotInfos))

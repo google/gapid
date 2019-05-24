@@ -28,7 +28,7 @@ import (
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/file"
-	gapir "github.com/google/gapid/gapir/client"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/database"
 )
 
@@ -36,15 +36,15 @@ import (
 // specific replay.
 type ReplayExecutor interface {
 	// HandlePostData handles the given post data message.
-	HandlePostData(context.Context, *gapir.PostData, *gapir.Connection) error
+	HandlePostData(context.Context, *gapir.PostData, gapir.Connection) error
 	// HandleNotification handles the given notification message.
-	HandleNotification(context.Context, *gapir.Notification, *gapir.Connection) error
+	HandleNotification(context.Context, *gapir.Notification, gapir.Connection) error
 	// HandleFinished is notified when the given replay is finished.
-	HandleFinished(context.Context, error, *gapir.Connection) error
+	HandleFinished(context.Context, error, gapir.Connection) error
 }
 
 type backgroundConnection struct {
-	conn     *gapir.Connection
+	conn     gapir.Connection
 	OS       *device.OS
 	ABI      *device.ABI
 	executor ReplayExecutor
@@ -66,7 +66,7 @@ func (e *backgroundConnection) SetReplayExecutor(ctx context.Context, x ReplayEx
 	return func() { e.executor = nil }, nil
 }
 
-func (e *backgroundConnection) HandleFinished(ctx context.Context, err error, conn *gapir.Connection) error {
+func (e *backgroundConnection) HandleFinished(ctx context.Context, err error, conn gapir.Connection) error {
 	if e.executor == nil {
 		return log.Err(ctx, nil, "No active replay connection for this returned data")
 	}
@@ -74,7 +74,7 @@ func (e *backgroundConnection) HandleFinished(ctx context.Context, err error, co
 }
 
 // HandlePostData handles the given post data message.
-func (e *backgroundConnection) HandlePostData(ctx context.Context, pd *gapir.PostData, conn *gapir.Connection) error {
+func (e *backgroundConnection) HandlePostData(ctx context.Context, pd *gapir.PostData, conn gapir.Connection) error {
 	if e.executor == nil {
 		return log.Err(ctx, nil, "No active replay connection for this returned data")
 	}
@@ -82,7 +82,7 @@ func (e *backgroundConnection) HandlePostData(ctx context.Context, pd *gapir.Pos
 }
 
 // HandleNotification handles the given notification message.
-func (e *backgroundConnection) HandleNotification(ctx context.Context, notification *gapir.Notification, conn *gapir.Connection) error {
+func (e *backgroundConnection) HandleNotification(ctx context.Context, notification *gapir.Notification, conn gapir.Connection) error {
 	if e.executor == nil {
 		return log.Err(ctx, nil, "No active replay connection for this returned data")
 	}
@@ -90,7 +90,7 @@ func (e *backgroundConnection) HandleNotification(ctx context.Context, notificat
 }
 
 // HandlePayloadRequest implements gapir.ReplayResponseHandler interface.
-func (e *backgroundConnection) HandlePayloadRequest(ctx context.Context, payloadID string, conn *gapir.Connection) error {
+func (e *backgroundConnection) HandlePayloadRequest(ctx context.Context, payloadID string, conn gapir.Connection) error {
 	ctx = status.Start(ctx, "Payload Request")
 	defer status.Finish(ctx)
 
@@ -109,7 +109,7 @@ func (e *backgroundConnection) HandlePayloadRequest(ctx context.Context, payload
 }
 
 // HandleCrashDump implements gapir.ReplayResponseHandler interface.
-func (e *backgroundConnection) HandleCrashDump(ctx context.Context, dump *gapir.CrashDump, conn *gapir.Connection) error {
+func (e *backgroundConnection) HandleCrashDump(ctx context.Context, dump *gapir.CrashDump, conn gapir.Connection) error {
 	if dump == nil {
 		return fmt.Errorf("Nil crash dump")
 	}
@@ -131,7 +131,7 @@ func (e *backgroundConnection) HandleCrashDump(ctx context.Context, dump *gapir.
 }
 
 // HandleResourceRequest implements gapir.ReplayResponseHandler interface.
-func (e *backgroundConnection) HandleResourceRequest(ctx context.Context, req *gapir.ResourceRequest, conn *gapir.Connection) error {
+func (e *backgroundConnection) HandleResourceRequest(ctx context.Context, req *gapir.ResourceRequest, conn gapir.Connection) error {
 	ctx = status.Start(ctx, "Resources Request (count: %d)", len(req.GetIds()))
 	defer status.Finish(ctx)
 
@@ -167,7 +167,7 @@ func (e *backgroundConnection) HandleResourceRequest(ctx context.Context, req *g
 }
 
 // MakeBackgroundConnection creates a connection to the replay device that persists in the background.
-func MakeBackgroundConnection(ctx context.Context, device bind.Device, conn *gapir.Connection, replayABI *device.ABI) (*backgroundConnection, error) {
+func MakeBackgroundConnection(ctx context.Context, device bind.Device, conn gapir.Connection, replayABI *device.ABI) (*backgroundConnection, error) {
 	bgc := &backgroundConnection{conn: conn, ABI: replayABI, OS: device.Instance().GetConfiguration().GetOS()}
 	c := make(chan error)
 	cctx := keys.Clone(context.Background(), ctx)

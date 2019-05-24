@@ -53,6 +53,7 @@ go_library(
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//core/os/file:go_default_library",
+        "//gapir:go_default_library",
         "//gapir/client:go_default_library",
         "//gapis/api:go_default_library",
         "//gapis/api/transform:go_default_library",

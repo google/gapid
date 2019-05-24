@@ -30,7 +30,7 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/os/device"
-	gapir "github.com/google/gapid/gapir/client"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/config"
 	"github.com/google/gapid/gapis/database"
 	"github.com/google/gapid/gapis/memory"
