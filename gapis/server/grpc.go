@@ -629,13 +629,10 @@ func (s *grpcServer) Trace(conn service.Gapid_TraceServer) error {
 	return nil
 }
 
-func (s *grpcServer) GetTimestamps(ctx xctx.Context, req *service.GetTimestampsRequest) (*service.GetTimestampsResponse, error) {
+func (s *grpcServer) GetTimestamps(req *service.GetTimestampsRequest, server service.Gapid_GetTimestampsServer) error {
 	defer s.inRPC()()
-	data, err := s.handler.GetTimestamps(s.bindCtx(ctx), req.Capture, req.Device)
-	if err := service.NewError(err); err != nil {
-		return &service.GetTimestampsResponse{Res: &service.GetTimestampsResponse_Error{Error: err}}, nil
-	}
-	return data.(*service.GetTimestampsResponse), nil
+	ctx := server.Context()
+	return s.handler.GetTimestamps(s.bindCtx(ctx), req, server.Send)
 }
 
 func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryRequest) (*service.PerfettoQueryResponse, error) {

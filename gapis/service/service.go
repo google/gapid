@@ -173,7 +173,8 @@ type Service interface {
 	// Update the environment settings.
 	UpdateSettings(ctx context.Context, req *UpdateSettingsRequest) error
 
-	GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error)
+	// Get timestamps from GPU for commands.
+	GetTimestamps(ctx context.Context, req *GetTimestampsRequest, h TimeStampsHandler) error
 
 	// Run a perfetto query
 	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error)
@@ -187,6 +188,9 @@ type TraceHandler interface {
 
 // FindHandler is the handler of found items using Service.Find.
 type FindHandler func(*FindResponse) error
+
+// TimeStampsHandler is the handler of queried timestamps suing Service.GetTimestamps.
+type TimeStampsHandler func(*GetTimestampsResponse) error
 
 // NewError attempts to box and return err into an Error.
 // If err cannot be boxed into an Error then nil is returned.

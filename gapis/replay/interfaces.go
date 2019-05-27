@@ -57,7 +57,8 @@ type QueryTimestamps interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
-		hints *service.UsageHints) ([]Timestamp, error)
+		handler service.TimeStampsHandler,
+		hints *service.UsageHints) error
 }
 
 // QueryFramebufferAttachment is the interface implemented by types that can

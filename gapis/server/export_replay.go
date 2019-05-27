@@ -107,8 +107,7 @@ func exportReplay(ctx context.Context, c *path.Capture, d *path.Device, out stri
 				continue
 			}
 			queries = append(queries, func(mgr replay.Manager) error {
-				_, err := a.QueryTimestamps(ctx, intent, mgr, nil)
-				return err
+				return a.QueryTimestamps(ctx, intent, mgr, nil, nil)
 			})
 		}
 	case opts.Report != nil:

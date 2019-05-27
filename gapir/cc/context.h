@@ -107,6 +107,8 @@ class Context : private Renderer::Listener {
   // Flushes any pending post data buffered from calling postData.
   bool flushPostBuffer(Stack* stack);
 
+  bool sendNotificationData(Stack* stack);
+
   // Server object to fetch and post resources back to.
   ReplayService* mSrv;
 

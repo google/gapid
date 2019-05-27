@@ -334,6 +334,16 @@ func (c JumpNZ) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
+// Notification represents the NOTIFICATION virtual machine opcode.
+type Notification struct{}
+
+func (c Notification) String() string { return "Notification" }
+
+func (c Notification) Encode(w binary.Writer) error {
+	w.Uint32(packC(protocol.OpNotification))
+	return w.Error()
+}
+
 // Decode returns the opcode decoded from decoder d.
 func Decode(r binary.Reader) (Opcode, error) {
 	i := r.Uint32()
@@ -376,6 +386,12 @@ func Decode(r binary.Reader) (Opcode, error) {
 		return Label{Value: unpackX(i)}, nil
 	case protocol.OpSwitchThread:
 		return SwitchThread{Index: unpackX(i)}, nil
+	case protocol.OpJumpLabel:
+		return Label{Value: unpackX(i)}, nil
+	case protocol.OpJumpNZ:
+		return Label{Value: unpackX(i)}, nil
+	case protocol.OpNotification:
+		return Notification{}, nil
 	default:
 		return nil, fmt.Errorf("Unknown opcode with code %v", int(code))
 	}
@@ -398,3 +414,4 @@ func (Extend) isOpcode()       {}
 func (Add) isOpcode()          {}
 func (Label) isOpcode()        {}
 func (SwitchThread) isOpcode() {}
+func (Notification) isOpcode() {}
