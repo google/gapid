@@ -13,7 +13,7 @@
 # limitations under the License.
 
 def _extract_impl(ctx):
-    outs = depset()
+    outs = []
     base = ""
     if ctx.attr.dir:
         base = ctx.attr.dir + "/"
@@ -27,7 +27,7 @@ def _extract_impl(ctx):
             command = "unzip -q -d {} {} {}".format(to, ctx.file.zip.path, entry),
         )
     return struct(
-        files = outs
+        files = depset(outs)
     )
 
 extract = rule(
