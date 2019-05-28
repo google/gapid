@@ -170,7 +170,7 @@ func (a API) Replay(
 			if issues == nil {
 				issues = newFindIssues(ctx, capture, device)
 			}
-			issues.reportTo(rr.Result)
+			issues.AddResult(rr.Result)
 			onCompatError = func(ctx context.Context, id api.CmdID, cmd api.Cmd, err error) {
 				issues.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 			}
