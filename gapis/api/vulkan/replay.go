@@ -840,7 +840,7 @@ func (a API) Replay(
 				}
 				issues = newFindIssues(ctx, c, n)
 			}
-			issues.reportTo(rr.Result)
+			issues.AddResult(rr.Result)
 			optimize = false
 			if req.displayToSurface {
 				doDisplayToSurface = true
