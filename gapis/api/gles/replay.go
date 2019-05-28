@@ -37,6 +37,7 @@ var (
 	_ = replay.QueryIssues(API{})
 	_ = replay.QueryFramebufferAttachment(API{})
 	_ = replay.Support(API{})
+	_ = replay.Profiler(API{})
 )
 
 // issuesConfig is a replay.Config used by issuesRequests.
@@ -69,6 +70,8 @@ type framebufferRequest struct {
 	attachment       api.FramebufferAttachment
 	wireframeOverlay bool
 }
+
+type profileRequest struct{}
 
 // GetReplayPriority returns a uint32 representing the preference for
 // replaying this trace on the given device.
@@ -163,6 +166,8 @@ func (a API) Replay(
 		log.E(ctx, "%v: %v - %v", id, cmd, err)
 	}
 
+	var profile *replay.EndOfReplay
+
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
@@ -212,6 +217,12 @@ func (a API) Replay(
 			case service.DrawMode_OVERDRAW:
 				return fmt.Errorf("Overdraw is not currently supported for GLES")
 			}
+
+		case profileRequest:
+			if profile == nil {
+				profile = &replay.EndOfReplay{}
+			}
+			profile.AddResult(rr.Result)
 		}
 	}
 
@@ -232,6 +243,11 @@ func (a API) Replay(
 	}
 	if rf != nil {
 		transforms.Add(rf)
+	}
+
+	if profile != nil {
+		// Don't use DCE.
+		transforms = transform.Transforms{profile}
 	}
 
 	// Device-dependent transforms.
@@ -271,7 +287,9 @@ func (a API) Replay(
 		transforms.Add(transform.NewCaptureLog(ctx, capture, "replay_log.gfxtrace"))
 	}
 
-	cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
+	if profile == nil {
+		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
+	}
 	transforms.Transform(ctx, cmds, out)
 	return nil
 }
@@ -329,6 +347,19 @@ func (a API) QueryFramebufferAttachment(
 		return nil, err
 	}
 	return res.(*image.Data), nil
+}
+
+func (a API) Profile(
+	ctx context.Context,
+	intent replay.Intent,
+	mgr replay.Manager,
+	hints *service.UsageHints) error {
+
+	c := uniqueConfig()
+	r := profileRequest{}
+
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	return err
 }
 
 // destroyResourcesAtEOS is a transform that destroys all textures,
