@@ -57,7 +57,7 @@ def _copy_to_impl(ctx):
         for src in ctx.files.srcs:
             if src.extension in ctx.attr.extensions:
                 filtered += [src]
-    outs = depset()
+    outs = []
     for src in filtered:
         dstname = ctx.attr.rename.get(src.basename, default = src.basename)
         dst = ctx.new_file(ctx.bin_dir, ctx.attr.to + "/" + dstname)
@@ -65,7 +65,7 @@ def _copy_to_impl(ctx):
         _copy(ctx, src, dst)
 
     return struct(
-        files = outs,
+        files = depset(outs),
     )
 
 copy_to = rule(
@@ -85,7 +85,7 @@ copy_to = rule(
 
 
 def _copy_tree_impl(ctx):
-    outs = depset()
+    outs = []
     for src in ctx.files.srcs:
         path = src.path
         if path.startswith(ctx.attr.strip):
@@ -97,7 +97,7 @@ def _copy_tree_impl(ctx):
         _copy(ctx, src, dst)
 
     return struct(
-        files = outs,
+        files = depset(outs),
     )
 
 copy_tree = rule(

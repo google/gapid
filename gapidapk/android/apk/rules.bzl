@@ -16,7 +16,7 @@ load("//tools/build:rules.bzl", "extract", "filehash")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def _strip_impl(ctx):
-    outs = depset()
+    outs = []
     cc_toolchain = find_cpp_toolchain(ctx)
     if cc_toolchain.cpu == ctx.attr.abi:
         out = ctx.new_file("lib/{}/{}".format(ctx.attr.abi, ctx.file.lib.basename))
@@ -28,7 +28,7 @@ def _strip_impl(ctx):
         )
         outs += [out]
     return struct(
-        files = outs
+        files = depset(outs)
     )
 
 _strip = rule(
