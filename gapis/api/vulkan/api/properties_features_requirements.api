@@ -487,6 +487,7 @@ sub void GetPhysicalDeviceProperties2(
       next := MutableVoidPtr(as!void*(props.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+	_ = sType
         switch sType {
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
             _ = as!VkPhysicalDevicePointClippingProperties*(next.Ptr)[0]
