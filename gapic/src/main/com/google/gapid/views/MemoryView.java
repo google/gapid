@@ -772,7 +772,7 @@ public class MemoryView extends Composite
 
     protected final Memory.Data data;
     private final SegmentLoader loader;
-    private final long alignOffset;
+    protected final long alignOffset;
     private final long rows;
 
     public FixedMemoryModel(Memory.Data data, Loadable loadable, long alignOffset) {
@@ -958,7 +958,7 @@ public class MemoryView extends Composite
 
     @Override
     public CopyData[] getCopyData(Selection selection) {
-      return Futures.getUnchecked(MoreFutures.transform(data.load(selection.startRow * BYTES_PER_ROW,
+      return Futures.getUnchecked(MoreFutures.transform(data.load(selection.startRow * BYTES_PER_ROW + alignOffset,
           (int)(selection.endRow - selection.startRow + 1) * BYTES_PER_ROW), memory -> {
             StringBuilder buffer = new StringBuilder();
             Iterator<Segment> lines = getLines(selection.startRow, selection.endRow + 1, memory);
