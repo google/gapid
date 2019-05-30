@@ -64,14 +64,8 @@ type Device interface {
 	InstalledPackages(ctx context.Context) (InstalledPackages, error)
 	// InstalledPackage returns information about a single installed package on the device.
 	InstalledPackage(ctx context.Context, name string) (*InstalledPackage, error)
-	// IsScreenOn returns true if the device's screen is currently on.
-	IsScreenOn(ctx context.Context) (bool, error)
-	// TurnScreenOn turns the device's screen on.
-	TurnScreenOn(ctx context.Context) error
-	// TurnScreenOff turns the device's screen off.
-	TurnScreenOff(ctx context.Context) error
-	// IsShowingLockscreen returns true if the device's lockscreen is currently showing.
-	IsShowingLockscreen(ctx context.Context) (bool, error)
+	// UnlockScreen returns true if it managed to turn on and unlock the screen.
+	UnlockScreen(ctx context.Context) (bool, error)
 	// Logcat writes all logcat messages reported by the device to the chan msgs,
 	// blocking until the context is stopped.
 	Logcat(ctx context.Context, msgs chan<- LogcatMessage) error

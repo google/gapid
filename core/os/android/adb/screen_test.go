@@ -24,55 +24,28 @@ import (
 func TestScreenState(t_ *testing.T) {
 	ctx := log.Testing(t_)
 
-	d := mustConnect(ctx, "screen_off_device")
-	res, err := d.IsScreenOn(ctx)
-	assert.For(ctx, "ScreenOn").That(res).Equals(false)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	err = d.TurnScreenOn(ctx)
+	d := mustConnect(ctx, "screen_off_locked_device")
+	res, err := d.UnlockScreen(ctx)
+	assert.For(ctx, "UnlockScreen").That(res).Equals(false)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
-	d = mustConnect(ctx, "screen_doze_device")
-	res, err = d.IsScreenOn(ctx)
-	assert.For(ctx, "ScreenOn").That(res).Equals(false)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	err = d.TurnScreenOn(ctx)
+	d = mustConnect(ctx, "screen_off_unlocked_device")
+	res, err = d.UnlockScreen(ctx)
+	assert.For(ctx, "UnlockScreen").That(res).Equals(false)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
-	d = mustConnect(ctx, "screen_unready_device")
-	res, err = d.IsScreenOn(ctx)
-	assert.For(ctx, "ScreenOn").That(res).Equals(false)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	err = d.TurnScreenOn(ctx)
+	d = mustConnect(ctx, "screen_on_locked_device")
+	res, err = d.UnlockScreen(ctx)
+	assert.For(ctx, "UnlockScreen").That(res).Equals(false)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
-	d = mustConnect(ctx, "screen_on_device")
-	res, err = d.IsScreenOn(ctx)
-	assert.For(ctx, "ScreenOn").That(res).Equals(true)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-	err = d.TurnScreenOff(ctx)
+	d = mustConnect(ctx, "screen_on_unlocked_device")
+	res, err = d.UnlockScreen(ctx)
+	assert.For(ctx, "UnlockScreen").That(res).Equals(true)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 
 	d = mustConnect(ctx, "invalid_device")
-	res, err = d.IsScreenOn(ctx)
-	assert.For(ctx, "err").ThatError(err).Failed()
-	err = d.TurnScreenOn(ctx)
-	assert.For(ctx, "err").ThatError(err).Failed()
-}
-
-func TestLockscreenScreenState(t_ *testing.T) {
-	ctx := log.Testing(t_)
-
-	d := mustConnect(ctx, "lockscreen_off_device")
-	res, err := d.IsShowingLockscreen(ctx)
-	assert.For(ctx, "LockscreenShowing").That(res).Equals(false)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-
-	d = mustConnect(ctx, "lockscreen_on_device")
-	res, err = d.IsShowingLockscreen(ctx)
-	assert.For(ctx, "LockscreenShowing").That(res).Equals(true)
-	assert.For(ctx, "err").ThatError(err).Succeeded()
-
-	d = mustConnect(ctx, "invalid_device")
-	res, err = d.IsShowingLockscreen(ctx)
+	res, err = d.UnlockScreen(ctx)
+	assert.For(ctx, "UnlockScreen").That(res).Equals(false)
 	assert.For(ctx, "err").ThatError(err).Failed()
 }

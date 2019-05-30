@@ -474,12 +474,6 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 		}
 	}
 
-	if wasScreenOn, _ := t.b.IsScreenOn(ctx); !wasScreenOn {
-		cleanup = cleanup.Then(func(ctx context.Context) {
-			t.b.TurnScreenOff(ctx)
-		})
-	}
-
 	var process tracer.Process
 	if o.Type == service.TraceType_Perfetto {
 		process, err = perfetto.Start(ctx, t.b, a, o)
