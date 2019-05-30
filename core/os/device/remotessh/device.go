@@ -46,11 +46,17 @@ type Device interface {
 	// PushFile will transfer the local file at sourcePath to the remote
 	// machine at destPath
 	PushFile(ctx context.Context, sourcePath, destPath string) error
+	// PullFile will transfer the remote file at sourcePath to the local
+	// machine at destPath
+	PullFile(ctx context.Context, sourcePath, destPath string) error
 	// MakeTempDir makes a temporary directory, and returns the
 	// path, as well as a function to call to clean it up.
 	MakeTempDir(ctx context.Context) (string, app.Cleanup, error)
 	// WriteFile writes the given file into the given location on the remote device
 	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
+
+	// GetFilePermissions gets the unix permissions for the remote file
+	GetFilePermissions(ctx context.Context, path string) (os.FileMode, error)
 	// DefaultReplayCacheDir returns the default path for replay resource caches
 	DefaultReplayCacheDir() string
 }

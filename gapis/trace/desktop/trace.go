@@ -24,11 +24,13 @@ import (
 	"strings"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/process"
 	"github.com/google/gapid/core/vulkan/loader"
 	gapii "github.com/google/gapid/gapii/client"
+	perfetto "github.com/google/gapid/gapis/perfetto/desktop"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
@@ -60,6 +62,10 @@ func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.Device
 	isLocal, err := t.b.IsLocal(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if t.b.SupportsPerfetto(ctx) {
+		apis = append(apis, tracer.PerfettoTraceOptions())
 	}
 
 	return &service.DeviceTraceConfiguration{
@@ -204,11 +210,19 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	if err != nil {
 		return nil, nil, err
 	}
-	cleanup, portFile, err := loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
-	if err != nil {
-		cleanup.Invoke(ctx)
-		panic(err)
-		return nil, nil, err
+	var portFile string
+	var cleanup app.Cleanup
+
+	ignorePort := true
+	if o.Type == service.TraceType_Graphics {
+		cleanup, portFile, err = loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
+		if err != nil {
+			cleanup.Invoke(ctx)
+			panic(err)
+			return nil, nil, err
+		}
+		ignorePort = false
+
 	}
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
 	args := r.FindAllString(o.AdditionalCommandLineArgs, -1)
@@ -216,19 +230,32 @@ func (t *DesktopTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 	for _, x := range o.Environment {
 		env.Add(x)
 	}
+	var p tracer.Process
+	var boundPort int
 
-	boundPort, err := process.StartOnDevice(ctx, o.GetUri(), process.StartOptions{
-		Env:        env,
-		Args:       args,
-		PortFile:   portFile,
-		WorkingDir: o.Cwd,
-		Device:     t.b,
-	})
+	if o.Type == service.TraceType_Perfetto {
+		p, err = perfetto.Start(ctx, t.b, t.b.Instance().Configuration.ABIs[0], o)
+	}
+
+	if o.GetUri() != "" {
+		log.D(ctx, "URI provided for trace: %+v", o.GetUri())
+		boundPort, err = process.StartOnDevice(ctx, o.GetUri(), process.StartOptions{
+			Env:        env,
+			Args:       args,
+			PortFile:   portFile,
+			WorkingDir: o.Cwd,
+			Device:     t.b,
+			IgnorePort: ignorePort,
+		})
+	}
 
 	if err != nil {
 		cleanup.Invoke(ctx)
 		panic(err)
 		return nil, nil, err
+	}
+	if p != nil {
+		return p, cleanup, nil
 	}
 	process := &gapii.Process{Port: boundPort, Device: t.b, Options: tracer.GapiiOptions(o)}
 	return process, cleanup, nil

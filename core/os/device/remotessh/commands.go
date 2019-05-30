@@ -16,6 +16,7 @@ package remotessh
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -184,6 +186,18 @@ func (b binding) WriteFile(ctx context.Context, contents io.Reader, mode os.File
 	return err
 }
 
+func (b binding) GetFilePermissions(ctx context.Context, file string) (os.FileMode, error) {
+	out, err := b.Shell("stat", "-c%a", file).Call(ctx)
+	if err != nil {
+		return 0, err
+	}
+	u, err := strconv.ParseUint(out, 8, 32)
+	if err != nil {
+		return 0, err
+	}
+	return os.FileMode(u) & os.ModePerm, nil
+}
+
 // PushFile copies a file from a local path to the remote machine. Permissions are
 // maintained across.
 func (b binding) PushFile(ctx context.Context, source, dest string) error {
@@ -206,6 +220,27 @@ func (b binding) PushFile(ctx context.Context, source, dest string) error {
 	}
 
 	return b.WriteFile(ctx, infile, mode, dest)
+}
+
+// PullFile copies a file from a local path to the remote machine. Permissions are
+// maintained across.
+func (b binding) PullFile(ctx context.Context, source, dest string) error {
+	perms, err := b.GetFilePermissions(ctx, source)
+	if err != nil {
+		return err
+	}
+	outfile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE, perms)
+	if err != nil {
+		return err
+	}
+	defer outfile.Close()
+
+	contents, err := b.Shell("cat", source).Capture(outfile, nil).Verbose().Start(ctx)
+	if err != nil {
+		return err
+	}
+	err = contents.Wait(ctx)
+	return err
 }
 
 // doTunnel tunnels a single connection through the SSH connection.
@@ -303,7 +338,20 @@ func (b binding) TempFile(ctx context.Context) (string, func(ctx context.Context
 
 // FileContents returns the contents of a given file on the Device.
 func (b binding) FileContents(ctx context.Context, path string) (string, error) {
-	return b.Shell("cat", path).Call(ctx)
+	writer := bytes.NewBuffer([]byte{})
+
+	// We use Start instead of Run here, because Run may truncate
+	// the cat output. This means binary files are not what you expect
+	proc, err := b.Shell("cat", path).Capture(writer, nil).Start(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	err = proc.Wait(ctx)
+	if err != nil {
+		return "", err
+	}
+	return string(writer.Bytes()), nil
 }
 
 // RemoveFile removes the given file from the device

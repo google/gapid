@@ -57,4 +57,6 @@ type Device interface {
 	IsLocal(ctx context.Context) (bool, error)
 	// CanTrace returns true if this device can be used to take a trace
 	CanTrace() bool
+	// SupportsPerfetto returns true if this device will work with perfetto
+	SupportsPerfetto(ctx context.Context) bool
 }
