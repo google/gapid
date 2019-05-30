@@ -387,4 +387,7 @@ type (
 		CommandFilterFlags
 		CaptureFileFlags
 	}
+
+	MakeDocFlags struct {
+	}
 )

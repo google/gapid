@@ -32,6 +32,7 @@ go_library(
         "flags.go",
         "inputs.go",
         "main.go",
+        "make_docs.go",
         "memory.go",
         "packages.go",
         "profile.go",
