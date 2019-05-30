@@ -139,6 +139,10 @@ type StartOptions struct {
 	// If not "", the working directory for this command
 	WorkingDir string
 
+	// IgnorePort, if true, then will not wait for the port to become
+	// available
+	IgnorePort bool
+
 	// Device, which device should this be started on
 	Device bind.Device
 }
@@ -150,13 +154,18 @@ func StartOnDevice(ctx context.Context, name string, opts StartOptions) (int, er
 	// Append extra environment variable values
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
-	stdout := NewPortWatcher(portChan, &opts)
-
 	c, cancel := task.WithCancel(ctx)
 	defer cancel()
-	crash.Go(func() {
-		stdout.WaitForFile(c)
-	})
+
+	stdout := opts.Stdout
+	if !opts.IgnorePort {
+		portWatcher := NewPortWatcher(portChan, &opts)
+		stdout = portWatcher
+		crash.Go(func() {
+			portWatcher.WaitForFile(c)
+		})
+	}
+
 	crash.Go(func() {
 		cmd := opts.Device.Shell(name, opts.Args...).
 			In(opts.WorkingDir).
@@ -167,15 +176,17 @@ func StartOnDevice(ctx context.Context, name string, opts StartOptions) (int, er
 		}
 		errChan <- cmd.Run(ctx)
 	})
-
-	select {
-	case port := <-portChan:
-		p, err := strconv.Atoi(port)
-		if err != nil {
+	if !opts.IgnorePort {
+		select {
+		case port := <-portChan:
+			p, err := strconv.Atoi(port)
+			if err != nil {
+				return 0, err
+			}
+			return opts.Device.SetupLocalPort(ctx, p)
+		case err := <-errChan:
 			return 0, err
 		}
-		return opts.Device.SetupLocalPort(ctx, p)
-	case err := <-errChan:
-		return 0, err
 	}
+	return 0, nil
 }

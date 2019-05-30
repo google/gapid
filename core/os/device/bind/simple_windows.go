@@ -114,3 +114,9 @@ func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, er
 	}
 	return rets, nil
 }
+
+// SupportsPerfetto returns true if the given device supports taking a
+// Perfetto trace.
+func (b *Simple) SupportsPerfetto(ctx context.Context) bool {
+	return false
+}

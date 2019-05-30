@@ -122,3 +122,8 @@ func GoArgs(ctx context.Context) []string {
 func DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error) {
 	return layout(ctx).DeviceInfo(ctx, os)
 }
+
+// PerfettoCmd returns the device info executable for the given ABI.
+func PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error) {
+	return layout(ctx).PerfettoCmd(ctx, abi)
+}

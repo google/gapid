@@ -108,7 +108,7 @@ func (b *Simple) IsFile(ctx context.Context, path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if f.Mode().IsRegular() {
+	if f.Mode().IsRegular() || (f.Mode()&(os.ModeNamedPipe|os.ModeSocket)) != 0 {
 		return true, nil
 	}
 	return false, nil

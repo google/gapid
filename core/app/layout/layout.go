@@ -52,6 +52,8 @@ type FileLayout interface {
 	Gapir(ctx context.Context, abi *device.ABI) (file.Path, error)
 	// GapidApk returns the path to gapid.apk in this layout.
 	GapidApk(ctx context.Context, abi *device.ABI) (file.Path, error)
+	// PerfettoCmd returns the path to the perfetto command-line tool
+	PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error)
 	// Library returns the path to the requested library.
 	Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error)
 	// Json returns the path to the Vulkan layer JSON definition for the given library.
@@ -152,6 +154,13 @@ func (l pkgLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI
 		return l.root.Join("lib", withLibraryPlatformSuffix(libTypeToName[lib], hostOS(ctx))), nil
 	}
 	return l.root.Join(osToDir(abi.OS), "lib", withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)), nil
+}
+
+func (l pkgLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error) {
+	if abi == nil || hostOS(ctx) == abi.OS {
+		return l.root.Join("perfetto", withExecutablePlatformSuffix("perfetto", hostOS(ctx))), nil
+	}
+	return l.root.Join(osToDir(abi.OS), "perfetto", withExecutablePlatformSuffix("perfetto", abi.OS)), nil
 }
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
@@ -286,6 +295,13 @@ func (l *runfilesLayout) DeviceInfo(ctx context.Context, os device.OSKind) (file
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
+func (l *runfilesLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error) {
+	if hostOS(ctx) == abi.OS {
+		return l.find("external/perfetto/" + withExecutablePlatformSuffix("perfetto_cmd", hostOS(ctx)))
+	}
+	return file.Path{}, ErrCannotFindPackageFiles
+}
+
 // unknownLayout is the file layout used when no other layout can be discovered.
 // All methods will return an error.
 type unknownLayout struct{}
@@ -323,6 +339,10 @@ func (l unknownLayout) GoArgs(ctx context.Context) []string {
 }
 
 func (l unknownLayout) DeviceInfo(ctx context.Context, os device.OSKind) (file.Path, error) {
+	return file.Path{}, ErrCannotFindPackageFiles
+}
+
+func (l unknownLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
@@ -403,4 +423,12 @@ func (l *ZipLayout) DeviceInfo(ctx context.Context, os device.OSKind) (*zip.File
 		return l.file(withExecutablePlatformSuffix("device-info", os))
 	}
 	return l.file(osToDir(os) + "/" + withExecutablePlatformSuffix("device-info", os))
+}
+
+// PerfettoCmd returns the device info executable for the given ABI.
+func (l *ZipLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (*zip.File, error) {
+	if l.os == abi.OS {
+		return l.file("perfetto/" + withExecutablePlatformSuffix("perfetto", abi.OS))
+	}
+	return l.file(osToDir(abi.OS) + "/perfetto/" + withExecutablePlatformSuffix("perfetto", abi.OS))
 }

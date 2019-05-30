@@ -55,10 +55,3 @@ func (i *Instance) SameAs(o *Instance) bool {
 	// or the same, assume different for safty
 	return false
 }
-
-// SupportsPerfetto returns true if the given device supports taking a
-// Perfetto trace.
-func (i *Instance) SupportsPerfetto() bool {
-	os := i.GetConfiguration().GetOS()
-	return os.GetKind() == OSKind_Android && os.GetAPIVersion() >= 28
-}

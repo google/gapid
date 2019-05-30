@@ -38,6 +38,7 @@ import (
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/core/vulkan/loader"
 	gapii "github.com/google/gapid/gapii/client"
+	perfetto "github.com/google/gapid/gapis/perfetto/desktop"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/trace/tracer"
 )
@@ -72,6 +73,10 @@ func (t *GGPTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTrac
 		apis = append(apis, tracer.VulkanTraceOptions())
 	}
 
+	if t.b.SupportsPerfetto(ctx) {
+		apis = append(apis, tracer.PerfettoTraceOptions())
+	}
+
 	return &service.DeviceTraceConfiguration{
 		Apis:                 apis,
 		ServerLocalPath:      false,
@@ -91,13 +96,17 @@ func (t *GGPTracer) StartOnDevice(ctx context.Context, name string, opts *proces
 	errChan := make(chan error, 1)
 	portChan := make(chan string, 1)
 
-	stdout := process.NewPortWatcher(portChan, opts)
-
 	c, cancel := task.WithCancel(ctx)
 	defer cancel()
-	crash.Go(func() {
-		stdout.WaitForFile(c)
-	})
+
+	stdout := opts.Stdout
+	if !opts.IgnorePort {
+		pw := process.NewPortWatcher(portChan, opts)
+		stdout = pw
+		crash.Go(func() {
+			pw.WaitForFile(c)
+		})
+	}
 
 	splitUri := strings.Split(name, ":")
 	if len(splitUri) != 2 {
@@ -178,43 +187,68 @@ func (t *GGPTracer) StartOnDevice(ctx context.Context, name string, opts *proces
 		errChan <- cmd.Run(ctx)
 	})
 
-	for {
-		select {
-		case port := <-portChan:
-			p, err := strconv.Atoi(port)
-			if err != nil {
-				return 0, err
-			}
-			return opts.Device.SetupLocalPort(ctx, p)
-		case err := <-errChan:
-			if err != nil {
-				return 0, err
+	if !opts.IgnorePort {
+		for {
+			select {
+			case port := <-portChan:
+				p, err := strconv.Atoi(port)
+				if err != nil {
+					return 0, err
+				}
+				return opts.Device.SetupLocalPort(ctx, p)
+			case err := <-errChan:
+				if err != nil {
+					return 0, err
+				}
 			}
 		}
 	}
+	return 0, nil
 }
 
 func (t *GGPTracer) SetupTrace(ctx context.Context, o *service.TraceOptions) (tracer.Process, app.Cleanup, error) {
 	env := shell.NewEnv()
-	cleanup, portFile, err := loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
-	if err != nil {
-		cleanup.Invoke(ctx)
-		return nil, nil, err
+	var portFile string
+	var cleanup app.Cleanup
+	var err error
+
+	ignorePort := true
+	if o.Type == service.TraceType_Graphics {
+		cleanup, portFile, err = loader.SetupTrace(ctx, t.b, t.b.Instance().Configuration.ABIs[0], env)
+		if err != nil {
+			cleanup.Invoke(ctx)
+			return nil, nil, err
+		}
+		ignorePort = false
 	}
+
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
 	args := r.FindAllString(o.AdditionalCommandLineArgs, -1)
 
 	for _, x := range o.Environment {
 		env.Add(x)
 	}
+	var p tracer.Process
 
-	boundPort, err := t.StartOnDevice(ctx, o.GetUri(), &process.StartOptions{
-		Env:        env,
-		Args:       args,
-		PortFile:   portFile,
-		WorkingDir: o.Cwd,
-		Device:     t.b,
-	})
+	if o.Type == service.TraceType_Perfetto {
+		p, err = perfetto.Start(ctx, t.b, t.b.Instance().Configuration.ABIs[0], o)
+	}
+
+	var boundPort int
+	if o.GetUri() != "" {
+		boundPort, err = t.StartOnDevice(ctx, o.GetUri(), &process.StartOptions{
+			Env:        env,
+			Args:       args,
+			PortFile:   portFile,
+			WorkingDir: o.Cwd,
+			Device:     t.b,
+			IgnorePort: ignorePort,
+		})
+	}
+
+	if p != nil {
+		return p, cleanup, nil
+	}
 
 	if err != nil {
 		cleanup.Invoke(ctx)

@@ -251,6 +251,11 @@ func (b *binding) GetEnv(ctx context.Context) (*shell.Env, error) {
 	return e, nil
 }
 
+func (b *binding) SupportsPerfetto(ctx context.Context) bool {
+	os := b.Instance().GetConfiguration().GetOS()
+	return os.GetAPIVersion() >= 28
+}
+
 func extrasFlags(extras []android.ActionExtra) []string {
 	flags := []string{}
 	for _, e := range extras {

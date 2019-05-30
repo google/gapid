@@ -76,7 +76,11 @@ filegroup(
         ":pkg-lib",
         ":pkg-root",
         ":pkg-strings",
-    ],
+    ] + select({
+        "//tools/build:linux": [":perfetto"],
+        "//tools/build:windows": [],
+        "//tools/build:darwin": [],
+    }),
 )
 
 copy_to(
@@ -123,6 +127,19 @@ copy_to(
     name = "pkg-strings",
     srcs = ["//gapis/messages:stb"],
     to = "pkg/strings",
+)
+
+copy_to(
+    name = "perfetto",
+    srcs = [
+        "@perfetto//:perfetto_cmd",
+        "@perfetto//:traced",
+        "@perfetto//:traced_probes",
+    ],
+    rename = {
+        "perfetto_cmd": "perfetto",
+    },
+    to = "pkg/perfetto",
 )
 
 test_suite(
