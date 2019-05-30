@@ -67,6 +67,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 
 import java.io.File;
@@ -151,6 +153,29 @@ public class MainWindow extends ApplicationWindow {
     trackServerStatus(client);
 
     showLoadingMessage("Ready! Please open or capture a trace file.");
+
+    getShell().getDisplay().addFilter(SWT.KeyDown, new Listener() {
+      private final int[] codes = {
+          SWT.ARROW_UP, SWT.ARROW_UP, SWT.ARROW_DOWN, SWT.ARROW_DOWN,
+          SWT.ARROW_LEFT, SWT.ARROW_RIGHT, SWT.ARROW_LEFT, SWT.ARROW_RIGHT,
+          'b', 'a'
+      };
+      private int seen = 0;
+
+      @Override
+      public void handleEvent(Event event) {
+        if (event.keyCode == codes[seen]) {
+          if (++seen == codes.length) {
+            seen = 0;
+            setTopControl(mainUi);
+            mainUi.stopLoading();
+            mainUi.getContents().showSnake();
+          }
+        } else {
+          seen = 0;
+        }
+      }
+    });
   }
 
   private void watchForUpdates(Client client, Models models) {
@@ -419,6 +444,18 @@ public class MainWindow extends ApplicationWindow {
       }
       layout();
       return mainView;
+    }
+
+    public void showSnake() {
+      if (!(mainView instanceof SnakeView)) {
+        if (mainView != null) {
+          ((Control)mainView).dispose();
+        }
+        SnakeView snake = new SnakeView(this);
+        mainView = snake;
+        layout();
+        scheduleIfNotDisposed(snake, snake::setFocus);
+      }
     }
   }
 
