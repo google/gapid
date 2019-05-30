@@ -833,8 +833,8 @@ public class TracerDialog {
     }
 
     private void update() {
-      // UI not initialized yet.
-      if (statusLabel == null) {
+      // UI not initialized yet or already disposed.
+      if (statusLabel == null || statusLabel.isDisposed()) {
         return;
       }
 
