@@ -74,6 +74,7 @@ public interface Theme {
   @Icon(file = "flat.png") public Image flat();
   @Icon(file = "flip_vertically.png") public Image flipVertically();
   @Icon(file = "jump.png") public Image jump();
+  @Icon(file = "help.png") public Image help();
   @Icon(file = "histogram.png") public Image toggleHistogram();
   @Icon(file = "lit.png") public Image lit();
   @Icon(file = "logo_128.png") public Image dialogLogo();
