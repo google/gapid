@@ -68,24 +68,52 @@ uint32_t SpyOverride_vkCreateSwapchainKHR(VkDevice device,
                                           const VkAllocationCallbacks* pAllocator,
                                           VkSwapchainKHR* pImage);
 uint32_t SpyOverride_vkDebugMarkerSetObjectTagEXT(
-    VkDevice device, VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
+    VkDevice device, const VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
   return VkResult::VK_SUCCESS;
 }
 uint32_t SpyOverride_RecreateDebugMarkerSetObjectTagEXT(
-    VkDevice device, VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
+    VkDevice device, const VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
   return VkResult::VK_SUCCESS;
 }
 
 uint32_t SpyOverride_vkDebugMarkerSetObjectNameEXT(
-    VkDevice device, VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
+    VkDevice device, const VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
   return VkResult::VK_SUCCESS;
 }
 
 void SpyOverride_vkCmdDebugMarkerBeginEXT(
-    VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
+    VkCommandBuffer commandBuffer, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
 void SpyOverride_vkCmdDebugMarkerEndEXT(VkCommandBuffer commandBuffer) {}
 void SpyOverride_vkCmdDebugMarkerInsertEXT(
-    VkCommandBuffer commandBuffer, VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
+    VkCommandBuffer commandBuffer, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {}
+
+
+void SpyOverride_vkCmdBeginDebugUtilsLabelEXT(
+    VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT* pMarkerInfo) {}
+void SpyOverride_vkCmdEndDebugUtilsLabelEXT(VkCommandBuffer commandBuffer) {}
+void SpyOverride_vkCmdInsertDebugUtilsLabelEXT(
+    VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT* pMarkerInfo) {}
+
+
+void SpyOverride_vkQueueBeginDebugUtilsLabelEXT(
+    VkQueue queue, const VkDebugUtilsLabelEXT* pMarkerInfo) {}
+void SpyOverride_vkQueueEndDebugUtilsLabelEXT(VkQueue queue) {}
+void SpyOverride_vkQueueInsertDebugUtilsLabelEXT(
+    VkQueue queue, const VkDebugUtilsLabelEXT* pMarkerInfo) {}
+
+
+uint32_t SpyOverride_vkSetDebugUtilsObjectNameEXT(
+    VkDevice device, const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
+  return VkResult::VK_SUCCESS;
+}
+uint32_t SpyOverride_vkSetDebugUtilsObjectTagEXT(
+    VkDevice device, const VkDebugUtilsObjectTagInfoEXT* pTagInfo) {
+  return VkResult::VK_SUCCESS;
+}
+
+void SpyOverride_vkCmdWriteBufferMarkerAMD(
+  VkCommandBuffer commandBuffer, uint32_t pipelineStage,
+  VkBuffer dstBuffer, VkDeviceSize dstOffset, uint32_t marker) {}
 
 bool m_coherent_memory_tracking_enabled = false;
 

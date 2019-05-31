@@ -377,8 +377,8 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
               target = gapir::SurfaceType::Win32;
             }
 
-            const void* data = CreateSurface(newCreateInfo.imageExtent.Width,
-                newCreateInfo.imageExtent.Height, target);
+            const void* data = CreateSurface(newCreateInfo.imageExtent.width,
+                newCreateInfo.imageExtent.height, target);
             void* createInfo = nullptr;
             if (data != nullptr) {
               switch (target) {
