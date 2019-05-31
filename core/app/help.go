@@ -47,8 +47,10 @@ func MakeDoc(ctx context.Context, name string){
 		// Header
 		fmt.Fprintln(w, "# ", verb.Name)
 		fmt.Fprintln(w, backlink)
+		fmt.Fprintln(w)
 		// Usage
 		fmt.Fprintf(w, "*%s*", verb.ShortHelp)
+		fmt.Fprintln(w)
 		fmt.Fprintln(w)
 		fmt.Fprint(w, "**Usage:** ")
 		verbUsage(w, &globalVerbs, true)

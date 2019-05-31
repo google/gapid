@@ -29,7 +29,9 @@
 |[video](#video)|Produce a video or sequence of frames from a .gfxtrace file|
 #  benchmark
 [Back](#gapit-help)
+
 *Runs a set of benchmarking tests on an application*
+
 **Usage:**  GAPIT [GAPIT-flags] benchmark [benchmark-flags]
 ```
 GAPIT-flags:
@@ -120,7 +122,9 @@ benchmark-flags:
 [Back](#gapit-help)
 #  commands
 [Back](#gapit-help)
+
 *Prints the command tree for a .gfxtrace file*
+
 **Usage:**  GAPIT [GAPIT-flags] commands [commands-flags]
 ```
 GAPIT-flags:
@@ -213,7 +217,9 @@ commands-flags:
 [Back](#gapit-help)
 #  create_graph_visualization
 [Back](#gapit-help)
+
 *Create graph visualization file from capture*
+
 **Usage:**  GAPIT [GAPIT-flags] create_graph_visualization [create_graph_visualization-flags]
 ```
 GAPIT-flags:
@@ -266,7 +272,9 @@ create_graph_visualization-flags:
 [Back](#gapit-help)
 #  devices
 [Back](#gapit-help)
+
 *Lists the devices available*
+
 **Usage:**  GAPIT [GAPIT-flags] devices [devices-flags]
 ```
 GAPIT-flags:
@@ -317,7 +325,9 @@ devices-flags:
 [Back](#gapit-help)
 #  dump
 [Back](#gapit-help)
+
 *Dump a textual representation of a .gfxtrace file*
+
 **Usage:**  GAPIT [GAPIT-flags] dump [dump-flags]
 ```
 GAPIT-flags:
@@ -392,7 +402,9 @@ dump-flags:
 [Back](#gapit-help)
 #  dump_fbo
 [Back](#gapit-help)
+
 *Extract all framebuffer observations from a trace.*
+
 **Usage:**  GAPIT [GAPIT-flags] dump_fbo [dump_fbo-flags]
 ```
 GAPIT-flags:
@@ -461,7 +473,9 @@ dump_fbo-flags:
 [Back](#gapit-help)
 #  dump_pipeline
 [Back](#gapit-help)
+
 *Prints the bound pipeline and descriptor sets for a point in a .gfxtrace file*
+
 **Usage:**  GAPIT [GAPIT-flags] dump_pipeline [dump_pipeline-flags]
 ```
 GAPIT-flags:
@@ -518,7 +532,9 @@ dump_pipeline-flags:
 [Back](#gapit-help)
 #  dump_replay
 [Back](#gapit-help)
+
 *Prints textual representation of a replay payload.*
+
 **Usage:**  GAPIT [GAPIT-flags] dump_replay
 ```
 GAPIT-flags:
@@ -554,7 +570,9 @@ GAPIT-flags:
 [Back](#gapit-help)
 #  dump_resources
 [Back](#gapit-help)
+
 *Dump all shaders at a particular command from a .gfxtrace*
+
 **Usage:**  GAPIT [GAPIT-flags] dump_resources [dump_resources-flags]
 ```
 GAPIT-flags:
@@ -621,7 +639,9 @@ dump_resources-flags:
 [Back](#gapit-help)
 #  export_replay
 [Back](#gapit-help)
+
 *Export replay vm instruction and assets.*
+
 **Usage:**  GAPIT [GAPIT-flags] export_replay [export_replay-flags]
 ```
 GAPIT-flags:
@@ -698,7 +718,9 @@ export_replay-flags:
 [Back](#gapit-help)
 #  make_doc
 [Back](#gapit-help)
+
 *Generate documentation for all commands.*
+
 **Usage:**  GAPIT [GAPIT-flags] make_doc
 ```
 GAPIT-flags:
@@ -734,7 +756,9 @@ GAPIT-flags:
 [Back](#gapit-help)
 #  memory
 [Back](#gapit-help)
+
 *Prints memory metrics about a capture file*
+
 **Usage:**  GAPIT [GAPIT-flags] memory [memory-flags]
 ```
 GAPIT-flags:
@@ -787,7 +811,9 @@ memory-flags:
 [Back](#gapit-help)
 #  packages
 [Back](#gapit-help)
+
 *Prints information about packages installed on a device*
+
 **Usage:**  GAPIT [GAPIT-flags] packages [packages-flags]
 ```
 GAPIT-flags:
@@ -858,7 +884,9 @@ packages-flags:
 [Back](#gapit-help)
 #  profile
 [Back](#gapit-help)
+
 *Profile a replay to get the time of executing the commands.*
+
 **Usage:**  GAPIT [GAPIT-flags] profile [profile-flags]
 ```
 GAPIT-flags:
@@ -923,7 +951,9 @@ profile-flags:
 [Back](#gapit-help)
 #  replace_resource
 [Back](#gapit-help)
+
 *Produce a new trace with the given resource replaced at the given command*
+
 **Usage:**  GAPIT [GAPIT-flags] replace_resource [replace_resource-flags]
 ```
 GAPIT-flags:
@@ -1000,7 +1030,9 @@ replace_resource-flags:
 [Back](#gapit-help)
 #  report
 [Back](#gapit-help)
+
 *Check a capture replays without issues*
+
 **Usage:**  GAPIT [GAPIT-flags] report [report-flags]
 ```
 GAPIT-flags:
@@ -1071,7 +1103,9 @@ report-flags:
 [Back](#gapit-help)
 #  screenshot
 [Back](#gapit-help)
+
 *Produce a screenshot at a particular command from a .gfxtrace file*
+
 **Usage:**  GAPIT [GAPIT-flags] screenshot [screenshot-flags]
 ```
 GAPIT-flags:
@@ -1156,7 +1190,9 @@ screenshot-flags:
 [Back](#gapit-help)
 #  state
 [Back](#gapit-help)
+
 *Prints the state tree for a point in a .gfxtrace file*
+
 **Usage:**  GAPIT [GAPIT-flags] state [state-flags]
 ```
 GAPIT-flags:
@@ -1227,7 +1263,9 @@ state-flags:
 [Back](#gapit-help)
 #  stats
 [Back](#gapit-help)
+
 *Prints information about a capture file*
+
 **Usage:**  GAPIT [GAPIT-flags] stats [stats-flags]
 ```
 GAPIT-flags:
@@ -1282,7 +1320,9 @@ stats-flags:
 [Back](#gapit-help)
 #  status
 [Back](#gapit-help)
+
 *Attaches to an existing gapis, and provides status*
+
 **Usage:**  GAPIT [GAPIT-flags] status [status-flags]
 ```
 GAPIT-flags:
@@ -1335,7 +1375,9 @@ status-flags:
 [Back](#gapit-help)
 #  stress-test
 [Back](#gapit-help)
+
 *Performs evil things on GAPIS to try to break it*
+
 **Usage:**  GAPIT [GAPIT-flags] stress-test [stress-test-flags]
 ```
 GAPIT-flags:
@@ -1400,7 +1442,9 @@ stress-test-flags:
 [Back](#gapit-help)
 #  trace
 [Back](#gapit-help)
+
 *Captures a gfx trace from an application*
+
 **Usage:**  GAPIT [GAPIT-flags] trace [trace-flags]
 ```
 GAPIT-flags:
@@ -1497,7 +1541,9 @@ trace-flags:
 [Back](#gapit-help)
 #  trim
 [Back](#gapit-help)
+
 *(WIP) Trims a gfx trace to the dependencies of the requested frames*
+
 **Usage:**  GAPIT [GAPIT-flags] trim [trim-flags]
 ```
 GAPIT-flags:
@@ -1574,7 +1620,9 @@ trim-flags:
 [Back](#gapit-help)
 #  unpack
 [Back](#gapit-help)
+
 *Displays the raw protos in a protopack file*
+
 **Usage:**  GAPIT [GAPIT-flags] unpack [unpack-flags]
 ```
 GAPIT-flags:
@@ -1613,7 +1661,9 @@ unpack-flags:
 [Back](#gapit-help)
 #  video
 [Back](#gapit-help)
+
 *Produce a video or sequence of frames from a .gfxtrace file*
+
 **Usage:**  GAPIT [GAPIT-flags] video [video-flags]
 ```
 GAPIT-flags:
