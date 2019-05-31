@@ -187,6 +187,9 @@ enum CommandType {
   cmd_vkCmdDrawIndexedIndirectCountKHR   = 48,
   cmd_vkCmdDrawIndirectCountAMD          = 49,
   cmd_vkCmdDrawIndexedIndirectCountAMD   = 50,
+  cmd_vkCmdBeginDebugUtilsLabelEXT       = 51,
+  cmd_vkCmdEndDebugUtilsLabelEXT         = 52,
+  cmd_vkCmdInsertDebugUtilsLabelEXT      = 53,
   cmd_vkNoCommand                 = 0xFFFFFFFF
 }
 
@@ -265,6 +268,9 @@ enum SemaphoreUpdate {
   @untrackedMap dense_map!(u32, ref!vkCmdDrawIndexedIndirectCountKHRArgs)   vkCmdDrawIndexedIndirectCountKHR
   @untrackedMap dense_map!(u32, ref!vkCmdDrawIndirectCountAMDArgs)   vkCmdDrawIndirectCountAMD
   @untrackedMap dense_map!(u32, ref!vkCmdDrawIndexedIndirectCountAMDArgs)   vkCmdDrawIndexedIndirectCountAMD
+  @untrackedMap dense_map!(u32, ref!vkCmdBeginDebugUtilsLabelEXTArgs)  vkCmdBeginDebugUtilsLabelEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdEndDebugUtilsLabelEXTArgs)    vkCmdEndDebugUtilsLabelEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdInsertDebugUtilsLabelEXTArgs) vkCmdInsertDebugUtilsLabelEXT
 }
 
 @internal class CommandBufferObject {
@@ -517,6 +523,9 @@ sub void resetBufferCommands(ref!CommandBufferObject obj) {
   clear(obj.BufferCommands.vkCmdDrawIndexedIndirectCountKHR)
   clear(obj.BufferCommands.vkCmdDrawIndirectCountAMD)
   clear(obj.BufferCommands.vkCmdDrawIndexedIndirectCountAMD)
+  clear(obj.BufferCommands.vkCmdBeginDebugUtilsLabelEXT)
+  clear(obj.BufferCommands.vkCmdEndDebugUtilsLabelEXT)
+  clear(obj.BufferCommands.vkCmdInsertDebugUtilsLabelEXT)
 }
 
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {

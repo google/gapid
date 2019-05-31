@@ -322,6 +322,12 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdDrawIndirectCountAMD(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndirectCountAMD[reference.MapIndex])
     case cmd_vkCmdDrawIndexedIndirectCountAMD:
       dovkCmdDrawIndexedIndirectCountAMD(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDrawIndexedIndirectCountAMD[reference.MapIndex])
+    case cmd_vkCmdBeginDebugUtilsLabelEXT:
+      dovkCmdBeginDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdBeginDebugUtilsLabelEXT[reference.MapIndex])
+    case cmd_vkCmdEndDebugUtilsLabelEXT:
+      dovkCmdEndDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndDebugUtilsLabelEXT[reference.MapIndex])
+    case cmd_vkCmdInsertDebugUtilsLabelEXT:
+      dovkCmdInsertDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdInsertDebugUtilsLabelEXT[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }

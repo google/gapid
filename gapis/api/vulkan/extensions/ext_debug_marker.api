@@ -87,7 +87,7 @@ class VkDebugMarkerMarkerInfoEXT {
 @no_replay
 cmd VkResult vkDebugMarkerSetObjectTagEXT(
     VkDevice                       device,
-    VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
+    const VkDebugMarkerObjectTagInfoEXT* pTagInfo) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   tagInfo := pTagInfo[0]
   setDebugMarkerObjectTag(tagInfo)
@@ -102,7 +102,7 @@ cmd VkResult vkDebugMarkerSetObjectTagEXT(
 @no_replay
 cmd VkResult vkDebugMarkerSetObjectNameEXT(
     VkDevice                        device,
-    VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
+    const VkDebugMarkerObjectNameInfoEXT* pNameInfo) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   nameInfo := pNameInfo[0]
   setDebugMarkerObjectName(nameInfo)
@@ -127,7 +127,7 @@ sub void dovkCmdDebugMarkerBeginEXT(ref!vkCmdDebugMarkerBeginEXTArgs args) {
 @no_replay
 cmd void vkCmdDebugMarkerBeginEXT(
     VkCommandBuffer             commandBuffer,
-    VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
+    const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerBeginEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
@@ -193,7 +193,7 @@ sub void dovkCmdDebugMarkerInsertEXT(ref!vkCmdDebugMarkerInsertEXTArgs draw) {
 @no_replay
 cmd void vkCmdDebugMarkerInsertEXT(
     VkCommandBuffer             commandBuffer,
-    VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
+    const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
   markerInfo := pMarkerInfo[0]
   args := new!vkCmdDebugMarkerInsertEXTArgs(
     MarkerName: as!string(markerInfo.pMarkerName),
