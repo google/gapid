@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 
-
 	"github.com/google/gapid/core/app/flags"
 )
 
