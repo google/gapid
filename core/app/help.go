@@ -24,7 +24,7 @@ import (
 )
 
 // MakeDocs
-func MakeDoc(ctx context.Context, name string){
+func MakeDoc(ctx context.Context, name string) {
 	filename := name + ".md"
 	w, _ := os.Create(filename)
 	globalVerbs.selected = nil
