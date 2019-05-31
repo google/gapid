@@ -209,6 +209,17 @@ All summed value types must be equal.
 Set the current debug label to `value`.
 The label value is displayed in debug messages or in the case of a crash.
 
+### `JUMPLABEL(value)` [no change]
+`<code:6> <value:26>`
+
+Add a jump label to store the current execute instruction index so that later
+a jump instruction can jump to this instruction and start execution from there.
+
+### `JUMPNZ(value)` [no change]
+`<code:6> <value:26>`
+
+Jump to the instruction specified by the jump label and start execution from there
+if the value on the top of the stack is not zero. Otherwise it is a Nop. 
 ## Resources
 
 GAPIR is designed to be run on desktop and Android devices. When replaying on

@@ -230,11 +230,9 @@ sub void trackVkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
   dstImageObject := Images[args.DstImage]
 
   srcFormat := srcImageObject.Info.Format
-  srcElementAndTexelBlockSize := getElementAndTexelBlockSize(srcFormat)
-  srcDepthElementSize := getDepthElementSize(srcFormat, false)
+  
   dstFormat := dstImageObject.Info.Format
-  dstElementAndTexelBlockSize := getElementAndTexelBlockSize(dstFormat)
-  dstDepthElementSize := getDepthElementSize(dstFormat, false)
+  
   n := len(args.Regions)
   for r in (0 .. n) {
     // TODO: Support KHR_maintenance1 extension, support copying from a 2D array
@@ -245,95 +243,83 @@ sub void trackVkCmdCopyImage(ref!vkCmdCopyImageArgs args) {
     srcMipLevel := region.srcSubresource.mipLevel
     dstMipLevel := region.dstSubresource.mipLevel
 
-    // TODO: Handle multi-planar image correctly. The dst image aspect must
-    // ether match or contains only COLOR_BIT with a compatible format.
-    for _ , _ , aspectBit in getAspectKeysWithAspectFlags(srcImageObject, region.srcSubresource.aspectMask) {
-      srcElementSize := switch (aspectBit) {
-        case VK_IMAGE_ASPECT_COLOR_BIT:
-          as!u64(srcElementAndTexelBlockSize.ElementSize)
-        case VK_IMAGE_ASPECT_DEPTH_BIT:
-          as!u64(srcDepthElementSize)
-        case VK_IMAGE_ASPECT_STENCIL_BIT:
-          as!u64(1)
-      }
-      srcBlockWidth := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Width)
-      srcBlockHeight := as!u64(srcElementAndTexelBlockSize.TexelBlockSize.Height)
+    aspectBit := as!VkImageAspectFlagBits(region.srcSubresource.aspectMask)
+    dstAspect := as!VkImageAspectFlagBits(region.dstSubresource.aspectMask)
+    srcAspectTexelBlockSize := getElementAndTexelBlockSizeForAspect(srcFormat, aspectBit)
+    srcElementSize := srcAspectTexelBlockSize.ElementSize
 
-      dstElementSize := switch (aspectBit) {
-        case VK_IMAGE_ASPECT_COLOR_BIT:
-          as!u64(dstElementAndTexelBlockSize.ElementSize)
-        case VK_IMAGE_ASPECT_DEPTH_BIT:
-          as!u64(dstDepthElementSize)
-        case VK_IMAGE_ASPECT_STENCIL_BIT:
-          as!u64(1)
-      }
-      dstBlockWidth := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Width)
-      dstBlockHeight := as!u64(dstElementAndTexelBlockSize.TexelBlockSize.Height)
+    srcBlockWidth := as!u64(srcAspectTexelBlockSize.TexelBlockSize.Width)
+    srcBlockHeight := as!u64(srcAspectTexelBlockSize.TexelBlockSize.Height)
 
-      srcXStartInBlocks := as!u64(as!u64(region.srcOffset.x) / srcBlockWidth)
-      srcYStartInBlocks := as!u64(as!u64(region.srcOffset.y) / srcBlockHeight)
-      srcZStart := as!u64(region.srcOffset.z)
-      dstXStartInBlocks := as!u64(as!u64(region.dstOffset.x) / dstBlockWidth)
-      dstYStartInBlocks := as!u64(as!u64(region.dstOffset.y) / dstBlockHeight)
-      dstZStart := as!u64(region.dstOffset.z)
+    dstAspectTexelBlockSize := getElementAndTexelBlockSizeForAspect(dstFormat, dstAspect)
+    dstElementSize := dstAspectTexelBlockSize.ElementSize
 
-      extentXInBlocks := roundUpTo(region.extent.width, as!u32(srcBlockWidth))
-      extentYInBlocks := roundUpTo(region.extent.height, as!u32(srcBlockHeight))
-      extentZ := region.extent.depth
+    dstBlockWidth := as!u64(dstAspectTexelBlockSize.TexelBlockSize.Width)
+    dstBlockHeight := as!u64(dstAspectTexelBlockSize.TexelBlockSize.Height)
 
-      srcImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.width, srcMipLevel), as!u32(srcBlockWidth)))
-      srcImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.height, srcMipLevel), as!u32(srcBlockHeight)))
-      dstImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.width, dstMipLevel), as!u32(dstBlockWidth)))
-      dstImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.height, dstMipLevel), as!u32(dstBlockHeight)))
+    srcXStartInBlocks := as!u64(as!u64(region.srcOffset.x) / srcBlockWidth)
+    srcYStartInBlocks := as!u64(as!u64(region.srcOffset.y) / srcBlockHeight)
+    srcZStart := as!u64(region.srcOffset.z)
+    dstXStartInBlocks := as!u64(as!u64(region.dstOffset.x) / dstBlockWidth)
+    dstYStartInBlocks := as!u64(as!u64(region.dstOffset.y) / dstBlockHeight)
+    dstZStart := as!u64(region.dstOffset.z)
 
-      minLayerCount := min!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
-      maxLayerCount := max!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
+    extentXInBlocks := roundUpTo(region.extent.Width, as!u32(srcBlockWidth))
+    extentYInBlocks := roundUpTo(region.extent.Height, as!u32(srcBlockHeight))
+    extentZ := region.extent.Depth
 
-      layerCount := switch srcImageObject.Info.ImageType == dstImageObject.Info.ImageType {
-        case true:
-          // Same type of image
-          minLayerCount
-        case false:
-          // Must be a 3D image <-> 2D array image copy, use the 2D array image's layer count
-          maxLayerCount
+    srcImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.Width, srcMipLevel), as!u32(srcBlockWidth)))
+    srcImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(srcImageObject.Info.Extent.Height, srcMipLevel), as!u32(srcBlockHeight)))
+    dstImageLevelWidthInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.Width, dstMipLevel), as!u32(dstBlockWidth)))
+    dstImageLevelHeightInBlocks := as!u64(roundUpTo(getMipSize(dstImageObject.Info.Extent.Height, dstMipLevel), as!u32(dstBlockHeight)))
+
+    minLayerCount := min!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
+    maxLayerCount := max!u32(region.srcSubresource.layerCount, region.dstSubresource.layerCount)
+
+    layerCount := switch srcImageObject.Info.ImageType == dstImageObject.Info.ImageType {
+      case true:
+        // Same type of image
+        minLayerCount
+      case false:
+        // Must be a 3D image <-> 2D array image copy, use the 2D array image's layer count
+        maxLayerCount
+    }
+
+    for l in (0 .. layerCount) {
+      srcImageLevel := switch srcImageObject.Info.ImageType {
+        case VK_IMAGE_TYPE_3D:
+          srcImageObject.Aspects[aspectBit].Layers[as!u32(0)].Levels[srcMipLevel]
+        default:
+          srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
       }
 
-      for l in (0 .. layerCount) {
-        srcImageLevel := switch srcImageObject.Info.ImageType {
-          case VK_IMAGE_TYPE_3D:
-            srcImageObject.Aspects[aspectBit].Layers[as!u32(0)].Levels[srcMipLevel]
-          default:
-            srcImageObject.Aspects[aspectBit].Layers[srcBaseLayer + l].Levels[srcMipLevel]
-        }
+      dstImageLevel := switch dstImageObject.Info.ImageType {
+        case VK_IMAGE_TYPE_3D:
+          dstImageObject.Aspects[dstAspect].Layers[as!u32(0)].Levels[dstMipLevel]
+        default:
+          dstImageObject.Aspects[dstAspect].Layers[dstBaseLayer + l].Levels[dstMipLevel]
+      }
 
-        dstImageLevel := switch dstImageObject.Info.ImageType {
-          case VK_IMAGE_TYPE_3D:
-            dstImageObject.Aspects[aspectBit].Layers[as!u32(0)].Levels[dstMipLevel]
-          default:
-            dstImageObject.Aspects[aspectBit].Layers[dstBaseLayer + l].Levels[dstMipLevel]
-        }
-
-        for z in (0 .. extentZ) {
-          for y in (0 .. extentYInBlocks) {
-            copySize := as!u64(extentXInBlocks) * srcElementSize
-            dstY := dstYStartInBlocks + as!u64(y)
-            dstZ := switch dstImageObject.Info.ImageType {
-              case VK_IMAGE_TYPE_3D:
-                dstZStart + as!u64(z)
-              default:
-                dstZStart
-            }
-            srcY := srcYStartInBlocks + as!u64(y)
-            srcZ := switch srcImageObject.Info.ImageType {
-              case VK_IMAGE_TYPE_3D:
-                srcZStart + as!u64(z)
-              default:
-                srcZStart
-            }
-            dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * dstElementSize
-            srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * srcElementSize
-            copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
+      for z in (0 .. extentZ) {
+        for y in (0 .. extentYInBlocks) {
+          copySize := as!u64(extentXInBlocks) * as!u64(srcElementSize)
+          dstY := dstYStartInBlocks + as!u64(y)
+          dstZ := switch dstImageObject.Info.ImageType {
+            case VK_IMAGE_TYPE_3D:
+              dstZStart + as!u64(z)
+            default:
+              dstZStart
           }
+          srcY := srcYStartInBlocks + as!u64(y)
+          srcZ := switch srcImageObject.Info.ImageType {
+            case VK_IMAGE_TYPE_3D:
+              srcZStart + as!u64(z)
+            default:
+              srcZStart
+          }
+          dstStart := ((((dstZ * dstImageLevelHeightInBlocks) + dstY) * dstImageLevelWidthInBlocks) + dstXStartInBlocks) * as!u64(dstElementSize)
+          srcStart := ((((srcZ * srcImageLevelHeightInBlocks) + srcY) * srcImageLevelWidthInBlocks) + srcXStartInBlocks) * as!u64(srcElementSize)
+          copy(dstImageLevel.Data[dstStart:dstStart + copySize], srcImageLevel.Data[srcStart:srcStart + copySize])
         }
       }
     }
@@ -425,7 +411,8 @@ sub void trackVkCmdBlitImage(ref!vkCmdBlitImageArgs args) {
 
     // TODO: Handle multi-planar image correctly. The dst image aspect must
     // ether match or contains only COLOR_BIT with a compatible format.
-    for _ , _ , aspectBit in getAspectKeysWithAspectFlags(srcImageObject, region.srcSubresource.aspectMask) {
+    for _ , _ , aspectBit in unpackImageAspectFlags(srcImageObject, region.srcSubresource.aspectMask) {
+      //Multiplanar images must not be used in BlitImage
       srcElementSize := switch (aspectBit) {
         case VK_IMAGE_ASPECT_COLOR_BIT:
           as!u64(srcElementAndTexelBlockSize.ElementSize)
@@ -592,82 +579,67 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
   imageObject := Images[image]
   bufferObject := Buffers[buffer]
   format := imageObject.Info.Format
-  elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
+  
   depthElementSize := getDepthElementSize(format, true)
   // Iterate through regions
   n := len(regions)
   for i in (0 .. n) {
     region := regions[as!u32(i)]
-    rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
-    rowLength := as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width)
-    imageHeight := as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height)
     // The VkImageSubresourceLayer used for buffer image copy should specify only one aspect bit.
-    // TODO: Handle multi-planar image correctly.
-    for _ , _ , aspectBit in getAspectKeysWithAspectFlags(imageObject, region.imageSubresource.aspectMask) {
-      elementSize := switch (aspectBit) {
-        case VK_IMAGE_ASPECT_COLOR_BIT:
+    aspectBits := unpackImageAspectFlags(imageObject, region.imageSubresource.aspectMask)
+    if(len(aspectBits) != 1) { vkErrorInvalidImageAspect(imageObject.VulkanHandle,  as!VkImageAspectFlagBits(region.imageSubresource.aspectMask)) } else {
+    aspectBit := aspectBits[0]
+    elementAndTexelBlockSize := getElementAndTexelBlockSizeForAspect(format, aspectBit)
+    elementSize := switch (aspectBit) {
+      case VK_IMAGE_ASPECT_COLOR_BIT,
+           VK_IMAGE_ASPECT_STENCIL_BIT:
           as!u64(elementAndTexelBlockSize.ElementSize)
-        case VK_IMAGE_ASPECT_DEPTH_BIT:
+      case VK_IMAGE_ASPECT_DEPTH_BIT:
           as!u64(depthElementSize)
-        case VK_IMAGE_ASPECT_STENCIL_BIT:
+      default:
           as!u64(1)
-      }
-      layerSize := rowLength * imageHeight * elementSize
-      zStart := as!u64(region.imageOffset.z)
-      zEnd := zStart + as!u64(region.imageExtent.depth)
-      yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
-      yEnd := yStart + as!u64(region.imageExtent.height / elementAndTexelBlockSize.TexelBlockSize.Height)
-      xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
-      xEnd := xStart + as!u64(region.imageExtent.width / elementAndTexelBlockSize.TexelBlockSize.Width)
-      // When multiple layers are specified in the buffer image copy region,
-      // Vulkan assumes the data of all the layers are placed continuously in
-      // the source buffer memory.
-      for j in (0 .. region.imageSubresource.layerCount) {
-        layerIndex := region.imageSubresource.baseArrayLayer + j
-        bufferLayerOffset := (as!u64(j) * layerSize) + as!u64(region.bufferOffset)
-        imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
-        imageLevelWidthInBlocks := as!u64(imageLevel.Width / elementAndTexelBlockSize.TexelBlockSize.Width)
-        imageLevelHeightInBlocks := as!u64(imageLevel.Height / elementAndTexelBlockSize.TexelBlockSize.Height)
-        // Iterate through depths and rows to copy
-        for z in (zStart .. zEnd) {
-          zInExtent := z - zStart
-          for y in (yStart .. yEnd) {
-            yInExtent := y - yStart
-            rowStartBlock := ((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks
-            rowStartBlockInExtent := ((zInExtent * imageHeight) + yInExtent) * rowLength
-            if ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32)) && (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) {
-              elementSizeInImage := as!u64(getDepthElementSize(format, false))
-              for x in (xStart .. xEnd) {
-                imgStart := as!VkDeviceSize((rowStartBlock + x) * elementSizeInImage)
-                rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
-                bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-                readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
-                // Discard the 4th byte in the buffer for current pixel.
-                bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
-                for _ , _ , piece in bufMemPieces {
-                  bufMemStart := piece.MemoryOffset
-                  bufMemEnd := bufMemStart + piece.Size
-                  imgPieceStart := (piece.ResourceOffset - bufStart) + imgStart
-                  imgPieceEnd := imgPieceStart + piece.Size
-                  if isSrcBuffer {
-                    copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
-                  } else {
-                    copy(piece.DeviceMemory.Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
-                  }
-                }
-              }
-            } else {
-              copySize := as!VkDeviceSize((xEnd - xStart) * elementSize)
-              imgStart := (rowStartBlock + xStart) * elementSize
-              rowStartInExtent := rowStartBlockInExtent * elementSize
+    }
+
+    rowLengthAndImageHeight := getRowLengthAndImageHeight(region)
+    rowLength := (as!u64(rowLengthAndImageHeight.RowLength / elementAndTexelBlockSize.TexelBlockSize.Width))
+    imageHeight := (as!u64(rowLengthAndImageHeight.ImageHeight / elementAndTexelBlockSize.TexelBlockSize.Height))
+    layerSize := rowLength * imageHeight * elementSize
+    zStart := as!u64(region.imageOffset.z)
+    zEnd := zStart + as!u64(region.imageExtent.depth)
+    yStart := as!u64(as!u32(region.imageOffset.y) / elementAndTexelBlockSize.TexelBlockSize.Height)
+    yEnd := yStart + as!u64(region.imageExtent.height / elementAndTexelBlockSize.TexelBlockSize.Height)
+    xStart := as!u64(as!u32(region.imageOffset.x) / elementAndTexelBlockSize.TexelBlockSize.Width)
+    xEnd := xStart + as!u64(region.imageExtent.width / elementAndTexelBlockSize.TexelBlockSize.Width)
+    // When multiple layers are specified in the buffer image copy region,
+    // Vulkan assumes the data of all the layers are placed continuously in
+    // the source buffer memory.
+    for j in (0 .. region.imageSubresource.layerCount) {
+      layerIndex := region.imageSubresource.baseArrayLayer + j
+      bufferLayerOffset := (as!u64(j) * layerSize) + as!u64(region.bufferOffset)
+      imageLevel := imageObject.Aspects[aspectBit].Layers[layerIndex].Levels[region.imageSubresource.mipLevel]
+      imageLevelWidthInBlocks := as!u64(imageLevel.width / elementAndTexelBlockSize.TexelBlockSize.Width)
+      imageLevelHeightInBlocks := as!u64(imageLevel.height / elementAndTexelBlockSize.TexelBlockSize.Height)
+      // Iterate through depths and rows to copy
+      for z in (zStart .. zEnd) {
+        zInExtent := z - zStart
+        for y in (yStart .. yEnd) {
+          yInExtent := y - yStart
+          rowStartBlock := ((z * imageLevelHeightInBlocks) + y) * imageLevelWidthInBlocks
+          rowStartBlockInExtent := ((zInExtent * imageHeight) + yInExtent) * rowLength
+          if ((format == VK_FORMAT_D24_UNORM_S8_UINT) || (format == VK_FORMAT_X8_D24_UNORM_PACK32)) && (aspectBit == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            elementSizeInImage := as!u64(getDepthElementSize(format, false))
+            for x in (xStart .. xEnd) {
+              imgStart := as!VkDeviceSize((rowStartBlock + x) * elementSizeInImage)
+              rowStartInExtent := (rowStartBlockInExtent + x) * elementSize
               bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
-              readMemoryInBuffer(bufferObject, bufStart, copySize)
-              bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
+              readMemoryInBuffer(bufferObject, bufStart, as!VkDeviceSize(elementSize))
+              // Discard the 4th byte in the buffer for current pixel.
+              bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, as!VkDeviceSize(elementSizeInImage))
               for _ , _ , piece in bufMemPieces {
                 bufMemStart := piece.MemoryOffset
                 bufMemEnd := bufMemStart + piece.Size
-                imgPieceStart := as!u64(piece.ResourceOffset - bufStart) + imgStart
-                imgPieceEnd := imgPieceStart + as!u64(piece.Size)
+                imgPieceStart := (piece.ResourceOffset - bufStart) + imgStart
+                imgPieceEnd := imgPieceStart + piece.Size
                 if isSrcBuffer {
                   copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
                 } else {
@@ -675,11 +647,29 @@ sub void copyImageBuffer(VkBuffer buffer, VkImage image, VkImageLayout layout, m
                 }
               }
             }
+          } else {
+            copySize := as!VkDeviceSize((xEnd - xStart) * elementSize)
+            imgStart := (rowStartBlock + xStart) * elementSize
+            rowStartInExtent := rowStartBlockInExtent * elementSize
+            bufStart := as!VkDeviceSize(bufferLayerOffset + rowStartInExtent)
+            readMemoryInBuffer(bufferObject, bufStart, copySize)
+            bufMemPieces := getBufferBoundMemoryPiecesInRange(bufferObject, bufStart, copySize)
+            for _ , _ , piece in bufMemPieces {
+              bufMemStart := piece.MemoryOffset
+              bufMemEnd := bufMemStart + piece.Size
+              imgPieceStart := as!u64(piece.ResourceOffset - bufStart) + imgStart
+              imgPieceEnd := imgPieceStart + as!u64(piece.Size)
+              if isSrcBuffer {
+                copy(imageLevel.Data[imgPieceStart:imgPieceEnd], piece.DeviceMemory.Data[bufMemStart:bufMemEnd])
+              } else {
+                copy(piece.DeviceMemory.Data[bufMemStart:bufMemEnd], imageLevel.Data[imgPieceStart:imgPieceEnd])
+              }
+            }
           }
         }
       }
     }
-  }
+  }}
 }
 
 @internal

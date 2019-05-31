@@ -28,10 +28,17 @@ import org.eclipse.jface.viewers.StyledString.Styler;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Resource;
+import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.widgets.Display;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -39,6 +46,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -46,43 +54,55 @@ import java.util.Map;
  * {@link Color colors}, etc.).
  */
 public interface Theme {
-  @Icon("android.png") public Image androidLogo();
-  @Icon("arrow.png") public Image arrow();
-  @Icon("color_buffer0.png") public Image colorBuffer0();
-  @Icon("color_buffer1.png") public Image colorBuffer1();
-  @Icon("color_buffer2.png") public Image colorBuffer2();
-  @Icon("color_buffer3.png") public Image colorBuffer3();
-  @Icon("culling_disabled.png") public Image cullingDisabled();
-  @Icon("culling_enabled.png") public Image cullingEnabled();
-  @Icon("depth_buffer.png") public Image depthBuffer();
-  @Icon("error.png") public Image error();
-  @Icon("faceted.png") public Image faceted();
-  @Icon("flat.png") public Image flat();
-  @Icon("flip_vertically.png") public Image flipVertically();
-  @Icon("jump.png") public Image jump();
-  @Icon("histogram.png") public Image toggleHistogram();
-  @Icon("lit.png") public Image lit();
-  @Icon("logo_128.png") public Image dialogLogo();
-  @Icon("normals.png") public Image normals();
-  @Icon("overdraw.png") public Image overdraw();
-  @Icon("point_cloud.png") public Image pointCloud();
-  @Icon("refresh.png") public Image refresh();
-  @Icon("save.png") public Image save();
-  @Icon("settings.png") public Image settings();
-  @Icon("smile.png") public Image smile();
-  @Icon("smooth.png") public Image smooth();
-  @Icon("transparency.png") public Image transparency();
-  @Icon("winding_ccw.png") public Image windingCCW();
-  @Icon("winding_cw.png") public Image windingCW();
-  @Icon("wireframe_all.png") public Image wireframeAll();
-  @Icon("wireframe_none.png") public Image wireframeNone();
-  @Icon("wireframe_overlay.png") public Image wireframeOverlay();
-  @Icon("yup.png") public Image yUp();
-  @Icon("zup.png") public Image zUp();
-  @Icon("zoom_actual.png") public Image zoomActual();
-  @Icon("zoom_fit.png") public Image zoomFit();
-  @Icon("zoom_in.png") public Image zoomIn();
-  @Icon("zoom_out.png") public Image zoomOut();
+  @Icon(file = "android.png", color = 0x335577) public Image androidLogo();
+  @Icon(file = "arrow.png") public Image arrow();
+  @Icon(file = "arrow_drop_down.png") public Image arrowDropDownLight();
+  @Icon(file = "arrow_drop_right.png") public Image arrowDropRightLight();
+  @Icon(file = "arrow_drop_down.png", color = 0xFFFFFF) public Image arrowDropDownDark();
+  @Icon(file = "arrow_drop_right.png", color = 0xFFFFFF) public Image arrowDropRightDark();
+  @Icon(file = "color_buffer0.png") public Image colorBuffer0();
+  @Icon(file = "color_buffer1.png") public Image colorBuffer1();
+  @Icon(file = "color_buffer2.png") public Image colorBuffer2();
+  @Icon(file = "color_buffer3.png") public Image colorBuffer3();
+  @Icon(file = "culling_disabled.png") public Image cullingDisabled();
+  @Icon(file = "culling_enabled.png") public Image cullingEnabled();
+  @Icon(file = "depth_buffer.png") public Image depthBuffer();
+  @Icon(file = "error.png") public Image error();
+  @Icon(file = "faceted.png") public Image faceted();
+  @Icon(file = "flat.png") public Image flat();
+  @Icon(file = "flip_vertically.png") public Image flipVertically();
+  @Icon(file = "jump.png") public Image jump();
+  @Icon(file = "histogram.png") public Image toggleHistogram();
+  @Icon(file = "lit.png") public Image lit();
+  @Icon(file = "logo_128.png") public Image dialogLogo();
+  @Icon(file = "normals.png") public Image normals();
+  @Icon(file = "overdraw.png") public Image overdraw();
+  @Icon(file = "point_cloud.png") public Image pointCloud();
+  @Icon(file = "range_start.png") public Image rangeStartLight();
+  @Icon(file = "range_end.png") public Image rangeEndLight();
+  @Icon(file = "range_start.png", color = 0xFFFFFF) public Image rangeStartDark();
+  @Icon(file = "range_end.png", color = 0xFFFFFF) public Image rangeEndDark();
+  @Icon(file = "refresh.png") public Image refresh();
+  @Icon(file = "save.png") public Image save();
+  @Icon(file = "settings.png") public Image settings();
+  @Icon(file = "smile.png") public Image smile();
+  @Icon(file = "smooth.png") public Image smooth();
+  @Icon(file = "transparency.png") public Image transparency();
+  @Icon(file = "unfold_less.png") public Image unfoldLessLight();
+  @Icon(file = "unfold_more.png") public Image unfoldMoreLight();
+  @Icon(file = "unfold_less.png", color = 0xFFFFFF) public Image unfoldLessDark();
+  @Icon(file = "unfold_more.png", color = 0xFFFFFF) public Image unfoldMoreDark();
+  @Icon(file = "winding_ccw.png") public Image windingCCW();
+  @Icon(file = "winding_cw.png") public Image windingCW();
+  @Icon(file = "wireframe_all.png") public Image wireframeAll();
+  @Icon(file = "wireframe_none.png") public Image wireframeNone();
+  @Icon(file = "wireframe_overlay.png") public Image wireframeOverlay();
+  @Icon(file = "yup.png") public Image yUp();
+  @Icon(file = "zup.png") public Image zUp();
+  @Icon(file = "zoom_actual.png") public Image zoomActual();
+  @Icon(file = "zoom_fit.png") public Image zoomFit();
+  @Icon(file = "zoom_in.png") public Image zoomIn();
+  @Icon(file = "zoom_out.png") public Image zoomOut();
 
   @IconSequence(names = {
       "logo_128.png", "logo_64.png", "logo_48.png", "logo_32.png", "logo_16.png",
@@ -183,7 +203,8 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Icon {
-    public String value();
+    public String file();
+    public int color() default -1;
   }
 
   /**
@@ -240,6 +261,17 @@ public interface Theme {
     public static final int Mono = 1, Big = 2;
 
     public int value();
+  }
+
+  /**
+   * Annotation for a font resource loaded from a TTF file.
+   */
+  @Target(ElementType.METHOD)
+  @Retention(RetentionPolicy.RUNTIME)
+  public static @interface TTF {
+    public String ttf();
+    public String name();
+    public int size();
   }
 
   /**
@@ -308,7 +340,7 @@ public interface Theme {
     private boolean loadIcon(Method method) {
       Icon icon = method.getDeclaredAnnotation(Icon.class);
       if (icon != null) {
-        resources.put(method.getName(), loadImage(icon.value()));
+        resources.put(method.getName(), loadImage(icon.file(), icon.color()));
         return true;
       }
       return false;
@@ -320,7 +352,7 @@ public interface Theme {
         String[] names = seq.names();
         Image[] icons = new Image[names.length == 0 ? seq.count() : names.length];
         for (int i = 0; i < icons.length; i++) {
-          icons[i] = loadImage(names.length == 0 ? String.format(seq.pattern(), i) : names[i]);
+          icons[i] = loadImage(names.length == 0 ? String.format(seq.pattern(), i) : names[i], -1);
         }
         resources.put(method.getName(), icons);
         return true;
@@ -328,9 +360,19 @@ public interface Theme {
       return false;
     }
 
-    private Image loadImage(String img) {
-      return
-          ImageDescriptor.createFromURL(Resources.getResource("icons/" + img)).createImage(display);
+    private Image loadImage(String img, int color) {
+      ImageData data = ImageDescriptor.createFromURL(Resources.getResource("icons/" + img))
+          .getImageData(DPIUtil.getDeviceZoom());
+      if (color >= 0) {
+        for (int y = 0, o = 0; y < data.height; y++, o += data.bytesPerLine) {
+          for (int x = 0, i = o; x < data.width; x++) {
+            data.data[i++] = (byte)((color >> 16) & 0xFF);
+            data.data[i++] = (byte)((color >> 8) & 0xFF);
+            data.data[i++] = (byte)(color & 0xFF);
+          }
+        }
+      }
+      return new Image(display, data);
     }
 
     private boolean loadColor(Method method) {
@@ -371,6 +413,30 @@ public interface Theme {
             resources.put(method.getName(), font);
             return true;
           }
+        }
+      }
+
+      TTF ttf = method.getDeclaredAnnotation(TTF.class);
+      if (ttf != null) {
+        URL url = Resources.getResource("fonts/" + ttf.ttf());
+        if (url == null) {
+          return false;
+        }
+        try {
+          File fontFile = File.createTempFile(method.getName(), ".ttf");
+          fontFile.deleteOnExit();
+          try (OutputStream out = new FileOutputStream(fontFile)) {
+            Resources.copy(url, out);
+          }
+          if (!display.loadFont(fontFile.getAbsolutePath())) {
+            return false;
+          }
+          resources.put(method.getName(),
+              new Font(display, new FontData(ttf.name(), ttf.size(), SWT.NORMAL)));
+          return true;
+        } catch (IOException e) {
+          e.printStackTrace();
+          return false;
         }
       }
       return false;

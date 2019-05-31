@@ -17,6 +17,9 @@
 
 **[User documentation can be found at gapid.dev](https://gapid.dev)**
 
+The [developer documentation](DEVDOC.md) contains some hints for GAPID
+developers. See also the README files under some source directories.
+
 ## About
 
 GAPID is a collection of tools that allows you to inspect, tweak and replay calls from an application to a graphics driver.

@@ -189,6 +189,10 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 		}
 	}
 
+	for _, conv := range s.SamplerYcbcrConversions().Keys() {
+		sb.createSamplerYcbcrConversion(s.SamplerYcbcrConversions().Get(conv))
+	}
+
 	for _, smp := range s.Samplers().Keys() {
 		sb.createSampler(s.Samplers().Get(smp))
 	}
@@ -445,12 +449,34 @@ func (sb *stateBuilder) createInstance(vk VkInstance, inst InstanceObjectʳ) {
 		enabledExtensions = append(enabledExtensions, NewCharᶜᵖ(sb.MustAllocReadData(ext).Ptr()))
 	}
 
+	appInfo := memory.Nullptr
+	if !inst.ApplicationInfo().IsNil() {
+		appName := memory.Nullptr
+		if inst.ApplicationInfo().ApplicationName() != "" {
+			appName = NewCharᶜᵖ(sb.MustAllocReadData(inst.ApplicationInfo().ApplicationName()).Ptr())
+		}
+		engineName := memory.Nullptr
+		if inst.ApplicationInfo().EngineName() != "" {
+			engineName = NewCharᶜᵖ(sb.MustAllocReadData(inst.ApplicationInfo().EngineName()).Ptr())
+		}
+		appInfo = sb.MustAllocReadData(
+			NewVkApplicationInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_APPLICATION_INFO, // sType
+				0,                  // pNext
+				NewCharᶜᵖ(appName), // applicationName
+				inst.ApplicationInfo().ApplicationVersion(), // applicationVersion
+				NewCharᶜᵖ(engineName),                       // engineName
+				inst.ApplicationInfo().EngineVersion(),      // engineVersion
+				inst.ApplicationInfo().ApiVersion(),         // apiVersion
+			)).Ptr()
+	}
+
 	sb.write(sb.cb.VkCreateInstance(
 		sb.MustAllocReadData(NewVkInstanceCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, // sType
 			0,                                  // pNext
 			0,                                  // flags
-			0,                                  // pApplicationInfo
+			NewVkApplicationInfoᶜᵖ(appInfo),    // pApplicationInfo
 			uint32(inst.EnabledLayers().Len()), // enabledLayerCount
 			NewCharᶜᵖᶜᵖ(sb.MustAllocReadData(enabledLayers).Ptr()),     // ppEnabledLayerNames
 			uint32(inst.EnabledExtensions().Len()),                     // enabledExtensionCount
@@ -602,6 +628,19 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 				0, // flags
 				0, // connection
 				0, // mirSurface
+			)).Ptr(),
+			memory.Nullptr,
+			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+	case SurfaceType_SURFACE_TYPE_GGP:
+		sb.write(sb.cb.VkCreateStreamDescriptorSurfaceGGP(
+			s.Instance(),
+			sb.MustAllocReadData(NewVkStreamDescriptorSurfaceCreateInfoGGP(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP,
+				0, // pNext
+				0, // flags
+				0, // streamDescriptor
 			)).Ptr(),
 			memory.Nullptr,
 			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
@@ -826,6 +865,19 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		swp.Info().Extent().Width(),
 		swp.Info().Extent().Height(),
 	)
+
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !swp.Info().ViewFormatList().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkImageFormatListCreateInfoKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
+				pNext, // pNext
+				uint32(swp.Info().ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
+				NewVkFormatᶜᵖ(sb.MustUnpackReadMap(swp.Info().ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateSwapchainKHR(
 		swp.Device(),
 		sb.MustAllocReadData(NewVkSwapchainCreateInfoKHR(sb.ta,
@@ -1357,7 +1409,8 @@ type byteSizeAndExtent struct {
 
 func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel uint32, aspect VkImageAspectFlagBits) byteSizeAndExtent {
 	elementAndTexelBlockSize, _ :=
-		subGetElementAndTexelBlockSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, format)
+		subGetElementAndTexelBlockSizeForAspect(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, format, aspect)
+
 	texelWidth := elementAndTexelBlockSize.TexelBlockSize().Width()
 	texelHeight := elementAndTexelBlockSize.TexelBlockSize().Height()
 
@@ -1366,16 +1419,8 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 	depth, _ := subGetMipSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, extent.Depth(), mipLevel)
 	widthInBlocks, _ := subRoundUpTo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, width, texelWidth)
 	heightInBlocks, _ := subRoundUpTo(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, height, texelHeight)
-	elementSize := uint32(0)
-	switch aspect {
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
-		elementSize = elementAndTexelBlockSize.ElementSize()
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT:
-		elementSize, _ = subGetDepthElementSize(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, format, false)
-	case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
-		// Stencil element is always 1 byte wide
-		elementSize = uint32(1)
-	}
+	elementSize := elementAndTexelBlockSize.ElementSize()
+
 	// The Depth element size might be different when it is in buffer instead of image.
 	elementSizeInBuf := elementSize
 	if aspect == VkImageAspectFlagBits_VK_IMAGE_ASPECT_DEPTH_BIT {
@@ -1398,7 +1443,7 @@ func (sb *stateBuilder) levelSize(extent VkExtent3D, format VkFormat, mipLevel u
 
 func (sb *stateBuilder) imageAspectFlagBits(img ImageObjectʳ, flag VkImageAspectFlags) []VkImageAspectFlagBits {
 	bits := []VkImageAspectFlagBits{}
-	b, _ := subGetAspectKeysWithAspectFlags(
+	b, _ := subUnpackImageAspectFlags(
 		sb.ctx, nil, api.CmdNoID, nil, sb.oldState, GetState(sb.oldState), 0, nil, nil, img, flag)
 	for _, bit := range b.All() {
 		bits = append(bits, bit)
@@ -1800,12 +1845,65 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	}
 }
 
+func (sb *stateBuilder) createSamplerYcbcrConversion(conv SamplerYcbcrConversionObjectʳ) {
+	if conv.IsFromExtension() {
+		sb.write(sb.cb.VkCreateSamplerYcbcrConversionKHR(
+			conv.Device(),
+			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR, // sType
+				0,                                  // pNext
+				conv.Fmt(),                         // format
+				conv.YcbcrModel(),                  // ycbcrModel
+				conv.YcbcrRange(),                  // ycbcrRange
+				conv.Components(),                  // components
+				conv.XChromaOffset(),               // xChromaOffset
+				conv.YChromaOffset(),               // yChromaOffset
+				conv.ChromaFilter(),                // chromaFilter
+				conv.ForceExplicitReconstruction(), // forceExplicitReconstruction
+			)).Ptr(),
+			memory.Nullptr,
+			sb.MustAllocWriteData(conv.VulkanHandle()).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+	} else {
+		sb.write(sb.cb.VkCreateSamplerYcbcrConversion(
+			conv.Device(),
+			sb.MustAllocReadData(NewVkSamplerYcbcrConversionCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO, // sType
+				0,                                  // pNext
+				conv.Fmt(),                         // format
+				conv.YcbcrModel(),                  // ycbcrModel
+				conv.YcbcrRange(),                  // ycbcrRange
+				conv.Components(),                  // components
+				conv.XChromaOffset(),               // xChromaOffset
+				conv.YChromaOffset(),               // yChromaOffset
+				conv.ChromaFilter(),                // chromaFilter
+				conv.ForceExplicitReconstruction(), // forceExplicitReconstruction
+			)).Ptr(),
+			memory.Nullptr,
+			sb.MustAllocWriteData(conv.VulkanHandle()).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
+	}
+}
+
 func (sb *stateBuilder) createSampler(smp SamplerObjectʳ) {
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !smp.YcbcrConversion().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkSamplerYcbcrConversionInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO, // sType
+				pNext,                                // pNext
+				smp.YcbcrConversion().VulkanHandle(), // conversion
+			),
+		).Ptr())
+	}
+
 	sb.write(sb.cb.VkCreateSampler(
 		smp.Device(),
 		sb.MustAllocReadData(NewVkSamplerCreateInfo(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO, // sType
-			0,                             // pNext
+			pNext,                         // pNext
 			0,                             // flags
 			smp.MagFilter(),               // magFilter
 			smp.MinFilter(),               // minFilter
@@ -2559,6 +2657,15 @@ func (sb *stateBuilder) createImageView(iv ImageViewObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !iv.YcbcrConversion().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkSamplerYcbcrConversionInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO, // sType
+				pNext,                               // pNext
+				iv.YcbcrConversion().VulkanHandle(), // conversion
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateImageView(
 		iv.Device(),
@@ -2715,10 +2822,17 @@ func (sb *stateBuilder) writeDescriptorSet(ds DescriptorSetObjectʳ) {
 				if im.Sampler() == 0 && im.ImageView() == 0 {
 					continue
 				}
-				if binding.BindingType() == VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER &&
-					(im.Sampler() == 0 || im.ImageView() == 0) {
-					continue
+				// If this is a combined image sampler but we have an immutable sampler,
+				// we should still be setting the image view
+				if binding.BindingType() == VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER {
+					if ds.Layout().Bindings().Get(k).ImmutableSamplers().Get(i).IsNil() && im.Sampler() == 0 {
+						continue
+					}
+					if im.ImageView() == 0 {
+						continue
+					}
 				}
+
 				if im.Sampler() != 0 && !ns.Samplers().Contains(im.Sampler()) {
 					continue
 				}

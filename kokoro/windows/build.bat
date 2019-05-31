@@ -45,8 +45,8 @@ set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
 set BAZEL_SH=C:\tools\msys64\usr\bin\bash.exe
 
 REM Install Bazel.
-wget -q https://github.com/bazelbuild/bazel/releases/download/0.20.0/bazel-0.20.0-windows-x86_64.zip
-unzip -q bazel-0.20.0-windows-x86_64.zip
+wget -q https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-windows-x86_64.zip
+unzip -q bazel-0.25.1-windows-x86_64.zip
 set PATH=C:\python27;%PATH%
 
 cd %SRC%
@@ -58,6 +58,21 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
 ) else (
   set BUILD_SHA=%KOKORO_GITHUB_COMMIT%
 )
+
+REM Build each API package separately first, as the go-compiler needs ~8GB of RAM for each package.
+%BUILD_ROOT%\bazel build -c opt --config symbols ^
+    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    //gapis/api/gles:go_default_library
+if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
+
+%BUILD_ROOT%\bazel build -c opt --config symbols ^
+    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    //gapis/api/vulkan:go_default_library
+if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
+
+REM Build everything else.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^

@@ -72,18 +72,17 @@ def _configure_windows_toolchain(repository_ctx):
     })
     _compile_wrapper(repository_ctx, cc, "ar_wrapper")
 
-    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:BUILD.bazel"), "BUILD")
-    repository_ctx.template("CROSSTOOL", Label("@gapid//tools/build/mingw_toolchain:CROSSTOOL.in"), {
+    repository_ctx.symlink(Label("@gapid//tools/build/mingw_toolchain:mingw.BUILD"), "BUILD.bazel")
+    repository_ctx.template("toolchain.bzl", Label("@gapid//tools/build/mingw_toolchain:toolchain.bzl.in"), {
         "%{BINDIR}": str(cc.dirname),
         "%{GCC_WRAPPER}": str(repository_ctx.path("gcc_wrapper.exe")),
         "%{AR_WRAPPER}": str(repository_ctx.path("ar_wrapper.exe")),
-        "%{CXX_BUILTIN_INCLUDE_DIRECTORIES}": "\n".join([
-            ("cxx_builtin_include_directory: \"%s\"" % p) for p in inc
+        "%{CXX_BUILTIN_INCLUDE_DIRECTORIES}": ",\n".join([
+            ("\"%s\"" % p) for p in inc
         ]),
     }, executable = False)
 
 def _configure_toolchain_impl(repository_ctx):
-  repository_ctx.symlink(Label("@bazel_tools//tools/cpp:dummy_toolchain.bzl"), "dummy_toolchain.bzl")
   cpu_value = get_cpu_value(repository_ctx)
   if cpu_value == "x64_windows":
     _configure_windows_toolchain(repository_ctx)

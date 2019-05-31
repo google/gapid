@@ -18,45 +18,62 @@
 {{Include "go_common.tmpl"}}
 {{Include "c_common.tmpl"}}
 
-{{$ | Macro "api.go" | GoFmt | Write "api.go"}}
+{{$ | Macro "ApiGo"}}
 
-{{define "api.go"}}
+{{define "ApiGo"}}
+  {{AssertType $ "API"}}
+  {{$ | Macro "api_enums.go" | GoFmt | Write "api_enums.go"}}
+  {{$ | Macro "api_amrp.go" | GoFmt | Write "api_amrp.go"}}
+  {{$ | Macro "api_slices.go" | GoFmt | Write "api_slices.go"}}
+  {{$ | Macro "api_pointers.go" | GoFmt | Write "api_pointers.go"}}
+  {{$ | Macro "api_classes.go" | GoFmt | Write "api_classes.go"}}
+  {{$ | Macro "api_commands.go" | GoFmt | Write "api_commands.go"}}
+  {{$ | Macro "api_builder.go" | GoFmt | Write "api_builder.go"}}
+  {{$ | Macro "api_state.go" | GoFmt | Write "api_state.go"}}
+  {{$ | Macro "api.go" | GoFmt | Write "api.go"}}
+{{end}}
+
+{{define "api_enums.go"}}
   {{AssertType $ "API"}}
   {{template "Go.GeneratedHeader" (Global "OutputDir")}}
 
 import (
-    "context"
-    "fmt"
-    "reflect"
-    "sort"
-
-    "github.com/google/gapid/core/data"
-    "github.com/google/gapid/core/data/binary"
-    "github.com/google/gapid/core/data/dictionary"
-    "github.com/google/gapid/core/data/id"
-    "github.com/google/gapid/core/math/u64"
-    "github.com/google/gapid/core/memory/arena"
-	  "github.com/google/gapid/core/os/device"
-    "github.com/google/gapid/gapis/replay"
-    "github.com/google/gapid/gapis/replay/builder"
-    "github.com/google/gapid/gapis/replay/protocol"
-    "github.com/google/gapid/gapis/replay/value"
-    "github.com/google/gapid/gapis/service/path"
-
-    ϟapi "github.com/google/gapid/gapis/api"
-    ϟmem "github.com/google/gapid/gapis/memory"
+  "fmt"
+  ϟmem "github.com/google/gapid/gapis/memory"
 )
 
-  var ( // Don't error if these packages aren't used.
-    _ = dictionary.Entry{}
-    _ = protocol.OpCall
-    _ = sort.IntSlice(nil)
-  )
-
-¶
   {{template "Go.CommentHeader" "Enums"}}
   {{ForEach $.Enums "DeclareEnum" | JoinWith "\n"}}
-¶
+{{end}}
+
+{{define "api_amrp.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import(
+  "context"
+  "fmt"
+  "reflect"
+  "sort"
+  "github.com/google/gapid/core/data"
+  "github.com/google/gapid/core/memory/arena"
+  "github.com/google/gapid/core/os/device"
+  "github.com/google/gapid/gapis/replay/builder"
+  "github.com/google/gapid/gapis/replay/value"
+  "github.com/google/gapid/gapis/service/path"
+  ϟapi "github.com/google/gapid/gapis/api"
+  ϟmem "github.com/google/gapid/gapis/memory"
+)
+
+var ( // Don't error if these packages aren't used.
+  _ = fmt.Println
+  _ = reflect.Bool
+  _ = sort.IntSlice(nil)
+  _ = data.Dedupe
+  _ = device.NewID
+  _ = path.NewID
+)
+
   {{template "Go.CommentHeader" "StaticArrays"}}
   {{ForEach $.StaticArrays "DeclareStaticArray" | JoinWith "\n"}}
 ¶
@@ -66,33 +83,156 @@ import (
   {{template "Go.CommentHeader" "References"}}
   {{ForEach $.References "DeclareReference" | JoinWith "\n"}}
 ¶
-  {{template "Go.CommentHeader" "Slices"}}
-  {{ForEach $.Slices "DeclareSlice" | JoinWith "\n"}}
-¶
-  {{template "Go.CommentHeader" "Pointers"}}
-  {{ForEach $.Pointers "DeclarePointer" | JoinWith "\n"}}
-¶
   {{template "Go.CommentHeader" "Pseudonyms"}}
   {{ForEach $.Pseudonyms "DeclarePseudonym" | JoinWith "\n"}}
-¶
+{{end}}
+
+{{define "api_slices.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import(
+  "context"
+  "fmt"
+  "reflect"
+  "github.com/google/gapid/core/data/binary"
+  "github.com/google/gapid/core/data/id"
+  "github.com/google/gapid/core/math/u64"
+  "github.com/google/gapid/core/memory/arena"
+  "github.com/google/gapid/core/os/device"
+  "github.com/google/gapid/gapis/replay/builder"
+  "github.com/google/gapid/gapis/replay/protocol"
+  "github.com/google/gapid/gapis/replay/value"
+  "github.com/google/gapid/gapis/service/path"
+  ϟapi "github.com/google/gapid/gapis/api"
+  ϟmem "github.com/google/gapid/gapis/memory"
+)
+
+var ( // Don't error if these packages aren't used.
+  _ = protocol.OpCall
+)
+
+  {{template "Go.CommentHeader" "Slices"}}
+  {{ForEach $.Slices "DeclareSlice" | JoinWith "\n"}}
+{{end}}
+
+{{define "api_pointers.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import(
+  "context"
+  "fmt"
+  "reflect"
+  "github.com/google/gapid/core/data"
+  "github.com/google/gapid/core/os/device"
+  "github.com/google/gapid/gapis/replay/builder"
+  "github.com/google/gapid/gapis/replay/value"
+  "github.com/google/gapid/gapis/service/path"
+  ϟapi "github.com/google/gapid/gapis/api"
+  ϟmem "github.com/google/gapid/gapis/memory"
+)
+
+  {{template "Go.CommentHeader" "Pointers"}}
+  {{ForEach $.Pointers "DeclarePointer" | JoinWith "\n"}}
+{{end}}
+
+{{define "api_pseudonyms.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+
+  {{template "Go.CommentHeader" "Pseudonyms"}}
+  {{ForEach $.Pseudonyms "DeclarePseudonym" | JoinWith "\n"}}
+{{end}}
+
+{{define "api_classes.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import(
+  "context"
+  "fmt"
+  "github.com/google/gapid/core/math/u64"
+  "github.com/google/gapid/core/memory/arena"
+  "github.com/google/gapid/core/os/device"
+  ϟapi "github.com/google/gapid/gapis/api"
+  ϟmem "github.com/google/gapid/gapis/memory"
+)
+
   {{template "Go.CommentHeader" "Classes"}}
   {{ForEach $.Classes "DeclareClass" | JoinWith "\n"}}
-¶
-  {{template "Go.CommentHeader" "Commands"}}
+{{end}}
+
+{{define "api_commands.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import (
+  "context"
+  "fmt"
+  "github.com/google/gapid/core/data/id"
+  "github.com/google/gapid/core/memory/arena"
+  ϟapi "github.com/google/gapid/gapis/api"  
+  ϟmem "github.com/google/gapid/gapis/memory"
+)
+
+ {{template "Go.CommentHeader" "Commands"}}
   {{range $c := AllCommands $}}
     {{if not (GetAnnotation $c "pfn")}} {{/* TODO remove the @pfn nastiness */}}
       {{Template "DeclareCommand" $c}}¶
     {{end}}
   {{end}}
-¶
+{{end}}
+
+{{define "api_builder.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import (
+  "context"
+  "github.com/google/gapid/core/memory/arena"
+  "github.com/google/gapid/gapis/replay"
+  "github.com/google/gapid/gapis/replay/builder"
+  ϟapi "github.com/google/gapid/gapis/api"
+  ϟmem "github.com/google/gapid/gapis/memory"
+)
+
   {{template "Go.CommentHeader" "CommandBuilder"}}
   {{Template "DeclareCommandBuilder" $}}
-¶
+{{end}}
+
+{{define "api_state.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import (
+  "context"
+  "github.com/google/gapid/core/memory/arena"
+  ϟapi "github.com/google/gapid/gapis/api"
+)
+
+
+var ( // Don't error if these packages aren't used.
+  _ = context.Background
+)
+
   {{template "Go.CommentHeader" "State"}}
   {{Template "DeclareState" $}}¶
-¶
+{{end}}
+
+{{define "api.go"}}
+  {{AssertType $ "API"}}
+  {{template "Go.GeneratedHeader" (Global "OutputDir")}}
+
+import (
+    "github.com/google/gapid/core/data/id"
+    "github.com/google/gapid/core/memory/arena"
+    ϟapi "github.com/google/gapid/gapis/api"
+)
+
   {{template "Go.CommentHeader" "API"}}
-  {{Template "DeclareAPI" $}}¶
+  {{Template "DeclareAPI" $}}
 ¶
   // uncompareable is a dummy function used in types that must not be used for
   // go equality or as map keys.

@@ -54,6 +54,7 @@
   map!(u32, u32)                                 QueueFamilyIndices
   VkImageLayout                                  InitialLayout
   ref!DedicatedAllocationBufferImageCreateInfoNV DedicatedAllocationNV
+  ref!ImageFormatList                            ViewFormatList
 }
 
 @resource
@@ -197,6 +198,17 @@ cmd VkResult vkCreateImage(
             DedicatedAllocation: ext.dedicatedAllocation
           )
         }
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: {
+           ext := as!VkImageFormatListCreateInfoKHR*(next.Ptr)[0]
+           ifl := new!ImageFormatList()
+           if (ext.viewFormatCount > 0) {
+            formats := ext.pViewFormats[0:ext.viewFormatCount]
+            for j in (0 .. ext.viewFormatCount) {
+              ifl.viewFormats[j] = formats[j]
+            }
+           }
+           imageInfo.ViewFormatList = ifl
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
@@ -213,14 +225,15 @@ cmd VkResult vkCreateImage(
     ImageAspect:       imageAspect,
   )
 
-  for _ , _ , aspectBit in unpackImageAspectFlags(imageAspect) {
+  for _ , _ , aspectBit in unpackImageAspectFlags(object, imageAspect) {
+    divisor := getAspectSizeDivisor(info.format, aspectBit)
     object.Aspects[aspectBit] = new!ImageAspect()
     aspect := object.Aspects[aspectBit]
     for j in (0 .. info.arrayLayers) {
       aspect.Layers[j] = new!ImageLayer()
       for i in (0 .. info.mipLevels) {
-        width := getMipSize(info.extent.width, i)
-        height := getMipSize(info.extent.height, i)
+        width := getMipSize(info.extent.width, i) / divisor.Width
+        height := getMipSize(info.extent.height, i) / divisor.Height
         depth := getMipSize(info.extent.depth, i)
         level := new!ImageLevel(
           Width: width,
@@ -232,7 +245,7 @@ cmd VkResult vkCreateImage(
     }
   }
 
-  fetchedRequirements := fetchImageMemoryRequirements(device, handle, hasSparseBit)
+  fetchedRequirements := fetchImageMemoryRequirements(device, object, hasSparseBit)
   // If the vkCreateImage is inserted by GAPID (e.g. the staging image for
   // reading framebuffer), NO memory requirements will be returned.
   if fetchedRequirements != null {
@@ -322,7 +335,8 @@ cmd void vkGetImageSubresourceLayout(
 sub void BindImageMemory(
     VkImage        image,
     VkDeviceMemory memory,
-    VkDeviceSize   memoryOffset) {
+    VkDeviceSize   memoryOffset,
+    VkImageAspectFlagBits plane) {
   if !(memory in DeviceMemories) {
     vkErrorInvalidDeviceMemory(memory)
   } else {
@@ -330,8 +344,6 @@ sub void BindImageMemory(
       vkErrorInvalidImage(image)
     } else {
       imageObject := Images[image]
-      // Must be a single planar image, the plane bit should always be zero
-      plane := as!VkImageAspectFlagBits(0)
       if !(plane in imageObject.PlaneMemoryInfo) {
         imageObject.PlaneMemoryInfo[plane] = new!ImagePlaneMemoryInfo()
       }
@@ -339,25 +351,16 @@ sub void BindImageMemory(
       imageObject.PlaneMemoryInfo[plane].BoundMemoryOffset = memoryOffset
       DeviceMemories[memory].BoundObjects[as!u64(image)] = memoryOffset
 
-      for _ , _ , aspectBit in unpackImageAspectFlags(imageObject.ImageAspect) {
+      for _ , _ , aspectBit in unpackImageAspectFlags(imageObject, imageObject.ImageAspect) {
         aspect := imageObject.Aspects[aspectBit]
         for j in (0 .. imageObject.Info.ArrayLayers) {
           for i in (0 .. imageObject.Info.MipLevels) {
             level := aspect.Layers[j].Levels[i]
-            elementAndTexelBlockSize := getElementAndTexelBlockSize(imageObject.Info.Format)
-            depthElementSize := getDepthElementSize(imageObject.Info.Format, false)
+            elementAndTexelBlockSize := getElementAndTexelBlockSizeForAspect(imageObject.Info.Format, aspectBit)
             // Roundup the width and height in the number of blocks.
             widthInBlocks := roundUpTo(level.Width, elementAndTexelBlockSize.TexelBlockSize.Width)
             heightInBlocks := roundUpTo(level.Height, elementAndTexelBlockSize.TexelBlockSize.Height)
-            elementSize := switch (aspectBit) {
-              case VK_IMAGE_ASPECT_COLOR_BIT:
-                elementAndTexelBlockSize.ElementSize
-              case VK_IMAGE_ASPECT_DEPTH_BIT:
-                depthElementSize
-              case VK_IMAGE_ASPECT_STENCIL_BIT:
-                // stencil element is always 1 byte wide
-                as!u32(1)
-            }
+            elementSize := elementAndTexelBlockSize.ElementSize
             tightlyPackedSize := widthInBlocks * heightInBlocks * level.Depth * elementSize
 
             // If the image has LINEAR tiling and the image level has layout
@@ -399,7 +402,9 @@ cmd VkResult vkBindImageMemory(
     VkDeviceMemory memory,
     VkDeviceSize   memoryOffset) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
-  BindImageMemory(image, memory, memoryOffset)
+  // BindImageMemory only handles non-disjoint images, meaning
+  // we always use plane-0 for allocation.
+  BindImageMemory(image, memory, memoryOffset, as!VkImageAspectFlagBits(0))
   return ?
 }
 
@@ -427,6 +432,7 @@ cmd VkResult vkBindImageMemory(
   map!(VkFramebuffer, map!(u32, bool)) FramebufferUsers
   // Vulkan 1.1 core
   @unused ref!ImageViewUsageInfo UsageInfo
+  @unused ref!SamplerYcbcrConversionObject YcbcrConversion
 }
 
 @threadSafety("system")
@@ -457,6 +463,13 @@ cmd VkResult vkCreateImageView(
           ext := as!VkImageViewUsageCreateInfo*(next.Ptr)[0:1][0]
           imageViewObject.UsageInfo = new!ImageViewUsageInfo(Usage: ext.usage)
         }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
+          ycbcrInfo := as!VkSamplerYcbcrConversionInfo*(next.Ptr)[0]
+          conversion := ycbcrInfo.conversion
+          if conversion in SamplerYcbcrConversions {
+            imageViewObject.YcbcrConversion = SamplerYcbcrConversions[conversion]
+          }
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
@@ -467,7 +480,7 @@ cmd VkResult vkCreateImageView(
     imageObject := Images[image_view_create_info.image]
     imageViewObject.Image = imageObject
 
-    // Validate the following Valid Usage for VkImageViewCreateInfo: 
+    // Validate the following Valid Usage for VkImageViewCreateInfo:
     //  > If image is non-sparse then it must be bound completely and
     //  > contiguously to a single VkDeviceMemory object.
     // Checking this here also ensures correct dependencies from
@@ -480,7 +493,7 @@ cmd VkResult vkCreateImageView(
       if (!hasSparseBit) && (planeBoundMemory == null) {
         vkErrorImageMemoryNotBound(image_view_create_info.image)
       }
-      if ((0xFFFFFFFF - as!u32(imageObject.ImageAspect)) & as!u32(image_view_create_info.subresourceRange.aspectMask)) != 0 {
+      if (((0xFFFFFFFF - as!u32(imageObject.ImageAspect)) & as!u32(translateImageAspectFlags(imageObject, image_view_create_info.subresourceRange.aspectMask))) != 0) {
         vkErrorInvalidImageAspect(imageObject.VulkanHandle,
           as!VkImageAspectFlagBits(image_view_create_info.subresourceRange.aspectMask))
       }
@@ -711,7 +724,7 @@ sub void setQueueInRange(ref!ImageObject image, VkImageSubresourceRange rng,
     ref!QueueObject queue) {
   layerCount := imageSubresourceLayerCount(image, rng)
   levelCount := imageSubresourceLevelCount(image, rng)
-  for _ , _ , aspectBit in getAspectKeysWithAspectFlags(image, rng.aspectMask) {
+  for _ , _ , aspectBit in unpackImageAspectFlags(image, rng.aspectMask) {
     if aspectBit in image.Aspects {
       layers := image.Aspects[aspectBit].Layers
       for _, i, layer in  layers {
@@ -760,7 +773,7 @@ sub u32 imageSubresourceLevelCount(ref!ImageObject image, VkImageSubresourceRang
 sub void transitionImageLayout(ref!ImageObject img, VkImageSubresourceRange rng, VkImageLayout oldLayout, VkImageLayout newLayout) {
   layerCount := imageSubresourceLayerCount(img, rng)
   levelCount := imageSubresourceLevelCount(img, rng)
-  for _ , _ , aspectBit in getAspectKeysWithAspectFlags(img, rng.aspectMask) {
+  for _ , _ , aspectBit in unpackImageAspectFlags(img, rng.aspectMask) {
     if (aspectBit in img.Aspects) {
       aspects := img.Aspects[aspectBit]
       for layer in (rng.baseArrayLayer .. rng.baseArrayLayer + layerCount) {
@@ -804,10 +817,14 @@ sub void transitionImageViewLayout(
 // Vulkan 1.1 Core
 // ----------------------------------------------------------------------------
 
+@internal
+class MutablePlane {
+  VkImageAspectFlagBits aspect
+}
+
 ///////////
 // Image //
 ///////////
-
 sub void BindImageMemory2(
     VkDevice                     device,
     u32                          bindInfoCount,
@@ -816,6 +833,7 @@ sub void BindImageMemory2(
   if pBindInfos == null {
     vkErrorNullPointer("VkBindImageMemoryInfo(KHR)")
   } else {
+    p := MutablePlane(as!VkImageAspectFlagBits(0))
     infos := pBindInfos[0:bindInfoCount]
     for i in (0 .. bindInfoCount) {
       info := infos[i]
@@ -828,14 +846,13 @@ sub void BindImageMemory2(
           switch sType {
             case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
               ext := as!VkBindImagePlaneMemoryInfo*(next.Ptr)[0]
-              // TODO: Handle Plane bind info
-              _ = ext
+              p.aspect = ext.planeAspect
             }
           }
           next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
         }
       }
-      BindImageMemory(info.image, info.memory, info.memoryOffset)
+      BindImageMemory(info.image, info.memory, info.memoryOffset, p.aspect)
     }
   }
 }
@@ -864,13 +881,15 @@ cmd VkResult vkBindImageMemory2(
   @unused VkChromaLocation              YChromaOffset
   @unused VkFilter                      ChromaFilter
   @unused VkBool32                      ForceExplicitReconstruction
+  @unused bool                          IsFromExtension
 }
 
 sub void CreateSamplerYcbcrConversion(
   VkDevice                                  device,
   const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
   const VkAllocationCallbacks*              pAllocator,
-  VkSamplerYcbcrConversion*                 pYcbcrConversion) {
+  VkSamplerYcbcrConversion*                 pYcbcrConversion,
+  bool isFromExtension) {
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   object := new!SamplerYcbcrConversionObject(Device: device)
   if pCreateInfo == null {
@@ -885,6 +904,7 @@ sub void CreateSamplerYcbcrConversion(
     object.YChromaOffset = createInfo.yChromaOffset
     object.ChromaFilter = createInfo.chromaFilter
     object.ForceExplicitReconstruction = createInfo.forceExplicitReconstruction
+    object.IsFromExtension = isFromExtension
   }
   fence
   pYcbcrConversion[0] = ?
@@ -901,7 +921,7 @@ cmd VkResult vkCreateSamplerYcbcrConversion(
     const VkAllocationCallbacks*                pAllocator,
     VkSamplerYcbcrConversion*                   pYcbcrConversion) {
   CreateSamplerYcbcrConversion(
-      device, pCreateInfo, pAllocator, pYcbcrConversion)
+      device, pCreateInfo, pAllocator, pYcbcrConversion, false)
   return ?
 }
 
@@ -971,40 +991,10 @@ sub VkImageAspectFlagBits getAspectBitsFromImageFormat(VkFormat fmt) {
         VK_FORMAT_G16_B16R16_2PLANE_420_UNORM_KHR,
         VK_FORMAT_G16_B16R16_2PLANE_422_UNORM_KHR:
       VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT
-
-    case VK_FORMAT_G8B8G8R8_422_UNORM,
-        VK_FORMAT_B8G8R8G8_422_UNORM,
-        VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16,
-        VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,
-        VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16,
-        VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16,
-        VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,
-        VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16,
-        VK_FORMAT_G16B16G16R16_422_UNORM,
-        VK_FORMAT_B16G16R16G16_422_UNORM:
-      VK_IMAGE_ASPECT_PLANE_0_BIT
     // Others
     default:
       VK_IMAGE_ASPECT_COLOR_BIT
   }
-}
-
-sub dense_map!(u32, VkImageAspectFlagBits) getAspectKeysWithAspectFlags(ref!ImageObject img, VkImageAspectFlags flags) {
-  keys := new!ImageAspectBits()
-  numPlanes := numberOfPlanes(img.Info.Format)
-  if numPlanes == as!u32(0) {
-    // single planar image
-    keys.Bits = unpackImageAspectFlags(flags)
-  } else {
-    // multiple planar image
-    if (as!u32(flags) & as!u32(VK_IMAGE_ASPECT_COLOR_BIT)) != as!u32(0) {
-      // Has COLOR bit, expand to all planes
-      keys.Bits = unpackImageAspectFlags(img.ImageAspect)
-    } else {
-      keys.Bits = unpackImageAspectFlags(flags)
-    }
-  }
-  return keys.Bits
 }
 
 sub ref!ImagePlaneMemoryInfo getImagePlaneMemoryInfo(ref!ImageObject img, VkImageAspectFlagBits plane) {

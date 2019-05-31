@@ -137,7 +137,11 @@ func (cmd Cmd) Start(ctx context.Context) (Process, error) {
 	}
 	// Ready to start
 	if cmd.Verbosity {
-		log.I(ctx, "Exec: %v", cmd)
+		extra := ""
+		if cmd.Dir != "" {
+			extra = fmt.Sprintf(" In %v", cmd.Dir)
+		}
+		log.I(ctx, "Exec: %v%s", cmd, extra)
 	}
 	return cmd.Target.Start(cmd)
 }

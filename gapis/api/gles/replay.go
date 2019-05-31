@@ -30,6 +30,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 var (
@@ -37,6 +38,7 @@ var (
 	_ = replay.QueryIssues(API{})
 	_ = replay.QueryFramebufferAttachment(API{})
 	_ = replay.Support(API{})
+	_ = replay.Profiler(API{})
 )
 
 // issuesConfig is a replay.Config used by issuesRequests.
@@ -68,6 +70,10 @@ type framebufferRequest struct {
 	fb               FramebufferId
 	attachment       api.FramebufferAttachment
 	wireframeOverlay bool
+}
+
+type profileRequest struct {
+	overrides *path.OverrideConfig
 }
 
 // GetReplayPriority returns a uint32 representing the preference for
@@ -163,6 +169,8 @@ func (a API) Replay(
 		log.E(ctx, "%v: %v - %v", id, cmd, err)
 	}
 
+	var profile *replay.EndOfReplay
+
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
@@ -170,7 +178,7 @@ func (a API) Replay(
 			if issues == nil {
 				issues = newFindIssues(ctx, capture, device)
 			}
-			issues.reportTo(rr.Result)
+			issues.AddResult(rr.Result)
 			onCompatError = func(ctx context.Context, id api.CmdID, cmd api.Cmd, err error) {
 				issues.onIssue(cmd, id, service.Severity_ErrorLevel, err)
 			}
@@ -212,6 +220,12 @@ func (a API) Replay(
 			case service.DrawMode_OVERDRAW:
 				return fmt.Errorf("Overdraw is not currently supported for GLES")
 			}
+
+		case profileRequest:
+			if profile == nil {
+				profile = &replay.EndOfReplay{}
+			}
+			profile.AddResult(rr.Result)
 		}
 	}
 
@@ -232,6 +246,11 @@ func (a API) Replay(
 	}
 	if rf != nil {
 		transforms.Add(rf)
+	}
+
+	if profile != nil {
+		// Don't use DCE.
+		transforms = transform.Transforms{profile}
 	}
 
 	// Device-dependent transforms.
@@ -271,7 +290,9 @@ func (a API) Replay(
 		transforms.Add(transform.NewCaptureLog(ctx, capture, "replay_log.gfxtrace"))
 	}
 
-	cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
+	if profile == nil {
+		cmds = []api.Cmd{} // DeadCommandRemoval generates commands.
+	}
 	transforms.Transform(ctx, cmds, out)
 	return nil
 }
@@ -329,6 +350,20 @@ func (a API) QueryFramebufferAttachment(
 		return nil, err
 	}
 	return res.(*image.Data), nil
+}
+
+func (a API) Profile(
+	ctx context.Context,
+	intent replay.Intent,
+	mgr replay.Manager,
+	hints *service.UsageHints,
+	overrides *path.OverrideConfig) error {
+
+	c := uniqueConfig()
+	r := profileRequest{overrides}
+
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	return err
 }
 
 // destroyResourcesAtEOS is a transform that destroys all textures,

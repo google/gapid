@@ -208,7 +208,6 @@ sub void readCoherentMemoryInImage(ref!ImageObject image) {
 }
 
 // VkImageSubresourceRange data
-
 @spy_disabled
 sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRange rng, u32 baseDepth, u32 depthCount, bool isWrite) {
   VK_REMAINING_ARRAY_LAYERS := as!u32(0xFFFFFFFF)
@@ -219,20 +218,12 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
 
   format := image.Info.Format
   elementAndTexelBlockSize := getElementAndTexelBlockSize(format)
-  depthElementSize := getDepthElementSize(format, false)
   blockWidth := as!u64(elementAndTexelBlockSize.TexelBlockSize.Width)
   blockHeight := as!u64(elementAndTexelBlockSize.TexelBlockSize.Height)
 
-  for _ , _ , aspectBit in getAspectKeysWithAspectFlags(image, rng.aspectMask) {
-    elementSize := switch (aspectBit) {
-      case VK_IMAGE_ASPECT_COLOR_BIT:
-        as!u64(elementAndTexelBlockSize.ElementSize)
-      case VK_IMAGE_ASPECT_DEPTH_BIT:
-        as!u64(depthElementSize)
-      case VK_IMAGE_ASPECT_STENCIL_BIT:
-        as!u64(1)
-    }
+  for _ , _ , aspectBit in unpackImageAspectFlags(image, rng.aspectMask) {
     if !aspectBit in image.Aspects { vkErrorInvalidImageAspect(image.VulkanHandle, aspectBit) } else {
+    elementSize := getElementAndTexelBlockSizeForAspect(format, as!VkImageAspectFlagBits(aspectBit))
     for _, i, layer in image.Aspects[aspectBit].Layers {
       if (i >= rng.baseArrayLayer) && (i < rng.baseArrayLayer + layerCount) {
         for _, k, level in layer.Levels {
@@ -247,7 +238,7 @@ sub void accessImageSubresourceSlice(ref!ImageObject image, VkImageSubresourceRa
             imageLevelHeightInBlocks := as!u64(roundUpTo(level.Height, as!u32(blockHeight)))
             depthPitch := switch level.LinearLayout {
               case null:
-                imageLevelHeightInBlocks * imageLevelWidthInBlocks * elementSize
+                imageLevelHeightInBlocks * imageLevelWidthInBlocks * as!u64(elementSize.ElementSize)
               default:
                 as!u64(level.LinearLayout.depthPitch)
             }

@@ -18,15 +18,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/log"
-	gapir "github.com/google/gapid/gapir/client"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
-	"github.com/google/gapid/gapis/replay/value"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -63,10 +61,10 @@ func isValidationLayer(n string) bool {
 // closed.
 // NOTE: right now this transform is just used to close chans passed in requests.
 type findIssues struct {
+	replay.EndOfReplay
 	state           *api.GlobalState
 	numInitialCmds  int
 	issues          []replay.Issue
-	res             []replay.Result
 	reportCallbacks map[VkInstance]VkDebugReportCallbackEXT
 }
 
@@ -83,9 +81,6 @@ func newFindIssues(ctx context.Context, c *capture.GraphicsCapture, numInitialCm
 	}
 	return t
 }
-
-// reportTo adds r to the list of issue listeners.
-func (t *findIssues) reportTo(r replay.Result) { t.res = append(t.res, r) }
 
 func (t *findIssues) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "findIssues")
@@ -299,25 +294,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 			issue.Severity = service.Severity(uint32(n.GetSeverity()))
 			t.issues = append(t.issues, issue)
 		})
-		// Since the PostBack function is called before the replay target has actually arrived at the post command,
-		// we need to actually write some data here. r.Uint32() is what actually waits for the replay target to have
-		// posted the data in question. If we did not do this, we would shut-down the replay as soon as the second-to-last
-		// Post had occurred, which may not be anywhere near the end of the stream.
-		code := uint32(0xe11de11d)
-		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
-			for _, res := range t.res {
-				res.Do(func() (interface{}, error) {
-					if err != nil {
-						return nil, log.Err(ctx, err, "Flush did not get expected EOS code: '%v'")
-					}
-					if r.Uint32() != code {
-						return nil, log.Err(ctx, nil, "Flush did not get expected EOS code")
-					}
-					return t.issues, nil
-				})
-			}
-		})
 		return nil
 	}))
+	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
 }

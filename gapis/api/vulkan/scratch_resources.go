@@ -246,6 +246,7 @@ func flushDataToMemory(sb *stateBuilder, deviceMemory VkDeviceMemory, alignment 
 	end := nextMultipleOf(dataSlices[len(dataSlices)-1].offset+dataSlices[len(dataSlices)-1].data.size, 256)
 	atData := sb.MustReserve(end - begin)
 	ptrAtData := sb.newState.AllocDataOrPanic(sb.ctx, NewVoidᵖ(atData.Ptr()))
+
 	sb.write(sb.cb.VkMapMemory(
 		dev, deviceMemory, VkDeviceSize(begin), VkDeviceSize(end-begin),
 		VkMemoryMapFlags(0), ptrAtData.Ptr(), VkResult_VK_SUCCESS,

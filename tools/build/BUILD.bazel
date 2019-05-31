@@ -101,6 +101,14 @@ config_setting(
     },
 )
 
+config_setting(
+    name = "libinterceptor-from-source",
+    define_values = {
+        "LIBINTERCEPTOR_FROM_SOURCE": "1",
+    },
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "jni",
     hdrs = [

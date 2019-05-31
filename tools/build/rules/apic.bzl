@@ -82,12 +82,10 @@ def _apic_compile_impl(ctx):
     apilist = []
     for api in ctx.attr.apis:
         apilist += api.includes.to_list()
-    generated = depset()
 
     cc_toolchain = find_cpp_toolchain(ctx)
     target = cc_toolchain.cpu
     outputs = [ctx.new_file(ctx.label.name + ".o")]
-    generated += outputs
 
     ctx.actions.run(
         inputs = apilist,
@@ -120,7 +118,7 @@ def _apic_compile_impl(ctx):
     )
 
     return [
-        DefaultInfo(files = depset(generated)),
+        DefaultInfo(files = depset(outputs)),
     ]
 
 """Adds an API compile rule"""
@@ -174,7 +172,7 @@ def _apic_template_impl(ctx):
     api = ctx.attr.api
     apiname = api.apiname
     apilist = api.includes.to_list()
-    generated = depset()
+    generated = []
     go_srcs = []
     for template in ctx.attr.templates:
         template = template[ApicTemplate]

@@ -28,6 +28,7 @@ import com.google.gapid.util.OS;
 import com.google.gapid.views.CommandEditor;
 
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.CheckboxTreeViewer;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.DoubleClickEvent;
@@ -37,7 +38,9 @@ import org.eclipse.jface.viewers.ITreeSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerColumn;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
@@ -71,9 +74,11 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -446,13 +451,17 @@ public class Widgets {
   }
 
   @SafeVarargs
-  public static <T> void sorting(
-      TableViewer table, ColumnAndComparator<T>... columns) {
+  public static <T> void sorting(TableViewer table, ColumnAndComparator<T>... columns) {
+    sorting(table, Arrays.asList(columns));
+  }
+
+  public static <T> void sorting(TableViewer table, List<ColumnAndComparator<T>> columns) {
     int[] sortState = { 0, SWT.UP };
-    for (int i = 0; i < columns.length; i++) {
+    for (int i = 0; i < columns.size(); i++) {
       final int idx = i;
-      columns[idx].getColumn().addListener(SWT.Selection, e -> {
-        table.getTable().setSortColumn(columns[idx].getColumn());
+      final ColumnAndComparator<T> column = columns.get(i);
+      column.getTableColumn().addListener(SWT.Selection, e -> {
+        table.getTable().setSortColumn(column.getTableColumn());
         if (idx == sortState[0]) {
           sortState[1] = (sortState[1] == SWT.UP) ? SWT.DOWN : SWT.UP;
           table.getTable().setSortDirection(sortState[1]);
@@ -462,13 +471,13 @@ public class Widgets {
           sortState[1] = SWT.UP;
         }
 
-        table.setComparator(columns[idx].getComparator(sortState[1] == SWT.DOWN));
+        table.setComparator(column.getComparator(sortState[1] == SWT.DOWN));
       });
     }
 
-    table.getTable().setSortColumn(columns[0].getColumn());
+    table.getTable().setSortColumn(columns.get(0).getTableColumn());
     table.getTable().setSortDirection(SWT.UP);
-    table.setComparator(columns[0].getComparator(false));
+    table.setComparator(columns.get(0).getComparator(false));
   }
 
   public static void packColumns(Table table) {
@@ -478,7 +487,7 @@ public class Widgets {
   }
 
   public static class ColumnAndComparator<T> {
-    public final TableViewerColumn column;
+    public final ViewerColumn column;
     public final Comparator<T> comparator;
 
     public ColumnAndComparator(TableViewerColumn column, Comparator<T> comparator) {
@@ -486,8 +495,17 @@ public class Widgets {
       this.comparator = comparator;
     }
 
-    public TableColumn getColumn() {
-      return column.getColumn();
+    public ColumnAndComparator(TreeViewerColumn column, Comparator<T> comparator) {
+      this.column = column;
+      this.comparator = comparator;
+    }
+
+    public TableColumn getTableColumn() {
+      return ((TableViewerColumn)column).getColumn();
+    }
+
+    public TreeColumn getTreeColumn() {
+      return ((TreeViewerColumn)column).getColumn();
     }
 
     public ViewerComparator getComparator(boolean reverse) {
@@ -539,6 +557,8 @@ public class Widgets {
   /**
    * Use this to create a {@link Tree} that you will later wrap in a {@link TreeViewer} using
    * {@link #createTreeViewer(Tree)}, otherwise use {@link #createTree(Composite, int)}.
+   * If using the tree for {@link #createCheckboxTreeViewer(Tree)}, style needs to contain
+   * {@code SWT.CHECK}.
    */
   public static Tree createTreeForViewer(Composite parent, int style) {
     Tree tree = new Tree(parent, style);
@@ -551,9 +571,20 @@ public class Widgets {
   }
 
   public static TreeViewer createTreeViewer(Tree tree) {
-    TreeViewer viewer = new VisibilityTrackingTreeViewer(tree);
+    return initTreeViewer(new VisibilityTrackingTreeViewer(tree));
+  }
+
+  public static CheckboxTreeViewer createCheckboxTreeViewer(Composite parent, int style) {
+    return createCheckboxTreeViewer(createTreeForViewer(parent, style | SWT.CHECK));
+  }
+
+  public static CheckboxTreeViewer createCheckboxTreeViewer(Tree tree) {
+    return initTreeViewer(new CheckboxTreeViewer(tree));
+  }
+
+  private static <T extends TreeViewer> T initTreeViewer(T viewer) {
     viewer.setUseHashlookup(true);
-    tree.addListener(SWT.KeyDown, e -> {
+    viewer.getTree().addListener(SWT.KeyDown, e -> {
       switch (e.keyCode) {
         case SWT.ARROW_LEFT:
         case SWT.ARROW_RIGHT:
@@ -575,6 +606,85 @@ public class Widgets {
       }
     });
     return viewer;
+  }
+
+  public static TreeViewerColumn createTreeColumn(TreeViewer viewer, String title) {
+    TreeViewerColumn result = new TreeViewerColumn(viewer, SWT.NONE);
+    TreeColumn column = result.getColumn();
+    column.setText(title);
+    column.setResizable(true);
+    return result;
+  }
+
+  public static <T> TreeViewerColumn createTreeColumn(
+      TreeViewer viewer, String title, Function<T, String> labelProvider) {
+    return createTreeColumn(viewer, title, labelProvider, d -> null);
+  }
+
+  public static <T> TreeViewerColumn createTreeColumn(TreeViewer viewer, String title,
+      Function<T, String> labelProvider, Function<T, Image> imageProvider) {
+    TreeViewerColumn column = createTreeColumn(viewer, title);
+    column.setLabelProvider(new ColumnLabelProvider() {
+      @Override
+      @SuppressWarnings("unchecked")
+      public String getText(Object element) {
+        return labelProvider.apply((T)element);
+      }
+
+      @Override
+      @SuppressWarnings("unchecked")
+      public Image getImage(Object element) {
+        return imageProvider.apply((T)element);
+      }
+    });
+    return column;
+  }
+
+  public static <T> ColumnAndComparator<T> createTreeColumn(
+      TreeViewer viewer, String title, Function<T, String> labelProvider, Comparator<T> comp) {
+    return new ColumnAndComparator<>(createTreeColumn(viewer, title, labelProvider), comp);
+  }
+
+  public static <T> ColumnAndComparator<T> createTreeColumn(TreeViewer viewer, String title,
+      Function<T, String> labelProvider, Function<T, Image> imageProvider, Comparator<T> comp) {
+    return new ColumnAndComparator<>(
+        createTreeColumn(viewer, title, labelProvider, imageProvider), comp);
+  }
+
+  @SafeVarargs
+  public static <T> void sorting(TreeViewer tree, ColumnAndComparator<T>... columns) {
+    sorting(tree, Arrays.asList(columns));
+  }
+
+  public static <T> void sorting(TreeViewer tree, List<ColumnAndComparator<T>> columns) {
+    int[] sortState = { 0, SWT.UP };
+    for (int i = 0; i < columns.size(); i++) {
+      final int idx = i;
+      final ColumnAndComparator<T> column = columns.get(i);
+      column.getTreeColumn().addListener(SWT.Selection, e -> {
+        tree.getTree().setSortColumn(column.getTreeColumn());
+        if (idx == sortState[0]) {
+          sortState[1] = (sortState[1] == SWT.UP) ? SWT.DOWN : SWT.UP;
+          tree.getTree().setSortDirection(sortState[1]);
+        } else {
+          tree.getTree().setSortDirection(SWT.UP);
+          sortState[0] = idx;
+          sortState[1] = SWT.UP;
+        }
+
+        tree.setComparator(column.getComparator(sortState[1] == SWT.DOWN));
+      });
+    }
+
+    tree.getTree().setSortColumn(columns.get(0).getTreeColumn());
+    tree.getTree().setSortDirection(SWT.UP);
+    tree.setComparator(columns.get(0).getComparator(false));
+  }
+
+  public static void packColumns(Tree tree) {
+    for (TreeColumn column : tree.getColumns()) {
+      column.pack();
+    }
   }
 
   public static Combo createDropDown(Composite parent) {

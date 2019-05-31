@@ -12,44 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
-
-cc_toolchain_suite(
-    name = "toolchain",
-    # target_cpu | compiler
-    toolchains = {
-        "x64_windows|mingw": "cc-compiler-mingw",
-        "x64_windows": "cc-compiler-mingw",
-    },
-)
-
-cc_toolchain(
-    name = "cc-compiler-mingw",
-    all_files = ":empty",
-    compiler = "mingw",
-    compiler_files = ":empty",
-    cpu = "x64_windows",
-    dwp_files = ":empty",
-    dynamic_runtime_libs = [":empty"],
-    linker_files = ":empty",
-    objcopy_files = ":empty",
-    static_runtime_libs = [":empty"],
-    strip_files = ":empty",
-    supports_param_files = 1,
-)
-
-toolchain(
-    name = "cc-toolchain-mingw",
-    toolchain = ":cc-compiler-mingw",
-    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
-)
-
-filegroup(
-    name = "empty",
-    srcs = [],
-)
-
-filegroup(
-    name = "cc_wrapper",
-    srcs = [],
-)
+# Empty build file to make this directory a bazel package.

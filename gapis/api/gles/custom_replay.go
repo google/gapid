@@ -312,6 +312,21 @@ func (ω *EglCreateImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api.Gl
 	return cb.ReplayCreateExternalImage(ctxID, TextureId(ω.Buffer().Address()), ω.Result()).Mutate(ctx, id, s, b, nil)
 }
 
+func (ω *EglSwapBuffers) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	err := ω.mutate(ctx, id, s, nil, w)
+	if b == nil || err != nil {
+		return err
+	}
+	// Get context ID from current Thread
+	context := GetState(s).Contexts().Get(ω.Thread())
+	if context.IsNil() {
+		return fmt.Errorf("No EGL context in thread calling eglSwapBuffers, thread: %v", ω.Thread())
+	}
+	ctxID := uint32(context.Identifier())
+	cb := CommandBuilder{Thread: ω.Thread(), Arena: s.Arena}
+	return cb.ReplayFrameDelimiter(ctxID).Mutate(ctx, id, s, b, nil)
+}
+
 func (ω *WglCreateContext) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	err := ω.mutate(ctx, id, s, nil, w)
 	if b == nil || err != nil {

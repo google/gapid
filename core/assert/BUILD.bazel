@@ -18,6 +18,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "assertion.go",
+        "boolean.go",
         "enum.go",
         "error.go",
         "float.go",
@@ -42,6 +43,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
+        "boolean_test.go",
         "enum_test.go",
         "error_test.go",
         "float_test.go",

@@ -103,6 +103,7 @@ def android_dynamic_library(name, exports = "", deps = [], linkopts = [], **kwar
     # correctly for when the android_binary actually creates the .so.
     native.cc_library(
         name = name,
+        srcs = [":" + name + "_syms"],
         deps = deps + [name + ".ldscript"],
         linkopts = linkopts + [
             "-Wl,--version-script", "$(location " + name + ".ldscript)",
@@ -111,5 +112,6 @@ def android_dynamic_library(name, exports = "", deps = [], linkopts = [], **kwar
             "-Wl,--exclude-libs,libgcc.a",
             "-Wl,-z,noexecstack,-z,relro,-z,now,-z,nocopyreloc",
         ],
+        alwayslink = 1,
         **kwargs
     )

@@ -277,8 +277,209 @@ sub ElementAndTexelBlockSize getElementAndTexelBlockSize(VkFormat format) {
       ElementAndTexelBlockSize(3, TexelBlockSizePair(1, 1))
     case VK_FORMAT_D32_SFLOAT_S8_UINT:
       ElementAndTexelBlockSize(5, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_G8B8G8R8_422_UNORM,
+         VK_FORMAT_B8G8R8G8_422_UNORM:
+      ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_R10X6_UNORM_PACK16:
+      ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_R10X6G10X6_UNORM_2PACK16:
+      ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16,
+         VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,
+         VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16:
+      ElementAndTexelBlockSize(8, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_R12X4_UNORM_PACK16,
+         VK_FORMAT_R12X4G12X4_UNORM_2PACK16:
+      ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_G16B16G16R16_422_UNORM,
+         VK_FORMAT_B16G16R16G16_422_UNORM:
+      ElementAndTexelBlockSize(8, TexelBlockSizePair(1, 1))
+    case VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16,
+         VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,
+         VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16:
+      ElementAndTexelBlockSize(8, TexelBlockSizePair(1, 1))
     default:
       ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+  }
+}
+
+sub TexelBlockSizePair getAspectSizeDivisor(VkFormat format, VkImageAspectFlagBits aspect) {
+    return switch(aspect) {
+      case VK_IMAGE_ASPECT_PLANE_0_BIT:
+        TexelBlockSizePair(1, 1)
+      case VK_IMAGE_ASPECT_PLANE_1_BIT:
+        switch(format) {
+          case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+            TexelBlockSizePair(1, 1)
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
+            TexelBlockSizePair(1, 1)
+          case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
+            TexelBlockSizePair(1, 1)
+          case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+            TexelBlockSizePair(1, 1)
+        }
+      case VK_IMAGE_ASPECT_PLANE_2_BIT:
+        switch(format) {
+          case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+            TexelBlockSizePair(1, 1)
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
+            TexelBlockSizePair(1, 1)
+          case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
+            TexelBlockSizePair(1, 1)
+          case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+            TexelBlockSizePair(2, 2)
+          case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+            TexelBlockSizePair(2, 1)
+          case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+            TexelBlockSizePair(1, 1)
+        }
+      default:
+        TexelBlockSizePair(1, 1)
+    }
+}
+
+sub ElementAndTexelBlockSize getElementAndTexelBlockSizeForAspect(VkFormat format, VkImageAspectFlagBits aspect) {
+  origAspect := getElementAndTexelBlockSize(format)
+  des := getDepthElementSize(format, false)
+  return switch(aspect) {
+    case VK_IMAGE_ASPECT_COLOR_BIT:
+      origAspect
+    case VK_IMAGE_ASPECT_DEPTH_BIT:
+      ElementAndTexelBlockSize(des, TexelBlockSizePair(1, 1))
+    case VK_IMAGE_ASPECT_STENCIL_BIT:
+      ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+    case VK_IMAGE_ASPECT_PLANE_0_BIT:
+      switch(format) {
+        case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM,
+             VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,
+             VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM,
+             VK_FORMAT_G8_B8R8_2PLANE_422_UNORM,
+             VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+          ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16,
+             VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16,
+             VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16,
+             VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16,
+             VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16,
+             VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16,
+             VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16,
+             VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16,
+             VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16,
+             VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16,
+             VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM,
+             VK_FORMAT_G16_B16R16_2PLANE_420_UNORM,
+             VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM,
+             VK_FORMAT_G16_B16R16_2PLANE_422_UNORM,
+             VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        default:
+          origAspect
+      }
+    case VK_IMAGE_ASPECT_PLANE_1_BIT:
+      switch(format) {
+        case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+          ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+          ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+          ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
+          ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
+          ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
+          ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
+          ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
+          ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+          ElementAndTexelBlockSize(4, TexelBlockSizePair(1, 1))
+        case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+          ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+      }
+    case VK_IMAGE_ASPECT_PLANE_2_BIT:
+      switch(format) {
+          case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM,
+               VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM,
+               VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+            ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+          case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16,
+               VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16,
+               VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16,
+               VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16,
+               VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16,
+               VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
+            ElementAndTexelBlockSize(2, TexelBlockSizePair(1, 1))
+          case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM,
+               VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM,
+               VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+            ElementAndTexelBlockSize(1, TexelBlockSizePair(1, 1))
+      }
   }
 }
 
@@ -357,13 +558,35 @@ sub u32 getDepthElementSize(VkFormat format, bool inBuffer) {
   map!(VkImageAspectFlags, ref!ImageAspectBits) ImageAspectFlagsToUnpackedBits
 }
 
+sub VkImageAspectFlags translateImageAspectFlags(ref!ImageObject img, VkImageAspectFlags flags) {
+  numPlanes := numberOfPlanes(img.Info.Format)
+    return switch(numPlanes == as!u32(0)) {
+    case true: switch(as!u32(flags) == as!u32(VK_IMAGE_ASPECT_PLANE_0_BIT)) {
+                case true: as!VkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT)
+                case false: flags
+               }
+    case false:
+      switch((as!u32(flags) & as!u32(VK_IMAGE_ASPECT_COLOR_BIT)) != as!u32(0)) {
+        case true:
+          img.ImageAspect
+        case false:
+          flags
+      }
+  }
+}
+
+// A helper function to unpack VkImageAspectFlags into a list of
+// VkImageAspectFlagBits
+sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(ref!ImageObject img, VkImageAspectFlags flags) {
+  return getCachedImageAspectFlags(translateImageAspectFlags(img, flags))
+}
+
+
 // Cache of unpacked VkImageAspectFlags
 @hidden @serialize @untracked
 unpackedImageAspectFlagBits cachedUnpackedImageAspectBits
 
-// A helper function to unpack VkImageAspectFlags into a list of
-// VkImageAspectFlagBits
-sub dense_map!(u32, VkImageAspectFlagBits) unpackImageAspectFlags(VkImageAspectFlags flag) {
+sub dense_map!(u32, VkImageAspectFlagBits) getCachedImageAspectFlags(VkImageAspectFlags flag) {
   if !(flag in cachedUnpackedImageAspectBits.ImageAspectFlagsToUnpackedBits) {
     m := new!ImageAspectBits()
     // Till Vulkan 1.1, seven bits are used for image aspects.

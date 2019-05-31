@@ -39,6 +39,7 @@ import (
 	"github.com/google/gapid/core/text"
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
+	"github.com/google/gapid/gapir"
 )
 
 const (
@@ -56,7 +57,7 @@ type session struct {
 	closeCBs []func()
 	inited   chan struct{}
 	// The connection for heartbeat
-	conn *Connection
+	conn *connection
 }
 
 func newSession(d bind.Device) *session {
@@ -364,7 +365,7 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 	return nil
 }
 
-func (s *session) connect(ctx context.Context) (*Connection, error) {
+func (s *session) connect(ctx context.Context) (gapir.Connection, error) {
 	<-s.inited
 	return newConnection(fmt.Sprintf("localhost:%d", s.port), s.auth, connectTimeout)
 }

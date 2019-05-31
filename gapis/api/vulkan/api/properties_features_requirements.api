@@ -338,10 +338,8 @@ sub void GetPhysicalDeviceFeatures2(
       vkErrorNullPointer("VkPhysicalDeviceFeatures2(KHR)")
     }
   }
-  fence
+  features := pFeatures[0]
   if (physicalDevice in PhysicalDevices) {
-    pFeatures[0] = ?
-    features := pFeatures[0]
     // TODO: handle pNext
     if features.pNext != null {
       numPNext := numberOfPNext(
@@ -351,16 +349,39 @@ sub void GetPhysicalDeviceFeatures2(
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
         switch sType {
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
-            ext := as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0]
-            _ = ext
+            _ = as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0]
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
-            ext := as!VkPhysicalDevice16BitStorageFeatures*(next.Ptr)[0]
-            _ = ext
+            _ = as!VkPhysicalDevice16BitStorageFeatures*(next.Ptr)[0]
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
-            ext := as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
-            _ = ext
+            _ = as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
+          }
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
+  }
+  fence
+  if (physicalDevice in PhysicalDevices) {
+    pFeatures[0] = ?
+    newFeatures := pFeatures[0]
+    // TODO: handle pNext
+    if newFeatures.pNext != null {
+      numPNext := numberOfPNext(
+        as!const void*(newFeatures.pNext))
+      next := MutableVoidPtr(as!void*(newFeatures.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        switch sType {
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+            write(as!VkPhysicalDeviceVariablePointerFeatures*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+            write(as!VkPhysicalDevice16BitStorageFeatures*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+            write(as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
@@ -416,7 +437,15 @@ sub void GetPhysicalDeviceImageFormatProperties2(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
+        switch sType {
+          case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR: {
+            ext := as!VkImageFormatListCreateInfoKHR*(next.Ptr)[0]
+            if (ext.viewFormatCount > 0) {
+              _ = ext.pViewFormats[0:ext.viewFormatCount]
+            }
+          }
+          default: {}
+        }
         // TODO: handle extensions for VkPhysicalDeviceImageFormatInfo2
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }

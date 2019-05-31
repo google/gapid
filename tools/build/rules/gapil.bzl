@@ -20,11 +20,9 @@ load("@io_bazel_rules_go//go:def.bzl",
 ApicTemplate = provider()
 
 def _api_library_impl(ctx):
-    includes = depset()
-    includes += [ctx.file.api]
-    includes += ctx.files.includes
-    for dep in ctx.attr.deps:
-        includes += dep.includes
+    includes = depset(
+        [ctx.file.api] + ctx.files.includes,
+        transitive = [dep.includes for dep in ctx.attr.deps])
     return struct(
         apiname = ctx.attr.apiname,
         main = ctx.file.api,

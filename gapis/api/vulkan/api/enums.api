@@ -204,6 +204,9 @@ enum VkStructureType {
   VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR                   = 1000146003,
   VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR      = 1000146004,
 
+  //@extension("VK_KHR_image_format_list")
+  VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR = 1000147000
+
   //@extension("VK_KHR_dedicated_allocation")
   VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR  = 1000127000,
   VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR = 1000127001,
@@ -335,6 +338,11 @@ enum VkStructureType {
 
   // Virtual Swapchain
   VK_STRUCTURE_TYPE_VIRTUAL_SWAPCHAIN_PNEXT                               = 0xFFFFFFAA,
+
+  // @extension("VK_GGP_frame_token")
+  VK_STRUCTURE_TYPE_PRESENT_FRAME_TOKEN_GGP                   = 1000191000,
+  // @extension("VK_GGP_stream_descriptor_surface")
+  VK_STRUCTURE_TYPE_STREAM_DESCRIPTOR_SURFACE_CREATE_INFO_GGP = 1000049000,
 }
 
 @analyze_usage

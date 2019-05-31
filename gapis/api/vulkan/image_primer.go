@@ -523,6 +523,17 @@ func vkCreateImage(sb *stateBuilder, dev VkDevice, info ImageInfo, handle VkImag
 		).Ptr())
 	}
 
+	if !info.ViewFormatList().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkImageFormatListCreateInfoKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR, // sType
+				pNext, // pNext
+				uint32(info.ViewFormatList().ViewFormats().Len()),                                    // viewFormatCount
+				NewVkFormatᶜᵖ(sb.MustUnpackReadMap(info.ViewFormatList().ViewFormats().All()).Ptr()), // pViewFormats
+			),
+		).Ptr())
+	}
+
 	create := sb.cb.VkCreateImage(
 		dev, sb.MustAllocReadData(
 			NewVkImageCreateInfo(sb.ta,
@@ -727,7 +738,10 @@ func walkImageSubresourceRange(sb *stateBuilder, img ImageObjectʳ, rng VkImageS
 	for _, aspect := range sb.imageAspectFlagBits(img, rng.AspectMask()) {
 		for i := uint32(0); i < levelCount; i++ {
 			level := rng.BaseMipLevel() + i
+			divisor, _ := subGetAspectSizeDivisor(sb.ctx, nil, api.CmdNoID, nil, sb.oldState, nil, 0, nil, nil, img.Info().Fmt(), aspect)
 			levelSize := sb.levelSize(img.Info().Extent(), img.Info().Fmt(), level, aspect)
+			levelSize.width /= uint64(divisor.Width())
+			levelSize.height /= uint64(divisor.Height())
 			for j := uint32(0); j < layerCount; j++ {
 				layer := rng.BaseArrayLayer() + j
 				f(aspect, layer, level, levelSize)
