@@ -340,7 +340,9 @@ public interface Theme {
     private boolean loadIcon(Method method) {
       Icon icon = method.getDeclaredAnnotation(Icon.class);
       if (icon != null) {
-        resources.put(method.getName(), loadImage(icon.file(), icon.color()));
+        int color = icon.color();
+        Image image = (color >= 0) ? loadImage(icon.file(), color) : loadImage(icon.file());
+        resources.put(method.getName(), image);
         return true;
       }
       return false;
@@ -352,7 +354,7 @@ public interface Theme {
         String[] names = seq.names();
         Image[] icons = new Image[names.length == 0 ? seq.count() : names.length];
         for (int i = 0; i < icons.length; i++) {
-          icons[i] = loadImage(names.length == 0 ? String.format(seq.pattern(), i) : names[i], -1);
+          icons[i] = loadImage(names.length == 0 ? String.format(seq.pattern(), i) : names[i]);
         }
         resources.put(method.getName(), icons);
         return true;
@@ -360,19 +362,28 @@ public interface Theme {
       return false;
     }
 
+    private Image loadImage(String img) {
+      return
+          ImageDescriptor.createFromURL(Resources.getResource("icons/" + img)).createImage(display);
+    }
+
     private Image loadImage(String img, int color) {
-      ImageData data = ImageDescriptor.createFromURL(Resources.getResource("icons/" + img))
-          .getImageData(DPIUtil.getDeviceZoom());
-      if (color >= 0) {
-        for (int y = 0, o = 0; y < data.height; y++, o += data.bytesPerLine) {
-          for (int x = 0, i = o; x < data.width; x++) {
-            data.data[i++] = (byte)((color >> 16) & 0xFF);
-            data.data[i++] = (byte)((color >> 8) & 0xFF);
-            data.data[i++] = (byte)(color & 0xFF);
-          }
+      ImageDescriptor desc = ImageDescriptor.createFromURL(Resources.getResource("icons/" + img));
+      int zoom = DPIUtil.getDeviceZoom();
+      ImageData data = desc.getImageData(zoom);
+      if (data == null && zoom != 100) {
+        zoom = 100;
+        data = desc.getImageData(100);
+      }
+
+      for (int y = 0, o = 0; y < data.height; y++, o += data.bytesPerLine) {
+        for (int x = 0, i = o; x < data.width; x++) {
+          data.data[i++] = (byte)((color >> 16) & 0xFF);
+          data.data[i++] = (byte)((color >> 8) & 0xFF);
+          data.data[i++] = (byte)(color & 0xFF);
         }
       }
-      return new Image(display, data);
+      return new Image(display, new DPIUtil.AutoScaleImageDataProvider(display, data, zoom));
     }
 
     private boolean loadColor(Method method) {
