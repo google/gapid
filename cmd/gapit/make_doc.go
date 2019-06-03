@@ -34,6 +34,6 @@ func init() {
 }
 
 func (verb *makeDocVerb) Run(ctx context.Context, flags flag.FlagSet) error {
-	app.MakeDoc(ctx, "GAPIT")
+	app.MakeDoc(ctx)
 	return nil
 }
