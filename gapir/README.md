@@ -224,7 +224,7 @@ if the value on the top of the stack is not zero. Otherwise it is a Nop.
 ### `NOTIFICATION()` [-2 (uint32_t, pointer)]
 `<code:6> <padding:26>`
 
-Pops size and then a pointer from the top of the stack and stream back size bytes of
+Pops size and then a pointer from the top of the stack and streams back `size` bytes of
 data from the address to the server via the notification message.
 
 ## Resources

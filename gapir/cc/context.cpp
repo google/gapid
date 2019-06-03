@@ -798,7 +798,6 @@ bool Context::stopTimer(Stack* stack, bool pushReturn) {
 }
 
 bool Context::sendNotificationData(Stack* stack) {
-  GAPID_WARNING("Sending notification data via gPRC service.");
   const uint32_t count = stack->pop<uint32_t>();
   const void* address = stack->pop<const void*>();
   auto label = mInterpreter->getLabel();

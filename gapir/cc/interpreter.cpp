@@ -302,7 +302,6 @@ Interpreter::Result Interpreter::post() {
 }
 
 Interpreter::Result Interpreter::notification() {
-  GAPID_WARNING("call notification function");
   return this->call(Interpreter::NOTIFICATION_FUNCTION_ID);
 }
 

@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/log"
-	gapir "github.com/google/gapid/gapir/client"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
