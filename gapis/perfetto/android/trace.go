@@ -54,18 +54,13 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 	}
 
-	log.I(ctx, "Turning device screen on")
-	if err := d.TurnScreenOn(ctx); err != nil {
-		return nil, log.Err(ctx, err, "Couldn't turn device screen on")
-	}
-
-	log.I(ctx, "Checking for lockscreen")
-	locked, err := d.IsShowingLockscreen(ctx)
+	log.I(ctx, "Unlocking device screen")
+	unlocked, err := d.UnlockScreen(ctx)
 	if err != nil {
-		log.W(ctx, "Couldn't determine lockscreen state: %v", err)
+		return nil, log.Err(ctx, err, "Error when trying to unlock device screen")
 	}
-	if locked {
-		return nil, log.Err(ctx, nil, "Cannot trace app on locked device")
+	if !unlocked {
+		return nil, log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
 	}
 
 	if a != nil {

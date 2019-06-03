@@ -33,28 +33,26 @@ List of devices attached
 adb server version (36) doesn't match this client (35); killing...
 * daemon not running. starting it now on port 5037 *
 * daemon started successfully *
-debug_device             unknown
-debug_device2            unknown
-dumpsys_device           offline
-error_device             device
-install_device           unauthorized
-invalid_device           unknown
-lockscreen_off_device    offline
-lockscreen_on_device     device
-logcat_device            unauthorized
-no_pgrep_no_ps_device    unknown
-no_pgrep_ok_ps_device    offline
-ok_pgrep_no_ps_device    device
-ok_pgrep_ok_ps_device    unauthorized
-production_device        unknown
-pull_device              offline
-push_device              device
-rooted_device            unauthorized
-run_device               unknown
-screen_off_device        offline
-screen_doze_device       offline
-screen_unready_device    offline
-screen_on_device         device
+debug_device                unknown
+debug_device2               unknown
+dumpsys_device              offline
+error_device                device
+install_device              unauthorized
+invalid_device              unknown
+logcat_device               unauthorized
+no_pgrep_no_ps_device       unknown
+no_pgrep_ok_ps_device       offline
+ok_pgrep_no_ps_device       device
+ok_pgrep_ok_ps_device       unauthorized
+production_device           unknown
+pull_device                 offline
+push_device                 device
+rooted_device               unauthorized
+run_device                  unknown
+screen_off_locked_device    offline
+screen_off_unlocked_device  offline
+screen_on_locked_device     offline
+screen_on_unlocked_device   device
 `)
 	emptyDevices = stub.RespondTo(adbPath.System()+` devices`, `
 List of devices attached
@@ -108,45 +106,31 @@ Packages:
     flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
 `),
 
-		// Screen on / off / doze / unready queries.
-		stub.RespondTo(adbPath.System()+` -s screen_off_device shell dumpsys power`, `
-POWER MANAGER (dumpsys power)
-  mScreenBrightnessBoostInProgress=false
-  mDisplayReady=true
-  mHoldingWakeLockSuspendBlocker=false
-Display Power: state=OFF`),
-		stub.RespondTo(adbPath.System()+` -s screen_doze_device shell dumpsys power`, `
-POWER MANAGER (dumpsys power)
-  mScreenBrightnessBoostInProgress=false
-  mDisplayReady=true
-  mHoldingWakeLockSuspendBlocker=false
-Display Power: state=DOZE`),
-		stub.RespondTo(adbPath.System()+` -s screen_unready_device shell dumpsys power`, `
-POWER MANAGER (dumpsys power)
-  mScreenBrightnessBoostInProgress=false
-  mDisplayReady=false
-  mHoldingWakeLockSuspendBlocker=false
-Display Power: state=ON`),
-		stub.RespondTo(adbPath.System()+` -s screen_on_device shell dumpsys power`, `
-POWER MANAGER (dumpsys power)
-  mScreenBrightnessBoostInProgress=false
-  mDisplayReady=true
-  mHoldingWakeLockSuspendBlocker=false
-Display Power: state=ON`),
-
-		// Lockscreen on / off queries.
-		stub.RespondTo(adbPath.System()+` -s lockscreen_off_device shell dumpsys activity activities`, `
-ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-  isHomeRecentsComponent=true  KeyguardController:
-    mKeyguardShowing=false
-    mAodShowing=false
-    mKeyguardGoingAway=false`),
-		stub.RespondTo(adbPath.System()+` -s lockscreen_on_device shell dumpsys activity activities`, `
-ACTIVITY MANAGER ACTIVITIES (dumpsys activity activities)
-  isHomeRecentsComponent=true  KeyguardController:
-    mKeyguardShowing=true
-    mAodShowing=false
-    mKeyguardGoingAway=false`),
+		// Screen state queries
+		stub.RespondTo(adbPath.System()+` -s screen_off_locked_device shell dumpsys nfc`, `
+mState=on
+mIsZeroClickRequested=false
+mScreenState=OFF_LOCKED
+mTechMask: default
+...`),
+		stub.RespondTo(adbPath.System()+` -s screen_off_unlocked_device shell dumpsys nfc`, `
+mState=on
+mIsZeroClickRequested=false
+mScreenState=OFF_UNLOCKED
+mTechMask: default
+...`),
+		stub.RespondTo(adbPath.System()+` -s screen_on_locked_device shell dumpsys nfc`, `
+mState=on
+mIsZeroClickRequested=false
+mScreenState=ON_LOCKED
+mTechMask: default
+...`),
+		stub.RespondTo(adbPath.System()+` -s screen_on_unlocked_device shell dumpsys nfc`, `
+mState=on
+mIsZeroClickRequested=false
+mScreenState=ON_UNLOCKED
+mTechMask: default
+...`),
 
 		// Pid queries.
 		stub.Regex(`adb -s ok_pgrep_\S*device shell pgrep .* com.google.foo`, stub.Respond("")),

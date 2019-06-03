@@ -17,6 +17,8 @@ syntax = "proto3";
 package android;
 option go_package = "github.com/google/gapid/core/os/android";
 
+// See authoritative list at:
+// https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/view/KeyEvent.java
 enum KeyCode {
   Unknown = 0;
   SoftLeft = 1;
@@ -229,4 +231,18 @@ enum KeyCode {
   Calendar = 208;
   Music = 209;
   Calculator = 210;
+  ZenkakuHankaku = 211;
+  Eisu = 212;
+  Muhenkan = 213;
+  Henkan = 214;
+  KatakanaHiragana = 215;
+  Yen = 216;
+  Ro = 217;
+  Kana = 218;
+  Assist = 219;
+  BrightnessDown = 220;
+  BrightnessUp = 221;
+  MediaAudioTrack = 222;
+  Sleep = 223;
+  Wakeup = 224;
 }
