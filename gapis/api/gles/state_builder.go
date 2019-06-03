@@ -490,7 +490,9 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 			bind(GLenum_GL_TEXTURE_CUBE_MAP_ARRAY, tu.BindingCubeMapArray())
 			bind(GLenum_GL_TEXTURE_EXTERNAL_OES, tu.BindingExternalOes())
 		}
-		write(ctx, cb.GlActiveTexture(GLenum_GL_TEXTURE0+GLenum(c.Bound().TextureUnit().ID())))
+		if !c.Bound().TextureUnit().IsNil() {
+			write(ctx, cb.GlActiveTexture(GLenum_GL_TEXTURE0+GLenum(c.Bound().TextureUnit().ID())))
+		}
 
 		write(ctx, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, EGLBoolean(1)))
 	}
