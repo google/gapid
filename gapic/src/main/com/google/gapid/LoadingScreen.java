@@ -31,6 +31,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.OS;
 import com.google.gapid.widgets.CenteringLayout;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
@@ -117,7 +118,7 @@ public class LoadingScreen extends Composite {
     createLink(optionsContainer, "<a>Capture a new trace</a>", e -> {
       showTracingDialog(checkNotNull(client), getShell(), checkNotNull(models), checkNotNull(widgets));
     });
-    Label captureHint = createLabel(optionsContainer, "Ctrl + T");
+    Label captureHint = createLabel(optionsContainer, (OS.isMac ? "\u2318" : "Ctrl") + " + T");
     captureHint.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
     captureHint.setForeground(theme.welcomeVersionColor());
 
@@ -125,7 +126,7 @@ public class LoadingScreen extends Composite {
     createLink(optionsContainer, "<a>Open an existing trace</a>", e -> {
       showOpenTraceDialog(getShell(), checkNotNull(this.models));
     });
-    Label openHint = createLabel(optionsContainer, "Ctrl + O");
+    Label openHint = createLabel(optionsContainer, (OS.isMac ? "\u2318" : "Ctrl") + " + O");
     openHint.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
     openHint.setForeground(theme.welcomeVersionColor());
 
