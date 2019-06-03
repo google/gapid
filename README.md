@@ -42,7 +42,7 @@ GAPID can also trace any desktop Vulkan application.
   </tr>
   <tr>
     <td>
-      <a href="https://gapid.dev/gapid/images/screenshots/textures.png">
+      <a href="https://gapid.dev/images/screenshots/textures.png">
         <img src="https://gapid.dev/images/screenshots/textures_thumb.jpg" alt="Screenshot 3">
       </a>
     </td>
