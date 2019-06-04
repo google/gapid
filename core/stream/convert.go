@@ -140,6 +140,11 @@ func resolveImplicitMappings(count int, mappings []mapping, srcFmt *Format, srcD
 				m.src = buf{srcData, c, srcFmt.BitOffsets()[c], uint32(srcFmt.Stride()) * 8}
 			}
 			// TODO: RGB->Luminance conversion (#276)
+		case Channel_Stencil:
+			// This is to work around our limitation of not being able to read stencil data.
+			// If any conversion requests a stencil component, but the source doesn't have it,
+			// just return a bunch-o-zeros.
+			m.src = buf0
 		}
 	}
 	return mappings
