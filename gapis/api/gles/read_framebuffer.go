@@ -386,7 +386,7 @@ func postFBData(ctx context.Context,
 					if img, err = img.Convert(redFmt); err != nil {
 						return nil, err
 					}
-					depthFmt, err := getImageFormat(GLenum_GL_DEPTH_COMPONENT, ty)
+					depthFmt, err := getImageFormat(GLenum_GL_DEPTH_COMPONENT, t)
 					if err != nil {
 						return nil, err
 					}
