@@ -29,13 +29,11 @@ import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.widgets.DialogBase;
-import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
-import org.eclipse.swt.dnd.TextTransfer;
-import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
@@ -75,9 +73,9 @@ public class AboutDialog {
     }
   }
 
-  public static void showAbout(Shell shell, Analytics analytics, Theme theme) {
+  public static void showAbout(Shell shell, Analytics analytics, Widgets widgets) {
     analytics.postInteraction(View.About, ClientAction.Show);
-    new DialogBase(shell, theme) {
+    new DialogBase(shell, widgets.theme) {
       @Override
       public String getTitle() {
         return Messages.ABOUT_TITLE;
@@ -87,9 +85,7 @@ public class AboutDialog {
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
 
-        GridLayout gridLayout = new GridLayout(2, false);
-        gridLayout.horizontalSpacing = 20;
-        gridLayout.verticalSpacing = 5;
+        GridLayout gridLayout = Widgets.withMargin(new GridLayout(2, false), 20, 5);
         Composite container = createComposite(area, gridLayout);
         container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false));
 
@@ -103,8 +99,7 @@ public class AboutDialog {
         createLabel(container, "").setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true, 2, 1));
         Button clipboard = com.google.gapid.widgets.Widgets.createButton(container, "", e -> {
           String textData = "Version " + GAPID_VERSION;
-          TextTransfer textTransfer = TextTransfer.getInstance();
-          cb.setContents(new Object[]{textData}, new Transfer[]{textTransfer});
+          widgets.setClipboardContent(textData);
         });
         clipboard.setImage(theme.clipboard());
         clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));

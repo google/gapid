@@ -788,4 +788,8 @@ public class Widgets {
       child.dispose();
     }
   }
+
+  public void setClipboardContent(String s) {
+    copypaste.setContents(s);
+  }
 }

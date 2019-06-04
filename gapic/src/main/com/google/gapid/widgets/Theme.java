@@ -130,6 +130,7 @@ public interface Theme {
 
   // About & Welcome dialog text colors
   @RGB(argb = 0xffa9a9a9) public Color welcomeVersionColor();
+  @RGB(argb = 0xffa9a9a9) public Color shortcutKeyHintColor();
 
   // Logging view colors by log level.
   @RGB(argb = 0xbb000000) public Color logVerboseForeground();

@@ -134,7 +134,7 @@ public class MainWindow extends ApplicationWindow {
 
     if (OS.isMac) {
       MacApplication.init(shell.getDisplay(),
-          () -> showAbout(shell, models.analytics, widgets.theme),
+          () -> showAbout(shell, models.analytics, widgets),
           () -> showSettingsDialog(shell, models, widgets.theme),
           file -> models.capture.loadCapture(new File(file)));
     }
@@ -351,7 +351,7 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = new MenuManager("&Help");
     manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models.analytics)));
     manager.add(MenuItems.HelpAbout.create(
-        () -> showAbout(getShell(), models.analytics, widgets.theme)));
+        () -> showAbout(getShell(), models.analytics, widgets)));
     manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
     manager.add(MenuItems.HelpLicenses.create(
         () -> showLicensesDialog(getShell(), models.analytics, widgets.theme)));

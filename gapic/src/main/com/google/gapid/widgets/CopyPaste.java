@@ -129,6 +129,10 @@ public class CopyPaste {
     clipboard.setContents(objs, transfers);
   }
 
+  public void setContents(String s) {
+    clipboard.setContents(new Object[]{s}, new Transfer[]{TextTransfer.getInstance()});
+  }
+
   public void addListener(Listener listener) {
     listeners.addListener(listener);
   }

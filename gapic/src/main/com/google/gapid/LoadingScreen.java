@@ -42,7 +42,6 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 
 import java.io.File;
@@ -54,10 +53,7 @@ public class LoadingScreen extends Composite {
   private final Theme theme;
   private final Label statusLabel;
   private final Composite optionsContainer;
-  private Label recentIcon;
   private Link recentLink;
-  private Label helpIcon;
-  private Link helpLink;
   private Models models;
   private Client client;
   private Widgets widgets;
@@ -82,8 +78,7 @@ public class LoadingScreen extends Composite {
     statusLabel = createLabel(container, "Starting up...");
     statusLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-    GridLayout gridLayout = new GridLayout(3, false);
-    gridLayout.horizontalSpacing = 15;
+    GridLayout gridLayout = Widgets.withMargin(new GridLayout(3, false), 15, 5);
     optionsContainer = Widgets.createComposite(container, gridLayout);
     optionsContainer.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
     this.createOptions();
@@ -97,16 +92,15 @@ public class LoadingScreen extends Composite {
   /**
    * Hide the messaging box and display the links after server set up.
    */
-  @SuppressWarnings("hiding")
-  public void showOptions(Client client, Models models, Widgets widgets) {
-    this.client = client;
-    this.models = models;
-    this.widgets = widgets;
+  public void showOptions(Client newClient, Models newModels, Widgets newWidgets) {
+    this.client = newClient;
+    this.models = newModels;
+    this.widgets = newWidgets;
 
     statusLabel.setVisible(false);
     optionsContainer.setVisible(true);
     if (models.settings.getRecent().length <= 0) {
-      removeRecentOption();
+      recentLink.setEnabled(false);
     }
   }
 
@@ -120,7 +114,7 @@ public class LoadingScreen extends Composite {
     });
     Label captureHint = createLabel(optionsContainer, (OS.isMac ? "\u2318" : "Ctrl") + " + T");
     captureHint.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
-    captureHint.setForeground(theme.welcomeVersionColor());
+    captureHint.setForeground(theme.shortcutKeyHintColor());
 
     createLabel(optionsContainer, "", theme.open());
     createLink(optionsContainer, "<a>Open an existing trace</a>", e -> {
@@ -128,9 +122,9 @@ public class LoadingScreen extends Composite {
     });
     Label openHint = createLabel(optionsContainer, (OS.isMac ? "\u2318" : "Ctrl") + " + O");
     openHint.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
-    openHint.setForeground(theme.welcomeVersionColor());
+    openHint.setForeground(theme.shortcutKeyHintColor());
 
-    recentIcon = createLabel(optionsContainer, "", theme.recent());
+    createLabel(optionsContainer, "", theme.recent());
     recentLink = createLink(optionsContainer, "<a>Open recent traces</a>", e -> {
       Menu popup = new Menu(optionsContainer);
       for (String file : checkNotNull(models).settings.recentFiles) {
@@ -145,25 +139,9 @@ public class LoadingScreen extends Composite {
     });
     recentLink.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 2, 1));
 
-    helpIcon = createLabel(optionsContainer, "", theme.help());
-    helpLink = createLink(optionsContainer, "<a>Help</a>", e -> showHelp(models.analytics));
+    createLabel(optionsContainer, "", theme.help());
+    createLink(optionsContainer, "<a>Help</a>", e -> showHelp(models.analytics));
 
     optionsContainer.setVisible(false);
-  }
-
-  /**
-   * Remove the 'Open recent traces' option if there's no local trace opening history.
-   */
-  private void removeRecentOption() {
-    // Replace the recent option with help option. (To avoid deleting widgets and unwanted layout changing.)
-    recentIcon.setImage(theme.help());
-    recentLink.setText("<a>Help</a>");
-    for (Listener l : recentLink.getListeners(SWT.Selection)) {
-      recentLink.removeListener(SWT.Selection, l);
-    }
-    recentLink.addListener(SWT.Selection, e -> showHelp(models.analytics));
-
-    helpIcon.setVisible(false);
-    helpLink.setVisible(false);
   }
 }
