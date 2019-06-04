@@ -3,6 +3,7 @@ title: CLI documentation - GAPIT
 sidebar: CLI documentation
 layout: default
 permalink: /cli/
+order: 50
 ---
 
 # GAPIT Help

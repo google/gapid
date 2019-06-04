@@ -3,6 +3,7 @@ title: Minimum System Requirements
 sidebar: System Requirements
 layout: default
 permalink: /requirements/
+order: 60
 ---
 
 ## Windows
