@@ -9,7 +9,7 @@ parent: tutorials
 
 GAPID has the ability to export a captured trace as a video.
 
-This feature is only available via the command line tool `gapit`.
+This feature is only available via the command line tool [`gapit`](../cli).
 
 ### Prerequisites
 * A previously captured trace file ending in *.gfxtrace
