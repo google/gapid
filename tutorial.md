@@ -2,7 +2,7 @@
 layout: default
 title: Tutorial
 sidebar: Tutorial&#58; How do I...
-order: 5
+order: 20
 permalink: /tutorials/
 group: tutorials
 ---

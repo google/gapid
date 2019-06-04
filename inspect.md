@@ -2,7 +2,7 @@
 layout: default
 title: Inspecting a trace
 sidebar: Inspecting a trace
-order: 20
+order: 40
 permalink: /inspecting/
 group: inspect
 ---
