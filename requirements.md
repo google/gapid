@@ -27,13 +27,12 @@ order: 60
 
 ## Android
 
-* Android L (5.0) or later for OpenGL ES 2.0+ tracing (OpenGL ES 1.x is not supported).
+* Android M (6.0) or later for OpenGL ES 2.0+ tracing (OpenGL ES 1.x is not supported).
 * Android N (7.0) or later for Vulkan tracing.
 
 <div class="issue">
   Please be aware there are known issues tracing on: <br>
   <ul>
-    <li> <a href="https://github.com/google/gapid/issues/1463">Huawei 64-bit devices</a> </li>
     <li> Android x86/x64 emulator.</li>
   </ul>
 </div>
