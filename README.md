@@ -64,7 +64,7 @@ After building GAPID, you can run the client from `<gapid-root>/bazel-bin/pkg/ga
 
 ## Command-Line Interface
 
-GAPID exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](GAPIT.md).
+GAPID exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gapid.dev/cli/).
 
 ## Project Structure
 
