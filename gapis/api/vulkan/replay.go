@@ -945,7 +945,7 @@ func (a API) Replay(
 				transforms.Add(simplifyFragmentShader(ctx))
 			}
 			if req.overrides.GetVertexCount() {
-				transforms.Add(minimizeVertexCount(ctx))
+				transforms.Add(setPrimitiveCountToOne(ctx))
 			}
 		}
 	}
