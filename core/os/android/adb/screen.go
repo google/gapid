@@ -71,15 +71,6 @@ func (b *binding) isScreenUnlocked(ctx context.Context) (bool, error) {
 
 // UnlockScreen returns true if it managed to turn on and unlock the screen.
 func (b *binding) UnlockScreen(ctx context.Context) (bool, error) {
-	// Use wakeup key event to put screen on, and menu key event to
-	// try to unlock. Exit early as soon as the screen is on and
-	// unlocked.
-
-	// KeyEvent() eventually calls adb shell commands, which are
-	// asynchronous. There is no nice way to know when they actually
-	// terminated, hence the sleep here to make sure the key events
-	// have time to affect the screen state.
-
 	screenState, err := b.getScreenState(ctx)
 	if err != nil {
 		return false, err
@@ -88,22 +79,20 @@ func (b *binding) UnlockScreen(ctx context.Context) (bool, error) {
 	case screenOnUnlocked:
 		return true, nil
 
-	case screenOffUnlocked:
+	default:
+		// Devices may do unexpected transitions between screen
+		// states, so this code does not try to be smart about
+		// expected state changes: unless screenOnUnlocked, apply the
+		// wakeup (put screen on) and menu (unlock screen if no
+		// credentials required) key event sequence.
 		if err := b.KeyEvent(ctx, android.KeyCode_Wakeup); err != nil {
 			return false, err
 		}
-		time.Sleep(keyEventEffectDelay)
-		return b.isScreenUnlocked(ctx)
-
-	case screenOffLocked:
-		if err := b.KeyEvent(ctx, android.KeyCode_Wakeup); err != nil {
-			return false, err
-		}
-		fallthrough
-	case screenOnLocked:
 		if err := b.KeyEvent(ctx, android.KeyCode_Menu); err != nil {
 			return false, err
 		}
+		// A sleep here is necessary to make sure the key events had
+		// enough time to affect the screen state.
 		time.Sleep(keyEventEffectDelay)
 		return b.isScreenUnlocked(ctx)
 	}
