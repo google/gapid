@@ -53,3 +53,6 @@ func (t *Tasks) Flush(ctx context.Context, out Writer) {
 	}
 	t.tasks = nil
 }
+
+func (t *Tasks) PreLoop(ctx context.Context, output Writer)  {}
+func (t *Tasks) PostLoop(ctx context.Context, output Writer) {}

@@ -66,3 +66,10 @@ func (t *fileLog) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out 
 func (t *fileLog) Flush(ctx context.Context, out Writer) {
 	t.file.Close()
 }
+
+func (t *fileLog) PreLoop(ctx context.Context, output Writer) {
+	output.NotifyPreLoop(ctx)
+}
+func (t *fileLog) PostLoop(ctx context.Context, output Writer) {
+	output.NotifyPostLoop(ctx)
+}

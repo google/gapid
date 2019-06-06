@@ -744,7 +744,6 @@ bool Context::loadResource(Stack* stack) {
 bool Context::postData(Stack* stack) {
   const uint32_t count = stack->pop<uint32_t>();
   const void* address = stack->pop<const void*>();
-
   if (!stack->isValid()) {
     GAPID_WARNING("Error during postData");
     return false;
@@ -800,6 +799,7 @@ bool Context::stopTimer(Stack* stack, bool pushReturn) {
 bool Context::sendNotificationData(Stack* stack) {
   const uint32_t count = stack->pop<uint32_t>();
   const void* address = stack->pop<const void*>();
+  const uint32_t id = stack->pop<uint32_t>();
   auto label = mInterpreter->getLabel();
 
   if (!stack->isValid()) {
@@ -807,7 +807,7 @@ bool Context::sendNotificationData(Stack* stack) {
     return false;
   }
 
-  return mSrv->sendNotificationData(0, label, address, count);
+  return mSrv->sendNotificationData(id, label, address, count);
 }
 
 }  // namespace gapir

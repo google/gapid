@@ -16,7 +16,6 @@ package replay
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/os/device"
@@ -57,6 +56,7 @@ type QueryTimestamps interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
+		loopcount int32,
 		handler service.TimeStampsHandler,
 		hints *service.UsageHints) error
 }
@@ -96,14 +96,4 @@ type Issue struct {
 	Command  api.CmdID        // The command that reported the issue.
 	Severity service.Severity // The severity of the issue.
 	Error    error            // The issue's error.
-}
-
-// Timestamp represents an execution time measurement between the two commands specified.
-type Timestamp struct {
-	// The path of the command which begins the time measurement.
-	Begin *path.Command
-	// The path of the command which ends the time measurement.
-	End *path.Command
-	// The duration in nanoseconds between the two commands specified.
-	Time time.Duration
 }

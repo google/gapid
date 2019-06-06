@@ -280,7 +280,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) {}
+func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer)    {}
+func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer) {}
 
 func buildReplayEnumeratePhysicalDevices(
 	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
@@ -508,7 +510,9 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	return
 }
 
-func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer) {}
+func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer)    {}
+func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer) {}
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
@@ -648,6 +652,9 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 }
 
+func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}
+
 func newDisplayToSurface() *DisplayToSurface {
 	return &DisplayToSurface{
 		SurfaceTypes: map[uint64]uint32{},
@@ -700,6 +707,8 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 
 func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) {
 }
+func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer) {}
 
 // issuesConfig is a replay.Config used by issuesRequests.
 type issuesConfig struct {
@@ -715,7 +724,8 @@ type timestampsConfig struct {
 }
 
 type timestampsRequest struct {
-	handler service.TimeStampsHandler
+	handler   service.TimeStampsHandler
+	loopCount int32
 }
 
 // uniqueConfig returns a replay.Config that is guaranteed to be unique.
@@ -778,6 +788,7 @@ func (a API) Replay(
 	// Gathers and reports any issues found.
 	var issues *findIssues
 	var timestamps *queryTimestamps
+	var frameloop *frameLoop
 
 	earlyTerminator, err := NewVulkanTerminator(ctx, intent.Capture)
 	if err != nil {
@@ -842,6 +853,8 @@ func (a API) Replay(
 	doDisplayToSurface := false
 	var overdraw *stencilOverdraw
 	var profile *replay.EndOfReplay
+	loopCount := int32(0)
+	var handler service.TimeStampsHandler
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
@@ -864,9 +877,14 @@ func (a API) Replay(
 				if err != nil {
 					return err
 				}
-				timestamps = newQueryTimestamps(ctx, c, n, cmds, req.handler)
+				loopCount = req.loopCount
+				handler = req.handler
+				if loopCount > 0 {
+					frameloop = newFrameLoop(ctx, c, n, cmds, loopCount)
+				}
+				timestamps = newQueryTimestamps(ctx, c, n, cmds, handler)
 			}
-			timestamps.reportTo(rr.Result)
+			timestamps.AddResult(rr.Result)
 			optimize = false
 		case framebufferRequest:
 
@@ -962,6 +980,9 @@ func (a API) Replay(
 	} else if profile != nil {
 		transforms.Add(profile)
 	} else {
+		if frameloop != nil {
+			transforms.Add(frameloop)
+		}
 		if timestamps != nil {
 			transforms.Add(timestamps)
 		} else {
@@ -1095,10 +1116,13 @@ func (a API) QueryTimestamps(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	loopCount int32,
 	handler service.TimeStampsHandler,
 	hints *service.UsageHints) error {
 
-	c, r := timestampsConfig{}, timestampsRequest{handler: handler}
+	c, r := timestampsConfig{}, timestampsRequest{
+		handler:   handler,
+		loopCount: loopCount}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return err
@@ -1112,6 +1136,7 @@ func (a API) QueryTimestamps(
 func (a API) Profile(
 	ctx context.Context,
 	intent replay.Intent,
+
 	mgr replay.Manager,
 	hints *service.UsageHints,
 	overrides *path.OverrideConfig) error {

@@ -393,3 +393,5 @@ func (w *adapter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
 		log.W(ctx, "Failed to write command %v %v for replay: %v", id, cmd, err)
 	}
 }
+func (w *adapter) NotifyPreLoop(ctx context.Context)  {}
+func (w *adapter) NotifyPostLoop(ctx context.Context) {}

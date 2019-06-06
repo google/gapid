@@ -539,11 +539,12 @@ func (b *Builder) JumpNZ(label uint32) {
 
 // Notification asks the GAPIR to stream back the size bytes from addr.
 // A Notification reader must be registered to read the data the from the stream.
-func (b *Builder) Notification(addr value.Pointer, size uint64) {
+func (b *Builder) Notification(ID uint64, addr value.Pointer, size uint64) {
 	if !addr.IsValid() {
 		panic(fmt.Errorf("Pointer address %v is not valid", addr))
 	}
 	b.instructions = append(b.instructions, asm.Notification{
+		ID:     ID,
 		Source: b.remap(addr),
 		Size:   size,
 	})

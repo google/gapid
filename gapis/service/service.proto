@@ -1223,6 +1223,8 @@ message TraceTypeCapabilities {
 message GetTimestampsRequest {
   path.Capture capture = 1;
   path.Device device = 2;
+  // The number of times to loop the trace.
+  int32 LoopCount = 3;
 }
 
 // Timestamps describes the durations of commands execution, each of which
