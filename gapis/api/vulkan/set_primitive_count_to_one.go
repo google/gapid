@@ -129,10 +129,9 @@ func setPrimitiveCountToOne(ctx context.Context) transform.Transformer {
 		// Replace indirect draw calls with direct ones.
 		// TODO: Replace with appropriate indirect calls instead.
 		if isIndirectDraw {
-			vertexCount := perPipelineVertexCount[cmdPipelineBindings[cmdBuf]]
 			newCmd := cb.VkCmdDraw(
 				cmdBuf,
-				vertexCount,
+				0, // vertex count
 				u32.Min(instanceCount, cmdInstanceCount),
 				0, // first vertex
 				0, // first instance
