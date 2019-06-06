@@ -57,9 +57,8 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 	log.I(ctx, "Unlocking device screen")
 	unlocked, err := d.UnlockScreen(ctx)
 	if err != nil {
-		return nil, log.Err(ctx, err, "Error when trying to unlock device screen")
-	}
-	if !unlocked {
+		log.W(ctx, "Failed to determine lock state: %s", err)
+	} else if !unlocked {
 		return nil, log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
 	}
 
