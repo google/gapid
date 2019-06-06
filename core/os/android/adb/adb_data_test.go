@@ -107,29 +107,37 @@ Packages:
 `),
 
 		// Screen state queries
-		stub.RespondTo(adbPath.System()+` -s screen_off_locked_device shell dumpsys nfc`, `
-mState=on
-mIsZeroClickRequested=false
-mScreenState=OFF_LOCKED
-mTechMask: default
+		stub.RespondTo(adbPath.System()+` -s screen_off_locked_device shell dumpsys window policy`, `
+mHasSoftInput=true
+mAwake=false
+mScreenOnEarly=true mScreenOnFully=true
+mDockLayer=268435456 mStatusBarLayer=-1
+mShowingDream=false mDreamingLockscreen=true mDreamingSleepToken=null
+mFocusedWindow=Window{7f1fdc4 u0 com.google.gapid.gltests/com.google.gapid.gltests.MainActivity}
 ...`),
-		stub.RespondTo(adbPath.System()+` -s screen_off_unlocked_device shell dumpsys nfc`, `
-mState=on
-mIsZeroClickRequested=false
-mScreenState=OFF_UNLOCKED
-mTechMask: default
+		stub.RespondTo(adbPath.System()+` -s screen_off_unlocked_device shell dumpsys window policy`, `
+mHomePressed=false
+mAwake=falsemScreenOnEarly=true mScreenOnFully=true
+mKeyguardDrawComplete=true mWindowManagerDrawComplete=true
+mDockLayer=268435456 mStatusBarLayer=0
+mShowingDream=false mShowingLockscreen=false mDreamingSleepToken=null
+mStatusBar=Window{5033a83 u0 StatusBar} isStatusBarKeyguard=false
 ...`),
-		stub.RespondTo(adbPath.System()+` -s screen_on_locked_device shell dumpsys nfc`, `
-mState=on
-mIsZeroClickRequested=false
-mScreenState=ON_LOCKED
-mTechMask: default
+		stub.RespondTo(adbPath.System()+` -s screen_on_locked_device shell dumpsys window policy`, `
+mHasSoftInput=true
+mAwake=true
+mScreenOnEarly=true mScreenOnFully=true
+mDockLayer=268435456 mStatusBarLayer=-1
+mShowingDream=false mDreamingLockscreen=true mDreamingSleepToken=null
+mFocusedWindow=Window{7f1fdc4 u0 com.google.gapid.gltests/com.google.gapid.gltests.MainActivity}
 ...`),
-		stub.RespondTo(adbPath.System()+` -s screen_on_unlocked_device shell dumpsys nfc`, `
-mState=on
-mIsZeroClickRequested=false
-mScreenState=ON_UNLOCKED
-mTechMask: default
+		stub.RespondTo(adbPath.System()+` -s screen_on_unlocked_device shell dumpsys window policy`, `
+mHomePressed=false
+mAwake=truemScreenOnEarly=true mScreenOnFully=true
+mKeyguardDrawComplete=true mWindowManagerDrawComplete=true
+mDockLayer=268435456 mStatusBarLayer=0
+mShowingDream=false mShowingLockscreen=false mDreamingSleepToken=null
+mStatusBar=Window{5033a83 u0 StatusBar} isStatusBarKeyguard=false
 ...`),
 
 		// Pid queries.
