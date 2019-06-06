@@ -301,6 +301,10 @@ Interpreter::Result Interpreter::post() {
   return this->call(Interpreter::POST_FUNCTION_ID);
 }
 
+Interpreter::Result Interpreter::notification() {
+  return this->call(Interpreter::NOTIFICATION_FUNCTION_ID);
+}
+
 Interpreter::Result Interpreter::copy(uint32_t opcode) {
   uint32_t count = extract26bitData(opcode);
   void* target = mStack.pop<void*>();
@@ -558,6 +562,9 @@ Interpreter::Result Interpreter::interpret(uint32_t opcode) {
     case InstructionCode::JUMP_NZ:
       DEBUG_OPCODE_26("JUMP_NZ", opcode);
       return this->jumpNZ(opcode);
+    case InstructionCode::NOTIFICATION:
+      DEBUG_OPCODE("NOTIFICATION", opcode);
+      return this->notification();
     default:
       GAPID_WARNING("Unknown opcode! %#010x", opcode);
       return ERROR;

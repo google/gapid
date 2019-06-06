@@ -829,11 +829,11 @@ func (s *server) UpdateSettings(ctx context.Context, settings *service.UpdateSet
 	return nil
 }
 
-func (s *server) GetTimestamps(ctx context.Context, c *path.Capture, d *path.Device) (interface{}, error) {
+func (s *server) GetTimestamps(ctx context.Context, req *service.GetTimestampsRequest, h service.TimeStampsHandler) error {
 	ctx = status.Start(ctx, "RPC GetTimestamps")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetTimestamps")
-	return replay.GetTimestamps(ctx, c, d)
+	return replay.GetTimestamps(ctx, req.Capture, req.Device, h)
 }
 
 func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error) {

@@ -219,7 +219,14 @@ a jump instruction can jump to this instruction and start execution from there.
 `<code:6> <value:26>`
 
 Jump to the instruction specified by the jump label and start execution from there
-if the value on the top of the stack is not zero. Otherwise it is a Nop. 
+if the value on the top of the stack is not zero. Otherwise it is a Nop.
+
+### `NOTIFICATION()` [-2 (uint32_t, pointer)]
+`<code:6> <padding:26>`
+
+Pops size and then a pointer from the top of the stack and streams back `size` bytes of
+data from the address to the server via the notification message.
+
 ## Resources
 
 GAPIR is designed to be run on desktop and Android devices. When replaying on

@@ -24,13 +24,12 @@ import (
 )
 
 // GetTimestamps replays the trace and return the start and end timestamps for each commandbuffers
-func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.Device) (*service.GetTimestampsResponse, error) {
+func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.Device, handler service.TimeStampsHandler) error {
 	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ts := []Timestamp{}
 	if device != nil {
 		intent := Intent{
 			Capture: capturePath,
@@ -41,7 +40,7 @@ func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.
 		hints := &service.UsageHints{Background: true}
 		for _, a := range c.APIs {
 			if qi, ok := a.(QueryTimestamps); ok {
-				ts, err = qi.QueryTimestamps(ctx, intent, mgr, hints)
+				err = qi.QueryTimestamps(ctx, intent, mgr, handler, hints)
 				if err != nil {
 					log.E(ctx, "Query timestamps failed.")
 					continue
@@ -50,25 +49,5 @@ func GetTimestamps(ctx context.Context, capturePath *path.Capture, device *path.
 		}
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	var timestamps service.Timestamps
-	for _, t := range ts {
-		item := &service.TimestampsItem{
-			Begin:             t.Begin,
-			End:               t.End,
-			TimeInNanoseconds: uint64(t.Time),
-		}
-		timestamps.Timestamps = append(timestamps.Timestamps, item)
-	}
-
-	res := service.GetTimestampsResponse{
-		Res: &service.GetTimestampsResponse_Timestamps{
-			Timestamps: &timestamps,
-		},
-	}
-
-	return &res, nil
+	return err
 }

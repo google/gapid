@@ -98,6 +98,7 @@ go_library(
         "//core/app/status:go_default_library",
         "//core/data/binary:go_default_library",
         "//core/data/dictionary:go_default_library",
+        "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
         #TODO: remove protoconv when it's supplied by deps
         "//core/data/protoconv:go_default_library",  # keep

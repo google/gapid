@@ -15,12 +15,15 @@
 package vulkan
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/capture"
@@ -28,6 +31,7 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/replay/builder"
 	"github.com/google/gapid/gapis/replay/value"
+	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 )
 
@@ -52,6 +56,8 @@ type queryPoolInfo struct {
 	// readIndex is the index in the result list that the next result will be collected.
 	readIndex uint32
 	results   []timestampRecord
+	// whether the notification reader has been registered or not.
+	registered bool
 }
 
 // commandPoolKey is used to find a command pool suitable for a specific queue family
@@ -61,17 +67,21 @@ type commandPoolKey struct {
 }
 
 type queryTimestamps struct {
+	cmds         []api.Cmd
 	commandPools map[commandPoolKey]VkCommandPool
 	queryPools   map[VkQueue]*queryPoolInfo
 	replayResult []replay.Result
 	timestamps   []replay.Timestamp
 	allocated    []*api.AllocResult
+	handler      service.TimeStampsHandler
 }
 
-func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int) *queryTimestamps {
+func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int, Cmds []api.Cmd, handler service.TimeStampsHandler) *queryTimestamps {
 	transform := &queryTimestamps{
+		cmds:         Cmds,
 		commandPools: make(map[commandPoolKey]VkCommandPool),
 		queryPools:   make(map[VkQueue]*queryPoolInfo),
+		handler:      handler,
 	}
 	return transform
 }
@@ -142,7 +152,7 @@ func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 		VkResult_VK_SUCCESS)
 
 	newCmd.AddRead(queryPoolCreateInfo.Data()).AddWrite(queryPoolHandleData.Data())
-	info = &queryPoolInfo{queryPool, qSize, device, timestampPeriod, queue, 0, 0, []timestampRecord{}}
+	info = &queryPoolInfo{queryPool, qSize, device, timestampPeriod, queue, 0, 0, []timestampRecord{}, false}
 	t.queryPools[queue] = info
 	out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
 	return info
@@ -416,13 +426,19 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.ReserveMemory(tmp.Range())
-		b.Post(value.ObservedPointer(tmp.Address()), buflen, func(r binary.Reader, err error) {
-			if err != nil {
-				log.I(ctx, "b post get err %v", err)
-				return
-			}
+		b.Notification(value.ObservedPointer(tmp.Address()), buflen)
+		if queryPoolInfo.registered {
+			return nil
+		}
+		queryPoolInfo.registered = true
+		b.RegisterNotificationReader(func(n gapir.Notification) {
+			d := n.GetData()
+			data := d.GetData()
+			byteOrder := s.MemoryLayout.GetEndian()
 
+			r := endian.Reader(bytes.NewReader(data), byteOrder)
 			tStart := r.Uint64()
+			var timestamps service.Timestamps
 			for i := uint32(1); i < queryCount; i++ {
 				tEnd := r.Uint64()
 				if queryPoolInfo.readIndex >= uint32(len(queryPoolInfo.results)) {
@@ -436,10 +452,24 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 				} else {
 					tStart = tEnd
 				}
+
+				item := &service.TimestampsItem{
+					Begin:             record.timestamp.Begin,
+					End:               record.timestamp.End,
+					TimeInNanoseconds: uint64(record.timestamp.Time),
+				}
+				timestamps.Timestamps = append(timestamps.Timestamps, item)
 				t.timestamps = append(t.timestamps, record.timestamp)
 				queryPoolInfo.readIndex++
 			}
+
+			t.handler(&service.GetTimestampsResponse{
+				Res: &service.GetTimestampsResponse_Timestamps{
+					Timestamps: &timestamps,
+				},
+			})
 		})
+
 		return nil
 	}))
 	queryPoolInfo.writeIndex = 0
@@ -457,7 +487,6 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	}()
 
 	switch cmd := cmd.(type) {
-
 	case *VkQueueSubmit:
 		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 		vkQueue := cmd.Queue()
