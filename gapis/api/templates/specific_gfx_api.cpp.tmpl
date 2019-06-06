@@ -57,7 +57,7 @@
         {{if or (GetAnnotation $c "pfn") (GetAnnotation $c "synthetic")}}
           nullptr,
         {{else}}
-          &gapir::{{$api}}::call{{Template "C++.Public" (Macro "CmdName" $c)}}, 
+          &gapir::{{$api}}::call{{Template "C++.Public" (Macro "CmdName" $c)}}, // {{$i}}
         {{end}}
       {{end}}
     };
