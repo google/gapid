@@ -39,25 +39,44 @@ const (
 	ErrScreenState = fault.Const("Couldn't get screen state")
 )
 
-var screenStateRegex = regexp.MustCompile("mScreenState=(ON|OFF)_(LOCKED|UNLOCKED)")
+var screenStateRegex = regexp.MustCompile("mAwake=(true|false)")
+var lockStateRegex = regexp.MustCompile("(?:mDreamingLockscreen|mShowingLockscreen)=(true|false)")
 
 // getScreenState returns the screen state
 func (b *binding) getScreenState(ctx context.Context) (int, error) {
-	res, err := b.Shell("dumpsys", "nfc").Call(ctx)
+	res, err := b.Shell("dumpsys", "window", "policy").Call(ctx)
 	if err != nil {
 		return -1, err
 	}
-	switch screenStateRegex.FindString(res) {
-	case "mScreenState=ON_LOCKED":
+
+	screenStateMatch := screenStateRegex.FindStringSubmatch(res)
+	screenState := false
+	switch {
+	case screenStateMatch == nil:
+		return -1, log.Err(ctx, ErrScreenState, "")
+	case screenStateMatch[1] == "true":
+		screenState = true
+	}
+
+	lockStateMatch := lockStateRegex.FindStringSubmatch(res)
+	lockState := false
+	switch {
+	case lockStateMatch == nil:
+		return -1, log.Err(ctx, ErrScreenState, "Unable to determine lock state")
+	case lockStateMatch[1] == "true":
+		lockState = true
+	}
+
+	switch {
+	case screenState && lockState:
 		return screenOnLocked, nil
-	case "mScreenState=ON_UNLOCKED":
+	case screenState:
 		return screenOnUnlocked, nil
-	case "mScreenState=OFF_LOCKED":
+	case lockState:
 		return screenOffLocked, nil
-	case "mScreenState=OFF_UNLOCKED":
+	default:
 		return screenOffUnlocked, nil
 	}
-	return -1, log.Err(ctx, ErrScreenState, "")
 }
 
 // isScreenUnlocked returns true is the device's screen is on and unlocked.
