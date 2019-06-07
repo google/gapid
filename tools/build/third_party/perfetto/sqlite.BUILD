@@ -19,7 +19,7 @@ cc_library(
     srcs = glob(["*.c"]) + ["src/ext/misc/percentile.c"],
     hdrs = glob(["*.h"]),
     copts = cc_copts() + [
-        "-Iexternal/perfetto/sqlite",
+        "-Iexternal/perfetto/third_party/sqlite",
         "-DSQLITE_THREADSAFE=0",
         "-DQLITE_DEFAULT_MEMSTATUS=0",
         "-DSQLITE_LIKE_DOESNT_MATCH_BLOBS",
