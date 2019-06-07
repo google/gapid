@@ -20,7 +20,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 _COPTS_BASE = cc_copts() + [
     "-DPERFETTO_IMPLEMENTATION",
-    #    # Always build in optimized mode.
+    # Always build in optimized mode.
     "-O2",
     "-DNDEBUG",
 ] + select({
@@ -32,85 +32,7 @@ _COPTS = _COPTS_BASE + [
     "-DPERFETTO_BUILD_WITH_EMBEDDER",
 ]
 
-cc_library(
-    name = "public_headers",
-    hdrs = glob(["include/**/*.h"]),
-    strip_include_prefix = "include",
-)
-
-cc_library(
-    name = "base",
-    srcs = [
-        "src/base/event.cc",
-        "src/base/string_splitter.cc",
-        "src/base/string_view.cc",
-        "src/base/string_utils.cc",
-        "src/base/thread_checker.cc",
-        "src/base/time.cc",
-        "src/base/virtual_destructors.cc",
-        "src/base/paged_memory.cc",
-    ] + select({
-        "@gapid//tools/build:windows": [],
-        "@gapid//tools/build:darwin": [],
-        "@gapid//tools/build:linux": [
-            "src/base/file_utils.cc",
-            "src/base/metatrace.cc",
-            "src/base/pipe.cc",
-            "src/base/temp_file.cc",
-            "src/base/unix_socket.cc",
-            "src/base/unix_task_runner.cc",
-        ],
-        # Android
-        "//conditions:default": [
-            "src/base/android_task_runner.cc",
-            "src/base/file_utils.cc",
-            "src/base/metatrace.cc",
-            "src/base/pipe.cc",
-            "src/base/temp_file.cc",
-            "src/base/unix_socket.cc",
-        ],
-    }),
-    copts = _COPTS,
-    deps = [
-        ":public_headers",
-    ],
-)
-
-cc_library(
-    name = "base_ipc",
-    srcs = [
-        "src/ipc/client_impl.h",
-        "src/ipc/client_impl.cc",
-        "src/ipc/virtual_destructors.cc",
-        "src/ipc/service_proxy.cc",
-        "src/ipc/deferred.cc",
-        "src/ipc/buffered_frame_deserializer.h",
-        "src/ipc/host_impl.cc",
-        "src/ipc/buffered_frame_deserializer.cc",
-        "src/ipc/host_impl.h",
-    ],
-    copts = _COPTS,
-    deps = [
-        ":base",
-        ":wire_protocol_cc_proto",
-    ],
-)
-
-cc_library(
-    name = "protozero",
-    srcs = [
-        "src/protozero/message.cc",
-        "src/protozero/message_handle.cc",
-        "src/protozero/proto_decoder.cc",
-        "src/protozero/scattered_heap_buffer.cc",
-        "src/protozero/scattered_stream_null_delegate.cc",
-        "src/protozero/scattered_stream_writer.cc",
-    ],
-    copts = _COPTS,
-    deps = [
-        ":base",
-    ],
-)
+###################### Public Libraries and Protos ######################
 
 cc_library(
     name = "trace_processor",
@@ -183,146 +105,157 @@ cc_library(
     ],
 )
 
-genrule(
-    name = "sql_metrics_h",
-    srcs = [
-        "src/trace_processor/metrics/android/android_mem.sql",
-        "src/trace_processor/metrics/android/android_mem_lmk.sql",
-    ],
-    outs = [
-        "src/trace_processor/metrics/sql_metrics.h",
-    ],
-    cmd = "$(location :gen_merged_sql_metrics) --cpp_out=$@ $(SRCS)",
-    tools = [
-        ":gen_merged_sql_metrics",
-    ],
-)
-
-py_binary(
-    name = "gen_merged_sql_metrics",
-    srcs = ["tools/gen_merged_sql_metrics.py"],
-)
-
-cc_binary(
-    name = "protozero_plugin",
-    srcs = [
-        "src/protozero/protoc_plugin/protozero_generator.cc",
-        "src/protozero/protoc_plugin/protozero_generator.h",
-        "src/protozero/protoc_plugin/protozero_plugin.cc",
-    ],
-    copts = _COPTS,
-    deps = [
-        "@com_google_protobuf//:protoc_lib",
-    ],
-)
-
-cc_binary(
-    name = "ipc_plugin",
-    srcs = [
-        "src/ipc/protoc_plugin/ipc_generator.cc",
-        "src/ipc/protoc_plugin/ipc_generator.h",
-        "src/ipc/protoc_plugin/ipc_plugin.cc",
-    ],
-    copts = _COPTS,
-    deps = [
-        "@com_google_protobuf//:protoc_lib",
-    ],
-)
-
 proto_library(
-    name = "common_proto",
-    srcs = [
-        "perfetto/common/android_log_constants.proto",
-        "perfetto/common/commit_data_request.proto",
-        "perfetto/common/observable_events.proto",
-        "perfetto/common/sys_stats_counters.proto",
-        "perfetto/common/trace_stats.proto",
-    ],
+    name = "config_combined_proto",
+    srcs = ["perfetto/config/perfetto_config.proto"],
+    visibility = ["//visibility:public"],
 )
 
-proto_library(
-    name = "wire_protocol_proto",
-    srcs = [
-        "src/ipc/wire_protocol.proto",
-    ],
+go_proto_library(
+    name = "config_go_proto",
+    importpath = "perfetto/config",
+    proto = ":config_combined_proto",
+    visibility = ["//visibility:public"],
 )
 
-cc_proto_library(
-    name = "wire_protocol_cc_proto",
-    deps = [":wire_protocol_proto"],
+java_proto_library(
+    name = "config_java_proto",
+    visibility = ["//visibility:public"],
+    deps = [":config_combined_proto"],
 )
 
-proto_library(
-    name = "ipc_proto",
-    srcs = [
-        "perfetto/ipc/consumer_port.proto",
-        "perfetto/ipc/producer_port.proto",
-    ],
-    deps = [
-        ":common_proto",
-        ":config_proto",
-    ],
-)
+###################### Internal Libraries ######################
 
-cc_proto_library(
-    name = "ipc_cc_proto",
-    deps = [":ipc_proto"],
-)
-
-cc_proto_library(
-    name = "common_cc_proto",
-    deps = [":common_proto"],
+cc_library(
+    name = "public_headers",
+    hdrs = glob(["include/**/*.h"]),
+    strip_include_prefix = "include",
 )
 
 cc_library(
-    name = "core",
+    name = "base",
     srcs = [
-        "src/tracing/core/trace_buffer.cc",
-        "src/tracing/core/shared_memory_abi.cc",
-        "src/tracing/core/packet_stream_validator.h",
-        "src/tracing/core/process_stats_config.cc",
-        "src/tracing/core/test_config.cc",
-        "src/tracing/core/data_source_descriptor.cc",
-        "src/tracing/core/null_trace_writer.cc",
-        "src/tracing/core/trace_writer_for_testing.h",
-        "src/tracing/core/id_allocator.h",
-        "src/tracing/core/trace_writer_impl.h",
-        "src/tracing/core/packet_stream_validator.cc",
-        "src/tracing/core/heapprofd_config.cc",
-        "src/tracing/core/virtual_destructors.cc",
-        "src/tracing/core/trace_config.cc",
-        "src/tracing/core/commit_data_request.cc",
-        "src/tracing/core/null_trace_writer.h",
-        "src/tracing/core/sliced_protobuf_input_stream.cc",
-        "src/tracing/core/data_source_config.cc",
-        "src/tracing/core/sys_stats_config.cc",
-        "src/tracing/core/ftrace_config.cc",
-        "src/tracing/core/startup_trace_writer_registry.cc",
-        "src/tracing/core/id_allocator.cc",
-        "src/tracing/core/trace_buffer.h",
-        "src/tracing/core/trace_stats.cc",
-        "src/tracing/core/observable_events.cc",
-        "src/tracing/core/android_power_config.cc",
-        "src/tracing/core/startup_trace_writer.cc",
-        "src/tracing/core/shared_memory_arbiter_impl.h",
+        "src/base/event.cc",
+        "src/base/string_splitter.cc",
+        "src/base/string_view.cc",
+        "src/base/string_utils.cc",
+        "src/base/thread_checker.cc",
+        "src/base/time.cc",
+        "src/base/virtual_destructors.cc",
+        "src/base/paged_memory.cc",
+    ] + select({
+        "@gapid//tools/build:windows": [],
+        "@gapid//tools/build:darwin": [],
+        "@gapid//tools/build:linux": [
+            "src/base/file_utils.cc",
+            "src/base/metatrace.cc",
+            "src/base/pipe.cc",
+            "src/base/temp_file.cc",
+            "src/base/unix_socket.cc",
+            "src/base/unix_task_runner.cc",
+        ],
+        # Android
+        "//conditions:default": [
+            "src/base/android_task_runner.cc",
+            "src/base/file_utils.cc",
+            "src/base/metatrace.cc",
+            "src/base/pipe.cc",
+            "src/base/temp_file.cc",
+            "src/base/unix_socket.cc",
+        ],
+    }),
+    copts = _COPTS,
+    deps = [
+        ":public_headers",
+    ],
+)
+
+cc_library(
+    name = "base_ipc",
+    srcs = [
+        "src/ipc/buffered_frame_deserializer.cc",
+        "src/ipc/buffered_frame_deserializer.h",
+        "src/ipc/client_impl.cc",
+        "src/ipc/client_impl.h",
+        "src/ipc/deferred.cc",
+        "src/ipc/host_impl.cc",
+        "src/ipc/host_impl.h",
+        "src/ipc/service_proxy.cc",
+        "src/ipc/virtual_destructors.cc",
+    ],
+    copts = _COPTS,
+    deps = [
+        ":base",
+        ":wire_protocol_cc_proto",
+    ],
+)
+
+cc_library(
+    name = "protozero",
+    srcs = [
+        "src/protozero/message.cc",
+        "src/protozero/message_handle.cc",
+        "src/protozero/proto_decoder.cc",
+        "src/protozero/scattered_heap_buffer.cc",
+        "src/protozero/scattered_stream_null_delegate.cc",
+        "src/protozero/scattered_stream_writer.cc",
+    ],
+    copts = _COPTS,
+    deps = [
+        ":base",
+    ],
+)
+
+cc_library(
+    name = "tracing_core",
+    srcs = [
         "src/tracing/core/android_log_config.cc",
-        "src/tracing/core/shared_memory_arbiter_impl.cc",
-        "src/tracing/core/sliced_protobuf_input_stream.h",
         "src/tracing/core/android_log_constants.cc",
+        "src/tracing/core/android_power_config.cc",
         "src/tracing/core/chrome_config.cc",
-        "src/tracing/core/tracing_service_impl.cc",
-        "src/tracing/core/trace_writer_impl.cc",
-        "src/tracing/core/patch_list.h",
-        "src/tracing/core/sys_stats_counters.cc",
-        "src/tracing/core/tracing_service_impl.h",
-        "src/tracing/core/trace_packet.cc",
+        "src/tracing/core/commit_data_request.cc",
+        "src/tracing/core/data_source_config.cc",
+        "src/tracing/core/data_source_descriptor.cc",
+        "src/tracing/core/ftrace_config.cc",
+        "src/tracing/core/heapprofd_config.cc",
+        "src/tracing/core/id_allocator.cc",
+        "src/tracing/core/id_allocator.h",
         "src/tracing/core/inode_file_config.cc",
+        "src/tracing/core/null_trace_writer.cc",
+        "src/tracing/core/null_trace_writer.h",
+        "src/tracing/core/observable_events.cc",
+        "src/tracing/core/packet_stream_validator.cc",
+        "src/tracing/core/packet_stream_validator.h",
+        "src/tracing/core/patch_list.h",
+        "src/tracing/core/process_stats_config.cc",
+        "src/tracing/core/shared_memory_abi.cc",
+        "src/tracing/core/shared_memory_arbiter_impl.cc",
+        "src/tracing/core/shared_memory_arbiter_impl.h",
+        "src/tracing/core/sliced_protobuf_input_stream.cc",
+        "src/tracing/core/sliced_protobuf_input_stream.h",
+        "src/tracing/core/startup_trace_writer.cc",
+        "src/tracing/core/startup_trace_writer_registry.cc",
+        "src/tracing/core/sys_stats_config.cc",
+        "src/tracing/core/sys_stats_counters.cc",
+        "src/tracing/core/test_config.cc",
+        "src/tracing/core/trace_buffer.cc",
+        "src/tracing/core/trace_buffer.h",
+        "src/tracing/core/trace_config.cc",
+        "src/tracing/core/trace_packet.cc",
+        "src/tracing/core/trace_stats.cc",
+        "src/tracing/core/trace_writer_for_testing.h",
+        "src/tracing/core/trace_writer_impl.cc",
+        "src/tracing/core/trace_writer_impl.h",
+        "src/tracing/core/tracing_service_impl.cc",
+        "src/tracing/core/tracing_service_impl.h",
+        "src/tracing/core/virtual_destructors.cc",
     ],
     copts = _COPTS,
     deps = [
         ":base",
         ":common_cc_proto",
         ":config_cc_proto",
+        ":protozero",
         ":trace_cc_proto",
         ":trace_zero_proto",
         "@com_google_googletest//:gtest_main",
@@ -330,7 +263,7 @@ cc_library(
 )
 
 cc_library(
-    name = "ipc",
+    name = "tracing_ipc",
     srcs = [
         "src/tracing/ipc/consumer/consumer_ipc_client_impl.cc",
         "src/tracing/ipc/consumer/consumer_ipc_client_impl.h",
@@ -350,26 +283,49 @@ cc_library(
     copts = _COPTS,
     deps = [
         ":base",
-        ":core",
         ":ipc_cc_ipc",
         ":ipc_cc_proto",
+        ":tracing_core",
     ],
+)
+
+genrule(
+    name = "sql_metrics_h",
+    srcs = [
+        "src/trace_processor/metrics/android/android_mem.sql",
+        "src/trace_processor/metrics/android/android_mem_lmk.sql",
+    ],
+    outs = [
+        "src/trace_processor/metrics/sql_metrics.h",
+    ],
+    cmd = "$(location :gen_merged_sql_metrics) --cpp_out=$@ $(SRCS)",
+    tools = [
+        ":gen_merged_sql_metrics",
+    ],
+)
+
+###################### Internal Protos ######################
+
+proto_library(
+    name = "common_proto",
+    srcs = [
+        "perfetto/common/android_log_constants.proto",
+        "perfetto/common/commit_data_request.proto",
+        "perfetto/common/observable_events.proto",
+        "perfetto/common/sys_stats_counters.proto",
+        "perfetto/common/trace_stats.proto",
+    ],
+)
+
+cc_proto_library(
+    name = "common_cc_proto",
+    deps = [":common_proto"],
 )
 
 cc_protozero_library(
     name = "common_zero_proto",
     copts = _COPTS,
     deps = [":common_proto"],
-)
-
-cc_ipc_library(
-    name = "ipc_cc_ipc",
-    cdeps = [
-        ":ipc_cc_proto",
-        ":base_ipc",
-    ],
-    copts = _COPTS,
-    deps = [":ipc_proto"],
 )
 
 proto_library(
@@ -393,23 +349,36 @@ proto_library(
     ],
 )
 
+cc_proto_library(
+    name = "config_cc_proto",
+    deps = [":config_proto"],
+)
+
 proto_library(
-    name = "config_combined_proto",
-    srcs = ["perfetto/config/perfetto_config.proto"],
-    visibility = ["//visibility:public"],
+    name = "ipc_proto",
+    srcs = [
+        "perfetto/ipc/consumer_port.proto",
+        "perfetto/ipc/producer_port.proto",
+    ],
+    deps = [
+        ":common_proto",
+        ":config_proto",
+    ],
 )
 
-go_proto_library(
-    name = "config_go_proto",
-    importpath = "perfetto/config",
-    proto = ":config_combined_proto",
-    visibility = ["//visibility:public"],
+cc_proto_library(
+    name = "ipc_cc_proto",
+    deps = [":ipc_proto"],
 )
 
-java_proto_library(
-    name = "config_java_proto",
-    visibility = ["//visibility:public"],
-    deps = [":config_combined_proto"],
+cc_ipc_library(
+    name = "ipc_cc_ipc",
+    cdeps = [
+        ":ipc_cc_proto",
+        ":base_ipc",
+    ],
+    copts = _COPTS,
+    deps = [":ipc_proto"],
 )
 
 proto_library(
@@ -491,10 +460,27 @@ proto_library(
     ],
 )
 
+cc_proto_library(
+    name = "trace_cc_proto",
+    deps = [":trace_proto"],
+)
+
 cc_protozero_library(
     name = "trace_zero_proto",
     copts = _COPTS,
     deps = [":trace_proto"],
+)
+
+proto_library(
+    name = "wire_protocol_proto",
+    srcs = [
+        "src/ipc/wire_protocol.proto",
+    ],
+)
+
+cc_proto_library(
+    name = "wire_protocol_cc_proto",
+    deps = [":wire_protocol_proto"],
 )
 
 proto_library(
@@ -510,15 +496,7 @@ cc_proto_library(
     deps = [":perfetto_cmd_proto"],
 )
 
-cc_proto_library(
-    name = "config_cc_proto",
-    deps = [":config_proto"],
-)
-
-cc_proto_library(
-    name = "trace_cc_proto",
-    deps = [":trace_proto"],
-)
+###################### Binaries ######################
 
 cc_stripped_binary(
     name = "perfetto_cmd",
@@ -542,10 +520,10 @@ cc_stripped_binary(
     deps = [
         ":base",
         ":config_cc_proto",
-        ":ipc",
         ":perfetto_cmd_cc_proto",
         ":protozero",
         ":trace_cc_proto",
+        ":tracing_ipc",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -568,10 +546,10 @@ cc_stripped_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":base",
-        ":ipc",
         ":perfetto_cmd_cc_proto",
         ":protozero",
         ":trace_cc_proto",
+        ":tracing_ipc",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -670,11 +648,44 @@ cc_stripped_binary(
         ":base",
         ":common_cc_proto",
         ":common_zero_proto",
-        ":ipc",
         ":perfetto_cmd_cc_proto",
         ":protozero",
         ":trace_zero_proto",
+        ":tracing_ipc",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
+    ],
+)
+
+###################### Plugins & Generators ######################
+
+py_binary(
+    name = "gen_merged_sql_metrics",
+    srcs = ["tools/gen_merged_sql_metrics.py"],
+)
+
+cc_binary(
+    name = "protozero_plugin",
+    srcs = [
+        "src/protozero/protoc_plugin/protozero_generator.cc",
+        "src/protozero/protoc_plugin/protozero_generator.h",
+        "src/protozero/protoc_plugin/protozero_plugin.cc",
+    ],
+    copts = _COPTS,
+    deps = [
+        "@com_google_protobuf//:protoc_lib",
+    ],
+)
+
+cc_binary(
+    name = "ipc_plugin",
+    srcs = [
+        "src/ipc/protoc_plugin/ipc_generator.cc",
+        "src/ipc/protoc_plugin/ipc_generator.h",
+        "src/ipc/protoc_plugin/ipc_plugin.cc",
+    ],
+    copts = _COPTS,
+    deps = [
+        "@com_google_protobuf//:protoc_lib",
     ],
 )
