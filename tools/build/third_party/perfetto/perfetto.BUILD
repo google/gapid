@@ -74,7 +74,6 @@ cc_library(
     deps = [
         ":public_headers",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -91,7 +90,6 @@ cc_library(
         "src/ipc/host_impl.h",
     ],
     copts = _COPTS,
-    visibility = ["//visibility:public"],
     deps = [
         ":base",
         ":wire_protocol_cc_proto",
@@ -109,7 +107,6 @@ cc_library(
         "src/protozero/scattered_stream_writer.cc",
     ],
     copts = _COPTS,
-    visibility = ["//visibility:public"],
     deps = [
         ":base",
     ],
@@ -269,13 +266,11 @@ proto_library(
 
 cc_proto_library(
     name = "ipc_cc_proto",
-    visibility = ["//visibility:public"],
     deps = [":ipc_proto"],
 )
 
 cc_proto_library(
     name = "common_cc_proto",
-    visibility = ["//visibility:public"],
     deps = [":common_proto"],
 )
 
@@ -324,7 +319,6 @@ cc_library(
         "src/tracing/core/inode_file_config.cc",
     ],
     copts = _COPTS,
-    visibility = ["//visibility:public"],
     deps = [
         ":base",
         ":common_cc_proto",
@@ -354,7 +348,6 @@ cc_library(
         "src/tracing/ipc/service/service_ipc_host_impl.h",
     ],
     copts = _COPTS,
-    visibility = ["//visibility:public"],
     deps = [
         ":base",
         ":core",
@@ -395,7 +388,6 @@ proto_library(
         "perfetto/config/test_config.proto",
         "perfetto/config/trace_config.proto",
     ],
-    visibility = ["//visibility:public"],
     deps = [
         ":common_proto",
     ],
@@ -515,13 +507,11 @@ proto_library(
 
 cc_proto_library(
     name = "perfetto_cmd_cc_proto",
-    visibility = ["//visibility:public"],
     deps = [":perfetto_cmd_proto"],
 )
 
 cc_proto_library(
     name = "config_cc_proto",
-    visibility = ["//visibility:public"],
     deps = [":config_proto"],
 )
 
