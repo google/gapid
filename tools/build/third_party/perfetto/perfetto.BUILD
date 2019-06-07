@@ -33,6 +33,12 @@ _COPTS = _COPTS_BASE + [
 ]
 
 cc_library(
+    name = "public_headers",
+    hdrs = glob(["include/**/*.h"]),
+    strip_include_prefix = "include",
+)
+
+cc_library(
     name = "base",
     srcs = [
         "src/base/event.cc",
@@ -43,9 +49,7 @@ cc_library(
         "src/base/time.cc",
         "src/base/virtual_destructors.cc",
         "src/base/paged_memory.cc",
-    ] + glob([
-        "include/**/*.h",
-    ]) + select({
+    ] + select({
         "@gapid//tools/build:windows": [],
         "@gapid//tools/build:darwin": [],
         "@gapid//tools/build:linux": [
@@ -66,9 +70,10 @@ cc_library(
             "src/base/unix_socket.cc",
         ],
     }),
-    hdrs = glob(["include/**/*.h"]),
     copts = _COPTS,
-    strip_include_prefix = "include",
+    deps = [
+        ":public_headers",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -84,12 +89,8 @@ cc_library(
         "src/ipc/host_impl.cc",
         "src/ipc/buffered_frame_deserializer.cc",
         "src/ipc/host_impl.h",
-    ] + glob([
-        "include/**/*.h",
-    ]),
-    hdrs = glob(["include/**/*.h"]),
+    ],
     copts = _COPTS,
-    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
     deps = [
         ":base",
@@ -107,9 +108,7 @@ cc_library(
         "src/protozero/scattered_stream_null_delegate.cc",
         "src/protozero/scattered_stream_writer.cc",
     ],
-    hdrs = glob(["include/perfetto/protozero/*.h"]),
     copts = _COPTS,
-    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
     deps = [
         ":base",
@@ -170,14 +169,11 @@ cc_library(
         "src/trace_processor/virtual_destructors.cc",
         "src/trace_processor/window_operator_table.cc",
     ] + glob([
-        "include/**/*.h",
         "src/trace_processor/**/*.h",
     ]) + [
         ":sql_metrics_h",
     ],
-    hdrs = glob(["include/**/*.h"]),
     copts = _COPTS + ["-Iexternal/perfetto/sqlite"],
-    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
     deps = [
         ":base",
@@ -326,12 +322,8 @@ cc_library(
         "src/tracing/core/tracing_service_impl.h",
         "src/tracing/core/trace_packet.cc",
         "src/tracing/core/inode_file_config.cc",
-    ] + glob([
-        "include/**/*.h",
-    ]),
-    hdrs = glob(["include/**/*.h"]),
+    ],
     copts = _COPTS,
-    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
     deps = [
         ":base",
@@ -360,12 +352,8 @@ cc_library(
         "src/tracing/ipc/service/producer_ipc_service.h",
         "src/tracing/ipc/service/service_ipc_host_impl.cc",
         "src/tracing/ipc/service/service_ipc_host_impl.h",
-    ] + glob([
-        "include/**/*.h",
-    ]),
-    hdrs = glob(["include/**/*.h"]),
+    ],
     copts = _COPTS,
-    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
     deps = [
         ":base",
