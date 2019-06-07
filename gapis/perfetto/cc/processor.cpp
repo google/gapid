@@ -34,7 +34,8 @@ bool parse_data(processor processor, const void* data, size_t size) {
   ptp::TraceProcessor* p = static_cast<ptp::TraceProcessor*>(processor);
   std::unique_ptr<uint8_t[]> buf(new uint8_t[size]);
   memcpy(buf.get(), data, size);
-  if (!p->Parse(std::move(buf), size)) {
+  // TODO: return the error message.
+  if (!p->Parse(std::move(buf), size).ok()) {
     return false;
   }
   p->NotifyEndOfFile();
@@ -131,8 +132,9 @@ result execute_query(processor processor, const char* query) {
 
   raw.set_num_records(rows);
 
-  if (auto opt_error = it.GetLastError()) {
-    raw.set_error(*opt_error);
+  auto status = it.Status();
+  if (!status.ok()) {
+    raw.set_error(status.message());
   }
 
   result res;

@@ -17,7 +17,7 @@
 
 PACKAGES = [
     struct(
-        url = "https://android.googlesource.com/platform/external/perfetto/+archive/826c8d4342d321fb921cf6e0704fe482c7a58348.tar.gz",
+        url = "https://android.googlesource.com/platform/external/perfetto/+archive/a8e2b77ed47d432d99edb6ddaaa7e5b61d3f2041.tar.gz",
         sha = "",
         strip = "",
         out = ".",
@@ -26,13 +26,13 @@ PACKAGES = [
         url = "https://storage.googleapis.com/perfetto/sqlite-amalgamation-3250300.zip",
         sha = "2ad5379f3b665b60599492cc8a13ac480ea6d819f91b1ef32ed0e1ad152fafef",
         strip = "sqlite-amalgamation-3250300",
-        out = "sqlite",
+        out = "third_party/sqlite",
     ),
     struct(
         url = "https://storage.googleapis.com/perfetto/sqlite-src-3250300.zip",
         sha = "c7922bc840a799481050ee9a76e679462da131adba1814687f05aa5c93766421",
         strip = "sqlite-src-3250300",
-        out = "sqlite/src",
+        out = "third_party/sqlite/src",
     ),
 ]
 
@@ -46,7 +46,7 @@ def _perfetto_impl(ctx):
         )
 
     ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:perfetto.BUILD"), "BUILD.bazel")
-    ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:sqlite.BUILD"), "sqlite/BUILD.bazel")
+    ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:sqlite.BUILD"), "third_party/sqlite/BUILD.bazel")
 
     # Link protos into a bazel C++ friendly namespace.
     ctx.symlink("protos/perfetto", "perfetto")

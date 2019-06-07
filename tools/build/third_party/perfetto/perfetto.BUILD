@@ -51,13 +51,16 @@ cc_library(
         "src/trace_processor/fuchsia_trace_parser.cc",
         "src/trace_processor/fuchsia_trace_tokenizer.cc",
         "src/trace_processor/fuchsia_trace_utils.cc",
+        "src/trace_processor/gzip_trace_parser.cc",
         "src/trace_processor/heap_profile_allocation_table.cc",
         "src/trace_processor/heap_profile_callsite_table.cc",
         "src/trace_processor/heap_profile_frame_table.cc",
         "src/trace_processor/heap_profile_mapping_table.cc",
         "src/trace_processor/heap_profile_tracker.cc",
         "src/trace_processor/instants_table.cc",
+        "src/trace_processor/metrics/descriptors.cc",
         "src/trace_processor/metrics/metrics.cc",
+        "src/trace_processor/metadata_table.cc",
         "src/trace_processor/process_table.cc",
         "src/trace_processor/process_tracker.cc",
         "src/trace_processor/proto_trace_parser.cc",
@@ -78,6 +81,8 @@ cc_library(
         "src/trace_processor/string_pool.cc",
         "src/trace_processor/string_table.cc",
         "src/trace_processor/syscall_tracker.cc",
+        "src/trace_processor/systrace_parser.cc",
+        "src/trace_processor/systrace_trace_parser.cc",
         "src/trace_processor/table.cc",
         "src/trace_processor/thread_table.cc",
         "src/trace_processor/trace_processor.cc",
@@ -92,16 +97,19 @@ cc_library(
     ]) + [
         ":sql_metrics_h",
     ],
-    copts = _COPTS + ["-Iexternal/perfetto/sqlite"],
+    copts = _COPTS,
     visibility = ["//visibility:public"],
     deps = [
         ":base",
         ":common_zero_proto",
+        ":config_zero_proto",
         ":metrics_zero_proto",
         ":protozero",
+        ":trace_processor_zero_proto",
         ":trace_zero_proto",
-        "//sqlite",
+        "//third_party/sqlite",
         "@com_google_protobuf//:protobuf",
+        "@net_zlib//:z",
     ],
 )
 
@@ -208,28 +216,20 @@ cc_library(
 cc_library(
     name = "tracing_core",
     srcs = [
-        "src/tracing/core/android_log_config.cc",
-        "src/tracing/core/android_log_constants.cc",
-        "src/tracing/core/android_power_config.cc",
         "src/tracing/core/chrome_config.cc",
         "src/tracing/core/commit_data_request.cc",
         "src/tracing/core/data_source_config.cc",
         "src/tracing/core/data_source_descriptor.cc",
-        "src/tracing/core/ftrace_config.cc",
-        "src/tracing/core/heapprofd_config.cc",
         "src/tracing/core/id_allocator.cc",
-        "src/tracing/core/inode_file_config.cc",
+        "src/tracing/core/metatrace_writer.cc",
         "src/tracing/core/null_trace_writer.cc",
         "src/tracing/core/observable_events.cc",
         "src/tracing/core/packet_stream_validator.cc",
-        "src/tracing/core/process_stats_config.cc",
         "src/tracing/core/shared_memory_abi.cc",
         "src/tracing/core/shared_memory_arbiter_impl.cc",
         "src/tracing/core/sliced_protobuf_input_stream.cc",
         "src/tracing/core/startup_trace_writer.cc",
         "src/tracing/core/startup_trace_writer_registry.cc",
-        "src/tracing/core/sys_stats_config.cc",
-        "src/tracing/core/sys_stats_counters.cc",
         "src/tracing/core/test_config.cc",
         "src/tracing/core/trace_buffer.cc",
         "src/tracing/core/trace_config.cc",
@@ -237,7 +237,9 @@ cc_library(
         "src/tracing/core/trace_stats.cc",
         "src/tracing/core/trace_writer_impl.cc",
         "src/tracing/core/tracing_service_impl.cc",
+        "src/tracing/core/tracing_service_state.cc",
         "src/tracing/core/virtual_destructors.cc",
+        "src/tracing/trace_writer_base.cc",
     ] + glob([
         "src/tracing/core/**/*.h",
     ]),
@@ -249,7 +251,6 @@ cc_library(
         ":protozero",
         ":trace_cc_proto",
         ":trace_zero_proto",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -278,8 +279,16 @@ cc_library(
 genrule(
     name = "sql_metrics_h",
     srcs = [
+        "src/trace_processor/metrics/error_statistics.sql",
+        "src/trace_processor/metrics/android/android_batt.sql",
         "src/trace_processor/metrics/android/android_mem.sql",
         "src/trace_processor/metrics/android/android_mem_lmk.sql",
+        "src/trace_processor/metrics/android/android_mem_proc_counters.sql",
+        "src/trace_processor/metrics/android/android_startup_launches.sql",
+        "src/trace_processor/metrics/android/android_task_state.sql",
+        "src/trace_processor/metrics/android/android_startup.sql",
+        "src/trace_processor/metrics/android/android_startup_cpu.sql",
+        "src/trace_processor/metrics/android/heap_profile.sql",
     ],
     outs = [
         "src/trace_processor/metrics/sql_metrics.h",
@@ -297,9 +306,12 @@ proto_library(
     srcs = [
         "perfetto/common/android_log_constants.proto",
         "perfetto/common/commit_data_request.proto",
+        "perfetto/common/data_source_descriptor.proto",
+        "perfetto/common/descriptor.proto",
         "perfetto/common/observable_events.proto",
         "perfetto/common/sys_stats_counters.proto",
         "perfetto/common/trace_stats.proto",
+        "perfetto/common/tracing_service_state.proto",
     ],
 )
 
@@ -320,7 +332,6 @@ proto_library(
         "perfetto/config/android/android_log_config.proto",
         "perfetto/config/chrome/chrome_config.proto",
         "perfetto/config/data_source_config.proto",
-        "perfetto/config/data_source_descriptor.proto",
         "perfetto/config/ftrace/ftrace_config.proto",
         "perfetto/config/inode_file/inode_file_config.proto",
         "perfetto/config/power/android_power_config.proto",
@@ -337,6 +348,12 @@ proto_library(
 
 cc_proto_library(
     name = "config_cc_proto",
+    deps = [":config_proto"],
+)
+
+cc_protozero_library(
+    name = "config_zero_proto",
+    copts = _COPTS,
     deps = [":config_proto"],
 )
 
@@ -370,7 +387,10 @@ cc_ipc_library(
 proto_library(
     name = "metrics_proto",
     srcs = [
+        "perfetto/metrics/android/batt_metric.proto",
+        "perfetto/metrics/android/heap_profile.proto",
         "perfetto/metrics/android/mem_metric.proto",
+        "perfetto/metrics/android/startup_metric.proto",
         "perfetto/metrics/metrics.proto",
     ],
 )
@@ -382,10 +402,25 @@ cc_protozero_library(
 )
 
 proto_library(
+    name = "trace_processor_proto",
+    srcs = [
+        "perfetto/trace_processor/metrics_impl.proto",
+    ],
+)
+
+cc_protozero_library(
+    name = "trace_processor_zero_proto",
+    copts = _COPTS,
+    deps = [":trace_processor_proto"],
+)
+
+proto_library(
     name = "trace_proto",
     srcs = [
         "perfetto/trace/android/android_log.proto",
         "perfetto/trace/android/packages_list.proto",
+        "perfetto/trace/chrome/chrome_benchmark_metadata.proto",
+        "perfetto/trace/chrome/chrome_metadata.proto",
         "perfetto/trace/chrome/chrome_trace_event.proto",
         "perfetto/trace/clock_snapshot.proto",
         "perfetto/trace/filesystem/inode_file_map.proto",
@@ -417,13 +452,16 @@ proto_library(
         "perfetto/trace/ftrace/sched.proto",
         "perfetto/trace/ftrace/signal.proto",
         "perfetto/trace/ftrace/sync.proto",
+        "perfetto/trace/ftrace/systrace.proto",
         "perfetto/trace/ftrace/task.proto",
         "perfetto/trace/ftrace/test_bundle_wrapper.proto",
         "perfetto/trace/ftrace/vmscan.proto",
         "perfetto/trace/ftrace/workqueue.proto",
         "perfetto/trace/interned_data/interned_data.proto",
+        "perfetto/trace/perfetto/perfetto_metatrace.proto",
         "perfetto/trace/power/battery_counters.proto",
         "perfetto/trace/power/power_rails.proto",
+        "perfetto/trace/profiling/profile_common.proto",
         "perfetto/trace/profiling/profile_packet.proto",
         "perfetto/trace/ps/process_stats.proto",
         "perfetto/trace/ps/process_tree.proto",
@@ -472,7 +510,6 @@ cc_proto_library(
 proto_library(
     name = "perfetto_cmd_proto",
     srcs = [
-        "src/perfetto_cmd/descriptor.proto",
         "src/perfetto_cmd/perfetto_cmd_state.proto",
     ],
 )
@@ -489,6 +526,7 @@ cc_stripped_binary(
     srcs = [
         "src/perfetto_cmd/config.cc",
         "src/perfetto_cmd/main.cc",
+        "src/perfetto_cmd/packet_writer.cc",
         "src/perfetto_cmd/pbtxt_to_pb.cc",
         "src/perfetto_cmd/perfetto_cmd.cc",
         "src/perfetto_cmd/rate_limiter.cc",
@@ -507,6 +545,7 @@ cc_stripped_binary(
         ":trace_cc_proto",
         ":tracing_ipc",
         "@com_google_protobuf//:protobuf",
+        "@net_zlib//:z",
     ],
 )
 
@@ -540,6 +579,7 @@ cc_stripped_binary(
 cc_stripped_binary(
     name = "traced_probes",
     srcs = [
+        "src/traced/probes/android_log/android_log_data_source.cc",
         "src/traced/probes/main.cc",
         "src/traced/probes/probes_data_source.cc",
         "src/traced/probes/probes_producer.cc",
@@ -552,10 +592,10 @@ cc_stripped_binary(
         "src/traced/probes/ftrace/format_parser.cc",
         "src/traced/probes/ftrace/ftrace_stats.cc",
         "src/traced/probes/ftrace/ftrace_config.cc",
-        "src/traced/probes/ftrace/page_pool_unittest.cc",
         "src/traced/probes/ftrace/proto_translation_table.cc",
         "src/traced/probes/ftrace/ftrace_data_source.cc",
         "src/traced/probes/ftrace/atrace_hal_wrapper.cc",
+        "src/traced/probes/ftrace/ftrace_config_utils.cc",
         "src/traced/probes/ftrace/ftrace_controller.cc",
         "src/traced/probes/ftrace/ftrace_procfs.cc",
         "src/traced/probes/ftrace/cpu_reader.cc",
@@ -567,7 +607,7 @@ cc_stripped_binary(
         "src/traced/probes/filesystem/range_tree.cc",
         "src/traced/probes/filesystem/prefix_finder.cc",
         "src/traced/probes/filesystem/file_scanner.cc",
-        "src/traced/probes/android_log/android_log_data_source.cc",
+        "src/traced/probes/metatrace/metatrace_data_source.cc",
         "src/traced/probes/packages_list/packages_list_data_source.cc",
         "src/traced/probes/power/android_power_data_source.cc",
         "src/traced/probes/ps/process_stats_data_source.cc",
@@ -601,11 +641,11 @@ cc_stripped_binary(
         ":base",
         ":common_cc_proto",
         ":common_zero_proto",
+        ":config_zero_proto",
         ":perfetto_cmd_cc_proto",
         ":protozero",
         ":trace_zero_proto",
         ":tracing_ipc",
-        "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
 )
