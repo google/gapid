@@ -19,6 +19,7 @@ import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTextbox;
+import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.gapid.models.Analytics;
@@ -33,14 +34,12 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
@@ -52,7 +51,6 @@ import java.util.logging.Logger;
  * Dialog showing some basic info about our application.
  */
 public class AboutDialog {
-  protected static final Clipboard cb = new Clipboard(Display.getCurrent());
   private static final String HELP_URL = "https://google.github.io/gapid";
   private static final Logger LOG = Logger.getLogger(AboutDialog.class.getName());
 
@@ -85,8 +83,7 @@ public class AboutDialog {
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
 
-        GridLayout gridLayout = Widgets.withMargin(new GridLayout(2, false), 20, 5);
-        Composite container = createComposite(area, gridLayout);
+        Composite container = createComposite(area, withMargin(new GridLayout(2, false), 20, 5));
         container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false));
 
         Label logo = createLabel(container, "", theme.dialogLogo());
@@ -97,10 +94,11 @@ public class AboutDialog {
         title.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
 
         createLabel(container, "").setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true, 2, 1));
-        Button clipboard = com.google.gapid.widgets.Widgets.createButton(container, "", e -> {
+        Button clipboard = Widgets.createButton(container, "", e -> {
           String textData = "Version " + GAPID_VERSION;
-          widgets.setClipboardContent(textData);
+          widgets.copypaste.setContents(textData);
         });
+
         clipboard.setImage(theme.clipboard());
         clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));
 

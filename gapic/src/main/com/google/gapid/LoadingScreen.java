@@ -21,10 +21,12 @@ import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
+import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createMenuItem;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.withMargin;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
@@ -63,7 +65,7 @@ public class LoadingScreen extends Composite {
     this.theme = theme;
     setLayout(CenteringLayout.goldenRatio());
 
-    Composite container = Widgets.createComposite(this, new GridLayout(1, false));
+    Composite container = createComposite(this, new GridLayout(1, false));
     createLabel(container, "", theme.dialogLogo())
         .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
@@ -78,10 +80,9 @@ public class LoadingScreen extends Composite {
     statusLabel = createLabel(container, "Starting up...");
     statusLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-    GridLayout gridLayout = Widgets.withMargin(new GridLayout(3, false), 15, 5);
-    optionsContainer = Widgets.createComposite(container, gridLayout);
+    optionsContainer = createComposite(container, withMargin(new GridLayout(3, false), 15, 5));
     optionsContainer.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-    this.createOptions();
+    createOptions();
   }
 
   public void setText(String status) {

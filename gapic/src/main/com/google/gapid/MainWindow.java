@@ -99,7 +99,7 @@ public class MainWindow extends ApplicationWindow {
   }
 
   public void updateLoadingScreen(Client client, Models models, Widgets widgets) {
-    this.loadingScreen.showOptions(client, models, widgets);
+    loadingScreen.showOptions(client, models, widgets);
   }
 
   public void initMainUi(Client client, Models models, Widgets widgets) {
