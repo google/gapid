@@ -62,6 +62,10 @@ GAPID can also trace any desktop Vulkan application.
 
 After building GAPID, you can run the client from `<gapid-root>/bazel-bin/pkg/gapid`.
 
+## Command-Line Interface
+
+GAPID exposes most of its functionality via a CLI *gapit*. You can find auto-generated documentation [here](https://gapid.dev/cli/).
+
 ## Project Structure
 
 GAPID consists of the following sub-components:
@@ -80,3 +84,4 @@ The frontend user interface application. Provides visual inspection of the captu
 
 ### [`gapil`](gapil): Graphics API Language
 A new domain specific language to describe a graphics API in its entirety. Combined with our template system to generate huge parts of the interceptor, server and replay systems.
+
