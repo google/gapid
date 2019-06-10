@@ -20,27 +20,21 @@ import static com.google.gapid.perfetto.models.QueryEngine.createView;
 import static com.google.gapid.perfetto.models.QueryEngine.createWindow;
 import static com.google.gapid.perfetto.models.QueryEngine.dropTable;
 import static com.google.gapid.perfetto.models.QueryEngine.dropView;
-import static com.google.gapid.perfetto.models.QueryEngine.expectOneRow;
+import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.Perfetto;
+import com.google.gapid.perfetto.views.MemorySummaryPanel;
 
 /**
  * {@link Track} containing the total system memory usage data.
  */
 public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
-  private static final String DEF_TABLE = "counter_definitions";
-  private static final String DEF_SQL = "select " +
-      "(select counter_id from " + DEF_TABLE + " where name = 'MemTotal' and ref_type is null), " +
-      "(select counter_id from " + DEF_TABLE + " where name = 'MemFree' and ref_type is null), " +
-      "(select counter_id from " + DEF_TABLE + " where name = 'Buffers' and ref_type is null), " +
-      "(select counter_id from " + DEF_TABLE + " where name = 'Cached' and ref_type is null), " +
-      "(select counter_id from " + DEF_TABLE + " where name = 'SwapCached' and ref_type is null)";
-  private static final String MAX_SQL =
-      "select cast(max(value) as int) from counter_values where counter_id = %d";
   private static final String VIEW_SQL =
       "select ts, lead(ts) over (order by ts) - ts dur, max(a) total, max(b) unused," +
       "   max(c) + max(d) + max(e) buffCache " +
@@ -60,14 +54,14 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
       "select ts, ts + dur, total, unused, buffCache from %s";
 
   private final long maxTotal;
-  private final int totalId;
-  private final int unusedId;
-  private final int buffersId;
-  private final int cachedId;
-  private final int swapCachedId;
+  private final long totalId;
+  private final long unusedId;
+  private final long buffersId;
+  private final long cachedId;
+  private final long swapCachedId;
 
-  public MemorySummaryTrack(
-      long maxTotal, int totalId, int unusedId, int buffersId, int cachedId, int swapCachedId) {
+  public MemorySummaryTrack(long maxTotal, long totalId, long unusedId, long buffersId,
+      long cachedId, long swapCachedId) {
     super("mem_sum");
     this.maxTotal = maxTotal;
     this.totalId = totalId;
@@ -133,23 +127,26 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
     return format(COUNTER_SQL, tableName("span"));
   }
 
-  public static ListenableFuture<MemorySummaryTrack> enumerate(QueryEngine qe) {
-    return transformAsync(expectOneRow(qe.query(DEF_SQL)), res -> {
-      int total = res.getInt(0, -1);
-      int unusued = res.getInt(1, -1);
-      int buffers = res.getInt(2, -1);
-      int cached = res.getInt(3, -1);
-      int swapCached = res.getInt(4, -1);
-      if ((total < 0) || (unusued < 0) || (buffers < 0) || (cached < 0) || (swapCached < 0)) {
-        return Futures.immediateFuture(null);
-      }
-      return transform(expectOneRow(qe.query(maxTotalSql(total))), max ->
-        new MemorySummaryTrack(max.getLong(0), total, unusued, buffers, cached, swapCached));
-    });
+  public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
+    CounterInfo total = onlyOne(data.getCountersByName().get("MemTotal"));
+    CounterInfo free = onlyOne(data.getCountersByName().get("MemFree"));
+    CounterInfo buffers = onlyOne(data.getCountersByName().get("Buffers"));
+    CounterInfo cached = onlyOne(data.getCountersByName().get("Cached"));
+    CounterInfo swapCached = onlyOne(data.getCountersByName().get("SwapCached"));
+    if ((total == null) || (free  == null) || (buffers  == null) || (cached  == null) ||
+        (swapCached  == null)) {
+      return Futures.immediateFuture(data);
+    }
+
+    MemorySummaryTrack track = new MemorySummaryTrack(
+        (long)total.max, total.id, free.id, buffers.id, cached.id, swapCached.id);
+    data.tracks.addTrack(null, track.getId(), "Memory Usage",
+        single(state -> new MemorySummaryPanel(state, track), true));
+    return Futures.immediateFuture(data);
   }
 
-  private static String maxTotalSql(long id) {
-    return format(MAX_SQL, id);
+  private static CounterInfo onlyOne(ImmutableList<CounterInfo> counters) {
+    return (counters.size() != 1) ? null : counters.get(0);
   }
 
   public static class Data extends Track.Data {
