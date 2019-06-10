@@ -274,11 +274,12 @@ type (
 		No struct {
 			Buffer bool `help:"Do not buffer the output, this helps if the application crashes"`
 		}
-		API   string `help:"only capture the given API valid options are gles and vulkan"`
+		API   string `help:"only capture the given API valid options are gles, vulkan, and perfetto"`
 		Local struct {
 			Port int `help:"connect to an application already running on the server using this port"`
 		}
 		PipeName string `help:"The name of the pipe to connect/listen to."`
+		Perfetto string `help:"File containing the Perfetto configuration proto.`
 	}
 	BenchmarkFlags struct {
 		DeviceFlags
