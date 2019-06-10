@@ -20,7 +20,7 @@ import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.packColumns;
 
-import com.google.gapid.perfetto.models.ThreadTrack;
+import com.google.gapid.perfetto.models.SliceTrack;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -30,10 +30,10 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 
 /**
- * Displays information about a list of selected thread slices.
+ * Displays information about a list of selected slices.
  */
-public class ThreadSlicesSelectionView extends Composite {
-  public ThreadSlicesSelectionView(Composite parent, ThreadTrack.Slices.Selection sel) {
+public class SlicesSelectionView extends Composite {
+  public SlicesSelectionView(Composite parent, SliceTrack.Slices.Selection sel) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
@@ -72,7 +72,7 @@ public class ThreadSlicesSelectionView extends Composite {
     packColumns(viewer.getTree());
   }
 
-  protected static ThreadTrack.Slices.Node n(Object o) {
-    return (ThreadTrack.Slices.Node)o;
+  protected static SliceTrack.Slices.Node n(Object o) {
+    return (SliceTrack.Slices.Node)o;
   }
 }

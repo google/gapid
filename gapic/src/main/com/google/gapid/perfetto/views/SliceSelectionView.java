@@ -22,8 +22,8 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.perfetto.models.ProcessInfo;
+import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.ThreadInfo;
-import com.google.gapid.perfetto.models.ThreadTrack;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -31,10 +31,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 
 /**
- * Displays information about a selected thread slice.
+ * Displays information about a selected slice.
  */
-public class ThreadSliceSelectionView extends Composite {
-  public ThreadSliceSelectionView(Composite parent, State state, ThreadTrack.Slice slice) {
+public class SliceSelectionView extends Composite {
+  public SliceSelectionView(Composite parent, State state, SliceTrack.Slice slice) {
     super(parent, SWT.NONE);
     setLayout(new GridLayout(2, false));
 
