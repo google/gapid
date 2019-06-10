@@ -25,7 +25,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.views.CpuSummaryPanel;
-import com.google.gapid.perfetto.views.MemorySummaryPanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
@@ -64,13 +63,7 @@ public class Tracks {
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerateCounters(
       Perfetto.Data.Builder data) {
-    return transform(MemorySummaryTrack.enumerate(data.qe), track -> {
-      if (track != null) {
-        data.tracks.addTrack(null, track.getId(), "Memory Usage",
-            single(state -> new MemorySummaryPanel(state, track)));
-      }
-      return data;
-    });
+    return MemorySummaryTrack.enumerate(data);
   }
 
   public static Perfetto.Data.Builder enumerateProcesses(Perfetto.Data.Builder data) {
