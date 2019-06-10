@@ -25,6 +25,9 @@ import (
 	"strings"
 	"time"
 
+	perfetto_pb "perfetto/config"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
@@ -50,23 +53,53 @@ func init() {
 type target func(opts *service.TraceOptions)
 
 func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
+	if flags.NArg() > 1 {
+		app.Usage(ctx, "Expected at most one argument.")
+		return nil
+	}
+
+	if verb.API == "" {
+		app.Usage(ctx, "The API is required.")
+		return nil
+	}
+	api, err := verb.apiAndType()
+	if err != nil {
+		return err
+	}
+
+	traceURI := verb.URI
+	if traceURI == "" && verb.Local.Port == 0 {
+		if flags.NArg() != 1 {
+			if api.traceType != service.TraceType_Perfetto {
+				app.Usage(ctx, "Expected application name.")
+				return nil
+			}
+		} else {
+			traceURI = flags.Arg(0)
+		}
+	} else if flags.NArg() != 0 {
+		app.Usage(ctx, "Expected no arguments when a URI or port is specified.")
+		return nil
+	}
+
+	if api.traceType == service.TraceType_Perfetto {
+		if verb.Perfetto == "" {
+			app.Usage(ctx, "The Perfetto config is required for Perfetto traces.")
+			return nil
+		}
+		if verb.Local.Port != 0 {
+			app.Usage(ctx, "-local-port is not supported for Perfetto traces.")
+			return nil
+		}
+	}
+
 	client, err := getGapis(ctx, verb.Gapis, GapirFlags{})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to connect to the GAPIS server")
 	}
 	defer client.Close()
 
-	traceURI := verb.URI
-
-	if traceURI == "" && verb.Local.Port == 0 {
-		if flags.NArg() != 1 {
-			app.Usage(ctx, "Expected application name")
-			return nil
-		}
-		traceURI = flags.Arg(0)
-	}
-
-	out := "capture.gfxtrace"
+	out := "trace" + api.traceExt
 	var target target
 
 	if verb.Local.Port != 0 {
@@ -112,6 +145,13 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				opts.App = &service.TraceOptions_UploadApplication{
 					UploadApplication: data,
 				}
+			}
+		} else if traceURI == "" {
+			if len(devices) != 1 {
+				return log.Errf(ctx, nil, "Found multiple matching devices, please specify the trace device")
+			}
+			target = func(opts *service.TraceOptions) {
+				opts.Device = devices[0]
 			}
 		} else {
 			type info struct {
@@ -172,7 +212,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			}
 
 			fmt.Printf("Tracing %+v\n", found[0].uri)
-			out = found[0].name + ".gfxtrace"
+			out = found[0].name + api.traceExt
 			target = func(opts *service.TraceOptions) {
 				opts.Device = found[0].device
 				opts.App = &service.TraceOptions_Uri{
@@ -187,7 +227,8 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	options := &service.TraceOptions{
-		Apis:                      []string{},
+		Type:                      api.traceType,
+		Apis:                      api.apis,
 		AdditionalCommandLineArgs: verb.AdditionalArgs,
 		Cwd:                       verb.WorkingDir,
 		Environment:               verb.Env,
@@ -208,15 +249,21 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	target(options)
 
-	switch verb.API {
-	case "vulkan":
-		options.Apis = []string{"Vulkan"}
-	case "gles":
-		options.Apis = []string{"OpenGLES"}
-	case "":
-		options.Apis = []string{"Vulkan", "OpenGLES"}
-	default:
-		return fmt.Errorf("Unknown API %s", verb.API)
+	if api.traceType == service.TraceType_Perfetto {
+		data, err := ioutil.ReadFile(verb.Perfetto)
+		if err != nil {
+			return log.Errf(ctx, err, "Failed to read Perfetto config")
+		}
+		options.PerfettoConfig = &perfetto_pb.TraceConfig{}
+		if err := proto.UnmarshalText(string(data), options.PerfettoConfig); err != nil {
+			return log.Errf(ctx, err, "Failed to parse Perfetto config")
+		}
+		dur := uint32(verb.For.Seconds() * 1000)
+		if dur == 0 {
+			dur = 10 * 60 * 1000
+		}
+		options.PerfettoConfig.DurationMs = proto.Uint32(dur)
+		options.Duration = 0
 	}
 
 	handler, err := client.Trace(ctx)
@@ -235,7 +282,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	log.I(ctx, "Trace Status %+v", status)
 
-	handlerInstalled := verb.For > 0
+	handlerInstalled := options.Duration > 0
 
 	return task.Retry(ctx, 0, time.Second*3, func(ctx context.Context) (retry bool, err error) {
 		status, err = handler.Event(ctx, service.TraceEvent_Status)
@@ -272,4 +319,35 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		}
 		return false, nil
 	})
+}
+
+type apiAndType struct {
+	traceType service.TraceType
+	apis      []string
+	traceExt  string
+}
+
+func (verb *traceVerb) apiAndType() (apiAndType, error) {
+	switch verb.API {
+	case "vulkan":
+		return apiAndType{
+			service.TraceType_Graphics,
+			[]string{"Vulkan"},
+			".gfxtrace",
+		}, nil
+	case "gles":
+		return apiAndType{
+			service.TraceType_Graphics,
+			[]string{"OpenGLES"},
+			".gfxtrace",
+		}, nil
+	case "perfetto":
+		return apiAndType{
+			service.TraceType_Perfetto,
+			[]string{},
+			".perfetto",
+		}, nil
+	default:
+		return apiAndType{}, fmt.Errorf("Unknown API '%s'", verb.API)
+	}
 }
