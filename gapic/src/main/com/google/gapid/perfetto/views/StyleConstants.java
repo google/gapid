@@ -51,6 +51,7 @@ public class StyleConstants {
     public final RGBA cpuUsageStroke;
     public final RGBA cpuFreqIdle;
     public final RGBA timelineRuler;
+    public final RGBA counter;
 
     public final RGBA textMain;
     public final RGBA textAlt;
@@ -79,6 +80,7 @@ public class StyleConstants {
         RGBA cpuUsageStroke,
         RGBA cpuFreqIdle,
         RGBA timelineRuler,
+        RGBA counter,
         RGBA textMain,
         RGBA textAlt,
         RGBA textInvertedMain,
@@ -103,6 +105,7 @@ public class StyleConstants {
       this.cpuUsageStroke = cpuUsageStroke;
       this.cpuFreqIdle = cpuFreqIdle;
       this.timelineRuler = timelineRuler;
+      this.counter = counter;
       this.textMain = textMain;
       this.textAlt = textAlt;
       this.textInvertedMain = textInvertedMain;
@@ -129,6 +132,7 @@ public class StyleConstants {
     private static final RGBA LIGHT_CPU_USAGE_STROKE = rgb(0x0D, 0x9A, 0xA8);
     private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(240, 240, 240);
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
+    private static final RGBA LIGHT_COUNTER = rgb(0x00, 0xB8, 0xD4);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
@@ -159,6 +163,7 @@ public class StyleConstants {
             LIGHT_CPU_USAGE_STROKE,
             LIGHT_CPU_FREQ_IDLE,
             LIGHT_TIMELINE_RULER,
+            LIGHT_COUNTER,
             LIGHT_TEXT_MAIN,
             LIGHT_TEXT_ALT,
             LIGHT_TEXT_INVERTED_MAIN,
@@ -185,6 +190,7 @@ public class StyleConstants {
     private static final RGBA DARK_CPU_USAGE_STROKE = rgb(0x0D, 0x9A, 0xA8);
     private static final RGBA DARK_CPU_FREQ_IDLE = rgb(240, 240, 240);
     private static final RGBA DARK_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
+    private static final RGBA DARK_COUNTER = rgb(0x00, 0xB8, 0xD4);
 
     private static final RGBA DARK_TEXT_MAIN = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
@@ -215,6 +221,7 @@ public class StyleConstants {
             DARK_CPU_USAGE_STROKE,
             DARK_CPU_FREQ_IDLE,
             DARK_TIMELINE_RULER,
+            DARK_COUNTER,
             DARK_TEXT_MAIN,
             DARK_TEXT_ALT,
             DARK_TEXT_INVERTED_MAIN,
