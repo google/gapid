@@ -44,7 +44,7 @@ var lockStateRegex = regexp.MustCompile("(?:mDreamingLockscreen|mShowingLockscre
 
 // getScreenState returns the screen state
 func (b *binding) getScreenState(ctx context.Context) (int, error) {
-	res, err := b.Shell("dumpsys", "window", "policy").Call(ctx)
+	res, err := b.Shell("dumpsys", "window").Call(ctx)
 	if err != nil {
 		return -1, err
 	}
