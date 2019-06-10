@@ -15,18 +15,22 @@
  */
 package com.google.gapid.models;
 
+import static com.google.common.collect.ImmutableListMultimap.toImmutableListMultimap;
 import static com.google.gapid.rpc.UiErrorCallback.error;
 import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static java.util.function.Function.identity;
 import static java.util.logging.Level.WARNING;
 
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.ThreadInfo;
@@ -82,8 +86,9 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     return
         transformAsync(withStatus("Examining the trace...", examineTrace(data)), $1 ->
           transformAsync(withStatus("Querying threads...", queryThreads(data)), $2 ->
-            transform(withStatus("Enumerating tracks...", enumerateTracks(data)), $3 ->
-              data.build())));
+            transformAsync(withStatus("Querying counters...", queryCounters(data)), $3 ->
+              transform(withStatus("Enumerating tracks...", enumerateTracks(data)), $4 ->
+                data.build()))));
   }
 
   private static ListenableFuture<Data.Builder> examineTrace(Data.Builder data) {
@@ -95,6 +100,10 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
 
   private static ListenableFuture<Data.Builder> queryThreads(Data.Builder data) {
     return ThreadInfo.listThreads(data);
+  }
+
+  private static ListenableFuture<Data.Builder> queryCounters(Data.Builder data) {
+    return CounterInfo.listCounters(data);
   }
 
   private static ListenableFuture<Data.Builder> enumerateTracks(Data.Builder data) {
@@ -156,16 +165,18 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public final int numCpus;
     public final ImmutableMap<Long, ProcessInfo> processes;
     public final ImmutableMap<Long, ThreadInfo> threads;
+    public final ImmutableMap<Long, CounterInfo> counters;
     public final TrackConfig tracks;
 
     public Data(QueryEngine queries, TimeSpan traceTime, int numCpus,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
-        TrackConfig tracks) {
+        ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
       this.numCpus = numCpus;
       this.processes = processes;
       this.threads = threads;
+      this.counters = counters;
       this.tracks = tracks;
     }
 
@@ -175,6 +186,8 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       private int numCpus;
       private ImmutableMap<Long, ProcessInfo> processes;
       private ImmutableMap<Long, ThreadInfo> threads;
+      private ImmutableMap<Long, CounterInfo> counters;
+      private ImmutableListMultimap<String, CounterInfo> countersByName;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
 
       public Builder(QueryEngine qe) {
@@ -217,8 +230,23 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return this;
       }
 
+      public ImmutableMap<Long, CounterInfo> getCounters() {
+        return counters;
+      }
+
+      public ImmutableListMultimap<String, CounterInfo> getCountersByName() {
+        return countersByName;
+      }
+
+      public Builder setCounters(ImmutableMap<Long, CounterInfo> counters) {
+        this.counters = counters;
+        this.countersByName = counters.values().stream()
+            .collect(toImmutableListMultimap(c -> c.name, identity()));
+        return this;
+      }
+
       public Data build() {
-        return new Data(qe, traceTime, numCpus, processes, threads, tracks.build());
+        return new Data(qe, traceTime, numCpus, processes, threads, counters, tracks.build());
       }
     }
   }
