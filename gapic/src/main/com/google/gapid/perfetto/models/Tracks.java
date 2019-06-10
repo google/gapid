@@ -100,10 +100,10 @@ public class Tracks {
       threads.forEach(track -> {
         TrackConfig.Track.UiFactory<Panel> ui;
         if (track.getThread().maxDepth == 0) {
-          ui = single(state -> new ThreadPanel(state, track));
+          ui = single(state -> new ThreadPanel(state, track), false);
         } else {
           ui = single(
-              state -> new ThreadPanel(state, track), ThreadPanel::setCollapsed, true);
+              state -> new ThreadPanel(state, track), false, ThreadPanel::setCollapsed, true);
         }
         String threadParent = (track.getThread().totalDur >= idleCutoffThread || !hasIdleThreads) ?
             summary.getId() : summary.getId() + "_idle";
