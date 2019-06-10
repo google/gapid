@@ -54,12 +54,14 @@ import java.util.Map;
  * {@link Color colors}, etc.).
  */
 public interface Theme {
+  @Icon(file = "add.png") public Image add();
   @Icon(file = "android.png", color = 0x335577) public Image androidLogo();
   @Icon(file = "arrow.png") public Image arrow();
   @Icon(file = "arrow_drop_down.png") public Image arrowDropDownLight();
   @Icon(file = "arrow_drop_right.png") public Image arrowDropRightLight();
   @Icon(file = "arrow_drop_down.png", color = 0xFFFFFF) public Image arrowDropDownDark();
   @Icon(file = "arrow_drop_right.png", color = 0xFFFFFF) public Image arrowDropRightDark();
+  @Icon(file = "clipboard.png") public Image clipboard();
   @Icon(file = "color_buffer0.png") public Image colorBuffer0();
   @Icon(file = "color_buffer1.png") public Image colorBuffer1();
   @Icon(file = "color_buffer2.png") public Image colorBuffer2();
@@ -72,16 +74,19 @@ public interface Theme {
   @Icon(file = "flat.png") public Image flat();
   @Icon(file = "flip_vertically.png") public Image flipVertically();
   @Icon(file = "jump.png") public Image jump();
+  @Icon(file = "help.png") public Image help();
   @Icon(file = "histogram.png") public Image toggleHistogram();
   @Icon(file = "lit.png") public Image lit();
   @Icon(file = "logo_128.png") public Image dialogLogo();
   @Icon(file = "normals.png") public Image normals();
+  @Icon(file = "open.png") public Image open();
   @Icon(file = "overdraw.png") public Image overdraw();
   @Icon(file = "point_cloud.png") public Image pointCloud();
   @Icon(file = "range_start.png") public Image rangeStartLight();
   @Icon(file = "range_end.png") public Image rangeEndLight();
   @Icon(file = "range_start.png", color = 0xFFFFFF) public Image rangeStartDark();
   @Icon(file = "range_end.png", color = 0xFFFFFF) public Image rangeEndDark();
+  @Icon(file = "recent.png") public Image recent();
   @Icon(file = "refresh.png") public Image refresh();
   @Icon(file = "save.png") public Image save();
   @Icon(file = "settings.png") public Image settings();
@@ -125,6 +130,7 @@ public interface Theme {
 
   // About & Welcome dialog text colors
   @RGB(argb = 0xffa9a9a9) public Color welcomeVersionColor();
+  @RGB(argb = 0xffa9a9a9) public Color shortcutKeyHintColor();
 
   // Logging view colors by log level.
   @RGB(argb = 0xbb000000) public Color logVerboseForeground();

@@ -18,7 +18,6 @@ package com.google.gapid;
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
 import static com.google.gapid.views.ErrorDialog.showErrorDialog;
 import static com.google.gapid.views.WelcomeDialog.showFirstTimeDialog;
-import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
 import com.google.common.base.Throwables;
@@ -147,8 +146,6 @@ public class Main {
       Runnable onStart = () -> {
         if (args.length == 1) {
           models.capture.loadCapture(new File(args[0]));
-        } else if (!models.settings.skipWelcomeScreen) {
-          showWelcomeDialog(server.getClient(), window.getShell(), models, widgets);
         }
       };
 
@@ -158,6 +155,9 @@ public class Main {
       } else {
         shell.getDisplay().asyncExec(() -> showFirstTimeDialog(shell, models, widgets, onStart));
       }
+
+      // Add the links on Loading Screen after the server set up.
+      window.updateLoadingScreen(server.getClient(), models, widgets);
     }
 
     @Override

@@ -16,10 +16,10 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
-import static com.google.gapid.widgets.Widgets.centered;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createTextbox;
+import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.logging.Level.SEVERE;
 
 import com.google.gapid.models.Analytics;
@@ -30,15 +30,17 @@ import com.google.gapid.util.Logging;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.widgets.DialogBase;
-import com.google.gapid.widgets.Theme;
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
@@ -69,9 +71,9 @@ public class AboutDialog {
     }
   }
 
-  public static void showAbout(Shell shell, Analytics analytics, Theme theme) {
+  public static void showAbout(Shell shell, Analytics analytics, Widgets widgets) {
     analytics.postInteraction(View.About, ClientAction.Show);
-    new DialogBase(shell, theme) {
+    new DialogBase(shell, widgets.theme) {
       @Override
       public String getTitle() {
         return Messages.ABOUT_TITLE;
@@ -81,12 +83,25 @@ public class AboutDialog {
       protected Control createDialogArea(Composite parent) {
         Composite area = (Composite)super.createDialogArea(parent);
 
-        Composite container = createComposite(area, centered(new RowLayout(SWT.VERTICAL)));
-        container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true));
+        Composite container = createComposite(area, withMargin(new GridLayout(2, false), 20, 5));
+        container.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false));
 
-        createLabel(container, "", theme.dialogLogo());
+        Label logo = createLabel(container, "", theme.dialogLogo());
+        logo.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
+
         Text title = createForegroundLabel(container, Messages.WINDOW_TITLE);
         title.setFont(theme.bigBoldFont());
+        title.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, false, 2, 1));
+
+        createLabel(container, "").setLayoutData(new GridData(SWT.CENTER, SWT.FILL, true, true, 2, 1));
+        Button clipboard = Widgets.createButton(container, "", e -> {
+          String textData = "Version " + GAPID_VERSION;
+          widgets.copypaste.setContents(textData);
+        });
+
+        clipboard.setImage(theme.clipboard());
+        clipboard.setLayoutData(new GridData(SWT.CENTER, SWT.BEGINNING, true, true, 1, 3));
+
         createForegroundLabel(container, "Version " + GAPID_VERSION);
         createForegroundLabel(
             container, "Server: " + Info.getServerName() + ", Version: " + Info.getServerVersion());
