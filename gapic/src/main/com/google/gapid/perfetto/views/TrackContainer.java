@@ -47,18 +47,19 @@ public class TrackContainer {
   }
 
   public static TrackConfig.Track.UiFactory<Panel> single(
-      TrackConfig.Track.UiFactory<TrackPanel> track) {
-    return state -> new Single(track.createPanel(state), null, true);
+      TrackConfig.Track.UiFactory<TrackPanel> track, boolean sep) {
+    return state -> new Single(track.createPanel(state), sep, null, true);
   }
 
   public static <T extends TrackPanel> TrackConfig.Track.UiFactory<Panel> single(
-      TrackConfig.Track.UiFactory<T> track, BiConsumer<T, Boolean> filter, boolean initial) {
+      TrackConfig.Track.UiFactory<T> track, boolean sep, BiConsumer<T, Boolean> filter,
+      boolean initial) {
     return state -> {
       T panel = track.createPanel(state);
       if (initial) {
         filter.accept(panel, initial);
       }
-      return new Single(panel, filtered -> filter.accept(panel, filtered), initial);
+      return new Single(panel, sep, filtered -> filter.accept(panel, filtered), initial);
     };
   }
 
@@ -90,12 +91,14 @@ public class TrackContainer {
 
   private static class Single extends Panel.Base {
     private final TrackPanel track;
+    private final boolean sep;
     protected final Consumer<Boolean> filter;
 
     protected boolean filtered;
 
-    public Single(TrackPanel track, Consumer<Boolean> filter, boolean filtered) {
+    public Single(TrackPanel track, boolean sep, Consumer<Boolean> filter, boolean filtered) {
       this.track = track;
+      this.sep = sep;
       this.filter = filter;
       this.filtered = filtered;
     }
@@ -125,7 +128,7 @@ public class TrackContainer {
 
       ctx.setForegroundColor(colors().panelBorder);
       ctx.drawLine(LABEL_WIDTH - 1, 0, LABEL_WIDTH - 1, height);
-      ctx.drawLine(LABEL_WIDTH, height - 1, width, height - 1);
+      ctx.drawLine(sep ? 0 : LABEL_WIDTH, height - 1, width, height - 1);
       track.render(ctx, repainter);
     }
 

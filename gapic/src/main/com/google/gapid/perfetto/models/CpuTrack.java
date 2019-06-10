@@ -152,14 +152,14 @@ public class CpuTrack extends Track<CpuTrack.Data> {
       for (int i = 0; i < data.getNumCpus(); i++) {
         QueryEngine.Row freq = freqMap.get(Long.valueOf(i));
         CpuTrack track = new CpuTrack(i);
-        data.tracks.addTrack(
-            parent, track.getId(), "CPU " + (i + 1), single(state -> new CpuPanel(state, track)));
+        data.tracks.addTrack(parent, track.getId(), "CPU " + (i + 1),
+            single(state -> new CpuPanel(state, track), false));
         if (freq != null) {
           CpuFrequencyTrack freqTrack =
               new CpuFrequencyTrack(i, freq.getLong(1), freq.getDouble(2), freq.getLong(3));
           data.tracks.addTrack(
               parent, freqTrack.getId(), "CPU " + (i + 1) + " Frequency",
-              single(state -> new CpuFrequencyPanel(state, freqTrack)));
+              single(state -> new CpuFrequencyPanel(state, freqTrack), false));
         }
       }
       return data;
