@@ -21,6 +21,7 @@ import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
+import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.ThreadInfo;
@@ -57,6 +58,9 @@ public class CpuSliceSelectionView extends Composite {
       createLabel(this, "Thread:");
       createLabel(this, thread.getDisplay());
     }
+
+    createLabel(this, "State:");
+    createLabel(this, ThreadState.RUNNING.label);
 
     createLabel(this, "CPU:");
     createLabel(this, Integer.toString(slice.cpu + 1));
