@@ -42,8 +42,9 @@ public class ThreadPanel extends TrackPanel implements Selectable {
   private static final double SLICE_HEIGHT = 25 - 2 * TRACK_MARGIN;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
-  private static final double MERGE_SLICE_THRESHOLD = 3;
-  private static final double MERGE_GAP_THRESHOLD = 4;
+  private static final double MERGE_SLICE_THRESHOLD = 1;
+  private static final double MERGE_GAP_THRESHOLD = 2;
+  private static final double MERGE_STATE_RATIO = 3;
 
   protected final ThreadTrack track;
   private boolean expanded;
@@ -112,8 +113,13 @@ public class ThreadPanel extends TrackPanel implements Selectable {
         }
         if (rectWidth < MERGE_SLICE_THRESHOLD) {
           if (merging) {
+            double ratio = (mergeEndX - mergeStartX) / rectWidth;
+            if (ratio < 1 / MERGE_STATE_RATIO) {
+              mergeState = data.schedStates[i];
+            } else if (ratio < MERGE_STATE_RATIO) {
+              mergeState = mergeState.merge(data.schedStates[i]);
+            }
             mergeEndX = rectEnd;
-            mergeState = mergeState.merge(data.schedStates[i]);
           } else {
             merging = true;
             mergeStartX = rectStart;
@@ -123,9 +129,14 @@ public class ThreadPanel extends TrackPanel implements Selectable {
         } else {
           ThreadState ts = data.schedStates[i];
           if (merging) {
+            double ratio = (mergeEndX - mergeStartX) / rectWidth;
+            if (ratio > MERGE_STATE_RATIO) {
+              ts = mergeState;
+            } else if (ratio > 1 / MERGE_STATE_RATIO) {
+              ts = mergeState.merge(ts);
+            }
             rectStart = mergeStartX;
             rectWidth = rectEnd - rectStart;
-            ts = ts.merge(mergeState);
             merging = false;
           }
 
