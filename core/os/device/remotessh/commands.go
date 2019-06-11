@@ -438,3 +438,12 @@ func (b binding) GetWorkingDirectory(ctx context.Context) (string, error) {
 func (b binding) GetURIRoot() string {
 	return "/"
 }
+
+// SupportsPerfetto returns true if the given device supports taking a
+// Perfetto trace.
+func (b binding) SupportsPerfetto(ctx context.Context) bool {
+	if support, err := b.IsFile(ctx, "/tmp/perfetto-consumer"); err == nil {
+		return support
+	}
+	return false
+}
