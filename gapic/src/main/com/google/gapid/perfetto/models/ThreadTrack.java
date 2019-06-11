@@ -52,11 +52,18 @@ import java.util.Set;
  * {@link Track} containing thread state and slices of a thread.
  */
 public class ThreadTrack extends Track<ThreadTrack.Data> {
-  private static final String INSTANT_VIEW =
-      "select ts, lead(ts) over (order by ts) - ts dur from instants " +
-      "where name = 'sched_wakeup' and ref = %d";
   private static final String SCHED_VIEW =
       "select ts, dur, end_state, row_id from sched where utid = %d";
+  private static final String INSTANT_VIEW =
+      "with" +
+      "  events as (select ts from instants where name = 'sched_wakeup' and ref = %d)," +
+      "  wakeup as (select " +
+      "    min(" +
+      "      coalesce((select min(ts) from events), (select end_ts from trace_bounds))," +
+      "      (select min(ts) from %s)" +
+      "    ) ts union select ts from events)" +
+      "select ts, lead(ts, 1, (select end_ts from trace_bounds)) over (order by ts) - ts dur " +
+      "from wakeup";
   private static final String SLICES_VIEW =
       "select ts, dur, cat, name, depth, stack_id, parent_stack_id from slices where utid = %d";
   private static final String STATE_SPAN_VIEW =
@@ -68,7 +75,7 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
       "from %s window ts_win as (order by ts)";
 
   private static final String SCHED_SQL =
-      "select ts, dur, state, row_id from %s where state != 'S'";
+      "select ts, dur, state, row_id from %s where state != 'S' and state != 'x'";
   private static final String SCHED_RANGE_SQL =
       "select ts, dur, state from %s where ts < %d and ts + dur >= %d";
   private static final String SLICES_SQL =
@@ -126,8 +133,8 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
         dropTable(stateWindow),
         createWindow(stateWindow),
         createWindow(sliceWindow),
-        createView(wakeup, format(INSTANT_VIEW, thread.utid)),
         createView(sched, format(SCHED_VIEW, thread.utid)),
+        createView(wakeup, format(INSTANT_VIEW, thread.utid, sched)),
         createView(slices, format(SLICES_VIEW, thread.utid)),
         createSpanLeftJoin(stateSpanJoin, wakeup + ", " + sched),
         createView(stateSpanView, format(STATE_SPAN_VIEW, stateSpanJoin)),
