@@ -9,7 +9,7 @@ parent: tutorials
 
 Changing a shader within GAPID will change the result for all draw calls, allowing you to iterate on the look and feel of your application within GAPID. In the future, this will also allow you to see how editing shaders affects performance.
 
-1. First, find the [appropriate shader](../tutorials/seeboundshaders_gles) in the Shader pane.
+1. First, find the [appropriate shader](../tutorials/seeboundshaders) in the Shader pane.
 2. Edit the text of your shader.
 3. Click "Push Changes" and wait for the replay to finish processing the results.
 
