@@ -68,6 +68,9 @@ public class TraceView extends Composite
         }
       }
     });
+    canvas.addListener(SWT.MouseHorizontalWheel, e -> {
+      e.doit = false;
+    });
     canvas.getHorizontalBar().addListener(SWT.Selection, e -> {
       TimeSpan trace = state.getTraceTime();
       int sel = canvas.getHorizontalBar().getSelection();
