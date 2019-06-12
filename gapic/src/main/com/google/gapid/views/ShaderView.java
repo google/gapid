@@ -15,6 +15,7 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.util.Arrays.last;
 import static com.google.gapid.util.Colors.BLACK;
 import static com.google.gapid.util.Colors.DARK_LUMINANCE_THRESHOLD;
 import static com.google.gapid.util.Colors.WHITE;
@@ -23,11 +24,11 @@ import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createComposite;
-import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
+import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
@@ -60,9 +61,10 @@ import com.google.gapid.widgets.Widgets;
 import org.eclipse.jface.text.ITextOperationTarget;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
@@ -79,7 +81,9 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TreeItem;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -147,7 +151,7 @@ public class ShaderView extends Composite
     Composite uniformsGroup = createGroup(splitter, "Uniforms");
     UniformsPanel uniforms = new UniformsPanel(uniformsGroup);
 
-    splitter.setWeights(models.settings.shaderSplitterWeights);
+    splitter.setWeights(models.settings.programUniformsSplitterWeights);
 
     panel.addListener(SWT.Selection, e -> {
       models.analytics.postInteraction(View.Shaders, ClientAction.SelectProgram);
@@ -155,7 +159,7 @@ public class ShaderView extends Composite
           scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)), panel::setSource);
     });
     splitter.addListener(
-        SWT.Dispose, e -> models.settings.shaderSplitterWeights = splitter.getWeights());
+        SWT.Dispose, e -> models.settings.programUniformsSplitterWeights = splitter.getWeights());
     return splitter;
   }
 
@@ -291,7 +295,7 @@ public class ShaderView extends Composite
     private final Models models;
     private final Theme theme;
     protected final Type type;
-    private final ComboViewer shaderCombo;
+    private final TreeViewer shaderViewer;
     private final Composite sourceComposite;
     private final Button pushButton;
     private SourceViewer shaderSourceViewer;
@@ -304,17 +308,31 @@ public class ShaderView extends Composite
       this.theme = theme;
       this.type = type;
 
-      setLayout(new GridLayout(1, false));
-      shaderCombo = createShaderSelector();
-      sourceComposite = createComposite(this, new FillLayout(SWT.VERTICAL));
+      setLayout(new FillLayout(SWT.HORIZONTAL));
 
-      shaderCombo.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+      SashForm splitter = new SashForm(this, SWT.HORIZONTAL);
+      Group treeViewerContainer = createGroup(splitter, "  " + type.selectMessage);
+      Composite sourcesContainer = createComposite(splitter, new GridLayout(1, false));
+      if (type.type == API.ResourceType.ShaderResource) {
+        splitter.setWeights(models.settings.shaderTreeSplitterWeights);
+        splitter.addListener(
+            SWT.Dispose, e -> models.settings.shaderTreeSplitterWeights = splitter.getWeights());
+      } else if (type.type == API.ResourceType.ProgramResource) {
+        splitter.setWeights(models.settings.programTreeSplitterWeights);
+        splitter.addListener(
+            SWT.Dispose, e -> models.settings.programTreeSplitterWeights = splitter.getWeights());
+      }
+
+
+      shaderViewer = createShaderSelector(treeViewerContainer);
+
+      sourceComposite = createComposite(sourcesContainer, new FillLayout(SWT.VERTICAL));
       sourceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
       if (type.isEditable()) {
-        pushButton = Widgets.createButton(this, "Push Changes",
+        pushButton = Widgets.createButton(sourcesContainer, "Push Changes",
             e -> type.updateShader(
-                (Data)shaderCombo.getElementAt(shaderCombo.getCombo().getSelectionIndex()),
+                (Data)getLastSelection().getData(),
                 shaderSourceViewer.getDocument().get()));
         pushButton.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
         pushButton.setEnabled(false);
@@ -329,15 +347,41 @@ public class ShaderView extends Composite
         models.resources.removeListener(this);
       });
 
-      shaderCombo.getCombo().addListener(SWT.Selection, e -> updateSelection());
       updateShaders();
     }
 
-    private ComboViewer createShaderSelector() {
-      ComboViewer combo = createDropDownViewer(this);
-      combo.setContentProvider(ArrayContentProvider.getInstance());
-      combo.setLabelProvider(new LabelProvider());
-      return combo;
+    private TreeViewer createShaderSelector(Composite parent) {
+      TreeViewer treeViewer = createTreeViewer(parent, SWT.FILL);
+      treeViewer.getTree().setHeaderVisible(false);
+      treeViewer.setContentProvider(createShaderContentProvider());
+      treeViewer.setLabelProvider(new LabelProvider());
+      treeViewer.getControl().addListener(SWT.Selection, e -> updateSelection());
+      return treeViewer;
+    }
+
+    private static ITreeContentProvider createShaderContentProvider() {
+      return new ITreeContentProvider() {
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object[] getElements(Object inputElement) {
+          return ((List<Data>) inputElement).toArray();
+        }
+
+        @Override
+        public boolean hasChildren(Object element) {
+          return false;
+        }
+
+        @Override
+        public Object getParent(Object element) {
+          return null;
+        }
+
+        @Override
+        public Object[] getChildren(Object element) {
+          return null;
+        }
+      };
     }
 
     private SourceViewer createSourcePanel(Composite parent, Source source) {
@@ -395,6 +439,10 @@ public class ShaderView extends Composite
       updateShaders();
     }
 
+    private TreeItem getLastSelection() {
+      return last(shaderViewer.getTree().getSelection());
+    }
+
     private void updateShaders() {
       if (models.resources.isLoaded() && models.commands.getSelectedCommands() != null) {
         Resources.ResourceList resources = models.resources.getResources(type.type);
@@ -402,29 +450,26 @@ public class ShaderView extends Composite
         // If we previously had created the dropdown with all the shaders and didn't skip any
         // this time, the dropdown does not need to change.
         if (!lastUpdateContainedAllShaders || !resources.complete) {
-          if (resources.isEmpty()) {
-            shaders = Collections.emptyList();
-          } else {
-            shaders = Lists.newArrayList(new Data(null) {
-              @Override
-              public String toString() {
-                return type.selectMessage;
-              }
-            });
+          shaders = new ArrayList<Data>();
+          if (!resources.isEmpty()) {
             resources.stream()
                 .map(r -> new Data(r.resource))
                 .forEach(shaders::add);
           }
           lastUpdateContainedAllShaders = resources.complete;
 
-          int selection = shaderCombo.getCombo().getSelectionIndex();
-          shaderCombo.setInput(shaders);
-          shaderCombo.refresh();
+          // Because TreeViewer will dispose old TreeItems after refresh,
+          // memorize and select with index, rather than object.
+          TreeItem selection = getLastSelection();
+          int selectionIndex = -1;
+          if (selection != null) {
+            selectionIndex = shaderViewer.getTree().indexOf(selection);
+          }
+          shaderViewer.setInput(shaders);
 
-          if (selection >= 0 && selection < shaders.size()) {
-            shaderCombo.getCombo().select(selection);
-          } else if (!shaders.isEmpty()) {
-            shaderCombo.getCombo().select(0);
+          if (selectionIndex >= 0 && selectionIndex < shaderViewer.getTree().getItemCount()) {
+            selection = shaderViewer.getTree().getItem(selectionIndex);
+            shaderViewer.getTree().setSelection(selection);
           }
         } else {
           for (Data data : shaders) {
@@ -437,13 +482,11 @@ public class ShaderView extends Composite
     }
 
     private void updateSelection() {
-      int index = shaderCombo.getCombo().getSelectionIndex();
-      if (index <= 0) {
-        // Ignore the null item selection.
+      if (shaderViewer.getTree().getSelectionCount() < 1) {
         clearSource();
       } else {
         Event event = new Event();
-        event.data = shaderCombo.getElementAt(index);
+        event.data = getLastSelection().getData();
         notifyListeners(SWT.Selection, event);
       }
     }
