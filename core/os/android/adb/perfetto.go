@@ -16,8 +16,8 @@ package adb
 
 import (
 	"bufio"
-	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
 	"strings"
 
@@ -56,8 +56,8 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 		}
 	})
 
-	process, err := b.Shell("perfetto", "-c", "-", "-o", out).
-		Read(bytes.NewReader(data)).
+	process, err := b.Shell("base64", "-d", "|", "perfetto", "-c", "-", "-o", out).
+		Read(strings.NewReader(base64.StdEncoding.EncodeToString(data))).
 		Capture(stdout, stdout).
 		Start(ctx)
 	if err != nil {
