@@ -204,3 +204,12 @@ Annotations can take the form:
 Annotations are for use by the templates when using the apic [`template`]
 (../cmd/apic/template.go) or [`validate`]
 (../cmd/apic/validate.go) commands, but otherwise have no effect.
+
+To find how an annotation is used in a template, you can search for the
+annotation name being used as an argument to `GetAnnotation` in template
+files. For instance, you can find how the `@frame_start` annotation is used by
+looking at the occurences found with:
+
+```
+find . -name '*.tmpl' | xargs grep -n GetAnnotation | grep 'frame_start'
+```
