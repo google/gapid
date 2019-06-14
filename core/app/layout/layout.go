@@ -158,9 +158,9 @@ func (l pkgLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI
 
 func (l pkgLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error) {
 	if hostOS(ctx) == abi.OS {
-		return l.root.Join(withExecutablePlatformSuffix("perfetto", abi.OS)), nil
+		return l.root.Join("perfetto", withExecutablePlatformSuffix("perfetto", abi.OS)), nil
 	}
-	return l.root.Join(osToDir(abi.OS), withExecutablePlatformSuffix("perfetto", abi.OS)), nil
+	return l.root.Join(osToDir(abi.OS), "perfetto", withExecutablePlatformSuffix("perfetto", abi.OS)), nil
 }
 
 func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
