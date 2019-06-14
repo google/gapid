@@ -235,7 +235,7 @@ func (b binding) PullFile(ctx context.Context, source, dest string) error {
 	}
 	defer outfile.Close()
 
-	contents, err := b.Shell("cat", source).Capture(outfile, nil).Verbose().Start(ctx)
+	contents, err := b.Shell("cat", source).Capture(outfile, nil).Start(ctx)
 	if err != nil {
 		return err
 	}
