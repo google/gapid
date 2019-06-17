@@ -30,7 +30,7 @@ type tyLaunchArgsKey string
 
 // LaunchArgsKey is the bind device property key used to control the command
 // line arguments when launching GAPIR. The property must be of type []string.
-const LaunchArgsKey tyLaunchArgsKey = "<gapir-launch-args>"
+const LaunchArgsKey tyLaunchArgsKey = "gapir-launch-args"
 
 // Client is interface used to connect to GAPIR instances on devices.
 type Client struct {

@@ -18,13 +18,12 @@
 
 #include "core/cc/target.h"
 
-#if TARGET_OS != GAPID_OS_ANDROID
-
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sstream>
 
 #include <chrono>
 #include <ctime>  // Required for MSVC.
@@ -32,6 +31,12 @@
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "Windows.h"
 #endif  // GAPID_OS_WINDOWS
+
+#if TARGET_OS == GAPID_OS_ANDROID
+#include <android/log.h>
+#else  // TARGET_OS == GAPID_OS_ANDROID
+#include <stdio.h>
+#endif  // TARGET_OS == GAPID_OS_ANDROID
 
 namespace core {
 
@@ -41,6 +46,9 @@ void Logger::init(unsigned level, const char* system, const char* path) {
   mInstance.mLevel = level;
   mInstance.mSystem = system;
   if (path != nullptr) {
+#if TARGET_OS == GAPID_OS_ANDROID
+    GAPID_WARNING("Direct to file logging is not supported on Android.")
+#else
     if (FILE* f = fopen(path, "w")) {
       GAPID_INFO("Logging to %s", path);
       mInstance.mFiles.push_back(f);
@@ -48,6 +56,7 @@ void Logger::init(unsigned level, const char* system, const char* path) {
       GAPID_WARNING("Can't open file for logging (%s): %s", path,
                     strerror(errno));
     }
+#endif
   }
 }
 
@@ -71,6 +80,7 @@ void Logger::logf(unsigned level, const char* file, unsigned line,
 
 void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line,
                    const char* format, va_list args) const {
+#if TARGET_OS != GAPID_OS_ANDROID
   // Get the current time with milliseconds precision
   auto t = std::chrono::system_clock::now();
   std::time_t now = std::chrono::system_clock::to_time_t(t);
@@ -117,8 +127,39 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line,
   if (level == LOG_LEVEL_FATAL) {
     exit(EXIT_FAILURE);
   }
+#else   // TARGET_OS != GAPID_OS_ANDROID
+
+  std::stringstream ss;
+  ss << "[" << src_file << ":" << src_line << "] " << format;
+
+  switch (level) {
+    case LOG_LEVEL_FATAL:
+      __android_log_assert(nullptr, mInstance.mSystem, ss.str().c_str(), args);
+      break;
+    case LOG_LEVEL_ERROR:
+      __android_log_print(ANDROID_LOG_ERROR, mInstance.mSystem,
+                          ss.str().c_str(), args);
+      break;
+    case LOG_LEVEL_WARNING:
+      __android_log_print(ANDROID_LOG_WARN, mInstance.mSystem, ss.str().c_str(),
+                          args);
+      break;
+    case LOG_LEVEL_INFO:
+      __android_log_print(ANDROID_LOG_INFO, mInstance.mSystem, ss.str().c_str(),
+                          args);
+      break;
+    case LOG_LEVEL_DEBUG:
+      __android_log_print(ANDROID_LOG_DEBUG, mInstance.mSystem,
+                          ss.str().c_str(), args);
+      break;
+    case LOG_LEVEL_VERBOSE:
+      __android_log_print(ANDROID_LOG_VERBOSE, mInstance.mSystem,
+                          ss.str().c_str(), args);
+      break;
+    default:
+      break;
+  }
+#endif  // TARGET_OS != GAPID_OS_ANDROID
 }
 
 }  // namespace core
-
-#endif  // TARGET_OS != GAPID_OS_ANDROID

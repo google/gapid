@@ -61,43 +61,9 @@
 #define PRIsize "zu"
 #endif
 
-#if TARGET_OS == GAPID_OS_ANDROID
-
-#include <android/log.h>
-
-#define GAPID_LOGGER_INIT(...)
-#define GAPID_SHOULD_LOG(LEVEL) (LOG_LEVEL >= LEVEL)
-#define GAPID_LOG(LEVEL, ANDROID_LOG_LEVEL, FORMAT, ...)                    \
-  if                                                                        \
-    GAPID_SHOULD_LOG(LEVEL) {                                               \
-      if (LEVEL == LOG_LEVEL_FATAL) {                                       \
-        __android_log_assert(nullptr, "GAPID", "[%s:%u] " FORMAT, __FILE__, \
-                             __LINE__, ##__VA_ARGS__);                      \
-      } else {                                                              \
-        __android_log_print(ANDROID_LOG_LEVEL, "GAPID", "[%s:%u] " FORMAT,  \
-                            __FILE__, __LINE__, ##__VA_ARGS__);             \
-      }                                                                     \
-    }
-#define GAPID_FATAL(FORMAT, ...) \
-  GAPID_LOG(LOG_LEVEL_FATAL, ANDROID_LOG_FATAL, FORMAT, ##__VA_ARGS__)
-#define GAPID_ERROR(FORMAT, ...) \
-  GAPID_LOG(LOG_LEVEL_ERROR, ANDROID_LOG_ERROR, FORMAT, ##__VA_ARGS__)
-#define GAPID_WARNING(FORMAT, ...) \
-  GAPID_LOG(LOG_LEVEL_WARNING, ANDROID_LOG_WARN, FORMAT, ##__VA_ARGS__)
-#define GAPID_INFO(FORMAT, ...) \
-  GAPID_LOG(LOG_LEVEL_INFO, ANDROID_LOG_INFO, FORMAT, ##__VA_ARGS__)
-#define GAPID_DEBUG(FORMAT, ...) \
-  GAPID_LOG(LOG_LEVEL_DEBUG, ANDROID_LOG_DEBUG, FORMAT, ##__VA_ARGS__)
-#define GAPID_VERBOSE(FORMAT, ...) \
-  GAPID_LOG(LOG_LEVEL_VERBOSE, ANDROID_LOG_VERBOSE, FORMAT, ##__VA_ARGS__)
-
-#else  // TARGET_OS == GAPID_OS_ANDROID
-
-#include <stdio.h>
-
 namespace core {
 
-// Singleton logger implementation for PCs to write formatted log messages.
+// Singleton logger implementation to write formatted log messages.
 class Logger {
  public:
   // Initializes the logger to write to the log file at path.
@@ -132,6 +98,8 @@ class Logger {
 
 }  // namespace core
 
+// Define the required log macros based on the specified log level
+
 #define GAPID_LOGGER_INIT(...) ::core::Logger::init(__VA_ARGS__)
 #define GAPID_SHOULD_LOG(LEVEL) (::core::Logger::level() >= LEVEL)
 #define GAPID_LOG(LEVEL, FORMAT, ...)                                    \
@@ -151,9 +119,5 @@ class Logger {
   GAPID_LOG(LOG_LEVEL_DEBUG, FORMAT, ##__VA_ARGS__)
 #define GAPID_VERBOSE(FORMAT, ...) \
   GAPID_LOG(LOG_LEVEL_VERBOSE, FORMAT, ##__VA_ARGS__)
-
-#endif  // TARGET_OS == GAPID_OS_ANDROID
-
-// Define the required log macros based on the specified log level
 
 #endif  // CORE_LOG_H

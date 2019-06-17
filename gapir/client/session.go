@@ -71,7 +71,7 @@ func (s *session) init(ctx context.Context, d bind.Device, abi *device.ABI, laun
 	if host.Instance(ctx).SameAs(d.Instance()) {
 		err = s.newHost(ctx, d, abi, launchArgs)
 	} else if adbd, ok := d.(adb.Device); ok {
-		err = s.newADB(ctx, adbd, abi)
+		err = s.newADB(ctx, adbd, abi, launchArgs)
 	} else if remoted, ok := d.(remotessh.Device); ok {
 		err = s.newRemote(ctx, remoted, abi, launchArgs)
 	} else {
@@ -286,7 +286,7 @@ var socketNames = map[device.Architecture]string{
 	device.X86_64: "gapir-x86-64",
 }
 
-func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) error {
+func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []string) error {
 	ctx = log.V{"abi": abi}.Bind(ctx)
 
 	log.I(ctx, "Checking gapid.apk is installed...")
@@ -295,10 +295,21 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI) err
 		return err
 	}
 
+	completeLaunchArgs := []string{
+		"--idle-timeout-sec", string(int(sessionTimeout / time.Second)),
+	}
+
+	if len(string(s.auth)) > 0 {
+		completeLaunchArgs = append(completeLaunchArgs, "--auth-token-file", string(s.auth))
+	}
+
+	for _, arg := range launchArgs {
+		completeLaunchArgs = append(completeLaunchArgs, arg)
+	}
+
 	log.I(ctx, "Launching GAPIR...")
 	if err := d.StartActivity(ctx, *apk.ActivityActions[0],
-		android.IntExtra{"idle_timeout", int(sessionTimeout / time.Second)},
-		android.StringExtra{"auth_token", string(s.auth)},
+		android.StringExtra{"gapir-intent-flag", strings.Join(completeLaunchArgs, " ")},
 	); err != nil {
 		return err
 	}

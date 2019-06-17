@@ -164,6 +164,7 @@ func monitorAndroidDevices(ctx context.Context, r *bind.Registry, scanDone func(
 		if devs, err := adb.Devices(ctx); err == nil {
 			for _, d := range devs {
 				r.AddDevice(ctx, d)
+				r.SetDeviceProperty(ctx, d, client.LaunchArgsKey, text.SplitArgs(*gapirArgStr))
 			}
 		}
 	}()

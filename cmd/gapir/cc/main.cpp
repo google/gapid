@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <thread>
 
 #if TARGET_OS == GAPID_OS_ANDROID
@@ -74,6 +75,199 @@ std::vector<uint32_t> memorySizes {
       512 * 1024 * 1024U,       // 512MB
       256 * 1024 * 1024U,       // 256MB
       128 * 1024 * 1024U,       // 128MB
+};
+
+struct Options {
+  struct OnDiskCache {
+    bool enabled = false;
+    bool cleanUp = false;
+    const char* path = "";
+  };
+
+  int logLevel = LOG_LEVEL;
+  const char* logPath = "logs/gapir.log";
+  ReplayMode mode = kUnknown;
+  bool waitForDebugger = false;
+  const char* cachePath = nullptr;
+  const char* portArgStr = "0";
+  const char* authTokenFile = nullptr;
+  int idleTimeoutSec = 0;
+  const char* replayArchive = nullptr;
+  const char* postbackDirectory = "";
+  bool version = false;
+  bool help = false;
+
+  OnDiskCache onDiskCacheOptions;
+
+#if TARGET_OS == GAPID_OS_ANDROID
+  std::string authToken;
+#endif
+
+  static void PrintHelp() {
+    printf("gapir: gapir is a VM for the graphics api debugger system\n");
+    printf("Usage: gapir [args]\n");
+    printf("Args:\n");
+    printf("  --replay-archive string\n");
+    printf("    Path to an archive directory to replay, and then exit\n");
+    printf("  --postback-dir string\n");
+    printf(
+        "    Path to a directory to use for outputs of the replay-archive\n");
+    printf("  --auth-token-file string\n");
+    printf("    Path to the a file containing the authentication token\n");
+    printf("  --enable-disk-cache\n");
+    printf(
+        "    If set, then gapir will create and use a disk cache for "
+        "resources.\n");
+    printf("  --disk-cache-path string\n");
+    printf("    Path to a directory that will be used for the disk cache.\n");
+    printf("    If it contains an existing cache, that will be used\n");
+    printf("    If unset, the disk cache will default to a temp directory\n");
+    printf("  --cleanup-disk-cache\n");
+    printf("    If set, the disk cache will be deleted when gapir exits.\n");
+    printf("  --port int\n");
+    printf("    The port to use when listening for connections\n");
+    printf("  --log-level <F|E|W|I|D|V>\n");
+    printf("    Sets the log level for gapir.\n");
+    printf("  --log string\n");
+    printf("    Sets the path for the log file\n");
+    printf("  --idle-timeout-sec int\n");
+    printf(
+        "    Timeout if gapir has not received communication from the server "
+        "(default infinity)\n");
+    printf("  --wait-for-debugger\n");
+    printf(
+        "    Causes gapir to pause on init, and wait for a debugger to "
+        "connect\n");
+    printf("   -h,-help,--help\n");
+    printf("    Prints this help text and exits.\n");
+  }
+
+  static void warnAndroid(const char* flag) {
+#if TARGET_OS == GAPID_OS_ANDROID
+    GAPID_WARNING("Usage: %s is ignored on android devices.", flag);
+#endif
+  }
+
+  static void ensureNotAndroid(const char* flag) {
+#if TARGET_OS == GAPID_OS_ANDROID
+    GAPID_FATAL("Usage: %s may not be used on android devices.", flag);
+#endif
+  }
+
+  static void ensureAndroid(const char* flag) {
+#if TARGET_OS != GAPID_OS_ANDROID
+    GAPID_FATAL("Usage: %s may not be used on non-android devices.", flag);
+#endif
+  }
+
+  static void Parse(const std::vector<std::string>& args, Options* opts) {
+    std::vector<const char*> argv;
+    for (unsigned int i = 0; i < args.size(); ++i) {
+      argv.push_back(args[i].c_str());
+    }
+
+    Parse(args.size(), args.size() > 0 ? &argv[0] : nullptr, opts);
+  }
+
+  static void Parse(int argc, const char* argv[], Options* opts) {
+    for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "--replay-archive") == 0) {
+        ensureNotAndroid("--replay-archive");
+        opts->SetMode(kReplayArchive);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --replay-archive <archive-directory>");
+        }
+        opts->replayArchive = argv[++i];
+      } else if (strcmp(argv[i], "--postback-dir") == 0) {
+        ensureNotAndroid("--postback-dir");
+        opts->SetMode(kReplayArchive);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --postback-dir <output-directory>");
+        }
+        opts->postbackDirectory = argv[++i];
+      } else if (strcmp(argv[i], "--auth-token-file") == 0) {
+        opts->SetMode(kReplayServer);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --auth-token-file <token-string>");
+        }
+        opts->authTokenFile = argv[++i];
+      } else if (strcmp(argv[i], "--enable-disk-cache") == 0) {
+        ensureNotAndroid("--enable-disk-cache");
+        opts->SetMode(kReplayServer);
+        opts->onDiskCacheOptions.enabled = true;
+      } else if (strcmp(argv[i], "--disk-cache-path") == 0) {
+        ensureNotAndroid("--disk-cache-path");
+        opts->SetMode(kReplayServer);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --disk-cache-path <cache-directory>");
+        }
+        opts->onDiskCacheOptions.path = argv[++i];
+      } else if (strcmp(argv[i], "--cleanup-on-disk-cache") == 0) {
+        ensureNotAndroid("--cleanup-on-disk-cache");
+        opts->onDiskCacheOptions.cleanUp = true;
+      } else if (strcmp(argv[i], "--port") == 0) {
+        opts->SetMode(kReplayServer);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --port <port_num>");
+        }
+        opts->portArgStr = argv[++i];
+      } else if (strcmp(argv[i], "--log-level") == 0) {
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
+        }
+        switch (argv[++i][0]) {
+          case 'F':
+            opts->logLevel = LOG_LEVEL_FATAL;
+            break;
+          case 'E':
+            opts->logLevel = LOG_LEVEL_ERROR;
+            break;
+          case 'W':
+            opts->logLevel = LOG_LEVEL_WARNING;
+            break;
+          case 'I':
+            opts->logLevel = LOG_LEVEL_INFO;
+            break;
+          case 'D':
+            opts->logLevel = LOG_LEVEL_DEBUG;
+            break;
+          case 'V':
+            opts->logLevel = LOG_LEVEL_VERBOSE;
+            break;
+          default:
+            GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
+        }
+      } else if (strcmp(argv[i], "--log") == 0) {
+        warnAndroid("--log");
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --log <log-file-path>");
+        }
+        opts->logPath = argv[++i];
+      } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
+        opts->SetMode(kReplayServer);
+        if (i + 1 >= argc) {
+          GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
+        }
+        opts->idleTimeoutSec = atoi(argv[++i]);
+      } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
+        opts->waitForDebugger = true;
+      } else if (strcmp(argv[i], "--version") == 0) {
+        opts->version = true;
+      } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0 ||
+                 strcmp(argv[i], "--help") == 0) {
+        opts->help = true;
+      } else {
+        GAPID_FATAL("Unknown argument: %s", argv[i]);
+      }
+    }
+  }
+
+  void SetMode(ReplayMode mode) {
+    if (this->mode != kUnknown && this->mode != mode) {
+      mode = kConflict;
+    }
+    this->mode = mode;
+  }
 };
 
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
@@ -325,50 +519,6 @@ int jni_call_i(JNIEnv* env, jobject obj, const char* name, const char* sig,
   return env->CallIntMethod(obj, mid, std::forward<Args>(args)...);
 }
 
-struct Options {
-  int idleTimeoutSec = 0;
-  std::string authToken = "";
-  ReplayMode mode = kUnknown;
-
-  static Options Parse(struct android_app* app) {
-    Options opts;
-
-    JNIEnv* env;
-    app->activity->vm->AttachCurrentThread(&env, 0);
-
-    jobject intent = jni_call_o(env, app->activity->clazz, "getIntent",
-                                "()Landroid/content/Intent;");
-    opts.idleTimeoutSec =
-        jni_call_i(env, intent, "getIntExtra", "(Ljava/lang/String;I)I",
-                   env->NewStringUTF("idle_timeout"), 0);
-    jobject token = jni_call_o(env, intent, "getStringExtra",
-                               "(Ljava/lang/String;)Ljava/lang/String;",
-                               env->NewStringUTF("auth_token"));
-    if (token != nullptr) {
-      const char* tmp = env->GetStringUTFChars((jstring)token, nullptr);
-      opts.authToken = tmp;
-      env->ReleaseStringUTFChars((jstring)token, tmp);
-    }
-
-    opts.mode = kReplayServer;
-
-    // Select replay archive mode if replay assets are detected
-    jobject j_asset_manager =
-        jni_call_o(env, app->activity->clazz, "getAssets",
-                   "()Landroid/content/res/AssetManager;");
-    AAssetManager* asset_manager = AAssetManager_fromJava(env, j_asset_manager);
-    AAsset* asset = AAssetManager_open(asset_manager, kReplayAssetToDetect,
-                                       AASSET_MODE_UNKNOWN);
-    if (asset != nullptr) {
-      opts.mode = kReplayArchive;
-      AAsset_close(asset);
-    }
-
-    app->activity->vm->DetachCurrentThread();
-    return opts;
-  }
-};
-
 const char* pipeName() {
 #ifdef __x86_64
   return "gapir-x86-64";
@@ -395,8 +545,111 @@ void android_process(struct android_app* app, int32_t cmd) {
 
 }  // namespace
 
+// Extract command line arguments from the extra of Android intent:
+//   adb shell am start -n <...> -e gapir-launch-args "'list of arguments to be
+//   extracted'"
+// Note the quoting: from host terminal adb command, we need to double-escape
+// the extra args string, as it is first quoted by host terminal emulator
+// (e.g. bash), then it must be quoted for the on-device shell.
+std::vector<std::string> GetArgsFromIntents(struct android_app* state) {
+  assert(state != nullptr);
+
+  // The extra flag to indicate arguments
+  const char* intent_flag = "gapir-intent-flag";
+
+  JavaVM* java_vm = state->activity->vm;
+  JNIEnv* jni_env;
+  assert(java_vm->AttachCurrentThread(&jni_env, nullptr) == JNI_OK);
+  jobject activity_clazz = state->activity->clazz;
+  jmethodID get_intent_method_id =
+      jni_env->GetMethodID(jni_env->GetObjectClass(activity_clazz), "getIntent",
+                           "()Landroid/content/Intent;");
+  jobject intent =
+      jni_env->CallObjectMethod(activity_clazz, get_intent_method_id);
+  jmethodID get_string_extra_method_id =
+      jni_env->GetMethodID(jni_env->GetObjectClass(intent), "getStringExtra",
+                           "(Ljava/lang/String;)Ljava/lang/String;");
+  jvalue get_string_extra_args;
+  get_string_extra_args.l = jni_env->NewStringUTF(intent_flag);
+  jstring extra_jstring = static_cast<jstring>(jni_env->CallObjectMethodA(
+      intent, get_string_extra_method_id, &get_string_extra_args));
+
+  std::string extra_string;
+  if (extra_jstring) {
+    const char* extra_cstr = jni_env->GetStringUTFChars(extra_jstring, nullptr);
+    extra_string = extra_cstr;
+    jni_env->ReleaseStringUTFChars(extra_jstring, extra_cstr);
+    jni_env->DeleteLocalRef(extra_jstring);
+  }
+
+  jni_env->DeleteLocalRef(get_string_extra_args.l);
+  jni_env->DeleteLocalRef(intent);
+  java_vm->DetachCurrentThread();
+
+  // Prepare arguments with a value for argv[0], as gflags expects
+  std::vector<std::string> args;
+  args.push_back(
+      "gapir");  // POSIX says the first argv should be the program being run.
+                 // Lets inject a placeholder here for compatibility.
+
+  // Split extra_string
+  std::stringstream ss(extra_string);
+  std::string arg;
+
+  while (std::getline(ss, arg, ' ')) {
+    if (!arg.empty()) {
+      args.push_back(arg);
+    }
+  }
+
+  return args;
+}
+
 // Main function for android
 void android_main(struct android_app* app) {
+  Options opts;
+
+  JNIEnv* env;
+  app->activity->vm->AttachCurrentThread(&env, 0);
+
+  // Select replay archive mode if replay assets are detected
+  jobject j_asset_manager = jni_call_o(env, app->activity->clazz, "getAssets",
+                                       "()Landroid/content/res/AssetManager;");
+  AAssetManager* asset_manager = AAssetManager_fromJava(env, j_asset_manager);
+
+  AAsset* asset = AAssetManager_open(asset_manager, kReplayAssetToDetect,
+                                     AASSET_MODE_UNKNOWN);
+
+  if (asset != nullptr) {
+    opts.SetMode(kReplayArchive);
+    AAsset_close(asset);
+  } else {
+    opts.SetMode(kReplayServer);
+  }
+
+  app->activity->vm->DetachCurrentThread();
+
+  std::vector<std::string> args = GetArgsFromIntents(app);
+  Options::Parse(args, &opts);
+
+  if (opts.waitForDebugger) {
+    GAPID_INFO("Waiting for debugger to attach");
+    core::Debugger::waitForAttach();
+  }
+
+  if (opts.help) {
+    Options::PrintHelp();
+    return;
+  } else if (opts.version) {
+    printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
+    return;
+  } else if (opts.mode == kConflict) {
+    GAPID_ERROR("Argument conflicts.");
+    return;
+  }
+
+  GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
+
   CrashHandler crashHandler;
 
   std::thread waiting_thread;
@@ -412,8 +665,6 @@ void android_main(struct android_app* app) {
   auto cache = InMemoryResourceCache::create(memoryManager.getTopAddress());
   std::mutex lock;
   PrewarmData data;
-
-  auto opts = Options::Parse(app);
 
   if (opts.mode == kReplayArchive) {
     GAPID_INFO("Started Graphics API Replay from archive.");
@@ -517,166 +768,6 @@ void android_main(struct android_app* app) {
 #else  // TARGET_OS == GAPID_OS_ANDROID
 
 namespace {
-
-struct Options {
-  struct OnDiskCache {
-    bool enabled = false;
-    bool cleanUp = false;
-    const char* path = "";
-  };
-
-  int logLevel = LOG_LEVEL;
-  const char* logPath = "logs/gapir.log";
-  ReplayMode mode = kUnknown;
-  bool waitForDebugger = false;
-  const char* cachePath = nullptr;
-  const char* portArgStr = "0";
-  const char* authTokenFile = nullptr;
-  int idleTimeoutSec = 0;
-  const char* replayArchive = nullptr;
-  const char* postbackDirectory = "";
-  bool version = false;
-  bool help = false;
-
-  OnDiskCache onDiskCacheOptions;
-
-  static void PrintHelp() {
-    printf("gapir: gapir is a VM for the graphics api debugger system\n");
-    printf("Usage: gapir [args]\n");
-    printf("Args:\n");
-    printf("  --replay-archive string\n");
-    printf("    Path to an archive directory to replay, and then exit\n");
-    printf("  --postback-dir string\n");
-    printf(
-        "    Path to a directory to use for outputs of the replay-archive\n");
-    printf("  --auth-token-file string\n");
-    printf("    Path to the a file containing the authentication token\n");
-    printf("  --enable-disk-cache\n");
-    printf(
-        "    If set, then gapir will create and use a disk cache for "
-        "resources.\n");
-    printf("  --disk-cache-path string\n");
-    printf("    Path to a directory that will be used for the disk cache.\n");
-    printf("    If it contains an existing cache, that will be used\n");
-    printf("    If unset, the disk cache will default to a temp directory\n");
-    printf("  --cleanup-disk-cache\n");
-    printf("    If set, the disk cache will be deleted when gapir exits.\n");
-    printf("  --port int\n");
-    printf("    The port to use when listening for connections\n");
-    printf("  --log-level <F|E|W|I|D|V>\n");
-    printf("    Sets the log level for gapir.\n");
-    printf("  --log string\n");
-    printf("    Sets the path for the log file\n");
-    printf("  --idle-timeout-sec int\n");
-    printf(
-        "    Timeout if gapir has not received communication from the server "
-        "(default infinity)\n");
-    printf("  --wait-for-debugger\n");
-    printf(
-        "    Causes gapir to pause on init, and wait for a debugger to "
-        "connect\n");
-    printf("   -h,-help,--help\n");
-    printf("    Prints this elp text and exits.\n");
-  }
-
-  static Options Parse(int argc, const char* argv[]) {
-    Options opts;
-
-    for (int i = 1; i < argc; i++) {
-      if (strcmp(argv[i], "--replay-archive") == 0) {
-        opts.SetMode(kReplayArchive);
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --replay-archive <archive-directory>");
-        }
-        opts.replayArchive = argv[++i];
-      } else if (strcmp(argv[i], "--postback-dir") == 0) {
-        opts.SetMode(kReplayArchive);
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --postback-dir <output-directory>");
-        }
-        opts.postbackDirectory = argv[++i];
-      } else if (strcmp(argv[i], "--auth-token-file") == 0) {
-        opts.SetMode(kReplayServer);
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --auth-token-file <token-string>");
-        }
-        opts.authTokenFile = argv[++i];
-      } else if (strcmp(argv[i], "--enable-disk-cache") == 0) {
-        opts.SetMode(kReplayServer);
-        opts.onDiskCacheOptions.enabled = true;
-      } else if (strcmp(argv[i], "--disk-cache-path") == 0) {
-        opts.SetMode(kReplayServer);
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --disk-cache-path <cache-directory>");
-        }
-        opts.onDiskCacheOptions.path = argv[++i];
-      } else if (strcmp(argv[i], "--cleanup-on-disk-cache") == 0) {
-        opts.onDiskCacheOptions.cleanUp = true;
-      } else if (strcmp(argv[i], "--port") == 0) {
-        opts.SetMode(kReplayServer);
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --port <port_num>");
-        }
-        opts.portArgStr = argv[++i];
-      } else if (strcmp(argv[i], "--log-level") == 0) {
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
-        }
-        switch (argv[++i][0]) {
-          case 'F':
-            opts.logLevel = LOG_LEVEL_FATAL;
-            break;
-          case 'E':
-            opts.logLevel = LOG_LEVEL_ERROR;
-            break;
-          case 'W':
-            opts.logLevel = LOG_LEVEL_WARNING;
-            break;
-          case 'I':
-            opts.logLevel = LOG_LEVEL_INFO;
-            break;
-          case 'D':
-            opts.logLevel = LOG_LEVEL_DEBUG;
-            break;
-          case 'V':
-            opts.logLevel = LOG_LEVEL_VERBOSE;
-            break;
-          default:
-            GAPID_FATAL("Usage: --log-level <F|E|W|I|D|V>");
-        }
-      } else if (strcmp(argv[i], "--log") == 0) {
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --log <log-file-path>");
-        }
-        opts.logPath = argv[++i];
-      } else if (strcmp(argv[i], "--idle-timeout-sec") == 0) {
-        opts.SetMode(kReplayServer);
-        if (i + 1 >= argc) {
-          GAPID_FATAL("Usage: --idle-timeout-sec <timeout in seconds>");
-        }
-        opts.idleTimeoutSec = atoi(argv[++i]);
-      } else if (strcmp(argv[i], "--wait-for-debugger") == 0) {
-        opts.waitForDebugger = true;
-      } else if (strcmp(argv[i], "--version") == 0) {
-        opts.version = true;
-      } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0 ||
-                 strcmp(argv[i], "--help") == 0) {
-        opts.help = true;
-      } else {
-        GAPID_FATAL("Unknown argument: %s", argv[i]);
-      }
-    }
-    return opts;
-  }
-
- private:
-  void SetMode(ReplayMode mode) {
-    if (this->mode != kUnknown && this->mode != mode) {
-      mode = kConflict;
-    }
-    this->mode = mode;
-  }
-};
 
 // createCache constructs and returns a ResourceCache based on the given
 // onDiskCacheOpts. If on-disk cache is not enabled or not possible to create,
@@ -821,7 +912,8 @@ static int startServer(core::CrashHandler* crashHandler, Options opts) {
 
 // Main function for PC
 int main(int argc, const char* argv[]) {
-  Options opts = Options::Parse(argc, argv);
+  Options opts;
+  Options::Parse(argc, argv, &opts);
 
 #if TARGET_OS == GAPID_OS_LINUX
   // Ignore SIGPIPE so we can log after gapis closes.
@@ -832,6 +924,7 @@ int main(int argc, const char* argv[]) {
     GAPID_INFO("Waiting for debugger to attach");
     core::Debugger::waitForAttach();
   }
+
   if (opts.help) {
     Options::PrintHelp();
     return EXIT_SUCCESS;
