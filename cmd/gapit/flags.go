@@ -279,7 +279,7 @@ type (
 			Port int `help:"connect to an application already running on the server using this port"`
 		}
 		PipeName string `help:"The name of the pipe to connect/listen to."`
-		Perfetto string `help:"File containing the Perfetto configuration proto.`
+		Perfetto string `help:"File containing the Perfetto configuration proto."`
 	}
 	BenchmarkFlags struct {
 		DeviceFlags
