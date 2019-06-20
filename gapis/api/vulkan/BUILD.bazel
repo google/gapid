@@ -18,7 +18,7 @@ load("//tools/build:rules.bzl", "api_library", "apic_template")
 
 filegroup(
     name = "api_files",
-    srcs = native.glob([
+    srcs = glob([
         "*.api",
         "api/*.api",
         "extensions/*.api",
