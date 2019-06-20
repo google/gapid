@@ -13,7 +13,7 @@
 # limitations under the License.
 
 def _lingo_impl(ctx):
-    outs = [ctx.new_file(src.basename[:-6]+".go") for src in ctx.files.srcs]
+    outs = [ctx.actions.declare_file(src.basename[:-6]+".go") for src in ctx.files.srcs]
     ctx.actions.run(
         inputs = ctx.files.srcs,
         outputs = outs,

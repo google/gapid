@@ -18,7 +18,7 @@ def _extract_impl(ctx):
     if ctx.attr.dir:
         base = ctx.attr.dir + "/"
     for entry in ctx.attr.entries:
-        out = ctx.new_file(ctx.bin_dir, base + entry)
+        out = ctx.actions.declare_file(base + entry)
         to =  out.path[:-len(entry)]
         outs += [out]
         ctx.actions.run_shell(

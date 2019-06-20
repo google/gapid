@@ -13,9 +13,9 @@
 # limitations under the License.
 
 def _stringgen_impl(ctx):
-    go = ctx.new_file(ctx.label.name+".go")
-    api = ctx.new_file(ctx.label.name+".api")
-    table = ctx.new_file("en-us.stb")
+    go = ctx.actions.declare_file(ctx.label.name+".go")
+    api = ctx.actions.declare_file(ctx.label.name+".api")
+    table = ctx.actions.declare_file("en-us.stb")
     ctx.actions.run(
         inputs = [ctx.file.input],
         outputs = [go, api, table],
