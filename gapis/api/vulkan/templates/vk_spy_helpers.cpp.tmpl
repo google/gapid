@@ -84,7 +84,7 @@ gapii::VkExtensionProperties *pProperties) {
 namespace gapii {
 PFN_vkVoidFunction VulkanSpy::SpyOverride_vkGetInstanceProcAddr(VkInstance instance, const char* pName) {
     {{range $c := AllCommands $}}
-        {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
+        {{if (or (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance") (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice"))}}
             {{$name := Macro "CmdName" $c}}
             if(!strcmp(pName, "{{$name}}"))
               return reinterpret_cast<PFN_vkVoidFunction>(gapii::{{$name}});
