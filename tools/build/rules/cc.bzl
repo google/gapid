@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@gapid//:version.bzl", "version_define_copts")
 load("@gapid//tools/build/rules:common.bzl", "copy_exec")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
@@ -26,7 +25,7 @@ _ANDROID_COPTS = [
 
 # This should probably all be done by fixing the toolchains...
 def cc_copts():
-    return version_define_copts() + ["-Werror"] + select({
+    return ["-Werror"] + select({
         "@gapid//tools/build:linux": ["-DTARGET_OS_LINUX"],
         "@gapid//tools/build:darwin": ["-DTARGET_OS_OSX"],
         "@gapid//tools/build:windows": ["-DTARGET_OS_WINDOWS"],
