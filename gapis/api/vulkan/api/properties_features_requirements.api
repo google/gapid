@@ -902,6 +902,9 @@ sub void GetImageMemoryRequirements2(
           ext := as!VkImagePlaneMemoryRequirementsInfo*(next.Ptr)[0]
           plane.Val = as!u32(ext.planeAspect)
         }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+          _ = as!VkMemoryDedicatedRequirements*(next.Ptr)[0]
+        }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
     }
@@ -936,6 +939,8 @@ sub void GetImageMemoryRequirements2(
             RequiresDedicatedAllocation:  ext.requiresDedicatedAllocation,
           )
           as!VkMemoryDedicatedRequirements*(next.Ptr)[0] = ext
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
         }
       }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0].PNext
