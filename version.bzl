@@ -23,12 +23,6 @@ GAPID_VERSION_POINT="0"
 GAPID_BUILD_NUMBER="$(GAPID_BUILD_NUMBER)"
 GAPID_BUILD_SHA="$(GAPID_BUILD_SHA)"
 
-def version():
-    return "{}.{}.{}:{}".format(GAPID_VERSION_MAJOR, GAPID_VERSION_MINOR, GAPID_VERSION_POINT, GAPID_BUILD_SHA)
-
-def version_define_copts():
-    return ["-DGAPID_VERSION_AND_BUILD=\\\"" + version() + "\\\""]
-
 def _gapid_version(ctx):
     ctx.actions.expand_template(
         template = ctx.file.template,

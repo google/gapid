@@ -16,7 +16,7 @@ load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_strip
 
 cc_library(
     name = "cc",
-    srcs = ["main.cpp"],
+    srcs = ["main.cpp"] + ["//core/cc:version"],
     copts = cc_copts(),
     deps = [
         "//gapir/cc:gapir",

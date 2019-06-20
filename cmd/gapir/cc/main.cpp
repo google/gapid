@@ -31,6 +31,7 @@
 #include "core/cc/socket_connection.h"
 #include "core/cc/supported_abis.h"
 #include "core/cc/target.h"
+#include "core/cc/version.h"
 
 #include <signal.h>
 #include <stdio.h>
