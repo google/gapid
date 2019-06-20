@@ -111,7 +111,7 @@ def _gen_cc_source_impl(ctx):
       arguments += ["--proto_path=."]
   arguments += [proto.path for proto in protos]
 
-  ctx.action(
+  ctx.actions.run(
     inputs = protos + includes,
     outputs = out_files,
     tools = [ctx.executable._protoc, ctx.executable._plugin],
