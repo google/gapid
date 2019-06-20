@@ -415,8 +415,6 @@ public class MainWindow extends ApplicationWindow {
     GotoMemory("&Memory Location", 'M'),
 
     ViewThumbnails("Show Filmstrip"),
-    ViewLeft("Show Left Tabs"),
-    ViewRight("Show Right Tabs"),
     ViewDarkMode("Dark Mode", 'D'),
 
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
