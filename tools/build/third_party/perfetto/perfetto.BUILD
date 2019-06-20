@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@gapid//tools/build:rules.bzl", "cc_copts", "cc_stripped_binary", "copy_tree")
+load("@gapid//tools/build:rules.bzl", "cc_copts", "cc_stripped_binary")
 load("@gapid//tools/build/third_party/perfetto:protozero.bzl", "cc_protozero_library")
 load("@gapid//tools/build/third_party/perfetto:ipc.bzl", "cc_ipc_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
