@@ -67,7 +67,7 @@ _gen_cc = rule(
     attrs = {
         "deps": attr.label_list(
             mandatory = True,
-            non_empty = True,
+            allow_empty = False,
             providers = ["proto"],
         ),
         "_protoc": attr.label(

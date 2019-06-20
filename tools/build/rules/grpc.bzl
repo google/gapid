@@ -52,7 +52,7 @@ _gen_java_source = rule(
   attrs = {
     "srcs": attr.label_list(
       mandatory = True,
-      non_empty = True,
+      allow_empty = False,
       providers = ["proto"],
     ),
     "_protoc": attr.label(
@@ -132,7 +132,7 @@ _gen_cc_source = rule(
   attrs = {
     "srcs": attr.label_list(
       mandatory = True,
-      non_empty = True,
+      allow_empty = False,
       providers = ["proto"],
     ),
     "_protoc": attr.label(
