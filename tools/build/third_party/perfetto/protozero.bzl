@@ -48,11 +48,13 @@ def _gen_cc_impl(ctx):
       arguments += ["--proto_path=."]
   arguments += [proto.path for proto in protos]
 
-  ctx.action(
-    inputs = protos + includes + [ctx.executable._plugin],
+  ctx.actions.run(
+    inputs = protos + includes,
     outputs = out_files,
+    tools =  [ctx.executable._protoc, ctx.executable._plugin],
     executable = ctx.executable._protoc,
     arguments = arguments,
+    use_default_shell_env = True,
   )
 
   return [
