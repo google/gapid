@@ -122,8 +122,7 @@ _symbols = rule(
     _symbols_impl,
     attrs = {
         "src": attr.label(
-            allow_files = True,
-            single_file = True,
+            allow_single_file = True,
         ),
         "_dump_syms": attr.label(
             executable = True,

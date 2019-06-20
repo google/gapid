@@ -39,8 +39,13 @@ def _gapid_version(ctx):
 gapid_version = rule(
     implementation=_gapid_version,
     attrs = {
-        "template": attr.label(mandatory = True, allow_files = True, single_file = True),
-        "out": attr.output(mandatory = True),
+        "template": attr.label(
+            mandatory = True,
+            allow_single_file = True,
+        ),
+        "out": attr.output(
+            mandatory = True,
+        ),
     },
     output_to_genfiles = True,
 )

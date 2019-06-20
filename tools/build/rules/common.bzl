@@ -40,8 +40,7 @@ copy = rule(
     _copy_impl,
     attrs = {
         "src": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
             mandatory = True,
         ),
         "dst": attr.output(),

@@ -88,8 +88,7 @@ llvm_tablegen = rule(
     _tablegen_impl,
     attrs = {
         "table": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
         ),
         "deps": attr.label_list(allow_files = True),
         "generate": attr.output(),

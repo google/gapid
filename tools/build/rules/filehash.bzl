@@ -37,8 +37,7 @@ filehash = rule(
         ),
         "template": attr.label(
             mandatory = True,
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
         ),
         "replace": attr.string(mandatory = True),
         "out": attr.output(mandatory = True),

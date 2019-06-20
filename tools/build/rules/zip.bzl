@@ -34,8 +34,7 @@ extract = rule(
     _extract_impl,
     attrs = {
         "zip": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
             mandatory = True,
         ),
         "entries": attr.string_list(mandatory=True),

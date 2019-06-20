@@ -35,8 +35,7 @@ _strip = rule(
     implementation = _strip_impl,
     attrs = {
         "lib": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
             mandatory = True,
         ),
         "abi": attr.string(),
