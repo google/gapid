@@ -46,7 +46,7 @@ def _strip_impl(ctx):
         extension = "." + extension
     if ctx.label.name.endswith(extension):
         extension = ""
-    out = ctx.new_file(ctx.label.name + extension)
+    out = ctx.actions.declare_file(ctx.label.name + extension)
 
     flags = []
     cc_toolchain = find_cpp_toolchain(ctx)
@@ -92,7 +92,7 @@ strip = rule(
 # a symbol dump file that can be uploaded to the crash server to symbolize
 # stack traces of uploaded crash dumps.
 def _symbols_impl(ctx):
-    out = ctx.new_file(ctx.label.name)
+    out = ctx.actions.declare_file(ctx.label.name)
     bin = ctx.file.src
     cc_toolchain = find_cpp_toolchain(ctx)
     if cc_toolchain.cpu.startswith("darwin"):

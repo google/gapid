@@ -19,7 +19,7 @@ def _strip_impl(ctx):
     outs = []
     cc_toolchain = find_cpp_toolchain(ctx)
     if cc_toolchain.cpu == ctx.attr.abi:
-        out = ctx.new_file("lib/{}/{}".format(ctx.attr.abi, ctx.file.lib.basename))
+        out = ctx.actions.declare_file("lib/{}/{}".format(ctx.attr.abi, ctx.file.lib.basename))
         ctx.actions.run(
             executable = cc_toolchain.strip_executable(),
             arguments = ["--strip-unneeded", "-o", out.path, ctx.file.lib.path],

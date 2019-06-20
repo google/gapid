@@ -32,7 +32,7 @@ def _apic_binary_impl(ctx):
     apilist = api.includes.to_list()
     generated = depset()
 
-    outputs = [ctx.new_file(ctx.label.name + ".bapi")]
+    outputs = [ctx.actions.declare_file(ctx.label.name + ".bapi")]
     generated += outputs
 
     ctx.actions.run(
@@ -85,7 +85,7 @@ def _apic_compile_impl(ctx):
 
     cc_toolchain = find_cpp_toolchain(ctx)
     target = cc_toolchain.cpu
-    outputs = [ctx.new_file(ctx.label.name + ".o")]
+    outputs = [ctx.actions.declare_file(ctx.label.name + ".o")]
 
     ctx.actions.run(
         inputs = apilist,
@@ -177,7 +177,7 @@ def _apic_template_impl(ctx):
     for template in ctx.attr.templates:
         template = template[ApicTemplate]
         templatelist = template.uses.to_list()
-        outputs = [ctx.new_file(out.format(api = apiname)) for out in template.outputs]
+        outputs = [ctx.actions.declare_file(out.format(api = apiname)) for out in template.outputs]
         generated += outputs
         ctx.actions.run(
             inputs = apilist + templatelist,

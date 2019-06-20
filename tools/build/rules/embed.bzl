@@ -13,7 +13,7 @@
 # limitations under the License.
 
 def _embed_impl(ctx):
-    out = ctx.new_file(ctx.label.name + ".go")
+    out = ctx.actions.declare_file(ctx.label.name + ".go")
     args = ["--out", out.path]
     if ctx.attr.package:
         args += ["--package", ctx.attr.package]
