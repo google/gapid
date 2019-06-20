@@ -15,6 +15,7 @@
  */
 package com.google.gapid;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.gapid.models.Analytics.View;
@@ -39,7 +40,7 @@ import com.google.gapid.widgets.FixedTopSplitter;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
 import com.google.gapid.widgets.TabArea.Persistance;
-import com.google.gapid.widgets.TabArea.TabInfo;
+import com.google.gapid.widgets.TabComposite.TabInfo;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.action.Action;
@@ -52,6 +53,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -86,19 +88,17 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
       @Override
       protected Control createBottomControl() {
-        tabs = new TabArea(this, new Persistance() {
+        tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {
           @Override
-          public void store(FolderInfo[] folders) {
+          public void store(TabArea.FolderInfo[] folders) {
             MainTab.store(models, folders);
           }
 
           @Override
-          public FolderInfo[] restore() {
+          public TabArea.FolderInfo[] restore() {
             return MainTab.getFolders(models, widgets, hiddenTabs);
           }
-        }, models.analytics);
-        tabs.setLeftVisible(!models.settings.hideLeft);
-        tabs.setRightVisible(!models.settings.hideRight);
+        });
         return tabs;
       }
     };
@@ -147,28 +147,8 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       }
     });
     viewScrubber.setChecked(!models.settings.hideScrubber);
-    Action viewLeft = MainWindow.MenuItems.ViewLeft.createCheckbox(show -> {
-      if (tabs != null) {
-        models.analytics.postInteraction(
-            View.LeftTabs, show ? ClientAction.Enable : ClientAction.Disable);
-        tabs.setLeftVisible(show);
-        models.settings.hideLeft = !show;
-      }
-    });
-    viewLeft.setChecked(!models.settings.hideLeft);
-    Action viewRight = MainWindow.MenuItems.ViewRight.createCheckbox(show -> {
-      if (tabs != null) {
-        models.analytics.postInteraction(
-            View.RightTabs, show ? ClientAction.Enable : ClientAction.Disable);
-        tabs.setRightVisible(show);
-        models.settings.hideRight = !show;
-      }
-    });
-    viewRight.setChecked(!models.settings.hideRight);
 
     manager.add(viewScrubber);
-    manager.add(viewLeft);
-    manager.add(viewRight);
     manager.add(createViewTabsMenu());
   }
 
@@ -179,7 +159,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
         models.analytics.postInteraction(
             type.view, shown ? ClientAction.Enable : ClientAction.Disable);
         if (shown) {
-          tabs.addNewTabToCenter(new MainTab(type, parent -> {
+          tabs.addTabToLargestFolder(new MainTab(type, parent -> {
             Tab tab = type.factory.create(parent, models, widgets);
             tab.reinitialize();
             return tab.getControl();
@@ -207,62 +187,162 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       super(type, type.view, type.label, contentFactory);
     }
 
+    /**
+     * Deserializes the {@link FolderInfo FolderInfos} by parsing the settings strings.
+     * The "weights" and "tabs" string are simple CSV lists and values are popped off the lists
+     * according to the "structs" string. The "struct" string is a semi-colon separated list of
+     * a recursive structure. Each element in the list starts either with a 'g' for group, or
+     * 'f' for folder. The remainder of the string is an integer representing the number of
+     * recursive children in case of groups, or the number of tabs in case of folders.
+     */
     public static FolderInfo[] getFolders(Models models, Widgets widgets, Set<Type> hidden) {
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
       allTabs.removeAll(hidden);
-      List<TabInfo> left = getTabs(models.settings.leftTabs, allTabs, models, widgets);
-      List<TabInfo> center = getTabs(models.settings.centerTabs, allTabs, models, widgets);
-      List<TabInfo> right = getTabs(models.settings.rightTabs, allTabs, models, widgets);
+      Iterator<String> structs = Splitter.on(';')
+          .trimResults()
+          .omitEmptyStrings()
+          .split(models.settings.tabStructure)
+          .iterator();
+      Iterator<Integer> weights = Arrays.stream(models.settings.tabWeights).iterator();
+      Iterator<String> tabs = Arrays.asList(models.settings.tabs).iterator();
 
-      for (Type missing : allTabs) {
-        switch (missing.defaultLocation) {
-          case Left:
-            left.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, models, widgets).getControl()));
-            break;
-          case Center:
-            center.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, models, widgets).getControl()));
-            break;
-          case Right:
-            right.add(new MainTab(missing,
-                parent -> missing.factory.create(parent, models, widgets).getControl()));
-            break;
-          default:
-            throw new AssertionError();
-        }
+      FolderInfo root = parse(models, widgets, structs, weights, tabs, allTabs);
+      if (structs.hasNext()) {
+        root = null;
+      }
+      if (root == null || root.children == null) {
+        return getDefaultFolderInfo(models, widgets, hidden);
       }
 
-      double[] weights = models.settings.tabWeights;
-      return new FolderInfo[] {
-          new FolderInfo(false, left.toArray(new TabInfo[left.size()]), weights[0]),
-          new FolderInfo(false, center.toArray(new TabInfo[center.size()]), weights[1]),
-          new FolderInfo(false, right.toArray(new TabInfo[right.size()]), weights[2]),
-      };
+      if (!allTabs.isEmpty()) {
+        TabInfo[] tabsToAdd = new TabInfo[allTabs.size()];
+        int i = 0;
+        for (Type tab : allTabs) {
+          tabsToAdd[i++] = new MainTab(tab,
+              parent -> tab.factory.create(parent, models, widgets).getControl());
+        }
+        root = root.addToLargest(tabsToAdd);
+      }
+      return root.children;
     }
 
+    private static FolderInfo parse(Models models, Widgets widgets, Iterator<String> structs,
+        Iterator<Integer> weights, Iterator<String> tabs, Set<Type> left) {
+      if (!structs.hasNext() || !weights.hasNext()) {
+        return null;
+      }
+      String struct = structs.next(); // struct is non-empty (see splitter above)
+      int weight = weights.next();
+
+      int count = 0;
+      try {
+        count = Integer.parseInt(struct.substring(1));
+      } catch (NumberFormatException e) {
+        return null;
+      }
+      if (count <= 0) {
+        return null;
+      }
+
+      switch (struct.charAt(0)) {
+        case 'g':
+          FolderInfo[] folders = new FolderInfo[count];
+          for (int i = 0; i < folders.length; i++) {
+            folders[i] = parse(models, widgets, structs, weights, tabs, left);
+            if (folders[i] == null) {
+              return null;
+            }
+          }
+          return new FolderInfo(folders, weight);
+        case 'f':
+          List<TabInfo> children = getTabs(tabs, count, left, models, widgets);
+          return (children.isEmpty()) ? null :
+              new FolderInfo(children.toArray(new TabInfo[children.size()]), weight);
+        default:
+          return null;
+      }
+    }
+
+    private static FolderInfo[] getDefaultFolderInfo(
+        Models models, Widgets widgets, Set<Type> hidden) {
+      Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
+      allTabs.removeAll(hidden);
+      List<FolderInfo> folders = Lists.newArrayList();
+      if (allTabs.contains(Type.ApiCalls)) {
+        folders.add(new FolderInfo(new TabInfo[] {
+            new MainTab(Type.ApiCalls,
+                parent -> Type.ApiCalls.factory.create(parent, models, widgets).getControl())
+        }, 1));
+        allTabs.remove(Type.ApiCalls);
+      }
+      List<TabInfo> center = Lists.newArrayList();
+      for (Iterator<Type> it = allTabs.iterator(); it.hasNext(); ) {
+        Type type = it.next();
+        if (type == Type.Memory || type == Type.ApiState) {
+          continue;
+        }
+        center.add(new MainTab(
+            type, parent -> type.factory.create(parent, models, widgets).getControl()));
+        it.remove();
+      }
+      if (!center.isEmpty()) {
+        folders.add(new FolderInfo(center.toArray(new TabInfo[center.size()]), 3));
+      }
+      if (!allTabs.isEmpty()) {
+        TabInfo[] right = new TabInfo[allTabs.size()];
+        if (allTabs.contains(Type.ApiState)) {
+          right[0] = new MainTab(Type.ApiState,
+              parent -> Type.ApiState.factory.create(parent, models, widgets).getControl());
+        }
+        if (allTabs.contains(Type.Memory)) {
+          right[right.length - 1] = new MainTab(Type.Memory,
+              parent -> Type.Memory.factory.create(parent, models, widgets).getControl());
+        }
+        folders.add(new FolderInfo(right, 1));
+      }
+      return folders.toArray(new FolderInfo[folders.size()]);
+    }
+
+    /**
+     * Serializes the {@link FolderInfo FolderInfos} into the setting strings.
+     * {@see #getFolders(Models, Widgets, Set)}
+     */
     public static void store(Models models, FolderInfo[] folders) {
-      models.settings.leftTabs = getNames(folders[0].tabs);
-      models.settings.centerTabs = getNames(folders[1].tabs);
-      models.settings.rightTabs = getNames(folders[2].tabs);
-      models.settings.tabWeights = getWeights(folders);
+      List<Integer> weights = Lists.newArrayList(-1);
+      StringBuilder structure = new StringBuilder().append('g').append(folders.length).append(';');
+      List<String> tabs = Lists.newArrayList();
+      for (FolderInfo folder : folders) {
+        flatten(folder, weights, structure, tabs);
+      }
+      models.settings.tabs = tabs.toArray(new String[tabs.size()]);
+      models.settings.tabWeights = weights.stream().mapToInt(x -> x).toArray();
+      models.settings.tabStructure = structure.toString();
     }
 
-    private static String[] getNames(TabInfo[] tabs) {
-      return Arrays.stream(tabs).map(tab -> ((Type)tab.id).name()).toArray(len -> new String[len]);
-    }
-
-    private static double[] getWeights(FolderInfo[] folders) {
-      return new double[] { folders[0].weight, folders[1].weight, folders[2].weight };
+    private static void flatten(
+        FolderInfo folder, List<Integer> weights, StringBuilder structure, List<String> tabs) {
+      weights.add(folder.weight);
+      if (folder.children != null) {
+        structure.append('g').append(folder.children.length).append(';');
+        for (FolderInfo child : folder.children) {
+          flatten(child, weights, structure, tabs);
+        }
+      }
+      if (folder.tabs != null) {
+        structure.append('f').append(folder.tabs.length).append(';');
+        for (TabInfo tab : folder.tabs) {
+          tabs.add(((Type)tab.id).name());
+        }
+      }
     }
 
     private static List<TabInfo> getTabs(
-        String[] names, Set<Type> left, Models models, Widgets widgets) {
+       Iterator<String> names, int count, Set<Type> left, Models models, Widgets widgets) {
 
       List<TabInfo> result = Lists.newArrayList();
-      for (String name : names) {
+      for (int i = 0; i < count && names.hasNext(); i++) {
         try {
-          Type type = Type.valueOf(name);
+          Type type = Type.valueOf(names.next());
           if (left.remove(type)) {
             result.add(new MainTab(type,
                 parent -> type.factory.create(parent, models, widgets).getControl()));
@@ -275,35 +355,26 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
     }
 
     /**
-     * Possible tab locations.
-     */
-    public static enum Location {
-      Left, Center, Right;
-    }
-
-    /**
      * Information about the available tabs.
      */
     public static enum Type {
-      ApiCalls(Location.Left, View.Commands, "Commands", CommandTree::new),
+      ApiCalls(View.Commands, "Commands", CommandTree::new),
 
-      Framebuffer(Location.Center, View.Framebuffer, "Framebuffer", FramebufferView::new),
-      Textures(Location.Center, View.Textures, "Textures", TextureView::new),
-      Geometry(Location.Center, View.Geometry, "Geometry", GeometryView::new),
-      Shaders(Location.Center, View.Shaders, "Shaders", ShaderView::new),
-      Report(Location.Center, View.Report, "Report", ReportView::new),
-      Log(Location.Center, View.Log, "Log", (p, m, w) -> new LogView(p, w)),
+      Framebuffer(View.Framebuffer, "Framebuffer", FramebufferView::new),
+      Textures(View.Textures, "Textures", TextureView::new),
+      Geometry(View.Geometry, "Geometry", GeometryView::new),
+      Shaders(View.Shaders, "Shaders", ShaderView::new),
+      Report(View.Report, "Report", ReportView::new),
+      Log(View.Log, "Log", (p, m, w) -> new LogView(p, w)),
 
-      ApiState(Location.Right, View.State, "State", StateView::new),
-      Memory(Location.Right, View.Memory, "Memory", MemoryView::new);
+      ApiState(View.State, "State", StateView::new),
+      Memory(View.Memory, "Memory", MemoryView::new);
 
-      public final Location defaultLocation;
       public final View view;
       public final String label;
       public final TabFactory factory;
 
-      private Type(Location defaultLocation, View view, String label, TabFactory factory) {
-        this.defaultLocation = defaultLocation;
+      private Type(View view, String label, TabFactory factory) {
         this.view = view;
         this.label = label;
         this.factory = factory;

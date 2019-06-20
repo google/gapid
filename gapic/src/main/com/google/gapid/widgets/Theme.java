@@ -73,6 +73,8 @@ public interface Theme {
   @Icon(file = "faceted.png") public Image faceted();
   @Icon(file = "flat.png") public Image flat();
   @Icon(file = "flip_vertically.png") public Image flipVertically();
+  @Icon(file = "fullscreen.png") public Image fullscreen();
+  @Icon(file = "fullscreen_exit.png") public Image fullscreenExit();
   @Icon(file = "jump.png") public Image jump();
   @Icon(file = "help.png") public Image help();
   @Icon(file = "histogram.png") public Image toggleHistogram();
@@ -160,6 +162,15 @@ public interface Theme {
 
   @RGB(argb = 0xffcccccc) public Color statusBarMemoryBar();
 
+  @RGB(argb = 0xff000000) public Color tabTitle(); // TODO: should be system defined
+  @RGB(argb = 0xffffffff) public Color tabBackgound();
+  @RGB(argb = 0xffc0c0c0) public Color tabFolderLine();
+  @RGB(argb = 0xff3195fd) public Color tabFolderLineSelected();
+  @RGB(argb = 0xffe5f3ff) public Color tabFolderHovered();
+  @RGB(argb = 0xfffbfbfd) public Color tabFolderSelected();
+  @RGB(argb = 0xffd1e3f7) public Color tabFolderPlaceholderFill();
+  @RGB(argb = 0xff4a90e2) public Color tabFolderPlaceholderStroke();
+
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();
@@ -169,6 +180,7 @@ public interface Theme {
 
   @Text(Text.Mono) public Font monoSpaceFont();
   @Text(Text.Big) public Font bigBoldFont();
+  @Text(Text.TabTitle) public Font selectedTabTitleFont();
 
   public void dispose();
 
@@ -264,7 +276,7 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1, Big = 2;
+    public static final int Mono = 1, Big = 2, TabTitle = 3;
 
     public int value();
   }
@@ -425,6 +437,14 @@ public interface Theme {
             Font dflt = JFaceResources.getDefaultFont();
             Font font = FontDescriptor.createFrom(dflt)
                 .setHeight(dflt.getFontData()[0].getHeight() * 3 / 2)
+                .setStyle(SWT.BOLD)
+                .createFont(display);
+            resources.put(method.getName(), font);
+            return true;
+          }
+          case Text.TabTitle: {
+            Font dflt = JFaceResources.getDefaultFont();
+            Font font = FontDescriptor.createFrom(dflt)
                 .setStyle(SWT.BOLD)
                 .createFont(display);
             resources.put(method.getName(), font);
