@@ -14,8 +14,7 @@
 
 _BUILD_FILE_ATTRS = {
   "build_file": attr.label(
-      allow_files = True,
-      single_file = True,
+      allow_single_file = True,
   ),
   "build_file_content": attr.string(),
 }

@@ -35,8 +35,7 @@ api_library = rule(
     attrs = {
         "apiname": attr.string(mandatory=True),
         "api": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
         ),
         "includes": attr.label_list(allow_files = True),
         "deps": attr.label_list(
@@ -68,8 +67,7 @@ api_template = rule(
     _api_template_impl,
     attrs = {
         "template": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
         ),
         "includes": attr.label_list(allow_files = True),
         "outputs": attr.string_list(),

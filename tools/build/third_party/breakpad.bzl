@@ -40,8 +40,7 @@ breakpad = repository_rule(
         "commit": attr.string(mandatory = True),
         "build_file": attr.label(
             mandatory = True,
-            allow_files = True,
-            single_file = True,
+            allow_single_file = True,
         ),
     },
 )

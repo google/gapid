@@ -43,8 +43,7 @@ stringgen = rule(
     _stringgen_impl,
     attrs = {
         "input": attr.label(
-            single_file = True,
-            allow_files = True,
+            allow_single_file = True,
             mandatory = True,
         ),
         "_stringgen": attr.label(
