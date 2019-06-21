@@ -48,6 +48,15 @@ bool asset_read(AAsset *asset, void *buf, size_t count) {
   return true;
 }
 
+// touch pages will touch all memory pages for a given memory span
+void touch_pages(void *addr, uint32_t size) {
+  long pagesize = sysconf(_SC_PAGESIZE);
+  char *end = ((char *)addr) + size;
+  for (char *p = (char *)addr; p < end; p += pagesize) {
+    *p = '0';
+  }
+}
+
 }  // namespace
 
 std::unique_ptr<ResourceCache> AssetResourceCache::create(
@@ -124,11 +133,26 @@ bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
 
   size_t left_to_read = record.size;
   char *p = (char *)data;
+  bool read_failed = false;
 
   while (left_to_read > 0) {
     ssize_t read_this_time = read(mResourceDataFd, p, left_to_read);
 
     if (read_this_time == (ssize_t)-1) {
+      if (!read_failed && errno == EFAULT) {
+        // This error may be raised if this replay is being traced, due to the
+        // GAPII memory tracker not playing nice for memory used as destination
+        // of a read() call. This is because the memory tracker relies on
+        // segfault signal handler, but a read() call with a destination into a
+        // non-writable page will just lead to a EFAULT, not a segfault. Thus,
+        // directly touch all pages of the destination memory to get the memory
+        // tracker in a good state, and retry the read(). But try this only
+        // once.
+        read_failed = true;
+        touch_pages(data, record.size);
+        continue;
+      }
+
       char *errmsg = strerror(errno);
       GAPID_FATAL(
           "AssetResourceCache::loadCache() read() failed, errno: %d, strerror: "
