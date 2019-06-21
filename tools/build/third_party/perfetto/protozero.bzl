@@ -19,7 +19,7 @@ def _path_ignoring_repository(f):
 
 def _gen_cc_impl(ctx):
   protos = [f for dep in ctx.attr.deps for f in dep.proto.direct_sources]
-  includes = [f for dep in ctx.attr.deps for f in dep.proto.transitive_imports]
+  includes = [f for dep in ctx.attr.deps for f in dep.proto.transitive_imports.to_list()]
   proto_root = ""
   if ctx.label.workspace_root:
     proto_root = "/" + ctx.label.workspace_root

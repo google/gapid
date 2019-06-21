@@ -16,7 +16,7 @@ def _gen_java_source_impl(ctx):
   # Use .jar since .srcjar makes protoc think output will be a directory
   srcdotjar = ctx.actions.declare_file(ctx.label.name + "-src.jar")
   protos = [f for dep in ctx.attr.srcs for f in dep.proto.direct_sources]
-  includes = [f for dep in ctx.attr.srcs for f in dep.proto.transitive_imports]
+  includes = [f for dep in ctx.attr.srcs for f in dep.proto.transitive_imports.to_list()]
 
   arguments = [
     "--plugin=protoc-gen-grpc-java=" + ctx.executable._plugin.path,
@@ -74,7 +74,7 @@ _gen_java_source = rule(
 
 def _gen_cc_source_impl(ctx):
   protos = [f for dep in ctx.attr.srcs for f in dep.proto.direct_sources]
-  includes = [f for dep in ctx.attr.srcs for f in dep.proto.transitive_imports]
+  includes = [f for dep in ctx.attr.srcs for f in dep.proto.transitive_imports.to_list()]
 
   proto_root = ""
   if ctx.label.workspace_root:
