@@ -881,6 +881,7 @@ public class TabComposite extends Composite {
         current = tabs.isEmpty() ? null : tabs.get(0).control;
         requestLayout();
       }
+      tab.control.dispose();
       redrawBar();
     }
 
