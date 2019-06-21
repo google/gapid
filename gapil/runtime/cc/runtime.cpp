@@ -65,14 +65,9 @@ void gapil_logf(uint8_t severity, uint8_t* file, uint32_t line, uint8_t* fmt,
     va_start(args, fmt);
     auto f =
         (file != nullptr) ? reinterpret_cast<const char*>(file) : "<unknown>";
-#if TARGET_OS == GAPID_OS_ANDROID
-    char buf[2048];
-    snprintf(buf, sizeof(buf), "[%s:%" PRIu32 "] %s", f, line, fmt);
-    __android_log_vprint(severity, "GAPID", buf, args);
-#else
+
     ::core::Logger::instance().vlogf(severity, f, line,
                                      reinterpret_cast<const char*>(fmt), args);
-#endif  // TARGET_OS
     va_end(args);
   }
 }
