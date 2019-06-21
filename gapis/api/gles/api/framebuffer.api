@@ -1141,6 +1141,7 @@ sub void RenderbufferStorageMultisample(GLenum target, GLsizei samples, GLenum i
     DataFormat: sizedFormatInfo.UnsizedFormat,
     DataType: sizedFormatInfo.DataType,
   )
+  rb.Image.Data = make!u8(uncompressedImageSize(width, height, sizedFormatInfo.UnsizedFormat, sizedFormatInfo.DataType))
 }
 
 @if(Version.GLES10)
