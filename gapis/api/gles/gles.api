@@ -744,23 +744,35 @@ sub void ApplyDynamicContextState(ref!Context ctx, ref!DynamicContextState dynam
   if (dynamicState != null) {
     backbuffer := ctx.Objects.Framebuffers[0]
 
+    width := dynamicState.BackbufferWidth
+    height := dynamicState.BackbufferHeight
+
     backbuffer.ColorAttachments[0].Renderbuffer.Image = new!Image(
       Width: dynamicState.BackbufferWidth,
       Height: dynamicState.BackbufferHeight,
       SizedFormat: dynamicState.BackbufferColorFmt,
     )
+    colorFmtInfo := GetSizedFormatInfo(dynamicState.BackbufferColorFmt)
+    colorImageSize := uncompressedImageSize(width, height, colorFmtInfo.UnsizedFormat, colorFmtInfo.DataType)
+    backbuffer.ColorAttachments[0].Renderbuffer.Image.Data = make!u8(colorImageSize)
 
     backbuffer.DepthAttachment.Renderbuffer.Image = new!Image(
       Width: dynamicState.BackbufferWidth,
       Height: dynamicState.BackbufferHeight,
       SizedFormat: dynamicState.BackbufferDepthFmt,
     )
+    depthFmtInfo := GetSizedFormatInfo(dynamicState.BackbufferDepthFmt)
+    depthImageSize := uncompressedImageSize(width, height, depthFmtInfo.UnsizedFormat, depthFmtInfo.DataType)
+    backbuffer.DepthAttachment.Renderbuffer.Image.Data = make!u8(depthImageSize)
 
     backbuffer.StencilAttachment.Renderbuffer.Image = new!Image(
       Width: dynamicState.BackbufferWidth,
       Height: dynamicState.BackbufferHeight,
       SizedFormat: dynamicState.BackbufferStencilFmt,
     )
+    stencilFmtInfo := GetSizedFormatInfo(dynamicState.BackbufferStencilFmt)
+    stencilImageSize := uncompressedImageSize(width, height, stencilFmtInfo.UnsizedFormat, stencilFmtInfo.DataType)
+    backbuffer.StencilAttachment.Renderbuffer.Image.Data = make!u8(stencilImageSize)
 
     if resetViewportScissor {
       ctx.Pixel.Scissor.Box.Width = dynamicState.BackbufferWidth
