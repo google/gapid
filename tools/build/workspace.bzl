@@ -253,7 +253,7 @@ def _grpc_deps(locals):
         organization = "madler",
         project = "zlib",
         commit = "cacf7f1d4e3d44d871b605da3b647f07d718623f",
-        build_file = "@com_github_grpc_grpc//third_party:zlib.BUILD",
+        build_file = "@gapid//tools/build/third_party:zlib.BUILD",
         sha256 = "1cce3828ec2ba80ff8a4cac0ab5aa03756026517154c4b450e617ede751d41bd",
     )
 
