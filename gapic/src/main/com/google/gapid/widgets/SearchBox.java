@@ -15,14 +15,22 @@
  */
 package com.google.gapid.widgets;
 
+import static com.google.gapid.widgets.Widgets.withMargin;
+
 import com.google.gapid.util.Events;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
 
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -37,6 +45,8 @@ public class SearchBox extends Composite {
    *     if {@code false}, search events are only triggered on button click/enter.
    *     Passing {@code true} is useful in the case of filtering workflow.
    */
+  protected Menu nestedMenu;
+
   public SearchBox(Composite parent, boolean fireEventOnChange) {
     super(parent, SWT.NONE);
     setLayout(new GridLayout(2, false));
@@ -47,7 +57,7 @@ public class SearchBox extends Composite {
     text.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     regex.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
 
-    text.addListener(SWT.DefaultSelection, e -> notifySearch(text, regex));
+    text.addListener(SWT.DefaultSelection, e -> notifySearch(text, regex.getSelection()));
     /* TODO: This was added, because it appeared as though the above wasn't triggered.
      *       However, now it looks like it is always triggered. Need to figure out if there really
      *       is a case where the above is not enough.
@@ -58,14 +68,46 @@ public class SearchBox extends Composite {
     });
     */
     if (fireEventOnChange) {
-      text.addListener(SWT.Modify, e -> notifySearch(text, regex));
-      regex.addListener(SWT.Selection, e -> notifySearch(text, regex));
+      text.addListener(SWT.Modify, e -> notifySearch(text, regex.getSelection()));
+      regex.addListener(SWT.Selection, e -> notifySearch(text, regex.getSelection()));
     }
   }
 
-  private void notifySearch(Text text, Button regex) {
+  /**
+   * A search box widget with nested menu.
+   */
+  public SearchBox(Composite parent, boolean fireEventOnChange, Theme theme) {
+    super(parent, SWT.NONE);
+    setLayout(withMargin(new GridLayout(2, false), 0, 0));
+
+    Text text = new Text(this, SWT.SINGLE | SWT.SEARCH | SWT.ICON_SEARCH);
+    ToolBar toolBar = new ToolBar(this, SWT.FLAT);
+    ToolItem toolItem = new ToolItem(toolBar, SWT.PUSH);
+    toolItem.setImage(theme.more());
+    nestedMenu = new Menu(toolBar);
+    toolItem.addSelectionListener(new SelectionAdapter() {
+      @Override
+      public void widgetSelected(SelectionEvent event) {
+        nestedMenu.setVisible(!nestedMenu.isVisible());
+      }
+    });
+
+    MenuItem regexSelector = new MenuItem(nestedMenu, SWT.CHECK);
+    regexSelector.setText("Enable regex matching");
+    regexSelector.addListener(SWT.Selection, e -> notifySearch(text, regexSelector.getSelection()));
+    regexSelector.setSelection(true);
+
+    text.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+    text.setMessage("Filter By keyword...");
+    text.addListener(SWT.DefaultSelection, e -> notifySearch(text, regexSelector.getSelection()));
+    if (fireEventOnChange) {
+      text.addListener(SWT.Modify, e -> notifySearch(text, regexSelector.getSelection()));
+    }
+  }
+
+  private void notifySearch(Text text, Boolean isRegex) {
     notifyListeners(Events.Search,
-        Events.newSearchEvent(SearchBox.this, text.getText(), regex.getSelection()));
+        Events.newSearchEvent(SearchBox.this, text.getText(), isRegex));
   }
 
   public static Pattern getPattern(String text, boolean regex) {
@@ -81,5 +123,12 @@ public class SearchBox extends Composite {
       result = Pattern.compile(Pattern.quote(text), Pattern.CASE_INSENSITIVE);
     }
     return result;
+  }
+
+  /**
+   * Expose the nested menu to allow adding other menu items.
+   */
+  public Menu getNestedMenu() {
+    return nestedMenu;
   }
 }

@@ -51,10 +51,12 @@ import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
+import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.ProtoDebugTextFormat;
 import com.google.gapid.widgets.LoadablePanel;
+import com.google.gapid.widgets.SearchBox;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
@@ -65,6 +67,8 @@ import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
@@ -80,6 +84,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TreeItem;
 
@@ -90,6 +95,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * View allowing the inspection and editing of the shader resources.
@@ -298,6 +304,8 @@ public class ShaderView extends Composite
     private final TreeViewer shaderViewer;
     private final Composite sourceComposite;
     private final Button pushButton;
+    private final ViewerFilter currentContextFilter;
+    private ViewerFilter keywordSearchFilter;
     private SourceViewer shaderSourceViewer;
     private boolean lastUpdateContainedAllShaders = false;
     private List<Data> shaders = Collections.emptyList();
@@ -311,8 +319,9 @@ public class ShaderView extends Composite
       setLayout(new FillLayout(SWT.HORIZONTAL));
 
       SashForm splitter = new SashForm(this, SWT.HORIZONTAL);
-      Group treeViewerContainer = createGroup(splitter, "  " + type.selectMessage);
+      Composite treeViewerContainer= createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
       Composite sourcesContainer = createComposite(splitter, new GridLayout(1, false));
+
       if (type.type == API.ResourceType.ShaderResource) {
         splitter.setWeights(models.settings.shaderTreeSplitterWeights);
         splitter.addListener(
@@ -323,8 +332,19 @@ public class ShaderView extends Composite
             SWT.Dispose, e -> models.settings.programTreeSplitterWeights = splitter.getWeights());
       }
 
+      SearchBox searchBox = new SearchBox(treeViewerContainer, true, theme);
+      searchBox.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+      searchBox.addListener(Events.Search, e -> updateSearchFilter(e.text, (e.detail & Events.REGEX) != 0));
+
+      currentContextFilter = createCurrentContextFilter(models);
+      MenuItem contextFilterSelector = new MenuItem(searchBox.getNestedMenu(), SWT.CHECK);
+      contextFilterSelector.setText("Include all contexts");
+      contextFilterSelector.addListener(SWT.Selection, e -> updateContextFilter(contextFilterSelector.getSelection()));
+      contextFilterSelector.setSelection(false);
 
       shaderViewer = createShaderSelector(treeViewerContainer);
+      shaderViewer.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+      updateContextFilter(contextFilterSelector.getSelection());
 
       sourceComposite = createComposite(sourcesContainer, new FillLayout(SWT.VERTICAL));
       sourceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -380,6 +400,25 @@ public class ShaderView extends Composite
         @Override
         public Object[] getChildren(Object element) {
           return null;
+        }
+      };
+    }
+
+    private static ViewerFilter createSearchFilter(Pattern pattern) {
+      return new ViewerFilter() {
+        @Override
+        public boolean select(Viewer viewer, Object parentElement, Object element) {
+          return !(element instanceof Data) ||
+              pattern.matcher(((Data)element).toString()).find();
+        }
+      };
+    }
+
+    private static ViewerFilter createCurrentContextFilter(Models models) {
+      return new ViewerFilter() {
+        @Override
+        public boolean select(Viewer viewer, Object parentElement, Object element) {
+          return models.contexts.getSelectedContext().matches(((Data)element).info.getContext());
         }
       };
     }
@@ -488,6 +527,28 @@ public class ShaderView extends Composite
         Event event = new Event();
         event.data = getLastSelection().getData();
         notifyListeners(SWT.Selection, event);
+      }
+    }
+
+    private void updateSearchFilter(String text, boolean isRegex) {
+      // Keyword Filter is dynamic.
+      // Remove the previous one each time to avoid filter accumulation.
+      if (keywordSearchFilter != null) {
+        shaderViewer.removeFilter(keywordSearchFilter);
+      }
+      if (!text.isEmpty()) {
+        Pattern pattern = SearchBox.getPattern(text, isRegex);
+        keywordSearchFilter = createSearchFilter(pattern);
+        shaderViewer.addFilter(keywordSearchFilter);
+      }
+    }
+
+    private void updateContextFilter(boolean hasAllContext) {
+      if (currentContextFilter != null) {
+        shaderViewer.removeFilter(currentContextFilter);
+      }
+      if (!hasAllContext) {
+        shaderViewer.addFilter(currentContextFilter);
       }
     }
 
@@ -678,7 +739,7 @@ public class ShaderView extends Composite
     public String toString() {
       String handle = info.getHandle();
       String label = info.getLabel();
-      return (label.isEmpty()) ? handle : handle + " [" + label + "]";
+      return (label.isEmpty()) ? handle : handle + " | " + label;
     }
   }
 }
