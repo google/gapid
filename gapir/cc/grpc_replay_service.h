@@ -86,7 +86,7 @@ class GrpcReplayService : public ReplayService {
   bool sendPosts(std::unique_ptr<ReplayService::Posts> posts) override;
   // Sends error message notification. Returns true if succeeded, otherwise
   // returns false.
-  bool sendErrorMsg(uint64_t id, uint32_t severity, uint32_t api_index,
+  bool sendErrorMsg(uint64_t seq_num, uint32_t severity, uint32_t api_index,
                     uint64_t label, const std::string& msg, const void* data,
                     uint32_t data_size) override;
   // Sends notification. Returns true if succeeded, otherwise returns false.

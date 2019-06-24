@@ -271,7 +271,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		delete(t.reportCallbacks, inst)
 	}
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-		b.RegisterNotificationReader(func(n gapir.Notification) {
+		return b.RegisterNotificationReader(func(n gapir.Notification) {
 			vkApi := API{}
 			eMsg := n.GetErrorMsg()
 			if eMsg == nil {
@@ -290,15 +290,13 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 				issue.Error = fmt.Errorf("[State rebuilding command, linearized ID: %d]: %s", label, msg)
 				// For now hide such errors from the report view so users won't get confused.
 				return
-			} else {
-				// The debug report is issued for a trace command
-				issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
-				issue.Error = fmt.Errorf("%s", msg)
 			}
+			// The debug report is issued for a trace command
+			issue.Command = api.CmdID(label - uint64(t.numInitialCmds))
+			issue.Error = fmt.Errorf("%s", msg)
 			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
 			t.issues = append(t.issues, issue)
-		})
-		return nil
+		}, builder.IssuesNotificationID)
 	}))
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
 }

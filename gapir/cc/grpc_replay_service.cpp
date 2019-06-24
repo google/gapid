@@ -26,6 +26,10 @@
 
 namespace gapir {
 
+namespace {
+// Notification ID 0 is reserved for issues report.
+const uint64_t kIssuesNotificationId = 0;
+}  // namespace
 void GrpcReplayService::handleCommunication(GrpcReplayService* _service) {
   while (true) {
     std::unique_ptr<replay_service::ReplayRequest> req =
@@ -134,7 +138,7 @@ bool GrpcReplayService::sendPosts(std::unique_ptr<ReplayService::Posts> posts) {
   return mGrpcStream->Write(res);
 }
 
-bool GrpcReplayService::sendErrorMsg(uint64_t id, uint32_t severity,
+bool GrpcReplayService::sendErrorMsg(uint64_t seq_num, uint32_t severity,
                                      uint32_t api_index, uint64_t label,
                                      const std::string& msg, const void* data,
                                      uint32_t data_size) {
@@ -150,8 +154,9 @@ bool GrpcReplayService::sendErrorMsg(uint64_t id, uint32_t severity,
 
   replay_service::ReplayResponse res;
   auto* notification = res.mutable_notification();
+  notification->set_id(kIssuesNotificationId);
   auto* error_msg = notification->mutable_error_msg();
-  error_msg->set_id(id);
+  error_msg->set_seq_num(seq_num);
   error_msg->set_severity(sev);
   error_msg->set_api_index(api_index);
   error_msg->set_label(label);
@@ -165,8 +170,8 @@ bool GrpcReplayService::sendNotificationData(uint64_t id, uint64_t label,
                                              uint32_t data_size) {
   replay_service::ReplayResponse res;
   auto* notification = res.mutable_notification();
+  notification->set_id(id);
   auto* notification_data = notification->mutable_data();
-  notification_data->set_id(id);
   notification_data->set_label(label);
   notification_data->set_data(data, data_size);
   return mGrpcStream->Write(res);
