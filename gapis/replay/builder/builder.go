@@ -71,6 +71,9 @@ type postBackDecoder struct {
 }
 
 const (
+	// IssuesNotificationID is the Notification ID reserved for issues report.
+	// The ID needs to be kept in sync with |kIssuesNotificationId| defined in
+	// `gapir/cc/grpc_replay_service.cpp`.
 	IssuesNotificationID = uint64(0)
 )
 

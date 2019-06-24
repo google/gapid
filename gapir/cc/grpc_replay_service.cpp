@@ -27,7 +27,8 @@
 namespace gapir {
 
 namespace {
-// Notification ID 0 is reserved for issues report.
+// Notification ID 0 is reserved for issues report. The value needs to be kept
+// in sync with |IssuesNotificationID| in `gapis/replay/builder/builder.go`
 const uint64_t kIssuesNotificationId = 0;
 }  // namespace
 void GrpcReplayService::handleCommunication(GrpcReplayService* _service) {
