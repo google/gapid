@@ -144,7 +144,7 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line,
       // There is no va_list version of __android_log_assert(), hence the
       // message pre-formatting in this case.
       char buf[2048];
-      vsnprintf(buf, sizeof(buf), format, args);
+      vsnprintf(buf, sizeof(buf), ss.str().c_str(), args);
       __android_log_assert(nullptr, "GAPID", "%s", buf);
       break;
     case LOG_LEVEL_ERROR:
