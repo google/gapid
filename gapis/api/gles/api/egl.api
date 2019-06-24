@@ -361,6 +361,20 @@ cmd EGLBoolean eglSurfaceAttrib(EGLDisplay display,
 @custom
 ///http://www.khronos.org/registry/egl/sdk/docs/man/html/eglSwapBuffers.xhtml
 cmd EGLBoolean eglSwapBuffers(EGLDisplay display, void* surface) {
+
+  // eglSwapBuffers leaves buffer contents undefined, so there cannot
+  // be dependencies on framebuffer attachement values across
+  // eglSwapBuffers.
+  // TODO(hevrard): there is a possible dependency  on color buffer
+  // if EGL_SWAP_BEHAVIOR == EGL_BUFFER_PRESERVED
+  ctx := GetContext()
+  fb := ctx.Bound.DrawFramebuffer
+  for _, _, a in fb.ColorAttachments {
+      WriteFramebufferAttachment(a)
+  }
+  WriteFramebufferAttachment(fb.DepthAttachment)
+  WriteFramebufferAttachment(fb.StencilAttachment)
+
   return ?
 }
 

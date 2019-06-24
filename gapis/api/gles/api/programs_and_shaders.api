@@ -496,6 +496,7 @@ cmd void glBindProgramPipeline(PipelineId pipeline) {
 cmd void glCompileShader(ShaderId shader) {
   ctx := GetContext()
   s := GetShaderOrError(shader)
+  _ = s.Source
   ApplyCompileShaderExtra(s, GetCompileShaderExtra(ctx, s, null))
 }
 
@@ -1276,7 +1277,9 @@ cmd GLboolean glIsShader(ShaderId shader) {
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glLinkProgram.xhtml", Version.GLES32)
 cmd void glLinkProgram(ProgramId program) {
   p := GetProgramOrError(program)
-
+  for _, _, attributeLocation in p.AttributeBindings {
+    _ = attributeLocation
+  }
   ctx := GetContext()
   ApplyLinkProgramExtra(p, GetLinkProgramExtra(ctx, p, null))
 }
