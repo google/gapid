@@ -129,32 +129,39 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line,
   }
 #else   // TARGET_OS != GAPID_OS_ANDROID
 
+  // Note that we use "GAPID" as the logcat tag, rather than mInstance.mSystem,
+  // in order to easily filter all GAPID-related logcat. The mInstance.mSystem
+  // is still present in the message.
+
   std::stringstream ss;
+  if (mInstance.mSystem != nullptr && strlen(mInstance.mSystem) > 0) {
+    ss << mInstance.mSystem << " ";
+  }
   ss << "[" << src_file << ":" << src_line << "] " << format;
 
   switch (level) {
     case LOG_LEVEL_FATAL:
-      __android_log_assert(nullptr, mInstance.mSystem, ss.str().c_str(), args);
+      // There is no va_list version of __android_log_assert(), hence the
+      // message pre-formatting in this case.
+      char buf[2048];
+      vsnprintf(buf, sizeof(buf), ss.str().c_str(), args);
+      __android_log_assert(nullptr, "GAPID", "%s", buf);
       break;
     case LOG_LEVEL_ERROR:
-      __android_log_print(ANDROID_LOG_ERROR, mInstance.mSystem,
-                          ss.str().c_str(), args);
+      __android_log_vprint(ANDROID_LOG_ERROR, "GAPID", ss.str().c_str(), args);
       break;
     case LOG_LEVEL_WARNING:
-      __android_log_print(ANDROID_LOG_WARN, mInstance.mSystem, ss.str().c_str(),
-                          args);
+      __android_log_vprint(ANDROID_LOG_WARN, "GAPID", ss.str().c_str(), args);
       break;
     case LOG_LEVEL_INFO:
-      __android_log_print(ANDROID_LOG_INFO, mInstance.mSystem, ss.str().c_str(),
-                          args);
+      __android_log_vprint(ANDROID_LOG_INFO, "GAPID", ss.str().c_str(), args);
       break;
     case LOG_LEVEL_DEBUG:
-      __android_log_print(ANDROID_LOG_DEBUG, mInstance.mSystem,
-                          ss.str().c_str(), args);
+      __android_log_vprint(ANDROID_LOG_DEBUG, "GAPID", ss.str().c_str(), args);
       break;
     case LOG_LEVEL_VERBOSE:
-      __android_log_print(ANDROID_LOG_VERBOSE, mInstance.mSystem,
-                          ss.str().c_str(), args);
+      __android_log_vprint(ANDROID_LOG_VERBOSE, "GAPID", ss.str().c_str(),
+                           args);
       break;
     default:
       break;
