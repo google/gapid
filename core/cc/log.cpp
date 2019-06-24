@@ -160,7 +160,8 @@ void Logger::vlogf(unsigned level, const char* src_file, unsigned src_line,
       __android_log_vprint(ANDROID_LOG_DEBUG, "GAPID", ss.str().c_str(), args);
       break;
     case LOG_LEVEL_VERBOSE:
-      __android_log_vprint(ANDROID_LOG_VERBOSE, "GAPID", ss.str().c_str(), args);
+      __android_log_vprint(ANDROID_LOG_VERBOSE, "GAPID", ss.str().c_str(),
+                           args);
       break;
     default:
       break;
