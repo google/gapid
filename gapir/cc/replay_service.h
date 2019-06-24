@@ -169,9 +169,10 @@ class ReplayService {
   virtual bool sendPosts(std::unique_ptr<Posts> posts) = 0;
   // Sends error message notification. Returns true if succeeded,
   // otherwise returns false.
-  virtual bool sendErrorMsg(uint64_t id, uint32_t severity, uint32_t api_index,
-                            uint64_t label, const std::string& msg,
-                            const void* data, uint32_t data_size) = 0;
+  virtual bool sendErrorMsg(uint64_t seq_num, uint32_t severity,
+                            uint32_t api_index, uint64_t label,
+                            const std::string& msg, const void* data,
+                            uint32_t data_size) = 0;
   // Sends data notification. Returns true if succeeded, otherwise returns
   // false.
   virtual bool sendNotificationData(uint64_t id, uint64_t label,

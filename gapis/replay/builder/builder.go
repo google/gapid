@@ -70,6 +70,13 @@ type postBackDecoder struct {
 	decode       Postback
 }
 
+const (
+	// IssuesNotificationID is the Notification ID reserved for issues report.
+	// The ID needs to be kept in sync with |kIssuesNotificationId| defined in
+	// `gapir/cc/grpc_replay_service.cpp`.
+	IssuesNotificationID = uint64(0)
+)
+
 // Postback decodes a single command's post. If err is nil, it means there is
 // no error in prior check of the post data, otherwise err will hold the error
 // from the prior check (like a length mismatch error).
@@ -91,7 +98,8 @@ type Builder struct {
 	mappedMemory        MappedMemoryRangeList
 	instructions        []asm.Instruction
 	decoders            []postBackDecoder
-	notificationReaders []NotificationReader
+	nextNotificationID  uint64
+	notificationReaders map[uint64]NotificationReader
 	stack               []stackItem
 	memoryLayout        *device.MemoryLayout
 	inCmd               bool   // true if between BeginCommand and CommitCommand/RevertCommand
@@ -132,18 +140,20 @@ func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 			size:      dependentMemory,
 			head:      dependentMemory,
 		},
-		temp:            allocator{alignment: ptrAlignment},
-		resourceIDToIdx: map[id.ID]uint32{},
-		threadIDToIdx:   map[uint64]uint32{},
-		resources:       []*gapir.ResourceInfo{},
-		reservedMemory:  memory.RangeList{},
-		pointerMemory:   memory.RangeList{},
-		mappedMemory:    mappedMemory,
-		instructions:    []asm.Instruction{},
-		memoryLayout:    memoryLayout,
-		lastLabel:       ^uint64(0),
-		volatileSpace:   volatileSpace,
-		Remappings:      remappings,
+		temp:                allocator{alignment: ptrAlignment},
+		resourceIDToIdx:     map[id.ID]uint32{},
+		threadIDToIdx:       map[uint64]uint32{},
+		resources:           []*gapir.ResourceInfo{},
+		reservedMemory:      memory.RangeList{},
+		pointerMemory:       memory.RangeList{},
+		mappedMemory:        mappedMemory,
+		instructions:        []asm.Instruction{},
+		nextNotificationID:  IssuesNotificationID + 1,
+		notificationReaders: map[uint64]NotificationReader{},
+		memoryLayout:        memoryLayout,
+		lastLabel:           ^uint64(0),
+		volatileSpace:       volatileSpace,
+		Remappings:          remappings,
 	}
 }
 
@@ -537,13 +547,15 @@ func (b *Builder) JumpNZ(label uint32) {
 	})
 }
 
-// Notification asks the GAPIR to stream back the size bytes from addr.
+// Notification asks the GAPIR to stream back the size bytes from addr. The |ID| will
+// be sent back as well to help identify which reader will process the notification.
 // A Notification reader must be registered to read the data the from the stream.
-func (b *Builder) Notification(addr value.Pointer, size uint64) {
+func (b *Builder) Notification(ID uint64, addr value.Pointer, size uint64) {
 	if !addr.IsValid() {
 		panic(fmt.Errorf("Pointer address %v is not valid", addr))
 	}
 	b.instructions = append(b.instructions, asm.Notification{
+		ID:     ID,
 		Source: b.remap(addr),
 		Size:   size,
 	})
@@ -621,8 +633,22 @@ func (b *Builder) Write(rng memory.Range, resourceID id.ID) {
 	b.ReserveMemory(rng)
 }
 
-func (b *Builder) RegisterNotificationReader(reader NotificationReader) {
-	b.notificationReaders = append(b.notificationReaders, reader)
+// GetNotificationID returns the next available notification ID that identifies a notification.
+func (b *Builder) GetNotificationID() uint64 {
+	id := b.nextNotificationID
+	b.nextNotificationID++
+	return id
+}
+
+// RegisterNotificationReader registers a notification reader for a specific notificationID. Returns error
+// if the notificationID has already been registered.
+func (b *Builder) RegisterNotificationReader(reader NotificationReader, notificationID uint64) error {
+	fmt.Printf("Regitster notification ID %v", notificationID)
+	if _, ok := b.notificationReaders[notificationID]; ok {
+		return fmt.Errorf("notificationID %d already registered", notificationID)
+	}
+	b.notificationReaders[notificationID] = reader
+	return nil
 }
 
 // Export compiles the replay instructions, returning a Payload that can be
@@ -728,7 +754,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 		})
 	}
 
-	// Make a copy of the reference of the finished notification reader list to
+	// Make a copy of the reference of the finished notification reader map to
 	// cut off the connection between the builder and future uses of the readers
 	// so that the builder do not need to be kept alive when using these readers.
 	readers := b.notificationReaders
@@ -739,8 +765,11 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 			return
 		}
 		crash.Go(func() {
-			for _, r := range readers {
+			id := n.GetId()
+			if r, ok := readers[id]; ok {
 				r(*n)
+			} else {
+				log.E(ctx, "Unknown notification received, ID is %d", id)
 			}
 		})
 	}

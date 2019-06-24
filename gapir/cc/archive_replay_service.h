@@ -60,7 +60,7 @@ class ArchiveReplayService : public ReplayService {
     return true;
   }
 
-  bool sendErrorMsg(uint64_t id, uint32_t severity, uint32_t api_index,
+  bool sendErrorMsg(uint64_t seq_num, uint32_t severity, uint32_t api_index,
                     uint64_t label, const std::string& msg, const void* data,
                     uint32_t data_size) override {
     return true;

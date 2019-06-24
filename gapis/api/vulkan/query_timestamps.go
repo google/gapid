@@ -56,8 +56,6 @@ type queryPoolInfo struct {
 	// readIndex is the index in the result list that the next result will be collected.
 	readIndex uint32
 	results   []timestampRecord
-	// whether the notification reader has been registered or not.
-	registered bool
 }
 
 // commandPoolKey is used to find a command pool suitable for a specific queue family
@@ -152,7 +150,7 @@ func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 		VkResult_VK_SUCCESS)
 
 	newCmd.AddRead(queryPoolCreateInfo.Data()).AddWrite(queryPoolHandleData.Data())
-	info = &queryPoolInfo{queryPool, qSize, device, timestampPeriod, queue, 0, 0, []timestampRecord{}, false}
+	info = &queryPoolInfo{queryPool, qSize, device, timestampPeriod, queue, 0, 0, []timestampRecord{}}
 	t.queryPools[queue] = info
 	out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
 	return info
@@ -426,12 +424,9 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.ReserveMemory(tmp.Range())
-		b.Notification(value.ObservedPointer(tmp.Address()), buflen)
-		if queryPoolInfo.registered {
-			return nil
-		}
-		queryPoolInfo.registered = true
-		b.RegisterNotificationReader(func(n gapir.Notification) {
+		notificationID := b.GetNotificationID()
+		b.Notification(notificationID, value.ObservedPointer(tmp.Address()), buflen)
+		return b.RegisterNotificationReader(func(n gapir.Notification) {
 			d := n.GetData()
 			data := d.GetData()
 			byteOrder := s.MemoryLayout.GetEndian()
@@ -468,9 +463,7 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 					Timestamps: &timestamps,
 				},
 			})
-		})
-
-		return nil
+		}, notificationID)
 	}))
 	queryPoolInfo.writeIndex = 0
 	tmp.Free()
