@@ -104,6 +104,7 @@ namespace gapii {
 Spy* Spy::get() {
   std::lock_guard<std::recursive_mutex> lock(gMutex);
   if (!gSpy) {
+    GAPID_LOGGER_INIT(LOG_LEVEL_INFO, "gapii", nullptr);
     GAPID_INFO("Constructing spy...");
     gSpy.reset(new Spy());
     GAPID_INFO("Registering spy symbols...");
