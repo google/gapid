@@ -119,7 +119,7 @@ func (c ipPrimeableDeviceCopy) prime(sb *stateBuilder, srcLayout, dstLayout ipLa
 		cmdBatch := k.BuildDeviceCopyCommands(sb)
 		err := cmdBatch.Commit(sb, queueHandler)
 		if err != nil {
-			return log.Errf(sb.ctx, err, "failed at commit buffer image copy commands")
+			return log.Errf(sb.ctx, err, "failed at commit device image copy commands")
 		}
 	}
 
@@ -668,26 +668,30 @@ func (p *imagePrimer) newPrimeableImageDataFromHost(img VkImage, opaqueBoundRang
 	return nil, log.Errf(p.sb.ctx, nil, "No way build primeable image data for image: %v", img)
 }
 
-// newPrimeableImageDataFromDevice builds primeable image data from the source image, which is on the device already.
+// newPrimeableImageDataFromDevice builds primeable image data from the on device source image.
 func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (primeableImageData, error) {
 	nilQueueErr := fmt.Errorf("Nil Queue")
-
+	notImplErr := fmt.Errorf("Not Implemented")
 	srcImgObj := GetState(p.sb.newState).Images().Get(srcImg)
 	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
 	isDepth := (srcImgObj.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
 
+	// TODO: add support for sparse images
+	if isSparseResidency(srcImgObj) {
+		return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data from on device sparse residency image: %v]", srcImg)
+	}
 	primeByCopy := (srcImgObj.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	if primeByCopy {
 		queue := getQueueForPriming(p.sb, srcImgObj,
 			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
 		if queue.IsNil() {
-			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by buffer -> image copy, image: %v]", srcImg)
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by copy from on device image: %v]", srcImg)
 		}
 		kit, err := ipBuildDeviceCopyKit(p.sb, srcImg, dstImg)
 		if err != nil {
-			return nil, log.Errf(p.sb.ctx, err, "failed at building host copy kits for host copy")
+			return nil, log.Errf(p.sb.ctx, err, "failed at building device copy kits.")
 		}
 		return &ipPrimeableDeviceCopy{queue: queue.VulkanHandle(), kits: []ipDeviceCopyKit{kit}}, nil
 	}
@@ -696,7 +700,7 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 	if primeByRendering {
 		queue := getQueueForPriming(p.sb, srcImgObj, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
 		if queue.IsNil() {
-			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering host data: %v]", srcImg)
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering from on device image: %v]", srcImg)
 		}
 		dev := queue.Device()
 		primeable := &ipPrimeableRenderKits{img: srcImg, queue: queue.VulkanHandle(), kits: []ipRenderKit{}}
@@ -738,7 +742,7 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 	if primeByImageStore {
 		queue := getQueueForPriming(p.sb, srcImgObj, VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
 		if queue.IsNil() {
-			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by host data imageStore operation, image: %v]", srcImg)
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by imageStore operation from device image: %v]", srcImg)
 		}
 		if !GetState(p.sb.newState).Queues().Contains(queue.VulkanHandle()) {
 			return nil, fmt.Errorf("Queue: %v does not exist", queue)
@@ -777,7 +781,7 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 	}
 	primeByPreinitialization := (!primeByCopy) && (!primeByRendering) && (!primeByImageStore) && (srcImgObj.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (srcImgObj.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
 	if primeByPreinitialization {
-		// TODO:
+		return nil, notImplErr
 	}
-	return nil, log.Errf(p.sb.ctx, nil, "No way build primeable image data for image: %v", srcImg)
+	return nil, log.Errf(p.sb.ctx, nil, "No way build primeable image data for image: %v", dstImg)
 }
