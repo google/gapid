@@ -284,7 +284,7 @@ class TrackingRange {
   }
 
   // Set memory range 'dirty', the memory range to set is derived from the
-  // given memory range specified with |addr| and |size|. The actual 'drity'
+  // given memory range specified with |addr| and |size|. The actual 'dirty'
   // range is guaranteed to fully cover the range of |addr| and |size| and is
   // page aligned. The given |on_set| callback will be called with the acutal
   // 'dirty' range. The |on_set| callback is enforce to be a function pointer
