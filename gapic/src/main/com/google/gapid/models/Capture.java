@@ -50,6 +50,10 @@ import java.util.logging.Logger;
 public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Capture.Listener> {
   protected static final Logger LOG = Logger.getLogger(Capture.class.getName());
 
+  // Don't try to open files with 16 or less bytes. An empty graphics trace, without the
+  // capture header is already 16 bytes.
+  private static final int MIN_FILE_SIZE = 16;
+
   private final Settings settings;
   private String name = "";
 
@@ -80,9 +84,13 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
   protected ListenableFuture<Data> doLoad(File file) {
     if (!file.exists() || !file.canRead()) {
       return Futures.immediateFailedFuture(
-          new Exception("Trace file does not exist or is not accessible"));
+          new BadCaptureException("Trace file does not exist or is not accessible!"));
     } else if (file.length() == 0) {
-      return Futures.immediateFailedFuture(new Exception("Trace file is empty!"));
+      return Futures.immediateFailedFuture(
+          new BadCaptureException("Trace file is empty!"));
+    } else if (file.length() <= MIN_FILE_SIZE) {
+      return Futures.immediateFailedFuture(new BadCaptureException(
+          "Trace file is empty! Try capturing with buffering disabled."));
     }
 
     String canonicalPath;
@@ -97,7 +105,8 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
         settings.lastOpenDir = file.getParentFile().getAbsolutePath();
       }
 
-      return Futures.immediateFailedFuture(new Exception("Failed to load trace!", e));
+      return Futures.immediateFailedFuture(
+          new BadCaptureException("Failed to read trace file: " + e.getMessage(), e));
     }
 
     settings.addToRecent(canonicalPath);
@@ -117,7 +126,10 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
         return success(data);
       }
     } catch (UnsupportedVersionException e) {
-      return error(Loadable.Message.error(e.getMessage()));
+      return error(Loadable.Message.error(e));
+    } catch (BadCaptureException e) {
+      throttleLogRpcError(LOG, "Failed to load trace file", e);
+      return error(Loadable.Message.error(e));
     } catch (RpcException e) {
       analytics.reportException(e);
       return error(Loadable.Message.error(e));
@@ -231,5 +243,15 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
      * @param error the loading error or {@code null} if loading was successful.
      */
     public default void onCaptureLoaded(Loadable.Message error) { /* empty */ }
+  }
+
+  private static class BadCaptureException extends RpcException {
+    public BadCaptureException(String message) {
+      super(message);
+    }
+
+    public BadCaptureException(String message, Throwable cause) {
+      super(message, cause);
+    }
   }
 }
