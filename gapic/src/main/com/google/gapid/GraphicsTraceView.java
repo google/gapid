@@ -167,7 +167,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
           tabs.showTab(type);
           hiddenTabs.remove(type);
         } else {
-          tabs.removeTab(type);
+          tabs.disposeTab(type);
           hiddenTabs.add(type);
         }
         models.settings.hiddenTabs =

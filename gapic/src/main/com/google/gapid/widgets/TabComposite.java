@@ -255,8 +255,8 @@ public class TabComposite extends Composite {
     group.addTabToLargestFolder(info);
   }
 
-  public boolean removeTab(Object id) {
-    if (group.removeTab(id)) {
+  public boolean disposeTab(Object id) {
+    if (group.disposeTab(id)) {
       group.merge();
       return true;
     }
@@ -335,7 +335,7 @@ public class TabComposite extends Composite {
 
     public abstract boolean showTab(Object id);
     public abstract void addTabToLargestFolder(TabInfo tab);
-    public abstract boolean removeTab(Object id);
+    public abstract boolean disposeTab(Object id);
 
     public abstract void setBounds(Set<Control> controls, int x, int y, int w, int h);
 
@@ -417,9 +417,9 @@ public class TabComposite extends Composite {
     }
 
     @Override
-    public boolean removeTab(Object id) {
+    public boolean disposeTab(Object id) {
       for (Element child : children) {
-        if (child.removeTab(id)) {
+        if (child.disposeTab(id)) {
           return true;
         }
       }
@@ -814,10 +814,11 @@ public class TabComposite extends Composite {
     }
 
     @Override
-    public boolean removeTab(Object id) {
+    public boolean disposeTab(Object id) {
       for (Tab tab : tabs) {
         if (Objects.equals(tab.info.id, id)) {
           removeTab(tab);
+          tab.control.dispose();
           return true;
         }
       }
@@ -881,7 +882,6 @@ public class TabComposite extends Composite {
         current = tabs.isEmpty() ? null : tabs.get(0).control;
         requestLayout();
       }
-      tab.control.dispose();
       redrawBar();
     }
 
