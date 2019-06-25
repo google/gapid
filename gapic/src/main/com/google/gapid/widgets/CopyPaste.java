@@ -48,9 +48,11 @@ public class CopyPaste {
   }
 
   public void dispose() {
-    display.removeFilter(SWT.FocusIn, focusListener);
-    display.removeFilter(SWT.FocusOut, focusListener);
-    clipboard.dispose();
+    if (!display.isDisposed()) {
+      display.removeFilter(SWT.FocusIn, focusListener);
+      display.removeFilter(SWT.FocusOut, focusListener);
+      clipboard.dispose();
+    }
   }
 
   public void registerCopySource(Control focusReceiver, CopySource source) {
