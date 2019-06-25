@@ -45,9 +45,11 @@ public class Tables {
     Set<TableItem> visible = Sets.newIdentityHashSet();
     for (int index = table.getTopIndex(); index < items; index++) {
       TableItem item = table.getItem(index);
-      visible.add(table.getItem(index));
-      if (bottom(item.getBounds()) > tableBottom) {
-        break;
+      if (!item.isDisposed()) {
+        visible.add(item);
+        if (bottom(item.getBounds()) > tableBottom) {
+          break;
+        }
       }
     }
     return visible;
