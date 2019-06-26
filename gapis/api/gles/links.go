@@ -112,6 +112,16 @@ func (o RenderbufferId) Link(ctx context.Context, p path.Node, r *path.ResolveCo
 	return i.Field("Renderbuffers").MapIndex(o), nil
 }
 
+// Link returns the link to the sampler object in the state block.
+// If nil, nil is returned then the path cannot be followed.
+func (o SamplerId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := objects(ctx, p, r)
+	if i == nil || !c.Objects().Samplers().Contains(o) {
+		return nil, err
+	}
+	return i.Field("Samplers").MapIndex(o), nil
+}
+
 // Link returns the link to the shader object in the state block.
 // If nil, nil is returned then the path cannot be followed.
 func (o ShaderId) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
