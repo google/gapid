@@ -78,8 +78,11 @@ class Texture {
   @unused GLuint ImmutableLevels         = 0
   @unused string Label
 
-  // EXT/texture_filter_anisotropic
+  // EXT_texture_filter_anisotropic
   GLfloat MaxAnisotropy = 1.0
+
+  // EXT_texture_sRGB_decode
+  GLenum DecodeSRGB = GL_DECODE_EXT
 
   // GL_OES_EGL_image
   // EGL image which is used as storage for this texture.
@@ -150,8 +153,11 @@ class Sampler {
   GLenum         CompareFunc  = GL_LEQUAL
   @unused string Label
 
-  // EXT/texture_filter_anisotropic
+  // EXT_texture_filter_anisotropic
   GLfloat MaxAnisotropy = 1.0
+
+  // EXT_texture_sRGB_decode
+  GLenum DecodeSRGB = GL_DECODE_EXT
 }
 
 @internal
@@ -1082,6 +1088,10 @@ sub void GetSamplerParameterv!T(SamplerId sampler, GLenum pname, T* params) {
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
       params[0] = as!T(s.MaxAnisotropy)
     }
+    @if(Extension.GL_EXT_texture_sRGB_decode)
+    case GL_TEXTURE_SRGB_DECODE_EXT: {
+      params[0] = as!T(s.DecodeSRGB)
+    }
     default: {
       glErrorInvalidEnum(pname)
     }
@@ -1308,6 +1318,10 @@ sub void GetTexParameter!T(GLenum target, GLenum parameter, T* params) {
     case GL_TEXTURE_MAX_ANISOTROPY_EXT: {
       params[0] = as!T(t.MaxAnisotropy)
     }
+    @if(Extension.GL_EXT_texture_sRGB_decode)
+    case GL_TEXTURE_SRGB_DECODE_EXT: {
+      params[0] = as!T(t.DecodeSRGB)
+    }
     default: {
       glErrorInvalidEnum(parameter)
     }
@@ -1458,6 +1472,17 @@ sub void SamplerParameterv!T(SamplerId sampler, GLenum pname, T params) {
       // because it is written for GLES2, but samplers were introduced in GLES3).
       // However, it is used and supported in practice (which is reasonable).
       s.MaxAnisotropy = as!GLfloat(params[0])
+    }
+    @if(Extension.GL_EXT_texture_sRGB_decode)
+    case GL_TEXTURE_SRGB_DECODE_EXT: {
+      decode := as!GLenum(params[0])
+      switch (decode) {
+        case GL_DECODE_EXT, GL_SKIP_DECODE_EXT: { /* fine */ }
+        default:                     {
+          glErrorInvalidEnum(decode)
+        }
+      }
+      s.DecodeSRGB = decode
     }
     default: {
       glErrorInvalidEnum(pname)
@@ -1783,7 +1808,14 @@ sub void TexParameterv!T(GLenum target, GLenum pname, T params) {
     }
     @if(Extension.GL_EXT_texture_sRGB_decode)
     case GL_TEXTURE_SRGB_DECODE_EXT: {
-      // TODO: DECODE_EXT, SKIP_DECODE_EXT
+      decode := as!GLenum(params[0])
+      switch (decode) {
+        case GL_DECODE_EXT, GL_SKIP_DECODE_EXT: { /* fine */ }
+        default:                     {
+          glErrorInvalidEnum(decode)
+        }
+      }
+      t.DecodeSRGB = decode
     }
     default: {
       glErrorInvalidEnum(pname)
