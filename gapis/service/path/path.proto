@@ -155,16 +155,17 @@ message Events {
   Capture capture = 1;
   CommandFilter filter = 2;
   bool draw_calls = 3;
-  bool transform_feedbacks = 4;
-  bool first_in_frame = 5;
-  bool last_in_frame = 6;
-  bool clears = 7;
-  bool user_markers = 8;
-  bool push_user_markers = 9;
-  bool pop_user_markers = 10;
-  bool framebuffer_observations = 11;
-  bool all_commands = 12;
-  bool include_timing = 13;
+  bool submissions = 4;
+  bool transform_feedbacks = 5;
+  bool first_in_frame = 6;
+  bool last_in_frame = 7;
+  bool clears = 8;
+  bool user_markers = 9;
+  bool push_user_markers = 10;
+  bool pop_user_markers = 11;
+  bool framebuffer_observations = 12;
+  bool all_commands = 13;
+  bool include_timing = 14;
 }
 
 // Parameter is the path to a single parameter on a command.
@@ -264,18 +265,20 @@ message CommandTree {
   bool group_by_frame = 8;
   // If true then commands will be grouped by user markers.
   bool group_by_user_markers = 9;
+  // If true then commands will be grouped by submission.
+  bool group_by_submission = 10;
   // If true and grouping by context, 'no context' groups will be created.
-  bool include_no_context_groups = 10;
+  bool include_no_context_groups = 11;
   // If true and grouping by frames, commands after the last frame will be
   // grouped into an 'incomplete frame' group. Only if there is at least one
   // complete frame.
-  bool allow_incomplete_frame = 11;
+  bool allow_incomplete_frame = 12;
   // If positive, synthetic sub-nodes are created for nodes with more than
   // this many children.
-  int32 max_children = 12;
+  int32 max_children = 13;
   // If positive, synthetic sub-nodes are created for long spans of commands
   // between groups. This ensures the groups do not get lost in the noise.
-  int32 max_neighbours = 13;
+  int32 max_neighbours = 14;
 }
 
 // CommandTreeNode is a path to a command tree node.
@@ -469,6 +472,8 @@ message Stats {
 
   // Whether to compute draw calls per frame statistics
   bool draw_call = 2;
+  // Whether to compute submissions per frame statistics
+  bool submission = 3;
 }
 
 // Thumbnail is a path to a thumbnail image representing the object.

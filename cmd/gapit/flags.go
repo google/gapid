@@ -207,6 +207,7 @@ type (
 		GroupByDrawCall        bool   `help:"Group commands by draw call"`
 		GroupByFrame           bool   `help:"Group commands by frame"`
 		GroupByUserMarkers     bool   `help:"Group commands by user markers"`
+		GroupBySubmission      bool   `help:"Group commands by submissions"`
 		IncludeNoContextGroups bool   `help:"_Include no context groups"`
 		AllowIncompleteFrame   bool   `help:"_Make a group for incomplete frames"`
 		Observations           ObservationFlags

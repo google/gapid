@@ -1601,6 +1601,7 @@ public class Paths {
       if (path.getAllowIncompleteFrame()) sb.append('i');
       if (path.getGroupByDrawCall()) sb.append('D');
       if (path.getGroupByUserMarkers()) sb.append('M');
+      if (path.getGroupBySubmission()) sb.append('S');
       if (path.getMaxChildren() != 0) {
         sb.append(",max=").append(path.getMaxChildren());
       }

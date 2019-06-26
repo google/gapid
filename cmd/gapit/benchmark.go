@@ -312,6 +312,7 @@ func (verb *benchmarkVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		treePath.GroupByDrawCall = true
 		treePath.GroupByFrame = true
 		treePath.GroupByUserMarkers = true
+		treePath.GroupBySubmission = true
 		treePath.IncludeNoContextGroups = true
 		treePath.AllowIncompleteFrame = true
 		treePath.MaxChildren = int32(2000)

@@ -27,6 +27,7 @@ const (
 	PopUserMarker
 	UserMarker
 	ExecutedDraw
+	Submission
 )
 
 // IsDrawCall returns true if the command is a draw call.
@@ -61,3 +62,6 @@ func (f CmdFlags) IsUserMarker() bool { return (f & UserMarker) != 0 }
 // IsExecutedDraw returns true if the command is a draw call that gets executed
 // as a subcommand.
 func (f CmdFlags) IsExecutedDraw() bool { return (f & ExecutedDraw) != 0 }
+
+// IsSubmission returns true if the command is a submission
+func (f CmdFlags) IsSubmission() bool { return (f & Submission) != 0 }
