@@ -956,6 +956,7 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 	parami(GLenum_GL_TEXTURE_SWIZZLE_G, GLint(t.SwizzleG()), GLint(defaults.SwizzleG()))
 	parami(GLenum_GL_TEXTURE_SWIZZLE_R, GLint(t.SwizzleR()), GLint(defaults.SwizzleR()))
 	parami(GLenum_GL_DEPTH_STENCIL_TEXTURE_MODE, GLint(t.DepthStencilTextureMode()), GLint(defaults.DepthStencilTextureMode()))
+	parami(GLenum_GL_TEXTURE_SRGB_DECODE_EXT, GLint(t.DecodeSRGB()), GLint(defaults.DecodeSRGB()))
 	if t.MaxLod() != defaults.MaxLod() {
 		write(ctx, cb.GlTexParameterf(target, GLenum_GL_TEXTURE_MAX_LOD, t.MaxLod()))
 	}
@@ -989,6 +990,9 @@ func (sb *stateBuilder) samplerObject(ctx context.Context, s Samplerʳ) {
 		write(ctx, cb.GlSamplerParameterfv(id, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, s.BorderColor()))) // GLES32
 	} else if !s.BorderColorI().EqualTo(0, 0, 0, 0) {
 		write(ctx, cb.GlSamplerParameterIiv(id, GLenum_GL_TEXTURE_BORDER_COLOR, sb.readsData(ctx, s.BorderColorI()))) // GLES32
+	}
+	if s.DecodeSRGB() != GLenum_GL_DECODE_EXT {
+		write(ctx, cb.GlSamplerParameteri(id, GLenum_GL_TEXTURE_SRGB_DECODE_EXT, GLint(s.DecodeSRGB())))
 	}
 }
 
