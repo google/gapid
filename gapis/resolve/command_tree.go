@@ -275,7 +275,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		}
 	}
 
-	if p.GroupByDrawCall || p.GroupByFrame {
+	if p.GroupByDrawCall || p.GroupByFrame || p.GroupBySubmission {
 		events, err := Events(ctx, &path.Events{
 			Capture:            p.Capture,
 			Filter:             p.Filter,
@@ -283,6 +283,7 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 			TransformFeedbacks: true,
 			FirstInFrame:       true,
 			LastInFrame:        true,
+			Submissions:        true,
 		}, r.Config)
 		if err != nil {
 			return nil, log.Errf(ctx, err, "Couldn't get events")
@@ -297,6 +298,10 @@ func (r *CommandTreeResolvable) Resolve(ctx context.Context) (interface{}, error
 		if p.GroupByDrawCall {
 			addFrameEventGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
 				service.EventKind_DrawCall, "Draw")
+		}
+		if p.GroupBySubmission {
+			addContainingGroups(ctx, events, p, out, api.CmdID(len(c.Commands)),
+				service.EventKind_Submission, "Host Coordination")
 		}
 	}
 
@@ -388,6 +393,61 @@ func addFrameEventGroups(
 
 			t.root.AddGroup(start, i+1, fmt.Sprintf("%v %v", prefix, count+1))
 			count++
+
+		case service.EventKind_LastInFrame:
+			count = 0
+		}
+	}
+}
+
+// addContainingGroups works much the same as addFrameEventGroups
+// except it will lift the command in question OUT of the group.
+// Furthermore it does not number the groups.
+func addContainingGroups(
+	ctx context.Context,
+	events *service.Events,
+	p *path.CommandTree,
+	t *commandTree,
+	last api.CmdID,
+	kind service.EventKind,
+	label string) {
+
+	count := 0
+	lastLeft := api.CmdID(0)
+	for _, e := range events.List {
+		i := api.CmdID(e.Command.Indices[0])
+		switch e.Kind {
+		case kind:
+			// Find group which contains this event
+			group := &t.root
+			for true {
+				if idx := group.Spans.IndexOf(i); idx != -1 {
+					if subgroup, ok := group.Spans[idx].(*api.CmdIDGroup); ok {
+						group = subgroup
+						continue
+					}
+				}
+				break
+			}
+
+			if data, ok := group.UserData.(*CmdGroupData); ok && data.NoFrameEventGroups {
+				continue
+			}
+
+			// Start with group of size 1 and grow it backward as long as nothing gets in the way.
+			start := i
+			for start >= group.Bounds().Start+1 && group.Spans.IndexOf(start-1) == -1 {
+				start--
+			}
+			if lastLeft != 0 && start < lastLeft+1 {
+				start = lastLeft + 1
+			}
+			end := i
+			lastLeft = end
+			if start < end {
+				t.root.AddGroup(start, end, label)
+				count++
+			}
 
 		case service.EventKind_LastInFrame:
 			count = 0

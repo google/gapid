@@ -70,6 +70,7 @@ func (verb *commandsVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	treePath.GroupByDrawCall = verb.GroupByDrawCall
 	treePath.GroupByFrame = verb.GroupByFrame
 	treePath.GroupByUserMarkers = verb.GroupByUserMarkers
+	treePath.GroupBySubmission = verb.GroupBySubmission
 	treePath.IncludeNoContextGroups = verb.IncludeNoContextGroups
 	treePath.AllowIncompleteFrame = verb.AllowIncompleteFrame
 
