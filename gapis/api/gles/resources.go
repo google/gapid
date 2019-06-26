@@ -269,7 +269,7 @@ func (s Shaderʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (s Shaderʳ) ResourceHandle() string {
-	return fmt.Sprintf("Shader %d", s.ID())
+	return fmt.Sprintf("Shader<%d>", s.ID())
 }
 
 // ResourceLabel returns an optional debug label for the resource.
@@ -395,7 +395,7 @@ func (p Programʳ) IsResource() bool {
 
 // ResourceHandle returns the UI identity for the resource.
 func (p Programʳ) ResourceHandle() string {
-	return fmt.Sprintf("Program %d", p.ID())
+	return fmt.Sprintf("Program<%d>", p.ID())
 }
 
 // ResourceLabel returns an optional debug label for the resource.

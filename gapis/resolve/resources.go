@@ -150,7 +150,7 @@ func (r trackedResource) asService(p *path.Capture) *service.Resource {
 	out := &service.Resource{
 		ID:       path.NewID(r.id),
 		Context:  r.context,
-		Handle:   r.resource.ResourceHandle() + fmt.Sprintf(" | Cmd: %d", r.created),
+		Handle:   r.resource.ResourceHandle() + fmt.Sprintf("<%d>", r.created),
 		Label:    r.resource.ResourceLabel(),
 		Order:    r.resource.Order(),
 		Accesses: make([]*path.Command, len(r.accesses)),

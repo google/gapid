@@ -739,7 +739,13 @@ public class ShaderView extends Composite
     public String toString() {
       String handle = info.getHandle();
       String label = info.getLabel();
-      return (label.isEmpty()) ? handle : handle + " | " + label;
+
+      String[] handleComponents = handle.split("(<)|(><)|(>)");
+      String formattedHandle = handle;
+      if (handleComponents.length == 3) {
+        formattedHandle = handleComponents[0] + " " + handleComponents[1] + " | Cmd: " + handleComponents[2];
+      }
+      return (label.isEmpty()) ? formattedHandle : formattedHandle + " | " + label;
     }
   }
 }
