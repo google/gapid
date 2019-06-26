@@ -72,7 +72,7 @@ var (
 		fun: nested3,
 		expect: []string{
 			"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
-			"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
+			"⇒ core/fault/stacktrace/stacktrace_test.go@35:nested2",
 			"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
 			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
 		},
