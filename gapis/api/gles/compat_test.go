@@ -89,15 +89,40 @@ func TestGlVertexAttribPointerCompatTest(t *testing.T) {
 	cb := gles.CommandBuilder{Thread: 0, Arena: a}
 	eglMakeCurrent := cb.EglMakeCurrent(displayHandle, surfaceHandle, surfaceHandle, ctxHandle, 0)
 	eglMakeCurrent.Extras().Add(gles.NewStaticContextStateForTest(a), gles.NewDynamicContextStateForTest(a, 64, 64, true))
-	api.ForeachCmd(ctx, []api.Cmd{
+
+	cmds := []api.Cmd{
 		cb.EglCreateContext(displayHandle, memory.Nullptr, memory.Nullptr, memory.Nullptr, ctxHandle),
 		eglMakeCurrent,
-		cb.GlEnableVertexAttribArray(0),
-		cb.GlVertexAttribPointer(0, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
+	}
+
+	vertId := gles.ShaderId(1)
+	fragId := gles.ShaderId(2)
+	progId := gles.ProgramId(3)
+	attIdx := gles.AttributeLocation(0)
+	vertSrc := "void main() {}"
+	fragSrc := vertSrc
+
+	cmds = append(cmds, gles.BuildProgram(ctx, r.S, cb, vertId, fragId, progId, vertSrc, fragSrc)...)
+
+	resources := gles.MakeActiveProgramResourcesʳ(a)
+	attribute := gles.MakeProgramResourceʳ(a)
+	attribute.Locations().Add(0, gles.GLint(attIdx))
+	resources.ProgramInputs().Add(uint32(attIdx), attribute)
+	lpe := gles.MakeLinkProgramExtra(a)
+	lpe.SetLinkStatus(gles.GLboolean_GL_TRUE)
+	lpe.SetActiveResources(resources)
+	cmds = append(cmds, api.WithExtras(cb.GlLinkProgram(progId), lpe))
+
+	cmds = append(cmds, []api.Cmd{
+		cb.GlUseProgram(progId),
+		cb.GlEnableVertexAttribArray(attIdx),
+		cb.GlVertexAttribPointer(attIdx, 2, gles.GLenum_GL_FLOAT, gles.GLboolean(0), 8, p(0x100000)).
 			AddRead(memory.Store(ctx, ml, p(0x100000), positions)),
 		cb.GlDrawElements(gles.GLenum_GL_TRIANGLES, gles.GLsizei(len(indices)), gles.GLenum_GL_UNSIGNED_SHORT, p(0x200000)).
 			AddRead(memory.Store(ctx, ml, p(0x200000), indices)),
-	}, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	}...)
+
+	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		ct.Transform(ctx, api.CmdNoID, cmd, r)
 		return nil
 	})
