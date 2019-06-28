@@ -17,14 +17,14 @@
 #ifndef NAME_MANAGER_H_
 #define NAME_MANAGER_H_
 
+#include <map>
+#include <unordered_set>
+
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
 #include "third_party/SPIRV-Tools/source/opt/instruction.h"
 #include "third_party/SPIRV-Tools/source/opt/iterator.h"
 #include "third_party/SPIRV-Tools/source/opt/module.h"
-
-#include <map>
-#include <unordered_set>
 
 using spvtools::ir::Instruction;
 using spvtools::ir::Module;

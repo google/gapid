@@ -15,10 +15,11 @@
  */
 
 #include "timer.h"
-#include "log.h"
-#include "target.h"
 
 #include <ctime>
+
+#include "log.h"
+#include "target.h"
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows.h"

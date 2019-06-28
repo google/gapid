@@ -17,12 +17,12 @@
 #ifndef GAPIR_MOCK_RESOURCE_PROVIDER_H
 #define GAPIR_MOCK_RESOURCE_PROVIDER_H
 
-#include "resource_loader.h"
-
 #include <gmock/gmock.h>
+
 #include <vector>
 
 #include "replay_service.h"
+#include "resource_loader.h"
 
 namespace gapir {
 namespace test {

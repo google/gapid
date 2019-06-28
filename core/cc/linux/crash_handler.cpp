@@ -16,9 +16,9 @@
 
 #include "../crash_handler.h"
 
-#include "client/linux/handler/exception_handler.h"
-
 #include <stdlib.h>
+
+#include "client/linux/handler/exception_handler.h"
 
 namespace {
 

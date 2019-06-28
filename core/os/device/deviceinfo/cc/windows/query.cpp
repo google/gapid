@@ -16,11 +16,11 @@
 
 #include "../query.h"
 
-#include "core/cc/get_gles_proc_address.h"
-
 #include <GL/gl.h>
 #include <windows.h>
 #include <wingdi.h>
+
+#include "core/cc/get_gles_proc_address.h"
 
 namespace {
 

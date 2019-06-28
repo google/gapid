@@ -16,12 +16,12 @@
 
 #include "socket_connection.h"
 
-#include "core/cc/log.h"
-#include "core/cc/target.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "core/cc/log.h"
+#include "core/cc/target.h"
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 

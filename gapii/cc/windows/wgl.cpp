@@ -15,9 +15,10 @@
  */
 
 #include "wgl.h"
-#include "gapii/cc/gles_types.h"
 
 #include <windows.h>
+
+#include "gapii/cc/gles_types.h"
 
 namespace gapii {
 namespace wgl {

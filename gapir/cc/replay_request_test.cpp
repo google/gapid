@@ -15,10 +15,6 @@
  */
 
 #include "replay_request.h"
-#include "memory_manager.h"
-#include "mock_replay_service.h"
-#include "mock_resource_loader.h"
-#include "test_utilities.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -26,6 +22,11 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "memory_manager.h"
+#include "mock_replay_service.h"
+#include "mock_resource_loader.h"
+#include "test_utilities.h"
 
 using namespace ::testing;
 

@@ -14,11 +14,10 @@
 
 #include "map.inc"
 
-#include "string.h"
+#include <gtest/gtest.h>
 
 #include "core/memory/arena/cc/arena.h"
-
-#include <gtest/gtest.h>
+#include "string.h"
 
 template <typename T>
 class MapTest : public ::testing::Test {

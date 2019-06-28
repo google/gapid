@@ -14,10 +14,10 @@
 
 #include "string.h"
 
+#include <cstring>
+
 #include "core/cc/assert.h"
 #include "core/memory/arena/cc/arena.h"
-
-#include <cstring>
 
 namespace gapil {
 

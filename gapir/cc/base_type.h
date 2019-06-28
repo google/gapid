@@ -18,6 +18,7 @@
 #define GAPIR_BASE_TYPE_H
 
 #include <stdint.h>
+
 #include <type_traits>
 
 #include "gapir/replay_service/vm.h"

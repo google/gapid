@@ -15,12 +15,12 @@
  */
 
 #include "resource_cache.h"
-#include "resource.h"
-#include "resource_loader.h"
-
-#include "core/cc/log.h"
 
 #include <vector>
+
+#include "core/cc/log.h"
+#include "resource.h"
+#include "resource_loader.h"
 
 namespace gapir {
 size_t ResourceCache::prefetch(const Resource* res, size_t count,
@@ -28,10 +28,12 @@ size_t ResourceCache::prefetch(const Resource* res, size_t count,
   size_t res_sum = 0;
   std::vector<Resource> uncached;
   uncached.reserve(count);
+  size_t alreadyCached = 0;
 
   for (size_t i = 0; i < count; i++) {
     const auto& r = res[i];
     if (hasCache(r)) {
+      alreadyCached++;
       continue;
     }
     if (res_sum + r.size > totalCacheSize()) {
@@ -40,7 +42,10 @@ size_t ResourceCache::prefetch(const Resource* res, size_t count,
     uncached.push_back(r);
     res_sum += r.size;
   }
-  GAPID_INFO("Prefetch %zu out of %zu resources...", uncached.size(), count);
+  GAPID_INFO(
+      "Prefetching %zu new uncached resources (%zu / %zu resources will be in "
+      "cache after prefetch)...",
+      uncached.size(), uncached.size() + alreadyCached, count);
   ResourceLoadingBatch bat;
   auto fetchBatch = [&bat, fetcher, this]() {
     auto fetched =

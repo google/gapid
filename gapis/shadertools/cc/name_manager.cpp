@@ -15,7 +15,9 @@
  */
 
 #include "name_manager.h"
+
 #include <assert.h>
+
 #include "common.h"
 
 namespace namemanager {

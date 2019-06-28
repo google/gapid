@@ -17,10 +17,10 @@
 #ifndef GAPIR_CACHED_RESOURCE_LOADER_H
 #define GAPIR_CACHED_RESOURCE_LOADER_H
 
+#include <memory>
+
 #include "resource_cache.h"
 #include "resource_loader.h"
-
-#include <memory>
 
 namespace gapir {
 

@@ -15,10 +15,6 @@
  */
 
 #include "in_memory_resource_cache.h"
-#include "replay_service.h"
-#include "resource_loader.h"
-
-#include "core/cc/assert.h"
 
 #include <string.h>
 
@@ -26,6 +22,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "core/cc/assert.h"
+#include "replay_service.h"
+#include "resource_loader.h"
 
 namespace gapir {
 

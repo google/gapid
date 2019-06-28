@@ -19,10 +19,10 @@
 
 #include <android/asset_manager.h>
 
+#include <string>
+
 #include "gapir/cc/resource_cache.h"
 #include "gapir/cc/resource_loader.h"
-
-#include <string>
 
 namespace gapir {
 

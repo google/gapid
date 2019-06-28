@@ -17,15 +17,14 @@
 #ifndef GAPIR_REPLAY_SERVICE_H
 #define GAPIR_REPLAY_SERVICE_H
 
-#include "resource.h"
-
-#include "gapir/replay_service/service.pb.h"
-
 #include <functional>
 #include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
+
+#include "gapir/replay_service/service.pb.h"
+#include "resource.h"
 
 namespace replay_service {
 class Payload;

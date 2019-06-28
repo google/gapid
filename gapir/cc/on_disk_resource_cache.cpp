@@ -15,9 +15,6 @@
  */
 
 #include "on_disk_resource_cache.h"
-#include "replay_service.h"
-
-#include "core/cc/log.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -27,6 +24,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "core/cc/log.h"
+#include "replay_service.h"
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include <direct.h>

@@ -17,9 +17,10 @@
 #include <alloca.h>
 #include <android/log.h>
 #include <dlfcn.h>
+#include <unistd.h>
+
 #include <cstring>
 
-#include <unistd.h>
 #include "vulkan/vulkan.h"
 
 extern "C" {

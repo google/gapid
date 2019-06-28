@@ -18,11 +18,13 @@
 #define VK_VIRTUAL_SWAPCHAIN_VIRTUAL_SWAPCHAIN_H_
 
 #include <vulkan/vulkan.h>
+
 #include <atomic>
 #include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
+
 #include "base_swapchain.h"
 #include "layer.h"
 

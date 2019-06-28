@@ -15,6 +15,7 @@
  */
 
 #include "common.h"
+
 #include <assert.h>
 
 std::vector<uint32_t> makeVector(uint32_t word) {

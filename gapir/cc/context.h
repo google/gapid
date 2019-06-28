@@ -17,16 +17,15 @@
 #ifndef GAPIR_CONTEXT_H
 #define GAPIR_CONTEXT_H
 
-#include "core/cc/crash_handler.h"
-#include "core/cc/target.h"
-#include "core/cc/timer.h"
-
-#include "gapir/cc/renderer.h"
-#include "gapir/cc/replay_service.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include "core/cc/crash_handler.h"
+#include "core/cc/target.h"
+#include "core/cc/timer.h"
+#include "gapir/cc/renderer.h"
+#include "gapir/cc/replay_service.h"
 
 namespace gapir {
 

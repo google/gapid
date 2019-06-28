@@ -15,12 +15,13 @@
  */
 
 #include "stack.h"
-#include "memory_manager.h"
-#include "test_utilities.h"
 
 #include <gtest/gtest.h>
 
 #include <memory>
+
+#include "memory_manager.h"
+#include "test_utilities.h"
 
 namespace gapir {
 namespace test {

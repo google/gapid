@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <third_party/SPIRV-Reflect/spirv_reflect.h>
+
 #include <bitset>
+
 #include "gapii/cc/vulkan_layer_extras.h"
 #include "gapii/cc/vulkan_spy.h"
-
-#include <third_party/SPIRV-Reflect/spirv_reflect.h>
 
 namespace gapii {
 

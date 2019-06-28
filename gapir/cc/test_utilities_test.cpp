@@ -15,18 +15,18 @@
  */
 
 #include "test_utilities.h"
-#include "base_type.h"
-#include "interpreter.h"
-#include "replay_service.h"
-#include "resource.h"
-
-#include "gapir/replay_service/service.pb.h"
 
 #include <gmock/gmock.h>
 
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "base_type.h"
+#include "gapir/replay_service/service.pb.h"
+#include "interpreter.h"
+#include "replay_service.h"
+#include "resource.h"
 
 using ::testing::_;
 using ::testing::DoAll;

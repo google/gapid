@@ -16,12 +16,12 @@
 
 #include "crash_handler.h"
 
-#include "core/cc/target.h"
-
 #include <gtest/gtest.h>
-
 #include <stdlib.h>
+
 #include <iostream>
+
+#include "core/cc/target.h"
 
 namespace core {
 namespace test {

@@ -21,11 +21,10 @@
 #include <memory>
 #include <vector>
 
-#include "llvm/MC/MCInst.h"
-
 #include "code_generator.h"
 #include "disassembler.h"
 #include "error.h"
+#include "llvm/MC/MCInst.h"
 
 namespace interceptor {
 

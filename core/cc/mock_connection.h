@@ -17,16 +17,15 @@
 #ifndef CORE_MOCK_CONNECTION_H
 #define CORE_MOCK_CONNECTION_H
 
-#include "core/cc/connection.h"
-
 #include <gmock/gmock.h>
+#include <string.h>
 
 #include <memory>
 #include <queue>
 #include <string>
 #include <vector>
 
-#include <string.h>
+#include "core/cc/connection.h"
 
 namespace core {
 namespace test {

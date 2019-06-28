@@ -18,6 +18,7 @@
 #define CORE_ID_H
 
 #include <stdint.h>
+
 #include <cstring>
 #include <functional>
 

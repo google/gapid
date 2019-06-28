@@ -22,6 +22,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "constant_pool_data_expr.h"
+#include "error.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCAssembler.h"
@@ -37,9 +39,6 @@
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
-
-#include "constant_pool_data_expr.h"
-#include "error.h"
 
 namespace interceptor {
 

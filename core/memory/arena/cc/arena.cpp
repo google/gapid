@@ -16,13 +16,13 @@
 
 #include "arena.h"
 
-#include "core/cc/assert.h"
-#include "core/cc/target.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+
+#include "core/cc/assert.h"
+#include "core/cc/target.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>

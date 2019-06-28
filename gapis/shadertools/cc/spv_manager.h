@@ -17,6 +17,19 @@
 #ifndef SPV_MANAGER_H_
 #define SPV_MANAGER_H_
 
+#include <stdint.h>
+
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <set>
+#include <string>
+#include <utility>  // std::pair, std::make_pair
+#include <vector>
+
+#include "common.h"
+#include "libmanager.h"
+#include "name_manager.h"
 #include "third_party/SPIRV-Headers/include/spirv/unified1/spirv.hpp"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #include "third_party/SPIRV-Tools/include/spirv-tools/libspirv.hpp"
@@ -30,20 +43,6 @@
 #include "third_party/SPIRV-Tools/source/opt/reflect.h"
 #include "third_party/SPIRV-Tools/source/opt/type_manager.h"
 #include "third_party/SPIRV-Tools/source/opt/types.h"
-
-#include "common.h"
-#include "name_manager.h"
-
-#include "libmanager.h"
-
-#include <stdint.h>
-#include <cstring>
-#include <iostream>
-#include <map>
-#include <set>
-#include <string>
-#include <utility>  // std::pair, std::make_pair
-#include <vector>
 
 namespace spvmanager {
 

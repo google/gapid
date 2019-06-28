@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#include "third_party/glslang/SPIRV/GlslangToSpv.h"
-#include "third_party/glslang/SPIRV/disassemble.h"
-#include "third_party/glslang/glslang/Public/ShaderLang.h"
-
 #include "libmanager.h"
-#include "spirv2glsl.h"
-#include "spv_manager.h"
 
 #include <cstring>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "spirv2glsl.h"
+#include "spv_manager.h"
+#include "third_party/glslang/SPIRV/GlslangToSpv.h"
+#include "third_party/glslang/SPIRV/disassemble.h"
+#include "third_party/glslang/glslang/Public/ShaderLang.h"
 
 const TBuiltInResource DefaultTBuiltInResource = {
     /* .MaxLights = */ 32,

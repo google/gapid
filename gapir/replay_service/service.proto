@@ -62,8 +62,7 @@ message ReplayRequest {
 }
 
 // Finshed means the replay has finished.
-message Finished {
-}
+message Finished {}
 
 message PayloadRequest {
   string payload_id = 1;
@@ -141,30 +140,23 @@ message ReplayResponse {
   }
 }
 
-message PingRequest {
-}
+message PingRequest {}
 
-message PingResponse {
-}
+message PingResponse {}
 
-message ShutdownRequest {
-}
+message ShutdownRequest {}
 
-message ShutdownResponse {
-}
+message ShutdownResponse {}
 
 // Gapir is the RPC service to the GAPIR device.
 service Gapir {
   // Replay is a bi-directional streaming connection for running replays on
   // GAPIR devices.
-  rpc Replay(stream ReplayRequest) returns (stream ReplayResponse) {
-  }
+  rpc Replay(stream ReplayRequest) returns (stream ReplayResponse) {}
   // Ping is a no-op function that returns immediately. It is used to keep the
   // process alive if the process is started with "--idle-timeout-sec" command
   // line argument.
-  rpc Ping(PingRequest) returns (PingResponse) {
-  }
+  rpc Ping(PingRequest) returns (PingResponse) {}
   // Shutdown is used to shutdown the connected GAPIR server on a GAPIR device.
-  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {
-  }
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse) {}
 }

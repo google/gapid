@@ -15,9 +15,9 @@
 #ifndef __GAPIL_RUNTIME_SLICE_H__
 #define __GAPIL_RUNTIME_SLICE_H__
 
-#include "runtime.h"
-
 #include <functional>
+
+#include "runtime.h"
 
 namespace core {
 class Arena;

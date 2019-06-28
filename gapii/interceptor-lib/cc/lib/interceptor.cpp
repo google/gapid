@@ -18,12 +18,14 @@
 
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include <map>
 #include <memory>
 #include <mutex>
 #include <sstream>
 #include <unordered_map>
 
+#include "code_generator.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCContext.h"
@@ -36,8 +38,6 @@
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
-
-#include "code_generator.h"
 #include "memory_manager.h"
 #include "target.h"
 

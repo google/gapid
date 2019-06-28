@@ -14,9 +14,9 @@
 
 #include "maker.h"
 
-#include "core/memory/arena/cc/arena.h"
-
 #include <gtest/gtest.h>
+
+#include "core/memory/arena/cc/arena.h"
 
 class MakerTest : public ::testing::Test {
   void TearDown() {

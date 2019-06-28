@@ -17,14 +17,14 @@
 #ifndef GAPII_SPY_H
 #define GAPII_SPY_H
 
+#include <atomic>
+#include <memory>
+#include <unordered_map>
+
 #include "core/cc/thread.h"
 #include "gapii/cc/gles_spy.h"
 #include "gapii/cc/gvr_spy.h"
 #include "gapii/cc/vulkan_spy.h"
-
-#include <atomic>
-#include <memory>
-#include <unordered_map>
 
 namespace gapii {
 class ConnectionStream;

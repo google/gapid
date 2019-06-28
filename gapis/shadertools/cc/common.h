@@ -18,6 +18,7 @@
 #define COMMON_MANAGER_H_
 
 #include <stdint.h>
+
 #include <string>
 #include <vector>
 

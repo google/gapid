@@ -15,15 +15,14 @@
  */
 
 #include "call_observer.h"
-#include "spy_base.h"
+
+#include <tuple>
 
 #include "core/cc/thread.h"
 #include "core/cc/timer.h"
-
 #include "gapis/api/gfxtrace.pb.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
-
-#include <tuple>
+#include "spy_base.h"
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include <windows.h>
 #else

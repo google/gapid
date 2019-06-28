@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "replay.h"
-#include "dataex.h"
 
 #include "core/cc/log.h"
 #include "core/cc/range.h"
 #include "core/memory/arena/cc/arena.h"
-
+#include "dataex.h"
 #include "gapir/replay_service/vm.h"
 
 #define __STDC_FORMAT_MACROS

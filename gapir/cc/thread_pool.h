@@ -17,13 +17,13 @@
 #ifndef GAPIR_THREAD_POOL_H
 #define GAPIR_THREAD_POOL_H
 
-#include "core/cc/semaphore.h"
-
 #include <functional>
 #include <mutex>
 #include <queue>
 #include <thread>
 #include <unordered_map>
+
+#include "core/cc/semaphore.h"
 
 namespace gapir {
 

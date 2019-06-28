@@ -60,7 +60,9 @@ u32Limits GlesSpy::IndexLimits(CallObserver*, gapil::Slice<uint8_t> indices,
       }
       break;
     }
-    default: { GAPID_FATAL("Invalid index size"); }
+    default: {
+      GAPID_FATAL("Invalid index size");
+    }
   }
   if (low <= high) {
     return u32Limits(low, high + 1 - low);

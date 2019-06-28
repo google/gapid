@@ -17,11 +17,11 @@
 #ifndef GAPIR_POSTBUFFER_H
 #define GAPIR_POSTBUFFER_H
 
-#include "replay_service.h"
-
 #include <cstdint>
 #include <functional>
 #include <memory>
+
+#include "replay_service.h"
 
 namespace gapir {
 

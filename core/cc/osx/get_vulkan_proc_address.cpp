@@ -15,6 +15,7 @@
  */
 
 #include "../get_vulkan_proc_address.h"
+
 #include "../log.h"
 
 namespace {

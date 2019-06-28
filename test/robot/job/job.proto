@@ -69,16 +69,13 @@ message Worker {
 // Service is the api to the robot job manager.
 service Service {
   // Search is used to find devices that match the given query.
-  rpc SearchDevices(search.Query) returns (stream Device) {
-  };
+  rpc SearchDevices(search.Query) returns (stream Device) {};
   // Search is used to find workers that match the given query.
-  rpc SearchWorkers(search.Query) returns (stream Worker) {
-  };
+  rpc SearchWorkers(search.Query) returns (stream Worker) {};
   // Get finds or adds a worker.
   // The returned worker may support a superset of the operations in the
   // request.
-  rpc GetWorker(GetWorkerRequest) returns (GetWorkerResponse) {
-  };
+  rpc GetWorker(GetWorkerRequest) returns (GetWorkerResponse) {};
 }
 
 message GetWorkerRequest {

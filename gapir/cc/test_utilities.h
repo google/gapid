@@ -17,11 +17,6 @@
 #ifndef GAPIR_TEST_UTILITIES_H
 #define GAPIR_TEST_UTILITIES_H
 
-#include "base_type.h"
-#include "interpreter.h"
-#include "replay_service.h"
-#include "resource.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -29,6 +24,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "base_type.h"
+#include "interpreter.h"
+#include "replay_service.h"
+#include "resource.h"
 
 namespace gapir {
 

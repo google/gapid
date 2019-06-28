@@ -15,12 +15,12 @@
  */
 
 #include "cached_resource_loader.h"
-#include "resource.h"
-
-#include "core/cc/assert.h"
 
 #include <utility>
 #include <vector>
+
+#include "core/cc/assert.h"
+#include "resource.h"
 
 namespace gapir {
 

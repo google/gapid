@@ -20,11 +20,10 @@
 
 #include "MCTargetDesc/ARMBaseInfo.h"
 #include "MCTargetDesc/ARMMCTargetDesc.h"
-#include "llvm/MC/MCInst.h"
-#include "llvm/MC/MCInstBuilder.h"
-
 #include "code_generator.h"
 #include "disassembler.h"
+#include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstBuilder.h"
 
 using namespace interceptor;
 

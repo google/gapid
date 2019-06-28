@@ -2,6 +2,7 @@
 
 #if COHERENT_TRACKING_ENABLED
 #include <Windows.h>
+
 #include <atomic>
 #include <functional>
 

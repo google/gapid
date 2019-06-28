@@ -16,17 +16,17 @@
 
 #include "../query.h"
 
-#include "core/cc/dl_loader.h"
-#include "core/cc/get_gles_proc_address.h"
-#include "core/cc/gl/versions.h"
-
 #include <GL/glx.h>
 #include <X11/Xresource.h>
 #include <string.h>
-#include <cstring>
-
 #include <sys/utsname.h>
 #include <unistd.h>
+
+#include <cstring>
+
+#include "core/cc/dl_loader.h"
+#include "core/cc/get_gles_proc_address.h"
+#include "core/cc/gl/versions.h"
 
 #if defined(__LP64__)
 #define SYSTEM_LIB_PATH "/system/lib64/"

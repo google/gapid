@@ -15,6 +15,7 @@
  */
 
 #include "instance.h"
+
 #include "query.h"
 
 extern "C" {

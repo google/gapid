@@ -17,14 +17,15 @@
 #ifndef GAPII_MEMORY_TRACKER_POSIX_H
 #define GAPII_MEMORY_TRACKER_POSIX_H
 
-#include "core/memory_tracker/cc/memory_protections.h"
-
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include <cstdint>
+
+#include "core/memory_tracker/cc/memory_protections.h"
 
 namespace gapii {
 namespace track_memory {

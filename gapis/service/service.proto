@@ -114,13 +114,10 @@ message Value {
   }
 }
 
-message PingRequest {
-}
-message PingResponse {
-}
+message PingRequest {}
+message PingResponse {}
 
-message GetServerInfoRequest {
-}
+message GetServerInfoRequest {}
 message GetServerInfoResponse {
   oneof res {
     ServerInfo info = 1;
@@ -203,8 +200,7 @@ message ProfileResponse {
   Error error = 3;
 }
 
-message GetPerformanceCountersRequest {
-}
+message GetPerformanceCountersRequest {}
 message GetPerformanceCountersResponse {
   oneof res {
     string data = 1;
@@ -258,8 +254,7 @@ message ServerStatusResponse {
   }
 }
 
-message GetAvailableStringTablesRequest {
-}
+message GetAvailableStringTablesRequest {}
 message GetAvailableStringTablesResponse {
   oneof res {
     StringTableInfos tables = 1;
@@ -370,8 +365,7 @@ message GraphVisualizationResponse {
   }
 }
 
-message GetDevicesRequest {
-}
+message GetDevicesRequest {}
 message GetDevicesResponse {
   oneof res {
     Devices devices = 1;
@@ -410,8 +404,7 @@ message GetFramebufferAttachmentResponse {
   }
 }
 
-message GetLogStreamRequest {
-}
+message GetLogStreamRequest {}
 
 message FindRequest {
   // If true then searching will begin at from and move backwards.
@@ -510,8 +503,7 @@ message ClientEventRequest {
   }
 }
 
-message ClientEventResponse {
-}
+message ClientEventResponse {}
 
 message UpdateSettingsRequest {
   // Enables or disable anonymous crash reporting.
@@ -552,82 +544,66 @@ service Gapid {
   // Ping is a no-op function that returns immediately.
   // It can be used to measure connection latency or to keep the
   // process alive if started with the "idle-timeout" command line flag.
-  rpc Ping(PingRequest) returns (PingResponse) {
-  }
+  rpc Ping(PingRequest) returns (PingResponse) {}
 
   // GetServerInfo returns information about the running server.
-  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {
-  }
+  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
 
   // CheckForUpdates checks for a new build of GAPID on the hosting server.
   // Care should be taken to call this infrequently to avoid reaching the
   // server's maximum unauthenticated request limits.
   rpc CheckForUpdates(CheckForUpdatesRequest)
-      returns (CheckForUpdatesResponse) {
-  }
+      returns (CheckForUpdatesResponse) {}
 
   // Get resolves and returns the object, value or memory at the path p.
-  rpc Get(GetRequest) returns (GetResponse) {
-  }
+  rpc Get(GetRequest) returns (GetResponse) {}
 
   // Set creates a copy of the capture referenced by p, but with the object,
   // value or memory at p replaced with v. The path returned is identical to p,
   // but with the base changed to refer to the new capture.
-  rpc Set(SetRequest) returns (SetResponse) {
-  }
+  rpc Set(SetRequest) returns (SetResponse) {}
 
   // Follow returns the path to the object that the value at p links to.
   // If the value at p does not link to anything then nil is returned.
-  rpc Follow(FollowRequest) returns (FollowResponse) {
-  }
+  rpc Follow(FollowRequest) returns (FollowResponse) {}
 
   // GetAvailableStringTables returns list of available string table
   // descriptions.
   rpc GetAvailableStringTables(GetAvailableStringTablesRequest)
-      returns (GetAvailableStringTablesResponse) {
-  }
+      returns (GetAvailableStringTablesResponse) {}
 
   // GetStringTable returns the requested string table.
-  rpc GetStringTable(GetStringTableRequest) returns (GetStringTableResponse) {
-  }
+  rpc GetStringTable(GetStringTableRequest) returns (GetStringTableResponse) {}
 
   // Import imports capture data emitted by the graphics spy, returning the new
   // capture identifier.
-  rpc ImportCapture(ImportCaptureRequest) returns (ImportCaptureResponse) {
-  }
+  rpc ImportCapture(ImportCaptureRequest) returns (ImportCaptureResponse) {}
 
   // ExportCapture returns a capture's data that can be consumed by
   // ImportCapture or LoadCapture.
-  rpc ExportCapture(ExportCaptureRequest) returns (ExportCaptureResponse) {
-  }
+  rpc ExportCapture(ExportCaptureRequest) returns (ExportCaptureResponse) {}
 
   // LoadCapture imports capture data from a local file, returning the new
   // capture identifier.
-  rpc LoadCapture(LoadCaptureRequest) returns (LoadCaptureResponse) {
-  }
+  rpc LoadCapture(LoadCaptureRequest) returns (LoadCaptureResponse) {}
 
   // SaveCapture saves capture to a file.
-  rpc SaveCapture(SaveCaptureRequest) returns (SaveCaptureResponse) {
-  }
+  rpc SaveCapture(SaveCaptureRequest) returns (SaveCaptureResponse) {}
 
   // ExportReplay saves replay commands and assets to file.
-  rpc ExportReplay(ExportReplayRequest) returns (ExportReplayResponse) {
-  }
+  rpc ExportReplay(ExportReplayRequest) returns (ExportReplayResponse) {}
 
   // DCECapture returns a new capture containing only the requested commands
   // and their dependencies.
-  rpc DCECapture(DCECaptureRequest) returns (DCECaptureResponse) {
-  }
+  rpc DCECapture(DCECaptureRequest) returns (DCECaptureResponse) {}
 
   rpc GetGraphVisualization(GraphVisualizationRequest)
-      returns (GraphVisualizationResponse) {
-  }
+      returns (GraphVisualizationResponse) {}
   // GetDevices returns the full list of replay devices avaliable to the server.
   // These include local replay devices and any connected Android devices.
   // This list may change over time, as devices are connected and disconnected.
   // The primary device (usually host) will be first.
-  rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {
-  }
+  rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse) {}
 
   // GetDevicesForReplay returns the list of replay devices avaliable to the
   // server that are capable of replaying the given capture.
@@ -636,8 +612,7 @@ service Gapid {
   // If both connected Android and Local replay devices are found,
   // the local Android devices will be returned first.
   rpc GetDevicesForReplay(GetDevicesForReplayRequest)
-      returns (GetDevicesForReplayResponse) {
-  }
+      returns (GetDevicesForReplayResponse) {}
 
   // GetFramebufferAttachment returns the ImageInfo identifier describing the
   // given framebuffer attachment and device, immediately following the command
@@ -645,75 +620,61 @@ service Gapid {
   // The provided RenderSettings structure can be used to adjust maximum desired
   // dimensions of the image, as well as applying debug visualizations.
   rpc GetFramebufferAttachment(GetFramebufferAttachmentRequest)
-      returns (GetFramebufferAttachmentResponse) {
-  }
+      returns (GetFramebufferAttachmentResponse) {}
 
   // GetLogStream calls the handler with each log record raised until the
   // context is cancelled.
-  rpc GetLogStream(GetLogStreamRequest) returns (stream log.Message) {
-  }
+  rpc GetLogStream(GetLogStreamRequest) returns (stream log.Message) {}
 
   // Find searches for data, streaming the results.
-  rpc Find(FindRequest) returns (stream FindResponse) {
-  }
+  rpc Find(FindRequest) returns (stream FindResponse) {}
 
   // ClientEvent records a client event action, used for analytics.
   // If the user has not opted-in for analytics then this call does nothing.
-  rpc ClientEvent(ClientEventRequest) returns (ClientEventResponse) {
-  }
+  rpc ClientEvent(ClientEventRequest) returns (ClientEventResponse) {}
 
   // FindTraceTargets returns trace targets matching the given search
   // parameters.
   rpc FindTraceTargets(FindTraceTargetsRequest)
-      returns (FindTraceTargetsResponse) {
-  }
+      returns (FindTraceTargetsResponse) {}
 
   // TraceTargetTreeNode returns information about the trace target
   rpc TraceTargetTreeNode(TraceTargetTreeNodeRequest)
-      returns (TraceTargetTreeNodeResponse) {
-  }
+      returns (TraceTargetTreeNodeResponse) {}
 
   // Trace returns a steam that can be used to start and stop
   // a trace
-  rpc Trace(stream TraceRequest) returns (stream TraceResponse) {
-  }
+  rpc Trace(stream TraceRequest) returns (stream TraceResponse) {}
 
   // Updates environment settings.
-  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {
-  }
+  rpc UpdateSettings(UpdateSettingsRequest) returns (UpdateSettingsResponse) {}
 
   // Status returns a stream of Status events that are occuring on the server
-  rpc Status(ServerStatusRequest) returns (stream ServerStatusResponse) {
-  }
+  rpc Status(ServerStatusRequest) returns (stream ServerStatusResponse) {}
 
   // Runs a Perfetto Query. This is done separatly from .Get, because the query
   // results should not be cached, as they can change due to 'update' queries.
-  rpc PerfettoQuery(PerfettoQueryRequest) returns (PerfettoQueryResponse) {
-  }
+  rpc PerfettoQuery(PerfettoQueryRequest) returns (PerfettoQueryResponse) {}
 
   ///////////////////////////////////////////////////////////////
   // Below are debugging APIs which may be removed in the future.
   ///////////////////////////////////////////////////////////////
 
   // Profile starts self-profiling the server.
-  rpc Profile(stream ProfileRequest) returns (stream ProfileResponse) {
-  }
+  rpc Profile(stream ProfileRequest) returns (stream ProfileResponse) {}
 
   // GetPerformanceCounters returns the values of all global counters as
   // a JSON blob.
   rpc GetPerformanceCounters(GetPerformanceCountersRequest)
-      returns (GetPerformanceCountersResponse) {
-  }
+      returns (GetPerformanceCountersResponse) {}
 
   // GetProfile returns the pprof profile with the given name.
-  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {
-  }
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {}
 
   // GetTimestamps returns a stream contains the timestamps of the begin
   // and end of execution of a command buffer.
   rpc GetTimestamps(GetTimestampsRequest)
-      returns (stream GetTimestampsResponse) {
-  }
+      returns (stream GetTimestampsResponse) {}
 }
 
 message Error {

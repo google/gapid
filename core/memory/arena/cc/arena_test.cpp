@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
+#include "core/memory/arena/cc/arena.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include <random>
 #include <unordered_set>
 #include <vector>
-
-#include "core/memory/arena/cc/arena.h"
 
 namespace core {
 namespace test {

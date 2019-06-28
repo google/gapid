@@ -17,9 +17,8 @@
 #ifndef VK_VIRTUAL_SWAPCHAIN_PLATFORM_H_
 #define VK_VIRTUAL_SWAPCHAIN_PLATFORM_H_
 
-#include "vulkan/vulkan.h"
-
 #include "layer.h"
+#include "vulkan/vulkan.h"
 
 namespace swapchain {
 

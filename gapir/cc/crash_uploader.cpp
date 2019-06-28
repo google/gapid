@@ -15,12 +15,13 @@
  */
 
 #include "gapir/cc/crash_uploader.h"
+
+#include <stdio.h>
+
 #include "core/cc/crash_handler.h"
 #include "core/cc/file_reader.h"
 #include "core/cc/log.h"
 #include "gapir/cc/replay_service.h"
-
-#include <stdio.h>
 
 namespace gapir {
 

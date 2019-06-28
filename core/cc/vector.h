@@ -17,9 +17,9 @@
 #ifndef CORE_VECTOR_H
 #define CORE_VECTOR_H
 
-#include "assert.h"
-
 #include <stdint.h>
+
+#include "assert.h"
 
 namespace core {
 

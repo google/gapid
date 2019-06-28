@@ -16,17 +16,16 @@
 
 #include "trace.h"
 
-#include <atomic>
-#include <cstdio>
-#include <mutex>
-
+#include <android/log.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <android/log.h>
+#include <atomic>
+#include <cstdio>
+#include <mutex>
 
 namespace core {
 namespace {

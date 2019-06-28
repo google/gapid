@@ -15,6 +15,7 @@
  */
 
 #include "archive.h"
+
 #include "assert.h"
 #include "log.h"
 #include "target.h"  // ftruncate

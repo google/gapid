@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
+#include "file_collector.h"
+
 #include <direct.h>
 #include <shlwapi.h>
 #include <windows.h>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#include "file_collector.h"
 
 namespace {
 

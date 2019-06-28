@@ -17,13 +17,12 @@
 #ifndef GAPIR_REPLAY_ARCHIVE_H
 #define GAPIR_REPLAY_ARCHIVE_H
 
-#include "replay_service.h"
-#include "resource.h"
+#include <memory>
 
 #include "core/cc/archive.h"
 #include "core/cc/log.h"
-
-#include <memory>
+#include "replay_service.h"
+#include "resource.h"
 
 namespace gapir {
 

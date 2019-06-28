@@ -15,6 +15,7 @@
  */
 
 #include "gapir/cc/vulkan_renderer.h"
+
 #include "gapir/cc/vulkan_gfx_api.h"
 
 namespace gapir {

@@ -15,8 +15,10 @@
  */
 
 #include "swapchain.h"
+
 #include <cassert>
 #include <vector>
+
 #include "virtual_swapchain.h"
 
 namespace swapchain {

@@ -50,8 +50,7 @@ message Instances {
   repeated DeclareLocal declare_local = 24;
   repeated Definition definition = 25;
   repeated DefinitionUsage definition_usage = 26;
-  repeated Enum enum
-  = 27;
+  repeated Enum enum = 27;
   repeated EnumEntry enum_entry = 28;
   repeated Expression expression = 29;
   repeated Fence fence = 30;
@@ -652,8 +651,7 @@ message Node {
     uint64 create = 24;         // Create ID
     uint64 declare_local = 25;  // DeclareLocal ID
     uint64 definition = 26;     // Definition ID
-    uint64 enum
-    = 27;                       // Enum ID
+    uint64 enum = 27;           // Enum ID
     uint64 enum_entry = 28;     // EnumEntry ID
     uint64 expression = 29;     // Expression ID
     uint64 fence = 30;          // Fence ID
@@ -861,9 +859,8 @@ message Switch {
 message Type {
   oneof ty {
     Builtin builtin = 1;
-    uint64 class = 2;  // Class ID
-    uint64 enum
-    = 3;                      // Enum ID
+    uint64 class = 2;         // Class ID
+    uint64 enum = 3;          // Enum ID
     uint64 map = 4;           // Map ID
     uint64 pointer = 5;       // Pointer ID
     uint64 pseudonym = 6;     // Pseudonym ID
@@ -912,8 +909,7 @@ message Write {
 // These messages map directly to the types declared in gapil/ast             //
 ////////////////////////////////////////////////////////////////////////////////
 
-message ASTAbort {
-}
+message ASTAbort {}
 
 message ASTAnnotation {
   uint64 name = 1;  // ASTIdentifier ID
@@ -1018,8 +1014,7 @@ message ASTEnumEntry {
   uint64 value = 3;  // ASTNumber ID
 }
 
-message ASTFence {
-}
+message ASTFence {}
 
 message ASTField {
   ASTAnnotations annotations = 1;
@@ -1105,8 +1100,7 @@ message ASTNode {
     uint64 default = 14;        // ASTDefault
     uint64 definition = 15;     // ASTDefinition
     uint64 delete = 16;         // ASTDelete
-    uint64 enum
-    = 17;                       // ASTEnum
+    uint64 enum = 17;           // ASTEnum
     uint64 enum_entry = 18;     // ASTEnumEntry
     uint64 fence = 19;          // ASTFence
     uint64 field = 20;          // ASTField
@@ -1136,8 +1130,7 @@ message ASTNode {
   }
 }
 
-message ASTNull {
-}
+message ASTNull {}
 
 message ASTNumber {
   uint64 value = 1;  // String ID
@@ -1184,8 +1177,7 @@ message ASTUnaryOp {
   ASTNode expression = 2;
 }
 
-message ASTUnknown {
-}
+message ASTUnknown {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // CST Nodes                                                                  //

@@ -15,6 +15,7 @@
  */
 
 #include "state_serializer.h"
+
 #include "core/cc/timer.h"
 
 namespace gapii {

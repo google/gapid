@@ -17,17 +17,16 @@
 #ifndef GAPIR_ASSET_REPLAY_SERVICE_H
 #define GAPIR_ASSET_REPLAY_SERVICE_H
 
-#include "asset_replay_service.h"
-#include "gapir/cc/replay_service.h"
-#include "gapir/cc/resource.h"
-
-#include "core/cc/archive.h"
-#include "core/cc/log.h"
-
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
 
 #include <memory>
+
+#include "asset_replay_service.h"
+#include "core/cc/archive.h"
+#include "core/cc/log.h"
+#include "gapir/cc/replay_service.h"
+#include "gapir/cc/resource.h"
 
 namespace gapir {
 

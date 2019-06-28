@@ -30,8 +30,7 @@ message ErrCmdAborted {
 // command was called. This is only used for commands that have a void return
 // type, as the other commands have their own proto message containing the
 // return value.
-message CmdCall {
-}
+message CmdCall {}
 
 // Timestamp is a nanosecond counter
 message TimeStamp {

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
+#include "core/cc/get_gles_proc_address.h"
 #include "gapii/cc/gles_exports.h"
 #include "gapii/cc/spy.h"
-
-#include "core/cc/get_gles_proc_address.h"
 
 namespace {
 

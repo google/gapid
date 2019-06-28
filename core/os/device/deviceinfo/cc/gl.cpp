@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include "gl_lite.h"
-#include "query.h"
+#include <sstream>
 
 #include "core/cc/assert.h"
 #include "core/cc/get_gles_proc_address.h"
 #include "core/cc/log.h"
-
-#include <sstream>
+#include "gl_lite.h"
+#include "query.h"
 
 namespace query {
 

@@ -15,6 +15,13 @@
  */
 
 #include "context.h"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include <memory>
+#include <vector>
+
 #include "base_type.h"
 #include "interpreter.h"
 #include "memory_manager.h"
@@ -22,12 +29,6 @@
 #include "mock_resource_loader.h"
 #include "resource_loader.h"
 #include "test_utilities.h"
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <memory>
-#include <vector>
 
 using namespace ::testing;
 

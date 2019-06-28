@@ -14,9 +14,9 @@
 
 #include "slice.inc"
 
-#include "core/memory/arena/cc/arena.h"
-
 #include <gtest/gtest.h>
+
+#include "core/memory/arena/cc/arena.h"
 
 TEST(SliceTest, empty) {
   gapil::Slice<uint8_t> sli;

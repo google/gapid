@@ -18,8 +18,10 @@
 #define VK_BASE_SWAPCHAIN_VIRTUAL_SWAPCHAIN_H_
 
 #include <vulkan/vulkan.h>
+
 #include <mutex>
 #include <vector>
+
 #include "layer.h"
 
 namespace swapchain {

@@ -17,12 +17,12 @@
 #ifndef GAPII_PACK_ENCODER_H
 #define GAPII_PACK_ENCODER_H
 
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+
 #include <memory>
 #include <unordered_map>
 #include <utility>
-
-#include <google/protobuf/io/coded_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 namespace google {
 namespace protobuf {

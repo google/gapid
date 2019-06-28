@@ -17,26 +17,6 @@
 #ifndef GAPII_SPY_BASE_H
 #define GAPII_SPY_BASE_H
 
-#include "abort_exception.h"
-#include "call_observer.h"
-#include "pack_encoder.h"
-
-#include "core/cc/assert.h"
-#include "core/cc/id.h"
-#include "core/cc/interval_list.h"
-#include "core/cc/recursive_spinlock.h"
-#include "core/cc/vector.h"
-
-#include "core/memory/arena/cc/arena.h"
-
-#include "core/os/device/deviceinfo/cc/query.h"
-
-#include "gapis/capture/capture.pb.h"
-
-#include "core/memory_tracker/cc/memory_tracker.h"
-
-#include "gapil/runtime/cc/slice.h"
-
 #include <stdint.h>
 
 #include <atomic>
@@ -44,6 +24,20 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+
+#include "abort_exception.h"
+#include "call_observer.h"
+#include "core/cc/assert.h"
+#include "core/cc/id.h"
+#include "core/cc/interval_list.h"
+#include "core/cc/recursive_spinlock.h"
+#include "core/cc/vector.h"
+#include "core/memory/arena/cc/arena.h"
+#include "core/memory_tracker/cc/memory_tracker.h"
+#include "core/os/device/deviceinfo/cc/query.h"
+#include "gapil/runtime/cc/slice.h"
+#include "gapis/capture/capture.pb.h"
+#include "pack_encoder.h"
 
 namespace gapii {
 const uint8_t kAllAPIs = 0xFF;

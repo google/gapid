@@ -19,9 +19,9 @@
 
 #include <unordered_map>
 #include <vector>
-#include "vulkan/vulkan.h"
 
 #include "threading.h"
+#include "vulkan/vulkan.h"
 
 namespace swapchain {
 

@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #include "asm.h"
-#include "dataex.h"
-#include "replay.h"
-
 #include "core/cc/log.h"
 #include "core/memory/arena/cc/arena.h"
+#include "dataex.h"
 #include "gapil/runtime/cc/buffer.inc"
 #include "gapir/replay_service/vm.h"
+#include "replay.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>

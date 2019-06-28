@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
+#include "surface.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <thread>
 
 #include "core/cc/dl_loader.h"
 #include "core/cc/target.h"
-
-#include "surface.h"
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include <Windows.h>

@@ -80,8 +80,7 @@ message FramebufferObservation {
 
 // GlobalState is the object that denotes all of the API-specific initial states
 // in pack files. If present it will be right after the header.
-message GlobalState {
-}
+message GlobalState {}
 
 // TraceMessage is a message that was inserted into the trace file
 message TraceMessage {

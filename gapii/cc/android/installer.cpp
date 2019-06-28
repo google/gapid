@@ -15,16 +15,16 @@
  */
 
 #include "installer.h"
-#include "../gles_exports.h"
 
+#include <dlfcn.h>
+
+#include <cstring>
+#include <unordered_map>
+
+#include "../gles_exports.h"
 #include "core/cc/assert.h"
 #include "core/cc/get_gles_proc_address.h"
 #include "core/cc/log.h"
-
-#include <dlfcn.h>
-#include <cstring>
-
-#include <unordered_map>
 
 #if defined(__LP64__)
 #define SYSTEM_LIB_PATH "/system/lib64/"

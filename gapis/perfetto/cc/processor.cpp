@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
+#include "processor.h"
+
 #include <google/protobuf/text_format.h>
 #include <string.h>
 
 #include "gapis/perfetto/service/perfetto.pb.h"
 #include "perfetto/trace_processor/trace_processor.h"
-
-#include "processor.h"
 
 namespace p = perfetto;
 namespace ptp = perfetto::trace_processor;

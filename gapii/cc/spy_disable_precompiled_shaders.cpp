@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
+#include "core/cc/id.h"
 #include "gapii/cc/call_observer.h"
 #include "gapii/cc/spy.h"
-
 #include "gapis/api/gfxtrace.pb.h"
-
-#include "core/cc/id.h"
 
 // This file contains a number of GLES method 'overrides' to optionally lie to
 // the application about the driver not supporting precompiled shaders or

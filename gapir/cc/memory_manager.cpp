@@ -16,11 +16,11 @@
 
 #include "memory_manager.h"
 
-#include "core/cc/log.h"
-
 #include <new>
 #include <utility>
 #include <vector>
+
+#include "core/cc/log.h"
 
 //                 mMemory[0]
 //   ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓

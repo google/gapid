@@ -16,13 +16,12 @@
 
 #include "../crash_handler.h"
 
-#include "client/windows/handler/exception_handler.h"
-
-#include "../log.h"
-
 #include <windows.h>
 
 #include <memory>
+
+#include "../log.h"
+#include "client/windows/handler/exception_handler.h"
 
 namespace {
 

@@ -15,16 +15,17 @@
  */
 
 #include "gapir/cc/gles_renderer.h"
-#include "gapir/cc/gles_gfx_api.h"
+
+#include <X11/Xresource.h>
+
+#include <cstring>
 
 #include "core/cc/dl_loader.h"
 #include "core/cc/get_gles_proc_address.h"
 #include "core/cc/gl/formats.h"
 #include "core/cc/gl/versions.h"
 #include "core/cc/log.h"
-
-#include <X11/Xresource.h>
-#include <cstring>
+#include "gapir/cc/gles_gfx_api.h"
 
 namespace gapir {
 namespace {

@@ -17,13 +17,12 @@
 #ifndef CORE_INTERVAL_LIST_H
 #define CORE_INTERVAL_LIST_H
 
-#include "range.h"
-
 #include <algorithm>
 #include <cstdint>
 #include <vector>
 
 #include "core/cc/target.h"
+#include "range.h"
 
 namespace core {
 

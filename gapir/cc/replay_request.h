@@ -17,8 +17,6 @@
 #ifndef GAPIR_REPLAY_REQUEST_H
 #define GAPIR_REPLAY_REQUEST_H
 
-#include "resource.h"
-
 #include <stdint.h>
 
 #include <memory>
@@ -28,6 +26,7 @@
 
 #include "memory_manager.h"
 #include "replay_service.h"
+#include "resource.h"
 
 namespace gapir {
 

@@ -88,8 +88,7 @@ message LineBreak {
 
 // Whitespace is a node that represents a horizontal gap in text layout.
 // This is typically authored as ' '.
-message Whitespace {
-}
+message Whitespace {}
 
 // Parameter is a node representing a dynamic value parameter.
 message Parameter {

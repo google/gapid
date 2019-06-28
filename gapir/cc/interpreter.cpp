@@ -15,10 +15,10 @@
  */
 
 #include "interpreter.h"
-#include "memory_manager.h"
 
 #include "core/cc/crash_handler.h"
 #include "core/cc/log.h"
+#include "memory_manager.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>

@@ -17,14 +17,14 @@
 #ifndef GAPIR_REPLAY_CONNECTION_H
 #define GAPIR_REPLAY_CONNECTION_H
 
-#include "core/cc/semaphore.h"
-#include "replay_service.h"
-#include "resource.h"
-
 #include <deque>
 #include <memory>
 #include <string>
 #include <thread>
+
+#include "core/cc/semaphore.h"
+#include "replay_service.h"
+#include "resource.h"
 
 namespace grpc {
 template <typename RES, typename REQ>

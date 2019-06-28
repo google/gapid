@@ -15,6 +15,7 @@
  */
 
 #include "spv_manager.h"
+
 #include <assert.h>
 
 namespace spvmanager {

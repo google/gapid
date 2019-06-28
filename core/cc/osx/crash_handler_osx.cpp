@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-#include "../crash_handler.h"
-
-#include "../debugger.h"
-
-#include "client/mac/handler/exception_handler.h"
-
-#include <stdlib.h>
-
 #include <execinfo.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include "../crash_handler.h"
+#include "../debugger.h"
+#include "client/mac/handler/exception_handler.h"
 
 namespace {
 

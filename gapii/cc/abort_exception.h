@@ -17,10 +17,10 @@
 #ifndef GAPII_ABORT_EXCEPTION_H
 #define GAPII_ABORT_EXCEPTION_H
 
-#include "core/cc/target.h"
-
 #include <exception>
 #include <string>
+
+#include "core/cc/target.h"
 
 namespace gapii {
 

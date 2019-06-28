@@ -17,11 +17,12 @@
 #ifndef GAPIR_RESOURCE_LOADER_H
 #define GAPIR_RESOURCE_LOADER_H
 
+#include <stdint.h>
+
+#include <memory>
+
 #include "replay_service.h"
 #include "resource.h"
-
-#include <stdint.h>
-#include <memory>
 
 namespace gapir {
 

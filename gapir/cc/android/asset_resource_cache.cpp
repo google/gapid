@@ -15,14 +15,14 @@
  */
 
 #include "asset_resource_cache.h"
-#include "gapir/cc/replay_service.h"
-
-#include "core/cc/log.h"
 
 #include <android/asset_manager.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "core/cc/log.h"
+#include "gapir/cc/replay_service.h"
 
 namespace gapir {
 

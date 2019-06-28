@@ -17,11 +17,12 @@
 #ifndef GAPIR_FUNCTION_TABLE_H
 #define GAPIR_FUNCTION_TABLE_H
 
-#include "core/cc/log.h"
-
 #include <stdint.h>
+
 #include <functional>
 #include <unordered_map>
+
+#include "core/cc/log.h"
 
 namespace gapir {
 

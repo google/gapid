@@ -223,8 +223,8 @@ typename Map<K, V, DENSE>::element* Map<K, V, DENSE>::iterator::operator->() {
 }
 
 template <typename K, typename V, bool DENSE>
-const typename Map<K, V, DENSE>::iterator& Map<K, V, DENSE>::iterator::
-operator++() {
+const typename Map<K, V, DENSE>::iterator&
+Map<K, V, DENSE>::iterator::operator++() {
   size_t offset = elem - reinterpret_cast<element*>(map->elements);
   for (size_t i = offset; i < map->capacity; ++i) {
     ++elem;
@@ -270,20 +270,20 @@ bool Map<K, V, DENSE>::const_iterator::operator!=(const const_iterator& other) {
 }
 
 template <typename K, typename V, bool DENSE>
-const typename Map<K, V, DENSE>::element& Map<K, V, DENSE>::const_iterator::
-operator*() {
+const typename Map<K, V, DENSE>::element&
+    Map<K, V, DENSE>::const_iterator::operator*() {
   return *elem;
 }
 
 template <typename K, typename V, bool DENSE>
-const typename Map<K, V, DENSE>::element* Map<K, V, DENSE>::const_iterator::
-operator->() {
+const typename Map<K, V, DENSE>::element*
+    Map<K, V, DENSE>::const_iterator::operator->() {
   return elem;
 }
 
 template <typename K, typename V, bool DENSE>
-typename Map<K, V, DENSE>::const_iterator& Map<K, V, DENSE>::const_iterator::
-operator++() {
+typename Map<K, V, DENSE>::const_iterator&
+Map<K, V, DENSE>::const_iterator::operator++() {
   size_t offset = elem - reinterpret_cast<element*>(map->elements);
   for (size_t i = offset; i < map->capacity; ++i) {
     ++elem;
@@ -298,8 +298,8 @@ operator++() {
 }
 
 template <typename K, typename V, bool DENSE>
-typename Map<K, V, DENSE>::const_iterator Map<K, V, DENSE>::const_iterator::
-operator++(int) {
+typename Map<K, V, DENSE>::const_iterator
+Map<K, V, DENSE>::const_iterator::operator++(int) {
   const_iterator ret = *this;
   ++(*this);
   return ret;

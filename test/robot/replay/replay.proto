@@ -92,17 +92,13 @@ message Task {
 // Service is the api to the robot replay manager.
 service Service {
   // Search is used to find actions that match the given query.
-  rpc Search(search.Query) returns (stream Action) {
-  };
+  rpc Search(search.Query) returns (stream Action) {};
   // Register registers a device for a stream of tasks.
-  rpc Register(worker.RegisterRequest) returns (stream Task) {
-  };
+  rpc Register(worker.RegisterRequest) returns (stream Task) {};
   // Do asks the manager to send a task to a device.
-  rpc Do(DoRequest) returns (worker.DoResponse) {
-  };
+  rpc Do(DoRequest) returns (worker.DoResponse) {};
   // Update sets the results of an action.
-  rpc Update(UpdateRequest) returns (worker.UpdateResponse) {
-  };
+  rpc Update(UpdateRequest) returns (worker.UpdateResponse) {};
 }
 
 message DoRequest {

@@ -17,17 +17,16 @@
 #ifndef GAPIR_STACK_H
 #define GAPIR_STACK_H
 
-#include "base_type.h"
-#include "memory_manager.h"
-
-#include "core/cc/log.h"
-#include "core/cc/static_array.h"
-
 #include <stdint.h>
 #include <string.h>
 
 #include <type_traits>
 #include <vector>
+
+#include "base_type.h"
+#include "core/cc/log.h"
+#include "core/cc/static_array.h"
+#include "memory_manager.h"
 
 namespace gapir {
 

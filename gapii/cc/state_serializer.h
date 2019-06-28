@@ -17,12 +17,12 @@
 #ifndef GAPII_STATE_SERIALIZER_H
 #define GAPII_STATE_SERIALIZER_H
 
+#include <functional>
+
 #include "gapii/cc/call_observer.h"
 #include "gapii/cc/spy_base.h"
 #include "gapil/runtime/cc/slice.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
-
-#include <functional>
 
 namespace gapii {
 

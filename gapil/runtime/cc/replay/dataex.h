@@ -15,11 +15,11 @@
 #ifndef __GAPIL_RUNTIME_REPLAY_DATAEX_H__
 #define __GAPIL_RUNTIME_REPLAY_DATAEX_H__
 
-#include "core/cc/id.h"
-#include "core/cc/interval_list.h"
-
 #include <unordered_map>
 #include <vector>
+
+#include "core/cc/id.h"
+#include "core/cc/interval_list.h"
 
 namespace gapil {
 namespace runtime {

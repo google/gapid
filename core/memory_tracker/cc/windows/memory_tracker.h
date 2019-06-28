@@ -17,10 +17,10 @@
 #ifndef GAPII_MEMORY_TRACKER_WINDOWS_H
 #define GAPII_MEMORY_TRACKER_WINDOWS_H
 
-#include "core/memory_tracker/cc/memory_protections.h"
-
 #include <atomic>
 #include <cstdint>
+
+#include "core/memory_tracker/cc/memory_protections.h"
 
 namespace gapii {
 namespace track_memory {

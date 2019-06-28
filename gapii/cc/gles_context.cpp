@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "gapii/cc/gles_spy.h"
-
 #include <iostream>
 #include <sstream>
 #include <string>
+
+#include "gapii/cc/gles_spy.h"
 
 #define GET_SHADER_PRECISION_FORMAT(shader_type, precision_type, format) \
   do {                                                                   \

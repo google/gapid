@@ -85,16 +85,11 @@ message Format {
 message FmtUncompressed {
   stream.Format format = 1;
 }
-message FmtPNG {
-}
-message FmtATC_RGB_AMD {
-}
-message FmtATC_RGBA_EXPLICIT_ALPHA_AMD {
-}
-message FmtATC_RGBA_INTERPOLATED_ALPHA_AMD {
-}
-message FmtETC1_RGB_U8_NORM {
-}
+message FmtPNG {}
+message FmtATC_RGB_AMD {}
+message FmtATC_RGBA_EXPLICIT_ALPHA_AMD {}
+message FmtATC_RGBA_INTERPOLATED_ALPHA_AMD {}
+message FmtETC1_RGB_U8_NORM {}
 message FmtETC2_RGB_U8_NORM {
   bool srgb = 1;
 }
@@ -104,35 +99,23 @@ message FmtETC2_RGBA_U8_NORM {
 message FmtETC2_RGBA_U8U8U8U1_NORM {
   bool srgb = 1;
 }
-message FmtETC2_R_U11_NORM {
-}
-message FmtETC2_RG_U11_NORM {
-}
-message FmtETC2_R_S11_NORM {
-}
-message FmtETC2_RG_S11_NORM {
-}
-message FmtS3_DXT1_RGB {
-}
-message FmtS3_DXT1_RGBA {
-}
-message FmtS3_DXT3_RGBA {
-}
-message FmtS3_DXT5_RGBA {
-}
+message FmtETC2_R_U11_NORM {}
+message FmtETC2_RG_U11_NORM {}
+message FmtETC2_R_S11_NORM {}
+message FmtETC2_RG_S11_NORM {}
+message FmtS3_DXT1_RGB {}
+message FmtS3_DXT1_RGBA {}
+message FmtS3_DXT3_RGBA {}
+message FmtS3_DXT5_RGBA {}
 message FmtASTC {
   uint32 block_width = 1;
   uint32 block_height = 2;
   bool srgb = 3;
 }
-message FmtRGTC1_BC4_R_U8_NORM {
-}
-message FmtRGTC1_BC4_R_S8_NORM {
-}
-message FmtRGTC2_BC5_RG_U8_NORM {
-}
-message FmtRGTC2_BC5_RG_S8_NORM {
-}
+message FmtRGTC1_BC4_R_U8_NORM {}
+message FmtRGTC1_BC4_R_S8_NORM {}
+message FmtRGTC2_BC5_RG_U8_NORM {}
+message FmtRGTC2_BC5_RG_S8_NORM {}
 
 // GAPIS internal structure.
 message ConvertResolvable {

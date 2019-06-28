@@ -15,15 +15,16 @@
  */
 
 #include "../get_vulkan_proc_address.h"
-#include "../dl_loader.h"
-#include "../log.h"
-#include "../target.h"  // STDCALL
+
+#include <windows.h>
+#include <wingdi.h>
 
 #include <sstream>
 #include <string>
 
-#include <windows.h>
-#include <wingdi.h>
+#include "../dl_loader.h"
+#include "../log.h"
+#include "../target.h"  // STDCALL
 
 namespace {
 

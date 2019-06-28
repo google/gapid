@@ -20,12 +20,11 @@
 #include <memory>
 
 #include "MCTargetDesc/AArch64MCTargetDesc.h"
+#include "code_generator.h"
+#include "disassembler.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstBuilder.h"
-
-#include "code_generator.h"
-#include "disassembler.h"
 
 #define NELEM(x) (sizeof(x) / sizeof(x[0]))
 

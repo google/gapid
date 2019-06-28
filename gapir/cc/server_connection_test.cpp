@@ -15,9 +15,6 @@
  */
 
 #include "server_connection.h"
-#include "test_utilities.h"
-
-#include "core/cc/mock_connection.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -25,6 +22,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "core/cc/mock_connection.h"
+#include "test_utilities.h"
 
 using namespace ::testing;
 

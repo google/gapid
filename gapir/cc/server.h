@@ -17,12 +17,6 @@
 #ifndef GAPIR_SERVER_H
 #define GAPIR_SERVER_H
 
-#include "gapir/replay_service/service.grpc.pb.h"
-#include "gapir/replay_service/service.pb.h"
-#include "grpc_replay_service.h"
-
-#include "core/cc/log.h"
-
 #include <grpc++/grpc++.h>
 
 #include <atomic>
@@ -30,6 +24,11 @@
 #include <memory>
 #include <string>
 #include <thread>
+
+#include "core/cc/log.h"
+#include "gapir/replay_service/service.grpc.pb.h"
+#include "gapir/replay_service/service.pb.h"
+#include "grpc_replay_service.h"
 
 namespace gapir {
 

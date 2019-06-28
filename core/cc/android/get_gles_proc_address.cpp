@@ -15,11 +15,12 @@
  */
 
 #include "../get_gles_proc_address.h"
-#include "../dl_loader.h"
-#include "../log.h"
 
 #include <string>
 #include <unordered_map>
+
+#include "../dl_loader.h"
+#include "../log.h"
 
 #if defined(__LP64__)
 #define SYSTEM_LIB_PATH "/system/lib64/"

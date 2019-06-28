@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "stdint.h"
-
 #include "gapil/runtime/cc/runtime.h"
+#include "stdint.h"
 
 #ifdef __cplusplus
 extern "C" {

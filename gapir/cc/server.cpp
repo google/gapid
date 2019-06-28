@@ -15,16 +15,17 @@
  */
 
 #include "server.h"
-#include "gapir/replay_service/service.grpc.pb.h"
-#include "grpc_replay_service.h"
-
-#include "core/cc/log.h"
 
 #include <grpc++/grpc++.h>
 #include <string.h>
+
 #include <functional>
 #include <limits>
 #include <vector>
+
+#include "core/cc/log.h"
+#include "gapir/replay_service/service.grpc.pb.h"
+#include "grpc_replay_service.h"
 
 namespace gapir {
 

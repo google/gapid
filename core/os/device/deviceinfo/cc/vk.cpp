@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-#include "query.h"
-#include "vk_lite.h"
+#include <functional>
+#include <string>
+#include <vector>
 
 #include "core/cc/assert.h"
 #include "core/cc/dl_loader.h"
 #include "core/cc/get_vulkan_proc_address.h"
 #include "core/cc/target.h"
-
-#include <functional>
-#include <string>
-#include <vector>
+#include "query.h"
+#include "vk_lite.h"
 
 namespace query {
 

@@ -15,10 +15,12 @@
  */
 
 #include "asset_replay_service.h"
-#include "core/cc/log.h"
 
 #include <unistd.h>
+
 #include <memory>
+
+#include "core/cc/log.h"
 
 namespace {
 

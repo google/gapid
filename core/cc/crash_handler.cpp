@@ -15,6 +15,7 @@
  */
 
 #include "core/cc/crash_handler.h"
+
 #include "core/cc/log.h"
 
 namespace core {

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "mock_connection.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <string>
+
+#include "mock_connection.h"
 
 using ::testing::_;
 using ::testing::DoAll;

@@ -14,9 +14,9 @@
 
 #include "string.h"
 
-#include "core/memory/arena/cc/arena.h"
-
 #include <gtest/gtest.h>
+
+#include "core/memory/arena/cc/arena.h"
 
 TEST(StringTest, empty) {
   gapil::String str;

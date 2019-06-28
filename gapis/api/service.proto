@@ -301,8 +301,7 @@ message BindingValue {
 }
 
 // Unbound is a placeholder value to represent unbound descriptor set value.
-message Unbound {
-}
+message Unbound {}
 
 // ImageInfo is a image value bound to a descriptor binding.
 message ImageInfo {
@@ -415,8 +414,7 @@ message MemoryBinding {
 
 // A normal full binding of a resource to a memory object.
 // No additional information is needed.
-message NormalBinding {
-}
+message NormalBinding {}
 
 enum AspectType {
   COLOR = 0;

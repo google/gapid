@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include "query.h"
-
 #include "core/cc/target.h"
+#include "query.h"
 
 #if (defined(__x86_64) || defined(__i386)) && (TARGET_OS != GAPID_OS_ANDROID)
 #if !defined(_MSC_VER) || defined(__GNUC__)

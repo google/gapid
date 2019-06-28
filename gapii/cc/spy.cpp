@@ -16,40 +16,36 @@
 
 #include "spy.h"
 
+#include <cstdlib>
+#include <memory>
+#include <sstream>
+#include <vector>
+
 #include "connection_header.h"
 #include "connection_stream.h"
-
-#include "gapil/runtime/cc/runtime.h"
-
-#include "gapii/cc/gles_exports.h"
-#include "gapii/cc/spy.h"
-
 #include "core/cc/gl/formats.h"
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
 #include "core/cc/target.h"
 #include "core/cc/timer.h"
 #include "core/os/device/deviceinfo/cc/query.h"
-
+#include "gapii/cc/gles_exports.h"
+#include "gapii/cc/spy.h"
+#include "gapil/runtime/cc/runtime.h"
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 #include "gapis/capture/capture.pb.h"
 #include "gapis/memory/memory_pb/memory.pb.h"
-
-#include <cstdlib>
-#include <memory>
-#include <sstream>
-#include <vector>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
 #include "windows/wgl.h"
 #endif  //  TARGET_OS == GAPID_OS_WINDOWS
 
 #if TARGET_OS == GAPID_OS_ANDROID
-#include "gapii/cc/android/gvr_install.h"
-#include "gapii/cc/android/installer.h"
-
 #include <jni.h>
 #include <sys/prctl.h>
+
+#include "gapii/cc/android/gvr_install.h"
+#include "gapii/cc/android/installer.h"
 
 static std::unique_ptr<gapii::Installer> gInstaller;
 

@@ -17,7 +17,6 @@
 #include "id.h"
 
 #include <city.h>
-
 #include <string.h>
 
 #include <iomanip>

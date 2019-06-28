@@ -17,11 +17,11 @@
 #ifndef GAPIR_CRASH_REPORTER_H
 #define GAPIR_CRASH_REPORTER_H
 
-#include "core/cc/crash_handler.h"
-#include "gapir/cc/replay_service.h"
-
 #include <memory>
 #include <string>
+
+#include "core/cc/crash_handler.h"
+#include "gapir/cc/replay_service.h"
 
 namespace gapir {
 

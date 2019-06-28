@@ -15,7 +15,6 @@
 #include "test.h"
 
 #include "core/memory/arena/cc/arena.h"
-
 #include "gapil/runtime/cc/map.inc"
 #include "gapil/runtime/cc/ref.inc"
 #include "gapil/runtime/cc/runtime.h"

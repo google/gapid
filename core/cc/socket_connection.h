@@ -17,10 +17,11 @@
 #ifndef CORE_SOCKET_CONNECTION_H
 #define CORE_SOCKET_CONNECTION_H
 
-#include "connection.h"
-
 #include <stdint.h>
+
 #include <memory>
+
+#include "connection.h"
 
 namespace core {
 

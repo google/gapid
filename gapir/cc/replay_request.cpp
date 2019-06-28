@@ -15,13 +15,12 @@
  */
 
 #include "replay_request.h"
-#include "memory_manager.h"
 
 #include "core/cc/log.h"
+#include "memory_manager.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
-
 #include <string.h>
 
 #include <string>

@@ -14,13 +14,13 @@
 
 #include "runtime.h"
 
-#include "core/cc/assert.h"
-#include "core/cc/log.h"
-#include "core/memory/arena/cc/arena.h"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdlib.h>
+
+#include "core/cc/assert.h"
+#include "core/cc/log.h"
+#include "core/memory/arena/cc/arena.h"
 
 #if TARGET_OS == GAPID_OS_ANDROID
 // for snprintf

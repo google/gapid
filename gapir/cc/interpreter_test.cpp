@@ -15,12 +15,13 @@
  */
 
 #include "interpreter.h"
-#include "test_utilities.h"
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <vector>
+
+#include "test_utilities.h"
 
 namespace gapir {
 namespace test {

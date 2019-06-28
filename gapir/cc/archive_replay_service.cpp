@@ -15,10 +15,11 @@
  */
 
 #include "archive_replay_service.h"
-#include "core/cc/log.h"
 
 #include <fstream>
 #include <memory>
+
+#include "core/cc/log.h"
 
 namespace gapir {
 

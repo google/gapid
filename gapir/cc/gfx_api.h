@@ -17,9 +17,9 @@
 #ifndef GAPIR_GFX_API_H
 #define GAPIR_GFX_API_H
 
-#include "function_table.h"
-
 #include <stdint.h>
+
+#include "function_table.h"
 
 namespace gapir {
 

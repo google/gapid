@@ -15,15 +15,15 @@
  */
 
 #include "pack_encoder.h"
-#include "chunk_writer.h"
-
-#include "core/cc/stream_writer.h"
 
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/message.h>
 
 #include <mutex>
+
+#include "chunk_writer.h"
+#include "core/cc/stream_writer.h"
 
 using ::google::protobuf::Descriptor;
 using ::google::protobuf::DescriptorProto;

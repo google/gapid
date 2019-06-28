@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#include "core/memory/arena/cc/arena.h"
-
-#include "gapil/runtime/cc/encoder.h"
 #include "gapil/runtime/cc/runtime.h"
 
+#include "core/memory/arena/cc/arena.h"
 #include "gapii/cc/call_observer.h"
 #include "gapii/cc/pack_encoder.h"
+#include "gapil/runtime/cc/encoder.h"
 
 #if 0
 #define DEBUG_PRINT(...) GAPID_DEBUG(__VA_ARGS__)

@@ -19,14 +19,14 @@
 
 #ifdef __cplusplus
 
-#include "id.h"
-#include "target.h"
+#include <stdint.h>
+#include <stdio.h>
 
 #include <string>
 #include <unordered_map>
 
-#include <stdint.h>
-#include <stdio.h>
+#include "id.h"
+#include "target.h"
 
 #if TARGET_OS == GAPID_OS_LINUX
 #define GAPID_ARCHIVE_USE_MMAP 1

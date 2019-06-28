@@ -17,12 +17,12 @@
 #ifndef GAPIR_RESOURCE_CACHE_H
 #define GAPIR_RESOURCE_CACHE_H
 
+#include <memory>
+#include <vector>
+
 #include "replay_service.h"
 #include "resource.h"
 #include "resource_loader.h"
-
-#include <memory>
-#include <vector>
 
 namespace gapir {
 

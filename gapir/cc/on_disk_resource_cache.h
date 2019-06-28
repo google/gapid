@@ -17,15 +17,14 @@
 #ifndef GAPIR_ON_DISK_RESOURCE_CACHE_H
 #define GAPIR_ON_DISK_RESOURCE_CACHE_H
 
-#include "replay_service.h"
-#include "resource_cache.h"
-#include "resource_loader.h"
-
-#include "core/cc/archive.h"
-
 #include <limits>
 #include <memory>
 #include <string>
+
+#include "core/cc/archive.h"
+#include "replay_service.h"
+#include "resource_cache.h"
+#include "resource_loader.h"
 
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
 #include <unistd.h>

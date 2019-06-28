@@ -18,6 +18,7 @@
 #define CORE_THREAD_H
 
 #include <stdint.h>
+
 #include <functional>
 
 namespace core {

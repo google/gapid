@@ -20,7 +20,6 @@
 #include "gapii/cc/gles_types.h"
 #include "gapii/cc/spy.h"
 #include "gapii/cc/state_serializer.h"
-
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 
 namespace {
@@ -639,8 +638,8 @@ ImageData Reader::ReadPixels(GLsizei w, GLsizei h) {
 
   auto spy = Spy::get();
   auto observer = spy->enter("subUncompressedImageSize", GlesSpy::kApiIndex);
-  auto size = spy->subUncompressedImageSize(observer, [] {}, w, h,
-                                            img.dataFormat, img.dataType);
+  auto size = spy->subUncompressedImageSize(
+      observer, [] {}, w, h, img.dataFormat, img.dataType);
   spy->exit();
 
   img.sizedFormat = GL_NONE;

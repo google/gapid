@@ -17,10 +17,10 @@
 #ifndef GAPII_CONNECTION_STREAM_H
 #define GAPII_CONNECTION_STREAM_H
 
+#include <memory>
+
 #include "core/cc/stream_reader.h"
 #include "core/cc/stream_writer.h"
-
-#include <memory>
 
 namespace core {
 

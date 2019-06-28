@@ -17,20 +17,18 @@
 #ifndef GAPII_CALL_OBSERVER_H
 #define GAPII_CALL_OBSERVER_H
 
-#include "abort_exception.h"
-#include "pack_encoder.h"
-
-#include "gapil/runtime/cc/runtime.h"
-#include "gapil/runtime/cc/slice.inc"
-#include "gapil/runtime/cc/string.h"
-
-#include "core/cc/interval_list.h"
-#include "core/cc/vector.h"
-#include "core/memory/arena/cc/arena.h"
-
 #include <stack>
 #include <type_traits>
 #include <unordered_map>
+
+#include "abort_exception.h"
+#include "core/cc/interval_list.h"
+#include "core/cc/vector.h"
+#include "core/memory/arena/cc/arena.h"
+#include "gapil/runtime/cc/runtime.h"
+#include "gapil/runtime/cc/slice.inc"
+#include "gapil/runtime/cc/string.h"
+#include "pack_encoder.h"
 
 namespace gapii {
 

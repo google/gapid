@@ -14,9 +14,9 @@
 
 #include "ref.inc"
 
-#include "core/memory/arena/cc/arena.h"
-
 #include <gtest/gtest.h>
+
+#include "core/memory/arena/cc/arena.h"
 
 template <typename T>
 class RefTest : public ::testing::Test {};

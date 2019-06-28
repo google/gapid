@@ -17,7 +17,6 @@
 #include "gapii/cc/gles_exports.h"
 #include "gapii/cc/gles_spy.h"
 #include "gapii/cc/gles_types.h"
-
 #include "gapis/api/gles/gles_pb/extras.pb.h"
 
 #ifndef __STDC_FORMAT_MACROS

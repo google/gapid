@@ -15,10 +15,11 @@
  */
 
 #include "post_buffer.h"
-#include "replay_service.h"
 
 #include <cstring>
 #include <new>
+
+#include "replay_service.h"
 
 namespace gapir {
 

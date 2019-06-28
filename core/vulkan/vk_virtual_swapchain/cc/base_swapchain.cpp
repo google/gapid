@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "platform.h"
-
 #include "base_swapchain.h"
+
+#include "platform.h"
 
 namespace swapchain {
 

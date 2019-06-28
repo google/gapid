@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <vulkan/vk_layer.h>
+#include <vulkan/vulkan.h>
+
 #include <cstdio>
 #include <cstring>
 #include <mutex>
@@ -21,8 +24,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <vulkan/vk_layer.h>
-#include <vulkan/vulkan.h>
 #include "swapchain.h"
 
 #define LAYER_NAME "VirtualSwapchain"

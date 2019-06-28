@@ -17,9 +17,9 @@
 #ifndef CORE_FILE_WRITER_H
 #define CORE_FILE_WRITER_H
 
-#include "stream_writer.h"
-
 #include <stdio.h>
+
+#include "stream_writer.h"
 
 namespace core {
 

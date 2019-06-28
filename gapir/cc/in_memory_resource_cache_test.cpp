@@ -15,17 +15,18 @@
  */
 
 #include "in_memory_resource_cache.h"
-#include "cached_resource_loader.h"
-#include "memory_manager.h"
-#include "mock_resource_loader.h"
-#include "replay_service.h"
-#include "test_utilities.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <vector>
+
+#include "cached_resource_loader.h"
+#include "memory_manager.h"
+#include "mock_resource_loader.h"
+#include "replay_service.h"
+#include "test_utilities.h"
 
 using namespace ::testing;
 

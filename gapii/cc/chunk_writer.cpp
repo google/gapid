@@ -16,9 +16,9 @@
 
 #include "chunk_writer.h"
 
-#include "core/cc/stream_writer.h"
-
 #include <google/protobuf/io/coded_stream.h>
+
+#include "core/cc/stream_writer.h"
 
 using ::google::protobuf::io::CodedOutputStream;
 

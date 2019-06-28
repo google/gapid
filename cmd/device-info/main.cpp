@@ -25,6 +25,7 @@
 #endif
 
 #include <google/protobuf/util/json_util.h>
+
 #include "core/cc/log.h"
 #include "core/os/device/device.pb.h"
 #include "core/os/device/deviceinfo/cc/instance.h"

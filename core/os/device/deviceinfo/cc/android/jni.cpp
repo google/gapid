@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "../instance.h"
-
 #include <jni.h>
+
+#include "../instance.h"
 
 extern "C" {
 

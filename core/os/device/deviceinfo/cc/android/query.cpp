@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-#include "egl_lite.h"
-
 #include "../query.h"
 
-#include "core/cc/assert.h"
-#include "core/cc/get_gles_proc_address.h"
-#include "core/cc/log.h"
+#include <android/log.h>
+#include <sys/system_properties.h>
 
 #include <cstring>
 #include <sstream>
 
-#include <android/log.h>
-#include <sys/system_properties.h>
+#include "core/cc/assert.h"
+#include "core/cc/get_gles_proc_address.h"
+#include "core/cc/log.h"
+#include "egl_lite.h"
 
 #define LOG_ERR(...) \
   __android_log_print(ANDROID_LOG_ERROR, "GAPID", __VA_ARGS__);

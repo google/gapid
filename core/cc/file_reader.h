@@ -17,10 +17,10 @@
 #ifndef CORE_FILE_READER_H
 #define CORE_FILE_READER_H
 
-#include "stream_reader.h"
-
 #include <stdint.h>
 #include <stdio.h>
+
+#include "stream_reader.h"
 
 namespace core {
 

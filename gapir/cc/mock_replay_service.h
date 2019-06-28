@@ -17,13 +17,13 @@
 #ifndef GAPIR_MOCK_REPLAY_CONNECTION_H
 #define GAPIR_MOCK_REPLAY_CONNECTION_H
 
-#include "grpc_replay_service.h"
-#include "resource.h"
+#include <gmock/gmock.h>
 
 #include <memory>
 #include <string>
 
-#include <gmock/gmock.h>
+#include "grpc_replay_service.h"
+#include "resource.h"
 
 namespace gapir {
 namespace test {
