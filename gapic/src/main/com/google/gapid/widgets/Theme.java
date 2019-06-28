@@ -80,6 +80,7 @@ public interface Theme {
   @Icon(file = "histogram.png") public Image toggleHistogram();
   @Icon(file = "lit.png") public Image lit();
   @Icon(file = "logo_128.png") public Image dialogLogo();
+  @Icon(file = "more.png") public Image more();
   @Icon(file = "normals.png") public Image normals();
   @Icon(file = "open.png") public Image open();
   @Icon(file = "overdraw.png") public Image overdraw();

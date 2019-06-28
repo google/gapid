@@ -62,8 +62,10 @@ public class Settings {
   public String[] tabs = new String[] { "ApiCalls", "Framebuffer", "ApiState", "Memory" };
   public String[] hiddenTabs = new String[] { "Log" };
   public String lastOpenDir = "";
+  public int[] programTreeSplitterWeights = new int[] { 20, 80 };
+  public int[] programUniformsSplitterWeights = new int[] { 70, 30 };
   public int[] reportSplitterWeights = new int[] { 75, 25 };
-  public int[] shaderSplitterWeights = new int[] { 70, 30 };
+  public int[] shaderTreeSplitterWeights = new int[] { 20, 80 };
   public int[] texturesSplitterWeights = new int[] { 20, 80 };
   public String traceDevice = "";
   public String traceType = "Graphics";
@@ -209,10 +211,14 @@ public class Settings {
     tabStructure = properties.getProperty("tabs.structure", tabStructure);
     hiddenTabs = getStringList(properties, "tabs.hidden", hiddenTabs);
     lastOpenDir = properties.getProperty("lastOpenDir", lastOpenDir);
+    programTreeSplitterWeights =
+        getIntList(properties, "programTree.splitter.weights", programTreeSplitterWeights);
+    programUniformsSplitterWeights =
+        getIntList(properties, "programUniforms.splitter.weights", programUniformsSplitterWeights);
     reportSplitterWeights =
         getIntList(properties, "report.splitter.weights", reportSplitterWeights);
-    shaderSplitterWeights =
-        getIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
+    shaderTreeSplitterWeights =
+        getIntList(properties, "shaderTree.splitter.weights", shaderTreeSplitterWeights);
     texturesSplitterWeights =
         getIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
     traceDevice = properties.getProperty("trace.device", traceDevice);
@@ -256,8 +262,10 @@ public class Settings {
     properties.setProperty("tabs.structure", tabStructure);
     setStringList(properties, "tabs.hidden", hiddenTabs);
     properties.setProperty("lastOpenDir", lastOpenDir);
+    setIntList(properties, "programTree.splitter.weights", programTreeSplitterWeights);
+    setIntList(properties, "programUniforms.splitter.weights", programUniformsSplitterWeights);
     setIntList(properties, "report.splitter.weights", reportSplitterWeights);
-    setIntList(properties, "shader.splitter.weights", shaderSplitterWeights);
+    setIntList(properties, "shaderTree.splitter.weights", shaderTreeSplitterWeights);
     setIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
     properties.setProperty("trace.device", traceDevice);
     properties.setProperty("trace.type", traceType);
