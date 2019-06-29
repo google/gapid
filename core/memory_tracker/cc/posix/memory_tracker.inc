@@ -15,6 +15,7 @@
  */
 
 #include <functional>
+
 namespace gapii {
 namespace track_memory {
 
