@@ -210,7 +210,7 @@ public class TraceTargetPickerDialog extends DialogBase implements TraceTargets.
     resources = new LocalResourceManager(JFaceResources.getResources(), tree.getTree());
 
     tree.getTree().addListener(SWT.Selection, e -> {
-      selected = cast(((TreeItem)e.item).getData());
+      selected = (e.item == null) ? null : cast(((TreeItem)e.item).getData());
       Button ok = getButton(IDialogConstants.OK_ID);
       if (ok != null) {
         ok.setEnabled(selected != null && selected.isTraceable());
