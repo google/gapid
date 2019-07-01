@@ -28,14 +28,17 @@ import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
+import static com.google.gapid.widgets.Widgets.createTreeColumn;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
+import static com.google.gapid.widgets.Widgets.sorting;
 import static java.util.logging.Level.FINE;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.primitives.UnsignedLongs;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
@@ -90,6 +93,7 @@ import org.eclipse.swt.widgets.TreeItem;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -372,10 +376,16 @@ public class ShaderView extends Composite
 
     private TreeViewer createShaderSelector(Composite parent) {
       TreeViewer treeViewer = createTreeViewer(parent, SWT.FILL);
-      treeViewer.getTree().setHeaderVisible(false);
+      treeViewer.getTree().setHeaderVisible(true);
       treeViewer.setContentProvider(createShaderContentProvider());
       treeViewer.setLabelProvider(new LabelProvider());
       treeViewer.getControl().addListener(SWT.Selection, e -> updateSelection());
+
+      sorting(treeViewer,
+          createTreeColumn(treeViewer, "ID", Data::getId,
+              (d1, d2) -> UnsignedLongs.compare(d1.getSortId(), d2.getSortId())),
+          createTreeColumn(treeViewer, "Label", Data::getLabel,
+              Comparator.comparing(Data::getLabel)));
       return treeViewer;
     }
 
@@ -505,6 +515,7 @@ public class ShaderView extends Composite
             selectionIndex = shaderViewer.getTree().indexOf(selection);
           }
           shaderViewer.setInput(shaders);
+          packColumns(shaderViewer.getTree());
 
           if (selectionIndex >= 0 && selectionIndex < shaderViewer.getTree().getItemCount()) {
             selection = shaderViewer.getTree().getItem(selectionIndex);
@@ -732,17 +743,16 @@ public class ShaderView extends Composite
       this.info = info;
     }
 
-    @Override
-    public String toString() {
-      String handle = info.getHandle();
-      String label = info.getLabel();
+    public String getId() {
+      return info.getHandle();
+    }
 
-      String[] handleComponents = handle.split("(<)|(><)|(>)");
-      String formattedHandle = handle;
-      if (handleComponents.length == 3) {
-        formattedHandle = handleComponents[0] + " " + handleComponents[1] + " | Cmd: " + handleComponents[2];
-      }
-      return (label.isEmpty()) ? formattedHandle : formattedHandle + " | " + label;
+    public long getSortId() {
+      return info.getOrder();
+    }
+
+    public String getLabel() {
+      return info.getLabel();
     }
   }
 }
