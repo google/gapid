@@ -105,42 +105,48 @@ struct Options {
 #endif
 
   static void PrintHelp() {
-    printf("gapir: gapir is a VM for the graphics api debugger system\n");
-    printf("Usage: gapir [args]\n");
-    printf("Args:\n");
-    printf("  --replay-archive string\n");
-    printf("    Path to an archive directory to replay, and then exit\n");
-    printf("  --postback-dir string\n");
-    printf(
+    GAPID_WARNING(
+        "gapir: gapir is a VM for the graphics api debugger system\n");
+    GAPID_WARNING("Usage: gapir [args]\n");
+    GAPID_WARNING("Args:\n");
+    GAPID_WARNING("  --replay-archive string\n");
+    GAPID_WARNING(
+        "    Path to an archive directory to replay, and then exit\n");
+    GAPID_WARNING("  --postback-dir string\n");
+    GAPID_WARNING(
         "    Path to a directory to use for outputs of the replay-archive\n");
-    printf("  --auth-token-file string\n");
-    printf("    Path to the a file containing the authentication token\n");
-    printf("  --enable-disk-cache\n");
-    printf(
+    GAPID_WARNING("  --auth-token-file string\n");
+    GAPID_WARNING(
+        "    Path to the a file containing the authentication token\n");
+    GAPID_WARNING("  --enable-disk-cache\n");
+    GAPID_WARNING(
         "    If set, then gapir will create and use a disk cache for "
         "resources.\n");
-    printf("  --disk-cache-path string\n");
-    printf("    Path to a directory that will be used for the disk cache.\n");
-    printf("    If it contains an existing cache, that will be used\n");
-    printf("    If unset, the disk cache will default to a temp directory\n");
-    printf("  --cleanup-disk-cache\n");
-    printf("    If set, the disk cache will be deleted when gapir exits.\n");
-    printf("  --port int\n");
-    printf("    The port to use when listening for connections\n");
-    printf("  --log-level <F|E|W|I|D|V>\n");
-    printf("    Sets the log level for gapir.\n");
-    printf("  --log string\n");
-    printf("    Sets the path for the log file\n");
-    printf("  --idle-timeout-sec int\n");
-    printf(
+    GAPID_WARNING("  --disk-cache-path string\n");
+    GAPID_WARNING(
+        "    Path to a directory that will be used for the disk cache.\n");
+    GAPID_WARNING("    If it contains an existing cache, that will be used\n");
+    GAPID_WARNING(
+        "    If unset, the disk cache will default to a temp directory\n");
+    GAPID_WARNING("  --cleanup-disk-cache\n");
+    GAPID_WARNING(
+        "    If set, the disk cache will be deleted when gapir exits.\n");
+    GAPID_WARNING("  --port int\n");
+    GAPID_WARNING("    The port to use when listening for connections\n");
+    GAPID_WARNING("  --log-level <F|E|W|I|D|V>\n");
+    GAPID_WARNING("    Sets the log level for gapir.\n");
+    GAPID_WARNING("  --log string\n");
+    GAPID_WARNING("    Sets the path for the log file\n");
+    GAPID_WARNING("  --idle-timeout-sec int\n");
+    GAPID_WARNING(
         "    Timeout if gapir has not received communication from the server "
         "(default infinity)\n");
-    printf("  --wait-for-debugger\n");
-    printf(
+    GAPID_WARNING("  --wait-for-debugger\n");
+    GAPID_WARNING(
         "    Causes gapir to pause on init, and wait for a debugger to "
         "connect\n");
-    printf("   -h,-help,--help\n");
-    printf("    Prints this help text and exits.\n");
+    GAPID_WARNING("   -h,-help,--help\n");
+    GAPID_WARNING("    Prints this help text and exits.\n");
   }
 
   static void warnAndroid(const char* flag) {
@@ -544,48 +550,63 @@ void android_process(struct android_app* app, int32_t cmd) {
   }
 }
 
-}  // namespace
-
 // Extract command line arguments from the extra of Android intent:
 //   adb shell am start -n <...> -e gapir-launch-args "'list of arguments to be
 //   extracted'"
 // Note the quoting: from host terminal adb command, we need to double-escape
 // the extra args string, as it is first quoted by host terminal emulator
 // (e.g. bash), then it must be quoted for the on-device shell.
-std::vector<std::string> GetArgsFromIntents(struct android_app* state) {
-  assert(state != nullptr);
+std::vector<std::string> getArgsFromIntents(struct android_app* app,
+                                            Options* opts) {
+  assert(app != nullptr);
+  assert(opts != nullptr);
 
   // The extra flag to indicate arguments
   const char* intent_flag = "gapir-intent-flag";
 
-  JavaVM* java_vm = state->activity->vm;
-  JNIEnv* jni_env;
-  assert(java_vm->AttachCurrentThread(&jni_env, nullptr) == JNI_OK);
-  jobject activity_clazz = state->activity->clazz;
-  jmethodID get_intent_method_id =
-      jni_env->GetMethodID(jni_env->GetObjectClass(activity_clazz), "getIntent",
-                           "()Landroid/content/Intent;");
-  jobject intent =
-      jni_env->CallObjectMethod(activity_clazz, get_intent_method_id);
+  JNIEnv* env;
+  app->activity->vm->AttachCurrentThread(&env, 0);
+
+  // Select replay archive mode if replay assets are detected
+  jobject j_asset_manager = jni_call_o(env, app->activity->clazz, "getAssets",
+                                       "()Landroid/content/res/AssetManager;");
+  AAssetManager* asset_manager = AAssetManager_fromJava(env, j_asset_manager);
+
+  AAsset* asset = AAssetManager_open(asset_manager, kReplayAssetToDetect,
+                                     AASSET_MODE_UNKNOWN);
+
+  if (asset != nullptr) {
+    opts->SetMode(kReplayArchive);
+    AAsset_close(asset);
+  } else {
+    opts->SetMode(kReplayServer);
+  }
+
+  jobject intent = jni_call_o(env, app->activity->clazz, "getIntent",
+                              "()Landroid/content/Intent;");
+
   jmethodID get_string_extra_method_id =
-      jni_env->GetMethodID(jni_env->GetObjectClass(intent), "getStringExtra",
-                           "(Ljava/lang/String;)Ljava/lang/String;");
+      env->GetMethodID(env->GetObjectClass(intent), "getStringExtra",
+                       "(Ljava/lang/String;)Ljava/lang/String;");
+
   jvalue get_string_extra_args;
-  get_string_extra_args.l = jni_env->NewStringUTF(intent_flag);
-  jstring extra_jstring = static_cast<jstring>(jni_env->CallObjectMethodA(
+  get_string_extra_args.l = env->NewStringUTF(intent_flag);
+
+  jstring extra_jstring = static_cast<jstring>(env->CallObjectMethodA(
       intent, get_string_extra_method_id, &get_string_extra_args));
 
   std::string extra_string;
   if (extra_jstring) {
-    const char* extra_cstr = jni_env->GetStringUTFChars(extra_jstring, nullptr);
+    const char* extra_cstr = env->GetStringUTFChars(extra_jstring, nullptr);
     extra_string = extra_cstr;
-    jni_env->ReleaseStringUTFChars(extra_jstring, extra_cstr);
-    jni_env->DeleteLocalRef(extra_jstring);
+    env->ReleaseStringUTFChars(extra_jstring, extra_cstr);
+    env->DeleteLocalRef(extra_jstring);
   }
 
-  jni_env->DeleteLocalRef(get_string_extra_args.l);
-  jni_env->DeleteLocalRef(intent);
-  java_vm->DetachCurrentThread();
+  env->DeleteLocalRef(get_string_extra_args.l);
+  env->DeleteLocalRef(intent);
+
+  app->activity->vm->DetachCurrentThread();
 
   // Prepare arguments with a value for argv[0], as gflags expects
   std::vector<std::string> args;
@@ -606,31 +627,16 @@ std::vector<std::string> GetArgsFromIntents(struct android_app* state) {
   return args;
 }
 
+}  // namespace
+
 // Main function for android
 void android_main(struct android_app* app) {
+  // Start up in verbose mode until we have parsed any flags passed.
+  GAPID_LOGGER_INIT(LOG_LEVEL_VERBOSE, "gapir", "");
+
   Options opts;
 
-  JNIEnv* env;
-  app->activity->vm->AttachCurrentThread(&env, 0);
-
-  // Select replay archive mode if replay assets are detected
-  jobject j_asset_manager = jni_call_o(env, app->activity->clazz, "getAssets",
-                                       "()Landroid/content/res/AssetManager;");
-  AAssetManager* asset_manager = AAssetManager_fromJava(env, j_asset_manager);
-
-  AAsset* asset = AAssetManager_open(asset_manager, kReplayAssetToDetect,
-                                     AASSET_MODE_UNKNOWN);
-
-  if (asset != nullptr) {
-    opts.SetMode(kReplayArchive);
-    AAsset_close(asset);
-  } else {
-    opts.SetMode(kReplayServer);
-  }
-
-  app->activity->vm->DetachCurrentThread();
-
-  std::vector<std::string> args = GetArgsFromIntents(app);
+  std::vector<std::string> args = getArgsFromIntents(app, &opts);
   Options::Parse(args, &opts);
 
   if (opts.waitForDebugger) {
@@ -642,13 +648,14 @@ void android_main(struct android_app* app) {
     Options::PrintHelp();
     return;
   } else if (opts.version) {
-    printf("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
+    GAPID_INFO("GAPIR version " GAPID_VERSION_AND_BUILD "\n");
     return;
   } else if (opts.mode == kConflict) {
     GAPID_ERROR("Argument conflicts.");
     return;
   }
 
+  // Restart logging with the correct level now that we've parsed the args.
   GAPID_LOGGER_INIT(opts.logLevel, "gapir", opts.logPath);
 
   CrashHandler crashHandler;
