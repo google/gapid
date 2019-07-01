@@ -107,7 +107,7 @@ Packages:
 `),
 
 		// Screen state queries
-		stub.RespondTo(adbPath.System()+` -s screen_off_locked_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s screen_off_locked_device shell dumpsys window`, `
 mHasSoftInput=true
 mAwake=false
 mScreenOnEarly=true mScreenOnFully=true
@@ -115,7 +115,7 @@ mDockLayer=268435456 mStatusBarLayer=-1
 mShowingDream=false mDreamingLockscreen=true mDreamingSleepToken=null
 mFocusedWindow=Window{7f1fdc4 u0 com.google.gapid.gltests/com.google.gapid.gltests.MainActivity}
 ...`),
-		stub.RespondTo(adbPath.System()+` -s screen_off_unlocked_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s screen_off_unlocked_device shell dumpsys window`, `
 mHomePressed=false
 mAwake=falsemScreenOnEarly=true mScreenOnFully=true
 mKeyguardDrawComplete=true mWindowManagerDrawComplete=true
@@ -123,7 +123,7 @@ mDockLayer=268435456 mStatusBarLayer=0
 mShowingDream=false mShowingLockscreen=false mDreamingSleepToken=null
 mStatusBar=Window{5033a83 u0 StatusBar} isStatusBarKeyguard=false
 ...`),
-		stub.RespondTo(adbPath.System()+` -s screen_on_locked_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s screen_on_locked_device shell dumpsys window`, `
 mHasSoftInput=true
 mAwake=true
 mScreenOnEarly=true mScreenOnFully=true
@@ -131,7 +131,7 @@ mDockLayer=268435456 mStatusBarLayer=-1
 mShowingDream=false mDreamingLockscreen=true mDreamingSleepToken=null
 mFocusedWindow=Window{7f1fdc4 u0 com.google.gapid.gltests/com.google.gapid.gltests.MainActivity}
 ...`),
-		stub.RespondTo(adbPath.System()+` -s screen_on_unlocked_device shell dumpsys window policy`, `
+		stub.RespondTo(adbPath.System()+` -s screen_on_unlocked_device shell dumpsys window`, `
 mHomePressed=false
 mAwake=truemScreenOnEarly=true mScreenOnFully=true
 mKeyguardDrawComplete=true mWindowManagerDrawComplete=true
@@ -150,7 +150,7 @@ u0_a69    22841 5062  1255788 88672 SyS_epoll_ 0000000000 S com.example.meh`),
 		stub.Regex(`adb -s \S*no_ps\S*device shell ps`, stub.Respond("/system/bin/sh: ps: not found")),
 		stub.Regex(`adb -s \S*no_pgrep\S*device shell pgrep \S+`, stub.Respond("/system/bin/sh: pgrep: not found")),
 
-		stub.RespondTo(adbPath.System()+` -s invalid_device shell dumpsys window policy`, `not a normal response`),
+		stub.RespondTo(adbPath.System()+` -s invalid_device shell dumpsys window`, `not a normal response`),
 
 		// Root command responses
 		stub.RespondTo(adbPath.System()+` -s production_device root`, `adbd cannot run as root in production builds`),
