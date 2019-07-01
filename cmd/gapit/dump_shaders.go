@@ -91,7 +91,7 @@ func (verb *dumpShadersVerb) Run(ctx context.Context, flags flag.FlagSet) error 
 
 				shaderSource := resourceData.(*api.ResourceData).GetShader().GetSource()
 				shaderType := resourceData.(*api.ResourceData).GetShader().GetType()
-				filename := file.SanitizePath(v.GetHandle() + "." + shaderType.Extension())
+				filename := file.SanitizePath(v.GetID().ID().String() + "." + shaderType.Extension())
 				f, err := os.Create(filename)
 				if err != nil {
 					log.E(ctx, "Could open file to write %s %v", v.GetHandle(), err)

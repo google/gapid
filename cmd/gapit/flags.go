@@ -216,7 +216,7 @@ type (
 	ReplaceResourceFlags struct {
 		Gapis                GapisFlags
 		Gapir                GapirFlags
-		Handle               string `help:"required. handle of the resource to replace"`
+		Handle               string `help:"required. handle or ID of the resource to replace"`
 		ResourcePath         string `help:"file path for the new resource"`
 		At                   int    `help:"command index to replace the resource(s) at"`
 		UpdateResourceBinary string `help:"shaders only. binary to run for every shader; consumes resource data from standard input and writes to standard output"`

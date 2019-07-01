@@ -89,7 +89,8 @@ func (verb *replaceResourceVerb) Run(ctx context.Context, flags flag.FlagSet) er
 	switch {
 	case verb.Handle != "":
 		matchedResource, err := resources.FindSingle(func(t api.ResourceType, r service.Resource) bool {
-			return t == api.ResourceType_ShaderResource && strings.Contains(r.GetHandle(), verb.Handle)
+			return t == api.ResourceType_ShaderResource &&
+				(strings.Contains(r.GetHandle(), verb.Handle) || strings.Contains(r.GetID().ID().String(), verb.Handle))
 		})
 		if err != nil {
 			return err
