@@ -696,22 +696,19 @@ public class ShaderView extends Composite
    */
   private static class Type implements ShaderPanel.UpdateShader {
     public final API.ResourceType type;
-    public final String selectMessage;
     public final ShaderPanel.UpdateShader onSourceEdited;
 
-    public Type(
-        API.ResourceType type, String selectMessage, ShaderPanel.UpdateShader onSourceEdited) {
+    public Type(API.ResourceType type, ShaderPanel.UpdateShader onSourceEdited) {
       this.type = type;
-      this.selectMessage = selectMessage;
       this.onSourceEdited = onSourceEdited;
     }
 
     public static Type shader(ShaderPanel.UpdateShader onSourceEdited) {
-      return new Type(API.ResourceType.ShaderResource, Messages.SELECT_SHADER, onSourceEdited);
+      return new Type(API.ResourceType.ShaderResource, onSourceEdited);
     }
 
     public static Type program() {
-      return new Type(API.ResourceType.ProgramResource, Messages.SELECT_PROGRAM, null);
+      return new Type(API.ResourceType.ProgramResource, null);
     }
 
     @Override
