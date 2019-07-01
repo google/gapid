@@ -340,7 +340,7 @@ public class ShaderView extends Composite
       MenuItem contextFilterSelector = new MenuItem(searchBox.getNestedMenu(), SWT.CHECK);
       contextFilterSelector.setText("Include all contexts");
       contextFilterSelector.addListener(SWT.Selection, e -> updateContextFilter(contextFilterSelector.getSelection()));
-      contextFilterSelector.setSelection(false);
+      contextFilterSelector.setSelection(true);
 
       shaderViewer = createShaderSelector(treeViewerContainer);
       shaderViewer.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
