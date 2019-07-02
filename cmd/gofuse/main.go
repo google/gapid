@@ -152,6 +152,24 @@ func run() error {
 		return filepath.Join(fusedRoot, "src", trimUpTo(rel(projectRoot, path), "github.com"))
 	})
 
+	// Get ".go" files generated from templates.
+	templateGenedGofiles := collect(binOut, always).ifTrue(and(
+		isFile,
+		contains(filepath.Join("github.com", "google", "gapid")).not(),
+		hasSuffix(".go"),
+	)).mapping(func(path string) string {
+		return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(binOut, path))
+	})
+
+	// Get ".cpp" and ".h" files generated from templates.
+	templateGenedCppfiles := collect(binOut, always).ifTrue(and(
+		isFile,
+		contains(filepath.Join("github.com", "google", "gapid")).not(),
+		or(hasSuffix(".cpp"), hasSuffix(".h")),
+	)).mapping(func(path string) string {
+		return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(binOut, path))
+	})
+
 	// Collect all the external package file mappings.
 
 	// After resolving symlinks, bazel-gapid/external points to:
@@ -190,7 +208,7 @@ func run() error {
 	}
 
 	// Every mapping we're going to deal with.
-	allMappings := join(srcMapping, genfilesMappingOut, binMappingOut, extMapping)
+	allMappings := join(srcMapping, genfilesMappingOut, binMappingOut, templateGenedGofiles, templateGenedCppfiles, extMapping)
 
 	// Remove all existing symlinks in the fused directory that are not part of the
 	// mappings. This may never happen if the OS automatically deletes deleted
