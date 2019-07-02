@@ -22,31 +22,7 @@
 #include <utility>
 #include <vector>
 
-//                 mMemory[0]
-//   ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
-//   ┃             ┃                        ┃
-//   ┃             ┃                        ┃
-//   ┃             ┃                        ┃
-//   ┃             ┃         volatile       ┃
-//   ┃   mMemory   ┃          memory        ┃
-//   ┃             ┃                        ┃
-//   ┃             ┃                        ┨
-//   ┃             ┣━━━━━━━━━━━━━━━━━━━━━━━━┨
-//   ┃             ┃                        ┃
-//   ┃             ┃        in-memory       ┃
-//   ┃             ┃        resource        ┃
-//   ┃             ┃          cache         ┃
-//   ┃             ┃                        ┃
-//   ┗━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┛
-//                 mMemory[mSize]
-
 namespace gapir {
-
-namespace {
-// Expected driver memory overhead to be left free as a factor of allocated
-// managed memory.
-const float kDriverOverheadFactor = 0.3f;
-}  // namespace
 
 template <typename T>
 MemoryManager::MemoryRange<T>::MemoryRange() : base(nullptr), size(0) {}
@@ -55,41 +31,24 @@ template <typename T>
 MemoryManager::MemoryRange<T>::MemoryRange(T* base, uint32_t size)
     : base(base), size(size) {}
 
-MemoryManager::MemoryManager(const std::vector<uint32_t>& sizeList)
-    : mConstantMemory(nullptr, 0) {
-  for (auto size : sizeList) {
-    // Try over-allocating to leave at least (size * kDriverOverheadFactor) free
-    // bytes.
-    mSize = static_cast<uint32_t>(size * (1 + kDriverOverheadFactor));
-    mMemory.reset(new (std::nothrow) uint8_t[mSize]);
-    if (mMemory) {
-      // Free the over-allocation first, then attempt allocating the (smaller)
-      // original size.
-      mMemory.reset();
-      mSize = size;
-      mMemory.reset(new (std::nothrow) uint8_t[mSize]);
-      break;
-    }
-    GAPID_DEBUG("Failed to allocate %u bytes of volatile memory, continuing...",
-                size);
-  }
-
-  if (!mMemory) {
-    GAPID_FATAL("Couldn't allocate any volatile memory size.");
-  }
-
-  GAPID_DEBUG("Base address: %p", mMemory.get());
-  setVolatileMemory(mSize);
-}
+MemoryManager::MemoryManager()
+    : mMemory(nullptr),
+      mOpcodeMemory(nullptr, 0),
+      mConstantMemory(nullptr, 0),
+      mVolatileMemory(nullptr, 0) {}
 
 bool MemoryManager::setVolatileMemory(uint32_t size) {
-  if (size > mSize) {
-    return false;
+  mMemory.reset(new (std::nothrow) uint8_t[size]);
+
+  if (mMemory == nullptr) {
+    GAPID_FATAL("MemoryManager::setVolatileMemory - ALLOCATION FAILED");
   }
 
   mVolatileMemory = {&mMemory[0], size};
+
   GAPID_DEBUG("Volatile range: [%p,%p]", mVolatileMemory.base,
               mVolatileMemory.base + mVolatileMemory.size - 1);
+
   return true;
 }
 

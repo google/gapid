@@ -23,51 +23,116 @@
 #include <vector>
 
 namespace gapir {
-size_t ResourceCache::prefetch(const Resource* res, size_t count,
-                               ResourceLoader* fetcher) {
-  size_t res_sum = 0;
-  std::vector<Resource> uncached;
-  uncached.reserve(count);
-  size_t alreadyCached = 0;
+
+size_t ResourceCache::setPrefetch(const Resource* resources, size_t count,
+                                  std::unique_ptr<ResourceLoader> fetcher) {
+  mResources.clear();
+  mResourceIterators.clear();
+
+  mResources.reserve(count);
+
+  for (unsigned int i = 0; i < count; ++i) {
+    mResources.push_back(resources[i]);
+    mResourceIterators[resources[i].getID()] = mResources.end() - 1;
+  }
+
+  mFetcher = std::move(fetcher);
+
+  return prefetchImpl(resources, count);
+}
+
+std::vector<Resource> ResourceCache::anticipateNextResources(
+    const Resource& resource, size_t bytesToFetch) {
+  std::vector<Resource> expectedResources;
+
+  size_t bytesSoFar = 0;
+
+  auto resMapIter = mResourceIterators.find(resource.getID());
+  if (resMapIter == mResourceIterators.end()) {
+    return expectedResources;  // We don't know about this resource so we're
+                               // blind. Return the empty vector.
+  }
+
+  std::vector<Resource>::iterator resIter = resMapIter->second;
+
+  if (resIter != mResources.end()) {
+    ++resIter;
+  }
+
+  for (unsigned int i = 0;
+       resIter != mResources.end() && bytesSoFar < bytesToFetch; ++i) {
+    expectedResources.push_back(*resIter);
+    bytesSoFar += resIter->getSize();
+    resIter++;
+  }
+
+  return expectedResources;
+}
+
+size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count,
+                                   bool allowEviction) {
+  size_t bytesToFetch = 0;
+
+  std::vector<Resource> uncachedResources;
+  uncachedResources.reserve(count);
+
+  size_t numResourcesAlreadyCached = 0;
 
   for (size_t i = 0; i < count; i++) {
-    const auto& r = res[i];
-    if (hasCache(r)) {
-      alreadyCached++;
+    const auto& resource = resources[i];
+
+    if (hasCache(resource)) {
+      numResourcesAlreadyCached++;
       continue;
     }
-    if (res_sum + r.size > totalCacheSize()) {
+
+    if (bytesToFetch + resource.getSize() >
+        (allowEviction ? totalCacheSize() : unusedSize())) {
       break;
     }
-    uncached.push_back(r);
-    res_sum += r.size;
+
+    uncachedResources.push_back(resource);
+    bytesToFetch += resource.getSize();
   }
-  GAPID_INFO(
-      "Prefetching %zu new uncached resources (%zu / %zu resources will be in "
-      "cache after prefetch)...",
-      uncached.size(), uncached.size() + alreadyCached, count);
+
   ResourceLoadingBatch bat;
-  auto fetchBatch = [&bat, fetcher, this]() {
+
+  GAPID_INFO(
+      "Prefetching %zu new uncached resources (%zu / %zu resources should be "
+      "in "
+      "cache after prefetch)...",
+      uncachedResources.size(),
+      uncachedResources.size() + numResourcesAlreadyCached, count);
+
+  auto fetchBatch = [&bat, this]() {
     auto fetched =
-        fetcher->fetch(bat.resources().data(), bat.resources().size());
+        this->mFetcher->fetch(bat.resources().data(), bat.resources().size());
+
     size_t put_sum = 0;
+
     for (size_t i = 0; i < bat.resources().size(); i++) {
       putCache(bat.resources().at(i),
                reinterpret_cast<const uint8_t*>(fetched->data()) + put_sum);
-      put_sum += bat.resources().at(i).size;
+      put_sum += bat.resources().at(i).getSize();
     }
+
     bat.clear();
   };
 
-  for (auto& r : uncached) {
-    if (!bat.append(r, nullptr)) {
+  for (auto& resource : uncachedResources) {
+    if (!bat.append(resource, nullptr)) {
       fetchBatch();
-      bat.append(r, nullptr);
+      bat.append(resource, nullptr);
     }
   }
+
   if (bat.size() > 0) {
     fetchBatch();
   }
-  return uncached.size();
+
+  GAPID_INFO("Prefetching complete.");
+
+  return uncachedResources.size();
 }
+
 }  // namespace gapir

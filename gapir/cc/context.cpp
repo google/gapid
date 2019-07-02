@@ -108,15 +108,13 @@ bool Context::initialize(const std::string& id) {
 }
 
 void Context::prefetch(ResourceCache* cache) const {
-  auto cacheSize = static_cast<uint32_t>(mMemoryManager->getFreeSpace());
-  cache->resize(cacheSize);
   auto resources = mReplayRequest->getResources();
   if (resources.size() == 0) {
     return;
   }
 
   auto tempLoader = PassThroughResourceLoader::create(mSrv);
-  cache->prefetch(resources.data(), resources.size(), tempLoader.get());
+  cache->setPrefetch(resources.data(), resources.size(), std::move(tempLoader));
 }
 
 bool Context::interpret(bool cleanup) {
@@ -749,8 +747,8 @@ bool Context::loadResource(Stack* stack) {
 
   const auto& resource = mReplayRequest->getResources()[resourceId];
 
-  if (!mResourceLoader->load(&resource, 1, address, resource.size)) {
-    GAPID_WARNING("Can't load resource: %s", resource.id.c_str());
+  if (!mResourceLoader->load(&resource, 1, address, resource.getSize())) {
+    GAPID_WARNING("Can't load resource: %s", resource.getID().c_str());
     return false;
   }
 

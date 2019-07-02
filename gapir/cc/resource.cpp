@@ -19,30 +19,35 @@
 namespace gapir {
 bool ResourceLoadingBatch::append(const Resource& res, uint8_t* dst) {
   size_t n = mDstsAndSizes.size();
+
   // Always includes the first resource.
   if (n == 0) {
     mResources.push_back(res);
-    mDstsAndSizes.emplace_back(std::make_pair(dst, res.size));
-    mSize += res.size;
+    mDstsAndSizes.emplace_back(std::make_pair(dst, res.getSize()));
+    mSize += res.getSize();
     return true;
   }
+
   // Returns false if exceeds the maximum size.
-  if (mSize + res.size > kMultipleResourcesSizeLimit) {
+  if (mSize + res.getSize() > kMultipleResourcesSizeLimit) {
     return false;
   }
+
   // If the resource destination is contiguous to the last one, expend the
   // last chunk.
   if (dst == mDstsAndSizes[n - 1].first + mDstsAndSizes[n - 1].second) {
     mResources.push_back(res);
-    mDstsAndSizes[n - 1].second += res.size;
-    mSize += res.size;
+    mDstsAndSizes[n - 1].second += res.getSize();
+    mSize += res.getSize();
     return true;
   }
+
   // The resource destination is not contigous to the last one, create
   // new chunk.
   mResources.push_back(res);
-  mDstsAndSizes.emplace_back(std::make_pair(dst, res.size));
-  mSize += res.size;
+  mDstsAndSizes.emplace_back(std::make_pair(dst, res.getSize()));
+  mSize += res.getSize();
+
   return true;
 }
 

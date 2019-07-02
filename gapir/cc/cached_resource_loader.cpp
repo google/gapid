@@ -39,7 +39,7 @@ bool CachedResourceLoader::loadBatch(const ResourceLoadingBatch& bat) {
   for (const auto r : bat.resources()) {
     mCache->putCache(r,
                      reinterpret_cast<const uint8_t*>(res->data()) + readSize);
-    readSize += r.size;
+    readSize += r.getSize();
   }
   const uint8_t* src = reinterpret_cast<const uint8_t*>(res->data());
   for (const auto dsp : bat.dstsAndSizes()) {
@@ -53,7 +53,7 @@ bool CachedResourceLoader::load(const Resource* resources, size_t count,
                                 void* target, size_t targetSize) {
   size_t totalSize = 0;
   for (size_t i = 0; i < count; i++) {
-    totalSize += resources[i].size;
+    totalSize += resources[i].getSize();
   }
   if (targetSize < totalSize) {
     return false;  // Not enough space
@@ -64,10 +64,8 @@ bool CachedResourceLoader::load(const Resource* resources, size_t count,
   for (size_t i = 0; i < count; i++) {
     const auto& r = resources[i];
     // Check cache first
-    if (mCache->hasCache(r)) {
-      bool cache_load_success = mCache->loadCache(r, static_cast<void*>(dst));
-      GAPID_ASSERT(cache_load_success);
-      dst += r.size;
+    if (mCache->loadCache(r, static_cast<void*>(dst))) {
+      dst += r.getSize();
       continue;
     }
     // Not in cache, batch for fetching.
@@ -83,7 +81,7 @@ bool CachedResourceLoader::load(const Resource* resources, size_t count,
         return false;
       }
     }
-    dst += r.size;
+    dst += r.getSize();
   }
   if (batch.size() != 0) {
     if (!loadBatch(batch)) {
