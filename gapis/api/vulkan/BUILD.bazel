@@ -64,6 +64,7 @@ go_library(
         "draw_call_mesh.go",
         "externs.go",
         "find_issues.go",
+        "frame_loop.go",
         "graph_visualization.go",
         "image_primer.go",
         "image_primer_device_copy.go",

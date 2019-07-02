@@ -393,3 +393,6 @@ func (b *DCEBuilder) Flush(ctx context.Context, out transform.Writer) {
 		out.MutateAndWrite(ctx, cmdID, cmd)
 	}
 }
+
+func (b *DCEBuilder) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (b *DCEBuilder) PostLoop(ctx context.Context, out transform.Writer) {}

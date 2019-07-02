@@ -376,14 +376,14 @@ type Notification struct {
 }
 
 func (a Notification) Encode(r value.PointerResolver, w binary.Writer) error {
-	if err := encodePush(protocol.Type_Uint32, a.ID, w); err != nil {
-		return err
-	}
 	ty, val, onStack := a.Source.Get(r)
 	if !onStack {
 		if err := encodePush(ty, val, w); err != nil {
 			return err
 		}
+	}
+	if err := encodePush(protocol.Type_Uint32, a.ID, w); err != nil {
+		return err
 	}
 	if err := encodePush(protocol.Type_Uint32, a.Size, w); err != nil {
 		return err

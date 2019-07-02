@@ -484,3 +484,6 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		cmds = []api.Cmd{}
 	}
 }
+
+func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}

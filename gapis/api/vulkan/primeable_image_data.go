@@ -97,6 +97,48 @@ func (c ipPrimeableHostCopy) primingQueue() VkQueue {
 	return c.queue
 }
 
+type ipPrimeableDeviceCopy struct {
+	queue VkQueue
+	kits  []ipDeviceCopyKit
+}
+
+func (c ipPrimeableDeviceCopy) prime(sb *stateBuilder, srcLayout, dstLayout ipLayoutInfo) error {
+	var err error
+	if len(c.kits) == 0 {
+		return fmt.Errorf("None device copy kit for priming by device copy")
+	}
+	dstImgObj := GetState(sb.newState).Images().Get(c.kits[0].dstImage)
+	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, c.queue)
+	preCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImgObj, srcLayout, useSpecifiedLayout(ipDeviceCopyDstImageLayout))
+	err = ipRecordImageMemoryBarriers(sb, queueHandler, preCopyBarriers...)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at pre device copy image layout transition")
+	}
+
+	for _, k := range c.kits {
+		cmdBatch := k.BuildDeviceCopyCommands(sb)
+		err := cmdBatch.Commit(sb, queueHandler)
+		if err != nil {
+			return log.Errf(sb.ctx, err, "failed at commit buffer image copy commands")
+		}
+	}
+
+	postCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImgObj, useSpecifiedLayout(ipDeviceCopyDstImageLayout), dstLayout)
+	err = ipRecordImageMemoryBarriers(sb, queueHandler, postCopyBarriers...)
+	if err != nil {
+		return log.Errf(sb.ctx, err, "failed at post device copy image layout transition")
+	}
+	return nil
+}
+
+func (c ipPrimeableDeviceCopy) free(sb *stateBuilder) {
+	// do nothing
+}
+
+func (c ipPrimeableDeviceCopy) primingQueue() VkQueue {
+	return c.queue
+}
+
 type ipPrimeableRenderKits struct {
 	img           VkImage
 	queue         VkQueue
@@ -250,17 +292,14 @@ func (pi *ipPrimeableByPreinitialization) prime(sb *stateBuilder, srcLayout, dst
 	return nil
 }
 
-// newPrimeableImageData builds primeable image data for the given image with
+// newPrimeableImageDataFromHost builds primeable image data for the given image with
 // the specific opaque memory bound subresource ranges. The built primeable
 // image data takes the data from the given image in the old state of the image
 // primer's stateBuilder, and is able to prime the data to the image with the
-// same Vulkan Handle in the new state of the stateBuilder. If fromHostData is
-// true, the image data will be collected from the shadow memory of the old
-// state image object, which is on the host accessible space. If fromHostData is
-// false, the image data will be collected from the device memory.
-func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkImageSubresourceRange, fromHostData bool) (primeableImageData, error) {
+// same Vulkan Handle in the new state of the stateBuilder. The image data will
+// be collected from the device memory.
+func (p *imagePrimer) newPrimeableImageDataFromHost(img VkImage, opaqueBoundRanges []VkImageSubresourceRange) (primeableImageData, error) {
 	nilQueueErr := fmt.Errorf("Nil Queue")
-	notImplErr := fmt.Errorf("Not Implemented")
 	queueNotExistInNewState := func(q VkQueue) error { return fmt.Errorf("Queue: %v does not exist in new state", q) }
 
 	oldStateImgObj := GetState(p.sb.oldState).Images().Get(img)
@@ -272,41 +311,15 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 
 	primeByCopy := (oldStateImgObj.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	if primeByCopy {
-		if fromHostData {
-			queue := getQueueForPriming(p.sb, oldStateImgObj,
-				VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
-			if queue.IsNil() {
-				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by buffer -> image copy, image: %v]", img)
-			}
-			recipes := map[VkImageAspectFlagBits]*ipHostCopyRecipe{}
-			for _, rng := range opaqueBoundRanges {
-				walkImageSubresourceRange(p.sb, oldStateImgObj, rng,
-					func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-						if _, ok := recipes[aspect]; !ok {
-							recipes[aspect] = &ipHostCopyRecipe{
-								srcImageInOldState: img,
-								srcAspect:          aspect,
-								dstImageInNewState: img,
-								dstAspect:          aspect,
-								wordIndex:          uint32(0),
-								subAspectPieces:    []ipHostCopyRecipeSubAspectPiece{},
-							}
-						}
-						recipe := recipes[aspect]
-						recipe.subAspectPieces = append(recipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
-							layer:        layer,
-							level:        level,
-							offsetX:      0,
-							offsetY:      0,
-							offsetZ:      0,
-							extentWidth:  uint32(levelSize.width),
-							extentHeight: uint32(levelSize.height),
-							extentDepth:  uint32(levelSize.depth),
-						})
-					})
-			}
-			if isSparseResidency(oldStateImgObj) {
-				walkSparseImageMemoryBindings(p.sb, oldStateImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+		queue := getQueueForPriming(p.sb, oldStateImgObj,
+			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by buffer -> image copy, image: %v]", img)
+		}
+		recipes := map[VkImageAspectFlagBits]*ipHostCopyRecipe{}
+		for _, rng := range opaqueBoundRanges {
+			walkImageSubresourceRange(p.sb, oldStateImgObj, rng,
+				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
 					if _, ok := recipes[aspect]; !ok {
 						recipes[aspect] = &ipHostCopyRecipe{
 							srcImageInOldState: img,
@@ -321,89 +334,82 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 					recipe.subAspectPieces = append(recipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
 						layer:        layer,
 						level:        level,
-						offsetX:      uint32(blockData.Offset().X()),
-						offsetY:      uint32(blockData.Offset().Y()),
-						offsetZ:      uint32(blockData.Offset().Z()),
-						extentWidth:  blockData.Extent().Width(),
-						extentHeight: blockData.Extent().Height(),
-						extentDepth:  blockData.Extent().Depth(),
+						offsetX:      0,
+						offsetY:      0,
+						offsetZ:      0,
+						extentWidth:  uint32(levelSize.width),
+						extentHeight: uint32(levelSize.height),
+						extentDepth:  uint32(levelSize.depth),
 					})
 				})
-			}
-			recipeList := []ipHostCopyRecipe{}
-			for _, r := range recipes {
-				recipeList = append(recipeList, *r)
-			}
-			dev := queue.Device()
-			kb := p.GetHostCopyKitBuilder(dev)
-			kits, err := kb.BuildHostCopyKits(p.sb, recipeList...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at building host copy kits for host copy")
-			}
-			return &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: kits}, nil
-
-		} else {
-			return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data that can be primed by image -> image copy, image: %v]", img)
 		}
+		if isSparseResidency(oldStateImgObj) {
+			walkSparseImageMemoryBindings(p.sb, oldStateImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+				if _, ok := recipes[aspect]; !ok {
+					recipes[aspect] = &ipHostCopyRecipe{
+						srcImageInOldState: img,
+						srcAspect:          aspect,
+						dstImageInNewState: img,
+						dstAspect:          aspect,
+						wordIndex:          uint32(0),
+						subAspectPieces:    []ipHostCopyRecipeSubAspectPiece{},
+					}
+				}
+				recipe := recipes[aspect]
+				recipe.subAspectPieces = append(recipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
+					layer:        layer,
+					level:        level,
+					offsetX:      uint32(blockData.Offset().X()),
+					offsetY:      uint32(blockData.Offset().Y()),
+					offsetZ:      uint32(blockData.Offset().Z()),
+					extentWidth:  blockData.Extent().Width(),
+					extentHeight: blockData.Extent().Height(),
+					extentDepth:  blockData.Extent().Depth(),
+				})
+			})
+		}
+		recipeList := []ipHostCopyRecipe{}
+		for _, r := range recipes {
+			recipeList = append(recipeList, *r)
+		}
+		dev := queue.Device()
+		kb := p.GetHostCopyKitBuilder(dev)
+		kits, err := kb.BuildHostCopyKits(p.sb, recipeList...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at building host copy kits for host copy")
+		}
+		return &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: kits}, nil
 	}
 
 	primeByRendering := (!primeByCopy) && ((oldStateImgObj.Info().Usage() & attBits) != 0)
 	if primeByRendering {
-		if fromHostData {
-			queue := getQueueForPriming(p.sb, oldStateImgObj, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
-			if queue.IsNil() {
-				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering host data: %v]", img)
-			}
-			dev := queue.Device()
-			primeable := &ipPrimeableRenderKits{img: img, queue: queue.VulkanHandle(), kits: []ipRenderKit{}}
-			stagingImages := map[VkImageAspectFlagBits][]ImageObjectʳ{}
+		queue := getQueueForPriming(p.sb, oldStateImgObj, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering host data: %v]", img)
+		}
+		dev := queue.Device()
+		primeable := &ipPrimeableRenderKits{img: img, queue: queue.VulkanHandle(), kits: []ipRenderKit{}}
+		stagingImages := map[VkImageAspectFlagBits][]ImageObjectʳ{}
 
-			hostCopyRecipes := map[VkImageAspectFlagBits][]*ipHostCopyRecipe{}
-			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
-				stagingImgs, freeStagingImgs, err := p.Create32BitUintColorStagingImagesForAspect(
-					oldStateImgObj, aspect, VkImageUsageFlags(
-						VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
-							VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT|
-							VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT))
-				if err != nil {
-					primeable.free(p.sb)
-					return nil, log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by rendering host data, image: %v, aspect: %v]", img, aspect)
-				}
-				stagingImages[aspect] = stagingImgs
-				hostCopyRecipes[aspect] = make([]*ipHostCopyRecipe, len(stagingImgs))
-				primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImgs)
+		hostCopyRecipes := map[VkImageAspectFlagBits][]*ipHostCopyRecipe{}
+		for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
+			stagingImgs, freeStagingImgs, err := p.Create32BitUintColorStagingImagesForAspect(
+				oldStateImgObj, aspect, VkImageUsageFlags(
+					VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
+						VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT|
+						VkImageUsageFlagBits_VK_IMAGE_USAGE_SAMPLED_BIT))
+			if err != nil {
+				primeable.free(p.sb)
+				return nil, log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by rendering host data, image: %v, aspect: %v]", img, aspect)
+			}
+			stagingImages[aspect] = stagingImgs
+			hostCopyRecipes[aspect] = make([]*ipHostCopyRecipe, len(stagingImgs))
+			primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImgs)
 
-			}
-			for _, rng := range opaqueBoundRanges {
-				walkImageSubresourceRange(p.sb, oldStateImgObj, rng,
-					func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-						for i, simg := range stagingImages[aspect] {
-							if hostCopyRecipes[aspect][i] == nil {
-								hostCopyRecipes[aspect][i] = &ipHostCopyRecipe{
-									srcImageInOldState: img,
-									srcAspect:          aspect,
-									dstImageInNewState: simg.VulkanHandle(),
-									dstAspect:          VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
-									wordIndex:          uint32(i),
-									subAspectPieces:    []ipHostCopyRecipeSubAspectPiece{},
-								}
-							}
-							copyRecipe := hostCopyRecipes[aspect][i]
-							copyRecipe.subAspectPieces = append(copyRecipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
-								layer:        layer,
-								level:        level,
-								offsetX:      0,
-								offsetY:      0,
-								offsetZ:      0,
-								extentWidth:  uint32(levelSize.width),
-								extentHeight: uint32(levelSize.height),
-								extentDepth:  uint32(levelSize.depth),
-							})
-						}
-					})
-			}
-			if isSparseResidency(oldStateImgObj) {
-				walkSparseImageMemoryBindings(p.sb, oldStateImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+		}
+		for _, rng := range opaqueBoundRanges {
+			walkImageSubresourceRange(p.sb, oldStateImgObj, rng,
+				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
 					for i, simg := range stagingImages[aspect] {
 						if hostCopyRecipes[aspect][i] == nil {
 							hostCopyRecipes[aspect][i] = &ipHostCopyRecipe{
@@ -419,75 +425,98 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 						copyRecipe.subAspectPieces = append(copyRecipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
 							layer:        layer,
 							level:        level,
-							offsetX:      uint32(blockData.Offset().X()),
-							offsetY:      uint32(blockData.Offset().Y()),
-							offsetZ:      uint32(blockData.Offset().Z()),
-							extentWidth:  blockData.Extent().Width(),
-							extentHeight: blockData.Extent().Height(),
-							extentDepth:  blockData.Extent().Depth(),
+							offsetX:      0,
+							offsetY:      0,
+							offsetZ:      0,
+							extentWidth:  uint32(levelSize.width),
+							extentHeight: uint32(levelSize.height),
+							extentDepth:  uint32(levelSize.depth),
 						})
 					}
 				})
-			}
-			copyList := make([]ipHostCopyRecipe, 0, len(hostCopyRecipes)*2)
-			for _, rs := range hostCopyRecipes {
-				for _, r := range rs {
-					// recipe pointer can be nil if the aspect has no real data
-					// e.g. all layers and levels have UNDEFINED layout.
-					if r != nil {
-						copyList = append(copyList, *r)
-					}
-				}
-			}
-			copyKitBuilder := p.GetHostCopyKitBuilder(dev)
-			copyKits, err := copyKitBuilder.BuildHostCopyKits(p.sb, copyList...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at build host data copy kits for staging images")
-			}
-			copy := &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: copyKits}
-			err = copy.prime(p.sb,
-				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
-				useSpecifiedLayout(ipRenderInputAttachmentLayout))
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at roll out the host data copy to staging images")
-			}
-
-			newStateImgObj := GetState(p.sb.newState).Images().Get(img)
-			kb := p.GetRenderKitBuilder(dev)
-			recipes := []ipRenderRecipe{}
-			for _, copy := range copyList {
-				for _, piece := range copy.subAspectPieces {
-					sizes := p.sb.levelSize(newStateImgObj.Info().Extent(), newStateImgObj.Info().Fmt(), piece.level, copy.srcAspect)
-					r := ipRenderRecipe{
-						inputAttachmentImage:  copy.dstImageInNewState,
-						inputAttachmentAspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
-						renderImage:           newStateImgObj.VulkanHandle(),
-						renderAspect:          copy.srcAspect,
-						layer:                 piece.layer,
-						level:                 piece.level,
-						renderRectX:           int32(piece.offsetX),
-						renderRectY:           int32(piece.offsetY),
-						renderRectWidth:       piece.extentWidth,
-						renderRectHeight:      piece.extentHeight,
-						wordIndex:             copy.wordIndex,
-						framebufferWidth:      uint32(sizes.width),
-						framebufferHeight:     uint32(sizes.height),
-					}
-					recipes = append(recipes, r)
-				}
-			}
-
-			kits, err := kb.BuildRenderKits(p.sb, recipes...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed to build render kits from recipes")
-			}
-			primeable.kits = kits
-
-			return primeable, nil
-
-		} else {
-			return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data that can be primed by rendering device data]")
 		}
+		if isSparseResidency(oldStateImgObj) {
+			walkSparseImageMemoryBindings(p.sb, oldStateImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+				for i, simg := range stagingImages[aspect] {
+					if hostCopyRecipes[aspect][i] == nil {
+						hostCopyRecipes[aspect][i] = &ipHostCopyRecipe{
+							srcImageInOldState: img,
+							srcAspect:          aspect,
+							dstImageInNewState: simg.VulkanHandle(),
+							dstAspect:          VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+							wordIndex:          uint32(i),
+							subAspectPieces:    []ipHostCopyRecipeSubAspectPiece{},
+						}
+					}
+					copyRecipe := hostCopyRecipes[aspect][i]
+					copyRecipe.subAspectPieces = append(copyRecipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
+						layer:        layer,
+						level:        level,
+						offsetX:      uint32(blockData.Offset().X()),
+						offsetY:      uint32(blockData.Offset().Y()),
+						offsetZ:      uint32(blockData.Offset().Z()),
+						extentWidth:  blockData.Extent().Width(),
+						extentHeight: blockData.Extent().Height(),
+						extentDepth:  blockData.Extent().Depth(),
+					})
+				}
+			})
+		}
+		copyList := make([]ipHostCopyRecipe, 0, len(hostCopyRecipes)*2)
+		for _, rs := range hostCopyRecipes {
+			for _, r := range rs {
+				// recipe pointer can be nil if the aspect has no real data
+				// e.g. all layers and levels have UNDEFINED layout.
+				if r != nil {
+					copyList = append(copyList, *r)
+				}
+			}
+		}
+		copyKitBuilder := p.GetHostCopyKitBuilder(dev)
+		copyKits, err := copyKitBuilder.BuildHostCopyKits(p.sb, copyList...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at build host data copy kits for staging images")
+		}
+		copy := &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: copyKits}
+		err = copy.prime(p.sb,
+			useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
+			useSpecifiedLayout(ipRenderInputAttachmentLayout))
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at roll out the host data copy to staging images")
+		}
+
+		newStateImgObj := GetState(p.sb.newState).Images().Get(img)
+		kb := p.GetRenderKitBuilder(dev)
+		recipes := []ipRenderRecipe{}
+		for _, copy := range copyList {
+			for _, piece := range copy.subAspectPieces {
+				sizes := p.sb.levelSize(newStateImgObj.Info().Extent(), newStateImgObj.Info().Fmt(), piece.level, copy.srcAspect)
+				r := ipRenderRecipe{
+					inputAttachmentImage:  copy.dstImageInNewState,
+					inputAttachmentAspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+					renderImage:           newStateImgObj.VulkanHandle(),
+					renderAspect:          copy.srcAspect,
+					layer:                 piece.layer,
+					level:                 piece.level,
+					renderRectX:           int32(piece.offsetX),
+					renderRectY:           int32(piece.offsetY),
+					renderRectWidth:       piece.extentWidth,
+					renderRectHeight:      piece.extentHeight,
+					wordIndex:             copy.wordIndex,
+					framebufferWidth:      uint32(sizes.width),
+					framebufferHeight:     uint32(sizes.height),
+				}
+				recipes = append(recipes, r)
+			}
+		}
+
+		kits, err := kb.BuildRenderKits(p.sb, recipes...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed to build render kits from recipes")
+		}
+		primeable.kits = kits
+
+		return primeable, nil
 	}
 
 	primeByImageStore := (!primeByCopy) && (!primeByRendering) && ((oldStateImgObj.Info().Usage() & storageBit) != 0)
@@ -502,53 +531,25 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 
 		dev := queue.Device()
 		primeable := &ipPrimeableStoreKits{img: img, queue: queue.VulkanHandle(), kits: []ipStoreKit{}}
-		if fromHostData {
-			stagingImages := map[VkImageAspectFlagBits][]ImageObjectʳ{}
-			hostCopyRecipes := map[VkImageAspectFlagBits][]*ipHostCopyRecipe{}
-			for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
-				stagingImgs, freeStagingImgs, err := p.Create32BitUintColorStagingImagesForAspect(
-					oldStateImgObj, aspect, VkImageUsageFlags(
-						VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
-							VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT))
-				if err != nil {
-					primeable.free(p.sb)
-					return nil, log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by imageStore host data, image: %v, aspect: %v]", img, aspect)
-				}
-				stagingImages[aspect] = stagingImgs
-				hostCopyRecipes[aspect] = make([]*ipHostCopyRecipe, len(stagingImgs))
-				primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImgs)
+		stagingImages := map[VkImageAspectFlagBits][]ImageObjectʳ{}
+		hostCopyRecipes := map[VkImageAspectFlagBits][]*ipHostCopyRecipe{}
+		for _, aspect := range p.sb.imageAspectFlagBits(oldStateImgObj, oldStateImgObj.ImageAspect()) {
+			stagingImgs, freeStagingImgs, err := p.Create32BitUintColorStagingImagesForAspect(
+				oldStateImgObj, aspect, VkImageUsageFlags(
+					VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|
+						VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT))
+			if err != nil {
+				primeable.free(p.sb)
+				return nil, log.Errf(p.sb.ctx, err, "[Creating staging images for priming image data by imageStore host data, image: %v, aspect: %v]", img, aspect)
+			}
+			stagingImages[aspect] = stagingImgs
+			hostCopyRecipes[aspect] = make([]*ipHostCopyRecipe, len(stagingImgs))
+			primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImgs)
 
-			}
-			for _, rng := range opaqueBoundRanges {
-				walkImageSubresourceRange(p.sb, oldStateImgObj, rng,
-					func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-						for i, simg := range stagingImages[aspect] {
-							if hostCopyRecipes[aspect][i] == nil {
-								hostCopyRecipes[aspect][i] = &ipHostCopyRecipe{
-									srcImageInOldState: img,
-									srcAspect:          aspect,
-									dstImageInNewState: simg.VulkanHandle(),
-									dstAspect:          VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
-									wordIndex:          uint32(i),
-									subAspectPieces:    []ipHostCopyRecipeSubAspectPiece{},
-								}
-							}
-							copyRecipe := hostCopyRecipes[aspect][i]
-							copyRecipe.subAspectPieces = append(copyRecipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
-								layer:        layer,
-								level:        level,
-								offsetX:      0,
-								offsetY:      0,
-								offsetZ:      0,
-								extentWidth:  uint32(levelSize.width),
-								extentHeight: uint32(levelSize.height),
-								extentDepth:  uint32(levelSize.depth),
-							})
-						}
-					})
-			}
-			if isSparseResidency(oldStateImgObj) {
-				walkSparseImageMemoryBindings(p.sb, oldStateImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+		}
+		for _, rng := range opaqueBoundRanges {
+			walkImageSubresourceRange(p.sb, oldStateImgObj, rng,
+				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
 					for i, simg := range stagingImages[aspect] {
 						if hostCopyRecipes[aspect][i] == nil {
 							hostCopyRecipes[aspect][i] = &ipHostCopyRecipe{
@@ -564,163 +565,223 @@ func (p *imagePrimer) newPrimeableImageData(img VkImage, opaqueBoundRanges []VkI
 						copyRecipe.subAspectPieces = append(copyRecipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
 							layer:        layer,
 							level:        level,
-							offsetX:      uint32(blockData.Offset().X()),
-							offsetY:      uint32(blockData.Offset().Y()),
-							offsetZ:      uint32(blockData.Offset().Z()),
-							extentWidth:  blockData.Extent().Width(),
-							extentHeight: blockData.Extent().Height(),
-							extentDepth:  blockData.Extent().Depth(),
-						})
-					}
-				})
-			}
-			copyList := make([]ipHostCopyRecipe, 0, len(hostCopyRecipes)*2)
-			for _, rs := range hostCopyRecipes {
-				for _, r := range rs {
-					// recipe pointer can be nil if the aspect has no real data
-					// e.g. all layers and levels have UNDEFINED layout.
-					if r != nil {
-						copyList = append(copyList, *r)
-					}
-				}
-			}
-			copyKitBuilder := p.GetHostCopyKitBuilder(dev)
-			copyKits, err := copyKitBuilder.BuildHostCopyKits(p.sb, copyList...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at build host data copy kits for staging images")
-			}
-			copy := &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: copyKits}
-			err = copy.prime(p.sb,
-				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
-				useSpecifiedLayout(ipStoreImageLayout))
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at roll out the host data copy to staging images")
-			}
-
-			newStateImgObj := GetState(p.sb.newState).Images().Get(img)
-			kb := p.GetStoreKitBuilder(dev)
-			recipes := []ipStoreRecipe{}
-			for _, copy := range copyList {
-				for _, piece := range copy.subAspectPieces {
-					r := ipStoreRecipe{
-						inputImage:   copy.dstImageInNewState,
-						inputAspect:  VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
-						outputImage:  newStateImgObj.VulkanHandle(),
-						outputAspect: copy.srcAspect,
-						layer:        piece.layer,
-						level:        piece.level,
-						wordIndex:    copy.wordIndex,
-						extentWidth:  piece.extentWidth,
-						extentHeight: piece.extentHeight,
-						extentDepth:  piece.extentDepth,
-						offsetX:      int32(piece.offsetX),
-						offsetY:      int32(piece.offsetY),
-						offsetZ:      int32(piece.offsetZ),
-					}
-					recipes = append(recipes, r)
-				}
-			}
-			kits, err := kb.BuildStoreKits(p.sb, recipes...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed to build store kits from recipes")
-			}
-			primeable.kits = kits
-			return primeable, nil
-		} else {
-			stagingImg, freeStagingImg, err := p.CreateSameStagingImage(oldStateImgObj)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "[Creating staging image for priming image data by imageStore operation from device data, image: %v]", img)
-			}
-			primeable.freeCallbacks = append(primeable.freeCallbacks, freeStagingImg)
-			storeToStagingImgRecipes := []ipStoreRecipe{}
-			recipes := []ipStoreRecipe{}
-			for _, r := range opaqueBoundRanges {
-				walkImageSubresourceRange(p.sb, oldStateImgObj, r,
-					func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-						r := ipStoreRecipe{
-							inputImage:   img,
-							inputAspect:  aspect,
-							outputImage:  stagingImg.VulkanHandle(),
-							outputAspect: aspect,
-							layer:        layer,
-							level:        level,
-							wordIndex:    uint32(0),
+							offsetX:      0,
+							offsetY:      0,
+							offsetZ:      0,
 							extentWidth:  uint32(levelSize.width),
 							extentHeight: uint32(levelSize.height),
 							extentDepth:  uint32(levelSize.depth),
-							offsetX:      int32(0),
-							offsetY:      int32(0),
-							offsetZ:      int32(0),
-						}
-						storeToStagingImgRecipes = append(storeToStagingImgRecipes, r)
-						r.inputImage = stagingImg.VulkanHandle()
-						r.outputImage = img
-						recipes = append(recipes, r)
-					})
-			}
-			if isSparseResidency(oldStateImgObj) {
-				walkSparseImageMemoryBindings(p.sb, oldStateImgObj,
-					func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
-						r := ipStoreRecipe{
-							inputImage:   img,
-							inputAspect:  aspect,
-							outputImage:  stagingImg.VulkanHandle(),
-							outputAspect: aspect,
-							layer:        layer,
-							level:        level,
-							wordIndex:    uint32(0),
-							extentWidth:  uint32(blockData.Extent().Width()),
-							extentHeight: uint32(blockData.Extent().Height()),
-							extentDepth:  uint32(blockData.Extent().Depth()),
-							offsetX:      int32(blockData.Offset().X()),
-							offsetY:      int32(blockData.Offset().Y()),
-							offsetZ:      int32(blockData.Offset().Z()),
-						}
-						storeToStagingImgRecipes = append(storeToStagingImgRecipes, r)
-						r.inputImage = stagingImg.VulkanHandle()
-						r.outputImage = img
-						recipes = append(recipes, r)
-					})
-			}
-			kb := p.GetStoreKitBuilder(dev)
-			storeToStagingImgKits, err := kb.BuildStoreKits(p.sb, storeToStagingImgRecipes...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed to build store kits from recipes")
-			}
-			staging := &ipPrimeableStoreKits{
-				img:   stagingImg.VulkanHandle(),
-				queue: queue.VulkanHandle(),
-				kits:  storeToStagingImgKits,
-			}
-			// TODO: layout transition for old state image pre image store to staging image
-			err = staging.prime(p.sb,
-				useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
-				useSpecifiedLayout(ipStoreImageLayout),
-			)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at storing data to staging image")
-			}
-			// TODO: layout transition for old state image post iamge store to staging image
-			kits, err := kb.BuildStoreKits(p.sb, recipes...)
-			if err != nil {
-				return nil, log.Errf(p.sb.ctx, err, "failed at build store kits for priming storage image")
-			}
-			primeable.kits = kits
-			return primeable, nil
+						})
+					}
+				})
 		}
+		if isSparseResidency(oldStateImgObj) {
+			walkSparseImageMemoryBindings(p.sb, oldStateImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+				for i, simg := range stagingImages[aspect] {
+					if hostCopyRecipes[aspect][i] == nil {
+						hostCopyRecipes[aspect][i] = &ipHostCopyRecipe{
+							srcImageInOldState: img,
+							srcAspect:          aspect,
+							dstImageInNewState: simg.VulkanHandle(),
+							dstAspect:          VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+							wordIndex:          uint32(i),
+							subAspectPieces:    []ipHostCopyRecipeSubAspectPiece{},
+						}
+					}
+					copyRecipe := hostCopyRecipes[aspect][i]
+					copyRecipe.subAspectPieces = append(copyRecipe.subAspectPieces, ipHostCopyRecipeSubAspectPiece{
+						layer:        layer,
+						level:        level,
+						offsetX:      uint32(blockData.Offset().X()),
+						offsetY:      uint32(blockData.Offset().Y()),
+						offsetZ:      uint32(blockData.Offset().Z()),
+						extentWidth:  blockData.Extent().Width(),
+						extentHeight: blockData.Extent().Height(),
+						extentDepth:  blockData.Extent().Depth(),
+					})
+				}
+			})
+		}
+		copyList := make([]ipHostCopyRecipe, 0, len(hostCopyRecipes)*2)
+		for _, rs := range hostCopyRecipes {
+			for _, r := range rs {
+				// recipe pointer can be nil if the aspect has no real data
+				// e.g. all layers and levels have UNDEFINED layout.
+				if r != nil {
+					copyList = append(copyList, *r)
+				}
+			}
+		}
+		copyKitBuilder := p.GetHostCopyKitBuilder(dev)
+		copyKits, err := copyKitBuilder.BuildHostCopyKits(p.sb, copyList...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at build host data copy kits for staging images")
+		}
+		copy := &ipPrimeableHostCopy{queue: queue.VulkanHandle(), kits: copyKits}
+		err = copy.prime(p.sb,
+			useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED),
+			useSpecifiedLayout(ipStoreImageLayout))
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at roll out the host data copy to staging images")
+		}
+
+		newStateImgObj := GetState(p.sb.newState).Images().Get(img)
+		kb := p.GetStoreKitBuilder(dev)
+		recipes := []ipStoreRecipe{}
+		for _, copy := range copyList {
+			for _, piece := range copy.subAspectPieces {
+				r := ipStoreRecipe{
+					inputImage:   copy.dstImageInNewState,
+					inputAspect:  VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+					outputImage:  newStateImgObj.VulkanHandle(),
+					outputAspect: copy.srcAspect,
+					layer:        piece.layer,
+					level:        piece.level,
+					wordIndex:    copy.wordIndex,
+					extentWidth:  piece.extentWidth,
+					extentHeight: piece.extentHeight,
+					extentDepth:  piece.extentDepth,
+					offsetX:      int32(piece.offsetX),
+					offsetY:      int32(piece.offsetY),
+					offsetZ:      int32(piece.offsetZ),
+				}
+				recipes = append(recipes, r)
+			}
+		}
+		kits, err := kb.BuildStoreKits(p.sb, recipes...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed to build store kits from recipes")
+		}
+		primeable.kits = kits
+		return primeable, nil
 	}
 
 	primeByPreinitialization := (!primeByCopy) && (!primeByRendering) && (!primeByImageStore) && (oldStateImgObj.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (oldStateImgObj.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
 	if primeByPreinitialization {
-		if fromHostData {
-			queue := getQueueForPriming(p.sb, oldStateImgObj, VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
-			if queue.IsNil() {
-				return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by preinitialization with host data, image: %v]", img)
-			}
-			return &ipPrimeableByPreinitialization{p: p, img: img, opaqueBoundRanges: opaqueBoundRanges, queue: queue.VulkanHandle()}, nil
-		} else {
-			return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data that can be primed by preinitialization with device data, image: %v]", img)
+		queue := getQueueForPriming(p.sb, oldStateImgObj, VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by preinitialization with host data, image: %v]", img)
 		}
+		return &ipPrimeableByPreinitialization{p: p, img: img, opaqueBoundRanges: opaqueBoundRanges, queue: queue.VulkanHandle()}, nil
+
 	}
 	return nil, log.Errf(p.sb.ctx, nil, "No way build primeable image data for image: %v", img)
+}
+
+// newPrimeableImageDataFromDevice builds primeable image data from the source image, which is on the device already.
+func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (primeableImageData, error) {
+	nilQueueErr := fmt.Errorf("Nil Queue")
+	notImplErr := fmt.Errorf("Not Implemented")
+	srcImgObj := GetState(p.sb.newState).Images().Get(srcImg)
+	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
+	isDepth := (srcImgObj.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
+
+	// TODO: add support for sparse images
+	if isSparseResidency(srcImgObj) {
+		return nil, notImplErr
+	}
+	primeByCopy := (srcImgObj.Info().Usage()&transDstBit) != 0 && (!isDepth)
+	if primeByCopy {
+		queue := getQueueForPriming(p.sb, srcImgObj,
+			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by buffer -> image copy, image: %v]", srcImg)
+		}
+		kit, err := ipBuildDeviceCopyKit(p.sb, srcImg, dstImg)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at building host copy kits for host copy")
+		}
+		return &ipPrimeableDeviceCopy{queue: queue.VulkanHandle(), kits: []ipDeviceCopyKit{kit}}, nil
+	}
+
+	primeByRendering := (!primeByCopy) && ((srcImgObj.Info().Usage() & attBits) != 0)
+	if primeByRendering {
+		queue := getQueueForPriming(p.sb, srcImgObj, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering host data: %v]", srcImg)
+		}
+		dev := queue.Device()
+		primeable := &ipPrimeableRenderKits{img: srcImg, queue: queue.VulkanHandle(), kits: []ipRenderKit{}}
+
+		kb := p.GetRenderKitBuilder(dev)
+		recipes := []ipRenderRecipe{}
+
+		walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
+			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+				sizes := p.sb.levelSize(srcImgObj.Info().Extent(), srcImgObj.Info().Fmt(), level, aspect)
+				r := ipRenderRecipe{
+					inputAttachmentImage:  srcImg,
+					inputAttachmentAspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+					renderImage:           dstImg,
+					renderAspect:          aspect,
+					layer:                 layer,
+					level:                 level,
+					renderRectX:           int32(0),
+					renderRectY:           int32(0),
+					renderRectWidth:       uint32(levelSize.width),
+					renderRectHeight:      uint32(levelSize.height),
+					wordIndex:             uint32(0),
+					framebufferWidth:      uint32(sizes.width),
+					framebufferHeight:     uint32(sizes.height),
+				}
+				recipes = append(recipes, r)
+			})
+
+		kits, err := kb.BuildRenderKits(p.sb, recipes...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed to build render kits from recipes")
+		}
+		primeable.kits = kits
+
+		return primeable, nil
+	}
+
+	primeByImageStore := (!primeByCopy) && (!primeByRendering) && ((srcImgObj.Info().Usage() & storageBit) != 0)
+	if primeByImageStore {
+		queue := getQueueForPriming(p.sb, srcImgObj, VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
+		if queue.IsNil() {
+			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by host data imageStore operation, image: %v]", srcImg)
+		}
+		if !GetState(p.sb.newState).Queues().Contains(queue.VulkanHandle()) {
+			return nil, fmt.Errorf("Queue: %v does not exist", queue)
+		}
+
+		dev := queue.Device()
+		primeable := &ipPrimeableStoreKits{img: srcImg, queue: queue.VulkanHandle(), kits: []ipStoreKit{}}
+
+		recipes := []ipStoreRecipe{}
+		walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
+			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+				r := ipStoreRecipe{
+					inputImage:   srcImg,
+					inputAspect:  aspect,
+					outputImage:  dstImg,
+					outputAspect: aspect,
+					layer:        layer,
+					level:        level,
+					wordIndex:    uint32(0),
+					extentWidth:  uint32(levelSize.width),
+					extentHeight: uint32(levelSize.height),
+					extentDepth:  uint32(levelSize.depth),
+					offsetX:      int32(0),
+					offsetY:      int32(0),
+					offsetZ:      int32(0),
+				}
+				recipes = append(recipes, r)
+			})
+		kb := p.GetStoreKitBuilder(dev)
+		kits, err := kb.BuildStoreKits(p.sb, recipes...)
+		if err != nil {
+			return nil, log.Errf(p.sb.ctx, err, "failed at build store kits for priming storage image")
+		}
+		primeable.kits = kits
+		return primeable, nil
+	}
+	primeByPreinitialization := (!primeByCopy) && (!primeByRendering) && (!primeByImageStore) && (srcImgObj.Info().Tiling() == VkImageTiling_VK_IMAGE_TILING_LINEAR) && (srcImgObj.Info().InitialLayout() == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED)
+	if primeByPreinitialization {
+		return nil, notImplErr
+	}
+	return nil, log.Errf(p.sb.ctx, nil, "No way build primeable image data for image: %v", srcImg)
 }

@@ -44,6 +44,8 @@ func (t *EndOfReplay) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, 
 func (t *EndOfReplay) Flush(ctx context.Context, out transform.Writer) {
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return nil })
 }
+func (t *EndOfReplay) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *EndOfReplay) PostLoop(ctx context.Context, out transform.Writer) {}
 
 // AddNotifyInstruction adds the instruction to the replay stream that will notify GAPIS that the
 // replay has finished. It should be the end (or very near the end) of the replay stream and thus

@@ -136,7 +136,7 @@ func (kb *ipRenderKitBuilder) Free(sb *stateBuilder) {
 }
 
 // BuildRenderKits takes a list of render recipes and returns a list of render
-// kits that contains the commands to render the input attachments specifed in
+// kits that contains the commands to render the input attachments specified in
 // the recipes to the render target images.
 func (kb *ipRenderKitBuilder) BuildRenderKits(sb *stateBuilder, recipes ...ipRenderRecipe) ([]ipRenderKit, error) {
 	var err error

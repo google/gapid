@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
@@ -39,23 +38,21 @@ import (
 const queryPoolSize = 256
 
 type timestampRecord struct {
-	timestamp replay.Timestamp
+	timestamp service.TimestampsItem
 	// Is this timestamp from the last command in the commandbuffer
 	IsEoC bool
 }
 
+type queryResults []timestampRecord
+
 // queryPoolInfo contains the information about the query pool
 type queryPoolInfo struct {
-	queryPool       VkQueryPool
-	queryPoolSize   uint32
-	device          VkDevice
-	timestampPeriod float32
-	queue           VkQueue
-	// writeIndex is the next slot in the query pool can be used.
-	writeIndex uint32
-	// readIndex is the index in the result list that the next result will be collected.
-	readIndex uint32
-	results   []timestampRecord
+	queryPool     VkQueryPool
+	queryPoolSize uint32
+	device        VkDevice
+	queue         VkQueue
+	queryCount    uint32
+	results       queryResults
 }
 
 // commandPoolKey is used to find a command pool suitable for a specific queue family
@@ -65,21 +62,27 @@ type commandPoolKey struct {
 }
 
 type queryTimestamps struct {
-	cmds         []api.Cmd
-	commandPools map[commandPoolKey]VkCommandPool
-	queryPools   map[VkQueue]*queryPoolInfo
-	replayResult []replay.Result
-	timestamps   []replay.Timestamp
-	allocated    []*api.AllocResult
-	handler      service.TimeStampsHandler
+	cmds            []api.Cmd
+	willLoop        bool
+	startState      api.GlobalState
+	handler         service.TimeStampsHandler
+	commandPools    map[commandPoolKey]VkCommandPool
+	queryPools      map[VkQueue]*queryPoolInfo
+	timestampPeriod float32
+	replayResult    []replay.Result
+	allocated       []*api.AllocResult
+	loopReady       bool
+	results         map[uint64]queryResults
 }
 
-func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int, Cmds []api.Cmd, handler service.TimeStampsHandler) *queryTimestamps {
+func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int, Cmds []api.Cmd, willLoop bool, handler service.TimeStampsHandler) *queryTimestamps {
 	transform := &queryTimestamps{
 		cmds:         Cmds,
+		willLoop:     willLoop,
 		commandPools: make(map[commandPoolKey]VkCommandPool),
 		queryPools:   make(map[VkQueue]*queryPoolInfo),
 		handler:      handler,
+		results:      make(map[uint64]queryResults),
 	}
 	return transform
 }
@@ -97,14 +100,13 @@ func (t *queryTimestamps) mustAllocData(ctx context.Context, s *api.GlobalState,
 	return res
 }
 
-func (t *queryTimestamps) reportTo(r replay.Result) { t.replayResult = append(t.replayResult, r) }
+func (t *queryTimestamps) AddResult(r replay.Result) { t.replayResult = append(t.replayResult, r) }
 
 func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 	cb CommandBuilder,
 	out transform.Writer,
 	queue VkQueue,
 	device VkDevice,
-	timestampPeriod float32,
 	numQuery uint32) *queryPoolInfo {
 	s := out.State()
 
@@ -150,7 +152,8 @@ func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 		VkResult_VK_SUCCESS)
 
 	newCmd.AddRead(queryPoolCreateInfo.Data()).AddWrite(queryPoolHandleData.Data())
-	info = &queryPoolInfo{queryPool, qSize, device, timestampPeriod, queue, 0, 0, []timestampRecord{}}
+
+	info = &queryPoolInfo{queryPool, qSize, device, queue, 0, []timestampRecord{}}
 	t.queryPools[queue] = info
 	out.MutateAndWrite(ctx, api.CmdNoID, newCmd)
 	return info
@@ -320,8 +323,8 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 				device,
 				queryPoolInfo.queryPool,
 				commandPool,
-				queryPoolInfo.writeIndex)
-			queryPoolInfo.writeIndex++
+				queryPoolInfo.queryCount)
+			queryPoolInfo.queryCount++
 			newCmdBuffers := make([]VkCommandBuffer, newCmdCount)
 			newCmdBuffers[0] = commandbuffer
 			for j := uint32(0); j < cmdCount; j++ {
@@ -334,8 +337,8 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 					device,
 					queryPoolInfo.queryPool,
 					commandPool,
-					queryPoolInfo.writeIndex)
-				queryPoolInfo.writeIndex++
+					queryPoolInfo.queryCount)
+				queryPoolInfo.queryCount++
 				newCmdBuffers[j*2+2] = commandbuffer
 
 				begin := &path.Command{
@@ -354,8 +357,9 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 				end := &path.Command{
 					Indices: []uint64{uint64(id), uint64(i), uint64(j), uint64(k)},
 				}
+				timestampItem := service.TimestampsItem{Begin: begin, End: end, TimeInNanoseconds: 0}
 				queryPoolInfo.results = append(queryPoolInfo.results,
-					timestampRecord{timestamp: replay.Timestamp{begin, end, 0}, IsEoC: j == cmdCount-1})
+					timestampRecord{timestamp: timestampItem, IsEoC: j == cmdCount-1})
 			}
 
 			cmdBufferPtr = allocAndRead(newCmdBuffers).Ptr()
@@ -397,7 +401,7 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 		log.E(ctx, "queryPoolInfo is invalid")
 		return
 	}
-	queryCount := queryPoolInfo.writeIndex
+	queryCount := queryPoolInfo.queryCount
 	queue := queryPoolInfo.queue
 	if queryCount == 0 {
 		return
@@ -425,51 +429,64 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 		b.ReserveMemory(tmp.Range())
 		notificationID := b.GetNotificationID()
+		t.results[notificationID] = queryPoolInfo.results
 		b.Notification(notificationID, value.ObservedPointer(tmp.Address()), buflen)
-		return b.RegisterNotificationReader(func(n gapir.Notification) {
-			d := n.GetData()
-			data := d.GetData()
-			byteOrder := s.MemoryLayout.GetEndian()
-
-			r := endian.Reader(bytes.NewReader(data), byteOrder)
-			tStart := r.Uint64()
-			var timestamps service.Timestamps
-			for i := uint32(1); i < queryCount; i++ {
-				tEnd := r.Uint64()
-				if queryPoolInfo.readIndex >= uint32(len(queryPoolInfo.results)) {
-					panic(fmt.Errorf("ReadIndex [%v] is larger then the size of query [%v]", queryCount, len(queryPoolInfo.results)))
-				}
-				record := queryPoolInfo.results[queryPoolInfo.readIndex]
-				record.timestamp.Time = time.Duration(uint64(float32(tEnd-tStart)*queryPoolInfo.timestampPeriod)) * time.Nanosecond
-				if record.IsEoC && i < queryCount {
-					tStart = r.Uint64()
-					i++
-				} else {
-					tStart = tEnd
-				}
-
-				item := &service.TimestampsItem{
-					Begin:             record.timestamp.Begin,
-					End:               record.timestamp.End,
-					TimeInNanoseconds: uint64(record.timestamp.Time),
-				}
-				timestamps.Timestamps = append(timestamps.Timestamps, item)
-				t.timestamps = append(t.timestamps, record.timestamp)
-				queryPoolInfo.readIndex++
-			}
-
-			t.handler(&service.GetTimestampsResponse{
-				Res: &service.GetTimestampsResponse_Timestamps{
-					Timestamps: &timestamps,
-				},
-			})
-		}, notificationID)
+		return b.RegisterNotificationReader(notificationID, func(n gapir.Notification) {
+			t.processNotification(ctx, s, n)
+		})
 	}))
-	queryPoolInfo.writeIndex = 0
+
+	queryPoolInfo.queryCount = 0
+	queryPoolInfo.results = []timestampRecord{}
 	tmp.Free()
 }
 
+func (t *queryTimestamps) processNotification(ctx context.Context, s *api.GlobalState, n gapir.Notification) {
+
+	notificationData := n.GetData()
+	notificationID := n.GetId()
+	timestampsData := notificationData.GetData()
+
+	res, ok := t.results[notificationID]
+	if !ok {
+		log.I(ctx, "Invalid notificationID %d", notificationID)
+		return
+	}
+
+	byteOrder := s.MemoryLayout.GetEndian()
+	r := endian.Reader(bytes.NewReader(timestampsData), byteOrder)
+	tStart := r.Uint64()
+	var timestamps service.Timestamps
+	resultCount := uint32(len(timestampsData) / 8)
+	resIdx := 0
+
+	for i := uint32(1); i < resultCount; i++ {
+		tEnd := r.Uint64()
+		record := res[resIdx]
+		record.timestamp.TimeInNanoseconds = uint64(float32(tEnd-tStart) * t.timestampPeriod)
+		if record.IsEoC {
+			tStart = r.Uint64()
+			i++
+		} else {
+			tStart = tEnd
+		}
+		timestamps.Timestamps = append(timestamps.Timestamps, &record.timestamp)
+		resIdx++
+	}
+
+	t.handler(&service.GetTimestampsResponse{
+		Res: &service.GetTimestampsResponse_Timestamps{
+			Timestamps: &timestamps,
+		},
+	})
+}
+
 func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
+	ctx = log.Enter(ctx, "queryTimestamps")
+	if t.willLoop && !t.loopReady {
+		out.MutateAndWrite(ctx, id, cmd)
+		return
+	}
 	s := out.State()
 	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 
@@ -489,7 +506,7 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		device := GetState(s).Devices().Get(vkDevice)
 		vkPhysicalDevice := device.PhysicalDevice()
 		physicalDevice := GetState(s).PhysicalDevices().Get(vkPhysicalDevice)
-		timestampPeriod := physicalDevice.PhysicalDeviceProperties().Limits().TimestampPeriod()
+		t.timestampPeriod = physicalDevice.PhysicalDeviceProperties().Limits().TimestampPeriod()
 
 		submitCount := cmd.SubmitCount()
 		submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
@@ -501,8 +518,8 @@ func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.C
 		queryCount := cmdBufferCount * 2
 
 		commandPool := t.createCommandpoolIfNeeded(ctx, cb, out, vkDevice, queueFamilyIndex)
-		queryPoolInfo := t.createQueryPoolIfNeeded(ctx, cb, out, vkQueue, vkDevice, timestampPeriod, queryCount)
-		numSlotAvailable := queryPoolInfo.queryPoolSize - queryPoolInfo.writeIndex
+		queryPoolInfo := t.createQueryPoolIfNeeded(ctx, cb, out, vkQueue, vkDevice, queryCount)
+		numSlotAvailable := queryPoolInfo.queryPoolSize - queryPoolInfo.queryCount
 		if numSlotAvailable < queryCount {
 			t.GetQueryResults(ctx, cb, out, queryPoolInfo)
 		}
@@ -522,18 +539,35 @@ func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 		code := uint32(0xbeefcace)
 		b.Push(value.U32(code))
 		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
+			if err != nil {
+				log.Err(ctx, err, "Flush did not get expected EOS code: '%v'")
+				return
+			}
+			d := r.Uint32()
+			if d != code {
+				log.Err(ctx, nil, "Flush did not get expected EOS code")
+				return
+			}
+
 			for _, res := range t.replayResult {
 				res.Do(func() (interface{}, error) {
-					if err != nil {
-						return nil, log.Err(ctx, err, "Flush did not get expected EOS code: '%v'")
-					}
-					if r.Uint32() != code {
-						return nil, log.Err(ctx, nil, "Flush did not get expected EOS code")
-					}
-					return t.timestamps, nil
+					return nil, nil
 				})
 			}
 		})
 		return nil
 	}))
+}
+
+func (t *queryTimestamps) PreLoop(ctx context.Context, out transform.Writer) {
+	t.loopReady = true
+}
+
+func (t *queryTimestamps) PostLoop(ctx context.Context, out transform.Writer) {
+	t.loopReady = false
+	s := out.State()
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	for _, queryPoolInfo := range t.queryPools {
+		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
+	}
 }

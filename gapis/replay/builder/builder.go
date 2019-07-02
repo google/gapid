@@ -642,7 +642,7 @@ func (b *Builder) GetNotificationID() uint64 {
 
 // RegisterNotificationReader registers a notification reader for a specific notificationID. Returns error
 // if the notificationID has already been registered.
-func (b *Builder) RegisterNotificationReader(reader NotificationReader, notificationID uint64) error {
+func (b *Builder) RegisterNotificationReader(notificationID uint64, reader NotificationReader) error {
 	fmt.Printf("Regitster notification ID %v", notificationID)
 	if _, ok := b.notificationReaders[notificationID]; ok {
 		return fmt.Errorf("notificationID %d already registered", notificationID)
@@ -759,7 +759,6 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 	// so that the builder do not need to be kept alive when using these readers.
 	readers := b.notificationReaders
 	handleNotification := func(n *gapir.Notification) {
-		ctx = log.Enter(ctx, "NotificationHandler")
 		if n == nil {
 			log.E(ctx, "Cannot handle nil Notification")
 			return

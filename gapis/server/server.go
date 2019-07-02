@@ -833,7 +833,7 @@ func (s *server) GetTimestamps(ctx context.Context, req *service.GetTimestampsRe
 	ctx = status.Start(ctx, "RPC GetTimestamps")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "GetTimestamps")
-	return replay.GetTimestamps(ctx, req.Capture, req.Device, h)
+	return replay.GetTimestamps(ctx, req.Capture, req.Device, req.LoopCount, h)
 }
 
 func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error) {

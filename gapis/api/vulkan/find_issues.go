@@ -271,7 +271,7 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 		delete(t.reportCallbacks, inst)
 	}
 	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-		return b.RegisterNotificationReader(func(n gapir.Notification) {
+		return b.RegisterNotificationReader(builder.IssuesNotificationID, func(n gapir.Notification) {
 			vkApi := API{}
 			eMsg := n.GetErrorMsg()
 			if eMsg == nil {
@@ -296,7 +296,10 @@ func (t *findIssues) Flush(ctx context.Context, out transform.Writer) {
 			issue.Error = fmt.Errorf("%s", msg)
 			issue.Severity = service.Severity(uint32(eMsg.GetSeverity()))
 			t.issues = append(t.issues, issue)
-		}, builder.IssuesNotificationID)
+		})
 	}))
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.issues })
 }
+
+func (t *findIssues) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *findIssues) PostLoop(ctx context.Context, out transform.Writer) {}
