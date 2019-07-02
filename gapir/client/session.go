@@ -289,6 +289,14 @@ var socketNames = map[device.Architecture]string{
 func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, launchArgs []string) error {
 	ctx = log.V{"abi": abi}.Bind(ctx)
 
+	log.I(ctx, "Unlocking device screen")
+	unlocked, err := d.UnlockScreen(ctx)
+	if err != nil {
+		log.W(ctx, "Failed to determine lock state: %s", err)
+	} else if !unlocked {
+		return log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
+	}
+
 	log.I(ctx, "Checking gapid.apk is installed...")
 	apk, err := gapidapk.EnsureInstalled(ctx, d, abi)
 	if err != nil {
