@@ -112,15 +112,14 @@ bool AssetResourceCache::putCache(const Resource &resource, const void *data) {
 }
 
 bool AssetResourceCache::hasCache(const Resource &resource) {
-  return (mRecords.find(resource.id) != mRecords.end());
+  return (mRecords.find(resource.getID()) != mRecords.end());
 }
 
 bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
-  std::unordered_map<std::string, AssetRecord>::const_iterator it;
-  it = mRecords.find(resource.id);
+  std::unordered_map<std::string, AssetRecord>::const_iterator it =
+      mRecords.find(resource.getID());
   if (it == mRecords.end()) {
-    GAPID_FATAL("AssetResourceCache::loadCache() cannot find resource: %s",
-                resource.id.c_str());
+    return false;
   }
 
   AssetRecord record = it->second;

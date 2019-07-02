@@ -39,7 +39,7 @@ class MemoryManager {
   // list provided, while keeping at least size * kOverheadFactor free bytes for
   // possible driver overhead allocations. Stopping after the first successful
   // allocation and cause a fatal error if none of the sizes could be allocated.
-  explicit MemoryManager(const std::vector<uint32_t>& sizeList);
+  MemoryManager();
 
   // Sets the size of the replay data.
   void setReplayData(const uint8_t* constantMemoryBase,
@@ -54,13 +54,10 @@ class MemoryManager {
   // Returns the size and the base address of the different memory regions
   // managed by the memory manager
   void* getBaseAddress() const { return mMemory.get(); }
-  void* getTopAddress() const { return mMemory.get() + mSize; }
-  uint32_t getFreeSpace() const { return mSize - mVolatileMemory.size; }
 
   const void* getOpcodeAddress() const { return mOpcodeMemory.base; }
   const void* getConstantAddress() const { return mConstantMemory.base; }
   void* getVolatileAddress() const { return mVolatileMemory.base; }
-  uint32_t getSize() const { return mSize; }
   uint32_t getOpcodeSize() const { return mOpcodeMemory.size; }
   uint32_t getConstantSize() const { return mConstantMemory.size; }
   uint32_t getVolatileSize() const { return mVolatileMemory.size; }
@@ -127,9 +124,8 @@ class MemoryManager {
   // memory layout used
   uint8_t* align(uint8_t* addr) const;
 
-  // The size and the base address of the memory block managed by the memory
+  // The base address of the memory block managed by the memory
   // manager. This pointer owns the allocated memory
-  uint32_t mSize;
   std::unique_ptr<uint8_t[]> mMemory;
 
   // The size and base address of the opcode memory. This opcode memory

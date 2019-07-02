@@ -59,6 +59,9 @@ class OnDiskResourceCache : public ResourceCache {
   virtual size_t totalCacheSize() const override {
     return std::numeric_limits<size_t>::max();
   }
+  virtual size_t unusedSize() const override {
+    return std::numeric_limits<size_t>::max();
+  }
   // Do not support resize.
   virtual bool resize(size_t newSize) override { return true; };
 
