@@ -152,6 +152,7 @@ func run() error {
 		return filepath.Join(fusedRoot, "src", trimUpTo(rel(projectRoot, path), "github.com"))
 	})
 
+	// Get ".go" files generated from templates.
 	templateGenedGofiles := collect(binOut, always).ifTrue(and(
 		isFile,
 		contains(filepath.Join("github.com", "google", "gapid")).not(),
@@ -160,6 +161,7 @@ func run() error {
 		return filepath.Join(fusedRoot, "src", "github.com", "google", "gapid", rel(binOut, path))
 	})
 
+	// Get ".cpp" and ".h" files generated from templates.
 	templateGenedCppfiles := collect(binOut, always).ifTrue(and(
 		isFile,
 		contains(filepath.Join("github.com", "google", "gapid")).not(),
