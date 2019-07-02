@@ -440,9 +440,16 @@ sub void TexImage(TexImageFlags  flags,
     }
   }
 
+  // TODO(hevrard): check that if t.ImmutableFormat == GL_TRUE, we are
+  // not trying to attempt to modify the format of dimension of any
+  // level (see GLES spec '8.18 Immutable-Format Texture Images')
+
   if isTexStorageCmd {
-    t.Levels = Texture().Levels
+    t.ImmutableLevels = as!GLuint(levels)
     t.ImmutableFormat = GL_TRUE
+    // Clean up levels with an empty map (produced via Texture().Levels)
+    // before setting them again in the subsequent loop
+    t.Levels = Texture().Levels
   }
 
   ctx := GetContext()
