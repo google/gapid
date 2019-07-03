@@ -54,6 +54,8 @@ def _strip_impl(ctx):
         flags = ["--strip-unneeded", "-p"]
     elif cc_toolchain.cpu == "darwin_x86_64":
         flags = ["-x"]
+    elif cc_toolchain.cpu == "darwin":
+        fail("Please install Xcode and setup the path using xcode-select. You need Xcode, the CLI tools are not enough.")
     else:
         fail("Unhandled CPU type in strip rule: " + cc_toolchain.cpu)
 
