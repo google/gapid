@@ -441,8 +441,8 @@ sub void TexImage(TexImageFlags  flags,
   }
 
   // TODO(hevrard): check that if t.ImmutableFormat == GL_TRUE, we are
-  // not trying to attempt to modify the format of dimension of any
-  // level (see GLES spec '8.18 Immutable-Format Texture Images')
+  // not trying to attempt to modify the format or dimension of any
+  // level (see GLES 3.2 spec '8.18 Immutable-Format Texture Images')
 
   if isTexStorageCmd {
     t.ImmutableLevels = as!GLuint(levels)
