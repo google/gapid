@@ -36,7 +36,7 @@ var _ api.Resource = Textureʳ{}
 
 // IsResource returns true if this instance should be considered as a resource.
 func (t Textureʳ) IsResource() bool {
-	return t.ID() != 0
+	return !t.IsNil() && t.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
@@ -264,7 +264,7 @@ var _ api.Resource = Shaderʳ{}
 
 // IsResource returns true if this instance should be considered as a resource.
 func (s Shaderʳ) IsResource() bool {
-	return s.ID() != 0
+	return !s.IsNil() && s.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
@@ -390,7 +390,7 @@ var _ api.Resource = Programʳ{}
 
 // IsResource returns true if this instance should be considered as a resource.
 func (p Programʳ) IsResource() bool {
-	return p.ID() != 0
+	return !p.IsNil() && p.ID() != 0
 }
 
 // ResourceHandle returns the UI identity for the resource.
