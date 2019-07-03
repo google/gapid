@@ -375,6 +375,7 @@ sub void WriteFramebufferAttachment(FramebufferAttachment a) {
 }
 
 // DependencyReadTexture read all relevant fields of texture to create dependencies
+@spy_disabled
 sub void DependencyReadTexture(ref!Texture texture) {
   read(texture.Image.Data)
 
