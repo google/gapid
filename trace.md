@@ -18,6 +18,8 @@ GAPID supports capturing from both Android devices and Windows/Linux desktop mac
 * Android SDK installed on the host machine.
 * Android hardware device connected through USB.
 * The device must have [USB debugging enabled](https://developer.android.com/studio/debug/dev-options.html) and the host machine must be authorized for debugging.
+* We recommend to set the "Stay awake" developer option to prevent issues that arise when the device screen sleeps.
+* Make sure to stop any program that may interact with the device over ADB, such as Android Studio, while using GAPID.
 
 ### Windows/Linux
 
