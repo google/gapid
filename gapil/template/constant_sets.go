@@ -132,16 +132,15 @@ type nodeLabeler struct {
 }
 
 func (nl *nodeLabeler) addLabels(n semantic.Node, v analysis.Value) {
-	ev, ok := v.(*analysis.EnumValue)
-	if !ok || len(ev.Labels) == 0 {
-		return // Parameter wasn't an enum, or had no labels.
-	}
 	l, ok := nl.nodes[n]
 	if !ok {
 		l = analysis.Labels{}
 		nl.nodes[n] = l
 	}
-	l.Merge(ev.Labels)
+
+	if ev, ok := v.(*analysis.EnumValue); ok {
+		l.Merge(ev.Labels)
+	}
 }
 
 func (nl *nodeLabeler) traverse(n semantic.Node, v analysis.Value) {
@@ -228,19 +227,18 @@ func buildConstantSets(api *semantic.API, mappings *semantic.Mappings) *Constant
 	// Create constant sets for all the nodes.
 	for n, l := range nl.nodes {
 		isBitfield := false
-		var idx *int
 		if ty, err := semantic.TypeOf(n); err == nil {
 			if enum, ok := ty.(*semantic.Enum); ok {
 				if i, ok := constsets[enum]; ok {
-					idx = i
+					constsets[n] = i
+					continue
 				}
 				isBitfield = enum.IsBitfield
 			}
 		}
-		if idx == nil {
-			idx = b.addLabels(l, isBitfield)
+		if len(l) != 0 {
+			constsets[n] = b.addLabels(l, isBitfield)
 		}
-		constsets[n] = idx
 	}
 
 	return &ConstantSets{
