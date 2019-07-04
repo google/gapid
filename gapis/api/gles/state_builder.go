@@ -1069,6 +1069,9 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 				write(ctx, cb.GlVertexBindingDivisor(i, divisor))
 			}
 		}
+		if !vao.ElementArrayBuffer().IsNil() {
+			write(ctx, cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, vao.ElementArrayBuffer().GetID()))
+		}
 	} else {
 		for loc, vaa := range vao.VertexAttributeArrays().All() {
 			defaultArray := MakeVertexAttributeArray(sb.tmpArena)
