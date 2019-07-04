@@ -979,7 +979,7 @@ ImageData Reader::ReadRenderbuffer(Renderbuffer* rb) {
     case GL_DEPTH_STENCIL:
       attach = GL_DEPTH_STENCIL_ATTACHMENT;
       break;
-    case GL_STENCIL:
+    case GL_STENCIL_INDEX:
       attach = GL_STENCIL_ATTACHMENT;
       break;
   }
