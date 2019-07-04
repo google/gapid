@@ -94,7 +94,7 @@ type frameLoop struct {
 	loopCount      int32
 	loopStartCmd   api.Cmd
 	loopEndCmd     api.Cmd
-	startState     *api.GlobalState
+	backupState    *api.GlobalState
 	watcher        *stateWatcher
 
 	bufferCreated   map[VkBuffer]bool
@@ -107,6 +107,8 @@ type frameLoop struct {
 	imageDestroyed map[VkImage]bool
 	imageToBackup  map[ImageObjectʳ]ImageObjectʳ
 	imageToBuffer  map[VkImage]VkBuffer
+
+	fenceChanged map[VkFence]bool
 
 	loopCountPtr value.Pointer
 
@@ -133,6 +135,7 @@ func newFrameLoop(ctx context.Context, c *capture.GraphicsCapture, numInitialCmd
 		imageDestroyed: make(map[VkImage]bool),
 		imageToBackup:  make(map[ImageObjectʳ]ImageObjectʳ),
 		imageToBuffer:  make(map[VkImage]VkBuffer),
+		fenceChanged:   make(map[VkFence]bool),
 	}
 
 	f.loopStartCmd, f.loopEndCmd = f.getLoopStartAndEndCmd(ctx, Cmds)
@@ -145,8 +148,8 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 
 	if cmd == f.loopStartCmd {
 		log.I(ctx, "Loop: start loop at frame %v, id %v, cmd %v", f.frameNum, id, cmd)
-		f.detectChangedResource(ctx, out)
-		st := GetState(f.startState)
+		f.detectChangedResource(ctx, out.State())
+		st := GetState(f.backupState)
 		sb := st.newStateBuilder(ctx, newTransformerOutput(out))
 		defer sb.ta.Dispose()
 
@@ -166,7 +169,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 
 	} else if cmd == f.loopEndCmd {
 		log.I(ctx, "Loop: last frame is %v cmd is %v", f.frameNum, cmd)
-		st := GetState(f.startState)
+		st := GetState(f.backupState)
 		sb := st.newStateBuilder(ctx, newTransformerOutput(out))
 		defer sb.ta.Dispose()
 		out.MutateAndWrite(ctx, id, cmd)
@@ -221,20 +224,16 @@ func (f *frameLoop) getLoopStartAndEndCmd(ctx context.Context, Cmds []api.Cmd) (
 	return startCmd, endCmd
 }
 
-func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Writer) {
+func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.GlobalState) {
 	ctx = log.Enter(ctx, "detectChangedResource")
-	gs := out.State()
-
-	f.startState = f.capture.NewUninitializedState(ctx)
-	f.startState.Memory = gs.Memory.Clone()
-	for k, v := range gs.APIs {
-		s := v.Clone(f.startState.Arena)
+	f.backupState = f.capture.NewUninitializedState(ctx)
+	f.backupState.Memory = startState.Memory.Clone()
+	for k, v := range startState.APIs {
+		s := v.Clone(f.backupState.Arena)
 		s.SetupInitialState(ctx)
-		f.startState.APIs[k] = s
+		f.backupState.APIs[k] = s
 	}
-
-	s := f.startState
-
+	s := f.backupState
 	err := api.ForeachCmd(ctx, f.cmds[f.numInitialCmds:], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		switch c := cmd.(type) {
 		// Images
@@ -243,7 +242,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Wri
 			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 			img := vkCmd.PImage().MustRead(ctx, vkCmd, s, nil)
 			f.imageCreated[img] = true
-			cmd.Mutate(ctx, id, f.startState, nil, f.watcher)
+			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
 		case *VkDestroyImage:
 			vkCmd := cmd.(*VkDestroyImage)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
@@ -257,7 +256,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Wri
 			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 			buffer := vkCmd.PBuffer().MustRead(ctx, vkCmd, s, nil)
 			f.bufferCreated[buffer] = true
-			cmd.Mutate(ctx, id, f.startState, nil, f.watcher)
+			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
 		case *VkDestroyBuffer:
 			vkCmd := cmd.(*VkDestroyBuffer)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
@@ -266,14 +265,10 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Wri
 			f.bufferDestroyed[buffer] = true
 
 		// Descriptor sets
-		case *VkAllocateDescriptorSets:
-			vkCmd := cmd.(*VkAllocateDescriptorSets)
-			log.I(ctx, "VkAllocateDescriptorSets %v", vkCmd)
-			cmd.Mutate(ctx, id, f.startState, nil, f.watcher)
 		case *VkUpdateDescriptorSets:
 			vkCmd := cmd.(*VkUpdateDescriptorSets)
 			log.I(ctx, "Update descriptorset %v", vkCmd)
-			cmd.Mutate(ctx, id, f.startState, nil, f.watcher)
+			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
 		case *VkFreeDescriptorSets:
 			vkCmd := cmd.(*VkFreeDescriptorSets)
 			log.I(ctx, "VkFreeDescriptorSets %v", vkCmd)
@@ -297,7 +292,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Wri
 			log.I(ctx, "ignore destroy cmd %v", cmd)
 
 		default:
-			if err := cmd.Mutate(ctx, id, f.startState, nil, f.watcher); err != nil {
+			if err := cmd.Mutate(ctx, id, f.backupState, nil, f.watcher); err != nil {
 				return fmt.Errorf("%v: %v: %v", id, cmd, err)
 			}
 		}
@@ -309,7 +304,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Wri
 		log.I(ctx, "mutate error [%v]", err)
 	}
 
-	st := GetState(f.startState)
+	st := GetState(f.backupState)
 
 	// Find changed buffers
 	vkBuffers := st.Buffers().All()
@@ -339,11 +334,20 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, out transform.Wri
 					if l, ok := f.watcher.memoryWrites[poolID]; ok {
 						if _, count := interval.Intersect(l, span); count != 0 {
 							f.imageChanged[k] = true
-							log.I(ctx, "image %v changed", k)
+							break
 						}
 					}
 				}
 			}
+		}
+	}
+
+	// Find changed fences
+	for k, v := range GetState(startState).Fences().All() {
+		fenceObj := st.Fences().Get(k)
+		if v.Signaled() != fenceObj.Signaled() {
+			log.I(ctx, "fence %v changed to %v", k, v.Signaled())
+			f.fenceChanged[k] = true
 		}
 	}
 
@@ -390,6 +394,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, st *State, sb *stat
 			continue
 		}
 		imgObj := st.Images().Get(img)
+		log.I(ctx, "image [%v] changed during loop", img)
 
 		// Create staging Image which is used to backup the changed images
 		stagingImage, _, err := imgPrimer.CreateSameStagingImage(imgObj)
@@ -403,7 +408,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, st *State, sb *stat
 			log.Err(ctx, err, "copy image failed")
 			return err
 		}
-		log.I(ctx, "backup image %v succeed", imgObj)
+		log.I(ctx, "backup image %v succeed", img)
 	}
 	return nil
 }
@@ -419,11 +424,18 @@ func (f *frameLoop) resetResource(ctx context.Context, st *State, sb *stateBuild
 		return err
 	}
 
+	if err := f.resetFences(ctx, st, sb); err != nil {
+		return err
+	}
 	// TODO: reset other resource.
 	return nil
 }
 
 func (f *frameLoop) resetBuffers(ctx context.Context, st *State, sb *stateBuilder) error {
+	if len(f.bufferToBackup) == 0 {
+		log.I(ctx, "no buffer need to reset")
+		return nil
+	}
 	for dst, src := range f.bufferToBackup {
 		if err := f.copyBuffer(ctx, src, dst, sb); err != nil {
 			log.I(ctx, "reset buffer [%v] with buffer [%v] failed", src, dst)
@@ -435,6 +447,10 @@ func (f *frameLoop) resetBuffers(ctx context.Context, st *State, sb *stateBuilde
 }
 
 func (f *frameLoop) resetImages(ctx context.Context, st *State, sb *stateBuilder) error {
+	if len(f.imageToBackup) == 0 {
+		log.I(ctx, "no buffer need to reset")
+		return nil
+	}
 	imgPrimer := newImagePrimer(sb)
 	defer imgPrimer.Free()
 	for dst, src := range f.imageToBackup {
@@ -450,6 +466,26 @@ func (f *frameLoop) resetImages(ctx context.Context, st *State, sb *stateBuilder
 			return err
 		}
 		log.I(ctx, "prime image from [%v] to [%v] succeed", src, dst)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetFences(ctx context.Context, st *State, sb *stateBuilder) error {
+	if len(f.fenceChanged) == 0 {
+		log.I(ctx, "No fence need to be reset")
+		return nil
+	}
+	for k, v := range f.fenceChanged {
+		// if fence changed to signaled state, reset it.
+		fenceObj := st.Fences().Get(k)
+
+		log.I(ctx, "Fence %v changed", fenceObj)
+		if v {
+			sb.write(sb.cb.VkResetFences(fenceObj.Device(), 1, sb.MustAllocReadData(fenceObj.VulkanHandle()).Ptr(), VkResult_VK_SUCCESS))
+		} else { // fence status changed to unsignaled state.
+			sb.write(sb.cb.VkWaitForFences(fenceObj.Device(), 1, sb.MustAllocReadData(fenceObj.VulkanHandle()).Ptr(), 1, 0xFFFFFFFFFFFFFFFF, VkResult_VK_SUCCESS))
+		}
 	}
 
 	return nil
@@ -713,25 +749,21 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	return nil
 }
 
-func (f *frameLoop) getBufferMemoryIndex(ctx context.Context, device DeviceObjectʳ) uint32 {
-	s := GetState(f.startState)
+func (f *frameLoop) getBufferMemoryIndex(ctx context.Context, device DeviceObjectʳ, gs *api.GlobalState) uint32 {
+	s := GetState(gs)
 	physicalDeviceObject := s.PhysicalDevices().Get(device.PhysicalDevice())
-
 	typeBits := uint32((uint64(1) << uint64(physicalDeviceObject.MemoryProperties().MemoryTypeCount())) - 1)
-	if s.TransferBufferMemoryRequirements().Contains(device.VulkanHandle()) {
-		typeBits = s.TransferBufferMemoryRequirements().Get(device.VulkanHandle()).MemoryTypeBits()
-	}
 	index := memoryTypeIndexFor(typeBits, physicalDeviceObject.MemoryProperties(), VkMemoryPropertyFlags(VkMemoryPropertyFlagBits_VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-
 	if index >= 0 {
 		return uint32(index)
 	}
-	log.E(ctx, "cannot get the memory type index for host visible memory to create scratch buffer, fallback to use index 0")
+	log.E(ctx, "cannot get the memory type index for staging buffer, fallback to use index 0")
 	return 0
 }
 
 func (f *frameLoop) allocateStagingBuffer(ctx context.Context, src BufferObjectʳ, sb *stateBuilder) VkBuffer {
-	s := f.startState
+	// s := f.backupState
+	s := sb.newState
 	queue := sb.getQueueFor(
 		VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
 		queueFamilyIndicesToU32Slice(src.Info().QueueFamilyIndices()),
@@ -750,7 +782,7 @@ func (f *frameLoop) allocateStagingBuffer(ctx context.Context, src BufferObject�
 	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
 		return GetState(s).DeviceMemories().Contains(VkDeviceMemory(x))
 	}))
-	memoryTypeIndex := f.getBufferMemoryIndex(ctx, GetState(s).Devices().Get(dev))
+	memoryTypeIndex := f.getBufferMemoryIndex(ctx, GetState(s).Devices().Get(dev), s)
 
 	sb.write(sb.cb.VkCreateBuffer(
 		dev,
@@ -816,7 +848,7 @@ func (f *frameLoop) debugCopyImageToBuffer(ctx context.Context, img VkImage, que
 	deviceMemory := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
 		return GetState(s).DeviceMemories().Contains(VkDeviceMemory(x))
 	}))
-	memoryTypeIndex := f.getBufferMemoryIndex(ctx, GetState(s).Devices().Get(dev))
+	memoryTypeIndex := f.getBufferMemoryIndex(ctx, GetState(s).Devices().Get(dev), s)
 
 	sb.write(sb.cb.VkCreateBuffer(
 		dev,
@@ -868,7 +900,7 @@ func (f *frameLoop) debugCopyImageToBuffer(ctx context.Context, img VkImage, que
 
 	bufferOffset := VkDeviceSize(0)
 	bufImgCopies := []VkBufferImageCopy{}
-	imgObj := GetState(f.startState).Images().Get(img)
+	imgObj := GetState(f.backupState).Images().Get(img)
 
 	preCopyImgBarriers := []VkImageMemoryBarrier{}
 	postCopyImgBarriers := []VkImageMemoryBarrier{}
@@ -1128,12 +1160,11 @@ func (f *frameLoop) debugCopyImageToBuffer(ctx context.Context, img VkImage, que
 
 func (f *frameLoop) getImageSizeforBuffer(img VkImage, sb *stateBuilder) uint64 {
 	size := uint64(0)
-	imgObj := GetState(f.startState).Images().Get(img)
+	imgObj := GetState(f.backupState).Images().Get(img)
 
 	for aspect, aspectData := range imgObj.Aspects().All() {
 		for _, layerData := range aspectData.Layers().All() {
 			for level := range layerData.Levels().All() {
-
 				levelSize := sb.levelSize(imgObj.Info().Extent(), imgObj.Info().Fmt(), level, aspect)
 				size += levelSize.levelSize
 			}
