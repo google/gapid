@@ -295,8 +295,8 @@ func postFBData(ctx context.Context,
 		// Since we have no idea what format the data will be in, we need to be
 		// as pessimistic as possible. Assume 4 channels at 4 bytes each, which
 		// is the maximum possible by GLES. We also need space to store the
-		// format and type (2 4byte enums).
-		bufferSize = 16*int(outW)*int(outH) + 8
+		// format and type (2 4byte enums) as well as the GL error (4 byte enum).
+		bufferSize = 16*int(outW)*int(outH) + 8 + 4
 	}
 
 	tmp := s.AllocOrPanic(ctx, uint64(bufferSize))
@@ -307,6 +307,9 @@ func postFBData(ctx context.Context,
 
 		if needFBQuery {
 			ptr := value.ObservedPointer(tmp.Address())
+			// Clear the GL error
+			b.Call(funcInfoGlGetError)
+			b.Pop(1)
 			// Query the driver for the format and type that glReadPixels supports.
 			b.Push(value.U32(GLenum_GL_IMPLEMENTATION_COLOR_READ_FORMAT))
 			b.Push(ptr.Offset(0))
@@ -323,8 +326,11 @@ func postFBData(ctx context.Context,
 			b.Push(value.S32(outH))                     // height
 			b.Load(protocol.Type_Uint32, ptr.Offset(0)) // format
 			b.Load(protocol.Type_Uint32, ptr.Offset(4)) // type
-			b.Push(ptr.Offset(8))                       // pixels
+			b.Push(ptr.Offset(12))                      // pixels
 			b.Call(funcInfoGlReadPixels)
+			// Get the GL error.
+			b.Call(funcInfoGlGetError)
+			b.Store(ptr.Offset(8))
 		} else {
 			// We use Call() directly here because on host replay, we are calling
 			// glReadPixels with depth formats which are not legal for GLES.
@@ -338,10 +344,13 @@ func postFBData(ctx context.Context,
 					return nil, err
 				}
 
-				u, t := unsizedFormat, ty
+				u, t, e := unsizedFormat, ty, GLenum_GL_NO_ERROR
 				if needFBQuery {
-					u, t = GLenum(r.Int32()), GLenum(r.Int32())
-					bufferSize -= 8
+					u, t, e = GLenum(r.Int32()), GLenum(r.Int32()), GLenum(r.Int32())
+					bufferSize -= 12
+				}
+				if e != GLenum_GL_NO_ERROR {
+					return nil, fmt.Errorf("GL error reading pixels from framebuffer: %s", e)
 				}
 
 				data := make([]byte, bufferSize)
