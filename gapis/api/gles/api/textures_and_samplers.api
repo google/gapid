@@ -494,6 +494,9 @@ sub void TexImage(TexImageFlags  flags,
       }
     }
   }
+
+  // Dependency reads
+  _ = ctx.Other.Unpack.Alignment
 }
 
 sub void UpdateImageData(ref!Image      dst_image,
@@ -655,7 +658,12 @@ sub ref!Texture GetOrCreateTexture(GLenum target, TextureId texture, ref!Texture
         ctx.Objects.Textures[texture] = new!Texture(ID: texture)
       }
     }
-    ctx.Objects.GeneratedNames.Textures[texture] = true
+
+    // Dependency: set GeneratedNames.Textures[texture] only if it has not
+    // been set previously by glGenTexture()
+    if !ctx.Objects.GeneratedNames.Textures[texture] {
+      ctx.Objects.GeneratedNames.Textures[texture] = true
+    }
 
     // Set or check the kind of the texture
     t := ctx.Objects.Textures[texture]
