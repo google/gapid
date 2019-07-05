@@ -200,6 +200,33 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         sha256 = "da636883f8d31fa5d1a8722374b92e76bc1f19ec7c125882c843079623f1c13a",
     )
 
+    maybe_repository(
+        http_archive,
+        name = "vscode-languageclient",
+        locals = locals,
+        url = "https://registry.npmjs.org/vscode-languageclient/-/vscode-languageclient-2.6.3.tgz",
+        build_file = "@gapid//tools/build/third_party:vscode-languageclient.BUILD",
+        sha256 = "42ad6dc73bbf24a067d1e21038d35deab975cb207ac2d63b81c37a977d431d8f",
+    )
+
+    maybe_repository(
+        http_archive,
+        name = "vscode-jsonrpc",
+        locals = locals,
+        url = "https://registry.npmjs.org/vscode-jsonrpc/-/vscode-jsonrpc-2.4.0.tgz",
+        build_file = "@gapid//tools/build/third_party:vscode-jsonrpc.BUILD",
+        sha256= "bed9b2facb7d179f14c8a710db8e613be56bd88b2a75443143778813048b5c89",
+    )
+
+    maybe_repository(
+        http_archive,
+        name = "vscode-languageserver-types",
+        locals = locals,
+        url = "https://registry.npmjs.org/vscode-languageserver-types/-/vscode-languageserver-types-1.0.4.tgz",
+        build_file = "@gapid//tools/build/third_party:vscode-languageserver-types.BUILD",
+        sha256 = "0cd219ac388c41a70c3ff4f72d25bd54fa351bc0850196c25c6c3361e799ac79",
+    )
+
     if android:
         maybe_repository(
             native.android_sdk_repository,

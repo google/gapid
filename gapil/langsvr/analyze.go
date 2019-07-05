@@ -253,7 +253,6 @@ func (a *analyzer) doAnalysis(
 		executor := task.Batch(pool, events)
 		mt := sync.Mutex{}
 		for path, da := range das {
-			path, da, _ := path, da, log.V{"file": path}.Bind(ctx)
 			executor(ctx, func(ctx context.Context) error {
 				mt.Lock()
 				defer mt.Unlock()

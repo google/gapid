@@ -21,7 +21,7 @@ licenses(["notice"])  # Apache 2.0
 exports_files(["LICENSE"])
 
 load("@bazel_gazelle//:def.bzl", "gazelle")
-load("//tools/build:rules.bzl", "copy_to")
+load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 
 # gazelle:prefix github.com/google/gapid
 # gazelle:resolve go    go    llvm/bindings/go/llvm                 @llvm//:go
@@ -89,6 +89,9 @@ filegroup(
     srcs = [
         ":extension-files",
         ":langsvr",
+        ":vscode-jsonrpc",
+        ":vscode-languageclient",
+        ":vscode-languageserver-types",
     ],
 )
 
@@ -106,6 +109,33 @@ copy_to(
         "//gapil/langsvr",
     ],
     to = "gfxapi-ls-0.0.1/bin",
+)
+
+copy_tree(
+    name = "vscode-languageclient",
+    srcs = [
+        "@vscode-languageclient//:vscode-languageclient",
+    ],
+    strip = "external/vscode-languageclient/package",
+    to = "gfxapi-ls-0.0.1/node_modules/vscode-languageclient",
+)
+
+copy_tree(
+    name = "vscode-jsonrpc",
+    srcs = [
+        "@vscode-jsonrpc//:vscode-jsonrpc",
+    ],
+    strip = "external/vscode-jsonrpc/package",
+    to = "gfxapi-ls-0.0.1/node_modules/vscode-jsonrpc",
+)
+
+copy_tree(
+    name = "vscode-languageserver-types",
+    srcs = [
+        "@vscode-languageserver-types//:vscode-languageserver-types",
+    ],
+    strip = "external/vscode-languageserver-types/package",
+    to = "gfxapi-ls-0.0.1/node_modules/vscode-languageserver-types",
 )
 
 copy_to(
