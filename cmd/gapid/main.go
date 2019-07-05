@@ -150,11 +150,12 @@ func newConfig() *config {
 }
 
 func (c *config) locateCWD() error {
-	cwd, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	cwd, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	c.cwd, err = filepath.EvalSymlinks(cwd)
+	cwd, err = filepath.EvalSymlinks(cwd)
+	c.cwd = filepath.Dir(cwd)
 	return err
 }
 
