@@ -84,6 +84,9 @@ func (s *writer) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) 
 	s.cmds = append(s.cmds, cmd)
 }
 
+func (s *writer) NotifyPreLoop(ctx context.Context)  {}
+func (s *writer) NotifyPostLoop(ctx context.Context) {}
+
 // MutationCmdsFor returns a list of command that represent the correct
 // mutations to have the state for all commands before and including the given
 // index.

@@ -90,3 +90,6 @@ func (t *captureLog) Flush(ctx context.Context, out Writer) {
 	}
 	t.file.Close()
 }
+
+func (t *captureLog) PreLoop(ctx context.Context, output Writer)  {}
+func (t *captureLog) PostLoop(ctx context.Context, output Writer) {}
