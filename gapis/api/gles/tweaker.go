@@ -200,8 +200,8 @@ func (t *tweaker) makeVertexArray(ctx context.Context, enabledLocations ...Attri
 		// GLES 2.0 does not have Vertex Array Objects, but the state is fairly simple.
 		vao := t.c.Bound().VertexArray()
 		// Disable all vertex attribute arrays
-		for location, origVertexAttrib := range vao.VertexAttributeArrays().All() {
-			if origVertexAttrib.Enabled() == GLboolean_GL_TRUE {
+		for _, location := range vao.VertexAttributeArrays().Keys() {
+			if vao.VertexAttributeArrays().Get(location).Enabled() == GLboolean_GL_TRUE {
 				t.doAndUndo(ctx,
 					t.cb.GlDisableVertexAttribArray(location),
 					t.cb.GlEnableVertexAttribArray(location))
