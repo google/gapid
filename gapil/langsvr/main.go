@@ -87,10 +87,11 @@ var (
 // Config is is the configuration data sent from the client, held in the
 // "gfxapi" group.
 type Config struct {
-	Debug       bool     `json:"debug"`
-	LogToFiles  bool     `json:"logToFiles"`
-	IgnorePaths []string `json:"ignorePaths"`
-	CheckUnused bool     `json:"checkUnused"`
+	Debug                 bool     `json:"debug"`
+	LogToFiles            bool     `json:"logToFiles"`
+	IgnorePaths           []string `json:"ignorePaths"`
+	CheckUnused           bool     `json:"checkUnused"`
+	IncludePossibleValues bool     `json:"includePossibleValues"`
 }
 
 type server struct {
@@ -439,8 +440,10 @@ func (s *server) Hover(ctx context.Context, doc *ls.Document, pos ls.Position) (
 	offset := doc.Body().Offset(pos)
 	code := ls.SourceCodeList{}
 
-	if val, res := possibleValues(da, pos); val != nil {
-		code.Add("plain", "Possible values: "+val.Print(res))
+	if s.config.IncludePossibleValues {
+		if val, res := possibleValues(da, pos); val != nil {
+			code.Add("plain", "Possible values: "+val.Print(res))
+		}
 	}
 
 	if s.config != nil && s.config.Debug {
@@ -506,6 +509,9 @@ func (s *server) Symbols(ctx context.Context, doc *ls.Document) (ls.SymbolList, 
 // WorkspaceSymbols returns project-wide symbols.
 func (s *server) WorkspaceSymbols(ctx context.Context) (ls.SymbolList, error) {
 	a := s.analyzer.results(ctx, s)
+	if a == nil {
+		return nil, log.Err(ctx, nil, "Analyser config not ready yet")
+	}
 
 	syms := ls.SymbolList{}
 	for _, root := range a.roots {

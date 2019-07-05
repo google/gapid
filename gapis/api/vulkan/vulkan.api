@@ -417,20 +417,22 @@ sub ref!DrawInfo lastDrawInfo() {
 sub void clearLastDrawInfoDescriptorSets() {
   n := len(lastDrawInfo().DescriptorSets)
   for i in (0 .. n) {
-    lastDrawInfo().DescriptorSets[as!u32(i)] = null
+    ldi := lastDrawInfo()
+    ldi.DescriptorSets[as!u32(i)] = null
   }
 }
 
 // Clear the draw command parameters in the last draw info
 sub void clearLastDrawInfoDrawCommandParameters() {
-  lastDrawInfo().CommandParameters.Draw = null
-  lastDrawInfo().CommandParameters.DrawIndexed = null
-  lastDrawInfo().CommandParameters.DrawIndirect = null
-  lastDrawInfo().CommandParameters.DrawIndexedIndirect = null
-  lastDrawInfo().CommandParameters.DrawIndirectCountKHR = null
-  lastDrawInfo().CommandParameters.DrawIndexedIndirectCountKHR = null
-  lastDrawInfo().CommandParameters.DrawIndirectCountAMD = null
-  lastDrawInfo().CommandParameters.DrawIndexedIndirectCountAMD = null
+  ldi := lastDrawInfo()
+  ldi.CommandParameters.Draw = null
+  ldi.CommandParameters.DrawIndexed = null
+  ldi.CommandParameters.DrawIndirect = null
+  ldi.CommandParameters.DrawIndexedIndirect = null
+  ldi.CommandParameters.DrawIndirectCountKHR = null
+  ldi.CommandParameters.DrawIndexedIndirectCountKHR = null
+  ldi.CommandParameters.DrawIndirectCountAMD = null
+  ldi.CommandParameters.DrawIndexedIndirectCountAMD = null
 }
 
 sub ref!ComputeInfo lastComputeInfo() {

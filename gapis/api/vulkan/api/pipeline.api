@@ -869,11 +869,12 @@ cmd VkResult vkMergePipelineCaches(
 }
 
 sub void dovkCmdBindPipeline(ref!vkCmdBindPipelineArgs args) {
-  switch args.PipelineBindPoint {
-    case VK_PIPELINE_BIND_POINT_COMPUTE:
-      lastComputeInfo().ComputePipeline = ComputePipelines[args.Pipeline]
-    case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      lastDrawInfo().GraphicsPipeline = GraphicsPipelines[args.Pipeline]
+  if args.PipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE {
+    lci := lastComputeInfo()
+    lci.ComputePipeline = ComputePipelines[args.Pipeline]
+  } else {
+    ldi := lastDrawInfo()    
+    ldi.GraphicsPipeline = GraphicsPipelines[args.Pipeline]
   }
 }
 
@@ -976,7 +977,8 @@ cmd void vkCmdSetScissor(
 }
 
 sub void dovkCmdSetLineWidth(ref!vkCmdSetLineWidthArgs args) {
-  lastDynamicPipelineState().LineWidth = args.LineWidth
+  ldps := lastDynamicPipelineState()
+  ldps.LineWidth = args.LineWidth
 }
 
 @threadSafety("app")

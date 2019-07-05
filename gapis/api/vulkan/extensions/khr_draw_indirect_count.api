@@ -43,7 +43,8 @@ sub void dovkCmdDrawIndirectCountCOMMON!T(T draw) {
 sub void dovkCmdDrawIndirectCountKHR(ref!vkCmdDrawIndirectCountKHRArgs draw) {
   if draw.MaxDrawCount > 0 {
     dovkCmdDrawIndirectCountCOMMON!ref!vkCmdDrawIndirectCountKHRArgs(draw)
-    lastDrawInfo().CommandParameters.DrawIndirectCountKHR = draw
+    ldi := lastDrawInfo()
+    ldi.CommandParameters.DrawIndirectCountKHR = draw
   }
 }
 
@@ -77,7 +78,8 @@ sub void dovkCmdDrawIndexedIndirectCountCOMMON!T(T draw) {
 sub void dovkCmdDrawIndexedIndirectCountKHR(ref!vkCmdDrawIndexedIndirectCountKHRArgs draw) {
   if draw.MaxDrawCount > 0 {
     dovkCmdDrawIndexedIndirectCountCOMMON!ref!vkCmdDrawIndexedIndirectCountKHRArgs(draw)
-    lastDrawInfo().CommandParameters.DrawIndexedIndirectCountKHR = draw
+    ldi := lastDrawInfo()
+    ldi.CommandParameters.DrawIndexedIndirectCountKHR = draw
   }
 }
 

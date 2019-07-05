@@ -469,7 +469,8 @@ sub void storeImageAttachment(u32 attachmentID) {
 sub void useRenderPass() {
   // read and write InRenderPass to ensure dependencies between render pass commands
   _ = lastDrawInfo().InRenderPass
-  lastDrawInfo().InRenderPass = true
+  ldi := lastDrawInfo()
+  ldi.InRenderPass = true
 }
 
 // ----------------------------------------------------------------------------

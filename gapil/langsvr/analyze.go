@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/gapid/core/app/crash"
@@ -250,10 +251,12 @@ func (a *analyzer) doAnalysis(
 		defer shutdown(ctx)
 		events := &task.Events{}
 		executor := task.Batch(pool, events)
-
+		mt := sync.Mutex{}
 		for path, da := range das {
-			path, da, ctx := path, da, log.V{"file": path}.Bind(ctx)
+			path, da, _ := path, da, log.V{"file": path}.Bind(ctx)
 			executor(ctx, func(ctx context.Context) error {
+				mt.Lock()
+				defer mt.Unlock()
 				defer handlePanic(ctx)
 				ast, errs := processor.Parse(path)
 				da.ast = ast

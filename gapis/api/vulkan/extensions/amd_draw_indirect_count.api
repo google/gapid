@@ -31,14 +31,16 @@
 sub void dovkCmdDrawIndirectCountAMD(ref!vkCmdDrawIndirectCountAMDArgs draw) {
   if draw.MaxDrawCount > 0 {
     dovkCmdDrawIndirectCountCOMMON!ref!vkCmdDrawIndirectCountAMDArgs(draw)
-    lastDrawInfo().CommandParameters.DrawIndirectCountAMD = draw
+    ldi := lastDrawInfo()
+    ldi.CommandParameters.DrawIndirectCountAMD = draw
   }
 }
 
 sub void dovkCmdDrawIndexedIndirectCountAMD(ref!vkCmdDrawIndexedIndirectCountAMDArgs draw) {
   if draw.MaxDrawCount > 0 {
     dovkCmdDrawIndexedIndirectCountCOMMON!ref!vkCmdDrawIndexedIndirectCountAMDArgs(draw)
-    lastDrawInfo().CommandParameters.DrawIndexedIndirectCountAMD = draw
+    ldi := lastDrawInfo()
+    ldi.CommandParameters.DrawIndexedIndirectCountAMD = draw
   }
 }
 
