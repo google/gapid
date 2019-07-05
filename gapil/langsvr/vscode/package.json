@@ -59,6 +59,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Check for unused types, fields etc."
+                },
+                "gfxapi.includePossibleValues": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Include all possible values in hoverover text"
                 }
             }
         }

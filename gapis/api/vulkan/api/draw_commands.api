@@ -55,7 +55,8 @@ sub void dovkCmdBindIndexBuffer(ref!vkCmdBindIndexBufferArgs buffer) {
     vkErrorInvalidBuffer(buffer.Buffer)
   } else {
     buff := Buffers[buffer.Buffer]
-    lastDrawInfo().BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
+    ldi := lastDrawInfo()
+    ldi.BoundIndexBuffer = new!BoundIndexBuffer(buffer.IndexType,
       BoundBuffer(buff, buffer.Offset, 0))
     buff.LastBoundQueue = LastBoundQueue
   }
@@ -108,7 +109,8 @@ sub void dovkCmdBindVertexBuffers(ref!vkCmdBindVertexBuffersArgs bind) {
     if !(v in Buffers) {
       vkErrorInvalidBuffer(v)
     } else {
-      lastDrawInfo().BoundVertexBuffers[as!u32(i) + bind.FirstBinding] = BoundBuffer(
+      ldi := lastDrawInfo()
+      ldi.BoundVertexBuffers[as!u32(i) + bind.FirstBinding] = BoundBuffer(
         Buffers[v], bind.Offsets[as!u32(i)],
         Buffers[v].Info.Size - bind.Offsets[as!u32(i)])
       Buffers[v].LastBoundQueue = LastBoundQueue
@@ -161,7 +163,8 @@ sub void dovkCmdDraw(ref!vkCmdDrawArgs draw) {
   readWriteMemoryInBoundGraphicsDescriptorSets()
   readMemoryInCurrentPipelineBoundVertexBuffers(draw.VertexCount, draw.InstanceCount, draw.FirstVertex, draw.FirstInstance)
   clearLastDrawInfoDrawCommandParameters()
-  lastDrawInfo().CommandParameters.Draw = draw
+  ldi := lastDrawInfo()
+  ldi.CommandParameters.Draw = draw
 }
 
 @threadSafety("app")
@@ -231,7 +234,8 @@ sub void dovkCmdDrawIndexed(ref!vkCmdDrawIndexedArgs draw) {
   readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, draw.InstanceCount, 0, draw.FirstInstance)
   readWriteMemoryInBoundGraphicsDescriptorSets()
   clearLastDrawInfoDrawCommandParameters()
-  lastDrawInfo().CommandParameters.DrawIndexed = draw
+  ldi := lastDrawInfo()
+  ldi.CommandParameters.DrawIndexed = draw
 }
 
 @threadSafety("app")
@@ -290,7 +294,8 @@ sub void dovkCmdDrawIndirect(ref!vkCmdDrawIndirectArgs draw) {
     // Read through all the vertex buffers, as we cannot assume the buffer given to indirect draw is host
     readMemoryInCurrentPipelineBoundVertexBuffers(0xFFFFFFFF, 0xFFFFFFFF, 0, 0)
     clearLastDrawInfoDrawCommandParameters()
-    lastDrawInfo().CommandParameters.DrawIndirect = draw
+    ldi := lastDrawInfo()
+    ldi.CommandParameters.DrawIndirect = draw
   }
 }
 
