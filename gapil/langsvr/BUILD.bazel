@@ -30,6 +30,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/file:go_default_library",
         "//core/text/parse:go_default_library",
+        "//core/text/parse/cst:go_default_library",
         "//gapil:go_default_library",
         "//gapil/analysis:go_default_library",
         "//gapil/ast:go_default_library",

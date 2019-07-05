@@ -83,6 +83,31 @@ filegroup(
     }),
 )
 
+# Rules to build the expected installed structure for running
+filegroup(
+    name = "gfxapi-ls",
+    srcs = [
+        ":extension-files",
+        ":langsvr",
+    ],
+)
+
+copy_to(
+    name = "extension-files",
+    srcs = [
+        "//gapil/langsvr/vscode",
+    ],
+    to = "gfxapi-ls-0.0.1",
+)
+
+copy_to(
+    name = "langsvr",
+    srcs = [
+        "//gapil/langsvr",
+    ],
+    to = "gfxapi-ls-0.0.1/bin",
+)
+
 copy_to(
     name = "pkg-root",
     srcs = [
