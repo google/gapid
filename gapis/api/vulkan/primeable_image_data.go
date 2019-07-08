@@ -673,14 +673,15 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 	nilQueueErr := fmt.Errorf("Nil Queue")
 	notImplErr := fmt.Errorf("Not Implemented")
 	srcImgObj := GetState(p.sb.newState).Images().Get(srcImg)
+	dstImgObj := GetState(p.sb.newState).Images().Get(dstImg)
+
 	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
 	isDepth := (srcImgObj.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
 
-	// TODO: add support for sparse images
-	if isSparseResidency(srcImgObj) {
-		return nil, log.Errf(p.sb.ctx, notImplErr, "[Building primeable image data from on device sparse residency image: %v]", srcImg)
+	if isSparseResidency(srcImgObj) != isSparseResidency(dstImgObj) {
+		return nil, fmt.Errorf("src image residency does not match with dst image residency")
 	}
 	primeByCopy := (srcImgObj.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	if primeByCopy {
@@ -708,8 +709,8 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 		kb := p.GetRenderKitBuilder(dev)
 		recipes := []ipRenderRecipe{}
 
-		walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
-			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+		if isSparseResidency(srcImgObj) {
+			walkSparseImageMemoryBindings(p.sb, srcImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
 				sizes := p.sb.levelSize(srcImgObj.Info().Extent(), srcImgObj.Info().Fmt(), level, aspect)
 				r := ipRenderRecipe{
 					inputAttachmentImage:  srcImg,
@@ -718,17 +719,38 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 					renderAspect:          aspect,
 					layer:                 layer,
 					level:                 level,
-					renderRectX:           int32(0),
-					renderRectY:           int32(0),
-					renderRectWidth:       uint32(levelSize.width),
-					renderRectHeight:      uint32(levelSize.height),
+					renderRectX:           blockData.Offset().X(),
+					renderRectY:           blockData.Offset().Y(),
+					renderRectWidth:       blockData.Extent().Width(),
+					renderRectHeight:      blockData.Extent().Height(),
 					wordIndex:             uint32(0),
 					framebufferWidth:      uint32(sizes.width),
 					framebufferHeight:     uint32(sizes.height),
 				}
 				recipes = append(recipes, r)
 			})
-
+		} else {
+			walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
+				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+					sizes := p.sb.levelSize(srcImgObj.Info().Extent(), srcImgObj.Info().Fmt(), level, aspect)
+					r := ipRenderRecipe{
+						inputAttachmentImage:  srcImg,
+						inputAttachmentAspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
+						renderImage:           dstImg,
+						renderAspect:          aspect,
+						layer:                 layer,
+						level:                 level,
+						renderRectX:           int32(0),
+						renderRectY:           int32(0),
+						renderRectWidth:       uint32(levelSize.width),
+						renderRectHeight:      uint32(levelSize.height),
+						wordIndex:             uint32(0),
+						framebufferWidth:      uint32(sizes.width),
+						framebufferHeight:     uint32(sizes.height),
+					}
+					recipes = append(recipes, r)
+				})
+		}
 		kits, err := kb.BuildRenderKits(p.sb, recipes...)
 		if err != nil {
 			return nil, log.Errf(p.sb.ctx, err, "failed to build render kits from recipes")
@@ -752,8 +774,8 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 		primeable := &ipPrimeableStoreKits{img: srcImg, queue: queue.VulkanHandle(), kits: []ipStoreKit{}}
 
 		recipes := []ipStoreRecipe{}
-		walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
-			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+		if isSparseResidency(srcImgObj) {
+			walkSparseImageMemoryBindings(p.sb, srcImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
 				r := ipStoreRecipe{
 					inputImage:   srcImg,
 					inputAspect:  aspect,
@@ -762,15 +784,36 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 					layer:        layer,
 					level:        level,
 					wordIndex:    uint32(0),
-					extentWidth:  uint32(levelSize.width),
-					extentHeight: uint32(levelSize.height),
-					extentDepth:  uint32(levelSize.depth),
-					offsetX:      int32(0),
-					offsetY:      int32(0),
-					offsetZ:      int32(0),
+					extentWidth:  blockData.Extent().Width(),
+					extentHeight: blockData.Extent().Height(),
+					extentDepth:  blockData.Extent().Depth(),
+					offsetX:      blockData.Offset().X(),
+					offsetY:      blockData.Offset().Y(),
+					offsetZ:      blockData.Offset().Z(),
 				}
 				recipes = append(recipes, r)
 			})
+		} else {
+			walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
+				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+					r := ipStoreRecipe{
+						inputImage:   srcImg,
+						inputAspect:  aspect,
+						outputImage:  dstImg,
+						outputAspect: aspect,
+						layer:        layer,
+						level:        level,
+						wordIndex:    uint32(0),
+						extentWidth:  uint32(levelSize.width),
+						extentHeight: uint32(levelSize.height),
+						extentDepth:  uint32(levelSize.depth),
+						offsetX:      int32(0),
+						offsetY:      int32(0),
+						offsetZ:      int32(0),
+					}
+					recipes = append(recipes, r)
+				})
+		}
 		kb := p.GetStoreKitBuilder(dev)
 		kits, err := kb.BuildStoreKits(p.sb, recipes...)
 		if err != nil {
