@@ -43,6 +43,50 @@
 @extension("VK_EXT_debug_utils") define VK_EXT_DEBUG_UTILS_SPEC_VERSION   1
 @extension("VK_EXT_debug_utils") define VK_EXT_DEBUG_UTILS_EXTENSION_NAME "VK_EXT_debug_utils"
 
+///////////
+// Types //
+///////////
+
+@extension("VK_EXT_debug_utils") @replay_remap @nonDispatchHandle type u64 VkDebugUtilsMessengerEXT
+@extension("VK_EXT_debug_utils") @external type void* PFN_vkDebugUtilsMessengerCallbackEXT
+
+///////////
+// Enums //
+///////////
+
+@extension("VK_EXT_debug_utils")
+@reserved_flags
+type VkFlags VkDebugUtilsMessengerCallbackDataFlagsEXT
+
+@extension("VK_EXT_debug_utils")
+@reserved_flags
+type VkFlags VkDebugUtilsMessengerCreateFlagsEXT
+
+@extension("VK_EXT_debug_utils")
+enum VkDebugUtilsMessageSeverityFlagBitsEXT {
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT = 0x00000001,
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT = 0x00000010,
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT = 0x00000100,
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT = 0x00001000,
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT = 0x7FFFFFFF
+}
+
+@extension("VK_EXT_debug_utils")
+@reserved_flags
+type VkFlags VkDebugUtilsMessageSeverityFlagsEXT
+
+@extension("VK_EXT_debug_utils")
+enum VkDebugUtilsMessageTypeFlagBitsEXT {
+    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT = 0x00000001,
+    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT = 0x00000002,
+    VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT = 0x00000004,
+    VK_DEBUG_UTILS_MESSAGE_TYPE_FLAG_BITS_MAX_ENUM_EXT = 0x7FFFFFFF
+}
+
+@extension("VK_EXT_debug_utils")
+@reserved_flags
+type VkFlags VkDebugUtilsMessageTypeFlagsEXT
+
 /////////////
 // Structs //
 /////////////
@@ -73,6 +117,32 @@ class VkDebugUtilsLabelEXT {
     const void*             pNext
     const char*             pLabelName
     f32[4]                  color
+}
+
+@extension("VK_EXT_debug_utils")
+class VkDebugUtilsMessengerCreateInfoEXT {
+    VkStructureType                      sType
+    const void*                          pNext
+    VkDebugUtilsMessengerCreateFlagsEXT  flags
+    VkDebugUtilsMessageSeverityFlagsEXT  messageSeverity
+    VkDebugUtilsMessageTypeFlagsEXT      messageType
+    PFN_vkDebugUtilsMessengerCallbackEXT pfnUserCallback
+    void*                                pUserData
+}
+
+class VkDebugUtilsMessengerCallbackDataEXT {
+    VkStructureType                           sType
+    const void*                               pNext
+    VkDebugUtilsMessengerCallbackDataFlagsEXT flags
+    const char*                               pMessageIdName
+    u32                                       messageIdNumber
+    const char*                               pMessage
+    u32                                       queueLabelCount
+    const VkDebugUtilsLabelEXT*               pQueueLabels
+    u32                                       cmdBufLabelCount
+    const VkDebugUtilsLabelEXT*               pCmdBufLabels
+    u32                                       objectCount
+    const VkDebugUtilsObjectNameInfoEXT*      pObjects
 }
 
 //////////////
@@ -235,10 +305,43 @@ cmd void vkQueueInsertDebugUtilsLabelEXT(
 {
 }
 
-// TODO
-//  * vkCreateDebugUtilsMessengerEXT
-//  * vkDestroyDebugUtilsMessengerEXT
-//  * vkSubmitDebugUtilsMessageEXT
+@threadSafety("app")
+@indirect("VkInstance")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkCreateDebugUtilsMessengerEXT(
+    VkInstance                                instance,
+    const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+    AllocationCallbacks                       pAllocator,
+    VkDebugUtilsMessengerEXT*                 pMessenger)
+{
+}
+
+@threadSafety("app")
+@indirect("VkInstance")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkDestroyDebugUtilsMessengerEXT(
+    VkInstance               instance,
+    VkDebugUtilsMessengerEXT messenger
+    AllocationCallbacks      pAllocator)
+{
+}
+
+@threadSafety("app")
+@indirect("VkInstance")
+@extension("VK_EXT_debug_utils")
+@override
+@no_replay
+cmd void vkSubmitDebugUtilsMessageEXT(
+    VkInstance                                  instance,
+    VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData)
+{
+}
 
 ////////////////////
 // State tracking //
