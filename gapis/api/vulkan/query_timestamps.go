@@ -426,7 +426,7 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 		b.ReserveMemory(tmp.Range())
 		notificationID := b.GetNotificationID()
 		b.Notification(notificationID, value.ObservedPointer(tmp.Address()), buflen)
-		return b.RegisterNotificationReader(func(n gapir.Notification) {
+		return b.RegisterNotificationReader(notificationID, func(n gapir.Notification) {
 			d := n.GetData()
 			data := d.GetData()
 			byteOrder := s.MemoryLayout.GetEndian()
@@ -463,7 +463,7 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 					Timestamps: &timestamps,
 				},
 			})
-		}, notificationID)
+		})
 	}))
 	queryPoolInfo.writeIndex = 0
 	tmp.Free()

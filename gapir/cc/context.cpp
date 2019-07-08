@@ -799,8 +799,8 @@ bool Context::stopTimer(Stack* stack, bool pushReturn) {
 
 bool Context::sendNotificationData(Stack* stack) {
   const uint32_t count = stack->pop<uint32_t>();
-  const void* address = stack->pop<const void*>();
   const uint32_t id = stack->pop<uint32_t>();
+  const void* address = stack->pop<const void*>();
   auto label = mInterpreter->getLabel();
 
   if (!stack->isValid()) {
