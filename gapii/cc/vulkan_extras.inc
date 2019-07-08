@@ -111,6 +111,24 @@ uint32_t SpyOverride_vkSetDebugUtilsObjectTagEXT(
   return VkResult::VK_SUCCESS;
 }
 
+void SpyOverride_vkCreateDebugUtilsMessengerEXT(
+    VkInstance                                instance,
+    const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+    const VkAllocationCallbacks*              pAllocator,
+    VkDebugUtilsMessengerEXT*                 pMessenger) {
+}
+void SpyOverride_vkDestroyDebugUtilsMessengerEXT(
+    VkInstance                   instance,
+    VkDebugUtilsMessengerEXT     messenger,
+    const VkAllocationCallbacks* pAllocator) {
+}
+void SpyOverride_vkSubmitDebugUtilsMessageEXT(
+    VkInstance                                  instance,
+    uint32_t                                    messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData) {
+}
+
 void SpyOverride_vkCmdWriteBufferMarkerAMD(
   VkCommandBuffer commandBuffer, uint32_t pipelineStage,
   VkBuffer dstBuffer, VkDeviceSize dstOffset, uint32_t marker) {}
