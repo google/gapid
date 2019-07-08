@@ -48,3 +48,6 @@ func (t *Injector) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out
 
 // Flush implements the Transformer interface.
 func (t *Injector) Flush(ctx context.Context, out Writer) {}
+
+func (t *Injector) PreLoop(ctx context.Context, output Writer)  {}
+func (t *Injector) PostLoop(ctx context.Context, output Writer) {}

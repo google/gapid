@@ -280,7 +280,9 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer) {}
+func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer)    {}
+func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer) {}
 
 func buildReplayEnumeratePhysicalDevices(
 	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
@@ -508,7 +510,9 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 	return
 }
 
-func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer) {}
+func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer)    {}
+func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer) {}
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
@@ -648,6 +652,9 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 	}
 }
 
+func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}
+
 func newDisplayToSurface() *DisplayToSurface {
 	return &DisplayToSurface{
 		SurfaceTypes: map[uint64]uint32{},
@@ -698,8 +705,9 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer) {
-}
+func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer)    {}
+func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer) {}
 
 // issuesConfig is a replay.Config used by issuesRequests.
 type issuesConfig struct {

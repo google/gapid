@@ -79,6 +79,9 @@ func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api
 	panic(fmt.Errorf("This transform does not accept input commands"))
 }
 
+func (t *DeadCodeElimination) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *DeadCodeElimination) PostLoop(ctx context.Context, out transform.Writer) {}
+
 func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	ctx = status.Start(ctx, "DCE Flush")
 	defer status.Finish(ctx)

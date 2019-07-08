@@ -29,6 +29,12 @@ type Transformer interface {
 	// Flush is called at the end of a command stream to cause Transformers
 	// that cache commands to send any they have stored into the output.
 	Flush(ctx context.Context, output Writer)
+	// Preloop is called at the beginning of the loop if the trace is going to
+	// be looped.
+	PreLoop(ctx context.Context, output Writer)
+	// PostLoop is called at the end of the loop if the trace is going to
+	// be looped.
+	PostLoop(ctx context.Context, output Writer)
 }
 
 // Writer is the interface which consumes the output of an Transformer.
@@ -47,4 +53,8 @@ type Writer interface {
 	// MutateAndWrite mutates the state object associated with this writer,
 	// and it passes the command to further consumers.
 	MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd)
+	//Notify next tranformer it's ready to start loop the trace.
+	NotifyPreLoop(ctx context.Context)
+	//Notify next tranformer it's the end of the loop.
+	NotifyPostLoop(ctx context.Context)
 }

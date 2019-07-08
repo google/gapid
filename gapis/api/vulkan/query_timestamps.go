@@ -537,3 +537,5 @@ func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 		return nil
 	}))
 }
+func (t *queryTimestamps) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (t *queryTimestamps) PostLoop(ctx context.Context, out transform.Writer) {}

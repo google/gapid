@@ -115,3 +115,6 @@ func (m *mappingPrinter) Flush(ctx context.Context, out transform.Writer) {
 		},
 	})
 }
+
+func (m *mappingPrinter) PreLoop(ctx context.Context, out transform.Writer)  {}
+func (m *mappingPrinter) PostLoop(ctx context.Context, out transform.Writer) {}

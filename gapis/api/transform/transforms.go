@@ -79,6 +79,9 @@ func (t transform) Flush(ctx context.Context, output Writer) {}
 
 func (t transform) Name() string { return t.N }
 
+func (t transform) PreLoop(ctx context.Context, output Writer)  {}
+func (t transform) PostLoop(ctx context.Context, output Writer) {}
+
 // TransformWriter implements the Writer interface, transforming each command
 // that is written with T, before writing the result to O.
 type TransformWriter struct {
@@ -96,4 +99,14 @@ func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd a
 		cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */)
 	}
 	p.T.Transform(ctx, id, cmd, p.O)
+}
+
+// NotifyPreLoop notifies next transformer in the chain about the beginning of the loop
+func (p TransformWriter) NotifyPreLoop(ctx context.Context) {
+	p.T.PreLoop(ctx, p.O)
+}
+
+// NotifyPostLoop notifies next transformer in the chain about the end of the loop
+func (p TransformWriter) NotifyPostLoop(ctx context.Context) {
+	p.T.PostLoop(ctx, p.O)
 }
