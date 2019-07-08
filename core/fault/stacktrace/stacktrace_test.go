@@ -47,7 +47,7 @@ func init() {
 type traceEntry struct {
 	fun    func() stacktrace.Callstack
 	stack  stacktrace.Callstack
-	expect []string
+	expect [][]string
 }
 
 func (e traceEntry) Filtered() stacktrace.Callstack {
@@ -59,22 +59,32 @@ var (
 
 	traces = []traceEntry{{
 		fun: stacktrace.Capture,
-		expect: []string{
+		expect: [][]string{{
 			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
-		},
+		}},
 	}, {
 		fun: nested1,
-		expect: []string{
+		expect: [][]string{{
 			"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
 			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
-		},
+		}},
 	}, {
 		fun: nested3,
-		expect: []string{
-			"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
-			"⇒ core/fault/stacktrace/stacktrace_test.go@35:nested2",
-			"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
-			"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
+		expect: [][]string{
+			{
+				"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@35:nested2",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
+			},
+			// Compiling with optimisations can lead to the following
+			// stack trace:
+			{
+				"⇒ core/fault/stacktrace/stacktrace_test.go@36:nested1",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@34:nested3",
+				"⇒ core/fault/stacktrace/stacktrace_test.go@39:init.0",
+			},
 		},
 	}}
 )
@@ -87,7 +97,7 @@ func TestCapture(t *testing.T) {
 		for i, e := range entries {
 			lines[i] = e.String()
 		}
-		assert.For("stack").ThatSlice(lines).Equals(test.expect)
+		assert.For("stack").ThatSlice(lines).EqualsOneOf(test.expect)
 	}
 }
 
