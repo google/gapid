@@ -11,7 +11,7 @@ GAPID supports capturing from both Android devices and Windows/Linux desktop mac
 ### Android
 
 * A device running Android Lollipop 5.0 (or more recent).
-* Either a [debuggable](https://developer.android.com/guide/topics/manifest/application-element.html#debug) application, or a device running a 'rooted' user-debug build.
+* A [debuggable](https://developer.android.com/guide/topics/manifest/application-element.html#debug) application.
 * Android SDK installed on the host machine.
 * Android hardware device connected through USB.
 * The device must have [USB debugging enabled](https://developer.android.com/studio/debug/dev-options.html) and the host machine must be authorized for debugging.
