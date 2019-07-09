@@ -42,7 +42,7 @@ function build {
   echo $(date): Starting build for $@...
   $BUILD_ROOT/bazel/bin/bazel \
     --output_base="${TMP}/bazel_out" \
-    build -c opt --co]\nfig symbols \
+    build -c opt --config symbols \
     --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
     --define GAPID_BUILD_SHA="$BUILD_SHA" \
     $@
