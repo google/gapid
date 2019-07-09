@@ -44,6 +44,14 @@ func (r *Recorder) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd
 	r.CmdsAndIDs = append(r.CmdsAndIDs, CmdAndID{cmd, id})
 }
 
+// Required to implement Writer interface
+func (r *Recorder) NotifyPreLoop(ctx context.Context) {
+}
+
+// Required to implement Writer interface
+func (r *Recorder) NotifyPostLoop(ctx context.Context) {
+}
+
 // CmdAndID is a pair of api.Cmd and api.CmdID
 type CmdAndID struct {
 	Cmd api.Cmd
