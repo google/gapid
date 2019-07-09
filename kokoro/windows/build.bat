@@ -84,6 +84,15 @@ REM Smoketests
 %SRC%\bazel-bin\cmd\smoketests\windows_amd64_stripped\smoketests -gapit bazel-bin\pkg\gapit -traces test\traces
 echo %DATE% %TIME%
 
+REM Tests
+echo %DATE% %TIME%
+%BUILD_ROOT%\bazel test tests -c opt --config symbols ^
+    --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
+    --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
+    --test_tag_filters=-needs_gpu
+if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
+echo %DATE% %TIME%
+
 REM Build the release packages.
 mkdir %BUILD_ROOT%\out
 call %SRC%\kokoro\windows\package.bat %BUILD_ROOT%\out %SRC%

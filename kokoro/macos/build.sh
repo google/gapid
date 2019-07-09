@@ -55,6 +55,17 @@ function build {
   echo $(date): Build completed.
 }
 
+function test {
+  echo $(date): Starting tests
+  $BUILD_ROOT/bazel/bin/bazel \
+    --output_base="${TMP}/bazel_out" \
+    test tests -c opt --config symbols \
+    --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+    --define GAPID_BUILD_SHA="$BUILD_SHA" \
+    --test_tag_filters=-needs_gpu
+  echo $(date): Tests completed.
+}
+
 # Build each API package separately first, as the go-compiler needs ~8GB of
 # RAM for each of the big API packages.
 for api in gles vulkan gvr; do
@@ -71,6 +82,9 @@ echo $(date): Run smoketests...
 # disappear, hence we call the binary directly
 bazel-bin/cmd/smoketests/darwin_amd64_stripped/smoketests -gapit bazel-bin/pkg/gapit -traces test/traces
 echo $(date): Smoketests completed.
+
+# Run the tests
+test
 
 # Build the release packages.
 mkdir $BUILD_ROOT/out
