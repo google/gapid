@@ -242,6 +242,7 @@ public class TracerDialog {
       private static final String TRACE_EXTENSION = ".gfxtrace";
       private static final String PERFETTO_EXTENSION = ".perfetto";
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
+      private static final String INITIAL_FRAMES_LABEL = "Start Frame:";
       private static final String FRAMES_LABEL = "Stop After:";
       private static final String DURATION_LABEL = "Duration:";
       private static final String FRAMES_UNIT = "Frames (0 for unlimited)";
@@ -264,10 +265,13 @@ public class TracerDialog {
       private final Text arguments;
       private final Text cwd;
       private final Text envVars;
+      private final Label frameInitialLabel;
+      private final Spinner frameInitial;
       private final Label frameCountLabel;
       private final Spinner frameCount;
       private final Label frameCountUnit;
-      private final Button fromBeginning;
+      private Label mecWarningLabel;
+      private final Button interactiveTracing;
       private final Button withoutBuffering;
       private final Button hideUnknownExtensions;
       private final Button clearCache;
@@ -353,19 +357,26 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
         envVars.setEnabled(false);
 
+        frameInitialLabel = createLabel(this, INITIAL_FRAMES_LABEL);
+        Composite frameInitialComposite =
+            createComposite(this, withMargin(new GridLayout(3, false), 0, 0));
+        frameInitial = withLayoutData(
+            createSpinner(frameInitialComposite, models.settings.traceInitialFrameCount, 1, 999999),
+            new GridData(SWT.LEFT, SWT.FILL, false, false));
+        interactiveTracing = withLayoutData(
+            createCheckbox(frameInitialComposite, "Interactive start", models.settings.traceInteractiveStart),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        interactiveTracing.setEnabled(false);
+
         frameCountLabel = createLabel(this, FRAMES_LABEL);
         Composite frameCountComposite =
             createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
         frameCount = withLayoutData(
             createSpinner(frameCountComposite, models.settings.traceFrameCount, 0, 999999),
             new GridData(SWT.LEFT, SWT.FILL, false, false));
-        frameCountUnit = createLabel(frameCountComposite, FRAMES_UNIT);
 
-        createLabel(this, "");
-        fromBeginning = withLayoutData(
-            createCheckbox(this, MEC_LABEL, !models.settings.traceMidExecution),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
-        fromBeginning.setEnabled(false);
+        mecWarningLabel = createLabel(frameCountComposite, "");
+        frameCountUnit = createLabel(frameCountComposite, FRAMES_UNIT);
 
         createLabel(this, "");
         withoutBuffering = withLayoutData(
@@ -432,15 +443,20 @@ public class TracerDialog {
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
-          if (fromBeginning.getSelection() || config == null ||
-              config.getMidExecutionCaptureSupport() != Service.FeatureStatus.Experimental) {
-            fromBeginning.setText(MEC_LABEL);
-          } else {
-            fromBeginning.setText(String.format(MEC_LABEL_WARNING, config.getApi()));
+
+          if((interactiveTracing.getSelection() || frameInitial.getSelection() > 1) && config != null &&
+              config.getMidExecutionCaptureSupport() == Service.FeatureStatus.Experimental){
+                mecWarningLabel.setText(String.format("Warning and shit: MEC in %s is experimental", config.getApi()));
+                mecWarningLabel.requestLayout();
+          }
+          else{
+            mecWarningLabel.setText("");
+            mecWarningLabel.requestLayout();
           }
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
-        fromBeginning.addListener(SWT.Selection, mecListener);
+        interactiveTracing.addListener(SWT.Selection, mecListener);
+        frameInitial.addListener(SWT.Selection, mecListener);
 
         disablePcs.addListener(
             SWT.Selection, e -> pcsWarning.setVisible(!disablePcs.getSelection()));
@@ -525,8 +541,13 @@ public class TracerDialog {
 
         boolean mec = config != null &&
             config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported;
-        fromBeginning.setEnabled(mec);
-        fromBeginning.setSelection(!mec || !settings.traceMidExecution);
+
+        frameInitial.setEnabled(mec);
+        interactiveTracing.setEnabled(mec);
+        interactiveTracing.setSelection(mec);
+        if(!mec){
+          frameInitial.setSelection(1);
+        }
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
@@ -691,8 +712,9 @@ public class TracerDialog {
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
         if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
-          settings.traceMidExecution = !fromBeginning.getSelection();
-          options.setDeferStart(!fromBeginning.getSelection());
+          settings.traceInteractiveStart = interactiveTracing.getSelection();
+          settings.traceMidExecution = (frameInitial.isEnabled() && frameInitial.getSelection() > 1) || interactiveTracing.getSelection();
+          options.setDeferStart(interactiveTracing.getSelection());
         }
         if (dev.config.getHasCache()) {
           settings.traceClearCache = clearCache.getSelection();

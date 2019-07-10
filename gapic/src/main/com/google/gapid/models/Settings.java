@@ -74,7 +74,9 @@ public class Settings {
   public String traceArguments = "";
   public String traceCwd = "";
   public String traceEnv = "";
+  public int traceInitialFrameCount = 1;
   public int traceFrameCount = 7;
+  public boolean traceInteractiveStart = false;
   public boolean traceMidExecution = true;
   public boolean traceWithoutBuffering = false;
   public boolean traceHideUnknownExtensions = false;
@@ -229,6 +231,7 @@ public class Settings {
     traceCwd = properties.getProperty("trace.cwd", traceCwd);
     traceEnv = properties.getProperty("trace.env", traceEnv);
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
+    traceInteractiveStart = getBoolean(properties, "trace.interactiveStart", traceInteractiveStart);
     traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
     traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
     traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
