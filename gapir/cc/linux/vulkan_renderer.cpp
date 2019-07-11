@@ -33,23 +33,7 @@ class VulkanRendererImpl : public VulkanRenderer {
   Vulkan mApi;
 };
 
-VulkanRendererImpl::VulkanRendererImpl() {
-  mApi.resolve();
-  // Create a dummy instance renderer that never gets cleaned up.
-  // This works around some driver bugs.
-  // See https://github.com/google/gapid/issues/1899
-  auto create_info = Vulkan::VkInstanceCreateInfo{
-      Vulkan::VkStructureType::VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-      nullptr,
-      0,
-      nullptr,
-      0,
-      nullptr,
-      0,
-      nullptr};
-  Vulkan::VkInstance inst;
-  mApi.mFunctionStubs.vkCreateInstance(&create_info, nullptr, &inst);
-}
+VulkanRendererImpl::VulkanRendererImpl() { mApi.resolve(); }
 
 VulkanRendererImpl::~VulkanRendererImpl() {}
 

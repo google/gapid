@@ -89,6 +89,7 @@
     return queues;
   }
 ¶
+  static Vulkan::VkInstance leakInstance = 0;
   »}  // anonymous namespace
 ¶
 bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
@@ -146,8 +147,14 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
   stack->push(&new_info);
   stack->push(pAllocator);
   stack->push(pInstance);
+
   if (callVkCreateInstance(~0, stack, true)) {
     *result = stack->pop<uint32_t>();
+    if (*result == VK_SUCCESS) {
+      if (leakInstance == 0) {
+        leakInstance = *pInstance;
+      }
+    }
     return true;
   }
   *result = VkResult::VK_ERROR_INITIALIZATION_FAILED;
@@ -218,6 +225,24 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
       return true;
     } else {
       GAPID_WARNING("Error during calling function replayRegisterVkInstance");
+      return false;
+    }
+  }
+¶
+  bool Vulkan::replayDestroyVkInstance(Stack* stack) {
+    auto pAllocator = stack->pop<VkAllocationCallbacks const*>();
+    auto instance = static_cast<size_val>(stack->pop<size_val>());
+    if (stack->isValid()) {
+      // Leak this first instance. This is to work around a driver bug.
+      // See https://github.com/google/gapid/issues/1899
+      if (instance == leakInstance) {
+        return true;
+      }
+      stack->push<size_val>(static_cast<size_val>(instance));
+      stack->push<VkAllocationCallbacks const*>(pAllocator);
+      return callVkDestroyInstance(~0, stack, false);
+    } else {
+      GAPID_WARNING("Error during calling function replayDestroyVkInstance");
       return false;
     }
   }

@@ -506,6 +506,22 @@ void Context::registerCallbacks(Interpreter* interpreter) {
       });
 
   interpreter->registerBuiltin(
+      Vulkan::INDEX, Builtins::ReplayDestroyVkInstance,
+      [this](uint32_t label, Stack* stack, bool) {
+        GAPID_DEBUG("[%u]replayDestroyVkInstance()", label);
+        if (mVulkanRenderer != nullptr) {
+          auto* api = mVulkanRenderer->getApi<Vulkan>();
+          return api->replayDestroyVkInstance(stack);
+        } else {
+          GAPID_WARNING(
+              "[%u]replayDestroyVkInstance called without a bound Vulkan "
+              "renderer",
+              label);
+          return false;
+        }
+      });
+
+  interpreter->registerBuiltin(
       Vulkan::INDEX, Builtins::ReplayUnregisterVkInstance,
       [this](uint32_t label, Stack* stack, bool) {
         GAPID_DEBUG("[%u]replayUnregisterVkInstance()", label);
