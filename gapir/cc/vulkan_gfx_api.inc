@@ -60,6 +60,10 @@ bool replayRegisterVkInstance(Stack* stack);
 // The instance is popped from the top of the stack.
 bool replayUnregisterVkInstance(Stack* stack);
 
+// Builtin function for destroying the VkInstance.
+// This is used because we have to leak an instance.
+bool replayDestroyVkInstance(Stack* stack);
+
 // Builtin function for creating device-level function pointers.
 // From the top of the stack, pop three arguments sequentially:
 // - pointer to the VkDeviceCreateInfo struct for this device,

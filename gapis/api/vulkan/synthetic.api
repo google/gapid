@@ -31,6 +31,18 @@ cmd VkResult replayCreateVkInstance(
 }
 
 @synthetic
+cmd void replayDestroyVkInstance(
+    VkInstance                   instance,
+    AllocationCallbacks          pAllocator) {
+  // NOTE: The logic for this function should be identical to the one of
+  // vkDestroyInstance() in vulkan.api. Change both together
+  delete(Instances, instance)
+  for _, device, _ in PhysicalDevices {
+    delete(PhysicalDevices, device)
+  }
+}
+
+@synthetic
 cmd VkResult ReplayCreateVkDevice(
     VkPhysicalDevice             physicalDevice,
     const VkDeviceCreateInfo*    pCreateInfo,

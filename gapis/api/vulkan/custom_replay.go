@@ -276,8 +276,10 @@ func (a *VkCreateInstance) Mutate(ctx context.Context, id api.CmdID, s *api.Glob
 
 func (a *VkDestroyInstance) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
 	cb := CommandBuilder{Thread: a.Thread(), Arena: s.Arena}
-	// Call the underlying vkDestroyInstance() and do the observation.
-	err := a.mutate(ctx, id, s, b, w)
+	hijack := cb.ReplayDestroyVkInstance(a.Instance(), a.PAllocator())
+	hijack.Extras().MustClone(a.Extras().All()...)
+	err := hijack.Mutate(ctx, id, s, b, w)
+
 	if b == nil || err != nil {
 		return err
 	}
