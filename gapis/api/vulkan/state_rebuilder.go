@@ -1803,7 +1803,7 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 	}
 	// We have to handle the above cases at some point.
 
-	primeable, err := imgPrimer.newPrimeableImageData(img.VulkanHandle(), opaqueRanges, true)
+	primeable, err := imgPrimer.newPrimeableImageDataFromHost(img.VulkanHandle(), opaqueRanges)
 	if err != nil {
 		log.E(sb.ctx, "Create primeable image data: %v", err)
 		return

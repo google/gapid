@@ -39,6 +39,7 @@ type ipDeviceCopyKit struct {
 func ipBuildDeviceCopyKit(sb *stateBuilder, srcImage, dstImage VkImage) (ipDeviceCopyKit, error) {
 	srcObj := GetState(sb.newState).Images().Get(srcImage)
 	dstObj := GetState(sb.newState).Images().Get(dstImage)
+
 	if srcObj.Info().Fmt() != dstObj.Info().Fmt() {
 		return ipDeviceCopyKit{}, fmt.Errorf("src image format: %v does not match with dst image format: %v", srcObj.Info().Fmt(), dstObj.Info().Fmt())
 	}
@@ -80,8 +81,8 @@ func ipBuildDeviceCopyKit(sb *stateBuilder, srcImage, dstImage VkImage) (ipDevic
 func (kit ipDeviceCopyKit) BuildDeviceCopyCommands(sb *stateBuilder) *queueCommandBatch {
 	srcObj := GetState(sb.newState).Images().Get(kit.srcImage)
 	copies := []VkImageCopy{}
-	walkImageSubresourceRange(sb, srcObj, sb.imageWholeSubresourceRange(srcObj),
-		func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+	if isSparseResidency(srcObj) {
+		walkSparseImageMemoryBindings(sb, srcObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
 			copies = append(copies, NewVkImageCopy(sb.ta,
 				NewVkImageSubresourceLayers(sb.ta,
 					VkImageAspectFlags(aspect),
@@ -89,21 +90,55 @@ func (kit ipDeviceCopyKit) BuildDeviceCopyCommands(sb *stateBuilder) *queueComma
 					layer,
 					uint32(1),
 				), // srcSubresource
-				MakeVkOffset3D(sb.ta), // srcOffset
+				NewVkOffset3D(sb.ta,
+					blockData.Offset().X(),
+					blockData.Offset().Y(),
+					blockData.Offset().Z(),
+				), // srcOffset
 				NewVkImageSubresourceLayers(sb.ta,
 					VkImageAspectFlags(aspect),
 					level,
 					layer,
 					uint32(1),
 				), // dstSubresource
-				MakeVkOffset3D(sb.ta), // dstOffset
+				NewVkOffset3D(sb.ta,
+					blockData.Offset().X(),
+					blockData.Offset().Y(),
+					blockData.Offset().Z(),
+				), // dstOffset
 				NewVkExtent3D(sb.ta,
-					uint32(levelSize.width),
-					uint32(levelSize.height),
-					uint32(levelSize.depth),
+					blockData.Extent().Width(),
+					blockData.Extent().Height(),
+					blockData.Extent().Depth(),
 				), // extent
 			))
 		})
+	} else {
+		walkImageSubresourceRange(sb, srcObj, sb.imageWholeSubresourceRange(srcObj),
+			func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
+				copies = append(copies, NewVkImageCopy(sb.ta,
+					NewVkImageSubresourceLayers(sb.ta,
+						VkImageAspectFlags(aspect),
+						level,
+						layer,
+						uint32(1),
+					), // srcSubresource
+					MakeVkOffset3D(sb.ta), // srcOffset
+					NewVkImageSubresourceLayers(sb.ta,
+						VkImageAspectFlags(aspect),
+						level,
+						layer,
+						uint32(1),
+					), // dstSubresource
+					MakeVkOffset3D(sb.ta), // dstOffset
+					NewVkExtent3D(sb.ta,
+						uint32(levelSize.width),
+						uint32(levelSize.height),
+						uint32(levelSize.depth),
+					), // extent
+				))
+			})
+	}
 	cmdBatch := newQueueCommandBatch(kit.name.String())
 	cmdBatch.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
 		sb.write(sb.cb.VkCmdCopyImage(
