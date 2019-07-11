@@ -420,6 +420,20 @@ sub void DrawCommandDependencies(ref!Context ctx) {
     ReadFramebufferAttachment(read_fb.DepthAttachment)
   }
 
+  for i in (0 .. ctx.Constants.MaxDrawBuffers) {
+    if draw_fb.DrawBuffer[i] != GL_NONE {
+      blendState := ctx.Pixel.Blend[as!DrawBufferIndex(i)]
+      if blendState.Enabled == GL_TRUE {
+        _ = blendState.SrcRgb
+        _ = blendState.SrcAlpha
+        _ = blendState.DstRgb
+        _ = blendState.DstAlpha
+        _ = blendState.EquationRgb
+        _ = blendState.EquationAlpha
+      }
+    }
+  }
+
   for _, _, u in ctx.Bound.Program.UniformLocations {
 
     // The program execution reads uniform values
