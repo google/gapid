@@ -34,7 +34,7 @@ def _get_inc_directories(repository_ctx, cc):
     cmd = [cc, "-E", "-xc++", "-Wp,-v", str(repository_ctx.path("empty.cpp"))]
     r = repository_ctx.execute(cmd, environment = { "PATH": str(cc.dirname) })
     if r.return_code != 0:
-        fail(("Filed to execute '%s' to get include dirs: %s\n%s") % (cmd, r.return_code, r.stderr))
+        fail(("Failed to execute '%s' to get include dirs: %s\n%s") % (cmd, r.return_code, r.stderr))
     s = r.stderr.find("#include <...>")
     e = r.stderr.find("End of search list", s)
     if s == -1 or e == -1:
@@ -51,7 +51,7 @@ def _compile_wrapper(repository_ctx, cc, name):
     ]
     r = repository_ctx.execute(cmd, environment = { "PATH": str(cc.dirname) })
     if r.return_code != 0:
-        fail(("Filed to build %s: %s\n%s") % (name, r.return_code, r.stderr))
+        fail(("Failed to build %s: %s\n%s") % (name, r.return_code, r.stderr))
 
 def _configure_windows_toolchain(repository_ctx):
     repository_ctx.file("empty.cpp", executable = False)
