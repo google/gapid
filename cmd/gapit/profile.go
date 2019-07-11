@@ -90,8 +90,9 @@ func (verb *profileVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	req := &service.GetTimestampsRequest{
-		Capture: capturePath,
-		Device:  device,
+		Capture:   capturePath,
+		Device:    device,
+		LoopCount: int32(verb.LoopCount),
 	}
 
 	client.GetTimestamps(ctx, req, func(r *service.GetTimestampsResponse) error {
