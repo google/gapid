@@ -50,7 +50,7 @@ type ipHostCopyRecipe struct {
 }
 
 // ipHostCopyKitBuilder builds the kit used to generate commands to prime image
-// data stored in the host side by bufer to image copy.
+// data stored in the host side by buffer to image copy.
 type ipHostCopyKitBuilder struct {
 	dev           VkDevice
 	scratchMemory *flushingMemory

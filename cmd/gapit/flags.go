@@ -370,9 +370,10 @@ type (
 		CaptureFileFlags
 	}
 	GetTimestampsFlags struct {
-		Gapis GapisFlags
-		Gapir GapirFlags
-		Out   string `help:"output file to save the profiling result"`
+		Gapis     GapisFlags
+		Gapir     GapirFlags
+		LoopCount int    `help:"_The number of times to loop the trace. (experimental)"`
+		Out       string `help:"output file to save the profiling result"`
 	}
 
 	CreateGraphVisualizationFlags struct {

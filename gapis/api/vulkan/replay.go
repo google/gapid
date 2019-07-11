@@ -723,7 +723,8 @@ type timestampsConfig struct {
 }
 
 type timestampsRequest struct {
-	handler service.TimeStampsHandler
+	handler   service.TimeStampsHandler
+	loopCount int32
 }
 
 // uniqueConfig returns a replay.Config that is guaranteed to be unique.
@@ -786,6 +787,7 @@ func (a API) Replay(
 	// Gathers and reports any issues found.
 	var issues *findIssues
 	var timestamps *queryTimestamps
+	var frameloop *frameLoop
 
 	earlyTerminator, err := NewVulkanTerminator(ctx, intent.Capture)
 	if err != nil {
@@ -872,9 +874,14 @@ func (a API) Replay(
 				if err != nil {
 					return err
 				}
-				timestamps = newQueryTimestamps(ctx, c, n, cmds, req.handler)
+				willLoop := req.loopCount > 0
+				if willLoop {
+					frameloop = newFrameLoop(ctx, c, n, cmds, req.loopCount)
+				}
+
+				timestamps = newQueryTimestamps(ctx, c, n, cmds, willLoop, req.handler)
 			}
-			timestamps.reportTo(rr.Result)
+			timestamps.AddResult(rr.Result)
 			optimize = false
 		case framebufferRequest:
 
@@ -985,6 +992,9 @@ func (a API) Replay(
 	} else if profile != nil {
 		transforms.Add(profile)
 	} else {
+		if frameloop != nil {
+			transforms.Add(frameloop)
+		}
 		if timestamps != nil {
 			transforms.Add(timestamps)
 		} else {
@@ -1118,10 +1128,13 @@ func (a API) QueryTimestamps(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	loopCount int32,
 	handler service.TimeStampsHandler,
 	hints *service.UsageHints) error {
 
-	c, r := timestampsConfig{}, timestampsRequest{handler: handler}
+	c, r := timestampsConfig{}, timestampsRequest{
+		handler:   handler,
+		loopCount: loopCount}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
 	if err != nil {
 		return err
