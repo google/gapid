@@ -80,7 +80,10 @@ sub ref!VertexArray GetOrCreateVertexArray(VertexArrayId id) {
   ctx := GetContext()
   if (id != 0) && (ctx.Objects.VertexArrays[id] == null) {
     ctx.Objects.VertexArrays[id] = NewVertexArray(id)
-    ctx.Objects.GeneratedNames.VertexArrays[id] = true
+    // Dependency to glGenVertexArrays: mark name as new only if need be
+    if !ctx.Objects.GeneratedNames.VertexArrays[id] {
+      ctx.Objects.GeneratedNames.VertexArrays[id] = true
+    }
   }
   return ctx.Objects.VertexArrays[id]
 }
