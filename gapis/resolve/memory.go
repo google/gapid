@@ -16,8 +16,10 @@ package resolve
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/google/gapid/core/app/analytics"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/sync"
@@ -25,7 +27,14 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/messages"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/memory_box"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/service/types"
+)
+
+var (
+	tyPointer = reflect.TypeOf((*memory.ReflectPointer)(nil)).Elem()
+	tySlice   = reflect.TypeOf((*api.Slice)(nil)).Elem()
 )
 
 // Memory resolves and returns the memory from the path p.
@@ -70,16 +79,40 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	r := memory.Range{Base: p.Address, Size: p.Size}
 	var reads, writes, observed memory.RangeList
+	var typedRanges []*service.TypedMemoryRange
+
 	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
 		if id == memory.PoolID(p.Pool) {
-			pool.OnRead = func(rng memory.Range) {
+			pool.OnRead = func(rng memory.Range, id uint64) {
 				if rng.Overlaps(r) {
 					interval.Merge(&reads, rng.Window(r).Span(), false)
+					if p.IncludeTypes {
+						typedRanges = append(typedRanges,
+							&service.TypedMemoryRange{
+								Type: &path.Type{TypeIndex: id},
+								Range: &service.MemoryRange{
+									Base: rng.Base,
+									Size: rng.Size,
+								},
+							},
+						)
+					}
 				}
 			}
-			pool.OnWrite = func(rng memory.Range) {
+			pool.OnWrite = func(rng memory.Range, id uint64) {
 				if rng.Overlaps(r) {
 					interval.Merge(&writes, rng.Window(r).Span(), false)
+					if p.IncludeTypes {
+						typedRanges = append(typedRanges,
+							&service.TypedMemoryRange{
+								Type: &path.Type{TypeIndex: id},
+								Range: &service.MemoryRange{
+									Base: rng.Base,
+									Size: rng.Size,
+								},
+							},
+						)
+					}
 				}
 			}
 		}
@@ -109,9 +142,115 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	}
 
 	return &service.Memory{
-		Data:     data,
-		Reads:    service.NewMemoryRanges(reads),
-		Writes:   service.NewMemoryRanges(writes),
-		Observed: service.NewMemoryRanges(observed),
+		Data:        data,
+		Reads:       service.NewMemoryRanges(reads),
+		Writes:      service.NewMemoryRanges(writes),
+		Observed:    service.NewMemoryRanges(observed),
+		TypedRanges: typedRanges,
 	}, nil
+}
+
+// MemoryAsType resolves and returns the memory from the path p.
+func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveConfig) (*memory_box.Value, error) {
+	ctx = SetupContext(ctx, path.FindCapture(p), rc)
+
+	cmdIdx := p.After.Indices[0]
+	fullCmdIdx := p.After.Indices
+
+	allCmds, err := Cmds(ctx, path.FindCapture(p))
+	if err != nil {
+		return nil, err
+	}
+
+	if count := uint64(len(allCmds)); cmdIdx >= count {
+		return nil, errPathOOB(cmdIdx, "Index", 0, count-1, p)
+	}
+
+	sd, err := SyncData(ctx, path.FindCapture(p))
+	if err != nil {
+		return nil, err
+	}
+
+	cmds, err := sync.MutationCmdsFor(ctx, path.FindCapture(p), sd, allCmds, api.CmdID(cmdIdx), fullCmdIdx[1:], true)
+	if err != nil {
+		return nil, err
+	}
+
+	defer analytics.SendTiming("resolve", "memory")(analytics.Count(len(cmds)))
+
+	s, err := capture.NewState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		cmd.Mutate(ctx, id, s, nil, nil)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Check whether the requested pool was ever created.
+	pool, err := s.Memory.Get(memory.PoolID(p.Pool))
+	if err != nil {
+		return nil, &service.ErrDataUnavailable{Reason: messages.ErrInvalidMemoryPool(p.Pool)}
+	}
+	sz := p.Size
+	if sz == 0 {
+		sz = 0xFFFFFFFFFFFFFFFF
+	}
+
+	dec := s.MemoryDecoder(ctx, pool.Slice(memory.Range{
+		Base: p.Address,
+		Size: sz,
+	}))
+
+	e, err := types.GetType(p.Type.TypeIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	nElems := 1
+	elemSize := 0
+	isSlice := false
+	ty := e
+	if sl, ok := e.Ty.(*types.Type_Slice); ok {
+		isSlice = true
+		sliceType, err := types.GetType(sl.Slice.Underlying)
+		if err != nil {
+			return nil, err
+		}
+		elemSize, err = sliceType.Size(ctx, s.MemoryLayout)
+		if err != nil {
+			return nil, err
+		}
+		if p.Size == 0 {
+			return nil, log.Err(ctx, nil, "Cannot have an unsized range with a slice")
+		}
+		nElems = int(sz / uint64(elemSize))
+		ty = sliceType
+	} else {
+		elemSize, err = e.Size(ctx, s.MemoryLayout)
+		if err != nil {
+			return nil, err
+		}
+	}
+	vals := []*memory_box.Value{}
+	for i := 0; i < nElems; i++ {
+		v, err := memory_box.Box(ctx, dec, ty)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
+
+	if isSlice {
+		return &memory_box.Value{
+			Val: &memory_box.Value_Slice{
+				Slice: &memory_box.Slice{
+					Values: vals,
+				}}}, nil
+	}
+
+	return vals[0], nil
 }

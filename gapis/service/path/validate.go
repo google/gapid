@@ -224,6 +224,11 @@ func (n *Memory) Validate() error {
 }
 
 // Validate checks the path is valid.
+func (n *MemoryAsType) Validate() error {
+	return checkNotNilAndValidate(n, n.After, "after")
+}
+
+// Validate checks the path is valid.
 func (n *Mesh) Validate() error {
 	return checkNotNilAndValidate(n, protoutil.OneOf(n.Object), "object")
 }

@@ -97,13 +97,6 @@ api_template(
 )
 
 api_template(
-    name = "api_memory_box",
-    includes = [":go_common_deps"],
-    outputs = ["api_memory_box.go"],
-    template = "api_memory_box.go.tmpl",
-)
-
-api_template(
     name = "mutate",
     includes = [":go_common_deps"],
     outputs = ["mutate.go"],

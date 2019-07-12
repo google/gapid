@@ -37,8 +37,8 @@ import (
 // data occur.
 type Pool struct {
 	writes  poolWriteList
-	OnRead  func(Range)
-	OnWrite func(Range)
+	OnRead  func(Range, uint64)
+	OnWrite func(Range, uint64)
 }
 
 // PoolID is an identifier of a Pool.
