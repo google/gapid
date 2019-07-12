@@ -48,23 +48,24 @@ message Any {
     ImageInfo image_info = 20;
     MapIndex map_index = 21;
     Memory memory = 22;
-    Mesh mesh = 23;
-    Metrics metrics = 24;
-    Messages messages = 25;
-    MultiResourceData multi_resource_data = 26;
-    Parameter parameter = 27;
-    Report report = 28;
-    ResourceData resource_data = 29;
-    Resources resources = 30;
-    Result result = 31;
-    Slice slice = 32;
-    State state = 33;
-    StateTree state_tree = 34;
-    StateTreeNode state_tree_node = 35;
-    StateTreeNodeForPath state_tree_node_for_path = 36;
-    Stats stats = 37;
-    Thumbnail thumbnail = 38;
-    Type type = 39;
+    MemoryAsType memoryAsType = 23;
+    Mesh mesh = 24;
+    Metrics metrics = 25;
+    Messages messages = 26;
+    MultiResourceData multi_resource_data = 27;
+    Parameter parameter = 28;
+    Report report = 29;
+    ResourceData resource_data = 30;
+    Resources resources = 31;
+    Result result = 32;
+    Slice slice = 33;
+    State state = 34;
+    StateTree state_tree = 35;
+    StateTreeNode state_tree_node = 36;
+    StateTreeNodeForPath state_tree_node_for_path = 37;
+    Stats stats = 38;
+    Thumbnail thumbnail = 39;
+    Type type = 40;
   }
 }
 
@@ -344,6 +345,23 @@ message Memory {
   // If true, only the observations at the given command are included.
   // I.e, the returned service.Memory.observed will be empty.
   bool exclude_observed = 6;
+  // If true, also include the types of all memory observations
+  bool include_types = 7;
+}
+
+// MemoryAsType is a path to a particular piece of memory
+//  interpreted as a specific type
+message MemoryAsType {
+  // Base address of the region of memory.
+  uint64 address = 1;
+  // Size the maximum size of memory to view. (0 for auto)
+  uint64 size = 2;
+  // The pool identifier.
+  uint32 pool = 3;
+  // The memory follows this command.
+  Command after = 4;
+  // The type to interpret this memory as
+  Type type = 5;
 }
 
 // Mesh is a path to a mesh representation of an object.

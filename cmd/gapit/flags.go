@@ -98,8 +98,9 @@ type (
 		Context int `help:"Filter to the i'th context."`
 	}
 	ObservationFlags struct {
-		Ranges bool `help:"if true then display the read and write ranges made by each command."`
-		Data   bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
+		Ranges            bool `help:"if true then display the read and write ranges made by each command."`
+		Data              bool `help:"if true then display the bytes read and written by each command. Implies Ranges."`
+		TypedObservations bool `help:"if true then display the bytes read and written by each command as resolved types"`
 	}
 	DeviceFlags struct {
 		Device string            `help:"Device to use. Either 'host' or the friendly name of the device"`

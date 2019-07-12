@@ -15,10 +15,14 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
 	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/math/sint"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/memory"
 )
 
@@ -42,6 +46,14 @@ func GetType(i uint64) (*Type, error) {
 		return nil, fmt.Errorf("Could not find type %v", i)
 	}
 	return t.tp, nil
+}
+
+func TryGetType(i uint64) (*Type, bool) {
+	t, ok := type_map[i]
+	if !ok {
+		return nil, false
+	}
+	return t.tp, ok
 }
 
 func GetReflectedType(i uint64) (reflect.Type, error) {
@@ -230,4 +242,177 @@ func init() {
 			SizedType_sized_char,
 		},
 	}, reflect.TypeOf(memory.Char(0)))
+}
+
+func (t *Type) Alignment(ctx context.Context, d *device.MemoryLayout) (int, error) {
+	switch t := t.Ty.(type) {
+	case *Type_Pod:
+		switch t.Pod {
+		case pod.Type_uint:
+			return int(d.Integer.Alignment), nil
+		case pod.Type_sint:
+			return int(d.Integer.Alignment), nil
+		case pod.Type_uint8:
+			return int(d.I8.Alignment), nil
+		case pod.Type_sint8:
+			return int(d.I8.Alignment), nil
+		case pod.Type_uint16:
+			return int(d.I16.Alignment), nil
+		case pod.Type_sint16:
+			return int(d.I16.Alignment), nil
+		case pod.Type_uint32:
+			return int(d.I32.Alignment), nil
+		case pod.Type_sint32:
+			return int(d.I32.Alignment), nil
+		case pod.Type_uint64:
+			return int(d.I64.Alignment), nil
+		case pod.Type_sint64:
+			return int(d.I64.Alignment), nil
+		case pod.Type_bool:
+			return int(d.I8.Alignment), nil
+		case pod.Type_string:
+			return int(d.Pointer.Alignment), nil // String is a char* in memory
+		}
+	case *Type_Pointer:
+		return int(d.Pointer.Alignment), nil // String is a char* in memory
+	case *Type_Struct:
+		maxAlign := 1
+		for _, f := range t.Struct.Fields {
+			elem, ok := TryGetType(f.Type)
+			if !ok {
+				return 0, log.Err(ctx, nil, "Incomplete type")
+			}
+			m, err := elem.Alignment(ctx, d)
+			if err != nil {
+				return 0, err
+			}
+			if m > maxAlign {
+				maxAlign = m
+			}
+		}
+		return maxAlign, nil
+	case *Type_Sized:
+		switch t.Sized {
+		case SizedType_sized_int:
+			return int(d.Integer.Alignment), nil
+		case SizedType_sized_uint:
+			return int(d.Integer.Alignment), nil
+		case SizedType_sized_size:
+			return int(d.Size.Alignment), nil
+		case SizedType_sized_char:
+			return int(d.Char.Alignment), nil
+		}
+	case *Type_Pseudonym:
+		if elem, ok := TryGetType(t.Pseudonym.Underlying); ok {
+			return elem.Alignment(ctx, d)
+		}
+	case *Type_Array:
+		if elem, ok := TryGetType(t.Array.ElementType); ok {
+			return elem.Alignment(ctx, d)
+		}
+	case *Type_Enum:
+		if elem, ok := TryGetType(t.Enum.Underlying); ok {
+			return elem.Alignment(ctx, d)
+		}
+	case *Type_Map:
+		return 0, log.Err(ctx, nil, "Cannot decode map from memory")
+	case *Type_Reference:
+		return 0, log.Err(ctx, nil, "Cannot decode ref from memory")
+	case *Type_Slice:
+		return 0, log.Err(ctx, nil, "Cannot decode slice from memory")
+	}
+	return 0, log.Err(ctx, nil, "Incomplete type")
+}
+
+func (t *Type) Size(ctx context.Context, d *device.MemoryLayout) (int, error) {
+	switch t := t.Ty.(type) {
+	case *Type_Pod:
+		switch t.Pod {
+		case pod.Type_uint:
+			return int(d.Integer.Size), nil
+		case pod.Type_sint:
+			return int(d.Integer.Size), nil
+		case pod.Type_uint8:
+			return int(d.I8.Size), nil
+		case pod.Type_sint8:
+			return int(d.I8.Size), nil
+		case pod.Type_uint16:
+			return int(d.I16.Size), nil
+		case pod.Type_sint16:
+			return int(d.I16.Size), nil
+		case pod.Type_uint32:
+			return int(d.I32.Size), nil
+		case pod.Type_sint32:
+			return int(d.I32.Size), nil
+		case pod.Type_uint64:
+			return int(d.I64.Size), nil
+		case pod.Type_sint64:
+			return int(d.I64.Size), nil
+		case pod.Type_bool:
+			return int(d.I8.Size), nil
+		case pod.Type_string:
+			return int(d.Pointer.Size), nil // String is a char* in memory
+		}
+	case *Type_Pointer:
+		return int(d.Pointer.Size), nil // String is a char* in memory
+	case *Type_Struct:
+		size := 0
+		maxAlign := 0
+		for _, f := range t.Struct.Fields {
+			elem, ok := TryGetType(f.Type)
+			if !ok {
+				return 0, log.Err(ctx, nil, "Incomplete type")
+			}
+			a, err := elem.Alignment(ctx, d)
+			if err != nil {
+				return 0, err
+			}
+			if a > maxAlign {
+				maxAlign = a
+			}
+
+			size = sint.AlignUp(size, a)
+			m, err := elem.Size(ctx, d)
+			if err != nil {
+				return 0, err
+			}
+			size += m
+		}
+		size = sint.AlignUp(size, maxAlign)
+		return size, nil
+	case *Type_Sized:
+		switch t.Sized {
+		case SizedType_sized_int:
+			return int(d.Integer.Size), nil
+		case SizedType_sized_uint:
+			return int(d.Integer.Size), nil
+		case SizedType_sized_size:
+			return int(d.Size.Size), nil
+		case SizedType_sized_char:
+			return int(d.Char.Size), nil
+		}
+	case *Type_Pseudonym:
+		if elem, ok := TryGetType(t.Pseudonym.Underlying); ok {
+			return elem.Size(ctx, d)
+		}
+	case *Type_Array:
+		if elem, ok := TryGetType(t.Array.ElementType); ok {
+			sz, err := elem.Size(ctx, d)
+			if err != nil {
+				return 0, err
+			}
+			return sz * int(t.Array.Size), nil
+		}
+	case *Type_Enum:
+		if elem, ok := TryGetType(t.Enum.Underlying); ok {
+			return elem.Size(ctx, d)
+		}
+	case *Type_Map:
+		return 0, log.Err(ctx, nil, "Cannot decode map from memory")
+	case *Type_Reference:
+		return 0, log.Err(ctx, nil, "Cannot decode refs from memory")
+	case *Type_Slice:
+		return 0, log.Err(ctx, nil, "Cannot decode slices from memory")
+	}
+	return 0, log.Err(ctx, nil, "Incomplete type")
 }

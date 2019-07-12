@@ -39,7 +39,9 @@ import (
 	"github.com/google/gapid/gapis/client"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/service"
+	"github.com/google/gapid/gapis/service/memory_box"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/service/types"
 )
 
 func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Service, p *path.Capture) (*path.CommandFilter, error) {
@@ -384,10 +386,32 @@ func getConstantSet(ctx context.Context, client service.Service, p *path.Constan
 	return out, nil
 }
 
+var typeCache = map[uint64]*types.Type{}
+
+func getType(ctx context.Context, client service.Service, t *path.Type) (*types.Type, error) {
+	if tp, ok := typeCache[t.TypeIndex]; ok {
+		return tp, nil
+	} else {
+		tp, err := client.Get(ctx, t.Path(), nil)
+		if err != nil {
+			return nil, err
+		}
+		tt := tp.(*types.Type)
+		typeCache[t.TypeIndex] = tt
+		return tt, nil
+	}
+}
+
 func printCommand(ctx context.Context, client service.Service, p *path.Command, c *api.Command, of ObservationFlags) error {
 	indices := make([]string, len(p.Indices))
 	for i, v := range p.Indices {
 		indices[i] = fmt.Sprintf("%d", v)
+	}
+
+	type val struct {
+		p uint64
+		t *path.Type
+		n string
 	}
 
 	params := make([]string, len(c.Parameters))
@@ -417,29 +441,59 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 
 	fmt.Fprintln(os.Stdout, "")
 
-	if of.Ranges || of.Data {
+	if of.Ranges || of.Data || of.TypedObservations {
 		mp := p.MemoryAfter(0, 0, math.MaxUint64)
 		mp.ExcludeData = true
 		mp.ExcludeObserved = true
+		mp.IncludeTypes = of.TypedObservations
 		boxedMemory, err := client.Get(ctx, mp.Path(), nil)
 		if err != nil {
 			return log.Err(ctx, err, "Couldn't fetch memory observations")
 		}
 		m := boxedMemory.(*service.Memory)
-		for _, read := range m.Reads {
-			fmt.Printf("   R: [%v - %v]\n",
-				memory.BytePtr(read.Base),
-				memory.BytePtr(read.Base+read.Size-1))
-			if of.Data {
-				printMemoryData(ctx, client, p, read)
+
+		if of.TypedObservations {
+			for _, tm := range m.TypedRanges {
+				tp, err := getType(ctx, client, tm.Type)
+				if err != nil {
+					return err
+				}
+				sl := tp.GetSlice()
+				if sl == nil {
+					return fmt.Errorf("Observations are expected to be slices")
+				}
+				v, err := client.Get(ctx,
+					(&path.MemoryAsType{
+						Address: tm.Range.Base,
+						Size:    tm.Range.Size,
+						Pool:    0,
+						After:   p,
+						Type:    tm.Type,
+					}).Path(), nil)
+				if err != nil {
+					fmt.Fprintf(os.Stdout, "%s [%v]: err %+v \n", tp.Name, tm.Range, err)
+				} else {
+					vv := v.(*memory_box.Value)
+					fmt.Fprintf(os.Stdout, "%s [%v]: %+v \n", tp.Name, tm.Range, vv)
+				}
 			}
 		}
-		for _, write := range m.Writes {
-			fmt.Printf("   W: [%v - %v]\n",
-				memory.BytePtr(write.Base),
-				memory.BytePtr(write.Base+write.Size-1))
-			if of.Data {
-				printMemoryData(ctx, client, p, write)
+		if of.Ranges || of.Data {
+			for _, read := range m.Reads {
+				fmt.Printf("   R: [%v - %v]\n",
+					memory.BytePtr(read.Base),
+					memory.BytePtr(read.Base+read.Size-1))
+				if of.Data {
+					printMemoryData(ctx, client, p, read)
+				}
+			}
+			for _, write := range m.Writes {
+				fmt.Printf("   W: [%v - %v]\n",
+					memory.BytePtr(write.Base),
+					memory.BytePtr(write.Base+write.Size-1))
+				if of.Data {
+					printMemoryData(ctx, client, p, write)
+				}
 			}
 		}
 	}

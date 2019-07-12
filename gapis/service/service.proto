@@ -115,6 +115,8 @@ message Value {
     box.Value box = 50;
 
     types.Type type = 60;
+
+    memory_box.Value memory_box = 70;
   }
 }
 
@@ -875,6 +877,8 @@ message Memory {
   repeated MemoryRange writes = 3;
   // The data-relative ranges that have been observed.
   repeated MemoryRange observed = 4;
+  // All types of the reads on this command
+  repeated TypedMemoryRange typed_ranges = 5;
 }
 
 // MemoryRange represents a contiguous range of memory.
@@ -883,6 +887,12 @@ message MemoryRange {
   uint64 base = 1;
   // The number of bytes that are in the memory range.
   uint64 size = 2;
+}
+
+message TypedMemoryRange {
+  // The type of the memory observations
+  path.Type type = 1;
+  MemoryRange range = 2;
 }
 
 // UsageHints hints to the server the intended usage of the result of a request.

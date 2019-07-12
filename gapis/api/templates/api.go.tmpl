@@ -173,7 +173,7 @@ import (
   "fmt"
   "github.com/google/gapid/core/data/id"
   "github.com/google/gapid/core/memory/arena"
-  ϟapi "github.com/google/gapid/gapis/api"  
+  ϟapi "github.com/google/gapid/gapis/api"
   ϟmem "github.com/google/gapid/gapis/memory"
 )
 
@@ -1164,7 +1164,7 @@ import (
     }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnRead; f != nil {
-        f(s.Range())
+        f(s.Range(), {{$slice_ty}}TypeIndex)
       }
     }
     if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
@@ -1221,7 +1221,7 @@ import (
     }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnWrite; f != nil {
-        f(s.Range())
+        f(s.Range(), {{$slice_ty}}TypeIndex)
       }
     }
     if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
@@ -1444,7 +1444,6 @@ import (
     }
   {{end}}
 
-  // Slice returns a new {{$slice_ty}} from the pointer using start and end indices.
   func (p {{$ptr_ty}}) Slice(start, end uint64, ϟl *device.MemoryLayout) {{$slice_ty}} {
     if start > end {
       panic(fmt.Errorf("Slice start (%d) is greater than the end (%d)", start, end))

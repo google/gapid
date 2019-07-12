@@ -96,7 +96,7 @@ enum VkResult {
 
 /// Structure type enumerant
 @analyze_usage
-enum VkStructureType {
+enum VkStructureType: u32 {
   VK_STRUCTURE_TYPE_APPLICATION_INFO                          = 0,
   VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO                      = 1,
   VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO                  = 2,
@@ -346,7 +346,7 @@ enum VkStructureType {
 }
 
 @analyze_usage
-enum VkObjectType {
+enum VkObjectType: u32 {
   VK_OBJECT_TYPE_UNKNOWN                        = 0,
   VK_OBJECT_TYPE_INSTANCE                       = 1,
   VK_OBJECT_TYPE_PHYSICAL_DEVICE                = 2,
@@ -384,7 +384,7 @@ enum VkObjectType {
   VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE = 1000085000,
 }
 
-enum VkSystemAllocationScope {
+enum VkSystemAllocationScope: u32 {
   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND  = 0x00000000,
   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT   = 0x00000001,
   VK_SYSTEM_ALLOCATION_SCOPE_CACHE    = 0x00000002,
@@ -392,12 +392,12 @@ enum VkSystemAllocationScope {
   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE = 0x00000004,
 }
 
-enum VkInternalAllocationType {
+enum VkInternalAllocationType: u32 {
   VK_INTERNAL_ALLOCATION_TYPE_EXECUTABLE = 0x00000000,
 }
 
 /// Vulkan format definitions
-enum VkFormat {
+enum VkFormat: u32 {
   VK_FORMAT_UNDEFINED                  = 0,
   VK_FORMAT_R4G4_UNORM_PACK8           = 1,
   VK_FORMAT_R4G4B4A4_UNORM_PACK16      = 2,
@@ -655,18 +655,18 @@ enum VkFormat {
   VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM               = 1000156033,
 }
 
-enum VkImageType {
+enum VkImageType: u32 {
   VK_IMAGE_TYPE_1D = 0x00000000,
   VK_IMAGE_TYPE_2D = 0x00000001,
   VK_IMAGE_TYPE_3D = 0x00000002,
 }
 
-enum VkImageTiling {
+enum VkImageTiling: u32 {
   VK_IMAGE_TILING_OPTIMAL = 0x00000000,
   VK_IMAGE_TILING_LINEAR  = 0x00000001,
 }
 
-enum VkPhysicalDeviceType {
+enum VkPhysicalDeviceType: u32 {
   VK_PHYSICAL_DEVICE_TYPE_OTHER          = 0x00000000,
   VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU = 0x00000001,
   VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU   = 0x00000002,
@@ -674,18 +674,18 @@ enum VkPhysicalDeviceType {
   VK_PHYSICAL_DEVICE_TYPE_CPU            = 0x00000004,
 }
 
-enum VkQueryType {
+enum VkQueryType: u32 {
   VK_QUERY_TYPE_OCCLUSION           = 0x00000000,
   VK_QUERY_TYPE_PIPELINE_STATISTICS = 0x00000001, /// Optional
   VK_QUERY_TYPE_TIMESTAMP           = 0x00000002,
 }
 
-enum VkSharingMode {
+enum VkSharingMode: u32 {
   VK_SHARING_MODE_EXCLUSIVE  = 0x00000000,
   VK_SHARING_MODE_CONCURRENT = 0x00000001,
 }
 
-enum VkImageLayout {
+enum VkImageLayout: u32 {
   VK_IMAGE_LAYOUT_UNDEFINED                        = 0x00000000, /// Implicit layout an image is when its contents are undefined due to various reasons (e.g. right after creation)
   VK_IMAGE_LAYOUT_GENERAL                          = 0x00000001, /// General layout when image can be used for any kind of access
   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL         = 0x00000002, /// Optimal layout when image is only used for color attachment read/write
@@ -708,7 +708,7 @@ enum VkImageLayout {
   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL = 1000117001,
 }
 
-enum VkImageViewType {
+enum VkImageViewType: u32 {
   VK_IMAGE_VIEW_TYPE_1D         = 0x00000000,
   VK_IMAGE_VIEW_TYPE_2D         = 0x00000001,
   VK_IMAGE_VIEW_TYPE_3D         = 0x00000002,
@@ -718,7 +718,7 @@ enum VkImageViewType {
   VK_IMAGE_VIEW_TYPE_CUBE_ARRAY = 0x00000006,
 }
 
-enum VkComponentSwizzle {
+enum VkComponentSwizzle: u32 {
   VK_COMPONENT_SWIZZLE_IDENTITY = 0x00000000,
   VK_COMPONENT_SWIZZLE_ZERO     = 0x00000001,
   VK_COMPONENT_SWIZZLE_ONE      = 0x00000002,
@@ -728,12 +728,12 @@ enum VkComponentSwizzle {
   VK_COMPONENT_SWIZZLE_A        = 0x00000006,
 }
 
-enum VkVertexInputRate {
+enum VkVertexInputRate: u32 {
   VK_VERTEX_INPUT_RATE_VERTEX   = 0x00000000,
   VK_VERTEX_INPUT_RATE_INSTANCE = 0x00000001,
 }
 
-enum VkPrimitiveTopology {
+enum VkPrimitiveTopology: u32 {
   VK_PRIMITIVE_TOPOLOGY_POINT_LIST                    = 0x00000000,
   VK_PRIMITIVE_TOPOLOGY_LINE_LIST                     = 0x00000001,
   VK_PRIMITIVE_TOPOLOGY_LINE_STRIP                    = 0x00000002,
@@ -747,18 +747,18 @@ enum VkPrimitiveTopology {
   VK_PRIMITIVE_TOPOLOGY_PATCH_LIST                    = 0x0000000a,
 }
 
-enum VkPolygonMode {
+enum VkPolygonMode: u32 {
   VK_POLYGON_MODE_FILL  = 0x00000000,
   VK_POLYGON_MODE_LINE  = 0x00000001,
   VK_POLYGON_MODE_POINT = 0x00000002,
 }
 
-enum VkFrontFace {
+enum VkFrontFace : u32 {
   VK_FRONT_FACE_COUNTER_CLOCKWISE = 0x00000000,
   VK_FRONT_FACE_CLOCKWISE         = 0x00000001,
 }
 
-enum VkCompareOp {
+enum VkCompareOp: u32 {
   VK_COMPARE_OP_NEVER            = 0x00000000,
   VK_COMPARE_OP_LESS             = 0x00000001,
   VK_COMPARE_OP_EQUAL            = 0x00000002,
@@ -769,7 +769,7 @@ enum VkCompareOp {
   VK_COMPARE_OP_ALWAYS           = 0x00000007,
 }
 
-enum VkStencilOp {
+enum VkStencilOp: u32 {
   VK_STENCIL_OP_KEEP                = 0x00000000,
   VK_STENCIL_OP_ZERO                = 0x00000001,
   VK_STENCIL_OP_REPLACE             = 0x00000002,
@@ -780,7 +780,7 @@ enum VkStencilOp {
   VK_STENCIL_OP_DECREMENT_AND_WRAP  = 0x00000007,
 }
 
-enum VkLogicOp {
+enum VkLogicOp: u32 {
   VK_LOGIC_OP_CLEAR         = 0x00000000,
   VK_LOGIC_OP_AND           = 0x00000001,
   VK_LOGIC_OP_AND_REVERSE   = 0x00000002,
@@ -799,7 +799,7 @@ enum VkLogicOp {
   VK_LOGIC_OP_SET           = 0x0000000f,
 }
 
-enum VkBlendFactor {
+enum VkBlendFactor: u32 {
   VK_BLEND_FACTOR_ZERO                     = 0x00000000,
   VK_BLEND_FACTOR_ONE                      = 0x00000001,
   VK_BLEND_FACTOR_SRC_COLOR                = 0x00000002,
@@ -821,7 +821,7 @@ enum VkBlendFactor {
   VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA     = 0x00000012,
 }
 
-enum VkBlendOp {
+enum VkBlendOp: u32 {
   VK_BLEND_OP_ADD              = 0x00000000,
   VK_BLEND_OP_SUBTRACT         = 0x00000001,
   VK_BLEND_OP_REVERSE_SUBTRACT = 0x00000002,
@@ -829,7 +829,7 @@ enum VkBlendOp {
   VK_BLEND_OP_MAX              = 0x00000004,
 }
 
-enum VkDynamicState {
+enum VkDynamicState: u32 {
   VK_DYNAMIC_STATE_VIEWPORT             = 0x00000000,
   VK_DYNAMIC_STATE_SCISSOR              = 0x00000001,
   VK_DYNAMIC_STATE_LINE_WIDTH           = 0x00000002,
@@ -841,18 +841,18 @@ enum VkDynamicState {
   VK_DYNAMIC_STATE_STENCIL_REFERENCE    = 0x00000008,
 }
 
-enum VkFilter {
+enum VkFilter: u32 {
   VK_FILTER_NEAREST   = 0x00000000,
   VK_FILTER_LINEAR    = 0x00000001,
   VK_FILTER_CUBIC_IMG = 0x3B9B0498
 }
 
-enum VkSamplerMipmapMode {
+enum VkSamplerMipmapMode: u32 {
   VK_SAMPLER_MIPMAP_MODE_NEAREST = 0x00000000, /// Choose nearest mip level
   VK_SAMPLER_MIPMAP_MODE_LINEAR  = 0x00000001, /// Linear filter between mip levels
 }
 
-enum VkSamplerAddressMode {
+enum VkSamplerAddressMode: u32 {
   VK_SAMPLER_ADDRESS_MODE_REPEAT               = 0x00000000,
   VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT      = 0x00000001,
   VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE        = 0x00000002,
@@ -860,7 +860,7 @@ enum VkSamplerAddressMode {
   VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE = 0x00000004,
 }
 
-enum VkBorderColor {
+enum VkBorderColor: u32 {
   VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK = 0x00000000,
   VK_BORDER_COLOR_INT_TRANSPARENT_BLACK   = 0x00000001,
   VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK      = 0x00000002,
@@ -871,7 +871,7 @@ enum VkBorderColor {
 
 // NOTE: when updating this enum, be sure to update vkUpdateDescriptorSets
 // in sync.
-enum VkDescriptorType {
+enum VkDescriptorType: u32 {
   VK_DESCRIPTOR_TYPE_SAMPLER                = 0x00000000,
   VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER = 0x00000001,
   VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE          = 0x00000002,
@@ -885,53 +885,53 @@ enum VkDescriptorType {
   VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT       = 0x0000000a,
 }
 
-enum VkAttachmentLoadOp {
+enum VkAttachmentLoadOp: u32 {
   VK_ATTACHMENT_LOAD_OP_LOAD      = 0x00000000,
   VK_ATTACHMENT_LOAD_OP_CLEAR     = 0x00000001,
   VK_ATTACHMENT_LOAD_OP_DONT_CARE = 0x00000002,
 }
 
-enum VkAttachmentStoreOp {
+enum VkAttachmentStoreOp: u32 {
   VK_ATTACHMENT_STORE_OP_STORE     = 0x00000000,
   VK_ATTACHMENT_STORE_OP_DONT_CARE = 0x00000001,
 }
 
-enum VkPipelineBindPoint {
+enum VkPipelineBindPoint: u32 {
   VK_PIPELINE_BIND_POINT_GRAPHICS = 0x00000000,
   VK_PIPELINE_BIND_POINT_COMPUTE  = 0x00000001,
 }
 
-enum VkCommandBufferLevel {
+enum VkCommandBufferLevel: u32 {
   VK_COMMAND_BUFFER_LEVEL_PRIMARY   = 0x00000000,
   VK_COMMAND_BUFFER_LEVEL_SECONDARY = 0x00000001,
 }
 
-enum VkIndexType {
+enum VkIndexType: u32 {
   VK_INDEX_TYPE_UINT16 = 0x00000000,
   VK_INDEX_TYPE_UINT32 = 0x00000001,
 }
 
-enum VkSubpassContents {
+enum VkSubpassContents: u32 {
   VK_SUBPASS_CONTENTS_INLINE                    = 0x00000000,
   VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS = 0x00000001,
 }
 
 // Vulkan 1.1 core
-enum VkChromaLocation {
+enum VkChromaLocation: u32 {
   VK_CHROMA_LOCATION_COSITED_EVEN = 0,
   VK_CHROMA_LOCATION_MIDPOINT     = 1,
 }
 
-enum VkDescriptorUpdateTemplateType {
+enum VkDescriptorUpdateTemplateType: u32 {
   VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET = 0,
 }
 
-enum VkPointClippingBehavior {
+enum VkPointClippingBehavior: u32  {
   VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES       = 0,
   VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY = 1,
 }
 
-enum VkSamplerYcbcrModelConversion {
+enum VkSamplerYcbcrModelConversion: u32  {
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY   = 0,
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY = 1,
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709      = 2,
@@ -939,12 +939,12 @@ enum VkSamplerYcbcrModelConversion {
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_2020     = 4,
 }
 
-enum VkSamplerYcbcrRange {
+enum VkSamplerYcbcrRange: u32  {
   VK_SAMPLER_YCBCR_RANGE_ITU_FULL   = 0,
   VK_SAMPLER_YCBCR_RANGE_ITU_NARROW = 1,
 }
 
-enum VkTessellationDomainOrigin {
+enum VkTessellationDomainOrigin: u32  {
   VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT = 0,
   VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT = 1,
 }

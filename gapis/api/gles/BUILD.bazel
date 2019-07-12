@@ -40,7 +40,6 @@ apic_template(
     templates = [
         "//gapis/api/templates:api",
         "//gapis/api/templates:api_types",
-        "//gapis/api/templates:api_memory_box",
         "//gapis/api/templates:mutate",
         "//gapis/api/templates:constant_sets",
         "//gapis/api/templates:convert",

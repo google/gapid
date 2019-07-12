@@ -29,6 +29,7 @@ import (
 	"github.com/google/gapid/gapis/memory"
 	perfetto "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service/box"
+	"github.com/google/gapid/gapis/service/memory_box"
 	"github.com/google/gapid/gapis/service/path"
 	"github.com/google/gapid/gapis/service/severity"
 	"github.com/google/gapid/gapis/service/types"
@@ -255,8 +256,8 @@ func NewValue(v interface{}) *Value {
 		return &Value{Val: &Value_Events{v}}
 	case *Memory:
 		return &Value{Val: &Value_Memory{v}}
-	case *path.Any:
-		return &Value{Val: &Value_Path{v}}
+	case *memory_box.Value:
+		return &Value{Val: &Value_MemoryBox{v}}
 	case path.Node:
 		return &Value{Val: &Value_Path{v.Path()}}
 	case *Report:
@@ -305,6 +306,8 @@ func (v *Value) Get() interface{} {
 		return nil
 	case *Value_Box:
 		return v.Box.Get()
+	case *Value_MemoryBox:
+		return v.MemoryBox
 	default:
 		return protoutil.OneOf(v)
 	}

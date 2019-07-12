@@ -24,6 +24,7 @@ import (
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/core/memory/arena"
 	"github.com/google/gapid/gapil/constset"
+	"github.com/google/gapid/gapis/memory"
 )
 
 // API is the common interface to a graphics programming api.
@@ -127,4 +128,8 @@ func All() []API {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Index() < out[j].Index() })
 	return out
+}
+
+type Slice interface {
+	Reset(uint64, uint64, uint64, *GlobalState, memory.PoolID)
 }
