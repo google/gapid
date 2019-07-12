@@ -829,7 +829,10 @@ func (s ShaderModuleObjectʳ) ResourceType(ctx context.Context) api.ResourceType
 // ResourceData returns the resource data given the current state.
 func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
-	words := s.Words().MustRead(ctx, nil, t, nil)
+	words, err := s.Words().Read(ctx, nil, t, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Could not get resource data %v", err)
+	}
 	source := shadertools.DisassembleSpirvBinary(words)
 	return api.NewResourceData(&api.Shader{Type: api.ShaderType_Spirv, Source: source}), nil
 }
