@@ -30,7 +30,12 @@ namespace {
 // Notification ID 0 is reserved for issues report. The value needs to be kept
 // in sync with |IssuesNotificationID| in `gapis/replay/builder/builder.go`
 const uint64_t kIssuesNotificationId = 0;
+// Notification ID 1 is reserved for replay status information transfer. The
+// value needs to be kept in sync with |ReplayProgressNotificationID| in
+// `gapis/replay/builder/builder.go`
+const uint64_t kReplayProgressNotificationID = 1;
 }  // namespace
+
 void GrpcReplayService::handleCommunication(GrpcReplayService* _service) {
   while (true) {
     std::unique_ptr<replay_service::ReplayRequest> req =
@@ -163,6 +168,19 @@ bool GrpcReplayService::sendErrorMsg(uint64_t seq_num, uint32_t severity,
   error_msg->set_label(label);
   error_msg->set_msg(msg);
   error_msg->set_data(data, data_size);
+  return mGrpcStream->Write(res);
+}
+
+bool GrpcReplayService::sendReplayStatus(uint64_t label,
+                                         uint32_t total_instrs,
+                                         uint32_t finished_instrs) {
+  replay_service::ReplayResponse res;
+  auto* notification = res.mutable_notification();
+  notification->set_id(kReplayProgressNotificationID);
+  auto* replay_status = notification->mutable_replay_status();
+  replay_status->set_label(label);
+  replay_status->set_total_instrs(total_instrs);
+  replay_status->set_finished_instrs(finished_instrs);
   return mGrpcStream->Write(res);
 }
 

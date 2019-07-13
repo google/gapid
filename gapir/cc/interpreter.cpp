@@ -32,6 +32,8 @@
 #include <utility>
 #include <vector>
 
+#define LOG_EVERY_N_API_CALLS 10000
+
 namespace gapir {
 
 namespace {
@@ -60,17 +62,20 @@ inline bool sum(Stack& stack, uint32_t count) {
 
 Interpreter::Interpreter(core::CrashHandler& crash_handler,
                          const MemoryManager* memory_manager,
-                         uint32_t stack_depth)
+                         uint32_t stack_depth,
+                         ReplayService* srv)
     :
 
       mCrashHandler(crash_handler),
       mMemoryManager(memory_manager),
       mStack(stack_depth, mMemoryManager),
+      mSrv(srv),
       mInstructions(nullptr),
       mInstructionCount(0),
       mCurrentInstruction(0),
       mNextThread(0),
-      mLabel(0) {
+      mLabel(0),
+      mNumApiCallsMade(0) {
   registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID,
                   [](uint32_t, Stack* stack, bool) {
                     stack->printStack();
@@ -166,6 +171,9 @@ Interpreter::Result Interpreter::call(uint32_t opcode) {
   auto api = (opcode & API_INDEX_MASK) >> API_BIT_SHIFT;
   auto func = mBuiltins[api].lookup(id);
   auto label = getLabel();
+  if ((mNumApiCallsMade++ % LOG_EVERY_N_API_CALLS) == 0) {
+    mSrv->sendReplayStatus(label, mInstructionCount, mCurrentInstruction);
+  }
   if (func == nullptr) {
     if (mRendererFunctions.count(api) > 0) {
       func = mRendererFunctions[api]->lookup(id);

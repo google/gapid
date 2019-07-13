@@ -22,6 +22,7 @@
 #include "thread_pool.h"
 
 #include "gapir/replay_service/vm.h"
+#include "gapir/cc/replay_service.h"
 
 #include "core/cc/crash_handler.h"
 
@@ -69,7 +70,8 @@ class Interpreter {
   // Creates a new interpreter with the specified memory manager (for resolving
   // memory addresses) and with the specified maximum stack size
   Interpreter(core::CrashHandler& crash_handler,
-              const MemoryManager* memory_manager, uint32_t stack_depth);
+              const MemoryManager* memory_manager, uint32_t stack_depth,
+              ReplayService* srv);
 
   void setApiRequestCallback(ApiRequestCallback callback);
 
@@ -180,6 +182,9 @@ class Interpreter {
   // The stack of the Virtual Machine.
   Stack mStack;
 
+  // Server object to send notification to.
+  ReplayService* mSrv;
+
   // The list of instructions.
   const uint32_t* mInstructions;
 
@@ -194,6 +199,9 @@ class Interpreter {
 
   // The last reached label value.
   uint32_t mLabel;
+
+  // The number of API calls made thus far.
+  uint32_t mNumApiCallsMade;
 
   // The result of the thread-chained exec() calls.
   std::promise<Result> mExecResult;

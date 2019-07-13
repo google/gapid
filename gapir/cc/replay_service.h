@@ -173,6 +173,10 @@ class ReplayService {
                             uint32_t api_index, uint64_t label,
                             const std::string& msg, const void* data,
                             uint32_t data_size) = 0;
+  // Sends replay status notification. Returns true if succeeded, otherwise 
+  // returns false.
+  virtual bool sendReplayStatus(uint64_t label, uint32_t total_instrs, 
+                                uint32_t finished_instrs) = 0;
   // Sends data notification. Returns true if succeeded, otherwise returns
   // false.
   virtual bool sendNotificationData(uint64_t id, uint64_t label,

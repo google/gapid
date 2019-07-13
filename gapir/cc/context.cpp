@@ -137,7 +137,8 @@ bool Context::interpret(bool cleanup) {
   };
   if (mInterpreter == nullptr) {
     mInterpreter.reset(new Interpreter(mCrashHandler, mMemoryManager,
-                                       mReplayRequest->getStackSize()));
+                                       mReplayRequest->getStackSize(),
+                                       mSrv));
 
     registerCallbacks(mInterpreter.get());
   }

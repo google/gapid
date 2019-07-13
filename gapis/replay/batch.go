@@ -355,6 +355,11 @@ func (m *manager) execute(
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
 
+	err = b.RegisterReplayStatusReader(ctx)
+	if err != nil {
+		return log.Err(ctx, err, "Failed to register replay status notification reader.")
+	}
+
 	if Events.OnReplay != nil {
 		Events.OnReplay(d, intent, cfg)
 	}
