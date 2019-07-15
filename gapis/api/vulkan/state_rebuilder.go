@@ -1129,265 +1129,32 @@ func (sb *stateBuilder) getQueueFor(queueFlagBits VkQueueFlagBits, queueFamilyIn
 }
 
 func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
-	os := sb.s
-	pNext := NewVoidᶜᵖ(memory.Nullptr)
-
-	if !buffer.Info().DedicatedAllocationNV().IsNil() {
-		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
-			NewVkDedicatedAllocationBufferCreateInfoNV(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV, // sType
-				0, // pNext
-				buffer.Info().DedicatedAllocationNV().DedicatedAllocation(), // dedicatedAllocation
-			),
-		).Ptr())
-	}
-
-	denseBound := !buffer.Memory().IsNil()
-	sparseBound := buffer.SparseMemoryBindings().Len() > 0
-	sparseBinding :=
-		(uint64(buffer.Info().CreateFlags()) &
-			uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) != 0
-	sparseResidency :=
-		sparseBinding &&
-			(uint64(buffer.Info().CreateFlags())&
-				uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT)) != 0
-
-	memReq := buffer.MemoryRequirements()
-	createWithMemReq := sb.cb.VkCreateBuffer(
-		buffer.Device(),
-		sb.MustAllocReadData(
-			NewVkBufferCreateInfo(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
-				pNext,                       // pNext
-				buffer.Info().CreateFlags(), // flags
-				buffer.Info().Size(),        // size
-				VkBufferUsageFlags(uint32(buffer.Info().Usage())|uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)), // usage
-				buffer.Info().SharingMode(),                                                    // sharingMode
-				uint32(buffer.Info().QueueFamilyIndices().Len()),                               // queueFamilyIndexCount
-				NewU32ᶜᵖ(sb.MustUnpackReadMap(buffer.Info().QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
-			)).Ptr(),
-		memory.Nullptr,
-		sb.MustAllocWriteData(buffer.VulkanHandle()).Ptr(),
-		VkResult_VK_SUCCESS,
-	)
-	createWithMemReq.Extras().Add(memReq)
-	sb.write(createWithMemReq)
-
-	sb.write(sb.cb.VkGetBufferMemoryRequirements(
-		buffer.Device(),
-		buffer.VulkanHandle(),
-		sb.MustAllocWriteData(buffer.MemoryRequirements()).Ptr(),
-	))
-
-	// Dedicated allocation buffer/image must NOT be a sparse binding one.
-	// Checking the dedicated allocation info on both the memory and the buffer
-	// side, because we've found applications that do miss one of them.
-	dedicatedMemoryNV := !buffer.Memory().IsNil() && (!buffer.Info().DedicatedAllocationNV().IsNil() || !buffer.Memory().DedicatedAllocationNV().IsNil())
-	// Emit error message to report view if we found one of the dedicate allocation
-	// info struct is missing.
-	if dedicatedMemoryNV && buffer.Info().DedicatedAllocationNV().IsNil() {
-		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkBuffer", uint64(buffer.VulkanHandle()))
-	}
-	if dedicatedMemoryNV && buffer.Memory().DedicatedAllocationNV().IsNil() {
-		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
-			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(buffer.Memory().VulkanHandle()))
-	}
-
-	if dedicatedMemoryNV {
-		sb.createDeviceMemory(buffer.Memory(), true)
-	}
-
-	if !denseBound && !sparseBound {
-		return
-	}
-
-	contents := []hashedDataAndOffset{}
-
-	copies := []VkBufferCopy{}
-	offset := VkDeviceSize(0)
-
 	queue := sb.getQueueFor(
 		VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
 		queueFamilyIndicesToU32Slice(buffer.Info().QueueFamilyIndices()),
 		buffer.Device(),
 		buffer.LastBoundQueue())
+	newBuffer := buffer.VulkanHandle()
 
-	oldFamilyIndex := queueFamilyIgnore
-
-	if buffer.SparseMemoryBindings().Len() > 0 {
-		// If this buffer has sparse memory bindings, then we have to set them all
-		// now
-		if queue.IsNil() {
-			return
-		}
-		memories := make(map[VkDeviceMemory]bool)
-		sparseQueue := sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT,
-			queueFamilyIndicesToU32Slice(buffer.Info().QueueFamilyIndices()),
-			buffer.Device(), buffer.LastBoundQueue())
-		oldFamilyIndex = sparseQueue.Family()
-		if !buffer.Info().DedicatedAllocationNV().IsNil() {
-			for _, bind := range buffer.SparseMemoryBindings().All() {
-				if _, ok := memories[bind.Memory()]; !ok {
-					memories[bind.Memory()] = true
-					sb.createDeviceMemory(os.DeviceMemories().Get(bind.Memory()), true)
-				}
-			}
-		}
-
-		bufSparseBindings := make([]VkSparseMemoryBind, 0, buffer.SparseMemoryBindings().Len())
-		for _, bd := range buffer.SparseMemoryBindings().All() {
-			bufSparseBindings = append(bufSparseBindings, bd)
-		}
-
-		sb.write(sb.cb.VkQueueBindSparse(
-			sparseQueue.VulkanHandle(),
-			1,
-			sb.MustAllocReadData(
-				NewVkBindSparseInfo(sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // sType
-					0, // pNext
-					0, // waitSemaphoreCount
-					0, // pWaitSemaphores
-					1, // bufferBindCount
-					NewVkSparseBufferMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pBufferBinds
-						NewVkSparseBufferMemoryBindInfo(sb.ta,
-							buffer.VulkanHandle(),                       // buffer
-							uint32(buffer.SparseMemoryBindings().Len()), // bindCount
-							NewVkSparseMemoryBindᶜᵖ( // pBinds
-								sb.MustAllocReadData(bufSparseBindings).Ptr(),
-							),
-						)).Ptr()),
-					0, // imageOpaqueBindCount
-					0, // pImageOpaqueBinds
-					0, // imageBindCount
-					0, // pImageBinds
-					0, // signalSemaphoreCount
-					0, // pSignalSemaphores
-				)).Ptr(),
-			VkFence(0),
-			VkResult_VK_SUCCESS,
-		))
-		if sparseResidency || IsFullyBound(0, buffer.Info().Size(), buffer.SparseMemoryBindings()) {
-			for _, bind := range buffer.SparseMemoryBindings().All() {
-				size := bind.Size()
-				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
-					uint64(bind.MemoryOffset()),
-					uint64(bind.MemoryOffset()+size))
-				hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
-				contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
-				copies = append(copies, NewVkBufferCopy(sb.ta,
-					offset,                // srcOffset
-					bind.ResourceOffset(), // dstOffset
-					size,                  // size
-				))
-				offset += size
-				offset = (offset + VkDeviceSize(7)) & (^VkDeviceSize(7))
-			}
-		}
-	} else {
-		// Otherwise, we have no sparse bindings, we are either non-sparse, or empty.
-		if buffer.Memory().IsNil() {
-			return
-		}
-
-		sb.write(sb.cb.VkBindBufferMemory(
-			buffer.Device(),
-			buffer.VulkanHandle(),
-			buffer.Memory().VulkanHandle(),
-			buffer.MemoryOffset(),
-			VkResult_VK_SUCCESS,
-		))
-
-		size := buffer.Info().Size()
-		dataSlice := buffer.Memory().Data().Slice(
-			uint64(buffer.MemoryOffset()),
-			uint64(buffer.MemoryOffset()+size))
-		hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
-		contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
-		copies = append(copies, NewVkBufferCopy(sb.ta,
-			offset, // srcOffset
-			0,      // dstOffset
-			size,   // size
-		))
+	if err := sb.createSameBuffer(buffer, newBuffer); err != nil {
+		log.E(sb.ctx, "create buffer %v failed", buffer)
+		return
 	}
-
 	tsk := newQueueCommandBatch(
-		fmt.Sprintf("Prime buffer: %v's data", buffer.VulkanHandle()),
+		fmt.Sprintf("Prime buffer: %v's data", newBuffer),
 	)
 	defer func() {
 		if err := tsk.Commit(sb, sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())); err != nil {
 			log.E(sb.ctx, "[Priming data for buffer: %v]: %v", buffer.VulkanHandle(), err)
 		}
 	}()
-	// scratch buffer will be automatically destroyed when the task is done
-	scratchBuffer := tsk.NewScratchBuffer(sb, "buf->buf copy staginig buffer",
-		sb.scratchRes.GetMemory(sb, buffer.Device()),
-		buffer.Device(), VkBufferUsageFlags(
-			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT), contents...)
-
-	newFamilyIndex := queueFamilyIgnore
-	if oldFamilyIndex != queueFamilyIgnore {
-		newFamilyIndex = queue.Family()
+	dataBuffer, err := sb.loadHostDatatoStagingBuffer(buffer, tsk)
+	if err != nil {
+		log.E(sb.ctx, "[failed to load host data to staging buffer for buffer: %v]: %v", buffer.VulkanHandle(), err)
+		return
 	}
 
-	tsk.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
-		sb.write(sb.cb.VkCmdPipelineBarrier(
-			commandBuffer,
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkDependencyFlags(0),
-			0,
-			memory.Nullptr,
-			1,
-			sb.MustAllocReadData(
-				NewVkBufferMemoryBarrier(sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-					0, // pNext
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-					queueFamilyIgnore,                // srcQueueFamilyIndex
-					queueFamilyIgnore,                // dstQueueFamilyIndex
-					scratchBuffer,                    // buffer
-					0,                                // offset
-					VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
-				)).Ptr(),
-			0,
-			memory.Nullptr,
-		))
-		sb.write(sb.cb.VkCmdCopyBuffer(
-			commandBuffer,
-			scratchBuffer,
-			buffer.VulkanHandle(),
-			uint32(len(copies)),
-			sb.MustAllocReadData(copies).Ptr(),
-		))
-
-		sb.write(sb.cb.VkCmdPipelineBarrier(
-			commandBuffer,
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
-			VkDependencyFlags(0),
-			0,
-			memory.Nullptr,
-			1,
-			sb.MustAllocReadData(
-				NewVkBufferMemoryBarrier(sb.ta,
-					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
-					0, // pNext
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
-					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
-					oldFamilyIndex,                   // srcQueueFamilyIndex
-					newFamilyIndex,                   // dstQueueFamilyIndex
-					buffer.VulkanHandle(),            // buffer
-					0,                                // offset
-					VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
-				)).Ptr(),
-			0,
-			memory.Nullptr,
-		))
-	})
+	sb.copyBuffer(dataBuffer, newBuffer, queue, tsk)
 }
 
 func nextMultipleOf(v, a uint64) uint64 {
@@ -3063,4 +2830,289 @@ func queueFamilyIndicesToU32Slice(m U32ːu32ᵐ) []uint32 {
 		r = append(r, m.Get(k))
 	}
 	return r
+}
+
+// createSameBuffer creates a new buffer with ID |buffer| using the same information from |src| object
+func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) error {
+	os := sb.s
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+
+	if !src.Info().DedicatedAllocationNV().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkDedicatedAllocationBufferCreateInfoNV(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV, // sType
+				0, // pNext
+				src.Info().DedicatedAllocationNV().DedicatedAllocation(), // dedicatedAllocation
+			),
+		).Ptr())
+	}
+
+	memReq := src.MemoryRequirements()
+	createWithMemReq := sb.cb.VkCreateBuffer(
+		src.Device(),
+		sb.MustAllocReadData(
+			NewVkBufferCreateInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, // sType
+				pNext,                    // pNext
+				src.Info().CreateFlags(), // flags
+				src.Info().Size(),        // size
+				VkBufferUsageFlags(uint32(src.Info().Usage())|uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_DST_BIT)), // usage
+				src.Info().SharingMode(),                                                    // sharingMode
+				uint32(src.Info().QueueFamilyIndices().Len()),                               // queueFamilyIndexCount
+				NewU32ᶜᵖ(sb.MustUnpackReadMap(src.Info().QueueFamilyIndices().All()).Ptr()), // pQueueFamilyIndices
+			)).Ptr(),
+		memory.Nullptr,
+		sb.MustAllocWriteData(buffer).Ptr(),
+		VkResult_VK_SUCCESS,
+	)
+	createWithMemReq.Extras().Add(memReq)
+	sb.write(createWithMemReq)
+
+	sb.write(sb.cb.VkGetBufferMemoryRequirements(
+		src.Device(),
+		src.VulkanHandle(),
+		sb.MustAllocWriteData(src.MemoryRequirements()).Ptr(),
+	))
+
+	// Dedicated allocation buffer/image must NOT be a sparse binding one.
+	// Checking the dedicated allocation info on both the memory and the buffer
+	// side, because we've found applications that do miss one of them.
+	dedicatedMemoryNV := !src.Memory().IsNil() && (!src.Info().DedicatedAllocationNV().IsNil() || !src.Memory().DedicatedAllocationNV().IsNil())
+	// Emit error message to report view if we found one of the dedicate allocation
+	// info struct is missing.
+	if dedicatedMemoryNV && src.Info().DedicatedAllocationNV().IsNil() {
+		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkBuffer", uint64(src.VulkanHandle()))
+	}
+	if dedicatedMemoryNV && src.Memory().DedicatedAllocationNV().IsNil() {
+		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
+			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(src.Memory().VulkanHandle()))
+	}
+
+	if dedicatedMemoryNV {
+		sb.createDeviceMemory(src.Memory(), true)
+	}
+
+	denseBound := !src.Memory().IsNil()
+	sparseBound := src.SparseMemoryBindings().Len() > 0
+	if !denseBound && !sparseBound {
+		return fmt.Errorf("source buffer %s is neither dense bound nor sparse bound", src)
+	}
+
+	if src.SparseMemoryBindings().Len() > 0 {
+		// If this buffer has sparse memory bindings, then we have to set them all
+		// now
+		if src.IsNil() {
+			return fmt.Errorf("queue is not found for buffer %s", src)
+		}
+		memories := make(map[VkDeviceMemory]bool)
+		sparseQueue := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_SPARSE_BINDING_BIT,
+			queueFamilyIndicesToU32Slice(src.Info().QueueFamilyIndices()),
+			src.Device(), src.LastBoundQueue())
+		if !src.Info().DedicatedAllocationNV().IsNil() {
+			for _, bind := range src.SparseMemoryBindings().All() {
+				if _, ok := memories[bind.Memory()]; !ok {
+					memories[bind.Memory()] = true
+					sb.createDeviceMemory(os.DeviceMemories().Get(bind.Memory()), true)
+				}
+			}
+		}
+
+		bufSparseBindings := make([]VkSparseMemoryBind, 0, src.SparseMemoryBindings().Len())
+		for _, bd := range src.SparseMemoryBindings().All() {
+			bufSparseBindings = append(bufSparseBindings, bd)
+		}
+
+		sb.write(sb.cb.VkQueueBindSparse(
+			sparseQueue.VulkanHandle(),
+			1,
+			sb.MustAllocReadData(
+				NewVkBindSparseInfo(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_BIND_SPARSE_INFO, // sType
+					0, // pNext
+					0, // waitSemaphoreCount
+					0, // pWaitSemaphores
+					1, // bufferBindCount
+					NewVkSparseBufferMemoryBindInfoᶜᵖ(sb.MustAllocReadData( // pBufferBinds
+						NewVkSparseBufferMemoryBindInfo(sb.ta,
+							src.VulkanHandle(),                       // buffer
+							uint32(src.SparseMemoryBindings().Len()), // bindCount
+							NewVkSparseMemoryBindᶜᵖ( // pBinds
+								sb.MustAllocReadData(bufSparseBindings).Ptr(),
+							),
+						)).Ptr()),
+					0, // imageOpaqueBindCount
+					0, // pImageOpaqueBinds
+					0, // imageBindCount
+					0, // pImageBinds
+					0, // signalSemaphoreCount
+					0, // pSignalSemaphores
+				)).Ptr(),
+			VkFence(0),
+			VkResult_VK_SUCCESS,
+		))
+
+	} else {
+		// Otherwise, we have no sparse bindings, we are either non-sparse, or empty.
+		if src.Memory().IsNil() {
+			return fmt.Errorf("buffer memory is nil for buffer %v", src)
+		}
+
+		sb.write(sb.cb.VkBindBufferMemory(
+			src.Device(),
+			src.VulkanHandle(),
+			src.Memory().VulkanHandle(),
+			src.MemoryOffset(),
+			VkResult_VK_SUCCESS,
+		))
+
+	}
+
+	return nil
+}
+
+// loadHostDatatoStagingBuffer creates a staging buffer and loads the data from the trace to the buffer.
+func (sb *stateBuilder) loadHostDatatoStagingBuffer(buffer BufferObjectʳ, tsk *queueCommandBatch) (VkBuffer, error) {
+	offset := VkDeviceSize(0)
+	contents := []hashedDataAndOffset{}
+	sparseBinding :=
+		(uint64(buffer.Info().CreateFlags()) &
+			uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) != 0
+	sparseResidency :=
+		sparseBinding &&
+			(uint64(buffer.Info().CreateFlags())&
+				uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT)) != 0
+
+	if buffer.SparseMemoryBindings().Len() > 0 {
+		if sparseResidency || IsFullyBound(0, buffer.Info().Size(), buffer.SparseMemoryBindings()) {
+			for _, bind := range buffer.SparseMemoryBindings().All() {
+				size := bind.Size()
+				dataSlice := sb.s.DeviceMemories().Get(bind.Memory()).Data().Slice(
+					uint64(bind.MemoryOffset()),
+					uint64(bind.MemoryOffset()+size))
+				hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
+				contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
+				offset += size
+				offset = (offset + VkDeviceSize(7)) & (^VkDeviceSize(7))
+			}
+		}
+	} else {
+		size := buffer.Info().Size()
+		dataSlice := buffer.Memory().Data().Slice(
+			uint64(buffer.MemoryOffset()),
+			uint64(buffer.MemoryOffset()+size))
+		hd := newHashedDataFromSlice(sb.ctx, sb.oldState, dataSlice)
+		contents = append(contents, newHashedDataAndOffset(hd, uint64(offset)))
+	}
+
+	// scratch buffer will be automatically destroyed when the task is done
+	scratchBuffer := tsk.NewScratchBuffer(sb, "buf->buf copy staginig buffer",
+		sb.scratchRes.GetMemory(sb, buffer.Device()),
+		buffer.Device(), VkBufferUsageFlags(
+			VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT), contents...)
+	return scratchBuffer, nil
+
+}
+
+// copyBuffer copies data from the src buffer to the dst buffer.
+func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *queueCommandBatch) {
+	os := sb.s
+	copies := []VkBufferCopy{}
+	offset := VkDeviceSize(0)
+	dstObj := os.Buffers().Get(dst)
+	sparseBinding :=
+		(uint64(dstObj.Info().CreateFlags()) &
+			uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) != 0
+	sparseResidency :=
+		sparseBinding &&
+			(uint64(dstObj.Info().CreateFlags())&
+				uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT)) != 0
+
+	oldFamilyIndex := queueFamilyIgnore
+
+	if dstObj.SparseMemoryBindings().Len() > 0 {
+		oldFamilyIndex = dstObj.LastBoundQueue().Family()
+		if sparseResidency || IsFullyBound(0, dstObj.Info().Size(), dstObj.SparseMemoryBindings()) {
+			for _, bind := range dstObj.SparseMemoryBindings().All() {
+				size := bind.Size()
+				copies = append(copies, NewVkBufferCopy(sb.ta,
+					offset,                // srcOffset
+					bind.ResourceOffset(), // dstOffset
+					size,                  // size
+				))
+				offset += size
+				offset = (offset + VkDeviceSize(7)) & (^VkDeviceSize(7))
+			}
+		}
+	} else {
+		size := dstObj.Info().Size()
+		copies = append(copies, NewVkBufferCopy(sb.ta,
+			offset, // srcOffset
+			0,      // dstOffset
+			size,   // size
+		))
+	}
+
+	newFamilyIndex := queueFamilyIgnore
+	if oldFamilyIndex != queueFamilyIgnore {
+		newFamilyIndex = queue.Family()
+	}
+
+	tsk.RecordCommandsOnCommit(func(commandBuffer VkCommandBuffer) {
+		sb.write(sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			0,
+			memory.Nullptr,
+			1,
+			sb.MustAllocReadData(
+				NewVkBufferMemoryBarrier(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+					0, // pNext
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					queueFamilyIgnore,                // srcQueueFamilyIndex
+					queueFamilyIgnore,                // dstQueueFamilyIndex
+					src,                              // buffer
+					0,                                // offset
+					VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+				)).Ptr(),
+			0,
+			memory.Nullptr,
+		))
+		sb.write(sb.cb.VkCmdCopyBuffer(
+			commandBuffer,
+			src,
+			dst,
+			uint32(len(copies)),
+			sb.MustAllocReadData(copies).Ptr(),
+		))
+
+		sb.write(sb.cb.VkCmdPipelineBarrier(
+			commandBuffer,
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkPipelineStageFlags(VkPipelineStageFlagBits_VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+			VkDependencyFlags(0),
+			0,
+			memory.Nullptr,
+			1,
+			sb.MustAllocReadData(
+				NewVkBufferMemoryBarrier(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, // sType
+					0, // pNext
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // srcAccessMask
+					VkAccessFlags((VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT-1)|VkAccessFlagBits_VK_ACCESS_MEMORY_WRITE_BIT), // dstAccessMask
+					oldFamilyIndex,                   // srcQueueFamilyIndex
+					newFamilyIndex,                   // dstQueueFamilyIndex
+					dst,                              // buffer
+					0,                                // offset
+					VkDeviceSize(0xFFFFFFFFFFFFFFFF), // size
+				)).Ptr(),
+			0,
+			memory.Nullptr,
+		))
+	})
 }
