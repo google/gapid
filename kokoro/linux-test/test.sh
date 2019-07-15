@@ -33,11 +33,20 @@ export CC=/usr/bin/gcc-7
 cd $SRC
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
-echo $(date): Tests started.
-$BUILD_ROOT/bazel/bin/bazel \
-    --output_base="${TMP}/bazel_out" \
-    test tests -c opt --config symbols \
-    --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-    --define GAPID_BUILD_SHA="$BUILD_SHA" \
-    --test_tag_filters=-needs_gpu
-echo $(date): Tests completed.
+function test {
+    echo $(date): Starting test for $@...
+    $BUILD_ROOT/bazel/bin/bazel \
+        --output_base="${TMP}/bazel_out" \
+        test -c opt --config symbols \
+        --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+        --define GAPID_BUILD_SHA="$BUILD_SHA" \
+        --test_tag_filters=-needs_gpu \
+        $@
+    echo $(date): Tests completed.
+}
+
+test tests-general
+test tests-gapir
+test tests-gapis
+test tests-gapil
+test tests-core
