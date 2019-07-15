@@ -434,6 +434,14 @@ sub void DrawCommandDependencies(ref!Context ctx) {
     }
   }
 
+  scissorState := ctx.Pixel.Scissor
+  if scissorState.Test == GL_TRUE {
+    _ = scissorState.Box.X
+    _ = scissorState.Box.Y
+    _ = scissorState.Box.Width
+    _ = scissorState.Box.Height
+  }
+
   for _, _, u in ctx.Bound.Program.UniformLocations {
 
     // The program execution reads uniform values
