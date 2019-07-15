@@ -290,6 +290,9 @@ public class TracerDialog {
       private final Button hideUnknownExtensions;
       private final Button clearCache;
       private final Button disablePcs;
+      private final Button advanced;
+      private Label ofl;
+      private Button observeFramebuffers;
       private final FileTextbox.Directory directory;
       protected final Text file;
       private final Label pcsWarning;
@@ -458,6 +461,41 @@ public class TracerDialog {
             friendlyName = "";
           }
         });
+        createLabel(this, "");
+        advanced = withLayoutData(
+            createCheckbox(this, "Advanced", models.settings.traceAdvanced),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+
+
+        observeFramebuffers = null;
+        ofl = null;
+        if (models.settings.traceAdvanced) {
+          ofl = createLabel(this, "");
+          observeFramebuffers = withLayoutData(
+              createCheckbox(this, "Observe Framebuffers", models.settings.traceObserveFramebuffers),
+              new GridData(SWT.FILL, SWT.FILL, true, false));
+        }
+
+        Listener advancedListener = e -> {
+          if (advanced.getSelection() && (observeFramebuffers == null)) {
+            ofl = createLabel(this, "");
+            observeFramebuffers = withLayoutData(
+                createCheckbox(this, "Observe Framebuffers", models.settings.traceObserveFramebuffers),
+                new GridData(SWT.FILL, SWT.FILL, true, false));
+          } else {
+            ofl.dispose();
+            ofl = null;
+            observeFramebuffers.dispose();
+            observeFramebuffers = null;
+          }
+          layout(true, true);
+          parent.layout(true, true);
+
+          parent.getParent().getParent().layout(true, true);
+          final Point newSize = parent.getParent().getParent().computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+          parent.getParent().getParent().setSize(newSize);
+        };
+        advanced.addListener(SWT.Selection, advancedListener);
 
         updateDevicesDropDown(models.settings);
       }
@@ -652,6 +690,8 @@ public class TracerDialog {
         settings.traceHideUnknownExtensions = hideUnknownExtensions.getSelection();
         settings.traceOutDir = directory.getText();
         settings.traceFriendlyName = friendlyName;
+        settings.traceAdvanced = advanced.getSelection();
+        settings.traceObserveFramebuffers = (observeFramebuffers != null && observeFramebuffers.getSelection());
 
         Service.TraceOptions.Builder options = Service.TraceOptions.newBuilder()
             .setDevice(dev.path)
@@ -662,6 +702,7 @@ public class TracerDialog {
             .setFramesToCapture(frameCount.getSelection())
             .setNoBuffer(withoutBuffering.getSelection())
             .setHideUnknownExtensions(hideUnknownExtensions.getSelection())
+            .setObserveFrameFrequency(settings.traceObserveFramebuffers? 1: 0)
             .setServerLocalSavePath(output.getAbsolutePath());
 
         if (dev.config.getCanSpecifyCwd()) {

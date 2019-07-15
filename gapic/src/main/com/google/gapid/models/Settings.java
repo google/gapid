@@ -80,6 +80,8 @@ public class Settings {
   public boolean traceHideUnknownExtensions = false;
   public boolean traceClearCache = false;
   public boolean traceDisablePcs = true;
+  public boolean traceAdvanced = false;
+  public boolean traceObserveFramebuffers = false;
   public String traceOutDir = "";
   public String traceFriendlyName = "";
   public boolean skipWelcomeScreen = false;
@@ -234,6 +236,8 @@ public class Settings {
     traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
     traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
     traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
+    traceAdvanced = getBoolean(properties, "trace.advanced", traceAdvanced);
+    traceObserveFramebuffers = getBoolean(properties, "trace.observeFramebuffers", traceObserveFramebuffers);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
     traceFriendlyName = properties.getProperty("trace.friendly", traceFriendlyName);
     skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
@@ -278,6 +282,8 @@ public class Settings {
     properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
     properties.setProperty("trace.withoutBuffering", Boolean.toString(traceWithoutBuffering));
     properties.setProperty("trace.hideUnknownExtensions", Boolean.toString(traceHideUnknownExtensions));
+    properties.setProperty("trace.advanced", Boolean.toString(traceAdvanced));
+    properties.setProperty("trace.observeFramebuffers", Boolean.toString(traceObserveFramebuffers));
     properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("trace.dir", traceOutDir);
