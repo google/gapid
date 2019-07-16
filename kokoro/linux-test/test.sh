@@ -45,8 +45,8 @@ function test {
     echo $(date): Tests completed.
 }
 
-test tests-general
-test tests-gapir
-test tests-gapis
-test tests-gapil
 test tests-core
+test tests-gapis
+test tests-gapir
+test tests-gapil
+test tests-general
