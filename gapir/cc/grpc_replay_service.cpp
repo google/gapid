@@ -171,8 +171,7 @@ bool GrpcReplayService::sendErrorMsg(uint64_t seq_num, uint32_t severity,
   return mGrpcStream->Write(res);
 }
 
-bool GrpcReplayService::sendReplayStatus(uint64_t label,
-                                         uint32_t total_instrs,
+bool GrpcReplayService::sendReplayStatus(uint64_t label, uint32_t total_instrs,
                                          uint32_t finished_instrs) {
   replay_service::ReplayResponse res;
   auto* notification = res.mutable_notification();

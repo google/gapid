@@ -89,7 +89,7 @@ class GrpcReplayService : public ReplayService {
   bool sendErrorMsg(uint64_t seq_num, uint32_t severity, uint32_t api_index,
                     uint64_t label, const std::string& msg, const void* data,
                     uint32_t data_size) override;
-  // Sends replay status notification. Returns true if succeeded, otherwise 
+  // Sends replay status notification. Returns true if succeeded, otherwise
   // returns false.
   bool sendReplayStatus(uint64_t label, uint32_t total_instrs,
                         uint32_t finished_instrs) override;

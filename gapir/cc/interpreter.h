@@ -21,8 +21,8 @@
 #include "stack.h"
 #include "thread_pool.h"
 
-#include "gapir/replay_service/vm.h"
 #include "gapir/cc/replay_service.h"
+#include "gapir/replay_service/vm.h"
 
 #include "core/cc/crash_handler.h"
 
@@ -47,6 +47,8 @@ class Interpreter {
   // renderer function for the given api index in the interpreter. It should
   // return true if the request is fulfilled.
   using ApiRequestCallback = std::function<bool(Interpreter*, uint8_t)>;
+  using CheckReplayStatusCallback =
+      std::function<void(uint64_t, uint32_t, uint32_t)>;
 
   using InstructionCode = vm::Opcode;
 
@@ -70,10 +72,12 @@ class Interpreter {
   // Creates a new interpreter with the specified memory manager (for resolving
   // memory addresses) and with the specified maximum stack size
   Interpreter(core::CrashHandler& crash_handler,
-              const MemoryManager* memory_manager, uint32_t stack_depth,
-              ReplayService* srv);
+              const MemoryManager* memory_manager, uint32_t stack_depth);
 
   void setApiRequestCallback(ApiRequestCallback callback);
+
+  // Register a call back function for interpreter to report replay status.
+  void setCheckReplayStatusCallback(CheckReplayStatusCallback callback);
 
   // Registers a builtin function to the builtin function table.
   void registerBuiltin(uint8_t api, FunctionTable::Id, FunctionTable::Function);
@@ -179,11 +183,12 @@ class Interpreter {
   // Callback function for requesting renderer functions for an unknown api.
   ApiRequestCallback apiRequestCallback;
 
+  // Callback function for checking replay progress and send back info to GAPIS
+  // at right time.
+  CheckReplayStatusCallback checkReplayStatusCallback;
+
   // The stack of the Virtual Machine.
   Stack mStack;
-
-  // Server object to send notification to.
-  ReplayService* mSrv;
 
   // The list of instructions.
   const uint32_t* mInstructions;

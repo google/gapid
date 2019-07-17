@@ -80,6 +80,9 @@ const (
 	// The ID needs to be kept in sync with |kReplayProgressNotificationID|
 	// defined in `gapir/cc/grpc_replay_service.cpp`.
 	ReplayProgressNotificationID = uint64(1)
+	// The value used to initialize nextNotificationID. Need to be increased as
+	// well when more notification id are reserved for special use.
+	InitialNextNotificationID = uint64(2)
 )
 
 // Postback decodes a single command's post. If err is nil, it means there is
@@ -153,7 +156,7 @@ func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 		pointerMemory:       memory.RangeList{},
 		mappedMemory:        mappedMemory,
 		instructions:        []asm.Instruction{},
-		nextNotificationID:  ReplayProgressNotificationID + 1,
+		nextNotificationID:  InitialNextNotificationID,
 		notificationReaders: map[uint64]NotificationReader{},
 		memoryLayout:        memoryLayout,
 		lastLabel:           ^uint64(0),
@@ -664,7 +667,7 @@ func (b *Builder) RegisterReplayStatusReader(ctx context.Context) error {
 		total_instrs := r.GetTotalInstrs()
 		finished_instrs := r.GetFinishedInstrs()
 
-		log.I(ctx, "Replay status: Label: %v; Total instructions: %v; Finished instructions: %v.", label, total_instrs, finished_instrs)
+		log.D(ctx, "Replay status: Label: %v; Total instructions: %v; Finished percentage: %v.", label, total_instrs, float32(finished_instrs)/float32(total_instrs))
 	}
 	return b.RegisterNotificationReader(ReplayProgressNotificationID, reader)
 }
