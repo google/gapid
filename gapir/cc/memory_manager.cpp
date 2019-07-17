@@ -31,17 +31,24 @@ template <typename T>
 MemoryManager::MemoryRange<T>::MemoryRange(T* base, uint32_t size)
     : base(base), size(size) {}
 
-MemoryManager::MemoryManager()
-    : mMemory(nullptr),
+MemoryManager::MemoryManager(std::shared_ptr<MemoryAllocator> allocator)
+    : mAllocator(allocator),
+      mMemory(allocator->allocateStatic(1024)),
       mOpcodeMemory(nullptr, 0),
       mConstantMemory(nullptr, 0),
-      mVolatileMemory(nullptr, 0) {}
+      mVolatileMemory(nullptr, 0) {
+  if (mMemory == nullptr) {
+    GAPID_FATAL("MemoryManager::MemoryManager - ALLOCATION FAILED");
+  }
+}
+
+MemoryManager::~MemoryManager() { mAllocator->releaseAllocation(mMemory); }
 
 bool MemoryManager::setVolatileMemory(uint32_t size) {
-  mMemory.reset(new (std::nothrow) uint8_t[size]);
+  bool resizeSuccess = mAllocator->resizeStaticAllocation(mMemory, size);
 
-  if (mMemory == nullptr) {
-    GAPID_FATAL("MemoryManager::setVolatileMemory - ALLOCATION FAILED");
+  if (resizeSuccess == false) {
+    GAPID_FATAL("MemoryManager::setVolatileMemory - RESIZE FAILED");
   }
 
   mVolatileMemory = {&mMemory[0], size};

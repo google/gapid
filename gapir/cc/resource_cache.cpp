@@ -24,8 +24,8 @@
 
 namespace gapir {
 
-size_t ResourceCache::setPrefetch(const Resource* resources, size_t count,
-                                  std::unique_ptr<ResourceLoader> fetcher) {
+void ResourceCache::setPrefetch(const Resource* resources, size_t count,
+                                std::unique_ptr<ResourceLoader> fetcher) {
   mResources.clear();
   mResourceIterators.clear();
 
@@ -37,8 +37,6 @@ size_t ResourceCache::setPrefetch(const Resource* resources, size_t count,
   }
 
   mFetcher = std::move(fetcher);
-
-  return prefetchImpl(resources, count);
 }
 
 std::vector<Resource> ResourceCache::anticipateNextResources(
@@ -69,10 +67,7 @@ std::vector<Resource> ResourceCache::anticipateNextResources(
   return expectedResources;
 }
 
-size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count,
-                                   bool allowEviction) {
-  size_t bytesToFetch = 0;
-
+size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count) {
   std::vector<Resource> uncachedResources;
   uncachedResources.reserve(count);
 
@@ -86,13 +81,7 @@ size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count,
       continue;
     }
 
-    if (bytesToFetch + resource.getSize() >
-        (allowEviction ? totalCacheSize() : unusedSize())) {
-      break;
-    }
-
     uncachedResources.push_back(resource);
-    bytesToFetch += resource.getSize();
   }
 
   ResourceLoadingBatch bat;

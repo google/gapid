@@ -88,8 +88,8 @@ std::unique_ptr<ReplayService::Payload> createPayload(
   p->set_opcodes(instructions.data(), instructions.size() * sizeof(uint32_t));
   for (size_t i = 0; i < resources.size(); i++) {
     auto* r = p->add_resources();
-    r->set_id(resources[i].id);
-    r->set_size(resources[i].size);
+    r->set_id(resources[i].getID());
+    r->set_size(resources[i].getSize());
   }
   return std::unique_ptr<ReplayService::Payload>(
       new ReplayService::Payload(std::move(p)));
@@ -108,8 +108,8 @@ std::vector<uint8_t> createResourcesData(
     const std::vector<Resource>& resources) {
   std::vector<uint8_t> v;
   for (auto resource : resources) {
-    for (size_t i = 0; i < resource.size; i++) {
-      v.push_back(resource.id[i % resource.id.size()]);
+    for (size_t i = 0; i < resource.getSize(); i++) {
+      v.push_back(resource.getID()[i % resource.getID().size()]);
     }
   }
   return v;

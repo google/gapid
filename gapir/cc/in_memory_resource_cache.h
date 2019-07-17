@@ -17,6 +17,8 @@
 #ifndef GAPIR_IN_MEMORY_RESOURCE_CACHE_H
 #define GAPIR_IN_MEMORY_RESOURCE_CACHE_H
 
+#include "memory_allocator.h"
+
 #include "replay_service.h"
 #include "resource_cache.h"
 
@@ -35,9 +37,11 @@ class InMemoryResourceCache : public ResourceCache {
  public:
   // Creates a new in-memory cache with the given fallback provider and base
   // address. The initial cache size is 0 byte.
-  static std::unique_ptr<InMemoryResourceCache> create(size_t memoryLimit);
+  static std::unique_ptr<InMemoryResourceCache> create(
+      std::shared_ptr<MemoryAllocator> allocator, size_t memoryLimit);
 
-  InMemoryResourceCache(size_t memoryLimit);
+  InMemoryResourceCache(std::shared_ptr<MemoryAllocator> allocator,
+                        size_t memoryLimit);
   ~InMemoryResourceCache();
 
   // ResourceCache interface implementation
@@ -53,15 +57,18 @@ class InMemoryResourceCache : public ResourceCache {
   void clear();
 
  protected:
-  std::map<unsigned int, std::pair<Resource, std::shared_ptr<char> > >::iterator
+  std::map<unsigned int,
+           std::pair<Resource, MemoryAllocator::Handle> >::iterator
   findCache(const Resource& res);
-  bool evictLeastRecentlyUsed();
+  bool evictLeastRecentlyUsed(size_t bytes = 0);
 
   bool loadCacheMiss(const Resource& res, void* target);
 
  private:
+  std::shared_ptr<MemoryAllocator> mAllocator;
+
   std::unordered_map<ResourceId, unsigned int> mResourceIndex;
-  std::map<unsigned int, std::pair<Resource, std::shared_ptr<char> > >
+  std::map<unsigned int, std::pair<Resource, MemoryAllocator::Handle> >
       mResources;
 
   size_t mMemoryLimit;

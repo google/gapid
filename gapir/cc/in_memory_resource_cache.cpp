@@ -31,13 +31,15 @@
 namespace gapir {
 
 std::unique_ptr<InMemoryResourceCache> InMemoryResourceCache::create(
-    size_t memoryLimit) {
+    std::shared_ptr<MemoryAllocator> allocator, size_t memoryLimit) {
   return std::unique_ptr<InMemoryResourceCache>(
-      new InMemoryResourceCache(memoryLimit));
+      new InMemoryResourceCache(allocator, memoryLimit));
 }
 
-InMemoryResourceCache::InMemoryResourceCache(size_t memoryLimit)
-    : mResourceIndex(),
+InMemoryResourceCache::InMemoryResourceCache(
+    std::shared_ptr<MemoryAllocator> allocator, size_t memoryLimit)
+    : mAllocator(allocator),
+      mResourceIndex(),
       mResources(),
       mMemoryLimit(memoryLimit),
       mMemoryUse(0),
@@ -60,13 +62,19 @@ bool InMemoryResourceCache::putCache(const Resource& res, const void* resData) {
   // Try to allocate some memory. If we get an allocation faulture, throw more
   // stuff out until we succeed. This might happen even if we passed the memory
   // limit check above, because we cannot control the other applications running
-  // on our device and how much memory they might use.
-  std::shared_ptr<char> newMemory = nullptr;
+  // on our device and how much memory they might use. It may also fail
+  // for reasons of fragmentation in the allocator.
+  MemoryAllocator::Handle newMemory;
   while (newMemory == nullptr) {
-    newMemory = std::shared_ptr<char>((new (std::nothrow) char[res.getSize()]));
+    newMemory = mAllocator->allocatePurgable(res.getSize());
 
     if (newMemory == nullptr) {
-      assert(evictLeastRecentlyUsed());
+      // Throwing out only as much data as is required to fit the new data in
+      // cache is maximally efficient for cache hit rate, but also puts
+      // the memory allocator under extreme pressure due to fragmentation.
+      // See http://go/GapirCustomAllocator for more details on why
+      // we discard half the cache's contents here.
+      assert(evictLeastRecentlyUsed(mMemoryUse / 2));
     }
   }
 
@@ -81,7 +89,7 @@ bool InMemoryResourceCache::putCache(const Resource& res, const void* resData) {
   mMemoryUse += res.getSize();
 
   // Copy the bits into the cache.
-  memcpy(newMemory.get(), resData, res.getSize());
+  memcpy(&newMemory[0], resData, res.getSize());
 
   return true;
 }
@@ -103,7 +111,7 @@ bool InMemoryResourceCache::loadCache(const Resource& res, void* target) {
          << mCacheAccesses
          << " accesses: " << (float)mCacheHits / (float)mCacheAccesses * 100.f
          << " pc cache hit rate.";
-      GAPID_DEBUG(ss.str().c_str());
+      GAPID_WARNING(ss.str().c_str());
     }
 
     // Get the data into the cache and return it.
@@ -112,7 +120,20 @@ bool InMemoryResourceCache::loadCache(const Resource& res, void* target) {
 
   // Copy the data out of the cache.
   if (target != nullptr) {
-    memcpy(target, resRecord->second.second.get(),
+    // If the allocator purged this data, then we need to delete the cache
+    // record and treat this load like a cache miss.
+    if (resRecord->second.second == nullptr) {
+      mAllocator->releaseAllocation(resRecord->second.second);
+      mMemoryUse -= resRecord->second.first.getSize();
+
+      mResourceIndex.erase(resRecord->second.first.getID());
+      mResources.erase(resRecord);
+
+      // Get the data into the cache and return it.
+      return loadCacheMiss(res, target);
+    }
+
+    memcpy(target, &resRecord->second.second[0],
            resRecord->second.first.getSize());
   }
 
@@ -135,8 +156,8 @@ size_t InMemoryResourceCache::unusedSize() const {
 
 bool InMemoryResourceCache::resize(size_t newSize) {
   // Throw things out of the cache until we're below limit.
-  while (newSize < mMemoryUse) {
-    assert(evictLeastRecentlyUsed());
+  if (newSize < mMemoryUse) {
+    assert(evictLeastRecentlyUsed(mMemoryUse - newSize));
   }
 
   return true;
@@ -146,7 +167,7 @@ void InMemoryResourceCache::dump(FILE* file) { assert(false); }
 
 void InMemoryResourceCache::clear() {
   for (auto&& resource : mResources) {
-    resource.second.second = nullptr;
+    mAllocator->releaseAllocation(resource.second.second);
   }
 
   mResourceIndex.clear();
@@ -155,7 +176,7 @@ void InMemoryResourceCache::clear() {
   mMemoryUse = 0;
 }
 
-std::map<unsigned int, std::pair<Resource, std::shared_ptr<char> > >::iterator
+std::map<unsigned int, std::pair<Resource, MemoryAllocator::Handle> >::iterator
 InMemoryResourceCache::findCache(const Resource& res) {
   auto resIndex = mResourceIndex.find(res.getID());
   if (resIndex == mResourceIndex.end()) {
@@ -166,26 +187,37 @@ InMemoryResourceCache::findCache(const Resource& res) {
   return resRecord;
 }
 
-bool InMemoryResourceCache::evictLeastRecentlyUsed() {
+bool InMemoryResourceCache::evictLeastRecentlyUsed(size_t bytes) {
+  size_t bytesReleased = 0;
   auto lru = mResources.begin();
-  if (lru != mResources.end()) {
-    lru->second.second = nullptr;
-    mMemoryUse -= lru->second.first.getSize();
 
-    mResourceIndex.erase(lru->second.first.getID());
-    mResources.erase(lru);
-  } else {
+  if (lru == mResources.end()) {
     return false;
   }
+
+  while (lru != mResources.end() &&
+         (bytesReleased < bytes || (bytes == 0 && bytesReleased == 0))) {
+    mAllocator->releaseAllocation(lru->second.second);
+    mMemoryUse -= lru->second.first.getSize();
+    bytesReleased += lru->second.first.getSize();
+
+    mResourceIndex.erase(lru->second.first.getID());
+    lru = mResources.erase(lru);
+  }
+
+  GAPID_DEBUG(
+      "### evictLeastRecentlyUsed evicted %zu bytes (wanted to release %zu)",
+      bytesReleased, bytes);
 
   return true;
 }
 
 bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
+  size_t tcs =
+      mAllocator->getTotalSize() - mAllocator->getTotalStaticDataUsage();
   // How much could we prefetch if we wanted to completely fill (100% eviction
   // rate) the cache?
-  size_t possiblePrefetch =
-      res.getSize() < totalCacheSize() ? (totalCacheSize() - res.getSize()) : 0;
+  size_t possiblePrefetch = res.getSize() < tcs ? (tcs - res.getSize()) : 0;
   // Lets prefetch 10% of that maximum figure.
   size_t prefetch = possiblePrefetch / 10;
 
@@ -199,7 +231,7 @@ bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
   // not the resource that initiated the miss. Then finally fetch the resource
   // that caused the cache miss. This is last in the vector so it will not be
   // kicked by the LRU Policy.
-  prefetchImpl(&anticipated[0], anticipated.size(), true);
+  prefetchImpl(&anticipated[0], anticipated.size());
 
   // Unless something went very wrong, the data should now be in cache.
   auto resRecord = findCache(res);
@@ -213,7 +245,15 @@ bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
 
   // Copy the data out of the cache.
   if (target != nullptr) {
-    memcpy(target, resRecord->second.second.get(),
+    if (resRecord->second.second == nullptr) {
+      GAPID_ERROR(
+          "Cache miss prefetch failed for resource %s. This is probably very "
+          "bad.",
+          res.getID().c_str());
+      return false;
+    }
+
+    memcpy(target, &resRecord->second.second[0],
            resRecord->second.first.getSize());
   }
 
