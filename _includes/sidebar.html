@@ -7,13 +7,9 @@
 
   <div class="sidebar-sep"></div>
 
-  <a class="sidebar-item" href="/about/">About</a>
-  <div class="sidebar-sep"></div>
-  <a class="sidebar-item" href="#">Tutorial: How do I...</a>
   {% assign roots = site.pages
     | where_exp:"root", "root.sidebar != null"
     | where_exp:"root", "root.parent == null"
-    | where_exp:"root", "root.sidebar != About"
     | sort:"order" %}
   {% for root in roots %}
     <a class="sidebar-item{% if page.url == root.url %} active{% endif %}" href="{{site.baseurl}}{{root.url}}">{{ root.sidebar }}</a>
