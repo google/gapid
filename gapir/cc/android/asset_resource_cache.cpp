@@ -57,7 +57,7 @@ void touch_pages(void *addr, uint32_t size) {
   }
   // Make sure the last page is touched, as the loop may exit without touching
   // it when p lands in the last page to touch, but beyond end.
-  *(end-1) = '0';
+  *(end - 1) = '0';
 }
 
 }  // namespace
@@ -151,7 +151,9 @@ bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
         // directly touch all pages of the destination memory to get the memory
         // tracker in a good state, and retry the read(). But try this only
         // once.
-        GAPID_WARNING("AssetResourceCache::loadCache() read() returned EFAULT, try to dirty the pages and read() again");
+        GAPID_WARNING(
+            "AssetResourceCache::loadCache() read() returned EFAULT, try to "
+            "dirty the pages and read() again");
         read_failed = true;
         touch_pages(data, record.size);
         continue;
