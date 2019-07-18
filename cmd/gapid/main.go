@@ -182,16 +182,16 @@ func (c *config) locateVM() error {
 		return nil
 	}
 
-	if java, err := exec.LookPath(c.javaExecutable()); err == nil && checkVM(java, true) {
-		c.vm = java
-		return nil
-	}
-
 	if home := os.Getenv("JAVA_HOME"); home != "" {
 		if java := c.javaInHome(home); checkVM(java, true) {
 			c.vm = java
 			return nil
 		}
+	}
+
+	if java, err := exec.LookPath(c.javaExecutable()); err == nil && checkVM(java, true) {
+		c.vm = java
+		return nil
 	}
 
 	if runtime.GOOS == "linux" {
