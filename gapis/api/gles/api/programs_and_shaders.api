@@ -2380,9 +2380,11 @@ cmd void glUseProgram(ProgramId program) {
   } else {
     p := GetProgramOrError(program)
     if p.LinkStatus == GL_FALSE { glErrorInvalidOperation() }
-    AdjustProgramUseCount(p, +1)
-    AdjustProgramUseCount(ctx.Bound.Program, -1)
-    ctx.Bound.Program = p
+    if p != ctx.Bound.Program {
+      AdjustProgramUseCount(p, +1)
+      AdjustProgramUseCount(ctx.Bound.Program, -1)
+      ctx.Bound.Program = p
+    }
   }
 }
 
