@@ -48,13 +48,16 @@ bool asset_read(AAsset *asset, void *buf, size_t count) {
   return true;
 }
 
-// touch pages will touch all memory pages for a given memory span
+// touch_pages will touch all memory pages for a given memory span
 void touch_pages(void *addr, uint32_t size) {
-  long pagesize = sysconf(_SC_PAGESIZE);
+  static const long pagesize = sysconf(_SC_PAGESIZE);
   char *end = ((char *)addr) + size;
   for (char *p = (char *)addr; p < end; p += pagesize) {
     *p = '0';
   }
+  // Make sure the last page is touched, as the loop may exit without touching
+  // it when p lands in the last page to touch, but beyond end.
+  *(end-1) = '0';
 }
 
 }  // namespace
@@ -148,6 +151,7 @@ bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
         // directly touch all pages of the destination memory to get the memory
         // tracker in a good state, and retry the read(). But try this only
         // once.
+        GAPID_WARNING("AssetResourceCache::loadCache() read() returned EFAULT, try to dirty the pages and read() again");
         read_failed = true;
         touch_pages(data, record.size);
         continue;
