@@ -45,6 +45,7 @@ public class StatusBar extends Composite {
   private final HeapStatus heap;
   private final Label serverPrefix;
   private final Label server;
+  private final Label replayStatus;
   private final Link notification;
   private Runnable onNotificationClick = null;
 
@@ -61,6 +62,7 @@ public class StatusBar extends Composite {
     withLayoutData(new Label(serverStatus, SWT.SEPARATOR | SWT.VERTICAL), new RowData(SWT.DEFAULT, 1));
     serverPrefix = createLabel(serverStatus, "");
     server = createLabel(serverStatus, "");
+    replayStatus = createLabel(serverStatus, "");
     serverStatus.setVisible(false);
 
     notification = withLayoutData(createLink(this, "", $ -> {
@@ -97,6 +99,12 @@ public class StatusBar extends Composite {
   public void setServerHeapSize(long heapSize) {
     serverStatus.setVisible(true);
     heap.setHeap(heapSize);
+    layout();
+  }
+
+  public void setReplayStatus(long label, int totalInstrs, int finishedInstrs) {
+    serverStatus.setVisible(true);
+    replayStatus.setText("label: " + label + "; totalInstrs: " + totalInstrs + "; finishedInstrs: " + finishedInstrs);
     layout();
   }
 

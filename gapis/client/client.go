@@ -186,7 +186,7 @@ func (c *client) Profile(
 }
 
 func (c *client) Status(
-	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) error {
+	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus), rs func(t *service.ReplayStatus)) error {
 
 	req := &service.ServerStatusRequest{MemorySnapshotInterval: float32(snapshotInterval.Seconds()), StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
 
@@ -210,6 +210,10 @@ func (c *client) Status(
 		} else if _, ok := r.Res.(*service.ServerStatusResponse_Memory); ok {
 			if m != nil {
 				m(r.GetMemory())
+			}
+		} else if _, ok := r.Res.(*service.ServerStatusResponse_Replay); ok {
+			if rs != nil {
+				rs(r.GetReplay())
 			}
 		}
 	}

@@ -481,6 +481,7 @@ func (s *server) Profile(ctx context.Context, pprofW, traceW io.Writer, memorySn
 type statusListener struct {
 	f                  func(*service.TaskUpdate)
 	m                  func(*service.MemoryStatus)
+	r                  func(*service.ReplayStatus)
 	lastProgressUpdate map[*status.Task]time.Time
 	progressUpdateFreq time.Duration
 	progressMutex      sync.Mutex
@@ -599,11 +600,22 @@ func (l *statusListener) OnMemorySnapshot(ctx context.Context, stats runtime.Mem
 	})
 }
 
-func (s *server) Status(ctx context.Context, snapshotInterval, statusInterval time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus)) error {
+func (l *statusListener) OnReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32) {
+	l.progressMutex.Lock()
+	defer l.progressMutex.Unlock()
+
+	l.r(&service.ReplayStatus{
+		Label:          label,
+		TotalInstrs:    total_instrs,
+		FinishedInstrs: finished_instrs,
+	})
+}
+
+func (s *server) Status(ctx context.Context, snapshotInterval, statusInterval time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus), r func(*service.ReplayStatus)) error {
 	ctx = status.StartBackground(ctx, "RPC Status")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Status")
-	l := &statusListener{f, m, make(map[*status.Task]time.Time), statusInterval, sync.Mutex{}}
+	l := &statusListener{f, m, r, make(map[*status.Task]time.Time), statusInterval, sync.Mutex{}}
 	unregister := status.RegisterListener(l)
 	defer unregister()
 

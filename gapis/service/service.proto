@@ -246,6 +246,12 @@ message MemoryStatus {
   uint64 totalHeap = 1;
 }
 
+message ReplayStatus {
+  uint64 label = 1;
+  uint32 total_instrs = 2;
+  uint32 finished_instrs = 3;
+}
+
 message ServerStatusRequest {
   float memory_snapshot_interval = 1;
   float status_update_frequency = 2;
@@ -255,6 +261,7 @@ message ServerStatusResponse {
   oneof res {
     TaskUpdate task = 1;
     MemoryStatus memory = 2;
+    ReplayStatus replay = 3;
   }
 }
 

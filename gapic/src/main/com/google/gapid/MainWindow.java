@@ -173,6 +173,11 @@ public class MainWindow extends ApplicationWindow {
       public void onHeap(long heap) {
         scheduleIfNotDisposed(statusBar, () -> statusBar.setServerHeapSize(heap));
       }
+
+      @Override
+      public void onReplayProgress(long label, int totalInstrs, int finishedInstrs) {
+        scheduleIfNotDisposed(statusBar, () -> statusBar.setReplayStatus(label, totalInstrs, finishedInstrs));
+      }
     });
   }
 

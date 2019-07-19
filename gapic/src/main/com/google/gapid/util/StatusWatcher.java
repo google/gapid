@@ -45,6 +45,9 @@ public class StatusWatcher {
         case MEMORY:
           onMemoryUpdate(update.getMemory());
           break;
+        case REPLAY:
+          onReplayUpdate(update.getReplay());
+          break;
         default:
           // Ignore.
       }
@@ -92,9 +95,14 @@ public class StatusWatcher {
     listener.onHeap(update.getTotalHeap());
   }
 
+  private void onReplayUpdate(Service.ReplayStatus update) {
+    listener.onReplayProgress(update.getLabel(), update.getTotalInstrs(), update.getFinishedInstrs());
+  }
+
   public static interface Listener {
     public void onStatus(String status);
     public void onHeap(long heap);
+    public void onReplayProgress(long label, int totalInstrs, int finishedInstrs);
   }
 
   private static class Task {

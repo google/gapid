@@ -369,10 +369,18 @@ func (s *grpcServer) Status(req *service.ServerStatusRequest, stream service.Gap
 			cancel()
 		}
 	}
+	r := func(t *service.ReplayStatus) {
+		if err := stream.Send(&service.ServerStatusResponse{
+			Res: &service.ServerStatusResponse_Replay{t},
+		}); err != nil {
+			c <- err
+			cancel()
+		}
+	}
 	err := s.handler.Status(s.bindCtx(ctx),
 		time.Duration(float32(time.Second)*req.MemorySnapshotInterval),
 		time.Duration(float32(time.Second)*req.StatusUpdateFrequency),
-		f, m)
+		f, m, r)
 
 	if err == nil {
 		select {

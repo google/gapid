@@ -668,6 +668,7 @@ func (b *Builder) RegisterReplayStatusReader(ctx context.Context) error {
 		finished_instrs := r.GetFinishedInstrs()
 
 		log.D(ctx, "Replay status: Label: %v; Total instructions: %v; Finished percentage: %v.", label, total_instrs, float32(finished_instrs)/float32(total_instrs))
+		status.UpdateReplayStatus(ctx, label, total_instrs, finished_instrs)
 	}
 	return b.RegisterNotificationReader(ReplayProgressNotificationID, reader)
 }
