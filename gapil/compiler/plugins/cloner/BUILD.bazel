@@ -29,7 +29,6 @@ go_library(
     importpath = "github.com/google/gapid/gapil/compiler/plugins/cloner",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/codegen:go_default_library",
         "//gapil/compiler:go_default_library",
         "//gapil/semantic:go_default_library",
     ],

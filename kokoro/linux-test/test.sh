@@ -33,21 +33,12 @@ export CC=/usr/bin/gcc-7
 cd $SRC
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
-function test {
-    echo $(date): Starting test for $@...
-    $BUILD_ROOT/bazel/bin/bazel \
-        --output_base="${TMP}/bazel_out" \
-        test -c opt --config symbols \
-        --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-        --define GAPID_BUILD_SHA="$BUILD_SHA" \
-        --test_tag_filters=-needs_gpu \
-        $@
-    echo $(date): Tests completed.
-}
+echo $(date): Starting to build Building LLVM
+$BUILD_ROOT/bazel/bin/bazel \
+--output_base="${TMP}/bazel_out" \
+build --config symbols \
+--define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
+--define GAPID_BUILD_SHA="$BUILD_SHA" \
+//core/codegen:test-llvm-build
 
-# Running all the tests in one go leads to an out-of-memory error on Kokoro, hence the division in smaller test sets
-test tests-core
-test tests-gapis
-test tests-gapir
-test tests-gapil
-test tests-general
+echo $(date): LLVM build completed.

@@ -30,7 +30,6 @@ go_library(
     importpath = "github.com/google/gapid/gapil/compiler/plugins/encoder",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/codegen:go_default_library",
         "//core/data:go_default_library",
         "//core/text/cases:go_default_library",
         "//gapil/compiler:go_default_library",

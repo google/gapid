@@ -15,6 +15,13 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
+    name = "test-llvm-build",
+    srcs = [],
+    importpath = "github.com/google/gapid/core/codegen",
+    deps = ["@llvm//:go"],
+)
+
+go_library(
     name = "go_default_library",
     srcs = [
         "arithmetic.go",

@@ -34,7 +34,6 @@ go_library(
     importpath = "github.com/google/gapid/gapil/executor",
     visibility = ["//visibility:public"],
     deps = [
-        "//core/codegen:go_default_library",
         "//core/data/slice:go_default_library",
         "//core/memory/arena:go_default_library",
         "//gapil/compiler:go_default_library",
