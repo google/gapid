@@ -311,6 +311,8 @@ cmd void glClear(GLbitfield mask) {
     _ = ctx.Pixel.StencilClearValue
     WriteFramebufferAttachment(fb.StencilAttachment)
   }
+
+  SharedDrawClearCommandDependencies(ctx)
 }
 
 @clear
