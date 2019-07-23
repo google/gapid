@@ -46,12 +46,12 @@
 // Enums //
 ///////////
 
-enum VkPointClippingBehaviorKHR {
+enum VkPointClippingBehaviorKHR: u32 {
     VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES_KHR       = 0,
     VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY_KHR = 1,
 }
 
-enum VkTessellationDomainOriginKHR {
+enum VkTessellationDomainOriginKHR: u32 {
     VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT_KHR = 0,
     VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT_KHR = 1,
 }

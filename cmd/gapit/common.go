@@ -29,6 +29,8 @@ import (
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/data/id"
+	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device"
@@ -402,6 +404,130 @@ func getType(ctx context.Context, client service.Service, t *path.Type) (*types.
 	}
 }
 
+func printPodValue(ctx context.Context, v *pod.Value) error {
+	switch v := v.Val.(type) {
+	case *pod.Value_Float32:
+		fmt.Printf("%v", v.Float32)
+	case *pod.Value_Float64:
+		fmt.Printf("%v", v.Float64)
+	case *pod.Value_Uint:
+		fmt.Printf("%v", v.Uint)
+	case *pod.Value_Sint:
+		fmt.Printf("%v", v.Sint)
+	case *pod.Value_Uint8:
+		fmt.Printf("%v", v.Uint8)
+	case *pod.Value_Sint8:
+		fmt.Printf("%v", v.Sint8)
+	case *pod.Value_Uint16:
+		fmt.Printf("%v", v.Uint16)
+	case *pod.Value_Sint16:
+		fmt.Printf("%v", v.Sint16)
+	case *pod.Value_Uint32:
+		fmt.Printf("%v", v.Uint32)
+	case *pod.Value_Sint32:
+		fmt.Printf("%v", v.Sint32)
+	case *pod.Value_Uint64:
+		fmt.Printf("%v", v.Uint64)
+	case *pod.Value_Sint64:
+		fmt.Printf("%v", v.Sint64)
+	case *pod.Value_Bool:
+		fmt.Printf("%v", v.Bool)
+	case *pod.Value_String_:
+		fmt.Printf("%v", v.String_)
+	default:
+		return fmt.Errorf("Unhandled printed type %T", v)
+	}
+	return nil
+}
+
+func printBoxValue(ctx context.Context, client service.Service, t *path.Type, v *memory_box.Value, prefix string) error {
+	if task.Stopped(ctx) {
+		return task.StopReason(ctx)
+	}
+	err := error(nil)
+	tp, err := getType(ctx, client, t)
+	if err != nil {
+		return err
+	}
+	switch t := tp.Ty.(type) {
+	case *types.Type_Pod:
+		if err = printPodValue(ctx, v.Val.(*memory_box.Value_Pod).Pod); err != nil {
+			return err
+		}
+	case *types.Type_Pointer:
+		fmt.Printf("*%v", v.Val.(*memory_box.Value_Pointer).Pointer.Address)
+
+	case *types.Type_Slice:
+		childType := &path.Type{TypeIndex: t.Slice.Underlying}
+		sliceData := v.Val.(*memory_box.Value_Slice).Slice
+		oldPrefix := prefix
+		prefix := prefix + "│   "
+		fmt.Printf("\n")
+		for i := 0; i < len(sliceData.Values); i++ {
+			if i == len(sliceData.Values)-1 {
+				fmt.Printf("%s└──", oldPrefix)
+			} else {
+				fmt.Printf("%s├──", oldPrefix)
+			}
+
+			if err = printBoxValue(ctx, client, childType, sliceData.Values[i], prefix); err != nil {
+				return err
+			}
+			fmt.Printf("\n")
+		}
+	case *types.Type_Reference:
+		return fmt.Errorf("Unhandled: Reference types")
+	case *types.Type_Struct:
+		fields := t.Struct.Fields
+		structData := v.Val.(*memory_box.Value_Struct).Struct
+		oldPrefix := prefix
+		prefix = prefix + "│   "
+		fmt.Printf("\n")
+		for i := 0; i < len(fields); i++ {
+			childType := &path.Type{TypeIndex: fields[i].Type}
+			if i == len(fields)-1 {
+				fmt.Printf("%s└── %s: ", oldPrefix, fields[i].Name)
+			} else {
+				fmt.Printf("%s├── %s: ", oldPrefix, fields[i].Name)
+			}
+
+			if err = printBoxValue(ctx, client, childType, structData.Fields[i], prefix); err != nil {
+				return err
+			}
+			fmt.Printf("\n")
+		}
+	case *types.Type_Map:
+		return fmt.Errorf("Unhandled: Map types")
+	case *types.Type_Array:
+		fmt.Printf("[")
+		childType := &path.Type{TypeIndex: t.Array.ElementType}
+		arrayData := v.Val.(*memory_box.Value_Array).Array
+		prefix = prefix + "│   "
+		for i := uint64(0); i < t.Array.Size; i++ {
+			if err = printBoxValue(ctx, client, childType, arrayData.Entries[i], prefix); err != nil {
+				return err
+			}
+			if i != t.Array.Size-1 {
+				fmt.Printf(", ")
+			}
+		}
+		fmt.Printf("]")
+	case *types.Type_Pseudonym:
+		if err = printBoxValue(ctx, client, &path.Type{TypeIndex: t.Pseudonym.Underlying}, v, prefix); err != nil {
+			return err
+		}
+	case *types.Type_Enum:
+		if err = printPodValue(ctx, v.Val.(*memory_box.Value_Pod).Pod); err != nil {
+			return err
+		}
+	case *types.Type_Sized:
+		if err = printPodValue(ctx, v.Val.(*memory_box.Value_Pod).Pod); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func printCommand(ctx context.Context, client service.Service, p *path.Command, c *api.Command, of ObservationFlags) error {
 	indices := make([]string, len(p.Indices))
 	for i, v := range p.Indices {
@@ -474,7 +600,8 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 					fmt.Fprintf(os.Stdout, "%s [%v]: err %+v \n", tp.Name, tm.Range, err)
 				} else {
 					vv := v.(*memory_box.Value)
-					fmt.Fprintf(os.Stdout, "%s [%v]: %+v \n", tp.Name, tm.Range, vv)
+					fmt.Fprintf(os.Stdout, "%s [%v]: ", tp.Name, tm.Range)
+					printBoxValue(ctx, client, tm.Type, vv, "      ")
 				}
 			}
 		}

@@ -63,7 +63,7 @@ type VkFlags VkDebugUtilsMessengerCallbackDataFlagsEXT
 type VkFlags VkDebugUtilsMessengerCreateFlagsEXT
 
 @extension("VK_EXT_debug_utils")
-enum VkDebugUtilsMessageSeverityFlagBitsEXT {
+enum VkDebugUtilsMessageSeverityFlagBitsEXT: u32 {
     VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT = 0x00000001,
     VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT = 0x00000010,
     VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT = 0x00000100,
@@ -76,7 +76,7 @@ enum VkDebugUtilsMessageSeverityFlagBitsEXT {
 type VkFlags VkDebugUtilsMessageSeverityFlagsEXT
 
 @extension("VK_EXT_debug_utils")
-enum VkDebugUtilsMessageTypeFlagBitsEXT {
+enum VkDebugUtilsMessageTypeFlagBitsEXT: u32 {
     VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT = 0x00000001,
     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT = 0x00000002,
     VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT = 0x00000004,

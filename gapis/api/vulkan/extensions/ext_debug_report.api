@@ -55,7 +55,7 @@
 ///////////
 
 @extension("VK_EXT_debug_report")
-enum VkDebugReportObjectTypeEXT {
+enum VkDebugReportObjectTypeEXT: u32{
   VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT               = 0,
   VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT              = 1,
   VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT       = 2,
@@ -89,7 +89,7 @@ enum VkDebugReportObjectTypeEXT {
 
 @extension("VK_EXT_debug_report")
 @unused
-enum VkDebugReportErrorEXT {
+enum VkDebugReportErrorEXT: u32 {
   VK_DEBUG_REPORT_ERROR_NONE_EXT         = 0,
   VK_DEBUG_REPORT_ERROR_CALLBACK_REF_EXT = 1,
 }

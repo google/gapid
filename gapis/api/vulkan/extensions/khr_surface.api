@@ -54,12 +54,12 @@
 ///////////
 
 @extension("VK_KHR_surface")
-enum VkColorSpaceKHR {
+enum VkColorSpaceKHR: u32 {
   VK_COLORSPACE_SRGB_NONLINEAR_KHR = 0x00000000,
 }
 
 @extension("VK_KHR_surface")
-enum VkPresentModeKHR {
+enum VkPresentModeKHR: u32 {
   VK_PRESENT_MODE_IMMEDIATE_KHR    = 0x00000000,
   VK_PRESENT_MODE_MAILBOX_KHR      = 0x00000001,
   VK_PRESENT_MODE_FIFO_KHR         = 0x00000002,

@@ -26,7 +26,6 @@ go_library(
         "//core/log:go_default_library",
         "//core/math/sint:go_default_library",
         "//core/os/device:go_default_library",
-        "//core/memory/arena:go_default_library",
         "//gapis/memory:go_default_library",
     ],
 )

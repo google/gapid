@@ -893,6 +893,8 @@ message TypedMemoryRange {
   // The type of the memory observations
   path.Type type = 1;
   MemoryRange range = 2;
+  // The root of the memory observation
+  uint64 root = 3;
 }
 
 // UsageHints hints to the server the intended usage of the result of a request.
