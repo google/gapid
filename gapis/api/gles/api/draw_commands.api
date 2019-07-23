@@ -379,7 +379,14 @@ sub void WriteFramebufferAttachment(FramebufferAttachment a) {
 // DependencyReadTexture read all relevant fields of texture to create dependencies
 @spy_disabled
 sub void DependencyReadTexture(ref!Texture texture) {
-  read(texture.Image.Data)
+  // TODO(hevrard): Check minlod and maxlod
+  for _, idx, level in texture.Levels {
+    if (texture.BaseLevel <= idx) && (idx <= texture.MaxLevel) {
+      for _, _, image in level.Layers {
+        read(image.Data)
+      }
+    }
+  }
 
   // Sampling may be affected by all these parameters
   _ = texture.SwizzleR
@@ -395,8 +402,6 @@ sub void DependencyReadTexture(ref!Texture texture) {
   _ = texture.WrapR
   _ = texture.MinLod
   _ = texture.MaxLod
-  _ = texture.BaseLevel
-  _ = texture.MaxLevel
   _ = texture.DepthStencilTextureMode
   _ = texture.CompareMode
   _ = texture.CompareFunc
