@@ -2847,7 +2847,9 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 		).Ptr())
 	}
 
-	memReq := src.MemoryRequirements()
+	memReq := NewVkMemoryRequirements(sb.ta,
+		src.MemoryRequirements().Size(), src.MemoryRequirements().Alignment(), src.MemoryRequirements().MemoryTypeBits())
+
 	createWithMemReq := sb.cb.VkCreateBuffer(
 		src.Device(),
 		sb.MustAllocReadData(
@@ -2868,10 +2870,11 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 	createWithMemReq.Extras().Add(memReq)
 	sb.write(createWithMemReq)
 
+	dst := os.Buffers().Get(buffer)
 	sb.write(sb.cb.VkGetBufferMemoryRequirements(
-		src.Device(),
-		src.VulkanHandle(),
-		sb.MustAllocWriteData(src.MemoryRequirements()).Ptr(),
+		dst.Device(),
+		dst.VulkanHandle(),
+		sb.MustAllocWriteData(memReq).Ptr(),
 	))
 
 	// Dedicated allocation buffer/image must NOT be a sparse binding one.
@@ -2888,9 +2891,19 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
 			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(src.Memory().VulkanHandle()))
 	}
-
-	if dedicatedMemoryNV {
-		sb.createDeviceMemory(src.Memory(), true)
+	mem := dst.Memory()
+	if mem.IsNil() {
+		mem = src.Memory().Clone(sb.ta, api.CloneContext{})
+		memID := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+			return os.DeviceMemories().Contains(VkDeviceMemory(x))
+		}))
+		mem.SetVulkanHandle(memID)
+		mem.SetMappedLocation(Voidᵖ(0))
+		mem.SetMappedOffset(VkDeviceSize(uint64(0)))
+		mem.SetMappedSize(VkDeviceSize(uint64(0)))
+		sb.createDeviceMemory(mem, false)
+	} else if dedicatedMemoryNV {
+		sb.createDeviceMemory(mem, true)
 	}
 
 	denseBound := !src.Memory().IsNil()
@@ -2955,15 +2968,15 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 
 	} else {
 		// Otherwise, we have no sparse bindings, we are either non-sparse, or empty.
-		if src.Memory().IsNil() {
+		if mem.IsNil() {
 			return fmt.Errorf("buffer memory is nil for buffer %v", src)
 		}
 
 		sb.write(sb.cb.VkBindBufferMemory(
-			src.Device(),
-			src.VulkanHandle(),
-			src.Memory().VulkanHandle(),
-			src.MemoryOffset(),
+			dst.Device(),
+			dst.VulkanHandle(),
+			mem.VulkanHandle(),
+			dst.MemoryOffset(),
 			VkResult_VK_SUCCESS,
 		))
 
@@ -3021,6 +3034,11 @@ func (sb *stateBuilder) copyBuffer(src, dst VkBuffer, queue QueueObjectʳ, tsk *
 	copies := []VkBufferCopy{}
 	offset := VkDeviceSize(0)
 	dstObj := os.Buffers().Get(dst)
+	if dstObj == NilBufferObjectʳ {
+		log.I(sb.ctx, "copyBuffer failed: dst buffer is nil")
+		return
+	}
+
 	sparseBinding :=
 		(uint64(dstObj.Info().CreateFlags()) &
 			uint64(VkBufferCreateFlagBits_VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) != 0
