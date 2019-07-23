@@ -17,6 +17,7 @@ package resolve
 import (
 	"context"
 	"reflect"
+	"sort"
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/log"
@@ -36,6 +37,41 @@ var (
 	tyPointer = reflect.TypeOf((*memory.ReflectPointer)(nil)).Elem()
 	tySlice   = reflect.TypeOf((*api.Slice)(nil)).Elem()
 )
+
+// filterTypedRanges takes a list of typed ranges and
+//   combines ranges that have identical bases and types
+func filterTypedRanges(ranges []*service.TypedMemoryRange) []*service.TypedMemoryRange {
+	if len(ranges) == 0 {
+		return ranges
+	}
+	sort.Slice(ranges, func(i, j int) bool {
+		return (ranges[i].Root < ranges[j].Root ||
+			ranges[i].Root == ranges[j].Root &&
+				ranges[i].Type.TypeIndex < ranges[j].Type.TypeIndex)
+	})
+	newRanges := []*service.TypedMemoryRange{ranges[0]}
+	last := 0
+	for i := 1; i < len(ranges); i++ {
+		if newRanges[last].Root == ranges[i].Root &&
+			newRanges[last].Type.TypeIndex == ranges[i].Type.TypeIndex {
+			start := newRanges[last].Range.Base
+			if start > ranges[i].Range.Base {
+				start = ranges[i].Range.Base
+			}
+			end := newRanges[last].Range.Base + newRanges[last].Range.Size
+			if end < ranges[i].Range.Base+ranges[i].Range.Size {
+				end = ranges[i].Range.Base + ranges[i].Range.Size
+			}
+
+			newRanges[last].Range.Base = start
+			newRanges[last].Range.Size = end - start
+		} else {
+			last = len(newRanges)
+			newRanges = append(newRanges, ranges[i])
+		}
+	}
+	return newRanges
+}
 
 // Memory resolves and returns the memory from the path p.
 func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*service.Memory, error) {
@@ -79,11 +115,11 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	r := memory.Range{Base: p.Address, Size: p.Size}
 	var reads, writes, observed memory.RangeList
-	var typedRanges []*service.TypedMemoryRange
+	typedRanges := []*service.TypedMemoryRange{}
 
 	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
 		if id == memory.PoolID(p.Pool) {
-			pool.OnRead = func(rng memory.Range, id uint64) {
+			pool.OnRead = func(rng memory.Range, root uint64, id uint64) {
 				if rng.Overlaps(r) {
 					interval.Merge(&reads, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
@@ -94,12 +130,13 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 									Base: rng.Base,
 									Size: rng.Size,
 								},
+								Root: root,
 							},
 						)
 					}
 				}
 			}
-			pool.OnWrite = func(rng memory.Range, id uint64) {
+			pool.OnWrite = func(rng memory.Range, root uint64, id uint64) {
 				if rng.Overlaps(r) {
 					interval.Merge(&writes, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
@@ -110,6 +147,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 									Base: rng.Base,
 									Size: rng.Size,
 								},
+								Root: root,
 							},
 						)
 					}
@@ -120,6 +158,8 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	lastCmd := cmds[len(cmds)-1]
 	api.MutateCmds(ctx, s, nil, nil, lastCmd)
+
+	typedRanges = filterTypedRanges(typedRanges)
 
 	// Check whether the requested pool was ever created.
 	pool, err := s.Memory.Get(memory.PoolID(p.Pool))

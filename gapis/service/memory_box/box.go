@@ -189,7 +189,7 @@ func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) 
 		for _, f := range t.Struct.Fields {
 			elem, ok := types.TryGetType(f.Type)
 			if !ok {
-				return nil, log.Err(ctx, nil, "Incomplete type")
+				return nil, log.Err(ctx, nil, "Incomplete type in struct box")
 			}
 
 			v, err := Box(ctx, d, elem)
@@ -279,5 +279,5 @@ func Box(ctx context.Context, d *memory.Decoder, t *types.Type) (*Value, error) 
 	case *types.Type_Slice:
 		return nil, log.Err(ctx, nil, "Cannot decode slices from memory")
 	}
-	return nil, log.Err(ctx, nil, "Incomplete type")
+	return nil, log.Err(ctx, nil, "Unhandled box type")
 }

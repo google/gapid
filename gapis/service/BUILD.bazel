@@ -37,6 +37,7 @@ go_library(
         "//gapis/memory:go_default_library",
         "//gapis/perfetto/service:go_default_library",
         "//gapis/service/box:go_default_library",
+        "//gapis/service/memory_box:go_default_library",
         "//gapis/service/path:go_default_library",
         "//gapis/service/severity:go_default_library",
         "//gapis/service/types:go_default_library",

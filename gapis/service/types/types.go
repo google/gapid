@@ -268,19 +268,23 @@ func (t *Type) Alignment(ctx context.Context, d *device.MemoryLayout) (int, erro
 			return int(d.I64.Alignment), nil
 		case pod.Type_sint64:
 			return int(d.I64.Alignment), nil
+		case pod.Type_float32:
+			return int(d.F32.Alignment), nil
+		case pod.Type_float64:
+			return int(d.F64.Alignment), nil
 		case pod.Type_bool:
 			return int(d.I8.Alignment), nil
 		case pod.Type_string:
 			return int(d.Pointer.Alignment), nil // String is a char* in memory
 		}
 	case *Type_Pointer:
-		return int(d.Pointer.Alignment), nil // String is a char* in memory
+		return int(d.Pointer.Alignment), nil
 	case *Type_Struct:
 		maxAlign := 1
 		for _, f := range t.Struct.Fields {
 			elem, ok := TryGetType(f.Type)
 			if !ok {
-				return 0, log.Err(ctx, nil, "Incomplete type")
+				return 0, log.Err(ctx, nil, "Incomplete type in struct alignment")
 			}
 			m, err := elem.Alignment(ctx, d)
 			if err != nil {
@@ -321,7 +325,7 @@ func (t *Type) Alignment(ctx context.Context, d *device.MemoryLayout) (int, erro
 	case *Type_Slice:
 		return 0, log.Err(ctx, nil, "Cannot decode slice from memory")
 	}
-	return 0, log.Err(ctx, nil, "Incomplete type")
+	return 0, log.Err(ctx, nil, fmt.Sprintf("Unhandled type alignment %T", t.Ty))
 }
 
 func (t *Type) Size(ctx context.Context, d *device.MemoryLayout) (int, error) {
@@ -348,6 +352,10 @@ func (t *Type) Size(ctx context.Context, d *device.MemoryLayout) (int, error) {
 			return int(d.I64.Size), nil
 		case pod.Type_sint64:
 			return int(d.I64.Size), nil
+		case pod.Type_float32:
+			return int(d.F32.Size), nil
+		case pod.Type_float64:
+			return int(d.F64.Size), nil
 		case pod.Type_bool:
 			return int(d.I8.Size), nil
 		case pod.Type_string:
@@ -361,7 +369,7 @@ func (t *Type) Size(ctx context.Context, d *device.MemoryLayout) (int, error) {
 		for _, f := range t.Struct.Fields {
 			elem, ok := TryGetType(f.Type)
 			if !ok {
-				return 0, log.Err(ctx, nil, "Incomplete type")
+				return 0, log.Err(ctx, nil, "Incomplete type in struct size")
 			}
 			a, err := elem.Alignment(ctx, d)
 			if err != nil {
@@ -414,5 +422,5 @@ func (t *Type) Size(ctx context.Context, d *device.MemoryLayout) (int, error) {
 	case *Type_Slice:
 		return 0, log.Err(ctx, nil, "Cannot decode slices from memory")
 	}
-	return 0, log.Err(ctx, nil, "Incomplete type")
+	return 0, log.Err(ctx, nil, "Incomplete type size")
 }

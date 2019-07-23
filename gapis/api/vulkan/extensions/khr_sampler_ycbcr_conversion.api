@@ -40,7 +40,7 @@
 // Enums //
 ///////////
 
-enum VkSamplerYcbcrModelConversionKHR {
+enum VkSamplerYcbcrModelConversionKHR: u32 {
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY_KHR   = 0,
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY_KHR = 1,
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709_KHR      = 2,
@@ -48,12 +48,12 @@ enum VkSamplerYcbcrModelConversionKHR {
   VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_2020_KHR     = 4,
 }
 
-enum VkSamplerYcbcrRangeKHR {
+enum VkSamplerYcbcrRangeKHR: u32 {
   VK_SAMPLER_YCBCR_RANGE_ITU_FULL_KHR   = 0,
   VK_SAMPLER_YCBCR_RANGE_ITU_NARROW_KHR = 1,
 }
 
-enum VkChromaLocationKHR {
+enum VkChromaLocationKHR: u32 {
   VK_CHROMA_LOCATION_COSITED_EVEN_KHR = 0,
   VK_CHROMA_LOCATION_MIDPOINT_KHR = 1,
 }
