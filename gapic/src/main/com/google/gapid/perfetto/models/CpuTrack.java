@@ -146,9 +146,10 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SLICE_RANGE_SQL, cpu, ts.end, ts.start);
   }
 
-  public static ListenableFuture<Perfetto.Data.Builder> enumerate(
+  public static ListenableFuture<List<CpuConfig>> enumerate(
       String parent, Perfetto.Data.Builder data) {
     return transform(freqMap(data.qe), freqMap -> {
+      List<CpuConfig> configs = Lists.newArrayList();
       for (int i = 0; i < data.getNumCpus(); i++) {
         QueryEngine.Row freq = freqMap.get(Long.valueOf(i));
         CpuTrack track = new CpuTrack(i);
@@ -161,13 +162,24 @@ public class CpuTrack extends Track<CpuTrack.Data> {
               parent, freqTrack.getId(), "CPU " + (i + 1) + " Frequency",
               single(state -> new CpuFrequencyPanel(state, freqTrack), false));
         }
+        configs.add(new CpuConfig(i, freq != null));
       }
-      return data;
+      return configs;
     });
   }
 
   private static ListenableFuture<Map<Long, QueryEngine.Row>> freqMap(QueryEngine qe) {
     return transform(qe.query(FREQ_IDLE_QUERY), res -> res.map(row -> row.getLong(0), identity()));
+  }
+
+  public static class CpuConfig {
+    public final int id;
+    public final boolean hasFrequency;
+
+    public CpuConfig(int id, boolean hasFrequency) {
+      this.id = id;
+      this.hasFrequency = hasFrequency;
+    }
   }
 
   public static class Data extends Track.Data {
