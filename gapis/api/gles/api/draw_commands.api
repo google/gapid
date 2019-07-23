@@ -379,7 +379,12 @@ sub void WriteFramebufferAttachment(FramebufferAttachment a) {
 // DependencyReadTexture read all relevant fields of texture to create dependencies
 @spy_disabled
 sub void DependencyReadTexture(ref!Texture texture) {
-  read(texture.Image.Data)
+  // Read all levels and layers
+  for _, _, level in texture.Levels {
+    for _, _, image in level.Layers {
+      read(image.Data)
+    }
+  }
 
   // Sampling may be affected by all these parameters
   _ = texture.SwizzleR
