@@ -31,6 +31,7 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.models.CounterInfo;
+import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.ThreadInfo;
@@ -86,9 +87,10 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     return
         transformAsync(withStatus("Examining the trace...", examineTrace(data)), $1 ->
           transformAsync(withStatus("Querying threads...", queryThreads(data)), $2 ->
-            transformAsync(withStatus("Querying counters...", queryCounters(data)), $3 ->
-              transform(withStatus("Enumerating tracks...", enumerateTracks(data)), $4 ->
-                data.build()))));
+            transformAsync(withStatus("Querying GPU info...", queryGpu(data)), $3 ->
+              transformAsync(withStatus("Querying counters...", queryCounters(data)), $4 ->
+                transform(withStatus("Enumerating tracks...", enumerateTracks(data)), $5 ->
+                  data.build())))));
   }
 
   private static ListenableFuture<Data.Builder> examineTrace(Data.Builder data) {
@@ -100,6 +102,10 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
 
   private static ListenableFuture<Data.Builder> queryThreads(Data.Builder data) {
     return ThreadInfo.listThreads(data);
+  }
+
+  private static ListenableFuture<Data.Builder> queryGpu(Data.Builder data) {
+    return GpuInfo.listGpus(data);
   }
 
   private static ListenableFuture<Data.Builder> queryCounters(Data.Builder data) {
@@ -165,17 +171,19 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public final int numCpus;
     public final ImmutableMap<Long, ProcessInfo> processes;
     public final ImmutableMap<Long, ThreadInfo> threads;
+    public final GpuInfo gpu;
     public final ImmutableMap<Long, CounterInfo> counters;
     public final TrackConfig tracks;
 
     public Data(QueryEngine queries, TimeSpan traceTime, int numCpus,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
-        ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
+        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
       this.numCpus = numCpus;
       this.processes = processes;
       this.threads = threads;
+      this.gpu = gpu;
       this.counters = counters;
       this.tracks = tracks;
     }
@@ -186,6 +194,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       private int numCpus;
       private ImmutableMap<Long, ProcessInfo> processes;
       private ImmutableMap<Long, ThreadInfo> threads;
+      private GpuInfo gpu = GpuInfo.NONE;
       private ImmutableMap<Long, CounterInfo> counters;
       private ImmutableListMultimap<String, CounterInfo> countersByName;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
@@ -230,6 +239,15 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return this;
       }
 
+      public GpuInfo getGpu() {
+        return gpu;
+      }
+
+      public Builder setGpu(GpuInfo gpu) {
+        this.gpu = gpu;
+        return this;
+      }
+
       public ImmutableMap<Long, CounterInfo> getCounters() {
         return counters;
       }
@@ -246,7 +264,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       }
 
       public Data build() {
-        return new Data(qe, traceTime, numCpus, processes, threads, counters, tracks.build());
+        return new Data(qe, traceTime, numCpus, processes, threads, gpu, counters, tracks.build());
       }
     }
   }

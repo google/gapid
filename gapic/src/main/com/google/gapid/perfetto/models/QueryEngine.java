@@ -35,6 +35,7 @@ import com.google.gapid.util.Scheduler;
 import com.google.gapid.views.StatusBar;
 
 import java.util.Map;
+import java.util.SortedMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -207,6 +208,12 @@ public class QueryEngine {
       return map;
     }
 
+    public <K extends Comparable<K>, V> SortedMap<K, V> sortedMap(
+        Function<Row, K> key, Function<Row, V> value) {
+      SortedMap<K, V> map = Maps.newTreeMap();
+      forEachRow(($, row) -> map.put(key.apply(row), value.apply(row)));
+      return map;
+    }
 
     public long getLong(int row, int column, long deflt) {
       Perfetto.QueryResult.ColumnValues c = res.getColumns(column);
