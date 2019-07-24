@@ -49,6 +49,7 @@ import java.util.Set;
  */
 public class SliceTrack extends Track<SliceTrack.Data> {
   private static final String THREAD_FILTER = "utid = %d";
+  private static final String GPU_FILTER = "ref_type = 'gpu' and ref = %d";
   private static final String SLICES_VIEW =
       "select ts, dur, cat, name, depth, stack_id, parent_stack_id from slices where %s";
   private static final String SLICES_SQL =
@@ -71,6 +72,10 @@ public class SliceTrack extends Track<SliceTrack.Data> {
   private static final String THREAD_SLICE_RANGE_SQL =
       "select stack_id, ts, dur, utid, cat, name, parent_stack_id from slices " +
       "where utid = %d and ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
+  private static final String GPU_SLICE_RANGE_SQL =
+      "select stack_id, ts, dur, utid, cat, name, parent_stack_id from slices " +
+      "where ref_type = 'gpu' and ref = %d and ts < %d and ts + dur >= %d " +
+      "and depth >= %d and depth <= %d";
 
   private final String filter;
 
@@ -81,6 +86,10 @@ public class SliceTrack extends Track<SliceTrack.Data> {
 
   public static SliceTrack forThread(long utid) {
     return new SliceTrack("thread_slices_" + utid, format(THREAD_FILTER, utid));
+  }
+
+  public static SliceTrack forGpu(long gpu) {
+    return new SliceTrack("gpu_slices_" + gpu, format(GPU_FILTER, gpu));
   }
 
   @Override
@@ -171,6 +180,19 @@ public class SliceTrack extends Track<SliceTrack.Data> {
     return format(THREAD_SLICE_RANGE_SQL, utid, ts.end, ts.start, minDepth, maxDepth);
   }
 
+  public static ListenableFuture<List<Slice>> getGpuSlices(
+      QueryEngine qe, long gpu, TimeSpan ts, int minDepth, int maxDepth) {
+    return transform(qe.queries(gpuSliceRangeSql(gpu, ts, minDepth, maxDepth)), res -> {
+      List<Slice> slices = Lists.newArrayList();
+      res.forEachRow((i, r) -> slices.add(new Slice(SliceType.Gpu, r)));
+      return slices;
+    });
+  }
+
+  private static String gpuSliceRangeSql(long gpu, TimeSpan ts, int minDepth, int maxDepth) {
+    return format(GPU_SLICE_RANGE_SQL, gpu, ts.end, ts.start, minDepth, maxDepth);
+  }
+
   public static class Data extends Track.Data {
     public final long[] ids;
     public final long[] starts;
@@ -192,7 +214,7 @@ public class SliceTrack extends Track<SliceTrack.Data> {
   }
 
   public static enum SliceType {
-    Thread("Thread Slices");
+    Thread("Thread Slices"), Gpu("GPU Render Stages");
 
     public final String title;
 

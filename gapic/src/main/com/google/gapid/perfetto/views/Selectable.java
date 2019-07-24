@@ -27,6 +27,6 @@ public interface Selectable {
 
   public static enum Kind {
     // Order as shown in the UI.
-    Thread, ThreadState, Cpu, Counter;
+    Thread, ThreadState, Cpu, Gpu, Counter;
   }
 }

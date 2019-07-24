@@ -28,6 +28,7 @@ import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.models.TrackConfig.Group;
 import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.CpuSummaryPanel;
+import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
@@ -86,6 +87,16 @@ public class Tracks {
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {
     boolean found = false;
+    for (GpuInfo.Gpu gpu : data.getGpu()) {
+      if (!found) {
+        addGpuGroup(data);
+        found = true;
+      }
+      SliceTrack track = SliceTrack.forGpu(gpu.id);
+      data.tracks.addTrack("gpu", track.getId(), gpu.getDisplay(),
+          single(state -> new GpuQueuePanel(state, gpu, track), true));
+    }
+
     for (CounterInfo counter : data.getCounters().values()) {
       if ("gpu".equals(counter.refType)) {
         if (!found) {
