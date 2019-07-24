@@ -389,7 +389,6 @@ bool Vulkan::replayCreateVkDeviceImpl(Stack* stack, size_val physicalDevice,
               break;
 
             // These are all linux, so just make an Xcb surface
-            case VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR:
             case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
             case VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:
             case VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR:

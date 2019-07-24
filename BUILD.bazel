@@ -171,6 +171,8 @@ copy_to(
 copy_to(
     name = "pkg-lib",
     srcs = [
+        "//core/vulkan/vk_api_timing_layer/cc:json",
+        "//core/vulkan/vk_api_timing_layer/cc:libVkLayer_APITiming",
         "//core/vulkan/vk_virtual_swapchain/cc:json",
         "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
         "//gapic:gapic_deploy.jar",

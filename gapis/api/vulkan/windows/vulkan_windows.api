@@ -27,6 +27,7 @@
 @reserved_flags
 type VkFlags VkWin32SurfaceCreateFlagsKHR
 
+@platform("VK_USE_PLATFORM_WIN32_KHR")
 @extension("VK_KHR_win32_surface")
 class VkWin32SurfaceCreateInfoKHR {
     VkStructureType                             sType
@@ -36,6 +37,7 @@ class VkWin32SurfaceCreateInfoKHR {
     HWND                                        hwnd
 }
 
+@platform("VK_USE_PLATFORM_WIN32_KHR")
 @extension("VK_KHR_win32_surface")
 @indirect("VkInstance")
 @custom
@@ -61,6 +63,7 @@ cmd VkResult vkCreateWin32SurfaceKHR(
     return ?
 }
 
+@platform("VK_USE_PLATFORM_WIN32_KHR")
 @extension("VK_KHR_win32_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkBool32 vkGetPhysicalDeviceWin32PresentationSupportKHR(

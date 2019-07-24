@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2017 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 //
 // File: vk_platform.h
 //
@@ -32,7 +16,6 @@
 ** See the License for the specific language governing permissions and
 ** limitations under the License.
 */
-// clang-format off
 
 
 #ifndef VK_PLATFORM_H_
@@ -105,33 +88,5 @@ extern "C"
 #ifdef __cplusplus
 } // extern "C"
 #endif // __cplusplus
-
-// Platform-specific headers required by platform window system extensions.
-// These are enabled prior to #including "vulkan.h". The same enable then
-// controls inclusion of the extension interfaces in vulkan.h.
-
-#ifdef VK_USE_PLATFORM_ANDROID_KHR
-#include <android/native_window.h>
-#endif
-
-#ifdef VK_USE_PLATFORM_MIR_KHR
-#include <mir_toolkit/client_types.h>
-#endif
-
-#ifdef VK_USE_PLATFORM_WAYLAND_KHR
-#include <wayland-client.h>
-#endif
-
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-#include <windows.h>
-#endif
-
-#ifdef VK_USE_PLATFORM_XLIB_KHR
-#include <X11/Xlib.h>
-#endif
-
-#ifdef VK_USE_PLATFORM_XCB_KHR
-#include <xcb/xcb.h>
-#endif
 
 #endif

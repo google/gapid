@@ -54,6 +54,32 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the C++ type for the specified AST type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.BaseType"}}
+  {{if not (IsType $)}}{{Template "C++.Type" (TypeOf $)}}
+  {{else if IsVoid        $}}void
+  {{else if IsBool        $}}bool
+  {{else if IsInt         $}}int
+  {{else if IsUint        $}}unsigned int
+  {{else if IsSize        $}}size_val
+  {{else if IsChar        $}}char
+  {{else if IsU8          $}}uint8_t
+  {{else if IsS8          $}}int8_t
+  {{else if IsU16         $}}uint16_t
+  {{else if IsS16         $}}int16_t
+  {{else if IsF32         $}}float
+  {{else if IsU32         $}}uint32_t
+  {{else if IsS32         $}}int32_t
+  {{else if IsF64         $}}double
+  {{else if IsU64         $}}uint64_t
+  {{else if IsS64         $}}int64_t
+  {{else}}{{$.Name}}{{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the fixed-size-array postfix for static array parameter types.
 -------------------------------------------------------------------------------
 */}}
@@ -223,6 +249,22 @@
 
 {{/*
 -------------------------------------------------------------------------------
+  Emits the comma-separated list of type-name paired parameters for given
+  function.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.BaseCallParameters"}}
+  {{AssertType $ "Function"}}
+
+  {{$prevCallFunction := Global "CallFunction"}}
+  {{Global "CallFunction" $}}
+  {{ForEach $.CallParameters "C++.BaseParameter" | JoinWith ", "}}
+  {{Global "CallFunction" $prevCallFunction}}
+{{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
   Emits the comma-separated list of argument names for the given function.
 -------------------------------------------------------------------------------
 */}}
@@ -308,6 +350,44 @@
 
   {{Template "C++.ParameterTypeNoSuffix" $}} {{$.Name}}{{Template "C++.StaticArraySuffix" $}}
 {{end}}
+
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ type for use as a parameter for the given parameter or type.
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.BaseParameterTypeNoSuffix"}}
+  {{AssertType $ "Type" "Parameter"}}
+  {{$func := Global "CallFunction"}}
+
+  {{if $abi_type := GetAnnotation $ "abi_type"}}
+    {{index $abi_type.Arguments 0}}
+  {{else if IsParameter $}}
+    {{ if IsAny (TypeOf $)}}
+      {{Template "C++.ParameterTypeAny" $}}
+    {{else}}
+      {{Template "C++.BaseParameterTypeNoSuffix" (TypeOf $)}}
+    {{end}}
+  {{else if IsPointer     $}}{{Template "C++.BaseParameterTypeNoSuffix" $.To}}{{if $.Const}} const{{end}}*
+  {{else if IsStaticArray $}}{{Template "C++.BaseType" $.ValueType}}
+  {{else if IsString      $}}{{if $func.Extern}} std::string {{else}} const char* {{end}}
+  {{else                   }}{{Template "C++.BaseType" $}}
+  {{end}}
+{{end}}
+
+{{/*
+-------------------------------------------------------------------------------
+  Emits the C++ type, name and suffix for a single parameter. This
+  leaves pseudonym types as-is
+-------------------------------------------------------------------------------
+*/}}
+{{define "C++.BaseParameter"}}
+  {{AssertType $ "Type" "Parameter"}}
+
+  {{Template "C++.BaseParameterTypeNoSuffix" $}} {{$.Name}}{{Template "C++.StaticArraySuffix" $}}
+{{end}}
+
 
 
 {{/*

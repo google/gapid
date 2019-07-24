@@ -38,6 +38,7 @@ type VkFlags VkXlibSurfaceCreateFlagsKHR
 @extension("VK_KHR_xlib_surface") type size Window
 @extension("VK_KHR_xlib_surface") type size VisualID
 
+@platform("VK_USE_PLATFORM_XLIB_KHR")
 @extension("VK_KHR_xlib_surface")
 class VkXlibSurfaceCreateInfoKHR {
   VkStructureType             sType
@@ -47,6 +48,7 @@ class VkXlibSurfaceCreateInfoKHR {
   Window                      window
 }
 
+@platform("VK_USE_PLATFORM_XLIB_KHR")
 @extension("VK_KHR_xlib_surface")
 @indirect("VkInstance")
 @custom
@@ -72,6 +74,7 @@ cmd VkResult vkCreateXlibSurfaceKHR(
   return ?
 }
 
+@platform("VK_USE_PLATFORM_XLIB_KHR")
 @extension("VK_KHR_xlib_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkBool32 vkGetPhysicalDeviceXlibPresentationSupportKHR(
@@ -95,6 +98,7 @@ type VkFlags VkXcbSurfaceCreateFlagsKHR
 @extension("VK_KHR_xcb_surface") type u32 xcb_window_t
 @extension("VK_KHR_xcb_surface") type u32 xcb_visualid_t
 
+@platform("VK_USE_PLATFORM_XCB_KHR")
 @extension("VK_KHR_xcb_surface")
 class VkXcbSurfaceCreateInfoKHR {
   VkStructureType            sType
@@ -104,6 +108,7 @@ class VkXcbSurfaceCreateInfoKHR {
   xcb_window_t               window
 }
 
+@platform("VK_USE_PLATFORM_XCB_KHR")
 @extension("VK_KHR_xcb_surface")
 @indirect("VkInstance")
 @custom
@@ -129,6 +134,7 @@ cmd VkResult vkCreateXcbSurfaceKHR(
   return ?
 }
 
+@platform("VK_USE_PLATFORM_XCB_KHR")
 @extension("VK_KHR_xcb_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkBool32 vkGetPhysicalDeviceXcbPresentationSupportKHR(
@@ -151,6 +157,7 @@ type VkFlags VkWaylandSurfaceCreateFlagsKHR
 @extension("VK_KHR_wayland_surface") @forwarddecl class wl_display {}
 @extension("VK_KHR_wayland_surface") @forwarddecl class wl_surface {}
 
+@platform("VK_USE_PLATFORM_WAYLAND_KHR")
 @extension("VK_KHR_wayland_surface")
 class VkWaylandSurfaceCreateInfoKHR {
   VkStructureType                sType
@@ -160,6 +167,7 @@ class VkWaylandSurfaceCreateInfoKHR {
   wl_surface*                    surface
 }
 
+@platform("VK_USE_PLATFORM_WAYLAND_KHR")
 @extension("VK_KHR_wayland_surface")
 @indirect("VkInstance")
 @custom
@@ -185,6 +193,7 @@ cmd VkResult vkCreateWaylandSurfaceKHR(
   return ?
 }
 
+@platform("VK_USE_PLATFORM_WAYLAND_KHR")
 @extension("VK_KHR_wayland_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkBool32 vkGetPhysicalDeviceWaylandPresentationSupportKHR(
@@ -206,6 +215,7 @@ type VkFlags VkMirSurfaceCreateFlagsKHR
 @extension("VK_KHR_mir_surface") @forwarddecl class MirConnection {}
 @extension("VK_KHR_mir_surface") @forwarddecl class MirSurface {}
 
+@platform("VK_USE_PLATFORM_MIR_KHR")
 @extension("VK_KHR_mir_surface")
 class VkMirSurfaceCreateInfoKHR {
   VkStructureType            sType
@@ -215,6 +225,7 @@ class VkMirSurfaceCreateInfoKHR {
   MirSurface*                mirSurface
 }
 
+@platform("VK_USE_PLATFORM_MIR_KHR")
 @extension("VK_KHR_mir_surface")
 @indirect("VkInstance")
 @custom
@@ -240,6 +251,7 @@ cmd VkResult vkCreateMirSurfaceKHR(
   return ?
 }
 
+@platform("VK_USE_PLATFORM_MIR_KHR")
 @extension("VK_KHR_mir_surface")
 @indirect("VkPhysicalDevice", "VkInstance")
 cmd VkBool32 vkGetPhysicalDeviceMirPresentationSupportKHR(

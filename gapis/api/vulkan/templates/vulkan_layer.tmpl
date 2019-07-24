@@ -1,0 +1,916 @@
+
+{{/*
+ * Copyright (C) 2019 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */}}
+
+{{/*
+  To use this template:
+  1) Create your own template
+  2) Export your layer name and extra data with the following overrides.
+    {{Global "Vulkan.LayerName" "<YourVulkanLayerName>"}}
+    {{Global "Vulkan.LayerNamespace" "<The namespace of your vulkan functions>"}}
+    {{Global "Vulkan.OverrideFunctions" List Of Functions That Should Be Overriden}}
+    {{Global "Vulkan.OtherUsedFunctions" List Of Functions That your layer will call down into}}
+*/}}
+
+{{Include "vulkan_common.tmpl"}}
+{{Include "../../templates/cpp_common.tmpl"}}
+
+{{$ | Macro "layer.h" | Reflow 4 | Write "layer.h"}}
+{{$ | Macro "layer.cpp" | Reflow 4 | Write "layer.cpp"}}
+
+{{define "BeginPlatformIfDef"}}
+  {{$a := GetAnnotation $ "platform"}}
+  {{if $a}}#if defined({{(index $a.Arguments 0)}}){{end}}
+{{end}}
+
+{{define "EndPlatformIfDef"}}
+  {{$a := GetAnnotation $ "platform"}}
+  {{if $a}}#endif // {{(index $a.Arguments 0)}}{{end}}
+{{end}}
+
+{{define "IsTopLevelFunction"}}
+  {{if not (GetAnnotation $ "indirect")}}1{{end}}
+{{end}}
+
+{{define "NameInOverrides"}}
+  {{if or (not (Global "Vulkan.OverrideFunctions")) (not (eq (IndexOf (Global "Vulkan.OverrideFunctions") $) -1))}}1{{end}}
+{{end}}
+
+{{define "InOverrides"}}
+  {{if not (GetAnnotation $ "synthetic")}}{{if not (GetAnnotation $ "pfn")}}{{if or (not (Global "Vulkan.OverrideFunctions")) (not (eq (IndexOf (Global "Vulkan.OverrideFunctions") $.Name) -1))}}1{{end}}{{end}}{{end}}
+{{end}}
+
+{{define "InOthers"}}
+  {{if not (GetAnnotation $ "synthetic")}}{{if not (GetAnnotation $ "pfn")}}{{if not (eq (IndexOf (Global "Vulkan.OtherUsedFunctions") $.Name) -1)}}1{{end}}{{end}}{{end}}
+{{end}}
+
+{{define "layer.h"}}
+{{Template "C++.Copyright"}}
+
+#include <unordered_map>
+#include <vector>
+#include "vulkan/vulkan.h"
+#include "core/vulkan/layer_helpers/vulkan_layer_helpers.h"
+
+#include "core/vulkan/layer_helpers/threading.h"
+
+namespace {{(Global "Vulkan.LayerNamespace")}} {
+typedef const VkAllocationCallbacks* AllocationCallbacks;
+typedef size_t size_val;
+¶
+// Sets the key of the dispatch tables used in lower layers of the parent
+// dispatchable handle to the new child dispatchable handle. This is necessary
+// as lower layers may use that key to find the dispatch table, and a child
+// handle should share the same dispatch table key. E.g. VkCommandBuffer is a
+// child dispatchable handle of VkDevice, all the VkCommandBuffer dispatching
+// functions are actually device functions (resolved by VkGetDeviceProcAddress).
+// Ref:
+// https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects,
+static inline void set_dispatch_from_parent(void *child, void *parent) {
+  *((const void **)child) = *((const void **)parent);
+}
+¶
+
+struct InstanceFunctions {
+  {{Template "AllFunctionsFor" "API" $ "IndirectOn" "VkInstance"}}
+};
+
+struct DeviceFunctions {
+  {{Template "AllFunctionsFor" "API" $ "IndirectOn" "VkDevice"}}
+};
+
+// All of the instance data that is needed for book-keeping in a layer.
+struct InstanceData {
+  PFN_vkGetInstanceProcAddr get_instance_proc_addr;
+  PFN_vkEnumeratePhysicalDevices enumerate_physical_devices;
+  PFN_vkCreateDevice create_device;
+  PFN_vkDestroyInstance destroy_instance;
+  InstanceFunctions* functions;
+};
+¶
+// All of the instance data that is needed for book-keeping in a layer.
+struct PhysicalDeviceData {
+  VkInstance instance;
+  PFN_vkCreateDevice create_device;
+  InstanceFunctions* functions;
+};
+¶
+struct DeviceData {
+  VkPhysicalDevice physical_device;
+  VkInstance instance;
+  PFN_vkGetDeviceProcAddr get_device_proc_addr;
+  PFN_vkAllocateCommandBuffers allocate_command_buffers;
+  PFN_vkGetDeviceQueue get_device_queue;
+  PFN_vkDestroyDevice destroy_device;
+  PFN_vkFreeCommandBuffers free_command_buffers;
+  PFN_vkDestroyCommandPool destroy_command_pool;
+  DeviceFunctions* functions;
+};
+¶
+struct QueueData {
+  VkDevice device;
+  DeviceFunctions* functions;
+};
+¶
+struct CommandBufferData {
+  VkDevice device;
+  VkCommandPool command_pool;
+  DeviceFunctions* functions;
+};
+¶
+using Context = layer_helpers::Context<
+  InstanceData,
+  CommandBufferData,
+  PhysicalDeviceData,
+  QueueData,
+  DeviceData>;
+
+Context &GetGlobalContext();
+
+ {{range $c := AllCommands $}}
+  {{if Macro "InOverrides" $c}}
+    {{Template "BeginPlatformIfDef" $c}}
+    {{Template "C++.BaseType" $c.Return.Type}} {{$c.Name}}(PFN_{{$c.Name}} next, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}});
+    {{Template "EndPlatformIfDef" $c}}
+  {{end}}
+ {{end}}
+}
+{{end}}
+
+{{define "layer.cpp"}}
+{{Template "C++.Copyright"}}
+
+#include <vulkan/vk_layer.h>
+#include <cstring>
+
+#include "layer.h"
+namespace {{(Global "Vulkan.LayerNamespace")}} {
+Context &GetGlobalContext() {
+  static Context kContext;
+  return kContext;
+}
+
+namespace wrapped {
+  {{range $c := AllCommands $}}
+    {{if Macro "InOverrides" $c}}
+      {{if not (Macro "IsTopLevelFunction" $c)}}
+        {{Template "BeginPlatformIfDef" $c}}
+        VKAPI_ATTR {{Template "C++.ReturnType" $c}} VKAPI_CALL {{$c.Name}}({{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
+          {{if $c.CallParameters}}
+            PFN_{{$c.Name}} fn = GetGlobalContext().Get{{(Macro "InitialIndirection" $c)}}Data({{(index $c.CallParameters 0).Name}})->functions->{{$c.Name}};
+            return {{(Global "Vulkan.LayerNamespace")}}::{{$c.Name}}(fn, {{Template "C++.CallArguments" $c}});
+          {{else}}
+            {{$.Name}}
+          {{end}}
+        }
+        {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+}
+
+namespace internal {
+namespace {
+
+template <typename T>
+struct link_info_traits {
+  const static bool is_instance =
+      std::is_same<T, const VkInstanceCreateInfo>::value;
+  using layer_info_type =
+      typename std::conditional<is_instance, VkLayerInstanceCreateInfo,
+                                VkLayerDeviceCreateInfo>::type;
+  const static VkStructureType sType =
+      is_instance ? VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO
+                  : VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO;
+};
+
+// Get layer_specific data for this layer.
+// Will return either VkLayerInstanceCreateInfo or
+// VkLayerDeviceCreateInfo depending on the type of the pCreateInfo
+// passed in.
+template <typename T>
+typename link_info_traits<T>::layer_info_type *get_layer_link_info(
+    T *pCreateInfo) {
+  using layer_info_type = typename link_info_traits<T>::layer_info_type;
+
+  auto layer_info = const_cast<layer_info_type *>(
+      static_cast<const layer_info_type *>(pCreateInfo->pNext));
+
+  while (layer_info) {
+    if (layer_info->sType == link_info_traits<T>::sType &&
+        layer_info->function == VK_LAYER_LINK_INFO) {
+      return layer_info;
+    }
+    layer_info = const_cast<layer_info_type *>(
+        static_cast<const layer_info_type *>(layer_info->pNext));
+  }
+  return layer_info;
+}
+}
+
+static const VkLayerProperties global_layer_properties[] = { {
+    "{{Global "Vulkan.LayerName"}}",
+    VK_VERSION_MAJOR(1) | VK_VERSION_MINOR(0) | 5,
+    1,
+    "{{Global "Vulkan.LayerDescription"}}",
+} };
+
+VKAPI_ATTR VkResult VKAPI_CALL get_layer_properties(uint32_t *pPropertyCount,
+                              VkLayerProperties *pProperties) {
+  if (pProperties == NULL) {
+    *pPropertyCount = 1;
+    return VK_SUCCESS;
+  }
+
+  if (pPropertyCount == 0) {
+    return VK_INCOMPLETE;
+  }
+  *pPropertyCount = 1;
+  memcpy(pProperties, global_layer_properties, sizeof(global_layer_properties));
+  return VK_SUCCESS;
+}
+
+
+VKAPI_ATTR VkResult VKAPI_CALL physical_device_layer_properties(
+                              VkPhysicalDevice,
+                              uint32_t *pPropertyCount,
+                              VkLayerProperties *pProperties) {
+  return get_layer_properties(pPropertyCount, pProperties);
+}
+
+
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
+                                   VkLayerProperties *pProperties) {
+
+  PFN_vkEnumerateInstanceLayerProperties next = &get_layer_properties;
+  {{if Macro "NameInOverrides" "vkEnumerateInstanceLayerProperties"}}
+    return (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumerateInstanceLayerProperties(next, pPropertyCount, pProperties);
+  {{else}}
+    return (VkResult) next(pPropertyCount, pProperties);
+  {{end}}
+}
+
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateDeviceLayerProperties(VkPhysicalDevice device, uint32_t *pPropertyCount,
+                                 VkLayerProperties *pProperties) {
+  PFN_vkEnumerateDeviceLayerProperties next = &physical_device_layer_properties;
+
+  {{if Macro "NameInOverrides" "vkEnumerateDeviceLayerProperties"}}
+    return (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumerateDeviceLayerProperties(next, device, pPropertyCount, pProperties);
+  {{else}}
+    return (VkResult) next(device, pPropertyCount, pProperties);
+  {{end}}
+}
+
+// Overload vkEnumerateInstanceExtensionProperties
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateInstanceExtensionProperties(
+    const char * /*pLayerName*/, uint32_t *pPropertyCount,
+    VkExtensionProperties * /*pProperties*/) {
+  *pPropertyCount = 0;
+  return VK_SUCCESS;
+}
+
+// Overload vkEnumerateDeviceExtensionProperties
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateDeviceExtensionProperties(
+    VkPhysicalDevice device,
+    const char * /*pLayerName*/, uint32_t *pPropertyCount,
+    VkExtensionProperties * /*pProperties*/) {
+  *pPropertyCount = 0;
+  return VK_SUCCESS;
+}
+
+// Overload vkCreateInstance. It is all book-keeping
+// and passthrough to the next layer (or ICD) in the chain.
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
+    const VkInstanceCreateInfo *pCreateInfo,
+    const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
+  VkLayerInstanceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
+
+  // Grab the pointer to the next vkGetInstanceProcAddr in the chain.
+  PFN_vkGetInstanceProcAddr get_instance_proc_addr =
+      layer_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+
+  // From that get the next vkCreateInstance function.
+  PFN_vkCreateInstance create_instance = reinterpret_cast<PFN_vkCreateInstance>(
+      get_instance_proc_addr(NULL, "vkCreateInstance"));
+
+  if (create_instance == NULL) {
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+  // The next layer may read from layer_info,
+  // so advance the pointer for it.
+  layer_info->u.pLayerInfo = layer_info->u.pLayerInfo->pNext;
+
+  {{if Macro "NameInOverrides" "vkCreateInstance"}}
+    VkResult result = (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkCreateInstance(create_instance, pCreateInfo, pAllocator, pInstance);
+  {{else}}
+    VkResult result = create_instance(pCreateInfo, pAllocator, pInstance);
+  {{end}}
+
+  // If it failed, then we don't need to track this instance.
+  if (result != VK_SUCCESS) return result;
+
+  PFN_vkEnumeratePhysicalDevices enumerate_physical_devices =
+      reinterpret_cast<PFN_vkEnumeratePhysicalDevices>(
+          get_instance_proc_addr(*pInstance, "vkEnumeratePhysicalDevices"));
+  if (!enumerate_physical_devices) {
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+
+  PFN_vkEnumerateDeviceExtensionProperties
+      enumerate_device_extension_properties =
+          reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(
+              get_instance_proc_addr(*pInstance,
+                                     "vkEnumerateDeviceExtensionProperties"));
+  if (!enumerate_device_extension_properties) {
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+
+  InstanceData data;
+  data.get_instance_proc_addr = get_instance_proc_addr;
+  data.enumerate_physical_devices = enumerate_physical_devices;
+  data.create_device = reinterpret_cast<PFN_vkCreateDevice>(
+      get_instance_proc_addr(*pInstance, "vkCreateDevice"));
+  data.destroy_instance = reinterpret_cast<PFN_vkDestroyInstance>(
+      get_instance_proc_addr(*pInstance, "vkDestroyInstance"));
+  data.functions = new InstanceFunctions();
+
+#define GET_PROC(name) \
+  data.functions->name =          \
+      reinterpret_cast<PFN_##name>(get_instance_proc_addr(*pInstance, #name))
+
+  // Overrides
+  {{range $c := AllCommands $}}
+    {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
+      {{if Macro "InOverrides" $c}}
+      {{Template "BeginPlatformIfDef" $c}}
+        GET_PROC({{$c.Name}});
+      {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+  // Called Functions
+  {{range $c := AllCommands $}}
+    {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance")}}
+      {{if Macro "InOthers" $c}}
+      {{Template "BeginPlatformIfDef" $c}}
+        GET_PROC({{$c.Name}});
+      {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+#undef GET_PROC
+  // Add this instance, along with the vkGetInstanceProcAddr to our
+  // map. This way when someone calls vkGetInstanceProcAddr, we can forward
+  // it to the correct "next" vkGetInstanceProcAddr.
+  {
+    auto instances = GetGlobalContext().GetVkInstanceMap();
+    // The same instance was returned twice, this is a problem.
+    if (instances->find(*pInstance) != instances->end()) {
+      return VK_ERROR_INITIALIZATION_FAILED;
+    }
+    (*instances)[*pInstance] = data;
+  }
+  return result;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL vkEnumeratePhysicalDevices(
+    VkInstance        instance,
+    uint32_t*         pPhysicalDeviceCount,
+    VkPhysicalDevice* pPhysicalDevices) {
+  PFN_vkEnumeratePhysicalDevices next =
+    GetGlobalContext().GetVkInstanceData(instance)->enumerate_physical_devices;
+
+   {{if Macro "NameInOverrides" "vkEnumeratePhysicalDevices"}}
+     VkResult res = (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumeratePhysicalDevices(next, instance, pPhysicalDeviceCount, pPhysicalDevices);
+   {{else}}
+     VkResult res = (VkResult) next(instance, pPhysicalDeviceCount, pPhysicalDevices);
+  {{end}}
+
+  if (pPhysicalDevices == nullptr) {
+    return res;
+  }
+  if (res != VK_SUCCESS && res != VK_INCOMPLETE) {
+    return res;
+  }
+
+  {
+    auto instanceFunctions = GetGlobalContext().GetVkInstanceData(instance)->functions;
+    auto create_device = GetGlobalContext().GetVkInstanceData(instance)->create_device;
+    auto physicalDevices = GetGlobalContext().GetVkPhysicalDeviceMap();
+    for (size_t i = 0; i < *pPhysicalDeviceCount; ++i) {
+      PhysicalDeviceData dat;
+      dat.create_device = create_device;
+      dat.functions = instanceFunctions;
+      dat.instance = instance;
+      if (physicalDevices->find(pPhysicalDevices[i]) != physicalDevices->end()) {
+        continue;
+      }
+      (*physicalDevices)[pPhysicalDevices[i]] = dat;
+    }
+  }
+  return res;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
+    VkPhysicalDevice             physicalDevice,
+    const VkDeviceCreateInfo*    pCreateInfo,
+    AllocationCallbacks          pAllocator,
+    VkDevice*                    pDevice) {
+
+  VkLayerDeviceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
+
+  // Grab the fpGetInstanceProcAddr from the layer_info. We will get
+  // vkCreateDevice from this.
+  // Note: we cannot use our instance_map because we do not have a
+  // vkInstance here.
+  PFN_vkGetInstanceProcAddr get_instance_proc_addr =
+      layer_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+
+  PFN_vkCreateDevice next = reinterpret_cast<PFN_vkCreateDevice>(
+      get_instance_proc_addr(NULL, "vkCreateDevice"));
+
+  if (!next) {
+    return VK_ERROR_INITIALIZATION_FAILED;
+  }
+
+  // We want to store off the next vkGetDeviceProcAddr so keep track of it now
+  // before we advance the pointer.
+  PFN_vkGetDeviceProcAddr get_device_proc_addr =
+      layer_info->u.pLayerInfo->pfnNextGetDeviceProcAddr;
+
+  // The next layer may read from layer_info,
+  // so advance the pointer for it.
+  layer_info->u.pLayerInfo = layer_info->u.pLayerInfo->pNext;
+
+
+  {{if Macro "NameInOverrides" "vkCreateDevice"}}
+     VkResult res = (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkCreateDevice(next, physicalDevice, pCreateInfo, pAllocator, pDevice);
+  {{else}}
+     VkResult res = (VkResult) next(physicalDevice, pCreateInfo, pAllocator, pDevice);
+  {{end}}
+  if (res != VK_SUCCESS) {
+    return res;
+  }
+
+  DeviceData data;
+  data.functions = new DeviceFunctions();
+  data.physical_device = physicalDevice;
+  data.instance = GetGlobalContext().GetVkPhysicalDeviceData(physicalDevice)->instance;
+  data.get_device_proc_addr = get_device_proc_addr;
+  data.allocate_command_buffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_device_proc_addr(*pDevice, "vkAllocateCommandBuffers"));
+  data.get_device_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_device_proc_addr(*pDevice, "vkGetDeviceQueue"));
+  data.destroy_device = reinterpret_cast<PFN_vkDestroyDevice>(get_device_proc_addr(*pDevice, "vkDestroyDevice"));
+  data.free_command_buffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(get_device_proc_addr(*pDevice, "vkFreeCommandbuffers"));
+  data.destroy_command_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_device_proc_addr(*pDevice, "vkDestroyCommandPool"));
+
+#define GET_PROC(name) \
+  data.functions->name =          \
+      reinterpret_cast<PFN_##name>(get_device_proc_addr(*pDevice, #name))
+
+  // Overrides
+  {{range $c := AllCommands $}}
+    {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
+      {{if Macro "InOverrides" $c}}
+        {{Template "BeginPlatformIfDef" $c}}
+        GET_PROC({{$c.Name}});
+        {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+  // Called Functions
+  {{range $c := AllCommands $}}
+    {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
+      {{if Macro "InOthers" $c}}
+        {{Template "BeginPlatformIfDef" $c}}
+        GET_PROC({{$c.Name}});
+        {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+#undef GET_PROC
+  {
+    auto devices = GetGlobalContext().GetVkDeviceMap();
+    (*devices)[*pDevice] = data;
+  }
+
+  return res;
+}
+
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
+    const VkInstance  instance,
+    const char* pName) {
+
+    if (strcmp(pName, "vkCreateInstance") == 0) {
+      return (PFN_vkVoidFunction)(internal::vkCreateInstance);
+    }
+    if (strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) {
+      return (PFN_vkVoidFunction)(internal::vkEnumerateInstanceExtensionProperties);
+    }
+    if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0 ) {
+      return (PFN_vkVoidFunction)(internal::vkEnumerateInstanceLayerProperties);
+    }
+  if (instance == 0) {
+    return nullptr;
+  }
+
+
+if (strcmp(pName, "vkEnumeratePhysicalDevices") == 0) {
+  return (PFN_vkVoidFunction)(internal::vkEnumeratePhysicalDevices);
+}
+
+if (strcmp(pName, "vkCreateDevice") == 0) {
+  return (PFN_vkVoidFunction)(internal::vkCreateDevice);
+}
+
+#define INTERCEPT(func)         \
+  if (strcmp(pName, #func) == 0) \
+          return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
+
+  {{range $c := AllCommands $}}
+    {{if (or (Macro "IsIndirected" "Command" $c "IndirectOn" "VkInstance") (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice"))}}
+      {{if Macro "InOverrides" $c}}
+        {{$name := Macro "CmdName" $c}}
+         {{Template "BeginPlatformIfDef" $c}}
+          INTERCEPT({{$name}});
+         {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+
+#undef INTERCEPT
+  PFN_vkGetInstanceProcAddr instance_proc_addr =
+      GetGlobalContext().GetVkInstanceData(instance)->get_instance_proc_addr;
+  return instance_proc_addr(instance, pName);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(
+    VkDevice                     device,
+    const VkCommandBufferAllocateInfo*    pAllocateInfo,
+    VkCommandBuffer          *pCommandBuffers) {
+  PFN_vkAllocateCommandBuffers next =
+    GetGlobalContext().GetVkDeviceData(device)->allocate_command_buffers;
+  uint32_t nBuffers = pAllocateInfo->commandBufferCount;
+
+  {{if Macro "NameInOverrides" "vkAllocateCommandBuffers"}}
+     VkResult res = (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkAllocateCommandBuffers(next, device, pAllocateInfo, pCommandBuffers);
+   {{else}}
+     VkResult res = (VkResult) next(device, pAllocateInfo, pCommandBuffers);
+  {{end}}
+  if (res != VK_SUCCESS) {
+    return res;
+  }
+
+  {
+    auto deviceFunctions = GetGlobalContext().GetVkDeviceData(device)->functions;
+    auto commandBuffers = GetGlobalContext().GetVkCommandBufferMap();
+    for (size_t i = 0; i < nBuffers; ++i) {
+      CommandBufferData dat;
+      dat.functions = deviceFunctions;
+      dat.device = device;
+      dat.command_pool = pAllocateInfo->commandPool;
+      (*commandBuffers)[pCommandBuffers[i]] = dat;
+    }
+  }
+  return res;
+}
+
+VKAPI_ATTR void VKAPI_CALL vkGetDeviceQueue(
+    VkDevice                                    device,
+    uint32_t                                    queueFamilyIndex,
+    uint32_t                                    queueIndex,
+    VkQueue*                                    pQueue) {
+  PFN_vkGetDeviceQueue next =
+    GetGlobalContext().GetVkDeviceData(device)->get_device_queue;
+
+  {{if Macro "NameInOverrides" "vkGetDeviceQueue"}}
+     {{(Global "Vulkan.LayerNamespace")}}::vkGetDeviceQueue(next, device, queueFamilyIndex, queueIndex, pQueue);
+   {{else}}
+     next(device, queueFamilyIndex, queueIndex, pQueue);
+  {{end}}
+
+  {
+    auto deviceFunctions = GetGlobalContext().GetVkDeviceData(device)->functions;
+    auto queues = GetGlobalContext().GetVkQueueMap();
+    QueueData dat;
+    dat.functions = deviceFunctions;
+    dat.device = device;
+    (*queues)[*pQueue] = dat;
+  }
+}
+
+void DestroyCommandBuffers(size_t count, const VkCommandBuffer* commandbuffers) {
+  {
+    auto commandBufferMap = GetGlobalContext().GetVkCommandBufferMap();
+    for (size_t i = 0; i < count; ++i) {
+      commandBufferMap->erase(commandbuffers[count]);
+    }
+  }
+}
+
+void DestroyQueue(VkQueue queue) {
+  {
+    auto queueMap = GetGlobalContext().GetVkQueueMap();
+    queueMap->erase(queue);
+  }
+}
+
+void DestroyDevice(VkDevice device) {
+  std::vector<VkQueue> queues;
+  std::vector<VkCommandBuffer> commandBuffers;
+  {
+    auto queueMap = GetGlobalContext().GetVkQueueMap();
+    for(auto it: (*queueMap)) {
+      if(it.second.device == device) {
+        queues.push_back(it.first);
+      }
+    }
+  }
+
+  {
+    auto commandBufferMap = GetGlobalContext().GetVkCommandBufferMap();
+    for(auto it: (*commandBufferMap)) {
+      if(it.second.device == device) {
+        commandBuffers.push_back(it.first);
+      }
+    }
+  }
+
+  for (auto queue: queues) {
+    DestroyQueue(queue);
+  }
+
+  DestroyCommandBuffers(commandBuffers.size(), commandBuffers.data());
+
+  for (auto queue: queues) {
+    DestroyQueue(queue);
+  }
+
+  {
+    delete GetGlobalContext().GetVkDeviceData(device)->functions;
+  }
+  {
+    auto deviceMap = GetGlobalContext().GetVkDeviceMap();
+    deviceMap->erase(device);
+  }
+}
+
+
+void DestroyCommandPool(VkDevice device, VkCommandPool pool) {
+  std::vector<VkCommandBuffer> commandBuffers;
+
+  {
+    auto commandBufferMap = GetGlobalContext().GetVkCommandBufferMap();
+    for(auto it: (*commandBufferMap)) {
+      if(it.second.device == device && it.second.command_pool == pool) {
+        commandBuffers.push_back(it.first);
+      }
+    }
+  }
+
+  DestroyCommandBuffers(commandBuffers.size(), commandBuffers.data());
+}
+
+
+void DestroyInstance(VkInstance instance) {
+  std::vector<VkDevice> devices;
+  std::vector<VkPhysicalDevice> physical_devices;
+  {
+    auto deviceMap = GetGlobalContext().GetVkDeviceMap();
+    for(auto it: (*deviceMap)) {
+      if(it.second.instance == instance) {
+        devices.push_back(it.first);
+      }
+    }
+  }
+  for(auto dev: devices) {
+    DestroyDevice(dev);
+  }
+
+  {
+    std::vector<VkPhysicalDevice> physicalDevices;
+    auto physicalDeviceMap  = GetGlobalContext().GetVkPhysicalDeviceMap();
+    for (auto it: *physicalDeviceMap) {
+      if (it.second.instance == instance) {
+        physicalDevices.push_back(it.first);
+      }
+    }
+    for (auto it: physicalDevices) {
+      physicalDeviceMap->erase(it);
+    }
+  }
+
+  {
+    delete GetGlobalContext().GetVkInstanceData(instance)->functions;
+  }
+
+  {
+    auto instanceMap = GetGlobalContext().GetVkInstanceMap();
+    instanceMap->erase(instance);
+  }
+}
+
+
+VKAPI_ATTR void VKAPI_CALL vkDestroyCommandPool(VkDevice device, VkCommandPool commandPool, AllocationCallbacks pAllocator) {
+  PFN_vkDestroyCommandPool next =
+    GetGlobalContext().GetVkDeviceData(device)->destroy_command_pool;
+
+  {{if Macro "NameInOverrides" "vkDestroyCommandPool"}}
+     {{(Global "Vulkan.LayerNamespace")}}::vkDestroyCommandPool(next, device, commandPool, pAllocator);
+   {{else}}
+     next(device, commandPool, pAllocator);
+  {{end}}
+
+  DestroyCommandPool(device, commandPool);
+}
+
+VKAPI_ATTR void VKAPI_CALL vkDestroyDevice(VkDevice device, AllocationCallbacks pAllocator) {
+  PFN_vkDestroyDevice next =
+    GetGlobalContext().GetVkDeviceData(device)->destroy_device;
+    {{if Macro "NameInOverrides" "vkDestroyDevice"}}
+     {{(Global "Vulkan.LayerNamespace")}}::vkDestroyDevice(next, device, pAllocator);
+   {{else}}
+     next(device, pAllocator);
+  {{end}}
+
+  DestroyDevice(device);
+}
+
+
+VKAPI_ATTR void VKAPI_CALL vkDestroyInstance(VkInstance instance, AllocationCallbacks pAllocator) {
+  PFN_vkDestroyInstance next =
+    GetGlobalContext().GetVkInstanceData(instance)->destroy_instance;
+
+  {{if Macro "NameInOverrides" "vkDestroyInstance"}}
+     {{(Global "Vulkan.LayerNamespace")}}::vkDestroyInstance(next, instance, pAllocator);
+   {{else}}
+     next(instance, pAllocator);
+  {{end}}
+
+  DestroyInstance(instance);
+}
+
+VKAPI_ATTR void VKAPI_CALL vkFreeCommandBuffers(
+    VkDevice                                    device,
+    VkCommandPool                               commandPool,
+    uint32_t                                    commandBufferCount,
+    const VkCommandBuffer*                      pCommandBuffers) {
+  PFN_vkFreeCommandBuffers next =
+    GetGlobalContext().GetVkDeviceData(device)->free_command_buffers;
+
+  {{if Macro "NameInOverrides" "vkFreeCommandBuffers"}}
+     {{(Global "Vulkan.LayerNamespace")}}::vkFreeCommandBuffers(next, device, commandPool, commandBufferCount, pCommandBuffers);
+   {{else}}
+     next(device, commandPool, commandBufferCount, pCommandBuffers);
+  {{end}}
+
+  DestroyCommandBuffers(commandBufferCount, pCommandBuffers);
+
+}
+
+// Overload GetDeviceProcAddr.
+// We provide an overload of vkDestroyDevice for book-keeping.
+// The rest of the overloads are swapchain-specific.
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+vkGetDeviceProcAddr(VkDevice device, const char *pName) {
+
+  if (strcmp(pName, "vkAllocateCommandBuffers") == 0) {
+    return (PFN_vkVoidFunction)internal::vkAllocateCommandBuffers;
+  }
+  if (strcmp(pName, "vkGetDeviceQueue") == 0) {
+    return (PFN_vkVoidFunction)internal::vkGetDeviceQueue;
+  }
+  if (strcmp(pName, "vkDestroyCommandPool") == 0) {
+    return (PFN_vkVoidFunction)internal::vkDestroyCommandPool;
+  }
+  if (strcmp(pName, "vkDestroyDevice") == 0) {
+    return (PFN_vkVoidFunction)internal::vkDestroyDevice;
+  }
+  if (strcmp(pName, "vkFreeCommandBuffers") == 0) {
+    return (PFN_vkVoidFunction)internal::vkFreeCommandBuffers;
+  }
+
+#define INTERCEPT(func)         \
+  if (strcmp(pName, #func) == 0) \
+          return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
+  {{range $c := AllCommands $}}
+    {{if (Macro "IsIndirected" "Command" $c "IndirectOn" "VkDevice")}}
+      {{if Macro "InOverrides" $c}}
+        {{$name := Macro "CmdName" $c}}
+          {{Template "BeginPlatformIfDef" $c}}
+          INTERCEPT({{$name}});
+          {{Template "EndPlatformIfDef" $c}}
+      {{end}}
+    {{end}}
+  {{end}}
+#undef INTERCEPT
+
+  PFN_vkGetDeviceProcAddr device_proc_addr =
+      GetGlobalContext().GetVkDeviceData(device)->get_device_proc_addr;
+  return device_proc_addr(device, pName);
+}
+
+
+}
+}
+
+extern "C" {
+
+#define LAYER_NAME "{{Global "Vulkan.LayerName"}}"
+#define LAYER_NAME_FUNCTION(fn) {{Global "Vulkan.LayerName"}}##fn
+
+// For this to function on Android the entry-point names for GetDeviceProcAddr
+// and GetInstanceProcAddr must be ${layer_name}/Get*ProcAddr.
+// This is a bit surprising given that we *MUST* also export
+// vkEnumerate*Layers without any prefix.
+VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+LAYER_NAME_FUNCTION(GetDeviceProcAddr)(VkDevice dev, const char *funcName) {
+  return {{(Global "Vulkan.LayerNamespace")}}::internal::vkGetDeviceProcAddr(dev, funcName);
+}
+
+VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL LAYER_NAME_FUNCTION(
+    GetInstanceProcAddr)(VkInstance instance, const char *funcName) {
+  return {{(Global "Vulkan.LayerNamespace")}}::internal::vkGetInstanceProcAddr(instance, funcName);
+}
+
+// Documentation is sparse for Android, looking at libvulkan.so
+// These 4 functions must be defined in order for this to even
+// be considered for loading.
+#if defined(__ANDROID__)
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
+                                   VkLayerProperties *pProperties) {
+  return {{(Global "Vulkan.LayerNamespace")}}::internal::vkEnumerateInstanceLayerProperties(pPropertyCount,
+                                                       pProperties);
+}
+
+// On Android this must also be defined, even if we have 0
+// layers to expose.
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateInstanceExtensionProperties(const char *pLayerName,
+                                       uint32_t *pPropertyCount,
+                                       VkExtensionProperties *pProperties) {
+  return {{(Global "Vulkan.LayerNamespace")}}::internal::vkEnumerateInstanceExtensionProperties(
+      pLayerName, pPropertyCount, pProperties);
+}
+
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
+    VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount,
+    VkLayerProperties *pProperties) {
+  return {{(Global "Vulkan.LayerNamespace")}}::internal::vkEnumerateDeviceLayerProperties(
+      physicalDevice, pPropertyCount, pProperties);
+}
+
+// On Android this must also be defined, even if we have 0
+// layers to expose.
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
+                                     const char *pLayerName,
+                                     uint32_t *pPropertyCount,
+                                     VkExtensionProperties *pProperties) {
+  return {{(Global "Vulkan.LayerNamespace")}}::internal::vkEnumerateDeviceExtensionProperties(
+      physicalDevice, pLayerName, pPropertyCount, pProperties);
+}
+#endif
+}
+{{end}}
+
+{{/*
+  Usage, this creates all of the functions for a particular
+  structure. You must define the Indirection, and the list of
+  valid functions
+*/}}
+{{define "FunctionsFor"}}
+  {{range $t := AllCommands $.API}}
+    {{if Macro $.Valid $t}}
+      {{if (Macro "IsIndirected" "Command" $t "IndirectOn" $.IndirectOn)}}
+        {{Template "BeginPlatformIfDef" $t}}
+        PFN_{{$t.Name}} {{$t.Name}};
+        {{Template "EndPlatformIfDef" $t}}
+      {{end}}
+    {{end}}
+  {{end}}
+{{end}}
+
+{{define "AllFunctionsFor"}}
+  // Overriden Functions
+  {{Template "FunctionsFor" "API" $.API "Valid" "InOverrides" "IndirectOn" $.IndirectOn}}
+  // Stored pointers to call
+  {{Template "FunctionsFor" "API" $.API "Valid" "InOthers" "IndirectOn" $.IndirectOn}}
+{{end}}

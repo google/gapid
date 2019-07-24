@@ -63,6 +63,7 @@ go_test(
     data = [
         "//cmd/gapir/cc:gapir",
         "//core/vulkan/vk_virtual_swapchain/cc:json",
+        "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_ApiTiming",
         "//core/vulkan/vk_virtual_swapchain/cc:libVkLayer_VirtualSwapchain",
     ],
     embed = [":go_default_library"],

@@ -38,6 +38,7 @@ type LibraryType int
 const (
 	LibGraphicsSpy LibraryType = iota
 	LibVirtualSwapChain
+	LibApiTiming
 )
 
 // FileLayout provides a unified way of accessing various Gapid binaries.
@@ -74,11 +75,13 @@ func withExecutablePlatformSuffix(exe string, os device.OSKind) string {
 var libTypeToName = map[LibraryType]string{
 	LibGraphicsSpy:      "libgapii",
 	LibVirtualSwapChain: "libVkLayer_VirtualSwapchain",
+	LibApiTiming:        "libVkLayer_ApiTiming",
 }
 
 var libTypeToJson = map[LibraryType]string{
 	LibGraphicsSpy:      "GraphicsSpyLayer.json",
 	LibVirtualSwapChain: "VirtualSwapchainLayer.json",
+	LibApiTiming:        "ApiTimingLayer.json",
 }
 
 func withLibraryPlatformSuffix(lib string, os device.OSKind) string {
@@ -209,11 +212,13 @@ var abiToApkPath = map[device.Architecture]string{
 var libTypeToLibPath = map[LibraryType]string{
 	LibGraphicsSpy:      "gapid/gapii/cc/libgapii",
 	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/libVkLayer_VirtualSwapchain",
+	LibApiTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/libVkLayer_ApiTiming",
 }
 
 var libTypeToJsonPath = map[LibraryType]string{
 	LibGraphicsSpy:      "gapid/gapii/vulkan/vk_graphics_spy/cc/GraphicsSpyLayer.json",
 	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/VirtualSwapchainLayer.json",
+	LibApiTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/ApiTimingLayer.json",
 }
 
 // RunfilesLayout creates a new layout based on the given runfiles manifest.
