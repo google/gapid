@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "android_dynamic_library", "api_template", "apic_template", "cc_copts", "cc_dynamic_library")
+
+api_template(
+    name = "api_timing",
+    includes = [
+        "//gapis/api/vulkan/templates:vulkan_layer",
+    ],
+    outputs = [
+        "layer.h",
+        "layer.cpp",
+    ],
+    template = "timing_layer.tmpl",
+)
+
+apic_template(
+    name = "api_timing_templated",
+    api = "//gapis/api/vulkan:api",
+    templates = [
+        ":api_timing",
+    ],
+)
 
 cc_library(
     name = "cc",
     srcs = glob([
         "*.cpp",
         "*.h",
-    ]),
+    ]) + [
+        ":api_timing_templated",
+    ],
     copts = cc_copts() + select({
         "//tools/build:linux": [
             "-DVK_USE_PLATFORM_XCB_KHR",
@@ -45,6 +67,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/vulkan/cc/include/vulkan",
+        "//core/vulkan/layer_helpers",
     ],
 )
 
@@ -69,21 +92,23 @@ cc_library(
 )
 
 cc_dynamic_library(
-    name = "libVkLayer_VirtualSwapchain",
+    name = "libVkLayer_APITiming",
     visibility = ["//visibility:public"],
-    exports = "virtual_swapchain_desktop.exports",
+    exports = "api_timing_desktop.exports",
     deps = [":cc"],
 )
 
 android_dynamic_library(
-    name = "libVkLayer_VirtualSwapchain_android",
+    name = "libVkLayer_APITiming_android",
     visibility = ["//visibility:public"],
-    exports = "virtual_swapchain_android.exports",
+    exports = "api_timing_android.exports",
     deps = [":cc"],
 )
 
 filegroup(
     name = "json",
-    srcs = ["VirtualSwapchainLayer.json"],
+    srcs = [
+        "APITimingLayer.json",
+    ],
     visibility = ["//visibility:public"],
 )

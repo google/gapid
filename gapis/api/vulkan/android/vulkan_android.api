@@ -22,6 +22,7 @@
 // VK_KHR_android_surface
 // ----------------------------------------------------------------------------
 
+@platform("VK_USE_PLATFORM_ANDROID_KHR")
 @extension("VK_KHR_android_surface")
 @forwarddecl
 class ANativeWindow {}
@@ -34,6 +35,7 @@ type void* buffer_handle_t
 @reserved_flags
 type VkFlags VkAndroidSurfaceCreateFlagsKHR
 
+@platform("VK_USE_PLATFORM_ANDROID_KHR")
 @extension("VK_KHR_android_surface")
 class VkAndroidSurfaceCreateInfoKHR {
     VkStructureType                             sType
@@ -42,6 +44,7 @@ class VkAndroidSurfaceCreateInfoKHR {
     ANativeWindow*                     window
 }
 
+@platform("VK_USE_PLATFORM_ANDROID_KHR")
 @extension("VK_KHR_android_surface")
 @indirect("VkInstance")
 @custom

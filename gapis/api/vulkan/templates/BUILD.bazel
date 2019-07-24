@@ -47,3 +47,13 @@ api_template(
     outputs = ["{api}_spy_helpers.cpp"],
     template = "vk_spy_helpers.cpp.tmpl",
 )
+
+filegroup(
+    name = "vulkan_layer",
+    srcs = [
+        "vulkan_common.tmpl",
+        "vulkan_layer.tmpl",
+        "//gapis/api/templates",
+    ],
+    visibility = ["//visibility:public"],
+)

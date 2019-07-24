@@ -310,12 +310,13 @@ cmd void vkQueueInsertDebugUtilsLabelEXT(
 @extension("VK_EXT_debug_utils")
 @override
 @no_replay
-cmd void vkCreateDebugUtilsMessengerEXT(
+cmd VkResult vkCreateDebugUtilsMessengerEXT(
     VkInstance                                instance,
     const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
     AllocationCallbacks                       pAllocator,
     VkDebugUtilsMessengerEXT*                 pMessenger)
 {
+  return ?
 }
 
 @threadSafety("app")

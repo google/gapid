@@ -19,6 +19,7 @@
 type VkFlags VkStreamDescriptorSurfaceCreateFlagsGGP
 type u32 GgpStreamDescriptor
 
+@platform("VK_USE_PLATFORM_GGP")
 @extension("VK_GGP_stream_descriptor_surface")
 class VkStreamDescriptorSurfaceCreateInfoGGP {
     VkStructureType                            sType
@@ -27,6 +28,7 @@ class VkStreamDescriptorSurfaceCreateInfoGGP {
     GgpStreamDescriptor                        streamDescriptor
 }
 
+@platform("VK_USE_PLATFORM_GGP")
 @extension("VK_GGP_stream_descriptor_surface")
 @indirect("VkInstance")
 cmd VkResult vkCreateStreamDescriptorSurfaceGGP(
@@ -48,6 +50,7 @@ cmd VkResult vkCreateStreamDescriptorSurfaceGGP(
   return ?
 }
 
+@platform("VK_USE_PLATFORM_GGP")
 @extension("VK_GGP_frame_token")
 class VkPresentFrameTokenGGP {
   VkStructureType sType

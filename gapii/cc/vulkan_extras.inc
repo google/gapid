@@ -111,11 +111,12 @@ uint32_t SpyOverride_vkSetDebugUtilsObjectTagEXT(
   return VkResult::VK_SUCCESS;
 }
 
-void SpyOverride_vkCreateDebugUtilsMessengerEXT(
+uint32_t SpyOverride_vkCreateDebugUtilsMessengerEXT(
     VkInstance                                instance,
     const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
     const VkAllocationCallbacks*              pAllocator,
     VkDebugUtilsMessengerEXT*                 pMessenger) {
+        return  VkResult::VK_SUCCESS;
 }
 void SpyOverride_vkDestroyDebugUtilsMessengerEXT(
     VkInstance                   instance,

@@ -151,6 +151,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 	}
 
 	if verb.Apk != "" {
+
 		// Create stand-alone APK
 		log.I(ctx, "Create replay apk: %s with package name %s", replayAPK, replayPackage)
 
@@ -270,6 +271,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 			"classes.dex",
 			path.Join("lib", abi, "libgapir.so"),
 			path.Join("lib", abi, "libVkLayer_VirtualSwapchain.so"),
+			path.Join("lib", abi, "libVkLayer_APITiming.so"),
 		}
 
 		for _, f := range files {

@@ -152,15 +152,18 @@ func (f *Functions) Include(templates ...string) error {
 			log.D(f.ctx, "Reading %v", t)
 			tmplData, err := f.loader(t)
 			if err != nil {
+				log.E(f.ctx, "Error loading %s: %s", t, err)
 				return fmt.Errorf("%s: %s\n", t, err)
 			}
 			tmpl, err := f.templates.New(t).Parse(string(tmplData))
 			if err != nil {
+				log.E(f.ctx, "Error parsing %s: %s", t, err)
 				return fmt.Errorf("%s: %s\n", t, err)
 			}
 			log.D(f.ctx, "Executing %v", tmpl.Name())
 			var buf bytes.Buffer
 			if err = f.execute(tmpl, &buf, f.api); err != nil {
+				log.E(f.ctx, "Error executing %s: %s", tmpl.Name(), err)
 				return fmt.Errorf("%s: %s\n", tmpl.Name(), err)
 			}
 		}
@@ -179,5 +182,5 @@ func (f *Functions) Write(fileName string, value string) (string, error) {
 
 // Copyright emits the copyright header specified by name with the «Tool» set to tool.
 func (f *Functions) Copyright(name string, tool string) (string, error) {
-	return copyright.Build(name, copyright.Info{Year: "2015", Tool: tool}), nil
+	return copyright.Build(name, copyright.Info{Year: "2019", Tool: tool}), nil
 }
