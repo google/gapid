@@ -35,10 +35,19 @@ import (
 // copies, but instead all writes are stored as lightweight records. Only when a
 // Pool slice has Get called will any resolving, loading or copying of binary
 // data occur.
+//
+// OnRead and OnWrite functions take 3 parameters. The first is
+// the range of memory. The second is the root of the read.
+//   that is, the pointer from which the range was derived. For
+//   example:
+//      uint32_t* foo;
+//      foo[2]; Range(Base: foo+2, Size 4), Root foo
+//  Last is the service.type ID of the observations. This will
+//      always be a slice at this point.
 type Pool struct {
 	writes  poolWriteList
-	OnRead  func(Range, uint64, uint64)
-	OnWrite func(Range, uint64, uint64)
+	OnRead  func(rng Range, root uint64, t uint64)
+	OnWrite func(rng Range, root uint64, t uint64)
 }
 
 // PoolID is an identifier of a Pool.
