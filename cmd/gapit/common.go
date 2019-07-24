@@ -29,7 +29,6 @@ import (
 	"github.com/google/gapid/core/app/auth"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
@@ -404,42 +403,6 @@ func getType(ctx context.Context, client service.Service, t *path.Type) (*types.
 	}
 }
 
-func printPodValue(ctx context.Context, v *pod.Value) error {
-	switch v := v.Val.(type) {
-	case *pod.Value_Float32:
-		fmt.Printf("%v", v.Float32)
-	case *pod.Value_Float64:
-		fmt.Printf("%v", v.Float64)
-	case *pod.Value_Uint:
-		fmt.Printf("%v", v.Uint)
-	case *pod.Value_Sint:
-		fmt.Printf("%v", v.Sint)
-	case *pod.Value_Uint8:
-		fmt.Printf("%v", v.Uint8)
-	case *pod.Value_Sint8:
-		fmt.Printf("%v", v.Sint8)
-	case *pod.Value_Uint16:
-		fmt.Printf("%v", v.Uint16)
-	case *pod.Value_Sint16:
-		fmt.Printf("%v", v.Sint16)
-	case *pod.Value_Uint32:
-		fmt.Printf("%v", v.Uint32)
-	case *pod.Value_Sint32:
-		fmt.Printf("%v", v.Sint32)
-	case *pod.Value_Uint64:
-		fmt.Printf("%v", v.Uint64)
-	case *pod.Value_Sint64:
-		fmt.Printf("%v", v.Sint64)
-	case *pod.Value_Bool:
-		fmt.Printf("%v", v.Bool)
-	case *pod.Value_String_:
-		fmt.Printf("%v", v.String_)
-	default:
-		return fmt.Errorf("Unhandled printed type %T", v)
-	}
-	return nil
-}
-
 func printBoxValue(ctx context.Context, client service.Service, t *path.Type, v *memory_box.Value, prefix string) error {
 	if task.Stopped(ctx) {
 		return task.StopReason(ctx)
@@ -451,9 +414,7 @@ func printBoxValue(ctx context.Context, client service.Service, t *path.Type, v 
 	}
 	switch t := tp.Ty.(type) {
 	case *types.Type_Pod:
-		if err = printPodValue(ctx, v.Val.(*memory_box.Value_Pod).Pod); err != nil {
-			return err
-		}
+		fmt.Printf("%v", *v.Val.(*memory_box.Value_Pod).Pod)
 	case *types.Type_Pointer:
 		fmt.Printf("*%v", v.Val.(*memory_box.Value_Pointer).Pointer.Address)
 
@@ -517,13 +478,9 @@ func printBoxValue(ctx context.Context, client service.Service, t *path.Type, v 
 			return err
 		}
 	case *types.Type_Enum:
-		if err = printPodValue(ctx, v.Val.(*memory_box.Value_Pod).Pod); err != nil {
-			return err
-		}
+		fmt.Printf("%v", *v.Val.(*memory_box.Value_Pod).Pod)
 	case *types.Type_Sized:
-		if err = printPodValue(ctx, v.Val.(*memory_box.Value_Pod).Pod); err != nil {
-			return err
-		}
+		fmt.Printf("%v", *v.Val.(*memory_box.Value_Pod).Pod)
 	}
 	return nil
 }
