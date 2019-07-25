@@ -18,6 +18,7 @@ package com.google.gapid.perfetto;
 import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.ImmutableList;
+import com.google.gapid.server.GapiPaths;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.protobuf.TextFormat;
@@ -66,7 +67,8 @@ public class PerfettoConfig {
         () -> {
           String path = perfettoConfig.get();
           return "".equals(path) ? null : new File(path);
-        }
+        },
+        GapiPaths.get()::perfettoConfig
     ).stream()
         .map(dir -> checkForConfig(dir.get()))
         .filter(PerfettoConfig::shouldUse)

@@ -41,13 +41,14 @@ public final class GapiPaths {
       Flags.value("gapid", "", "Path to the gapid binaries.");
   public static final Flag<String> adbPath = Flags.value("adb", "", "Path to the adb binary.");
 
-  public static final GapiPaths MISSING = new GapiPaths(null, null, null, null, null);
+  public static final GapiPaths MISSING = new GapiPaths(null, null, null, null, null, null);
 
   private static final Logger LOG = Logger.getLogger(GapiPaths.class.getName());
 
   private static final String GAPIS_EXECUTABLE_NAME = "gapis" + OS.exeExtension;
   private static final String GAPIT_EXECUTABLE_NAME = "gapit" + OS.exeExtension;
   private static final String STRINGS_DIR_NAME = "strings";
+  private static final String PERFETTO_CONFIG_NAME = "perfetto.cfg";
   private static final String USER_HOME_GAPID_ROOT = "gapid";
   private static final String GAPID_PKG_SUBDIR = "pkg";
   private static final String GAPID_ROOT_ENV_VAR = "GAPID";
@@ -59,6 +60,7 @@ public final class GapiPaths {
   private final File gapisPath;
   private final File gapitPath;
   private final File stringsPath;
+  private final File perfettoConfigPath;
   private final File runfiles;
 
   public GapiPaths(File baseDir) {
@@ -66,15 +68,17 @@ public final class GapiPaths {
     this.gapisPath = new File(baseDir, GAPIS_EXECUTABLE_NAME);
     this.gapitPath = new File(baseDir, GAPIT_EXECUTABLE_NAME);
     this.stringsPath = new File(baseDir, STRINGS_DIR_NAME);
+    this.perfettoConfigPath = new File(baseDir, PERFETTO_CONFIG_NAME);
     this.runfiles = null;
   }
 
-  protected GapiPaths(
-      File baseDir, File gapisPath, File gapitPath, File stringsPath, File runfiles) {
+  protected GapiPaths(File baseDir, File gapisPath, File gapitPath, File stringsPath,
+      File perfettoConfigPath, File runfiles) {
     this.baseDir = baseDir;
     this.gapisPath = gapisPath;
     this.gapitPath = gapitPath;
     this.stringsPath = stringsPath;
+    this.perfettoConfigPath = perfettoConfigPath;
     this.runfiles = runfiles;
   }
 
@@ -105,6 +109,10 @@ public final class GapiPaths {
 
   public File strings() {
     return stringsPath;
+  }
+
+  public File perfettoConfig() {
+    return perfettoConfigPath;
   }
 
   public void addRunfilesFlag(List<String> args) {
@@ -166,7 +174,7 @@ public final class GapiPaths {
         public GapiPaths getResult() {
           // Fall back to ignoring the runfiles if no gapis was found.
           return (gapis == null) ? new GapiPaths(dir) :
-              new GapiPaths(dir, gapis, gapit, strings, runfiles);
+              new GapiPaths(dir, gapis, gapit, strings, null, runfiles);
         }
       });
     } catch (IOException e) {
