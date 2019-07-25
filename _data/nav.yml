@@ -1,0 +1,46 @@
+toc:
+  - title: About
+    url: about/
+  - title: Tutorials
+    subnav: 
+      - title: Capture a trace
+        url: tutorials/capturetrace
+      - title: See bound shaders
+        url: tutorials/seeboundshaders
+      - title: Iterate on shaders
+        url: tutorials/iterateonshaders
+      - title: Find the largest textures
+        url: tutorials/findlargesttextures
+      - title: Optimize an application
+        url: tutorials/optimize
+      - title: Export resources
+        url: tutorials/export
+      - title: Create a video of a trace
+        url: tutorials/createvideo
+      - title: Check Vulkan render state
+        url: tutorials/renderstate
+  - title: Capture a trace
+    url: trace/
+  - title: Inspect a trace
+    url: inspecting/
+    subnav: 
+      - title: Commands pane
+        url: inspect/commands
+      - title: Framebuffer pane
+        url: inspect/framebuffer
+      - title: Geometry pane
+        url: inspect/geometry
+      - title: Report pane
+        url: inspect/report
+      - title: Shaders pane
+        url: inspect/shaders
+      - title: State pane
+        url: inspect/state
+      - title: Textures pane
+        url: inspect/textures
+  - title: CLI documentation
+    url: cli/
+  - title: System requirements
+    url: requirements/
+  - title: Releases
+    url: https://github.com/google/gapid/releases
