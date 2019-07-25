@@ -1,10 +1,7 @@
 ---
 layout: default
 title: How do I iterate on my shaders in GAPID?
-sidebar: Iterate on shaders?
-order: 30
 permalink: /tutorials/iterateonshaders
-parent: tutorials
 ---
 
 Changing a shader within GAPID will change the result for all draw calls, allowing you to iterate on the look and feel of your application within GAPID. In the future, this will also allow you to see how editing shaders affects performance.

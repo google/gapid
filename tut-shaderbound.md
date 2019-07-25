@@ -1,10 +1,7 @@
 ---
 layout: default
 title: How do I see the currently bound shader?
-sidebar: See bound shaders?
-order: 20
 permalink: /tutorials/seeboundshaders
-parent: tutorials
 ---
 
 Select the graphics API used:

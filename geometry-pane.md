@@ -1,9 +1,7 @@
 ---
 layout: default
 title: Geometry Pane
-sidebar: Geometry Pane
 permalink: /inspect/geometry
-parent: inspect
 ---
 
 <img src="../images/geometry-pane.png" width="727px" height="445px"/>

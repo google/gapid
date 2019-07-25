@@ -1,10 +1,7 @@
 ---
 layout: default
 title: Tutorial
-sidebar: Tutorial&#58; How do I...
-order: 20
 permalink: /tutorials/
-group: tutorials
 ---
 
 Learn how to perform common tasks in GAPID.

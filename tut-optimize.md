@@ -1,10 +1,7 @@
 ---
 layout: default
 title: How do I use GAPID to optimize my application?
-sidebar: Optimize my app?
-order: 50
 permalink: /tutorials/optimize
-parent: tutorials
 ---
 
 Whilst GAPID does not yet support profiling, you can still use GAPID to optimize your application. Here are some tips on what to look for.

@@ -1,9 +1,7 @@
 ---
 title: About
-sidebar: About
 layout: default
 permalink: /about/
-order: 10
 ---
 
 GAPID is a developer tool for recording and inspecting calls made by an application to the graphics driver.
