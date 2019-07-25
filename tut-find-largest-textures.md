@@ -1,10 +1,7 @@
 ---
 layout: default
 title: How do I find the largest textures?
-sidebar: Find largest textures?
-order: 40
 permalink: /tutorials/findlargesttextures
-parent: tutorials
 ---
 
 Finding the largest textures loaded by the driver is useful to reduce the memory footprint and load times of your application. For more complex projects, applications may load texture resources that aren't even used, so looking through the list of resources loaded should be done regularly to ensure optimal memory usage.

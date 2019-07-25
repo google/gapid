@@ -1,10 +1,7 @@
 ---
 layout: default
 title: Check Vulkan render state
-sidebar: Check Vulkan render state?
-order: 80
 permalink: /tutorials/renderstate
-parent: tutorials
 ---
 
 The state of rendering of Vulkan applications is reflected in two parts in

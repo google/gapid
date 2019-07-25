@@ -1,9 +1,7 @@
 ---
 layout: default
 title: Report Pane
-sidebar: Report Pane
 permalink: /inspect/report
-parent: inspect
 ---
 
 <img src="../images/report-pane.png" width="386" height="297"/>

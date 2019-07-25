@@ -1,9 +1,7 @@
 ---
 layout: default
 title: Shaders Pane
-sidebar: Shaders Pane
 permalink: /inspect/shaders
-parent: inspect
 ---
 
 

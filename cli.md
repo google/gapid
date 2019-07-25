@@ -1,9 +1,7 @@
 ---
 title: CLI documentation - GAPIT
-sidebar: CLI documentation
 layout: default
 permalink: /cli/
-order: 50
 ---
 
 The GAPID package contains a command line tool named `gapit` that  can be used

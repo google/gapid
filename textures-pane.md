@@ -1,9 +1,7 @@
 ---
 layout: default
 title: Textures Pane
-sidebar: Textures Pane
 permalink: /inspect/textures
-parent: inspect
 ---
 
 <img src="../images/textures-pane.png" width="558px"/>

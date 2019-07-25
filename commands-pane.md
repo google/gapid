@@ -1,9 +1,7 @@
 ---
 layout: default
 title: Commands Pane
-sidebar: Commands Pane
 permalink: /inspect/commands
-parent: inspect
 ---
 
 <img src="../images/commands-pane.png" width="498px" height="462px"/>
