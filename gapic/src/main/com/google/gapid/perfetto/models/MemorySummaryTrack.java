@@ -103,6 +103,10 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   private ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req, Window win) {
     return transform(qe.query(win.quantized ? summarySql() : counterSQL()), res -> {
       int rows = res.getNumRows();
+      if (rows == 0) {
+        return Data.empty(req);
+      }
+
       Data data = new Data(
           req, new long[rows + 1], new long[rows + 1], new long[rows + 1], new long[rows + 1]);
       res.forEachRow((i, r) -> {
@@ -161,6 +165,10 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
       this.total = total;
       this.unused = unusued;
       this.buffCache = buffCache;
+    }
+
+    public static Data empty(DataRequest req) {
+      return new Data(req, new long[0], new long[0], new long[0], new long[0]);
     }
   }
 }
