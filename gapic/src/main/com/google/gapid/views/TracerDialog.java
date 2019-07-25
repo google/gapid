@@ -39,6 +39,7 @@ import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
+import com.google.gapid.perfetto.PerfettoConfig;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
@@ -48,8 +49,6 @@ import com.google.gapid.proto.service.Service.TraceTypeCapabilities;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.Tracer;
 import com.google.gapid.server.Tracer.TraceRequest;
-import com.google.gapid.util.Flags;
-import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.Scheduler;
@@ -59,7 +58,6 @@ import com.google.gapid.widgets.FileTextbox;
 import com.google.gapid.widgets.LoadingIndicator;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
-import com.google.protobuf.TextFormat;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -86,10 +84,6 @@ import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Text;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -104,10 +98,6 @@ import java.util.logging.Logger;
  */
 public class TracerDialog {
   protected static final Logger LOG = Logger.getLogger(TracerDialog.class.getName());
-
-  public static final Flag<String> perfettoConfig = Flags.value("perfetto", "",
-      "Path to a file containing a perfetto trace config proto in text format. " +
-      "Specifying this flag will enable the Perfetto tracing UI features");
 
   private TracerDialog() {
   }
@@ -179,17 +169,6 @@ public class TracerDialog {
       models.devices.removeListener(listener);
     }
   }
-
-  protected static void readPerfettoConfig(Service.TraceOptions.Builder options, int durationMs) {
-    try (Reader in = new InputStreamReader(new FileInputStream(perfettoConfig.get()))) {
-      TextFormat.merge(in, options.getPerfettoConfigBuilder());
-      options.getPerfettoConfigBuilder().setDurationMs(durationMs);
-    } catch (IOException e) {
-      // This is temporary, experimental code, so just sort of crash.
-      throw new RuntimeException("Failed to read perfetto config from " + perfettoConfig.get(), e);
-    }
-  }
-
 
   /**
    * Dialog to request the information from the user to start a trace (which app, filename, etc.).
@@ -548,7 +527,7 @@ public class TracerDialog {
       private void updateApiDropdown(DeviceTraceConfiguration config, Settings settings) {
         if (api != null && config != null) {
           List<TraceTypeCapabilities> caps = config.getApisList().stream()
-              .filter(t -> !isPerfetto(t) || !perfettoConfig.get().isEmpty())
+              .filter(t -> !isPerfetto(t) || PerfettoConfig.get().hasConfig())
               .collect(toList());
           api.setInput(caps);
           if (!caps.isEmpty()) {
@@ -689,7 +668,8 @@ public class TracerDialog {
           int duration = frameCount.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           duration = (duration == 0) ? (int)MINUTES.toMillis(10) : duration;
-          readPerfettoConfig(options, duration);
+          options.setPerfettoConfig(PerfettoConfig.get().getConfig().toBuilder()
+              .setDurationMs(duration));
         }
 
         return new TraceRequest(output, options.build());
