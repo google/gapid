@@ -27,6 +27,7 @@ java_library(
         "{{io_grpc_stub}}",
         "{{io_opencensus_api}}",
         "{{io_opencensus_contrib_grpc_metrics}}",
+        "{{javax_annotation_api}}",
     ],
 )
 

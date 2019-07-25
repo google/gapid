@@ -133,6 +133,15 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
             sha1_src = "9a7d004b774700837eeebff61230b8662d0e30d1",
         )
 
+        maybe_repository(
+            native.maven_jar,
+            name = "javax_annotation_api",
+            locals = locals,
+            artifact = "javax.annotation:javax.annotation-api:1.2",
+            sha1 = "479c1e06db31c432330183f5cae684163f186146",
+            sha1_src = "ad18a02db08eaee697f812e333f692fc51129e4a",
+        )
+
         # LWJGL.
         ############################################################################
         maybe_repository(
@@ -200,6 +209,7 @@ DEFAULT_MAPPINGS = {
     "com_squareup_okio": "@com_squareup_okio//jar",
     "io_opencensus_api": "@io_opencensus_api//jar",
     "io_opencensus_contrib_grpc_metrics": "@io_opencensus_contrib_grpc_metrics//jar",
+    "javax_annotation_api": "@javax_annotation_api//jar",
     # LWJGL
     "org_lwjgl_core": "@org_lwjgl_core//jar",
     "org_lwjgl_core_natives_linux": "@org_lwjgl_core_natives_linux//jar",
