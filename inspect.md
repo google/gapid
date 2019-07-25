@@ -1,10 +1,7 @@
 ---
 layout: default
 title: Inspecting a trace
-sidebar: Inspecting a trace
-order: 40
 permalink: /inspecting/
-group: inspect
 ---
 
 Once you've finished taking a trace, the capture will automatically open. You can also open previously created `.gfxtrace` files using the `File` &rarr; `Open` toolbar item.

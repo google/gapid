@@ -1,9 +1,7 @@
 ---
 layout: default
 title: Framebuffer Pane
-sidebar: Framebuffer Pane
 permalink: /inspect/framebuffer
-parent: inspect
 ---
 
 The **Framebuffer** pane shows the contents of the currently bound framebuffer. Depending on the item you select in the **Commands** pane, it can show onscreen or offscreen framebuffers.
