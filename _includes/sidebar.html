@@ -2,27 +2,8 @@
   <a class="sidebar-title">
     {{site.title}}
     <img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/logo_128.png"
-    width="64" height="64" alt="GAPID logo" style="display: block; margin: auto;"/>
+        width="64" height="64" alt="GAPID logo" style="display: block; margin: auto;"/>
   </a>
-
-  <div class="sidebar-sep"></div>
-
-  {% assign roots = site.pages
-    | where_exp:"root", "root.sidebar != null"
-    | where_exp:"root", "root.parent == null"
-    | sort:"order" %}
-  {% for root in roots %}
-    <a class="sidebar-item{% if page.url == root.url %} active{% endif %}" href="{{site.baseurl}}{{root.url}}">{{ root.sidebar }}</a>
-    {% if root.group != null %}
-      {% assign children = site.pages
-        | where_exp:"child", "child.sidebar != null"
-        | where_exp:"child", "child.parent == root.group"
-        | sort:"order" %}
-      {% for child in children %}
-        <a class="sidebar-item child{% if page.url == child.url %} active{% endif %}" href="{{site.baseurl}}{{child.url}}"> {{ child.sidebar }}</a>
-      {% endfor %}
-    {% endif %}
-    <div class="sidebar-sep"></div>
-  {% endfor %}
-  <a class="sidebar-item" href="{{site.project-url}}/releases" target="_blank">Releases</a>
+  {% assign level = 0 %}
+  {% include nav.html nav=site.data.nav.toc heading=level %}
 </div>
