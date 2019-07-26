@@ -137,7 +137,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 	ctx = log.Enter(ctx, "FrameLoop Transform")
 
 	if cmd == f.loopStartCmd {
-		log.I(ctx, "Loop: start loop at frame %v, id %v, cmd %v.", f.frameNum, id, cmd)
+		log.D(ctx, "Loop: start loop at frame %v, id %v, cmd %v.", f.frameNum, id, cmd)
 		f.detectChangedResource(ctx, out.State())
 
 		st := GetState(out.State())
@@ -159,7 +159,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 		out.NotifyPreLoop(ctx)
 
 	} else if cmd == f.loopEndCmd {
-		log.I(ctx, "Loop: last frame is %v id %v, cmd is %v.", f.frameNum, id, cmd)
+		log.D(ctx, "Loop: last frame is %v id %v, cmd is %v.", f.frameNum, id, cmd)
 		st := GetState(out.State())
 		sb := st.newStateBuilder(ctx, newTransformerOutput(out))
 		defer sb.ta.Dispose()
@@ -227,7 +227,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd := cmd.(*VkDestroyBuffer)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			buffer := vkCmd.Buffer()
-			log.I(ctx, "Buffer %v destroyed.", buffer)
+			log.D(ctx, "Buffer %v destroyed.", buffer)
 			f.bufferDestroyed[buffer] = true
 
 		// Images
@@ -241,7 +241,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd := cmd.(*VkDestroyImage)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			img := vkCmd.Image()
-			log.I(ctx, "Image %v destroyed", img)
+			log.D(ctx, "Image %v destroyed", img)
 			f.imageDestroyed[img] = true
 
 		// TODO: Recreate destroyed resources.
@@ -313,14 +313,12 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, sb *stateBuilder) 
 
 	for buffer := range f.bufferChanged {
 		if _, present := f.bufferCreated[buffer]; present {
-			log.I(ctx, "Buffer [%v] is created in between loop.", buffer)
 			continue
 		}
 		if _, preset := f.bufferDestroyed[buffer]; preset {
-			log.I(ctx, "Buffer [%v] deleted in between loop.", buffer)
 			continue
 		}
-		log.I(ctx, "Buffer [%v] changed during loop.", buffer)
+		log.D(ctx, "Buffer [%v] changed during loop.", buffer)
 		bufferObj := GetState(s).Buffers().Get(buffer)
 		if bufferObj == NilBufferObjectʳ {
 			return log.Err(ctx, nil, "Buffer is nil")
@@ -364,10 +362,9 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, sb *stateBuilder) e
 	defer imgPrimer.Free()
 	for img := range f.imageChanged {
 		if _, present := f.imageCreated[img]; present {
-			log.I(ctx, "Image [%v] is created in between.", img)
 			continue
 		}
-		log.I(ctx, "Image [%v] changed during loop.", img)
+		log.D(ctx, "Image [%v] changed during loop.", img)
 
 		// Create staging Image which is used to backup the changed images
 		imgObj := s.Images().Get(img)
@@ -380,7 +377,6 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, sb *stateBuilder) e
 		if err := f.copyImage(ctx, imgObj, stagingImage, sb); err != nil {
 			return log.Err(ctx, err, "Copy image failed")
 		}
-		log.I(ctx, "Backup image %v succeed.", img)
 	}
 	return nil
 }
@@ -415,7 +411,7 @@ func (f *frameLoop) resetBuffers(ctx context.Context, sb *stateBuilder) error {
 		if err := tsk.Commit(sb, sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())); err != nil {
 			return log.Errf(ctx, err, "Reset buffer [%v] with buffer [%v] failed", dst, src)
 		}
-		log.I(ctx, "Reset buffer [%v] with buffer [%v] succeed", dst, src)
+		log.D(ctx, "Reset buffer [%v] with buffer [%v] succeed", dst, src)
 	}
 	sb.scratchRes.Free(sb)
 
@@ -441,7 +437,7 @@ func (f *frameLoop) resetImages(ctx context.Context, sb *stateBuilder) error {
 		if err != nil {
 			return log.Errf(ctx, err, "Priming image %v with data", dst)
 		}
-		log.I(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
+		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
 	}
 
 	return nil
