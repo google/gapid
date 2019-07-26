@@ -758,7 +758,6 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 	// so that the builder do not need to be kept alive when using these readers.
 	readers := b.notificationReaders
 	handleNotification := func(n *gapir.Notification) {
-		ctx = log.Enter(ctx, "NotificationHandler")
 		if n == nil {
 			log.E(ctx, "Cannot handle nil Notification")
 			return
