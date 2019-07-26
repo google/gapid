@@ -30,34 +30,47 @@ namespace gapir {
 std::map<unsigned int,
          std::map<unsigned char*, MemoryAllocator::MemoryRegion>::iterator>
     MemoryAllocator::Handle::_dummyMap;
-unsigned int MemoryAllocator::_idGenerator = 0;
 
 std::unique_ptr<MemoryAllocator> MemoryAllocator::create(size_t heapSize) {
   return std::unique_ptr<MemoryAllocator>(new MemoryAllocator(heapSize));
 }
 
 MemoryAllocator::MemoryAllocator(size_t heapSize)
-    : _heapSize(heapSize),
-      _heap(new unsigned char[heapSize]),
-      _purgableHead(heapSize) {}
+    : heapSize_(0), heap_(nullptr), purgableHead_(0), idGenerator_(0) {
+  while (heap_ == nullptr) {
+    const auto overSize = heapSize + heapSize / 2;
+    heap_ = new (std::nothrow) unsigned char[overSize];
+
+    if (heap_ != nullptr) {
+      delete[] heap_;
+      heap_ = new (std::nothrow) unsigned char[heapSize];
+    }
+
+    if (heap_ == nullptr) {
+      heapSize = heapSize / 2;
+    }
+  }
+
+  purgableHead_ = heapSize_ = heapSize;
+}
 
 MemoryAllocator::~MemoryAllocator() {}
 
 MemoryAllocator::Handle MemoryAllocator::allocateStatic(size_t size) {
   MemoryAllocator::MemoryRegion bestCandidate(
-      0, _staticRegionMap.size() > 0
-             ? _staticRegionMap.begin()->second.getOffset()
-             : _heapSize);
+      0, staticRegionMap_.size() > 0
+             ? staticRegionMap_.begin()->second.getOffset()
+             : heapSize_);
 
-  for (auto staticRegionIter = _staticRegionMap.begin();
-       staticRegionIter != _staticRegionMap.end(); ++staticRegionIter) {
+  for (auto staticRegionIter = staticRegionMap_.begin();
+       staticRegionIter != staticRegionMap_.end(); ++staticRegionIter) {
     const auto nextStaticRegionIter = std::next(staticRegionIter);
 
     const auto candidateStart = staticRegionIter->second.getOffset() +
                                 staticRegionIter->second.getSize();
-    const auto candidateSize = (nextStaticRegionIter != _staticRegionMap.end()
+    const auto candidateSize = (nextStaticRegionIter != staticRegionMap_.end()
                                     ? nextStaticRegionIter->second.getOffset()
-                                    : _heapSize) -
+                                    : heapSize_) -
                                candidateStart;
 
     if (candidateSize > bestCandidate.getSize()) {
@@ -91,39 +104,39 @@ MemoryAllocator::Handle MemoryAllocator::allocatePurgable(size_t size,
   std::map<unsigned char*, MemoryAllocator::MemoryRegion>::const_iterator
       closestStaticIter;
   size_t closestStaticData =
-      getClosestStaticData(_purgableHead, &closestStaticIter);
+      getClosestStaticData(purgableHead_, &closestStaticIter);
 
-  if (_purgableHead - closestStaticData >= size) {
+  if (purgableHead_ - closestStaticData >= size) {
     auto purgableRegion =
-        MemoryAllocator::MemoryRegion(_purgableHead - size, size);
+        MemoryAllocator::MemoryRegion(purgableHead_ - size, size);
 
     auto handle = registerPurgableAllocate(purgableRegion);
-    _purgableHead -= size;
+    purgableHead_ -= size;
 
     return handle;
   }
 
-  if (closestStaticIter == _staticRegionMap.end()) {
+  if (closestStaticIter == staticRegionMap_.end()) {
     if (allowRelocate == true && compactPurgableMemory()) {
       return allocatePurgable(size, allowRelocate);
     } else {
       return MemoryAllocator::Handle();
     }
   } else {
-    _purgableHead = closestStaticIter->second.getOffset();
+    purgableHead_ = closestStaticIter->second.getOffset();
     return allocatePurgable(size, allowRelocate);
   }
 }
 
 bool MemoryAllocator::resizeStaticAllocation(
     const MemoryAllocator::Handle& address, size_t size) {
-  auto staticIter = _staticRegionMap.find(&(*address));
-  if (staticIter != _staticRegionMap.end()) {
+  auto staticIter = staticRegionMap_.find(&(*address));
+  if (staticIter != staticRegionMap_.end()) {
     auto nextStaticIter = std::next(staticIter);
 
-    size_t ceiling = (nextStaticIter != _staticRegionMap.end()
+    size_t ceiling = (nextStaticIter != staticRegionMap_.end()
                           ? nextStaticIter->second.getOffset()
-                          : _heapSize) -
+                          : heapSize_) -
                      staticIter->second.getOffset();
     if (size > ceiling) {
       return false;
@@ -143,23 +156,25 @@ bool MemoryAllocator::resizeStaticAllocation(
   return false;
 }
 
-bool MemoryAllocator::releaseAllocation(
-    const MemoryAllocator::Handle& address) {
+bool MemoryAllocator::releaseAllocation(MemoryAllocator::Handle& address) {
   if (address == nullptr) {
     auto uid = address._backing->first;
-    _relocationMap.erase(uid);
+    relocationMap_.erase(uid);
+    address = MemoryAllocator::Handle();
     return true;
   }
 
-  auto staticIter = _staticRegionMap.find(&(*address));
-  if (staticIter != _staticRegionMap.end()) {
+  auto staticIter = staticRegionMap_.find(&(*address));
+  if (staticIter != staticRegionMap_.end()) {
     registerStaticRelease(staticIter->second);
+    address = MemoryAllocator::Handle();
     return true;
   }
 
-  auto purgableIter = _purgableRegionMap.find(&(*address));
-  if (purgableIter != _purgableRegionMap.end()) {
+  auto purgableIter = purgableRegionMap_.find(&(*address));
+  if (purgableIter != purgableRegionMap_.end()) {
     registerPurgableRelease(purgableIter->second);
+    address = MemoryAllocator::Handle();
     return true;
   }
 
@@ -168,7 +183,7 @@ bool MemoryAllocator::releaseAllocation(
 
 size_t MemoryAllocator::getTotalStaticDataUsage() const {
   size_t size = 0;
-  for (auto&& alloc : _staticRegionMap) {
+  for (auto&& alloc : staticRegionMap_) {
     size += alloc.second.getSize();
   }
 
@@ -177,7 +192,7 @@ size_t MemoryAllocator::getTotalStaticDataUsage() const {
 
 size_t MemoryAllocator::getTotalPurgableDataUsage() const {
   size_t size = 0;
-  for (auto&& alloc : _purgableRegionMap) {
+  for (auto&& alloc : purgableRegionMap_) {
     size += alloc.second.getSize();
   }
 
@@ -190,8 +205,8 @@ void MemoryAllocator::purgeOrRelocateRange(size_t start, size_t end) {
      << ", " << end << ")";
   GAPID_DEBUG(ss.str().c_str());
 
-  auto nextPurgableIter = _purgableRegionMap.lower_bound(_heap + start);
-  auto prevPurgableIter = nextPurgableIter != _purgableRegionMap.begin()
+  auto nextPurgableIter = purgableRegionMap_.lower_bound(heap_ + start);
+  auto prevPurgableIter = nextPurgableIter != purgableRegionMap_.begin()
                               ? std::prev(nextPurgableIter)
                               : nextPurgableIter;
 
@@ -201,7 +216,7 @@ void MemoryAllocator::purgeOrRelocateRange(size_t start, size_t end) {
   std::vector<MemoryAllocator::MemoryRegion> toPurge;
 
   for (auto purgableIter = prevPurgableIter;
-       purgableIter != _purgableRegionMap.end() &&
+       purgableIter != purgableRegionMap_.end() &&
        purgableIter->second.getOffset() < end;
        ++purgableIter) {
     // Check if this entry represents a purged block, and ignore it if so.
@@ -221,7 +236,7 @@ void MemoryAllocator::purgeOrRelocateRange(size_t start, size_t end) {
               purgableIter->second.getSize());
       toRelocate.push_back(std::make_pair(
           purgableIter->second,
-          MemoryAllocator::MemoryRegion(&(*newAlloc) - _heap,
+          MemoryAllocator::MemoryRegion(&(*newAlloc) - heap_,
                                         purgableIter->second.getSize())));
     } else {
       // Otherwise we're going to purge this data.
@@ -248,7 +263,7 @@ bool MemoryAllocator::compactPurgableMemory() {
   std::map<unsigned char*, MemoryRegion> newPurgableRegionMap;
   std::map<unsigned char*, unsigned char*> relocations;
 
-  auto newPurgableHead = _heapSize;
+  auto newPurgableHead = heapSize_;
   bool compactedSomething = false;
 
   std::map<unsigned char*, MemoryAllocator::MemoryRegion>::const_iterator
@@ -256,8 +271,8 @@ bool MemoryAllocator::compactPurgableMemory() {
   size_t closestStaticData =
       getClosestStaticData(newPurgableHead, &closestStaticIter);
 
-  for (auto purgableIter = _purgableRegionMap.rbegin();
-       purgableIter != _purgableRegionMap.rend(); ++purgableIter) {
+  for (auto purgableIter = purgableRegionMap_.rbegin();
+       purgableIter != purgableRegionMap_.rend(); ++purgableIter) {
     // Check if this entry represents a purged block, and just copy it across
     // verbatim it if so.
     if (purgableIter->first == nullptr &&
@@ -280,8 +295,8 @@ bool MemoryAllocator::compactPurgableMemory() {
       }
     }
 
-    auto destAddress = _heap + newPurgableHead - size;
-    auto srcAddress = _heap + purgableIter->second.getOffset();
+    auto destAddress = heap_ + newPurgableHead - size;
+    auto srcAddress = heap_ + purgableIter->second.getOffset();
 
     relocations[srcAddress] = destAddress;
 
@@ -291,12 +306,12 @@ bool MemoryAllocator::compactPurgableMemory() {
 
       auto newPurgableRegion =
           MemoryAllocator::MemoryRegion(newPurgableHead - size, size);
-      newPurgableRegionMap[_heap + newPurgableRegion.getOffset()] =
+      newPurgableRegionMap[heap_ + newPurgableRegion.getOffset()] =
           newPurgableRegion;
 
       compactedSomething = true;
     } else {
-      newPurgableRegionMap[_heap + purgableIter->second.getOffset()] =
+      newPurgableRegionMap[heap_ + purgableIter->second.getOffset()] =
           purgableIter->second;
     }
 
@@ -306,51 +321,51 @@ bool MemoryAllocator::compactPurgableMemory() {
   if (compactedSomething == true) {
     std::set<unsigned int> purgedRegionIDs;
 
-    auto oldNullRegionIter = _purgableRegionMap.find(nullptr);
-    if (oldNullRegionIter != _purgableRegionMap.end()) {
-      for (auto relocationMapIter = _relocationMap.begin();
-           relocationMapIter != _relocationMap.end(); ++relocationMapIter) {
+    auto oldNullRegionIter = purgableRegionMap_.find(nullptr);
+    if (oldNullRegionIter != purgableRegionMap_.end()) {
+      for (auto relocationMapIter = relocationMap_.begin();
+           relocationMapIter != relocationMap_.end(); ++relocationMapIter) {
         if (relocationMapIter->second == oldNullRegionIter) {
           purgedRegionIDs.insert(relocationMapIter->first);
         }
       }
     }
 
-    _purgableRegionMap = newPurgableRegionMap;
+    purgableRegionMap_ = newPurgableRegionMap;
 
     for (auto relocationIter = relocations.rbegin();
          relocationIter != relocations.rend(); ++relocationIter) {
       auto inverseRelocationIter =
-          _inverseRelocationMap.find(relocationIter->first);
-      assert(inverseRelocationIter != _inverseRelocationMap.end());
+          inverseRelocationMap_.find(relocationIter->first);
+      assert(inverseRelocationIter != inverseRelocationMap_.end());
 
       auto uid = inverseRelocationIter->second;
 
-      auto relocationMapIter = _relocationMap.find(uid);
-      assert(relocationMapIter != _relocationMap.end());
+      auto relocationMapIter = relocationMap_.find(uid);
+      assert(relocationMapIter != relocationMap_.end());
 
-      auto purgableIter = _purgableRegionMap.find(relocationIter->second);
-      assert(purgableIter != _purgableRegionMap.end());
+      auto purgableIter = purgableRegionMap_.find(relocationIter->second);
+      assert(purgableIter != purgableRegionMap_.end());
 
       relocationMapIter->second = purgableIter;
 
-      _inverseRelocationMap.erase(inverseRelocationIter);
-      _inverseRelocationMap.insert(std::make_pair(relocationIter->second, uid));
+      inverseRelocationMap_.erase(inverseRelocationIter);
+      inverseRelocationMap_.insert(std::make_pair(relocationIter->second, uid));
     }
 
     if (purgedRegionIDs.size() > 0) {
-      auto newNullRegionIter = _purgableRegionMap.find(nullptr);
-      assert(newNullRegionIter != _purgableRegionMap.end());
+      auto newNullRegionIter = purgableRegionMap_.find(nullptr);
+      assert(newNullRegionIter != purgableRegionMap_.end());
 
       for (auto&& purgedUID : purgedRegionIDs) {
-        auto iter = _relocationMap.find(purgedUID);
-        assert(iter != _relocationMap.end());
+        auto iter = relocationMap_.find(purgedUID);
+        assert(iter != relocationMap_.end());
 
         iter->second = newNullRegionIter;
       }
     }
 
-    _purgableHead = newPurgableHead;
+    purgableHead_ = newPurgableHead;
   }
 
   return compactedSomething;
@@ -361,12 +376,12 @@ size_t MemoryAllocator::getClosestStaticData(
     std::map<unsigned char*, MemoryAllocator::MemoryRegion>::const_iterator*
         closestStaticIter) const {
   size_t closestStaticData = 0;
-  auto nextStaticIter = _staticRegionMap.lower_bound(_heap + belowOffset);
-  auto prevStaticIter = nextStaticIter != _staticRegionMap.begin()
+  auto nextStaticIter = staticRegionMap_.lower_bound(heap_ + belowOffset);
+  auto prevStaticIter = nextStaticIter != staticRegionMap_.begin()
                             ? std::prev(nextStaticIter)
-                            : _staticRegionMap.end();
+                            : staticRegionMap_.end();
 
-  if (prevStaticIter != _staticRegionMap.end()) {
+  if (prevStaticIter != staticRegionMap_.end()) {
     closestStaticData =
         prevStaticIter->second.getOffset() + prevStaticIter->second.getSize();
   }
@@ -380,127 +395,127 @@ size_t MemoryAllocator::getClosestStaticData(
 
 MemoryAllocator::Handle MemoryAllocator::registerStaticAllocate(
     const MemoryRegion& newRegion) {
-  auto address = _heap + newRegion.getOffset();
-  auto uid = ++_idGenerator;
+  auto address = heap_ + newRegion.getOffset();
+  auto uid = ++idGenerator_;
 
-  auto allocIter = _staticRegionMap.insert(std::make_pair(address, newRegion));
-  _inverseRelocationMap.insert(std::make_pair(address, uid));
+  auto allocIter = staticRegionMap_.insert(std::make_pair(address, newRegion));
+  inverseRelocationMap_.insert(std::make_pair(address, uid));
   auto relocationIter =
-      _relocationMap.insert(std::make_pair(uid, allocIter.first));
+      relocationMap_.insert(std::make_pair(uid, allocIter.first));
 
   return MemoryAllocator::Handle(relocationIter.first);
 }
 
 MemoryAllocator::Handle MemoryAllocator::registerPurgableAllocate(
     const MemoryRegion& newRegion) {
-  auto address = _heap + newRegion.getOffset();
-  auto uid = ++_idGenerator;
+  auto address = heap_ + newRegion.getOffset();
+  auto uid = ++idGenerator_;
 
   auto allocIter =
-      _purgableRegionMap.insert(std::make_pair(address, newRegion));
-  _inverseRelocationMap.insert(std::make_pair(address, uid));
+      purgableRegionMap_.insert(std::make_pair(address, newRegion));
+  inverseRelocationMap_.insert(std::make_pair(address, uid));
   auto relocationIter =
-      _relocationMap.insert(std::make_pair(uid, allocIter.first));
+      relocationMap_.insert(std::make_pair(uid, allocIter.first));
 
   return MemoryAllocator::Handle(relocationIter.first);
 }
 
 void MemoryAllocator::registerResize(const MemoryRegion& resizedRegion) {
-  auto address = _heap + resizedRegion.getOffset();
+  auto address = heap_ + resizedRegion.getOffset();
 
-  assert(_staticRegionMap.find(address) != _staticRegionMap.end());
-  _staticRegionMap[address] = resizedRegion;
+  assert(staticRegionMap_.find(address) != staticRegionMap_.end());
+  staticRegionMap_[address] = resizedRegion;
 }
 
 void MemoryAllocator::registerRelocate(const MemoryRegion& from,
                                        const MemoryRegion& to) {
   assert(from.getSize() == to.getSize());
 
-  auto fromAddress = _heap + from.getOffset();
-  auto toAddress = _heap + to.getOffset();
+  auto fromAddress = heap_ + from.getOffset();
+  auto toAddress = heap_ + to.getOffset();
 
-  auto inverseIter = _inverseRelocationMap.find(fromAddress);
-  assert(inverseIter != _inverseRelocationMap.end());
+  auto inverseIter = inverseRelocationMap_.find(fromAddress);
+  assert(inverseIter != inverseRelocationMap_.end());
 
   auto uid = inverseIter->second;
 
-  auto relocationIter = _relocationMap.find(uid);
-  assert(relocationIter != _relocationMap.end());
+  auto relocationIter = relocationMap_.find(uid);
+  assert(relocationIter != relocationMap_.end());
 
-  auto fromPurgableIter = _purgableRegionMap.find(fromAddress);
-  assert(fromPurgableIter != _purgableRegionMap.end());
+  auto fromPurgableIter = purgableRegionMap_.find(fromAddress);
+  assert(fromPurgableIter != purgableRegionMap_.end());
 
-  auto toPurgableIter = _purgableRegionMap.find(toAddress);
-  assert(toPurgableIter != _purgableRegionMap.end());
+  auto toPurgableIter = purgableRegionMap_.find(toAddress);
+  assert(toPurgableIter != purgableRegionMap_.end());
 
   relocationIter->second = toPurgableIter;
 
-  _inverseRelocationMap.erase(inverseIter);
-  _inverseRelocationMap.insert(std::make_pair(toAddress, uid));
+  inverseRelocationMap_.erase(inverseIter);
+  inverseRelocationMap_.insert(std::make_pair(toAddress, uid));
 
-  _purgableRegionMap.erase(fromPurgableIter);
+  purgableRegionMap_.erase(fromPurgableIter);
 }
 
 void MemoryAllocator::registerPurge(const MemoryRegion& purge) {
-  auto address = _heap + purge.getOffset();
+  auto address = heap_ + purge.getOffset();
 
-  auto purgableIter = _purgableRegionMap.find(address);
-  assert(purgableIter != _purgableRegionMap.end());
-  _purgableRegionMap.erase(purgableIter);
+  auto purgableIter = purgableRegionMap_.find(address);
+  assert(purgableIter != purgableRegionMap_.end());
+  purgableRegionMap_.erase(purgableIter);
 
-  auto inverseIter = _inverseRelocationMap.find(address);
-  assert(inverseIter != _inverseRelocationMap.end());
+  auto inverseIter = inverseRelocationMap_.find(address);
+  assert(inverseIter != inverseRelocationMap_.end());
 
   auto uid = inverseIter->second;
-  _inverseRelocationMap.erase(inverseIter);
+  inverseRelocationMap_.erase(inverseIter);
 
-  auto purgedEntryIter = _purgableRegionMap.find(nullptr);
-  if (purgedEntryIter == _purgableRegionMap.end()) {
+  auto purgedEntryIter = purgableRegionMap_.find(nullptr);
+  if (purgedEntryIter == purgableRegionMap_.end()) {
     purgedEntryIter =
-        _purgableRegionMap.insert(std::make_pair(nullptr, MemoryRegion()))
+        purgableRegionMap_.insert(std::make_pair(nullptr, MemoryRegion()))
             .first;
   }
-  assert(purgedEntryIter != _purgableRegionMap.end());
+  assert(purgedEntryIter != purgableRegionMap_.end());
 
-  auto relocationIter = _relocationMap.find(uid);
-  assert(relocationIter != _relocationMap.end());
+  auto relocationIter = relocationMap_.find(uid);
+  assert(relocationIter != relocationMap_.end());
   relocationIter->second = purgedEntryIter;
 }
 
 void MemoryAllocator::registerStaticRelease(const MemoryRegion& release) {
-  auto address = _heap + release.getOffset();
+  auto address = heap_ + release.getOffset();
 
-  auto staticIter = _staticRegionMap.find(address);
-  assert(staticIter != _staticRegionMap.end());
-  _staticRegionMap.erase(staticIter);
+  auto staticIter = staticRegionMap_.find(address);
+  assert(staticIter != staticRegionMap_.end());
+  staticRegionMap_.erase(staticIter);
 
-  auto inverseIter = _inverseRelocationMap.find(address);
-  assert(inverseIter != _inverseRelocationMap.end());
+  auto inverseIter = inverseRelocationMap_.find(address);
+  assert(inverseIter != inverseRelocationMap_.end());
 
   auto uid = inverseIter->second;
-  _inverseRelocationMap.erase(inverseIter);
+  inverseRelocationMap_.erase(inverseIter);
 
-  auto relocationIter = _relocationMap.find(uid);
-  assert(relocationIter != _relocationMap.end());
-  _relocationMap.erase(relocationIter);
+  auto relocationIter = relocationMap_.find(uid);
+  assert(relocationIter != relocationMap_.end());
+  relocationMap_.erase(relocationIter);
 }
 
 void MemoryAllocator::registerPurgableRelease(const MemoryRegion& release) {
-  auto address = _heap + release.getOffset();
+  auto address = heap_ + release.getOffset();
 
-  auto purgableIter = _purgableRegionMap.find(address);
-  assert(purgableIter != _purgableRegionMap.end());
-  _purgableRegionMap.erase(purgableIter);
+  auto purgableIter = purgableRegionMap_.find(address);
+  assert(purgableIter != purgableRegionMap_.end());
+  purgableRegionMap_.erase(purgableIter);
 
-  auto inverseIter = _inverseRelocationMap.find(address);
-  assert(inverseIter != _inverseRelocationMap.end());
+  auto inverseIter = inverseRelocationMap_.find(address);
+  assert(inverseIter != inverseRelocationMap_.end());
 
   auto uid = inverseIter->second;
-  _inverseRelocationMap.erase(inverseIter);
+  inverseRelocationMap_.erase(inverseIter);
 
-  auto relocationIter = _relocationMap.find(uid);
-  assert(relocationIter != _relocationMap.end());
-  _relocationMap.erase(relocationIter);
+  auto relocationIter = relocationMap_.find(uid);
+  assert(relocationIter != relocationMap_.end());
+  relocationMap_.erase(relocationIter);
 }
 
 }  // namespace gapir

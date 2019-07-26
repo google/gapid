@@ -24,6 +24,18 @@ namespace gapir {
 
 class MemoryAllocator;
 
+// An allocator class used for volatile and cached replay data.
+// Volatile data must be resized for multi-part replays and may not be
+// relocated, which prevents reallocation of a new, larger region when
+// space runs out. To solve this problem, the allocator laid out here
+// grabs a big piece of memory off the system allocator and attempts
+// to efficiently parse it out into static (non relocatable, suitable
+// for volatile memory) regions and purgable (relocatable, prematurely
+// releaseable) regions suitable for cache data. Expansion of volatile
+// memory in this scheme will simply relocate or purge cache data
+// to ensure the program may continue to operate within a fixed memory
+// footprint at the cost of deminished cache performance.
+
 class MemoryAllocator {
  private:
   class MemoryRegion {
@@ -45,6 +57,15 @@ class MemoryAllocator {
   };
 
  public:
+  // This allocator class returns allocations by "Handle". This class provides
+  // an extra level of indirection on top of a standard pointer. This allows
+  // the allocator to relocate and prematurely release purgable allocations
+  // without having to notify clients via callback. Be aware that indirecting
+  // a returned handle multiple times may return different addresses.
+  // Accordingly you should check for != nullptr before every use.
+  // Be careful how this interacts with a multi-threaded environment.
+  // No locking or pinning is provided in the current allocator design
+  // so you need to take care of that yourself for now!
   class Handle {
    public:
     Handle() : _backing(_dummyMap.end()) {}
@@ -68,6 +89,7 @@ class MemoryAllocator {
                     std::map<unsigned char*, MemoryRegion>::iterator>::iterator
                backing)
         : _backing(backing) {}
+
     std::map<unsigned int,
              std::map<unsigned char*, MemoryRegion>::iterator>::iterator
         _backing;
@@ -90,14 +112,14 @@ class MemoryAllocator {
 
   bool resizeStaticAllocation(const Handle& address, size_t size);
 
-  bool releaseAllocation(const Handle& address);
+  bool releaseAllocation(Handle& address);
 
   bool garbageCollect() { return compactPurgableMemory(); }
 
   // Get the amount of memory used for different classes of allocation. Warning:
   // This currently has O(N) cost. If that is causing you trouble go ahead and
   // maintain an internal record so you can answer this in O(1).
-  size_t getTotalSize() const { return _heapSize; }
+  size_t getTotalSize() const { return heapSize_; }
   size_t getTotalStaticDataUsage() const;
   size_t getTotalPurgableDataUsage() const;
   size_t getTotalDataUsage() const {
@@ -124,19 +146,19 @@ class MemoryAllocator {
   void registerStaticRelease(const MemoryRegion& release);
   void registerPurgableRelease(const MemoryRegion& release);
 
-  size_t _heapSize;
-  unsigned char* _heap;
+  size_t heapSize_;
+  unsigned char* heap_;
 
-  size_t _purgableHead;
+  size_t purgableHead_;
 
-  std::map<unsigned char*, MemoryRegion> _staticRegionMap;
-  std::map<unsigned char*, MemoryRegion> _purgableRegionMap;
+  std::map<unsigned char*, MemoryRegion> staticRegionMap_;
+  std::map<unsigned char*, MemoryRegion> purgableRegionMap_;
 
   std::map<unsigned int, std::map<unsigned char*, MemoryRegion>::iterator>
-      _relocationMap;
-  std::map<unsigned char*, unsigned int> _inverseRelocationMap;
+      relocationMap_;
+  std::map<unsigned char*, unsigned int> inverseRelocationMap_;
 
-  static unsigned int _idGenerator;
+  unsigned int idGenerator_;
 };
 
 }  // namespace gapir

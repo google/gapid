@@ -28,6 +28,8 @@
 #include <utility>
 #include <vector>
 
+#define unused(x) ((void)sizeof(x))
+
 namespace gapir {
 
 std::unique_ptr<InMemoryResourceCache> InMemoryResourceCache::create(
@@ -59,7 +61,7 @@ bool InMemoryResourceCache::putCache(const Resource& res, const void* resData) {
   // Get a new ID for this cache entry that is larger than any current ID.
   auto newID = mIDGenerator++;
 
-  // Try to allocate some memory. If we get an allocation faulture, throw more
+  // Try to allocate some memory. If we get an allocation failure, throw more
   // stuff out until we succeed. This might happen even if we passed the memory
   // limit check above, because we cannot control the other applications running
   // on our device and how much memory they might use. It may also fail
@@ -74,7 +76,9 @@ bool InMemoryResourceCache::putCache(const Resource& res, const void* resData) {
       // the memory allocator under extreme pressure due to fragmentation.
       // See http://go/GapirCustomAllocator for more details on why
       // we discard half the cache's contents here.
-      assert(evictLeastRecentlyUsed(mMemoryUse / 2));
+      bool evictedSomething = evictLeastRecentlyUsed(mMemoryUse / 2);
+      assert(evictedSomething);
+      unused(evictedSomething);
     }
   }
 
@@ -111,7 +115,7 @@ bool InMemoryResourceCache::loadCache(const Resource& res, void* target) {
          << mCacheAccesses
          << " accesses: " << (float)mCacheHits / (float)mCacheAccesses * 100.f
          << " pc cache hit rate.";
-      GAPID_WARNING(ss.str().c_str());
+      GAPID_INFO(ss.str().c_str());
     }
 
     // Get the data into the cache and return it.
@@ -163,7 +167,38 @@ bool InMemoryResourceCache::resize(size_t newSize) {
   return true;
 }
 
-void InMemoryResourceCache::dump(FILE* file) { assert(false); }
+void InMemoryResourceCache::dump(FILE* out) {
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, (res == mResources.begin()) ? "┏━━━━━━━━━━━━━━━━"
+                                             : "┳━━━━━━━━━━━━━━━━");
+  }
+  fprintf(out, "┓\n");
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, "┃ addr: %6zu ",
+            (res->second.second == nullptr ? (char*)nullptr
+                                           : (char*)&res->second.second[0]) -
+                (char*)nullptr);
+  }
+  fprintf(out, "┃\n");
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, "┃ size:   %6zu ", (size_t)res->second.first.getSize());
+  }
+  fprintf(out, "┃\n");
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, (res == mResources.begin()) ? "┃ head           "
+                                             : "┃                ");
+  }
+  fprintf(out, "┃\n");
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, (res == mResources.begin()) ? "┗━━━━━━━━━━━━━━━━"
+                                             : "┻━━━━━━━━━━━━━━━━");
+  }
+  fprintf(out, "┛\n");
+}
 
 void InMemoryResourceCache::clear() {
   for (auto&& resource : mResources) {
@@ -206,7 +241,7 @@ bool InMemoryResourceCache::evictLeastRecentlyUsed(size_t bytes) {
   }
 
   GAPID_DEBUG(
-      "### evictLeastRecentlyUsed evicted %zu bytes (wanted to release %zu)",
+      "evictLeastRecentlyUsed evicted %zu bytes (wanted to release %zu)",
       bytesReleased, bytes);
 
   return true;
@@ -218,7 +253,13 @@ bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
   // How much could we prefetch if we wanted to completely fill (100% eviction
   // rate) the cache?
   size_t possiblePrefetch = res.getSize() < tcs ? (tcs - res.getSize()) : 0;
-  // Lets prefetch 10% of that maximum figure.
+  // Lets prefetch 10% of that maximum figure. This is a heuristic.
+  // Larger fractions of tcs will be more efficient at bulk loading resources
+  // but also more costly in the case of miss-predicts on resource
+  // anticipation. Also, larger fractions will cause fewer but larger pauses
+  // in replay while resource data is fetched. More smaller pauses may be
+  // preferable for performance work. Feel free to tune this heuristic at
+  // a later date.
   size_t prefetch = possiblePrefetch / 10;
 
   // Try to anticipate the next few resources.
@@ -247,7 +288,8 @@ bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
   if (target != nullptr) {
     if (resRecord->second.second == nullptr) {
       GAPID_ERROR(
-          "Cache miss prefetch failed for resource %s. This is probably very "
+          "Cache miss prefetch returned nullptr for resource %s. This is "
+          "probably very "
           "bad.",
           res.getID().c_str());
       return false;

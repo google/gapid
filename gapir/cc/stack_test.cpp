@@ -38,6 +38,7 @@ class StackTest : public ::testing::Test {
     mMemoryManager.reset(new MemoryManager(mMemoryAllocator));
     mStack.reset(new Stack(STACK_CAPACITY, mMemoryManager.get()));
 
+    mMemoryManager->setVolatileMemory(4096);
     mMemoryManager->setReplayData(const_memory, constantMemorySize, nullptr, 0);
   }
 
@@ -108,15 +109,18 @@ TEST_F(StackTest, PopVolatilePtrWithoutConvert) {
   EXPECT_EQ(offset, pointer);
 }
 
-// TEST_F(StackTest, PopVolatilePtrWithConvert) {
-//   uint32_t offset = 0x123;
-//   mStack->pushValue(BaseType::VolatilePointer, offset);
+TEST_F(StackTest, PopVolatilePtrWithConvert) {
+  uint32_t offset = 0x123;
+  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
+  mStack->pushValue(BaseType::VolatilePointer, offset);
+  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
 
-//   const void* pointer = mStack->popVolatile<const void*>();
-//   EXPECT_TRUE(mStack->isValid());
+  const void* pointer = mStack->popVolatile<const void*>();
+  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
+  EXPECT_TRUE(mStack->isValid());
 
-//   EXPECT_EQ(mMemoryManager->volatileToAbsolute(offset), pointer);
-// }
+  EXPECT_EQ(mMemoryManager->volatileToAbsolute(offset), pointer);
+}
 
 TEST_F(StackTest, PopConstantPtrWithoutConvert) {
   uint32_t offset = 0x12;

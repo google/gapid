@@ -57,23 +57,16 @@
 using namespace core;
 using namespace gapir;
 
-const size_t RAM_CACHE_SIZE = 256ul * 1024ul * 1024ul;
-
 namespace {
 
 std::shared_ptr<MemoryAllocator> createAllocator() {
-  std::shared_ptr<MemoryAllocator> allocator;
-  size_t size = RAM_CACHE_SIZE;
+#if defined(__x86_64) || defined(__aarch64__)
+  size_t size = 16ull * 1024ull * 1024ull * 1024ull;
+#else
+  size_t size = 2ull * 1024ull * 1024ull * 1024ull;
+#endif
 
-  while (allocator == nullptr) {
-    try {
-      allocator = std::shared_ptr<MemoryAllocator>(new MemoryAllocator(size));
-    } catch (...) {
-      size = size / 2;
-    }
-  }
-
-  return allocator;
+  return std::shared_ptr<MemoryAllocator>(new MemoryAllocator(size));
 }
 
 enum ReplayMode {
@@ -679,7 +672,8 @@ void android_main(struct android_app* app) {
   std::unique_ptr<Server> server = nullptr;
   std::shared_ptr<MemoryAllocator> allocator = createAllocator();
   MemoryManager memoryManager(allocator);
-  auto cache = InMemoryResourceCache::create(allocator, RAM_CACHE_SIZE);
+  auto cache =
+      InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   std::mutex lock;
   PrewarmData data;
 
@@ -797,7 +791,7 @@ std::unique_ptr<ResourceCache> createCache(
     std::shared_ptr<MemoryAllocator> allocator) {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   if (!onDiskCacheOpts.enabled) {
-    return InMemoryResourceCache::create(allocator, RAM_CACHE_SIZE);
+    return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   }
   auto onDiskCachePath = std::string(onDiskCacheOpts.path);
   bool cleanUpOnDiskCache = onDiskCacheOpts.cleanUp;
@@ -812,14 +806,14 @@ std::unique_ptr<ResourceCache> createCache(
         "No disk cache path specified and no $TMPDIR environment variable "
         "defined for temporary on-disk cache, fallback to use in-memory "
         "cache.");
-    return InMemoryResourceCache::create(allocator, RAM_CACHE_SIZE);
+    return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   }
   auto onDiskCache =
       OnDiskResourceCache::create(onDiskCachePath, cleanUpOnDiskCache);
   if (onDiskCache == nullptr) {
     GAPID_WARNING(
         "On-disk cache creation failed, fallback to use in-memory cache");
-    return InMemoryResourceCache::create(allocator, RAM_CACHE_SIZE);
+    return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   }
   GAPID_INFO("On-disk cache created at %s", onDiskCachePath.c_str());
   if (cleanUpOnDiskCache || useTempCacheFolder) {
@@ -866,7 +860,7 @@ std::unique_ptr<ResourceCache> createCache(
   }
 #endif  // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   // Just use the in-memory cache
-  return InMemoryResourceCache::create(allocator, RAM_CACHE_SIZE);
+  return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
 }
 }  // namespace
 

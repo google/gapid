@@ -51,11 +51,29 @@ std::vector<Resource> ResourceCache::anticipateNextResources(
                                // blind. Return the empty vector.
   }
 
-  std::vector<Resource>::iterator resIter = resMapIter->second;
+  auto resIter = resMapIter->second;
 
   if (resIter != mResources.end()) {
     ++resIter;
   }
+
+  // mResources is not a perfect chronological ordering of the resource
+  // access pattern of the replay. It is sorted by resource "first use
+  // order". That is A, B, C, D, E, C, F will reduce to A, B, C, D, E, F.
+  // This may be the origin of cache prefetch mispredictions if a resource
+  // provokes a cache miss on a second or subsequent use in a given replay.
+  // In empirical measurements this has not proved to be a significant problem
+  // yet, so I've kept things simple and not added extra complexity to deal
+  // with the issue.
+
+  // The following loop also returns anticipated resources without concern
+  // for whether they are already in the cache. If some of the resources
+  // returned ARE already in the cache, then the total bytes fetched by
+  // a call to prefetchImpl() will be less than bytesToFetch.
+  // This could be compensated for by doing an in-cache check here
+  // but would also result in further look-ahead and accordingly greater cost
+  // in the case of a cache mispredict. This compromise works well in my
+  // measurements so I'm going to keep it simple for now.
 
   for (unsigned int i = 0;
        resIter != mResources.end() && bytesSoFar < bytesToFetch; ++i) {

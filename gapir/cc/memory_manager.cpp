@@ -22,6 +22,24 @@
 #include <utility>
 #include <vector>
 
+//                 mMemory[0]
+//   ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
+//   ┃             ┃                        ┃
+//   ┃             ┃                        ┃
+//   ┃             ┃                        ┃
+//   ┃             ┃         volatile       ┃
+//   ┃   mMemory   ┃          memory        ┃
+//   ┃             ┃                        ┃
+//   ┃             ┃                        ┃
+//   ┃             ┣━━━━━━━━━━━━━━━━━━━━━━━━┨
+//   ┃             ┃                        ┃
+//   ┃             ┃        in-memory       ┃
+//   ┃             ┃        resource        ┃
+//   ┃             ┃          cache         ┃
+//   ┃             ┃                        ┃
+//   ┗━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━┛
+//                 mMemory[mSize]
+
 namespace gapir {
 
 template <typename T>
@@ -33,7 +51,7 @@ MemoryManager::MemoryRange<T>::MemoryRange(T* base, uint32_t size)
 
 MemoryManager::MemoryManager(std::shared_ptr<MemoryAllocator> allocator)
     : mAllocator(allocator),
-      mMemory(allocator->allocateStatic(1024)),
+      mMemory(allocator->allocateStatic(1)),
       mOpcodeMemory(nullptr, 0),
       mConstantMemory(nullptr, 0),
       mVolatileMemory(nullptr, 0) {
@@ -48,7 +66,8 @@ bool MemoryManager::setVolatileMemory(uint32_t size) {
   bool resizeSuccess = mAllocator->resizeStaticAllocation(mMemory, size);
 
   if (resizeSuccess == false) {
-    GAPID_FATAL("MemoryManager::setVolatileMemory - RESIZE FAILED");
+    GAPID_ERROR("MemoryManager::setVolatileMemory - RESIZE FAILED");
+    return false;
   }
 
   mVolatileMemory = {&mMemory[0], size};

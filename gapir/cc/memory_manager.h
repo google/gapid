@@ -31,18 +31,12 @@ namespace gapir {
 class MemoryAllocator;
 
 // Memory manager class for managing the memory used by the replay system.
-// Outside of this class there shouldn't be any significant heap allocation in
-// the replay daemon itself (small allocations are possible for bookkeeping)
 //
 // The layout of the memory managed by the memory manager (extra paddings are
 // possible between the different memory regions): | In memory resource cache |
 // Volatile Memory | Replay data |
 class MemoryManager {
  public:
-  // Creating a memory manager will try to allocate memory based on the size
-  // list provided, while keeping at least size * kOverheadFactor free bytes for
-  // possible driver overhead allocations. Stopping after the first successful
-  // allocation and cause a fatal error if none of the sizes could be allocated.
   MemoryManager(std::shared_ptr<MemoryAllocator> allocator);
   ~MemoryManager();
 

@@ -59,11 +59,11 @@ TEST_F(MemoryManagerTest, ExplicitVolatileSizeIsUpdated) {
   EXPECT_EQ(volatileMemorySize, mMemoryManager->getVolatileSize());
 }
 
-// TEST_F(MemoryManagerTest, OutOfBoundsVolatileSizeFails) {
-//   EXPECT_TRUE(mMemoryManager->setVolatileMemory(MEMORY_SIZE));
-//   EXPECT_FALSE(mMemoryManager->setVolatileMemory(MEMORY_SIZE + 1));
-//   EXPECT_TRUE(mMemoryManager->setVolatileMemory(MEMORY_SIZE));
-// }
+TEST_F(MemoryManagerTest, OutOfBoundsVolatileSizeFails) {
+  EXPECT_TRUE(mMemoryManager->setVolatileMemory(MEMORY_SIZE));
+  EXPECT_FALSE(mMemoryManager->setVolatileMemory(MEMORY_SIZE + 1));
+  EXPECT_TRUE(mMemoryManager->setVolatileMemory(MEMORY_SIZE));
+}
 
 TEST_F(MemoryManagerTest, IsConstantAddressWorks) {
   const uint32_t constantMemorySize = 1024;

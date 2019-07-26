@@ -76,7 +76,6 @@ class InMemoryResourceCache : public ResourceCache {
 
   unsigned int mIDGenerator;
 
-  unsigned int mHits = 0;
   unsigned int mCacheHits = 0;
   unsigned int mCacheAccesses = 0;
 };

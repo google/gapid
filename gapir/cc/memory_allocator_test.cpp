@@ -4,6 +4,8 @@
 
 using namespace gapir;
 
+#define ALLOCATOR_SIZE 2048
+
 void TEST_ALLOCATIONS(const std::vector<MemoryAllocator::Handle>& allocations,
                       const std::vector<size_t>& allocationSizes,
                       const std::vector<bool>& expectPass) {
@@ -43,12 +45,14 @@ void TEST_ALLOCATIONS(const std::vector<MemoryAllocator::Handle>& allocations,
 }
 
 TEST(MemoryAllocator, SimpleStaticAllocate) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
   EXPECT_TRUE(allocator->allocateStatic(1024) != nullptr);
 }
 
 TEST(MemoryAllocator, StaticAllocateTooMuch) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
   EXPECT_TRUE(allocator->allocateStatic(8192) == nullptr);
 }
 
@@ -60,7 +64,8 @@ TEST(MemoryAllocator, SimpleMultipleStaticAllocate) {
 
   std::vector<MemoryAllocator::Handle> addresses;
 
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   for (unsigned int i = 0; i < allocationSizes.size(); ++i) {
     addresses.push_back(allocator->allocateStatic(allocationSizes[i]));
@@ -70,23 +75,25 @@ TEST(MemoryAllocator, SimpleMultipleStaticAllocate) {
 }
 
 TEST(MemoryAllocator, SimpleGrowStaticAllocate) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   auto alloc = allocator->allocateStatic(1024);
   EXPECT_TRUE(alloc != nullptr);
 
-  EXPECT_TRUE(allocator->resizeStaticAllocation(alloc, 2048));
+  EXPECT_TRUE(allocator->resizeStaticAllocation(alloc, ALLOCATOR_SIZE));
   EXPECT_TRUE(allocator->resizeStaticAllocation(alloc, 512));
   EXPECT_FALSE(allocator->resizeStaticAllocation(alloc, 4096));
 }
 
 TEST(MemoryAllocator, ComplexGrowStaticAllocate) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   auto alloc = allocator->allocateStatic(1024);
   EXPECT_TRUE(alloc != nullptr);
 
-  EXPECT_TRUE(allocator->resizeStaticAllocation(alloc, 2048));
+  EXPECT_TRUE(allocator->resizeStaticAllocation(alloc, ALLOCATOR_SIZE));
   EXPECT_TRUE(allocator->resizeStaticAllocation(alloc, 512));
   EXPECT_FALSE(allocator->resizeStaticAllocation(alloc, 4096));
 
@@ -100,13 +107,14 @@ TEST(MemoryAllocator, ComplexGrowStaticAllocate) {
   EXPECT_TRUE(allocator->resizeStaticAllocation(alloc2, 256));
 
   EXPECT_FALSE(allocator->resizeStaticAllocation(alloc, 1024));
-  EXPECT_FALSE(allocator->resizeStaticAllocation(alloc2, 2048));
+  EXPECT_FALSE(allocator->resizeStaticAllocation(alloc2, ALLOCATOR_SIZE));
 
   TEST_ALLOCATIONS({alloc, alloc2}, {256, 256}, {true, true});
 }
 
 TEST(MemoryAllocator, SimplePurgableAllocate) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   std::vector<size_t> allocationSizes;
   std::vector<bool> expectPass;
@@ -125,7 +133,8 @@ TEST(MemoryAllocator, SimplePurgableAllocate) {
 }
 
 TEST(MemoryAllocator, SimplePurgableAllocateAroundStatic) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   allocator->allocateStatic(1024);
 
@@ -146,7 +155,8 @@ TEST(MemoryAllocator, SimplePurgableAllocateAroundStatic) {
 }
 
 TEST(MemoryAllocator, SimplePurgableAllocateAroundMultipleStatic) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   allocator->allocateStatic(1024);
   allocator->allocateStatic(512);
@@ -161,8 +171,6 @@ TEST(MemoryAllocator, SimplePurgableAllocateAroundMultipleStatic) {
     expectPass.push_back(i < 64);
 
     auto alloc = allocator->allocatePurgable(8);
-    std::cerr << "i = " << i << ": alloc = "
-              << (alloc != nullptr ? ((void*)(&(*alloc))) : nullptr) << "\n";
     addresses.push_back(alloc);
   }
 
@@ -170,7 +178,8 @@ TEST(MemoryAllocator, SimplePurgableAllocateAroundMultipleStatic) {
 }
 
 TEST(MemoryAllocator, SimplePurgableAllocateRelocate) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   std::vector<size_t> allocationSizes;
   std::vector<bool> expectPass;
@@ -202,8 +211,6 @@ TEST(MemoryAllocator, SimplePurgableAllocateRelocate) {
     expectPass.push_back(i < 97);
 
     auto alloc = allocator->allocatePurgable(8);
-    std::cerr << "i = " << i << ": alloc = "
-              << (alloc != nullptr ? ((void*)(&(*alloc))) : nullptr) << "\n";
     addresses.push_back(alloc);
   }
 
@@ -224,8 +231,6 @@ TEST(MemoryAllocator, SimplePurgableAllocateRelocate) {
     expectPass.push_back(i < 17);
 
     auto alloc = allocator->allocatePurgable(8);
-    std::cerr << "i = " << i << ": alloc = "
-              << (alloc != nullptr ? ((void*)(&(*alloc))) : nullptr) << "\n";
     addresses.push_back(alloc);
   }
 
@@ -233,7 +238,8 @@ TEST(MemoryAllocator, SimplePurgableAllocateRelocate) {
 }
 
 TEST(MemoryAllocator, SimplePurgableAllocatePurge) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   std::vector<size_t> allocationSizes;
   std::vector<bool> expectPass;
@@ -277,7 +283,8 @@ TEST(MemoryAllocator, SimplePurgableAllocatePurge) {
 }
 
 TEST(MemoryAllocator, SimplePurgableAllocatePurgeViaGrow) {
-  std::unique_ptr<MemoryAllocator> allocator = MemoryAllocator::create(2048);
+  std::unique_ptr<MemoryAllocator> allocator =
+      MemoryAllocator::create(ALLOCATOR_SIZE);
 
   std::vector<size_t> allocationSizes;
   std::vector<bool> expectPass;

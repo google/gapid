@@ -81,18 +81,17 @@ TEST_F(ContextTest, CreateErrorReplayRequest) {
   EXPECT_FALSE(context->initialize("payload"));
 }
 
-// TEST_F(ContextTest, CreateErrorVolatileMemory) {
-//   auto payload = createPayload(0, MEMORY_SIZE + 1, {}, {}, {});
+TEST_F(ContextTest, CreateErrorVolatileMemory) {
+  auto payload = createPayload(0, MEMORY_SIZE + 1, {}, {}, {});
 
-//   EXPECT_CALL(*mSrv, getPayload("payload"))
-//       .WillOnce(Return(ByMove(std::move(payload))));
-//   core::CrashHandler crash_handler;
-//   auto context = Context::create(mSrv.get(), crash_handler,
-//                                  mResourceLoader.get(),
-//                                  mMemoryManager.get());
-//   EXPECT_THAT(context, NotNull());
-//   EXPECT_FALSE(context->initialize("payload"));
-// }
+  EXPECT_CALL(*mSrv, getPayload("payload"))
+      .WillOnce(Return(ByMove(std::move(payload))));
+  core::CrashHandler crash_handler;
+  auto context = Context::create(mSrv.get(), crash_handler,
+                                 mResourceLoader.get(), mMemoryManager.get());
+  EXPECT_THAT(context, NotNull());
+  EXPECT_FALSE(context->initialize("payload"));
+}
 
 TEST_F(ContextTest, LoadResource) {
   auto payload =
