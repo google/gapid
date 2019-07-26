@@ -205,9 +205,6 @@ class Interpreter {
   // The last reached label value.
   uint32_t mLabel;
 
-  // The number of API calls made thus far.
-  uint32_t mNumApiCallsMade;
-
   // The result of the thread-chained exec() calls.
   std::promise<Result> mExecResult;
 

@@ -70,8 +70,7 @@ Interpreter::Interpreter(core::CrashHandler& crash_handler,
       mInstructionCount(0),
       mCurrentInstruction(0),
       mNextThread(0),
-      mLabel(0),
-      mNumApiCallsMade(0) {
+      mLabel(0) {
   registerBuiltin(GLOBAL_INDEX, PRINT_STACK_FUNCTION_ID,
                   [](uint32_t, Stack* stack, bool) {
                     stack->printStack();

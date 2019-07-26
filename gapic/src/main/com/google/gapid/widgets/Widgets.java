@@ -772,6 +772,18 @@ public class Widgets {
     return layout;
   }
 
+  public static GridLayout withSpacing(GridLayout layout, int horizontalSpacing, int verticalSpacing) {
+    layout.horizontalSpacing = horizontalSpacing;
+    layout.verticalSpacing = verticalSpacing;
+    return layout;
+  }
+
+  public static RowLayout withMargin(RowLayout layout, int marginWidth, int marginHeight) {
+    layout.marginWidth = marginWidth;
+    layout.marginHeight = marginHeight;
+    return layout;
+  }
+
   public static RowLayout centered(RowLayout layout) {
     layout.center = true;
     return layout;

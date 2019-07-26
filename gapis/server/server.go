@@ -482,8 +482,8 @@ type statusListener struct {
 	f                  func(*service.TaskUpdate)
 	m                  func(*service.MemoryStatus)
 	r                  func(*service.ReplayStatus)
-	lastProgressUpdate map[*status.Task]time.Time
-	progressUpdateFreq time.Duration
+	lastProgressUpdate map[*status.Task]time.Time // guarded by progressMutex
+	progressUpdateFreq time.Duration              // guarded by progressMutex
 	progressMutex      sync.Mutex
 }
 
@@ -601,8 +601,9 @@ func (l *statusListener) OnMemorySnapshot(ctx context.Context, stats runtime.Mem
 }
 
 func (l *statusListener) OnReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32) {
-	l.progressMutex.Lock()
-	defer l.progressMutex.Unlock()
+	// Not using lock here for efficiency. Because replay status update is of high frequency.
+	// l.progressMutex.Lock()
+	// defer l.progressMutex.Unlock()
 
 	l.r(&service.ReplayStatus{
 		Label:          label,
