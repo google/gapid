@@ -59,10 +59,15 @@ func (v *Value) AssignTo(p interface{}) error {
 	return deep.Copy(p, s)
 }
 
+type BoxedArray interface {
+	GetArrayValues() interface{}
+}
+
 var (
 	tyEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
 	tyMemoryPointer  = reflect.TypeOf((*memory.Pointer)(nil)).Elem()
 	tyMemorySlice    = reflect.TypeOf((*memory.Slice)(nil)).Elem()
+	tyBoxedArray     = reflect.TypeOf((*BoxedArray)(nil)).Elem()
 	noValue          = reflect.Value{}
 )
 
@@ -74,6 +79,11 @@ func IsMemoryPointer(t reflect.Type) bool {
 // IsMemorySlice returns true if t implements memory.Slice.
 func IsMemorySlice(t reflect.Type) bool {
 	return t.Implements(tyMemorySlice)
+}
+
+// IsBoxedArray returns true if t implements memory.Slice.
+func IsBoxedArray(t reflect.Type) bool {
+	return t.Implements(tyBoxedArray)
 }
 
 // AsMemoryPointer returns v cast to a memory.Pointer. IsMemoryPointer must
@@ -122,6 +132,10 @@ func (b *boxer) val(v reflect.Value) *Value {
 			Count: s.Count(),
 			Root:  s.Root(),
 		}}}
+	case IsBoxedArray(t):
+		s := v.Interface().(BoxedArray)
+		v = reflect.ValueOf(s.GetArrayValues())
+		return b.val(v)
 	}
 
 	switch t.Kind() {
