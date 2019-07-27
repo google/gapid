@@ -332,6 +332,10 @@ import (
     return a.data[i]
   }
 
+  func (a {{$name}}) GetArrayValues() interface{} {
+    return *a.data
+  }
+
   func (a {{$name}}) Getʷ(ϟctx context.Context, ϟw ϟapi.StateWatcher, ϟtrack bool, i int) {{$el}} {
     v := a.data[i]
     if ϟw != nil {
