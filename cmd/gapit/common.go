@@ -424,7 +424,12 @@ func printBoxValue(ctx context.Context, client service.Service, t *path.Type, v 
 		oldPrefix := prefix
 		prefix := prefix + "│   "
 		fmt.Printf("\n")
+
 		for i := 0; i < len(sliceData.Values); i++ {
+			if i > 9 {
+				fmt.Printf("%s└──  ... %v more\n", oldPrefix, len(sliceData.Values)-i)
+				break
+			}
 			if i == len(sliceData.Values)-1 {
 				fmt.Printf("%s└──", oldPrefix)
 			} else {
@@ -544,6 +549,10 @@ func printCommand(ctx context.Context, client service.Service, p *path.Command, 
 				sl := tp.GetSlice()
 				if sl == nil {
 					return fmt.Errorf("Observations are expected to be slices")
+				}
+				if tm.Range.Size > 1024 {
+					fmt.Fprintf(os.Stdout, "%s [%v]: ...", tp.Name, tm.Range)
+					continue
 				}
 				v, err := client.Get(ctx,
 					(&path.MemoryAsType{
