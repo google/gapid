@@ -172,6 +172,9 @@ public interface Theme {
   @RGB(argb = 0xffd1e3f7) public Color tabFolderPlaceholderFill();
   @RGB(argb = 0xff4a90e2) public Color tabFolderPlaceholderStroke();
 
+  @RGB(argb = 0xfff00000) public Color missingInput();
+  @RGB(argb = 0xf0000000) public Color filledInput();
+
   @TextStyle(foreground = 0xa9a9a9) public Styler structureStyler();
   @TextStyle(foreground = 0x0000ee) public Styler identifierStyler();
   @TextStyle(bold = true) public Styler labelStyler();

@@ -458,23 +458,21 @@ public class TracerDialog {
         });
 
         Listener filledListener = e -> {
-            requiredFieldMessage.setVisible(!this.isReady());
-            deviceLabel.setForeground(getDisplay().getSystemColor(getSelectedDevice() == null ? SWT.COLOR_RED : SWT.COLOR_BLACK));
-            directoryLabel.setForeground(getDisplay().getSystemColor(directory.getText().isEmpty() ? SWT.COLOR_RED : SWT.COLOR_BLACK));
-            fileLabel.setForeground(getDisplay().getSystemColor(file.getText().isEmpty() ? SWT.COLOR_RED : SWT.COLOR_BLACK));
+          requiredFieldMessage.setVisible(!this.isReady());
+          deviceLabel.setForeground(getSelectedDevice() == null ? widgets.theme.missingInput() : widgets.theme.filledInput());
+          directoryLabel.setForeground(directory.getText().isEmpty() ? widgets.theme.missingInput() : widgets.theme.filledInput());
+          fileLabel.setForeground(file.getText().isEmpty() ? widgets.theme.missingInput() : widgets.theme.filledInput());
 
-            TraceTypeCapabilities config = getSelectedApi();
-            if(config != null) {
-              apiLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_BLACK));
-              targetLabel.setForeground(getDisplay().getSystemColor(
-                  (config.getRequiresApplication() && traceTarget.getText().isEmpty()) ?
-                      SWT.COLOR_RED : SWT.COLOR_BLACK));
-            } else {
-              apiLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
-              targetLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_BLACK));
-            }
-
-
+          TraceTypeCapabilities config = getSelectedApi();
+          if (config != null) {
+            apiLabel.setForeground(widgets.theme.filledInput());
+            targetLabel.setForeground(
+                (config.getRequiresApplication() && traceTarget.getText().isEmpty()) ? 
+                  widgets.theme.missingInput() : widgets.theme.filledInput());
+          } else {
+            apiLabel.setForeground(widgets.theme.missingInput());
+            targetLabel.setForeground(widgets.theme.filledInput());
+          }
         };
 
         this.addModifyListener(filledListener);
