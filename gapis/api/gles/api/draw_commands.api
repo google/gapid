@@ -67,7 +67,15 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), 1)
   WriteGPUFramebufferData(ctx)
-  DrawCommandDependencies(ctx)
+  DrawCommandDependencies(ctx, as!u32(indices_count), 1)
+}
+
+// See GLES 3.2 spec '10.5 Drawing Commands Using Vertex Arrays'
+class DrawArraysIndirectCommand {
+  u32 count
+  u32 instanceCount
+  u32 first
+  u32 reservedMustBeZero
 }
 
 @if(Version.GLES31)
@@ -76,14 +84,13 @@ cmd void glDrawArrays(GLenum draw_mode, GLint first_index, GLsizei indices_count
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawArraysIndirect.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawArraysIndirect.xhtml", Version.GLES32)
 cmd void glDrawArraysIndirect(GLenum draw_mode, const void* indirect) {
-  checkPrimitiveType(draw_mode)
-  ctx := GetContext()
   CheckNonDefaultVertexArrayBound()
+  ctx := GetContext()
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: CheckEQ(as!u64(indirect) % 4, 0)
-  WriteGPUFramebufferData(ctx)
-  DrawCommandDependencies(ctx)
+  command := as!DrawArraysIndirectCommand*(indirect)[0]
+  DrawArraysInstanced(draw_mode, as!GLint(command.first), as!GLsizei(command.count), as!GLsizei(command.instanceCount))
 }
 
 @if(Version.GLES30)
@@ -104,7 +111,7 @@ sub void DrawArraysInstanced(GLenum draw_mode, GLint first_index, GLsizei indice
   ctx := GetContext()
   ReadVertexArrays(ctx, as!u32(first_index), as!u32(indices_count), as!u32(instance_count))
   WriteGPUFramebufferData(ctx)
-  DrawCommandDependencies(ctx)
+  DrawCommandDependencies(ctx, as!u32(indices_count), as!u32(instance_count))
 }
 
 sub void DrawElements(ref!Context    ctx,
@@ -148,7 +155,7 @@ sub void DrawElements(ref!Context    ctx,
     }
   }
   WriteGPUFramebufferData(ctx)
-  DrawCommandDependencies(ctx)
+  DrawCommandDependencies(ctx, as!u32(indices_count), as!u32(instance_count))
 }
 
 @if(Version.GLES10)
@@ -183,23 +190,46 @@ sub void DrawElementsBaseVertex(GLenum draw_mode, GLsizei indices_count, GLenum 
   DrawElements(ctx, draw_mode, indices_count, indices_type, indices, 1, base_vertex)
 }
 
+// See GLES 3.2 spec '10.5 Drawing Commands Using Vertex Arrays'
+class DrawElementsIndirectCommand {
+  u32 count
+  u32 instanceCount
+  u32 firstIndex
+  s32 baseVertex
+  u32 reservedMustBeZero
+}
+
 @if(Version.GLES31)
 @draw_call(isDrawCall())
 @transform_feedback(isTransformFeedback())
 @doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDrawElementsIndirect.xhtml", Version.GLES31)
 @doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDrawElementsIndirect.xhtml", Version.GLES32)
 cmd void glDrawElementsIndirect(GLenum draw_mode, GLenum indices_type, const void* indirect) {
-  checkPrimitiveType(draw_mode)
   checkIndicesType(indices_type)
-
-  ctx := GetContext()
   CheckNonDefaultVertexArrayBound()
   // TODO: Error if enabled array is not bound or is mapped.
+  ctx := GetContext()
   if ctx.Bound.DrawIndirectBuffer == null { glErrorInvalidOperation() }
   // TODO: INVALID_OPERATION error if the command would source data beyond the end of the buffer object.
   // TODO: CheckEQ(as!u64(indirect) % 4, 0)
+
+  command := as!DrawElementsIndirectCommand*(indirect)[0]
+  // TODO: The following is the actual sepc implementation, yet it does not compile because of an seemly impossible cast.
+  //
+  // size_of_type := switch(indices_type) {
+  //   case GL_UNSIGNED_BYTE:  { 1 }
+  //   case GL_UNSIGNED_SHORT: { 2 }
+  //   case GL_UNSIGNED_INT:   { 4 }
+  // }
+  //
+  // ## The cast as!void*() below fails:
+  // DrawElementsInstancedBaseVertex(draw_mode, as!GLsizei(command.count), indices_type, as!void*(command.firstIndex * as!u32(size_of_type)), as!GLsizei(command.instanceCount), as!GLint(command.baseVertex))
+
+  // TODO: once the cast issue above is fixed, we should be able to get rid of these three calls:
+  checkPrimitiveType(draw_mode)
   WriteGPUFramebufferData(ctx)
-  DrawCommandDependencies(ctx)
+  _ = command // Necessary to use 'command' here, because DrawCommandDependencies() is @spy_disabled
+  DrawCommandDependencies(ctx, command.count, command.instanceCount)
 }
 
 @if(Version.GLES30)
@@ -411,53 +441,80 @@ sub void DependencyReadTexture(ref!Texture texture) {
 
 // DrawCommandDependencies creates relevant dependencies of draw commands.
 @spy_disabled
-sub void DrawCommandDependencies(ref!Context ctx) {
-  read_fb := ctx.Bound.ReadFramebuffer
-  draw_fb := ctx.Bound.DrawFramebuffer
+sub void DrawCommandDependencies(ref!Context ctx, u32 index_count, u32 instance_count) {
+  if (index_count > 0) && (instance_count > 0) {
+    read_fb := ctx.Bound.ReadFramebuffer
+    draw_fb := ctx.Bound.DrawFramebuffer
 
-  _ = ctx.Rasterization.Viewport
+    _ = ctx.Rasterization.Viewport
 
-  if ctx.Pixel.Stencil.Test == GL_TRUE {
-    ReadFramebufferAttachment(read_fb.StencilAttachment)
-  }
+    if ctx.Pixel.Stencil.Test == GL_TRUE {
+      ReadFramebufferAttachment(read_fb.StencilAttachment)
+    }
 
-  if ctx.Pixel.Depth.Test == GL_TRUE {
-    ReadFramebufferAttachment(read_fb.DepthAttachment)
-  }
+    if ctx.Pixel.Depth.Test == GL_TRUE {
+      ReadFramebufferAttachment(read_fb.DepthAttachment)
+    }
 
-  for i in (0 .. ctx.Constants.MaxDrawBuffers) {
-    if draw_fb.DrawBuffer[i] != GL_NONE {
-      blendState := ctx.Pixel.Blend[as!DrawBufferIndex(i)]
-      if blendState.Enabled == GL_TRUE {
-        _ = blendState.SrcRgb
-        _ = blendState.SrcAlpha
-        _ = blendState.DstRgb
-        _ = blendState.DstAlpha
-        _ = blendState.EquationRgb
-        _ = blendState.EquationAlpha
+    for i in (0 .. ctx.Constants.MaxDrawBuffers) {
+      if draw_fb.DrawBuffer[i] != GL_NONE {
+        blendState := ctx.Pixel.Blend[as!DrawBufferIndex(i)]
+        if blendState.Enabled == GL_TRUE {
+          _ = blendState.SrcRgb
+          _ = blendState.SrcAlpha
+          _ = blendState.DstRgb
+          _ = blendState.DstAlpha
+          _ = blendState.EquationRgb
+          _ = blendState.EquationAlpha
+        }
       }
     }
-  }
 
-  for _, _, u in ctx.Bound.Program.UniformLocations {
+    for _, _, u in ctx.Bound.Program.UniformLocations {
 
-    // The program execution reads uniform values
-    read(u.Values)
+      // The program execution reads uniform values
+      read(u.Values)
 
-    // Sampler uniform refers to a texture
-    texture_target := GetTextureTargetFromSamplerType(u.Type)
-    if texture_target != GL_NONE {
-      DependencyReadTexture(GetBoundTextureForUnit(ctx.Objects.TextureUnits[as!TextureUnitId(u.Value[0])], texture_target))
+      // Sampler uniform refers to a texture
+      texture_target := GetTextureTargetFromSamplerType(u.Type)
+      if texture_target != GL_NONE {
+        DependencyReadTexture(GetBoundTextureForUnit(ctx.Objects.TextureUnits[as!TextureUnitId(u.Value[0])], texture_target))
+      }
+
     }
 
-  }
+    // Vertex input
+    if !IsDefaultVertexArrayBound() {
+      // Read host-side vertex input data. glDraw*() typically calls ReadVertexArrays() which
+      // reads client-side vertex input data, the only necessary reads at capture time.
+      // Here the reads for host-side vertex input is done to create dependencies.
+      arrayBuffer := ctx.Bound.ArrayBuffer
+      read(arrayBuffer.Data)
+      for _, _, a in ctx.Bound.VertexArray.VertexAttributeArrays {
+        if a.Enabled == GL_TRUE {
+          _ = a.Size
+          _ = a.Stride
+          _ = a.Type
+          _ = a.Normalized
+          _ = a.Integer
+          _ = a.Pointer
+          _ = a.RelativeOffset
+          _ = a.Binding.Id
+          _ = a.Binding.Buffer
+          _ = a.Binding.Offset
+          _ = a.Binding.Stride
+          _ = a.Binding.Divisor
+        }
+      }
+    }
 
-  for _, _, a in draw_fb.ColorAttachments {
-    ReadFramebufferAttachment(a)
-    WriteFramebufferAttachment(a)
-  }
+    for _, _, a in draw_fb.ColorAttachments {
+      ReadFramebufferAttachment(a)
+      WriteFramebufferAttachment(a)
+    }
 
-  SharedDrawClearCommandDependencies(ctx)
+    SharedDrawClearCommandDependencies(ctx)
+  }
 }
 
 // SharedDrawClearCommandDependencies creates relevant dependencies which are shared between draw and clear commands.
