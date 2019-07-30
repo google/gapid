@@ -116,6 +116,20 @@ func (c *client) Set(ctx context.Context, p *path.Any, v interface{}, r *path.Re
 	return res.GetPath(), nil
 }
 
+func (c *client) Delete(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
+	res, err := c.client.Delete(ctx, &service.DeleteRequest{
+		Path:   p,
+		Config: r,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetPath(), nil
+}
+
 func (c *client) Follow(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
 	res, err := c.client.Follow(ctx, &service.FollowRequest{
 		Path:   p,

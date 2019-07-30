@@ -180,6 +180,19 @@ message SetResponse {
   }
 }
 
+message DeleteRequest {
+  path.Any path = 1;
+  // Config to use when resolving paths.
+  path.ResolveConfig config = 2;
+}
+
+message DeleteResponse {
+  oneof res {
+    path.Any path = 1;
+    Error error = 2;
+  }
+}
+
 message FollowRequest {
   path.Any path = 1;
   // Config to use when resolving paths.
@@ -588,6 +601,12 @@ service Gapid {
   // value or memory at p replaced with v. The path returned is identical to p,
   // but with the base changed to refer to the new capture.
   rpc Set(SetRequest) returns (SetResponse) {
+  }
+
+  // Delete creates a copy of the capture referenced by p, but without the
+  // object, value or memory at p. The path returned is identical to p, but with
+  // the base changed to refer to the new capture.
+  rpc Delete(DeleteRequest) returns (DeleteResponse) {
   }
 
   // Follow returns the path to the object that the value at p links to.

@@ -126,6 +126,11 @@ type Service interface {
 	// the base changed to refer to the new capture.
 	Set(ctx context.Context, p *path.Any, v interface{}, c *path.ResolveConfig) (*path.Any, error)
 
+	// Delete creates a copy of the capture referenced by p, but without the object, value
+	// or memory at p. The path returned is identical to p, but with
+	// the base changed to refer to the new capture.
+	Delete(ctx context.Context, p *path.Any, c *path.ResolveConfig) (*path.Any, error)
+
 	// Follow returns the path to the object that the value at p links to.
 	// If the value at p does not link to anything then nil is returned.
 	Follow(ctx context.Context, p *path.Any, c *path.ResolveConfig) (*path.Any, error)

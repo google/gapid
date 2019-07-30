@@ -411,6 +411,16 @@ func (s *server) Set(ctx context.Context, p *path.Any, v interface{}, r *path.Re
 	return resolve.Set(ctx, p, v, r)
 }
 
+func (s *server) Delete(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
+	ctx = status.Start(ctx, "RPC Delete<%v>", p)
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "Delete")
+	if err := p.Validate(); err != nil {
+		return nil, log.Errf(ctx, err, "Invalid path: %v", p)
+	}
+	return resolve.Delete(ctx, p, r)
+}
+
 func (s *server) Follow(ctx context.Context, p *path.Any, r *path.ResolveConfig) (*path.Any, error) {
 	ctx = status.Start(ctx, "RPC Follow")
 	defer status.Finish(ctx)

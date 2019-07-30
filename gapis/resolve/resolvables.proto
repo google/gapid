@@ -138,3 +138,8 @@ message FramebufferObservationResolvable {
   path.FramebufferObservation path = 1;
   path.ResolveConfig config = 2;
 }
+
+message DeleteResolvable {
+  path.Any path = 1;
+  path.ResolveConfig config = 2;
+}
