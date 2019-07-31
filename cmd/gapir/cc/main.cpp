@@ -59,23 +59,21 @@ using namespace gapir;
 
 namespace {
 
+std::shared_ptr<MemoryAllocator> createAllocator() {
+#if defined(__x86_64) || defined(__aarch64__)
+  size_t size = 16ull * 1024ull * 1024ull * 1024ull;
+#else
+  size_t size = 2ull * 1024ull * 1024ull * 1024ull;
+#endif
+
+  return std::shared_ptr<MemoryAllocator>(new MemoryAllocator(size));
+}
+
 enum ReplayMode {
   kUnknown = 0,    // Can't determine replay type from arguments yet.
   kConflict,       // Impossible combination of command line arguments.
   kReplayServer,   // Run gapir as a server.
   kReplayArchive,  // Replay an exported archive.
-};
-
-std::vector<uint32_t> memorySizes {
-// If we are on desktop, we can try more memory
-#if TARGET_OS != GAPID_OS_ANDROID
-  3 * 1024 * 1024 * 1024U,  // 3GB
-#endif
-      2 * 1024 * 1024 * 1024U,  // 2GB
-      1 * 1024 * 1024 * 1024U,  // 1GB
-      512 * 1024 * 1024U,       // 512MB
-      256 * 1024 * 1024U,       // 256MB
-      128 * 1024 * 1024U,       // 128MB
 };
 
 struct Options {
@@ -477,8 +475,11 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
 static int replayArchive(core::CrashHandler* crashHandler,
                          std::unique_ptr<ResourceCache> resourceCache,
                          gapir::ReplayService* replayArchiveService) {
+  std::shared_ptr<MemoryAllocator> allocator = createAllocator();
+
   // The directory consists an archive(resources.{index,data}) and payload.bin.
-  MemoryManager memoryManager(memorySizes);
+  MemoryManager memoryManager(allocator);
+
   std::unique_ptr<ResourceLoader> resLoader =
       CachedResourceLoader::create(resourceCache.get(), nullptr);
 
@@ -669,8 +670,10 @@ void android_main(struct android_app* app) {
   std::string socket_file_path = internal_data_path + "/" + std::string(pipe);
   std::string uri = std::string("unix://") + socket_file_path;
   std::unique_ptr<Server> server = nullptr;
-  MemoryManager memoryManager(memorySizes);
-  auto cache = InMemoryResourceCache::create(memoryManager.getTopAddress());
+  std::shared_ptr<MemoryAllocator> allocator = createAllocator();
+  MemoryManager memoryManager(allocator);
+  auto cache =
+      InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   std::mutex lock;
   PrewarmData data;
 
@@ -784,10 +787,11 @@ namespace {
 // files, a monitor process will be forked to delete the cache files when the
 // main GAPIR VM process ends.
 std::unique_ptr<ResourceCache> createCache(
-    const Options::OnDiskCache& onDiskCacheOpts, MemoryManager* memoryManager) {
+    const Options::OnDiskCache& onDiskCacheOpts,
+    std::shared_ptr<MemoryAllocator> allocator) {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   if (!onDiskCacheOpts.enabled) {
-    return InMemoryResourceCache::create(memoryManager->getTopAddress());
+    return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   }
   auto onDiskCachePath = std::string(onDiskCacheOpts.path);
   bool cleanUpOnDiskCache = onDiskCacheOpts.cleanUp;
@@ -802,14 +806,14 @@ std::unique_ptr<ResourceCache> createCache(
         "No disk cache path specified and no $TMPDIR environment variable "
         "defined for temporary on-disk cache, fallback to use in-memory "
         "cache.");
-    return InMemoryResourceCache::create(memoryManager->getTopAddress());
+    return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   }
   auto onDiskCache =
       OnDiskResourceCache::create(onDiskCachePath, cleanUpOnDiskCache);
   if (onDiskCache == nullptr) {
     GAPID_WARNING(
         "On-disk cache creation failed, fallback to use in-memory cache");
-    return InMemoryResourceCache::create(memoryManager->getTopAddress());
+    return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
   }
   GAPID_INFO("On-disk cache created at %s", onDiskCachePath.c_str());
   if (cleanUpOnDiskCache || useTempCacheFolder) {
@@ -856,7 +860,7 @@ std::unique_ptr<ResourceCache> createCache(
   }
 #endif  // TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
   // Just use the in-memory cache
-  return InMemoryResourceCache::create(memoryManager->getTopAddress());
+  return InMemoryResourceCache::create(allocator, allocator->getTotalSize());
 }
 }  // namespace
 
@@ -883,7 +887,8 @@ static int startServer(core::CrashHandler* crashHandler, Options opts) {
     fclose(file);
   }
 
-  MemoryManager memoryManager(memorySizes);
+  std::shared_ptr<MemoryAllocator> allocator = createAllocator();
+  MemoryManager memoryManager(allocator);
 
   // If the user does not assign a port to use, get a free TCP port from OS.
   const char local_host_name[] = "127.0.0.1";
@@ -899,7 +904,7 @@ static int startServer(core::CrashHandler* crashHandler, Options opts) {
   std::string uri =
       std::string(local_host_name) + std::string(":") + std::string(portStr);
 
-  auto cache = createCache(opts.onDiskCacheOptions, &memoryManager);
+  auto cache = createCache(opts.onDiskCacheOptions, allocator);
 
   std::mutex lock;
   PrewarmData data;

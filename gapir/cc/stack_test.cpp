@@ -33,15 +33,18 @@ const uint32_t CONSTANT_SIZE = 128;
 class StackTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-    mMemoryManager.reset(new MemoryManager(memorySizes));
+    mMemoryAllocator =
+        std::shared_ptr<MemoryAllocator>(new MemoryAllocator(MEMORY_SIZE));
+    mMemoryManager.reset(new MemoryManager(mMemoryAllocator));
     mStack.reset(new Stack(STACK_CAPACITY, mMemoryManager.get()));
 
+    mMemoryManager->setVolatileMemory(4096);
     mMemoryManager->setReplayData(const_memory, constantMemorySize, nullptr, 0);
   }
 
   static const uint32_t constantMemorySize = 1024;
   uint8_t const_memory[constantMemorySize] = {};
+  std::shared_ptr<MemoryAllocator> mMemoryAllocator;
   std::unique_ptr<MemoryManager> mMemoryManager;
   std::unique_ptr<Stack> mStack;
 };
@@ -108,9 +111,12 @@ TEST_F(StackTest, PopVolatilePtrWithoutConvert) {
 
 TEST_F(StackTest, PopVolatilePtrWithConvert) {
   uint32_t offset = 0x123;
+  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
   mStack->pushValue(BaseType::VolatilePointer, offset);
+  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
 
   const void* pointer = mStack->popVolatile<const void*>();
+  std::cerr << "mStack->isValid() = " << mStack->isValid() << "\n";
   EXPECT_TRUE(mStack->isValid());
 
   EXPECT_EQ(mMemoryManager->volatileToAbsolute(offset), pointer);

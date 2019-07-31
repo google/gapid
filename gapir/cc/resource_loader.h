@@ -76,7 +76,7 @@ class PassThroughResourceLoader : public ResourceLoader {
     }
     size_t requestSize = 0;
     for (size_t i = 0; i < count; i++) {
-      requestSize += resources[i].size;
+      requestSize += resources[i].getSize();
     }
     if (requestSize > size) {
       return false;  // not enough space.

@@ -23,51 +23,123 @@
 #include <vector>
 
 namespace gapir {
-size_t ResourceCache::prefetch(const Resource* res, size_t count,
-                               ResourceLoader* fetcher) {
-  size_t res_sum = 0;
-  std::vector<Resource> uncached;
-  uncached.reserve(count);
-  size_t alreadyCached = 0;
+
+void ResourceCache::setPrefetch(const Resource* resources, size_t count,
+                                std::unique_ptr<ResourceLoader> fetcher) {
+  mResources.clear();
+  mResourceIterators.clear();
+
+  mResources.reserve(count);
+
+  for (unsigned int i = 0; i < count; ++i) {
+    mResources.push_back(resources[i]);
+    mResourceIterators[resources[i].getID()] = mResources.end() - 1;
+  }
+
+  mFetcher = std::move(fetcher);
+}
+
+std::vector<Resource> ResourceCache::anticipateNextResources(
+    const Resource& resource, size_t bytesToFetch) {
+  std::vector<Resource> expectedResources;
+
+  size_t bytesSoFar = 0;
+
+  auto resMapIter = mResourceIterators.find(resource.getID());
+  if (resMapIter == mResourceIterators.end()) {
+    return expectedResources;  // We don't know about this resource so we're
+                               // blind. Return the empty vector.
+  }
+
+  auto resIter = resMapIter->second;
+
+  if (resIter != mResources.end()) {
+    ++resIter;
+  }
+
+  // mResources is not a perfect chronological ordering of the resource
+  // access pattern of the replay. It is sorted by resource "first use
+  // order". That is A, B, C, D, E, C, F will reduce to A, B, C, D, E, F.
+  // This may be the origin of cache prefetch mispredictions if a resource
+  // provokes a cache miss on a second or subsequent use in a given replay.
+  // In empirical measurements this has not proved to be a significant problem
+  // yet, so I've kept things simple and not added extra complexity to deal
+  // with the issue.
+
+  // The following loop also returns anticipated resources without concern
+  // for whether they are already in the cache. If some of the resources
+  // returned ARE already in the cache, then the total bytes fetched by
+  // a call to prefetchImpl() will be less than bytesToFetch.
+  // This could be compensated for by doing an in-cache check here
+  // but would also result in further look-ahead and accordingly greater cost
+  // in the case of a cache mispredict. This compromise works well in my
+  // measurements so I'm going to keep it simple for now.
+
+  for (unsigned int i = 0;
+       resIter != mResources.end() && bytesSoFar < bytesToFetch; ++i) {
+    expectedResources.push_back(*resIter);
+    bytesSoFar += resIter->getSize();
+    resIter++;
+  }
+
+  return expectedResources;
+}
+
+size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count) {
+  std::vector<Resource> uncachedResources;
+  uncachedResources.reserve(count);
+
+  size_t numResourcesAlreadyCached = 0;
 
   for (size_t i = 0; i < count; i++) {
-    const auto& r = res[i];
-    if (hasCache(r)) {
-      alreadyCached++;
+    const auto& resource = resources[i];
+
+    if (hasCache(resource)) {
+      numResourcesAlreadyCached++;
       continue;
     }
-    if (res_sum + r.size > totalCacheSize()) {
-      break;
-    }
-    uncached.push_back(r);
-    res_sum += r.size;
+
+    uncachedResources.push_back(resource);
   }
-  GAPID_INFO(
-      "Prefetching %zu new uncached resources (%zu / %zu resources will be in "
-      "cache after prefetch)...",
-      uncached.size(), uncached.size() + alreadyCached, count);
+
   ResourceLoadingBatch bat;
-  auto fetchBatch = [&bat, fetcher, this]() {
+
+  GAPID_INFO(
+      "Prefetching %zu new uncached resources (%zu / %zu resources should be "
+      "in "
+      "cache after prefetch)...",
+      uncachedResources.size(),
+      uncachedResources.size() + numResourcesAlreadyCached, count);
+
+  auto fetchBatch = [&bat, this]() {
     auto fetched =
-        fetcher->fetch(bat.resources().data(), bat.resources().size());
+        this->mFetcher->fetch(bat.resources().data(), bat.resources().size());
+
     size_t put_sum = 0;
+
     for (size_t i = 0; i < bat.resources().size(); i++) {
       putCache(bat.resources().at(i),
                reinterpret_cast<const uint8_t*>(fetched->data()) + put_sum);
-      put_sum += bat.resources().at(i).size;
+      put_sum += bat.resources().at(i).getSize();
     }
+
     bat.clear();
   };
 
-  for (auto& r : uncached) {
-    if (!bat.append(r, nullptr)) {
+  for (auto& resource : uncachedResources) {
+    if (!bat.append(resource, nullptr)) {
       fetchBatch();
-      bat.append(r, nullptr);
+      bat.append(resource, nullptr);
     }
   }
+
   if (bat.size() > 0) {
     fetchBatch();
   }
-  return uncached.size();
+
+  GAPID_INFO("Prefetching complete.");
+
+  return uncachedResources.size();
 }
+
 }  // namespace gapir

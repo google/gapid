@@ -43,15 +43,33 @@ class ResourceCache {
   virtual bool loadCache(const Resource& res, void* target) = 0;
   // size returns the total size in bytes that can be used for caching.
   virtual size_t totalCacheSize() const = 0;
+  // returns the unused capacity of the cache in bytes.
+  virtual size_t unusedSize() const = 0;
   // resize adjust the total size in bytes that can be used for this cache.
+  // this does not actually resize the cache upwards, it can only be used to
+  // ensure the cache uses no more than newSize bytes on return. Please note the
+  // cache may later resize upwards again.
   virtual bool resize(size_t newSize) = 0;
-  // prefetch get the resources data through the given loader, and put as much
-  // as possble resource data in cache. Returns the number of resources put in
-  // cache.
-  virtual size_t prefetch(const Resource* res, size_t count,
-                          ResourceLoader* fetcher);
+  // set the anticipated resources and access order, so that on cache misses,
+  // the cache can fetch not only the missing resource, but also an anticipated
+  // lookahead. also fills any free space in the cache with the first N
+  // resources that fit in storage.
+  void setPrefetch(const Resource* res, size_t count,
+                   std::unique_ptr<ResourceLoader> fetcher);
   // debug print the internal state.
   virtual void dump(FILE*) {}
+
+ protected:
+  std::vector<Resource> anticipateNextResources(const Resource& resource,
+                                                size_t bytesToFetch);
+
+  virtual size_t prefetchImpl(const Resource* res, size_t count);
+
+ private:
+  std::vector<Resource> mResources;
+  std::map<ResourceId, std::vector<Resource>::iterator> mResourceIterators;
+
+  std::unique_ptr<ResourceLoader> mFetcher;
 };
 
 }  // namespace gapir

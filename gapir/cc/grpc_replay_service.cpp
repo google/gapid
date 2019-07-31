@@ -102,8 +102,8 @@ std::unique_ptr<ReplayService::Resources> GrpcReplayService::getResources(
   res.set_allocated_resource_request(new replay_service::ResourceRequest());
   size_t totalSize = 0;
   for (size_t i = 0; i < resCount; i++) {
-    res.mutable_resource_request()->add_ids(resources[i].id);
-    totalSize += resources[i].size;
+    res.mutable_resource_request()->add_ids(resources[i].getID());
+    totalSize += resources[i].getSize();
   }
   res.mutable_resource_request()->set_expected_total_size(totalSize);
   mGrpcStream->Write(res);

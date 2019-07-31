@@ -30,10 +30,12 @@ const uint32_t MEMORY_SIZE = 4096;
 class MemoryManagerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-    mMemoryManager.reset(new MemoryManager(memorySizes));
+    mMemoryAllocator =
+        std::shared_ptr<MemoryAllocator>(new MemoryAllocator(MEMORY_SIZE));
+    mMemoryManager.reset(new MemoryManager(mMemoryAllocator));
   }
 
+  std::shared_ptr<MemoryAllocator> mMemoryAllocator;
   std::unique_ptr<MemoryManager> mMemoryManager;
 };
 }  // anonymous namespace
@@ -47,10 +49,6 @@ TEST_F(MemoryManagerTest, ConstantSizeIsCorrect) {
   mMemoryManager->setReplayData(nullptr, 192, nullptr, 64);
   EXPECT_EQ(192, mMemoryManager->getConstantSize());
   EXPECT_EQ(64, mMemoryManager->getOpcodeSize());
-}
-
-TEST_F(MemoryManagerTest, DefaultVolatileSizeIsMemorySize) {
-  EXPECT_EQ(MEMORY_SIZE, mMemoryManager->getVolatileSize());
 }
 
 TEST_F(MemoryManagerTest, ExplicitVolatileSizeIsUpdated) {

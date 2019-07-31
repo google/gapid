@@ -81,15 +81,15 @@ OnDiskResourceCache::OnDiskResourceCache(const std::string& path, bool cleanUp)
     : mArchive(path + "resources"), mCleanUp(cleanUp) {}
 
 bool OnDiskResourceCache::putCache(const Resource& resource, const void* data) {
-  return mArchive.write(resource.id, data, resource.size);
+  return mArchive.write(resource.getID(), data, resource.getSize());
 }
 
 bool OnDiskResourceCache::hasCache(const Resource& resource) {
-  return mArchive.contains(resource.id);
+  return mArchive.contains(resource.getID());
 }
 
 bool OnDiskResourceCache::loadCache(const Resource& resource, void* data) {
-  return mArchive.read(resource.id, data, resource.size);
+  return mArchive.read(resource.getID(), data, resource.getSize());
 }
 
 }  // namespace gapir

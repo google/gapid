@@ -28,19 +28,24 @@ typedef std::string ResourceId;
 
 // Resource represent a requestable blob of data from the server.
 struct Resource {
-  Resource() : id(), size(0) {}
-  Resource(ResourceId id_, uint32_t size_) : id(id_), size(size_) {}
-  Resource(const Resource& other) : id(other.id), size(other.size) {}
-  Resource(Resource&& other) : id(other.id), size(other.size) {}
+  Resource() : mID(), mSize(0) {}
+  Resource(ResourceId id, uint32_t size) : mID(id), mSize(size) {}
+  Resource(const Resource& other) : mID(other.mID), mSize(other.mSize) {}
+  Resource(Resource&& other) : mID(other.mID), mSize(other.mSize) {}
+
   Resource& operator=(const Resource& other) = default;
   Resource& operator=(Resource&& other) = default;
 
   bool operator==(const Resource& other) const {
-    return id == other.id && size == other.size;
+    return mID == other.mID && mSize == other.mSize;
   }
 
-  ResourceId id;
-  uint32_t size;
+  uint32_t getSize() const { return mSize; }
+  ResourceId getID() const { return mID; }
+
+ private:
+  ResourceId mID;
+  uint32_t mSize;
 };
 
 // ResourceLoadingBatch is a helper class to group resources and their loading
@@ -61,6 +66,7 @@ class ResourceLoadingBatch {
     return mDstsAndSizes;
   }
   size_t size() const { return mSize; }
+
   // Clear resets the ResourceLoadingBatch.
   void clear() {
     mResources.clear();

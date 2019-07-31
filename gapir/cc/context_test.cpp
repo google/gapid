@@ -42,12 +42,14 @@ const Resource A("A", 4);
 class ContextTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-    mMemoryManager.reset(new MemoryManager(memorySizes));
+    mMemoryAllocator =
+        std::shared_ptr<MemoryAllocator>(new MemoryAllocator(MEMORY_SIZE));
+    mMemoryManager.reset(new MemoryManager(mMemoryAllocator));
     mResourceLoader.reset(new StrictMock<MockResourceLoader>());
     mSrv.reset(new MockReplayService());
   }
 
+  std::shared_ptr<MemoryAllocator> mMemoryAllocator;
   std::unique_ptr<MemoryManager> mMemoryManager;
   std::unique_ptr<StrictMock<MockResourceLoader>> mResourceLoader;
   std::unique_ptr<MockReplayService> mSrv;

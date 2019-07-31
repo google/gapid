@@ -41,13 +41,16 @@ struct CheckTopOfStack {
 class InterpreterTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-    mMemoryManager.reset(new MemoryManager(memorySizes));
+    mMemoryAllocator =
+        std::shared_ptr<MemoryAllocator>(new MemoryAllocator(MEMORY_SIZE));
+    mMemoryManager.reset(new MemoryManager(mMemoryAllocator));
+    mMemoryManager->setVolatileMemory(MEMORY_SIZE);
     mInterpreter.reset(
         new Interpreter(crash_handler, mMemoryManager.get(), STACK_SIZE));
   }
 
   core::CrashHandler crash_handler;
+  std::shared_ptr<MemoryAllocator> mMemoryAllocator;
   std::unique_ptr<MemoryManager> mMemoryManager;
   std::unique_ptr<Interpreter> mInterpreter;
 };

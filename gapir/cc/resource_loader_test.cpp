@@ -60,7 +60,7 @@ TEST_F(PassThroughResourceLoaderTest, SingleGet) {
       .WillOnce(Invoke([&resData](const Resource* res, size_t resCount)
                            -> std::unique_ptr<ReplayService::Resources> {
         EXPECT_EQ(resCount, 1);
-        EXPECT_EQ(res->id, A.id);
+        EXPECT_EQ(res->getID(), A.getID());
         return std::move(resData);
       }));
   EXPECT_TRUE(mResourceLoader->load(&A, 1, mBuffer.data(), 3));
@@ -77,8 +77,8 @@ TEST_F(PassThroughResourceLoaderTest, MultiGet) {
       .WillOnce(Invoke([&resData](const Resource* res, size_t resCount)
                            -> std::unique_ptr<ReplayService::Resources> {
         EXPECT_EQ(resCount, 2);
-        EXPECT_EQ(res[0].id, A.id);
-        EXPECT_EQ(res[1].id, B.id);
+        EXPECT_EQ(res[0].getID(), A.getID());
+        EXPECT_EQ(res[1].getID(), B.getID());
         return std::move(resData);
       }));
 

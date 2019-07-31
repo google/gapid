@@ -23,174 +23,283 @@
 #include <string.h>
 
 #include <algorithm>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
+#define unused(x) ((void)sizeof(x))
+
 namespace gapir {
 
 std::unique_ptr<InMemoryResourceCache> InMemoryResourceCache::create(
-    void* buffer) {
+    std::shared_ptr<MemoryAllocator> allocator, size_t memoryLimit) {
   return std::unique_ptr<InMemoryResourceCache>(
-      new InMemoryResourceCache(buffer));
+      new InMemoryResourceCache(allocator, memoryLimit));
 }
 
-InMemoryResourceCache::InMemoryResourceCache(void* buffer)
-    : mHead(new Block(0, 0)),
-      mBuffer(static_cast<uint8_t*>(buffer)),
-      mBufferSize(0) {}
+InMemoryResourceCache::InMemoryResourceCache(
+    std::shared_ptr<MemoryAllocator> allocator, size_t memoryLimit)
+    : mAllocator(allocator),
+      mResourceIndex(),
+      mResources(),
+      mMemoryLimit(memoryLimit),
+      mMemoryUse(0),
+      mIDGenerator(0) {}
 
-InMemoryResourceCache::~InMemoryResourceCache() {
-  while (mHead->next != mHead) {
-    destroy(mHead->next);
+InMemoryResourceCache::~InMemoryResourceCache() {}
+
+bool InMemoryResourceCache::putCache(const Resource& res, const void* resData) {
+  if (res.getSize() > mMemoryLimit) {
+    return false;
   }
-  delete mHead;
+
+  // If we need to evict anything to get this new entry to fit. Now's the time
+  // to do it.
+  resize(mMemoryLimit - res.getSize());
+
+  // Get a new ID for this cache entry that is larger than any current ID.
+  auto newID = mIDGenerator++;
+
+  // Try to allocate some memory. If we get an allocation failure, throw more
+  // stuff out until we succeed. This might happen even if we passed the memory
+  // limit check above, because we cannot control the other applications running
+  // on our device and how much memory they might use. It may also fail
+  // for reasons of fragmentation in the allocator.
+  MemoryAllocator::Handle newMemory;
+  while (newMemory == nullptr) {
+    newMemory = mAllocator->allocatePurgable(res.getSize());
+
+    if (newMemory == nullptr) {
+      // Throwing out only as much data as is required to fit the new data in
+      // cache is maximally efficient for cache hit rate, but also puts
+      // the memory allocator under extreme pressure due to fragmentation.
+      // See http://go/GapirCustomAllocator for more details on why
+      // we discard half the cache's contents here.
+      bool evictedSomething = evictLeastRecentlyUsed(mMemoryUse / 2);
+      assert(evictedSomething);
+      unused(evictedSomething);
+    }
+  }
+
+  assert(mResourceIndex.find(res.getID()) == mResourceIndex.end());
+  assert(mResources.find(newID) == mResources.end());
+
+  // Enter the new allocation into our records.
+  mResourceIndex[res.getID()] = newID;
+  mResources[newID] = std::make_pair(res, newMemory);
+
+  // Add the memory allocated to our record of how much we have "live"
+  mMemoryUse += res.getSize();
+
+  // Copy the bits into the cache.
+  memcpy(&newMemory[0], resData, res.getSize());
+
+  return true;
 }
 
-void InMemoryResourceCache::clear() {
-  mCache.clear();
-  while (mHead->next != mHead) {
-    mHead = destroy(mHead);
+bool InMemoryResourceCache::hasCache(const Resource& res) {
+  return findCache(res) != mResources.end();
+}
+
+bool InMemoryResourceCache::loadCache(const Resource& res, void* target) {
+  mCacheAccesses++;
+
+  // Do we have this thing in the cache? If we don't, then we need to trigger
+  // loadCacheMiss()
+  auto resRecord = findCache(res);
+  if (resRecord == mResources.end()) {
+    if ((mCacheAccesses - mCacheHits) % 1 == 0) {
+      std::stringstream ss;
+      ss << "Replay cache miss. " << mCacheHits << " cache hits in "
+         << mCacheAccesses
+         << " accesses: " << (float)mCacheHits / (float)mCacheAccesses * 100.f
+         << " pc cache hit rate.";
+      GAPID_INFO(ss.str().c_str());
+    }
+
+    // Get the data into the cache and return it.
+    return loadCacheMiss(res, target);
   }
-  *mHead = Block(0, mBufferSize);
-  mHead->next = mHead->prev = mHead;
+
+  // Copy the data out of the cache.
+  if (target != nullptr) {
+    // If the allocator purged this data, then we need to delete the cache
+    // record and treat this load like a cache miss.
+    if (resRecord->second.second == nullptr) {
+      mAllocator->releaseAllocation(resRecord->second.second);
+      mMemoryUse -= resRecord->second.first.getSize();
+
+      mResourceIndex.erase(resRecord->second.first.getID());
+      mResources.erase(resRecord);
+
+      // Get the data into the cache and return it.
+      return loadCacheMiss(res, target);
+    }
+
+    memcpy(target, &resRecord->second.second[0],
+           resRecord->second.first.getSize());
+  }
+
+  // Update the bookkeeping for LRU to reflect this access.
+  auto newID = mIDGenerator++;
+  mResourceIndex[resRecord->second.first.getID()] = newID;
+  mResources[newID] = resRecord->second;
+  mResources.erase(resRecord);
+
+  // Note down the cache hit and return true
+  mCacheHits++;
+  return true;
+}
+
+size_t InMemoryResourceCache::totalCacheSize() const { return mMemoryLimit; }
+
+size_t InMemoryResourceCache::unusedSize() const {
+  return (size_t)(mMemoryLimit - mMemoryUse);
 }
 
 bool InMemoryResourceCache::resize(size_t newSize) {
-  GAPID_DEBUG("Cache resizing: %zu -> %zu", mBufferSize, newSize);
-  if (newSize == mBufferSize) {
-    return true;  // No change.
+  // Throw things out of the cache until we're below limit.
+  if (newSize < mMemoryUse) {
+    assert(evictLeastRecentlyUsed(mMemoryUse - newSize));
   }
 
-  Block* first = this->first();
-  Block* last = this->last();
-
-  // Remove all the blocks that are completely beyond the end of the new size.
-  while (last != first && last->offset > newSize) {
-    last = last->prev;
-    destroy(last->next);
-  }
-
-  if (!last->isFree()) {
-    if (last->end() > newSize) {
-      // The last block wraps the buffer. We need to evict this as we've
-      // changed the wrapping point.
-      free(last);
-    } else {
-      // Buffer has grown. Add new space block.
-      last = new Block(last->end(), 0);
-      last->linkBefore(first);
-    }
-  }
-  // Whether we've grown or shrunk, the last block will always be free.
-  // Re-adjust the size so that it touches the first block.
-  last->size = (newSize - last->offset) + first->offset;
-
-  // If there's only one block remaining, it's free. Make sure it starts at 0.
-  if (last == first) {
-    last->offset = 0;
-  }
-
-  mHead = last;  // Move head to the space.
-  mBufferSize = newSize;
   return true;
 }
 
 void InMemoryResourceCache::dump(FILE* out) {
-  Block* first = last()->next;
-  foreach_block(first, [&](Block* block) {
-    fprintf(out, (block == first) ? "┏━━━━━━━━━━━━━━━━" : "┳━━━━━━━━━━━━━━━━");
-  });
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, (res == mResources.begin()) ? "┏━━━━━━━━━━━━━━━━"
+                                             : "┳━━━━━━━━━━━━━━━━");
+  }
   fprintf(out, "┓\n");
-  foreach_block(first, [&](Block* block) {
-    fprintf(out, "┃ offset: %6zu ", block->offset);
-  });
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, "┃ addr: %6zu ",
+            (res->second.second == nullptr ? (char*)nullptr
+                                           : (char*)&res->second.second[0]) -
+                (char*)nullptr);
+  }
   fprintf(out, "┃\n");
-  foreach_block(first, [&](Block* block) {
-    fprintf(out, "┃ size:   %6zu ", block->size);
-  });
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, "┃ size:   %6zu ", (size_t)res->second.first.getSize());
+  }
   fprintf(out, "┃\n");
-  foreach_block(first, [&](Block* block) {
-    if (block->isFree()) {
-      fprintf(out, "┃ free           ");
-    } else {
-      fprintf(out, "┃ id: %10.10s ", block->id.c_str());
-    }
-  });
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, (res == mResources.begin()) ? "┃ head           "
+                                             : "┃                ");
+  }
   fprintf(out, "┃\n");
-  foreach_block(first, [&](Block* block) {
-    fprintf(out, (block == mHead) ? "┃ head           " : "┃                ");
-  });
-  fprintf(out, "┃\n");
-  foreach_block(first, [&](Block* block) {
-    fprintf(out, (block == first) ? "┗━━━━━━━━━━━━━━━━" : "┻━━━━━━━━━━━━━━━━");
-  });
+
+  for (auto res = mResources.begin(); res != mResources.end(); ++res) {
+    fprintf(out, (res == mResources.begin()) ? "┗━━━━━━━━━━━━━━━━"
+                                             : "┻━━━━━━━━━━━━━━━━");
+  }
   fprintf(out, "┛\n");
 }
 
-bool InMemoryResourceCache::putCache(const Resource& resource,
-                                     const void* data) {
-  if (resource.size > mBufferSize) {
-    return false;  // Wouldn't fit even if everything was evicted.
+void InMemoryResourceCache::clear() {
+  for (auto&& resource : mResources) {
+    mAllocator->releaseAllocation(resource.second.second);
   }
 
-  // Merge mHead into next block(s) until it is big enough to hold our resource.
-  while (mHead->size < resource.size) {
-    mHead->size += mHead->next->size;
-    destroy(mHead->next);
+  mResourceIndex.clear();
+  mResources.clear();
+
+  mMemoryUse = 0;
+}
+
+std::map<unsigned int, std::pair<Resource, MemoryAllocator::Handle> >::iterator
+InMemoryResourceCache::findCache(const Resource& res) {
+  auto resIndex = mResourceIndex.find(res.getID());
+  if (resIndex == mResourceIndex.end()) {
+    return mResources.end();
   }
 
-  if (mHead->size > resource.size) {
-    // We've got some left-over space in this block. Split it.
-    size_t space = mHead->size - resource.size;
-    size_t offset = (mHead->offset + resource.size) % mBufferSize;
-    auto next = new Block(offset, space);
-    next->linkAfter(mHead);
-    mHead->size = resource.size;
+  auto resRecord = mResources.find(resIndex->second);
+  return resRecord;
+}
+
+bool InMemoryResourceCache::evictLeastRecentlyUsed(size_t bytes) {
+  size_t bytesReleased = 0;
+  auto lru = mResources.begin();
+
+  if (lru == mResources.end()) {
+    return false;
   }
 
-  // Update mCache.
-  mCache.erase(mHead->id);
-  mCache.emplace(resource.id, mHead->offset);
-  mHead->id = resource.id;
+  while (lru != mResources.end() &&
+         (bytesReleased < bytes || (bytes == 0 && bytesReleased == 0))) {
+    mAllocator->releaseAllocation(lru->second.second);
+    mMemoryUse -= lru->second.first.getSize();
+    bytesReleased += lru->second.first.getSize();
 
-  // Copy data.
-  if (mHead->offset + resource.size <= mBufferSize) {
-    memcpy(mBuffer - mHead->offset - resource.size, data, resource.size);
-  } else {
-    // Wraps the end of the buffer
-    const uint8_t* dst = reinterpret_cast<const uint8_t*>(data);
-    size_t a = mBufferSize - mHead->offset;
-    size_t b = resource.size - a;
-    memcpy(mBuffer - mBufferSize, dst, a);
-    memcpy(mBuffer - b, dst + a, b);
+    mResourceIndex.erase(lru->second.first.getID());
+    lru = mResources.erase(lru);
   }
 
-  // Move head on to the next block.
-  mHead = mHead->next;
+  GAPID_DEBUG(
+      "evictLeastRecentlyUsed evicted %zu bytes (wanted to release %zu)",
+      bytesReleased, bytes);
+
   return true;
 }
 
-bool InMemoryResourceCache::hasCache(const Resource& resource) {
-  return mCache.find(resource.id) != mCache.end();
-}
+bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
+  size_t tcs =
+      mAllocator->getTotalSize() - mAllocator->getTotalStaticDataUsage();
+  // How much could we prefetch if we wanted to completely fill (100% eviction
+  // rate) the cache?
+  size_t possiblePrefetch = res.getSize() < tcs ? (tcs - res.getSize()) : 0;
+  // Lets prefetch 10% of that maximum figure. This is a heuristic.
+  // Larger fractions of tcs will be more efficient at bulk loading resources
+  // but also more costly in the case of miss-predicts on resource
+  // anticipation. Also, larger fractions will cause fewer but larger pauses
+  // in replay while resource data is fetched. More smaller pauses may be
+  // preferable for performance work. Feel free to tune this heuristic at
+  // a later date.
+  size_t prefetch = possiblePrefetch / 10;
 
-bool InMemoryResourceCache::loadCache(const Resource& resource, void* data) {
-  if (!hasCache(resource)) {
+  // Try to anticipate the next few resources.
+  std::vector<Resource> anticipated = anticipateNextResources(res, prefetch);
+
+  // Don't forget the resource that kicked this cache miss off.
+  anticipated.push_back(res);
+
+  // Prefetch the anticipated resources first, so if anything gets evicted it's
+  // not the resource that initiated the miss. Then finally fetch the resource
+  // that caused the cache miss. This is last in the vector so it will not be
+  // kicked by the LRU Policy.
+  prefetchImpl(&anticipated[0], anticipated.size());
+
+  // Unless something went very wrong, the data should now be in cache.
+  auto resRecord = findCache(res);
+  if (resRecord == mResources.end()) {
+    GAPID_ERROR(
+        "Cache miss prefetch failed for resource %s. This is probably very "
+        "bad.",
+        res.getID().c_str());
     return false;
   }
-  // Cached resource found. Copy data.
-  size_t offset = mCache.find(resource.id)->second;
-  if (offset + resource.size <= mBufferSize) {
-    memcpy(data, mBuffer - offset - resource.size, resource.size);
-  } else {
-    // Wraps the end of the buffer
-    uint8_t* dst = reinterpret_cast<uint8_t*>(data);
-    size_t a = mBufferSize - offset;
-    size_t b = resource.size - a;
-    memcpy(dst, mBuffer - mBufferSize, a);
-    memcpy(dst + a, mBuffer - b, b);
+
+  // Copy the data out of the cache.
+  if (target != nullptr) {
+    if (resRecord->second.second == nullptr) {
+      GAPID_ERROR(
+          "Cache miss prefetch returned nullptr for resource %s. This is "
+          "probably very "
+          "bad.",
+          res.getID().c_str());
+      return false;
+    }
+
+    memcpy(target, &resRecord->second.second[0],
+           resRecord->second.first.getSize());
   }
+
+  // Return success.
   return true;
 }
 

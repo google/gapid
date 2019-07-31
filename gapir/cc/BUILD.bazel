@@ -133,6 +133,7 @@ cc_test(
         "context_test.cpp",
         "in_memory_resource_cache_test.cpp",
         "interpreter_test.cpp",
+        "memory_allocator_test.cpp",
         "memory_manager_test.cpp",
         "post_buffer_test.cpp",
         "replay_request_test.cpp",

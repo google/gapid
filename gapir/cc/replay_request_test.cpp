@@ -54,8 +54,11 @@ TEST(ReplayRequestTestStatic, Create) {
   EXPECT_CALL(*mock_srv, getPayload("payload"))
       .WillOnce(Return(ByMove(std::move(payload))));
 
-  std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-  std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
+  std::shared_ptr<MemoryAllocator> mMemoryAllocator(
+      new MemoryAllocator(MEMORY_SIZE));
+
+  std::unique_ptr<MemoryManager> memoryManager(
+      new MemoryManager(mMemoryAllocator));
 
   auto replayRequest =
       ReplayRequest::create(mock_srv.get(), "payload", memoryManager.get());
@@ -79,8 +82,10 @@ TEST(ReplayRequestTestStatic, CreateErrorGet) {
   EXPECT_CALL(*mock_srv, getPayload("payload"))
       .WillOnce(Return(ByMove(nullptr)));
 
-  std::vector<uint32_t> memorySizes = {MEMORY_SIZE};
-  std::unique_ptr<MemoryManager> memoryManager(new MemoryManager(memorySizes));
+  std::shared_ptr<MemoryAllocator> mMemoryAllocator(
+      new MemoryAllocator(MEMORY_SIZE));
+  std::unique_ptr<MemoryManager> memoryManager(
+      new MemoryManager(mMemoryAllocator));
 
   auto replayRequest =
       ReplayRequest::create(mock_srv.get(), "payload", memoryManager.get());
