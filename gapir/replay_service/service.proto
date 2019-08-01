@@ -113,6 +113,13 @@ message ErrorMessage {
   bytes data = 6;
 }
 
+// ReplayStatus is a message containing replay progress information.
+message ReplayStatus {
+  uint64 label = 1;
+  uint32 total_instrs = 2;
+  uint32 finished_instrs = 3;
+}
+
 // Data is a message contains data that a GAPIR device collected during the
 // replay.
 message Data {
@@ -127,7 +134,8 @@ message Notification {
   uint64 id = 1;
   oneof val {
     ErrorMessage error_msg = 2;
-    Data data = 3;
+    ReplayStatus replay_status = 3;
+    Data data = 4;
   }
 }
 

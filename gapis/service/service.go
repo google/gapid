@@ -143,7 +143,8 @@ type Service interface {
 		snapshotInterval time.Duration,
 		statusUpdateFrequency time.Duration,
 		f func(*TaskUpdate),
-		m func(*MemoryStatus)) error
+		m func(*MemoryStatus),
+		r func(*ReplayStatus)) error
 
 	// GetPerformanceCounters returns the values of all global counters as
 	// a string.

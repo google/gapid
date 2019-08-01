@@ -21,7 +21,10 @@ import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.filling;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
+import static com.google.gapid.widgets.Widgets.withSpacing;
 
+import com.google.gapid.models.Devices;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
@@ -36,38 +39,53 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
+import org.eclipse.swt.widgets.ProgressBar;
 
 /**
  * Displays status information at the bottom of the main window.
  */
 public class StatusBar extends Composite {
+  private final Composite memoryStatus;
+  private final Composite replayStatus;
   private final Composite serverStatus;
   private final HeapStatus heap;
   private final Label serverPrefix;
   private final Label server;
+  private final ProgressBar replayProgressBar;
   private final Link notification;
   private Runnable onNotificationClick = null;
 
   public StatusBar(Composite parent, Theme theme) {
     super(parent, SWT.NONE);
 
-    setLayout(withMargin(new GridLayout(2, false), 0, 0));
-
+    setLayout(withSpacing(withMargin(new GridLayout(5, false), 0, 0), 5, 0));
+    memoryStatus = withLayoutData(
+        createComposite(this, filling(new RowLayout(SWT.HORIZONTAL), true, false)),
+        new GridData(SWT.LEFT, SWT.FILL, false, false));
+    replayStatus = withLayoutData(
+        createComposite(this, filling(new RowLayout(SWT.HORIZONTAL), true, false)),
+        new GridData(SWT.LEFT, SWT.FILL, false, false));
     serverStatus = withLayoutData(
         createComposite(this, filling(new RowLayout(SWT.HORIZONTAL), true, false)),
         new GridData(SWT.LEFT, SWT.FILL, true, false));
-    createLabel(serverStatus, "Server:");
-    heap = new HeapStatus(serverStatus, theme);
-    withLayoutData(new Label(serverStatus, SWT.SEPARATOR | SWT.VERTICAL), new RowData(SWT.DEFAULT, 1));
-    serverPrefix = createLabel(serverStatus, "");
-    server = createLabel(serverStatus, "");
-    serverStatus.setVisible(false);
-
     notification = withLayoutData(createLink(this, "", $ -> {
       if (onNotificationClick != null) {
         onNotificationClick.run();
       }
     }), new GridData(SWT.RIGHT, SWT.FILL, false, false));
+
+    createLabel(memoryStatus, "Server:");
+    heap = new HeapStatus(memoryStatus, theme);
+    withLayoutData(new Label(memoryStatus, SWT.SEPARATOR | SWT.VERTICAL), new RowData(SWT.DEFAULT, 1));
+
+    Label hintLabel = createLabel(replayStatus, "Replay:");
+    replayProgressBar = new ProgressBar(replayStatus, SWT.HORIZONTAL | SWT.SMOOTH);
+    withLayoutData(new Label(replayStatus, SWT.SEPARATOR | SWT.VERTICAL),
+        new RowData(SWT.DEFAULT, hintLabel.computeSize(SWT.DEFAULT, SWT.DEFAULT).y));
+
+    serverPrefix = createLabel(serverStatus, "");
+    server = createLabel(serverStatus, "");
+    serverStatus.setVisible(false);
   }
 
   /**
@@ -97,6 +115,19 @@ public class StatusBar extends Composite {
   public void setServerHeapSize(long heapSize) {
     serverStatus.setVisible(true);
     heap.setHeap(heapSize);
+    layout();
+  }
+
+  public void setReplayStatus(long label, int totalInstrs, int finishedInstrs, Path.Device replayDevice, Devices devices) {
+    // Check for simultaneous replay from multiple devices.
+    // Compare the ID from notification and the ID from current client's device selection.
+    Path.Device selectedDevice = devices.getReplayDevicePath();
+    boolean shouldShowUpdate = replayDevice != null && selectedDevice != null
+        && replayDevice.getID().getData().equals(selectedDevice.getID().getData());
+    if (shouldShowUpdate) {
+      replayProgressBar.setMaximum(totalInstrs);
+      replayProgressBar.setSelection(finishedInstrs);
+    }
     layout();
   }
 

@@ -133,13 +133,26 @@ bool Context::interpret(bool cleanup) {
     }
     return false;
   };
+  Interpreter::CheckReplayStatusCallback replayStatusCallback =
+      [this](uint64_t label, uint32_t total_instrs, uint32_t finished_instrs) {
+        // Send notification to GAPIS about every 1% of instructions done.
+        // Worth noting it's not precisely every 1%, because GAPIR check
+        // progress at each command call rather than each instruction. Also
+        // extra check is given here to make sure to send notification when
+        // approaching the last cmd.
+        if (finished_instrs % (total_instrs / 100) == 0 ||
+            (total_instrs - finished_instrs) <= 3) {
+          mSrv->sendReplayStatus(label, total_instrs, finished_instrs);
+        }
+      };
   if (mInterpreter == nullptr) {
     mInterpreter.reset(new Interpreter(mCrashHandler, mMemoryManager,
                                        mReplayRequest->getStackSize()));
-
     registerCallbacks(mInterpreter.get());
   }
   mInterpreter->setApiRequestCallback(std::move(callback));
+  mInterpreter->setCheckReplayStatusCallback(std::move(replayStatusCallback));
+
   auto instAndCount = mReplayRequest->getInstructionList();
   auto res = mInterpreter->run(instAndCount.first, instAndCount.second) &&
              mPostBuffer->flush();

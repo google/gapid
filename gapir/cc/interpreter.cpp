@@ -82,6 +82,11 @@ void Interpreter::setApiRequestCallback(ApiRequestCallback callback) {
   apiRequestCallback = std::move(callback);
 }
 
+void Interpreter::setCheckReplayStatusCallback(
+    CheckReplayStatusCallback callback) {
+  checkReplayStatusCallback = std::move(callback);
+}
+
 void Interpreter::registerBuiltin(uint8_t api, FunctionTable::Id id,
                                   FunctionTable::Function func) {
   mBuiltins[api].insert(id, func);
@@ -166,6 +171,7 @@ Interpreter::Result Interpreter::call(uint32_t opcode) {
   auto api = (opcode & API_INDEX_MASK) >> API_BIT_SHIFT;
   auto func = mBuiltins[api].lookup(id);
   auto label = getLabel();
+  checkReplayStatusCallback(label, mInstructionCount, mCurrentInstruction);
   if (func == nullptr) {
     if (mRendererFunctions.count(api) > 0) {
       func = mRendererFunctions[api]->lookup(id);

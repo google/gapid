@@ -138,7 +138,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	}
 	ctx = log.V{"replay target ABI": replayABI}.Bind(ctx)
 
-	b := builder.New(replayABI.MemoryLayout, nil)
+	b := builder.New(replayABI.MemoryLayout, nil, r.DeviceID.ID())
 
 	out := &adapter{
 		state:   c.NewUninitializedState(ctx),
@@ -182,7 +182,7 @@ func (r *InitialPayloadResolvable) Resolve(
 		generatedState.APIs[k] = s
 	}
 
-	b = builder.New(replayABI.MemoryLayout, oldBuilder)
+	b = builder.New(replayABI.MemoryLayout, oldBuilder, r.DeviceID.ID())
 	out = &adapter{
 		state:   out.state,
 		builder: b,
@@ -314,7 +314,7 @@ func (m *manager) execute(
 		}
 	}
 
-	b := builder.New(replayABI.MemoryLayout, depBuilder)
+	b := builder.New(replayABI.MemoryLayout, depBuilder, deviceID)
 
 	_, ranges, err := initialcmds.InitialCommands(ctx, capturePath)
 
@@ -353,6 +353,11 @@ func (m *manager) execute(
 	})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
+	}
+
+	err = b.RegisterReplayStatusReader(ctx)
+	if err != nil {
+		return log.Err(ctx, err, "Failed to register replay status notification reader.")
 	}
 
 	if Events.OnReplay != nil {

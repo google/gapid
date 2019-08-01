@@ -17,6 +17,7 @@ package com.google.gapid.util;
 
 import com.google.common.collect.Maps;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 
 import java.util.HashMap;
@@ -44,6 +45,9 @@ public class StatusWatcher {
           break;
         case MEMORY:
           onMemoryUpdate(update.getMemory());
+          break;
+        case REPLAY:
+          onReplayUpdate(update.getReplay());
           break;
         default:
           // Ignore.
@@ -92,9 +96,15 @@ public class StatusWatcher {
     listener.onHeap(update.getTotalHeap());
   }
 
+  private void onReplayUpdate(Service.ReplayStatus update) {
+    listener.onReplayProgress(update.getLabel(), update.getTotalInstrs(),
+        update.getFinishedInstrs(), update.getDevice());
+  }
+
   public static interface Listener {
     public void onStatus(String status);
     public void onHeap(long heap);
+    public void onReplayProgress(long label, int totalInstrs, int finishedInstrs, Path.Device device);
   }
 
   private static class Task {

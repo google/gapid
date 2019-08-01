@@ -66,6 +66,11 @@ class ArchiveReplayService : public ReplayService {
     return true;
   }
 
+  bool sendReplayStatus(uint64_t label, uint32_t total_instrs,
+                        uint32_t finished_instrs) override {
+    return true;
+  }
+
   bool sendNotificationData(uint64_t, uint64_t, const void*,
                             uint32_t) override {
     return true;

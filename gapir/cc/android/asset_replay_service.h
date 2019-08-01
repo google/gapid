@@ -63,6 +63,11 @@ class AssetReplayService : public ReplayService {
     return true;
   }
 
+  bool sendReplayStatus(uint64_t label, uint32_t total_instrs,
+                        uint32_t finished_instrs) override {
+    return true;
+  }
+
   bool sendNotificationData(uint64_t id, uint64_t label, const void* data,
                             uint32_t data_size) override {
     return true;

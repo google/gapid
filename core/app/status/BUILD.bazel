@@ -21,6 +21,7 @@ go_library(
         "listener.go",
         "logger.go",
         "memory.go",
+        "replay.go",
         "status.go",
         "task.go",
         "tracer.go",
@@ -29,6 +30,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/context/keys:go_default_library",
+        "//core/data/id:go_default_library",
         "//core/log:go_default_library",
     ],
 )

@@ -75,6 +75,14 @@ const (
 	// The ID needs to be kept in sync with |kIssuesNotificationId| defined in
 	// `gapir/cc/grpc_replay_service.cpp`.
 	IssuesNotificationID = uint64(0)
+	// ReplayProgressNotificationID is the Notification ID reserved for replay
+	// status information transfer.
+	// The ID needs to be kept in sync with |kReplayProgressNotificationID|
+	// defined in `gapir/cc/grpc_replay_service.cpp`.
+	ReplayProgressNotificationID = uint64(1)
+	// The value used to initialize nextNotificationID. Need to be increased as
+	// well when more notification id are reserved for special use.
+	InitialNextNotificationID = uint64(2)
 )
 
 // Postback decodes a single command's post. If err is nil, it means there is
@@ -102,6 +110,7 @@ type Builder struct {
 	notificationReaders map[uint64]NotificationReader
 	stack               []stackItem
 	memoryLayout        *device.MemoryLayout
+	deviceID            id.ID
 	inCmd               bool   // true if between BeginCommand and CommitCommand/RevertCommand
 	cmdStart            int    // index of current commands's first instruction
 	pendingLabel        uint64 // label passed to BeginCommand written
@@ -118,7 +127,7 @@ type Builder struct {
 
 // New returns a newly constructed Builder configured to replay on a target
 // with the specified MemoryLayout.
-func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
+func New(memoryLayout *device.MemoryLayout, dependent *Builder, deviceID id.ID) *Builder {
 	ptrAlignment := uint64(memoryLayout.GetPointer().GetAlignment())
 	var dependentMemory uint64
 	mappedMemory := MappedMemoryRangeList{}
@@ -148,9 +157,10 @@ func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 		pointerMemory:       memory.RangeList{},
 		mappedMemory:        mappedMemory,
 		instructions:        []asm.Instruction{},
-		nextNotificationID:  IssuesNotificationID + 1,
+		nextNotificationID:  InitialNextNotificationID,
 		notificationReaders: map[uint64]NotificationReader{},
 		memoryLayout:        memoryLayout,
+		deviceID:            deviceID,
 		lastLabel:           ^uint64(0),
 		volatileSpace:       volatileSpace,
 		Remappings:          remappings,
@@ -648,6 +658,21 @@ func (b *Builder) RegisterNotificationReader(notificationID uint64, reader Notif
 	}
 	b.notificationReaders[notificationID] = reader
 	return nil
+}
+
+// RegisterReplayStatusReader create and register a NotificationReader, which is used to decode and handle
+// replay status information sent from GAPIR.
+func (b *Builder) RegisterReplayStatusReader(ctx context.Context) error {
+	reader := func(n gapir.Notification) {
+		r := n.GetReplayStatus()
+		label := r.GetLabel()
+		total_instrs := r.GetTotalInstrs()
+		finished_instrs := r.GetFinishedInstrs()
+
+		log.D(ctx, "Replay status: Label: %v; Total instructions: %v; Finished percentage: %v.", label, total_instrs, float32(finished_instrs)/float32(total_instrs))
+		status.UpdateReplayStatus(ctx, label, total_instrs, finished_instrs, b.deviceID)
+	}
+	return b.RegisterNotificationReader(ReplayProgressNotificationID, reader)
 }
 
 // Export compiles the replay instructions, returning a Payload that can be
