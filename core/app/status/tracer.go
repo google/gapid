@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/google/gapid/core/data/id"
 )
 
 const (
@@ -97,7 +99,7 @@ func (s *statusTracer) OnTaskStart(ctx context.Context, t *Task) {
 func (s *statusTracer) OnTaskProgress(ctx context.Context, t *Task) {}
 func (s *statusTracer) OnTaskBlock(ctx context.Context, t *Task)    {}
 func (s *statusTracer) OnTaskUnblock(ctx context.Context, t *Task)  {}
-func (s *statusTracer) OnReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32) {
+func (s *statusTracer) OnReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32, deviceID id.ID) {
 }
 
 func (s *statusTracer) OnTaskFinish(ctx context.Context, t *Task) {

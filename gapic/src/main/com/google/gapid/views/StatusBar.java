@@ -23,6 +23,8 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpacing;
 
+import com.google.gapid.models.Devices;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
@@ -116,9 +118,16 @@ public class StatusBar extends Composite {
     layout();
   }
 
-  public void setReplayStatus(long label, int totalInstrs, int finishedInstrs) {
-    replayProgressBar.setMaximum(totalInstrs);
-    replayProgressBar.setSelection(finishedInstrs);
+  public void setReplayStatus(long label, int totalInstrs, int finishedInstrs, Path.Device replayDevice, Devices devices) {
+    // Check for simultaneous replay from multiple devices.
+    // Compare the ID from notification and the ID from current client's device selection.
+    Path.Device selectedDevice = devices.getReplayDevicePath();
+    boolean shouldShowUpdate = replayDevice != null && selectedDevice != null
+        && replayDevice.getID().getData().equals(selectedDevice.getID().getData());
+    if (shouldShowUpdate) {
+      replayProgressBar.setMaximum(totalInstrs);
+      replayProgressBar.setSelection(finishedInstrs);
+    }
     layout();
   }
 

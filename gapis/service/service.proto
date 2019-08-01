@@ -250,6 +250,7 @@ message ReplayStatus {
   uint64 label = 1;
   uint32 total_instrs = 2;
   uint32 finished_instrs = 3;
+  path.Device device = 4;
 }
 
 message ServerStatusRequest {

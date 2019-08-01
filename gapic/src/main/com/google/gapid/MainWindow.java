@@ -35,10 +35,12 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable.Message;
 import com.google.gapid.util.MacApplication;
@@ -147,7 +149,7 @@ public class MainWindow extends ApplicationWindow {
     watchForUpdates(client, models);
 
     showLoadingMessage("Tracking server status...");
-    trackServerStatus(client);
+    trackServerStatus(client, models.devices);
 
     showLoadingMessage("Ready! Please open or capture a trace file.");
   }
@@ -162,7 +164,8 @@ public class MainWindow extends ApplicationWindow {
     });
   }
 
-  private void trackServerStatus(Client client) {
+  private void trackServerStatus(Client client, Devices devices) {
+
     new StatusWatcher(client, new StatusWatcher.Listener() {
       @Override
       public void onStatus(String status) {
@@ -175,8 +178,8 @@ public class MainWindow extends ApplicationWindow {
       }
 
       @Override
-      public void onReplayProgress(long label, int totalInstrs, int finishedInstrs) {
-        scheduleIfNotDisposed(statusBar, () -> statusBar.setReplayStatus(label, totalInstrs, finishedInstrs));
+      public void onReplayProgress(long label, int totalInstrs, int finishedInstrs, Path.Device replayDevice ) {
+        scheduleIfNotDisposed(statusBar, () -> statusBar.setReplayStatus(label, totalInstrs, finishedInstrs, replayDevice, devices));
       }
     });
   }

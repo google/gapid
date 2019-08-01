@@ -16,9 +16,11 @@ package status
 
 import (
 	"context"
+
+	"github.com/google/gapid/core/data/id"
 )
 
 // SnapshotMemory takes a snapshot of the current process's memory.
-func UpdateReplayStatus(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32) {
-	onReplayStatusUpdate(ctx, label, total_instrs, finished_instrs)
+func UpdateReplayStatus(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32, deviceID id.ID) {
+	onReplayStatusUpdate(ctx, label, total_instrs, finished_instrs, deviceID)
 }
