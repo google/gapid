@@ -255,9 +255,12 @@ public class TracerDialog {
       private List<DeviceCaptureInfo> devices;
 
       private final ComboViewer device;
+      private final Label deviceLabel;
       private final LoadingIndicator.Widget deviceLoader;
       private final ComboViewer api;
+      private final Label apiLabel;
       private final ActionTextbox traceTarget;
+      private final Label targetLabel;
       private final Text arguments;
       private final Text cwd;
       private final Text envVars;
@@ -270,8 +273,12 @@ public class TracerDialog {
       private final Button clearCache;
       private final Button disablePcs;
       private final FileTextbox.Directory directory;
+      private final Label directoryLabel;
       protected final Text file;
+      private final Label fileLabel;
       private final Label pcsWarning;
+      private final Label requiredFieldMessage;
+
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -283,7 +290,8 @@ public class TracerDialog {
 
         setLayout(new GridLayout(2, false));
 
-        createLabel(this, "Device:");
+        deviceLabel = createLabel(this, "Device*:");
+        deviceLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         Composite deviceComposite =
             createComposite(this, withMargin(new GridLayout(2, false), 0, 0));
         device = createDeviceDropDown(deviceComposite);
@@ -301,11 +309,13 @@ public class TracerDialog {
 
         deviceComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
-        createLabel(this, "Type:");
+        apiLabel = createLabel(this, "Type*:");
+        apiLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         api = createApiDropDown(this);
         api.getCombo().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 
-        createLabel(this, "Application:");
+        targetLabel = createLabel(this, "Application*:");
+        targetLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         traceTarget = withLayoutData(new ActionTextbox(this, models.settings.traceUri) {
           @Override
           protected String createAndShowDialog(String current) {
@@ -379,7 +389,8 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
         disablePcs.setEnabled(false);
 
-        createLabel(this, "Output Directory:");
+        directoryLabel = createLabel(this, "Output Directory*:");
+        directoryLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         directory = withLayoutData(new FileTextbox.Directory(this, models.settings.traceOutDir) {
           @Override
           protected void configureDialog(DirectoryDialog dialog) {
@@ -387,7 +398,8 @@ public class TracerDialog {
           }
         }, new GridData(SWT.FILL, SWT.FILL, true, false));
 
-        createLabel(this, "File Name:");
+        fileLabel = createLabel(this, "File Name*:");
+        fileLabel.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         file = withLayoutData(createTextbox(this, formatTraceName(friendlyName)),
             new GridData(SWT.FILL, SWT.FILL, true, false));
 
@@ -406,6 +418,13 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(!models.settings.isAdbValid());
+
+        createLabel(this, "");
+        requiredFieldMessage = withLayoutData(
+            createLabel(this, "Please fill out required information (labeled with *)."),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
+        requiredFieldMessage.setVisible(!this.isReady());
 
         device.getCombo().addListener(
             SWT.Selection, e -> update(models.settings, getSelectedDevice()));
@@ -437,6 +456,26 @@ public class TracerDialog {
             friendlyName = "";
           }
         });
+
+        Listener filledListener = e -> {
+          requiredFieldMessage.setVisible(!this.isReady());
+          deviceLabel.setForeground(getSelectedDevice() == null ? widgets.theme.missingInput() : widgets.theme.filledInput());
+          directoryLabel.setForeground(directory.getText().isEmpty() ? widgets.theme.missingInput() : widgets.theme.filledInput());
+          fileLabel.setForeground(file.getText().isEmpty() ? widgets.theme.missingInput() : widgets.theme.filledInput());
+
+          TraceTypeCapabilities config = getSelectedApi();
+          if (config != null) {
+            apiLabel.setForeground(widgets.theme.filledInput());
+            targetLabel.setForeground(
+                (config.getRequiresApplication() && traceTarget.getText().isEmpty()) ? 
+                  widgets.theme.missingInput() : widgets.theme.filledInput());
+          } else {
+            apiLabel.setForeground(widgets.theme.missingInput());
+            targetLabel.setForeground(widgets.theme.filledInput());
+          }
+        };
+
+        this.addModifyListener(filledListener);
 
         updateDevicesDropDown(models.settings);
       }
