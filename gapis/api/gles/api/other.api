@@ -228,10 +228,10 @@ sub GLboolean GetCapability(GLenum capability, GLuint index) {
 }
 
 @if(Version.GLES10)
-@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glEnable.xml", Version.GLES20)
-@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glEnable.xhtml", Version.GLES30)
-@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glEnable.xhtml", Version.GLES31)
-@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glEnable.xhtml", Version.GLES32)
+@doc("https://www.khronos.org/opengles/sdk/docs/man/xhtml/glDisable.xml", Version.GLES20)
+@doc("https://www.khronos.org/opengles/sdk/docs/man3/html/glDisable.xhtml", Version.GLES30)
+@doc("https://www.khronos.org/opengles/sdk/docs/man31/html/glDisable.xhtml", Version.GLES31)
+@doc("https://www.khronos.org/opengles/sdk/docs/man32/html/glDisable.xhtml", Version.GLES32)
 cmd void glDisable(GLenum capability) {
   SetCapability(capability, /* isIndexed */ false, 0, /* enabled */ GL_FALSE)
 }
