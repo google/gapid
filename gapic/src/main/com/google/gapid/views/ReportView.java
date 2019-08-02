@@ -16,6 +16,7 @@
 package com.google.gapid.views;
 
 import static com.google.gapid.util.Loadable.Message.smile;
+import static com.google.gapid.util.Loadable.Message.info;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createTreeViewer;
@@ -29,6 +30,8 @@ import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Reports;
 import com.google.gapid.models.Strings;
+import com.google.gapid.models.ApiContext;
+import com.google.gapid.models.ApiContext.FilteringContext;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.proto.stringtable.Stringtable;
@@ -49,9 +52,12 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
@@ -61,20 +67,38 @@ import java.util.concurrent.ExecutionException;
 /**
  * View that shows the capture report items in a tree.
  */
-public class ReportView extends Composite implements Tab, Capture.Listener, Reports.Listener {
+public class ReportView extends Composite
+    implements Tab, Capture.Listener, Reports.Listener, ApiContext.Listener {
   private final Models models;
   private final MessageProvider messages = new MessageProvider();
   private final LoadablePanel<SashForm> loading;
   private final TreeViewer viewer;
   private final Composite detailsGroup;
   private Text reportDetails;
+  private Button runReport;
+
+  // Need this flag to prevent a weird quirk where when opening a second
+  // trace, the report of the previous trace will show up once everything
+  // is fully loaded.
+  private boolean ranReport = false;
 
   public ReportView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
 
-    setLayout(new FillLayout(SWT.VERTICAL));
-    loading = LoadablePanel.create(this, widgets, panel -> new SashForm(panel, SWT.VERTICAL));
+    setLayout(new GridLayout(1, false));
+
+    Composite buttons = Widgets.withLayoutData(Widgets.createComposite(this, new FillLayout(SWT.VERTICAL)),
+      new GridData(SWT.LEFT, SWT.TOP, false, false));
+    runReport = Widgets.createButton(buttons, "Generate Report", e-> {
+      models.reports.reload();
+      ranReport = true;
+    });
+
+
+    Composite top = Widgets.withLayoutData(Widgets.createComposite(this, new FillLayout(SWT.VERTICAL)),
+      new GridData(SWT.FILL, SWT.FILL, true, true));
+    loading = LoadablePanel.create(top, widgets, panel -> new SashForm(panel, SWT.VERTICAL));
     SashForm splitter = loading.getContents();
 
     viewer = createTreeViewer(splitter, SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL);
@@ -88,9 +112,11 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
 
     models.capture.addListener(this);
     models.reports.addListener(this);
+    models.contexts.addListener(this);
     addListener(SWT.Dispose, e -> {
       models.capture.removeListener(this);
       models.reports.removeListener(this);
+      models.contexts.removeListener(this);
     });
 
     viewer.getTree().addListener(SWT.MouseMove, e -> {
@@ -131,10 +157,25 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
     return this;
   }
 
+  private void clear() {
+    loading.showMessage(info("Report not generated. Press \"Generate Report\" button."));
+    ranReport = false;
+  }
+
   @Override
   public void reinitialize() {
     onCaptureLoadingStart(false);
     onReportLoaded();
+  }
+
+  @Override
+  public void onContextsLoaded() {
+    clear();
+  }
+
+  @Override
+  public void onContextSelected(FilteringContext context) {
+    clear();
   }
 
   @Override
@@ -156,12 +197,14 @@ public class ReportView extends Composite implements Tab, Capture.Listener, Repo
 
   @Override
   public void onReportLoaded() {
-    messages.clear();
-    getDetails().setText("");
-    if (models.reports.isLoaded()) {
-      updateReport();
-    } else {
-      loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+    if (ranReport) {
+      messages.clear();
+      getDetails().setText("");
+      if (models.reports.isLoaded()) {
+        updateReport();
+      } else {
+        loading.showMessage(Error, Messages.CAPTURE_LOAD_FAILURE);
+      }
     }
   }
 
