@@ -84,7 +84,9 @@ func (e *backgroundConnection) HandlePostData(ctx context.Context, pd *gapir.Pos
 // HandleNotification handles the given notification message.
 func (e *backgroundConnection) HandleNotification(ctx context.Context, notification *gapir.Notification, conn gapir.Connection) error {
 	if e.executor == nil {
-		return log.Err(ctx, nil, "No active replay connection for this returned data")
+		// Discard the notification data send from the prewarm relplay.
+		log.W(ctx, "No active replay connection for this returned notification data (ID: %v).", notification.GetId())
+		return nil
 	}
 	return e.executor.HandleNotification(ctx, notification, conn)
 }
