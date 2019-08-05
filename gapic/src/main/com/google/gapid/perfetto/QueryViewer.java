@@ -16,6 +16,7 @@
 package com.google.gapid.perfetto;
 
 import static com.google.gapid.widgets.Widgets.createButton;
+import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTextarea;
@@ -43,6 +44,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
@@ -72,12 +74,16 @@ public class QueryViewer extends Composite
   private final Models models;
   private final Button run;
   private final Button export;
+  private final Spinner tablePage;
   private final Text query;
   protected final TableViewer table;
+  private final ResultContentProvider provider;
 
   public QueryViewer(Composite parent, Models models) {
     super(parent, SWT.NONE);
     this.models = models;
+
+    provider = new ResultContentProvider();
 
     setLayout(new FillLayout(SWT.VERTICAL));
 
@@ -86,14 +92,17 @@ public class QueryViewer extends Composite
     Composite top = createComposite(splitter, new GridLayout(1, false));
     query = withLayoutData(createTextarea(top, "select * from perfetto_tables"),
         new GridData(SWT.FILL, SWT.FILL, true, true));
+
     Composite middle = createComposite(top, new GridLayout(2, false));
     run = withLayoutData(createButton(middle, "Run", e -> exec()),
         new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
     export = withLayoutData(createButton(middle, "Export", e->export()),
         new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
+    tablePage = withLayoutData(createSpinner(middle, 1, 1, 1, e -> turnPage()), 
+        new GridData(SWT.FILL, SWT.BOTTOM, false, false, 2, 1));
 
     table = Widgets.createTableViewer(splitter, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-    table.setContentProvider(new ResultContentProvider());
+    table.setContentProvider(provider);
     table.setLabelProvider(new LabelProvider());
 
     splitter.setWeights(new int[] { 30, 70 });
@@ -105,6 +114,11 @@ public class QueryViewer extends Composite
       models.capture.removeListener(this);
       models.perfetto.removeListener(this);
     });
+  }
+
+  private void turnPage() {
+    provider.setPage(tablePage.getSelection());
+    table.refresh();
   }
 
   @Override
@@ -135,6 +149,9 @@ public class QueryViewer extends Composite
 
       @Override
       protected void onUiThread(Perfetto.QueryResult result) {
+        tablePage.setMaximum((int)result.getNumRecords() / 100 - 1);
+        provider.setPage(1);
+
         table.setInput(null);
         for (TableColumn col : table.getTable().getColumns()) {
           col.dispose();
@@ -158,6 +175,8 @@ public class QueryViewer extends Composite
         table.setInput(result);
         packColumns(table.getTable());
         table.getTable().requestLayout();
+
+        tablePage.setSelection(1);
       }
     });
   }
@@ -270,7 +289,14 @@ public class QueryViewer extends Composite
   }
 
   private static class ResultContentProvider implements IStructuredContentProvider {
+    private int page;
+
     public ResultContentProvider() {
+      page = 1;
+    }
+
+    public void setPage(int page) {
+      this.page = page;
     }
 
     @Override
@@ -281,9 +307,12 @@ public class QueryViewer extends Composite
       } else if (!result.getError().isEmpty() || result.getNumRecords() == 0) {
         return new Row[] { new Row(result, 0) };
       } else {
-        Row[] r = new Row[(int)result.getNumRecords()];
+        int offset = 100 * (page - 1);
+        int numRecords = (int)result.getNumRecords() - offset;
+        numRecords = (numRecords > 100) ? 100 : numRecords;
+        Row[] r = new Row[numRecords];
         for (int i = 0; i < r.length; i++) {
-          r[i] = new Row(result, i);
+          r[i] = new Row(result, i+offset);
         }
         return r;
       }
