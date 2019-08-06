@@ -110,7 +110,6 @@ type Builder struct {
 	notificationReaders map[uint64]NotificationReader
 	stack               []stackItem
 	memoryLayout        *device.MemoryLayout
-	deviceID            id.ID
 	inCmd               bool   // true if between BeginCommand and CommitCommand/RevertCommand
 	cmdStart            int    // index of current commands's first instruction
 	pendingLabel        uint64 // label passed to BeginCommand written
@@ -127,7 +126,7 @@ type Builder struct {
 
 // New returns a newly constructed Builder configured to replay on a target
 // with the specified MemoryLayout.
-func New(memoryLayout *device.MemoryLayout, dependent *Builder, deviceID id.ID) *Builder {
+func New(memoryLayout *device.MemoryLayout, dependent *Builder) *Builder {
 	ptrAlignment := uint64(memoryLayout.GetPointer().GetAlignment())
 	var dependentMemory uint64
 	mappedMemory := MappedMemoryRangeList{}
@@ -160,7 +159,6 @@ func New(memoryLayout *device.MemoryLayout, dependent *Builder, deviceID id.ID) 
 		nextNotificationID:  InitialNextNotificationID,
 		notificationReaders: map[uint64]NotificationReader{},
 		memoryLayout:        memoryLayout,
-		deviceID:            deviceID,
 		lastLabel:           ^uint64(0),
 		volatileSpace:       volatileSpace,
 		Remappings:          remappings,
@@ -662,7 +660,7 @@ func (b *Builder) RegisterNotificationReader(notificationID uint64, reader Notif
 
 // RegisterReplayStatusReader create and register a NotificationReader, which is used to decode and handle
 // replay status information sent from GAPIR.
-func (b *Builder) RegisterReplayStatusReader(ctx context.Context) error {
+func (b *Builder) RegisterReplayStatusReader(ctx context.Context, deviceID id.ID) error {
 	reader := func(n gapir.Notification) {
 		r := n.GetReplayStatus()
 		label := r.GetLabel()
@@ -670,7 +668,7 @@ func (b *Builder) RegisterReplayStatusReader(ctx context.Context) error {
 		finished_instrs := r.GetFinishedInstrs()
 
 		log.D(ctx, "Replay status: Label: %v; Total instructions: %v; Finished percentage: %v.", label, total_instrs, float32(finished_instrs)/float32(total_instrs))
-		status.UpdateReplayStatus(ctx, label, total_instrs, finished_instrs, b.deviceID)
+		status.UpdateReplayStatus(ctx, label, total_instrs, finished_instrs, deviceID)
 	}
 	return b.RegisterNotificationReader(ReplayProgressNotificationID, reader)
 }
