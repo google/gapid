@@ -40,6 +40,7 @@ class MockReplayService : public GrpcReplayService {
   }
   MOCK_METHOD7(sendErrorMsg, bool(uint64_t, uint32_t, uint32_t, uint64_t,
                                   const std::string&, const void*, uint32_t));
+  MOCK_METHOD3(sendReplayStatus, bool(uint64_t, uint32_t, uint32_t));
 };
 }  // namespace test
 }  // namespace gapir

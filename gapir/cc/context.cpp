@@ -140,7 +140,8 @@ bool Context::interpret(bool cleanup) {
         // progress at each command call rather than each instruction. Also
         // extra check is given here to make sure to send notification when
         // approaching the last cmd.
-        if (finished_instrs % (total_instrs / 100) == 0 ||
+        if (total_instrs < 100 ||
+            (finished_instrs % (total_instrs / 100) == 0) ||
             (total_instrs - finished_instrs) <= 3) {
           mSrv->sendReplayStatus(label, total_instrs, finished_instrs);
         }

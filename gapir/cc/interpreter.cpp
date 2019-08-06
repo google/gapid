@@ -171,7 +171,9 @@ Interpreter::Result Interpreter::call(uint32_t opcode) {
   auto api = (opcode & API_INDEX_MASK) >> API_BIT_SHIFT;
   auto func = mBuiltins[api].lookup(id);
   auto label = getLabel();
-  checkReplayStatusCallback(label, mInstructionCount, mCurrentInstruction);
+  if (checkReplayStatusCallback) {
+    checkReplayStatusCallback(label, mInstructionCount, mCurrentInstruction);
+  }
   if (func == nullptr) {
     if (mRendererFunctions.count(api) > 0) {
       func = mRendererFunctions[api]->lookup(id);
