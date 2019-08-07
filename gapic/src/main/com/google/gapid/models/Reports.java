@@ -35,23 +35,15 @@ public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Re
   private static final Logger LOG = Logger.getLogger(Reports.class.getName());
 
   private final Devices devices;
+  private final Capture capture;
+  private final ApiContext context;
 
   public Reports(Shell shell, Analytics analytics, Client client, Capture capture,
       Devices devices, ApiContext context) {
     super(LOG, shell, analytics, client, Listener.class, devices);
     this.devices = devices;
-
-    context.addListener(new ApiContext.Listener() {
-      @Override
-      public void onContextsLoaded() {
-        onContextSelected(context.getSelectedContext());
-      }
-
-      @Override
-      public void onContextSelected(FilteringContext ctx) {
-        load(getPath(capture.getData().path, ctx), false);
-      }
-    });
+    this.capture = capture;
+    this.context = context;
   }
 
   protected Path.Any getPath(Path.Capture capturePath, FilteringContext context) {
@@ -64,6 +56,10 @@ public class Reports extends DeviceDependentModel.ForPath<Reports.Data, Void, Re
             .setCapture(capturePath)
             .setDevice(devices.getReplayDevicePath()))
         .build();
+  }
+
+  public void reload() {
+    load(getPath(capture.getData().path, context.getSelectedContext()), false);
   }
 
   @Override
