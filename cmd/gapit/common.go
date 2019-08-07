@@ -47,7 +47,7 @@ import (
 
 func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Service, p *path.Capture) (*path.CommandFilter, error) {
 	filter := &path.CommandFilter{}
-	if f.Context >= 0 {
+	if f.Context >= 0 || f.ContextName != "" {
 		boxedContexts, err := client.Get(ctx, p.Contexts().Path(), nil)
 		if err != nil {
 			return nil, log.Err(ctx, err, "Failed to load the contexts")
@@ -60,7 +60,11 @@ func (f CommandFilterFlags) commandFilter(ctx context.Context, client service.Se
 				return nil, log.Errf(ctx, err, "Failed to load context at index %d", i)
 			}
 			context := boxedContext.(*service.Context)
-			if f.Context == int(context.Handle) {
+			if f.Context >= 0 && f.Context == int(context.Handle) {
+				filter.Context = c.ID
+				return filter, nil
+			}
+			if f.ContextName != "" && f.ContextName == context.Name {
 				filter.Context = c.ID
 				return filter, nil
 			}
