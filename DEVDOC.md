@@ -6,6 +6,8 @@ The recommended Golang debugger is
 [delve](https://github.com/go-delve/delve). You can start a debug build of gapis
 or a client under this debugger.
 
+### Debugging GAPIS
+
 To debug gapis, you can do:
 
 ```
@@ -31,17 +33,48 @@ breakpoints:
 ./bazel-bin/pkg/gapit <verb> -gapis-port 8888 <verb args>
 ```
 
+### Debugging a client
+
 If you want to debug a client like gapit, just start it under dlv:
 
 ```
 dlv exec ./bazel-bin/pkg/gapit <verb> <verb args>
 ```
 
-> If you want to interact with the debugger via your editor or IDE, be aware
-> that delve will think file paths start from the gapid top directory, and not
-> your root directory. This is very likely due to Bazel compilation. You may
-> have to find workarounds if you call delve from an editor/IDE which consider
-> the file paths to start from another directory, typically your root directory.
+### Use a Delve init script
+
+To automate a delve startup sequence, you can edit a script of delve commands to
+be executed when delve starts. The script looks like:
+
+```
+# This is a comment.
+break gapis/server/server.go:228
+
+# add a second breakpoint, with a condition for it to trigger
+break gapis/foo/bar.go:123
+condition 2 some_variable == 42
+
+# launch program
+continue
+```
+
+And you can pass this script to delve using the `--init` flag:
+
+```
+dlv exec --init my-delve-init-script.txt <program to debug...>
+```
+
+### Integration with an IDE
+
+If you want to interact with the debugger via your editor or IDE, be aware that
+delve will think file paths start from the gapid top directory, and not your
+root directory. This is very likely due to Bazel compilation. You may have to
+find workarounds if you call delve from an editor/IDE which consider the file
+paths to start from another directory, typically your root directory. There may
+be a way to adjust using GOPATH to tell to your IDE a possible root for filename
+lookups.
+
+Any help to fix this is very welcome!
 
 ## How to debug via printing message
 
