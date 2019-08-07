@@ -32,7 +32,10 @@ const (
 )
 
 const (
-	keyEventEffectDelay time.Duration = 500 * time.Millisecond
+	// Some slow devices can take up to a second to properly get the
+	// screen in an unlocked state, so use 1.5 seconds to be on the
+	// safe side.
+	keyEventEffectDelay time.Duration = 1500 * time.Millisecond
 )
 
 const (
