@@ -210,7 +210,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 			sdkPath = os.ExpandEnv("${ANDROID_SDK_HOME}")
 		}
 		if _, err := os.Stat(sdkPath); err != nil {
-			return err
+			return log.Err(ctx, err, "Cannot find Android SDK. Please set ANDROID_SDK_HOME, or use the -sdkpath flag")
 		}
 		toolsPathParent := path.Join(sdkPath, "build-tools")
 		matches, err := filepath.Glob(path.Join(toolsPathParent, "*"))
