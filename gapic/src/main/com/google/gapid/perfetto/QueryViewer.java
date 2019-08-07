@@ -78,6 +78,7 @@ public class QueryViewer extends Composite
   private final Text query;
   protected final TableViewer table;
   private final ResultContentProvider provider;
+  private static final int MAX_ENTRIES = 1000;
 
   public QueryViewer(Composite parent, Models models) {
     super(parent, SWT.NONE);
@@ -149,7 +150,7 @@ public class QueryViewer extends Composite
 
       @Override
       protected void onUiThread(Perfetto.QueryResult result) {
-        tablePage.setMaximum((int)result.getNumRecords() / 100 - 1);
+        tablePage.setMaximum((int)result.getNumRecords() / MAX_ENTRIES - 1);
         provider.setPage(1);
 
         table.setInput(null);
@@ -307,9 +308,9 @@ public class QueryViewer extends Composite
       } else if (!result.getError().isEmpty() || result.getNumRecords() == 0) {
         return new Row[] { new Row(result, 0) };
       } else {
-        int offset = 100 * (page - 1);
+        int offset = MAX_ENTRIES * (page - 1);
         int numRecords = (int)result.getNumRecords() - offset;
-        numRecords = (numRecords > 100) ? 100 : numRecords;
+        numRecords = (numRecords > MAX_ENTRIES) ? MAX_ENTRIES : numRecords;
         Row[] r = new Row[numRecords];
         for (int i = 0; i < r.length; i++) {
           r[i] = new Row(result, i+offset);
