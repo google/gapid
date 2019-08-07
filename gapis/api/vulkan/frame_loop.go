@@ -102,6 +102,10 @@ type frameLoop struct {
 	imageDestroyed map[VkImage]bool
 	imageToBackup  map[VkImage]VkImage
 
+	fenceChanged     map[VkFence]bool
+	eventChanged     map[VkEvent]bool
+	semaphoreChanged map[VkSemaphore]bool
+
 	loopCountPtr value.Pointer
 
 	frameNum uint32
@@ -126,6 +130,10 @@ func newFrameLoop(ctx context.Context, c *capture.GraphicsCapture, numInitialCmd
 		imageChanged:   make(map[VkImage]bool),
 		imageDestroyed: make(map[VkImage]bool),
 		imageToBackup:  make(map[VkImage]VkImage),
+
+		fenceChanged:     make(map[VkFence]bool),
+		eventChanged:     make(map[VkEvent]bool),
+		semaphoreChanged: make(map[VkSemaphore]bool),
 	}
 
 	f.loopStartCmd, f.loopEndCmd = f.getLoopStartAndEndCmd(ctx, Cmds)
@@ -148,6 +156,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 			log.E(ctx, "Failed to backup changed resources: %v", err)
 			return
 		}
+		sb.scratchRes.Free(sb)
 		// Add jump label
 		sb.write(sb.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 			f.loopCountPtr = b.AllocateMemory(4)
@@ -171,6 +180,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 			log.E(ctx, "Failed to reset changed resources %v.", err)
 			return
 		}
+		sb.scratchRes.Free(sb)
 
 		// Add jump instruction
 		sb.write(sb.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
@@ -184,8 +194,27 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 		return
 	}
 
-	if _, ok := cmd.(*VkQueuePresentKHR); ok {
+	// Skip the destroy calls for resources that are not created during loop
+	switch cmd.(type) {
+	case *VkDestroyBuffer:
+		vkCmd := cmd.(*VkDestroyBuffer)
+		vkCmd.Extras().Observations().ApplyReads(out.State().Memory.ApplicationPool())
+		buffer := vkCmd.Buffer()
+		if _, ok := f.bufferDestroyed[buffer]; ok {
+			log.D(ctx, "Skip destroy Buffer %v ", buffer)
+			return
+		}
+	case *VkDestroyImage:
+		vkCmd := cmd.(*VkDestroyImage)
+		vkCmd.Extras().Observations().ApplyReads(out.State().Memory.ApplicationPool())
+		img := vkCmd.Image()
+		if _, ok := f.imageDestroyed[img]; ok {
+			log.D(ctx, "Skip destroy image %v ", img)
+			return
+		}
+	case *VkQueuePresentKHR:
 		f.frameNum++
+
 	}
 
 	out.MutateAndWrite(ctx, id, cmd)
@@ -227,8 +256,10 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd := cmd.(*VkDestroyBuffer)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			buffer := vkCmd.Buffer()
-			log.D(ctx, "Buffer %v destroyed.", buffer)
-			f.bufferDestroyed[buffer] = true
+			if _, ok := f.bufferCreated[buffer]; !ok {
+				log.D(ctx, "Buffer %v destroyed.", buffer)
+				f.bufferDestroyed[buffer] = true
+			}
 
 		// Images
 		case *VkCreateImage:
@@ -241,8 +272,10 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd := cmd.(*VkDestroyImage)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			img := vkCmd.Image()
-			log.D(ctx, "Image %v destroyed", img)
-			f.imageDestroyed[img] = true
+			if _, ok := f.imageCreated[img]; !ok {
+				log.D(ctx, "Image %v destroyed", img)
+				f.imageDestroyed[img] = true
+			}
 
 		// TODO: Recreate destroyed resources.
 		default:
@@ -291,6 +324,36 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 						}
 					}
 				}
+			}
+		}
+	}
+
+	fences := st.Fences().All()
+	for k, v := range GetState(startState).Fences().All() {
+		if fence, present := fences[k]; present {
+			if v.Signaled() != fence.Signaled() {
+				log.D(ctx, "Fence %v status changed during loop.", k)
+				f.fenceChanged[k] = true
+			}
+		}
+	}
+
+	events := st.Events().All()
+	for k, v := range GetState(startState).Events().All() {
+		if event, present := events[k]; present {
+			if v.Signaled() != event.Signaled() {
+				log.D(ctx, "Event %v status changed during loop.", k)
+				f.eventChanged[k] = true
+			}
+		}
+	}
+
+	semaphores := st.Semaphores().All()
+	for k, v := range GetState(startState).Semaphores().All() {
+		if semaphore, present := semaphores[k]; present {
+			if v.Signaled() != semaphore.Signaled() {
+				log.D(ctx, "Semaphore %v status  changed during loop", k)
+				f.semaphoreChanged[k] = true
 			}
 		}
 	}
@@ -352,7 +415,7 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, sb *stateBuilder) 
 
 		f.bufferToBackup[buffer] = stagingBuffer
 	}
-	sb.scratchRes.Free(sb)
+
 	return nil
 }
 
@@ -388,6 +451,16 @@ func (f *frameLoop) resetResource(ctx context.Context, sb *stateBuilder) error {
 	if err := f.resetImages(ctx, sb); err != nil {
 		return err
 	}
+	if err := f.resetFences(ctx, sb); err != nil {
+		return err
+	}
+	if err := f.resetEvents(ctx, sb); err != nil {
+		return err
+	}
+	if err := f.resetSemaphores(ctx, sb); err != nil {
+		return err
+	}
+
 	//TODO: Reset other resources.
 	return nil
 }
@@ -413,7 +486,6 @@ func (f *frameLoop) resetBuffers(ctx context.Context, sb *stateBuilder) error {
 		}
 		log.D(ctx, "Reset buffer [%v] with buffer [%v] succeed", dst, src)
 	}
-	sb.scratchRes.Free(sb)
 
 	return nil
 }
@@ -428,18 +500,108 @@ func (f *frameLoop) resetImages(ctx context.Context, sb *stateBuilder) error {
 	for dst, src := range f.imageToBackup {
 		dstObj := s.Images().Get(dst)
 
-		primeable, err := imgPrimer.newPrimeableImageDataFromDevice(src, dst)
-		if err != nil {
-			return log.Errf(ctx, err, "Create primeable image data for image %v", dst)
+		prime := func() error {
+			primeable, err := imgPrimer.newPrimeableImageDataFromDevice(src, dst)
+			if err != nil {
+				return log.Errf(ctx, err, "Create primeable image data for image %v", dst)
+			}
+			defer primeable.free(sb)
+			err = primeable.prime(sb, useSpecifiedLayout(dstObj.Info().InitialLayout()), sameLayoutsOfImage(dstObj))
+			if err != nil {
+				return log.Errf(ctx, err, "Priming image %v with data", dst)
+			}
+			log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
+			return nil
 		}
-		defer primeable.free(sb)
-		err = primeable.prime(sb, useSpecifiedLayout(dstObj.Info().InitialLayout()), sameLayoutsOfImage(dstObj))
-		if err != nil {
-			return log.Errf(ctx, err, "Priming image %v with data", dst)
+
+		if err := prime(); err != nil {
+			return err
 		}
-		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
 	}
 
+	return nil
+}
+
+func (f *frameLoop) resetFences(ctx context.Context, sb *stateBuilder) error {
+	s := GetState(sb.newState)
+
+	for k := range f.fenceChanged {
+		fence := s.Fences().Get(k)
+		if fence.Signaled() {
+			log.D(ctx, "Reset fence %v.", k)
+			sb.write(sb.cb.VkResetFences(fence.Device(), 1, sb.MustAllocReadData(fence.VulkanHandle()).Ptr(), VkResult_VK_SUCCESS))
+		} else {
+			log.D(ctx, "Singal fence %v.", k)
+			queue := sb.getQueueFor(
+				VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+				[]uint32{},
+				fence.Device(),
+				NilQueueObjectʳ)
+			if queue == NilQueueObjectʳ {
+				return log.Err(ctx, nil, "queue is nil queue")
+			}
+			sb.write(sb.cb.VkQueueSubmit(
+				queue.VulkanHandle(),
+				0,
+				memory.Nullptr,
+				fence.VulkanHandle(),
+				VkResult_VK_SUCCESS,
+			))
+
+			sb.write(sb.cb.VkQueueWaitIdle(queue.VulkanHandle(), VkResult_VK_SUCCESS))
+		}
+	}
+	return nil
+}
+
+func (f *frameLoop) resetEvents(ctx context.Context, sb *stateBuilder) error {
+	s := GetState(sb.newState)
+
+	for k := range f.eventChanged {
+		event := s.Events().Get(k)
+		if event.Signaled() {
+			sb.write(sb.cb.VkResetEvent(event.Device(), event.VulkanHandle(), VkResult_VK_SUCCESS))
+			log.D(ctx, "Reset event %v ", k)
+		} else {
+			sb.write(sb.cb.VkSetEvent(event.Device(), event.VulkanHandle(), VkResult_VK_SUCCESS))
+			log.D(ctx, "Set event %v ", k)
+		}
+	}
+	return nil
+}
+
+func (f *frameLoop) resetSemaphores(ctx context.Context, sb *stateBuilder) error {
+	s := GetState(sb.newState)
+
+	for k := range f.semaphoreChanged {
+		semaphore := s.Semaphores().Get(k)
+		queue := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+			[]uint32{},
+			semaphore.Device(),
+			s.Queues().Get(semaphore.LastQueue()))
+
+		if !semaphore.Signaled() {
+			log.D(ctx, "Signal semaphore %v", semaphore)
+			sb.write(sb.cb.VkQueueSubmit(
+				queue.VulkanHandle(),
+				1,
+				sb.MustAllocReadData(NewVkSubmitInfo(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
+					0, // pNext
+					0, // waitSemaphoreCount
+					0, // pWaitSemaphores
+					0, // pWaitDstStageMask
+					0, // commandBufferCount
+					0, // pCommandBuffers
+					1, // signalSemaphoreCount
+					NewVkSemaphoreᶜᵖ(sb.MustAllocReadData(semaphore.VulkanHandle()).Ptr()), // pSignalSemaphores
+				)).Ptr(),
+				VkFence(0),
+				VkResult_VK_SUCCESS,
+			))
+		}
+	}
 	return nil
 }
 
@@ -451,7 +613,6 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	}
 
 	queue := getQueueForPriming(sb, srcImg, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
-
 	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())
 	preCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImg, useSpecifiedLayout(srcImg.Info().InitialLayout()), useSpecifiedLayout(ipHostCopyImageLayout))
 	if err = ipRecordImageMemoryBarriers(sb, queueHandler, preCopyBarriers...); err != nil {
