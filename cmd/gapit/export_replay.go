@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -55,6 +56,12 @@ func init() {
 	})
 }
 
+func isPackageNameValid(name string) bool {
+	// See https://developer.android.com/studio/build/application-id
+	packageNameRE := regexp.MustCompile(`^[[:alpha:]][[:word:]]*(\.[[:alpha:]][[:word:]]*)+$`)
+	return packageNameRE.MatchString(name)
+}
+
 func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if flags.NArg() != 1 {
 		app.Usage(ctx, "Exactly one gfx trace file expected, got %d", flags.NArg())
@@ -62,9 +69,16 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 	}
 
 	// Early argument check
+	var replayAPK, replayPackage string
 	if verb.Apk != "" {
 		if !strings.HasSuffix(verb.Apk, ".apk") {
 			app.Usage(ctx, "APK name must be a valid Android package name followed by '.apk', e.g. com.example.myapp.replay.apk")
+			return nil
+		}
+		replayAPK = filepath.Base(verb.Apk)
+		replayPackage = strings.TrimSuffix(replayAPK, ".apk")
+		if !isPackageNameValid(replayPackage) {
+			app.Usage(ctx, "APK package name '%s' is invalid, make sure to use alphanum characters and at least one '.' separator, e.g. com.example.myapp.replay.apk (see https://developer.android.com/studio/build/application-id)", replayPackage)
 			return nil
 		}
 		if _, err := os.Stat(verb.Apk); err == nil {
@@ -138,8 +152,6 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 
 	if verb.Apk != "" {
 		// Create stand-alone APK
-		replayAPK := filepath.Base(verb.Apk)
-		replayPackage := strings.TrimSuffix(replayAPK, ".apk")
 		log.I(ctx, "Create replay apk: %s with package name %s", replayAPK, replayPackage)
 
 		boxedCapture, err := client.Get(ctx, capturePath.Path(), nil)
