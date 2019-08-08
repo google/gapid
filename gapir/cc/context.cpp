@@ -117,7 +117,7 @@ void Context::prefetch(ResourceCache* cache) const {
   cache->setPrefetch(resources.data(), resources.size(), std::move(tempLoader));
 }
 
-bool Context::interpret(bool cleanup) {
+bool Context::interpret(bool cleanup, bool isPrewarm) {
   Interpreter::ApiRequestCallback callback = [this](Interpreter* interpreter,
                                                     uint8_t api_index) -> bool {
     if (api_index == gapir::Vulkan::INDEX) {
@@ -134,7 +134,12 @@ bool Context::interpret(bool cleanup) {
     return false;
   };
   Interpreter::CheckReplayStatusCallback replayStatusCallback =
-      [this](uint64_t label, uint32_t total_instrs, uint32_t finished_instrs) {
+      [this, isPrewarm](uint64_t label, uint32_t total_instrs,
+                        uint32_t finished_instrs) {
+        // Don't send replay status updates when it's prewarm replay.
+        if (isPrewarm) {
+          return;
+        }
         // Send notification to GAPIS about every 1% of instructions done.
         // Worth noting it's not precisely every 1%, because GAPIR check
         // progress at each command call rather than each instruction. Also

@@ -61,7 +61,7 @@ class Context : private Renderer::Listener {
   // returns true if the interpretation was successful false otherwise
   // If cleanup is false, then the next time this context is used,
   // It will continue from where it was.
-  bool interpret(bool cleanup = true);
+  bool interpret(bool cleanup = true, bool isPrewarm = false);
 
   // Renderer::Listener compliance
   virtual void onDebugMessage(uint32_t severity, uint8_t api_index,
