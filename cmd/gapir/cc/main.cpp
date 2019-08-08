@@ -345,14 +345,14 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
           return;
         }
 
-        auto cleanup_state = [&]() {
+        auto cleanup_state = [&](bool isPrewarm) {
           if (!prewarm->prewarm_context->initialize(prewarm->cleanup_id)) {
             return false;
           }
           if (cache != nullptr) {
             prewarm->prewarm_context->prefetch(cache);
           }
-          bool ok = prewarm->prewarm_context->interpret();
+          bool ok = prewarm->prewarm_context->interpret(true, isPrewarm);
           if (!ok) {
             return false;
           }
@@ -367,7 +367,8 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
           return true;
         };
 
-        auto prime_state = [&](std::string state, std::string cleanup) {
+        auto prime_state = [&](std::string state, std::string cleanup,
+                               bool isPrewarm) {
           GAPID_INFO("Priming %s", state.c_str());
           if (context->initialize(state)) {
             GAPID_INFO("Replay context initialized successfully");
@@ -379,7 +380,7 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
             context->prefetch(cache);
           }
           GAPID_INFO("Replay started");
-          bool ok = context->interpret(false);
+          bool ok = context->interpret(false, isPrewarm);
           GAPID_INFO("Priming %s", ok ? "finished successfully" : "failed");
           if (!ok) {
             return false;
@@ -408,9 +409,9 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
 
               if (prewarm->current_state != req->replay().dependent_id()) {
                 GAPID_INFO("Trying to get into the correct state");
-                cleanup_state();
+                cleanup_state(false);
                 if (req->replay().dependent_id() != "") {
-                  prime_state(req->replay().dependent_id(), "");
+                  prime_state(req->replay().dependent_id(), "", false);
                 }
               } else {
                 GAPID_INFO("Already in the correct state");
@@ -452,7 +453,7 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
                 break;
               }
               if (prewarm->current_state != "") {
-                if (!cleanup_state()) {
+                if (!cleanup_state(true)) {
                   GAPID_ERROR(
                       "Could not clean up after previous replay, in a bad "
                       "state now");
@@ -460,7 +461,7 @@ std::unique_ptr<Server> Setup(const char* uri, const char* authToken,
                 }
               }
               if (!prime_state(std::move(req->prewarm().prerun_id()),
-                               std::move(req->prewarm().cleanup_id()))) {
+                               std::move(req->prewarm().cleanup_id()), true)) {
                 GAPID_ERROR("Could not prime state: in a bad state now");
                 return;
               }
