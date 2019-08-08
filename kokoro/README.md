@@ -86,8 +86,8 @@ terminal by running the `gapid` script or the executables.
 A Debian `.deb` package and a `.zip` file with the same contents are built.
 The package installs into `/opt/gapid`, while archives can be expanded anywhere.
 The Debian package depends on `openjdk-8-jre` and neither it nor the `.zip`
-archives contain the JRE. The launcher script looks for `java` first on the
-`$PATH`, then `$JAVA_HOME` and finally the hard-coded
+archives contain the JRE. The launcher script looks for `java` first in
+`$JAVA_HOME`, then on the `$PATH`, and finally the hard-coded
 `/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java`, which the `openjdk-8-jre`
 package provides. The file layout is:
 
