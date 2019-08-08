@@ -376,6 +376,12 @@ public class Widgets {
     return result;
   }
 
+  public static Spinner createSpinner(Composite parent, int value, int min, int max, Listener listener) {
+    Spinner result = createSpinner(parent, value, min, max);
+    result.addListener(SWT.Selection, listener);
+    return result;
+  }
+
   public static Text createTextbox(Composite parent, String text) {
     return createTextbox(parent, SWT.SINGLE | SWT.BORDER, text);
   }
