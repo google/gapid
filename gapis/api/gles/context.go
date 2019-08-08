@@ -38,6 +38,10 @@ func (c Contextʳ) ID() api.ContextID {
 	return api.ContextID(id.OfString(fmt.Sprintf("GLES Context %v", c.Identifier())))
 }
 
+func (c Contextʳ) Handle() uint32 {
+	return uint32(c.Identifier())
+}
+
 // API returns the GLES API.
 func (c Contextʳ) API() api.API {
 	return API{}

@@ -77,6 +77,10 @@ func (VulkanContext) API() api.API {
 	return API{}
 }
 
+func (VulkanContext) Handle() uint32 {
+	return 1
+}
+
 func (API) Context(ctx context.Context, s *api.GlobalState, thread uint64) api.Context {
 	return VulkanContext{}
 }

@@ -30,6 +30,8 @@ type Context interface {
 
 	// ID returns the context's unique identifier
 	ID() ContextID
+
+	Handle() uint32
 }
 
 // ContextInfo is describes a Context.
@@ -38,6 +40,7 @@ type Context interface {
 type ContextInfo struct {
 	Path              *path.Context
 	ID                ContextID
+	Handle            uint32
 	API               ID
 	NumCommandsByType map[reflect.Type]int
 	Name              string

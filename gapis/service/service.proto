@@ -979,6 +979,8 @@ message Context {
   path.API API = 2;
   // The estimated importance for the context. 0 = lowest priority.
   uint32 priority = 3;
+  // The context ID. Always 1 for Vulkan
+  uint32 handle = 4;
 }
 
 // CommandTree represents a command tree hierarchy.
