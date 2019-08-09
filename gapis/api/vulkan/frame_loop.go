@@ -194,27 +194,9 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 		return
 	}
 
-	// Skip the destroy calls for resources that are not created during loop
 	switch cmd.(type) {
-	case *VkDestroyBuffer:
-		vkCmd := cmd.(*VkDestroyBuffer)
-		vkCmd.Extras().Observations().ApplyReads(out.State().Memory.ApplicationPool())
-		buffer := vkCmd.Buffer()
-		if _, ok := f.bufferDestroyed[buffer]; ok {
-			log.D(ctx, "Skip destroy Buffer %v ", buffer)
-			return
-		}
-	case *VkDestroyImage:
-		vkCmd := cmd.(*VkDestroyImage)
-		vkCmd.Extras().Observations().ApplyReads(out.State().Memory.ApplicationPool())
-		img := vkCmd.Image()
-		if _, ok := f.imageDestroyed[img]; ok {
-			log.D(ctx, "Skip destroy image %v ", img)
-			return
-		}
 	case *VkQueuePresentKHR:
 		f.frameNum++
-
 	}
 
 	out.MutateAndWrite(ctx, id, cmd)
@@ -257,7 +239,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			buffer := vkCmd.Buffer()
 			if _, ok := f.bufferCreated[buffer]; !ok {
-				log.D(ctx, "Buffer %v destroyed.", buffer)
+				log.E(ctx, "Buffer %v destroyed.", buffer)
 				f.bufferDestroyed[buffer] = true
 			}
 
@@ -273,7 +255,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			img := vkCmd.Image()
 			if _, ok := f.imageCreated[img]; !ok {
-				log.D(ctx, "Image %v destroyed", img)
+				log.E(ctx, "Image %v destroyed", img)
 				f.imageDestroyed[img] = true
 			}
 
@@ -528,9 +510,15 @@ func (f *frameLoop) resetFences(ctx context.Context, sb *stateBuilder) error {
 	for k := range f.fenceChanged {
 		fence := s.Fences().Get(k)
 		if fence.Signaled() {
+			pFence := sb.MustAllocReadData(fence.VulkanHandle()).Ptr()
+			// Wait fence to be signaled before resetting it.
+			sb.write(sb.cb.VkWaitForFences(fence.Device(), 1, pFence, VkBool32(1), 0xFFFFFFFFFFFFFFFF, VkResult_VK_SUCCESS))
+
 			log.D(ctx, "Reset fence %v.", k)
-			sb.write(sb.cb.VkResetFences(fence.Device(), 1, sb.MustAllocReadData(fence.VulkanHandle()).Ptr(), VkResult_VK_SUCCESS))
+			sb.write(sb.cb.VkResetFences(fence.Device(), 1, pFence, VkResult_VK_SUCCESS))
 		} else {
+			sb.write(sb.cb.ReplayGetFenceStatus(fence.Device(), fence.VulkanHandle(), VkResult_VK_SUCCESS, VkResult_VK_SUCCESS))
+
 			log.D(ctx, "Singal fence %v.", k)
 			queue := sb.getQueueFor(
 				VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
@@ -560,9 +548,12 @@ func (f *frameLoop) resetEvents(ctx context.Context, sb *stateBuilder) error {
 	for k := range f.eventChanged {
 		event := s.Events().Get(k)
 		if event.Signaled() {
+			// Wait event to be signaled before resetting it.
+			sb.write(sb.cb.ReplayGetEventStatus(event.Device(), event.VulkanHandle(), VkResult_VK_EVENT_SET, true, VkResult_VK_SUCCESS))
 			sb.write(sb.cb.VkResetEvent(event.Device(), event.VulkanHandle(), VkResult_VK_SUCCESS))
 			log.D(ctx, "Reset event %v ", k)
 		} else {
+			sb.write(sb.cb.ReplayGetEventStatus(event.Device(), event.VulkanHandle(), VkResult_VK_EVENT_RESET, true, VkResult_VK_SUCCESS))
 			sb.write(sb.cb.VkSetEvent(event.Device(), event.VulkanHandle(), VkResult_VK_SUCCESS))
 			log.D(ctx, "Set event %v ", k)
 		}
@@ -581,7 +572,26 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, sb *stateBuilder) error
 			semaphore.Device(),
 			s.Queues().Get(semaphore.LastQueue()))
 
-		if !semaphore.Signaled() {
+		if semaphore.Signaled() {
+			log.D(ctx, "Wait for semaphore %v to be signaled", semaphore)
+			sb.write(sb.cb.VkQueueSubmit(
+				queue.VulkanHandle(),
+				1,
+				sb.MustAllocReadData(NewVkSubmitInfo(sb.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_SUBMIT_INFO, // sType
+					0, // pNext
+					1, // waitSemaphoreCount
+					NewVkSemaphoreᶜᵖ(sb.MustAllocReadData(semaphore.VulkanHandle()).Ptr()), // pWaitSemaphores
+					0, // pWaitDstStageMask
+					0, // commandBufferCount
+					0, // pCommandBuffers
+					0, // signalSemaphoreCount
+					0, // pSignalSemaphores
+				)).Ptr(),
+				VkFence(0),
+				VkResult_VK_SUCCESS,
+			))
+		} else {
 			log.D(ctx, "Signal semaphore %v", semaphore)
 			sb.write(sb.cb.VkQueueSubmit(
 				queue.VulkanHandle(),
