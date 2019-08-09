@@ -49,7 +49,10 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": ["-ldl"],
         "//tools/build:darwin": [],
-        "//tools/build:windows": ["-lws2_32"],
+        "//tools/build:windows": [
+            "-lws2_32",
+            "-lshlwapi",
+        ],
         # Android.
         "//conditions:default": ["-ldl"],
     }),
