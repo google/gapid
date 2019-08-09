@@ -16,6 +16,8 @@ package device
 
 import "fmt"
 
+const AndroidMinimalSupportedAPIVersion = 23
+
 // AndroidOS returns the full OS structure for the supplied android os version.
 func AndroidOS(major, minor, point int32) *OS {
 	os := &OS{
