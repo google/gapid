@@ -27,6 +27,8 @@
 #include "core/cc/gl/formats.h"
 #include "core/cc/lock.h"
 #include "core/cc/log.h"
+#include "core/cc/null_writer.h"
+#include "core/cc/process_name.h"
 #include "core/cc/target.h"
 #include "core/cc/timer.h"
 #include "core/os/device/deviceinfo/cc/query.h"
@@ -128,29 +130,39 @@ Spy::Spy()
       mNestedFrameStart(0),
       mNestedFrameEnd(0),
       mFrameNumber(0) {
+  bool this_executable = true;
+  char* pn = getenv("GAPID_CAPTURE_PROCESS_NAME");
+  if (pn) {
+    auto proc_name = core::get_process_name();
+    this_executable = (proc_name == pn);
+  }
+  if (this_executable) {
 #if TARGET_OS == GAPID_OS_ANDROID
-  // Use a "localabstract" pipe on Android to prevent depending on the traced
-  // application having the INTERNET permission set, required for opening and
-  // listening on a TCP socket.
-  std::string pipe = "gapii";
-  char* envPipe = getenv("GAPII_PIPE_NAME");
-  if (envPipe != nullptr) {
-    pipe = envPipe;
+    // Use a "localabstract" pipe on Android to prevent depending on the traced
+    // application having the INTERNET permission set, required for opening and
+    // listening on a TCP socket.
+    std::string pipe = "gapii";
+    char* envPipe = getenv("GAPII_PIPE_NAME");
+    if (envPipe != nullptr) {
+      pipe = envPipe;
+    }
+    mConnection = ConnectionStream::listenPipe(pipe.c_str(), true);
+#else                                       // TARGET_OS
+    mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
+#endif                                      // TARGET_OS
+    if (!mConnection->write("gapii", 5)) {  // handshake magic
+      GAPID_FATAL("Couldn't send handshake magic");
+    }
+
+    GAPID_INFO("Connection made");
   }
-  mConnection = ConnectionStream::listenPipe(pipe.c_str(), true);
-#else   // TARGET_OS
-  mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
-#endif  // TARGET_OS
-
-  if (!mConnection->write("gapii", 5)) {  // handshake magic
-    GAPID_FATAL("Couldn't send handshake magic");
-  }
-
-  GAPID_INFO("Connection made");
-
   ConnectionHeader header;
-  if (!header.read(mConnection.get())) {
-    GAPID_FATAL("Failed to read connection header");
+  if (this_executable) {
+    if (!header.read(mConnection.get())) {
+      GAPID_FATAL("Failed to read connection header");
+    }
+  } else {
+    header.read_dummy();
   }
 
   GAPID_INFO("Connection header read");
@@ -184,8 +196,13 @@ Spy::Spy()
   GAPID_INFO("Hide unknown extensions: %s",
              mHideUnknownExtensions ? "true" : "false");
 
-  mEncoder = gapii::PackEncoder::create(
-      mConnection, header.mFlags & ConnectionHeader::FLAG_NO_BUFFER);
+  if (this_executable) {
+    mEncoder = gapii::PackEncoder::create(
+        mConnection, header.mFlags & ConnectionHeader::FLAG_NO_BUFFER);
+  } else {
+    auto nw = std::make_shared<core::NullWriter>();
+    mEncoder = gapii::PackEncoder::create(nw, false);
+  }
 
   // writeHeader needs to come before the installer is created as the
   // deviceinfo queries want to call into EGL / GL commands which will be
@@ -214,7 +231,7 @@ Spy::Spy()
   SpyBase::init(context);
   exit();
 
-  if (mSuspendCaptureFrames.load() == kSuspendIndefinitely) {
+  if (mSuspendCaptureFrames.load() == kSuspendIndefinitely && this_executable) {
     mDeferStartJob =
         std::unique_ptr<core::AsyncJob>(new core::AsyncJob([this]() {
           uint32_t buffer;

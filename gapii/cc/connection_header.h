@@ -55,6 +55,22 @@ class ConnectionHeader {
   // on success or false on error.
   bool read(core::StreamReader* reader);
 
+  void read_dummy() {
+    mMagic[0] = 's';
+    mMagic[1] = 'p';
+    mMagic[2] = 'y';
+    mMagic[3] = '0';
+    mVersion = 1;
+    mObserveFrameFrequency = 0;
+    mObserveDrawFrequency = 0;
+    mStartFrame = -1;
+    mNumFrames = 0;
+    mAPIs = 0;
+    mFlags = 0;
+    mGvrHandle = 0;
+    mLibInterceptorPath[0] = '\0';
+  }
+
   uint8_t mMagic[4];                // 's', 'p', 'y', '0'
   uint32_t mVersion;                // 1
   uint32_t mObserveFrameFrequency;  // non-zero == enabled.
