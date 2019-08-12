@@ -167,11 +167,14 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
-	devInfoProvidersMutex.Lock()
-	defer devInfoProvidersMutex.Unlock()
-	for _, f := range devInfoProviders {
-		if err := f(ctx, d); err != nil {
-			return nil, err
+	// Run device info providers only if the API is supported
+	if d.To.Configuration.OS != nil && d.To.Configuration.OS.APIVersion >= device.AndroidMinimalSupportedAPIVersion {
+		devInfoProvidersMutex.Lock()
+		defer devInfoProvidersMutex.Unlock()
+		for _, f := range devInfoProviders {
+			if err := f(ctx, d); err != nil {
+				return nil, err
+			}
 		}
 	}
 
