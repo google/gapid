@@ -32,7 +32,7 @@ import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
-
+import com.google.gapid.perfetto.views.VirtualTrackPanel;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -49,12 +49,12 @@ public class Tracks {
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
-    return transformAsync(enumerateCpu(data), $1 ->
-        transform(enumerateCounters(data), $2 -> {
-          enumerateGpu(data);
-          enumerateProcesses(data);
-          return data;
-        }));
+    return transformAsync(enumerateCpu(data), $1 -> transform(enumerateCounters(data), $2 -> {
+      enumerateTracks(data);
+      enumerateGpu(data);
+      enumerateProcesses(data);
+      return data;
+    }));
   }
 
   private static ListenableFuture<Perfetto.Data.Builder> enumerateCpu(Perfetto.Data.Builder data) {
@@ -83,6 +83,22 @@ public class Tracks {
   public static ListenableFuture<Perfetto.Data.Builder> enumerateCounters(
       Perfetto.Data.Builder data) {
     return MemorySummaryTrack.enumerate(data);
+  }
+
+  public static Perfetto.Data.Builder enumerateTracks(Perfetto.Data.Builder data) {
+    boolean found = false;
+    for (VirtualTrackInfo track : data.getVirtualTracks().values()) {
+      if (!found) {
+        data.tracks.addLabelGroup(
+            null, "tracks", "Tracks", group(state -> new TitlePanel("Tracks"), true));
+        found = true;
+      }
+      VirtualTrack virtualTrack = new VirtualTrack(track.trackId, track.name);
+      data.tracks.addTrack("tracks", virtualTrack.getId(), track.name,
+          single(state -> new VirtualTrackPanel(state, virtualTrack), true));
+    }
+
+    return data;
   }
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {

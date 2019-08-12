@@ -37,6 +37,7 @@ import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.models.TrackConfig;
 import com.google.gapid.perfetto.models.Tracks;
+import com.google.gapid.perfetto.models.VirtualTrackInfo;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
@@ -45,11 +46,9 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.views.StatusBar;
-
-import org.eclipse.swt.widgets.Shell;
-
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+import org.eclipse.swt.widgets.Shell;
 
 /**
  * Model responsible for querying a Perfetto trace.
@@ -84,13 +83,19 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   @Override
   protected ListenableFuture<Data> doLoad(Path.Capture source) {
     Data.Builder data = new Data.Builder(new QueryEngine(client, source, status));
-    return
-        transformAsync(withStatus("Examining the trace...", examineTrace(data)), $1 ->
-          transformAsync(withStatus("Querying threads...", queryThreads(data)), $2 ->
-            transformAsync(withStatus("Querying GPU info...", queryGpu(data)), $3 ->
-              transformAsync(withStatus("Querying counters...", queryCounters(data)), $4 ->
-                transform(withStatus("Enumerating tracks...", enumerateTracks(data)), $5 ->
-                  data.build())))));
+    return transformAsync(withStatus("Examining the trace...", examineTrace(data)),
+        $1
+        -> transformAsync(withStatus("Querying threads...", queryThreads(data)),
+            $2
+            -> transformAsync(withStatus("Querying GPU info...", queryGpu(data)),
+                $3
+                -> transformAsync(withStatus("Querying counters...", queryCounters(data)),
+                    $4
+                    -> transformAsync(
+                        withStatus("Querying virtual tracks...", queryVirtualTracks(data)),
+                        $5
+                        -> transform(withStatus("Enumerating tracks...", enumerateTracks(data)),
+                            $6 -> data.build()))))));
   }
 
   private static ListenableFuture<Data.Builder> examineTrace(Data.Builder data) {
@@ -110,6 +115,10 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
 
   private static ListenableFuture<Data.Builder> queryCounters(Data.Builder data) {
     return CounterInfo.listCounters(data);
+  }
+
+  private static ListenableFuture<Data.Builder> queryVirtualTracks(Data.Builder data) {
+    return VirtualTrackInfo.listVirtualTracks(data);
   }
 
   private static ListenableFuture<Data.Builder> enumerateTracks(Data.Builder data) {
@@ -173,11 +182,13 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public final ImmutableMap<Long, ThreadInfo> threads;
     public final GpuInfo gpu;
     public final ImmutableMap<Long, CounterInfo> counters;
+    public final ImmutableMap<Long, VirtualTrackInfo> virtualTracks;
     public final TrackConfig tracks;
 
     public Data(QueryEngine queries, TimeSpan traceTime, int numCpus,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
-        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
+        GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters,
+        ImmutableMap<Long, VirtualTrackInfo> virtualTracks, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
       this.numCpus = numCpus;
@@ -186,6 +197,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       this.gpu = gpu;
       this.counters = counters;
       this.tracks = tracks;
+      this.virtualTracks = virtualTracks;
     }
 
     public static class Builder {
@@ -197,6 +209,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       private GpuInfo gpu = GpuInfo.NONE;
       private ImmutableMap<Long, CounterInfo> counters;
       private ImmutableListMultimap<String, CounterInfo> countersByName;
+      private ImmutableMap<Long, VirtualTrackInfo> virtualTracks;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
 
       public Builder(QueryEngine qe) {
@@ -239,6 +252,15 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return this;
       }
 
+      public Builder setVirtualTracks(ImmutableMap<Long, VirtualTrackInfo> virtualTracks) {
+        this.virtualTracks = virtualTracks;
+        return this;
+      }
+
+      public ImmutableMap<Long, VirtualTrackInfo> getVirtualTracks() {
+        return virtualTracks;
+      }
+
       public GpuInfo getGpu() {
         return gpu;
       }
@@ -264,7 +286,8 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       }
 
       public Data build() {
-        return new Data(qe, traceTime, numCpus, processes, threads, gpu, counters, tracks.build());
+        return new Data(qe, traceTime, numCpus, processes, threads, gpu, counters, virtualTracks,
+            tracks.build());
       }
     }
   }

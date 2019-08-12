@@ -23,22 +23,19 @@ import static java.util.logging.Level.INFO;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.RenderContext;
-import com.google.gapid.perfetto.models.ArbitraryTrackTrack;
-import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.models.VirtualTrack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.graphics.RGBA;
+import org.eclipse.swt.widgets.Display;
 
 /**
- * Displays the CPU usage summary of a process, aggregating all threads.
+ * Displays the slices of a virtual track.
  */
-public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
-  protected static final Logger LOG = Logger.getLogger("IT DOESN'T MATTER");
-
+public class VirtualTrackPanel extends TrackPanel {
   private static final double HEIGHT = 30;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -47,9 +44,9 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
   protected double mouseXpos;
   protected double hoveredWidth;
 
-  private final ArbitraryTrackTrack track;
+  private final VirtualTrack track;
 
-  public ArbitraryTrackPanel(State state, ArbitraryTrackTrack track) {
+  public VirtualTrackPanel(State state, VirtualTrack track) {
     super(state);
     this.track = track;
   }
@@ -61,7 +58,7 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
 
   @Override
   public String getSubTitle() {
-    return "And here's, like, the subtitle dude";
+    return "";
   }
 
   @Override
@@ -71,8 +68,8 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
 
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
-    ctx.trace("ArbitraryTrackPanel", () -> {
-      ArbitraryTrackTrack.Data data =
+    ctx.trace("VirtualTrackPanel", () -> {
+      VirtualTrack.Data data =
           track.getData(state, () -> { repainter.repaint(new Area(0, 0, width, height)); });
       drawLoading(ctx, data, state, h);
 
@@ -84,7 +81,7 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
     });
   }
 
-  private void renderSlices(RenderContext ctx, ArbitraryTrackTrack.Data data, double h) {
+  private void renderSlices(RenderContext ctx, VirtualTrack.Data data, double h) {
     TimeSpan visible = state.getVisibleTime();
     for (int i = 0; i < data.ts.length; i++) {
       long tStart = data.ts[i];
@@ -102,8 +99,8 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
         ctx.fillRect(startPx, 0, rectWidth, height);
       } else {
         ctx.setForegroundColor(color);
-        double radius = height/6;
-        ctx.drawCircle(startPx, height/2 - radius, radius);
+        double radius = height / 6;
+        ctx.drawCircle(startPx, height / 2 - radius, radius);
       }
     }
     if (hoveredSlice != null) {
@@ -117,7 +114,7 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
 
   @Override
   public Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
-    ArbitraryTrackTrack.Data data = track.getData(state, () -> {/* nothing */});
+    VirtualTrack.Data data = track.getData(state, () -> {/* nothing */});
     if (data == null) {
       return Hover.NONE;
     }
@@ -153,7 +150,6 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
 
           @Override
           public boolean click() {
-            state.setSelection(ArbitraryTrackTrack.getSliceAndArgs(state.getQueryEngine(), id));
             return false;
           }
         };
@@ -161,7 +157,4 @@ public class ArbitraryTrackPanel extends TrackPanel implements Selectable {
     }
     return Hover.NONE;
   }
-
-  @Override
-  public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {}
 }

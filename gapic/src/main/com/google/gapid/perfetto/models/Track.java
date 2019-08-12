@@ -60,7 +60,7 @@ public abstract class Track<D extends Track.Data> {
   private boolean initialized; // guarded by getDataLock
 
   public Track(String trackId) {
-    this.trackId = trackId.replace("-", "_");
+    this.trackId = trackId.replace("-", "_").replaceAll("\\s+", "");
   }
 
   public String getId() {

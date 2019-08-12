@@ -76,7 +76,8 @@ public class QueryEngine {
   public ListenableFuture<Result> query(String sql) {
     return transformAsync(raw(sql), r -> {
       if (!r.getError().isEmpty()) {
-        return immediateFailedFuture(new RpcException("Query failed: " + r.getError()));
+        return immediateFailedFuture(
+            new RpcException("Query \"" + sql + "\" failed " + r.getError()));
       }
       return immediateFuture(new Result(r));
     });
