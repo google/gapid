@@ -74,6 +74,7 @@ cc_library(
         "src/trace_processor/span_join_operator_table.cc",
         "src/trace_processor/sql_stats_table.cc",
         "src/trace_processor/sqlite3_str_split.cc",
+        "src/trace_processor/sqlite_table.cc",
         "src/trace_processor/stats_table.cc",
         "src/trace_processor/storage_columns.cc",
         "src/trace_processor/storage_schema.cc",
@@ -82,7 +83,6 @@ cc_library(
         "src/trace_processor/syscall_tracker.cc",
         "src/trace_processor/systrace_parser.cc",
         "src/trace_processor/systrace_trace_parser.cc",
-        "src/trace_processor/table.cc",
         "src/trace_processor/thread_table.cc",
         "src/trace_processor/trace_processor.cc",
         "src/trace_processor/trace_processor_context.cc",
@@ -149,6 +149,7 @@ cc_library(
         "src/base/string_view.cc",
         "src/base/thread_checker.cc",
         "src/base/time.cc",
+        "src/base/uuid.cc",
         "src/base/virtual_destructors.cc",
         "src/base/waitable_event.cc",
     ] + select({
@@ -162,6 +163,7 @@ cc_library(
             "src/base/temp_file.cc",
             "src/base/unix_socket.cc",
             "src/base/unix_task_runner.cc",
+            "src/android_internal/lazy_library_loader.cc",
         ],
         # Android
         "//conditions:default": [
@@ -169,8 +171,11 @@ cc_library(
             "src/base/pipe.cc",
             "src/base/temp_file.cc",
             "src/base/unix_socket.cc",
+            "src/android_internal/lazy_library_loader.cc",
         ],
-    }),
+    }) + glob([
+        "src/android_internal/*.h",
+    ]),
     copts = _COPTS,
     deps = [
         ":public_headers",
@@ -278,7 +283,7 @@ cc_library(
 genrule(
     name = "sql_metrics_h",
     srcs = [
-        "src/trace_processor/metrics/error_statistics.sql",
+        "src/trace_processor/metrics/trace_metadata.sql",
         "src/trace_processor/metrics/android/android_batt.sql",
         "src/trace_processor/metrics/android/android_cpu.sql",
         "src/trace_processor/metrics/android/android_cpu_agg.sql",
@@ -483,6 +488,7 @@ proto_library(
         "perfetto/trace/perfetto/perfetto_metatrace.proto",
         "perfetto/trace/power/battery_counters.proto",
         "perfetto/trace/power/power_rails.proto",
+        "perfetto/trace/profiling/heap_graph.proto",
         "perfetto/trace/profiling/profile_common.proto",
         "perfetto/trace/profiling/profile_packet.proto",
         "perfetto/trace/ps/process_stats.proto",
@@ -493,7 +499,9 @@ proto_library(
         "perfetto/trace/trace.proto",
         "perfetto/trace/trace_packet.proto",
         "perfetto/trace/track_event/debug_annotation.proto",
+        "perfetto/trace/track_event/log_message.proto",
         "perfetto/trace/track_event/process_descriptor.proto",
+        "perfetto/trace/track_event/source_location.proto",
         "perfetto/trace/track_event/task_execution.proto",
         "perfetto/trace/track_event/thread_descriptor.proto",
         "perfetto/trace/track_event/track_event.proto",
@@ -556,7 +564,16 @@ cc_stripped_binary(
         "src/perfetto_cmd/trigger_producer.cc",
     ] + glob([
         "src/perfetto_cmd/**/*.h",
-    ]),
+        "src/android_internal/*.h",
+    ]) + select({
+        "@gapid//tools/build:linux": [],
+        "@gapid//tools/build:windows": [],
+        "@gapid//tools/build:darwin": [],
+        # Android
+        "//conditions:default": [
+            "src/perfetto_cmd/perfetto_cmd_android.cc",
+        ],
+    }),
     copts = _COPTS,
     visibility = ["//visibility:public"],
     deps = [
@@ -575,7 +592,7 @@ cc_stripped_binary(
     name = "traced",
     srcs = [
         "src/base/watchdog_posix.cc",
-        "src/traced/service/lazy_producer.cc",
+        "src/traced/service/builtin_producer.cc",
         "src/traced/service/main.cc",
         "src/traced/service/service.cc",
     ] + glob([
@@ -607,8 +624,8 @@ cc_stripped_binary(
         "src/traced/probes/probes_producer.cc",
         "src/traced/probes/probes.cc",
         "src/traced/probes/ftrace/event_info.cc",
-        "src/traced/probes/ftrace/page_pool.cc",
         "src/traced/probes/ftrace/atrace_wrapper.cc",
+        "src/traced/probes/ftrace/atrace_hal_wrapper.cc",
         "src/traced/probes/ftrace/ftrace_metadata.cc",
         "src/traced/probes/ftrace/ftrace_config_muxer.cc",
         "src/traced/probes/ftrace/format_parser.cc",
@@ -616,7 +633,6 @@ cc_stripped_binary(
         "src/traced/probes/ftrace/ftrace_config.cc",
         "src/traced/probes/ftrace/proto_translation_table.cc",
         "src/traced/probes/ftrace/ftrace_data_source.cc",
-        "src/traced/probes/ftrace/atrace_hal_wrapper.cc",
         "src/traced/probes/ftrace/ftrace_config_utils.cc",
         "src/traced/probes/ftrace/ftrace_controller.cc",
         "src/traced/probes/ftrace/ftrace_procfs.cc",
@@ -645,6 +661,7 @@ cc_stripped_binary(
         # Android
         "//conditions:default": [
             "src/android_internal/atrace_hal.cc",
+            "src/android_internal/dropbox_service.cc",
             "src/android_internal/power_stats_hal.cc",
             "src/android_internal/health_hal.cc",
         ],
