@@ -50,8 +50,8 @@ import java.util.Set;
 public class SliceTrack extends Track<SliceTrack.Data> {
   private static final String THREAD_FILTER = "utid = %d";
   private static final String GPU_FILTER = "ref_type = 'gpu' and ref = %d";
-  private static final String SLICES_VIEW =
-      "select ts, dur, cat, name, depth, stack_id, parent_stack_id from slices where %s";
+  private static final String TRACK_FILTER = "ref_type = 'track'";
+  private static final String SLICES_VIEW = "select * from slices where %s";
   private static final String SLICES_SQL =
       "select ts, dur, depth, cat, name, stack_id from %s " +
       "where ts >= %d - dur and ts <= %d order by ts";
@@ -90,6 +90,10 @@ public class SliceTrack extends Track<SliceTrack.Data> {
 
   public static SliceTrack forGpu(long gpu) {
     return new SliceTrack("gpu_slices_" + gpu, format(GPU_FILTER, gpu));
+  }
+
+  public static SliceTrack forVirtualTrack(long trackId) {
+    return new SliceTrack("random_track_" + trackId, format(TRACK_FILTER));
   }
 
   @Override
