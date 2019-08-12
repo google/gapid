@@ -156,6 +156,7 @@ public class VirtualTrackPanel extends TrackPanel implements Selectable {
 
           @Override
           public boolean click() {
+            state.setSelection(VirtualTrack.getSliceAndArgs(state.getQueryEngine(), id));
             return false;
           }
         };
