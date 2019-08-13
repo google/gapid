@@ -82,7 +82,6 @@ public class Settings {
   public boolean traceDisablePcs = true;
   public String traceOutDir = "";
   public String traceFriendlyName = "";
-  public boolean skipWelcomeScreen = false;
   public boolean skipFirstRunDialog = false;
   public String[] recentFiles = new String[0];
   public String adb = "";
@@ -236,7 +235,6 @@ public class Settings {
     traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
     traceFriendlyName = properties.getProperty("trace.friendly", traceFriendlyName);
-    skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
     skipFirstRunDialog = getBoolean(properties, "skip.firstTime", skipFirstRunDialog);
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
@@ -282,7 +280,6 @@ public class Settings {
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("trace.dir", traceOutDir);
     properties.setProperty("trace.friendly",  traceFriendlyName);
-    properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
     properties.setProperty("skip.firstTime", Boolean.toString(skipFirstRunDialog));
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);

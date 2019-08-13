@@ -25,7 +25,6 @@ import static com.google.gapid.views.SettingsDialog.showSettingsDialog;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showSaveTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
-import static com.google.gapid.views.WelcomeDialog.showWelcomeDialog;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
@@ -363,8 +362,6 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
     manager.add(MenuItems.HelpLicenses.create(
         () -> showLicensesDialog(getShell(), models.analytics, widgets.theme)));
-    manager.add(MenuItems.HelpWelcome.create(
-        () -> showWelcomeDialog(client, getShell(), models, widgets)));
     return manager;
   }
 
@@ -428,8 +425,7 @@ public class MainWindow extends ApplicationWindow {
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),
     HelpShowLogs("Open &Log Directory"),
-    HelpLicenses("&Licenses"),
-    HelpWelcome("Show &Welcome Screen");
+    HelpLicenses("&Licenses");
 
     public static final String FILE_ID = "file";
     public static final String VIEW_ID = "view";
