@@ -75,11 +75,6 @@ chmod 755 gapid/opt/gapid/gapi[drst] gapid/opt/gapid/device-info
 find gapid/ -type d -exec chmod 755 {} +
 find gapid/ -type d -exec chmod g-s {} +
 
-# Package up zip file.
-cd gapid/opt/
-zip -r ../../gapid-$VERSION-linux.zip gapid/
-cd ../../
-
 # TODO Copy the GAPIR symbols
 # cp ../current/gapir.sym gapir-$VERSION-linux.sym
 
@@ -91,5 +86,15 @@ echo "$(date): Done."
 
 # Copy the symbol file to the output.
 [ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-linux.sym
+
+# Add JRE after Debian packaging, to not embed in in deb package
+JRE_DIR=gapid/opt/gapid/jre
+mkdir -p ${JRE_DIR}
+"$SRC/copy_jre.sh" ${JRE_DIR}
+
+# Package up zip file.
+cd gapid/opt/
+zip -r ../../gapid-$VERSION-linux.zip gapid/
+cd ../../
 
 popd
