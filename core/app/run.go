@@ -35,6 +35,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	exitSuccess = 0
+	exitFailure = 1
+)
+
 var (
 	// Name is the full name of the application
 	Name string
@@ -146,11 +151,17 @@ func getArgs() []string {
 	}
 }
 
-// Run performs all the work needed to start up an application.
+// Run wraps doRun in order to let doRun use deferred functions. This
+// is because os.Exit does not execute deferred functions.
+func Run(main task.Task) {
+	os.Exit(doRun(main))
+}
+
+// doRun performs all the work needed to start up an application.
 // It parsers the main command line arguments, builds a primary context that will be cancelled on exit
 // runs the provided task, cancels the primary context and then waits for either the maximum shutdown delay
 // or all registered signals whichever comes first.
-func Run(main task.Task) {
+func doRun(main task.Task) int {
 	// Defer the panic handling
 	defer func() {
 		switch cause := recover().(type) {
@@ -183,18 +194,18 @@ func Run(main task.Task) {
 
 	if Flags.FullHelp {
 		Usage(rootCtx, "")
-		return
+		return exitSuccess
 	}
 
 	if Flags.DecodeStack != "" {
 		stack := decodeCrashCode(Flags.DecodeStack)
 		fmt.Fprintf(os.Stdout, "Stack dump:\n%v\n", stack)
-		return
+		return exitSuccess
 	}
 
 	if Flags.Version {
 		fmt.Fprint(os.Stdout, Name, " version ", Version, "\n")
-		return
+		return exitSuccess
 	}
 
 	endProfile := applyProfiler(rootCtx, &Flags.Profile)
@@ -256,7 +267,9 @@ func Run(main task.Task) {
 	}
 	if err != nil {
 		log.E(ctx, "Main failed\nError: %v", err)
+		return exitFailure
 	}
+	return exitSuccess
 }
 
 func doRestart() error {
