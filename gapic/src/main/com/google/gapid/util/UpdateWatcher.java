@@ -33,7 +33,6 @@ public class UpdateWatcher {
   private static final Logger LOG = Logger.getLogger(UpdateWatcher.class.getName());
 
   private static final long CHECK_INTERVAL_MS = TimeUnit.HOURS.toMillis(8);
-  private static final boolean INCLUDE_PRE_RELEASES = false;
 
   private final Settings settings;
   private final Client client;
@@ -65,7 +64,7 @@ public class UpdateWatcher {
 
   private void doCheck() {
     if (settings.autoCheckForUpdates) {
-      ListenableFuture<Release> future = client.checkForUpdates(INCLUDE_PRE_RELEASES);
+      ListenableFuture<Release> future = client.checkForUpdates(settings.includePrereleases);
       settings.updateAvailable = false;
       try {
         Release release = future.get();
