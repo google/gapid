@@ -16,11 +16,11 @@
 # Presubmit Checks Build Script.
 set -ex
 
-echo "================================================ /usr/apt/sources.list"
+echo "================================================ /etc/apt/sources.list"
 
-cat /usr/apt/sources.list
+cat /etc/apt/sources.list
 
-for i in /usr/apt/sources.list.d/*
+for i in /etc/apt/sources.list.d/*
 do
   echo "================================================ $i"
   cat $i
