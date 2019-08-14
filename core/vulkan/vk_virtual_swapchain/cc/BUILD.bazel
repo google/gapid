@@ -23,6 +23,7 @@ cc_library(
     copts = cc_copts() + select({
         "//tools/build:linux": [
             "-DVK_USE_PLATFORM_XCB_KHR",
+            "-DVK_USE_PLATFORM_GGP",
         ],
         "//tools/build:darwin": [],
         "//tools/build:windows": ["-DVK_USE_PLATFORM_WIN32_KHR"],
