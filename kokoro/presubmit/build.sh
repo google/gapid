@@ -16,17 +16,24 @@
 # Presubmit Checks Build Script.
 set -ex
 
-echo "================================================ /etc/apt/sources.list"
+echo "HUGUES"
+
+sleep 2
 
 cat /etc/apt/sources.list
+
+sleep 2
 
 for i in /etc/apt/sources.list.d/*
 do
   echo "================================================ $i"
   cat $i
+  sleep 2
 done
 
-exit 1
+sleep 5
+
+exit 0
 
 BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
