@@ -25,6 +25,7 @@ mkdir bazel
 bash bazel-0.25.1-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
 # Get GCC 7
+sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 sudo apt-get -q update
 sudo apt-get -qy install gcc-7 g++-7
