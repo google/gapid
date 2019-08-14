@@ -16,6 +16,18 @@
 # Presubmit Checks Build Script.
 set -ex
 
+echo "================================================ /usr/apt/sources.list"
+
+cat /usr/apt/sources.list
+
+for i in /usr/apt/sources.list.d/*
+do
+  echo "================================================ $i"
+  cat $i
+done
+
+exit 1
+
 BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
 
