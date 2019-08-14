@@ -62,7 +62,6 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	state := c.NewUninitializedState(ctx).ReserveMemory(ranges)
 	state.OnResourceCreated = func(res api.Resource) {
 		currentCmdResourceCount++
-		seen[res] = len(seen)
 		context := currentAPI.Context(ctx, state, currentThread)
 		tr := trackedResource{
 			resource: res,
@@ -72,6 +71,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 			created:  currentCmdIndex,
 		}
 		resources = append(resources, tr)
+		seen[res] = len(resources) - 1
 		resourceTypes[tr.id.String()] = res.ResourceType(ctx)
 	}
 	state.OnResourceAccessed = func(r api.Resource) {
