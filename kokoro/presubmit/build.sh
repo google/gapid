@@ -30,6 +30,7 @@ export GOPATH=$PWD/tools
 go get github.com/bazelbuild/buildtools/buildifier github.com/bazelbuild/buildtools/buildozer
 
 # Get clang-format.
+sudo rm /etc/apt/sources.list.d/cuda.list*
 sudo add-apt-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main"
 sudo add-apt-repository "deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu trusty main"
 curl -L -k -s https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
