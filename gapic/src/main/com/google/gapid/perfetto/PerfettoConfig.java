@@ -39,8 +39,6 @@ public class PerfettoConfig {
   private static final Logger LOG = Logger.getLogger(PerfettoConfig.class.getName());
   private static final PerfettoConfig MISSING = new PerfettoConfig(null);
 
-  private static PerfettoConfig instance;
-
   private final perfetto.protos.PerfettoConfig.TraceConfig config;
 
   public PerfettoConfig(perfetto.protos.PerfettoConfig.TraceConfig config) {
@@ -48,21 +46,6 @@ public class PerfettoConfig {
   }
 
   public static synchronized PerfettoConfig get() {
-    if (instance == null) {
-      instance = findConfig();
-    }
-    return instance;
-  }
-
-  public boolean hasConfig() {
-    return config != null;
-  }
-
-  public perfetto.protos.PerfettoConfig.TraceConfig getConfig() {
-    return config;
-  }
-
-  private static PerfettoConfig findConfig() {
     return ImmutableList.<Supplier<File>>of(
         () -> {
           String path = perfettoConfig.get();
@@ -74,6 +57,14 @@ public class PerfettoConfig {
         .filter(PerfettoConfig::shouldUse)
         .findFirst()
         .orElse(MISSING);
+  }
+
+  public boolean hasConfig() {
+    return config != null;
+  }
+
+  public perfetto.protos.PerfettoConfig.TraceConfig getConfig() {
+    return config;
   }
 
   private static boolean shouldUse(PerfettoConfig config) {
