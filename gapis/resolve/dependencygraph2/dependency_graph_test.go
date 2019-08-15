@@ -16,6 +16,7 @@ package dependencygraph2
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/google/gapid/core/assert"
@@ -139,6 +140,13 @@ func TestBuilder(t *testing.T) {
 	b.OnEndCmd(ctx, 2, TestCmd{})
 	addNode(2)
 	eg.setDependencies(getNodeID(2), []NodeID{getNodeID(0), getNodeID(1)})
+
+	// Sort the dependencies here. They are returned by iterating over
+	// a map. Their order has no functional effect, just makes the
+	// test deterministic.
+	for i := range b.graphBuilder.GetGraph().dependenciesFrom {
+		sort.Sort(&NodeIDSorter{b.graphBuilder.GetGraph().dependenciesFrom[i]})
+	}
 
 	// eg.Paths = b.graph.Paths
 	assert.To(t).For("Reading struct should depend on writes to fields after last write to struct (0)").That(
