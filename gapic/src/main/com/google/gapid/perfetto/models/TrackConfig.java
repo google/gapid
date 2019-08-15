@@ -29,6 +29,8 @@ import java.util.Map;
  * Information about what tracks are shown in the UI.
  */
 public class TrackConfig {
+  public static final TrackConfig EMPTY = new TrackConfig(ImmutableList.of());
+
   public final ImmutableList<Element<?>> elements;
 
   public TrackConfig(ImmutableList<Element<?>> elements) {
@@ -126,6 +128,9 @@ public class TrackConfig {
     }
 
     public TrackConfig build() {
+      if (tracks.isEmpty() && groups.isEmpty()) {
+        return TrackConfig.EMPTY;
+      }
       return new TrackConfig(buildGroup(null).tracks);
     }
 

@@ -142,6 +142,13 @@ public class TraceView extends Composite
 
     TimeSpan visible = state.getVisibleTime();
     TimeSpan total = state.getTraceTime();
+
+    if (total.getDuration() == 0) {
+      bar.setEnabled(false);
+      bar.setValues(0, 0, 1, 1, 5, 10);
+      return;
+    }
+
     int sel = permille(visible.start - total.start, total.getDuration());
     int thumb = permille(visible.getDuration(), total.getDuration());
 

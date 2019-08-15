@@ -51,6 +51,10 @@ public class TimelinePanel extends Panel.Base {
     ctx.trace("TimelinePanel", () -> {
       TimeSpan visible = state.getVisibleTime();
       TimeSpan trace = state.getTraceTime();
+      if (visible.getDuration() == 0) {
+        return;
+      }
+
       // TODO: this should be part of the state - dedupe with below.
       long step = getGridStepSize(
           visible.getDuration(), (width - LABEL_WIDTH) / DESIRED_PX_PER_STEP);
