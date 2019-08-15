@@ -90,7 +90,13 @@ echo "$(date): Done."
 # Add JRE after Debian packaging, to not embed in in deb package
 JRE_DIR=gapid/opt/gapid/jre
 mkdir -p ${JRE_DIR}
-"$SRC/copy_jre.sh" ${JRE_DIR}
+# When upgrading JRE version, make sure to update these three variables
+JRE_URL="https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.4%2B11/OpenJDK11U-jre_x64_linux_hotspot_11.0.4_11.tar.gz"
+JRE_TGZ="OpenJDK11U-jre_x64_linux_hotspot_11.0.4_11.tar.gz"
+JRE_OUT="jdk-11.0.4+11-jre"
+wget ${JRE_URL}
+tar xzvf ${JRE_TGZ}
+mv ${JRE_OUT}/* ${JRE_DIR}/
 
 # Package up zip file.
 cd gapid/opt/
