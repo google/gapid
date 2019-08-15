@@ -30,6 +30,7 @@ import (
 
 const (
 	versionPrefix = `version "`
+	googleInfix   = "-google-"
 	minJavaMajor  = 1
 	minJavaMinor  = 8
 )
@@ -232,9 +233,15 @@ func checkVM(java string, checkVersion bool) bool {
 		return false
 	}
 
+	versionStr := string(version)
+
+	// Blacklist the Google custom JDKs.
+	if p := strings.Index(versionStr, googleInfix); p >= 0 {
+		return false
+	}
+
 	// Looks for the pattern: <product> version "<major>.<minor>.<micro><build>"
 	// Not using regular expressions to avoid binary bloat.
-	versionStr := string(version)
 	if p := strings.Index(versionStr, versionPrefix); p >= 0 {
 		p += len(versionPrefix)
 		if q := strings.Index(versionStr[p:], "."); q > 0 {
