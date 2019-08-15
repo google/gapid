@@ -149,7 +149,6 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 		out[i] = &api.ContextInfo{
 			Path:              r.Capture.Context(id.ID(c.ctx.ID())),
 			ID:                c.ctx.ID(),
-			Handle:            c.ctx.Handle(),
 			API:               c.ctx.API().ID(),
 			NumCommandsByType: c.cnts,
 			Name:              name,
