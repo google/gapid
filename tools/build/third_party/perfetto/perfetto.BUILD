@@ -25,6 +25,7 @@ _COPTS_BASE = cc_copts() + [
     "-DNDEBUG",
 ] + select({
     "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
+    "@gapid//tools/build:linux": ["-Wno-error=class-memaccess"],  # TODO(#3099): Remove this when perfetto fixes the bug
     "//conditions:default": [],
 })
 
