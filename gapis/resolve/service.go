@@ -38,7 +38,6 @@ func internalToService(v interface{}) (interface{}, error) {
 			Name:     v.Name,
 			API:      path.NewAPI(id.ID(v.API)),
 			Priority: uint32(v.Priority),
-			Handle:   v.Handle,
 		}, nil
 	default:
 		return v, nil
