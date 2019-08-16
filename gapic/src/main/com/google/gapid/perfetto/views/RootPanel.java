@@ -169,7 +169,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
     TimeSpan visible = state.getVisibleTime();
     long cursorTime = state.pxToTime(x - LABEL_WIDTH);
     long curSpan = visible.getDuration();
-    double newSpan = Math.max(curSpan - curSpan * zoomFactor, MAX_ZOOM_SPAN_NSEC);
+    double newSpan = Math.max(curSpan * zoomFactor, MAX_ZOOM_SPAN_NSEC);
     long newStart = Math.round(cursorTime - (newSpan / curSpan) * (cursorTime - visible.start));
     long newEnd = Math.round(newStart + newSpan);
     return state.setVisibleTime(new TimeSpan(newStart, newEnd));
