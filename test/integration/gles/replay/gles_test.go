@@ -244,7 +244,7 @@ func TestExportAndImportCapture(t *testing.T) {
 
 	ctx, d = setup(log.Testing(t))
 	src := &capture.Blob{Data: exported.Bytes()}
-	recoveredCapture, err := capture.Import(ctx, "recovered", src)
+	recoveredCapture, err := capture.Import(ctx, "key", "recovered", src)
 	assert.For(ctx, "err").ThatError(err).Succeeded()
 	verify(ctx, recoveredCapture, d)
 }

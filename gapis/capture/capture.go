@@ -129,12 +129,14 @@ func ResolvePerfettoFromPath(ctx context.Context, p *path.Capture) (*PerfettoCap
 }
 
 // Import imports the capture by name and data, and stores it in the database.
-func Import(ctx context.Context, name string, src Source) (*path.Capture, error) {
+func Import(ctx context.Context, name string, key string, src Source) (*path.Capture, error) {
 	dataID, err := database.Store(ctx, src)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to store capture data source: %v", err)
 	}
+
 	id, err := database.Store(ctx, &Record{
+		Key:  key,
 		Name: name,
 		Data: dataID[:],
 	})

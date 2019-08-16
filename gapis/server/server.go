@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"sync"
@@ -186,7 +185,7 @@ func (s *server) ImportCapture(ctx context.Context, name string, data []uint8) (
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "ImportCapture")
 	src := &capture.Blob{Data: data}
-	p, err := capture.Import(ctx, name, src)
+	p, err := capture.Import(ctx, name, name, src)
 	if err != nil {
 		return nil, err
 	}
@@ -233,10 +232,18 @@ func (s *server) LoadCapture(ctx context.Context, path string) (*path.Capture, e
 	if !s.enableLocalFiles {
 		return nil, fmt.Errorf("Server not configured to allow reading of local files")
 	}
-	name := filepath.Base(path)
 
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	name := fileInfo.Name()
+	// Create a key to prevent name collusion between traces.
+	key := fmt.Sprintf("%v%v%v", name, fileInfo.Size(), fileInfo.ModTime().Unix())
 	src := &capture.File{Path: path}
-	p, err := capture.Import(ctx, name, src)
+
+	p, err := capture.Import(ctx, key, name, src)
 	if err != nil {
 		return nil, err
 	}
