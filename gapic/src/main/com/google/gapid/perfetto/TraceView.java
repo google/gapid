@@ -31,6 +31,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.ScrollBar;
 
 /**
@@ -63,7 +64,7 @@ public class TraceView extends Composite
     canvas.addListener(SWT.MouseWheel, e -> {
       if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
         e.doit = false;
-        if (rootPanel.zoom(e.x, Math.max(-3, Math.min(3, e.count)) * ZOOM_FACTOR_SCALE)) {
+        if (rootPanel.zoom(e.x, 1.0 - Math.max(-3, Math.min(3, e.count)) * ZOOM_FACTOR_SCALE)) {
           canvas.redraw(Area.FULL);
         }
       }
@@ -74,6 +75,7 @@ public class TraceView extends Composite
         e.doit = false;
       }
     });
+    canvas.addListener(SWT.Gesture, this::handleGesture);
     canvas.getHorizontalBar().addListener(SWT.Selection, e -> {
       TimeSpan trace = state.getTraceTime();
       int sel = canvas.getHorizontalBar().getSelection();
@@ -133,6 +135,23 @@ public class TraceView extends Composite
   @Override
   public void onVisibleTimeChanged() {
     updateScrollbar();
+  }
+
+  private double lastZoom = 1;
+  private void handleGesture(Event e) {
+    switch (e.detail) {
+      case SWT.GESTURE_BEGIN:
+        lastZoom = 1;
+        break;
+      case SWT.GESTURE_MAGNIFY:
+        if (rootPanel.zoom(e.x, lastZoom / e.magnification)) {
+          canvas.redraw(Area.FULL);
+        }
+        lastZoom = e.magnification;
+        break;
+      case SWT.GESTURE_END:
+        break;
+    }
   }
 
   private void updateScrollbar() {
