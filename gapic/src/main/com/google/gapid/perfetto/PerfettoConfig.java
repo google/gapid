@@ -45,6 +45,8 @@ public class PerfettoConfig {
     this.config = config;
   }
 
+  // This call is expensive as it re-reads the perfetto config file, in order to enable perfetto
+  // configuration changes without having to restart GAPID.
   public static synchronized PerfettoConfig get() {
     return ImmutableList.<Supplier<File>>of(
         () -> {
