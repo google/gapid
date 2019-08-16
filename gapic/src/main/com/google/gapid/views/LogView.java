@@ -159,8 +159,8 @@ public class LogView extends Composite implements Tab {
           locationToTreeItem(root, severity, location);
         }
       }
-      while (tree.getItemCount() > MAX_ITEMS && tree.getTopItem() != null) {
-        tree.getTopItem().dispose();
+      while (tree.getItemCount() > MAX_ITEMS) {
+        tree.getItem(0).dispose();
       }
     }
     // Too many new messages to display!
