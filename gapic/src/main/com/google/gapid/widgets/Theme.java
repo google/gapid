@@ -132,8 +132,10 @@ public interface Theme {
   @RGB(argb = 0xffdcdcfa) public Color memorySelectionHighlight();
 
   // About & Welcome dialog text colors
-  @RGB(argb = 0xffa9a9a9) public Color welcomeVersionColor();
-  @RGB(argb = 0xffa9a9a9) public Color shortcutKeyHintColor();
+  @RGB(argb = 0xff5a5a5a) public Color welcomeTitleColor();
+  @RGB(argb = 0xff9b9b9b) public Color welcomeVersionColor();
+  @RGB(argb = 0xff5a5a5a) public Color welcomeLabelColor();
+  @RGB(argb = 0xff0068da) public Color shortcutKeyHintColor();
 
   // Logging view colors by log level.
   @RGB(argb = 0xbb000000) public Color logVerboseForeground();
@@ -185,6 +187,10 @@ public interface Theme {
   @Text(Text.Mono) public Font monoSpaceFont();
   @Text(Text.Big) public Font bigBoldFont();
   @Text(Text.TabTitle) public Font selectedTabTitleFont();
+
+  @TTF(ttf = "SFProText-Light.ttf", name = "SF Pro Text", size = 24) public Font welcomeTitleFont();
+  @TTF(ttf = "Roboto-Regular.ttf", name = "Roboto", size = 14) public Font welcomeVersionFont();
+  @TTF(ttf = "Roboto-Regular.ttf", name = "Roboto", size = 13) public Font welcomeLabelFont();
 
   public void dispose();
 
@@ -287,6 +293,7 @@ public interface Theme {
 
   /**
    * Annotation for a font resource loaded from a TTF file.
+   * Note that argument name() should be found in font metadata, not necessarily the file name.
    */
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)

@@ -45,6 +45,8 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -305,6 +307,13 @@ public class Widgets {
   public static Label createLabel(Composite parent, String label, Image image) {
     Label result = createLabel(parent, label);
     result.setImage(image);
+    return result;
+  }
+
+  public static Label createLabel(Composite parent, String label, Font font, Color color) {
+    Label result = createLabel(parent, label);
+    result.setFont(font);
+    result.setForeground(color);
     return result;
   }
 
@@ -741,6 +750,17 @@ public class Widgets {
     return composite;
   }
 
+  /**
+   * Add listener to the whole composite area, instead of only the uncovered area.
+   * Call after all the children being added.
+   */
+  public static void addMouseUpListenerToComposite(Composite composite, Listener listener) {
+    composite.addListener(SWT.MouseUp, listener);
+    for (Control control : composite.getChildren()) {
+      control.addListener(SWT.MouseUp, listener);
+    }
+  }
+
   public static <C extends Control> C withLayoutData(C control, Object layoutData) {
     control.setLayoutData(layoutData);
     return control;
@@ -787,6 +807,11 @@ public class Widgets {
   public static RowLayout withMargin(RowLayout layout, int marginWidth, int marginHeight) {
     layout.marginWidth = marginWidth;
     layout.marginHeight = marginHeight;
+    return layout;
+  }
+
+  public static RowLayout withSpacing(RowLayout layout, int spacing) {
+    layout.spacing = spacing;
     return layout;
   }
 
