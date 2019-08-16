@@ -69,7 +69,10 @@ public class TraceView extends Composite
       }
     });
     canvas.addListener(SWT.MouseHorizontalWheel, e -> {
-      e.doit = false;
+      if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
+        // Ignore horizontal scroll, only when zooming.
+        e.doit = false;
+      }
     });
     canvas.getHorizontalBar().addListener(SWT.Selection, e -> {
       TimeSpan trace = state.getTraceTime();
