@@ -77,7 +77,7 @@ public class TraceView extends Composite
     canvas.getHorizontalBar().addListener(SWT.Selection, e -> {
       TimeSpan trace = state.getTraceTime();
       int sel = canvas.getHorizontalBar().getSelection();
-      if (state.scrollTo(trace.start + sel * trace.getDuration() / 1000)) {
+      if (state.scrollTo(trace.start + sel * trace.getDuration() / 10000)) {
         canvas.redraw(Area.FULL);
       }
     });
@@ -145,21 +145,20 @@ public class TraceView extends Composite
 
     TimeSpan visible = state.getVisibleTime();
     TimeSpan total = state.getTraceTime();
-
     if (total.getDuration() == 0) {
       bar.setEnabled(false);
       bar.setValues(0, 0, 1, 1, 5, 10);
       return;
     }
 
-    int sel = permille(visible.start - total.start, total.getDuration());
-    int thumb = permille(visible.getDuration(), total.getDuration());
+    int sel = permyriad(visible.start - total.start, total.getDuration());
+    int thumb = permyriad(visible.getDuration(), total.getDuration());
 
     bar.setEnabled(true);
-    bar.setValues(sel, 0, 1000, thumb, 50, 100);
+    bar.setValues(sel, 0, 10000, thumb, Math.max(1, thumb / 20), 100);
   }
 
-  private static int permille(long v, long t) {
-    return Math.max(0, Math.min(1000, (int)(1000 * v / t)));
+  private static int permyriad(long v, long t) {
+    return Math.max(0, Math.min(10000, (int)(10000 * v / t)));
   }
 }
