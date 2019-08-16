@@ -95,7 +95,8 @@ type (
 		CaptureID bool `help:"if true then interpret the capture file argument as a capture ID that is already loaded in gapis"`
 	}
 	CommandFilterFlags struct {
-		Context int `help:"Filter to the i'th context."`
+		Context     int    `help:"Filter to the i'th context. Does nothing with -contextname."`
+		ContextName string `help:"Filter by context name."`
 	}
 	ObservationFlags struct {
 		Ranges            bool `help:"if true then display the read and write ranges made by each command."`
