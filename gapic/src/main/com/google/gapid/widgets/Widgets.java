@@ -45,6 +45,7 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.events.MouseTrackListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
@@ -414,6 +415,15 @@ public class Widgets {
     return link;
   }
 
+  public static Link createLink(Composite parent, String text, Listener listener, Font font, Color color) {
+    Link link = new Link(parent, SWT.NONE);
+    link.setText(text);
+    link.addListener(SWT.Selection, listener);
+    link.setFont(font);
+    link.setForeground(color);
+    return link;
+  }
+
   public static TableViewer createTableViewer(Composite parent, int style) {
     TableViewer table = new VisibilityTrackingTableViewer(new Table(parent, style));
     table.getTable().setHeaderVisible(true);
@@ -754,10 +764,31 @@ public class Widgets {
    * Add listener to the whole composite area, instead of only the uncovered area.
    * Call after all the children being added.
    */
-  public static void addMouseUpListenerToComposite(Composite composite, Listener listener) {
-    composite.addListener(SWT.MouseUp, listener);
-    for (Control control : composite.getChildren()) {
-      control.addListener(SWT.MouseUp, listener);
+  public static void addListenerToComposite(Composite composite, int eventType, Listener listener) {
+    composite.addListener(eventType, listener);
+    for (Control child : composite.getChildren()) {
+      // If the child is also a Composite itself, add listener recursively.
+      if (child.getClass() == Composite.class) {
+        addListenerToComposite((Composite)child, eventType, listener);
+      } else {
+        child.addListener(eventType, listener);
+      }
+    }
+  }
+
+  /**
+   * Add MouseTrackListener to the whole composite area, instead of only the uncovered area.
+   * Call after all the children being added.
+   */
+  public static void addListenerToComposite(Composite composite, MouseTrackListener listener) {
+    composite.addMouseTrackListener(listener);
+    for (Control child : composite.getChildren()) {
+      // If the child is also a Composite itself, add listener recursively.
+      if (child.getClass() == Composite.class) {
+        addListenerToComposite((Composite)child, listener);
+      } else {
+        child.addMouseTrackListener(listener);
+      }
     }
   }
 

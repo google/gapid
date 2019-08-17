@@ -21,7 +21,7 @@ import static com.google.gapid.util.GeoUtils.bottomLeft;
 import static com.google.gapid.views.AboutDialog.showHelp;
 import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
 import static com.google.gapid.views.TracerDialog.showTracingDialog;
-import static com.google.gapid.widgets.Widgets.addMouseUpListenerToComposite;
+import static com.google.gapid.widgets.Widgets.addListenerToComposite;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createLink;
@@ -44,6 +44,10 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseTrackListener;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
@@ -51,6 +55,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 
 import java.io.File;
@@ -59,7 +64,7 @@ import java.io.File;
  * The loading screen is a minimal view shown while the UI is loading, looking for gapis, etc.
  */
 public class LoadingScreen extends Composite {
-  private final Theme theme;
+  protected final Theme theme;
   private final Label statusLabel;
   private final Composite optionsContainer;
   private Link recentLink;
@@ -82,21 +87,22 @@ public class LoadingScreen extends Composite {
     Composite container = createComposite(goldenRatioContainer, withSpacing(new GridLayout(1, false), 0, 0));
     createLabel(container, "", theme.dialogLogo());
     createLabel(container, Messages.WINDOW_TITLE, theme.welcomeTitleFont(), theme.welcomeTitleColor());
-    createLabel(container, "Version " + GAPID_VERSION.toFriendlyString(), theme.welcomeVersionFont(), theme.welcomeVersionColor());
+    createLabel(container, "Version " + GAPID_VERSION.toFriendlyString(),
+        theme.welcomeVersionFont(), theme.welcomeVersionColor());
 
     // Initialize the dynamic part in the main window, status label and option panel.
     createLabel(container, "");
     statusLabel = createLabel(container, "Starting up...", theme.welcomeLabelFont(), theme.welcomeLabelColor());
     optionsContainer = createComposite(container, withSpacing(filling(new RowLayout(SWT.VERTICAL), true, true), 6));
     createOptions();
-    optionsContainer.setVisible(false);
 
     // Override default GridData for each child to avoid components jumping when resizing.
     for (Control control : container.getChildren()) {
       control.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
     }
 
-    createLink(helpLinkContainer, "<a>Learn more about GAPID</a>", e -> showHelp(models.analytics)).setFont(theme.welcomeLabelFont());
+    createLink(helpLinkContainer, "<a>Learn more about GAPID</a>", e -> showHelp(models.analytics),
+        theme.welcomeLabelFont(), theme.welcomeHelpColor());
   }
 
   public void setText(String status) {
@@ -123,28 +129,20 @@ public class LoadingScreen extends Composite {
    * Initialize the links for layout settings. Hide them until server set up.
    */
   private void createOptions() {
-    Composite addContainer = createComposite(optionsContainer, withMargin(new GridLayout(3, false), 25, 0));
-    createLabel(addContainer, "", theme.add());
-    createLabel(addContainer, Messages.WINDOW_CAPTURE, theme.welcomeLabelFont(), theme.welcomeLabelColor());
-    createLabel(addContainer, (OS.isMac ? "\u2318" : "Ctrl") + " + T", theme.welcomeLabelFont(), theme.shortcutKeyHintColor())
-      .setLayoutData(withIndents(new GridData(SWT.RIGHT, SWT.CENTER, true, false), 40, 0));
-    addMouseUpListenerToComposite(addContainer, e -> {
+    OptionBar addOption = new OptionBar(optionsContainer, theme.add(), Messages.WINDOW_CAPTURE,
+        (OS.isMac ? "\u2318" : "Ctrl") + " + T");
+    addOption.addClickListener(e -> {
       showTracingDialog(checkNotNull(client), getShell(), checkNotNull(models), checkNotNull(widgets));
     });
 
-    Composite openContainer = createComposite(optionsContainer, withMargin(new GridLayout(3, false), 25, 0));
-    createLabel(openContainer, "", theme.open());
-    createLabel(openContainer, Messages.WINDOW_OPEN, theme.welcomeLabelFont(), theme.welcomeLabelColor());
-    createLabel(openContainer, (OS.isMac ? "\u2318" : "Ctrl") + " + O", theme.welcomeLabelFont(), theme.shortcutKeyHintColor())
-      .setLayoutData(withIndents(new GridData(SWT.RIGHT, SWT.CENTER, true, false), 40, 0));
-    addMouseUpListenerToComposite(openContainer, e -> {
+    OptionBar openOption = new OptionBar(optionsContainer, theme.open(), Messages.WINDOW_OPEN,
+        (OS.isMac ? "\u2318" : "Ctrl") + " + O");
+    openOption.addClickListener(e -> {
       showOpenTraceDialog(getShell(), checkNotNull(this.models));
     });
 
-    Composite recentContainer = createComposite(optionsContainer, withMargin(new GridLayout(3, false), 25, 0));
-    createLabel(recentContainer, "", theme.recent());
-    createLabel(recentContainer, Messages.WINDOW_RECENT, theme.welcomeLabelFont(), theme.welcomeLabelColor());
-    addMouseUpListenerToComposite(recentContainer, e -> {
+    OptionBar recentOption = new OptionBar(optionsContainer, theme.recent(), Messages.WINDOW_RECENT, "");
+    recentOption.addClickListener(e -> {
       Menu popup = new Menu(optionsContainer);
       for (String file : checkNotNull(models).settings.recentFiles) {
         createMenuItem(popup, file, 0, ev -> {
@@ -153,10 +151,50 @@ public class LoadingScreen extends Composite {
         });
       }
       popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
-      popup.setLocation(optionsContainer.toDisplay(bottomLeft(recentContainer.getBounds())));
+      popup.setLocation(optionsContainer.toDisplay(bottomLeft(recentOption.getBounds())));
       popup.setVisible(true);
     });
 
     optionsContainer.setVisible(false);
+  }
+
+  private class OptionBar extends Composite{
+    public OptionBar(Composite parent, Image iconImage, String msgString, String shortcutString) {
+      super(parent, SWT.NONE);
+
+      setLayout(withMargin(new GridLayout(3, false), 25, 0));
+      createLabel(this, "", iconImage);
+      createLabel(this, msgString, theme.welcomeLabelFont(), theme.welcomeLabelColor());
+      createLabel(this, shortcutString, theme.welcomeLabelFont(), theme.shortcutKeyHintColor())
+        .setLayoutData(withIndents(new GridData(SWT.RIGHT, SWT.CENTER, true, false), 40, 0));
+      addSwipeColorListener();
+    }
+
+    public void addClickListener(Listener listener) {
+      addListenerToComposite(this, SWT.MouseUp, listener);
+    }
+
+    private void addSwipeColorListener() {
+      Composite highlightedComposite = this;
+      highlightedComposite.setBackgroundMode(SWT.INHERIT_FORCE);
+      Color defaultColor = this.getBackground();
+      MouseTrackListener listener = new MouseTrackListener() {
+        @Override
+        public void mouseHover(MouseEvent e) {
+          highlightedComposite.setBackground(theme.welcomeHoveringBackgroundColor());
+        }
+
+        @Override
+        public void mouseExit(MouseEvent e) {
+          highlightedComposite.setBackground(defaultColor);
+        }
+
+        @Override
+        public void mouseEnter(MouseEvent e) {
+          highlightedComposite.setBackground(theme.welcomeHoveringBackgroundColor());
+        }
+      };
+      addListenerToComposite(this, listener);
+    }
   }
 }

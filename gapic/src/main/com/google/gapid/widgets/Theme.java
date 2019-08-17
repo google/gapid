@@ -135,6 +135,8 @@ public interface Theme {
   @RGB(argb = 0xff5a5a5a) public Color welcomeTitleColor();
   @RGB(argb = 0xff9b9b9b) public Color welcomeVersionColor();
   @RGB(argb = 0xff5a5a5a) public Color welcomeLabelColor();
+  @RGB(argb = 0xffbcdbff) public Color welcomeHoveringBackgroundColor();
+  @RGB(argb = 0xff0068da) public Color welcomeHelpColor();
   @RGB(argb = 0xff0068da) public Color shortcutKeyHintColor();
 
   // Logging view colors by log level.
