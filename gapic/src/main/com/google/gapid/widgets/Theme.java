@@ -186,13 +186,13 @@ public interface Theme {
   @TextStyle(foreground = 0xee0000) public Styler errorStyler();
   @TextStyle(foreground = 0xffc800) public Styler warningStyler();
 
-  @Text(Text.Mono) public Font monoSpaceFont();
-  @Text(Text.Big) public Font bigBoldFont();
-  @Text(Text.TabTitle) public Font selectedTabTitleFont();
+  @Text(dependent = JFaceResources.TEXT_FONT, size = 9) public Font monoSpaceFont();
+  @Text(scale = 1.5f, style = SWT.BOLD) public Font bigBoldFont();
+  @Text(style = SWT.BOLD) public Font selectedTabTitleFont();
 
-  @TTF(ttf = "SFProText-Light.ttf", name = "SF Pro Text", size = 24) public Font welcomeTitleFont();
-  @TTF(ttf = "Roboto-Regular.ttf", name = "Roboto", size = 14) public Font welcomeVersionFont();
-  @TTF(ttf = "Roboto-Regular.ttf", name = "Roboto", size = 13) public Font welcomeLabelFont();
+  @Text(dependent = JFaceResources.HEADER_FONT, size = 24) public Font welcomeTitleFont();
+  @Text(dependent = JFaceResources.HEADER_FONT, size = 14) public Font welcomeVersionFont();
+  @Text(size = 12) public Font welcomeLabelFont();
 
   public void dispose();
 
@@ -288,9 +288,10 @@ public interface Theme {
   @Target(ElementType.METHOD)
   @Retention(RetentionPolicy.RUNTIME)
   public static @interface Text {
-    public static final int Mono = 1, Big = 2, TabTitle = 3;
-
-    public int value();
+    public String dependent() default JFaceResources.DEFAULT_FONT;
+    public int size() default -1;
+    public float scale() default 1.0f;
+    public int style() default SWT.NORMAL;
   }
 
   /**
@@ -438,33 +439,16 @@ public interface Theme {
     public boolean loadFont(Method method) {
       Text text = method.getDeclaredAnnotation(Text.class);
       if (text != null) {
-        switch (text.value()) {
-          case Text.Mono: {
-            Font font = FontDescriptor.createFrom(JFaceResources.getFont(JFaceResources.TEXT_FONT))
-                .setHeight(JFaceResources.getDefaultFont().getFontData()[0].getHeight())
-                .createFont(display);
-            resources.put(method.getName(), font);
-            return true;
-          }
-          case Text.Big: {
-            Font dflt = JFaceResources.getDefaultFont();
-            Font font = FontDescriptor.createFrom(dflt)
-                .setHeight(dflt.getFontData()[0].getHeight() * 3 / 2)
-                .setStyle(SWT.BOLD)
-                .createFont(display);
-            resources.put(method.getName(), font);
-            return true;
-          }
-          case Text.TabTitle: {
-            Font dflt = JFaceResources.getDefaultFont();
-            Font font = FontDescriptor.createFrom(dflt)
-                .setStyle(SWT.BOLD)
-                .createFont(display);
-            resources.put(method.getName(), font);
-            return true;
-          }
-        }
+        Font dependFont = JFaceResources.getFont(text.dependent());
+        int size = text.size() >= 0 ? text.size() : dependFont.getFontData()[0].getHeight();
+        Font font = FontDescriptor.createFrom(dependFont)
+            .setHeight(Math.round(text.scale() * size))
+            .setStyle(text.style())
+            .createFont(display);
+        resources.put(method.getName(), font);
+        return true;
       }
+
 
       TTF ttf = method.getDeclaredAnnotation(TTF.class);
       if (ttf != null) {

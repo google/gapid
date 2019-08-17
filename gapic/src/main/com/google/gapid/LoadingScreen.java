@@ -84,7 +84,7 @@ public class LoadingScreen extends Composite {
         new GridData(SWT.RIGHT, SWT.BOTTOM, true, false));
 
     // Initialize the constant part in the main window, LOGO, title and version.
-    Composite container = createComposite(goldenRatioContainer, withSpacing(new GridLayout(1, false), 0, 0));
+    Composite container = createComposite(goldenRatioContainer, withSpacing(new GridLayout(1, false), 0, 3));
     createLabel(container, "", theme.dialogLogo());
     createLabel(container, Messages.WINDOW_TITLE, theme.welcomeTitleFont(), theme.welcomeTitleColor());
     createLabel(container, "Version " + GAPID_VERSION.toFriendlyString(),
@@ -93,7 +93,7 @@ public class LoadingScreen extends Composite {
     // Initialize the dynamic part in the main window, status label and option panel.
     createLabel(container, "");
     statusLabel = createLabel(container, "Starting up...", theme.welcomeLabelFont(), theme.welcomeLabelColor());
-    optionsContainer = createComposite(container, withSpacing(filling(new RowLayout(SWT.VERTICAL), true, true), 6));
+    optionsContainer = createComposite(container, withSpacing(filling(new RowLayout(SWT.VERTICAL), true, true), 8));
     createOptions();
 
     // Override default GridData for each child to avoid components jumping when resizing.
