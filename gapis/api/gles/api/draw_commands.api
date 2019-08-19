@@ -470,17 +470,17 @@ sub void DrawCommandDependencies(ref!Context ctx, u32 index_count, u32 instance_
       }
     }
 
-    for _, _, u in ctx.Bound.Program.UniformLocations {
+    if ctx.Bound.Program != null {
+      for _, _, u in ctx.Bound.Program.UniformLocations {
+        // The program execution reads uniform values
+        read(u.Values)
 
-      // The program execution reads uniform values
-      read(u.Values)
-
-      // Sampler uniform refers to a texture
-      texture_target := GetTextureTargetFromSamplerType(u.Type)
-      if texture_target != GL_NONE {
-        DependencyReadTexture(GetBoundTextureForUnit(ctx.Objects.TextureUnits[as!TextureUnitId(u.Value[0])], texture_target))
+        // Sampler uniform refers to a texture
+        texture_target := GetTextureTargetFromSamplerType(u.Type)
+        if texture_target != GL_NONE {
+          DependencyReadTexture(GetBoundTextureForUnit(ctx.Objects.TextureUnits[as!TextureUnitId(u.Value[0])], texture_target))
+        }
       }
-
     }
 
     // Vertex input
