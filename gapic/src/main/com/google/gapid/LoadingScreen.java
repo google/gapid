@@ -37,6 +37,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.Constants;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.widgets.CenteringLayout;
@@ -145,7 +146,11 @@ public class LoadingScreen extends Composite {
     recentOption.addClickListener(e -> {
       Menu popup = new Menu(optionsContainer);
       for (String file : checkNotNull(models).settings.recentFiles) {
-        createMenuItem(popup, file, 0, ev -> {
+        String menuString = file;
+        if (menuString.length() > Constants.MAX_FILEPATH_LENGTH) {
+          menuString = "..." + menuString.substring(menuString.lastIndexOf('/'));
+        }
+        createMenuItem(popup, menuString, 0, ev -> {
           checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
           checkNotNull(models).capture.loadCapture(new File(file));
         });
