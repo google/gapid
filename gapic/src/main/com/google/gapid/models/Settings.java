@@ -74,9 +74,9 @@ public class Settings {
   public String traceArguments = "";
   public String traceCwd = "";
   public String traceEnv = "";
-  public int traceInitialFrameCount = 1;
+  public int traceInitialFrameCount = 0;
   public int traceFrameCount = 7;
-  public boolean traceInteractiveStart = false;
+  public boolean traceInteractiveStart = true;
   public boolean traceMidExecution = true;
   public boolean traceWithoutBuffering = false;
   public boolean traceHideUnknownExtensions = false;
