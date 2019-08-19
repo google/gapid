@@ -32,10 +32,12 @@ message File {
 
 // Record holds all the data for an entire capture.
 message Record {
-  // Name of the capture.
-  string name = 1;
+  // Key for storing the capture.
+  string key = 1;
   // Database identifier of the data.
   bytes data = 2;
+  // Name of the capture.
+  string name = 3;
 }
 
 // Header holds information about the capture that is generated when the trace

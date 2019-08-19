@@ -50,7 +50,7 @@ func TestCaptureExportImport(t *testing.T) {
 	}
 
 	src := &capture.Blob{Data: buf.Bytes()}
-	ip, err := capture.Import(ctx, "imported", src)
+	ip, err := capture.Import(ctx, "key", "imported", src)
 	if !assert.For(ctx, "capture.Import").ThatError(err).Succeeded() {
 		return
 	}
