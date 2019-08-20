@@ -59,7 +59,7 @@ class ResourceCache {
   // the cache can fetch not only the missing resource, but also an anticipated
   // lookahead. also fills any free space in the cache with the first N
   // resources that fit in storage.
-  void setPrefetch(const Resource* res, size_t count,
+  void setPrefetch(const std::vector<Resource>& resources,
                    std::unique_ptr<ResourceLoader> fetcher);
   // debug print the internal state.
   virtual void dump(FILE*) {}
@@ -68,7 +68,7 @@ class ResourceCache {
   std::vector<Resource> anticipateNextResources(const Resource& resource,
                                                 size_t bytesToFetch);
 
-  virtual size_t prefetchImpl(const Resource* res, size_t count);
+  virtual size_t prefetchImpl(const std::vector<Resource>& resources);
 
  private:
   PrefetchMode mPrefetchMode;
