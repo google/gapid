@@ -345,6 +345,10 @@ bool createContext() {
   }
 
   switch (gContext.mOSVersion) {
+    case 28:  // Pie
+      gContext.mOSVersionMajor = 9;
+      gContext.mOSVersionMinor = 0;
+      break;
     case 27:  // Oreo
       gContext.mOSVersionMajor = 8;
       gContext.mOSVersionMinor = 1;
