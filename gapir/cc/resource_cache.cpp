@@ -37,6 +37,13 @@ void ResourceCache::setPrefetch(const Resource* resources, size_t count,
   }
 
   mFetcher = std::move(fetcher);
+
+  if (mPrefetchMode == PrefetchMode::IMMEDIATE_PREFETCH && count > 0) {
+    auto fetch = anticipateNextResources(resources[0], unusedSize());
+    if (fetch.size() > 0) {
+      prefetchImpl(&fetch[0], fetch.size());
+    }
+  }
 }
 
 std::vector<Resource> ResourceCache::anticipateNextResources(

@@ -29,6 +29,11 @@ namespace gapir {
 // ResourceCache is an abstract base class for caching resources.
 class ResourceCache {
  public:
+  enum class PrefetchMode { DEFERRED_PREFETCH, IMMEDIATE_PREFETCH };
+
+ public:
+  ResourceCache(PrefetchMode mode = PrefetchMode::DEFERRED_PREFETCH)
+      : mPrefetchMode(mode) {}
   virtual ~ResourceCache() {}
 
   // putCache caches the given resource and its data. Returns true if caching
@@ -66,6 +71,8 @@ class ResourceCache {
   virtual size_t prefetchImpl(const Resource* res, size_t count);
 
  private:
+  PrefetchMode mPrefetchMode;
+
   std::vector<Resource> mResources;
   std::map<ResourceId, std::vector<Resource>::iterator> mResourceIterators;
 
