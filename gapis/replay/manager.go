@@ -143,7 +143,7 @@ func (m *manager) createScheduler(ctx context.Context, device bind.Device) {
 	log.I(ctx, "New scheduler for device: %v", deviceID)
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.schedulers[deviceID] = scheduler.New(ctx, m.batch)
+	m.schedulers[deviceID] = scheduler.New(ctx, deviceID, m.batch)
 }
 
 func (m *manager) destroyScheduler(ctx context.Context, device bind.Device) {

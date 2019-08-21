@@ -16,11 +16,71 @@ package status
 
 import (
 	"context"
+	"sync"
 
 	"github.com/google/gapid/core/data/id"
 )
 
-// SnapshotMemory takes a snapshot of the current process's memory.
-func UpdateReplayStatus(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32, deviceID id.ID) {
-	onReplayStatusUpdate(ctx, label, total_instrs, finished_instrs, deviceID)
+// Replay contains status information about a replay.
+type Replay struct {
+	ID       uint32
+	Device   id.ID
+	started  bool
+	finished bool
+	mutex    sync.RWMutex
+}
+
+// ReplayQueued notifies listeners that a new replay has been queued.
+func ReplayQueued(ctx context.Context, id uint32, device id.ID) *Replay {
+	r := &Replay{
+		ID:       id,
+		Device:   device,
+		started:  false,
+		finished: false,
+	}
+	onReplayStatusUpdate(ctx, r, 0, 0, 0)
+	return r
+}
+
+// Started returns wether a replay has started.
+func (r *Replay) Started() bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	return r.started
+}
+
+// Finished returns wether a replay has finished.
+func (r *Replay) Finished() bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+	return r.finished
+}
+
+// Start notifies listeners that a replay has started.
+func (r *Replay) Start(ctx context.Context) {
+	r.start()
+	onReplayStatusUpdate(ctx, r, 0, 0, 0)
+}
+
+// Progress notifies listeners of progress on a currently running replay.
+func (r *Replay) Progress(ctx context.Context, label uint64, totalInstrs, finishedInstrs uint32) {
+	onReplayStatusUpdate(ctx, r, label, totalInstrs, finishedInstrs)
+}
+
+// Finish notifies listeners that a replay has finished.
+func (r *Replay) Finish(ctx context.Context) {
+	r.finish()
+	onReplayStatusUpdate(ctx, r, 0, 0, 0)
+}
+
+func (r *Replay) start() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.started, r.finished = true, false
+}
+
+func (r *Replay) finish() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.started, r.finished = true, true
 }

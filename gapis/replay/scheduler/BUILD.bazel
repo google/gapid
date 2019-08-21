@@ -22,6 +22,7 @@ go_library(
     deps = [
         "//core/app/crash:go_default_library",
         "//core/app/status:go_default_library",
+        "//core/data/id:go_default_library",
         "//core/event/task:go_default_library",
     ],
 )
@@ -31,7 +32,9 @@ go_test(
     srcs = ["scheduler_test.go"],
     embed = [":go_default_library"],
     deps = [
+        "//core/app/status:go_default_library",
         "//core/assert:go_default_library",
+        "//core/data/id:go_default_library",
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
     ],
