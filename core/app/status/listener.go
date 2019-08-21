@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-
-	"github.com/google/gapid/core/data/id"
 )
 
 var listeners = map[int]Listener{}
@@ -62,7 +60,7 @@ type Listener interface {
 	OnMemorySnapshot(context.Context, runtime.MemStats)
 	OnTaskBlock(context.Context, *Task)
 	OnTaskUnblock(context.Context, *Task)
-	OnReplayStatusUpdate(context.Context, uint64, uint32, uint32, id.ID)
+	OnReplayStatusUpdate(context.Context, *Replay, uint64, uint32, uint32)
 }
 
 // Unregister is the function returned by RegisterListener and is used to
@@ -142,10 +140,10 @@ func onMemorySnapshot(ctx context.Context, snapshot runtime.MemStats) {
 	}
 }
 
-func onReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32, deviceID id.ID) {
+func onReplayStatusUpdate(ctx context.Context, r *Replay, label uint64, totalInstrs, finishedInstrs uint32) {
 	listenerMutex.RLock()
 	defer listenerMutex.RUnlock()
 	for _, l := range listeners {
-		l.OnReplayStatusUpdate(ctx, label, total_instrs, finished_instrs, deviceID)
+		l.OnReplayStatusUpdate(ctx, r, label, totalInstrs, finishedInstrs)
 	}
 }

@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 )
 
@@ -76,6 +75,6 @@ func (l statusLogger) OnMemorySnapshot(ctx context.Context, stats runtime.MemSta
 	log.I(ctx, "Memory %+v bytes", stats.Alloc)
 }
 
-func (l statusLogger) OnReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32, deviceID id.ID) {
-	log.I(ctx, "Replay Status: label: %v, total instructions: %v, finished instructions: %v, device ID: %v.", label, total_instrs, finished_instrs, deviceID)
+func (l statusLogger) OnReplayStatusUpdate(ctx context.Context, r *Replay, label uint64, totalInstrs, finishedInstrs uint32) {
+	log.I(ctx, "Replay Status: started: %v finished: %v label: %v, total instructions: %v, finished instructions: %v.", r.Started(), r.Finished(), label, totalInstrs, finishedInstrs)
 }

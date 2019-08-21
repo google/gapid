@@ -252,11 +252,21 @@ message MemoryStatus {
   uint64 totalHeap = 1;
 }
 
+enum ReplayStatus {
+  REPLAY_QUEUED = 0;
+  REPLAY_STARTED = 1;
+  REPLAY_EXECUTING = 2;
+  REPLAY_FINISHED = 3;
+}
+
 message ReplayUpdate {
-  uint64 label = 1;
-  uint32 total_instrs = 2;
-  uint32 finished_instrs = 3;
-  path.Device device = 4;
+  uint32 replay_id = 1;
+  path.Device device = 2;
+  ReplayStatus status = 3;
+  // Progress information below, sent if status is EXECUTING.
+  uint64 label = 4;
+  uint32 total_instrs = 5;
+  uint32 finished_instrs = 6;
 }
 
 message ServerStatusRequest {

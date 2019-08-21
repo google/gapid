@@ -24,12 +24,15 @@ import (
 
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/event/task"
 )
 
+var lastTaskID uint32
+
 // Executor is the executor of Executables.
 // The executor can only work on one list of Executables at a time.
-type Executor func(context.Context, []Executable, Batch)
+type Executor func(context.Context, *status.Replay, []Executable, Batch)
 
 // Executable holds a task and it's result.
 type Executable struct {
@@ -63,14 +66,15 @@ type Batch struct {
 
 // Scheduler schedules Tasks to Executors, batching where possible.
 type Scheduler struct {
+	device   id.ID
 	pending  chan *job
 	exec     Executor
 	queueLen uint32
 }
 
 // New returns a new Scheduler that will execute Tasks with exec.
-func New(ctx context.Context, exec Executor) *Scheduler {
-	s := &Scheduler{exec: exec, pending: make(chan *job, 32)}
+func New(ctx context.Context, device id.ID, exec Executor) *Scheduler {
+	s := &Scheduler{device: device, exec: exec, pending: make(chan *job, 32)}
 	crash.Go(func() { s.run(ctx) })
 	return s
 }
@@ -142,6 +146,7 @@ func (s *Scheduler) run(ctx context.Context) {
 				batch:     j.batch,
 				jobs:      []*job{j},
 				interrupt: interrupt,
+				status:    status.ReplayQueued(ctx, atomic.AddUint32(&lastTaskID, 1), s.device),
 			}
 			interrupts = append(interrupts, interrupt)
 		}
@@ -247,6 +252,7 @@ type bin struct {
 	batch     Batch
 	jobs      []*job
 	interrupt reflect.SelectCase
+	status    *status.Replay
 }
 
 // isReady returns true if the bin is ready to be executed.
@@ -270,7 +276,9 @@ func (b *bin) exec(ctx context.Context, exec Executor) {
 			l = append(l, j.executable)
 		}
 	}
-	exec(ctx, l, b.batch)
+	b.status.Start(ctx)
+	exec(ctx, b.status, l, b.batch)
+	b.status.Finish(ctx)
 }
 
 type job struct {

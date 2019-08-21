@@ -31,7 +31,6 @@ import (
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/app/crash/reporting"
 	"github.com/google/gapid/core/context/keys"
-	"github.com/google/gapid/core/data/id"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/analytics"
@@ -608,17 +607,33 @@ func (l *statusListener) OnMemorySnapshot(ctx context.Context, stats runtime.Mem
 	})
 }
 
-func (l *statusListener) OnReplayStatusUpdate(ctx context.Context, label uint64, total_instrs uint32, finished_instrs uint32, deviceID id.ID) {
+func (l *statusListener) OnReplayStatusUpdate(ctx context.Context, r *status.Replay, label uint64, totalInstrs, finishedInstrs uint32) {
 	// Not using lock here for efficiency. Because replay status update is of high frequency.
 	// l.progressMutex.Lock()
 	// defer l.progressMutex.Unlock()
 
-	device := path.NewDevice(deviceID)
+	device := path.NewDevice(r.Device)
+	started, finished := r.Started(), r.Finished()
+
+	var status service.ReplayStatus
+	switch {
+	case finished:
+		status = service.ReplayStatus_REPLAY_FINISHED
+	case totalInstrs > 0:
+		status = service.ReplayStatus_REPLAY_EXECUTING
+	case started:
+		status = service.ReplayStatus_REPLAY_STARTED
+	default:
+		status = service.ReplayStatus_REPLAY_QUEUED
+	}
+
 	l.r(&service.ReplayUpdate{
-		Label:          label,
-		TotalInstrs:    total_instrs,
-		FinishedInstrs: finished_instrs,
+		ReplayId:       r.ID,
 		Device:         device,
+		Status:         status,
+		Label:          label,
+		TotalInstrs:    totalInstrs,
+		FinishedInstrs: finishedInstrs,
 	})
 }
 

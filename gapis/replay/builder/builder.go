@@ -660,15 +660,15 @@ func (b *Builder) RegisterNotificationReader(notificationID uint64, reader Notif
 
 // RegisterReplayStatusReader create and register a NotificationReader, which is used to decode and handle
 // replay status information sent from GAPIR.
-func (b *Builder) RegisterReplayStatusReader(ctx context.Context, deviceID id.ID) error {
+func (b *Builder) RegisterReplayStatusReader(ctx context.Context, r *status.Replay) error {
 	reader := func(n gapir.Notification) {
-		r := n.GetReplayStatus()
-		label := r.GetLabel()
-		total_instrs := r.GetTotalInstrs()
-		finished_instrs := r.GetFinishedInstrs()
+		s := n.GetReplayStatus()
+		label := s.GetLabel()
+		totalInstrs := s.GetTotalInstrs()
+		finishedInstrs := s.GetFinishedInstrs()
 
-		log.D(ctx, "Replay status: Label: %v; Total instructions: %v; Finished percentage: %v.", label, total_instrs, float32(finished_instrs)/float32(total_instrs))
-		status.UpdateReplayStatus(ctx, label, total_instrs, finished_instrs, deviceID)
+		log.D(ctx, "Replay status: Label: %v; Total instructions: %v; Finished percentage: %v.", label, totalInstrs, float32(finishedInstrs)/float32(totalInstrs))
+		r.Progress(ctx, label, totalInstrs, finishedInstrs)
 	}
 	return b.RegisterNotificationReader(ReplayProgressNotificationID, reader)
 }

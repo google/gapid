@@ -21,7 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/gapid/core/app/status"
 	"github.com/google/gapid/core/assert"
+	"github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 )
@@ -40,7 +42,7 @@ type testExecutor struct {
 	err error
 }
 
-func (t *testExecutor) exec(ctx context.Context, l []Executable, b Batch) {
+func (t *testExecutor) exec(ctx context.Context, r *status.Replay, l []Executable, b Batch) {
 	tasks := make([]int, len(l))
 	for i, e := range l {
 		tasks[i] = e.Task.(int)
@@ -53,7 +55,7 @@ func (t *testExecutor) exec(ctx context.Context, l []Executable, b Batch) {
 func setup(t *testing.T) (context.Context, *testExecutor, *Scheduler, *sync.WaitGroup) {
 	ctx := log.Testing(t)
 	e := &testExecutor{val: 321}
-	s := New(ctx, e.exec)
+	s := New(ctx, id.ID{}, e.exec)
 	wg := &sync.WaitGroup{}
 	return ctx, e, s, wg
 }

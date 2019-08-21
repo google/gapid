@@ -53,7 +53,7 @@ func findABI(ml *device.MemoryLayout, abis []*device.ABI) *device.ABI {
 	return nil
 }
 
-func (m *manager) batch(ctx context.Context, e []scheduler.Executable, b scheduler.Batch) {
+func (m *manager) batch(ctx context.Context, r *status.Replay, e []scheduler.Executable, b scheduler.Batch) {
 	batch := b.Key.(batchKey)
 
 	ctx = PutDevice(ctx, path.NewDevice(batch.device))
@@ -83,7 +83,7 @@ func (m *manager) batch(ctx context.Context, e []scheduler.Executable, b schedul
 		}.Bind(ctx)
 		log.I(ctx, "Replay for %d requests", len(e))
 
-		return m.execute(ctx, d, batch.device, batch.capture, batch.config, batch.generator, requests)
+		return m.execute(ctx, d, r, batch.device, batch.capture, batch.config, batch.generator, requests)
 	}()
 
 	if err != nil {
@@ -228,6 +228,7 @@ func (r *InitialPayloadResolvable) Resolve(
 func (m *manager) execute(
 	ctx context.Context,
 	d bind.Device,
+	r *status.Replay,
 	deviceID, captureID id.ID,
 	cfg Config,
 	generator Generator,
@@ -355,7 +356,7 @@ func (m *manager) execute(
 		return log.Err(ctx, err, "Failed to build replay payload")
 	}
 
-	err = b.RegisterReplayStatusReader(ctx, deviceID)
+	err = b.RegisterReplayStatusReader(ctx, r)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to register replay status notification reader.")
 	}
