@@ -86,14 +86,12 @@ func TestDeadCommandRemoval(t *testing.T) {
 		cb.GlCreateProgram(1),
 		cb.GlCreateProgram(2),
 		cb.GlCreateProgram(3),
-		api.WithExtras(cb.GlLinkProgram(1), programInfoA),
-		api.WithExtras(cb.GlLinkProgram(2), programInfoA),
-		api.WithExtras(cb.GlLinkProgram(3), programInfoB),
-		cb.GlUseProgram(1),
 	}
 	allBuffers := gles.GLbitfield_GL_COLOR_BUFFER_BIT | gles.GLbitfield_GL_DEPTH_BUFFER_BIT | gles.GLbitfield_GL_STENCIL_BUFFER_BIT
 	tests := map[string][]api.Cmd{
 		"Draw calls up to the requested point are preserved": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 1, 0)),
 			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 2, 0)),
@@ -101,6 +99,8 @@ func TestDeadCommandRemoval(t *testing.T) {
 			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 4, 0)),
 		},
 		"No request in frame kills draw calls": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			dead(cb.GlClear(allBuffers)),
 			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 1, 0)),
@@ -109,6 +109,8 @@ func TestDeadCommandRemoval(t *testing.T) {
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Multiple requests": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0),
@@ -117,6 +119,8 @@ func TestDeadCommandRemoval(t *testing.T) {
 			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Simple overwrite": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
 			cb.GlUniform4fv(1, 1, memory.Nullptr),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
@@ -127,10 +131,13 @@ func TestDeadCommandRemoval(t *testing.T) {
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Overwrites should be tracked per program": {
-			cb.GlUseProgram(1),
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			dead(cb.GlUseProgram(1)),
+			api.WithExtras(cb.GlLinkProgram(2), programInfoA),
+			dead(cb.GlUseProgram(1)),
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
 			cb.GlUseProgram(2),
-			cb.GlUniform4fv(0, 1, memory.Nullptr), // Unaffected
+			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlUseProgram(1),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlUseProgram(1),
@@ -139,25 +146,32 @@ func TestDeadCommandRemoval(t *testing.T) {
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Arrays should not interact with scalars": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			cb.GlUniform4fv(0, 10, memory.Nullptr),
 			cb.GlUniform4fv(0, 1, memory.Nullptr), // Unaffected
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Arrays should not interact with scalars (2)": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			cb.GlUniform4fv(0, 10, memory.Nullptr), // Unaffected
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
-		"Unsupported commands are left unmodified": {
+		"Re-linking a program drops uniform settings": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
 			cb.GlUseProgram(1),
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
-			cb.GlUniform1f(0, 3.14), // Not handled in the optimization.
-			cb.GlLinkProgram(1),     // Not handled in the optimization.
+			dead(cb.GlUniform1f(0, 3.14)),
+			cb.GlLinkProgram(1),
 			cb.GlUniform4fv(0, 1, memory.Nullptr),
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Multiple contexts": {
 			// Draw in context 1
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			cb.GlUseProgram(1),
 			dead(cb.GlUniform4fv(0, 1, memory.Nullptr)),
 			dead(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 			cb.GlClear(allBuffers),
@@ -182,6 +196,10 @@ func TestDeadCommandRemoval(t *testing.T) {
 			live(cb.GlDrawArrays(gles.GLenum_GL_TRIANGLES, 0, 0)),
 		},
 		"Clear layers and read texture": {
+			api.WithExtras(cb.GlLinkProgram(1), programInfoA),
+			api.WithExtras(cb.GlLinkProgram(3), programInfoB),
+			cb.GlUseProgram(1),
+
 			cb.GlActiveTexture(gles.GLenum_GL_TEXTURE3),
 			cb.GlBindTexture(gles.GLenum_GL_TEXTURE_CUBE_MAP, 4),
 			cb.GlTexStorage2D(gles.GLenum_GL_TEXTURE_CUBE_MAP, 10, gles.GLenum_GL_RGBA8, 512, 512),
@@ -209,6 +227,8 @@ func TestDeadCommandRemoval(t *testing.T) {
 			live(cb.GlDrawArrays(gles.GLenum_GL_POINTS, 0, 1)),
 		},
 		"Generate mipmaps": {
+			dead(api.WithExtras(cb.GlLinkProgram(1), programInfoA)),
+			dead(cb.GlUseProgram(1)),
 			cb.GlActiveTexture(gles.GLenum_GL_TEXTURE0),
 			cb.GlBindTexture(gles.GLenum_GL_TEXTURE_2D, 10),
 			cb.GlTexImage2D(gles.GLenum_GL_TEXTURE_2D, 0, gles.GLint(gles.GLenum_GL_RGB), 64, 64, 0, gles.GLenum_GL_RGB, gles.GLenum_GL_UNSIGNED_SHORT_5_6_5, memory.Nullptr),
