@@ -96,7 +96,7 @@ public class StatusWatcher {
     listener.onHeap(update.getTotalHeap());
   }
 
-  private void onReplayUpdate(Service.ReplayStatus update) {
+  private void onReplayUpdate(Service.ReplayUpdate update) {
     listener.onReplayProgress(update.getLabel(), update.getTotalInstrs(),
         update.getFinishedInstrs(), update.getDevice());
   }

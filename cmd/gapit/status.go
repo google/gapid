@@ -301,7 +301,7 @@ func (verb *statusVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 					maxMemoryUsage = tu.TotalHeap
 				}
 				currentMemoryUsage = tu.TotalHeap
-			}, func(tu *service.ReplayStatus) {
+			}, func(tu *service.ReplayUpdate) {
 				replayTotalInstrs = tu.TotalInstrs
 				replayFinishedInstrs = tu.FinishedInstrs
 			})

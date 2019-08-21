@@ -186,7 +186,7 @@ func (c *client) Profile(
 }
 
 func (c *client) Status(
-	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus), rs func(t *service.ReplayStatus)) error {
+	ctx context.Context, snapshotInterval time.Duration, statusUpdateFrequency time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus), rs func(t *service.ReplayUpdate)) error {
 
 	req := &service.ServerStatusRequest{MemorySnapshotInterval: float32(snapshotInterval.Seconds()), StatusUpdateFrequency: float32(statusUpdateFrequency.Seconds())}
 

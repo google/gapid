@@ -489,7 +489,7 @@ func (s *server) Profile(ctx context.Context, pprofW, traceW io.Writer, memorySn
 type statusListener struct {
 	f                  func(*service.TaskUpdate)
 	m                  func(*service.MemoryStatus)
-	r                  func(*service.ReplayStatus)
+	r                  func(*service.ReplayUpdate)
 	lastProgressUpdate map[*status.Task]time.Time // guarded by progressMutex
 	progressUpdateFreq time.Duration              // guarded by progressMutex
 	progressMutex      sync.Mutex
@@ -614,7 +614,7 @@ func (l *statusListener) OnReplayStatusUpdate(ctx context.Context, label uint64,
 	// defer l.progressMutex.Unlock()
 
 	device := path.NewDevice(deviceID)
-	l.r(&service.ReplayStatus{
+	l.r(&service.ReplayUpdate{
 		Label:          label,
 		TotalInstrs:    total_instrs,
 		FinishedInstrs: finished_instrs,
@@ -622,7 +622,7 @@ func (l *statusListener) OnReplayStatusUpdate(ctx context.Context, label uint64,
 	})
 }
 
-func (s *server) Status(ctx context.Context, snapshotInterval, statusInterval time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus), r func(*service.ReplayStatus)) error {
+func (s *server) Status(ctx context.Context, snapshotInterval, statusInterval time.Duration, f func(*service.TaskUpdate), m func(*service.MemoryStatus), r func(*service.ReplayUpdate)) error {
 	ctx = status.StartBackground(ctx, "RPC Status")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "Status")

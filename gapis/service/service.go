@@ -144,7 +144,7 @@ type Service interface {
 		statusUpdateFrequency time.Duration,
 		f func(*TaskUpdate),
 		m func(*MemoryStatus),
-		r func(*ReplayStatus)) error
+		r func(*ReplayUpdate)) error
 
 	// GetPerformanceCounters returns the values of all global counters as
 	// a string.
