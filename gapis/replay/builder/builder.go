@@ -790,7 +790,7 @@ func (b *Builder) Build(ctx context.Context) (gapir.Payload, PostDataHandler, No
 			if r, ok := readers[id]; ok {
 				r(*n)
 			} else {
-				log.E(ctx, "Unknown notification received, ID is %d", id)
+				log.W(ctx, "Unknown notification received, ID is %d: %v", id, n)
 			}
 		})
 	}
