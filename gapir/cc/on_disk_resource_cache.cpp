@@ -78,7 +78,9 @@ std::unique_ptr<ResourceCache> OnDiskResourceCache::create(
 }
 
 OnDiskResourceCache::OnDiskResourceCache(const std::string& path, bool cleanUp)
-    : mArchive(path + "resources"), mCleanUp(cleanUp) {}
+    : ResourceCache(ResourceCache::PrefetchMode::IMMEDIATE_PREFETCH),
+      mArchive(path + "resources"),
+      mCleanUp(cleanUp) {}
 
 bool OnDiskResourceCache::putCache(const Resource& resource, const void* data) {
   return mArchive.write(resource.getID(), data, resource.getSize());

@@ -40,7 +40,6 @@ class OnDiskResourceCache : public ResourceCache {
   // not readable or it can't be created then returns the fall back provider.
   static std::unique_ptr<ResourceCache> create(const std::string& path,
                                                bool cleanUp);
-
   virtual ~OnDiskResourceCache() {
 #if TARGET_OS == GAPID_OS_LINUX || TARGET_OS == GAPID_OS_OSX
     if (mCleanUp) {
