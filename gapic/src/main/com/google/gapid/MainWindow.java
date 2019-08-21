@@ -34,12 +34,10 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.Devices;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Loadable.Message;
 import com.google.gapid.util.MacApplication;
@@ -148,7 +146,7 @@ public class MainWindow extends ApplicationWindow {
     watchForUpdates(client, models);
 
     showLoadingMessage("Tracking server status...");
-    trackServerStatus(client, models.devices);
+    trackServerStatus(client);
 
     showLoadingMessage("Ready! Please open or capture a trace file.");
   }
@@ -163,8 +161,7 @@ public class MainWindow extends ApplicationWindow {
     });
   }
 
-  private void trackServerStatus(Client client, Devices devices) {
-
+  private void trackServerStatus(Client client) {
     new StatusWatcher(client, new StatusWatcher.Listener() {
       @Override
       public void onStatus(String status) {
@@ -177,8 +174,8 @@ public class MainWindow extends ApplicationWindow {
       }
 
       @Override
-      public void onReplayProgress(long label, int totalInstrs, int finishedInstrs, Path.Device replayDevice ) {
-        scheduleIfNotDisposed(statusBar, () -> statusBar.setReplayStatus(label, totalInstrs, finishedInstrs, replayDevice, devices));
+      public void onReplayProgress(String status) {
+        scheduleIfNotDisposed(statusBar, () -> statusBar.setReplayStatus(status));
       }
     });
   }
@@ -255,7 +252,7 @@ public class MainWindow extends ApplicationWindow {
     manager.add(createEditMenu(models, widgets));
     manager.add(createGotoMenu(models));
     manager.add(createViewMenu());
-    manager.add(createHelpMenu(client, models, widgets));
+    manager.add(createHelpMenu(models, widgets));
     manager.updateAll(true);
   }
 
@@ -354,7 +351,7 @@ public class MainWindow extends ApplicationWindow {
     return manager;
   }
 
-  private MenuManager createHelpMenu(Client client, Models models, Widgets widgets) {
+  private MenuManager createHelpMenu(Models models, Widgets widgets) {
     MenuManager manager = new MenuManager("&Help");
     manager.add(MenuItems.HelpOnlineHelp.create(() -> showHelp(models.analytics)));
     manager.add(MenuItems.HelpAbout.create(

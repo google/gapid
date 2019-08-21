@@ -17,7 +17,6 @@ package com.google.gapid.util;
 
 import com.google.common.collect.Maps;
 import com.google.gapid.proto.service.Service;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.server.Client;
 
 import java.util.HashMap;
@@ -33,6 +32,7 @@ public class StatusWatcher {
   private final Listener listener;
   private final Task root = Task.newRoot();
   private final HashMap<Long, Task> tasks = Maps.newHashMap();
+  private final ReplaySummary replays = new ReplaySummary();
   private String shownSummary = "";
 
   public StatusWatcher(Client client, Listener listener) {
@@ -97,14 +97,15 @@ public class StatusWatcher {
   }
 
   private void onReplayUpdate(Service.ReplayUpdate update) {
-    listener.onReplayProgress(update.getLabel(), update.getTotalInstrs(),
-        update.getFinishedInstrs(), update.getDevice());
+    if (replays.update(update)) {
+      listener.onReplayProgress(replays.getSummary());
+    }
   }
 
   public static interface Listener {
     public void onStatus(String status);
     public void onHeap(long heap);
-    public void onReplayProgress(long label, int totalInstrs, int finishedInstrs, Path.Device device);
+    public void onReplayProgress(String status);
   }
 
   private static class Task {
@@ -202,6 +203,152 @@ public class StatusWatcher {
 
     private static enum State {
       BACKGROUND, RUNNING, BLOCKED,
+    }
+  }
+
+  private static class ReplaySummary {
+    private final HashMap<Integer, Replay> replays = Maps.newHashMap();
+
+    private int queued = 0;
+    private int started = 0;
+    private int executing = 0;
+    private long doneInstr = 0;
+    private long totalInstr = 0;
+
+    public ReplaySummary() {
+    }
+
+    public synchronized String getSummary() {
+      StringBuilder sb = new StringBuilder();
+      String sep = "";
+      if (queued > 0) {
+        sb.append(queued).append(" Queued");
+        sep = ", ";
+      }
+      if (started > 0) {
+        sb.append(sep).append(started).append(" Building");
+        sep = ", ";
+      }
+      if (executing > 0) {
+        sb.append(sep).append(executing).append(" Running");
+        if (totalInstr > 0) {
+          sb.append(" ").append((int)(((double)doneInstr / totalInstr) * 100)).append("%");
+        }
+      }
+      return (sb.length() == 0) ? "Idle" : sb.toString();
+    }
+
+    public synchronized boolean update(Service.ReplayUpdate update) {
+      Replay replay = replays.get(update.getReplayId());
+      if (replay == null) {
+        if (update.getStatus() == Service.ReplayStatus.REPLAY_FINISHED) {
+          // Got a replay finished message for a replay we've not seen before. Just ignore it.
+          return false;
+        }
+        replay = new Replay(update);
+        replays.put(update.getReplayId(), replay);
+
+        switch (replay.status) {
+          case REPLAY_QUEUED:
+            queued++;
+            return true;
+          case REPLAY_STARTED:
+            started++;
+            return true;
+          case REPLAY_EXECUTING:
+            executing++;
+            doneInstr += replay.doneInstr;
+            totalInstr += replay.totalInstr;
+            return true;
+          default:
+            return false;
+        }
+      }
+
+      switch (replay.status) {
+        case REPLAY_QUEUED:
+          switch (update.getStatus()) {
+            case REPLAY_STARTED:
+              queued--;
+              return started(replay);
+            case REPLAY_EXECUTING:
+              queued--;
+              return executing(replay, update);
+            case REPLAY_FINISHED:
+              queued--;
+              return finished(replay);
+            default:
+              return false;
+          }
+        case REPLAY_STARTED:
+          switch (update.getStatus()) {
+            case REPLAY_EXECUTING:
+              started--;
+              return executing(replay, update);
+            case REPLAY_FINISHED:
+              started--;
+              return finished(replay);
+            default:
+              return false;
+          }
+        case REPLAY_EXECUTING:
+          switch (update.getStatus()) {
+            case REPLAY_EXECUTING:
+              return executing(replay, update);
+            case REPLAY_FINISHED:
+              executing--;
+              return finished(replay);
+            default:
+              return false;
+          }
+        default:
+          return false;
+      }
+    }
+
+    private boolean started(Replay replay) {
+      started++;
+      replay.status = Service.ReplayStatus.REPLAY_STARTED;
+      return true;
+    }
+
+    private boolean executing(Replay replay, Service.ReplayUpdate update) {
+      int done = update.getFinishedInstrs();
+      int total = update.getTotalInstrs();
+      if (replay.status != Service.ReplayStatus.REPLAY_EXECUTING) {
+        executing++;
+        doneInstr += done;
+        totalInstr += total;
+      } else {
+        doneInstr += done - replay.doneInstr;
+        totalInstr += total - replay.totalInstr;
+      }
+      replay.status = Service.ReplayStatus.REPLAY_EXECUTING;
+      replay.doneInstr = done;
+      replay.totalInstr = total;
+      return true;
+    }
+
+    private boolean finished(Replay replay) {
+      if (replay.status == Service.ReplayStatus.REPLAY_EXECUTING) {
+        doneInstr -= replay.doneInstr;
+        totalInstr -= replay.totalInstr;
+      }
+      // TODO: we should clean these out after some time.
+      replay.status = Service.ReplayStatus.REPLAY_FINISHED;
+      return true;
+    }
+
+    private static class Replay {
+      public Service.ReplayStatus status;
+      public int doneInstr;
+      public int totalInstr;
+
+      public Replay(Service.ReplayUpdate update) {
+        this.status = update.getStatus();
+        this.doneInstr = update.getFinishedInstrs();
+        this.totalInstr = update.getTotalInstrs();
+      }
     }
   }
 }
