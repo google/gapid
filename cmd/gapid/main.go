@@ -215,6 +215,8 @@ func (c *config) locateVM() error {
 		if java := "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java"; c.checkVM(java, true) {
 			c.vm = java
 			return nil
+		} else {
+			fmt.Println("To get a suitable JVM on Linux, install a regular (non-Google) JVM version >= 8 (e.g. openjdk-jre-8)")
 		}
 	}
 
