@@ -478,7 +478,10 @@ sub void DrawCommandDependencies(ref!Context ctx, u32 index_count, u32 instance_
         // Sampler uniform refers to a texture
         texture_target := GetTextureTargetFromSamplerType(u.Type)
         if texture_target != GL_NONE {
-          DependencyReadTexture(GetBoundTextureForUnit(ctx.Objects.TextureUnits[as!TextureUnitId(u.Value[0])], texture_target))
+          texture_unit := ctx.Objects.TextureUnits[as!TextureUnitId(u.Value[0])]
+          if texture_unit != null {
+            DependencyReadTexture(GetBoundTextureForUnit(texture_unit, texture_target))
+          }
         }
       }
     }
