@@ -15,8 +15,10 @@
  */
 package com.google.gapid.perfetto.views;
 
+import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
+import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.perfetto.views.StyleConstants.hueForCpu;
 import static com.google.gapid.util.Colors.hsl;
@@ -25,6 +27,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.RenderContext;
+import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
@@ -40,12 +43,14 @@ public class CpuPanel extends TrackPanel implements Selectable {
   private static final double HEIGHT = 30;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
+  private static final double CURSOR_SIZE = 5;
 
   private final CpuTrack track;
   private final float hue;
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
   protected double hoveredWidth;
+  protected HoverCard hovered;
 
   public CpuPanel(State state, CpuTrack track) {
     super(state);
@@ -84,9 +89,9 @@ public class CpuPanel extends TrackPanel implements Selectable {
 
   private void renderSummary(RenderContext ctx, CpuTrack.Data data, double w, double h) {
     long tStart = data.request.range.start;
+    int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
     ctx.setBackgroundColor(hsl(hue, .5f, .6f));
     ctx.path(path -> {
-      int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
       path.moveTo(0, h);
       double y = h, x = 0;
       for (int i = start; i < data.utilizations.length && x < w; i++) {
@@ -100,6 +105,21 @@ public class CpuPanel extends TrackPanel implements Selectable {
       path.close();
       ctx.fillPath(path);
     });
+
+    if (hovered != null && hovered.bucket >= start) {
+      double x = state.timeToPx(tStart + hovered.bucket * data.bucketSize + data.bucketSize / 2);
+      if (x < w) {
+        double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
+        double dy = HOVER_PADDING + hovered.size.h + HOVER_PADDING;
+        ctx.setBackgroundColor(colors().hoverBackground);
+        ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
+        ctx.setForegroundColor(colors().textMain);
+        ctx.drawText(hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+
+        ctx.setForegroundColor(colors().textMain);
+        ctx.drawCircle(x, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
+      }
+    }
   }
 
   private void renderSlices(RenderContext ctx, CpuTrack.Data data, double h) {
@@ -152,10 +172,18 @@ public class CpuPanel extends TrackPanel implements Selectable {
   @Override
   public Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
     CpuTrack.Data data = track.getData(state, () -> { /* nothing */ });
-    if (data == null || data.kind == CpuTrack.Data.Kind.summary) {
+    if (data == null) {
       return Hover.NONE;
     }
 
+    switch (data.kind) {
+      case slice: return sliceHover(data, m, x);
+      case summary: return summaryHover(data, m, x);
+      default: return Hover.NONE;
+    }
+  }
+
+  private Hover sliceHover(CpuTrack.Data data, TextMeasurer m, double x) {
     mouseXpos = x;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
@@ -196,12 +224,55 @@ public class CpuPanel extends TrackPanel implements Selectable {
     return Hover.NONE;
   }
 
+  private Hover summaryHover(CpuTrack.Data data, TextMeasurer m, double x) {
+    long time = state.pxToTime(x);
+    int bucket = (int)((time - data.request.range.start) / data.bucketSize);
+    if (bucket < 0 || bucket >= data.utilizations.length) {
+      return Hover.NONE;
+    }
+
+    double p = data.utilizations[bucket];
+    String text = (int)(p * 100) + "% (" +
+        timeToString(Math.round(p * data.bucketSize)) + " / " + timeToString(data.bucketSize) + ")";
+    hovered = new HoverCard(bucket, p, text, m.measure(text));
+
+    double mouseX = state.timeToPx(
+        data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);
+    double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
+    double dy = height - 2 * TRACK_MARGIN;
+    return new Hover() {
+      @Override
+      public Area getRedraw() {
+        return new Area(mouseX - CURSOR_SIZE, TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+      }
+
+      @Override
+      public void stop() {
+        hovered = null;
+      }
+    };
+  }
+
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
       builder.add(Kind.Cpu, transform(
           CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts),
           r -> new CpuTrack.Slices(state, r)));
+    }
+  }
+
+  private static class HoverCard {
+    public final int bucket;
+    public final double utilization;
+    public final String text;
+    public final Size size;
+
+    public HoverCard(int bucket, double utilization, String text, Size size) {
+      this.bucket = bucket;
+      this.utilization = utilization;
+      this.text = text;
+      this.size = size;
     }
   }
 }
