@@ -17,7 +17,7 @@
 
 PACKAGES = [
     struct(
-        url = "https://android.googlesource.com/platform/external/perfetto/+archive/6cbf74139e0f2ab001db0d37e75b309f55aa0151.tar.gz",
+        url = "https://android.googlesource.com/platform/external/perfetto/+archive/cbcc21fb49bcb14df7d8b4f03784348cdea41f5d.tar.gz",
         sha = "",
         strip = "",
         out = ".",
