@@ -7,7 +7,16 @@ permalink: /inspect/commands
 
 The **Commands** pane displays the calls made by the application, grouped by frame and draw call or by user markers.
 
-<img src="../images/commands-pane/commands-pane.png" width="400px" />
+<figure style="display: inline-block;">
+	<img src="../images/commands-pane/opengl.png" width="400px" />
+	<figcaption>Viewing an OpenGL trace</figcaption>
+</figure>
+
+<figure style="display: inline-block;">
+	<img src="../images/commands-pane/vulcan.png" width="400px" />
+	<figcaption>Viewing a Vulcan trace</figcaption>
+</figure>
+
 
 ## Operations
 
