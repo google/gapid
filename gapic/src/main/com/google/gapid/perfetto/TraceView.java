@@ -15,6 +15,13 @@
  */
 package com.google.gapid.perfetto;
 
+import static com.google.gapid.perfetto.views.StyleConstants.KB_DELAY;
+import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_FAST;
+import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_SLOW;
+import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_FAST;
+import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_SLOW;
+import static com.google.gapid.perfetto.views.StyleConstants.ZOOM_FACTOR_SCALE;
+
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Perfetto;
@@ -23,12 +30,14 @@ import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.perfetto.views.RootPanel;
 import com.google.gapid.perfetto.views.SelectionView;
 import com.google.gapid.perfetto.views.State;
+import com.google.gapid.util.Keyboard;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
@@ -39,8 +48,6 @@ import org.eclipse.swt.widgets.ScrollBar;
  */
 public class TraceView extends Composite
     implements Capture.Listener, Perfetto.Listener, State.Listener {
-  private static final double ZOOM_FACTOR_SCALE = 0.05;
-
   private final Models models;
   private final State state;
   private final LoadablePanel<SashForm> loading;
@@ -86,6 +93,33 @@ public class TraceView extends Composite
     canvas.getVerticalBar().addListener(SWT.Selection, e -> {
       int sel = canvas.getVerticalBar().getSelection();
       if (state.scrollToY(sel)) {
+        canvas.redraw(Area.FULL, true);
+      }
+    });
+    new Keyboard(canvas, KB_DELAY, kb -> {
+      boolean redraw = false;
+      boolean fast = kb.isKeyDown(SWT.SHIFT);
+      if (kb.isKeyDown('a') || kb.isKeyDown(SWT.ARROW_LEFT)) {
+        redraw = state.dragX(state.getVisibleTime(), fast ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
+      } else if (kb.isKeyDown('d') || kb.isKeyDown(SWT.ARROW_RIGHT)) {
+        redraw = state.dragX(state.getVisibleTime(), -(fast ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
+      }
+
+      if (kb.isKeyDown('w') || kb.isKeyDown(SWT.ARROW_UP)) {
+        redraw = state.dragY(fast ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
+      } else if (kb.isKeyDown('s') || kb.isKeyDown(SWT.ARROW_DOWN)) {
+        redraw = state.dragY(-(fast ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
+      }
+
+      if (kb.isKeyDown('q')) {
+        Point mouse = canvas.toControl(getDisplay().getCursorLocation());
+        redraw = rootPanel.zoom(mouse.x, 1.0 - (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
+      } else if (kb.isKeyDown('e')) {
+        Point mouse = canvas.toControl(getDisplay().getCursorLocation());
+        redraw = rootPanel.zoom(mouse.x, 1.0 + (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
+      }
+
+      if (redraw) {
         canvas.redraw(Area.FULL, true);
       }
     });
