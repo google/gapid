@@ -63,16 +63,16 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
   }
 
   @Override
-  public Dragger onDragStart(double x, double y, int mods, double scrollTop) {
+  public Dragger onDragStart(double x, double y, int mods) {
     if (x < LABEL_WIDTH || mods != SWT.BUTTON1) {
       // TODO: implement dragging of a track.
       return Dragger.NONE;
     }
-    return new TrackDragger(state, x);
+    return new TrackDragger(state, x, y);
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y, double scrollTop) {
+  public Hover onMouseMove(TextMeasurer m, double x, double y) {
     if (x < LABEL_WIDTH || y < TRACK_MARGIN || y > height - TRACK_MARGIN) {
       return Hover.NONE;
     }
@@ -86,16 +86,21 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
     private final State state;
     private final double startX;
     private final TimeSpan atStart;
+    private double lastY;
 
-    public TrackDragger(State state, double startX) {
+    public TrackDragger(State state, double startX, double startY) {
       this.state = state;
       this.startX = startX;
       this.atStart = state.getVisibleTime();
+      this.lastY = startY;
     }
 
     @Override
     public Area onDrag(double x, double y) {
-      return (state.drag(atStart, x - startX)) ? Area.FULL : Area.NONE;
+      Area areaX = state.dragX(atStart, x - startX) ? Area.FULL : Area.NONE;
+      Area areaY = state.dragY(y - lastY) ? Area.FULL : Area.NONE;
+      lastY = y;
+      return areaX.combine(areaY);
     }
 
     @Override

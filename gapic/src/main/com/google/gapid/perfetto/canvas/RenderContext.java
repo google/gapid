@@ -40,23 +40,20 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
   private final GC gc;
   private final ColorCache colors;
   private final Panel.TextMeasurer textMeasurer;
-  private final double scrollTop;
   private final LinkedList<TransformAndClip> transformStack = Lists.newLinkedList();
   private final Map<String, Long> traces = Maps.newHashMap();
 
   public RenderContext(
-      Theme theme, GC gc, ColorCache colors, Panel.TextMeasurer textMeasurer, double scrollTop) {
+      Theme theme, GC gc, ColorCache colors, Panel.TextMeasurer textMeasurer) {
     this.theme = theme;
     this.gc = gc;
     this.colors = colors;
     this.textMeasurer = textMeasurer;
-    this.scrollTop = scrollTop;
 
-    Area clip = Area.of(gc.getClipping()).translate(0, scrollTop);
+    Area clip = Area.of(gc.getClipping());
     Transform transform = new Transform(gc.getDevice());
     gc.getTransform(transform);
     transform.scale((float)(1 / scale), (float)(1 / scale));
-    transform.translate(0, (float)(-scrollTop * scale));
     gc.setTransform(transform);
     transformStack.push(new TransformAndClip(transform, clip));
     gc.setLineWidth((int)scale);
@@ -75,10 +72,6 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
       t.dispose();
     }
     transformStack.clear();
-  }
-
-  public double getScrollTop() {
-    return scrollTop;
   }
 
   public void setForegroundColor(RGBA color) {
@@ -321,9 +314,9 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
       }
     }
 
-    public RenderContext newContext(GC gc, double scrollTop) {
+    public RenderContext newContext(GC gc) {
       gc.setFont(font);
-      return new RenderContext(theme, gc, colors, this, scrollTop);
+      return new RenderContext(theme, gc, colors, this);
     }
 
     public void dispose() {

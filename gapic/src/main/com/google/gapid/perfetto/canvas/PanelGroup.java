@@ -94,21 +94,21 @@ public class PanelGroup extends Panel.Base {
   }
 
   @Override
-  public Dragger onDragStart(double x, double y, int mods, double scrollTop) {
+  public Dragger onDragStart(double x, double y, int mods) {
     Child child = findPanel(y);
     if (child == null) {
       return Dragger.NONE;
     }
-    return child.panel.onDragStart(x, y - child.y, mods, scrollTop).translated(0, child.y);
+    return child.panel.onDragStart(x, y - child.y, mods).translated(0, child.y);
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y, double scrollTop) {
+  public Hover onMouseMove(TextMeasurer m, double x, double y) {
     Child child = findPanel(y);
     if (child == null) {
       return Hover.NONE;
     }
-    return child.panel.onMouseMove(m, x, y - child.y, scrollTop).translated(0, child.y);
+    return child.panel.onMouseMove(m, x, y - child.y).translated(0, child.y);
   }
 
   private int findPanelIdx(double y) {

@@ -50,7 +50,9 @@ public class State {
   private final Widget owner;
   private Perfetto.Data data;
   private TimeSpan visibleTime;
+  private double scrollOffset = 0;
   private double width;
+  private double maxScrollOffset = 0;
   private double nanosPerPx;
   private long resolution;
   private Selection selection;
@@ -84,6 +86,14 @@ public class State {
 
   public TimeSpan getVisibleTime() {
     return visibleTime;
+  }
+
+  public double getScrollOffset() {
+    return scrollOffset;
+  }
+
+  public double getMaxScrollOffset() {
+    return maxScrollOffset;
   }
 
   public TimeSpan getTraceTime() {
@@ -125,6 +135,12 @@ public class State {
     }
   }
 
+  public void setMaxScrollOffset(double maxScrollOffset) {
+    this.maxScrollOffset = Math.max(0, maxScrollOffset);
+    scrollOffset = Math.min(this.maxScrollOffset, scrollOffset);
+    listeners.fire().onVisibleAreaChanged();
+  }
+
   public boolean setVisibleTime(TimeSpan visibleTime) {
     // TODO: this is not optimal: when zooming in on the right side, then zooming out on the left,
     // the zoom out will hardly zoom.
@@ -132,21 +148,35 @@ public class State {
     if (!this.visibleTime.equals(visibleTime)) {
       this.visibleTime = visibleTime;
       update();
-      listeners.fire().onVisibleTimeChanged();
+      listeners.fire().onVisibleAreaChanged();
       return true;
     }
     return false;
   }
 
-  public boolean drag(TimeSpan atDragStart, double dx) {
+  public boolean dragX(TimeSpan atDragStart, double dx) {
     long dt = deltaPxToDuration(dx);
     return setVisibleTime(atDragStart.move(-dt)
         .boundedByPreservingDuration((data == null) ? TimeSpan.ZERO : data.traceTime));
   }
 
-  public boolean scrollTo(long t) {
+  public boolean dragY(double dy) {
+    return scrollToY(scrollOffset - dy);
+  }
+
+  public boolean scrollToX(long t) {
     return setVisibleTime(visibleTime.moveTo(t)
         .boundedByPreservingDuration((data == null) ? TimeSpan.ZERO : data.traceTime));
+  }
+
+  public boolean scrollToY(double y) {
+    double newScrollOffset = Math.max(0, Math.min(maxScrollOffset, y));
+    if (newScrollOffset != scrollOffset) {
+      scrollOffset = newScrollOffset;
+      listeners.fire().onVisibleAreaChanged();
+      return true;
+    }
+    return false;
   }
 
   public void setSelection(ListenableFuture<? extends Selection> futureSel) {
@@ -212,7 +242,7 @@ public class State {
   @SuppressWarnings("unused")
   public static interface Listener extends Events.Listener {
     public default void onDataChanged() { /* do nothing */ }
-    public default void onVisibleTimeChanged() { /* do nothing */ }
+    public default void onVisibleAreaChanged() { /* do nothing */ }
     public default void onSelectionChanged(Selection selection) { /* do nothing */}
   }
 }
