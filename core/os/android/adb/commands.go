@@ -18,14 +18,18 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+	perfetto_pb "perfetto/config"
 )
 
 const (
@@ -34,7 +38,8 @@ const (
 	ErrDeviceNotRooted = fault.Const("Device is not rooted")
 	ErrRootFailed      = fault.Const("Device failed to switch to root")
 
-	maxRootAttempts = 5
+	maxRootAttempts                            = 5
+	gpuRenderingStagesDataSourceDescriptorName = "gpu.renderstages"
 )
 
 func isRootSuccessful(line string) bool {
@@ -254,6 +259,51 @@ func (b *binding) GetEnv(ctx context.Context) (*shell.Env, error) {
 func (b *binding) SupportsPerfetto(ctx context.Context) bool {
 	os := b.Instance().GetConfiguration().GetOS()
 	return os.GetAPIVersion() >= 28
+}
+
+func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() <= 29 {
+		return &device.PerfettoCapability{}, log.Errf(ctx, nil, "Querying perfetto capability requires Android API > 29")
+	}
+	res, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
+	if err != nil {
+		return &device.PerfettoCapability{}, log.Errf(ctx, err, "adb shell perfetto returned error: %s", res)
+	}
+	decoded, _ := base64.StdEncoding.DecodeString(res)
+	tracingServiceState := &perfetto_pb.TracingServiceState{}
+	if err = proto.Unmarshal(decoded, tracingServiceState); err != nil {
+		return &device.PerfettoCapability{}, log.Errf(ctx, err, "Unmarshal returned error")
+	}
+	perfettoCapability := &device.PerfettoCapability{
+		GpuProfiling: &device.GPUProfiling{},
+	}
+	dataSources := tracingServiceState.GetDataSources()
+	for _, dataSource := range dataSources {
+		dataSourceDescriptor := dataSource.GetDsDescriptor()
+		if dataSourceDescriptor.GetName() == gpuRenderingStagesDataSourceDescriptorName {
+			perfettoCapability.GpuProfiling.HasRenderStage = true
+			continue
+		}
+		gpuCounterDescriptor := dataSourceDescriptor.GetGpuCounterDescriptor()
+		specs := gpuCounterDescriptor.GetSpecs()
+		if len(specs) == 0 || perfettoCapability.GpuProfiling.GpuCounterDescriptor != nil {
+			continue
+		}
+
+		// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
+		// they are binary format compatible.
+		data, err := proto.Marshal(gpuCounterDescriptor)
+		if err != nil {
+			continue
+		}
+		deviceGpuCounterDescriptor := &device.GpuCounterDescriptor{}
+		if err = proto.Unmarshal(data, deviceGpuCounterDescriptor); err != nil {
+			continue
+		}
+		perfettoCapability.GpuProfiling.GpuCounterDescriptor = deviceGpuCounterDescriptor
+	}
+
+	return perfettoCapability, nil
 }
 
 func extrasFlags(extras []android.ActionExtra) []string {
