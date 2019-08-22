@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/gapid/core/data/binary"
 	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapir"
@@ -62,6 +61,7 @@ type commandPoolKey struct {
 }
 
 type queryTimestamps struct {
+	replay.EndOfReplay
 	cmds            []api.Cmd
 	commandPools    map[commandPoolKey]VkCommandPool
 	queryPools      map[VkQueue]*queryPoolInfo
@@ -98,8 +98,6 @@ func (t *queryTimestamps) mustAllocData(ctx context.Context, s *api.GlobalState,
 	t.allocated = append(t.allocated, &res)
 	return res
 }
-
-func (t *queryTimestamps) AddResult(r replay.Result) { t.replayResult = append(t.replayResult, r) }
 
 func (t *queryTimestamps) createQueryPoolIfNeeded(ctx context.Context,
 	cb CommandBuilder,
@@ -532,28 +530,7 @@ func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 	for _, queryPoolInfo := range t.queryPools {
 		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
 	}
-	out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-		code := uint32(0xbeefcace)
-		b.Push(value.U32(code))
-		b.Post(b.Buffer(1), 4, func(r binary.Reader, err error) {
-			if err != nil {
-				log.Err(ctx, err, "Flush did not get expected EOS code: '%v'")
-				return
-			}
-			d := r.Uint32()
-			if d != code {
-				log.Err(ctx, nil, "Flush did not get expected EOS code")
-				return
-			}
-
-			for _, res := range t.replayResult {
-				res.Do(func() (interface{}, error) {
-					return nil, nil
-				})
-			}
-		})
-		return nil
-	}))
+	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.replayResult })
 }
 
 func (t *queryTimestamps) PreLoop(ctx context.Context, out transform.Writer) {
