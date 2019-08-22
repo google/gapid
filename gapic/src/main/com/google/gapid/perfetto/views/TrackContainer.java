@@ -139,17 +139,17 @@ public class TrackContainer {
     }
 
     @Override
-    public Dragger onDragStart(double x, double y, int mods, double scrollTop) {
-      return track.onDragStart(x, y, mods, scrollTop);
+    public Dragger onDragStart(double x, double y, int mods) {
+      return track.onDragStart(x, y, mods);
     }
 
     @Override
-    public Hover onMouseMove(TextMeasurer m, double x, double y, double scrollTop) {
+    public Hover onMouseMove(TextMeasurer m, double x, double y) {
       if (filter != null &&
           y < TITLE_HEIGHT && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
         return new FilterToggler();
       } else {
-        return track.onMouseMove(m, x, y, scrollTop);
+        return track.onMouseMove(m, x, y);
       }
     }
 
@@ -254,17 +254,17 @@ public class TrackContainer {
     }
 
     @Override
-    public Dragger onDragStart(double x, double y, int mods, double scrollTop) {
+    public Dragger onDragStart(double x, double y, int mods) {
       if (expanded) {
         return (y < TITLE_HEIGHT) ? Dragger.NONE :
-          detail.onDragStart(x, y - TITLE_HEIGHT, mods, scrollTop).translated(0, TITLE_HEIGHT);
+          detail.onDragStart(x, y - TITLE_HEIGHT, mods).translated(0, TITLE_HEIGHT);
       } else {
-        return summary.onDragStart(x, y, mods, scrollTop);
+        return summary.onDragStart(x, y, mods);
       }
     }
 
     @Override
-    public Hover onMouseMove(TextMeasurer m, double x, double y, double scrollTop) {
+    public Hover onMouseMove(TextMeasurer m, double x, double y) {
       if (expanded) {
         if (y < TITLE_HEIGHT) {
           if (filter != null && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
@@ -275,14 +275,14 @@ public class TrackContainer {
             return Hover.NONE;
           }
         } else {
-          return detail.onMouseMove(m, x, y - TITLE_HEIGHT, scrollTop).translated(0, TITLE_HEIGHT);
+          return detail.onMouseMove(m, x, y - TITLE_HEIGHT).translated(0, TITLE_HEIGHT);
         }
       } else {
         if (y < TITLE_HEIGHT &&
             x < Math.min(LABEL_WIDTH, LABEL_OFFSET + m.measure(summary.getTitle()).w)) {
           return new ExpansionToggler();
         } else {
-          return summary.onMouseMove(m, x, y, scrollTop);
+          return summary.onMouseMove(m, x, y);
         }
       }
     }

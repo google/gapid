@@ -31,7 +31,7 @@ import org.eclipse.swt.SWT;
 
 /**
  * The main {@link Panel} containing all track panels. Shows a {@link TimelinePanel} at the top,
- * regardless of scroll offset.
+ * and tracks below.
  */
 public class RootPanel extends Panel.Base implements State.Listener {
   private final PanelGroup top = new PanelGroup();
@@ -68,28 +68,27 @@ public class RootPanel extends Panel.Base implements State.Listener {
   @Override
   public void setSize(double w, double h) {
     super.setSize(w, h);
-    double topHeight = top.getPreferredHeight();
+    double topHeight = top.getPreferredHeight(), bottomHeight = bottom.getPreferredHeight();
     top.setSize(w, topHeight);
     bottom.setSize(w, h - topHeight);
     state.setWidth(w - LABEL_WIDTH);
+    state.setMaxScrollOffset(bottomHeight - h + topHeight);
   }
 
   @Override
   public void render(RenderContext ctx, Repainter repainter) {
-    double topHeight = top.getPreferredHeight(), scrollTop = ctx.getScrollTop();
+    double topHeight = top.getPreferredHeight();
     Area clip = ctx.getClip();
-    if (clip.y < scrollTop + topHeight) {
-      ctx.withTranslation(0, scrollTop, () -> top.render(ctx, repainter.translated(0, scrollTop)));
-
-      double newClipY = scrollTop + topHeight;
+    if (clip.y < topHeight) {
+      top.render(ctx, repainter);
+    }
+    if (clip.y + clip.h > topHeight) {
+      double newClipY = Math.max(clip.y, topHeight);
       ctx.withClip(clip.x, newClipY, clip.w, clip.h - (newClipY - clip.y), () -> {
-        ctx.withTranslation(0, topHeight, () -> {
-          bottom.render(ctx, repainter.translated(0, topHeight));
+        ctx.withTranslation(0, topHeight - state.getScrollOffset(), () -> {
+          bottom.render(ctx, repainter.transformed(
+              a -> a.translate(0, topHeight - state.getScrollOffset())));
         });
-      });
-    } else {
-      ctx.withTranslation(0, topHeight, () -> {
-        bottom.render(ctx, repainter.translated(0, topHeight));
       });
     }
 
@@ -104,11 +103,11 @@ public class RootPanel extends Panel.Base implements State.Listener {
     double topHeight = top.getPreferredHeight();
     area.intersect(0, 0, width, topHeight).ifNotEmpty(a -> top.visit(v, a));
     area.intersect(0, topHeight, width, height - topHeight)
-        .ifNotEmpty(a -> bottom.visit(v, a.translate(0, -topHeight)));
+        .ifNotEmpty(a -> bottom.visit(v, a.translate(0, -topHeight + state.getScrollOffset())));
   }
 
   @Override
-  public Dragger onDragStart(double sx, double sy, int mods, double scrollTop) {
+  public Dragger onDragStart(double sx, double sy, int mods) {
     // TODO: top vs bottom
     double topHeight = top.getPreferredHeight();
     if (mods == (SWT.BUTTON1 | SWT.SHIFT)) {
@@ -126,7 +125,8 @@ public class RootPanel extends Panel.Base implements State.Listener {
         }
       };
     }
-    return bottom.onDragStart(sx, sy - topHeight, mods, scrollTop).translated(0, topHeight);
+    return bottom.onDragStart(sx, sy - topHeight + state.getScrollOffset(), mods)
+        .translated(0, topHeight - state.getScrollOffset());
   }
 
   protected Area updateSelection(double sx, double sy, double x, double y) {
@@ -156,12 +156,13 @@ public class RootPanel extends Panel.Base implements State.Listener {
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y, double scrollTop) {
+  public Hover onMouseMove(TextMeasurer m, double x, double y) {
     double topHeight = top.getPreferredHeight();
-    if (y < scrollTop + topHeight) {
+    if (y < topHeight) {
       return Hover.NONE;
     } else {
-      return bottom.onMouseMove(m, x, y - topHeight, scrollTop).translated(0, topHeight);
+      return bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
+          .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
     }
   }
 

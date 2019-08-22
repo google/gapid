@@ -65,7 +65,7 @@ public class TraceView extends Composite
       if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
         e.doit = false;
         if (rootPanel.zoom(e.x, 1.0 - Math.max(-3, Math.min(3, e.count)) * ZOOM_FACTOR_SCALE)) {
-          canvas.redraw(Area.FULL);
+          canvas.redraw(Area.FULL, true);
         }
       }
     });
@@ -79,11 +79,17 @@ public class TraceView extends Composite
     canvas.getHorizontalBar().addListener(SWT.Selection, e -> {
       TimeSpan trace = state.getTraceTime();
       int sel = canvas.getHorizontalBar().getSelection();
-      if (state.scrollTo(trace.start + sel * trace.getDuration() / 10000)) {
-        canvas.redraw(Area.FULL);
+      if (state.scrollToX(trace.start + sel * trace.getDuration() / 10000)) {
+        canvas.redraw(Area.FULL, true);
       }
     });
-    updateScrollbar();
+    canvas.getVerticalBar().addListener(SWT.Selection, e -> {
+      int sel = canvas.getVerticalBar().getSelection();
+      if (state.scrollToY(sel)) {
+        canvas.redraw(Area.FULL, true);
+      }
+    });
+    updateScrollbars();
 
     models.capture.addListener(this);
     models.perfetto.addListener(this);
@@ -105,7 +111,7 @@ public class TraceView extends Composite
     if (!maintainState) {
       rootPanel.clear();
     }
-    updateScrollbar();
+    updateScrollbars();
   }
 
   @Override
@@ -129,12 +135,12 @@ public class TraceView extends Composite
       state.update(models.perfetto.getData());
       canvas.structureHasChanged();
     }
-    updateScrollbar();
+    updateScrollbars();
   }
 
   @Override
-  public void onVisibleTimeChanged() {
-    updateScrollbar();
+  public void onVisibleAreaChanged() {
+    updateScrollbars();
   }
 
   private double lastZoom = 1;
@@ -145,7 +151,7 @@ public class TraceView extends Composite
         break;
       case SWT.GESTURE_MAGNIFY:
         if (rootPanel.zoom(e.x, lastZoom / e.magnification)) {
-          canvas.redraw(Area.FULL);
+          canvas.redraw(Area.FULL, true);
         }
         lastZoom = e.magnification;
         break;
@@ -154,7 +160,12 @@ public class TraceView extends Composite
     }
   }
 
-  private void updateScrollbar() {
+  private void updateScrollbars() {
+    updateHorizontalBar();
+    updateVerticalBar();
+  }
+
+  private void updateHorizontalBar() {
     ScrollBar bar = canvas.getHorizontalBar();
     if (!models.perfetto.isLoaded()) {
       bar.setEnabled(false);
@@ -175,6 +186,28 @@ public class TraceView extends Composite
 
     bar.setEnabled(true);
     bar.setValues(sel, 0, 10000, thumb, Math.max(1, thumb / 20), 100);
+  }
+
+  private void updateVerticalBar() {
+    ScrollBar bar = canvas.getVerticalBar();
+    if (!models.perfetto.isLoaded()) {
+      bar.setEnabled(false);
+      bar.setValues(0, 0, 1, 1, 5, 10);
+      return;
+    }
+
+    double max = state.getMaxScrollOffset();
+    if (max <= 0) {
+      bar.setEnabled(false);
+      bar.setValues(0, 0, 1, 1, 5, 10);
+      return;
+    }
+
+    int h = canvas.getClientArea().height;
+    int sel = (int)state.getScrollOffset();
+
+    bar.setEnabled(true);
+    bar.setValues(sel, 0, (int)(h + max), h, 10, 100);
   }
 
   private static int permyriad(long v, long t) {
