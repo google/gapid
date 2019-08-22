@@ -37,6 +37,14 @@ public class StyleConstants {
   public static final double LABEL_WIDTH = 250;
   public static final double TRACK_MARGIN = 4;
   public static final double SELECTION_THRESHOLD = 0.333;
+  public static final double ZOOM_FACTOR_SCALE = 0.05;
+
+  // Keyboard handling constants.
+  public static final int KB_DELAY = 20;
+  public static final int KB_PAN_SLOW = 30;
+  public static final int KB_PAN_FAST = 60;
+  public static final double KB_ZOOM_SLOW = 2 * ZOOM_FACTOR_SCALE;
+  public static final double KB_ZOOM_FAST = 3 * ZOOM_FACTOR_SCALE;
 
   public static class Colors {
     public final int background;
