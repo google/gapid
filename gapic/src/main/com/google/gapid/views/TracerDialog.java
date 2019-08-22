@@ -457,27 +457,30 @@ public class TracerDialog {
           }
         });
 
-        Listener filledListener = e -> {
-          requiredFieldMessage.setVisible(!this.isReady());
-          deviceLabel.setForeground(getSelectedDevice() == null ? widgets.theme.missingInput() : widgets.theme.filledInput());
-          directoryLabel.setForeground(directory.getText().isEmpty() ? widgets.theme.missingInput() : widgets.theme.filledInput());
-          fileLabel.setForeground(file.getText().isEmpty() ? widgets.theme.missingInput() : widgets.theme.filledInput());
-
-          TraceTypeCapabilities config = getSelectedApi();
-          if (config != null) {
-            apiLabel.setForeground(widgets.theme.filledInput());
-            targetLabel.setForeground(
-                (config.getRequiresApplication() && traceTarget.getText().isEmpty()) ? 
-                  widgets.theme.missingInput() : widgets.theme.filledInput());
-          } else {
-            apiLabel.setForeground(widgets.theme.missingInput());
-            targetLabel.setForeground(widgets.theme.filledInput());
-          }
-        };
+        Listener filledListener = e -> colorFilledInput(widgets.theme);
 
         this.addModifyListener(filledListener);
 
         updateDevicesDropDown(models.settings);
+        colorFilledInput(widgets.theme);
+      }
+
+      private void colorFilledInput(Theme theme) {
+        requiredFieldMessage.setVisible(!this.isReady());
+        deviceLabel.setForeground(getSelectedDevice() == null ? theme.missingInput() : theme.filledInput());
+        directoryLabel.setForeground(directory.getText().isEmpty() ? theme.missingInput() : theme.filledInput());
+        fileLabel.setForeground(file.getText().isEmpty() ? theme.missingInput() : theme.filledInput());
+
+        TraceTypeCapabilities config = getSelectedApi();
+        if (config != null) {
+          apiLabel.setForeground(theme.filledInput());
+          targetLabel.setForeground(
+              (config.getRequiresApplication() && traceTarget.getText().isEmpty()) ?
+                theme.missingInput() : theme.filledInput());
+        } else {
+          apiLabel.setForeground(theme.missingInput());
+          targetLabel.setForeground(theme.filledInput());
+        }
       }
 
       private static ComboViewer createDeviceDropDown(Composite parent) {
