@@ -14,7 +14,7 @@ The **Commands** pane displays the calls made by the application, grouped by fra
 
 <figure style="display: inline-block;">
 	<img src="../images/commands-pane/vulcan.png" width="400px" />
-	<figcaption>Viewing a Vulcan trace</figcaption>
+	<figcaption>Viewing a Vulkan trace</figcaption>
 </figure>
 
 
