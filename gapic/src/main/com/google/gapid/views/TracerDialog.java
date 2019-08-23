@@ -108,7 +108,7 @@ public class TracerDialog {
     dialog.setFilterNames(new String[] {
         "Trace Files (*.gfxtrace, *.perfetto)",
         "Graphics Traces (*.gfxtrace)",
-        "Perfetto Traces (*.perfetto)",
+        "System Traces (*.perfetto)",
         "All Files"
     });
     dialog.setFilterExtensions(new String[] {

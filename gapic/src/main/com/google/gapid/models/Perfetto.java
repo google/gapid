@@ -132,14 +132,14 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     try {
       return success(result.get());
     } catch (RpcException e) {
-      LOG.log(WARNING, "Failed to load Perfetto trace", e);
+      LOG.log(WARNING, "Failed to load System Trace", e);
       return error(Loadable.Message.error(e));
     } catch (ExecutionException e) {
       if (!shell.isDisposed()) {
         analytics.reportException(e);
-        throttleLogRpcError(LOG, "Failed to load Perfetto trace", e);
+        throttleLogRpcError(LOG, "Failed to load System Trace", e);
       }
-      return error(Loadable.Message.error("Failed to load Perfetto trace"));
+      return error(Loadable.Message.error("Failed to load System Trace"));
     }
   }
 
@@ -160,7 +160,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
 
   public ListenableFuture<com.google.gapid.proto.perfetto.Perfetto.QueryResult> query(String sql) {
     if (!isLoaded()) {
-      return Futures.immediateFailedFuture(new Exception("Perfetto not loaded"));
+      return Futures.immediateFailedFuture(new Exception("System Trace not loaded"));
     }
     return getData().qe.raw(sql);
   }
