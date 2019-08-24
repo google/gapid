@@ -63,6 +63,7 @@ java_library(
         "//gapis/perfetto/service:perfetto_java_proto",
         "//gapis/service:service_java_proto",
         "//gapis/service/box:box_java_proto",
+        "//gapis/service/memory_box:memory_box_java_proto",
         "//gapis/service/path:path_java_proto",
         "//gapis/service/types:types_java_proto",
         "//gapis/stringtable:stringtable_java_proto",

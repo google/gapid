@@ -20,7 +20,6 @@ import static com.google.gapid.util.Paths.command;
 import static com.google.gapid.util.Paths.commandTree;
 import static com.google.gapid.util.Paths.lastCommand;
 import static com.google.gapid.util.Paths.observationsAfter;
-import static com.google.gapid.util.Ranges.merge;
 import static com.google.gapid.widgets.Widgets.submitIfNotDisposed;
 import static java.util.logging.Level.FINE;
 
@@ -40,14 +39,11 @@ import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
 import com.google.gapid.util.Loadable;
-import com.google.gapid.util.Messages;
 import com.google.gapid.util.MoreFutures;
 import com.google.gapid.util.Paths;
-import com.google.gapid.util.Ranges;
 
 import org.eclipse.swt.widgets.Shell;
 
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -239,64 +235,11 @@ public class CommandStream
     });
   }
 
-  public ListenableFuture<Observation[]> getObservations(Path.Device device, CommandIndex index) {
+  public ListenableFuture<Service.Memory> getMemory(Path.Device device, CommandIndex index) {
     return MoreFutures.transform(
         client.get(observationsAfter(index, Application_VALUE), device), v -> {
-          List<Service.MemoryRange> reads = merge(v.getMemory().getReadsList());
-          List<Service.MemoryRange> writes = merge(v.getMemory().getWritesList());
-
-          Observation[] obs = new Observation[reads.size() + writes.size()];
-          int idx = 0;
-          for (Service.MemoryRange read : reads) {
-            obs[idx++] = new Observation(index, true, read);
-          }
-          for (Service.MemoryRange write : writes) {
-            obs[idx++] = new Observation(index, false, write);
-          }
-          return obs;
+          return v.getMemory();
         });
-  }
-
-  /**
-   * Read or write memory observation at a specific command.
-   */
-  public static class Observation {
-    public static final Observation NULL_OBSERVATION = new Observation(null, false, null) {
-      @Override
-      public String toString() {
-        return Messages.SELECT_OBSERVATION;
-      }
-
-      @Override
-      public boolean contains(long address) {
-        return false;
-      }
-    };
-
-    private final CommandIndex index;
-    private final boolean read;
-    private final Service.MemoryRange range;
-
-    public Observation(CommandIndex index, boolean read, Service.MemoryRange range) {
-      this.index = index;
-      this.read = read;
-      this.range = range;
-    }
-
-    public Path.Memory getPath() {
-      return Paths.memoryAfter(index, Application_VALUE, range).getMemory();
-    }
-
-    public boolean contains(long address) {
-      return Ranges.contains(range, address);
-    }
-
-    @Override
-    public String toString() {
-      long base = range.getBase(), count = range.getSize();
-      return (read ? "Read " : "Write ") + count + " byte" + (count == 1 ? "" : "s") +
-          String.format(" at 0x%016x", base);
-    }
   }
 
   /**
