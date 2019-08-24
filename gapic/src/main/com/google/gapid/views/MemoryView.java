@@ -24,7 +24,12 @@ import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.widgets.Widgets.createDropDown;
 import static com.google.gapid.widgets.Widgets.createDropDownViewer;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
+import static com.google.gapid.widgets.Widgets.createStandardTabItem;
+import static com.google.gapid.widgets.Widgets.createTreeColumn;
+import static com.google.gapid.widgets.Widgets.createTreeViewer;
 import static com.google.gapid.widgets.Widgets.ifNotDisposed;
+import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.Collections.emptyList;
 
@@ -38,16 +43,21 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.CommandStream.Observation;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Memory;
+import com.google.gapid.models.Memory.Observation;
+import com.google.gapid.models.Memory.StructNode;
+import com.google.gapid.models.Memory.StructObservation;
 import com.google.gapid.models.Models;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.MemoryRange;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.proto.service.types.TypeInfo.Type.TyCase;
 import com.google.gapid.rpc.Rpc;
+import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
+import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.server.Client.DataUnavailableException;
 import com.google.gapid.util.BigPoint;
 import com.google.gapid.util.Float16;
@@ -67,21 +77,31 @@ import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.ITreeViewerListener;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.TreeExpansionEvent;
+import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TreeItem;
 
 import java.math.BigInteger;
 import java.nio.ByteOrder;
@@ -97,33 +117,35 @@ import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 /**
- * View that displays the observed memory contents in an infinite scrolling panel.
+ * View that has two tabs, displaying block-styled or struct-styled memory after loading.
  */
 public class MemoryView extends Composite
     implements Tab, Capture.Listener, CommandStream.Listener, Follower.Listener, Memory.Listener {
   protected static final Logger LOG = Logger.getLogger(MemoryView.class.getName());
 
-  private final Models models;
-  private final Selections selections;
-  private final MemoryPanel memoryPanel;
-  protected final LoadablePanel<InfiniteScrolledComposite> loading;
-  protected final InfiniteScrolledComposite memoryScroll;
-  private final State uiState = new State();
+  protected final Models models;
+  protected final Widgets widgets;
+  protected final LoadablePanel<TabFolder> loading;
+  protected final TabFolder folder;
+  protected final BlockMemoryPanel blockPanel;
+  private final StructMemoryPanel structPanel;
 
   public MemoryView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
+    this.widgets = widgets;
 
-    memoryPanel = new MemoryPanel(this, widgets);
     setLayout(new GridLayout(1, true));
 
-    selections = new Selections(this, this::setDataType, this::setObservation);
-    loading = LoadablePanel.create(this, widgets,
-        panel -> new InfiniteScrolledComposite(panel, SWT.H_SCROLL | SWT.V_SCROLL, memoryPanel));
-    memoryScroll = loading.getContents();
+    loading = LoadablePanel.create(this, widgets, panel -> createStandardTabFolder(panel));
+    folder = loading.getContents();
+    blockPanel = new BlockMemoryPanel(folder);
+    structPanel = new StructMemoryPanel(folder);
+    createStandardTabItem(folder, Messages.MEMORY_BLOCK_TAB_TEXT, blockPanel);
+    createStandardTabItem(folder, Messages.MEMORY_STRUCT_TAB_TEXT, structPanel);
 
-    selections.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
     loading.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    folder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.capture.addListener(this);
     models.commands.addListener(this);
@@ -135,7 +157,6 @@ public class MemoryView extends Composite
       models.follower.removeListener(this);
       models.memory.removeListener(this);
     });
-    memoryPanel.registerMouseEvents(memoryScroll, models.analytics);
   }
 
   @Override
@@ -194,95 +215,132 @@ public class MemoryView extends Composite
 
   @Override
   public void onMemoryFollowed(Path.Memory path) {
-    uiState.update(path);
+    blockPanel.updateState(path);
     models.memory.setPool(path.getPool());
     updateUi();
-  }
-
-  private void setDataType(DataType dataType) {
-    if (uiState.setDataType(dataType)) {
-      updateUi();
-    }
-  }
-
-  private void setObservation(Observation obs) {
-    models.analytics.postInteraction(View.Memory, ClientAction.SelectObservation);
-    Path.Memory memoryPath = obs.getPath();
-    uiState.update(memoryPath);
-    updateUi();
+    structPanel.reorderStruct(path.getAddress());
   }
 
   private void updateUi() {
     if (!models.memory.isLoaded()) {
       return;
     }
-
-    Memory.Data memory = models.memory.getData();
-    if (memory.getObservations().length > 0 && !uiState.isComplete()) {
-      // If the memory view is not showing anything yet, show the first observation.
-      uiState.update(memory.getObservations()[0].getPath());
-    }
-
-    if (!uiState.isComplete()) {
-      loading.showMessage(Info, Messages.SELECT_MEMORY);
-      return;
-    }
-
-    long address = getCurrentAddress();
-    uiState.address = -1; // The memoryScroll will now control the currently selected address.
-
+    blockPanel.updateUi();
+    structPanel.updateUi();
     loading.stopLoading();
-    selections.setPool(memory.getPool());
-    selections.setDataType(uiState.dataType);
-    selections.setObservations(memory.getObservations());
-
-    memoryPanel.setModel(uiState.getMemoryModel(memory, new Loadable() {
-      @Override
-      public void startLoading() {
-        ifNotDisposed(loading, loading::startLoading);
-      }
-
-      @Override
-      public void stopLoading() {
-        scheduleIfNotDisposed(loading, () -> {
-          if (loading.isLoading()) {
-            loading.stopLoading();
-            memoryScroll.redraw();
-          }
-        });
-      }
-
-      @Override
-      public void showMessage(Message message) {
-        ifNotDisposed(loading, () -> loading.showMessage(message));
-      }
-    }));
-    memoryScroll.updateMinSize();
-    goToAddress(address);
-    selections.updateSelectedObservation(address);
-  }
-
-  private void goToAddress(long address) {
-    scheduleIfNotDisposed(memoryScroll, () -> memoryScroll.scrollTo(BigInteger.ZERO,
-        UnsignedLong.fromLongBits(address).bigIntegerValue()
-            .divide(BigInteger.valueOf(FixedMemoryModel.BYTES_PER_ROW))
-            .multiply(BigInteger.valueOf(memoryPanel.lineHeight))));
-  }
-
-  private long getCurrentAddress() {
-    if (uiState.address >= 0) {
-      return uiState.address;
-    }
-
-    return memoryScroll.getScrollLocation().y
-        .divide(BigInteger.valueOf(memoryPanel.lineHeight))
-        .multiply(BigInteger.valueOf(FixedMemoryModel.BYTES_PER_ROW))
-        .add(BigInteger.valueOf(uiState.offset))
-        .longValue();
   }
 
   /**
-   * Bookkeeping of the current user selections.
+   * View that displays the observed block-styled memory contents in an infinite scrolling panel.
+   */
+  private class BlockMemoryPanel extends Composite{
+    protected final Selections selections;
+    private final BlockMemoryScrollable memoryPanel;
+    protected final InfiniteScrolledComposite memoryScroll;
+    private final State uiState = new State();
+
+    public BlockMemoryPanel(Composite parent) {
+      super(parent, SWT.NONE);
+      setLayout(new GridLayout());
+
+      memoryPanel = new BlockMemoryScrollable(this, widgets);
+      selections = new Selections(this, this::setDataType, this::setObservation);
+      memoryScroll = new InfiniteScrolledComposite(this, SWT.H_SCROLL | SWT.V_SCROLL, memoryPanel);
+      memoryPanel.registerMouseEvents(memoryScroll, models.analytics);
+
+      selections.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+      memoryScroll.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    }
+
+    public void updateUi() {
+      Memory.Data memory = models.memory.getData();
+      if (memory.getObservations().length > 0 && !uiState.isComplete()) {
+        // If the memory view is not showing anything yet, show the first observation.
+        uiState.update(memory.getObservations()[0].getPath());
+      }
+
+      if (!uiState.isComplete()) {
+        loading.showMessage(Info, Messages.SELECT_MEMORY);
+        return;
+      }
+
+      long address = getCurrentAddress();
+      uiState.address = -1; // The memoryScroll will now control the currently selected address.
+
+      selections.setPool(memory.getPool());
+      selections.setDataType(uiState.dataType);
+      selections.setObservations(memory.getObservations());
+
+      memoryPanel.setModel(uiState.getMemoryModel(memory, new Loadable() {
+        @Override
+        public void startLoading() {
+          ifNotDisposed(loading, loading::startLoading);
+        }
+
+        @Override
+        public void stopLoading() {
+          scheduleIfNotDisposed(loading, () -> {
+            if (loading.isLoading()) {
+              loading.stopLoading();
+              memoryScroll.redraw();
+            }
+          });
+        }
+
+        @Override
+        public void showMessage(Message message) {
+          ifNotDisposed(loading, () -> loading.showMessage(message));
+        }
+      }));
+      memoryScroll.updateMinSize();
+      goToAddress(address);
+      selections.updateSelectedObservation(address);
+    }
+
+    public void updateState(Path.Memory path) {
+      uiState.update(path);
+    }
+
+    public void goToObservation(long address) {
+      selections.updateSelectedObservation(address);
+      goToAddress(address);
+    }
+
+    private void setDataType(DataType dataType) {
+      if (uiState.setDataType(dataType)) {
+        updateUi();
+      }
+    }
+
+    private void setObservation(Observation obs) {
+      models.analytics.postInteraction(View.Memory, ClientAction.SelectObservation);
+      Path.Memory memoryPath = obs.getPath();
+      uiState.update(memoryPath);
+      updateUi();
+    }
+
+    private void goToAddress(long address) {
+      scheduleIfNotDisposed(memoryScroll, () -> memoryScroll.scrollTo(BigInteger.ZERO,
+          UnsignedLong.fromLongBits(address).bigIntegerValue()
+              .divide(BigInteger.valueOf(FixedMemoryModel.BYTES_PER_ROW))
+              .multiply(BigInteger.valueOf(memoryPanel.lineHeight))));
+    }
+
+    private long getCurrentAddress() {
+      if (uiState.address >= 0) {
+        return uiState.address;
+      }
+
+      return memoryScroll.getScrollLocation().y
+          .divide(BigInteger.valueOf(memoryPanel.lineHeight))
+          .multiply(BigInteger.valueOf(FixedMemoryModel.BYTES_PER_ROW))
+          .add(BigInteger.valueOf(uiState.offset))
+          .longValue();
+    }
+  }
+
+  /**
+   * Bookkeeping of the current user selections in BlockMemoryPanel.
    */
   private static class Selections extends Composite {
     private final Label poolLabel;
@@ -459,7 +517,7 @@ public class MemoryView extends Composite
   /**
    * Panel displaying the actual memory data.
    */
-  private static class MemoryPanel implements InfiniteScrolledComposite.Scrollable {
+  private static class BlockMemoryScrollable implements InfiniteScrolledComposite.Scrollable {
     public final int lineHeight;
     public final BigInteger lineHeightBig;
     private final int[] charOffset = new int[256];
@@ -470,7 +528,7 @@ public class MemoryView extends Composite
     protected MemoryModel model;
     protected Selection selection;
 
-    public MemoryPanel(Composite parent, Widgets widgets) {
+    public BlockMemoryScrollable(Composite parent, Widgets widgets) {
       this.theme = widgets.theme;
       this.copyPaste = widgets.copypaste;
       font = theme.monoSpaceFont();
@@ -675,6 +733,170 @@ public class MemoryView extends Composite
     protected int getCharColumn(int offset) {
       int idx = Arrays.binarySearch(charOffset, offset);
       return (idx < 0) ? (-idx - 1) - 1 : idx;
+    }
+  }
+
+  /**
+   * View that displays the observed struct-styled memory contents.
+   */
+  private class StructMemoryPanel extends Composite {
+    protected final TreeViewer treeViewer;
+
+    public StructMemoryPanel(Composite parent) {
+      super(parent, SWT.NONE);
+      setLayout(new GridLayout());
+
+      treeViewer = createStructTreeViewer();
+      treeViewer.getTree().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+    }
+
+    public void updateUi() {
+      treeViewer.setComparator(null);
+      loadAndSetStructs(models.memory.getData().getStructObservations());
+    }
+
+    public void reorderStruct(long interestedStructRoot) {
+      // Reorder to make the interested observation listed on top.
+      // If not found, by default the observations with type TypeInfo.Type.STRUCT are listed on top.
+      treeViewer.setComparator(new ViewerComparator() {
+        @Override
+        public int compare(Viewer viewer, Object e1, Object e2) {
+          if (!(e1 instanceof StructNode) || !(e2 instanceof StructNode)) {
+            return 0;
+          }
+          StructNode n1 = (StructNode) e1;
+          StructNode n2 = (StructNode) e2;
+          if (n1.getRootAddress() == interestedStructRoot && n2.getRootAddress() == interestedStructRoot) {
+            return 0;
+          } else if (n1.getRootAddress() == interestedStructRoot) {
+            return -1;
+          } else if (n2.getRootAddress() == interestedStructRoot) {
+            return 1;
+          } else if (n1.getTypeCase() == TyCase.STRUCT && n2.getTypeCase() != TyCase.STRUCT) {
+            return -1;
+          } else if (n1.getTypeCase() != TyCase.STRUCT && n2.getTypeCase() == TyCase.STRUCT) {
+            return 1;
+          }
+          return 0;
+        }
+      });
+    }
+
+    private void loadAndSetStructs(StructObservation[] structs) {
+      if (structs == null || structs.length == 0) {
+        treeViewer.setInput(emptyList());
+        packColumns(treeViewer.getTree());
+        return;
+      }
+
+      Rpc.listen(models.types.loadStructNodes(structs),
+          new UiCallback<List<StructNode>, List<StructNode>>(this, LOG) {
+        @Override
+        protected List<StructNode> onRpcThread(Result<List<StructNode>> result)
+            throws RpcException, ExecutionException {
+          return StructNode.simplifyTrees(result.get());
+        }
+
+        @Override
+        protected void onUiThread(List<StructNode> result) {
+          treeViewer.setInput(result);
+          // Expand the TypeInfo.StructType nodes by default.
+          for (StructNode node : result) {
+            if (node.getTypeCase() == TyCase.STRUCT) {
+              treeViewer.expandToLevel(node, 1);
+            }
+          }
+          for (TreeItem item : treeViewer.getTree().getItems()) {
+            // Give visual hint to the clickable large array.
+            if (item.getData() instanceof StructNode &&
+                ((StructNode)item.getData()).isLargeArray()) {
+              item.setForeground(0, widgets.theme.memoryLinkColor());
+            }
+            // Give visual hint to the elements of level 1.
+            item.setBackground(widgets.theme.memoryFirstLevelBackground());
+          }
+          packColumns(treeViewer.getTree());
+        }
+      });
+    }
+
+    private TreeViewer createStructTreeViewer() {
+      TreeViewer tree = createTreeViewer(this, SWT.NONE);
+      tree.getTree().setHeaderVisible(true);
+      tree.setLabelProvider(new LabelProvider());
+      tree.setContentProvider(new ITreeContentProvider() {
+        @SuppressWarnings("unchecked")
+        @Override
+        // Please pass argument of type List<StructNode> to setInput(argument) method for this tree.
+        public Object[] getElements(Object inputElement) {
+          return ((List<StructNode>)inputElement).toArray();
+        }
+
+        @Override
+        public boolean hasChildren(Object element) {
+          return element instanceof StructNode && ((StructNode)element).hasChildren();
+        }
+
+        @Override
+        public Object getParent(Object element) {
+          return null;
+        }
+
+        @Override
+        public Object[] getChildren(Object element) {
+          if (element instanceof StructNode) {
+            return ((StructNode)element).getChildren().toArray();
+          } else {
+            return new Object[0];
+          }
+        }
+      });
+
+      // Adjusts tree column width when expanding and collapsing.
+      tree.addTreeListener(new ITreeViewerListener() {
+        @Override
+        public void treeExpanded(TreeExpansionEvent event) {
+          // Add some delay here to avoid calling too early and no pack is done.
+          scheduleIfNotDisposed(tree.getTree(), () -> packColumns(tree.getTree()));
+        }
+
+        @Override
+        public void treeCollapsed(TreeExpansionEvent event) {
+          // Add some delay here to avoid calling too early and no pack is done.
+          scheduleIfNotDisposed(tree.getTree(), () -> packColumns(tree.getTree()));
+        }
+      });
+      tree.addDoubleClickListener(e -> Display.getDefault().asyncExec(() -> packColumns(tree.getTree())));
+
+      // Add link action for the nodes with hidden large array.
+      tree.getTree().addListener(SWT.MouseUp, e -> {
+        if (isOnLargeArray(tree, new Point(e.x, e.y))) {
+          StructNode node = ((StructNode)tree.getTree().getItem(new Point(e.x, e.y)).getData());
+          long address = node.getRootAddress();
+          blockPanel.goToObservation(address);
+          folder.setSelection(0);
+        }
+      });
+      tree.getTree().addListener(SWT.MouseMove, e -> {
+        if (isOnLargeArray(tree, new Point(e.x, e.y))) {
+          setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
+        } else {
+          setCursor(null);
+        }
+      });
+
+      createTreeColumn(tree, "Type", e -> ((StructNode)e).getTypeFormatted());
+      createTreeColumn(tree, "Name", e -> ((StructNode)e).getStructName());
+      createTreeColumn(tree, "Value", e -> ((StructNode) e).getValueFormatted());
+      return tree;
+    }
+
+    // Return true if the cursor is on the first column of a large array.
+    private boolean isOnLargeArray(TreeViewer tree, Point point) {
+      TreeItem item = tree.getTree().getItem(point);
+      return item != null && item.getData() instanceof StructNode
+          && ((StructNode)item.getData()).isLargeArray()
+          && item.getBounds(0).contains(point);
     }
   }
 
