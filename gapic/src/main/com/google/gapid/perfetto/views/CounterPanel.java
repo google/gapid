@@ -67,7 +67,8 @@ public class CounterPanel extends TrackPanel implements Selectable {
       }
 
       double min = Math.min(0, track.getMin()), range = track.getMax() - min;
-      ctx.setForegroundColor(colors().counter);
+      ctx.setBackgroundColor(colors().counterFill);
+      ctx.setForegroundColor(colors().counterStroke);
       ctx.path(path -> {
         path.moveTo(0, h);
         double lastX = 0, lastY = h;
@@ -80,6 +81,7 @@ public class CounterPanel extends TrackPanel implements Selectable {
           lastY = nextY;
         }
         path.lineTo(lastX, h);
+        ctx.fillPath(path);
         ctx.drawPath(path);
       });
 
