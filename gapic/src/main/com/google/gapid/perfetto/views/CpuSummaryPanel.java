@@ -134,11 +134,11 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
     double mouseX = state.timeToPx(
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);
     double dx = HOVER_PADDING + hovered.size.w + HOVER_PADDING;
-    double dy = height - 2 * TRACK_MARGIN;
+    double dy = height;
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseX - CURSOR_SIZE, TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
+        return new Area(mouseX - CURSOR_SIZE, -TRACK_MARGIN, CURSOR_SIZE + HOVER_MARGIN + dx, dy);
       }
 
       @Override
