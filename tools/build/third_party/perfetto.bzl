@@ -17,7 +17,7 @@
 
 PACKAGES = [
     struct(
-        url = "https://android.googlesource.com/platform/external/perfetto/+archive/cbcc21fb49bcb14df7d8b4f03784348cdea41f5d.tar.gz",
+        url = "https://android.googlesource.com/platform/external/perfetto/+archive/635d14bb29d09f7bea85a213c051061ce52d1a96.tar.gz",
         sha = "",
         strip = "",
         out = ".",
@@ -50,6 +50,9 @@ def _perfetto_impl(ctx):
 
     # Link protos into a bazel C++ friendly namespace.
     ctx.symlink("protos/perfetto", "perfetto")
+
+    # Link in the build config.
+    ctx.symlink(Label("@gapid//tools/build/third_party/perfetto:build_flags.h"), "include/perfetto/base/perfetto_build_flags.h")
 
 perfetto = repository_rule(
     implementation = _perfetto_impl,
