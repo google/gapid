@@ -16,6 +16,7 @@
 package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
+import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.MoreFutures.transform;
 
@@ -115,8 +116,9 @@ public class CounterPanel extends TrackPanel implements Selectable {
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseXpos - CURSOR_SIZE, 0,
-            CURSOR_SIZE + HOVER_MARGIN + HOVER_PADDING + hovered.size.w + HOVER_PADDING, HEIGHT);
+        return new Area(mouseXpos - CURSOR_SIZE, -TRACK_MARGIN,
+            CURSOR_SIZE + HOVER_MARGIN + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
+            HEIGHT + 2 * TRACK_MARGIN);
       }
 
       @Override

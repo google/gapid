@@ -50,7 +50,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
     double w = width - LABEL_WIDTH, h = height - 2 * TRACK_MARGIN;
     drawGridLines(ctx, state, LABEL_WIDTH, 0, w, height);
     ctx.withTranslation(LABEL_WIDTH, TRACK_MARGIN, () ->
-      ctx.withClip(0, 0, w, h, () ->
+      ctx.withClip(0, -TRACK_MARGIN, w, h + 2 * TRACK_MARGIN, () ->
         renderTrack(ctx, repainter, w, h)));
   }
 

@@ -160,9 +160,9 @@ public class MemorySummaryPanel extends TrackPanel {
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseXpos - CURSOR_SIZE, mouseYpos,
+        return new Area(mouseXpos - CURSOR_SIZE, -TRACK_MARGIN,
             CURSOR_SIZE + HOVER_MARGIN + hovered.allSize.w + 3 * HOVER_PADDING + LEGEND_SIZE,
-            hovered.allSize.h);
+            HEIGHT + 2 * TRACK_MARGIN);
       }
 
       @Override
