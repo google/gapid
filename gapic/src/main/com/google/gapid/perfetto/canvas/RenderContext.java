@@ -20,6 +20,7 @@ import org.eclipse.swt.internal.DPIUtil;
 import org.eclipse.swt.widgets.Control;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -41,6 +42,7 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
   private final ColorCache colors;
   private final Panel.TextMeasurer textMeasurer;
   private final LinkedList<TransformAndClip> transformStack = Lists.newLinkedList();
+  private final List<Overlay> overlays = Lists.newArrayList();
   private final Map<String, Long> traces = Maps.newHashMap();
 
   public RenderContext(
@@ -59,6 +61,26 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
     gc.setLineWidth((int)scale);
   }
 
+  public void addOverlay(Runnable renderer) {
+    float[] transform = new float[6];
+    transformStack.getLast().transform.getElements(transform);
+    overlays.add(new Overlay(new Transform(gc.getDevice(), transform), renderer));
+  }
+
+  public void renderOverlays() {
+    if (!overlays.isEmpty()) {
+      trace("Overlays", () -> {
+        for (Overlay overlay : overlays) {
+          gc.setTransform(overlay.transform);
+          overlay.renderer.run();
+          overlay.dispose();
+        }
+        overlays.clear();
+        gc.setTransform(transformStack.getLast().transform);
+      });
+    }
+  }
+
   @Override
   public Size measure(String text) {
     return textMeasurer.measure(text);
@@ -70,6 +92,9 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
         transformStack.size() == 1, "transform stack size != 1: %s", transformStack.size());
     for (TransformAndClip t : transformStack) {
       t.dispose();
+    }
+    for (Overlay overlay : overlays) {
+      overlay.dispose();
     }
     gc.setTransform(null);
     gc.setLineWidth(0);
@@ -348,6 +373,20 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
     public TransformAndClip(Transform transform, Area clip) {
       this.transform = transform;
       this.clip = clip;
+    }
+
+    public void dispose() {
+      transform.dispose();
+    }
+  }
+
+  private static class Overlay {
+    public final Transform transform;
+    public final Runnable renderer;
+
+    public Overlay(Transform transform, Runnable renderer) {
+      this.transform = transform;
+      this.renderer = renderer;
     }
 
     public void dispose() {
