@@ -47,6 +47,7 @@ public class PanelCanvas extends Canvas {
       Map<String, Long> traces;
       try (RenderContext ctx = context.newContext(e.gc)) {
         panel.render(ctx, a -> scheduleIfNotDisposed(this, () -> redraw(a, false)));
+        ctx.renderOverlays();
         traces = ctx.getTraces();
       }
       long end = System.nanoTime();
