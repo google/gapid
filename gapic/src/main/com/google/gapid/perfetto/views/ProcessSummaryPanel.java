@@ -65,6 +65,11 @@ public class ProcessSummaryPanel extends TrackPanel {
   }
 
   @Override
+  public String getTooltip() {
+    return getTitle() + "\n" + getSubTitle();
+  }
+
+  @Override
   public double getHeight() {
     return HEIGHT;
   }
