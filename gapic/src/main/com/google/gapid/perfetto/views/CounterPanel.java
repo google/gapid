@@ -24,6 +24,7 @@ import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
+import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
@@ -34,19 +35,27 @@ public class CounterPanel extends TrackPanel implements Selectable {
   private static final double CURSOR_SIZE = 5;
 
   private final CounterTrack track;
-  private final String name;
   protected HoverCard hovered = null;
   protected double mouseXpos = 0;
 
-  public CounterPanel(State state, CounterTrack track, String name) {
+  public CounterPanel(State state, CounterTrack track) {
     super(state);
     this.track = track;
-    this.name = name;
   }
 
   @Override
   public String getTitle() {
-    return name;
+    return track.getCounter().name;
+  }
+
+  @Override
+  public String getTooltip() {
+    CounterInfo counter = track.getCounter();
+    StringBuilder sb = new StringBuilder().append(counter.name);
+    if (!counter.description.isEmpty()) {
+      sb.append("\n").append(counter.description);
+    }
+    return sb.toString();
   }
 
   @Override
@@ -66,7 +75,8 @@ public class CounterPanel extends TrackPanel implements Selectable {
         return;
       }
 
-      double min = Math.min(0, track.getMin()), range = track.getMax() - min;
+      CounterInfo counter = track.getCounter();
+      double min = Math.min(0, counter.min), range = counter.max - min;
       ctx.setBackgroundColor(colors().counterFill);
       ctx.setForegroundColor(colors().counterStroke);
       ctx.path(path -> {
@@ -132,8 +142,8 @@ public class CounterPanel extends TrackPanel implements Selectable {
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Kind.Counter, transform(
-        track.getValues(state.getQueryEngine(), ts), data -> new CounterTrack.Values(name, data)));
+    builder.add(Kind.Counter, transform(track.getValues(state.getQueryEngine(), ts),
+        data -> new CounterTrack.Values(track.getCounter().name, data)));
   }
 
   private static class HoverCard {
