@@ -52,7 +52,7 @@ import java.util.logging.Logger;
  */
 public class Follower {
   public static final Flag<Boolean> logFollowRequests =
-      Flags.value("logFollowRequests", false, "Whether to log follow prefetch requests.");
+      Flags.value("logFollowRequests", false, "Whether to log follow prefetch requests.", true);
 
   public static final String RESULT_NAME = "ϟ__RESULT__ϟ";
 

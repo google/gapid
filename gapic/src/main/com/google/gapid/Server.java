@@ -57,7 +57,7 @@ public class Server {
       "gapis-auth", "", "The auth token to use when connecting to an exisiting server.");
 
   public static final Flag<Boolean> useCache = Flags.value(
-      "cache", true, "Whether to use a cache between the UI and the gapis server.");
+      "cache", true, "Whether to use a cache between the UI and the gapis server.", true);
 
   private final Settings settings;
   private GapisConnection gapisConnection;
