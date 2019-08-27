@@ -33,8 +33,8 @@ import java.util.logging.Logger;
 
 public class PerfettoConfig {
   public static final Flag<String> perfettoConfig = Flags.value("perfetto", "",
-      "Path to a file containing a System Trace config proto in text format. " +
-      "Specifying this flag will enable the System Trace UI features");
+      "Path to a file containing a Perfetto config proto in text format. " +
+      "Specifying this flag will enable the System Profile UI features");
 
   private static final Logger LOG = Logger.getLogger(PerfettoConfig.class.getName());
   private static final PerfettoConfig MISSING = new PerfettoConfig(null);
@@ -83,7 +83,7 @@ public class PerfettoConfig {
       TextFormat.merge(in, config);
       return new PerfettoConfig(config.build());
     } catch (IOException e) {
-      LOG.log(WARNING, "Failed to read System Trace config from " + file, e);
+      LOG.log(WARNING, "Failed to read Perfetto config from " + file, e);
     }
     return null;
   }

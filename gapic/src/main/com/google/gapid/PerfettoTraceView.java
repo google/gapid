@@ -44,7 +44,7 @@ public class PerfettoTraceView extends Composite implements MainWindow.MainView 
 
     TabFolder folder = new TabFolder(this, SWT.TOP);
     TabItem main = new TabItem(folder, SWT.NONE);
-    main.setText("System Trace");
+    main.setText("Perfetto");
     main.setControl(new TraceView(folder, models, widgets));
 
     TabItem query = new TabItem(folder, SWT.NONE);

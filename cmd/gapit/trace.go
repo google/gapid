@@ -83,12 +83,12 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	if api.traceType == service.TraceType_Perfetto {
-		if verb.SystemTrace == "" {
-			app.Usage(ctx, "The System Trace config is required for System Traces.")
+		if verb.Perfetto == "" {
+			app.Usage(ctx, "The Perfetto config is required for System Profiles.")
 			return nil
 		}
 		if verb.Local.Port != 0 {
-			app.Usage(ctx, "-local-port is not supported for System Traces.")
+			app.Usage(ctx, "-local-port is not supported for System Profiles.")
 			return nil
 		}
 	}
@@ -250,13 +250,13 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	target(options)
 
 	if api.traceType == service.TraceType_Perfetto {
-		data, err := ioutil.ReadFile(verb.SystemTrace)
+		data, err := ioutil.ReadFile(verb.Perfetto)
 		if err != nil {
-			return log.Errf(ctx, err, "Failed to read System Trace config")
+			return log.Errf(ctx, err, "Failed to read Perfetto config")
 		}
 		options.PerfettoConfig = &perfetto_pb.TraceConfig{}
 		if err := proto.UnmarshalText(string(data), options.PerfettoConfig); err != nil {
-			return log.Errf(ctx, err, "Failed to parse System Trace config")
+			return log.Errf(ctx, err, "Failed to parse Perfetto config")
 		}
 		dur := uint32(verb.For.Seconds() * 1000)
 		if dur == 0 {
@@ -341,7 +341,7 @@ func (verb *traceVerb) apiAndType() (apiAndType, error) {
 			[]string{"OpenGLES"},
 			".gfxtrace",
 		}, nil
-	case "system_trace":
+	case "perfetto":
 		return apiAndType{
 			service.TraceType_Perfetto,
 			[]string{},
