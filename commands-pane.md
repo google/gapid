@@ -4,25 +4,86 @@ title: Commands Pane
 permalink: /inspect/commands
 ---
 
-<img src="../images/commands-pane.png" width="498px" height="462px"/>
 
-The commands pane displays the calls made by the application, grouped by frame and draw call or by user markers.
+The **Commands** pane displays the calls made by the application, grouped by frame and draw call or by user markers.
 
-Clicking on a command or group will update other panes to reflect the state **after** the selected command / group.
+<figure style="display: inline-block;">
+	<img src="../images/commands-pane/opengl.png" width="400px" />
+	<figcaption>Viewing an OpenGL trace</figcaption>
+</figure>
 
-You can perform the following operations in the Commands pane:
+<figure style="display: inline-block;">
+	<img src="../images/commands-pane/vulcan.png" width="400px" />
+	<figcaption>Viewing a Vulkan trace</figcaption>
+</figure>
 
-* To expand or collapse an item in the call hierarchy, click <img alt="Collapsed icon" src="../images/tree-expand.png" width="16px"/> or double-click the item.
-* To search for a command, type a string in the search field <img alt="Search icon" src="../images/search.png" width="114px"/> at the top of the pane, and then press **Return**. If you want to use a regular expression search pattern, select <img alt="Search icon" src="../images/regex.png" width="63px" alt="Regex"/>. To find the next occurrence, select the search field and press **Return** again.
-* To change argument values, right-click a function and choose **Edit**. In the **Edit** dialog, change one or more values in the fields, and then click **OK**.
-* If you click an argument that refers to a state parameter, such as a texture ID, the [State](state-pane) pane opens and shows you more information. If you click a memory address or pointer, the [Memory](memory-pane) pane opens and shows you that location in memory.
-* To magnify a call thumbnail, hover your cursor over it. The thumbnail appears to the left of a call.
-* To copy values from the display, select the items to copy and then press Control+C or Command+C. You can then paste the information into a text file.
+
+## Operations
+
+You can perform the following operations in this pane:
+
+<table>
+   <tr>
+      <th style="width:10%"> Operation
+      </th>
+      <th>Description
+      </th>
+   </tr>
+   <tr>
+      <td>Show result
+      </td>
+      <td>Click on a command or group to update the other panes to reflect the state <strong>after</strong> the selected command / group.
+      </td>
+   </tr>
+   <tr>
+      <td>Expand or collapse the call hierarchy
+      </td>
+      <td>Click the gray triangle to the left of a grouping or double-click the grouping to expand or collapse it.
+      </td>
+   </tr>
+   <tr>
+      <td>Search
+      </td>
+      <td>
+         Type a string in the search bar at the top of the pane, and then press Return (see image above). To find the next occurrence, make sure the bar is selected and press Return again.
+         <p>
+            Select the <strong>Regex</strong> box to use a regular expression search pattern. For example, <strong>glClear.*</strong> will match both commands <code>glClear()</code> and <code>glClearColor()</code>. You can also search for command parameter values such as <strong>buffer: 2</strong>, which is used in <code>glBindBuffer()</code>.
+        </p>
+      </td>
+   </tr>
+   <tr>
+      <td>Edit
+      </td>
+      <td>Right-click a command and select <strong>Edit</strong>. In the <strong>Edit</strong> dialog, change one or more values and click <strong>OK</strong>.
+      </td>
+   </tr>
+   <tr>
+      <td>View state or memory information
+      </td>
+      <td>Click a command argument that refers to a state parameter, such as a texture ID. The <a href="/inspect/state">State</a> pane opens to provide additional information. Click a memory address or pointer to open the <a href="/inspect/memory">Memory</a> pane.
+      </td>
+   </tr>
+   <tr>
+      <td>Copy commands
+      </td>
+      <td>Select items in the pane and press Control+C (or Command+C) to copy commands with their argument values. You can paste this information into a text file.
+      </td>
+   </tr>
+   <tr>
+      <td>Magnify thumbnail
+      </td>
+      <td>
+         The thumbnail appears to the left of a call (see image below). Hover the cursor over the thumbnail to enlarge it.  <br>
+         <img src="../images/commands-pane/magnify-thumbnail.png" width="300px" alt="alt_text" title="image_tooltip" />
+      </td>
+   </tr>
+</table>
 
 ## Debug Markers
 
-Depending on your app, the **Command** pane can contain a very long list of commands within one frame.
-For better navigation and readability, you can define debug markers that group calls together under a heading in the tree.
+Depending on your app, the **Commands** pane can contain a very long list of commands within one frame. For better navigation and readability, you can define debug markers that group calls together under a heading in the tree. This could include a grouping named **Setup** or **Render World**.
+
+If debug markers are enabled, you need to click the **Commands** pane to reveal a link to this information.
 
 OpenGL ES has the following APIs to group commands:
 
@@ -36,7 +97,7 @@ Vulkan has the following APIs to group commands:
 
 Extension / Version                        | Push                          | Pop
 ------------------------------------------ | ----------------------------- | -----------------------
-[VK_EXT_debug_marker][VK_EXT_debug_marker] | `vkCmdDebugMarkerBeginEXT()`  | `vkCmdDebugMarkerEndEXT()``
+[VK_EXT_debug_marker][VK_EXT_debug_marker] | `vkCmdDebugMarkerBeginEXT()`  | `vkCmdDebugMarkerEndEXT()`
 
 
 [KHR_debug]:        https://www.khronos.org/registry/gles/extensions/KHR/KHR_debug.txt
