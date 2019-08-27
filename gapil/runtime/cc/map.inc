@@ -336,6 +336,12 @@ void Map<K, V, DENSE>::Allocation::clear_for_delete() {
     count = 0;
 }
 
+// The warning "Wclass-memaccess" added with GCC 8+ is raised by memset.
+#if defined __GNUC__ && __GNUC__ >= 8
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
+
 template<typename K, typename V, bool DENSE>
 void Map<K, V, DENSE>::Allocation::clear_keep() {
     auto elems = els();
@@ -350,10 +356,15 @@ void Map<K, V, DENSE>::Allocation::clear_keep() {
                 --count;
         }
     }
+
     memset(elems, 0x00, sizeof(*elems) * capacity);
     count = 0;
 }
 
 }  // namespace gapil
+
+#if defined __GNUC__ && __GNUC__ >= 8
+#pragma GCC diagnostic pop
+#endif
 
 #endif  // __GAPIL_RUNTIME_MAP_INC__

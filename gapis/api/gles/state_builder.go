@@ -93,13 +93,13 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	}
 
 	// Create EGL images (may depend on texture from any context)
-	for _, img := range s.EGLImages().All() {
-		sb.eglImage(ctx, img)
+	for _, img := range s.EGLImages().Keys() {
+		sb.eglImage(ctx, s.EGLImages().Get(img))
 	}
 
 	// Second pass over context which sets everything that may depend on EGLimage.
-	for handle, c := range s.EGLContexts().All() {
-		sb.contextObjectPostEGLImage(ctx, handle, c)
+	for _, handle := range s.EGLContexts().Keys() {
+		sb.contextObjectPostEGLImage(ctx, handle, s.EGLContexts().Get(handle))
 	}
 
 	// Set the active context for each thread
@@ -434,7 +434,8 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 		write(ctx, api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
 			sb.contextExtras(ctx, c)...))
 
-		for _, t := range c.Objects().Textures().All() {
+		for _, id := range c.Objects().Textures().Keys() {
+			t := c.Objects().Textures().Get(id)
 			target := t.Kind()
 			if i := t.EGLImage(); !i.IsNil() {
 				write(ctx, cb.GlBindTexture(target, t.GetID()))
@@ -473,7 +474,8 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 		write(ctx, cb.GlBindRenderbuffer(GLenum_GL_RENDERBUFFER, c.Bound().Renderbuffer().GetID()))
 
 		// Texture unit bindings
-		for unit, tu := range c.Objects().TextureUnits().All() {
+		for _, unit := range c.Objects().TextureUnits().Keys() {
+			tu := c.Objects().TextureUnits().Get(unit)
 			bind := func(target GLenum, tex Textureʳ) {
 				if t := tex.GetID(); t != 0 || unit == 0 {
 					write(ctx, cb.GlActiveTexture(GLenum_GL_TEXTURE0+GLenum(unit)))
@@ -501,7 +503,8 @@ func (sb *stateBuilder) contextObjectPostEGLImage(ctx context.Context, handle EG
 func (sb *stateBuilder) bindContexts(ctx context.Context, s *State) {
 	write, cb := sb.write, sb.cb
 
-	for handle, c := range s.EGLContexts().All() {
+	for _, handle := range s.EGLContexts().Keys() {
+		c := s.EGLContexts().Get(handle)
 		if thread := c.Other().BoundOnThread(); thread != 0 {
 			cb := CommandBuilder{Thread: thread, Arena: sb.cb.Arena}
 			write(ctx, api.WithExtras(cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, handle, EGLBoolean(1)),
@@ -636,8 +639,8 @@ func (sb *stateBuilder) framebufferObject(ctx context.Context, c Contextʳ, fb F
 				}
 			}
 		}
-		for i, a := range fb.ColorAttachments().All() {
-			attach(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), a)
+		for _, i := range fb.ColorAttachments().Keys() {
+			attach(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), fb.ColorAttachments().Get(i))
 		}
 		attach(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment())
 		attach(GLenum_GL_STENCIL_ATTACHMENT, fb.StencilAttachment())
@@ -690,13 +693,13 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 	write, cb, id := sb.write, sb.cb, p.GetID()
 
 	write(ctx, cb.GlCreateProgram(id))
-	for name, location := range p.AttributeBindings().All() {
-		write(ctx, cb.GlBindAttribLocation(id, location, sb.readsData(ctx, name)))
+	for _, name := range p.AttributeBindings().Keys() {
+		write(ctx, cb.GlBindAttribLocation(id, p.AttributeBindings().Get(name), sb.readsData(ctx, name)))
 	}
 	if count := p.TransformFeedbackVaryings().Len(); count > 0 {
 		varyings := make([]memory.Pointer, count)
-		for i, varying := range p.TransformFeedbackVaryings().All() {
-			varyings[i] = sb.readsData(ctx, varying)
+		for _, i := range p.TransformFeedbackVaryings().Keys() {
+			varyings[i] = sb.readsData(ctx, p.TransformFeedbackVaryings().Get(i))
 		}
 		mode := p.TransformFeedbackBufferMode()
 		write(ctx, cb.GlTransformFeedbackVaryings(id, GLsizei(len(varyings)), sb.readsData(ctx, varyings), mode))
@@ -717,7 +720,8 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 
 		// Create the shaders from the extra.
 		attachedShaders := []ShaderId{}
-		for t, s := range p.LinkExtra().Shaders().All() {
+		for _, t := range p.LinkExtra().Shaders().Keys() {
+			s := p.LinkExtra().Shaders().Get(t)
 			if !s.Binary().IsNil() {
 				sb.E(ctx, "Precompiled programs not suppored yet") // TODO
 				continue
@@ -731,12 +735,14 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 
 		write(ctx, api.WithExtras(cb.GlLinkProgram(id), p.LinkExtra().Get().Clone(cb.Arena, sb.cloneCtx)))
 		write(ctx, cb.GlUseProgram(id))
-		for _, u := range p.ActiveResources().DefaultUniformBlock().All() {
+		for _, k := range p.ActiveResources().DefaultUniformBlock().Keys() {
+			u := p.ActiveResources().DefaultUniformBlock().Get(k)
 			if loc, ok := u.Locations().Lookup(0); ok {
 				sb.uniform(ctx, u.Type(), UniformLocation(loc), GLsizei(u.ArraySize()), sb.readsSlice(ctx, u.Value()))
 			}
 		}
-		for loc, b := range p.ActiveResources().UniformBlocks().All() {
+		for _, loc := range p.ActiveResources().UniformBlocks().Keys() {
+			b := p.ActiveResources().UniformBlocks().Get(loc)
 			if index := b.Binding(); index > 0 {
 				write(ctx, cb.GlUniformBlockBinding(id, UniformBlockIndex(loc), GLuint(index)))
 			}
@@ -757,8 +763,8 @@ func (sb *stateBuilder) programObject(ctx context.Context, p Programʳ) {
 func (sb *stateBuilder) attachShaders(ctx context.Context, p Programʳ) {
 	write, cb, id := sb.write, sb.cb, p.GetID()
 
-	for _, s := range p.Shaders().All() {
-		if s := s.GetID(); s != 0 {
+	for _, k := range p.Shaders().Keys() {
+		if s := p.Shaders().Get(k).GetID(); s != 0 {
 			write(ctx, cb.GlAttachShader(id, s))
 		}
 	}
@@ -872,7 +878,8 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 			}
 		}
 	} else if isArray || is3D {
-		for lvl, levelObject := range t.Levels().All() {
+		for _, lvl := range t.Levels().Keys() {
+			levelObject := t.Levels().Get(lvl)
 			img := levelObject.Layers().Get(0) // Must exist, all layers must be consistent.
 			fmt, w, h, d := img.getCorrectInternalFormat(), img.Width(), img.Height(), GLsizei(levelObject.Layers().Len())
 			dataFormat, dataType := img.getUnsizedFormatAndType()
@@ -884,8 +891,10 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 			}
 		}
 	} else {
-		for lvl, levelObject := range t.Levels().All() {
-			for layer, img := range levelObject.Layers().All() {
+		for _, lvl := range t.Levels().Keys() {
+			levelObject := t.Levels().Get(lvl)
+			for _, layer := range levelObject.Layers().Keys() {
+				img := levelObject.Layers().Get(layer)
 				// NB: Each face of cubemap faces can technically have different format and size.
 				fmt, w, h := img.getCorrectInternalFormat(), img.Width(), img.Height()
 				dataFormat, dataType := img.getUnsizedFormatAndType()
@@ -904,8 +913,10 @@ func (sb *stateBuilder) textureObject(ctx context.Context, t Textureʳ) {
 	}
 
 	// Upload the layers one by one
-	for lvl, levelObject := range t.Levels().All() {
-		for layer, img := range levelObject.Layers().All() {
+	for _, lvl := range t.Levels().Keys() {
+		levelObject := t.Levels().Get(lvl)
+		for _, layer := range levelObject.Layers().Keys() {
+			img := levelObject.Layers().Get(layer)
 			fmt, w, h, d := img.getCorrectInternalFormat(), img.Width(), img.Height(), GLsizei(1)
 			dataFormat, dataType := img.getUnsizedFormatAndType()
 			dataSize, data := GLsizei(img.Data().Size()), sb.readsSlice(ctx, img.Data())
@@ -1029,7 +1040,8 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 
 	write(ctx, cb.GlBindVertexArray(id))
 	if id > 0 {
-		for loc, vaa := range vao.VertexAttributeArrays().All() {
+		for _, loc := range vao.VertexAttributeArrays().Keys() {
+			vaa := vao.VertexAttributeArrays().Get(loc)
 			defaultArray := MakeVertexAttributeArray(sb.tmpArena)
 			defaultArray.SetBinding(vao.VertexBufferBindings().Get(VertexBufferBindingIndex(loc)))
 			if vaa.Get().Equals(defaultArray) {
@@ -1058,7 +1070,8 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 				write(ctx, cb.GlVertexAttribBinding(loc, vaa.Binding().Id()))
 			}
 		}
-		for i, b := range vao.VertexBufferBindings().All() {
+		for _, i := range vao.VertexBufferBindings().Keys() {
+			b := vao.VertexBufferBindings().Get(i)
 			defaultBinding := MakeVertexBufferBinding(sb.tmpArena)
 			defaultBinding.SetId(VertexBufferBindingIndex(i))
 			if b.Get().Equals(defaultBinding) {
@@ -1073,7 +1086,8 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 			write(ctx, cb.GlBindBuffer(GLenum_GL_ELEMENT_ARRAY_BUFFER, vao.ElementArrayBuffer().GetID()))
 		}
 	} else {
-		for loc, vaa := range vao.VertexAttributeArrays().All() {
+		for _, loc := range vao.VertexAttributeArrays().Keys() {
+			vaa := vao.VertexAttributeArrays().Get(loc)
 			defaultArray := MakeVertexAttributeArray(sb.tmpArena)
 			defaultArray.SetBinding(vao.VertexBufferBindings().Get(VertexBufferBindingIndex(loc)))
 			if vaa.Get().Equals(defaultArray) {
@@ -1100,7 +1114,8 @@ func (sb *stateBuilder) vertexArrayObject(ctx context.Context, vao VertexArrayʳ
 func (sb *stateBuilder) vertexState(ctx context.Context, vs VertexState) {
 	write, cb := sb.write, sb.cb
 
-	for loc, att := range vs.Attributes().All() {
+	for _, loc := range vs.Attributes().Keys() {
+		att := vs.Attributes().Get(loc)
 		switch att.Type() {
 		case GLenum_GL_FLOAT_VEC4:
 			write(ctx, cb.GlVertexAttrib4fv(loc, sb.readsSlice(ctx, att.Value())))
@@ -1145,8 +1160,8 @@ func (sb *stateBuilder) reasterizationState(ctx context.Context, rs Rasterizatio
 	sb.enable(ctx, GLenum_GL_SAMPLE_SHADING, rs.SampleShading())
 	write(ctx, cb.GlMinSampleShading(rs.MinSampleShadingValue()))
 	sb.enable(ctx, GLenum_GL_SAMPLE_MASK, rs.SampleMask())
-	for i, mask := range rs.SampleMaskValue().All() {
-		write(ctx, cb.GlSampleMaski(i, mask)) // GLES31
+	for _, i := range rs.SampleMaskValue().Keys() {
+		write(ctx, cb.GlSampleMaski(i, rs.SampleMaskValue().Get(i))) // GLES31
 	}
 }
 
@@ -1167,7 +1182,8 @@ func (sb *stateBuilder) pixelState(ctx context.Context, ps PixelState) {
 
 	// Blend
 	write(ctx, cb.GlBlendColor(ps.BlendColor().Red(), ps.BlendColor().Green(), ps.BlendColor().Blue(), ps.BlendColor().Alpha()))
-	for i, bs := range ps.Blend().All() {
+	for _, i := range ps.Blend().Keys() {
+		bs := ps.Blend().Get(i)
 		write(ctx, cb.GlBlendEquationSeparatei(i, bs.EquationRgb(), bs.EquationAlpha()))               // GLES32
 		write(ctx, cb.GlBlendFuncSeparatei(i, bs.SrcRgb(), bs.DstRgb(), bs.SrcAlpha(), bs.DstAlpha())) // GLES32
 		sb.enablei(ctx, GLenum_GL_BLEND, GLuint(i), bs.Enabled())                                      // GLES32?
@@ -1181,7 +1197,8 @@ func (sb *stateBuilder) pixelState(ctx context.Context, ps PixelState) {
 	sb.enable(ctx, GLenum_GL_FRAMEBUFFER_SRGB_EXT, ps.FramebufferSrgb())
 
 	// Framebuffer control
-	for i, mask := range ps.ColorWritemask().All() {
+	for _, i := range ps.ColorWritemask().Keys() {
+		mask := ps.ColorWritemask().Get(i)
 		write(ctx, cb.GlColorMaski(i, mask.R(), mask.G(), mask.B(), mask.A())) // GLES32
 	}
 	write(ctx, cb.GlDepthMask(ps.DepthWritemask()))
@@ -1225,38 +1242,38 @@ func (sb *stateBuilder) debugLabels(ctx context.Context, c Contextʳ) {
 			write(ctx, cb.GlObjectLabel(target, id, GLsizei(len(text)), sb.readsData(ctx, text)))
 		}
 	}
-	for id, obj := range c.Objects().Textures().All() {
-		label(GLenum_GL_TEXTURE, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Textures().Keys() {
+		label(GLenum_GL_TEXTURE, GLuint(id), c.Objects().Textures().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Framebuffers().All() {
-		label(GLenum_GL_FRAMEBUFFER, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Framebuffers().Keys() {
+		label(GLenum_GL_FRAMEBUFFER, GLuint(id), c.Objects().Framebuffers().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Renderbuffers().All() {
-		label(GLenum_GL_RENDERBUFFER, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Renderbuffers().Keys() {
+		label(GLenum_GL_RENDERBUFFER, GLuint(id), c.Objects().Renderbuffers().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Buffers().All() {
-		label(GLenum_GL_BUFFER, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Buffers().Keys() {
+		label(GLenum_GL_BUFFER, GLuint(id), c.Objects().Buffers().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Shaders().All() {
-		label(GLenum_GL_SHADER, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Shaders().Keys() {
+		label(GLenum_GL_SHADER, GLuint(id), c.Objects().Shaders().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Programs().All() {
-		label(GLenum_GL_PROGRAM, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Programs().Keys() {
+		label(GLenum_GL_PROGRAM, GLuint(id), c.Objects().Programs().Get(id).Label())
 	}
-	for id, obj := range c.Objects().VertexArrays().All() {
-		label(GLenum_GL_VERTEX_ARRAY, GLuint(id), obj.Label())
+	for _, id := range c.Objects().VertexArrays().Keys() {
+		label(GLenum_GL_VERTEX_ARRAY, GLuint(id), c.Objects().VertexArrays().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Queries().All() {
-		label(GLenum_GL_QUERY, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Queries().Keys() {
+		label(GLenum_GL_QUERY, GLuint(id), c.Objects().Queries().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Samplers().All() {
-		label(GLenum_GL_SAMPLER, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Samplers().Keys() {
+		label(GLenum_GL_SAMPLER, GLuint(id), c.Objects().Samplers().Get(id).Label())
 	}
-	for id, obj := range c.Objects().TransformFeedbacks().All() {
-		label(GLenum_GL_TRANSFORM_FEEDBACK, GLuint(id), obj.Label())
+	for _, id := range c.Objects().TransformFeedbacks().Keys() {
+		label(GLenum_GL_TRANSFORM_FEEDBACK, GLuint(id), c.Objects().TransformFeedbacks().Get(id).Label())
 	}
-	for id, obj := range c.Objects().Pipelines().All() {
-		label(GLenum_GL_PROGRAM_PIPELINE, GLuint(id), obj.Label())
+	for _, id := range c.Objects().Pipelines().Keys() {
+		label(GLenum_GL_PROGRAM_PIPELINE, GLuint(id), c.Objects().Pipelines().Get(id).Label())
 	}
 }
 
@@ -1275,7 +1292,8 @@ func (sb *stateBuilder) bindings(ctx context.Context, c Contextʳ) {
 	// Indexed-buffers
 	{
 		bind := func(target GLenum, bindings GLuintːBufferBindingᵐ) {
-			for index, b := range bindings.All() {
+			for _, index := range bindings.Keys() {
+				b := bindings.Get(index)
 				if id := b.Binding().GetID(); id != 0 {
 					write(ctx, cb.GlBindBufferRange(target, index, id, b.Start(), b.Size()))
 				}
@@ -1284,7 +1302,8 @@ func (sb *stateBuilder) bindings(ctx context.Context, c Contextʳ) {
 		bind(GLenum_GL_UNIFORM_BUFFER, c.Bound().UniformBuffers())              //GLES30
 		bind(GLenum_GL_ATOMIC_COUNTER_BUFFER, c.Bound().AtomicCounterBuffers()) //GLES31
 		bind(GLenum_GL_SHADER_STORAGE_BUFFER, c.Bound().ShaderStorageBuffers()) //GLES31
-		for _, tf := range c.Objects().TransformFeedbacks().All() {
+		for _, k := range c.Objects().TransformFeedbacks().Keys() {
+			tf := c.Objects().TransformFeedbacks().Get(k)
 			write(ctx, cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, tf.GetID()))
 			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffers()) //GLES30
 		}
@@ -1309,14 +1328,16 @@ func (sb *stateBuilder) bindings(ctx context.Context, c Contextʳ) {
 		bind(GLenum_GL_DRAW_INDIRECT_BUFFER, c.Bound().DrawIndirectBuffer())               //GLES31
 		bind(GLenum_GL_SHADER_STORAGE_BUFFER, c.Bound().ShaderStorageBuffer())             //GLES31
 		bind(GLenum_GL_TEXTURE_BUFFER, c.Bound().TextureBuffer())                          //GLES32
-		for _, tf := range c.Objects().TransformFeedbacks().All() {
+		for _, k := range c.Objects().TransformFeedbacks().Keys() {
+			tf := c.Objects().TransformFeedbacks().Get(k)
 			write(ctx, cb.GlBindTransformFeedback(GLenum_GL_TRANSFORM_FEEDBACK, tf.GetID()))
 			bind(GLenum_GL_TRANSFORM_FEEDBACK_BUFFER, tf.Buffer()) //GLES30
 		}
 	}
 
 	// Samplers
-	for unit, tu := range c.Objects().TextureUnits().All() {
+	for _, unit := range c.Objects().TextureUnits().Keys() {
+		tu := c.Objects().TextureUnits().Get(unit)
 		if sampler := tu.SamplerBinding().GetID(); sampler != 0 {
 			write(ctx, cb.GlBindSampler(GLuint(unit), sampler))
 		}
@@ -1346,13 +1367,13 @@ func (sb *stateBuilder) bindings(ctx context.Context, c Contextʳ) {
 func (sb *stateBuilder) deleteMarkedObjects(ctx context.Context, c Contextʳ) {
 	write, cb := sb.write, sb.cb
 
-	for id, s := range c.Objects().Shaders().All() {
-		if s.DeleteStatus() {
+	for _, id := range c.Objects().Shaders().Keys() {
+		if c.Objects().Shaders().Get(id).DeleteStatus() {
 			write(ctx, cb.GlDeleteShader(id))
 		}
 	}
-	for id, p := range c.Objects().Programs().All() {
-		if p.DeleteStatus() {
+	for _, id := range c.Objects().Programs().Keys() {
+		if c.Objects().Programs().Get(id).DeleteStatus() {
 			write(ctx, cb.GlDeleteProgram(id))
 		}
 	}

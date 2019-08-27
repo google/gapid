@@ -31,6 +31,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.ScrollBar;
 
 /**
@@ -63,18 +64,22 @@ public class TraceView extends Composite
     canvas.addListener(SWT.MouseWheel, e -> {
       if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
         e.doit = false;
-        if (rootPanel.zoom(e.x, Math.max(-3, Math.min(3, e.count)) * ZOOM_FACTOR_SCALE)) {
+        if (rootPanel.zoom(e.x, 1.0 - Math.max(-3, Math.min(3, e.count)) * ZOOM_FACTOR_SCALE)) {
           canvas.redraw(Area.FULL);
         }
       }
     });
     canvas.addListener(SWT.MouseHorizontalWheel, e -> {
-      e.doit = false;
+      if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
+        // Ignore horizontal scroll, only when zooming.
+        e.doit = false;
+      }
     });
+    canvas.addListener(SWT.Gesture, this::handleGesture);
     canvas.getHorizontalBar().addListener(SWT.Selection, e -> {
       TimeSpan trace = state.getTraceTime();
       int sel = canvas.getHorizontalBar().getSelection();
-      if (state.scrollTo(trace.start + sel * trace.getDuration() / 1000)) {
+      if (state.scrollTo(trace.start + sel * trace.getDuration() / 10000)) {
         canvas.redraw(Area.FULL);
       }
     });
@@ -132,6 +137,23 @@ public class TraceView extends Composite
     updateScrollbar();
   }
 
+  private double lastZoom = 1;
+  private void handleGesture(Event e) {
+    switch (e.detail) {
+      case SWT.GESTURE_BEGIN:
+        lastZoom = 1;
+        break;
+      case SWT.GESTURE_MAGNIFY:
+        if (rootPanel.zoom(e.x, lastZoom / e.magnification)) {
+          canvas.redraw(Area.FULL);
+        }
+        lastZoom = e.magnification;
+        break;
+      case SWT.GESTURE_END:
+        break;
+    }
+  }
+
   private void updateScrollbar() {
     ScrollBar bar = canvas.getHorizontalBar();
     if (!models.perfetto.isLoaded()) {
@@ -142,14 +164,20 @@ public class TraceView extends Composite
 
     TimeSpan visible = state.getVisibleTime();
     TimeSpan total = state.getTraceTime();
-    int sel = permille(visible.start - total.start, total.getDuration());
-    int thumb = permille(visible.getDuration(), total.getDuration());
+    if (total.getDuration() == 0) {
+      bar.setEnabled(false);
+      bar.setValues(0, 0, 1, 1, 5, 10);
+      return;
+    }
+
+    int sel = permyriad(visible.start - total.start, total.getDuration());
+    int thumb = permyriad(visible.getDuration(), total.getDuration());
 
     bar.setEnabled(true);
-    bar.setValues(sel, 0, 1000, thumb, 50, 100);
+    bar.setValues(sel, 0, 10000, thumb, Math.max(1, thumb / 20), 100);
   }
 
-  private static int permille(long v, long t) {
-    return Math.max(0, Math.min(1000, (int)(1000 * v / t)));
+  private static int permyriad(long v, long t) {
+    return Math.max(0, Math.min(10000, (int)(10000 * v / t)));
   }
 }

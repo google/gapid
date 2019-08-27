@@ -74,6 +74,8 @@ public class RenderContext implements Panel.TextMeasurer, AutoCloseable {
     for (TransformAndClip t : transformStack) {
       t.dispose();
     }
+    gc.setTransform(null);
+    gc.setLineWidth(0);
     transformStack.clear();
   }
 

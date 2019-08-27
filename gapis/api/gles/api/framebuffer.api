@@ -298,17 +298,20 @@ cmd void glClear(GLbitfield mask) {
   if (GL_COLOR_BUFFER_BIT in mask) {
     _ = ctx.Pixel.ColorClearValue
     for _, _, a in fb.ColorAttachments {
+      WriteGPUFramebufferAttachment(a)
       WriteFramebufferAttachment(a)
     }
   }
 
   if (GL_DEPTH_BUFFER_BIT in mask) {
     _ = ctx.Pixel.DepthClearValue
+    WriteGPUFramebufferAttachment(fb.DepthAttachment)
     WriteFramebufferAttachment(fb.DepthAttachment)
   }
 
   if (GL_STENCIL_BUFFER_BIT in mask) {
     _ = ctx.Pixel.StencilClearValue
+    WriteGPUFramebufferAttachment(fb.StencilAttachment)
     WriteFramebufferAttachment(fb.StencilAttachment)
   }
 

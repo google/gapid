@@ -76,6 +76,26 @@ type NodeID uint32
 
 const NodeNoID = NodeID(math.MaxUint32)
 
+// NodeIDSorter is a structure to use for sorting NodeIDs in the sort package
+type NodeIDSorter struct {
+	Nodes []NodeID
+}
+
+// Len returns the length of the node list
+func (s *NodeIDSorter) Len() int {
+	return len(s.Nodes)
+}
+
+// Less returns trus if the elements at index i are less than j
+func (s *NodeIDSorter) Less(i, j int) bool {
+	return s.Nodes[i] < s.Nodes[j]
+}
+
+// Swap swaps the locations of 2 nodes in the list
+func (s *NodeIDSorter) Swap(i, j int) {
+	s.Nodes[i], s.Nodes[j] = s.Nodes[j], s.Nodes[i]
+}
+
 // DependencyGraph stores the dependencies among api calls and memory observations,
 type DependencyGraph interface {
 

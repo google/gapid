@@ -27,6 +27,7 @@ import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.perfetto.PerfettoConfig;
+import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.server.GapisProcess;
 import com.google.gapid.util.Crash2ExceptionHandler;
@@ -193,6 +194,7 @@ public class Main {
 
   private static final Flag<?>[] ALL_FLAGS = {
     Flags.help,
+    Flags.fullHelp,
     Flags.version,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,
@@ -208,5 +210,6 @@ public class Main {
     Follower.logFollowRequests,
     Server.useCache,
     PerfettoConfig.perfettoConfig,
+    PanelCanvas.showRedraws,
   };
 }

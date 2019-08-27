@@ -22,19 +22,50 @@ import (
 	"github.com/google/gapid/gapis/resolve/dependencygraph"
 )
 
+type shaderProgramKeyKind int
+
+const (
+	everything shaderProgramKeyKind = iota
+	uniforms
+	binding
+	linkstate
+	compilestate
+	source
+)
+
+type programKey struct {
+	program Programʳ
+	kind    shaderProgramKeyKind
+}
+
+func (k programKey) Parent() dependencygraph.StateKey {
+	switch k.kind {
+	case uniforms, binding, linkstate:
+		return programKey{k.program, everything}
+	}
+	return nil
+}
+
+type shaderKey struct {
+	shader Shaderʳ
+	kind   shaderProgramKeyKind
+}
+
+func (k shaderKey) Parent() dependencygraph.StateKey {
+	switch k.kind {
+	case compilestate, source:
+		return shaderKey{k.shader, everything}
+	}
+	return nil
+}
+
 type uniformKey struct {
 	program  Programʳ
 	location UniformLocation
 	count    GLsizei
 }
 
-func (k uniformKey) Parent() dependencygraph.StateKey { return uniformGroupKey{k.program} }
-
-type uniformGroupKey struct {
-	program Programʳ
-}
-
-func (k uniformGroupKey) Parent() dependencygraph.StateKey { return nil }
+func (k uniformKey) Parent() dependencygraph.StateKey { return programKey{k.program, uniforms} }
 
 type vertexAttribKey struct {
 	vertexArray VertexArrayʳ
@@ -158,7 +189,18 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
 			b.Write(g, renderbufferDataKey{depth})
 			b.Write(g, renderbufferDataKey{stencil})
 		} else if cmd.CmdFlags(ctx, id, s).IsDrawCall() {
-			b.Read(g, uniformGroupKey{c.Bound().Program()})
+			switch {
+			case !c.Bound().Program().IsNil():
+				b.Read(g, programKey{c.Bound().Program(), everything})
+			case !c.Bound().Pipeline().IsNil():
+				p := c.Bound().Pipeline()
+				b.Read(g, programKey{p.VertexShader(), everything})
+				b.Read(g, programKey{p.TessControlShader(), everything})
+				b.Read(g, programKey{p.TessEvaluationShader(), everything})
+				b.Read(g, programKey{p.GeometryShader(), everything})
+				b.Read(g, programKey{p.FragmentShader(), everything})
+				b.Read(g, programKey{p.ComputeShader(), everything})
+			}
 			b.Read(g, vertexAttribGroupKey{c.Bound().VertexArray()})
 			for _, stateKey := range getAllUsedTextureData(ctx, cmd, id, s, c) {
 				b.Read(g, stateKey)
@@ -269,16 +311,166 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
 						}
 					}
 				}
+			case *GlShaderSource:
+				b.Write(g, shaderKey{c.Objects().Shaders().Get(cmd.Shader()), source})
+			case *GlCompileShader:
+				s := c.Objects().Shaders().Get(cmd.Shader())
+				b.Read(g, shaderKey{s, source})
+				b.Write(g, shaderKey{s, compilestate})
+			case *GlLinkProgram:
+				p := c.Objects().Programs().Get(cmd.Program())
+				for _, s := range p.Shaders().All() {
+					b.Read(g, shaderKey{s, compilestate})
+				}
+				b.Write(g, programKey{p, linkstate})
+			case *GlGetUniformLocation:
+				// Treat this as a modify so it is coupled with the glLinkProgram call.
+				b.Modify(g, programKey{c.Objects().Programs().Get(cmd.Program()), linkstate})
+			case *GlUseProgram:
+				p := c.Objects().Programs().Get(cmd.Program())
+				b.Read(g, programKey{p, linkstate})
+				b.Write(g, programKey{p, binding})
+			case *GlBindProgramPipeline:
+				p := c.Objects().Pipelines().Get(cmd.Pipeline())
+				b.Read(g, programKey{p.VertexShader(), linkstate})
+				b.Read(g, programKey{p.TessControlShader(), linkstate})
+				b.Read(g, programKey{p.TessEvaluationShader(), linkstate})
+				b.Read(g, programKey{p.GeometryShader(), linkstate})
+				b.Read(g, programKey{p.FragmentShader(), linkstate})
+				b.Read(g, programKey{p.ComputeShader(), linkstate})
+				b.KeepAlive = true // TODO: complete separable shader support
+			case *GlUniform1f:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform2f:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform3f:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform4f:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform1i:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform2i:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform3i:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform4i:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform1ui:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform2ui:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform3ui:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
+			case *GlUniform4ui:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), 1})
 			case *GlUniform1fv:
-				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
 			case *GlUniform2fv:
-				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
 			case *GlUniform3fv:
-				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
 			case *GlUniform4fv:
-				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform1iv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform2iv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform3iv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform4iv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform1uiv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform2uiv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform3uiv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniform4uiv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix2fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix3fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
 			case *GlUniformMatrix4fv:
-				b.Write(g, uniformKey{c.Bound().Program(), cmd.Location(), cmd.Count()})
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix2x3fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix3x2fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix2x4fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix4x2fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix3x4fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
+			case *GlUniformMatrix4x3fv:
+				p := getBoundProgram(c)
+				b.Read(g, programKey{p, binding})
+				b.Write(g, uniformKey{p, cmd.Location(), cmd.Count()})
 			case *GlVertexAttribPointer:
 				b.Write(g, vertexAttribKey{c.Bound().VertexArray(), cmd.Location()})
 			case *GlEGLImageTargetTexture2DOES:
@@ -302,6 +494,17 @@ func (*GlesDependencyGraphBehaviourProvider) GetBehaviourForCommand(
 		b.KeepAlive = true
 	}
 	return b
+}
+
+func getBoundProgram(c Contextʳ) Programʳ {
+	switch {
+	case !c.Bound().Program().IsNil():
+		return c.Bound().Program()
+	case !c.Bound().Pipeline().IsNil():
+		return c.Bound().Pipeline().ActiveProgram()
+	default:
+		return NilProgramʳ
+	}
 }
 
 func clearBuffer(g *dependencygraph.DependencyGraph, b *dependencygraph.CmdBehaviour, buffer GLenum, index GLint, c Contextʳ) {

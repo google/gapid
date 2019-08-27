@@ -160,7 +160,7 @@ public class LogView extends Composite implements Tab {
         }
       }
       while (tree.getItemCount() > MAX_ITEMS) {
-        tree.getTopItem().dispose();
+        tree.getItem(0).dispose();
       }
     }
     // Too many new messages to display!

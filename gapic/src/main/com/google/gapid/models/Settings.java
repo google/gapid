@@ -74,7 +74,9 @@ public class Settings {
   public String traceArguments = "";
   public String traceCwd = "";
   public String traceEnv = "";
+  public int traceInitialFrameCount = 0;
   public int traceFrameCount = 7;
+  public boolean traceInteractiveStart = true;
   public boolean traceMidExecution = true;
   public boolean traceWithoutBuffering = false;
   public boolean traceHideUnknownExtensions = false;
@@ -82,7 +84,6 @@ public class Settings {
   public boolean traceDisablePcs = true;
   public String traceOutDir = "";
   public String traceFriendlyName = "";
-  public boolean skipWelcomeScreen = false;
   public boolean skipFirstRunDialog = false;
   public String[] recentFiles = new String[0];
   public String adb = "";
@@ -229,6 +230,7 @@ public class Settings {
     traceCwd = properties.getProperty("trace.cwd", traceCwd);
     traceEnv = properties.getProperty("trace.env", traceEnv);
     traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
+    traceInteractiveStart = getBoolean(properties, "trace.interactiveStart", traceInteractiveStart);
     traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
     traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
     traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
@@ -236,7 +238,6 @@ public class Settings {
     traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
     traceOutDir = properties.getProperty("trace.dir", traceOutDir);
     traceFriendlyName = properties.getProperty("trace.friendly", traceFriendlyName);
-    skipWelcomeScreen = getBoolean(properties, "skip.welcome", skipWelcomeScreen);
     skipFirstRunDialog = getBoolean(properties, "skip.firstTime", skipFirstRunDialog);
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
@@ -282,7 +283,6 @@ public class Settings {
     properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
     properties.setProperty("trace.dir", traceOutDir);
     properties.setProperty("trace.friendly",  traceFriendlyName);
-    properties.setProperty("skip.welcome", Boolean.toString(skipWelcomeScreen));
     properties.setProperty("skip.firstTime", Boolean.toString(skipFirstRunDialog));
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);

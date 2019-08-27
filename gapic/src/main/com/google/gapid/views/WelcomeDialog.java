@@ -15,23 +15,11 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.util.GapidVersion.GAPID_VERSION;
-import static com.google.gapid.util.GeoUtils.bottomLeft;
-import static com.google.gapid.views.AboutDialog.showHelp;
-import static com.google.gapid.views.TracerDialog.showOpenTraceDialog;
-import static com.google.gapid.views.TracerDialog.showTracingDialog;
-import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createLink;
-import static com.google.gapid.widgets.Widgets.createMenuItem;
-import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
-import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
-import com.google.gapid.proto.service.Service.ClientAction;
-import com.google.gapid.server.Client;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
@@ -42,16 +30,12 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Link;
-import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 
-import java.io.File;
 import java.util.function.Consumer;
 
 /**
@@ -108,68 +92,6 @@ public class WelcomeDialog {
 
         super.okPressed();
         next.run();
-      }
-    }.open();
-  }
-
-  public static void showWelcomeDialog(Client client, Shell shell, Models models, Widgets widgets) {
-    models.analytics.postInteraction(View.Welcome, ClientAction.Show);
-    new WelcomeDialogBase(shell, widgets.theme) {
-      private Button showWelcome;
-
-      @Override
-      protected Control createDialogArea(Composite parent) {
-        return createDialogArea(Messages.WINDOW_TITLE, super.createDialogArea(parent), c -> {
-          Label version = createLabel(c, "Version " + GAPID_VERSION.toFriendlyString());
-          version.setForeground(widgets.theme.welcomeVersionColor());
-          version.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
-
-          createLink(c, "<a>Open Trace...</a>", e -> {
-            close(true);
-            showOpenTraceDialog(shell, models);
-          });
-          String[] files = models.settings.getRecent();
-          if (files.length > 0) {
-            createLink(c, "<a>Open Recent...</a>", e -> {
-              Menu popup = new Menu(c);
-              for (String file : models.settings.recentFiles) {
-                createMenuItem(popup, file, 0, ev -> {
-                  models.analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
-                  close(true);
-                  models.capture.loadCapture(new File(file));
-                });
-              }
-              popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
-
-              popup.setLocation(c.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
-              popup.setVisible(true);
-            });
-          }
-          createLink(c, "<a>Capture Trace...</a>", e -> {
-            close(true);
-            showTracingDialog(client, shell, models, widgets);
-          });
-          createLink(c, "<a>Help...</a>", e -> showHelp(models.analytics));
-
-          showWelcome = createCheckbox(c, "Show on startup", !models.settings.skipWelcomeScreen);
-        });
-      }
-
-      @Override
-      protected void createButtonsForButtonBar(Composite parent) {
-        createButton(parent, IDialogConstants.CLOSE_ID, IDialogConstants.CLOSE_LABEL, true);
-      }
-
-      @Override
-      protected void buttonPressed(int buttonId) {
-        close(buttonId == IDialogConstants.CLOSE_ID);
-      }
-
-      private void close(boolean saveState) {
-        if (saveState) {
-          models.settings.skipWelcomeScreen = !showWelcome.getSelection();
-        }
-        close();
       }
     }.open();
   }

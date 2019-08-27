@@ -37,6 +37,8 @@ public class Flags {
   private static final int HELP_LINE_LENGTH = 80;
 
   public static final Flag<Boolean> help = value("help", false, "Print help information.");
+  public static final Flag<Boolean> fullHelp =
+      value("fullhelp", false, "Print help information incuding hidden flags.", true);
   public static final Flag<Boolean> version = value("version", false, "Print GAPID version.");
 
   private static boolean initialized = false;
@@ -110,7 +112,10 @@ public class Flags {
     }
 
     if (help.get()) {
-      printHelp(System.out, flags);
+      printHelp(System.out, flags, false);
+      System.exit(0);
+    } else if (fullHelp.get()) {
+      printHelp(System.out, flags, true);
       System.exit(0);
     } else if (version.get()) {
       printVersion(System.out);
@@ -128,11 +133,15 @@ public class Flags {
     out.println("GAPID version " + GAPID_VERSION);
   }
 
-  private static void printHelp(PrintStream out, Flag<?>[] flags) {
+  private static void printHelp(PrintStream out, Flag<?>[] flags, boolean full) {
     printVersion(out);
     out.println("Usage:");
     StringBuilder line = new StringBuilder();
     for (Flag<?> flag : flags) {
+      if (!full && flag.isHidden()) {
+        continue;
+      }
+
       line.setLength(0);
       line.append(" --").append(flag.getName());
       boolean first = true;
@@ -175,15 +184,17 @@ public class Flags {
     private final Parser<T> parser;
     private final T deflt;
     private final String description;
+    private final boolean hidden;
     private T value;
     private boolean specified;
 
-    Flag(String name, Parser<T> parser, T deflt, String description) {
+    Flag(String name, Parser<T> parser, T deflt, String description, boolean hidden) {
       Preconditions.checkNotNull(deflt);
       this.name = name;
       this.parser = parser;
       this.value = this.deflt = deflt;
       this.description = description;
+      this.hidden = hidden;
       this.specified = false;
     }
 
@@ -203,6 +214,10 @@ public class Flags {
       return description;
     }
 
+    public boolean isHidden() {
+      return hidden;
+    }
+
     public boolean isSpecified() {
       return specified;
     }
@@ -214,15 +229,23 @@ public class Flags {
   }
 
   public static Flag<String> value(String name, String dflt, String description) {
+    return value(name, dflt, description, false);
+  }
+
+  public static Flag<String> value(String name, String dflt, String description, boolean hidden) {
     return new Flag<String>(name, new Parser<String>() {
       @Override
       public String parse(String value) {
         return value;
       }
-    }, dflt, description);
+    }, dflt, description, hidden);
   }
 
   public static Flag<Integer> value(String name, int dflt, String description) {
+    return value(name, dflt, description, false);
+  }
+
+  public static Flag<Integer> value(String name, int dflt, String description, boolean hidden) {
     return new Flag<Integer>(name, new Parser<Integer>() {
       @Override
       public Integer parse(String value) {
@@ -232,10 +255,14 @@ public class Flags {
           throw new InvalidFlagException(value, e);
         }
       }
-    }, dflt, description);
+    }, dflt, description, hidden);
   }
 
   public static Flag<Double> value(String name, double dflt, String description) {
+    return value(name, dflt, description, false);
+  }
+
+  public static Flag<Double> value(String name, double dflt, String description, boolean hidden) {
     return new Flag<Double>(name, new Parser<Double>() {
       @Override
       public Double parse(String value) {
@@ -245,19 +272,28 @@ public class Flags {
           throw new InvalidFlagException(value, e);
         }
       }
-    }, dflt, description);
+    }, dflt, description, hidden);
   }
 
   public static Flag<Boolean> value(String name, boolean dflt, String description) {
+    return value(name, dflt, description, false);
+  }
+
+  public static Flag<Boolean> value(String name, boolean dflt, String description, boolean hidden) {
     return new Flag<Boolean>(name, new Parser<Boolean>() {
       @Override
       public Boolean parse(String value) {
         return "true".equalsIgnoreCase(value);
       }
-    }, dflt, description);
+    }, dflt, description, hidden);
   }
 
   public static <T extends Enum<T>> Flag<T> value(String name, final T dflt, String description) {
+    return value(name, dflt, description, false);
+  }
+
+  public static <T extends Enum<T>> Flag<T> value(
+      String name, final T dflt, String description, boolean hidden) {
     return new Flag<T>(name, new Parser<T>() {
       @Override
       public T parse(String value) {
@@ -267,7 +303,7 @@ public class Flags {
           throw new InvalidFlagException(value, e);
         }
       }
-    }, dflt, description);
+    }, dflt, description, hidden);
   }
 
   /**

@@ -25,6 +25,7 @@ _COPTS_BASE = cc_copts() + [
     "-DNDEBUG",
 ] + select({
     "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
+    "@gapid//tools/build:linux": ["-Wno-error=class-memaccess"],  # TODO(#3099): Remove this when perfetto fixes the bug
     "//conditions:default": [],
 })
 
@@ -45,6 +46,7 @@ cc_library(
         "src/trace_processor/counter_values_table.cc",
         "src/trace_processor/event_tracker.cc",
         "src/trace_processor/filtered_row_index.cc",
+        "src/trace_processor/forwarding_trace_parser.cc",
         "src/trace_processor/ftrace_descriptors.cc",
         "src/trace_processor/ftrace_utils.cc",
         "src/trace_processor/fuchsia_provider_view.cc",
@@ -87,6 +89,7 @@ cc_library(
         "src/trace_processor/trace_processor.cc",
         "src/trace_processor/trace_processor_context.cc",
         "src/trace_processor/trace_processor_impl.cc",
+        "src/trace_processor/trace_processor_shell.cc",
         "src/trace_processor/trace_sorter.cc",
         "src/trace_processor/trace_storage.cc",
         "src/trace_processor/virtual_destructors.cc",
@@ -298,7 +301,7 @@ genrule(
         "src/trace_processor/metrics/android/android_startup_cpu.sql",
         "src/trace_processor/metrics/android/android_startup_launches.sql",
         "src/trace_processor/metrics/android/android_task_state.sql",
-        "src/trace_processor/metrics/android/heap_profile.sql",
+        "src/trace_processor/metrics/android/heap_profile_callsite_stats.sql",
         "src/trace_processor/metrics/android/mem_stats_priority_breakdown.sql",
         "src/trace_processor/metrics/android/process_mem.sql",
         "src/trace_processor/metrics/android/process_unagg_mem_view.sql",
@@ -407,7 +410,7 @@ proto_library(
     srcs = [
         "perfetto/metrics/android/batt_metric.proto",
         "perfetto/metrics/android/cpu_metric.proto",
-        "perfetto/metrics/android/heap_profile.proto",
+        "perfetto/metrics/android/heap_profile_callsite_stats.proto",
         "perfetto/metrics/android/ion_metric.proto",
         "perfetto/metrics/android/lmk_metric.proto",
         "perfetto/metrics/android/mem_metric.proto",
@@ -443,6 +446,7 @@ proto_library(
     name = "trace_proto",
     srcs = [
         "perfetto/trace/android/android_log.proto",
+        "perfetto/trace/android/graphics_frame_event.proto",
         "perfetto/trace/android/packages_list.proto",
         "perfetto/trace/chrome/chrome_benchmark_metadata.proto",
         "perfetto/trace/chrome/chrome_metadata.proto",
@@ -498,6 +502,7 @@ proto_library(
         "perfetto/trace/test_event.proto",
         "perfetto/trace/trace.proto",
         "perfetto/trace/trace_packet.proto",
+        "perfetto/trace/trace_packet_defaults.proto",
         "perfetto/trace/track_event/debug_annotation.proto",
         "perfetto/trace/track_event/log_message.proto",
         "perfetto/trace/track_event/process_descriptor.proto",

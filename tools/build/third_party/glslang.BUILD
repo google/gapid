@@ -44,7 +44,13 @@ cc_library(
     copts = cc_copts() + [
         "-DNV_EXTENSIONS",
         "-Wno-unused-variable",
-    ],
+    ] + select({
+        "@gapid//tools/build:linux": [
+            "-Wno-error=class-memaccess",  # TODO(#3100): Remove this when glslang fixes the bug
+            "-Wno-maybe-uninitialized",
+        ],
+        "//conditions:default": [],
+    }),
     include_prefix = "third_party/glslang",
     linkopts = select({
         "@gapid//tools/build:windows": [],

@@ -123,8 +123,8 @@ func (t *GGPTracer) StartOnDevice(ctx context.Context, name string, opts *proces
 	crash.Go(func() {
 		cmdArgs := []string{
 			"run",
-			"--gamelet",
-			t.ggpBinding.Gamelet,
+			"--instance",
+			t.ggpBinding.Inst,
 			"--application",
 			splitUri[1],
 		}
@@ -143,7 +143,7 @@ func (t *GGPTracer) StartOnDevice(ctx context.Context, name string, opts *proces
 			}
 			cmdArgs = append(cmdArgs, "--package", pkg)
 		} else {
-			// If the tracing target is specified by file path on the gamelet,
+			// If the tracing target is specified by file path on the instance,
 			// prepend the executable, which is part of the URI, to the argument
 			// list for --cmd flag.
 			execArgStr = splitUri[0] + " " + execArgStr

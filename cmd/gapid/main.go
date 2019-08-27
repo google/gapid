@@ -30,6 +30,7 @@ import (
 
 const (
 	versionPrefix = `version "`
+	googleInfix   = "-google-"
 	minJavaMajor  = 1
 	minJavaMinor  = 8
 )
@@ -42,6 +43,7 @@ type config struct {
 	args    []string
 	help    bool
 	console bool
+	verbose bool
 }
 
 func main() {
@@ -70,6 +72,7 @@ func run() int {
 			fmt.Println(" --vm              Path to the JVM to use")
 			fmt.Println(" --vmarg           Extra argument for the JVM (repeatable)")
 			fmt.Println(" --console         Run GAPID inside a terminal console")
+			fmt.Println(" --verbose-startup Log verbosely in the launcher")
 		}()
 	}
 
@@ -80,6 +83,9 @@ func run() int {
 
 	if err := c.locateVM(); err != nil {
 		fmt.Println(err)
+		if !c.verbose {
+			fmt.Println("Use --verbose-startup for additional details")
+		}
 		return 1
 	}
 
@@ -134,8 +140,10 @@ func newConfig() *config {
 			c.vmArgs = append(c.vmArgs, args[i])
 		case args[i] == "--console":
 			c.console = true
+		case args[i] == "--verbose-startup":
+			c.verbose = true
 		default:
-			c.help = c.help || args[i] == "--help"
+			c.help = c.help || args[i] == "--help" || args[i] == "--fullhelp"
 			c.args = append(c.args, args[i])
 		}
 	}
@@ -149,53 +157,62 @@ func newConfig() *config {
 	return c
 }
 
+func (c *config) logIfVerbose(args ...interface{}) {
+	if c.verbose {
+		fmt.Println(args...)
+	}
+}
+
 func (c *config) locateCWD() error {
 	cwd, err := os.Executable()
 	if err != nil {
 		return err
 	}
 	cwd, err = filepath.EvalSymlinks(cwd)
-	c.cwd = filepath.Dir(cwd)
+	if err == nil {
+		c.cwd = filepath.Dir(cwd)
+		c.logIfVerbose("CWD:", c.cwd)
+	}
 	return err
 }
 
 func (c *config) locateVM() error {
 	if c.vm != "" {
-		if checkVM(c.vm, false) {
+		if c.checkVM(c.vm, false) {
 			return nil
 		}
 
-		if runtime.GOOS == "windows" && checkVM(c.vm+".exe", false) {
+		if runtime.GOOS == "windows" && c.checkVM(c.vm+".exe", false) {
 			c.vm += ".exe"
 			return nil
 		}
 
-		if java := c.javaInHome(c.vm); checkVM(java, false) {
+		if java := c.javaInHome(c.vm); c.checkVM(java, false) {
 			c.vm = java
 			return nil
 		}
-		return fmt.Errorf("JVM '%s' not found", c.vm)
+		return fmt.Errorf("JVM '%s' not found/usable", c.vm)
 	}
 
-	if java := c.javaInHome(filepath.Join(c.cwd, "jre")); checkVM(java, true) {
+	if java := c.javaInHome(filepath.Join(c.cwd, "jre")); c.checkVM(java, true) {
 		c.vm = java
 		return nil
 	}
 
 	if home := os.Getenv("JAVA_HOME"); home != "" {
-		if java := c.javaInHome(home); checkVM(java, true) {
+		if java := c.javaInHome(home); c.checkVM(java, true) {
 			c.vm = java
 			return nil
 		}
 	}
 
-	if java, err := exec.LookPath(c.javaExecutable()); err == nil && checkVM(java, true) {
+	if java, err := exec.LookPath(c.javaExecutable()); err == nil && c.checkVM(java, true) {
 		c.vm = java
 		return nil
 	}
 
 	if runtime.GOOS == "linux" {
-		if java := "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java"; checkVM(java, true) {
+		if java := "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java"; c.checkVM(java, true) {
 			c.vm = java
 			return nil
 		}
@@ -218,8 +235,9 @@ func (c *config) javaInHome(home string) string {
 	return filepath.Join(home, "bin", c.javaExecutable())
 }
 
-func checkVM(java string, checkVersion bool) bool {
+func (c *config) checkVM(java string, checkVersion bool) bool {
 	if stat, err := os.Stat(java); err != nil || stat.IsDir() {
+		c.logIfVerbose("Not using " + java + ": not a file")
 		return false
 	}
 
@@ -229,23 +247,36 @@ func checkVM(java string, checkVersion bool) bool {
 
 	version, err := exec.Command(java, "-version").CombinedOutput()
 	if err != nil {
+		c.logIfVerbose("Not using " + java + ": failed to get version info")
+		return false
+	}
+
+	versionStr := string(version)
+
+	// Blacklist the Google custom JDKs.
+	if p := strings.Index(versionStr, googleInfix); p >= 0 {
+		c.logIfVerbose("Not using " + java + ": is a Google JDK (go/gapid-jdk)")
 		return false
 	}
 
 	// Looks for the pattern: <product> version "<major>.<minor>.<micro><build>"
 	// Not using regular expressions to avoid binary bloat.
-	versionStr := string(version)
 	if p := strings.Index(versionStr, versionPrefix); p >= 0 {
 		p += len(versionPrefix)
 		if q := strings.Index(versionStr[p:], "."); q > 0 {
 			if r := strings.Index(versionStr[p+q+1:], "."); r > 0 {
 				major, _ := strconv.Atoi(versionStr[p : p+q])
 				minor, _ := strconv.Atoi(versionStr[p+q+1 : p+q+r+1])
-				return major > minJavaMajor || (major == minJavaMajor && minor >= minJavaMinor)
+				useIt := major > minJavaMajor || (major == minJavaMajor && minor >= minJavaMinor)
+				if !useIt {
+					c.logIfVerbose("Not using " + java + ": unsupported version")
+				}
+				return useIt
 			}
 		}
 	}
 
+	c.logIfVerbose("Not using " + java + ": failed to parse version")
 	return false
 }
 

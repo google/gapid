@@ -1343,8 +1343,8 @@ func compatMultiviewDraw(ctx context.Context, id api.CmdID, cmd api.Cmd, out tra
 }
 
 func (fb Framebufferʳ) ForEachAttachment(action func(GLenum, FramebufferAttachment)) {
-	for i, a := range fb.ColorAttachments().All() {
-		action(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), a)
+	for _, i := range fb.ColorAttachments().Keys() {
+		action(GLenum_GL_COLOR_ATTACHMENT0+GLenum(i), fb.ColorAttachments().Get(i))
 	}
 	action(GLenum_GL_DEPTH_ATTACHMENT, fb.DepthAttachment())
 	action(GLenum_GL_STENCIL_ATTACHMENT, fb.StencilAttachment())
@@ -1376,7 +1376,8 @@ func disableUnusedAttribArrays(ctx context.Context, t *tweaker) {
 		}
 	}
 
-	for l, arr := range t.c.Bound().VertexArray().VertexAttributeArrays().All() {
+	for _, l := range t.c.Bound().VertexArray().VertexAttributeArrays().Keys() {
+		arr := t.c.Bound().VertexArray().VertexAttributeArrays().Get(l)
 		if arr.Enabled() == GLboolean_GL_TRUE && l < AttributeLocation(len(used)) && !used[l] {
 			t.glDisableVertexAttribArray(ctx, l)
 		}
