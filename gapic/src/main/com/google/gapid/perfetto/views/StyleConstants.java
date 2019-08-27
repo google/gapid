@@ -127,7 +127,7 @@ public class StyleConstants {
     private static final RGBA LIGHT_TITLE_BACKGROUND = rgb(0xf7, 0xf7, 0xf7);
     private static final RGBA LIGHT_GRIDLINE = rgb(0xda, 0xda, 0xda);
     private static final RGBA LIGHT_PANEL_BORDER = LIGHT_GRIDLINE;
-    private static final RGBA LIGHT_HOVER_BACKGROUND = rgba(0xf7, 0xf7, 0xf7, 0.9f);
+    private static final RGBA LIGHT_HOVER_BACKGROUND = rgba(0xf7, 0xf7, 0xf7, 0.95f);
     private static final RGBA LIGHT_LOADING_BACKGROUND = rgb(0xee, 0xee, 0xee);
     private static final RGBA LIGHT_LOADING_FOREGROUND = rgb(0x66, 0x66, 0x66);
     private static final RGBA LIGHT_SELECTION_BACKGROUND = rgba(0, 0, 255, 0.3f);
@@ -187,7 +187,7 @@ public class StyleConstants {
     private static final RGBA DARK_TITLE_BACKGROUND = rgb(0x25, 0x25, 0x25);
     private static final RGBA DARK_GRIDLINE = rgb(0x40, 0x40, 0x40);
     private static final RGBA DARK_PANEL_BORDER = DARK_GRIDLINE;
-    private static final RGBA DARK_HOVER_BACKGROUND = rgba(0x17, 0x17, 0x17, 0.7f);
+    private static final RGBA DARK_HOVER_BACKGROUND = rgba(0x17, 0x17, 0x17, 0.8f);
     private static final RGBA DARK_LOADING_BACKGROUND = rgb(0x25, 0x25, 0x25);
     private static final RGBA DARK_LOADING_FOREGROUND = rgb(0xAA, 0xAA, 0xAA);
     private static final RGBA DARK_SELECTION_BACKGROUND = rgba(0, 0, 255, 0.5f);
