@@ -173,6 +173,12 @@ public class CounterTrack extends Track<CounterTrack.Data> {
 
     @Override
     public Values combine(Values other) {
+      if (ts.length == 0) {
+        return other;
+      } else if (other.ts.length == 0) {
+        return this;
+      }
+
       long[] newTs = combineTs(ts, other.ts);
 
       double[][] newValues = new double[names.length + other.names.length][newTs.length];
