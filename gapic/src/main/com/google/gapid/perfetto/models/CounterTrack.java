@@ -44,23 +44,15 @@ public class CounterTrack extends Track<CounterTrack.Data> {
       "select ts, ts + dur, value from %s " +
       "where ts + dur >= %d and ts <= %d order by ts";
 
-  private final long id;
-  private final double min;
-  private final double max;
+  private final CounterInfo counter;
 
-  public CounterTrack(long id, double min, double max) {
-    super("counter_" + id);
-    this.id = id;
-    this.min = min;
-    this.max = max;
+  public CounterTrack(CounterInfo counter) {
+    super("counter_" + counter.id);
+    this.counter = counter;
   }
 
-  public double getMin() {
-    return min;
-  }
-
-  public double getMax() {
-    return max;
+  public CounterInfo getCounter() {
+    return counter;
   }
 
   @Override
@@ -78,7 +70,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
   }
 
   private String viewSql() {
-    return format(VIEW_SQL, id);
+    return format(VIEW_SQL, counter.id);
   }
 
   @Override

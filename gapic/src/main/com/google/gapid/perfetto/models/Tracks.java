@@ -103,9 +103,9 @@ public class Tracks {
           addGpuGroup(data);
           found = true;
         }
-        CounterTrack track = new CounterTrack(counter.id, counter.min, counter.max);
+        CounterTrack track = new CounterTrack(counter);
         data.tracks.addTrack("gpu", track.getId(), counter.name,
-            single(state -> new CounterPanel(state, track, counter.name), true));
+            single(state -> new CounterPanel(state, track), true));
       }
     }
     return data;
