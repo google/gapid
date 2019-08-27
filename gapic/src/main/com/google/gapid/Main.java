@@ -193,6 +193,7 @@ public class Main {
 
   private static final Flag<?>[] ALL_FLAGS = {
     Flags.help,
+    Flags.fullHelp,
     Flags.version,
     GapiPaths.gapidPath,
     GapiPaths.adbPath,

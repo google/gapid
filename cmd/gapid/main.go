@@ -143,7 +143,7 @@ func newConfig() *config {
 		case args[i] == "--verbose-startup":
 			c.verbose = true
 		default:
-			c.help = c.help || args[i] == "--help"
+			c.help = c.help || args[i] == "--help" || args[i] == "--fullhelp"
 			c.args = append(c.args, args[i])
 		}
 	}
