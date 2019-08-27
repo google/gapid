@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  */
 public class GapisProcess extends ChildProcess<Integer> {
   public static final Flag<Boolean> disableGapisTimeout = Flags.value(
-      "disable-gapis-timeout", false, "Disables the GAPIS timeout. Useful for debugging.");
+      "disable-gapis-timeout", false, "Disables the GAPIS timeout. Useful for debugging.", true);
 
   public static final Flag<String> gapisArgs = Flags.value(
       "gapis-args", "", "Additional argument to pass to gapis.");
