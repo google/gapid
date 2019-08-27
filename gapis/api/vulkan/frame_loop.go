@@ -97,6 +97,8 @@ type frameLoop struct {
 	bufferDestroyed map[VkBuffer]BufferObjectʳ
 	bufferToBackup  map[VkBuffer]VkBuffer
 
+	mappedAddress map[uint64]value.Pointer
+
 	imageCreated   map[VkImage]bool
 	imageChanged   map[VkImage]bool
 	imageDestroyed map[VkImage]bool
@@ -125,6 +127,7 @@ func newFrameLoop(ctx context.Context, c *capture.GraphicsCapture, numInitialCmd
 		bufferChanged:   make(map[VkBuffer]bool),
 		bufferDestroyed: make(map[VkBuffer]BufferObjectʳ),
 		bufferToBackup:  make(map[VkBuffer]VkBuffer),
+		mappedAddress:   make(map[uint64]value.Pointer),
 
 		imageCreated:   make(map[VkImage]bool),
 		imageChanged:   make(map[VkImage]bool),
@@ -193,11 +196,26 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 		}))
 		return
 	}
+
+	st := GetState(out.State())
+	sb := st.newStateBuilder(ctx, newTransformerOutput(out))
 	switch cmd.(type) {
+	case *VkUnmapMemory:
+		vkCmd := cmd.(*VkUnmapMemory)
+		vkCmd.Extras().Observations().ApplyReads(out.State().Memory.ApplicationPool())
+		memID := vkCmd.Memory()
+		mem := st.DeviceMemories().Get(memID)
+		if mem.MappedLocation().Address() != 0 {
+			sb.write(sb.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+				if target, err := b.GetMappedTarget(value.ObservedPointer(mem.MappedLocation().Address())); err == nil {
+					f.mappedAddress[mem.MappedLocation().Address()] = target
+				}
+				return nil
+			}))
+		}
+
 	case *VkQueueSubmit:
 		vkCmd := cmd.(*VkQueueSubmit)
-		st := GetState(out.State())
-		sb := st.newStateBuilder(ctx, newTransformerOutput(out))
 		cmd = f.rewriteQueueSubmit(ctx, sb, vkCmd)
 
 		for _, read := range sb.readMemories {
@@ -497,6 +515,24 @@ func (f *frameLoop) recreateDestroyedBuffer(ctx context.Context, sb *stateBuilde
 
 	mem := buffer.Memory()
 	sb.createDeviceMemory(mem, false)
+	if mem.MappedLocation().Address() != 0 {
+		sb.write(sb.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+			addr := mem.MappedLocation().Address()
+			originalTarget, ok := f.mappedAddress[addr]
+			if !ok {
+				log.E(ctx, "Did not find the original mapped address: %v!", addr)
+			}
+			newTarget, err := b.GetMappedTarget(value.ObservedPointer(addr))
+			if err != nil {
+				return err
+			}
+			b.Load(protocol.Type_AbsolutePointer, newTarget)
+			b.Store(originalTarget)
+
+			return nil
+		}))
+	}
+
 	sb.write(sb.cb.VkBindBufferMemory(
 		buffer.Device(),
 		buffer.VulkanHandle(),
