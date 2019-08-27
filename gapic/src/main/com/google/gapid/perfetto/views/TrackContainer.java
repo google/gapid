@@ -147,18 +147,32 @@ public class TrackContainer {
     public Hover onMouseMove(TextMeasurer m, double x, double y) {
       if (filter != null &&
           y < TITLE_HEIGHT && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
-        return new FilterToggler();
+        return new FilterToggler(track.onMouseMove(m, x, y));
       } else {
         return track.onMouseMove(m, x, y);
       }
     }
 
-    private class FilterToggler implements Panel.Hover {
-      public FilterToggler() {
+    private class FilterToggler implements Hover {
+      private final Hover child;
+
+      public FilterToggler(Hover child) {
+        this.child = child;
+      }
+
+      @Override
+      public Area getRedraw() {
+        return child.getRedraw();
+      }
+
+      @Override
+      public void stop() {
+        child.stop();
       }
 
       @Override
       public boolean click() {
+        child.click();
         filtered = !filtered;
         filter.accept(filtered);
         return true;
@@ -270,7 +284,7 @@ public class TrackContainer {
           if (filter != null && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
             return new FilterToggler();
           } else if (x < LABEL_OFFSET + m.measure(summary.getTitle()).w) {
-            return new ExpansionToggler();
+            return new ExpansionToggler(Hover.NONE);
           } else {
             return Hover.NONE;
           }
@@ -280,19 +294,33 @@ public class TrackContainer {
       } else {
         if (y < TITLE_HEIGHT &&
             x < Math.min(LABEL_WIDTH, LABEL_OFFSET + m.measure(summary.getTitle()).w)) {
-          return new ExpansionToggler();
+          return new ExpansionToggler(summary.onMouseMove(m, x, y));
         } else {
           return summary.onMouseMove(m, x, y);
         }
       }
     }
 
-    private class ExpansionToggler implements Panel.Hover {
-      public ExpansionToggler() {
+    private class ExpansionToggler implements Hover {
+      private final Hover child;
+
+      public ExpansionToggler(Hover child) {
+        this.child = child;
+      }
+
+      @Override
+      public Area getRedraw() {
+        return child.getRedraw();
+      }
+
+      @Override
+      public void stop() {
+        child.stop();
       }
 
       @Override
       public boolean click() {
+        child.click();
         expanded = !expanded;
         return true;
       }
@@ -303,7 +331,7 @@ public class TrackContainer {
       }
     }
 
-    private class FilterToggler implements Panel.Hover {
+    private class FilterToggler implements Hover {
       public FilterToggler() {
       }
 
