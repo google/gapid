@@ -24,6 +24,7 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 public interface TitledPanel extends Panel {
   public String getTitle();
   public default String getSubTitle() { return ""; }
+  public default String getTooltip() { return ""; }
   @SuppressWarnings("unused")
   public default void decorateTitle(RenderContext ctx, Repainter repainter) { /* do nothing */ }
 }
