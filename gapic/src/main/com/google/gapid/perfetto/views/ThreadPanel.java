@@ -71,6 +71,11 @@ public class ThreadPanel extends TrackPanel implements Selectable {
   }
 
   @Override
+  public String getTooltip() {
+    return getTitle();
+  }
+
+  @Override
   public double getHeight() {
     return (expanded ? 1 + track.getThread().maxDepth : 1) * SLICE_HEIGHT;
   }
