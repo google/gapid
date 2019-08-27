@@ -3,6 +3,8 @@ package com.google.gapid.perfetto.canvas;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
+import com.google.gapid.util.Flags;
+import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
@@ -21,6 +23,9 @@ import java.util.logging.Logger;
  */
 public class PanelCanvas extends Canvas {
   private static final Logger LOG = Logger.getLogger(PanelCanvas.class.getName());
+
+  public static final Flag<Boolean> showRedraws = Flags.value(
+      "show-redraws", false, "Highlight canvas redraw areas", true);
 
   private final Panel panel;
   private final RenderContext.Global context;
@@ -51,6 +56,13 @@ public class PanelCanvas extends Canvas {
       long end = System.nanoTime();
       if (LOG.isLoggable(Level.FINE)) {
         LOG.log(Level.FINE, size + " (" + (end - start) / 1000000.0 + ") " + traces);
+      }
+
+      if (showRedraws.get()) {
+        size.width--;
+        size.height--;
+        e.gc.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
+        e.gc.drawRectangle(size);
       }
     });
     addListener(SWT.Resize, e -> {
