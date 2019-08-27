@@ -40,7 +40,7 @@ import (
 // Binding represents an attached ggp ssh client
 type Binding struct {
 	remotessh.Device
-	Gamelet string
+	Inst string
 }
 
 const (
@@ -105,7 +105,7 @@ func ggpDefaultRootConfigPath() (string, error) {
 
 type GGPConfiguration struct {
 	remotessh.Configuration
-	Gamelet string
+	Inst string
 }
 
 func getConfigs(ctx context.Context) ([]GGPConfiguration, error) {
@@ -113,21 +113,21 @@ func getConfigs(ctx context.Context) ([]GGPConfiguration, error) {
 
 	ggpPath, err := GGPExecutablePath()
 	if err != nil {
-		return nil, log.Errf(ctx, err, "Could not find ggp executable to list gamelets")
+		return nil, log.Errf(ctx, err, "Could not find ggp executable to list instances")
 	}
 	cli := ggpPath.System()
 
-	cmd := shell.Command(cli, "gamelet", "list")
-	gameletListOutBuf := &bytes.Buffer{}
-	gameletListErrBuf := &bytes.Buffer{}
+	cmd := shell.Command(cli, "instance", "list")
+	instanceListOutBuf := &bytes.Buffer{}
+	instanceListErrBuf := &bytes.Buffer{}
 
-	if err := cmd.Capture(gameletListOutBuf, gameletListErrBuf).Run(ctx); err != nil {
+	if err := cmd.Capture(instanceListOutBuf, instanceListErrBuf).Run(ctx); err != nil {
 		return nil, err
 	}
 
-	t, err := ParseListOutput(gameletListOutBuf)
+	t, err := ParseListOutput(instanceListOutBuf)
 	if err != nil {
-		return nil, log.Errf(ctx, err, "parse gamelet list")
+		return nil, log.Errf(ctx, err, "parse instance list")
 	}
 	for _, inf := range t.Rows {
 		if inf[3] != "RESERVED" && inf[3] != "IN_USE" {
@@ -136,12 +136,12 @@ func getConfigs(ctx context.Context) ([]GGPConfiguration, error) {
 		sshInitOutBuf := &bytes.Buffer{}
 		sshInitErrBuf := &bytes.Buffer{}
 
-		if err := shell.Command(cli, "ssh", "init", "--gamelet", inf[1], "-s").Capture(sshInitOutBuf, sshInitErrBuf).Run(ctx); err != nil {
-			log.W(ctx, "'ggp ssh init --gamelet %v -s' finished with error: %v", inf[1], err)
+		if err := shell.Command(cli, "ssh", "init", "--instance", inf[1], "-s").Capture(sshInitOutBuf, sshInitErrBuf).Run(ctx); err != nil {
+			log.W(ctx, "'ggp ssh init --instance %v -s' finished with error: %v", inf[1], err)
 			continue
 		}
 		if sshInitErrBuf.Len() != 0 {
-			log.W(ctx, "'ggp ssh init --gamelet %v -s' finished with error: %v", inf[1], sshInitErrBuf.String())
+			log.W(ctx, "'ggp ssh init --instance %v -s' finished with error: %v", inf[1], sshInitErrBuf.String())
 			continue
 		}
 		envs := []string{
@@ -153,7 +153,7 @@ func getConfigs(ctx context.Context) ([]GGPConfiguration, error) {
 			Env:  envs,
 		}
 		if err := json.Unmarshal(sshInitOutBuf.Bytes(), &cfg); err != nil {
-			log.W(ctx, "Failed at unmarshaling 'ggp ssh init --gamelet %v -s' output, fallback to use default config, err: %v", inf[1], err)
+			log.W(ctx, "Failed at unmarshaling 'ggp ssh init --instance %v -s' output, fallback to use default config, err: %v", inf[1], err)
 		}
 		configs = append(configs, GGPConfiguration{cfg, inf[1]})
 	}
@@ -235,8 +235,8 @@ func scanDevices(ctx context.Context, configurations []GGPConfiguration) error {
 		} else {
 			if device, err := remotessh.GetConnectedDevice(ctx, cfg.Configuration); err == nil {
 				dev := Binding{
-					Device:  device,
-					Gamelet: cfg.Gamelet,
+					Device: device,
+					Inst:   cfg.Inst,
 				}
 				device.Instance().Configuration.OS.Kind = bd.Stadia
 				registry.AddDevice(ctx, dev)

@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package ggp contains code for binding to and controlling Stadia gamelets.
+// Package ggp contains code for binding to and controlling Stadia instances.
 // https://stadia.dev
 package ggp
