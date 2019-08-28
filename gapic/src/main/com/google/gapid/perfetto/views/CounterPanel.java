@@ -95,6 +95,13 @@ public class CounterPanel extends TrackPanel implements Selectable {
         ctx.drawPath(path);
       });
 
+      String label = String.format("%,d", Math.round(counter.max));
+      Size labelSize = ctx.measure(label);
+      ctx.setBackgroundColor(colors().hoverBackground);
+      ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
+      ctx.setForegroundColor(colors().textMain);
+      ctx.drawText(label, 4, 4);
+
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, 2 * HOVER_PADDING + hovered.size.w, HEIGHT);
