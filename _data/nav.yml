@@ -34,6 +34,8 @@ toc:
         url: inspect/report
       - title: Shaders pane
         url: inspect/shaders
+      - title: Memory pane
+        url: inspect/memory
       - title: State pane
         url: inspect/state
       - title: Textures pane
