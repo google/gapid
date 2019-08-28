@@ -28,7 +28,7 @@ import com.google.gapid.perfetto.models.CounterTrack;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
 public class CounterPanel extends TrackPanel implements Selectable {
-  private static final double HEIGHT = 30;
+  private static final double HEIGHT = 45;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
