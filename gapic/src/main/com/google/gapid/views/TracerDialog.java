@@ -108,7 +108,7 @@ public class TracerDialog {
     dialog.setFilterNames(new String[] {
         "Trace Files (*.gfxtrace, *.perfetto)",
         "Graphics Traces (*.gfxtrace)",
-        "Perfetto Traces (*.perfetto)",
+        "System Profile (*.perfetto)",
         "All Files"
     });
     dialog.setFilterExtensions(new String[] {
@@ -518,7 +518,7 @@ public class TracerDialog {
             TraceTypeCapabilities ttc = (TraceTypeCapabilities)element;
             switch (ttc.getType()) {
               case Graphics: return ttc.getApi();
-              case Perfetto: return "Perfetto";
+              case Perfetto: return "System Profile";
               default: throw new AssertionError();
             }
           }

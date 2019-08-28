@@ -84,11 +84,11 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	if api.traceType == service.TraceType_Perfetto {
 		if verb.Perfetto == "" {
-			app.Usage(ctx, "The Perfetto config is required for Perfetto traces.")
+			app.Usage(ctx, "The Perfetto config is required for System Profiles.")
 			return nil
 		}
 		if verb.Local.Port != 0 {
-			app.Usage(ctx, "-local-port is not supported for Perfetto traces.")
+			app.Usage(ctx, "-local-port is not supported for System Profiles.")
 			return nil
 		}
 	}

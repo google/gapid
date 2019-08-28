@@ -33,8 +33,8 @@ import java.util.logging.Logger;
 
 public class PerfettoConfig {
   public static final Flag<String> perfettoConfig = Flags.value("perfetto", "",
-      "Path to a file containing a perfetto trace config proto in text format. " +
-      "Specifying this flag will enable the Perfetto tracing UI features");
+      "Path to a file containing a Perfetto config proto in text format. " +
+      "Specifying this flag will enable the System Profile UI features");
 
   private static final Logger LOG = Logger.getLogger(PerfettoConfig.class.getName());
   private static final PerfettoConfig MISSING = new PerfettoConfig(null);

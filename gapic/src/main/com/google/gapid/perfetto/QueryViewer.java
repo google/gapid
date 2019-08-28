@@ -141,7 +141,7 @@ public class QueryViewer extends Composite
         try {
           return result.get();
         } catch (RpcException e) {
-          LOG.log(Level.WARNING, "Perfetto Query failure", e);
+          LOG.log(Level.WARNING, "System Profile Query failure", e);
           return Perfetto.QueryResult.newBuilder()
               .setError(e.toString())
               .build();
@@ -210,7 +210,7 @@ public class QueryViewer extends Composite
         try {
           return result.get();
         } catch (RpcException e) {
-          LOG.log(Level.WARNING, "Perfetto Query failure", e);
+          LOG.log(Level.WARNING, "System Profile Query failure", e);
           return Perfetto.QueryResult.newBuilder()
               .setError(e.toString())
               .build();
