@@ -583,16 +583,21 @@ func (b *Builder) ReserveMemory(rng memory.Range) {
 }
 
 // GetMappedTarget gets current mapped memory's target address pointer in the builder.
-// Returns the target address on success and error otherwise.
+// The input |ptr| is the start of the mapped memory range. Returns the target address
+// on success and error otherwise.
 func (b *Builder) GetMappedTarget(ptr value.Pointer) (value.Pointer, error) {
 	p, ok := ptr.(value.ObservedPointer)
 	if !ok {
-		return ptr, fmt.Errorf("ptr is not type of value.ObservedPointer")
+		return ptr, fmt.Errorf("ptr %v is not type of value.ObservedPointer", ptr)
 	}
 
 	idx := interval.IndexOf(&b.mappedMemory, uint64(p))
 	if idx < 0 {
-		return ptr, fmt.Errorf("can not find ptr in mappedMemory")
+		return ptr, fmt.Errorf("can not find ptr %v in mappedMemory", ptr)
+	}
+
+	if b.mappedMemory[idx].Range.Base != uint64(p) {
+		return ptr, fmt.Errorf("the ptr %v is not the start of the mapped memory range", ptr)
 	}
 
 	return b.mappedMemory[idx].Target, nil
