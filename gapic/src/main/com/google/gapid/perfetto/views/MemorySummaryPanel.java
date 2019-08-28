@@ -99,6 +99,13 @@ public class MemorySummaryPanel extends TrackPanel {
         ctx.fillPath(path);
       });
 
+      String label = bytesToString(track.getMaxTotal());
+      Size labelSize = ctx.measure(label);
+      ctx.setBackgroundColor(colors().hoverBackground);
+      ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
+      ctx.setForegroundColor(colors().textMain);
+      ctx.drawText(label, 4, 4);
+
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(mouseXpos + HOVER_MARGIN, mouseYpos,
@@ -129,13 +136,6 @@ public class MemorySummaryPanel extends TrackPanel {
         ctx.drawCircle(mouseXpos, h * hovered.free / hovered.total, CURSOR_SIZE / 2);
         ctx.drawCircle(mouseXpos, h * (hovered.free + hovered.buffCache) / hovered.total, CURSOR_SIZE / 2);
       }
-
-      String label = bytesToString(track.getMaxTotal());
-      Size labelSize = ctx.measure(label);
-      ctx.setBackgroundColor(colors().hoverBackground);
-      ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
-      ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(label, 4, 4);
     });
   }
 
