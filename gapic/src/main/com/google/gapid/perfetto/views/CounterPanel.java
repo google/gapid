@@ -131,7 +131,7 @@ public class CounterPanel extends TrackPanel implements Selectable {
     }
 
     hovered = new HoverCard(m, data.values[idx]);
-    mouseXpos = state.timeToPx(data.ts[idx]);
+    mouseXpos = x;
     return new Hover() {
       @Override
       public Area getRedraw() {
