@@ -95,6 +95,14 @@ public class CounterPanel extends TrackPanel implements Selectable {
         ctx.drawPath(path);
       });
 
+      if (hovered != null) {
+        double y = (HEIGHT - 1) * (1 - (hovered.value - min) / range);
+        ctx.setBackgroundColor(colors().counterHighlight);
+        ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
+        ctx.setForegroundColor(colors().textMain);
+        ctx.drawCircle(mouseXpos, y, CURSOR_SIZE / 2);
+      }
+
       String label = String.format("%,d", Math.round(counter.max));
       Size labelSize = ctx.measure(label);
       ctx.setBackgroundColor(colors().hoverBackground);
@@ -108,9 +116,6 @@ public class CounterPanel extends TrackPanel implements Selectable {
         ctx.setForegroundColor(colors().textMain);
         ctx.drawText(
             hovered.label, mouseXpos + HOVER_MARGIN + HOVER_PADDING, (HEIGHT - hovered.size.h) / 2);
-
-        ctx.drawCircle(
-            mouseXpos, (HEIGHT - 1) * (1 - (hovered.value - min) / range), CURSOR_SIZE / 2);
       }
     });
   }
@@ -130,14 +135,23 @@ public class CounterPanel extends TrackPanel implements Selectable {
       }
     }
 
-    hovered = new HoverCard(m, data.values[idx]);
+    if (idx >= data.ts.length) {
+      return Hover.NONE;
+    }
+
+    double startX = state.timeToPx(data.ts[idx]);
+    double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
+    hovered = new HoverCard(m, data.values[idx], startX, endX);
     mouseXpos = x;
+
     return new Hover() {
       @Override
       public Area getRedraw() {
-        return new Area(mouseXpos - CURSOR_SIZE, -TRACK_MARGIN,
-            CURSOR_SIZE + HOVER_MARGIN + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
-            HEIGHT + 2 * TRACK_MARGIN);
+        double start = Math.min(mouseXpos - CURSOR_SIZE / 2, startX);
+        double end = Math.max(mouseXpos + CURSOR_SIZE / 2 +
+            HOVER_MARGIN + HOVER_PADDING + hovered.size.w + HOVER_PADDING,
+            endX);
+        return new Area(start, -TRACK_MARGIN, end - start, HEIGHT + 2 * TRACK_MARGIN);
       }
 
       @Override
@@ -155,11 +169,14 @@ public class CounterPanel extends TrackPanel implements Selectable {
 
   private static class HoverCard {
     public final double value;
+    public final double startX, endX;
     public final String label;
     public final Size size;
 
-    public HoverCard(TextMeasurer tm, double value) {
+    public HoverCard(TextMeasurer tm, double value, double startX, double endX) {
       this.value = value;
+      this.startX = startX;
+      this.endX = endX;
       this.label = String.format("Value: %,d", Math.round(value));
       this.size = tm.measure(label);
     }
