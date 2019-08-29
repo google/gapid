@@ -147,6 +147,9 @@ public class MemorySummaryPanel extends TrackPanel {
     }
 
     long time = state.pxToTime(x);
+    if (time < data.ts[0] || time > data.ts[data.ts.length - 1]) {
+      return Hover.NONE;
+    }
     int idx = 0;
     for (; idx < data.ts.length - 1; idx++) {
       if (data.ts[idx + 1] > time) {
