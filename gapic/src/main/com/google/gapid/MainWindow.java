@@ -264,12 +264,27 @@ public class MainWindow extends ApplicationWindow {
     MenuManager manager = findMenu(MenuItems.FILE_ID);
     manager.removeAll();
 
+    Action save = MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models));
+
     manager.add(MenuItems.FileOpen.create(() -> showOpenTraceDialog(getShell(), models)));
-    manager.add(MenuItems.FileSave.create(() -> showSaveTraceDialog(getShell(), models)));
+    manager.add(save);
     manager.add(createOpenRecentMenu(models));
     manager.add(MenuItems.FileTrace.create(
         () -> showTracingDialog(client, getShell(), models, widgets)));
     manager.add(MenuItems.FileExit.create(() -> close()));
+
+    save.setEnabled(false);
+    models.capture.addListener(new Capture.Listener() {
+      @Override
+      public void onCaptureLoadingStart(boolean maintainState) {
+        save.setEnabled(false);
+      }
+
+      @Override
+      public void onCaptureLoaded(Message error) {
+        save.setEnabled(models.capture.isGraphics());
+      }
+    });
 
     return manager;
   }
