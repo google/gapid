@@ -61,6 +61,7 @@ public class StyleConstants {
     public final RGBA timelineRuler;
     public final RGBA counterFill;
     public final RGBA counterStroke;
+    public final RGBA counterHighlight;
 
     public final RGBA textMain;
     public final RGBA textAlt;
@@ -91,6 +92,7 @@ public class StyleConstants {
         RGBA timelineRuler,
         RGBA counterFill,
         RGBA counterStroke,
+        RGBA counterHighlight,
         RGBA textMain,
         RGBA textAlt,
         RGBA textInvertedMain,
@@ -117,6 +119,7 @@ public class StyleConstants {
       this.timelineRuler = timelineRuler;
       this.counterFill = counterFill;
       this.counterStroke = counterStroke;
+      this.counterHighlight = counterHighlight;
       this.textMain = textMain;
       this.textAlt = textAlt;
       this.textInvertedMain = textInvertedMain;
@@ -145,6 +148,7 @@ public class StyleConstants {
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
     private static final RGBA LIGHT_COUNTER_FILL = LIGHT_CPU_USAGE_FILL;
     private static final RGBA LIGHT_COUNTER_STROKE = LIGHT_CPU_USAGE_STROKE;
+    private static final RGBA LIGHT_COUNTER_HIGHLIGHT = rgb(0x0A, 0x77, 0x82);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
@@ -177,6 +181,7 @@ public class StyleConstants {
             LIGHT_TIMELINE_RULER,
             LIGHT_COUNTER_FILL,
             LIGHT_COUNTER_STROKE,
+            LIGHT_COUNTER_HIGHLIGHT,
             LIGHT_TEXT_MAIN,
             LIGHT_TEXT_ALT,
             LIGHT_TEXT_INVERTED_MAIN,
@@ -205,6 +210,7 @@ public class StyleConstants {
     private static final RGBA DARK_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
     private static final RGBA DARK_COUNTER_FILL = DARK_CPU_USAGE_FILL;
     private static final RGBA DARK_COUNTER_STROKE = DARK_CPU_USAGE_STROKE;
+    private static final RGBA DARK_COUNTER_HIGHLIHGT = rgb(0x0A, 0x77, 0x82);
 
     private static final RGBA DARK_TEXT_MAIN = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
@@ -237,6 +243,7 @@ public class StyleConstants {
             DARK_TIMELINE_RULER,
             DARK_COUNTER_FILL,
             DARK_COUNTER_STROKE,
+            DARK_COUNTER_HIGHLIHGT,
             DARK_TEXT_MAIN,
             DARK_TEXT_ALT,
             DARK_TEXT_INVERTED_MAIN,
