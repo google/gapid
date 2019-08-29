@@ -155,7 +155,7 @@ public class MemorySummaryPanel extends TrackPanel {
     }
 
     hovered = new HoverCard(m, data.total[idx], data.unused[idx], data.buffCache[idx]);
-    mouseXpos = state.timeToPx(data.ts[idx]);
+    mouseXpos = x;
     mouseYpos = (height - 2 * TRACK_MARGIN - hovered.allSize.h) / 2;
     return new Hover() {
       @Override
