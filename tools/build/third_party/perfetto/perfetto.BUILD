@@ -19,13 +19,11 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 _COPTS_BASE = cc_copts() + [
-    "-DPERFETTO_IMPLEMENTATION",
     # Always build in optimized mode.
     "-O2",
     "-DNDEBUG",
 ] + select({
     "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
-    "@gapid//tools/build:linux": ["-Wno-error=class-memaccess"],  # TODO(#3099): Remove this when perfetto fixes the bug
     "//conditions:default": [],
 })
 
@@ -53,11 +51,9 @@ cc_library(
         "src/trace_processor/fuchsia_trace_parser.cc",
         "src/trace_processor/fuchsia_trace_tokenizer.cc",
         "src/trace_processor/fuchsia_trace_utils.cc",
+        "src/trace_processor/graphics_frame_event_parser.cc",
         "src/trace_processor/gzip_trace_parser.cc",
         "src/trace_processor/heap_profile_allocation_table.cc",
-        "src/trace_processor/heap_profile_callsite_table.cc",
-        "src/trace_processor/heap_profile_frame_table.cc",
-        "src/trace_processor/heap_profile_mapping_table.cc",
         "src/trace_processor/heap_profile_tracker.cc",
         "src/trace_processor/instants_table.cc",
         "src/trace_processor/metrics/descriptors.cc",
@@ -67,7 +63,6 @@ cc_library(
         "src/trace_processor/process_tracker.cc",
         "src/trace_processor/proto_trace_parser.cc",
         "src/trace_processor/proto_trace_tokenizer.cc",
-        "src/trace_processor/query_constraints.cc",
         "src/trace_processor/raw_table.cc",
         "src/trace_processor/row_iterators.cc",
         "src/trace_processor/sched_slice_table.cc",
@@ -75,8 +70,13 @@ cc_library(
         "src/trace_processor/slice_tracker.cc",
         "src/trace_processor/span_join_operator_table.cc",
         "src/trace_processor/sql_stats_table.cc",
-        "src/trace_processor/sqlite3_str_split.cc",
-        "src/trace_processor/sqlite_table.cc",
+        "src/trace_processor/sqlite/query_constraints.cc",
+        "src/trace_processor/sqlite/sqlite3_str_split.cc",
+        "src/trace_processor/sqlite/sqlite_table.cc",
+        "src/trace_processor/stack_profile_callsite_table.cc",
+        "src/trace_processor/stack_profile_frame_table.cc",
+        "src/trace_processor/stack_profile_mapping_table.cc",
+        "src/trace_processor/stack_profile_tracker.cc",
         "src/trace_processor/stats_table.cc",
         "src/trace_processor/storage_columns.cc",
         "src/trace_processor/storage_schema.cc",
@@ -92,6 +92,7 @@ cc_library(
         "src/trace_processor/trace_processor_shell.cc",
         "src/trace_processor/trace_sorter.cc",
         "src/trace_processor/trace_storage.cc",
+        "src/trace_processor/track_table.cc",
         "src/trace_processor/virtual_destructors.cc",
         "src/trace_processor/virtual_track_tracker.cc",
         "src/trace_processor/window_operator_table.cc",
@@ -467,6 +468,7 @@ proto_library(
         "perfetto/trace/ftrace/ftrace_event_bundle.proto",
         "perfetto/trace/ftrace/ftrace_stats.proto",
         "perfetto/trace/ftrace/generic.proto",
+        "perfetto/trace/ftrace/gpu.proto",
         "perfetto/trace/ftrace/i2c.proto",
         "perfetto/trace/ftrace/ipi.proto",
         "perfetto/trace/ftrace/irq.proto",
@@ -596,7 +598,6 @@ cc_stripped_binary(
 cc_stripped_binary(
     name = "traced",
     srcs = [
-        "src/base/watchdog_posix.cc",
         "src/traced/service/builtin_producer.cc",
         "src/traced/service/main.cc",
         "src/traced/service/service.cc",
@@ -655,7 +656,6 @@ cc_stripped_binary(
         "src/traced/probes/power/android_power_data_source.cc",
         "src/traced/probes/ps/process_stats_data_source.cc",
         "src/traced/probes/sys_stats/sys_stats_data_source.cc",
-        "src/base/watchdog_posix.cc",
     ] + glob([
         "src/android_internal/*.h",
         "src/traced/probes/**/*.h",
