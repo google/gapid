@@ -582,6 +582,27 @@ func (b *Builder) ReserveMemory(rng memory.Range) {
 	interval.Merge(&b.reservedMemory, rng.Span(), true)
 }
 
+// GetMappedTarget gets current mapped memory's target address pointer in the builder.
+// The input |ptr| is the start of the mapped memory range. Returns the target address
+// on success and error otherwise.
+func (b *Builder) GetMappedTarget(ptr value.Pointer) (value.Pointer, error) {
+	p, ok := ptr.(value.ObservedPointer)
+	if !ok {
+		return ptr, fmt.Errorf("ptr %v is not type of value.ObservedPointer", ptr)
+	}
+
+	idx := interval.IndexOf(&b.mappedMemory, uint64(p))
+	if idx < 0 {
+		return ptr, fmt.Errorf("can not find ptr %v in mappedMemory", ptr)
+	}
+
+	if b.mappedMemory[idx].Range.Base != uint64(p) {
+		return ptr, fmt.Errorf("the ptr %v is not the start of the mapped memory range", ptr)
+	}
+
+	return b.mappedMemory[idx].Target, nil
+}
+
 // MapMemory maps the memory range rng relative to the absolute pointer that is
 // on the top of the stack. Any ObservedPointers that are used while the pointer
 // is mapped will be automatically adjusted to the remapped address.
@@ -592,6 +613,7 @@ func (b *Builder) MapMemory(rng memory.Range) {
 	}
 
 	// Allocate memory to hold the target mapped base address.
+	// Do not release the memory as it may be used during frame loop.
 	target := b.AllocateMemory(uint64(b.memoryLayout.GetPointer().GetSize()))
 	b.Store(target)
 
