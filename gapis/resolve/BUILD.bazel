@@ -23,6 +23,7 @@ go_library(
         "commands.go",
         "constant_set.go",
         "contexts.go",
+        "delete.go",
         "doc.go",
         "errors.go",
         "events.go",
@@ -98,6 +99,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
+        "delete_test.go",
         "get_set_test.go",
         "requests_test.go",
         "state_tree_test.go",

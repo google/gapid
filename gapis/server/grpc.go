@@ -228,6 +228,15 @@ func (s *grpcServer) Set(ctx xctx.Context, req *service.SetRequest) (*service.Se
 	return &service.SetResponse{Res: &service.SetResponse_Path{Path: res}}, nil
 }
 
+func (s *grpcServer) Delete(ctx xctx.Context, req *service.DeleteRequest) (*service.DeleteResponse, error) {
+	defer s.inRPC()()
+	res, err := s.handler.Delete(s.bindCtx(ctx), req.Path, req.Config)
+	if err := service.NewError(err); err != nil {
+		return &service.DeleteResponse{Res: &service.DeleteResponse_Error{Error: err}}, nil
+	}
+	return &service.DeleteResponse{Res: &service.DeleteResponse_Path{Path: res}}, nil
+}
+
 func (s *grpcServer) Follow(ctx xctx.Context, req *service.FollowRequest) (*service.FollowResponse, error) {
 	defer s.inRPC()()
 	res, err := s.handler.Follow(s.bindCtx(ctx), req.Path, req.Config)

@@ -33,4 +33,5 @@ var _ = []database.Resolvable{
 	(*ResourcesResolvable)(nil),
 	(*SetResolvable)(nil),
 	(*StateResolvable)(nil),
+	(*DeleteResolvable)(nil),
 }
