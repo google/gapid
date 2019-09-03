@@ -22,6 +22,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
@@ -104,24 +105,24 @@ public class CounterPanel extends TrackPanel implements Selectable {
       }
 
       String label = String.format("%,d", Math.round(counter.max));
-      Size labelSize = ctx.measure(label);
+      Size labelSize = ctx.measure(Fonts.Style.Normal, label);
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(label, 4, 4);
+      ctx.drawText(Fonts.Style.Normal, label, 4, 4);
 
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, 2 * HOVER_PADDING + hovered.size.w, HEIGHT);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(
-            hovered.label, mouseXpos + HOVER_MARGIN + HOVER_PADDING, (HEIGHT - hovered.size.h) / 2);
+        ctx.drawText(Fonts.Style.Normal, hovered.label,
+            mouseXpos + HOVER_MARGIN + HOVER_PADDING, (HEIGHT - hovered.size.h) / 2);
       }
     });
   }
 
   @Override
-  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     CounterTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
@@ -173,12 +174,12 @@ public class CounterPanel extends TrackPanel implements Selectable {
     public final String label;
     public final Size size;
 
-    public HoverCard(TextMeasurer tm, double value, double startX, double endX) {
+    public HoverCard(Fonts.TextMeasurer tm, double value, double startX, double endX) {
       this.value = value;
       this.startX = startX;
       this.endX = endX;
       this.label = String.format("Value: %,d", Math.round(value));
-      this.size = tm.measure(label);
+      this.size = tm.measure(Fonts.Style.Normal, label);
     }
   }
 }

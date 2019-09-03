@@ -103,7 +103,7 @@ public class PanelGroup extends Panel.Base {
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     Child child = findPanel(y);
     if (child == null) {
       return Hover.NONE;

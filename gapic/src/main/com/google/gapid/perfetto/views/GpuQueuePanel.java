@@ -24,6 +24,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.GpuInfo;
@@ -104,7 +105,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         }
 
         ctx.setForegroundColor(colors().textInvertedMain);
-        ctx.drawText(title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
+        ctx.drawText(
+            Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
       }
 
       if (hoveredTitle != null) {
@@ -113,11 +115,12 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
             mouseXpos + HOVER_MARGIN, mouseYpos, hoveredSize.w + 2 * HOVER_PADDING, hoveredSize.h);
 
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(
-            hoveredTitle, mouseXpos + HOVER_MARGIN + HOVER_PADDING, mouseYpos + HOVER_PADDING / 2);
+        ctx.drawText(Fonts.Style.Normal, hoveredTitle,
+            mouseXpos + HOVER_MARGIN + HOVER_PADDING, mouseYpos + HOVER_PADDING / 2);
         if (!hoveredCategory.isEmpty()) {
           ctx.setForegroundColor(colors().textAlt);
-          ctx.drawText(hoveredCategory, mouseXpos + HOVER_MARGIN + HOVER_PADDING,
+          ctx.drawText(Fonts.Style.Normal, hoveredCategory,
+              mouseXpos + HOVER_MARGIN + HOVER_PADDING,
               mouseYpos + hoveredSize.h / 2, hoveredSize.h / 2);
         }
       }
@@ -125,7 +128,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   }
 
   @Override
-  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     SliceTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null) {
       return Hover.NONE;
@@ -152,8 +155,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         }
 
         hoveredSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
-            m.measure(hoveredTitle),
-            hoveredCategory.isEmpty() ? Size.ZERO : m.measure(hoveredCategory));
+            m.measure(Fonts.Style.Normal, hoveredTitle),
+            hoveredCategory.isEmpty() ? Size.ZERO : m.measure(Fonts.Style.Normal, hoveredCategory));
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
             (1 + gpu.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
         long id = data.ids[i];

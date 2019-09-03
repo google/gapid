@@ -26,6 +26,7 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
@@ -77,7 +78,8 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
         ctx.setForegroundColor(colors().textMain);
         for (Tooltip.Line line : tooltip.lines) {
           if (!line.line.isEmpty()) {
-            ctx.drawText(line.line, tooltip.x + HOVER_PADDING, tooltip.y + line.y + HOVER_PADDING);
+            ctx.drawText(Fonts.Style.Normal, line.line,
+                tooltip.x + HOVER_PADDING, tooltip.y + line.y + HOVER_PADDING);
           }
         }
       });
@@ -102,7 +104,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     if (x < LABEL_WIDTH) {
       String text = getTooltip();
       if (text.isEmpty()) {
@@ -134,7 +136,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
         .translated(LABEL_WIDTH, TRACK_MARGIN);
   }
 
-  protected abstract Hover onTrackMouseMove(TextMeasurer m, double x, double y);
+  protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y);
 
   public static class TrackDragger implements Panel.Dragger {
     private final State state;
@@ -186,12 +188,12 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
       this.height = height;
     }
 
-    public static Tooltip compute(TextMeasurer m, String text, double x, double y) {
-      Builder builder = new Builder(m.measure(" "));
+    public static Tooltip compute(Fonts.TextMeasurer m, String text, double x, double y) {
+      Builder builder = new Builder(m.measure(Fonts.Style.Normal, " "));
       para: for (String paragraph : LINE_SPLITTER.split(text)) {
         boolean first = true;
         do {
-          Size size = m.measure(paragraph);
+          Size size = m.measure(Fonts.Style.Normal, paragraph);
           if (size.w <= MAX_WIDTH) {
             builder.addLine(paragraph, size, first);
             continue para;
@@ -201,7 +203,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
           while (guess < paragraph.length() && !whitespace().matches(paragraph.charAt(guess))) {
             guess++;
           }
-          size = m.measure(paragraph.substring(0, guess));
+          size = m.measure(Fonts.Style.Normal, paragraph.substring(0, guess));
 
           if (size.w <= MAX_WIDTH) {
             do {
@@ -209,7 +211,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
               while (next < paragraph.length() && !whitespace().matches(paragraph.charAt(next))) {
                 next++;
               }
-              Size now = m.measure(paragraph.substring(0, next));
+              Size now = m.measure(Fonts.Style.Normal, paragraph.substring(0, next));
               if (now.w <= MAX_WIDTH) {
                 guess = next;
                 size = now;
@@ -236,7 +238,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
               }
 
               guess = next;
-              size = m.measure(paragraph.substring(0, next));
+              size = m.measure(Fonts.Style.Normal, paragraph.substring(0, next));
               if (size.w <= MAX_WIDTH) {
                 builder.addLine(paragraph.substring(0, guess), size, first);
                 paragraph = paragraph.substring(guess).trim();

@@ -21,7 +21,7 @@ public interface Panel {
   }
 
   @SuppressWarnings("unused")
-  public default Panel.Hover onMouseMove(TextMeasurer m, double x, double y) {
+  public default Panel.Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     return Hover.NONE;
   }
 
@@ -42,10 +42,6 @@ public interface Panel {
         }
       };
     }
-  }
-
-  public static interface TextMeasurer {
-    public Size measure(String text);
   }
 
   public static interface Dragger {

@@ -26,6 +26,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
@@ -114,7 +115,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+        ctx.drawText(Fonts.Style.Normal, hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
 
         ctx.setForegroundColor(colors().textMain);
         ctx.drawCircle(x, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
@@ -149,10 +150,12 @@ public class CpuPanel extends TrackPanel implements Selectable {
       }
 
       ctx.setForegroundColor(colors().textInvertedMain);
-      ctx.drawText(threadInfo.title, rectStart + 2, 2, rectWidth - 4, (h / 2) - 4);
+      ctx.drawText(
+          Fonts.Style.Normal, threadInfo.title, rectStart + 2, 2, rectWidth - 4, (h / 2) - 4);
       if (!threadInfo.subTitle.isEmpty()) {
         ctx.setForegroundColor(colors().textInvertedAlt);
-        ctx.drawText(threadInfo.subTitle, rectStart + 2, (h / 2) + 2, rectWidth - 4, (h / 2) - 4);
+        ctx.drawText(Fonts.Style.Normal, threadInfo.subTitle,
+            rectStart + 2, (h / 2) + 2, rectWidth - 4, (h / 2) - 4);
       }
     }
 
@@ -161,16 +164,17 @@ public class CpuPanel extends TrackPanel implements Selectable {
       ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, hoveredWidth + 2 * HOVER_PADDING, h);
 
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(hoveredThread.title, mouseXpos + HOVER_MARGIN + HOVER_PADDING, 2, (h / 2) - 4);
+      ctx.drawText(Fonts.Style.Normal, hoveredThread.title,
+          mouseXpos + HOVER_MARGIN + HOVER_PADDING, 2, (h / 2) - 4);
       if (!hoveredThread.subTitle.isEmpty()) {
-        ctx.drawText(hoveredThread.subTitle,
+        ctx.drawText(Fonts.Style.Normal, hoveredThread.subTitle,
             mouseXpos+ HOVER_MARGIN + HOVER_PADDING, (h / 2) + 2, (h / 2) - 4);
       }
     }
   }
 
   @Override
-  public Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     CpuTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null) {
       return Hover.NONE;
@@ -183,7 +187,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
     }
   }
 
-  private Hover sliceHover(CpuTrack.Data data, TextMeasurer m, double x) {
+  private Hover sliceHover(CpuTrack.Data data, Fonts.TextMeasurer m, double x) {
     mouseXpos = x;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
@@ -192,8 +196,9 @@ public class CpuPanel extends TrackPanel implements Selectable {
         if (hoveredThread == null) {
           return Hover.NONE;
         }
-        hoveredWidth =
-            Math.max(m.measure(hoveredThread.title).w, m.measure(hoveredThread.subTitle).w);
+        hoveredWidth = Math.max(
+            m.measure(Fonts.Style.Normal, hoveredThread.title).w,
+            m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
 
         return new Hover() {
@@ -224,7 +229,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
     return Hover.NONE;
   }
 
-  private Hover summaryHover(CpuTrack.Data data, TextMeasurer m, double x) {
+  private Hover summaryHover(CpuTrack.Data data, Fonts.TextMeasurer m, double x) {
     long time = state.pxToTime(x);
     int bucket = (int)((time - data.request.range.start) / data.bucketSize);
     if (bucket < 0 || bucket >= data.utilizations.length) {
@@ -234,7 +239,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
     double p = data.utilizations[bucket];
     String text = (int)(p * 100) + "% (" +
         timeToString(Math.round(p * data.bucketSize)) + " / " + timeToString(data.bucketSize) + ")";
-    hovered = new HoverCard(bucket, p, text, m.measure(text));
+    hovered = new HoverCard(bucket, p, text, m.measure(Fonts.Style.Normal, text));
 
     double mouseX = state.timeToPx(
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);

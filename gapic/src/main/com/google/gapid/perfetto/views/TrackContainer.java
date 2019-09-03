@@ -26,6 +26,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.unfoldLess;
 import static com.google.gapid.perfetto.views.StyleConstants.unfoldMore;
 
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.PanelGroup;
 import com.google.gapid.perfetto.canvas.RenderContext;
@@ -118,7 +119,7 @@ public class TrackContainer {
     public void render(RenderContext ctx, Repainter repainter) {
       ctx.withClip(0, 0, LABEL_WIDTH, height, () -> {
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawTextLeftTruncate(track.getTitle(),
+        ctx.drawTextLeftTruncate(Fonts.Style.Normal, track.getTitle(),
             10, 0, LABEL_WIDTH - 10 - ((filter != null) ? TOGGLE_ICON_OFFSET : 0), TITLE_HEIGHT);
         if (filter != null) {
           ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
@@ -144,7 +145,7 @@ public class TrackContainer {
     }
 
     @Override
-    public Hover onMouseMove(TextMeasurer m, double x, double y) {
+    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
       if (filter != null &&
           y < TITLE_HEIGHT && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
         return new FilterToggler(track.onMouseMove(m, x, y));
@@ -225,7 +226,7 @@ public class TrackContainer {
 
         ctx.setForegroundColor(colors().textMain);
         ctx.drawIcon(arrowDown(ctx.theme), 0, 0, TITLE_HEIGHT);
-        ctx.drawText(summary.getTitle(), LABEL_OFFSET, 0, TITLE_HEIGHT);
+        ctx.drawText(Fonts.Style.Normal, summary.getTitle(), LABEL_OFFSET, 0, TITLE_HEIGHT);
         if (filter != null) {
           ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
               LABEL_WIDTH - TOGGLE_ICON_OFFSET, 0, TITLE_HEIGHT);
@@ -241,11 +242,11 @@ public class TrackContainer {
         ctx.withClip(0, 0, LABEL_WIDTH, height, () -> {
           ctx.setForegroundColor(colors().textMain);
           ctx.drawIcon(arrowRight(ctx.theme), 0, 0, TITLE_HEIGHT);
-          ctx.drawTextLeftTruncate(summary.getTitle(),
+          ctx.drawTextLeftTruncate(Fonts.Style.Normal, summary.getTitle(),
               LABEL_OFFSET, 0, LABEL_WIDTH - LABEL_OFFSET, TITLE_HEIGHT);
           if (!summary.getSubTitle().isEmpty()) {
             ctx.setForegroundColor(colors().textAlt);
-            ctx.drawText(summary.getSubTitle(), LABEL_OFFSET, TITLE_HEIGHT);
+            ctx.drawText(Fonts.Style.Normal, summary.getSubTitle(), LABEL_OFFSET, TITLE_HEIGHT);
           }
         });
 
@@ -278,12 +279,12 @@ public class TrackContainer {
     }
 
     @Override
-    public Hover onMouseMove(TextMeasurer m, double x, double y) {
+    public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
       if (expanded) {
         if (y < TITLE_HEIGHT) {
           if (filter != null && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
             return new FilterToggler();
-          } else if (x < LABEL_OFFSET + m.measure(summary.getTitle()).w) {
+          } else if (x < LABEL_OFFSET + m.measure(Fonts.Style.Normal, summary.getTitle()).w) {
             return new ExpansionToggler(Hover.NONE);
           } else {
             return Hover.NONE;
@@ -293,7 +294,7 @@ public class TrackContainer {
         }
       } else {
         if (y < TITLE_HEIGHT &&
-            x < Math.min(LABEL_WIDTH, LABEL_OFFSET + m.measure(summary.getTitle()).w)) {
+            x < Math.min(LABEL_WIDTH, LABEL_OFFSET + m.measure(Fonts.Style.Normal, summary.getTitle()).w)) {
           return new ExpansionToggler(summary.onMouseMove(m, x, y));
         } else {
           return summary.onMouseMove(m, x, y);

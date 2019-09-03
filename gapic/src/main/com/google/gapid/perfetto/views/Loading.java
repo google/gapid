@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.models.Track;
 
@@ -53,6 +54,7 @@ public class Loading {
     ctx.setBackgroundColor(colors().loadingBackground);
     ctx.fillRect(x1, MARGIN, w, h - 2 * MARGIN);
     ctx.setForegroundColor(colors().loadingForeground);
-    ctx.drawTextIfFits("Loading...", x1 + MARGIN, MARGIN, w - 2 * MARGIN, h - 2 * MARGIN);
+    ctx.drawTextIfFits(
+        Fonts.Style.Normal, "Loading...", x1 + MARGIN, MARGIN, w - 2 * MARGIN, h - 2 * MARGIN);
   }
 }
