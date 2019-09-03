@@ -40,6 +40,11 @@ public class Area {
     }
 
     @Override
+    public boolean intersects(Area o) {
+      return false;
+    }
+
+    @Override
     public int hashCode() {
       return 0;
     }
@@ -74,6 +79,11 @@ public class Area {
     @Override
     public Area intersect(double ox, double oy, double ow, double oh) {
       return (ow <= 0 || oh <= 0) ? NONE : new Area(ox, oy, ow, oh);
+    }
+
+    @Override
+    public boolean intersects(Area o) {
+      return !o.isEmpty();
     }
 
     @Override
@@ -133,6 +143,15 @@ public class Area {
     double nx = Math.max(x, ox), nw = Math.min(x + w, ox + ow) - nx;
     double ny = Math.max(y, oy), nh = Math.min(y + h, oy + oh) - ny;
     return (nw <= 0 || nh <= 0) ? Area.NONE : new Area(nx, ny, nw, nh);
+  }
+
+  public boolean intersects(Area o) {
+    if (o == FULL) {
+      return true;
+    } else if (o.isEmpty()) {
+      return false;
+    }
+    return (x + w > o.x) && (x < o.x + o.w) && (y + h > o.y) && (y < o.y + o.h);
   }
 
   public boolean isEmpty() {

@@ -118,6 +118,11 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
         }
 
         @Override
+        public boolean isOverlay() {
+          return true;
+        }
+
+        @Override
         public void stop() {
           tooltip = null;
         }

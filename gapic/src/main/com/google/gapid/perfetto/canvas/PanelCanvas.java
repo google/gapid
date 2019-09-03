@@ -149,6 +149,13 @@ public class PanelCanvas extends Canvas {
         updateMousePosition(lastMouse.x, lastMouse.y, 0, true, false);
       }
 
+      if (hover.isOverlay()) {
+        Area hoverArea = hover.getRedraw();
+        if (area.intersects(hoverArea)) {
+          area = area.combine(hoverArea);
+        }
+      }
+
       Rectangle size = getClientArea();
       if (area != Area.FULL) {
         size.x = Math.max(0, Math.min(size.width - 1, (int)Math.floor(area.x)));

@@ -110,6 +110,7 @@ public interface Panel {
     public default Area getRedraw() { return Area.NONE; }
     public default Cursor getCursor(@SuppressWarnings("unused") Display display) { return null; }
     public default void stop() { /* empty */ }
+    public default boolean isOverlay() { return false; }
 
     /** Returns whether the screen should be redrawn. */
     public default boolean click() { return false; }
@@ -138,6 +139,11 @@ public interface Panel {
         @Override
         public void stop() {
           Hover.this.stop();
+        }
+
+        @Override
+        public boolean isOverlay() {
+          return Hover.this.isOverlay();
         }
 
         @Override
