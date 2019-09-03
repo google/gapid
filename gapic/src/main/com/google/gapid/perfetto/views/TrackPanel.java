@@ -76,11 +76,10 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
         ctx.drawRect(tooltip.x, tooltip.y,
             tooltip.width + 2 * HOVER_PADDING - 1, tooltip.height + 2 * HOVER_PADDING - 1);
         ctx.setForegroundColor(colors().textMain);
+
+        double tx = tooltip.x + HOVER_PADDING, ty = tooltip.y + HOVER_PADDING;
         for (Tooltip.Line line : tooltip.lines) {
-          if (!line.line.isEmpty()) {
-            ctx.drawText(Fonts.Style.Normal, line.line,
-                tooltip.x + HOVER_PADDING, tooltip.y + line.y + HOVER_PADDING);
-          }
+          line.render(ctx, tx, ty);
         }
       });
     }
@@ -192,10 +191,16 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
       Builder builder = new Builder(m.measure(Fonts.Style.Normal, " "));
       para: for (String paragraph : LINE_SPLITTER.split(text)) {
         boolean first = true;
+        Fonts.Style style = Fonts.Style.Normal;
+        if (paragraph.startsWith("\\b")) {
+          style = Fonts.Style.Bold;
+          paragraph = paragraph.substring(2);
+        }
+
         do {
-          Size size = m.measure(Fonts.Style.Normal, paragraph);
+          Size size = m.measure(style, paragraph);
           if (size.w <= MAX_WIDTH) {
-            builder.addLine(paragraph, size, first);
+            builder.addLine(paragraph, style, size, first);
             continue para;
           }
 
@@ -203,7 +208,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
           while (guess < paragraph.length() && !whitespace().matches(paragraph.charAt(guess))) {
             guess++;
           }
-          size = m.measure(Fonts.Style.Normal, paragraph.substring(0, guess));
+          size = m.measure(style, paragraph.substring(0, guess));
 
           if (size.w <= MAX_WIDTH) {
             do {
@@ -211,7 +216,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
               while (next < paragraph.length() && !whitespace().matches(paragraph.charAt(next))) {
                 next++;
               }
-              Size now = m.measure(Fonts.Style.Normal, paragraph.substring(0, next));
+              Size now = m.measure(style, paragraph.substring(0, next));
               if (now.w <= MAX_WIDTH) {
                 guess = next;
                 size = now;
@@ -219,7 +224,7 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
                 break;
               }
             } while (guess < paragraph.length());
-            builder.addLine(paragraph.substring(0, guess), size, first);
+            builder.addLine(paragraph.substring(0, guess), style, size, first);
             paragraph = paragraph.substring(guess).trim();
             first = false;
           } else {
@@ -231,16 +236,16 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
 
               if (next == 0) {
                 // We have a single word longer than our max width. Blow our limit.
-                builder.addLine(paragraph.substring(0, guess), size, first);
+                builder.addLine(paragraph.substring(0, guess), style, size, first);
                 paragraph = paragraph.substring(guess).trim();
                 first = false;
                 break;
               }
 
               guess = next;
-              size = m.measure(Fonts.Style.Normal, paragraph.substring(0, next));
+              size = m.measure(style, paragraph.substring(0, next));
               if (size.w <= MAX_WIDTH) {
-                builder.addLine(paragraph.substring(0, guess), size, first);
+                builder.addLine(paragraph.substring(0, guess), style, size, first);
                 paragraph = paragraph.substring(guess).trim();
                 first = false;
                 break;
@@ -253,12 +258,20 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
     }
 
     public static class Line {
-      public final String line;
-      public final double y;
+      private final String line;
+      private final Fonts.Style style;
+      private final double y;
 
-      public Line(String line, double y) {
+      public Line(String line, Fonts.Style style, double y) {
         this.line = line;
         this.y = y;
+        this.style = style;
+      }
+
+      public void render(RenderContext ctx, double ox, double oy) {
+        if (!line.isEmpty()) {
+          ctx.drawText(style, line, ox, oy + y);
+        }
       }
     }
 
@@ -276,12 +289,12 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
         return new Tooltip(x, y, lines.toArray(new Line[lines.size()]), width, height);
       }
 
-      public void addLine(String line, Size size, boolean addSep) {
+      public void addLine(String line, Fonts.Style style, Size size, boolean addSep) {
         if (!lines.isEmpty() && addSep) {
-          lines.add(new Line("", height));
+          lines.add(new Line("", style, height));
           height += empty.h;
         }
-        lines.add(new Line(line, height));
+        lines.add(new Line(line, style, height));
         width = Math.max(width, size.w);
         height += size.h;
       }
