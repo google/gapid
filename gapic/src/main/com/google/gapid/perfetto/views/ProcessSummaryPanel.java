@@ -67,7 +67,7 @@ public class ProcessSummaryPanel extends TrackPanel {
 
   @Override
   public String getTooltip() {
-    return getTitle() + "\n" + getSubTitle();
+    return "\\b" + getTitle() + "\n" + getSubTitle();
   }
 
   @Override
