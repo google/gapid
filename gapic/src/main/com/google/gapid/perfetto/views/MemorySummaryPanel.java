@@ -123,10 +123,10 @@ public class MemorySummaryPanel extends TrackPanel {
 
         x += LEGEND_SIZE + HOVER_PADDING;
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(Fonts.Style.Normal, HoverCard.TOTAL_LABEL,     x, y + 0 * dy, dy);
-        ctx.drawText(Fonts.Style.Normal, HoverCard.FREE_LABEL,      x, y + 1 * dy, dy);
-        ctx.drawText(Fonts.Style.Normal, HoverCard.BUFFCACHE_LABEL, x, y + 2 * dy, dy);
-        ctx.drawText(Fonts.Style.Normal, HoverCard.USED_LABEL,      x, y + 3 * dy, dy);
+        ctx.drawText(Fonts.Style.Bold, HoverCard.TOTAL_LABEL,     x, y + 0 * dy, dy);
+        ctx.drawText(Fonts.Style.Bold, HoverCard.FREE_LABEL,      x, y + 1 * dy, dy);
+        ctx.drawText(Fonts.Style.Bold, HoverCard.BUFFCACHE_LABEL, x, y + 2 * dy, dy);
+        ctx.drawText(Fonts.Style.Bold, HoverCard.USED_LABEL,      x, y + 3 * dy, dy);
 
         x += hovered.labelSize.w + HOVER_PADDING + hovered.valueSize.w;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.totalS,     x, y + 0 * dy, dy);
@@ -225,10 +225,10 @@ public class MemorySummaryPanel extends TrackPanel {
       this.usedS = bytesToString(total - free - buffCache);
 
       this.labelSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
-          tm.measure(Fonts.Style.Normal, TOTAL_LABEL),
-          tm.measure(Fonts.Style.Normal, FREE_LABEL),
-          tm.measure(Fonts.Style.Normal, BUFFCACHE_LABEL),
-          tm.measure(Fonts.Style.Normal, USED_LABEL));
+          tm.measure(Fonts.Style.Bold, TOTAL_LABEL),
+          tm.measure(Fonts.Style.Bold, FREE_LABEL),
+          tm.measure(Fonts.Style.Bold, BUFFCACHE_LABEL),
+          tm.measure(Fonts.Style.Bold, USED_LABEL));
 
       this.valueSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
           tm.measure(Fonts.Style.Normal, this.totalS),
