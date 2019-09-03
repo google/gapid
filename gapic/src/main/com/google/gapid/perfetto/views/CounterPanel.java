@@ -52,7 +52,7 @@ public class CounterPanel extends TrackPanel implements Selectable {
   @Override
   public String getTooltip() {
     CounterInfo counter = track.getCounter();
-    StringBuilder sb = new StringBuilder().append(counter.name);
+    StringBuilder sb = new StringBuilder().append("\\b").append(counter.name);
     if (!counter.description.isEmpty()) {
       sb.append("\n").append(counter.description);
     }

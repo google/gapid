@@ -73,7 +73,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
 
   @Override
   public String getTooltip() {
-    return getTitle();
+    return "\\b" + getTitle();
   }
 
   @Override
