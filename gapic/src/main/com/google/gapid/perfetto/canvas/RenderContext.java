@@ -38,6 +38,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   private final LinkedList<TransformAndClip> transformStack = Lists.newLinkedList();
   private final List<Overlay> overlays = Lists.newArrayList();
   private final Map<String, Long> traces = Maps.newHashMap();
+  private Fonts.Style lastFontStyle = Fonts.Style.Normal;
 
   public RenderContext(Theme theme, GC gc, ColorCache colors, Fonts.Context fontContext) {
     this.theme = theme;
@@ -134,7 +135,10 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
   // x, y is top left corner of text.
   public void drawText(Fonts.Style style, String text, double x, double y) {
-    assert style == Style.Normal;
+    if (style != lastFontStyle) {
+      lastFontStyle = style;
+      fontContext.setFont(gc, style);
+    }
     gc.drawText(text, scale(x), scale(y), SWT.DRAW_TRANSPARENT);
   }
 
