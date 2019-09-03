@@ -23,6 +23,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
@@ -125,7 +126,7 @@ public class ProcessSummaryPanel extends TrackPanel {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+        ctx.drawText(Fonts.Style.Normal, hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
 
         ctx.setForegroundColor(colors().textMain);
         ctx.drawCircle(x, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
@@ -160,16 +161,17 @@ public class ProcessSummaryPanel extends TrackPanel {
       ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, hoveredWidth + 2 * HOVER_PADDING, h);
 
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(hoveredThread.title, mouseXpos + HOVER_MARGIN + HOVER_PADDING, 2, (h / 2) - 4);
+      ctx.drawText(Fonts.Style.Normal, hoveredThread.title,
+          mouseXpos + HOVER_MARGIN + HOVER_PADDING, 2, (h / 2) - 4);
       if (!hoveredThread.subTitle.isEmpty()) {
-        ctx.drawText(hoveredThread.subTitle,
+        ctx.drawText(Fonts.Style.Normal, hoveredThread.subTitle,
             mouseXpos + HOVER_MARGIN + HOVER_PADDING, (h / 2) + 2, (h / 2) - 4);
       }
     }
   }
 
   @Override
-  public Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     ProcessSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null) {
       return Hover.NONE;
@@ -182,7 +184,8 @@ public class ProcessSummaryPanel extends TrackPanel {
     }
   }
 
-  private Hover sliceHover(ProcessSummaryTrack.Data data, TextMeasurer m, double x, double y) {
+  private Hover sliceHover(
+      ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
     int cpu = (int)(y * state.getData().numCpus / HEIGHT);
     if (cpu < 0 || cpu >= state.getData().numCpus) {
       return Hover.NONE;
@@ -196,8 +199,9 @@ public class ProcessSummaryPanel extends TrackPanel {
         if (hoveredThread == null) {
           return Hover.NONE;
         }
-        hoveredWidth =
-            Math.max(m.measure(hoveredThread.title).w, m.measure(hoveredThread.subTitle).w);
+        hoveredWidth = Math.max(
+            m.measure(Fonts.Style.Normal, hoveredThread.title).w,
+            m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
 
         return new Hover() {
@@ -228,7 +232,7 @@ public class ProcessSummaryPanel extends TrackPanel {
     return Hover.NONE;
   }
 
-  private Hover summaryHover(ProcessSummaryTrack.Data data, TextMeasurer m, double x) {
+  private Hover summaryHover(ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x) {
     long time = state.pxToTime(x);
     int bucket = (int)((time - data.request.range.start) / data.bucketSize);
     if (bucket < 0 || bucket >= data.utilizations.length) {
@@ -238,7 +242,7 @@ public class ProcessSummaryPanel extends TrackPanel {
     double p = data.utilizations[bucket];
     String text = (int)(p * 100) + "% (" +
         timeToString(Math.round(p * data.bucketSize)) + " / " + timeToString(data.bucketSize) + ")";
-    hovered = new HoverCard(bucket, p, text, m.measure(text));
+    hovered = new HoverCard(bucket, p, text, m.measure(Fonts.Style.Normal, text));
 
     double mouseX = state.timeToPx(
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);

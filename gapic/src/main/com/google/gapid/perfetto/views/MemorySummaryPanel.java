@@ -20,6 +20,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.MemorySummaryTrack;
@@ -100,11 +101,11 @@ public class MemorySummaryPanel extends TrackPanel {
       });
 
       String label = bytesToString(track.getMaxTotal());
-      Size labelSize = ctx.measure(label);
+      Size labelSize = ctx.measure(Fonts.Style.Normal, label);
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(label, 4, 4);
+      ctx.drawText(Fonts.Style.Normal, label, 4, 4);
 
       if (hovered != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
@@ -122,16 +123,16 @@ public class MemorySummaryPanel extends TrackPanel {
 
         x += LEGEND_SIZE + HOVER_PADDING;
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(HoverCard.TOTAL_LABEL,     x, y + 0 * dy, dy);
-        ctx.drawText(HoverCard.FREE_LABEL,      x, y + 1 * dy, dy);
-        ctx.drawText(HoverCard.BUFFCACHE_LABEL, x, y + 2 * dy, dy);
-        ctx.drawText(HoverCard.USED_LABEL,      x, y + 3 * dy, dy);
+        ctx.drawText(Fonts.Style.Normal, HoverCard.TOTAL_LABEL,     x, y + 0 * dy, dy);
+        ctx.drawText(Fonts.Style.Normal, HoverCard.FREE_LABEL,      x, y + 1 * dy, dy);
+        ctx.drawText(Fonts.Style.Normal, HoverCard.BUFFCACHE_LABEL, x, y + 2 * dy, dy);
+        ctx.drawText(Fonts.Style.Normal, HoverCard.USED_LABEL,      x, y + 3 * dy, dy);
 
         x += hovered.labelSize.w + HOVER_PADDING + hovered.valueSize.w;
-        ctx.drawTextRightJustified(hovered.totalS,     x, y + 0 * dy, dy);
-        ctx.drawTextRightJustified(hovered.freeS,      x, y + 1 * dy, dy);
-        ctx.drawTextRightJustified(hovered.buffCacheS, x, y + 2 * dy, dy);
-        ctx.drawTextRightJustified(hovered.usedS,      x, y + 3 * dy, dy);
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.totalS,     x, y + 0 * dy, dy);
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.freeS,      x, y + 1 * dy, dy);
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.buffCacheS, x, y + 2 * dy, dy);
+        ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.usedS,      x, y + 3 * dy, dy);
 
         ctx.drawCircle(mouseXpos, h * hovered.free / hovered.total, CURSOR_SIZE / 2);
         ctx.drawCircle(mouseXpos, h * (hovered.free + hovered.buffCache) / hovered.total, CURSOR_SIZE / 2);
@@ -140,7 +141,7 @@ public class MemorySummaryPanel extends TrackPanel {
   }
 
   @Override
-  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     MemorySummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
@@ -214,7 +215,7 @@ public class MemorySummaryPanel extends TrackPanel {
     public final Size labelSize;
     public final Size allSize;
 
-    public HoverCard(TextMeasurer tm, long total, long free, long buffCache) {
+    public HoverCard(Fonts.TextMeasurer tm, long total, long free, long buffCache) {
       this.total = total;
       this.free = free;
       this.buffCache = buffCache;
@@ -224,16 +225,16 @@ public class MemorySummaryPanel extends TrackPanel {
       this.usedS = bytesToString(total - free - buffCache);
 
       this.labelSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
-          tm.measure(TOTAL_LABEL),
-          tm.measure(FREE_LABEL),
-          tm.measure(BUFFCACHE_LABEL),
-          tm.measure(USED_LABEL));
+          tm.measure(Fonts.Style.Normal, TOTAL_LABEL),
+          tm.measure(Fonts.Style.Normal, FREE_LABEL),
+          tm.measure(Fonts.Style.Normal, BUFFCACHE_LABEL),
+          tm.measure(Fonts.Style.Normal, USED_LABEL));
 
       this.valueSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
-          tm.measure(this.totalS),
-          tm.measure(this.freeS),
-          tm.measure(this.buffCacheS),
-          tm.measure(this.usedS));
+          tm.measure(Fonts.Style.Normal, this.totalS),
+          tm.measure(Fonts.Style.Normal, this.freeS),
+          tm.measure(Fonts.Style.Normal, this.buffCacheS),
+          tm.measure(Fonts.Style.Normal, this.usedS));
       this.allSize =
           new Size(labelSize.w + HOVER_PADDING + valueSize.w, Math.max(labelSize.h, valueSize.h));
     }

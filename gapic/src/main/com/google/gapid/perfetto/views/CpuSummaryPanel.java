@@ -24,6 +24,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuSummaryTrack;
@@ -104,7 +105,7 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
           ctx.setBackgroundColor(colors().hoverBackground);
           ctx.fillRect(x + HOVER_MARGIN, h - HOVER_PADDING - dy, dx, dy);
           ctx.setForegroundColor(colors().textMain);
-          ctx.drawText(hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
+          ctx.drawText(Fonts.Style.Normal, hovered.text, x + HOVER_MARGIN + HOVER_PADDING, h - dy);
 
           ctx.setForegroundColor(colors().textMain);
           ctx.drawCircle(x, h * (1 - hovered.utilization), CURSOR_SIZE / 2);
@@ -114,7 +115,7 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   }
 
   @Override
-  protected Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     CpuSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null || data.utilizations.length == 0) {
       return Hover.NONE;
@@ -129,7 +130,7 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
     double p = data.utilizations[bucket];
     String text = (int)(p * 100) + "% (" +
         timeToString(Math.round(p * data.bucketSize)) + " / " + timeToString(data.bucketSize) + ")";
-    hovered = new HoverCard(bucket, p, text, m.measure(text));
+    hovered = new HoverCard(bucket, p, text, m.measure(Fonts.Style.Normal, text));
 
     double mouseX = state.timeToPx(
         data.request.range.start + hovered.bucket * data.bucketSize + data.bucketSize / 2);

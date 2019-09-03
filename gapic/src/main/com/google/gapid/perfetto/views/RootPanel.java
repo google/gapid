@@ -21,6 +21,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.PanelGroup;
 import com.google.gapid.perfetto.canvas.RenderContext;
@@ -156,7 +157,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
   }
 
   @Override
-  public Hover onMouseMove(TextMeasurer m, double x, double y) {
+  public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     double topHeight = top.getPreferredHeight();
     if (y < topHeight) {
       return Hover.NONE;

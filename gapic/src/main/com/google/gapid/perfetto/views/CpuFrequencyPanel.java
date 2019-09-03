@@ -22,6 +22,7 @@ import static com.google.gapid.util.Colors.hsl;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuFrequencyTrack;
@@ -129,7 +130,7 @@ public class CpuFrequencyPanel extends TrackPanel {
         ctx.setBackgroundColor(hsl(hue, .45f, .75f));
         ctx.setForegroundColor(hsl(hue, .45f, .45f));
 
-        Size textSize = ctx.measure(hoverLabel);
+        Size textSize = ctx.measure(Fonts.Style.Normal, hoverLabel);
         double xStart = Math.floor(state.timeToPx(hoveredTs));
         double xEnd = hoveredTsEnd == null ? endPx : Math.floor(state.timeToPx(hoveredTsEnd));
         double y = (1 - hoveredValue / yMax) * h;
@@ -154,25 +155,25 @@ public class CpuFrequencyPanel extends TrackPanel {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(mouseXpos + 5, 0, textSize.w + 16, h);
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawText(hoverLabel, mouseXpos + 5 + 8, (h - 2 * textSize.h) / 4);
+        ctx.drawText(Fonts.Style.Normal, hoverLabel, mouseXpos + 5 + 8, (h - 2 * textSize.h) / 4);
         if (hoveredIdle != null && hoveredIdle != -1) {
           String idle = "Idle: " + (hoveredIdle + 1);
-          ctx.drawText(idle, mouseXpos + 5 + 8, (3 * h - 2 * textSize.h) / 4);
+          ctx.drawText(Fonts.Style.Normal, idle, mouseXpos + 5 + 8, (3 * h - 2 * textSize.h) / 4);
         }
       }
 
       // Write the Y scale on the top left corner.
-      Size labelSize = ctx.measure(yLabel);
+      Size labelSize = ctx.measure(Fonts.Style.Normal, yLabel);
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(0, 0, labelSize.w + 8, labelSize.h + 8);
 
       ctx.setForegroundColor(colors().textMain);
-      ctx.drawText(yLabel, 4, 4);
+      ctx.drawText(Fonts.Style.Normal, yLabel, 4, 4);
     });
   }
 
   @Override
-  public Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
+  public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     CpuFrequencyTrack.Data data = track.getData(state, () -> { /* nothing */ });
     if (data == null) {
       return Hover.NONE;
@@ -192,7 +193,7 @@ public class CpuFrequencyPanel extends TrackPanel {
         double xStart = Math.floor(state.timeToPx(hoveredTs)) - 4;
         double xEnd = Math.max(hoveredTsEnd == null ?
             state.timeToPx(state.getVisibleTime().end) : Math.floor(state.timeToPx(hoveredTsEnd)),
-            x + m.measure(hoverLabel).w + 21);
+            x + m.measure(Fonts.Style.Normal, hoverLabel).w + 21);
 
         return new Hover() {
           @Override
