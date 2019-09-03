@@ -1,16 +1,12 @@
 package com.google.gapid.perfetto.canvas;
 
 import com.google.common.base.Preconditions;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.gapid.perfetto.canvas.Fonts.Style;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Device;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGBA;
@@ -22,9 +18,7 @@ import org.eclipse.swt.widgets.Control;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -40,16 +34,16 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
   private final GC gc;
   private final ColorCache colors;
-  private final Fonts.TextMeasurer textMeasurer;
+  private final Fonts.Context fontContext;
   private final LinkedList<TransformAndClip> transformStack = Lists.newLinkedList();
   private final List<Overlay> overlays = Lists.newArrayList();
   private final Map<String, Long> traces = Maps.newHashMap();
 
-  public RenderContext(Theme theme, GC gc, ColorCache colors, Fonts.TextMeasurer textMeasurer) {
+  public RenderContext(Theme theme, GC gc, ColorCache colors, Fonts.Context fontContext) {
     this.theme = theme;
     this.gc = gc;
     this.colors = colors;
-    this.textMeasurer = textMeasurer;
+    this.fontContext = fontContext;
 
     Area clip = Area.of(gc.getClipping());
     Transform transform = new Transform(gc.getDevice());
@@ -58,6 +52,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     gc.setTransform(transform);
     transformStack.push(new TransformAndClip(transform, clip));
     gc.setLineWidth((int)scale);
+    fontContext.setFont(gc, Fonts.Style.Normal);
   }
 
   public void addOverlay(Runnable renderer) {
@@ -82,7 +77,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
   @Override
   public Size measure(Fonts.Style style, String text) {
-    return textMeasurer.measure(style, text);
+    return fontContext.measure(style, text);
   }
 
   @Override
@@ -139,13 +134,13 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
   // x, y is top left corner of text.
   public void drawText(Fonts.Style style, String text, double x, double y) {
-    assert style == Fonts.Style.Normal;
+    assert style == Style.Normal;
     gc.drawText(text, scale(x), scale(y), SWT.DRAW_TRANSPARENT);
   }
 
   // draws text centered vertically
   public void drawText(Fonts.Style style, String text, double x, double y, double h) {
-    drawText(style, text, x, y + (h - textMeasurer.measure(style, text).h) / 2);
+    drawText(style, text, x, y + (h - fontContext.measure(style, text).h) / 2);
   }
 
   // draws the text centered horizontally and vertically, truncated to fit into the given width.
@@ -163,7 +158,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
       Fonts.Style style, String text, double x, double y, double w, double h, boolean truncate) {
     String toDisplay = text;
     for (int l = text.length(); ; ) {
-      Size size = textMeasurer.measure(style, toDisplay);
+      Size size = fontContext.measure(style, toDisplay);
       if (size.w < w) {
         drawText(style, toDisplay, x + (w - size.w) / 2 , y + (h - size.h) / 2);
         break;
@@ -184,7 +179,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
       Fonts.Style style, String text, double x, double y, double w, double h) {
     String toDisplay = text;
     for (int l = text.length(); ; ) {
-      Size size = textMeasurer.measure(style, toDisplay);
+      Size size = fontContext.measure(style, toDisplay);
       if (size.w < w) {
         drawText(style, toDisplay, x, y + (h - size.h) / 2);
         break;
@@ -200,7 +195,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
   // draws the text centered vertically and on the left of x.
   public void drawTextRightJustified(Fonts.Style style, String text, double x, double y, double h) {
-    Size size = textMeasurer.measure(style, text);
+    Size size = fontContext.measure(style, text);
     drawText(style, text, x - size.w, y + (h - size.h) / 2);
   }
 
@@ -320,51 +315,26 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   public static class Global implements Fonts.TextMeasurer {
     private final Theme theme;
     private final ColorCache colors;
-    private final Font font;
-    private final GC textGC;
-    private final Cache<String, Size> textExtentCache = CacheBuilder.newBuilder()
-        .softValues()
-        .recordStats()
-        .build();
+    private final Fonts.Context fontContext;
 
     public Global(Theme theme, Control owner) {
       this.theme = theme;
       this.colors = new ColorCache(owner.getDisplay());
-      this.font = scaleFont(owner.getDisplay(), owner.getFont());
-      this.textGC = new GC(owner.getDisplay());
-      textGC.setFont(font);
-    }
-
-    @Override
-    public Size measure(Fonts.Style style, String text) {
-      assert style == Fonts.Style.Normal;
-      try {
-        return textExtentCache.get(text, () -> Size.of(textGC.stringExtent(text), 1 / scale));
-      } catch (ExecutionException e) {
-        throw new RuntimeException(e.getCause());
-      }
+      this.fontContext = new Fonts.Context(owner);
     }
 
     public RenderContext newContext(GC gc) {
-      gc.setFont(font);
-      return new RenderContext(theme, gc, colors, this);
+      return new RenderContext(theme, gc, colors, fontContext);
+    }
+
+    @Override
+    public Size measure(Style style, String text) {
+      return fontContext.measure(style, text);
     }
 
     public void dispose() {
       colors.dispose();
-      font.dispose();
-      textGC.dispose();
-
-      LOG.log(Level.FINE, "Text extent cache stats: {0}", textExtentCache.stats());
-      textExtentCache.invalidateAll();
-    }
-
-    private static Font scaleFont(Device display, Font font) {
-      FontData[] fds = font.getFontData();
-      for (FontData fd : fds) {
-        fd.setHeight(scale(fd.getHeight()));
-      }
-      return new Font(display, fds);
+      fontContext.dispose();
     }
   }
 
