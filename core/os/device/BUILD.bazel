@@ -43,7 +43,10 @@ go_library(
 
 proto_library(
     name = "device_proto",
-    srcs = ["device.proto"],
+    srcs = [
+        "device.proto",
+        "gpu_counter_descriptor.proto",
+    ],
     visibility = ["//visibility:public"],
 )
 

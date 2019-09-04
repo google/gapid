@@ -21,6 +21,8 @@ option go_package = "github.com/google/gapid/core/os/device";
 // cc_package
 // js_path = "proto";
 
+import "core/os/device/gpu_counter_descriptor.proto";
+
 // ID is a 20-byte identifier.
 message ID {
   bytes data = 1;
@@ -169,6 +171,18 @@ message Configuration {
   repeated ABI ABIs = 3;
   // The drivers supported by the system.
   Drivers drivers = 4;
+  // Perfetto capability.
+  PerfettoCapability perfetto_capability = 5;
+}
+
+message PerfettoCapability {
+  GPUProfiling gpu_profiling = 1;
+}
+
+message GPUProfiling {
+  bool hasRenderStage = 1;
+  // The GPU performance counters.
+  GpuCounterDescriptor gpu_counter_descriptor = 2;
 }
 
 // Instance represents a physical device.
