@@ -75,7 +75,7 @@ You can perform operations on the image using the following buttons:
     </tr>
     <tr>
       <td>
-        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/color_channels_00%402x.png" alt="Color Channels"/>
+        <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/color_channels_15%402x.png" alt="Color Channels"/>
       </td>
       <td>Select the color channels to render. The options are <b>Red</b>, <b>Green</b>, <b>Blue</b>, and <b>Alpha</b> (transparency).</td>
       <td>
