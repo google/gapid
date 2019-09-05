@@ -2,7 +2,7 @@ toc:
   - title: About
     url: about/
   - title: Tutorials
-    subnav: 
+    subnav:
       - title: Capture a trace
         url: tutorials/capturetrace
       - title: See bound shaders
@@ -23,7 +23,7 @@ toc:
     url: trace/
   - title: Inspect a trace
     url: inspecting/
-    subnav: 
+    subnav:
       - title: Commands pane
         url: inspect/commands
       - title: Framebuffer pane
@@ -43,4 +43,6 @@ toc:
   - title: System requirements
     url: requirements/
   - title: Releases
+    class: external-link
+    target: external
     url: https://github.com/google/gapid/releases

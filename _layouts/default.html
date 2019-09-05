@@ -4,6 +4,12 @@
   {% include head.html %}
 
   <body>
+    <div class="sidebar-title">
+      <a href="{{ item.url | absolute_url }}/about/"><img src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/logo_128.png"
+          width="64" height="64" alt="GAPID logo"/>
+            <div class="site-name">{{site.title}}</div>
+            <div class="clear"></div></a>
+    </div>
     <div class="page">
       {% include sidebar.html %}
 
