@@ -23,12 +23,12 @@ GAPID can also visualize the textures, shaders and draw call geometry used by th
 
 |                              | Android | Windows | macOS  | Linux | Stadia
 | ---------------------------- | ------- | ------- |------- | ----- | ------
-| OpenGL ES - Trace            |   ✓     |         |        |       |
-| OpenGL ES - Replay           |   ✓     |   ✓     |   ✓    |   ✓   |
-| Vulkan - Trace               |   ✓     |   ✓     |        |   ✓   |   ✓
-| Vulkan - Replay <sup>*</sup> |   ✓     |   ✓     |        |   ✓   |   ✓
+| OpenGL ES - Trace            |   <i class="material-icons check">check</i>     |         |        |       |
+| OpenGL ES - Replay           |   <i class="material-icons check">check</i>     |   <i class="material-icons check">check</i>     |   <i class="material-icons check">check</i>    |   <i class="material-icons check">check</i>   |
+| Vulkan - Trace               |   <i class="material-icons check">check</i>     |   <i class="material-icons check">check</i>     |        |   <i class="material-icons check">check</i>   |   <i class="material-icons check">check</i>
+| Vulkan - Replay <sup>*</sup> |   <i class="material-icons check">check</i>     |   <i class="material-icons check">check</i>     |        |   <i class="material-icons check">check</i>   |   <i class="material-icons check">check</i>
 
-<sup>*</sup> Vulkan replay currently needs to be performed on the same device used to trace.
+<sup>* Vulkan replay currently needs to be performed on the same device used to trace.</sup>
 
 While GAPID is primarily targeted for games developers, it can also help developers to inspect low-level 2D graphics calls made by the Android graphics framework.
 

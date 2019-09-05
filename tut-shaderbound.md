@@ -4,7 +4,7 @@ title: How do I see the currently bound shader?
 permalink: /tutorials/seeboundshaders
 ---
 
-Select the graphics API used:
+<h4>Select the graphics API used:</h4>
 
 <div class="tab" id="OpenGL ES" markdown="1">
 <img class="display" src="../images/opengles.svg" alt="OpenGL ES" height="50"/>
@@ -13,7 +13,7 @@ To see the currently bound shaders for a particular draw call, you can use eithe
 
 ## Command pane
 
-In the Command pane, navigate to the draw call that you want to investigate. Look above the draw call to find the preceding `glUseProgram()` call. The program parameter for this function is the identifier for the shader program being bound. 
+In the Command pane, navigate to the draw call that you want to investigate. Look above the draw call to find the preceding `glUseProgram()` call. The program parameter for this function is the identifier for the shader program being bound.
 
 Navigate to the Shaders pane and then go to the Programs tab. Select the relevant program from the list. For example, if your application calls `glUseProgram(program:13)`, then navigate to `Program<13>` in the Programs list.
 
@@ -59,4 +59,3 @@ If you want to [iterate on your shaders](../tutorials/iterateonshaders), locate 
 Navigate to the Shaders pane and go to the Shaders tab to find the shader.
 
 </div>
-

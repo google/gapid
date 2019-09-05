@@ -2,8 +2,8 @@
 
 div.tabbar {
     overflow: hidden;
-    border: 1px solid #ccc;
-    background-color: #f1f1f1;
+    border-bottom: 1px solid #ccc;
+    // background-color: #f1f1f1;
 }
 
 div.tabbar button {
@@ -13,11 +13,13 @@ div.tabbar button {
     outline: none;
     cursor: pointer;
     padding: 5px 5px;
-    transition: 0.3s;
+    transition: 0.15s;
+    border-bottom: solid 4px #ffffff;
 }
 
 div.tabbar button:hover {
-    background-color: #ddd;
+    background-color: #fdfdfd;
+    border-bottom: solid 4px #cccccc;
 }
 
 div.tabbar button.active {
@@ -25,10 +27,15 @@ div.tabbar button.active {
     border-bottom: solid 4px #00a6ff;
 }
 
+div.tabbar button img {
+  height: 35px!important;
+  width: auto;
+}
+
 .tabcontent {
     display: none;
-    padding: 6px 12px;
-    border: 1px solid #ccc;
+    padding: 0px 12px;
+    // border: 1px solid #ccc;
     border-top: none;
 }
 
