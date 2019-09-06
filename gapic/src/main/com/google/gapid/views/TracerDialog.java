@@ -263,7 +263,6 @@ public class TracerDialog {
       private final Text arguments;
       private final Text cwd;
       private final Text envVars;
-      private final Label frameInitialLabel;
       private final Spinner frameInitial;
       private final Label frameCountLabel;
       private final Spinner frameCount;
@@ -355,7 +354,7 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
         envVars.setEnabled(false);
 
-        frameInitialLabel = createLabel(this, INITIAL_FRAMES_LABEL);
+        createLabel(this, INITIAL_FRAMES_LABEL);
         Composite frameInitialComposite =
             createComposite(this, withMargin(new GridLayout(3, false), 0, 0));
         automaticTracing = withLayoutData(
