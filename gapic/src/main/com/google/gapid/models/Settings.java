@@ -74,10 +74,8 @@ public class Settings {
   public String traceArguments = "";
   public String traceCwd = "";
   public String traceEnv = "";
-  public int traceInitialFrameCount = 0;
-  public int traceFrameCount = 7;
-  public boolean traceInteractiveStart = true;
-  public boolean traceMidExecution = true;
+  public int traceStartAt = -1; // -1: manual (mec), 0: beginning, 1+ frame x
+  public int traceDuration = 7; // 0: manual, 1+ frames/seconds
   public boolean traceWithoutBuffering = false;
   public boolean traceHideUnknownExtensions = false;
   public boolean traceClearCache = false;
@@ -229,9 +227,8 @@ public class Settings {
     traceArguments = properties.getProperty("trace.arguments", traceArguments);
     traceCwd = properties.getProperty("trace.cwd", traceCwd);
     traceEnv = properties.getProperty("trace.env", traceEnv);
-    traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
-    traceInteractiveStart = getBoolean(properties, "trace.interactiveStart", traceInteractiveStart);
-    traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
+    traceStartAt = getInt(properties, "trace.startAt", traceStartAt);
+    traceDuration = getInt(properties, "trace.duration", traceDuration);
     traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
     traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
     traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
@@ -275,8 +272,8 @@ public class Settings {
     properties.setProperty("trace.arguments", traceArguments);
     properties.setProperty("trace.cwd", traceCwd);
     properties.setProperty("trace.env", traceEnv);
-    properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
-    properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
+    properties.setProperty("trace.startAt", Integer.toString(traceStartAt));
+    properties.setProperty("trace.duration", Integer.toString(traceDuration));
     properties.setProperty("trace.withoutBuffering", Boolean.toString(traceWithoutBuffering));
     properties.setProperty("trace.hideUnknownExtensions", Boolean.toString(traceHideUnknownExtensions));
     properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
