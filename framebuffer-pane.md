@@ -72,7 +72,7 @@ You can perform operations on the framebuffer image using the following buttons:
       <td>
         <img class="toolbar-btn" src="https://raw.githubusercontent.com/google/gapid/master/gapic/res/icons/overdraw%402x.png" alt="Render overdraw"/>
       </td>
-      <td>Renders the overdraw of the image. This is not supported in OpenGL traces.
+      <td>Renders the overdraw of the image. This is not supported in OpenGL ES traces.
       </td>
       <td>
         <img src="../images/framebuffer-pane/overdraw.png" width="500px"/>
