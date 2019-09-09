@@ -246,6 +246,7 @@ public class TracerDialog {
       private static final String TRACE_EXTENSION = ".gfxtrace";
       private static final String PERFETTO_EXTENSION = ".perfetto";
       private static final DateFormat TRACE_DATE_FORMAT = new SimpleDateFormat("_yyyyMMdd_HHmm");
+      private static final String TARGET_LABEL = "Application";
       private static final String FRAMES_LABEL = "Stop After:";
       private static final String DURATION_LABEL = "Duration:";
       private static final String FRAMES_UNIT = "Frames (0 for manual)";
@@ -322,7 +323,7 @@ public class TracerDialog {
         Group appGroup  = withLayoutData(
             createGroup(this, "Application", new GridLayout(2, false)),
             new GridData(GridData.FILL_HORIZONTAL));
-        targetLabel = createLabel(appGroup, "Application*:");
+        targetLabel = createLabel(appGroup, TARGET_LABEL + ":");
         traceTarget = withLayoutData(new ActionTextbox(appGroup, models.settings.traceUri) {
           @Override
           protected String createAndShowDialog(String current) {
@@ -561,6 +562,10 @@ public class TracerDialog {
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
         hideUnknownExtensions.setSelection(!ext || settings.traceHideUnknownExtensions);
+
+        boolean appRequired = config != null && config.getRequiresApplication();
+        targetLabel.setText(TARGET_LABEL + (appRequired ? "*:" : ":"));
+        targetLabel.requestLayout();
 
         boolean isPerfetto = isPerfetto(config);
         getShell().setText(
