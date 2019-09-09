@@ -1,20 +1,20 @@
-<ul class="level{{ level }}"> 
+<ul class="level{{ level }}">
   {% for item in include.nav %}
     {% if level == 0 %} <div class="sidebar-sep"></div>{% endif %}
     <li>
       {% if item.url %}
         {% assign pageURL = page.url %}
         {% assign itemURL = item.url | relative_url %}
-        <a class="sidebar-item{% if pageURL == itemURL %} active{% endif %}"
+        <a class="sidebar-item{% if pageURL == itemURL %} active{% endif %} {{item.class}}"
             href="{{ item.url | absolute_url }}">{{ item.title }}</a></li>
       {% else %}
         <div class="sidebar-item-heading">{{ item.title }}</div></li>
-      {% endif %} 
+      {% endif %}
 
       {% if item.subnav %}
         {% assign level = level | plus:1 %}
         {% include nav.html nav=item.subnav heading=level %}
-      {% endif %} 
+      {% endif %}
   {% endfor %}
   {% assign level = 0 %}
 </ul>

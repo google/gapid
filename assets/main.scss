@@ -8,14 +8,18 @@
 @import "sidebar.scss";
 @import "tabs.scss";
 
+// @import "https://fonts.googleapis.com/css?family=Roboto:300";
+// @import "https://fonts.googleapis.com/css?family=Roboto:400";
+// @import "https://fonts.googleapis.com/css?family=Roboto:500";
+
 $base-font-family: "Roboto", Helvetica, Arial, sans-serif !default;
 $base-font-size:   16px !default;
 $base-font-weight: 400 !default;
 $base-line-height: 1.5 !default;
-$base-text-color:  #111 !default;
+$base-text-color:  #202124 !default;
 
 $side-bar-width: 13rem;
-$background-color: #fdfdfd !default;
+$background-color: #ffffff !default;
 $brand-color:      #2a7ae2 !default;
 
 $small-font-size:  $base-font-size * 0.875 !default;
@@ -37,85 +41,169 @@ $small-font-size:  $base-font-size * 0.875 !default;
   font-size: $base-font-size * $ratio;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0px;
   background-color: $background-color;
   font-family: $base-font-family;
   font-weight: $base-font-weight;
   line-height: $base-line-height;
-  color: $base-text-color;
+  // color: $base-text-color;
+  color:#202124;
+}
+
+p {
+  margin: 16px 0px;
+  font-size: 16px;
+}
+
+a {
+  color:#0068da;
+  text-decoration:none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 .site-header {
-  font-size: 2rem;
+  font-size: 34px;
   font-weight: 300;
-  border-bottom: solid 1px rgba(0,0,0,0.3);
-  margin-bottom: 2rem;
+  border-bottom: solid 1px #e8eaed;
+  // margin-bottom: 2rem;
+  margin: 16px 24px 0px 24px;
+  padding-bottom: 8px;
+  color:#5f6368;
 }
 
 .site-footer {
   margin-top: 20px;
-  text-align: right;
-  font-size: 0.6rem;
-  padding: 5px;
-  border-top: solid 1px rgba(0,0,0,0.1);
-  color: rgba(0,0,0,0.6);
+  text-align: Left;
+  font-size: 14px;
+  // padding: 5px;
+  padding: 12px 24px;
+  border-top: solid 1px #e8eaed;
+  color: #4a4a4a;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+}
+
+.site-footer .trademark-info {
+  color: #7a7a7a;
+  font-size:11px;
+  margin-top: 12px;
 }
 
 .site-footer a {
-  color: rgba(0,0,0,0.6);
+  color: #4a4a4a;
   text-decoration: none;
+}
+
+.clear {
+ clear: both;
 }
 
 .site-footer a:hover,
 .site-footer a:focus {
-  color: rgba(0,0,0,0.8);
+  // color: rgba(0,0,0,0.8);
+  color:#0068da;
 }
 
 .site-footer .sep { padding: 0 5px 0 5px; }
-.site-footer .material-icons { font-size: 0.6rem; }
+.site-footer .material-icons {
+  font-size: 16px;
+  vertical-align: -3px;
+}
+
+h1 {
+  border-bottom: solid 1px rgba(0,0,0,0.1);
+  padding-bottom: 8px;
+  font-size: 34px;
+  font-weight: 200;
+  color: #202124;
+}
 
 h2 {
   border-bottom: solid 1px rgba(0,0,0,0.1);
+  padding-bottom: 8px;
+  font-size: 24px;
+  font-weight: 200;
+  color: #202124;
+}
+
+h3 {
+  font-size: 20px;
+  font-weight:400;
+  margin: 16px 0 16px;
+}
+
+h4 {
+  font-size: 16px;
+  margin: 16px 0px;
+  font-weight: 500;
 }
 
 .page {
   display: flex;
   flex-direction: row;
+  padding-top: 46px;
+  min-height: 100%;
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
 }
 
 .page-content {
   display: flex;
   width: 100%;
   flex-direction: column;
-  padding: 5px 5px 5px 1rem;
+  // padding: 5px 5px 5px 1rem;
+  position: relative;
+  padding-bottom: 120px;
 }
 
 .page-margin {
-  max-width: 95%;
+  // max-width: 95%;
+  max-width: 100%;
+  padding: 0px 24px;
+}
+
+// Table CSS
+table {
+  border-spacing: 0px;
+  border-collapse: collapse;
 }
 
 table th {
-    font-weight: 600
+    font-weight: bold;
+    font-size:14px;
+    text-transform: uppercase;
 }
 
 table th,table td {
     padding: 6px 13px;
-    border: 1px solid #dfe2e5
+    border: 1px solid #cccccc;
 }
 
 table tr {
     background-color: #fff;
-    border-top: 1px solid #c6cbd1;
+    border-top: 1px solid #cccccc;
     text-align: left;
 }
 
-table tr:nth-child(2n) {
-    background-color: #f6f8fa
-}
+// table tr:nth-child(2n) {
+//     background-color: #f6f8fa
+// }
 
 figcaption {
-  font-size: 0.75em;
+  // font-size: 0.75em;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -124,6 +212,7 @@ code {
   background: rgba(0,0,0,0.1);
   padding: 3px;
   border-radius: 3px;
+  white-space: pre-wrap;
 }
 
 // Info, Warning blocks
@@ -147,28 +236,40 @@ code {
 }
 
 .info {
-  background: rgba(100,250,150,0.3);
-  padding: 6px;
-  margin: 5px;
-  border-radius: 5px;
+  // background: rgba(100,250,150,0.3);
+  background: #f1f3f4;
+  color: #01579b;
+  padding: 16px 24px;
+  margin: 16px 0;
+  // border-radius: 5px;
   display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .info::before {
-  content: "info_outline";
+  content: "info";
   @include material-icon;
 }
 
 .issue {
-  background: rgba(250,150,0,0.3);
-  padding: 6px;
-  margin: 5px;
-  border-radius: 5px;
+  background: #feefe3;
+  color: #bf360c;
+  // background: rgba(250,150,0,0.3);
+  padding: 16px 24px;
+  margin: 16px 0;
+  // border-radius: 5px;
   display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.issue ul {
+  padding-left: 50px;
 }
 
 .issue::before {
-  content: "error_outline";
+  content: "error";
   @include material-icon;
 }
 
@@ -180,4 +281,28 @@ code {
   background-color: rgba(100,100,100,.1);
   border: solid 1px rgba(0,0,0,0.1);
   border-radius: 2px;
+}
+
+// Sup CSS
+sup {
+  font-size: 14px;
+  font-style: italic;
+  color: #606164;
+}
+
+
+
+.external-link::after {
+  content: "link";
+  @include material-icon;
+  font-size: 14px;
+  padding-left: 4px;
+  line-height: 22px;
+}
+
+.material-icons.check {
+  color: #34a853;
+  width: 24px;
+  margin: 0px auto;
+  display: block;
 }
