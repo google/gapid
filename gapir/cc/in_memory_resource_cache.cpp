@@ -272,7 +272,7 @@ bool InMemoryResourceCache::loadCacheMiss(const Resource& res, void* target) {
   // not the resource that initiated the miss. Then finally fetch the resource
   // that caused the cache miss. This is last in the vector so it will not be
   // kicked by the LRU Policy.
-  prefetchImpl(&anticipated[0], anticipated.size());
+  prefetchImpl(anticipated);
 
   // Unless something went very wrong, the data should now be in cache.
   auto resRecord = findCache(res);

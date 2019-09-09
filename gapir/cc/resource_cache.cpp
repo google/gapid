@@ -24,24 +24,25 @@
 
 namespace gapir {
 
-void ResourceCache::setPrefetch(const Resource* resources, size_t count,
+void ResourceCache::setPrefetch(const std::vector<Resource>& resources,
                                 std::unique_ptr<ResourceLoader> fetcher) {
   mResources.clear();
   mResourceIterators.clear();
 
-  mResources.reserve(count);
+  mResources.reserve(resources.size());
 
-  for (unsigned int i = 0; i < count; ++i) {
+  for (unsigned int i = 0; i < resources.size(); ++i) {
     mResources.push_back(resources[i]);
     mResourceIterators[resources[i].getID()] = mResources.end() - 1;
   }
 
   mFetcher = std::move(fetcher);
 
-  if (mPrefetchMode == PrefetchMode::IMMEDIATE_PREFETCH && count > 0) {
+  if (mPrefetchMode == PrefetchMode::IMMEDIATE_PREFETCH &&
+      resources.size() > 0) {
     auto fetch = anticipateNextResources(resources[0], unusedSize());
-    if (fetch.size() > 0) {
-      prefetchImpl(&fetch[0], fetch.size());
+    if (resources.size() > 0) {
+      prefetchImpl(resources);
     }
   }
 }
@@ -92,13 +93,13 @@ std::vector<Resource> ResourceCache::anticipateNextResources(
   return expectedResources;
 }
 
-size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count) {
+size_t ResourceCache::prefetchImpl(const std::vector<Resource>& resources) {
   std::vector<Resource> uncachedResources;
-  uncachedResources.reserve(count);
+  uncachedResources.reserve(resources.size());
 
   size_t numResourcesAlreadyCached = 0;
 
-  for (size_t i = 0; i < count; i++) {
+  for (size_t i = 0; i < resources.size(); i++) {
     const auto& resource = resources[i];
 
     if (hasCache(resource)) {
@@ -116,7 +117,7 @@ size_t ResourceCache::prefetchImpl(const Resource* resources, size_t count) {
       "in "
       "cache after prefetch)...",
       uncachedResources.size(),
-      uncachedResources.size() + numResourcesAlreadyCached, count);
+      uncachedResources.size() + numResourcesAlreadyCached, resources.size());
 
   auto fetchBatch = [&bat, this]() {
     auto fetched =

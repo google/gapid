@@ -114,7 +114,7 @@ void Context::prefetch(ResourceCache* cache) const {
   }
 
   auto tempLoader = PassThroughResourceLoader::create(mSrv);
-  cache->setPrefetch(resources.data(), resources.size(), std::move(tempLoader));
+  cache->setPrefetch(resources, std::move(tempLoader));
 }
 
 bool Context::interpret(bool cleanup, bool isPrewarm) {
