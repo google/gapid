@@ -393,12 +393,16 @@ public class TracerDialog {
             new GridData(GridData.FILL_HORIZONTAL));
         withoutBuffering = createCheckbox(
             optGroup, "Disable Buffering", models.settings.traceWithoutBuffering);
+        withoutBuffering.setEnabled(true);
         disablePcs = createCheckbox(
             optGroup, "Disable pre-compiled shaders", models.settings.traceDisablePcs);
+        disablePcs.setEnabled(false);
         clearCache = createCheckbox(
             optGroup, "Clear package cache", models.settings.traceClearCache);
+        clearCache.setEnabled(false);
         hideUnknownExtensions = createCheckbox(
             optGroup, "Hide Unknown Extensions", models.settings.traceHideUnknownExtensions);
+        hideUnknownExtensions.setEnabled(false);
 
         perfettoConfig = withLayoutData(
             createComposite(optGroup, withMargin(new GridLayout(2, false), 5, 0)),
@@ -411,10 +415,6 @@ public class TracerDialog {
           perfettoConfigLabel.requestLayout();
         });
         perfettoConfig.setVisible(false);
-
-
-        clearCache.setEnabled(false);
-        disablePcs.setEnabled(false);
 
         Group outGroup = withLayoutData(
             createGroup(this, "Output", new GridLayout(2, false)),
