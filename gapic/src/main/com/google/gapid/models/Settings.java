@@ -93,6 +93,12 @@ public class Settings {
   public boolean reportCrashes = false;
   public int[] perfettoSplitterWeights = new int[] { 85, 15 };
   public boolean perfettoDarkMode = false;
+  public boolean perfettoCpu = true;
+  public boolean perfettoCpuFreq = false;
+  public boolean perfettoCpuChain = true;
+  public boolean perfettoCpuSlices = true;
+  public boolean perfettoMem = true;
+  public int perfettoMemRate = 10;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -248,6 +254,12 @@ public class Settings {
     perfettoSplitterWeights =
         getIntList(properties, "perfetto.splitter.weights", perfettoSplitterWeights);
     perfettoDarkMode = getBoolean(properties, "perfetto.dark", perfettoDarkMode);
+    perfettoCpu = getBoolean(properties, "perfetto.cpu", perfettoCpu);
+    perfettoCpuFreq = getBoolean(properties, "perfetto.cpu.freq", perfettoCpuFreq);
+    perfettoCpuChain = getBoolean(properties, "perfetto.cpu.chain", perfettoCpuChain);
+    perfettoCpuSlices = getBoolean(properties, "perfetto.cpu.slices", perfettoCpuSlices);
+    perfettoMem = getBoolean(properties, "perfetto.mem", perfettoMem);
+    perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
   }
 
   private void updateTo(Properties properties) {
@@ -292,6 +304,12 @@ public class Settings {
     properties.setProperty("crash.reporting", Boolean.toString(reportCrashes));
     setIntList(properties, "perfetto.splitter.weights", perfettoSplitterWeights);
     properties.setProperty("perfetto.dark", Boolean.toString(perfettoDarkMode));
+    properties.setProperty("perfetto.cpu", Boolean.toString(perfettoCpu));
+    properties.setProperty("perfetto.cpu.freq", Boolean.toString(perfettoCpuFreq));
+    properties.setProperty("perfetto.cpu.chain", Boolean.toString(perfettoCpuChain));
+    properties.setProperty("perfetto.cpu.slices", Boolean.toString(perfettoCpuSlices));
+    properties.setProperty("perfetto.mem", Boolean.toString(perfettoMem));
+    properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
   }
 
   private static Point getPoint(Properties properties, String name) {

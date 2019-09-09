@@ -15,6 +15,9 @@
  */
 package com.google.gapid.views;
 
+import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfig;
+import static com.google.gapid.perfetto.views.TraceConfigDialog.getConfigSummary;
+import static com.google.gapid.perfetto.views.TraceConfigDialog.showPerfettoConfigDialog;
 import static com.google.gapid.util.MoreFutures.logFailure;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
@@ -27,9 +30,9 @@ import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTextbox;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.gapid.models.Analytics;
@@ -39,7 +42,6 @@ import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
-import com.google.gapid.perfetto.PerfettoConfig;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
@@ -251,6 +253,7 @@ public class TracerDialog {
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final int DEFAULT_START_FRAME = 100;
+      private static final String PERFETTO_LABEL = "Profile Config: ";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -276,6 +279,8 @@ public class TracerDialog {
       private final Button hideUnknownExtensions;
       private final Button clearCache;
       private final Button disablePcs;
+      private final Composite perfettoConfig;
+      private final Label perfettoConfigLabel;
       private final FileTextbox.Directory directory;
       private final Label directoryLabel;
       protected final Text file;
@@ -393,6 +398,20 @@ public class TracerDialog {
             optGroup, "Clear package cache", models.settings.traceClearCache);
         hideUnknownExtensions = createCheckbox(
             optGroup, "Hide Unknown Extensions", models.settings.traceHideUnknownExtensions);
+
+        perfettoConfig = withLayoutData(
+            createComposite(optGroup, withMargin(new GridLayout(2, false), 5, 0)),
+            withSpans(new GridData(GridData.FILL_HORIZONTAL), 2, 1));
+        perfettoConfigLabel =
+            createLabel(perfettoConfig, PERFETTO_LABEL + getConfigSummary(models.settings));
+        Widgets.createButton(perfettoConfig, "Configure", e -> {
+          showPerfettoConfigDialog(getShell(), models, widgets);
+          perfettoConfigLabel.setText(PERFETTO_LABEL + getConfigSummary(models.settings));
+          perfettoConfigLabel.requestLayout();
+        });
+        perfettoConfig.setVisible(false);
+
+
         clearCache.setEnabled(false);
         disablePcs.setEnabled(false);
 
@@ -555,6 +574,7 @@ public class TracerDialog {
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
         durationUnit.requestLayout();
+        perfettoConfig.setVisible(isPerfetto);
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
@@ -582,10 +602,8 @@ public class TracerDialog {
 
       private void updateApiDropdown(DeviceTraceConfiguration config, Settings settings) {
         if (api != null && config != null) {
-          List<TraceTypeCapabilities> caps = config.getApisList().stream()
-              .filter(t -> !isPerfetto(t) || PerfettoConfig.get().hasConfig())
-              .collect(toList());
-          api.setInput(caps);
+          List<TraceTypeCapabilities> caps = config.getApisList();
+          api.setInput(config.getApisList());
           if (!caps.isEmpty()) {
             TraceTypeCapabilities deflt = caps.get(0);
             for (TraceTypeCapabilities c : caps) {
@@ -736,7 +754,7 @@ public class TracerDialog {
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-          options.setPerfettoConfig(PerfettoConfig.get().getConfig().toBuilder()
+          options.setPerfettoConfig(getConfig(settings)
               .setDurationMs(durationMs));
         }
 
