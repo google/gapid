@@ -203,7 +203,7 @@ public class TracerDialog {
 
     @Override
     public String getTitle() {
-      return Messages.CAPTURE_TRACE;
+      return Messages.CAPTURE_TRACE_GRAPHICS;
     }
 
     @Override
@@ -539,6 +539,8 @@ public class TracerDialog {
         hideUnknownExtensions.setSelection(!ext || settings.traceHideUnknownExtensions);
 
         boolean isPerfetto = isPerfetto(config);
+        getShell().setText(
+            isPerfetto ? Messages.CAPTURE_TRACE_PERFETTO : Messages.CAPTURE_TRACE_GRAPHICS);
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && settings.traceWithoutBuffering);
         if (isPerfetto && startType.getItemCount() == 3) {
