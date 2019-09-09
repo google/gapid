@@ -440,7 +440,7 @@ public class TracerDialog {
             createLabel(this, "Please fill out required information (labeled with *)."),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
-        requiredFieldMessage.setVisible(!this.isReady());
+        requiredFieldMessage.setVisible(false);
 
         Link adbWarning = withLayoutData(
             createLink(this, "Path to adb invalid/missing. " +
@@ -493,6 +493,11 @@ public class TracerDialog {
       }
 
       private void colorFilledInput(Theme theme) {
+        if (devices == null) {
+          // Don't mark anything red, until the devices are loaded.
+          return;
+        }
+
         requiredFieldMessage.setVisible(!this.isReady());
         deviceLabel.setForeground(getSelectedDevice() == null ? theme.missingInput() : theme.filledInput());
         directoryLabel.setForeground(directory.getText().isEmpty() ? theme.missingInput() : theme.filledInput());
