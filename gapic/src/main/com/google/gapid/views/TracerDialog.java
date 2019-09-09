@@ -558,6 +558,7 @@ public class TracerDialog {
         boolean pcs = config != null && config.getCanDisablePcs();
         disablePcs.setEnabled(pcs);
         disablePcs.setSelection(pcs && settings.traceDisablePcs);
+        pcsWarning.setVisible(pcs && !settings.traceDisablePcs);
 
         boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
