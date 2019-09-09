@@ -30,6 +30,7 @@ func TestAndroidOS(t *testing.T) {
 		name  string
 	}{
 		{major: 0, minor: 7, name: "Android 0.7.2"},
+		{major: 10, minor: 0, name: "Android 10"},
 		{major: 9, minor: 0, name: "Pie"},
 		{major: 8, minor: 1, name: "Oreo"},
 		{major: 8, minor: 0, name: "Oreo"},
