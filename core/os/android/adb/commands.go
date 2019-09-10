@@ -262,8 +262,8 @@ func (b *binding) SupportsPerfetto(ctx context.Context) bool {
 }
 
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
-	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() <= 29 {
-		return &device.PerfettoCapability{}, log.Errf(ctx, nil, "Querying perfetto capability requires Android API > 29")
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() < 29 {
+		return &device.PerfettoCapability{}, log.Errf(ctx, nil, "Querying perfetto capability requires Android API >= 29")
 	}
 	res, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
 	if err != nil {
