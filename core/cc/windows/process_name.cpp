@@ -27,4 +27,8 @@ std::string get_process_name() {
   return PathFindFileNameA(modulename);
 }
 
+uint64_t get_process_id() {
+  return static_cast<uint64_t>(GetCurrentProcessId());
+}
+
 }  // namespace core

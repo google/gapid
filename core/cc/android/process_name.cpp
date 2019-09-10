@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
 #include <fstream>
 #include <streambuf>
 #include <string>
@@ -26,5 +27,7 @@ std::string get_process_name() {
   return std::string((std::istreambuf_iterator<char>(t)),
                      std::istreambuf_iterator<char>());
 }
+
+uint64_t get_process_id() { return static_cast<uint64_t>(getpid()); }
 
 }  // namespace core

@@ -53,7 +53,7 @@ inline uint64_t platformGetTime() {
   return i.QuadPart;
 #else
   timespec ts = {0, 0};
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+  if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
     GAPID_FATAL("Unable to start timer. Error: %d", errno);
   }
   return uint64_t(ts.tv_nsec) + uint64_t(ts.tv_sec) * SEC_TO_NANO;
