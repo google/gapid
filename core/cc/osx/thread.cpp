@@ -17,12 +17,23 @@
 #include "core/cc/thread.h"
 
 #include <pthread.h>
+#include <string>
 
 namespace core {
 
 Thread Thread::current() {
   auto thread = pthread_self();
   return Thread(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(thread)));
+}
+
+std::string Thread::get_name() const {
+  char name[17] = {'\0'};
+
+  if (0 == pthread_getname_np(reinterpret_cast<pthread_t>(static_cast<uintptr_t>(mId)),
+    name, 16)) {
+      return name;
+  }
+  return std::to_string(mId);
 }
 
 }  // namespace core

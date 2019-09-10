@@ -1474,8 +1474,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 							continue
 						}
 						subRng := NewVkImageSubresourceRange(sb.ta,
-							img.ImageAspect(),                                 // aspectMask
-							req.ImageMipTailFirstLod(),                        // baseMipLevel
+							img.ImageAspect(),          // aspectMask
+							req.ImageMipTailFirstLod(), // baseMipLevel
 							img.Info().MipLevels()-req.ImageMipTailFirstLod(), // levelCount
 							0,                        // baseArrayLayer
 							img.Info().ArrayLayers(), // layerCount
@@ -1488,8 +1488,8 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, imgPrimer *imagePrimer) {
 								continue
 							}
 							subRng := NewVkImageSubresourceRange(sb.ta,
-								img.ImageAspect(),                                 // aspectMask
-								req.ImageMipTailFirstLod(),                        // baseMipLevel
+								img.ImageAspect(),          // aspectMask
+								req.ImageMipTailFirstLod(), // baseMipLevel
 								img.Info().MipLevels()-req.ImageMipTailFirstLod(), // levelCount
 								i, // baseArrayLayer
 								1, // layerCount

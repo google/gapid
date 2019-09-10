@@ -22,6 +22,7 @@ _COPTS_BASE = cc_copts() + [
     # Always build in optimized mode.
     "-O2",
     "-DNDEBUG",
+    "-Wno-unknown-pragmas",
 ] + select({
     "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
     "//conditions:default": [],
@@ -165,16 +166,21 @@ cc_library(
             "src/base/metatrace.cc",
             "src/base/pipe.cc",
             "src/base/temp_file.cc",
+            "src/base/thread_task_runner.cc",
             "src/base/unix_socket.cc",
             "src/base/unix_task_runner.cc",
             "src/android_internal/lazy_library_loader.cc",
         ],
         # Android
         "//conditions:default": [
-            "src/base/android_task_runner.cc",
+            "src/base/event_fd.cc",
+            "src/base/file_utils.cc",
             "src/base/pipe.cc",
+            "src/base/metatrace.cc",
             "src/base/temp_file.cc",
+            "src/base/thread_task_runner.cc",
             "src/base/unix_socket.cc",
+            "src/base/unix_task_runner.cc",
             "src/android_internal/lazy_library_loader.cc",
         ],
     }) + glob([
@@ -247,10 +253,25 @@ cc_library(
         "src/tracing/core/tracing_service_impl.cc",
         "src/tracing/core/tracing_service_state.cc",
         "src/tracing/core/virtual_destructors.cc",
+        "src/tracing/data_source.cc",
+        "src/tracing/platform.cc",
         "src/tracing/trace_writer_base.cc",
+        "src/tracing/tracing.cc",
+        "src/tracing/track_event.cc",
+        "src/tracing/virtual_destructors.cc",
     ] + glob([
         "src/tracing/core/**/*.h",
-    ]),
+    ]) + select({
+        "@gapid//tools/build:windows": [],
+        "@gapid//tools/build:darwin": [],
+        "@gapid//tools/build:linux": [
+            "src/tracing/platform_posix.cc",
+        ],
+        # Android
+        "//conditions:default": [
+            "src/tracing/platform_posix.cc",
+        ],
+    }),
     copts = _COPTS,
     deps = [
         ":base",
@@ -259,11 +280,32 @@ cc_library(
         ":protozero",
         ":trace_cc_proto",
         ":trace_zero_proto",
+        ":tracing_internal",
+    ],
+)
+
+cc_library(
+    name = "tracing_internal",
+    srcs = [
+        "src/tracing/internal/in_process_tracing_backend.cc",
+        "src/tracing/internal/in_process_tracing_backend.h",
+        "src/tracing/internal/system_tracing_backend.cc",
+        "src/tracing/internal/system_tracing_backend.h",
+        "src/tracing/internal/tracing_muxer_impl.cc",
+        "src/tracing/internal/tracing_muxer_impl.h",
+    ],
+    hdrs = glob(["src/tracing/internal/*.h"]),
+    copts = _COPTS,
+    deps = [
+        ":base",
+        ":trace_zero_proto",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 
 cc_library(
     name = "tracing_ipc",
+    visibility = ["//visibility:public"],
     srcs = [
         "src/tracing/ipc/consumer/consumer_ipc_client_impl.cc",
         "src/tracing/ipc/default_socket.cc",
@@ -272,6 +314,12 @@ cc_library(
         "src/tracing/ipc/service/consumer_ipc_service.cc",
         "src/tracing/ipc/service/producer_ipc_service.cc",
         "src/tracing/ipc/service/service_ipc_host_impl.cc",
+        "src/tracing/internal/in_process_tracing_backend.cc",
+        "src/tracing/internal/in_process_tracing_backend.h",
+        "src/tracing/internal/system_tracing_backend.cc",
+        "src/tracing/internal/system_tracing_backend.h",
+        "src/tracing/internal/tracing_muxer_impl.cc",
+        "src/tracing/internal/tracing_muxer_impl.h",
     ] + glob([
         "src/tracing/ipc/**/*.h",
     ]),

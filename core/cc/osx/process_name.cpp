@@ -18,18 +18,16 @@
 #include <unistd.h>
 #include <cstring>
 #include <string>
+#include <stdlib.h>
 
 namespace core {
-static const size_t MAX_PATH = 4096;
 
 std::string get_process_name() {
-  char mp[MAX_PATH + 1];
-  memset(mp, 0, MAX_PATH + 1);
-  ssize_t len = readlink("/proc/self/exe", mp, MAX_PATH);
-  if (len <= 0) {
-    return "";
-  }
-  return basename(mp);
+  return getprogname();
+}
+
+uint64_t get_process_id() {
+  return static_cast<uint64_t>(getpid());
 }
 
 }  // namespace core

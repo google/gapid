@@ -12,16 +12,16 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-#ifndef CORE_PROCESS_NAME_H_
-#define CORE_PROCESS_NAME_H_
+#ifndef __THREADLOCAL_EMITTER_BASE_H__
+#define __THREADLOCAL_EMITTER_BASE_H__
 
-#include <string>
+class ThreadlocalEmitterBase {
+    public:
+    virtual void StartTracing() = 0;
+    virtual void StopTracing() = 0;
+};
 
-namespace core {
-std::string get_process_name();
-uint64_t get_process_id();
-}  // namespace core
-
-#endif  // CORE_PROCESS_NAME_H_
+#endif // __THREADLOCAL_EMITTER_BASE_H__

@@ -26,14 +26,16 @@
 #include <string>
 #include <vector>
 
-namespace query {
+namespace query
+{
 
 bool hasVulkanLoader() { return core::HasVulkanLoader(); }
 
 #define MUST_SUCCESS(expr)                              \
   {                                                     \
     auto r = expr;                                      \
-    if (VK_SUCCESS != r) {                              \
+    if (VK_SUCCESS != r)                                \
+    {                                                   \
       GAPID_WARNING("Return: %d != VK_SUCCESS: " #expr  \
                     " for getting Vulkan Driver info.", \
                     r);                                 \
@@ -42,16 +44,19 @@ bool hasVulkanLoader() { return core::HasVulkanLoader(); }
   }
 
 #define RETURN_IF_NOT_RESOLVED(FuncName)               \
-  if (FuncName == nullptr) {                           \
+  if (FuncName == nullptr)                             \
+  {                                                    \
     GAPID_WARNING("Failed at resolving: " #FuncName    \
                   " for getting Vulkan Driver info."); \
     return false;                                      \
   }
 
 bool vkLayersAndExtensions(
-    device::VulkanDriver* driver,
-    std::function<void*(size_t, const char*)> get_inst_proc_addr) {
-  if (!driver) {
+    device::VulkanDriver *driver,
+    std::function<void *(size_t, const char *)> get_inst_proc_addr)
+{
+  if (!driver)
+  {
     return false;
   }
 
@@ -74,13 +79,14 @@ bool vkLayersAndExtensions(
   MUST_SUCCESS(vkEnumerateInstanceLayerProperties(&layer_count,
                                                   inst_layer_props.data()));
   driver->clear_layers();
-  for (size_t i = 0; i < inst_layer_props.size(); i++) {
-    auto& l = inst_layer_props[i];
+  for (size_t i = 0; i < inst_layer_props.size(); i++)
+  {
+    auto &l = inst_layer_props[i];
     uint32_t ext_count = 0;
     // Skip our layers.
     if (!strcmp(l.layerName, "GraphicsSpy") ||
-        !strcmp(l.layerName, "VirtualSwapchain") ||
-        !strcmp(l.layerName, "ApiTiming")) {
+        !strcmp(l.layerName, "VirtualSwapchain"))
+    {
       continue;
     }
     MUST_SUCCESS(vkEnumerateInstanceExtensionProperties(l.layerName, &ext_count,
@@ -91,7 +97,8 @@ bool vkLayersAndExtensions(
                                                         ext_props.data()));
     driver->add_layers();
     driver->mutable_layers(driver->layers_size() - 1)->set_name(l.layerName);
-    for (size_t j = 0; j < ext_props.size(); j++) {
+    for (size_t j = 0; j < ext_props.size(); j++)
+    {
       driver->mutable_layers(driver->layers_size() - 1)
           ->add_extensions(ext_props[j].extensionName);
     }
@@ -105,16 +112,19 @@ bool vkLayersAndExtensions(
                                                VkExtensionProperties{});
   MUST_SUCCESS(vkEnumerateInstanceExtensionProperties(nullptr, &ext_count,
                                                       ext_props.data()));
-  for (size_t i = 0; i < ext_props.size(); i++) {
+  for (size_t i = 0; i < ext_props.size(); i++)
+  {
     driver->add_icd_and_implicit_layer_extensions(ext_props[i].extensionName);
   }
   return true;
 }
 
 bool vkPhysicalDevices(
-    device::VulkanDriver* driver, size_t vk_inst_handle,
-    std::function<void*(size_t, const char*)> get_inst_proc_addr) {
-  if (!driver) {
+    device::VulkanDriver *driver, size_t vk_inst_handle,
+    std::function<void *(size_t, const char *)> get_inst_proc_addr)
+{
+  if (!driver)
+  {
     return false;
   }
   driver->clear_physical_devices();
@@ -127,12 +137,13 @@ bool vkPhysicalDevices(
           : get_inst_proc_addr(vk_inst_handle, #FuncName));               \
   RETURN_IF_NOT_RESOLVED(FuncName)
 
-  if (vk_inst_handle == 0) {
+  if (vk_inst_handle == 0)
+  {
     MUST_RESOLVE(PFNVKCREATEINSTANCE, vkCreateInstance);
     VkInstanceCreateInfo inst_create_info{
-        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,  // sType
-        nullptr,                                 // pNext
-        VkInstanceCreateFlags(0),                // flags
+        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, // sType
+        nullptr,                                // pNext
+        VkInstanceCreateFlags(0),               // flags
         nullptr,
         0,
         nullptr,
@@ -151,7 +162,8 @@ bool vkPhysicalDevices(
   MUST_SUCCESS(vkEnumeratePhysicalDevices(vk_inst_handle, &phy_dev_count,
                                           phy_devs.data()));
 
-  for (size_t i = 0; i < phy_devs.size(); i++) {
+  for (size_t i = 0; i < phy_devs.size(); i++)
+  {
     auto phy_dev = phy_devs[i];
     VkPhysicalDeviceProperties prop;
     vkGetPhysicalDeviceProperties(phy_dev, &prop);
@@ -169,4 +181,4 @@ bool vkPhysicalDevices(
 
 #undef RETURN_IF_NOT_RESOLVED
 #undef MUST_SUCCESS
-}  // namespace query
+} // namespace query

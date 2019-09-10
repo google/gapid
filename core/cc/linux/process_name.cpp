@@ -32,4 +32,9 @@ std::string get_process_name() {
   return basename(mp);
 }
 
+
+uint64_t get_process_id() {
+  return static_cast<uint64_t>(getpid());
+}
+
 }  // namespace core

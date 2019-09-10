@@ -12,16 +12,25 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-#ifndef CORE_PROCESS_NAME_H_
-#define CORE_PROCESS_NAME_H_
 
-#include <string>
+#ifndef __CORE_VULKAN_VK_API_TIMING_LAYER_CC_TRACING_HELPERS_H__
+#define __CORE_VULKAN_VK_API_TIMING_LAYER_CC_TRACING_HELPERS_H__
 
-namespace core {
-std::string get_process_name();
-uint64_t get_process_id();
-}  // namespace core
+#include "core/vulkan/perfetto_producer/perfetto_data_source.h"
+#include "core/vulkan/perfetto_producer/perfetto_threadlocal_emitter.h"
 
-#endif  // CORE_PROCESS_NAME_H_
+namespace api_timing {
+
+struct TimingTypeTraits {
+    static constexpr const char* producer_name = "APITiming";
+};
+
+using Producer = core::PerfettoProducer<TimingTypeTraits>;
+auto const Emit = &core::tracing::Emit<TimingTypeTraits>;
+}
+
+PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(api_timing::Producer);
+#endif

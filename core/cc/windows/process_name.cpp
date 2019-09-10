@@ -16,15 +16,23 @@
 
 #include <Shlwapi.h>
 #include <string>
-namespace core {
+namespace core
+{
 
-std::string get_process_name() {
+std::string get_process_name()
+{
   char modulename[MAX_PATH + 1];
   memset(modulename, 0, MAX_PATH + 1);
-  if (GetModuleFileNameA(NULL, modulename, MAX_PATH) == 0) {
+  if (GetModuleFileNameA(NULL, modulename, MAX_PATH) == 0)
+  {
     return "";
   }
   return PathFindFileNameA(modulename);
 }
 
-}  // namespace core
+uint64_t get_process_id()
+{
+  return static_cast<uint64_t>(GetCurrentProcessId());
+}
+
+} // namespace core

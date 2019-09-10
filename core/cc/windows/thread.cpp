@@ -39,4 +39,10 @@ AsyncJob::~AsyncJob() {
   WaitForSingleObject(reinterpret_cast<HANDLE>(_), INFINITE);
 }
 
+
+std::string Thread::get_name() const {
+  // Only starting in windows 10 are thread names supported.
+  return std::to_string(mId);
+}
+
 }  // namespace core

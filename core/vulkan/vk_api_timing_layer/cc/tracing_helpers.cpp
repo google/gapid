@@ -12,16 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-#ifndef CORE_PROCESS_NAME_H_
-#define CORE_PROCESS_NAME_H_
-
-#include <string>
-
-namespace core {
-std::string get_process_name();
-uint64_t get_process_id();
-}  // namespace core
-
-#endif  // CORE_PROCESS_NAME_H_
+#include "core/vulkan/vk_api_timing_layer/cc/tracing_helpers.h"
+PERFETTO_DEFINE_DATA_SOURCE_STATIC_MEMBERS(api_timing::Producer);

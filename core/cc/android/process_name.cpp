@@ -17,6 +17,7 @@
 #include <fstream>
 #include <streambuf>
 #include <string>
+#include <unistd.h>
 
 namespace core {
 static const size_t MAX_PATH = 4096;
@@ -25,6 +26,10 @@ std::string get_process_name() {
   std::ifstream t("/proc/self/cmdline");
   return std::string((std::istreambuf_iterator<char>(t)),
                      std::istreambuf_iterator<char>());
+}
+
+uint64_t get_process_id() {
+  return static_cast<uint64_t>(getpid());
 }
 
 }  // namespace core

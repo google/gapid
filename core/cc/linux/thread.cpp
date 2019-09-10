@@ -17,12 +17,23 @@
 #include "core/cc/thread.h"
 
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <fstream>
+#include <iostream>
 
 namespace core {
 
 Thread Thread::current() {
-  auto thread = pthread_self();
-  return Thread(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(thread)));
+  pid_t tid = syscall(SYS_gettid);
+  return Thread(static_cast<uint64_t>(static_cast<uintptr_t>(tid)));
+}
+
+std::string Thread::get_name() const {
+  std::ifstream comm{"/proc/self/task/" + std::to_string(mId) + "/comm"};
+  std::string name;
+  getline(comm, name);
+  return name;
 }
 
 }  // namespace core
