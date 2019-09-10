@@ -22,6 +22,7 @@ api_template(
     outputs = [
         "layer.h",
         "layer.cpp",
+        "layer_impl.cpp",
     ],
     template = "timing_layer.tmpl",
 )
@@ -54,6 +55,7 @@ cc_library(
     }) + [
         "-fno-rtti",
         "-fno-exceptions",
+        "-DNDEBUG",  # always ndebug for perfetto
     ],
     linkopts = select({
         "//tools/build:linux": ["-lpthread"],
@@ -63,12 +65,15 @@ cc_library(
         "//conditions:default": [
             "-ldl",
             "-lm",
+            "-llog",
         ],
     }),
     visibility = ["//visibility:public"],
     deps = [
+        "//core/cc",
         "//core/vulkan/cc/include/vulkan",
         "//core/vulkan/layer_helpers",
+        "//core/vulkan/perfetto_producer",
     ],
 )
 
