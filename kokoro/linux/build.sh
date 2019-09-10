@@ -37,7 +37,7 @@ unzip -q android-ndk-r18b-linux-x86_64.zip
 export ANDROID_NDK_HOME=$PWD/android-ndk-r18b
 
 cd $SRC
-BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
+BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
 function build {
   echo $(date): Starting build for $@...

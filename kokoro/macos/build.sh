@@ -38,7 +38,7 @@ sh bazel-0.25.1-installer-darwin-x86_64.sh --prefix=$PWD/bazel
 export DEVELOPER_DIR=/Applications/Xcode_8.2.app/Contents/Developer
 
 cd $SRC
-BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
+BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
 function build {
   echo $(date): Starting build for $@...

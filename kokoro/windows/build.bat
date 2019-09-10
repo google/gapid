@@ -54,9 +54,9 @@ cd %SRC%
 REM Invoke the build.
 echo %DATE% %TIME%
 if "%KOKORO_GITHUB_COMMIT%." == "." (
-  set BUILD_SHA=%KOKORO_GITHUB_PULL_REQUEST_COMMIT%
+  set BUILD_SHA=%DEV_PREFIX%%KOKORO_GITHUB_PULL_REQUEST_COMMIT%
 ) else (
-  set BUILD_SHA=%KOKORO_GITHUB_COMMIT%
+  set BUILD_SHA=%DEV_PREFIX%%KOKORO_GITHUB_COMMIT%
 )
 
 REM Build each API package separately first, as the go-compiler needs ~8GB of RAM for each package.
