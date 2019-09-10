@@ -97,6 +97,11 @@ public class Settings {
   public boolean perfettoCpuFreq = false;
   public boolean perfettoCpuChain = true;
   public boolean perfettoCpuSlices = true;
+  public boolean perfettoGpu = true;
+  public boolean perfettoGpuSlices = true;
+  public boolean perfettoGpuCounters = true;
+  public int perfettoGpuCounterRate = 50;
+  public int[] perfettoGpuCounterIds = new int[0];
   public boolean perfettoMem = true;
   public int perfettoMemRate = 10;
 
@@ -258,6 +263,11 @@ public class Settings {
     perfettoCpuFreq = getBoolean(properties, "perfetto.cpu.freq", perfettoCpuFreq);
     perfettoCpuChain = getBoolean(properties, "perfetto.cpu.chain", perfettoCpuChain);
     perfettoCpuSlices = getBoolean(properties, "perfetto.cpu.slices", perfettoCpuSlices);
+    perfettoGpu = getBoolean(properties, "perfetto.gpu", perfettoGpu);
+    perfettoGpuSlices = getBoolean(properties, "perfetto.gpu.slices", perfettoGpuSlices);
+    perfettoGpuCounters = getBoolean(properties, "perfetto.gpu.counters", perfettoGpuCounters);
+    perfettoGpuCounterRate = getInt(properties, "perfetto.gpu.counters.rate", perfettoGpuCounterRate);
+    perfettoGpuCounterIds = getIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
     perfettoMem = getBoolean(properties, "perfetto.mem", perfettoMem);
     perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
   }
@@ -308,6 +318,11 @@ public class Settings {
     properties.setProperty("perfetto.cpu.freq", Boolean.toString(perfettoCpuFreq));
     properties.setProperty("perfetto.cpu.chain", Boolean.toString(perfettoCpuChain));
     properties.setProperty("perfetto.cpu.slices", Boolean.toString(perfettoCpuSlices));
+    properties.setProperty("perfetto.gpu", Boolean.toString(perfettoGpu));
+    properties.setProperty("perfetto.gpu.slices", Boolean.toString(perfettoGpuSlices));
+    properties.setProperty("perfetto.gpu.counters", Boolean.toString(perfettoGpuCounters));
+    properties.setProperty("perfetto.gpu.counters.rate", Integer.toString(perfettoGpuCounterRate));
+    setIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
     properties.setProperty("perfetto.mem", Boolean.toString(perfettoMem));
     properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
   }

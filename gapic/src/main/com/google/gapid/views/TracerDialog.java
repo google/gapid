@@ -42,6 +42,7 @@ import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.models.TraceTargets;
+import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.Service.DeviceTraceConfiguration;
@@ -407,12 +408,11 @@ public class TracerDialog {
         perfettoConfig = withLayoutData(
             createComposite(optGroup, withMargin(new GridLayout(2, false), 5, 0)),
             withSpans(new GridData(GridData.FILL_HORIZONTAL), 2, 1));
-        perfettoConfigLabel =
-            createLabel(perfettoConfig, PERFETTO_LABEL + getConfigSummary(models.settings));
+        perfettoConfigLabel = createLabel(
+            perfettoConfig, PERFETTO_LABEL + getConfigSummary(models.settings, getPerfettoCaps()));
         Widgets.createButton(perfettoConfig, "Configure", e -> {
-          showPerfettoConfigDialog(getShell(), models, widgets);
-          perfettoConfigLabel.setText(PERFETTO_LABEL + getConfigSummary(models.settings));
-          perfettoConfigLabel.requestLayout();
+          showPerfettoConfigDialog(getShell(), models, widgets, getPerfettoCaps());
+          updatePerfettoConfigLabel(models.settings);
         });
         perfettoConfig.setVisible(false);
 
@@ -552,6 +552,7 @@ public class TracerDialog {
         envVars.setEnabled(config != null && config.getCanSpecifyEnv());
         clearCache.setEnabled(config != null && config.getHasCache());
         updateApiDropdown(config, settings);
+        updatePerfettoConfigLabel(settings);
       }
 
       private void update(Settings settings, TraceTypeCapabilities config) {
@@ -644,6 +645,12 @@ public class TracerDialog {
             api.getCombo().notifyListeners(SWT.Selection, new Event());
           }
         }
+      }
+
+      private void updatePerfettoConfigLabel(Settings settings) {
+        perfettoConfigLabel.setText(
+            PERFETTO_LABEL + getConfigSummary(settings, getPerfettoCaps()));
+        perfettoConfigLabel.requestLayout();
       }
 
       protected static TraceTargets.Target showTraceTargetPicker(
@@ -781,7 +788,7 @@ public class TracerDialog {
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-          options.setPerfettoConfig(getConfig(settings)
+          options.setPerfettoConfig(getConfig(settings, getPerfettoCaps())
               .setDurationMs(durationMs));
         }
 
@@ -825,6 +832,12 @@ public class TracerDialog {
       protected TraceTypeCapabilities getSelectedApi() {
         IStructuredSelection sel = api.getStructuredSelection();
         return sel.isEmpty() ? null : ((TraceTypeCapabilities)sel.getFirstElement());
+      }
+
+      protected Device.PerfettoCapability getPerfettoCaps() {
+        DeviceCaptureInfo dev = getSelectedDevice();
+        return (dev == null) ? Device.PerfettoCapability.getDefaultInstance() :
+            dev.device.getConfiguration().getPerfettoCapability();
       }
 
       private File getOutputFile() {
