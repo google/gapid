@@ -15,6 +15,7 @@
 package tracer
 
 import (
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -43,12 +44,13 @@ func GLESTraceOptions() *service.TraceTypeCapabilities {
 }
 
 // PerfettoTraceOptions returns the default trace options for Perfetto.
-func PerfettoTraceOptions() *service.TraceTypeCapabilities {
+func PerfettoTraceOptions(perfettoCapability *device.PerfettoCapability) *service.TraceTypeCapabilities {
 	return &service.TraceTypeCapabilities{
 		Type:                           service.TraceType_Perfetto,
 		CanDisablePcs:                  false,
 		MidExecutionCaptureSupport:     service.FeatureStatus_Supported,
 		CanEnableUnsupportedExtensions: false,
 		RequiresApplication:            false,
+		PerfettoCapability:             perfettoCapability,
 	}
 }

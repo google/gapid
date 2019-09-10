@@ -25,6 +25,7 @@ go_library(
     deps = [
         "//core/app:go_default_library",
         "//core/event/task:go_default_library",
+        "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
         "//gapii/client:go_default_library",
         "//gapis/service:go_default_library",

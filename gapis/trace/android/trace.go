@@ -105,7 +105,7 @@ func (t *androidTracer) TraceConfiguration(ctx context.Context) (*service.Device
 		apis = append(apis, tracer.VulkanTraceOptions())
 	}
 	if t.b.SupportsPerfetto(ctx) {
-		apis = append(apis, tracer.PerfettoTraceOptions())
+		apis = append(apis, tracer.PerfettoTraceOptions(t.b.Instance().GetConfiguration().GetPerfettoCapability()))
 	}
 
 	return &service.DeviceTraceConfiguration{

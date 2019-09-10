@@ -74,7 +74,7 @@ func (t *GGPTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTrac
 	}
 
 	if t.b.SupportsPerfetto(ctx) {
-		apis = append(apis, tracer.PerfettoTraceOptions())
+		apis = append(apis, tracer.PerfettoTraceOptions(t.b.Instance().GetConfiguration().GetPerfettoCapability()))
 	}
 
 	return &service.DeviceTraceConfiguration{

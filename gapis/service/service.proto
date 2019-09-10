@@ -1270,6 +1270,7 @@ message TraceTypeCapabilities {
   bool can_enable_unsupported_extensions = 4;
   // Does this trace require starting an application.
   bool requires_application = 6;
+  device.PerfettoCapability perfetto_capability = 7;
 }
 
 // GetTimestampsRequest is the request send to server to get the timestamps for
