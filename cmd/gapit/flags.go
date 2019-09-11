@@ -37,6 +37,7 @@ const (
 
 const (
 	ExportPlain ExportMode = iota
+	ExportOnScreen
 	ExportDiagnostics
 	ExportFrames
 	ExportTimestamps
@@ -78,6 +79,7 @@ type ExportMode uint8
 
 var exportModeNames = map[ExportMode]string{
 	ExportPlain:       "plain",
+	ExportOnScreen:    "on-screen",
 	ExportDiagnostics: "diagnostics",
 	ExportFrames:      "frames",
 	ExportTimestamps:  "timestamps",
