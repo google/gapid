@@ -299,7 +299,7 @@ uint32_t VulkanSpy::SpyOverride_vkCreateDevice(
     }
 
     #if COHERENT_TRACKING_ENABLED
-        if (!mMemoryTracker.IsInstalled()) {
+        if (!mMemoryTracker.IsInstalled() && !mDisableCoherentMemoryTracker) {
             mMemoryTracker.EnableMemoryTracker();
 
             VkInstance instance = mState.PhysicalDevices[physicalDevice]->mInstance;

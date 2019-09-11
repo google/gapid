@@ -35,6 +35,7 @@ SpyBase::SpyBase()
 #if COHERENT_TRACKING_ENABLED
       mMemoryTracker(),
 #endif  // TARGET_OS
+      mDisableCoherentMemoryTracker(false),
       mHideUnknownExtensions(false),
       mNullEncoder(PackEncoder::noop()),
       mDeviceInstance(nullptr),

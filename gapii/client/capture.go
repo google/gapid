@@ -54,6 +54,8 @@ const (
 	HideUnknownExtensions Flags = 0x00000040
 	// StoreTimestamps requests that the capture contain timestamps
 	StoreTimestamps Flags = 0x00000080
+	// DisableCoherentMemoryTracker disables the coherent memory tracker from running.
+	DisableCoherentMemoryTracker Flags = 0x000000100
 
 	// GlesAPI is hard-coded bit mask for GLES API, it needs to be kept in sync
 	// with the api_index in the gles.api file.
