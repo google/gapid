@@ -367,6 +367,7 @@ message ExportReplayOptions {
   repeated GetFramebufferAttachmentRequest get_framebuffer_attachment_requests =
       2;
   GetTimestampsRequest get_timestamps_request = 3;
+  bool display_to_surface = 4;
 }
 
 message ExportReplayRequest {

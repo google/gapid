@@ -103,9 +103,12 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 
 	var fbreqs []*service.GetFramebufferAttachmentRequest
 	var tsreq *service.GetTimestampsRequest
+	onscreen := false
 	switch verb.Mode {
 	case ExportPlain, ExportDiagnostics:
 		// It's the default, do nothing.
+	case ExportOnScreen:
+		onscreen = true
 	case ExportFrames:
 		filter, err := verb.CommandFilterFlags.commandFilter(ctx, client, capturePath)
 		if err != nil {
@@ -144,6 +147,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 	opts := &service.ExportReplayOptions{
 		GetFramebufferAttachmentRequests: fbreqs,
 		GetTimestampsRequest:             tsreq,
+		DisplayToSurface:                 onscreen,
 	}
 
 	if err := client.ExportReplay(ctx, capturePath, device, verb.Out, opts); err != nil {
