@@ -103,6 +103,9 @@ func GapiiOptions(o *service.TraceOptions) gapii.Options {
 	if o.RecordTraceTimes {
 		flags |= gapii.StoreTimestamps
 	}
+	if o.DisableCoherentMemoryTracker {
+		flags |= gapii.DisableCoherentMemoryTracker
+	}
 
 	return gapii.Options{
 		o.ObserveFrameFrequency,

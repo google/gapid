@@ -175,6 +175,9 @@ Spy::Spy()
       (header.mFlags & ConnectionHeader::FLAG_RECORD_ERROR_STATE) != 0;
   SpyBase::mHideUnknownExtensions =
       (header.mFlags & ConnectionHeader::FLAG_HIDE_UNKNOWN_EXTENSIONS) != 0;
+  SpyBase::mDisableCoherentMemoryTracker =
+      (header.mFlags &
+       ConnectionHeader::FLAG_DISABLE_COHERENT_MEMORY_TRACKER) != 0;
   set_record_timestamps(
       0 != (header.mFlags & ConnectionHeader::FLAG_STORE_TIMESTAMPS));
 

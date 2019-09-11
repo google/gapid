@@ -259,6 +259,7 @@ type (
 			Unknown struct {
 				Extensions bool `help:"Hide unknown extensions from the application."`
 			}
+			CoherentMemoryTracker bool `help:"_disables the coherent memory tracker so it won't interfere with gdb during trace"`
 		}
 		Record struct {
 			Errors     bool `help:"_record device error state"`

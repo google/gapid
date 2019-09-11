@@ -188,6 +188,8 @@ class SpyBase {
   track_memory::MemoryTracker mMemoryTracker;
 #endif  // TARGET_OS
 
+  bool mDisableCoherentMemoryTracker;
+
   // If true, we will hide unknown extensions from the application
   bool mHideUnknownExtensions;
 
