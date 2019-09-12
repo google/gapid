@@ -23,13 +23,14 @@ import (
 	"strings"
 	"time"
 
+	perfetto_pb "perfetto/config"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
-	perfetto_pb "perfetto/config"
 )
 
 const (
@@ -88,6 +89,15 @@ retry:
 		}
 	}
 	return log.Err(ctx, ErrRootFailed, buf.String())
+}
+
+// IsUserdebugBuild returns true if the device runs an Android userdebug build
+func (b *binding) IsUserdebugBuild(ctx context.Context) (bool, error) {
+	output, err := b.Command("shell", "getprop", "ro.build.type").Call(ctx)
+	if err != nil {
+		return false, err
+	}
+	return (output == "userdebug"), nil
 }
 
 // InstallAPK installs the specified APK to the device. If reinstall is true

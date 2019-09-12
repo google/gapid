@@ -46,7 +46,15 @@ func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensi
 		return nil, log.Err(ctx, nil, "Service intent was not found")
 	}
 
-	onlyDebug := d.Root(ctx) == adb.ErrDeviceNotRooted
+	// Can only capture debug application unless Android build is userdebug and adb root works
+	onlyDebug := true
+	isUserdebugBuild, err := d.IsUserdebugBuild(ctx)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to check Android build type")
+	}
+	if isUserdebugBuild {
+		onlyDebug = d.Root(ctx) == adb.ErrDeviceNotRooted
+	}
 
 	log.D(ctx, "Starting service...")
 	if err := d.StartService(ctx, *action,
