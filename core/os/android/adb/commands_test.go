@@ -144,3 +144,10 @@ func TestStartActivity(t_ *testing.T) {
 	err := d.StartActivity(ctx, a)
 	expectedCommand(ctx, adbPath.System()+` -s run_device shell am start -S -W -a android.intent.action.MAIN -n com.google.test.AnApp/.FooBarActivity`, err)
 }
+
+func TestTempDirectory(t_ *testing.T) {
+	ctx := log.Testing(t_)
+	d := mustConnect(ctx, "production_device")
+	_, _, error := d.TempDirectory(ctx)
+	expectedCommand(ctx, adbPath.System()+` -s production_device shell mktemp -d`, error)
+}

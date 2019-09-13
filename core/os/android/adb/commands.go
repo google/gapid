@@ -231,6 +231,18 @@ func (b *binding) TempFile(ctx context.Context) (string, func(ctx context.Contex
 	}, nil
 }
 
+// TempDirectory creates a temporary directory on the given Device. It returns the
+// path to the directory, and a function that can be called to clean it up.
+func (b *binding) TempDirectory(ctx context.Context) (string, func(ctx context.Context), error) {
+	res, err := b.Shell("mktemp", "-d").Call(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	return res, func(ctx context.Context) {
+		b.Shell("rm", "-rf", res).Call(ctx)
+	}, nil
+}
+
 // FileContents returns the contents of a given file on the Device.
 func (b *binding) FileContents(ctx context.Context, path string) (string, error) {
 	return b.Shell("cat", path).Call(ctx)

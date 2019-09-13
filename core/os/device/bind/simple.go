@@ -73,6 +73,19 @@ func (b *Simple) TempFile(ctx context.Context) (string, func(ctx context.Context
 	}, nil
 }
 
+// TempDirectory creates a temporary directory on the given Device. It returns the
+// path to the directory, and a function that can be called to clean it up.
+func (b *Simple) TempDirectory(ctx context.Context) (string, func(ctx context.Context), error) {
+	dir, e := ioutil.TempDir("", "")
+	if e != nil {
+		return "", nil, e
+	}
+
+	return dir, func(ctx context.Context) {
+		os.Remove(dir)
+	}, nil
+}
+
 // FileContents returns the contents of a given file on the Device.
 func (b *Simple) FileContents(ctx context.Context, path string) (string, error) {
 	contents, err := ioutil.ReadFile(path)

@@ -32,6 +32,9 @@ type Device interface {
 	// TempFile creates a temporary file on the given Device. It returns the
 	// path to the file, and a function that can be called to clean it up.
 	TempFile(ctx context.Context) (string, func(ctx context.Context), error)
+	// TempDirectory creates a temporary directory on the given Device. It returns the
+	// path to the directory, and a function that can be called to clean it up.
+	TempDirectory(ctx context.Context) (string, func(ctx context.Context), error)
 	// FileContents returns the contents of a given file on the Device.
 	FileContents(ctx context.Context, path string) (string, error)
 	// RemoveFile removes the given file from the device
