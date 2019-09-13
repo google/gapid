@@ -19,8 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/google/gapid/core/app"
@@ -70,7 +68,7 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to get bound pipeline resource data")
 	}
 
-	return verb.printPipelineData(ctx, client, pipelineData)
+	return verb.printPipelineData(ctx, client, pipelineData, "")
 }
 
 func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Client, cmd *path.Command) (*api.Pipeline, error) {
@@ -97,7 +95,7 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 			}
 			resourceData := boxedResourceData.(*api.ResourceData)
 			pipelineData := protoutil.OneOf(protoutil.OneOf(resourceData)).(*api.Pipeline)
-			if pipelineData.Bound && pipelineData.Type == targetType {
+			if pipelineData.Bound && pipelineData.PipelineType == targetType {
 				return pipelineData, nil
 			}
 		}
@@ -105,82 +103,22 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 	return nil, fmt.Errorf("No bound %v pipeline found", targetType)
 }
 
-func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, data *api.Pipeline) error {
-	// Get the names for descriptor types and image layouts
-	typeNames, err := getConstantSetMap(ctx, c, data.API, data.BindingTypeConstantsIndex)
-	if err != nil {
-		return err
-	}
-	layoutNames, err := getConstantSetMap(ctx, c, data.API, data.ImageLayoutConstantsIndex)
-	if err != nil {
-		return err
-	}
+func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, data *api.Pipeline, prefix string) error {
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 0, ' ', 0)
 	defer w.Flush()
 
-	if verb.Print.Shaders {
-		fmt.Fprintf(w, "%v shader stages:\n", len(data.Stages))
-		for _, stage := range data.Stages {
-			fmt.Fprintf(w, "\t%v stage:\n", stage.Type)
-			fmt.Fprintf(w, "%v\n", stage.Shader.Source)
-		}
-	}
-	fmt.Fprintf(w, "%v bindings:\n", len(data.Bindings))
-	for _, binding := range data.Bindings {
-		fmt.Fprintf(w, "Binding #%v.%v:\n", binding.Set, binding.Binding)
-		typeName, ok := typeNames[binding.Type]
-		if !ok {
-			typeName = strconv.FormatUint(uint64(binding.Type), 10)
-		}
-		fmt.Fprintf(w, "\tType: \t%v\n", typeName)
-		stageTypes := make([]api.StageType, len(binding.StageIdxs))
-		for i, idx := range binding.StageIdxs {
-			stageTypes[i] = data.Stages[idx].Type
-		}
-		if len(stageTypes) > 0 {
-			fmt.Fprintf(w, "\tUsed by stages: \t%v\n", strings.Trim(fmt.Sprint(stageTypes), "[]"))
-		} else {
-			fmt.Fprintf(w, "\tUnused by pipeline\n")
-		}
-		if len(binding.Values) > 1 {
-			fmt.Fprintf(w, "\tBound values:\n")
-		}
-		for i, val := range binding.Values {
-			var valueType string
-			switch protoutil.OneOf(val).(type) {
-			case *api.BindingValue_Unbound:
-				valueType = "Unbound"
-			case *api.BindingValue_ImageInfo:
-				valueType = "Image"
-			case *api.BindingValue_BufferInfo:
-				valueType = "Buffer"
-			case *api.BindingValue_TexelBufferView:
-				valueType = "Texel Buffer View"
-			}
-			if len(binding.Values) > 1 {
-				fmt.Fprintf(w, "\t%v: %v\n", i, valueType)
-			} else {
-				fmt.Fprintf(w, "\tBound value: %v\n", valueType)
-			}
-			switch v := protoutil.OneOf(val).(type) {
-			case *api.BindingValue_ImageInfo:
-				fmt.Fprintf(w, "\t\tSampler: \t%v\n", v.ImageInfo.Sampler)
-				fmt.Fprintf(w, "\t\tImage View: \t%v\n", v.ImageInfo.ImageView)
-				layoutName, ok := layoutNames[v.ImageInfo.ImageLayout]
-				if !ok {
-					layoutName = strconv.FormatUint(uint64(v.ImageInfo.ImageLayout), 10)
-				}
-				fmt.Fprintf(w, "\t\tImage Layout: \t%v\n", layoutName)
-			case *api.BindingValue_BufferInfo:
-				fmt.Fprintf(w, "\t\tHandle: \t%v\n", v.BufferInfo.Buffer)
-				fmt.Fprintf(w, "\t\tOffset: \t%v\n", v.BufferInfo.Offset)
-				fmt.Fprintf(w, "\t\tRange: \t%v\n", v.BufferInfo.Range)
-			case *api.BindingValue_TexelBufferView:
-				fmt.Fprintf(w, "\t\tBuffer View: \t%v\n", v.TexelBufferView)
-			}
-		}
+	fmt.Fprintf(w, "%s├── %s: \n", prefix, data.PipelineType)
 
+	prefix = prefix + "│   "
+
+	for i, stage := range data.Stages {
+		if i == len(data.Stages)-1 {
+			fmt.Fprintf(w, "%s└── %s: \n", prefix, stage.StageName)
+		} else {
+			fmt.Fprintf(w, "%s├── %s: \n", prefix, stage.StageName)
+		}
 	}
+
 	return nil
 }
 
