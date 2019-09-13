@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "core/image/image.proto";
+import "core/data/pod/pod.proto";
 import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
 import "gapis/service/types/types.proto";
@@ -245,38 +246,77 @@ message Pipeline {
     COMPUTE = 1;
   }
   // Whether this pipeline is a graphics or compute pipeline
-  Type type = 2;
+  Type pipeline_type = 2;
+  string debug_name = 3;
   // The bound programmable stages of the pipeline.
-  repeated Stage stages = 3;
-  // The descriptor bindings used by the shaders in this pipeline.
-  repeated DescriptorBinding bindings = 4;
+  repeated Stage stages = 4;
   // Whether this pipeline is currently bound
   bool bound = 5;
-  // The index to get the constants names for `DescriptorBinding.type`, to be
-  // fetched with the path.ConstantSet endpoint.  A value of -1 indicates no
-  // type names should be fetched.
-  int32 binding_type_constants_index = 6;
-  // The index to get the constants names for `ImageInfo.layout`, to be
-  // fetched with the path.ConstantSet endpoint.  A value of -1 indicates no
-  // layout names should be fetched.
-  int32 image_layout_constants_index = 7;
-}
-
-// StageType is all bindable pipeline stage points.
-enum StageType {
-  UNKNOWN = 0;
-  VERTEX = 1;
-  TESSELLATION_CONTROL = 2;
-  TESSELLATION_EVALUATION = 3;
-  GEOMETRY = 4;
-  FRAGMENT = 5;
-  COMPUTE = 6;
 }
 
 // Stage represents a single stage in a pipeline.
 message Stage {
-  StageType type = 1;
-  Shader shader = 2;
+  string stage_name = 1;
+  string debug_name = 2;
+  bool enabled = 3;
+  repeated DataGroup groups = 4;
+}
+
+message DataGroup {
+  string group_name = 1;
+  oneof data {
+    KeyValuePairList key_values = 2;
+    Table table = 3;
+    Shader shader = 4;
+  }
+}
+
+message DataValue {
+  string type_name = 1;
+  oneof val {
+    pod.Value value = 2;
+    EnumValue enumVal = 3;
+    BitfieldValue bitfield = 4;
+    LinkedValue link = 5;
+  }
+}
+
+message EnumValue {
+  uint64 value = 1;
+  string string_value = 2;
+  string display_value = 3;
+}
+
+message BitfieldValue {
+  repeated uint64 set_bits = 1;
+  repeated string set_bitnames = 2;
+  repeated string set_display_names = 3;
+  bool combined = 4;
+}
+
+message LinkedValue {
+  path.Any link = 1;
+  DataValue display_val = 2;
+}
+
+message KeyValuePairList {
+  repeated KeyValuePair key_values = 1;
+}
+
+message KeyValuePair {
+  string name = 1;
+  DataValue value = 2;
+  bool dynamic = 3;
+}
+
+message Table {
+  repeated string headers = 1;
+  repeated Row rows = 2;
+  bool dynamic = 3;
+}
+
+message Row {
+  repeated DataValue row_values = 1;
 }
 
 // DescriptorBinding represents one descriptor binding in a pipeline.

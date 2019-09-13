@@ -18,10 +18,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"sort"
 
 	"github.com/google/gapid/core/data/id"
-	"github.com/google/gapid/core/data/protoutil"
 	"github.com/google/gapid/core/image"
 	"github.com/google/gapid/core/image/astc"
 	"github.com/google/gapid/core/log"
@@ -678,7 +676,7 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 }
 
 // ResourceData returns the resource data given the current state.
-func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
 	vkFmt := t.Info().Fmt()
 	_, err := getImageFormatFromVulkanFormat(vkFmt)
@@ -827,7 +825,7 @@ func (s ShaderModuleObjectʳ) ResourceType(ctx context.Context) api.ResourceType
 }
 
 // ResourceData returns the resource data given the current state.
-func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
+func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
 	words, err := s.Words().Read(ctx, nil, t, nil)
 	if err != nil {
@@ -999,10 +997,11 @@ func (p GraphicsPipelineObjectʳ) ResourceType(ctx context.Context) api.Resource
 }
 
 // ResourceData returns the resource data given the current state.
-func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	vkState := GetState(s)
 	isBound := false
-	var boundDsets map[uint32]DescriptorSetObjectʳ
+	var drawCallInfo DrawParameters = NilDrawParameters
+	var framebuffer FramebufferObjectʳ
 	// Use LastDrawInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1012,15 +1011,727 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		if ok {
 			if ldi.GraphicsPipeline() == p {
 				isBound = true
-				// It doesn't make sense to get the descriptor
-				// sets if the pipeline isn't currently bound.
-				boundDsets = ldi.DescriptorSets().All()
+				drawCallInfo = ldi.CommandParameters()
+				framebuffer = ldi.Framebuffer()
 			}
 		}
 	}
 
-	return pipelineResourceData(ctx, s, p.Stages().All(), p.Layout(),
-		boundDsets, isBound, api.Pipeline_GRAPHICS)
+	// Convert the DynamicStates map to have VkDynamicState be the key
+	// for quick lookup (i.e. make it a set)
+	dynamicStates := make(map[VkDynamicState]bool)
+	if !p.DynamicState().IsNil() {
+		for _, k := range p.DynamicState().DynamicStates().Keys() {
+			dynamicStates[p.DynamicState().DynamicStates().Get(k)] = true
+		}
+	}
+
+	stages := []*api.Stage{
+		p.inputAssembly(cmd, drawCallInfo),
+		p.vertexShader(ctx, s),
+		p.tessellationControlShader(ctx, s),
+		p.tessellationEvulationShader(ctx, s),
+		p.geometryShader(ctx, s),
+		p.rasterizer(s, dynamicStates),
+		p.fragmentShader(ctx, s),
+		p.colorBlending(ctx, s, cmd, dynamicStates, framebuffer),
+	}
+
+	return &api.ResourceData{
+		Data: &api.ResourceData_Pipeline{
+			Pipeline: &api.Pipeline{
+				API:          path.NewAPI(id.ID(ID)),
+				PipelineType: api.Pipeline_GRAPHICS,
+				DebugName:    "GRAPH",
+				Stages:       stages,
+				Bound:        isBound,
+			},
+		},
+	}, nil
+}
+
+func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo DrawParameters) *api.Stage {
+	bindings := p.VertexInputState().BindingDescriptions()
+
+	bindingRows := make([]*api.Row, bindings.Len())
+	for i, index := range bindings.Keys() {
+		binding := bindings.Get(index)
+
+		bindingRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("uint32_t ", binding.Binding()),
+				api.CreatePoDDataValue("uint32_t ", binding.Stride()),
+				api.CreateEnumDataValue("VkVertexInputRate", binding.InputRate()),
+			},
+		}
+	}
+
+	vertexBindingsTable := &api.Table{
+		Headers: []string{"Binding", "Stride", "Vertex Input Rate"},
+		Rows:    bindingRows,
+		Dynamic: false,
+	}
+
+	attributes := p.VertexInputState().AttributeDescriptions()
+
+	attributeRows := make([]*api.Row, attributes.Len())
+	for i, index := range attributes.Keys() {
+		attribute := attributes.Get(index)
+
+		attributeRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("uint32_t", attribute.Location()),
+				api.CreatePoDDataValue("uint32_t", attribute.Binding()),
+				api.CreateEnumDataValue("VkFormat", attribute.Fmt()),
+				api.CreatePoDDataValue("uint32_t", attribute.Offset()),
+			},
+		}
+	}
+
+	vertexAttributesTable := &api.Table{
+		Headers: []string{"Location", "Binding", "Format", "Offset"},
+		Rows:    attributeRows,
+		Dynamic: false,
+	}
+
+	assemblyList := &api.KeyValuePairList{}
+	assemblyList = assemblyList.AppendKeyValuePair("Topology", api.CreateEnumDataValue("VkPrimitiveTopology", p.InputAssemblyState().Topology()), false)
+	assemblyList = assemblyList.AppendKeyValuePair("Primitive Restart Enabled", api.CreatePoDDataValue("VkBool32",
+		p.InputAssemblyState().PrimitiveRestartEnable() != 0), false)
+
+	drawCallList := &api.KeyValuePairList{}
+
+	if !drawCallInfo.Draw().IsNil() {
+		callArgs := drawCallInfo.Draw()
+		drawCallList = drawCallList.AppendKeyValuePair("Vertex Count", api.CreatePoDDataValue("u32", callArgs.VertexCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Vertex", api.CreatePoDDataValue("u32", callArgs.FirstVertex()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()), false)
+	} else if !drawCallInfo.DrawIndexed().IsNil() {
+		callArgs := drawCallInfo.DrawIndexed()
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.IndexCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Index", api.CreatePoDDataValue("u32", callArgs.FirstIndex()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Vertex Offset", api.CreatePoDDataValue("u32", callArgs.VertexOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()), false)
+	} else if !drawCallInfo.DrawIndirect().IsNil() {
+		callArgs := drawCallInfo.DrawIndirect()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
+	} else if !drawCallInfo.DrawIndexedIndirect().IsNil() {
+		callArgs := drawCallInfo.DrawIndexedIndirect()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
+	} else if !drawCallInfo.DrawIndirectCountKHR().IsNil() {
+		callArgs := drawCallInfo.DrawIndirectCountKHR()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
+	} else if !drawCallInfo.DrawIndexedIndirectCountKHR().IsNil() {
+		callArgs := drawCallInfo.DrawIndexedIndirectCountKHR()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
+	} else if !drawCallInfo.DrawIndirectCountAMD().IsNil() {
+		callArgs := drawCallInfo.DrawIndirectCountAMD()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
+	} else if !drawCallInfo.DrawIndexedIndirectCountAMD().IsNil() {
+		callArgs := drawCallInfo.DrawIndexedIndirectCountAMD()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
+	}
+
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Vertex Bindings",
+			Data:      &api.DataGroup_Table{vertexBindingsTable},
+		},
+
+		&api.DataGroup{
+			GroupName: "Vertex Attributes",
+			Data:      &api.DataGroup_Table{vertexAttributesTable},
+		},
+
+		&api.DataGroup{
+			GroupName: "Input Assembly State",
+			Data:      &api.DataGroup_KeyValues{assemblyList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Draw Parameters",
+			Data:      &api.DataGroup_KeyValues{drawCallList},
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Input Assembly",
+		DebugName: "IA",
+		Enabled:   true,
+		Groups:    dataGroups,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) vertexShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
+
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT {
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Vertex Shader",
+				DebugName: "VS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
+	}
+
+	// For vertex shader, technically shouldn't happen
+	return &api.Stage{
+		StageName: "Vertex Shader",
+		DebugName: "VS",
+		Enabled:   false,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
+
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT {
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Tessellation Control Shader",
+				DebugName: "TCS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
+	}
+
+	return &api.Stage{
+		StageName: "Tessellation Control Shader",
+		DebugName: "TCS",
+		Enabled:   false,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) tessellationEvulationShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
+
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT {
+			stage := stages.Get(index)
+
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Tessellation Evaluation Shader",
+				DebugName: "TES",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
+	}
+
+	return &api.Stage{
+		StageName: "Tessellation Evaluation Shader",
+		DebugName: "TES",
+		Enabled:   false,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) geometryShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
+
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT {
+			stage := stages.Get(index)
+
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Geometry Shader",
+				DebugName: "GS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
+	}
+
+	return &api.Stage{
+		StageName: "Geometry Shader",
+		DebugName: "GS",
+		Enabled:   false,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates map[VkDynamicState]bool) *api.Stage {
+	rasterState := p.RasterizationState()
+	rasterList := &api.KeyValuePairList{}
+	rasterList = rasterList.AppendKeyValuePair("Depth Clamp Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthClampEnable() != 0), false)
+	rasterList = rasterList.AppendKeyValuePair("Rasterizer Discard", api.CreatePoDDataValue("VkBool32", rasterState.RasterizerDiscardEnable() != 0), false)
+	rasterList = rasterList.AppendKeyValuePair("Polygon Mode", api.CreateEnumDataValue("VkPolygonMode", rasterState.PolygonMode()), false)
+	rasterList = rasterList.AppendKeyValuePair("Cull Mode", api.CreateBitfieldDataValue("VkCullModeFlags", rasterState.CullMode(), VkCullModeFlagBitsConstants(), API{}), false)
+	rasterList = rasterList.AppendKeyValuePair("Front Face", api.CreateEnumDataValue("VkFrontFace", rasterState.FrontFace()), false)
+	rasterList = rasterList.AppendKeyValuePair("Depth Bias Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthBiasEnable() != 0), false)
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BIAS]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasConstantFactor()), true)
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", ldps.DepthBiasClamp()), true)
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasSlopeFactor()), true)
+		}
+	} else {
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasConstantFactor()), false)
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", rasterState.DepthBiasClamp()), false)
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()), false)
+	}
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_LINE_WIDTH]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", ldps.LineWidth()), true)
+		}
+	} else {
+		rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()), false)
+	}
+
+	multiState := p.MultisampleState()
+	multiList := &api.KeyValuePairList{}
+	multiList = multiList.AppendKeyValuePair("Sample Count", api.CreateBitfieldDataValue("VkSampleCountFlagBits", multiState.RasterizationSamples(), VkSampleCountFlagBitsConstants(), API{}), false)
+
+	// // For now, only display the first element of the sample mask array. There's rarely more in practice.
+	mask := uint64(0xFFFFFFFF)
+	if multiState.SampleMask().Len() > 0 {
+		mask = uint64(multiState.SampleMask().Get(multiState.SampleMask().Keys()[0]))
+	}
+	multiList = multiList.AppendKeyValuePair("Sample Mask", api.CreatePoDDataValue("VkSampleMask", fmt.Sprintf("%X", mask)), false)
+
+	multiList = multiList.AppendKeyValuePair("Sample Shading Enabled", api.CreatePoDDataValue("VkBool32", multiState.SampleShadingEnable() != 0), false)
+	multiList = multiList.AppendKeyValuePair("Min Sample Shading", api.CreatePoDDataValue("f32", multiState.MinSampleShading()), false)
+	multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0), false)
+	multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0), false)
+
+	viewports := make(map[uint32]VkViewport)
+	viewDyanmic := false
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_VIEWPORT]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			viewports = ldps.Viewports().All()
+			viewDyanmic = true
+		}
+	} else {
+		viewports = p.ViewportState().Viewports().All()
+	}
+
+	viewportRows := []*api.Row{}
+	for _, viewport := range viewports {
+		viewportRows = append(viewportRows, &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("f32", viewport.X()),
+				api.CreatePoDDataValue("f32", viewport.Y()),
+				api.CreatePoDDataValue("f32", viewport.Width()),
+				api.CreatePoDDataValue("f32", viewport.Height()),
+				api.CreatePoDDataValue("f32", viewport.MinDepth()),
+				api.CreatePoDDataValue("f32", viewport.MaxDepth()),
+			},
+		})
+	}
+
+	viewportTable := &api.Table{
+		Headers: []string{"X", "Y", "Width", "Height", "Min Depth", "Max Depth"},
+		Rows:    viewportRows,
+		Dynamic: viewDyanmic,
+	}
+
+	scissors := make(map[uint32]VkRect2D)
+	sciDynamic := false
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_SCISSOR]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			scissors = ldps.Scissors().All()
+			sciDynamic = true
+		}
+	} else {
+		scissors = p.ViewportState().Scissors().All()
+	}
+
+	scissorRows := []*api.Row{}
+	for _, scissor := range scissors {
+		scissorRows = append(scissorRows, &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("s32", scissor.Offset().X()),
+				api.CreatePoDDataValue("s32", scissor.Offset().Y()),
+				api.CreatePoDDataValue("u32", scissor.Extent().Width()),
+				api.CreatePoDDataValue("u32", scissor.Extent().Height()),
+			},
+		})
+	}
+
+	scissorTable := &api.Table{
+		Headers: []string{"X", "Y", "Width", "Height"},
+		Rows:    scissorRows,
+		Dynamic: sciDynamic,
+	}
+
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Rasterization State",
+			Data:      &api.DataGroup_KeyValues{rasterList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Multisample State",
+			Data:      &api.DataGroup_KeyValues{multiList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Viewports",
+			Data:      &api.DataGroup_Table{viewportTable},
+		},
+
+		&api.DataGroup{
+			GroupName: "Scissors",
+			Data:      &api.DataGroup_Table{scissorTable},
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Rasterizer",
+		DebugName: "RAST",
+		Enabled:   true,
+		Groups:    dataGroups,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
+
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT {
+			stage := stages.Get(index)
+
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Fragment Shader",
+				DebugName: "FS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
+	}
+
+	return &api.Stage{
+		StageName: "Fragment Shader",
+		DebugName: "FS",
+		Enabled:   false,
+	}
+}
+
+func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool, fb FramebufferObjectʳ) *api.Stage {
+	depthData := p.DepthState()
+	depthList := &api.KeyValuePairList{}
+	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0), false)
+	depthList = depthList.AppendKeyValuePair("Write Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthWriteEnable() != 0), false)
+	depthList = depthList.AppendKeyValuePair("Function", api.CreateEnumDataValue("VkCompareOp", depthData.DepthCompareOp()), false)
+	depthList = depthList.AppendKeyValuePair("Bounds Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthBoundsTestEnable() != 0), false)
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BOUNDS]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", ldps.MinDepthBounds()), true)
+			depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", ldps.MaxDepthBounds()), true)
+		}
+	} else {
+		depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", depthData.MinDepthBounds()), false)
+		depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", depthData.MaxDepthBounds()), false)
+	}
+
+	stencilRows := []*api.Row{}
+	stencilDynamic := false
+
+	if depthData.StencilTestEnable() != 0 {
+		frontStencil := depthData.Front()
+		frontRow := []*api.DataValue{
+			api.CreatePoDDataValue("string", "Front"),
+			api.CreateEnumDataValue("VkStencilOp", frontStencil.FailOp()),
+			api.CreateEnumDataValue("VkStencilOp", frontStencil.PassOp()),
+			api.CreateEnumDataValue("VkStencilOp", frontStencil.DepthFailOp()),
+			api.CreateEnumDataValue("VkCompareOp", frontStencil.CompareOp()),
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().CompareMask())))
+				stencilDynamic = true
+			}
+		} else {
+			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.CompareMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().WriteMask())))
+				stencilDynamic = true
+			}
+		} else {
+			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.WriteMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", ldps.StencilFront().Reference()))
+				stencilDynamic = true
+			}
+		} else {
+			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", frontStencil.Reference()))
+		}
+
+		stencilRows = append(stencilRows, &api.Row{RowValues: frontRow})
+
+		backStencil := depthData.Back()
+
+		backRow := []*api.DataValue{
+			api.CreatePoDDataValue("string", "Back"),
+			api.CreateEnumDataValue("VkStencilOp", backStencil.FailOp()),
+			api.CreateEnumDataValue("VkStencilOp", backStencil.PassOp()),
+			api.CreateEnumDataValue("VkStencilOp", backStencil.DepthFailOp()),
+			api.CreateEnumDataValue("VkCompareOp", backStencil.CompareOp()),
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().CompareMask())))
+				stencilDynamic = true
+			}
+		} else {
+			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.CompareMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().WriteMask())))
+				stencilDynamic = true
+			}
+		} else {
+			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.WriteMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", ldps.StencilBack().Reference()))
+				stencilDynamic = true
+			}
+		} else {
+			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", backStencil.Reference()))
+		}
+
+		stencilRows = append(stencilRows, &api.Row{RowValues: backRow})
+	}
+
+	stencilTable := &api.Table{
+		Headers: []string{"Face", "Fail Op", "Pass Op", "Depth Fail Op", "Func", "Compare Mask", "Write Mask", "Ref"},
+		Rows:    stencilRows,
+		Dynamic: stencilDynamic,
+	}
+
+	blendData := p.ColorBlendState()
+	blendList := &api.KeyValuePairList{}
+	blendList = blendList.AppendKeyValuePair("Logic Op Enabled", api.CreatePoDDataValue("VkBool32", blendData.LogicOpEnable() != 0), false)
+	blendList = blendList.AppendKeyValuePair("Logic Op", api.CreateEnumDataValue("VkLogicOp", blendData.LogicOp()), false)
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_BLEND_CONSTANTS]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", ldps.BlendConstants().GetArrayValues()), true)
+		}
+	} else {
+		blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()), false)
+	}
+
+	targets := blendData.Attachments()
+	targetRows := make([]*api.Row, targets.Len())
+	for i, index := range targets.Keys() {
+		target := targets.Get(index)
+
+		targetRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("VkBool32", target.BlendEnable() != 0),
+				api.CreateEnumDataValue("VkBlendFactor", target.SrcColorBlendFactor()),
+				api.CreateEnumDataValue("VkBlendFactor", target.DstColorBlendFactor()),
+				api.CreateEnumDataValue("VkBlendOp", target.ColorBlendOp()),
+				api.CreateEnumDataValue("VkBlendFactor", target.SrcAlphaBlendFactor()),
+				api.CreateEnumDataValue("VkBlendFactor", target.DstAlphaBlendFactor()),
+				api.CreateEnumDataValue("VkBlendOp", target.AlphaBlendOp()),
+				api.CreateBitfieldDataValue("VkColorComponentFlagBits", target.ColorWriteMask(), VkColorComponentFlagBitsConstants(), API{}),
+			},
+		}
+	}
+
+	targetTable := &api.Table{
+		Headers: []string{"Enabled", "Color Src", "Color Dst", "Color Op", "Alpha Src", "Alpha Dst", "Alpha Op", "Color Write Mask"},
+		Rows:    targetRows,
+		Dynamic: false,
+	}
+
+	renderPassList := &api.KeyValuePairList{}
+	renderPassHandle := p.RenderPass().VulkanHandle()
+	renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
+	renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)), false)
+
+	if !fb.IsNil() {
+		fbHandle := fb.VulkanHandle()
+		fbPath := path.NewField("Framebuffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(fbHandle)
+		renderPassList = renderPassList.AppendKeyValuePair("Framebuffer", api.CreateLinkedDataValue("url", fbPath, api.CreatePoDDataValue("VkFramebuffer", fbHandle)), false)
+	}
+
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Attachments",
+			Data:      &api.DataGroup_KeyValues{renderPassList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Target Blends",
+			Data:      &api.DataGroup_Table{targetTable},
+		},
+
+		&api.DataGroup{
+			GroupName: "Blend State",
+			Data:      &api.DataGroup_KeyValues{blendList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Depth State",
+			Data:      &api.DataGroup_KeyValues{depthList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Stencil State",
+			Data:      &api.DataGroup_Table{stencilTable},
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Color Blending",
+		DebugName: "BLEND",
+		Enabled:   true,
+		Groups:    dataGroups,
+	}
 }
 
 // SetResourceData sets resource data in a new capture.
@@ -1068,10 +1779,10 @@ func (p ComputePipelineObjectʳ) ResourceType(ctx context.Context) api.ResourceT
 }
 
 // ResourceData returns the resource data given the current state.
-func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	vkState := GetState(s)
 	isBound := false
-	var boundDsets map[uint32]DescriptorSetObjectʳ
+	var dispatchInfo DispatchParameters = NilDispatchParameters
 	// Use LastComputeInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1081,16 +1792,62 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 		if ok {
 			if lci.ComputePipeline() == p {
 				isBound = true
-				// It doesn't make sense to get the descriptor
-				// sets if the pipeline isn't currently bound.
-				boundDsets = lci.DescriptorSets().All()
+				dispatchInfo = lci.CommandParameters()
 			}
 		}
 	}
 
-	return pipelineResourceData(ctx, s, map[uint32]StageData{
-		0: p.Stage(),
-	}, p.PipelineLayout(), boundDsets, isBound, api.Pipeline_COMPUTE)
+	stage := p.Stage()
+	module := stage.Module()
+
+	words, _ := module.Words().Read(ctx, nil, s, nil)
+	source := shadertools.DisassembleSpirvBinary(words)
+	shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+	dispatchList := &api.KeyValuePairList{}
+
+	if !dispatchInfo.Dispatch().IsNil() {
+		dispatchParams := dispatchInfo.Dispatch()
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count X", api.CreatePoDDataValue("u32", dispatchParams.GroupCountX()), false)
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count Y", api.CreatePoDDataValue("u32", dispatchParams.GroupCountY()), false)
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count Z", api.CreatePoDDataValue("u32", dispatchParams.GroupCountZ()), false)
+	} else if !dispatchInfo.DispatchIndirect().IsNil() {
+		dispatchParams := dispatchInfo.DispatchIndirect()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(dispatchParams.Buffer())
+		dispatchList = dispatchList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", dispatchParams.Buffer())), false)
+		dispatchList = dispatchList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", dispatchParams.Offset()), false)
+	}
+
+	stages := []*api.Stage{
+		&api.Stage{
+			StageName: "Compute Shader",
+			DebugName: "CS",
+			Enabled:   true,
+			Groups: []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+
+				&api.DataGroup{
+					GroupName: "Dispatch Parameters",
+					Data:      &api.DataGroup_KeyValues{dispatchList},
+				},
+			},
+		},
+	}
+
+	return &api.ResourceData{
+		Data: &api.ResourceData_Pipeline{
+			Pipeline: &api.Pipeline{
+				API:          path.NewAPI(id.ID(ID)),
+				PipelineType: api.Pipeline_COMPUTE,
+				DebugName:    "COMP",
+				Stages:       stages,
+				Bound:        isBound,
+			},
+		},
+	}, nil
 }
 
 // SetResourceData sets resource data in a new capture.
@@ -1105,22 +1862,22 @@ func (p ComputePipelineObjectʳ) SetResourceData(
 	return fmt.Errorf("SetResourceData is not supported on ComputePipeline")
 }
 
-func stageType(vkStage VkShaderStageFlagBits) (api.StageType, error) {
+func stageType(vkStage VkShaderStageFlagBits) (string, error) {
 	switch vkStage {
 	case VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT:
-		return api.StageType_VERTEX, nil
+		return "Vertex", nil
 	case VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-		return api.StageType_TESSELLATION_CONTROL, nil
+		return "Tessellation Control", nil
 	case VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-		return api.StageType_TESSELLATION_EVALUATION, nil
+		return "Tessellation Evaluation", nil
 	case VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT:
-		return api.StageType_GEOMETRY, nil
+		return "Geometry", nil
 	case VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT:
-		return api.StageType_FRAGMENT, nil
+		return "Fragment", nil
 	case VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT:
-		return api.StageType_COMPUTE, nil
+		return "Compute", nil
 	default:
-		return 0, fmt.Errorf("Invalid Vulkan stage: %v", vkStage)
+		return "", fmt.Errorf("Invalid Vulkan stage: %v", vkStage)
 	}
 }
 
@@ -1161,171 +1918,4 @@ func (a *bindIdx) Less(b *bindIdx) bool {
 		return a.set < b.set
 	}
 	return a.binding < b.binding
-}
-
-func pipelineResourceData(ctx context.Context,
-	s *api.GlobalState,
-	stageMap map[uint32]StageData,
-	layout PipelineLayoutObjectʳ,
-	boundDsets map[uint32]DescriptorSetObjectʳ,
-	bound bool,
-	pipeType api.Pipeline_Type,
-) (*api.ResourceData, error) {
-	bindings := map[bindIdx]*api.DescriptorBinding{}
-	// Enumerate the bindings from the pipeline layout
-	for set, setData := range layout.SetLayouts().All() {
-		for binding, bindingData := range setData.Bindings().All() {
-			values := make([]*api.BindingValue, bindingData.Count())
-			for i := range values {
-				values[i] = &api.BindingValue{
-					Val: &api.BindingValue_Unbound{
-						Unbound: &api.Unbound{},
-					},
-				}
-			}
-			bindings[bindIdx{set, binding}] = &api.DescriptorBinding{
-				Set:       set,
-				Binding:   binding,
-				Type:      uint32(bindingData.Type()),
-				Values:    values,
-				StageIdxs: []uint32{},
-			}
-		}
-	}
-	moduleShaders := map[VkShaderModule]*api.Shader{}
-	stages := make([]*api.Stage, len(stageMap))
-	for i := 0; i < len(stageMap); i++ {
-		v := stageMap[uint32(i)]
-		moduleHandle := v.Module().VulkanHandle()
-		if _, ok := moduleShaders[moduleHandle]; !ok {
-			res, err := v.Module().ResourceData(ctx, s)
-			if err != nil {
-				return nil, err
-			}
-			moduleShaders[moduleHandle] = protoutil.OneOf(protoutil.OneOf(res)).(*api.Shader)
-		}
-		moduleShader := moduleShaders[moduleHandle]
-		typ, err := stageType(v.Stage())
-		if err != nil {
-			return nil, err
-		}
-		stages[i] = &api.Stage{
-			Type:   typ,
-			Shader: moduleShader,
-		}
-
-		shaderWords := v.Module().Words().MustRead(ctx, nil, s, nil)
-		stageBindings, err := shadertools.ParseDescriptorSets(shaderWords, v.EntryPoint())
-		if err != nil {
-			return nil, err
-		}
-		for set, setBindings := range stageBindings {
-			for _, bindingData := range setBindings {
-				idx := bindIdx{set, bindingData.Binding}
-				binding, ok := bindings[idx]
-				if !ok {
-					// Shader uses binding that isn't included in the pipeline layout.
-					// This is invalid, so don't bother handling it here.
-					return nil, fmt.Errorf(
-						"Shader stage %v uses uniform at %v.%v that isn't defined in the pipeline layout.",
-						v.Stage(), set, bindingData.Binding)
-				}
-				if !typeMatch(bindingData.DescriptorType, binding.Type) {
-					return nil, fmt.Errorf(
-						"Shader stage %v has uniform at %v.%v with descriptor type %v which is incompatible with the pipeline layout type of %v",
-						v.Stage(), set, bindingData.Binding,
-						bindingData.DescriptorType, binding.Type)
-				}
-				if uint32(len(binding.Values)) < bindingData.DescriptorCount {
-					// NOTE(scppurcell): I was unable to find language in the spec disallowing this case,
-					// but it's a validation error.
-					return nil, fmt.Errorf(
-						"Shader stage %v has uniform at %v.%v that expects a descriptorCount of at least %v but the pipeline specifies %v",
-						v.Stage(), set, bindingData.Binding,
-						bindingData.DescriptorCount, len(binding.Values))
-				}
-				binding.StageIdxs = append(binding.StageIdxs, uint32(i))
-			}
-		}
-	}
-	for set, setInfo := range boundDsets {
-		for bindingIdx, bindingInfo := range setInfo.Bindings().All() {
-			idx := bindIdx{set, bindingIdx}
-			binding, ok := bindings[idx]
-			if !ok {
-				continue
-			}
-
-			if binding.Type != uint32(bindingInfo.BindingType()) {
-				return nil, fmt.Errorf(
-					"Pipeline binding type of %v does not match descriptor set binding type of %v",
-					binding.Type,
-					bindingInfo.BindingType())
-			}
-
-			// Only one of these should be populated
-			for i, iInfo := range bindingInfo.ImageBinding().All() {
-				if iInfo.Sampler() == 0 && iInfo.ImageView() == 0 {
-					continue
-				}
-				binding.Values[i] = &api.BindingValue{
-					Val: &api.BindingValue_ImageInfo{
-						ImageInfo: &api.ImageInfo{
-							Sampler:     uint64(iInfo.Sampler()),
-							ImageView:   uint64(iInfo.ImageView()),
-							ImageLayout: uint32(iInfo.ImageLayout()),
-						},
-					},
-				}
-			}
-			for i, bInfo := range bindingInfo.BufferBinding().All() {
-				if bInfo.Buffer() == 0 {
-					continue
-				}
-				binding.Values[i] = &api.BindingValue{
-					Val: &api.BindingValue_BufferInfo{
-						BufferInfo: &api.BufferInfo{
-							Buffer: uint64(bInfo.Buffer()),
-							Offset: uint64(bInfo.Offset()),
-							Range:  uint64(bInfo.Range()),
-						},
-					},
-				}
-			}
-			for i, bufferView := range bindingInfo.BufferViewBindings().All() {
-				if bufferView == 0 {
-					continue
-				}
-				binding.Values[i] = &api.BindingValue{
-					Val: &api.BindingValue_TexelBufferView{
-						uint64(bufferView),
-					},
-				}
-			}
-		}
-	}
-
-	bindingSlice := make([]*api.DescriptorBinding, 0, len(bindings))
-	for _, binding := range bindings {
-		bindingSlice = append(bindingSlice, binding)
-	}
-	sort.Slice(bindingSlice, func(i, j int) bool {
-		a := bindIdx{bindingSlice[i].Set, bindingSlice[i].Binding}
-		b := bindIdx{bindingSlice[j].Set, bindingSlice[j].Binding}
-		return a.Less(&b)
-	})
-
-	return &api.ResourceData{
-		Data: &api.ResourceData_Pipeline{
-			Pipeline: &api.Pipeline{
-				API:                       path.NewAPI(id.ID(ID)),
-				Type:                      pipeType,
-				Stages:                    stages,
-				Bindings:                  bindingSlice,
-				Bound:                     bound,
-				BindingTypeConstantsIndex: int32(VkDescriptorTypeConstants()),
-				ImageLayoutConstantsIndex: int32(VkImageLayoutConstants()),
-			},
-		},
-	}, nil
 }
