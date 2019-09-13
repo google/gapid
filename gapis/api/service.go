@@ -16,7 +16,6 @@ package api
 
 import (
 	"fmt"
-	"strings"
 )
 
 // IsColor returns true if a is a color attachment.
@@ -53,14 +52,6 @@ func (a AspectType) Format(f fmt.State, c rune) {
 	default:
 		fmt.Fprintf(f, "Unknown AspectType %d", int(a))
 	}
-}
-
-func (t Pipeline_Type) Format(f fmt.State, c rune) {
-	fmt.Fprint(f, strings.Title(strings.ToLower(t.String())))
-}
-
-func (t StageType) Format(f fmt.State, c rune) {
-	fmt.Fprint(f, strings.Title(strings.ToLower(t.String())))
 }
 
 func (x ShaderType) Extension() string {
