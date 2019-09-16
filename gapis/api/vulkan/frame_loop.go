@@ -29,26 +29,20 @@ import (
 	"github.com/google/gapid/gapis/replay/value"
 )
 
+// stateWatcher implements the StateWatcher interface
 type stateWatcher struct {
 	memoryWrites map[memory.PoolID]*interval.U64SpanList
 }
 
-func (b *stateWatcher) OnBeginCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
-}
-
-func (b *stateWatcher) OnEndCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {
-}
+func (b *stateWatcher) OnBeginCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) {}
+func (b *stateWatcher) OnEndCmd(ctx context.Context, cmdID api.CmdID, cmd api.Cmd)   {}
 func (b *stateWatcher) OnBeginSubCmd(ctx context.Context, subIdx api.SubCmdIdx, recordIdx api.RecordIdx) {
 }
-func (b *stateWatcher) OnRecordSubCmd(ctx context.Context, recordIdx api.RecordIdx) {
-}
-func (b *stateWatcher) OnEndSubCmd(ctx context.Context) {
-}
+func (b *stateWatcher) OnRecordSubCmd(ctx context.Context, recordIdx api.RecordIdx) {}
+func (b *stateWatcher) OnEndSubCmd(ctx context.Context)                             {}
 func (b *stateWatcher) OnReadFrag(ctx context.Context, owner api.RefObject, frag api.Fragment, valueRef api.RefObject, track bool) {
 }
-
 func (b *stateWatcher) OnWriteFrag(ctx context.Context, owner api.RefObject, frag api.Fragment, oldValueRef api.RefObject, newValueRef api.RefObject, track bool) {
-
 }
 
 func (b *stateWatcher) OnWriteSlice(ctx context.Context, slice memory.Slice) {
@@ -63,23 +57,12 @@ func (b *stateWatcher) OnWriteSlice(ctx context.Context, slice memory.Slice) {
 	interval.Merge(b.memoryWrites[poolID], span, true)
 }
 
-func (b *stateWatcher) OnReadSlice(ctx context.Context, slice memory.Slice) {
-}
-
-func (b *stateWatcher) OnWriteObs(ctx context.Context, obs []api.CmdObservation) {
-}
-
-func (b *stateWatcher) OnReadObs(ctx context.Context, obs []api.CmdObservation) {
-}
-
-func (b *stateWatcher) OpenForwardDependency(ctx context.Context, dependencyID interface{}) {
-}
-
-func (b *stateWatcher) CloseForwardDependency(ctx context.Context, dependencyID interface{}) {
-}
-
-func (b *stateWatcher) DropForwardDependency(ctx context.Context, dependencyID interface{}) {
-}
+func (b *stateWatcher) OnReadSlice(ctx context.Context, slice memory.Slice)                  {}
+func (b *stateWatcher) OnWriteObs(ctx context.Context, obs []api.CmdObservation)             {}
+func (b *stateWatcher) OnReadObs(ctx context.Context, obs []api.CmdObservation)              {}
+func (b *stateWatcher) OpenForwardDependency(ctx context.Context, dependencyID interface{})  {}
+func (b *stateWatcher) CloseForwardDependency(ctx context.Context, dependencyID interface{}) {}
+func (b *stateWatcher) DropForwardDependency(ctx context.Context, dependencyID interface{})  {}
 
 // Transfrom
 type frameLoop struct {
@@ -104,9 +87,17 @@ type frameLoop struct {
 	imageDestroyed map[VkImage]bool
 	imageToBackup  map[VkImage]VkImage
 
-	fenceChanged     map[VkFence]bool
-	eventChanged     map[VkEvent]bool
-	semaphoreChanged map[VkSemaphore]bool
+	fenceCreated   map[VkFence]bool
+	fenceChanged   map[VkFence]bool
+	fenceDestroyed map[VkFence]FenceObjectʳ
+
+	eventCreated   map[VkEvent]bool
+	eventChanged   map[VkEvent]bool
+	eventDestroyed map[VkEvent]EventObjectʳ
+
+	semaphoreCreated   map[VkSemaphore]bool
+	semaphoreChanged   map[VkSemaphore]bool
+	semaphoreDestroyed map[VkSemaphore]SemaphoreObjectʳ
 
 	loopCountPtr value.Pointer
 
@@ -134,9 +125,17 @@ func newFrameLoop(ctx context.Context, c *capture.GraphicsCapture, numInitialCmd
 		imageDestroyed: make(map[VkImage]bool),
 		imageToBackup:  make(map[VkImage]VkImage),
 
-		fenceChanged:     make(map[VkFence]bool),
-		eventChanged:     make(map[VkEvent]bool),
-		semaphoreChanged: make(map[VkSemaphore]bool),
+		fenceCreated:   make(map[VkFence]bool),
+		fenceChanged:   make(map[VkFence]bool),
+		fenceDestroyed: make(map[VkFence]FenceObjectʳ),
+
+		eventCreated:   make(map[VkEvent]bool),
+		eventChanged:   make(map[VkEvent]bool),
+		eventDestroyed: make(map[VkEvent]EventObjectʳ),
+
+		semaphoreCreated:   make(map[VkSemaphore]bool),
+		semaphoreChanged:   make(map[VkSemaphore]bool),
+		semaphoreDestroyed: make(map[VkSemaphore]SemaphoreObjectʳ),
 	}
 
 	f.loopStartCmd, f.loopEndCmd = f.getLoopStartAndEndCmd(ctx, Cmds)
@@ -156,7 +155,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 		defer sb.ta.Dispose()
 
 		if err := f.backupChangedResources(ctx, sb); err != nil {
-			log.E(ctx, "Failed to backup changed resources: %v", err)
+			log.E(ctx, "Failed to backup changed resources: %v.", err)
 			return
 		}
 		sb.scratchRes.Free(sb)
@@ -199,6 +198,7 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 
 	st := GetState(out.State())
 	sb := st.newStateBuilder(ctx, newTransformerOutput(out))
+	defer sb.ta.Dispose()
 	switch cmd.(type) {
 	case *VkUnmapMemory:
 		vkCmd := cmd.(*VkUnmapMemory)
@@ -214,27 +214,6 @@ func (f *frameLoop) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, ou
 			}))
 		}
 
-	case *VkQueueSubmit:
-		vkCmd := cmd.(*VkQueueSubmit)
-		cmd = f.rewriteQueueSubmit(ctx, sb, vkCmd)
-
-		for _, read := range sb.readMemories {
-			cmd.Extras().GetOrAppendObservations().AddRead(read.Data())
-		}
-		for _, ir := range sb.extraReadIDsAndRanges {
-			cmd.Extras().GetOrAppendObservations().AddRead(ir.rng, ir.id)
-		}
-		for _, write := range sb.writeMemories {
-			cmd.Extras().GetOrAppendObservations().AddWrite(write.Data())
-		}
-		out.MutateAndWrite(ctx, id, cmd)
-		for _, read := range sb.readMemories {
-			read.Free()
-		}
-		for _, write := range sb.writeMemories {
-			write.Free()
-		}
-		return
 	case *VkQueuePresentKHR:
 		f.frameNum++
 	}
@@ -271,18 +250,20 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd := cmd.(*VkCreateBuffer)
 			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 			buffer := vkCmd.PBuffer().MustRead(ctx, vkCmd, s, nil)
+			log.D(ctx, "Buffer %v is created during loop.", buffer)
 			f.bufferCreated[buffer] = true
-			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
 		case *VkDestroyBuffer:
 			vkCmd := cmd.(*VkDestroyBuffer)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			buffer := vkCmd.Buffer()
+
 			if _, ok := f.bufferCreated[buffer]; !ok {
-				log.D(ctx, "Buffer %v destroyed during loop.", buffer)
+				log.D(ctx, "Buffer %v is destroyed during loop.", buffer)
 				f.bufferDestroyed[buffer] = GetState(startState).Buffers().Get(buffer).Clone(f.backupState.Arena, api.CloneContext{})
 				f.bufferChanged[buffer] = true
+			} else {
+				delete(f.bufferCreated, buffer)
 			}
-			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
 
 		// Images
 		case *VkCreateImage:
@@ -290,21 +271,73 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
 			img := vkCmd.PImage().MustRead(ctx, vkCmd, s, nil)
 			f.imageCreated[img] = true
-			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
+			log.D(ctx, "Image %v is created during loop.", img)
 		case *VkDestroyImage:
 			vkCmd := cmd.(*VkDestroyImage)
 			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
 			img := vkCmd.Image()
 			if _, ok := f.imageCreated[img]; !ok {
-				log.D(ctx, "Image %v destroyed", img)
+				log.D(ctx, "Image %v is destroyed during loop.", img)
 				f.imageDestroyed[img] = true
+			} else {
+				delete(f.imageCreated, img)
 			}
-			cmd.Mutate(ctx, id, f.backupState, nil, f.watcher)
-		// TODO: Recreate destroyed resources.
-		default:
-			if err := cmd.Mutate(ctx, id, f.backupState, nil, f.watcher); err != nil {
-				return fmt.Errorf("%v: %v: %v", id, cmd, err)
+
+		case *VkCreateSemaphore:
+			vkCmd := cmd.(*VkCreateSemaphore)
+			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+			sem := vkCmd.PSemaphore().MustRead(ctx, vkCmd, s, nil)
+			log.D(ctx, "Semaphore %v is created during loop.", sem)
+			f.semaphoreCreated[sem] = true
+
+		case *VkDestroySemaphore:
+			vkCmd := cmd.(*VkDestroySemaphore)
+			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			sem := vkCmd.Semaphore()
+			if _, ok := f.semaphoreCreated[sem]; !ok {
+				log.D(ctx, "Semaphore %v is destroyed during loop.", sem)
+				f.semaphoreDestroyed[sem] = GetState(startState).Semaphores().Get(sem).Clone(f.backupState.Arena, api.CloneContext{})
+			} else {
+				delete(f.semaphoreCreated, sem)
 			}
+
+		case *VkCreateFence:
+			vkCmd := cmd.(*VkCreateFence)
+			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+			fence := vkCmd.PFence().MustRead(ctx, vkCmd, s, nil)
+			f.fenceCreated[fence] = true
+			log.D(ctx, "Fence %v is created during loop.", fence)
+		case *VkDestroyFence:
+			vkCmd := cmd.(*VkDestroyFence)
+			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			fence := vkCmd.Fence()
+			if _, ok := f.fenceCreated[fence]; !ok {
+				log.D(ctx, "Fence %v is destroyed during loop.", fence)
+				f.fenceDestroyed[fence] = GetState(startState).Fences().Get(fence).Clone(f.backupState.Arena, api.CloneContext{})
+			} else {
+				delete(f.fenceCreated, fence)
+			}
+
+		case *VkCreateEvent:
+			vkCmd := cmd.(*VkCreateEvent)
+			vkCmd.Extras().Observations().ApplyWrites(s.Memory.ApplicationPool())
+			event := vkCmd.PEvent().MustRead(ctx, vkCmd, s, nil)
+			log.D(ctx, "Event %v is created during loop.", event)
+			f.eventCreated[event] = true
+		case *VkDestroyEvent:
+			vkCmd := cmd.(*VkDestroyEvent)
+			vkCmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+			event := vkCmd.Event()
+			if _, ok := f.eventCreated[event]; !ok {
+				log.D(ctx, "Event %v is destroyed during loop.", event)
+				f.eventDestroyed[event] = GetState(startState).Events().Get(event).Clone(f.backupState.Arena, api.CloneContext{})
+			} else {
+				delete(f.eventCreated, event)
+			}
+
+		}
+		if err := cmd.Mutate(ctx, id, f.backupState, nil, f.watcher); err != nil {
+			return fmt.Errorf("%v: %v: %v", id, cmd, err)
 		}
 
 		return nil
@@ -375,7 +408,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 	for k, v := range GetState(startState).Semaphores().All() {
 		if semaphore, present := semaphores[k]; present {
 			if v.Signaled() != semaphore.Signaled() {
-				log.D(ctx, "Semaphore %v status  changed during loop", k)
+				log.D(ctx, "Semaphore %v status changed during loop.", k)
 				f.semaphoreChanged[k] = true
 			}
 		}
@@ -450,12 +483,11 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, sb *stateBuilder) e
 		imgObj := s.Images().Get(img)
 
 		if imgObj.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-			log.I(ctx, "Multi-sampled image %v changed during loop", img)
+			log.I(ctx, "Multi-sampled image %v changed during loop.", img)
 			continue
 		}
 
 		// Create staging Image which is used to backup the changed images
-
 		stagingImage, _, err := imgPrimer.CreateSameStagingImage(imgObj)
 		if err != nil {
 			return log.Err(ctx, err, "Create staging image failed.")
@@ -463,7 +495,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, sb *stateBuilder) e
 		f.imageToBackup[img] = stagingImage.VulkanHandle()
 
 		if err := f.copyImage(ctx, imgObj, stagingImage, sb); err != nil {
-			return log.Err(ctx, err, "Copy image failed")
+			return log.Err(ctx, err, "Copy image failed.")
 		}
 	}
 	return nil
@@ -487,6 +519,44 @@ func (f *frameLoop) resetResource(ctx context.Context, sb *stateBuilder) error {
 	}
 
 	//TODO: Reset other resources.
+	return nil
+}
+
+func (f *frameLoop) resetBuffers(ctx context.Context, sb *stateBuilder) error {
+
+	for buf := range f.bufferCreated {
+		log.D(ctx, "Destroy buffer %v which was created during loop.", buf)
+		bufObj := GetState(sb.newState).Buffers().Get(buf)
+		memID := bufObj.Memory().VulkanHandle()
+		if bufObj.Memory().MappedLocation().Address() != 0 {
+			sb.write(sb.cb.VkUnmapMemory(bufObj.Device(), memID))
+		}
+		sb.write(sb.cb.VkDestroyBuffer(bufObj.Device(), buf, memory.Nullptr))
+		sb.write(sb.cb.VkFreeMemory(bufObj.Device(), memID, memory.Nullptr))
+	}
+
+	for _, buffer := range f.bufferDestroyed {
+		log.D(ctx, "Recreate buffer %v which was destroyed during loop.", buffer)
+		f.recreateDestroyedBuffer(ctx, sb, buffer)
+	}
+
+	for dst, src := range f.bufferToBackup {
+		bufferObj := GetState(sb.newState).Buffers().Get(src)
+		queue := sb.getQueueFor(
+			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
+			queueFamilyIndicesToU32Slice(bufferObj.Info().QueueFamilyIndices()),
+			bufferObj.Device(),
+			bufferObj.LastBoundQueue())
+		tsk := newQueueCommandBatch(
+			fmt.Sprintf("Reset buffer %v", dst),
+		)
+		sb.copyBuffer(src, dst, queue, tsk)
+		if err := tsk.Commit(sb, sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())); err != nil {
+			return log.Errf(ctx, err, "Reset buffer [%v] with buffer [%v] failed", dst, src)
+		}
+		log.D(ctx, "Reset buffer [%v] with buffer [%v] succeed", dst, src)
+	}
+
 	return nil
 }
 
@@ -546,96 +616,6 @@ func (f *frameLoop) recreateDestroyedBuffer(ctx context.Context, sb *stateBuilde
 		buffer.MemoryOffset(),
 		VkResult_VK_SUCCESS,
 	))
-
-}
-
-func (f *frameLoop) rewriteQueueSubmit(ctx context.Context, sb *stateBuilder, cmd *VkQueueSubmit) *VkQueueSubmit {
-	s := sb.newState
-
-	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-	submitCount := cmd.SubmitCount()
-	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
-
-	for i := uint32(0); i < submitCount; i++ {
-		si := submitInfos[i]
-		cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
-		cmdCount := si.CommandBufferCount()
-
-		newCmdBuffers := make([]VkCommandBuffer, cmdCount)
-		for j := uint32(0); j < cmdCount; j++ {
-			commandbuffer := f.recreateCommandBuffer(ctx, sb, cmdBuffers[j])
-			newCmdBuffers[j] = commandbuffer
-		}
-		submitInfos[i].SetPCommandBuffers(NewVkCommandBufferᶜᵖ(sb.MustAllocReadData(newCmdBuffers).Ptr()))
-	}
-
-	return sb.cb.VkQueueSubmit(
-		cmd.Queue(),
-		submitCount,
-		sb.MustAllocReadData(submitInfos).Ptr(),
-		cmd.Fence(),
-		VkResult_VK_SUCCESS,
-	)
-}
-
-func (f *frameLoop) recreateCommandBuffer(ctx context.Context, sb *stateBuilder, vkCommandBuffer VkCommandBuffer) VkCommandBuffer {
-	s := sb.newState
-
-	commandBuffer := GetState(s).CommandBuffers().Get(vkCommandBuffer)
-	commandBufferID, x, cleanup := allocateNewCmdBufFromExistingOneAndBegin(ctx, sb.cb, commandBuffer.VulkanHandle(), s)
-	for i := uint32(0); i < uint32(commandBuffer.CommandReferences().Len()); i++ {
-		cmd := commandBuffer.CommandReferences().Get(i)
-		c, a, _ := AddCommand(ctx, sb.cb, commandBufferID, s, s, GetCommandArgs(ctx, cmd, GetState(s)))
-		x = append(x, a)
-		cleanup = append(cleanup, c)
-	}
-	x = append(x,
-		sb.cb.VkEndCommandBuffer(commandBufferID, VkResult_VK_SUCCESS))
-
-	for _, cmd := range x {
-		sb.write(cmd)
-	}
-	for _, f := range cleanup {
-		f()
-	}
-	return commandBufferID
-}
-
-func (f *frameLoop) resetBuffers(ctx context.Context, sb *stateBuilder) error {
-
-	for buf := range f.bufferCreated {
-		log.D(ctx, "Destroy buffer that was created during loop")
-		bufObj := GetState(sb.newState).Buffers().Get(buf)
-		memID := bufObj.Memory().VulkanHandle()
-		if bufObj.Memory().MappedLocation().Address() != 0 {
-			sb.write(sb.cb.VkUnmapMemory(bufObj.Device(), memID))
-		}
-		sb.write(sb.cb.VkDestroyBuffer(bufObj.Device(), buf, memory.Nullptr))
-		sb.write(sb.cb.VkFreeMemory(bufObj.Device(), memID, memory.Nullptr))
-	}
-	for _, buffer := range f.bufferDestroyed {
-		log.D(ctx, "Recreate buffer %v that was destroyed during loop", buffer)
-		f.recreateDestroyedBuffer(ctx, sb, buffer)
-	}
-
-	for dst, src := range f.bufferToBackup {
-		bufferObj := GetState(sb.newState).Buffers().Get(src)
-		queue := sb.getQueueFor(
-			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
-			queueFamilyIndicesToU32Slice(bufferObj.Info().QueueFamilyIndices()),
-			bufferObj.Device(),
-			bufferObj.LastBoundQueue())
-		tsk := newQueueCommandBatch(
-			fmt.Sprintf("Reset buffer %v", dst),
-		)
-		sb.copyBuffer(src, dst, queue, tsk)
-		if err := tsk.Commit(sb, sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())); err != nil {
-			return log.Errf(ctx, err, "Reset buffer [%v] with buffer [%v] failed", dst, src)
-		}
-		log.D(ctx, "Reset buffer [%v] with buffer [%v] succeed", dst, src)
-	}
-
-	return nil
 }
 
 func (f *frameLoop) resetImages(ctx context.Context, sb *stateBuilder) error {
@@ -649,20 +629,21 @@ func (f *frameLoop) resetImages(ctx context.Context, sb *stateBuilder) error {
 		dstObj := s.Images().Get(dst)
 
 		if dstObj.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
-			log.I(ctx, "Reset Multi-sampled image %v during loop is not supported", dst)
+			log.I(ctx, "Reset Multi-sampled image %v during loop is not supported.", dst)
 			continue
 		}
+
 		prime := func() error {
 			primeable, err := imgPrimer.newPrimeableImageDataFromDevice(src, dst)
 			if err != nil {
-				return log.Errf(ctx, err, "Create primeable image data for image %v", dst)
+				return log.Errf(ctx, err, "Create primeable image data for image %v.", dst)
 			}
 			defer primeable.free(sb)
 			err = primeable.prime(sb, useSpecifiedLayout(dstObj.Info().InitialLayout()), sameLayoutsOfImage(dstObj))
 			if err != nil {
-				return log.Errf(ctx, err, "Priming image %v with data", dst)
+				return log.Errf(ctx, err, "Priming image %v with data.", dst)
 			}
-			log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
+			log.D(ctx, "Prime image from [%v] to [%v] succeed.", src, dst)
 			return nil
 		}
 
@@ -676,6 +657,19 @@ func (f *frameLoop) resetImages(ctx context.Context, sb *stateBuilder) error {
 
 func (f *frameLoop) resetFences(ctx context.Context, sb *stateBuilder) error {
 	s := GetState(sb.newState)
+
+	for fence := range f.fenceCreated {
+		fenceObj := s.Fences().Get(fence)
+		if fenceObj != NilFenceObjectʳ {
+			log.D(ctx, "Destroy fence: %v which was created during loop.", fence)
+			sb.write(sb.cb.VkDestroyFence(fenceObj.Device(), fenceObj.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	for fence, fenceObj := range f.fenceDestroyed {
+		log.D(ctx, "Create fence %v which was destroyed during loop.", fence)
+		sb.createFence(fenceObj)
+	}
 
 	for k := range f.fenceChanged {
 		fence := s.Fences().Get(k)
@@ -712,6 +706,19 @@ func (f *frameLoop) resetFences(ctx context.Context, sb *stateBuilder) error {
 func (f *frameLoop) resetEvents(ctx context.Context, sb *stateBuilder) error {
 	s := GetState(sb.newState)
 
+	for event := range f.eventCreated {
+		eventObj := s.Events().Get(event)
+		if eventObj != NilEventObjectʳ {
+			log.D(ctx, "Destroy event: %v which was created during loop.", event)
+			sb.write(sb.cb.VkDestroyEvent(eventObj.Device(), eventObj.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	for event, eventObj := range f.eventDestroyed {
+		log.D(ctx, "Create event %v which was destroyed during loop.", event)
+		sb.createEvent(eventObj)
+	}
+
 	for k := range f.eventChanged {
 		event := s.Events().Get(k)
 		if event.Signaled() {
@@ -731,7 +738,20 @@ func (f *frameLoop) resetEvents(ctx context.Context, sb *stateBuilder) error {
 func (f *frameLoop) resetSemaphores(ctx context.Context, sb *stateBuilder) error {
 	s := GetState(sb.newState)
 
+	for sem := range f.semaphoreCreated {
+		semObj := s.Semaphores().Get(sem)
+		if semObj != NilSemaphoreObjectʳ {
+			log.D(ctx, "Destroy semaphore %v which was created during loop.", sem)
+			sb.write(sb.cb.VkDestroySemaphore(semObj.Device(), semObj.VulkanHandle(), memory.Nullptr))
+		}
+	}
+	for sem, semObj := range f.semaphoreDestroyed {
+		log.D(ctx, "Create semaphore %v which was destroyed during loop.", sem)
+		sb.createSemaphore(semObj)
+	}
+
 	for k := range f.semaphoreChanged {
+
 		semaphore := s.Semaphores().Get(k)
 		queue := sb.getQueueFor(
 			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
@@ -740,7 +760,7 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, sb *stateBuilder) error
 			s.Queues().Get(semaphore.LastQueue()))
 
 		if semaphore.Signaled() {
-			log.D(ctx, "Wait for semaphore %v to be signaled", semaphore)
+			log.D(ctx, "Wait for semaphore %v to be signaled.", semaphore)
 			sb.write(sb.cb.VkQueueSubmit(
 				queue.VulkanHandle(),
 				1,
@@ -759,7 +779,7 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, sb *stateBuilder) error
 				VkResult_VK_SUCCESS,
 			))
 		} else {
-			log.D(ctx, "Signal semaphore %v", semaphore)
+			log.D(ctx, "Signal semaphore %v.", semaphore)
 			sb.write(sb.cb.VkQueueSubmit(
 				queue.VulkanHandle(),
 				1,
