@@ -31,6 +31,54 @@ def android_native(name, deps=[], **kwargs):
         **kwargs
     )
 
+def _android_cc_binary_impl(ctx):
+  outs = []
+  groups = {}
+  base = ctx.attr.out
+  if base == "":
+      base = ctx.label.name
+  for cpu, binary in ctx.split_attr.dep.items():
+      src = binary.files.to_list()[0]
+      out = ctx.actions.declare_file(cpu + "/" + base)
+      ctx.actions.run_shell(
+         command = "cp \"" + src.path + "\" \"" + out.path + "\"",
+          inputs = [src],
+          outputs = [out]
+      )
+      outs += [out]
+      groups[cpu] = [out]
+
+  return [
+      DefaultInfo(files = depset(outs)),
+      OutputGroupInfo(**groups),
+  ]
+
+_android_cc_binary = rule(
+    implementation = _android_cc_binary_impl,
+    attrs = {
+        "out": attr.string(),
+        "dep": attr.label(
+            cfg = android_common.multi_cpu_configuration,
+            allow_files = True,
+        ),
+    },
+)
+
+def android_native_binary(name, out = "", **kwargs):
+    visibility = kwargs.pop("visibility", default = ["//visibility:public"])
+    native.cc_binary(
+        name = name + "-bin",
+        visibility = ["//visibility:private"],
+        **kwargs
+    )
+    _android_cc_binary(
+        name = name,
+        out = out,
+        dep = ":" + name + "-bin",
+        visibility = visibility,
+    )
+
+
 def _android_native_app_glue_impl(ctx):
     ctx.symlink(
         ctx.path(ctx.os.environ["ANDROID_NDK_HOME"] +
