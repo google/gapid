@@ -26,7 +26,8 @@ type GraphBuilder interface {
 	AddDependencies(context.Context,
 		map[NodeID][]FragmentAccess,
 		map[NodeID][]MemoryAccess,
-		map[NodeID][]ForwardAccess)
+		map[NodeID][]ForwardAccess,
+		bool)
 	BuildReverseDependencies()
 	GetCmdNodeID(api.CmdID, api.SubCmdIdx) NodeID
 	GetOrCreateCmdNodeID(context.Context, api.CmdID, api.SubCmdIdx, api.Cmd) NodeID
@@ -84,7 +85,8 @@ func (b *graphBuilder) AddDependencies(
 	ctx context.Context,
 	fragAcc map[NodeID][]FragmentAccess,
 	memAcc map[NodeID][]MemoryAccess,
-	forwardAcc map[NodeID][]ForwardAccess) {
+	forwardAcc map[NodeID][]ForwardAccess,
+	isUnopened bool) {
 	for _, n := range b.pendingNodes {
 		cmdCtx, ok := b.subCmdContexts[n]
 		if !ok {
@@ -92,7 +94,7 @@ func (b *graphBuilder) AddDependencies(
 			cmdCtx.nodeID = n
 			cmdCtx.parentNodeID = NodeNoID
 		}
-		b.AddNodeDependencies(ctx, cmdCtx, fragAcc[n], memAcc[n], forwardAcc[n])
+		b.AddNodeDependencies(ctx, cmdCtx, fragAcc[n], memAcc[n], forwardAcc[n], isUnopened)
 	}
 	b.subCmdContexts = make(map[NodeID]CmdContext)
 	b.initCmdNodeIDs = make(map[NodeID][]NodeID)
@@ -102,7 +104,8 @@ func (b *graphBuilder) AddNodeDependencies(
 	ctx context.Context, cmdCtx CmdContext,
 	fragAccesses []FragmentAccess,
 	memAccesses []MemoryAccess,
-	forwardAccesses []ForwardAccess) {
+	forwardAccesses []ForwardAccess,
+	isUnopened bool) {
 	if len(b.isDep) < len(b.graph.nodes) {
 		n := uint(len(b.graph.nodes))
 		b.isDep = make([]bool, 1<<uint(bits.Len(n-1)))
@@ -183,6 +186,10 @@ func (b *graphBuilder) AddNodeDependencies(
 			// so dependency hasn't been added yet
 			b.graph.addDependency(a.Nodes.Open, a.Nodes.Close)
 		}
+	}
+
+	if isUnopened {
+		b.graph.addUnopenedForwardDependency(cmdCtx.cmdID)
 	}
 
 	newDepSlice := make([]NodeID, len(depSlice), len(depSlice)+openForwardDeps)

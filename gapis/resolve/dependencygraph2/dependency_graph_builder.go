@@ -123,9 +123,9 @@ func (b *dependencyGraphBuilder) OnEndCmd(ctx context.Context, cmdID api.CmdID, 
 
 	fragAcc := b.fragWatcher.OnEndCmd(ctx, cmdCtx)
 	memAcc := b.memWatcher.OnEndCmd(ctx, cmdCtx)
-	forwardAcc := b.forwardWatcher.OnEndCmd(ctx, cmdCtx)
+	accesses := b.forwardWatcher.OnEndCmd(ctx, cmdCtx)
 
-	b.graphBuilder.AddDependencies(ctx, fragAcc, memAcc, forwardAcc)
+	b.graphBuilder.AddDependencies(ctx, fragAcc, memAcc, accesses.nodeAccesses, accesses.isUnopened)
 
 	b.subCmdStack = b.subCmdStack[:0]
 }

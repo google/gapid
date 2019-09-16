@@ -86,6 +86,14 @@ type DCEBuilder struct {
 	deadMem, liveMem uint64
 }
 
+func keepCommandAlive(builder *DCEBuilder, id api.CmdID) {
+	nodeID := builder.graph.GetCmdNodeID(id, api.SubCmdIdx{})
+	if nodeID != NodeNoID && !builder.isLive[nodeID] {
+		builder.isLive[nodeID] = true
+		builder.requestedNodes = append(builder.requestedNodes, nodeID)
+	}
+}
+
 // NewDCEBuilder creates a new DCEBuiler using the specified dependency graph
 func NewDCEBuilder(graph DependencyGraph) *DCEBuilder {
 	b := &DCEBuilder{
@@ -99,21 +107,16 @@ func NewDCEBuilder(graph DependencyGraph) *DCEBuilder {
 		cmdID := api.CmdID(i).Derived()
 		cmd := b.graph.GetCommand(cmdID)
 		if cmd.Alive() || config.AllInitialCommandsLive {
-			nodeID := b.graph.GetCmdNodeID(cmdID, api.SubCmdIdx{})
-			if nodeID != NodeNoID && !b.isLive[nodeID] {
-				b.isLive[nodeID] = true
-				b.requestedNodes = append(b.requestedNodes, nodeID)
-			}
+			keepCommandAlive(b, cmdID)
 		}
 	}
 	for i, cmd := range b.graph.Capture().Commands {
 		if cmd.Alive() {
-			nodeID := b.graph.GetCmdNodeID((api.CmdID)(i), api.SubCmdIdx{})
-			if nodeID != NodeNoID && !b.isLive[nodeID] {
-				b.isLive[nodeID] = true
-				b.requestedNodes = append(b.requestedNodes, nodeID)
-			}
+			keepCommandAlive(b, (api.CmdID)(i))
 		}
+	}
+	for _, cmdID := range b.graph.GetUnopenedForwardDependencies() {
+		keepCommandAlive(b, cmdID)
 	}
 	return b
 }
