@@ -286,5 +286,9 @@ public class Devices {
       this.config = config;
       this.targets = targets;
     }
+
+    public boolean isAndroid() {
+      return device.getConfiguration().getOS().getKind() == Device.OSKind.Android;
+    }
   }
 }

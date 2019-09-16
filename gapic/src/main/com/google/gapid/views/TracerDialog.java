@@ -597,18 +597,34 @@ public class TracerDialog {
         if (device != null && devices != null) {
           deviceLoader.stopLoading();
           device.setInput(devices);
-          if (!settings.traceDevice.isEmpty()) {
-            Optional<DeviceCaptureInfo> deflt = devices.stream()
-                .filter(dev -> settings.traceDevice.equals(dev.device.getSerial()))
-                .findAny();
-            if (deflt.isPresent()) {
-              device.setSelection(new StructuredSelection(deflt.get()));
+          DeviceCaptureInfo deflt = getPreviouslySelectedDevice(settings).orElseGet(() -> {
+            if (devices.size() == 1) {
+              return devices.get(0);
+            } else if (devices.size() == 2) {
+              // If there are exactly two devices and exactly one of them is an Android device,
+              // select the Android device. It is a fair assumption that a developer that has an
+              // Android device connected wants to trace Android, not desktop.
+              boolean firstIsAndroid = devices.get(0).isAndroid();
+              boolean secondIsAndroid = devices.get(1).isAndroid();
+              if (firstIsAndroid != secondIsAndroid) {
+                return firstIsAndroid ? devices.get(0) : devices.get(1);
+              }
             }
+            return null;
+          });
+          if (deflt != null) {
+            device.setSelection(new StructuredSelection(deflt));
           }
           device.getCombo().notifyListeners(SWT.Selection, new Event());
         } else if (deviceLoader != null) {
           deviceLoader.startLoading();
         }
+      }
+
+      private Optional<DeviceCaptureInfo> getPreviouslySelectedDevice(Settings settings) {
+        return (settings.traceDevice.isEmpty()) ? Optional.empty() : devices.stream()
+            .filter(dev -> settings.traceDevice.equals(dev.device.getSerial()))
+            .findAny();
       }
 
       private void updateApiDropdown(DeviceTraceConfiguration config, Settings settings) {
