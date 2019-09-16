@@ -48,7 +48,7 @@ _strip = rule(
     },
 )
 
-def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
+def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):
     natives = []
     fatapks = []
     for lib in libs:
@@ -67,12 +67,23 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
             lib = ":" + libname + "_unstripped",
             abi = abi,
         )
+
+    assets = []
+    for bin in bins:
+        binname = name + "_" + bin
+        native.filegroup(
+            name = binname,
+            srcs = ["{}:{}".format(bins[bin], bin) for bin in bins],
+            output_group = abi,
+        )
+        assets += [":" + binname]
+
     filehash(
         name = name+"_manifest",
         template = "AndroidManifest.xml.in",
         out = name + "/" + "AndroidManifest.xml",
         replace = "{srchash}",
-        srcs = fatapks + [
+        srcs = fatapks + assets + [
             "AndroidManifest.xml.in",
             "//gapidapk/android/app/src/main:source",
         ],
@@ -100,6 +111,8 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}):
         },
         custom_package = "com.google.android.gapid",
         manifest = ":" + name + "_manifest",
+        assets = assets,
+        assets_dir = abi,
         deps = [
             "//gapidapk/android/app/src/main:gapid",
             ":" + name + "_native",

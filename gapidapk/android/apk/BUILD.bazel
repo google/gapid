@@ -24,9 +24,14 @@ _NATIVE_LIBRARIES = {
     "gapir": "//cmd/gapir/apk",
 }
 
+_NATIVE_BINARIES = {
+    "launch_producer": "//cmd/launch_producer",
+}
+
 gapid_apk(
     name = "armeabi-v7a",
     abi = "armeabi-v7a",
+    bins = _NATIVE_BINARIES,
     libs = _NATIVE_LIBRARIES,
     pkg = "armeabiv7a",
 )
@@ -34,6 +39,7 @@ gapid_apk(
 gapid_apk(
     name = "arm64-v8a",
     abi = "arm64-v8a",
+    bins = _NATIVE_BINARIES,
     libs = _NATIVE_LIBRARIES,
     pkg = "arm64v8a",
 )
@@ -41,6 +47,7 @@ gapid_apk(
 gapid_apk(
     name = "x86",
     abi = "x86",
+    bins = _NATIVE_BINARIES,
     libs = _NATIVE_LIBRARIES,
     pkg = "x86",
 )
