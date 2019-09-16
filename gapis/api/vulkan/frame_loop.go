@@ -447,9 +447,15 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, sb *stateBuilder) e
 			continue
 		}
 		log.D(ctx, "Image [%v] changed during loop.", img)
+		imgObj := s.Images().Get(img)
+
+		if imgObj.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
+			log.I(ctx, "Multi-sampled image %v changed during loop", img)
+			continue
+		}
 
 		// Create staging Image which is used to backup the changed images
-		imgObj := s.Images().Get(img)
+
 		stagingImage, _, err := imgPrimer.CreateSameStagingImage(imgObj)
 		if err != nil {
 			return log.Err(ctx, err, "Create staging image failed.")
@@ -642,6 +648,10 @@ func (f *frameLoop) resetImages(ctx context.Context, sb *stateBuilder) error {
 	for dst, src := range f.imageToBackup {
 		dstObj := s.Images().Get(dst)
 
+		if dstObj.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
+			log.I(ctx, "Reset Multi-sampled image %v during loop is not supported", dst)
+			continue
+		}
 		prime := func() error {
 			primeable, err := imgPrimer.newPrimeableImageDataFromDevice(src, dst)
 			if err != nil {
@@ -676,7 +686,6 @@ func (f *frameLoop) resetFences(ctx context.Context, sb *stateBuilder) error {
 			log.D(ctx, "Reset fence %v.", k)
 			sb.write(sb.cb.VkResetFences(fence.Device(), 1, pFence, VkResult_VK_SUCCESS))
 		} else {
-			sb.write(sb.cb.ReplayGetFenceStatus(fence.Device(), fence.VulkanHandle(), VkResult_VK_SUCCESS, VkResult_VK_SUCCESS))
 			log.D(ctx, "Singal fence %v.", k)
 			queue := sb.getQueueFor(
 				VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
