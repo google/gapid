@@ -27,6 +27,11 @@
 #include <unordered_set>
 #include <vector>
 
+namespace {
+const uint64_t kChunkSizeLimit =
+    16 * 1024 * 1024;  // Limit the data to prevent OOM
+}
+
 namespace gapii {
 
 template <typename T>
@@ -384,47 +389,56 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         continue;
       }
       auto &deviceMemory = mState.DeviceMemories[bind.mmemory];
+
       StagingBuffer stage(
           arena(), device_functions, buf->mDevice,
           mState.PhysicalDevices[mState.Devices[buf->mDevice]->mPhysicalDevice]
               ->mMemoryProperties,
-          bind.msize);
-      StagingCommandBuffer commandBuffer(
-          device_functions, buf->mDevice,
-          GetQueue(mState.Queues, buf->mDevice, buf)->mFamily);
+          kChunkSizeLimit);
 
-      VkBufferCopy region{bind.mresourceOffset, 0, bind.msize};
+      for (uint64_t offset = 0; offset < bind.msize;
+           offset += kChunkSizeLimit) {
+        uint64_t chunkSize = bind.msize - offset < kChunkSizeLimit
+                                 ? bind.msize - offset
+                                 : kChunkSizeLimit;
 
-      device_functions.vkCmdCopyBuffer(commandBuffer.GetBuffer(), buf_handle,
-                                       stage.GetBuffer(), 1, &region);
+        StagingCommandBuffer commandBuffer(
+            device_functions, buf->mDevice,
+            GetQueue(mState.Queues, buf->mDevice, buf)->mFamily);
 
-      VkBufferMemoryBarrier barrier{
-          VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-          nullptr,
-          VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
-          VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
-          0xFFFFFFFF,
-          0xFFFFFFFF,
-          stage.GetBuffer(),
-          0,
-          bind.msize};
+        VkBufferCopy region{bind.mresourceOffset + offset, 0, chunkSize};
 
-      device_functions.vkCmdPipelineBarrier(
-          commandBuffer.GetBuffer(),
-          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-          VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1,
-          &barrier, 0, nullptr);
+        device_functions.vkCmdCopyBuffer(commandBuffer.GetBuffer(), buf_handle,
+                                         stage.GetBuffer(), 1, &region);
 
-      commandBuffer.FinishAndSubmit(
-          GetQueue(mState.Queues, buf->mDevice, buf)->mVulkanHandle);
-      device_functions.vkQueueWaitIdle(
-          GetQueue(mState.Queues, buf->mDevice, buf)->mVulkanHandle);
+        VkBufferMemoryBarrier barrier{
+            VkStructureType::VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            nullptr,
+            VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+            VkAccessFlagBits::VK_ACCESS_HOST_READ_BIT,
+            0xFFFFFFFF,
+            0xFFFFFFFF,
+            stage.GetBuffer(),
+            0,
+            chunkSize};
 
-      void *pData = stage.GetMappedMemory();
-      memory::Observation observation;
-      observation.set_base(bind.mmemoryOffset);
-      observation.set_pool(deviceMemory->mData.pool_id());
-      serializer->sendData(&observation, true, pData, bind.msize);
+        device_functions.vkCmdPipelineBarrier(
+            commandBuffer.GetBuffer(),
+            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VkPipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr,
+            1, &barrier, 0, nullptr);
+
+        commandBuffer.FinishAndSubmit(
+            GetQueue(mState.Queues, buf->mDevice, buf)->mVulkanHandle);
+        device_functions.vkQueueWaitIdle(
+            GetQueue(mState.Queues, buf->mDevice, buf)->mVulkanHandle);
+
+        memory::Observation observation;
+        observation.set_pool(deviceMemory->mData.pool_id());
+        observation.set_base(bind.mmemoryOffset + offset);
+        serializer->sendData(&observation, true, stage.GetMappedMemory(),
+                             chunkSize);
+      }
     }
   }
 
