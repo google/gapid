@@ -48,7 +48,7 @@ func PackageList(ctx context.Context, d adb.Device, includeIcons bool, iconDensi
 
 	// Can only capture debug application unless Android build is userdebug and adb root works
 	onlyDebug := true
-	isUserdebugBuild, err := d.IsUserdebugBuild(ctx)
+	isUserdebugBuild, err := d.IsDebuggableBuild(ctx)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to check Android build type")
 	}

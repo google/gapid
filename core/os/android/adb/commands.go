@@ -91,13 +91,13 @@ retry:
 	return log.Err(ctx, ErrRootFailed, buf.String())
 }
 
-// IsUserdebugBuild returns true if the device runs an Android userdebug build
-func (b *binding) IsUserdebugBuild(ctx context.Context) (bool, error) {
-	output, err := b.Command("shell", "getprop", "ro.build.type").Call(ctx)
+// IsDebuggableBuild returns true if the device runs a debuggable Android build.
+func (b *binding) IsDebuggableBuild(ctx context.Context) (bool, error) {
+	output, err := b.Command("shell", "getprop", "ro.debuggable").Call(ctx)
 	if err != nil {
 		return false, err
 	}
-	return (output == "userdebug"), nil
+	return output == "1", nil
 }
 
 // InstallAPK installs the specified APK to the device. If reinstall is true
