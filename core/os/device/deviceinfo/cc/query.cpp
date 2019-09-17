@@ -101,13 +101,13 @@ void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
     backupVendor = opengl_driver->vendor().c_str();
     backupName = opengl_driver->renderer().c_str();
   }
-
+  std::vector<std::pair<std::string, std::string>> vulkan_performance_layers;
   // Checks if the device supports Vulkan (have Vulkan loader) first, then
   // populates the VulkanDriver message.
   if (query::hasVulkanLoader()) {
     auto vulkan_driver = new VulkanDriver();
     if (opt.vulkan.query_layers_and_extensions()) {
-      query::vkLayersAndExtensions(vulkan_driver);
+      query::vkLayersAndExtensions(vulkan_driver, &vulkan_performance_layers);
     }
     if (opt.vulkan.query_physical_devices()) {
       query::vkPhysicalDevices(vulkan_driver);
@@ -154,6 +154,14 @@ void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
     query::abi(i, configuration->add_abis());
   }
 
+  auto perfetto_config = new PerfettoCapability();
+  for (size_t i = 0; i < vulkan_performance_layers.size(); ++i){
+    auto layer = perfetto_config->add_vulkan_profile_layers();
+    layer->set_layer_name(vulkan_performance_layers[i].first.c_str());
+    layer->set_probe_name(vulkan_performance_layers[i].first.c_str());
+    layer->set_probe_description(vulkan_performance_layers[i].second.c_str());
+  }
+  configuration->set_allocated_perfetto_capability(perfetto_config);
   // Instance
   auto instance = new Instance();
   instance->set_name(query::instanceName());
@@ -201,7 +209,7 @@ bool updateVulkanDriver(
   }
 
   device::VulkanDriver* vk_driver = new device::VulkanDriver();
-  if (!query::vkLayersAndExtensions(vk_driver)) {
+  if (!query::vkLayersAndExtensions(vk_driver, nullptr)) {
     // Failed at getting Vulkan layers and extensions info, the device may not
     // support Vulkan, return without touching the device::Instance.
     return false;

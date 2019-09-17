@@ -17,32 +17,63 @@
 
 #include "core/cc/target.h"
 #include "core/cc/log.h"
-extern "C" {
-__attribute__((constructor)) void _layer_dummy_func__();
+#include <vulkan/vk_layer.h>
+
+#include <cstring>
+
+extern "C"
+{
+    __attribute__((constructor)) void _layer_dummy_func__();
 }
 #if (TARGET_OS == GAPID_OS_WINDOWS) || (TARGET_OS == GAPID_OS_OSX)
-class dummy_struct {};
+class dummy_struct
+{
+};
 #else
 #include <dlfcn.h>
 #include <cstdio>
 #include <cstdint>
-class dummy_struct {
-    public:
+class dummy_struct
+{
+public:
     dummy_struct();
 };
 
-dummy_struct::dummy_struct() {
+dummy_struct::dummy_struct()
+{
     GAPID_ERROR("Loading dummy struct");
     Dl_info info;
-    if (dladdr((void*)&_layer_dummy_func__, &info)) {
+    if (dladdr((void *)&_layer_dummy_func__, &info))
+    {
         dlopen(info.dli_fname, RTLD_NODELETE);
     }
 }
 #endif
 
-extern "C" {
-    void _layer_dummy_func__() {
+extern "C"
+{
+    void _layer_dummy_func__()
+    {
         dummy_struct d;
-        (void) d;
+        (void)d;
     }
 }
+namespace api_timing
+{
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+vkEnumerateInstanceExtensionProperties(PFN_vkEnumerateInstanceExtensionProperties, const char *pLayerName, uint32_t *pPropertyCount,
+                                       VkExtensionProperties *pProperties)
+{
+    if (!pProperties)
+    {
+        *pPropertyCount = 1;
+        return VK_SUCCESS;
+    }
+    if (*pPropertyCount < 1)
+    {
+        return VK_INCOMPLETE;
+    }
+    strcpy(pProperties[0].extensionName, "GAPID_Enabled");
+    return VK_SUCCESS;
+}
+} // namespace api_timing

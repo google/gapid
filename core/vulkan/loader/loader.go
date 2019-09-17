@@ -26,7 +26,6 @@ import (
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
-	"github.com/google/gapid/core/os/device/remotessh"
 	"github.com/google/gapid/core/os/file"
 	"github.com/google/gapid/core/os/shell"
 )
@@ -47,17 +46,17 @@ type deviceReplaySetup interface {
 	finalizeJSON(ctx context.Context, jsonName string, content string) (string, error)
 }
 
-// remoteSetup describes moving files to a remote device.
-type remoteSetup struct {
-	device remotessh.Device
+// setupHelper describes setting up the files on the device
+type setupHelper struct {
+	device bind.Device
 	abi    *device.ABI
 }
 
-func (r *remoteSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
+func (r *setupHelper) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
 	return r.device.MakeTempDir(ctx)
 }
 
-func (r *remoteSetup) initializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error) {
+func (r *setupHelper) initializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error) {
 	lib, err := layout.Library(ctx, library, r.abi)
 	if err != nil {
 		return "", err
@@ -69,53 +68,62 @@ func (r *remoteSetup) initializeLibrary(ctx context.Context, tempdir string, lib
 	return tempdir + "/" + libName, nil
 }
 
-func (r *remoteSetup) finalizeJSON(ctx context.Context, jsonName string, content string) (string, error) {
+func (r *setupHelper) finalizeJSON(ctx context.Context, jsonName string, content string) (string, error) {
 	if err := r.device.WriteFile(ctx, bytes.NewReader([]byte(content)), os.FileMode(0644), jsonName); err != nil {
 		return "", err
 	}
 	return jsonName, nil
 }
 
-// localSetup sets up the JSON for a local device.
-type localSetup struct {
-	abi *device.ABI
-}
-
-func (*localSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
-	tempdir, err := ioutil.TempDir("", "temp")
+// SetupLayers sets up the environment so that the correct layers are enabled
+// for the application.
+func SetupLayers(ctx context.Context, layers []string, skipMissingLayers bool, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
+	if len(layers) == 0 {
+		return nil, nil
+	}
+	var setup := &setupHelper{dev, abi}
+	
+	tempdir, cleanup, err := setup.makeTempDir(ctx)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	return tempdir, func(ctx context.Context) {
-		os.RemoveAll(tempdir)
-	}, nil
-}
+	for _, l := range layers {
+		libType, err := layout.LibraryFromLayerName(l)
+		if err != nil {
+			return nil, err
+		}
+		lib, json, err := findLibraryAndJSON(ctx, setup, tempdir, libType)
 
-func (l *localSetup) initializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error) {
-	lib, err := layout.Library(ctx, library, l.abi)
-	if err != nil {
-		return "", err
+		if err != nil {
+			if skipMissingLayers {
+				continue
+			}
+			return cleanup.Invoke(ctx), err
+		}
+		err = setupJSON(ctx, lib, json, setup, tempdir, env)
+		if err != nil {
+			return cleanup.Invoke(ctx), err
+		}
+		env.AddPathStart("VK_INSTANCE_LAYERS", l)
 	}
-	return lib.System(), nil
-}
-
-func (*localSetup) finalizeJSON(ctx context.Context, jsonName string, content string) (string, error) {
-	if err := ioutil.WriteFile(jsonName, []byte(content), 0644); err != nil {
-		return "", err
+	if abi.OS == device.Windows {
+		// Adds the extra MSYS DLL dependencies onto the path.
+		// TODO: remove this hacky work-around.
+		// https://github.com/google/gapid/issues/17
+		gapit, err := layout.Gapit(ctx)
+		if err == nil {
+			env.AddPathStart("PATH", gapit.Parent().System())
+		}
 	}
-	return jsonName, nil
+	return cleanup, nil
 }
 
 // SetupTrace sets up the environment for tracing a local app. Returns a
 // clean-up function to be called after the trace completes, and a temporary
 // filename that can be used to find the port if stdout fails, or an error.
 func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, string, error) {
-	var setup deviceReplaySetup
-	if dev, ok := d.(remotessh.Device); ok {
-		setup = &remoteSetup{dev, abi}
-	} else {
-		setup = &localSetup{abi}
-	}
+	setup := &setupHelper{d, abi}
+	
 	tempdir, cleanup, err := setup.makeTempDir(ctx)
 	if err != nil {
 		return nil, "", err
@@ -130,6 +138,8 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 	if err != nil {
 		return cleanup.Invoke(ctx), "", err
 	}
+	env.AddPathStart("VK_LAYER_PATH", tempdir)
+
 	f, c, err := d.TempFile(ctx)
 	if err != nil {
 		return cleanup.Invoke(ctx), "", err
@@ -154,12 +164,8 @@ func SetupTrace(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.
 // SetupReplay sets up the environment for a desktop. Returns a clean-up
 // function to be called after replay completes, or an error.
 func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell.Env) (app.Cleanup, error) {
-	var setup deviceReplaySetup
-	if dev, ok := d.(remotessh.Device); ok {
-		setup = &remoteSetup{dev, abi}
-	} else {
-		setup = &localSetup{abi}
-	}
+	setup := &setupHelper{d, abi}
+	
 	tempdir, cleanup, err := setup.makeTempDir(ctx)
 	if err != nil {
 		return nil, err
@@ -173,7 +179,7 @@ func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell
 	if err = setupJSON(ctx, lib, json, setup, tempdir, env); err != nil {
 		return cleanup.Invoke(ctx), err
 	}
-
+	env.AddPathStart("VK_LAYER_PATH", tempdir)
 	return cleanup, nil
 }
 
@@ -203,7 +209,6 @@ func setupJSON(ctx context.Context, library string, json file.Path, rs deviceRep
 	fixedContent := strings.Replace(string(sourceContent[:]), "<library>", libName, 1)
 
 	rs.finalizeJSON(ctx, tempdir+"/"+json.Basename(), fixedContent)
-	env.AddPathStart("VK_LAYER_PATH", tempdir)
 
 	return nil
 }

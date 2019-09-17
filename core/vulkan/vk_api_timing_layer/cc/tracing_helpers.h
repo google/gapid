@@ -15,22 +15,23 @@
  *
  */
 
-
 #ifndef __CORE_VULKAN_VK_API_TIMING_LAYER_CC_TRACING_HELPERS_H__
 #define __CORE_VULKAN_VK_API_TIMING_LAYER_CC_TRACING_HELPERS_H__
 
 #include "core/vulkan/perfetto_producer/perfetto_data_source.h"
 #include "core/vulkan/perfetto_producer/perfetto_threadlocal_emitter.h"
 
-namespace api_timing {
+namespace api_timing
+{
 
-struct TimingTypeTraits {
-    static constexpr const char* producer_name = "APITiming";
+struct TimingTypeTraits
+{
+    static constexpr const char *producer_name = "VulkanCPUTiming";
 };
 
 using Producer = core::PerfettoProducer<TimingTypeTraits>;
 auto const Emit = &core::tracing::Emit<TimingTypeTraits>;
-}
+} // namespace api_timing
 
 PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(api_timing::Producer);
 #endif

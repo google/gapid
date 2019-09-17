@@ -1,12 +1,12 @@
 {
-  "file_format_version" : "1.0.0",
+  "file_format_version": "1.0.0",
   "layer": {
-    "name": "APITiming",
+    "name": "VulkanCPUTiming",
     "type": "GLOBAL",
     "library_path": "<library>",
-    "api_version" : "1.0.5",
-    "implementation_version" : "1",
-    "description" : "API Timing Layer",
+    "api_version": "1.0.5",
+    "implementation_version": "1",
+    "description": "Vulkan API CPU Call Timing",
     "functions": {
       "vkGetDeviceProcAddr": "APITimingGetDeviceProcAddr",
       "vkGetInstanceProcAddr": "APITimingGetInstanceProcAddr"

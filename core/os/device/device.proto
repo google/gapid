@@ -175,8 +175,15 @@ message Configuration {
   PerfettoCapability perfetto_capability = 5;
 }
 
+message VulkanProfileLayer {
+  string layer_name = 1;
+  string probe_name = 2;
+  string probe_description = 3;
+}
+
 message PerfettoCapability {
   GPUProfiling gpu_profiling = 1;
+  repeated VulkanProfileLayer vulkan_profile_layers = 2;
 }
 
 message GPUProfiling {

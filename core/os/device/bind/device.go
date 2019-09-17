@@ -16,7 +16,10 @@ package bind
 
 import (
 	"context"
+	"io"
+	"os"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
 )
@@ -59,4 +62,12 @@ type Device interface {
 	CanTrace() bool
 	// SupportsPerfetto returns true if this device will work with perfetto
 	SupportsPerfetto(ctx context.Context) bool
+	// PushFile will transfer the local file at sourcePath to the remote
+	// machine at destPath
+	PushFile(ctx context.Context, sourcePath, destPath string) error
+	// MakeTempDir makes a temporary directory, and returns the
+	// path, as well as a function to call to clean it up.
+	MakeTempDir(ctx context.Context) (string, app.Cleanup, error)
+	// WriteFile writes the given file into the given location on the remote device
+	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
 }

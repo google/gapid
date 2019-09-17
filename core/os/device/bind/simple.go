@@ -16,6 +16,7 @@ package bind
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -80,6 +81,50 @@ func (b *Simple) FileContents(ctx context.Context, path string) (string, error) 
 		return "", err
 	}
 	return string(contents), nil
+}
+
+func (b *Simple) PushFile(ctx context.Context, sourcePath, destPath string) error {
+	in, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func (b *Simple) MakeTempDir(ctx context.Context) (string, app.Cleanup, error) {
+	fl, e := ioutil.TempDir("", "")
+	if e != nil {
+		return "", nil, e
+	}
+
+	return fl, func(ctx context.Context) {
+		os.RemoveAll(fl)
+	}, nil
+}
+
+func (b *Simple) WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error {
+	out, err := os.CreateFile(destPath, os.O_RDWR|os.O_CREATE, mode)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err := io.Copy(out, contents)
+	if err != nil {
+		return err
+	}
+	return out.Close()
 }
 
 // RemoveFile removes the given file from the device

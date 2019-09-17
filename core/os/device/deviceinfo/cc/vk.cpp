@@ -51,8 +51,12 @@ bool hasVulkanLoader() { return core::HasVulkanLoader(); }
     return false;                                      \
   }
 
+const char *kVulkanPerformanceLayers[] = {
+    "VulkanCPUTiming"};
+
 bool vkLayersAndExtensions(
     device::VulkanDriver *driver,
+    std::vector<std::pair<std::string, std::string>> *performance_layers,
     std::function<void *(size_t, const char *)> get_inst_proc_addr)
 {
   if (!driver)
@@ -89,12 +93,38 @@ bool vkLayersAndExtensions(
     {
       continue;
     }
+
     MUST_SUCCESS(vkEnumerateInstanceExtensionProperties(l.layerName, &ext_count,
                                                         nullptr));
     std::vector<VkExtensionProperties> ext_props(ext_count,
                                                  VkExtensionProperties{});
     MUST_SUCCESS(vkEnumerateInstanceExtensionProperties(l.layerName, &ext_count,
                                                         ext_props.data()));
+
+    bool cont = false;
+    for (size_t i = 0; i < sizeof(kVulkanPerformanceLayers) / sizeof(kVulkanPerformanceLayers[0]); ++i)
+    {
+      if (!strcmp(l.layerName, kVulkanPerformanceLayers[i]))
+      {
+        cont = true;
+        if (performance_layers)
+        {
+          if (ext_count > 0 && strcmp("GAPID_enabled", ext_props[0].extensionName))
+          {
+            performance_layers->push_back(
+                std::make_pair(
+                    std::string(&l.layerName[0]),
+                    std::string(&l.description[0])));
+          }
+        }
+
+        break;
+      }
+    }
+    if (cont)
+    {
+      continue;
+    }
     driver->add_layers();
     driver->mutable_layers(driver->layers_size() - 1)->set_name(l.layerName);
     for (size_t j = 0; j < ext_props.size(); j++)

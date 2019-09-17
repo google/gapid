@@ -22,6 +22,7 @@ import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 
+import com.google.gapid.models.Devices.DeviceCaptureInfo;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
 import com.google.gapid.util.Messages;
@@ -40,6 +41,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 
 import perfetto.protos.PerfettoConfig;
 
@@ -80,15 +82,17 @@ public class TraceConfigDialog extends DialogBase {
   };
 
   private final Settings settings;
+  private final DeviceCaptureInfo device;
   private InputArea input;
 
-  public TraceConfigDialog(Shell shell, Settings settings, Theme theme) {
+  public TraceConfigDialog(DeviceCaptureInfo device, Shell shell, Settings settings, Theme theme) {
     super(shell, theme);
     this.settings = settings;
+    this.device = device;
   }
 
-  public static void showPerfettoConfigDialog(Shell shell, Models models, Widgets widgets) {
-    new TraceConfigDialog(shell, models.settings, widgets.theme).open();
+  public static void showPerfettoConfigDialog(DeviceCaptureInfo device, Shell shell, Models models, Widgets widgets) {
+    new TraceConfigDialog(device, shell, models.settings, widgets.theme).open();
   }
 
   public static String getConfigSummary(Settings settings) {
@@ -144,6 +148,12 @@ public class TraceConfigDialog extends DialogBase {
                   .addAllMeminfoCounters(Arrays.asList(MEM_COUNTERS));
     }
 
+    for (int i = 0; i < settings.perfettoVulkanLayers.length; i++) {
+      config.addDataSourcesBuilder()
+      .getConfigBuilder()
+          .setName(settings.perfettoVulkanLayers[i]);
+    }
+
     return config;
   }
 
@@ -155,7 +165,7 @@ public class TraceConfigDialog extends DialogBase {
   @Override
   protected Control createDialogArea(Composite parent) {
     Composite area = (Composite)super.createDialogArea(parent);
-    input = withLayoutData(new InputArea(area, settings), new GridData(GridData.FILL_BOTH));
+    input = withLayoutData(new InputArea(device, area, settings), new GridData(GridData.FILL_BOTH));
     return area;
   }
 
@@ -176,8 +186,8 @@ public class TraceConfigDialog extends DialogBase {
     private final Button mem;
     private final Label[] memLabels;
     private final Spinner memRate;
-
-    public InputArea(Composite parent, Settings settings) {
+    private final Button[] vulkanChecks;
+    public InputArea(DeviceCaptureInfo device, Composite parent, Settings settings) {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(1, false));
 
@@ -197,8 +207,19 @@ public class TraceConfigDialog extends DialogBase {
       memRate = createSpinner(memGroup, settings.perfettoMemRate, 1, 1000);
       memLabels[1] = createLabel(memGroup, "ms");
 
+      addSeparator();
+      Composite vulkanGroup = withLayoutData(createComposite(this, new GridLayout(1, false)),
+      withIndents(new GridData(), GROUP_INDENT, 0));
+      int numLayers = device.device.getConfiguration().getPerfettoCapability().getVulkanProfileLayersCount();
+      vulkanChecks = new Button[numLayers];
+      for (int i = 0; i < numLayers; i++) {
+        String name = device.device.getConfiguration().getPerfettoCapability().getVulkanProfileLayers(i).getProbeName();
+        boolean enabled = Arrays.stream(settings.perfettoVulkanLayers).anyMatch(name::equals);
+        vulkanChecks[i] = createCheckbox(this, name, enabled, e -> updateVulkan());
+      }
       updateCpu();
       updateMem();
+      updateVulkan();
     }
 
     public void update(Settings settings) {
@@ -209,6 +230,14 @@ public class TraceConfigDialog extends DialogBase {
 
       settings.perfettoMem = mem.getSelection();
       settings.perfettoMemRate = memRate.getSelection();
+      ArrayList<String> layers = new ArrayList<String>();
+      for (int i = 0; i < vulkanChecks.length; i++) {
+        if (vulkanChecks[i].getSelection()) {
+          layers.add(vulkanChecks[i].getText());
+        }
+      }
+      settings.perfettoVulkanLayers = new String[layers.size()];
+      layers.toArray(settings.perfettoVulkanLayers);
     }
 
     private void addSeparator() {
@@ -221,6 +250,9 @@ public class TraceConfigDialog extends DialogBase {
       cpuFreq.setEnabled(enabled);
       cpuChain.setEnabled(enabled);
       cpuSlices.setEnabled(enabled);
+    }
+
+    private void updateVulkan() {
     }
 
     private void updateMem() {

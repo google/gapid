@@ -27,13 +27,13 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/core/vulkan/loader"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -43,18 +43,9 @@ import (
 // remote SSH clients
 type Device interface {
 	bind.Device
-	// PushFile will transfer the local file at sourcePath to the remote
-	// machine at destPath
-	PushFile(ctx context.Context, sourcePath, destPath string) error
 	// PullFile will transfer the remote file at sourcePath to the local
 	// machine at destPath
 	PullFile(ctx context.Context, sourcePath, destPath string) error
-	// MakeTempDir makes a temporary directory, and returns the
-	// path, as well as a function to call to clean it up.
-	MakeTempDir(ctx context.Context) (string, app.Cleanup, error)
-	// WriteFile writes the given file into the given location on the remote device
-	WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error
-
 	// GetFilePermissions gets the unix permissions for the remote file
 	GetFilePermissions(ctx context.Context, path string) (os.FileMode, error)
 	// DefaultReplayCacheDir returns the default path for replay resource caches
@@ -366,11 +357,18 @@ func GetConnectedDevice(ctx context.Context, c Configuration) (Device, error) {
 		return nil, log.Errf(ctx, err, "Error running: './device-info'")
 	}
 
+	layers := layout.AllLayers()
+	env := &shell.Env{}
+	c, err := loader.SetupLayers(ctx, layers, true, b, b.To.Configration.ABIs[0], env)
+	if err != nil {
+		return nil, err
+	}
+
 	stderr := bytes.Buffer{}
 	stdout := bytes.Buffer{}
 
-	err = b.Shell("./device-info").In(dir).Capture(&stdout, &stderr).Run(ctx)
-
+	err = b.Shell("./device-info").In(dir).Env(env).Capture(&stdout, &stderr).Run(ctx)
+	c.Invoke(ctx)
 	if err != nil {
 		return nil, err
 	}

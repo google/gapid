@@ -213,7 +213,7 @@ func (b *binding) SystemSetting(ctx context.Context, namespace, key string) (str
 // SetSystemSetting sets the system setting with with the given namespaced key
 // to value.
 func (b *binding) SetSystemSetting(ctx context.Context, namespace, key, value string) error {
-	res, err := b.Shell("settings", "put", namespace, key, value).Call(ctx)
+	res, err := b.Shell("settings", "put", namespace, key, value).Verbose().Call(ctx)
 	if err != nil {
 		return log.Errf(ctx, nil, "settings put returned error: \n%s", res)
 	}

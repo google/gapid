@@ -410,7 +410,7 @@ public class TracerDialog {
         perfettoConfigLabel =
             createLabel(perfettoConfig, PERFETTO_LABEL + getConfigSummary(models.settings));
         Widgets.createButton(perfettoConfig, "Configure", e -> {
-          showPerfettoConfigDialog(getShell(), models, widgets);
+          showPerfettoConfigDialog(getSelectedDevice(), getShell(), models, widgets);
           perfettoConfigLabel.setText(PERFETTO_LABEL + getConfigSummary(models.settings));
           perfettoConfigLabel.requestLayout();
         });

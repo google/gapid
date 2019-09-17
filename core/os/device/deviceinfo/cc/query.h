@@ -91,6 +91,7 @@ bool updateVulkanDriver(
 // will be used for the resolvation.
 bool vkLayersAndExtensions(
     device::VulkanDriver*,
+    std::vector<std::pair<std::string, std::string>>* performance_layers,
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
 
 // vkPhysicalDevices populates the VulkanPhysicalDevices fields in the

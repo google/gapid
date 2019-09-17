@@ -32,6 +32,7 @@ go_library(
     deps = [
         "//core/context/keys:go_default_library",
         "//core/data/id:go_default_library",
+	    "//core/app:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",

@@ -99,6 +99,7 @@ public class Settings {
   public boolean perfettoCpuSlices = true;
   public boolean perfettoMem = true;
   public int perfettoMemRate = 10;
+  public String[] perfettoVulkanLayers = new String[0];
 
   public static Settings load() {
     Settings result = new Settings();
@@ -260,6 +261,7 @@ public class Settings {
     perfettoCpuSlices = getBoolean(properties, "perfetto.cpu.slices", perfettoCpuSlices);
     perfettoMem = getBoolean(properties, "perfetto.mem", perfettoMem);
     perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
+    perfettoVulkanLayers = getStringList(properties, "perfetto.vulkan.layers", perfettoVulkanLayers);
   }
 
   private void updateTo(Properties properties) {
@@ -310,6 +312,7 @@ public class Settings {
     properties.setProperty("perfetto.cpu.slices", Boolean.toString(perfettoCpuSlices));
     properties.setProperty("perfetto.mem", Boolean.toString(perfettoMem));
     properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
+    setStringList(properties, "perfetto.vulkan.layers", perfettoVulkanLayers);
   }
 
   private static Point getPoint(Properties properties, String name) {
