@@ -88,8 +88,9 @@ type frameLoop struct {
 	capturedLoopCmds   []api.Cmd
 	capturedLoopCmdIds []api.CmdID
 
-	backupState *api.GlobalState
-	watcher     *stateWatcher
+	watcher        *stateWatcher
+	loopStartState *api.GlobalState
+	loopEndState   *api.GlobalState
 
 	bufferCreated   map[VkBuffer]bool
 	bufferChanged   map[VkBuffer]bool
@@ -100,6 +101,9 @@ type frameLoop struct {
 	imageChanged   map[VkImage]bool
 	imageDestroyed map[VkImage]bool
 	imageToBackup  map[VkImage]VkImage
+
+	descriptorSetLayoutCreated   map[VkDescriptorSetLayout]bool
+	descriptorSetLayoutDestroyed map[VkDescriptorSetLayout]bool
 
 	loopCountPtr value.Pointer
 
@@ -113,6 +117,12 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 	if api.CmdID.Real(loopStart) >= api.CmdID.Real(loopEnd) {
 		log.F(ctx, true, "FrameLoop: Cannot create FrameLoop for zero or negative length loop")
+		return nil
+	}
+
+	if loopStart == api.CmdNoID || loopEnd == api.CmdNoID {
+		log.F(ctx, true, "FrameLoop: Cannot create FrameLoop that starts or ends on api.CmdNoID")
+		return nil
 	}
 
 	return &frameLoop{
@@ -139,6 +149,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		imageChanged:   make(map[VkImage]bool),
 		imageDestroyed: make(map[VkImage]bool),
 		imageToBackup:  make(map[VkImage]VkImage),
+
+		descriptorSetLayoutCreated:   make(map[VkDescriptorSetLayout]bool),
+		descriptorSetLayoutDestroyed: make(map[VkDescriptorSetLayout]bool),
 
 		loopTerminated:      false,
 		lastObservedCommand: api.CmdNoID,
@@ -167,7 +180,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 	if lastObservedCommand == api.CmdNoID {
 
 		// This is the start of the loop.
-		if api.CmdID.Real(cmdId) == f.loopStartIdx {
+		if api.CmdID.Real(cmdId) >= f.loopStartIdx {
 
 			log.D(ctx, "FrameLoop: start loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
 
@@ -205,7 +218,8 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 				// We can finally run over the loop contents looking for resources that have changed.
 				// This is required so we can emit extra instructions before the loop capturing the values of
 				// anything that we need to restore at the end of the loop. Do that now.
-				f.detectChangedResource(ctx, out.State())
+				f.buildStartEndStates(ctx, out.State())
+				f.detectChangedResources()
 
 				apiState := GetState(out.State())
 
@@ -319,30 +333,38 @@ func (f *frameLoop) PreLoop(ctx context.Context, out transform.Writer) {
 func (f *frameLoop) PostLoop(ctx context.Context, out transform.Writer) {
 }
 
-func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.GlobalState) {
+func (f *frameLoop) cloneState(ctx context.Context, startState *api.GlobalState) *api.GlobalState {
 
-	f.backupState = f.capture.NewUninitializedState(ctx)
-	f.backupState.Memory = startState.Memory.Clone()
+	clone := f.capture.NewUninitializedState(ctx)
+	clone.Memory = startState.Memory.Clone()
 
 	for apiState, graphicsApi := range startState.APIs {
 
-		clonedState := graphicsApi.Clone(f.backupState.Arena)
+		clonedState := graphicsApi.Clone(clone.Arena)
 		clonedState.SetupInitialState(ctx)
 
-		f.backupState.APIs[apiState] = clonedState
+		clone.APIs[apiState] = clonedState
 	}
+
+	return clone
+}
+
+func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.GlobalState) {
+
+	f.loopStartState = f.cloneState(ctx, startState)
+	currentState := f.cloneState(ctx, startState)
 
 	// Loop through each command mutating the shadow state and looking at what has been created/destroyed
 	err := api.ForeachCmd(ctx, f.capturedLoopCmds, func(ctx context.Context, cmdId api.CmdID, cmd api.Cmd) error {
 
-		cmd.Extras().Observations().ApplyWrites(f.backupState.Memory.ApplicationPool())
+		cmd.Extras().Observations().ApplyWrites(currentState.Memory.ApplicationPool())
 
 		switch cmd.(type) {
 
 		// Buffers.
 		case *VkCreateBuffer:
 			vkCmd := cmd.(*VkCreateBuffer)
-			buffer := vkCmd.PBuffer().MustRead(ctx, vkCmd, f.backupState, nil)
+			buffer := vkCmd.PBuffer().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Buffer %v created.", buffer)
 			f.bufferCreated[buffer] = true
 
@@ -355,7 +377,7 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 		// Images
 		case *VkCreateImage:
 			vkCmd := cmd.(*VkCreateImage)
-			img := vkCmd.PImage().MustRead(ctx, vkCmd, f.backupState, nil)
+			img := vkCmd.PImage().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Image %v created", img)
 			f.imageCreated[img] = true
 
@@ -365,10 +387,27 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 			log.D(ctx, "Image %v destroyed", img)
 			f.imageDestroyed[img] = true
 
+		// DescriptionSetLayout(s)
+		case *VkCreateDescriptorSetLayout:
+			vkCmd := cmd.(*VkCreateDescriptorSetLayout)
+			descriptorSetLayout := vkCmd.PSetLayout().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
+			f.descriptorSetLayoutCreated[descriptorSetLayout] = true
+
+		case *VkDestroyDescriptorSetLayout:
+			vkCmd := cmd.(*VkDestroyDescriptorSetLayout)
+			descriptorSetLayout := vkCmd.DescriptorSetLayout()
+			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
+			if _, ok := f.descriptorSetLayoutCreated[descriptorSetLayout]; ok {
+				delete(f.descriptorSetLayoutCreated, descriptorSetLayout)
+			} else {
+				f.descriptorSetLayoutDestroyed[descriptorSetLayout] = true
+			}
+
 			// TODO: Recreate destroyed resources.
 		}
 
-		if err := cmd.Mutate(ctx, cmdId, f.backupState, nil, f.watcher); err != nil {
+		if err := cmd.Mutate(ctx, cmdId, currentState, nil, f.watcher); err != nil {
 			return fmt.Errorf("%v: %v: %v", cmdId, cmd, err)
 		}
 
@@ -379,7 +418,12 @@ func (f *frameLoop) detectChangedResource(ctx context.Context, startState *api.G
 		log.E(ctx, "Mutate error: [%v].", err)
 	}
 
-	apiState := GetState(f.backupState)
+	f.loopEndState = currentState
+}
+
+func (f *frameLoop) detectChangedResources() {
+
+	apiState := GetState(f.loopEndState)
 
 	// Find out changed buffers.
 	for bufferKey, buffer := range apiState.Buffers().All() {
@@ -545,6 +589,10 @@ func (f *frameLoop) resetResource(ctx context.Context, stateBuilder *stateBuilde
 		return err
 	}
 
+	if err := f.resetDescriptorSetLayouts(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	//TODO: Reset other resources.
 	return nil
 }
@@ -639,6 +687,24 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	postCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(ipHostCopyImageLayout), sameLayoutsOfImage(dstImg))
 	if err = ipRecordImageMemoryBarriers(stateBuilder, queueHandler, postCopyBarriers...); err != nil {
 		return log.Err(ctx, err, "Failed at post device copy image layout transition")
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every DescriptorSetLayout that was created during the loop...
+	for created := range f.descriptorSetLayoutCreated {
+		// Write the command to delete the created object
+		dsl := GetState(f.loopEndState).descriptorSetLayouts.Get(created)
+		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(dsl.Device(), dsl.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every DescriptorSetLayout that was destroyed during the loop...
+	for destroyed := range f.descriptorSetLayoutDestroyed {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createDescriptorSetLayout(GetState(f.loopStartState).descriptorSetLayouts.Get(destroyed))
 	}
 
 	return nil
