@@ -98,7 +98,7 @@ public class Tracks {
     }
 
     for (CounterInfo counter : data.getCounters().values()) {
-      if ("gpu".equals(counter.refType)) {
+      if ("gpu".equals(counter.refType) && counter.count > 0) {
         if (!found) {
           addGpuGroup(data);
           found = true;
