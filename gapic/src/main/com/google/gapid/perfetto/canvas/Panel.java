@@ -4,6 +4,7 @@ import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 /**
@@ -145,6 +146,36 @@ public interface Panel {
         @Override
         public boolean click() {
           return Hover.this.click();
+        }
+      };
+    }
+
+    public default Panel.Hover withClick(BooleanSupplier onClick) {
+      return new Hover() {
+        @Override
+        public Area getRedraw() {
+          return Hover.this.getRedraw();
+        }
+
+        @Override
+        public Cursor getCursor(Display display) {
+          return Hover.this.getCursor(display);
+        }
+
+        @Override
+        public void stop() {
+          Hover.this.stop();
+        }
+
+        @Override
+        public boolean isOverlay() {
+          return Hover.this.isOverlay();
+        }
+
+        @Override
+        public boolean click() {
+          boolean r1 = Hover.this.click(), r2 = onClick.getAsBoolean();
+          return r1 || r2;
         }
       };
     }

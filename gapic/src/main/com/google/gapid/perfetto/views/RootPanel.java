@@ -25,6 +25,7 @@ import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.PanelGroup;
 import com.google.gapid.perfetto.canvas.RenderContext;
+import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.TrackConfig;
 
@@ -35,6 +36,11 @@ import org.eclipse.swt.SWT;
  * and tracks below.
  */
 public class RootPanel extends Panel.Base implements State.Listener {
+  private static final double HIGHLIGHT_TOP = 20;
+  private static final double HIGHLIGHT_BOTTOM = 28;
+  private static final double HIGHLIGHT_CENTER = (HIGHLIGHT_TOP + HIGHLIGHT_BOTTOM) / 2;
+  private static final double HIGHLIGHT_PADDING = 3;
+
   private final PanelGroup top = new PanelGroup();
   private final PanelGroup bottom = new PanelGroup();
   private final State state;
@@ -93,6 +99,61 @@ public class RootPanel extends Panel.Base implements State.Listener {
       });
     }
 
+    TimeSpan highlight = state.getHighlight();
+    if (highlight != TimeSpan.ZERO) {
+      double newClipX = Math.max(clip.x, LABEL_WIDTH);
+      ctx.withClip(newClipX, clip.y, clip.w - (newClipX - clip.x), clip.h, () -> {
+        double x1 = Math.rint(LABEL_WIDTH + state.timeToPx(highlight.start));
+        double x2 = Math.rint(LABEL_WIDTH + state.timeToPx(highlight.end));
+
+        ctx.setForegroundColor(colors().timeHighlight);
+        ctx.drawLine(x1, HIGHLIGHT_TOP, x1, HIGHLIGHT_BOTTOM);
+        ctx.drawLine(x2, HIGHLIGHT_TOP, x2, HIGHLIGHT_BOTTOM);
+        ctx.drawLine(x1, HIGHLIGHT_CENTER, x2, HIGHLIGHT_CENTER);
+
+        String label = TimeSpan.timeToString(highlight.getDuration());
+        Size labelSize = ctx.measure(Fonts.Style.Normal, label);
+        double labelX = (x1 + x2 - labelSize.w) / 2;
+        double labelY = HIGHLIGHT_CENTER - labelSize.h / 2;
+        if (labelSize.w + 3 * HIGHLIGHT_PADDING >= (x2 - x1)) {
+          labelX = x2 + HIGHLIGHT_PADDING;
+          if (labelX + labelSize.w > width) {
+            labelX = x1 - labelSize.w - HIGHLIGHT_PADDING;
+          }
+        } else {
+          double min = LABEL_WIDTH + 2 * HIGHLIGHT_PADDING;
+          double max = width - labelSize.w - 2 * HIGHLIGHT_PADDING;
+          if (labelX < min) {
+            labelX = Math.min(x2 - 2 * HIGHLIGHT_PADDING - labelSize.w, min);
+          } else if (labelX > max) {
+            labelX = Math.max(x1 + 2 * HIGHLIGHT_PADDING, max);
+          }
+       }
+
+        ctx.setBackgroundColor(colors().background);
+        ctx.fillRect(labelX - HIGHLIGHT_PADDING + 1, labelY - HIGHLIGHT_PADDING,
+            labelSize.w + 2 * HIGHLIGHT_PADDING - 1, labelSize.h + 2 * HIGHLIGHT_PADDING);
+        ctx.setForegroundColor(colors().timeHighlight);
+        ctx.drawText(Fonts.Style.Normal, label, labelX, labelY);
+
+        ctx.setForegroundColor(colors().timeHighlightBorder);
+        ctx.drawLine(x1, topHeight, x1, height);
+        ctx.drawLine(x2, topHeight, x2, height);
+
+        ctx.setBackgroundColor(colors().timeHighlightCover);
+        if (x1 >= width || x2 <= LABEL_WIDTH) {
+          ctx.fillRect(LABEL_WIDTH, 0, width - LABEL_WIDTH, height);
+        } else {
+          if (x1 > LABEL_WIDTH) {
+            ctx.fillRect(LABEL_WIDTH, 0, x1 - LABEL_WIDTH, height);
+          }
+          if (x2 > LABEL_WIDTH && x2 < width) {
+            ctx.fillRect(x2, 0, width - x2, height);
+          }
+        }
+      });
+    }
+
     if (!selection.isEmpty()) {
       ctx.setBackgroundColor(colors().selectionBackground);
       ctx.fillRect(selection.x, selection.y, selection.w, selection.h);
@@ -112,16 +173,23 @@ public class RootPanel extends Panel.Base implements State.Listener {
     // TODO: top vs bottom
     double topHeight = top.getPreferredHeight();
     if (mods == (SWT.BUTTON1 | SWT.SHIFT)) {
+      if (sx < LABEL_WIDTH) {
+        return Dragger.NONE;
+      }
+
+      boolean onTop = sy <= topHeight;
       return new Dragger() {
         @Override
         public Area onDrag(double x, double y) {
-          return updateSelection(sx, sy, x, y);
+          return onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
         }
 
         @Override
         public Area onDragEnd(double x, double y) {
-          Area redraw = updateSelection(sx, sy, x, y);
-          finishSelection();
+          Area redraw = onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+          if (!onTop) {
+            finishSelection();
+          }
           return redraw;
         }
       };
@@ -144,6 +212,17 @@ public class RootPanel extends Panel.Base implements State.Listener {
     return old.combine(selection);
   }
 
+  protected Area updateHighlight(double sx, double x) {
+    double start = Math.max(0, Math.min(sx, x) - LABEL_WIDTH);
+    double end = Math.max(sx, x) - LABEL_WIDTH;
+    if (end <= start) {
+      state.setHighlight(TimeSpan.ZERO);
+    } else {
+      state.setHighlight(new TimeSpan(state.pxToTime(start), state.pxToTime(end)));
+    }
+    return Area.FULL;
+  }
+
   protected void finishSelection() {
     Area onTrack = selection.intersect(LABEL_WIDTH, 0, width - LABEL_WIDTH, height)
         .translate(-LABEL_WIDTH, 0);
@@ -159,12 +238,19 @@ public class RootPanel extends Panel.Base implements State.Listener {
   @Override
   public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     double topHeight = top.getPreferredHeight();
-    if (y < topHeight) {
-      return Hover.NONE;
-    } else {
-      return bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
+    Hover result = Hover.NONE;
+    if (y >= topHeight) {
+      result = bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
           .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
     }
+    return (x >= LABEL_WIDTH) ? result.withClick(() -> {
+      TimeSpan highlight = state.getHighlight();
+      if (!highlight.isEmpty() && !highlight.contains(state.pxToTime(x - LABEL_WIDTH))) {
+        state.setHighlight(TimeSpan.ZERO);
+        return true;
+      }
+      return false;
+    }) : result;
   }
 
   public boolean zoom(double x, double zoomFactor) {
