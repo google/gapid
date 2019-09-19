@@ -55,6 +55,9 @@ public class StyleConstants {
     public final RGBA loadingBackground;
     public final RGBA loadingForeground;
     public final RGBA selectionBackground;
+    public final RGBA timeHighlight;
+    public final RGBA timeHighlightBorder;
+    public final RGBA timeHighlightCover;
     public final RGBA cpuUsageFill;
     public final RGBA cpuUsageStroke;
     public final RGBA cpuFreqIdle;
@@ -86,6 +89,9 @@ public class StyleConstants {
         RGBA loadingBackground,
         RGBA loadingForeground,
         RGBA selectionBackground,
+        RGBA timeHighlight,
+        RGBA timeHighlightBorder,
+        RGBA timeHighlightCover,
         RGBA cpuUsageFill,
         RGBA cpuUsageStroke,
         RGBA cpuFreqIdle,
@@ -113,6 +119,9 @@ public class StyleConstants {
       this.loadingBackground = loadingBackground;
       this.loadingForeground = loadingForeground;
       this.selectionBackground = selectionBackground;
+      this.timeHighlight = timeHighlight;
+      this.timeHighlightBorder = timeHighlightBorder;
+      this.timeHighlightCover = timeHighlightCover;
       this.cpuUsageFill = cpuUsageFill;
       this.cpuUsageStroke = cpuUsageStroke;
       this.cpuFreqIdle = cpuFreqIdle;
@@ -142,6 +151,9 @@ public class StyleConstants {
     private static final RGBA LIGHT_LOADING_BACKGROUND = rgb(0xee, 0xee, 0xee);
     private static final RGBA LIGHT_LOADING_FOREGROUND = rgb(0x66, 0x66, 0x66);
     private static final RGBA LIGHT_SELECTION_BACKGROUND = rgba(0, 0, 255, 0.3f);
+    private static final RGBA LIGHT_TIME_HIGHLIGHT = rgb(0x32, 0x34, 0x35);
+    private static final RGBA LIGHT_TIME_HIGHLIGHT_BORDER = LIGHT_GRIDLINE;
+    private static final RGBA LIGHT_TIME_HIGHLIGHT_COVER = rgba(0, 0, 0, 0.2f);
     private static final RGBA LIGHT_CPU_USAGE_FILL = rgb(0x00, 0xB8, 0xD4);
     private static final RGBA LIGHT_CPU_USAGE_STROKE = rgb(0x0D, 0x9A, 0xA8);
     private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(240, 240, 240);
@@ -175,6 +187,9 @@ public class StyleConstants {
             LIGHT_LOADING_BACKGROUND,
             LIGHT_LOADING_FOREGROUND,
             LIGHT_SELECTION_BACKGROUND,
+            LIGHT_TIME_HIGHLIGHT,
+            LIGHT_TIME_HIGHLIGHT_BORDER,
+            LIGHT_TIME_HIGHLIGHT_COVER,
             LIGHT_CPU_USAGE_FILL,
             LIGHT_CPU_USAGE_STROKE,
             LIGHT_CPU_FREQ_IDLE,
@@ -204,6 +219,9 @@ public class StyleConstants {
     private static final RGBA DARK_LOADING_BACKGROUND = rgb(0x25, 0x25, 0x25);
     private static final RGBA DARK_LOADING_FOREGROUND = rgb(0xAA, 0xAA, 0xAA);
     private static final RGBA DARK_SELECTION_BACKGROUND = rgba(0, 0, 255, 0.5f);
+    private static final RGBA DARK_TIME_HIGHLIGHT = rgb(0xff, 0xff, 0xff);
+    private static final RGBA DARK_TIME_HIGHLIGHT_BORDER = DARK_GRIDLINE;
+    private static final RGBA DARK_TIME_HIGHLIGHT_COVER = rgba(0xff, 0xff, 0xff, 0.4f);
     private static final RGBA DARK_CPU_USAGE_FILL = rgb(0x00, 0xB8, 0xD4);
     private static final RGBA DARK_CPU_USAGE_STROKE = rgb(0x0D, 0x9A, 0xA8);
     private static final RGBA DARK_CPU_FREQ_IDLE = rgb(240, 240, 240);
@@ -237,6 +255,9 @@ public class StyleConstants {
             DARK_LOADING_BACKGROUND,
             DARK_LOADING_FOREGROUND,
             DARK_SELECTION_BACKGROUND,
+            DARK_TIME_HIGHLIGHT,
+            DARK_TIME_HIGHLIGHT_BORDER,
+            DARK_TIME_HIGHLIGHT_COVER,
             DARK_CPU_USAGE_FILL,
             DARK_CPU_USAGE_STROKE,
             DARK_CPU_FREQ_IDLE,

@@ -57,6 +57,7 @@ public class State {
   private long resolution;
   private Selection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
+  private TimeSpan highlight = TimeSpan.ZERO;
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
@@ -72,6 +73,7 @@ public class State {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.selection = null;
+    this.highlight = TimeSpan.ZERO;
     update();
     listeners.fire().onDataChanged();
   }
@@ -126,6 +128,10 @@ public class State {
 
   public Selection getSelection() {
     return selection;
+  }
+
+  public TimeSpan getHighlight() {
+    return highlight;
   }
 
   public void setWidth(double width) {
@@ -192,6 +198,10 @@ public class State {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
     listeners.fire().onSelectionChanged(selection);
+  }
+
+  public void setHighlight(TimeSpan highlight) {
+    this.highlight = highlight.boundedBy(data.traceTime);
   }
 
   public <T> void thenOnUiThread(ListenableFuture<T> future, Consumer<T> callback) {

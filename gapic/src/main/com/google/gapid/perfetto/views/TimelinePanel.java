@@ -31,7 +31,7 @@ import com.google.gapid.perfetto.canvas.Size;
  */
 public class TimelinePanel extends Panel.Base {
   private static final double DESIRED_PX_PER_STEP = 160;
-  private static final double HEIGHT = 30;
+  private static final double HEIGHT = 40;
   private static final double MARGIN = 3;
   private static final double ICON_SIZE = 24;
   private static final double TICK_SIZE = 8;

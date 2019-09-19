@@ -22,7 +22,22 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
  * Represents a span of time in nanoseconds.
  */
 public class TimeSpan {
-  public static final TimeSpan ZERO = new TimeSpan(0, 0);
+  public static final TimeSpan ZERO = new TimeSpan(0, 0) {
+    @Override
+    public boolean isEmpty() {
+      return true;
+    }
+
+    @Override
+    public boolean contains(long time) {
+      return false;
+    }
+
+    @Override
+    public boolean contains(TimeSpan other) {
+      return false;
+    }
+  };
 
   public final long start;
   public final long end;
@@ -35,6 +50,10 @@ public class TimeSpan {
 
   public long getDuration() {
     return end - start;
+  }
+
+  public boolean isEmpty() {
+    return end == start;
   }
 
   public boolean contains(long time) {
@@ -62,9 +81,9 @@ public class TimeSpan {
   }
 
   public TimeSpan boundedBy(TimeSpan bounds) {
-    return new TimeSpan(
-        Math.max(Math.min(start, bounds.end), bounds.start),
-        Math.min(Math.max(end, bounds.start), bounds.end));
+    long s = Math.max(Math.min(start, bounds.end), bounds.start);
+    long e = Math.min(Math.max(end, bounds.start), bounds.end);
+    return (s == e) ? ZERO : new TimeSpan(s, e);
   }
 
   public TimeSpan boundedByPreservingDuration(TimeSpan bounds) {
