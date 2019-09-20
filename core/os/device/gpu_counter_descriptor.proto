@@ -33,15 +33,45 @@ message GpuCounterDescriptor {
     uint32 counter_id = 1;
     string name = 2;
     string description = 3;
-    reserved 4;
+    reserved 4;  // MeasureUnit unit (deprecated)
     oneof peak_value {
       int64 int_peak_value = 5;
       double double_peak_value = 6;
     };
     repeated MeasureUnit numerator_units = 7;
     repeated MeasureUnit denominator_units = 8;
+    bool select_by_default = 9;
   }
   repeated GpuCounterSpec specs = 1;
+
+  // Allow producer to group counters into block to represent counter islands.
+  // A capacity may be specified to indicate the number of counters that can be
+  // enable simultaneously in that block.
+  message GpuCounterBlock {
+    // required. Unique ID for the counter group.
+    uint32 block_id = 1;
+    // Number of counters supported by the block. No limit if unset.
+    uint32 block_capacity = 2;
+    // optional. Name of block.
+    string name = 3;
+    // optional. Description for the block.
+    string description = 4;
+    // list of counters that are part of the block.
+    repeated uint32 counter_ids = 5;
+  }
+  repeated GpuCounterBlock blocks = 2;
+
+  // optional.  Minimum sampling period supported by the producer in
+  // nanoseconds.
+  uint64 min_sampling_period_ns = 3;
+
+  // optional.  Maximum sampling period supported by the producer in
+  // nanoseconds.
+  uint64 max_sampling_period_ns = 4;
+
+  // optional.  The producer supports counter sampling by instrumenting the
+  // command buffer.
+  bool supports_instrumented_sampling = 5;
 
   enum MeasureUnit {
     NONE = 0;
