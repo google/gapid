@@ -42,7 +42,8 @@ public interface Messages {
   public static final String COMMAND_ID = "API Call Number";
   public static final String MEMORY_ADDRESS = "Memory Address";
   public static final String MEMORY_POOL = "Memory Pool";
-  public static final String CAPTURE_TRACE = "Capture Graphics Trace";
+  public static final String CAPTURE_TRACE_GRAPHICS = "Capture Graphics Trace";
+  public static final String CAPTURE_TRACE_PERFETTO = "Capture System Profile";
   public static final String CAPTURING_TRACE = "Capturing Graphics Trace...";
   public static final String CAPTURE_DIRECTORY = "Capture output directory...";
   public static final String CAPTURE_EXECUTABLE = "Executable to trace...";

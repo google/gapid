@@ -23,7 +23,7 @@ import com.google.gapid.models.Perfetto;
 
 public class CounterInfo {
   private static final String LIST_SQL =
-      "select counter_id, name, ref, ref_type, description, count(1)," +
+      "select counter_id, name, ref, ref_type, description, count(value)," +
       " min(value), max(value), avg(value) " +
       "from counter_definitions left join counter_values using (counter_id) " +
       "group by counter_id";

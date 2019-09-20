@@ -30,8 +30,8 @@ type Device interface {
 	// Root restarts adb as root. If the device is running a production build then
 	// Root will return ErrDeviceNotRooted.
 	Root(ctx context.Context) error
-	// IsUserdebugBuild returns true if the device runs an Android userdebug build
-	IsUserdebugBuild(ctx context.Context) (bool, error)
+	// IsDebuggableBuild returns true if the device runs a debuggable Android build.
+	IsDebuggableBuild(ctx context.Context) (bool, error)
 	// Forward will forward the specified device Port to the specified local Port.
 	Forward(ctx context.Context, local, device Port) error
 	// RemoveForward removes a port forward made by Forward.
