@@ -106,12 +106,15 @@ bool Vulkan::replayCreateVkInstanceImpl(Stack* stack,
                                       pCreateInfo->ppEnabledExtensionNames +
                                           pCreateInfo->enabledExtensionCount);
   extensions.reserve(pCreateInfo->enabledExtensionCount + 1);
-  // Drop the GraphicsSpy layer and validation layers if requested.
+  // Drop the GraphicsSpy and VirtualSwapchain layers, plus validation layers if requested.
   layers.erase(
       std::remove_if(
           layers.begin(), layers.end(),
           [dropValidationLayersAndDebugReport](const char* layer) -> bool {
             if (strcmp(kGraphicsSpyLayerName, layer) == 0) {
+              return true;
+            }
+            if (strcmp(kVirtualSwapchainLayerName, layer) == 0) {
               return true;
             }
             if (dropValidationLayersAndDebugReport) {
