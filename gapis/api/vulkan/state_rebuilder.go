@@ -267,10 +267,12 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 
 	for _, qp := range s.CommandBuffers().Keys() {
 		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+		sb.recordCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_SECONDARY, sb.oldState)
 	}
 
 	for _, qp := range s.CommandBuffers().Keys() {
 		sb.createCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+		sb.recordCommandBuffer(s.CommandBuffers().Get(qp), VkCommandBufferLevel_VK_COMMAND_BUFFER_LEVEL_PRIMARY, sb.oldState)
 	}
 
 	sb.scratchRes.Free(sb)
@@ -2754,6 +2756,13 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		VkResult_VK_SUCCESS,
 	))
 
+}
+
+func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCommandBufferLevel, srcState *api.GlobalState) {
+	if cb.Level() != level {
+		return
+	}
+
 	if cb.Recording() == RecordingState_NOT_STARTED || cb.Recording() == RecordingState_TO_BE_RESET {
 		return
 	}
@@ -2793,8 +2802,8 @@ func (sb *stateBuilder) createCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 	hasError := false
 	// fill command buffer
 	for i, c := uint32(0), uint32(cb.CommandReferences().Len()); i < c; i++ {
-		arg := GetCommandArgs(sb.ctx, cb.CommandReferences().Get(i), GetState(sb.oldState))
-		cleanup, cmd, err := AddCommand(sb.ctx, sb.cb, cb.VulkanHandle(), sb.oldState, sb.newState, arg)
+		arg := GetCommandArgs(sb.ctx, cb.CommandReferences().Get(i), GetState(srcState))
+		cleanup, cmd, err := AddCommand(sb.ctx, sb.cb, cb.VulkanHandle(), srcState, sb.newState, arg)
 		if err != nil {
 			log.W(sb.ctx, "Command Buffer %v is invalid, it will not be recorded: - %v", cb.VulkanHandle(), err)
 			hasError = true
