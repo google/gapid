@@ -876,7 +876,7 @@ func (a API) Replay(
 				}
 				willLoop := req.loopCount > 0
 				if willLoop {
-					frameloop = newFrameLoop(ctx, c, n, cmds, req.loopCount)
+					frameloop = newFrameLoop(ctx, c, 0, api.CmdID(len(cmds)-1), req.loopCount)
 				}
 
 				timestamps = newQueryTimestamps(ctx, c, n, cmds, willLoop, req.handler)
