@@ -40,7 +40,7 @@ const (
 	ErrRootFailed      = fault.Const("Device failed to switch to root")
 
 	maxRootAttempts                            = 5
-	gpuRenderingStagesDataSourceDescriptorName = "gpu.renderstages"
+	gpuRenderingStagesDataSourceDescriptorName = "gpu.renderingstages"
 )
 
 func isRootSuccessful(line string) bool {
