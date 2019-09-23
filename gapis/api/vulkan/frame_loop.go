@@ -105,6 +105,9 @@ type frameLoop struct {
 	descriptorSetLayoutCreated   map[VkDescriptorSetLayout]bool
 	descriptorSetLayoutDestroyed map[VkDescriptorSetLayout]bool
 
+	descriptorPoolCreated   map[VkDescriptorPool]bool
+	descriptorPoolDestroyed map[VkDescriptorPool]bool
+
 	loopCountPtr value.Pointer
 
 	frameNum uint32
@@ -152,6 +155,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		descriptorSetLayoutCreated:   make(map[VkDescriptorSetLayout]bool),
 		descriptorSetLayoutDestroyed: make(map[VkDescriptorSetLayout]bool),
+
+		descriptorPoolCreated:   make(map[VkDescriptorPool]bool),
+		descriptorPoolDestroyed: make(map[VkDescriptorPool]bool),
 
 		loopTerminated:      false,
 		lastObservedCommand: api.CmdNoID,
@@ -397,11 +403,28 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyDescriptorSetLayout:
 			vkCmd := cmd.(*VkDestroyDescriptorSetLayout)
 			descriptorSetLayout := vkCmd.DescriptorSetLayout()
-			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
+			log.D(ctx, "DescriptorSetLayout %v destroyed", descriptorSetLayout)
 			if _, ok := f.descriptorSetLayoutCreated[descriptorSetLayout]; ok {
 				delete(f.descriptorSetLayoutCreated, descriptorSetLayout)
 			} else {
 				f.descriptorSetLayoutDestroyed[descriptorSetLayout] = true
+			}
+
+		// DescriptorPool(s)
+		case *VkCreateDescriptorPool:
+			vkCmd := cmd.(*VkCreateDescriptorPool)
+			descriptorPool := vkCmd.PDescriptorPool().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "DescriptorPool %v created", descriptorPool)
+			f.descriptorPoolCreated[descriptorPool] = true
+
+		case *VkDestroyDescriptorPool:
+			vkCmd := cmd.(*VkDestroyDescriptorPool)
+			descriptorPool := vkCmd.DescriptorPool()
+			log.D(ctx, "DescriptorPool %v destroyed", descriptorPool)
+			if _, ok := f.descriptorPoolCreated[descriptorPool]; ok {
+				delete(f.descriptorPoolCreated, descriptorPool)
+			} else {
+				f.descriptorPoolDestroyed[descriptorPool] = true
 			}
 
 			// TODO: Recreate destroyed resources.
@@ -593,6 +616,10 @@ func (f *frameLoop) resetResource(ctx context.Context, stateBuilder *stateBuilde
 		return err
 	}
 
+	if err := f.resetDescriptorPools(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	//TODO: Reset other resources.
 	return nil
 }
@@ -697,14 +724,32 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 	// For every DescriptorSetLayout that was created during the loop...
 	for created := range f.descriptorSetLayoutCreated {
 		// Write the command to delete the created object
-		dsl := GetState(f.loopEndState).descriptorSetLayouts.Get(created)
-		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(dsl.Device(), dsl.VulkanHandle(), memory.Nullptr))
+		descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(created)
+		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(descSetLay.Device(), descSetLay.VulkanHandle(), memory.Nullptr))
 	}
 
 	// For every DescriptorSetLayout that was destroyed during the loop...
 	for destroyed := range f.descriptorSetLayoutDestroyed {
 		// Write the commands needed to recreate the destroyed object
 		stateBuilder.createDescriptorSetLayout(GetState(f.loopStartState).descriptorSetLayouts.Get(destroyed))
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every DescriptorSetLayout that was created during the loop...
+	for created := range f.descriptorPoolCreated {
+		// Write the command to delete the created object
+		descPool := GetState(f.loopEndState).descriptorPools.Get(created)
+		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorPool(descPool.Device(), descPool.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every DescriptorSetLayout that was destroyed during the loop...
+	for destroyed := range f.descriptorPoolDestroyed {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createDescriptorPoolAndAllocateDescriptorSets(GetState(f.loopStartState).descriptorPools.Get(destroyed))
 	}
 
 	return nil
