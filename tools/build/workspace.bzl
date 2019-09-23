@@ -19,8 +19,7 @@ load("@gapid//tools/build:cc_toolchain.bzl", "cc_configure")
 load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue")
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
-load("@gapid//tools/build/third_party:perfetto.bzl", "perfetto")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Defines the repositories for GAPID's dependencies, excluding the
@@ -151,9 +150,40 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
     )
 
     maybe_repository(
-        perfetto,
+        git_repository,
         name = "perfetto",
         locals = locals,
+        remote = "https://android.googlesource.com/platform/external/perfetto",
+        commit = "e0897c5884ddf7a69c47edd9f4df228a4c93c600",
+        shallow_since = "1569524964 +0000",
+    )
+
+    maybe_repository(
+        http_archive,
+        name = "sqlite",
+        locals = locals,
+        url = "https://storage.googleapis.com/perfetto/sqlite-amalgamation-3250300.zip",
+        sha256 = "2ad5379f3b665b60599492cc8a13ac480ea6d819f91b1ef32ed0e1ad152fafef",
+        strip_prefix = "sqlite-amalgamation-3250300",
+        build_file = "@perfetto//bazel:sqlite.BUILD",
+    )
+
+    maybe_repository(
+        http_archive,
+        name = "sqlite_src",
+        locals = locals,
+        url = "https://storage.googleapis.com/perfetto/sqlite-src-3250300.zip",
+        sha256 = "c7922bc840a799481050ee9a76e679462da131adba1814687f05aa5c93766421",
+        strip_prefix = "sqlite-src-3250300",
+        build_file = "@perfetto//bazel:sqlite.BUILD",
+    )
+
+    maybe_repository(
+        native.new_local_repository,
+        name = "perfetto_cfg",
+        locals = locals,
+        path = "tools/build/third_party/perfetto",
+        build_file = "@gapid//tools/build/third_party/perfetto:BUILD.bazel",
     )
 
     maybe_repository(

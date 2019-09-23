@@ -33,7 +33,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
         "//core/os/device/bind:go_default_library",
-        "@perfetto//:config_go_proto",
+        "//tools/build/third_party/perfetto:config_go_proto",
     ],
 )
 
