@@ -24,10 +24,10 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 
 # gazelle:prefix github.com/google/gapid
-# gazelle:resolve go    go    llvm/bindings/go/llvm                 @llvm//:go
-# gazelle:resolve go    go    perfetto/config                       @perfetto//:config_go_proto
-# gazelle:resolve proto proto perfetto/config/perfetto_config.proto @perfetto//:config_combined_proto
-# gazelle:resolve proto go    perfetto/config/perfetto_config.proto @perfetto//:config_go_proto
+# gazelle:resolve go    go    llvm/bindings/go/llvm                        @llvm//:go
+# gazelle:resolve go    go    perfetto/config                              @gapid//tools/build/third_party/perfetto:config_go_proto
+# gazelle:resolve proto proto protos/perfetto/config/perfetto_config.proto @perfetto//:protos_perfetto_config_merged_config_protos
+# gazelle:resolve proto go    protos/perfetto/config/perfetto_config.proto @gapid//tools/build/third_party/perfetto:config_go_proto
 
 gazelle(
     name = "gazelle",
@@ -199,13 +199,10 @@ copy_to(
 copy_to(
     name = "perfetto",
     srcs = [
-        "@perfetto//:perfetto_cmd",
+        "@perfetto",
         "@perfetto//:traced",
         "@perfetto//:traced_probes",
     ],
-    rename = {
-        "perfetto_cmd": "perfetto",
-    },
     to = "pkg/perfetto",
 )
 

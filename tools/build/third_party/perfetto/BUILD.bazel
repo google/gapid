@@ -12,4 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Empty build file to make this directory a bazel package.
+# Build targets needed to embedd perfetto.dev.
+
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+# Our build flags, this is referenced from perfetto_cfg.bzl.
+cc_library(
+    name = "build_config",
+    hdrs = ["perfetto_build_flags.h"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+######## Perfetto Proto libraries ########
+
+go_proto_library(
+    name = "config_go_proto",
+    importpath = "perfetto/config",
+    proto = "@perfetto//:protos_perfetto_config_merged_config_protos",
+    visibility = ["//visibility:public"],
+)
+
+java_proto_library(
+    name = "config_java_proto",
+    visibility = ["//visibility:public"],
+    deps = ["@perfetto//:protos_perfetto_config_merged_config_protos"],
+)

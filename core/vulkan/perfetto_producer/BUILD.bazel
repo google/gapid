@@ -22,6 +22,6 @@ cc_library(
     deps = [
         "//core/cc",
         "//gapil/runtime/cc",
-        "@perfetto//:tracing_ipc",
+        "@perfetto//:libperfetto_client_experimental",
     ],
 )

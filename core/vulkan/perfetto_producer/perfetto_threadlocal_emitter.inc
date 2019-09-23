@@ -23,10 +23,11 @@
 #include "core/cc/process_name.h"
 #include "core/cc/timer.h"
 
-#include "perfetto/trace/track_event/debug_annotation.pbzero.h"
-#include "perfetto/trace/track_event/track_event.pbzero.h"
-#include "perfetto/trace/track_event/thread_descriptor.pbzero.h"
-#include "perfetto/trace/interned_data/interned_data.pbzero.h"
+#include "perfetto/base/time.h"
+#include "protos/perfetto/trace/track_event/debug_annotation.pbzero.h"
+#include "protos/perfetto/trace/track_event/track_event.pbzero.h"
+#include "protos/perfetto/trace/track_event/thread_descriptor.pbzero.h"
+#include "protos/perfetto/trace/interned_data/interned_data.pbzero.h"
 
 // Note these implementations should match map.go
 
