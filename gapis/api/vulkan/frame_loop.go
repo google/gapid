@@ -474,6 +474,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			} else {
 				f.bufferToCreate[buffer] = true
 			}
+
 		// BufferViews
 		case *VkCreateBufferView:
 			vkCmd := cmd.(*VkCreateBufferView)
@@ -989,6 +990,9 @@ func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *st
 	}
 
 	// TODO: Backup other resources.
+
+	// Flush out the backup commands
+	stateBuilder.scratchRes.Free(stateBuilder)
 	return nil
 }
 
@@ -1035,7 +1039,6 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stat
 		f.bufferToRestore[buffer] = stagingBuffer
 	}
 
-	stateBuilder.scratchRes.Free(stateBuilder)
 	return nil
 }
 
@@ -1139,13 +1142,24 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	}
 
 	//TODO: Reset other resources.
+
+	// Flush out the reset commands
+	stateBuilder.scratchRes.Free(stateBuilder)
 	return nil
 }
 
 func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	if len(f.bufferToRestore) == 0 {
-		return nil
+	for buf := range f.bufferToDestroy {
+		log.D(ctx, "Destroy buffer %v which was created during loop.", buf)
+		bufObj := GetState(stateBuilder.newState).Buffers().Get(buf)
+		stateBuilder.write(stateBuilder.cb.VkDestroyBuffer(bufObj.Device(), buf, memory.Nullptr))
+	}
+
+	for buf := range f.bufferToCreate {
+		log.D(ctx, "Recreate buffer %v which was destroyed during loop.", buf)
+		buffer := GetState(f.loopStartState).Buffers().Get(buf)
+		stateBuilder.createSameBuffer(buffer, buf)
 	}
 
 	for dst, src := range f.bufferToRestore {
@@ -1171,7 +1185,6 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 		log.D(ctx, "Reset buffer [%v] with buffer [%v] succeed", dst, src)
 	}
 
-	stateBuilder.scratchRes.Free(stateBuilder)
 	return nil
 }
 
