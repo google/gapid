@@ -643,13 +643,13 @@ cmd void vkUpdateDescriptorSets(
   for _ , _ , c in copies {
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
-    srcBinding := switch (c.SrcBinding in srcSet.Bindings) {
+    srcBinding := switch srcSet.Bindings[c.SrcBinding] == null {
       case false:
         srcSet.Bindings[c.SrcBinding]
       case true:
         new!DescriptorBinding(BindingType: srcSet.Layout.Bindings[c.SrcBinding].Type)
     }
-    dstBinding := switch (c.DstBinding in dstSet.Bindings) {
+    dstBinding := switch dstSet.Bindings[c.DstBinding] == null {
       case false:
         dstSet.Bindings[c.DstBinding]
       case true:
@@ -666,18 +666,27 @@ cmd void vkUpdateDescriptorSets(
         srcBinding.ImageBinding[c.SrcArrayIndex]
         dstBinding.ImageBinding = imageBinding
 
-        vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].Sampler
-        if vkSam in Samplers {
-          samObj := Samplers[vkSam]
-          if samObj != null {
-            registerDescriptorUser!SamplerObject(samObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+        if srcBinding.ImageBinding[c.SrcArrayIndex] == null {
+          vkErrorInvalidSampler(null)
+        } else {
+          vkSam := srcBinding.ImageBinding[c.SrcArrayIndex].Sampler
+          if vkSam in Samplers {
+            samObj := Samplers[vkSam]
+            if samObj != null {
+              registerDescriptorUser!SamplerObject(samObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+            }
           }
         }
-        vkView := srcBinding.ImageBinding[c.SrcArrayIndex].ImageView
-        if vkView in ImageViews {
-          viewObj := ImageViews[vkView]
-          if viewObj != null {
-            registerDescriptorUser!ImageViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+
+        if srcBinding.ImageBinding[c.SrcArrayIndex] == null {
+          vkErrorInvalidImageView(null)
+        } else {
+          vkView := srcBinding.ImageBinding[c.SrcArrayIndex].ImageView
+          if vkView in ImageViews {
+            viewObj := ImageViews[vkView]
+            if viewObj != null {
+              registerDescriptorUser!ImageViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+            }
           }
         }
       }
@@ -772,7 +781,7 @@ sub void trackDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs arg
       set := args.DescriptorSets[as!u32(i)]
       setObj := DescriptorSets[set]
       desc_set_buf_offsets := bufferBindingOffsets[as!u32(i)+args.FirstSet]
-      
+
       // Since the pDynamicOffsets point into the bindings in order of
       // binding index, and then array index, we have to loop over all
       // of the Bindings in order of the binding number.
@@ -796,7 +805,7 @@ sub void trackDescriptorBufferBindingOffsets(ref!vkCmdBindDescriptorSetsArgs arg
               default:
                 dynamic_offset_index.Val
             }
-            
+
             desc_binding_buf_offsets[as!u32(k)] = binding_offset
           }
           desc_set_buf_offsets[as!u32(j)] = desc_binding_buf_offsets
