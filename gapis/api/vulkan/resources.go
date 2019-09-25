@@ -1218,37 +1218,3 @@ func (a *bindIdx) Less(b *bindIdx) bool {
 	}
 	return a.binding < b.binding
 }
-
-func pipelineResourceData(ctx context.Context,
-	s *api.GlobalState,
-	stageMap map[uint32]StageData,
-	layout PipelineLayoutObjectʳ,
-	boundDsets map[uint32]DescriptorSetObjectʳ,
-	bound bool,
-	pipeType api.Pipeline_Type,
-	debugName string,
-) (*api.ResourceData, error) {
-	stages := make([]*api.Stage, len(stageMap))
-	for i := 0; i < len(stageMap); i++ {
-		v := stageMap[uint32(i)]
-		typ, err := stageType(v.Stage())
-		if err != nil {
-			return nil, err
-		}
-		stages[i] = &api.Stage{
-			StageName: typ,
-		}
-	}
-
-	return &api.ResourceData{
-		Data: &api.ResourceData_Pipeline{
-			Pipeline: &api.Pipeline{
-				API:          path.NewAPI(id.ID(ID)),
-				PipelineType: pipeType,
-				DebugName:    debugName,
-				Stages:       stages,
-				Bound:        bound,
-			},
-		},
-	}, nil
-}
