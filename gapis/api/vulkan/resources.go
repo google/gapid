@@ -1060,7 +1060,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 			Pipeline: &api.Pipeline{
 				API:          path.NewAPI(id.ID(ID)),
 				PipelineType: "Graphics Pipeline",
-				DebugName:    "Graph",
+				DebugName:    "GRAPH",
 				Stages:       stages,
 				Bound:        isBound,
 			},
