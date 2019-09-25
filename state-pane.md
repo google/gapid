@@ -4,6 +4,14 @@ title: State Pane
 permalink: /inspect/state
 ---
 
-<img src="../images/state-pane.png" width="350px" height="445px"/>
+The **State** pane displays the driver state immediately after executing the selected command.
 
-The state pane displays the driver state immediately after executing the selected command.
+<figure style="display: inline-block;">
+	<img src="../images/state-pane/opengl.png" width="500px" />
+	<figcaption>Viewing an OpenGL trace</figcaption>
+</figure>
+
+<figure style="display: inline-block;">
+	<img src="../images/state-pane/vulkan.png" width="500px" />
+	<figcaption>Viewing a Vulkan trace</figcaption>
+</figure>
