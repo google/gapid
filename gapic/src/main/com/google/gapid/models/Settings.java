@@ -67,6 +67,7 @@ public class Settings {
   public int[] reportSplitterWeights = new int[] { 75, 25 };
   public int[] shaderTreeSplitterWeights = new int[] { 20, 80 };
   public int[] texturesSplitterWeights = new int[] { 20, 80 };
+  public int[] pipelineSplitterWeights = new int[] { 20, 80 };
   public String traceDevice = "";
   public String traceType = "Graphics";
   public String traceApi = "";

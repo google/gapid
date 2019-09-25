@@ -239,7 +239,7 @@ message CubemapArray {
 message Pipeline {
   // The API ID used for this pipeline belongs to.
   path.API API = 1;
-  // PipelineType is the possible types for a pipeline.		
+  // PipelineType is the possible types for a pipeline.
   enum Type {
     GRAPHICS = 0;
     COMPUTE = 1;
