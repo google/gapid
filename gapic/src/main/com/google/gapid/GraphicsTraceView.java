@@ -27,6 +27,7 @@ import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
 import com.google.gapid.views.ContextSelector;
 import com.google.gapid.views.FramebufferView;
+import com.google.gapid.views.PipelineView;
 import com.google.gapid.views.GeometryView;
 import com.google.gapid.views.LogView;
 import com.google.gapid.views.MemoryView;
@@ -361,6 +362,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       ApiCalls(View.Commands, "Commands", CommandTree::new),
 
       Framebuffer(View.Framebuffer, "Framebuffer", FramebufferView::new),
+      Pipeline(View.Pipeline, "Pipeline", PipelineView::new),
       Textures(View.Textures, "Textures", TextureView::new),
       Geometry(View.Geometry, "Geometry", GeometryView::new),
       Shaders(View.Shaders, "Shaders", ShaderView::new),
