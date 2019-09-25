@@ -76,6 +76,9 @@ class GrpcReplayService : public ReplayService {
   std::unique_ptr<ReplayService::Resources> getResources(
       const Resource* resource, size_t resCount) override;
 
+  std::unique_ptr<ReplayService::FenceReady> getFenceReady(
+      const uint32_t& id) override;
+
   // Sends ReplayFinished signal. Returns true if succeeded, otherwise returns
   // false.
   bool sendReplayFinished() override;

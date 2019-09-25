@@ -95,6 +95,26 @@ std::unique_ptr<ReplayService::Payload> GrpcReplayService::getPayload(
       std::unique_ptr<replay_service::Payload>(req->release_payload())));
 }
 
+std::unique_ptr<ReplayService::FenceReady> GrpcReplayService::getFenceReady(
+    const uint32_t& id) {
+  // Send a replay response with payload request
+  replay_service::ReplayResponse res;
+  auto frr = new replay_service::FenceReadyRequest();
+  frr->set_id(id);
+  res.set_allocated_fence_ready_request(frr);
+  mGrpcStream->Write(res);
+  std::unique_ptr<replay_service::ReplayRequest> req = getNonReplayRequest();
+  if (!req) {
+    return nullptr;
+  }
+  if (req->req_case() != replay_service::ReplayRequest::kFenceReady) {
+    return nullptr;
+  }
+  return std::unique_ptr<ReplayService::FenceReady>(
+      new ReplayService::FenceReady(std::unique_ptr<replay_service::FenceReady>(
+          req->release_fence_ready())));
+}
+
 std::unique_ptr<ReplayService::Resources> GrpcReplayService::getResources(
     const Resource* resources, size_t resCount) {
   if (!mGrpcStream) {

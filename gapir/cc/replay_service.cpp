@@ -64,6 +64,18 @@ uint64_t ReplayService::Posts::piece_id(int index) const {
 ReplayService::Posts::Posts()
     : mProtoPostData(new replay_service::PostData()) {}
 
+// FenceReady
+
+ReplayService::FenceReady::FenceReady(
+    std::unique_ptr<replay_service::FenceReady> protoFenceReady)
+    : mProtoFenceReady(std::move(protoFenceReady)) {}
+
+ReplayService::FenceReady::~FenceReady() = default;
+
+uint32_t ReplayService::FenceReady::id() const {
+  return mProtoFenceReady->id();
+}
+
 // Payload member methods
 
 ReplayService::Payload::Payload(

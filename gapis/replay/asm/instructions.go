@@ -390,3 +390,11 @@ func (a Notification) Encode(r value.PointerResolver, w binary.Writer) error {
 	}
 	return opcode.Notification{}.Encode(w)
 }
+
+type Wait struct {
+	ID uint32
+}
+
+func (a Wait) Encode(r value.PointerResolver, w binary.Writer) error {
+	return opcode.Wait{ID: a.ID}.Encode(w)
+}

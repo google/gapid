@@ -41,6 +41,10 @@ type (
 	Notification = replaysrv.Notification
 	// Severity represents the severity level of notification messages. It uses the same enum as gapis
 	Severity = severity.Severity
+	// FenceReadyRequest is sent when the device is waiting for the server perform a task
+	FenceReadyRequest = replaysrv.FenceReadyRequest
+	// FenceReady signals that the server finished a task and replay can continue
+	FenceReady = replaysrv.FenceReady
 )
 
 // ReplayResponseHandler handles all kinds of ReplayResponse messages received
@@ -58,6 +62,8 @@ type ReplayResponseHandler interface {
 	HandleNotification(context.Context, *Notification, Connection) error
 	// HandleFinished handles the replay complete
 	HandleFinished(context.Context, error, Connection) error
+	// HandleFenceReadyRequest handles the profiler ready message.
+	HandleFenceReadyRequest(context.Context, *FenceReadyRequest, Connection) error
 }
 
 // Connection represents a connection between GAPIS and GAPIR. It wraps the
@@ -79,6 +85,8 @@ type Connection interface {
 	SendResources(ctx context.Context, resources []byte) error
 	// SendPayload sends the given payload to the connected GAPIR device.
 	SendPayload(ctx context.Context, payload Payload) error
+	// SendFenceReady signals the device to continue a replay.
+	SendFenceReady(ctx context.Context, id uint32) error
 	// PrewarmReplay requests the GAPIR device to get itself into the given state
 	PrewarmReplay(ctx context.Context, payload string, cleanup string) error
 	// HandleReplayCommunication handles the communication with the GAPIR device on

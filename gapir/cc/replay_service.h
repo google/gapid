@@ -30,6 +30,7 @@
 namespace replay_service {
 class Payload;
 class Resources;
+class FenceReady;
 class ReplayRequest;
 class PostData;
 class ReplayResponse;
@@ -41,7 +42,7 @@ namespace gapir {
 // communication methods needed for a replay.
 class ReplayService {
  public:
-  // Posts is a wraper class of replay_service::PostData, it hides the
+  // Posts is a wrapper class of replay_service::PostData, it hides the
   // new/delete operations of the proto object from the outer code.
   class Posts {
    public:
@@ -80,7 +81,7 @@ class ReplayService {
     std::unique_ptr<replay_service::PostData> mProtoPostData;
   };
 
-  // Payload is a wraper class of replay_service::Payload, it hides the
+  // Payload is a wrapper class of replay_service::Payload, it hides the
   // new/delete operations of the proto object from outer code.
   class Payload {
    public:
@@ -120,7 +121,24 @@ class ReplayService {
     // std::unique_ptr<replay_service::ReplayRequest> mProtoReplayRequest;
   };
 
-  // Resources is a wraper class of replay_service::Resources, it hides the
+  // FenceReady is a wrapper class of replay_service::FenceReady, it hides
+  // the new/delete operations of the proto object from outer code.
+  class FenceReady {
+   public:
+    FenceReady(std::unique_ptr<replay_service::FenceReady> protoFenceReady);
+
+    ~FenceReady();
+    FenceReady(const FenceReady&) = delete;
+    FenceReady(FenceReady&&) = delete;
+    FenceReady& operator=(const FenceReady&) = delete;
+    FenceReady& operator=(FenceReady&&) = delete;
+    uint32_t id() const;
+
+   private:
+    std::unique_ptr<replay_service::FenceReady> mProtoFenceReady;
+  };
+
+  // Resources is a wrapper class of replay_service::Resources, it hides the
   // new/delete operations of the proto object from outer code.
   class Resources {
    public:
@@ -158,6 +176,8 @@ class ReplayService {
   // Get Resources. Returns nullptr in case of error.
   virtual std::unique_ptr<Resources> getResources(const Resource* resources,
                                                   size_t resCount) = 0;
+
+  virtual std::unique_ptr<FenceReady> getFenceReady(const uint32_t& id) = 0;
 
   // Sends ReplayFinished signal. Returns true if succeeded, otherwise returns
   // false.

@@ -97,6 +97,9 @@ class Context : private Renderer::Listener {
   // second element of the stack (void*)
   bool loadResource(Stack* stack);
 
+  // Tell the server that we're waiting for it to respond
+  bool waitForFence(Stack* stack);
+
   // Starts the timer identified by u8 index.
   bool startTimer(Stack* stack);
 

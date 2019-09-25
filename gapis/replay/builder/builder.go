@@ -569,6 +569,12 @@ func (b *Builder) Notification(ID uint64, addr value.Pointer, size uint64) {
 	})
 }
 
+func (b *Builder) Wait(ID uint32) {
+	b.instructions = append(b.instructions, asm.Wait{
+		ID: ID,
+	})
+}
+
 // Pop removes the top count values from the top of the stack.
 func (b *Builder) Pop(count uint32) {
 	b.popStackMulti(int(count))

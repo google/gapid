@@ -45,6 +45,7 @@ enum class Opcode {
   JUMP_LABEL = 17,
   JUMP_NZ = 18,
   NOTIFICATION = 19,
+  WAIT = 20,
 };
 
 // Unique ID for each supported data type. The ID have to fit into 6 bits (0-63)

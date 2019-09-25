@@ -47,6 +47,10 @@ class ArchiveReplayService : public ReplayService {
     return nullptr;
   }
 
+  std::unique_ptr<FenceReady> getFenceReady(const uint32_t& id) override {
+    return nullptr;
+  }
+
   std::unique_ptr<replay_service::ReplayRequest> getReplayRequest() override {
     return std::unique_ptr<replay_service::ReplayRequest>(
         new replay_service::ReplayRequest());
