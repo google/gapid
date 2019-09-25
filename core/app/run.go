@@ -97,6 +97,11 @@ func (v VersionSpec) GreaterThan(o VersionSpec) bool {
 	}
 }
 
+// Equal returns true if v is equal to o, ignoring the Build field.
+func (v VersionSpec) Equal(o VersionSpec) bool {
+	return (v.Major == o.Major) && (v.Minor == o.Minor) && (v.Point == o.Point)
+}
+
 func (v VersionSpec) String() string {
 	return fmt.Sprintf("%v", v)
 }
