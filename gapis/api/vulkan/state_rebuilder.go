@@ -2504,6 +2504,10 @@ func (sb *stateBuilder) createDescriptorPoolAndAllocateDescriptorSets(dp Descrip
 		}
 	}
 
+	sb.allocateDescriptorSets(dp, descSetHandles, descSetLayoutHandles)
+}
+
+func (sb *stateBuilder) allocateDescriptorSets(dp DescriptorPoolObjectʳ, descSetHandles []VkDescriptorSet, descSetLayoutHandles []VkDescriptorSetLayout) {
 	if len(descSetHandles) != 0 && len(descSetLayoutHandles) != 0 {
 		sb.write(sb.cb.VkAllocateDescriptorSets(
 			dp.Device(),
