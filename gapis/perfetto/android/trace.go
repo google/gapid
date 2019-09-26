@@ -97,6 +97,10 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 		return 0, err
 	}
 
+	if err := p.device.RemoveFile(ctx, perfettoTraceFile); err != nil {
+		log.E(ctx, "Failed to delete perfetto trace file %v", err)
+	}
+
 	size := tmp.Info().Size()
 	atomic.StoreInt64(written, size)
 	fh, err := os.Open(tmp.System())
