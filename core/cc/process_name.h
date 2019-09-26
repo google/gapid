@@ -21,6 +21,7 @@
 
 namespace core {
 std::string get_process_name();
+uint64_t get_process_id();
 }  // namespace core
 
 #endif  // CORE_PROCESS_NAME_H_

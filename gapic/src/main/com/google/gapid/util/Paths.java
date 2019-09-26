@@ -175,7 +175,8 @@ public class Paths {
             .setAfter(index.getCommand())
             .setPool(pool)
             .setAddress(address)
-            .setSize(size))
+            .setSize(size)
+            .setIncludeTypes(true))
         .build();
   }
 
@@ -188,7 +189,8 @@ public class Paths {
             .setAfter(index.getCommand())
             .setPool(pool)
             .setAddress(range.getBase())
-            .setSize(range.getSize()))
+            .setSize(range.getSize())
+            .setIncludeTypes(true))
         .build();
   }
 
@@ -203,7 +205,19 @@ public class Paths {
             .setAddress(0)
             .setSize(UnsignedLongs.MAX_VALUE)
             .setExcludeData(true)
-            .setExcludeObserved(true))
+            .setExcludeObserved(true)
+            .setIncludeTypes(true))
+        .build();
+  }
+
+  public static Path.Any memoryAsType(CommandIndex index, int pool, Service.TypedMemoryRange typed) {
+    return Path.Any.newBuilder()
+        .setMemoryAsType(Path.MemoryAsType.newBuilder()
+            .setAddress(typed.getRange().getBase())
+            .setSize(typed.getRange().getSize())
+            .setPool(pool)
+            .setAfter(index.getCommand())
+            .setType(typed.getType()))
         .build();
   }
 
@@ -350,6 +364,18 @@ public class Paths {
     return Path.Any.newBuilder()
         .setTraceConfig(Path.DeviceTraceConfiguration.newBuilder()
             .setDevice(device))
+        .build();
+  }
+
+  public static Path.Type type(long typeIndex) {
+    return Path.Type.newBuilder()
+        .setTypeIndex(typeIndex)
+        .build();
+  }
+
+  public static Path.Any type(Path.Type type) {
+    return Path.Any.newBuilder()
+        .setType(type)
         .build();
   }
 

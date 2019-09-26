@@ -16,7 +16,9 @@
 package com.google.gapid.models;
 
 import static com.google.gapid.models.DeviceDependentModel.Source.withSource;
+import static com.google.gapid.proto.service.memory.Memory.PoolNames.Application_VALUE;
 import static com.google.gapid.util.Paths.memoryAfter;
+import static com.google.gapid.util.Paths.type;
 import static com.google.gapid.util.Ranges.memory;
 import static com.google.gapid.util.Ranges.merge;
 import static com.google.gapid.util.Ranges.relative;
@@ -27,19 +29,27 @@ import com.google.common.primitives.UnsignedLongs;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.CommandStream.CommandIndex;
-import com.google.gapid.models.CommandStream.Observation;
 import com.google.gapid.proto.service.Service;
+import com.google.gapid.proto.service.memory_box.MemoryBox;
 import com.google.gapid.proto.service.path.Path;
+import com.google.gapid.proto.service.types.TypeInfo;
+import com.google.gapid.proto.service.types.TypeInfo.Type.TyCase;
 import com.google.gapid.server.Client;
 import com.google.gapid.util.Events;
+import com.google.gapid.util.MemoryBoxes;
+import com.google.gapid.util.Messages;
 import com.google.gapid.util.MoreFutures;
+import com.google.gapid.util.Paths;
 import com.google.gapid.util.Ranges;
+import com.google.gapid.util.TypeInfos;
 
 import org.eclipse.swt.widgets.Shell;
 
 import java.lang.ref.SoftReference;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -78,8 +88,27 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
 
   @Override
   protected ListenableFuture<Data> doLoad(Source source, Path.Device device) {
-    return MoreFutures.transform(commands.getObservations(device, source.command),
-        obs -> new Data(device, client, source, obs));
+    return MoreFutures.transform(commands.getMemory(device, source.command), memory -> {
+      List<Service.MemoryRange> reads = merge(memory.getReadsList());
+      List<Service.MemoryRange> writes = merge(memory.getWritesList());
+      List<Service.TypedMemoryRange> typeds = memory.getTypedRangesList();
+
+      Observation[] obs = new Observation[reads.size() + writes.size()];
+      StructObservation[] structObs = new StructObservation[typeds.size()];
+      int idx = 0;
+      for (Service.MemoryRange read : reads) {
+        obs[idx++] = new Observation(source.command, true, read);
+      }
+      for (Service.MemoryRange write : writes) {
+        obs[idx++] = new Observation(source.command, false, write);
+      }
+      idx = 0;
+      for (Service.TypedMemoryRange typed : typeds) {
+        structObs[idx++] = new StructObservation(typed, source, device);
+      }
+
+      return new Data(device, client, source, obs, structObs);
+    });
   }
 
   @Override
@@ -133,13 +162,16 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
     private final Client client;
     private final Source src;
     private final Observation[] observations;
+    private final StructObservation[] structObservations;
     private final Map<Long, SoftReference<Segment>> cache = Maps.newHashMap();
 
-    public Data(Path.Device device, Client client, Source src, Observation[] observations) {
+    public Data(Path.Device device, Client client, Source src, Observation[] observations,
+        StructObservation[] structObservations) {
       super(device);
       this.client = client;
       this.src = src;
       this.observations = observations;
+      this.structObservations = structObservations;
     }
 
     public int getPool() {
@@ -152,6 +184,10 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
 
     public Observation[] getObservations() {
       return observations;
+    }
+
+    public StructObservation[] getStructObservations() {
+      return structObservations;
     }
 
     public ListenableFuture<Segment> load(long offset, int length) {
@@ -386,6 +422,291 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         known.set((int)rng.getBase(), (int)rng.getBase() + (int)rng.getSize());
       }
       return known;
+    }
+  }
+
+  /**
+   * Read or write memory observation at a specific command.
+   */
+  public static class Observation {
+    public static final Observation NULL_OBSERVATION = new Observation(null, false, null) {
+      @Override
+      public String toString() {
+        return Messages.SELECT_OBSERVATION;
+      }
+
+      @Override
+      public boolean contains(long address) {
+        return false;
+      }
+    };
+
+    private final CommandIndex index;
+    private final boolean read;
+    private final Service.MemoryRange range;
+
+    public Observation(CommandIndex index, boolean read, Service.MemoryRange range) {
+      this.index = index;
+      this.read = read;
+      this.range = range;
+    }
+
+    public Path.Memory getPath() {
+      return Paths.memoryAfter(index, Application_VALUE, range).getMemory();
+    }
+
+    public boolean contains(long address) {
+      return Ranges.contains(range, address);
+    }
+
+    @Override
+    public String toString() {
+      long base = range.getBase(), count = range.getSize();
+      return (read ? "Read " : "Write ") + count + " byte" + (count == 1 ? "" : "s") +
+          String.format(" at 0x%016x", base);
+    }
+  }
+
+  /**
+   * Structured memory observation, a lightweight data structure for struct memory, containing
+   * all the needed information to query server to ask for decoded result.
+   */
+  public static class StructObservation {
+    public final Service.TypedMemoryRange range;
+    public final Source source;
+    public final Path.Device device;
+
+    public StructObservation(Service.TypedMemoryRange range, Source source, Path.Device device) {
+      this.range = range;
+      this.source = source;
+      this.device = device;
+    }
+
+    public Service.TypedMemoryRange getRange() {
+      return range;
+    }
+  }
+
+  /**
+   * Structured memory node, containing decoded struct memory information.
+   */
+  public static class StructNode {
+    private static final int MAX_CHILDREN_SIZE = 100;
+
+    private final TypeInfo.Type type;
+    private final MemoryBox.Value value;
+    private final long rootAddress;     // The root address of the observation this node belongs to.
+    private final MemoryTypes typesModel;
+    private List<StructNode> children;
+    private String structName = "";     // Name information for node of type TypeInfo.StructField.
+    private boolean isLargeArray = false;   // True if this node denotes a large array or slice.
+
+    public StructNode(TypeInfo.Type type, MemoryBox.Value value, long rootAddress,
+        MemoryTypes typesModel) {
+      this.type = type;
+      this.value = value;
+      this.rootAddress = rootAddress;
+      this.typesModel = typesModel;
+      this.children = loadChildren();
+    }
+
+    public TypeInfo.Type getType() {
+      return type;
+    }
+
+    public TypeInfo.Type.TyCase getTypeCase() {
+      return type.getTyCase();
+    }
+
+    public String getTypeName() {
+      return type.getName();
+    }
+
+    public String getTypeFormatted() {
+      return TypeInfos.format(type, value);
+    }
+
+    public MemoryBox.Value getValue() {
+      return value;
+    }
+
+    public String getValueFormatted() {
+      return MemoryBoxes.format(value, rootAddress);
+    }
+
+    public long getRootAddress() {
+      return rootAddress;
+    }
+
+    public boolean hasChildren() {
+      return children.size() > 0;
+    }
+
+    public List<StructNode> getChildren() {
+      return children;
+    }
+
+    public void setStructName(String name) {
+      structName = name;
+    }
+
+    public String getStructName() {
+      return structName;
+    }
+
+    public boolean isLargeArray() {
+      return isLargeArray;
+    }
+
+    private boolean mayHaveChildren() {
+      TypeInfo.Type.TyCase tyCase = type.getTyCase();
+      return tyCase == TypeInfo.Type.TyCase.SLICE || tyCase == TypeInfo.Type.TyCase.STRUCT ||
+          tyCase == TypeInfo.Type.TyCase.ARRAY || tyCase == TypeInfo.Type.TyCase.PSEUDONYM;
+    }
+
+    private List<StructNode> loadChildren() {
+      children = new ArrayList<Memory.StructNode>();
+      if (!mayHaveChildren()) {
+        return children;
+      }
+
+      TypeInfo.Type childType;
+      switch (type.getTyCase()) {
+        case SLICE:
+          // Don't create and append children nodes if it's a large slice.
+          if (value.getSlice().getValuesCount() < MAX_CHILDREN_SIZE) {
+            TypeInfo.SliceType slice = type.getSlice();
+            childType = typesModel.getType(type(slice.getUnderlying()));
+            for (MemoryBox.Value childValue : value.getSlice().getValuesList()) {
+              children.add(new StructNode(childType, childValue, rootAddress, typesModel));
+            }
+          } else {
+            isLargeArray = true;
+          }
+          break;
+        case STRUCT:
+          TypeInfo.StructType struct = type.getStruct();
+          List<TypeInfo.StructField> childrenTypes = struct.getFieldsList();
+          List<MemoryBox.Value> childrenValues = value.getStruct().getFieldsList();
+          for (int i = 0; i < childrenValues.size(); i++) {
+            StructNode childNode = new StructNode(
+                typesModel.getType(type(childrenTypes.get(i).getType())), childrenValues.get(i),
+                rootAddress, typesModel);
+            childNode.setStructName(childrenTypes.get(i).getName());
+            children.add(childNode);
+          }
+          break;
+        case ARRAY:
+          // Don't create and append children nodes if it's a large array.
+          if (value.getArray().getEntriesCount() < MAX_CHILDREN_SIZE) {
+            TypeInfo.ArrayType array = type.getArray();
+            childType = typesModel.getType(type(array.getElementType()));
+            for (MemoryBox.Value childValue : value.getArray().getEntriesList()) {
+              children.add(new StructNode(childType, childValue, rootAddress, typesModel));
+            }
+          } else {
+            isLargeArray = true;
+          }
+          break;
+        case PSEUDONYM:
+          TypeInfo.PseudonymType pseudonym = type.getPseudonym();
+          childType = typesModel.getType(type(pseudonym.getUnderlying()));
+          children.add(new StructNode(childType, value, rootAddress, typesModel));
+          break;
+        default:
+          break;
+      }
+      return children;
+    }
+
+    /**
+     * Utility method. Simplify trees, especially for vulkan structs.
+     * 1. Remove redundant layers for all the trees.
+     * 2. Identify some trees to be the main trees. (Assume the main trees to be those with type
+     *    TypeInfo.StructType, they usually contain key info like VkPresentInfoKHR, VkSubmitInfo...)
+     * 3. Combine trees together by appending some smaller trees to the main trees, if they are
+     *    related through a pointer field.
+     */
+    public static List<StructNode> simplifyTrees(List<StructNode> trees) {
+      List<StructNode> simplified = new ArrayList<StructNode>();
+
+      Map<Long, StructNode> nodes = new HashMap<Long, StructNode>();
+      for (StructNode tree : trees) {
+        nodes.put(tree.getRootAddress(), removeExtraLayers(tree));
+      }
+
+      // Find the main trees.
+      for (Iterator<Map.Entry<Long, StructNode>> it = nodes.entrySet().iterator(); it.hasNext(); ) {
+        Map.Entry<Long, StructNode> entry = it.next();
+        if (containsStructType(entry.getValue())) {
+          simplified.add(entry.getValue());
+          it.remove();
+        }
+      }
+
+      // Append other trees to the main trees if possible.
+      for (StructNode mainTree : simplified) {
+        appendPointedNodes(mainTree, nodes);
+      }
+
+      // Add the remaining unappended nodes to the returning result.
+      for (StructNode node : nodes.values()) {
+        simplified.add(node);
+      }
+      return simplified;
+    }
+
+    /**
+     * Remove redundant layers and return the new root.
+     */
+    private static StructNode removeExtraLayers(StructNode root) {
+      TypeInfo.Type.TyCase tyCase = root.getTypeCase();
+      if ((tyCase == TyCase.SLICE || tyCase == TyCase.PSEUDONYM) && root.hasChildren() &&
+          root.children.size() == 1 && root.children.get(0).hasChildren()) {
+        root = root.children.get(0);
+      }
+      for (int i = 0; i < root.children.size(); i++) {
+        root.children.set(i, removeExtraLayers(root.children.get(i)));
+      }
+      return root;
+    }
+
+    /**
+     * Check whether the tree contains any node with type TypeInfo.StructType.
+     */
+    private static boolean containsStructType(StructNode root) {
+      if (root == null) {
+        return false;
+      }
+      if (root.getTypeCase() == TyCase.STRUCT) {
+        return true;
+      }
+      for (StructNode child : root.getChildren()) {
+        if (containsStructType(child)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /**
+     * Find all the nodes with type TypeInfo.PointerType in this tree, append the pointed tree to
+     * these nodes if possible.
+     */
+    private static void appendPointedNodes(StructNode root, Map<Long, StructNode> nodes) {
+      if (root == null) {
+        return;
+      }
+      if (root.getTypeCase() == TyCase.POINTER) {
+        long pointedAddress = root.getValue().getPointer().getAddress();
+        if (nodes.containsKey(pointedAddress)) {
+          root.getChildren().add(nodes.get(pointedAddress));
+          nodes.remove(pointedAddress);
+        }
+      }
+      for (StructNode child : root.getChildren()) {
+        appendPointedNodes(child, nodes);
+      }
     }
   }
 

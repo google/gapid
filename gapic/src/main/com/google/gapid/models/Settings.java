@@ -74,10 +74,8 @@ public class Settings {
   public String traceArguments = "";
   public String traceCwd = "";
   public String traceEnv = "";
-  public int traceInitialFrameCount = 0;
-  public int traceFrameCount = 7;
-  public boolean traceInteractiveStart = true;
-  public boolean traceMidExecution = true;
+  public int traceStartAt = -1; // -1: manual (mec), 0: beginning, 1+ frame x
+  public int traceDuration = 7; // 0: manual, 1+ frames/seconds
   public boolean traceWithoutBuffering = false;
   public boolean traceHideUnknownExtensions = false;
   public boolean traceClearCache = false;
@@ -88,6 +86,7 @@ public class Settings {
   public String[] recentFiles = new String[0];
   public String adb = "";
   public boolean autoCheckForUpdates = true;
+  public boolean includePrereleases = false;
   public boolean updateAvailable = false;
   public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
   public String analyticsClientId = ""; // Empty means do not track.
@@ -95,6 +94,17 @@ public class Settings {
   public boolean reportCrashes = false;
   public int[] perfettoSplitterWeights = new int[] { 85, 15 };
   public boolean perfettoDarkMode = false;
+  public boolean perfettoCpu = true;
+  public boolean perfettoCpuFreq = false;
+  public boolean perfettoCpuChain = true;
+  public boolean perfettoCpuSlices = true;
+  public boolean perfettoGpu = true;
+  public boolean perfettoGpuSlices = true;
+  public boolean perfettoGpuCounters = true;
+  public int perfettoGpuCounterRate = 50;
+  public int[] perfettoGpuCounterIds = new int[0];
+  public boolean perfettoMem = true;
+  public int perfettoMemRate = 10;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -229,9 +239,8 @@ public class Settings {
     traceArguments = properties.getProperty("trace.arguments", traceArguments);
     traceCwd = properties.getProperty("trace.cwd", traceCwd);
     traceEnv = properties.getProperty("trace.env", traceEnv);
-    traceFrameCount = getInt(properties, "trace.frameCount", traceFrameCount);
-    traceInteractiveStart = getBoolean(properties, "trace.interactiveStart", traceInteractiveStart);
-    traceMidExecution = getBoolean(properties, "trace.midExecution", traceMidExecution);
+    traceStartAt = getInt(properties, "trace.startAt", traceStartAt);
+    traceDuration = getInt(properties, "trace.duration", traceDuration);
     traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
     traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
     traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
@@ -242,6 +251,7 @@ public class Settings {
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
     autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
+    includePrereleases = getBoolean(properties, "updates.includePrereleases", includePrereleases);
     lastCheckForUpdates = getLong(properties, "updates.lastCheck", 0);
     updateAvailable = getBoolean(properties, "updates.available", updateAvailable);
     analyticsClientId = properties.getProperty("analytics.clientId", "");
@@ -251,6 +261,17 @@ public class Settings {
     perfettoSplitterWeights =
         getIntList(properties, "perfetto.splitter.weights", perfettoSplitterWeights);
     perfettoDarkMode = getBoolean(properties, "perfetto.dark", perfettoDarkMode);
+    perfettoCpu = getBoolean(properties, "perfetto.cpu", perfettoCpu);
+    perfettoCpuFreq = getBoolean(properties, "perfetto.cpu.freq", perfettoCpuFreq);
+    perfettoCpuChain = getBoolean(properties, "perfetto.cpu.chain", perfettoCpuChain);
+    perfettoCpuSlices = getBoolean(properties, "perfetto.cpu.slices", perfettoCpuSlices);
+    perfettoGpu = getBoolean(properties, "perfetto.gpu", perfettoGpu);
+    perfettoGpuSlices = getBoolean(properties, "perfetto.gpu.slices", perfettoGpuSlices);
+    perfettoGpuCounters = getBoolean(properties, "perfetto.gpu.counters", perfettoGpuCounters);
+    perfettoGpuCounterRate = getInt(properties, "perfetto.gpu.counters.rate", perfettoGpuCounterRate);
+    perfettoGpuCounterIds = getIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
+    perfettoMem = getBoolean(properties, "perfetto.mem", perfettoMem);
+    perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
   }
 
   private void updateTo(Properties properties) {
@@ -275,8 +296,8 @@ public class Settings {
     properties.setProperty("trace.arguments", traceArguments);
     properties.setProperty("trace.cwd", traceCwd);
     properties.setProperty("trace.env", traceEnv);
-    properties.setProperty("trace.frameCount", Integer.toString(traceFrameCount));
-    properties.setProperty("trace.midExecution", Boolean.toString(traceMidExecution));
+    properties.setProperty("trace.startAt", Integer.toString(traceStartAt));
+    properties.setProperty("trace.duration", Integer.toString(traceDuration));
     properties.setProperty("trace.withoutBuffering", Boolean.toString(traceWithoutBuffering));
     properties.setProperty("trace.hideUnknownExtensions", Boolean.toString(traceHideUnknownExtensions));
     properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
@@ -287,6 +308,7 @@ public class Settings {
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);
     properties.setProperty("updates.autoCheck", Boolean.toString(autoCheckForUpdates));
+    properties.setProperty("updates.includePrereleases", Boolean.toString(includePrereleases));
     properties.setProperty("updates.lastCheck", Long.toString(lastCheckForUpdates));
     properties.setProperty("updates.available", Boolean.toString(updateAvailable));
     properties.setProperty("analytics.clientId", analyticsClientId);
@@ -295,6 +317,17 @@ public class Settings {
     properties.setProperty("crash.reporting", Boolean.toString(reportCrashes));
     setIntList(properties, "perfetto.splitter.weights", perfettoSplitterWeights);
     properties.setProperty("perfetto.dark", Boolean.toString(perfettoDarkMode));
+    properties.setProperty("perfetto.cpu", Boolean.toString(perfettoCpu));
+    properties.setProperty("perfetto.cpu.freq", Boolean.toString(perfettoCpuFreq));
+    properties.setProperty("perfetto.cpu.chain", Boolean.toString(perfettoCpuChain));
+    properties.setProperty("perfetto.cpu.slices", Boolean.toString(perfettoCpuSlices));
+    properties.setProperty("perfetto.gpu", Boolean.toString(perfettoGpu));
+    properties.setProperty("perfetto.gpu.slices", Boolean.toString(perfettoGpuSlices));
+    properties.setProperty("perfetto.gpu.counters", Boolean.toString(perfettoGpuCounters));
+    properties.setProperty("perfetto.gpu.counters.rate", Integer.toString(perfettoGpuCounterRate));
+    setIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
+    properties.setProperty("perfetto.mem", Boolean.toString(perfettoMem));
+    properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
   }
 
   private static Point getPoint(Properties properties, String name) {

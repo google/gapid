@@ -105,7 +105,7 @@ type frameLoop struct {
 	descriptorSetLayoutCreated   map[VkDescriptorSetLayout]bool
 	descriptorSetLayoutDestroyed map[VkDescriptorSetLayout]bool
 
-	descriptorPoolCreated   map[VkDescriptorPool]bool
+  descriptorPoolCreated   map[VkDescriptorPool]bool
 	descriptorPoolDestroyed map[VkDescriptorPool]bool
 
 	descriptorSetCreated       map[VkDescriptorSet]bool

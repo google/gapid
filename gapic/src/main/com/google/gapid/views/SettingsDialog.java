@@ -108,6 +108,7 @@ public class SettingsDialog extends DialogBase {
     private final Button allowAnalytics;
     private final Button allowCrashReports;
     private final Button allowUpdateChecks;
+    private final Button includePrerelease;
 
     public SettingsFormBase(Models models, Composite parent) {
       this(models, parent, 5, 5);
@@ -129,14 +130,17 @@ public class SettingsDialog extends DialogBase {
       beforeAnalytics();
 
       allowAnalytics = withLayoutData(
-          createCheckbox(this, Messages.ANALYTICS_OPTION, true),
+          createCheckbox(this, Messages.ANALYTICS_OPTION, models.settings.analyticsEnabled()),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       allowCrashReports = withLayoutData(
-          createCheckbox(this, Messages.CRASH_REPORTING_OPTION, true),
+          createCheckbox(this, Messages.CRASH_REPORTING_OPTION, models.settings.reportCrashes),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       allowUpdateChecks = withLayoutData(
-          createCheckbox(this, Messages.UPDATE_CHECK_OPTION, true),
+          createCheckbox(this, Messages.UPDATE_CHECK_OPTION, models.settings.autoCheckForUpdates),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
+      includePrerelease = withLayoutData(
+          createCheckbox(this, Messages.UPDATE_CHECK_PRERELEASE_OPTION, models.settings.includePrereleases),
+          withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 20, 0));
       Label adbWarning = withLayoutData(createLabel(this, ""),
           withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
       adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
@@ -156,6 +160,13 @@ public class SettingsDialog extends DialogBase {
       };
       adbPath.addBoxListener(SWT.Modify, adbListener);
       adbListener.handleEvent(null);
+
+      allowUpdateChecks.addListener(SWT.Selection, e -> {
+        if (!allowUpdateChecks.getSelection()) {
+          includePrerelease.setSelection(false);
+        }
+        includePrerelease.setEnabled(allowUpdateChecks.getSelection());
+      });
     }
 
     protected void beforeAnalytics() {
@@ -167,6 +178,9 @@ public class SettingsDialog extends DialogBase {
       models.settings.setAnalyticsEnabled(allowAnalytics.getSelection());
       models.settings.reportCrashes = allowCrashReports.getSelection();
       models.settings.autoCheckForUpdates = allowUpdateChecks.getSelection();
+      models.settings.includePrereleases = includePrerelease.getSelection();
+      // When settings are saved, reset the update timer, to force update check on next start
+      models.settings.lastCheckForUpdates = 0;
       models.settings.save();
       models.analytics.updateSettings();
     }

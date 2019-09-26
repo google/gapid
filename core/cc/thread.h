@@ -31,6 +31,8 @@ class Thread {
   // id returns the process-unique identifier for the Thread.
   inline uint64_t id() const;
 
+  std::string get_name() const;
+
  private:
   inline Thread(uint64_t id);
 

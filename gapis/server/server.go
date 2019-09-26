@@ -129,13 +129,29 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 	}
 	var mostRecent *service.Release
 	mostRecentVersion := app.Version
+	mostRecentDevVersion := -1
+
 	for _, release := range releases {
 		if !includePrereleases && release.GetPrerelease() {
 			continue
 		}
+
+		// tagName is either:
+		// Regular release: v<major>.<minor>.<point>
+		// Dev pre-release: v<major>.<minor>.<point>-dev-<dev>
 		var version app.VersionSpec
-		fmt.Sscanf(release.GetTagName(), "v%d.%d.%d", &version.Major, &version.Minor, &version.Point)
-		if version.GreaterThan(mostRecentVersion) {
+		tagName := release.GetTagName()
+		devVersion := -1
+		numFields, err := fmt.Sscanf(tagName, "v%d.%d.%d-dev-%d", &version.Major, &version.Minor, &version.Point, &devVersion)
+		if err != nil && numFields < 3 {
+			// some non-release tags have other format, e.g. libinterceptor-v1.0
+			log.I(ctx, "Ignoring tag %s", tagName)
+			continue
+		}
+
+		// dev-releases are previews of the next release, so e.g. 1.2.3 is more recent than 1.2.3-dev-456
+		if version.GreaterThan(mostRecentVersion) ||
+			(version.Equal(mostRecentVersion) && mostRecentDevVersion != -1 && mostRecentDevVersion < devVersion) {
 			mostRecent = &service.Release{
 				Name:         release.GetName(),
 				VersionMajor: uint32(version.Major),
@@ -145,6 +161,7 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 				BrowserUrl:   release.GetHTMLURL(),
 			}
 			mostRecentVersion = version
+			mostRecentDevVersion = devVersion
 		}
 	}
 	if mostRecent == nil {

@@ -527,8 +527,12 @@ public class Widgets {
   }
 
   public static Group createGroup(Composite parent, String text) {
+    return createGroup(parent, text, new FillLayout(SWT.VERTICAL));
+  }
+
+  public static Group createGroup(Composite parent, String text, Layout layout) {
     Group group = new Group(parent, SWT.NONE);
-    group.setLayout(new FillLayout(SWT.VERTICAL));
+    group.setLayout(layout);
     group.setText(text);
     group.setFont(JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT));
     return group;

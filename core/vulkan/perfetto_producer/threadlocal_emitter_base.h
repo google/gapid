@@ -12,26 +12,16 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-#include <libgen.h>
-#include <unistd.h>
-#include <cstring>
-#include <string>
+#ifndef __THREADLOCAL_EMITTER_BASE_H__
+#define __THREADLOCAL_EMITTER_BASE_H__
 
-namespace core {
-static const size_t MAX_PATH = 4096;
+class ThreadlocalEmitterBase {
+ public:
+  virtual void StartTracing() = 0;
+  virtual void StopTracing() = 0;
+};
 
-std::string get_process_name() {
-  char mp[MAX_PATH + 1];
-  memset(mp, 0, MAX_PATH + 1);
-  ssize_t len = readlink("/proc/self/exe", mp, MAX_PATH);
-  if (len <= 0) {
-    return "";
-  }
-  return basename(mp);
-}
-
-uint64_t get_process_id() { return static_cast<uint64_t>(getpid()); }
-
-}  // namespace core
+#endif  // __THREADLOCAL_EMITTER_BASE_H__

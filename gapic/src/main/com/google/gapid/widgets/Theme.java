@@ -126,6 +126,10 @@ public interface Theme {
   @RGB(argb = 0xff0000ff) public Color numericConstantColor();
   @RGB(argb = 0xff808000) public Color preprocessorColor();
 
+  // Memory view colors.
+  @RGB(argb = 0xff0068da) public Color memoryLinkColor();
+  @RGB(argb = 0xffe5f3ff) public Color memoryFirstLevelBackground();
+
   // Memory highlighting (background) colors.
   @RGB(argb = 0xffdcfadc) public Color memoryReadHighlight();
   @RGB(argb = 0xfffadcdc) public Color memoryWriteHighlight();

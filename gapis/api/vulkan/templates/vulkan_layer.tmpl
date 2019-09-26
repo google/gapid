@@ -477,7 +477,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
   data.allocate_command_buffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_device_proc_addr(*pDevice, "vkAllocateCommandBuffers"));
   data.get_device_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_device_proc_addr(*pDevice, "vkGetDeviceQueue"));
   data.destroy_device = reinterpret_cast<PFN_vkDestroyDevice>(get_device_proc_addr(*pDevice, "vkDestroyDevice"));
-  data.free_command_buffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(get_device_proc_addr(*pDevice, "vkFreeCommandbuffers"));
+  data.free_command_buffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(get_device_proc_addr(*pDevice, "vkFreeCommandBuffers"));
   data.destroy_command_pool = reinterpret_cast<PFN_vkDestroyCommandPool>(get_device_proc_addr(*pDevice, "vkDestroyCommandPool"));
 
 #define GET_PROC(name) \

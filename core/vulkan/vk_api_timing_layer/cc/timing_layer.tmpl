@@ -18,7 +18,37 @@
 {{Global "Vulkan.LayerNamespace" "api_timing"}}
 {{Global "Vulkan.Layer Description" "API Timing Layer"}}
 
-{{Global "Vulkan.OverrideFunctions" "dummy" "vkCreateInstance" "vkCreateDevice" "vkQueueSubmit" "vkCmdDraw"}}
-{{Global "Vulkan.OtherUsedFunctions" "dummy" "vkAllocateCommandBuffers"}}
-
 {{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
+
+{{$ | Macro "layer_impl.cpp" | Reflow 4 | Write "layer_impl.cpp"}}
+
+{{define "layer_impl.cpp"}}
+{{Template "C++.Copyright"}}
+#include "core/vulkan/vk_api_timing_layer/cc/layer.h"
+#include "core/vulkan/vk_api_timing_layer/cc/tracing_helpers.h"
+#include "core/cc/timer.h"
+
+#include <cinttypes>
+
+namespace api_timing {
+struct timer {
+    timer(const char* name) {
+        Emit().StartEvent(name);
+    }
+    ~timer() {
+        Emit().EndEvent();
+    }
+};
+{{range $c := AllCommands $}}
+{{if and (not (GetAnnotation $c "pfn")) (not (GetAnnotation $c "synthetic"))}}
+{{Template "BeginPlatformIfDef" $c}}
+{{Template "C++.BaseType" $c.Return.Type}} {{$c.Name}}(PFN_{{$c.Name}} next, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
+    timer t("{{$c.Name}}");
+    return next({{Template "C++.CallArguments" $c}});
+}
+{{Template "EndPlatformIfDef" $c}}
+¶
+{{end}}
+{{end}}
+}
+{{end}}
