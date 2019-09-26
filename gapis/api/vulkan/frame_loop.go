@@ -102,6 +102,9 @@ type frameLoop struct {
 	imageDestroyed map[VkImage]bool
 	imageToBackup  map[VkImage]VkImage
 
+	samplerCreated   map[VkSampler]bool
+	samplerDestroyed map[VkSampler]bool
+
 	descriptorSetLayoutCreated   map[VkDescriptorSetLayout]bool
 	descriptorSetLayoutDestroyed map[VkDescriptorSetLayout]bool
 
@@ -157,6 +160,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		imageChanged:   make(map[VkImage]bool),
 		imageDestroyed: make(map[VkImage]bool),
 		imageToBackup:  make(map[VkImage]VkImage),
+
+		samplerCreated:   make(map[VkSampler]bool),
+		samplerDestroyed: make(map[VkSampler]bool),
 
 		descriptorSetLayoutCreated:   make(map[VkDescriptorSetLayout]bool),
 		descriptorSetLayoutDestroyed: make(map[VkDescriptorSetLayout]bool),
@@ -403,6 +409,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			img := vkCmd.Image()
 			log.D(ctx, "Image %v destroyed", img)
 			f.imageDestroyed[img] = true
+
+		// Sampler(s)
+		case *VkCreateSampler:
+			vkCmd := cmd.(*VkCreateSampler)
+			sampler := vkCmd.PSampler().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Sampler %v created", sampler)
+			f.samplerCreated[sampler] = true
+
+		case *VkDestroySampler:
+			vkCmd := cmd.(*VkDestroySampler)
+			sampler := vkCmd.Sampler()
+			log.D(ctx, "Sampler %v created", sampler)
+			if _, ok := f.samplerCreated[sampler]; ok {
+				delete(f.samplerCreated, sampler)
+			} else {
+				f.samplerDestroyed[sampler] = true
+			}
 
 		// DescriptionSetLayout(s)
 		case *VkCreateDescriptorSetLayout:
@@ -696,6 +719,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetSamplers(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetDescriptorSetLayouts(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -807,13 +834,32 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	return nil
 }
 
+
+func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Sampler that was created during the loop...
+	for created := range f.samplerCreated {
+		// Write the command to delete the created object
+		sampler := GetState(f.loopEndState).samplers.Get(created)
+		stateBuilder.write(stateBuilder.cb.VkDestroySampler(sampler.Device(), sampler.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every Sampler that was destroyed during the loop...
+	for destroyed := range f.samplerDestroyed {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createSampler(GetState(f.loopStartState).samplers.Get(destroyed))
+	}
+
+	return nil
+}
+
 func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every DescriptorSetLayout that was created during the loop...
 	for created := range f.descriptorSetLayoutCreated {
 		// Write the command to delete the created object
-		dsl := GetState(f.loopEndState).descriptorSetLayouts.Get(created)
-		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(dsl.Device(), dsl.VulkanHandle(), memory.Nullptr))
+		descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(created)
+		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(descSetLay.Device(), descSetLay.VulkanHandle(), memory.Nullptr))
 	}
 
 	// For every DescriptorSetLayout that was destroyed during the loop...
@@ -827,14 +873,14 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 
 func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorSetLayout that was created during the loop...
+	// For every DescriptorPool that was created during the loop...
 	for created := range f.descriptorPoolCreated {
 		// Write the command to delete the created object
 		descPool := GetState(f.loopEndState).descriptorPools.Get(created)
 		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorPool(descPool.Device(), descPool.VulkanHandle(), memory.Nullptr))
 	}
 
-	// For every DescriptorSetLayout that was destroyed during the loop...
+	// For every DescriptorPool that was destroyed during the loop...
 	for destroyed := range f.descriptorPoolDestroyed {
 		// Write the commands needed to recreate the destroyed object
 		stateBuilder.createDescriptorPoolAndAllocateDescriptorSets(GetState(f.loopStartState).DescriptorPools().Get(destroyed))
@@ -853,7 +899,7 @@ func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stat
 
 func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorSetLayout that was created during the loop...
+	// For every DescriptorSet that was created during the loop...
 	for created := range f.descriptorSetCreated {
 		// Write the command to delete the created object
 		descSetObj := GetState(f.loopEndState).descriptorSets.Get(created)
@@ -865,7 +911,7 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 			VkResult_VK_SUCCESS))
 	}
 
-	// For every DescriptorSetLayout that was destroyed during the loop...
+	// For every DescriptorSet that was destroyed during the loop...
 	for destroyed := range f.descriptorSetDestroyed {
 		// Write the commands needed to recreate the destroyed object
 		descSetObj := GetState(f.loopStartState).descriptorSets.Get(destroyed)
@@ -876,7 +922,7 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 		stateBuilder.allocateDescriptorSets(descPoolObj, descSetHandles, descSetLayoutHandles)
 	}
 
-	// For every DescriptorSetLayout that was modified during the loop...
+	// For every DescriptorSet that was modified during the loop...
 	for changed := range f.descriptorSetChanged {
 		// Write the commands needed to restore the modified object
 		descSetObj := GetState(f.loopStartState).descriptorSets.Get(changed)
