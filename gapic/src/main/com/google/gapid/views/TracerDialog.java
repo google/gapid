@@ -63,6 +63,7 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -70,6 +71,8 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -260,6 +263,8 @@ public class TracerDialog {
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
+      private DeviceCaptureInfo selectedDevice;
+      private TraceType selectedTraceType;
 
       private final ComboViewer device;
       private final Label deviceLabel;
@@ -454,6 +459,33 @@ public class TracerDialog {
         device.getCombo().addListener(
             SWT.Selection, e -> update(models.settings, getSelectedDevice()));
         api.getCombo().addListener(SWT.Selection, e -> update(models.settings, getSelectedApi()));
+
+        Listener gpuProfilingCapabilityListener = e -> {
+          boolean changed = false;
+          if (getSelectedApi().getType() != selectedTraceType) {
+            selectedTraceType = getSelectedApi().getType();
+            changed = true;
+          }
+          if (getSelectedDevice() != selectedDevice) {
+            selectedDevice = getSelectedDevice();
+            changed = true;
+          }
+          if (!changed) {
+            return;
+          }
+
+          // Skip if the device is not Android device, or trace type is not Perfetto.
+          if ((getSelectedDevice() != null && !getSelectedDevice().isAndroid())
+              || getSelectedApi().getType() != TraceType.Perfetto) {
+            return;
+          }
+          Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
+          if (!gpuCaps.getHasRenderStage() || gpuCaps.getGpuCounterDescriptor().getSpecsCount() == 0) {
+            GpuProfilingMissingDialog.showNotCompatibleDialog(getShell(), models, widgets);
+          }
+        };
+        device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
+        api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
@@ -851,6 +883,34 @@ public class TracerDialog {
 
       private static boolean isPerfetto(TraceTypeCapabilities config) {
         return config.getType() == TraceType.Perfetto;
+      }
+
+      private static class GpuProfilingMissingDialog extends MessageDialog {
+        private static final String TITLE = "Warning: Selected device has no GPU profiling capability";
+        private static final String NOT_COMPATIBLE = "Could not detect GPU profiling capability from the selected Android device.";
+
+        public static void showNotCompatibleDialog(Shell shell, Models models, Widgets widgets) {
+          new GpuProfilingMissingDialog(shell, models.settings, widgets.theme, NOT_COMPATIBLE).open();
+        }
+
+        public GpuProfilingMissingDialog(Shell shell, Settings settings, Theme theme, String label) {
+          super(shell, TITLE, null, label, MessageDialog.NONE, new String[] { "Close" }, 0);
+        }
+
+        @Override
+        protected Control createDialogArea(Composite parent) {
+          Composite area = (Composite)super.createDialogArea(parent);
+
+          // Allow to press Esc button to close the dialog.
+          area.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) {
+              if (e.keyCode == SWT.ESC) {
+                close();
+              }
+            }
+          });
+          return area;
+        }
       }
     }
   }
