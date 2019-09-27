@@ -39,8 +39,8 @@ const (
 	ErrDeviceNotRooted = fault.Const("Device is not rooted")
 	ErrRootFailed      = fault.Const("Device failed to switch to root")
 
-	maxRootAttempts                            = 5
-	gpuRenderingStagesDataSourceDescriptorName = "gpu.renderingstages"
+	maxRootAttempts                         = 5
+	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
 )
 
 func isRootSuccessful(line string) bool {
@@ -290,7 +290,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 	dataSources := tracingServiceState.GetDataSources()
 	for _, dataSource := range dataSources {
 		dataSourceDescriptor := dataSource.GetDsDescriptor()
-		if dataSourceDescriptor.GetName() == gpuRenderingStagesDataSourceDescriptorName {
+		if dataSourceDescriptor.GetName() == gpuRenderStagesDataSourceDescriptorName {
 			perfettoCapability.GpuProfiling.HasRenderStage = true
 			continue
 		}
