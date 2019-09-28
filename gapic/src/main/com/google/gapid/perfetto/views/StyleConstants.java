@@ -78,6 +78,9 @@ public class StyleConstants {
     public final RGBA memoryBufferedCached;
     public final RGBA memoryUsed;
 
+    public final RGBA batteryCurrentOut;
+    public final RGBA batteryCurrentIn;
+
     public Colors(int background,
         RGBA titleBackground,
         RGBA gridline,
@@ -104,7 +107,9 @@ public class StyleConstants {
         RGBA threadStateSleep,
         RGBA threadStateUnknown,
         RGBA memoryBufferedCached,
-        RGBA memoryUsed) {
+        RGBA memoryUsed,
+        RGBA batteryCurrentOut,
+        RGBA batteryCurrentIn) {
       this.background = background;
       this.titleBackground = titleBackground;
       this.gridline = gridline;
@@ -132,6 +137,8 @@ public class StyleConstants {
       this.threadStateUnknown = threadStateUnknown;
       this.memoryBufferedCached = memoryBufferedCached;
       this.memoryUsed = memoryUsed;
+      this.batteryCurrentOut = batteryCurrentOut;
+      this.batteryCurrentIn = batteryCurrentIn;
     }
 
     private static final int LIGHT_BACKGROUND = SWT.COLOR_WHITE;
@@ -165,6 +172,9 @@ public class StyleConstants {
     private static final RGBA LIGHT_MEMORY_BUFFERED_CACHED = rgb(0x76, 0xD2, 0xff);
     private static final RGBA LIGHT_MEMORY_USED = rgb(0x34, 0x65, 0xA4);
 
+    private static final RGBA LIGHT_BATTERY_CURRENT_OUT = rgb(0xF9, 0xA1, 0x2E);
+    private static final RGBA LIGHT_BATTERY_CURRENT_IN = rgb(0x9F, 0xC1, 0x31);
+
     public static Colors light() {
       return new Colors(
             LIGHT_BACKGROUND,
@@ -193,7 +203,9 @@ public class StyleConstants {
             LIGHT_THREAD_STATE_SLEEP,
             LIGHT_THREAD_STATE_UNKNOWN,
             LIGHT_MEMORY_BUFFERED_CACHED,
-            LIGHT_MEMORY_USED);
+            LIGHT_MEMORY_USED,
+            LIGHT_BATTERY_CURRENT_OUT,
+            LIGHT_BATTERY_CURRENT_IN);
     }
 
     private static final int DARK_BACKGROUND = SWT.COLOR_BLACK;
@@ -227,6 +239,9 @@ public class StyleConstants {
     private static final RGBA DARK_MEMORY_BUFFERED_CACHED = rgb(0x76, 0xD2, 0xff);
     private static final RGBA DARK_MEMORY_USED = rgb(0x34, 0x65, 0xA4);
 
+    private static final RGBA DARK_BATTERY_CURRENT_OUT = rgb(0xD8, 0x9C, 0xA2);
+    private static final RGBA DARK_BATTERY_CURRENT_IN = rgb(0x7A, 0xB7, 0x73);
+
     public static Colors dark() {
       return new Colors(
             DARK_BACKGROUND,
@@ -255,7 +270,9 @@ public class StyleConstants {
             DARK_THREAD_STATE_SLEEP,
             DARK_THREAD_STATE_UNKNOWN,
             DARK_MEMORY_BUFFERED_CACHED,
-            DARK_MEMORY_USED);
+            DARK_MEMORY_USED,
+            DARK_BATTERY_CURRENT_OUT,
+            DARK_BATTERY_CURRENT_IN);
     }
   }
 

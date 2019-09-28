@@ -45,6 +45,8 @@ import java.util.logging.Logger;
 public abstract class Track<D extends Track.Data> {
   private static final Logger LOG = Logger.getLogger(Track.class.getName());
 
+  public static final long QUANTIZE_CUT_OFF = 10000;
+
   private static final long REQUEST_DELAY_MS = 50;
   private static final long ACQUIRE_TIMEOUT_MS = 5;
   private static final long ACQUIRE_RETRY_MS = 10;

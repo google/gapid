@@ -82,7 +82,8 @@ public class Tracks {
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerateCounters(
       Perfetto.Data.Builder data) {
-    return MemorySummaryTrack.enumerate(data);
+    return transformAsync(MemorySummaryTrack.enumerate(data), $1 ->
+        BatterySummaryTrack.enumerate(data));
   }
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {

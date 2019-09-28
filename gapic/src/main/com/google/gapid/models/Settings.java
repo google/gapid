@@ -104,6 +104,8 @@ public class Settings {
   public int[] perfettoGpuCounterIds = new int[0];
   public boolean perfettoMem = true;
   public int perfettoMemRate = 10;
+  public boolean perfettoBat = true;
+  public int perfettoBatRate = 250;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -270,6 +272,8 @@ public class Settings {
     perfettoGpuCounterIds = getIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
     perfettoMem = getBoolean(properties, "perfetto.mem", perfettoMem);
     perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
+    perfettoBat = getBoolean(properties, "perfetto.bat", perfettoBat);
+    perfettoBatRate = getInt(properties, "perfetto.bat.rate", perfettoBatRate);
   }
 
   private void updateTo(Properties properties) {
@@ -325,6 +329,8 @@ public class Settings {
     setIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
     properties.setProperty("perfetto.mem", Boolean.toString(perfettoMem));
     properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
+    properties.setProperty("perfetto.bat", Boolean.toString(perfettoBat));
+    properties.setProperty("perfetto.bat.rate", Integer.toString(perfettoBatRate));
   }
 
   private static Point getPoint(Properties properties, String name) {

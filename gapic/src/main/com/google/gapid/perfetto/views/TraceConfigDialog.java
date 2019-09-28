@@ -54,6 +54,7 @@ import java.util.Arrays;
 import java.util.Set;
 
 import perfetto.protos.PerfettoConfig;
+import perfetto.protos.PerfettoConfig.AndroidPowerConfig.BatteryCounters;
 
 public class TraceConfigDialog extends DialogBase {
   private static final int BUFFER_SIZE = 131072;
@@ -89,6 +90,11 @@ public class TraceConfigDialog extends DialogBase {
       PerfettoConfig.MeminfoCounters.MEMINFO_BUFFERS,
       PerfettoConfig.MeminfoCounters.MEMINFO_CACHED,
       PerfettoConfig.MeminfoCounters.MEMINFO_SWAP_CACHED,
+  };
+  private static final PerfettoConfig.AndroidPowerConfig.BatteryCounters[] BAT_COUNTERS = {
+      BatteryCounters.BATTERY_COUNTER_CAPACITY_PERCENT,
+      BatteryCounters.BATTERY_COUNTER_CHARGE,
+      BatteryCounters.BATTERY_COUNTER_CURRENT,
   };
 
   private final Settings settings;
@@ -126,6 +132,12 @@ public class TraceConfigDialog extends DialogBase {
         sb.append(", ");
       }
       sb.append("Memory");
+    }
+    if (settings.perfettoBat) {
+      if (sb.length() > 0) {
+        sb.append(", ");
+      }
+      sb.append("Battery");
     }
     return sb.toString();
   }
@@ -191,6 +203,15 @@ public class TraceConfigDialog extends DialogBase {
                   .addAllMeminfoCounters(Arrays.asList(MEM_COUNTERS));
     }
 
+    if (settings.perfettoBat) {
+      config.addDataSourcesBuilder().getConfigBuilder()
+      .setName("android.power")
+      .getAndroidPowerConfigBuilder()
+      .setBatteryPollMs(settings.perfettoBatRate)
+      .setCollectPowerRails(true)
+      .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS));
+    }
+
     return config;
   }
 
@@ -231,6 +252,10 @@ public class TraceConfigDialog extends DialogBase {
     private final Button mem;
     private final Label[] memLabels;
     private final Spinner memRate;
+
+    private final Button bat;
+    private final Label[] batLabels;
+    private final Spinner batRate;
 
     public InputArea(
         Composite parent, Settings settings, Theme theme, Device.PerfettoCapability caps) {
@@ -306,10 +331,21 @@ public class TraceConfigDialog extends DialogBase {
       memLabels[0] = createLabel(memGroup, "Poll Rate:");
       memRate = createSpinner(memGroup, settings.perfettoMemRate, 1, 1000);
       memLabels[1] = createLabel(memGroup, "ms");
+      addSeparator();
+
+      bat = createCheckbox(this, "Battery", settings.perfettoBat, e -> updateBat());
+      batLabels = new Label[2];
+      Composite batGroup = withLayoutData(
+          createComposite(this, withMargin(new GridLayout(3, false), 5, 0)),
+          withIndents(new GridData(), GROUP_INDENT, 0));
+      batLabels[0] = createLabel(batGroup, "Poll Rate:");
+      batRate = createSpinner(batGroup, settings.perfettoBatRate, 250, 60000);
+      batLabels[1] = createLabel(batGroup, "ms");
 
       updateCpu();
       updateGpu();
       updateMem();
+      updateBat();
     }
 
     public void update(Settings settings) {
@@ -331,6 +367,8 @@ public class TraceConfigDialog extends DialogBase {
 
       settings.perfettoMem = mem.getSelection();
       settings.perfettoMemRate = memRate.getSelection();
+      settings.perfettoBat = bat.getSelection();
+      settings.perfettoBatRate = batRate.getSelection();
     }
 
     private void addSeparator() {
@@ -369,6 +407,14 @@ public class TraceConfigDialog extends DialogBase {
       boolean enabled = mem.getSelection();
       memRate.setEnabled(enabled);
       for (Label label : memLabels) {
+        label.setEnabled(enabled);
+      }
+    }
+
+    private void updateBat() {
+      boolean enabled = bat.getSelection();
+      batRate.setEnabled(enabled);
+      for (Label label : batLabels) {
         label.setEnabled(enabled);
       }
     }
