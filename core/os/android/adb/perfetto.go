@@ -29,6 +29,95 @@ import (
 	"github.com/google/gapid/core/log"
 )
 
+const (
+	perfettoProducerLaunchersDirectory = "/data/local/tmp/perfetto_producer_launchers"
+)
+
+func (b *binding) preparePerfettoProducerLauncherFromApk(ctx context.Context, packageName string, launcherBinary string) (string, error) {
+	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() < 29 {
+		return "", log.Errf(ctx, nil, "Querying perfetto capability requires Android API >= 29")
+	}
+	launcherPath := perfettoProducerLaunchersDirectory + "/" + launcherBinary
+	if _, err := b.Shell("rm", "-f", launcherPath).Call(ctx); err != nil {
+		return "", log.Errf(ctx, err, "Can't clean up existing perfetto producer launcher %v", launcherBinary)
+	}
+
+	// Attempt to create the directory
+	b.Shell("mkdir", "-p", perfettoProducerLaunchersDirectory).Call(ctx)
+	res, err := b.Shell("pm", "path", packageName).Call(ctx)
+	if err != nil {
+		return "", log.Errf(ctx, err, "Failed to query path to apk %v", packageName)
+	}
+	packagePath := strings.Split(res, ":")[1]
+	if _, err := b.Shell("unzip", "-o", packagePath, "assets/"+launcherBinary, "-d", perfettoProducerLaunchersDirectory).Call(ctx); err != nil {
+		return "", log.Errf(ctx, err, "Failed to unzip %v from %v", launcherBinary, packageName)
+	}
+
+	// unzip also creates the directory structure, clean it up.
+	b.Shell("mv", perfettoProducerLaunchersDirectory+"/assets/"+launcherBinary, perfettoProducerLaunchersDirectory).Call(ctx)
+	b.Shell("rm", "-rf", perfettoProducerLaunchersDirectory+"/assets").Call(ctx)
+
+	// Finally, make sure the binary is executable
+	b.Shell("chmod", "a+x", launcherPath).Call(ctx)
+	return launcherPath, nil
+}
+
+func (b *binding) LaunchPerfettoProducerFromApk(ctx context.Context, packageName string, launcherBinary string, started chan int) error {
+	// Firstly, extract the producer launcher from Apk.
+	binaryPath, err := b.preparePerfettoProducerLauncherFromApk(ctx, packageName, launcherBinary)
+	if err != nil {
+		return err
+	}
+
+	// Construct IO pipe, shell command outputs to stdout, GAPID reads from
+	// reader for logging purpose.
+	reader, stdout := io.Pipe()
+	fail := make(chan error, 1)
+	crash.Go(func() {
+		buf := bufio.NewReader(reader)
+		for {
+			line, e := buf.ReadString('\n')
+			// As long as there's output, consider the binary starting running.
+			started <- 1
+			switch e {
+			default:
+				log.E(ctx, "[launch producer] Read error %v", e)
+				fail <- e
+				return
+			case io.EOF:
+				fail <- nil
+				return
+			case nil:
+				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(line, "\n"))
+			}
+		}
+	})
+
+	// Start the shell command to launch producer
+	process, err := b.Shell(binaryPath).Capture(stdout, stdout).Start(ctx)
+	if err != nil {
+		stdout.Close()
+		return err
+	}
+	wait := make(chan error, 1)
+	crash.Go(func() {
+		wait <- process.Wait(ctx)
+	})
+
+	// Wait until either an error or EOF is read, or shell command exits.
+	select {
+	case err = <-fail:
+		return err
+	case err = <-wait:
+		// Do nothing.
+	}
+	stdout.Close()
+	if err != nil {
+		return err
+	}
+	return <-fail
+}
+
 // StartPerfettoTrace starts a perfetto trace on this device.
 func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error {
 	reader, stdout := io.Pipe()

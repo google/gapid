@@ -38,7 +38,8 @@ const (
 	// ErrInvalidStatus May be returned if the status string is not a known status.
 	ErrInvalidStatus = fault.Const("Invalid status string")
 	// Frequency at which to print scan errors.
-	printScanErrorsEveryNSeconds = 120
+	printScanErrorsEveryNSeconds            = 120
+	gapidPerfettoProducerLauncherBinaryName = "launch_producer"
 )
 
 var (
@@ -110,6 +111,17 @@ func Devices(ctx context.Context) (DeviceList, error) {
 	return out, nil
 }
 
+func gapidApkPackageName(abi *device.ABI) string {
+	switch {
+	case abi.SameAs(device.AndroidARMv7a):
+		return "com.google.android.gapid.armeabiv7a"
+	case abi.SameAs(device.AndroidARM64v8a):
+		return "com.google.android.gapid.arm64v8a"
+	default:
+		return fmt.Sprintf("com.google.android.gapid.%v", abi.Name)
+	}
+}
+
 func newDevice(ctx context.Context, serial string, status bind.Status) (*binding, error) {
 	d := &binding{
 		Simple: bind.Simple{
@@ -145,11 +157,6 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		d.To.Configuration.OS.Build = strings.TrimSpace(description)
 	}
 
-	// Query device Perfetto service state
-	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
-		d.To.Configuration.PerfettoCapability = perfettoCapability
-	}
-
 	// Check which abis the device says it supports
 	d.To.Configuration.ABIs = d.To.Configuration.ABIs[:0]
 
@@ -170,6 +177,19 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 			d.To.Configuration.ABIs = append(d.To.Configuration.ABIs, device.ABIByName(abi))
 			seen[abi] = true
 		}
+	}
+
+	started := make(chan int, 1)
+	go func() {
+		err := d.LaunchPerfettoProducerFromApk(ctx, gapidApkPackageName(d.To.Configuration.PreferredABI(nil)), gapidPerfettoProducerLauncherBinaryName, started)
+		if err != nil {
+			log.E(ctx, "launch Perfetto producer error: %v", err)
+		}
+	}()
+	_ = <-started
+	// Query device Perfetto service state
+	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
+		d.To.Configuration.PerfettoCapability = perfettoCapability
 	}
 
 	// Run device info providers only if the API is supported
