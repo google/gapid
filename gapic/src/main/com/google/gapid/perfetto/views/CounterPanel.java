@@ -169,6 +169,9 @@ public class CounterPanel extends TrackPanel implements Selectable {
   }
 
   private static class HoverCard {
+    private static final double MIN_DOUBLE_AS_LONG = 100_000.0;
+    private static final double MAX_DOUBLE_AS_LONG = 9.2233720368547748E18;
+
     public final double value;
     public final double startX, endX;
     public final String label;
@@ -178,8 +181,17 @@ public class CounterPanel extends TrackPanel implements Selectable {
       this.value = value;
       this.startX = startX;
       this.endX = endX;
-      this.label = String.format("Value: %,d", Math.round(value));
+      this.label = "Value: " + format(value);
       this.size = tm.measure(Fonts.Style.Normal, label);
+    }
+
+    private static String format(double v) {
+      double abs = Math.abs(v);
+      if (abs >= MIN_DOUBLE_AS_LONG && abs <= MAX_DOUBLE_AS_LONG) {
+        return String.format("%,d", Math.round(v));
+      } else {
+        return String.format("%,g", v);
+      }
     }
   }
 }
