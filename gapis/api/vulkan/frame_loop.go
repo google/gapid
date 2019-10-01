@@ -108,6 +108,9 @@ type frameLoop struct {
 	descriptorSetLayoutToDestroy map[VkDescriptorSetLayout]bool
 	descriptorSetLayoutToCreate  map[VkDescriptorSetLayout]bool
 
+	pipelineLayoutToDestroy map[VkPipelineLayout]bool
+	pipelineLayoutToCreate  map[VkPipelineLayout]bool
+
 	descriptorPoolToDestroy map[VkDescriptorPool]bool
 	descriptorPoolToCreate  map[VkDescriptorPool]bool
 
@@ -166,6 +169,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		descriptorSetLayoutToDestroy: make(map[VkDescriptorSetLayout]bool),
 		descriptorSetLayoutToCreate:  make(map[VkDescriptorSetLayout]bool),
+
+		pipelineLayoutToDestroy: make(map[VkPipelineLayout]bool),
+		pipelineLayoutToCreate:  make(map[VkPipelineLayout]bool),
 
 		descriptorPoolToDestroy: make(map[VkDescriptorPool]bool),
 		descriptorPoolToCreate:  make(map[VkDescriptorPool]bool),
@@ -442,6 +448,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				delete(f.descriptorSetLayoutToDestroy, descriptorSetLayout)
 			} else {
 				f.descriptorSetLayoutToCreate[descriptorSetLayout] = true
+			}
+
+		// PipelineLayout(s)
+		case *VkCreatePipelineLayout:
+			vkCmd := cmd.(*VkCreatePipelineLayout)
+			pipelineLayout := vkCmd.PPipelineLayout().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "PipelineLayout %v created", pipelineLayout)
+			f.pipelineLayoutToDestroy[pipelineLayout] = true
+
+		case *VkDestroyPipelineLayout:
+			vkCmd := cmd.(*VkDestroyPipelineLayout)
+			pipelineLayout := vkCmd.PipelineLayout()
+			log.D(ctx, "PipelineLayout %v created", pipelineLayout)
+			if _, ok := f.pipelineLayoutToDestroy[pipelineLayout]; ok {
+				delete(f.pipelineLayoutToDestroy, pipelineLayout)
+			} else {
+				f.pipelineLayoutToCreate[pipelineLayout] = true
 			}
 
 		// DescriptorPool(s)
@@ -727,6 +750,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetPipelineLayouts(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetDescriptorPools(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -865,7 +892,7 @@ func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilde
 
 func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every Sampler that we need to destroy at the end of the loop...
+	// For every DescriptorSetLayout that we need to destroy at the end of the loop...
 	for toDestroy := range f.descriptorSetLayoutToDestroy {
 		// Write the command to delete the created object
 		descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(toDestroy)
@@ -876,6 +903,24 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 	for toCreate := range f.descriptorSetLayoutToCreate {
 		// Write the commands needed to recreate the destroyed object
 		stateBuilder.createDescriptorSetLayout(GetState(f.loopStartState).descriptorSetLayouts.Get(toCreate))
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every PipelineLayout that we need to destroy at the end of the loop...
+	for toDestroy := range f.pipelineLayoutToDestroy {
+		// Write the command to delete the created object
+		pipelineLayout := GetState(f.loopEndState).pipelineLayouts.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyPipelineLayout(pipelineLayout.Device(), pipelineLayout.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every PipelineLayout that we need to create at the end of the loop...
+	for toCreate := range f.pipelineLayoutToCreate {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createPipelineLayout(GetState(f.loopStartState).pipelineLayouts.Get(toCreate))
 	}
 
 	return nil
