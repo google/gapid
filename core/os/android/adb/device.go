@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -38,8 +39,7 @@ const (
 	// ErrInvalidStatus May be returned if the status string is not a known status.
 	ErrInvalidStatus = fault.Const("Invalid status string")
 	// Frequency at which to print scan errors.
-	printScanErrorsEveryNSeconds            = 120
-	gapidPerfettoProducerLauncherBinaryName = "launch_producer"
+	printScanErrorsEveryNSeconds = 120
 )
 
 var (
@@ -179,14 +179,19 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
-	started := make(chan int, 1)
-	go func() {
-		err := d.LaunchPerfettoProducerFromApk(ctx, gapidApkPackageName(d.To.Configuration.PreferredABI(nil)), gapidPerfettoProducerLauncherBinaryName, started)
+	startSignal, startFunc := task.NewSignal()
+	startFunc = task.Once(startFunc)
+	crash.Go(func() {
+		err := d.LaunchPerfettoProducerFromApk(ctx, gapidApkPackageName(d.To.Configuration.PreferredABI(nil)), startFunc)
 		if err != nil {
 			log.E(ctx, "launch Perfetto producer error: %v", err)
 		}
-	}()
-	_ = <-started
+
+		// Make sure we fire the start signal.
+		startFunc(ctx)
+	})
+	startSignal.Wait(ctx)
+
 	// Query device Perfetto service state
 	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
 		d.To.Configuration.PerfettoCapability = perfettoCapability
