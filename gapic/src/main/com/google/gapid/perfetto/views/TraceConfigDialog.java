@@ -167,7 +167,7 @@ public class TraceConfigDialog extends DialogBase {
         if (settings.perfettoGpuSlices) {
           config.addDataSourcesBuilder()
               .getConfigBuilder()
-                  .setName("gpu.timing");
+                  .setName("gpu.renderstages");
         }
         if (settings.perfettoGpuCounters && settings.perfettoGpuCounterIds.length > 0) {
           PerfettoConfig.GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
