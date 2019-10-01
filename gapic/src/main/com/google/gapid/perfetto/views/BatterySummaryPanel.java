@@ -172,15 +172,13 @@ public class BatterySummaryPanel extends TrackPanel {
   }
 
   private static long maxAbsCurrent(long[] currents) {
-    long max = Arrays.stream(currents).max().getAsLong();
-    long min = Arrays.stream(currents).min().getAsLong();
-    return Math.max(Math.abs(max), Math.abs(min));
+    return Arrays.stream(currents).map(Math::abs).max().orElse(0);
   }
 
   private static class HoverCard {
     public static final String REMAINING_POWER_LABEL = "Capacity:";
-    public static final String CURRENT_OUT_LABEL = "Current Outward:";
-    public static final String CURRENT_IN_LABEL = "Current Inward:";
+    public static final String CURRENT_OUT_LABEL = "Current Out:";
+    public static final String CURRENT_IN_LABEL = "Current In:";
 
     public final long current;
 
@@ -209,14 +207,14 @@ public class BatterySummaryPanel extends TrackPanel {
     }
 
     private static String formatCapacity(long capacityInPct) {
-      return capacityInPct + " %";
+      return capacityInPct + "%";
     }
 
     private static String formatCharge(long chargeInUah) {
       if (chargeInUah / 1000 > 0) {
-        return chargeInUah / 1000 + " mAH";
+        return chargeInUah / 1000 + "mAH";
       } else {
-        return chargeInUah + " uAH";
+        return chargeInUah + "uAH";
       }
     }
 
@@ -224,9 +222,9 @@ public class BatterySummaryPanel extends TrackPanel {
       // Show absolute value. Use color and in/out label to show electric current's direction.
       long absCurrentInUa = Math.abs(currentInUa);
       if (absCurrentInUa / 1000 > 0) {
-        return absCurrentInUa / 1000 + " mA";
+        return absCurrentInUa / 1000 + "mA";
       } else {
-        return absCurrentInUa + " uA";
+        return absCurrentInUa + "uA";
       }
     }
   }
