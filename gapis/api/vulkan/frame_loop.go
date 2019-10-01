@@ -122,6 +122,9 @@ type frameLoop struct {
 	descriptorSetChanged       map[VkDescriptorSet]bool
 	descriptorSetAutoDestroyed map[VkDescriptorSet]bool
 
+	renderPassToDestroy map[VkRenderPass]bool
+	renderPassToCreate  map[VkRenderPass]bool
+
 	loopCountPtr value.Pointer
 
 	frameNum uint32
@@ -186,6 +189,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		descriptorSetToCreate:      make(map[VkDescriptorSet]bool),
 		descriptorSetChanged:       make(map[VkDescriptorSet]bool),
 		descriptorSetAutoDestroyed: make(map[VkDescriptorSet]bool),
+
+		renderPassToDestroy: make(map[VkRenderPass]bool),
+		renderPassToCreate:  make(map[VkRenderPass]bool),
 
 		loopTerminated:      false,
 		lastObservedCommand: api.CmdNoID,
@@ -536,6 +542,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				}
 			}
 
+		// RenderPass(s)
+		case *VkCreateRenderPass:
+			vkCmd := cmd.(*VkCreateRenderPass)
+			renderPass := vkCmd.PRenderPass().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "RenderPass %v created", renderPass)
+			f.renderPassToDestroy[renderPass] = true
+
+		case *VkDestroyRenderPass:
+			vkCmd := cmd.(*VkDestroyRenderPass)
+			renderPass := vkCmd.RenderPass()
+			log.D(ctx, "RenderPass %v created", renderPass)
+			if _, ok := f.renderPassToDestroy[renderPass]; ok {
+				delete(f.renderPassToDestroy, renderPass)
+			} else {
+				f.renderPassToCreate[renderPass] = true
+			}
+
 			// TODO: Recreate destroyed resources.
 		}
 
@@ -789,6 +812,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetRenderPasses(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	//TODO: Reset other resources.
 	return nil
 }
@@ -1028,6 +1055,25 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 		// Write the commands needed to restore the modified object
 		descSetObj := GetState(f.loopStartState).descriptorSets.Get(changed)
 		stateBuilder.writeDescriptorSet(descSetObj)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every RenderPass that we need to destroy at the end of the loop...
+	for toDestroy := range f.renderPassToDestroy {
+		// Write the command to delete the created object
+		renderPass := GetState(f.loopEndState).renderPasses.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyRenderPass(renderPass.Device(), renderPass.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every RenderPass that we need to create at the end of the loop...
+	for toCreate := range f.renderPassToCreate {
+		// Write the commands needed to recreate the destroyed object
+		renderPass := GetState(f.loopStartState).renderPasses.Get(toCreate)
+		stateBuilder.createRenderPass(renderPass)
 	}
 
 	return nil
