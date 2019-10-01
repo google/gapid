@@ -105,6 +105,9 @@ type frameLoop struct {
 	samplerToDestroy map[VkSampler]bool
 	samplerToCreate  map[VkSampler]bool
 
+	shaderModuleToDestroy map[VkShaderModule]bool
+	shaderModuleToCreate  map[VkShaderModule]bool
+
 	descriptorSetLayoutToDestroy map[VkDescriptorSetLayout]bool
 	descriptorSetLayoutToCreate  map[VkDescriptorSetLayout]bool
 
@@ -166,6 +169,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		samplerToDestroy: make(map[VkSampler]bool),
 		samplerToCreate:  make(map[VkSampler]bool),
+
+		shaderModuleToDestroy: make(map[VkShaderModule]bool),
+		shaderModuleToCreate:  make(map[VkShaderModule]bool),
 
 		descriptorSetLayoutToDestroy: make(map[VkDescriptorSetLayout]bool),
 		descriptorSetLayoutToCreate:  make(map[VkDescriptorSetLayout]bool),
@@ -431,6 +437,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				delete(f.samplerToDestroy, sampler)
 			} else {
 				f.samplerToCreate[sampler] = true
+			}
+
+		// ShaderModule(s)
+		case *VkCreateShaderModule:
+			vkCmd := cmd.(*VkCreateShaderModule)
+			shaderModule := vkCmd.PShaderModule().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "ShaderModule %v created", shaderModule)
+			f.shaderModuleToDestroy[shaderModule] = true
+
+		case *VkDestroyShaderModule:
+			vkCmd := cmd.(*VkDestroyShaderModule)
+			shaderModule := vkCmd.ShaderModule()
+			log.D(ctx, "ShaderModule %v created", shaderModule)
+			if _, ok := f.shaderModuleToDestroy[shaderModule]; ok {
+				delete(f.shaderModuleToDestroy, shaderModule)
+			} else {
+				f.shaderModuleToCreate[shaderModule] = true
 			}
 
 		// DescriptionSetLayout(s)
@@ -746,6 +769,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetShaderModules(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetDescriptorSetLayouts(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -885,6 +912,25 @@ func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilde
 			f.descriptorSetToCreate[descriptorSet] = true
 			f.descriptorSetChanged[descriptorSet] = true
 		}
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every ShaderModule that we need to destroy at the end of the loop...
+	for toDestroy := range f.shaderModuleToDestroy {
+		// Write the command to delete the created object
+		shaderModule := GetState(f.loopEndState).shaderModules.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyShaderModule(shaderModule.Device(), shaderModule.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every ShaderModule that we need to create at the end of the loop...
+	for toCreate := range f.shaderModuleToCreate {
+		// Write the commands needed to recreate the destroyed object
+		shaderModule := GetState(f.loopStartState).shaderModules.Get(toCreate)
+		stateBuilder.createShaderModule(shaderModule)
 	}
 
 	return nil
