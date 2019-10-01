@@ -89,7 +89,7 @@ func (b *binding) LaunchPerfettoProducerFromApk(ctx context.Context, packageName
 	})
 
 	// Start the shell command to launch producer
-	process, err := b.Shell(binaryPath).Capture(stdout, stdout).Start(ctx)
+	process, err := b.Shell("trap", "\"killall", binaryPath, ";rm -f", binaryPath, "\"", "SIGHUP;", binaryPath, "&", "wait").Capture(stdout, stdout).Start(ctx)
 	if err != nil {
 		stdout.Close()
 		return err
