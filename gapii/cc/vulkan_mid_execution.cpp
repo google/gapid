@@ -449,7 +449,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
     auto get_element_size = [this](uint32_t format, uint32_t aspect_bit,
                                    bool in_buffer) -> uint32_t {
-      if (VkImageAspectFlagBits::VK_IMAGE_ASPECT_STENCIL_BIT == aspect_bit) {
+      if (VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT == aspect_bit) {
         return subGetDepthElementSize(nullptr, nullptr, format, in_buffer);
       }
       return subGetElementAndTexelBlockSizeForAspect(nullptr, nullptr, format,
