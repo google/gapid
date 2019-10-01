@@ -92,28 +92,28 @@ type frameLoop struct {
 	loopStartState *api.GlobalState
 	loopEndState   *api.GlobalState
 
-	bufferCreated   map[VkBuffer]bool
+	bufferToDestroy map[VkBuffer]bool
+	bufferToCreate  map[VkBuffer]bool
 	bufferChanged   map[VkBuffer]bool
-	bufferDestroyed map[VkBuffer]bool
 	bufferToBackup  map[VkBuffer]VkBuffer
 
-	imageCreated   map[VkImage]bool
+	imageToDestroy map[VkImage]bool
+	imageToCreate  map[VkImage]bool
 	imageChanged   map[VkImage]bool
-	imageDestroyed map[VkImage]bool
 	imageToBackup  map[VkImage]VkImage
 
-	samplerCreated   map[VkSampler]bool
-	samplerDestroyed map[VkSampler]bool
+	samplerToDestroy map[VkSampler]bool
+	samplerToCreate  map[VkSampler]bool
 
-	descriptorSetLayoutCreated   map[VkDescriptorSetLayout]bool
-	descriptorSetLayoutDestroyed map[VkDescriptorSetLayout]bool
+	descriptorSetLayoutToDestroy map[VkDescriptorSetLayout]bool
+	descriptorSetLayoutToCreate  map[VkDescriptorSetLayout]bool
 
-	descriptorPoolCreated   map[VkDescriptorPool]bool
-	descriptorPoolDestroyed map[VkDescriptorPool]bool
+	descriptorPoolToDestroy map[VkDescriptorPool]bool
+	descriptorPoolToCreate  map[VkDescriptorPool]bool
 
-	descriptorSetCreated       map[VkDescriptorSet]bool
+	descriptorSetToDestroy     map[VkDescriptorSet]bool
+	descriptorSetToCreate      map[VkDescriptorSet]bool
 	descriptorSetChanged       map[VkDescriptorSet]bool
-	descriptorSetDestroyed     map[VkDescriptorSet]bool
 	descriptorSetAutoDestroyed map[VkDescriptorSet]bool
 
 	loopCountPtr value.Pointer
@@ -151,28 +151,28 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 			memoryWrites: make(map[memory.PoolID]*interval.U64SpanList),
 		},
 
-		bufferCreated:   make(map[VkBuffer]bool),
+		bufferToDestroy: make(map[VkBuffer]bool),
+		bufferToCreate:  make(map[VkBuffer]bool),
 		bufferChanged:   make(map[VkBuffer]bool),
-		bufferDestroyed: make(map[VkBuffer]bool),
 		bufferToBackup:  make(map[VkBuffer]VkBuffer),
 
-		imageCreated:   make(map[VkImage]bool),
+		imageToDestroy: make(map[VkImage]bool),
+		imageToCreate:  make(map[VkImage]bool),
 		imageChanged:   make(map[VkImage]bool),
-		imageDestroyed: make(map[VkImage]bool),
 		imageToBackup:  make(map[VkImage]VkImage),
 
-		samplerCreated:   make(map[VkSampler]bool),
-		samplerDestroyed: make(map[VkSampler]bool),
+		samplerToDestroy: make(map[VkSampler]bool),
+		samplerToCreate:  make(map[VkSampler]bool),
 
-		descriptorSetLayoutCreated:   make(map[VkDescriptorSetLayout]bool),
-		descriptorSetLayoutDestroyed: make(map[VkDescriptorSetLayout]bool),
+		descriptorSetLayoutToDestroy: make(map[VkDescriptorSetLayout]bool),
+		descriptorSetLayoutToCreate:  make(map[VkDescriptorSetLayout]bool),
 
-		descriptorPoolCreated:   make(map[VkDescriptorPool]bool),
-		descriptorPoolDestroyed: make(map[VkDescriptorPool]bool),
+		descriptorPoolToDestroy: make(map[VkDescriptorPool]bool),
+		descriptorPoolToCreate:  make(map[VkDescriptorPool]bool),
 
-		descriptorSetCreated:       make(map[VkDescriptorSet]bool),
+		descriptorSetToDestroy:     make(map[VkDescriptorSet]bool),
+		descriptorSetToCreate:      make(map[VkDescriptorSet]bool),
 		descriptorSetChanged:       make(map[VkDescriptorSet]bool),
-		descriptorSetDestroyed:     make(map[VkDescriptorSet]bool),
 		descriptorSetAutoDestroyed: make(map[VkDescriptorSet]bool),
 
 		loopTerminated:      false,
@@ -389,42 +389,42 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkCreateBuffer)
 			buffer := vkCmd.PBuffer().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Buffer %v created.", buffer)
-			f.bufferCreated[buffer] = true
+			f.bufferToDestroy[buffer] = true
 
 		case *VkDestroyBuffer:
 			vkCmd := cmd.(*VkDestroyBuffer)
 			buffer := vkCmd.Buffer()
 			log.D(ctx, "Buffer %v destroyed.", buffer)
-			f.bufferDestroyed[buffer] = true
+			f.bufferToCreate[buffer] = true
 
 		// Images
 		case *VkCreateImage:
 			vkCmd := cmd.(*VkCreateImage)
 			img := vkCmd.PImage().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Image %v created", img)
-			f.imageCreated[img] = true
+			f.imageToDestroy[img] = true
 
 		case *VkDestroyImage:
 			vkCmd := cmd.(*VkDestroyImage)
 			img := vkCmd.Image()
 			log.D(ctx, "Image %v destroyed", img)
-			f.imageDestroyed[img] = true
+			f.imageToCreate[img] = true
 
 		// Sampler(s)
 		case *VkCreateSampler:
 			vkCmd := cmd.(*VkCreateSampler)
 			sampler := vkCmd.PSampler().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Sampler %v created", sampler)
-			f.samplerCreated[sampler] = true
+			f.samplerToDestroy[sampler] = true
 
 		case *VkDestroySampler:
 			vkCmd := cmd.(*VkDestroySampler)
 			sampler := vkCmd.Sampler()
 			log.D(ctx, "Sampler %v created", sampler)
-			if _, ok := f.samplerCreated[sampler]; ok {
-				delete(f.samplerCreated, sampler)
+			if _, ok := f.samplerToDestroy[sampler]; ok {
+				delete(f.samplerToDestroy, sampler)
 			} else {
-				f.samplerDestroyed[sampler] = true
+				f.samplerToCreate[sampler] = true
 			}
 
 		// DescriptionSetLayout(s)
@@ -432,16 +432,16 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkCreateDescriptorSetLayout)
 			descriptorSetLayout := vkCmd.PSetLayout().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
-			f.descriptorSetLayoutCreated[descriptorSetLayout] = true
+			f.descriptorSetLayoutToDestroy[descriptorSetLayout] = true
 
 		case *VkDestroyDescriptorSetLayout:
 			vkCmd := cmd.(*VkDestroyDescriptorSetLayout)
 			descriptorSetLayout := vkCmd.DescriptorSetLayout()
 			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
-			if _, ok := f.descriptorSetLayoutCreated[descriptorSetLayout]; ok {
-				delete(f.descriptorSetLayoutCreated, descriptorSetLayout)
+			if _, ok := f.descriptorSetLayoutToDestroy[descriptorSetLayout]; ok {
+				delete(f.descriptorSetLayoutToDestroy, descriptorSetLayout)
 			} else {
-				f.descriptorSetLayoutDestroyed[descriptorSetLayout] = true
+				f.descriptorSetLayoutToCreate[descriptorSetLayout] = true
 			}
 
 		// DescriptorPool(s)
@@ -449,16 +449,16 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkCreateDescriptorPool)
 			descriptorPool := vkCmd.PDescriptorPool().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "DescriptorPool %v created", descriptorPool)
-			f.descriptorPoolCreated[descriptorPool] = true
+			f.descriptorPoolToDestroy[descriptorPool] = true
 
 		case *VkDestroyDescriptorPool:
 			vkCmd := cmd.(*VkDestroyDescriptorPool)
 			descriptorPool := vkCmd.DescriptorPool()
 			log.D(ctx, "DescriptorPool %v destroyed", descriptorPool)
-			if _, ok := f.descriptorPoolCreated[descriptorPool]; ok {
-				delete(f.descriptorPoolCreated, descriptorPool)
+			if _, ok := f.descriptorPoolToDestroy[descriptorPool]; ok {
+				delete(f.descriptorPoolToDestroy, descriptorPool)
 			} else {
-				f.descriptorPoolDestroyed[descriptorPool] = true
+				f.descriptorPoolToCreate[descriptorPool] = true
 			}
 			descriptorPoolData := GetState(currentState).DescriptorPools().All()[descriptorPool]
 			for _, descriptorSetDataValue := range descriptorPoolData.DescriptorSets().All() {
@@ -474,7 +474,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			descriptorSets := vkCmd.PDescriptorSets().Slice(0, (uint64)(descSetCount), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
 			for index := range descriptorSets {
 				log.D(ctx, "DescriptorSet %v created", descriptorSets[index])
-				f.descriptorSetCreated[descriptorSets[index]] = true
+				f.descriptorSetToDestroy[descriptorSets[index]] = true
 			}
 
 		case *VkFreeDescriptorSets:
@@ -483,10 +483,10 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			descriptorSets := vkCmd.PDescriptorSets().Slice(0, (uint64)(descSetCount), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
 			for index := range descriptorSets {
 				log.D(ctx, "DescriptorSet %v destroyed", descriptorSets[index])
-				if _, ok := f.descriptorSetCreated[descriptorSets[index]]; ok {
-					delete(f.descriptorSetCreated, descriptorSets[index])
+				if _, ok := f.descriptorSetToDestroy[descriptorSets[index]]; ok {
+					delete(f.descriptorSetToDestroy, descriptorSets[index])
 				} else {
-					f.descriptorSetDestroyed[descriptorSets[index]] = true
+					f.descriptorSetToCreate[descriptorSets[index]] = true
 				}
 			}
 
@@ -584,7 +584,7 @@ func (f *frameLoop) detectChangedDescriptorSets(ctx context.Context) {
 	for descriptorSetKey, descriptorSetDataAtStart := range startState.descriptorSets.All() {
 
 		descriptorSetDataAtEnd, descriptorExistsOverLoop := endState.descriptorSets.All()[descriptorSetKey]
-		_, descriptorExplicitlyDestroyedDuringLoop := f.descriptorSetDestroyed[descriptorSetKey]
+		_, descriptorExplicitlyDestroyedDuringLoop := f.descriptorSetToCreate[descriptorSetKey]
 		_, descriptorAutoDestroyedDuringLoop := f.descriptorSetAutoDestroyed[descriptorSetKey]
 
 		descriptorDestroyedDuringLoop := descriptorExplicitlyDestroyedDuringLoop || descriptorAutoDestroyedDuringLoop
@@ -625,11 +625,11 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stat
 
 	for buffer := range f.bufferChanged {
 
-		if _, present := f.bufferCreated[buffer]; present {
+		if _, present := f.bufferToDestroy[buffer]; present {
 			continue
 		}
 
-		if _, preset := f.bufferDestroyed[buffer]; preset {
+		if _, preset := f.bufferToCreate[buffer]; preset {
 			continue
 		}
 
@@ -685,7 +685,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 
 	for img := range f.imageChanged {
 
-		if _, present := f.imageCreated[img]; present {
+		if _, present := f.imageToDestroy[img]; present {
 			continue
 		}
 
@@ -834,20 +834,30 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	return nil
 }
 
-
 func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every Sampler that was created during the loop...
-	for created := range f.samplerCreated {
+	// For every Sampler that we need to destroy at the end of the loop...
+	for toDestroy := range f.samplerToDestroy {
 		// Write the command to delete the created object
-		sampler := GetState(f.loopEndState).samplers.Get(created)
+		sampler := GetState(f.loopEndState).samplers.Get(toDestroy)
 		stateBuilder.write(stateBuilder.cb.VkDestroySampler(sampler.Device(), sampler.VulkanHandle(), memory.Nullptr))
 	}
 
-	// For every Sampler that was destroyed during the loop...
-	for destroyed := range f.samplerDestroyed {
+	// For every Sampler that we need to create at the end of the loop...
+	for toCreate := range f.samplerToCreate {
 		// Write the commands needed to recreate the destroyed object
-		stateBuilder.createSampler(GetState(f.loopStartState).samplers.Get(destroyed))
+		sampler := GetState(f.loopStartState).samplers.Get(toCreate)
+		stateBuilder.createSampler(sampler)
+
+		// If we (re)created a sampler, then we will have invalidated all descriptor sets that were using it at the time the loop started.
+		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
+		// These descriptor sets will need to be (re)created, so add them to the maps to destroy, create and restore state in that order.
+		descriptorSetUsers := sampler.DescriptorUsers().All()
+		for descriptorSet, _ := range descriptorSetUsers {
+			f.descriptorSetToDestroy[descriptorSet] = true
+			f.descriptorSetToCreate[descriptorSet] = true
+			f.descriptorSetChanged[descriptorSet] = true
+		}
 	}
 
 	return nil
@@ -855,17 +865,17 @@ func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilde
 
 func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorSetLayout that was created during the loop...
-	for created := range f.descriptorSetLayoutCreated {
+	// For every Sampler that we need to destroy at the end of the loop...
+	for toDestroy := range f.descriptorSetLayoutToDestroy {
 		// Write the command to delete the created object
-		descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(created)
+		descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(toDestroy)
 		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(descSetLay.Device(), descSetLay.VulkanHandle(), memory.Nullptr))
 	}
 
-	// For every DescriptorSetLayout that was destroyed during the loop...
-	for destroyed := range f.descriptorSetLayoutDestroyed {
+	// For every DescriptorSetLayout that we need to create at the end of the loop...
+	for toCreate := range f.descriptorSetLayoutToCreate {
 		// Write the commands needed to recreate the destroyed object
-		stateBuilder.createDescriptorSetLayout(GetState(f.loopStartState).descriptorSetLayouts.Get(destroyed))
+		stateBuilder.createDescriptorSetLayout(GetState(f.loopStartState).descriptorSetLayouts.Get(toCreate))
 	}
 
 	return nil
@@ -873,21 +883,21 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 
 func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorPool that was created during the loop...
-	for created := range f.descriptorPoolCreated {
+	// For every DescriptorPool that we need to destroy at the end of the loop...
+	for toDestroy := range f.descriptorPoolToDestroy {
 		// Write the command to delete the created object
-		descPool := GetState(f.loopEndState).descriptorPools.Get(created)
+		descPool := GetState(f.loopEndState).descriptorPools.Get(toDestroy)
 		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorPool(descPool.Device(), descPool.VulkanHandle(), memory.Nullptr))
 	}
 
-	// For every DescriptorPool that was destroyed during the loop...
-	for destroyed := range f.descriptorPoolDestroyed {
+	// For every DescriptorPool that we need to create at the end of the loop...
+	for toCreate := range f.descriptorPoolToCreate {
 		// Write the commands needed to recreate the destroyed object
-		stateBuilder.createDescriptorPoolAndAllocateDescriptorSets(GetState(f.loopStartState).DescriptorPools().Get(destroyed))
+		stateBuilder.createDescriptorPoolAndAllocateDescriptorSets(GetState(f.loopStartState).DescriptorPools().Get(toCreate))
 
 		// Iterate through all the descriptor sets that we just recreated, adding them to the list of descriptor sets
 		// that need to be redefined.
-		descriptorPoolData := GetState(f.loopStartState).DescriptorPools().All()[destroyed]
+		descriptorPoolData := GetState(f.loopStartState).DescriptorPools().All()[toCreate]
 		for _, descriptorSetDataValue := range descriptorPoolData.DescriptorSets().All() {
 			containedDescriptorSet := descriptorSetDataValue.VulkanHandle()
 			f.descriptorSetChanged[containedDescriptorSet] = true
@@ -899,10 +909,10 @@ func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stat
 
 func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorSet that was created during the loop...
-	for created := range f.descriptorSetCreated {
+	// For every DescriptorSet that we need to destroy at the end of the loop...
+	for toDestroy := range f.descriptorSetToDestroy {
 		// Write the command to delete the created object
-		descSetObj := GetState(f.loopEndState).descriptorSets.Get(created)
+		descSetObj := GetState(f.loopEndState).descriptorSets.Get(toDestroy)
 		handle := []VkDescriptorSet{descSetObj.VulkanHandle()}
 		stateBuilder.write(stateBuilder.cb.VkFreeDescriptorSets(descSetObj.Device(),
 			descSetObj.DescriptorPool(),
@@ -911,10 +921,10 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 			VkResult_VK_SUCCESS))
 	}
 
-	// For every DescriptorSet that was destroyed during the loop...
-	for destroyed := range f.descriptorSetDestroyed {
+	// For every DescriptorSet that we need to create at the end of the loop...
+	for toCreate := range f.descriptorSetToCreate {
 		// Write the commands needed to recreate the destroyed object
-		descSetObj := GetState(f.loopStartState).descriptorSets.Get(destroyed)
+		descSetObj := GetState(f.loopStartState).descriptorSets.Get(toCreate)
 		descPoolObj := GetState(f.loopStartState).descriptorPools.Get(descSetObj.DescriptorPool())
 
 		descSetHandles := []VkDescriptorSet{descSetObj.VulkanHandle()}
