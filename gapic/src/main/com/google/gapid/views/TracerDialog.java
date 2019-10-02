@@ -259,6 +259,7 @@ public class TracerDialog {
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final int DEFAULT_START_FRAME = 100;
       private static final String PERFETTO_LABEL = "Profile Config: ";
+      private static final String NO_GPU_PROFILING_CAPABILITIY = "Warning: Selected device has no GPU profiling capability";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -294,6 +295,7 @@ public class TracerDialog {
       private final Label fileLabel;
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
+      private final Label gpuProfilingCapWarning;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -306,7 +308,7 @@ public class TracerDialog {
         setLayout(new GridLayout(1, false));
 
         Group mainGroup = withLayoutData(
-            createGroup(this, "Device and Type", new GridLayout(3, false)),
+            createGroup(this, "Device and Type", new GridLayout(4, false)),
             new GridData(GridData.FILL_HORIZONTAL));
         deviceLabel = createLabel(mainGroup, "Device*:");
         device = createDeviceDropDown(mainGroup);
@@ -321,6 +323,12 @@ public class TracerDialog {
           // feedback that something is happening, in case the refresh is really quick.
           logFailure(LOG, Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS));
         });
+
+        gpuProfilingCapWarning = withLayoutData(
+            createLabel(mainGroup, ""),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        gpuProfilingCapWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        gpuProfilingCapWarning.setVisible(false);
 
         apiLabel = createLabel(mainGroup, "Type*:");
         api = createApiDropDown(mainGroup);
@@ -461,28 +469,19 @@ public class TracerDialog {
         api.getCombo().addListener(SWT.Selection, e -> update(models.settings, getSelectedApi()));
 
         Listener gpuProfilingCapabilityListener = e -> {
-          boolean changed = false;
-          if (getSelectedApi().getType() != selectedTraceType) {
-            selectedTraceType = getSelectedApi().getType();
-            changed = true;
-          }
-          if (getSelectedDevice() != selectedDevice) {
-            selectedDevice = getSelectedDevice();
-            changed = true;
-          }
-          if (!changed) {
-            return;
-          }
-
           // Skip if the device is not Android device, or trace type is not Perfetto.
           if ((getSelectedDevice() != null && !getSelectedDevice().isAndroid())
               || getSelectedApi().getType() != TraceType.Perfetto) {
+            gpuProfilingCapWarning.setVisible(false);
             return;
           }
           Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
-          if (!gpuCaps.getHasRenderStage() || gpuCaps.getGpuCounterDescriptor().getSpecsCount() == 0) {
-            GpuProfilingMissingDialog.showNotCompatibleDialog(getShell(), models, widgets);
+          if (gpuCaps.getHasRenderStage() && gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
+            gpuProfilingCapWarning.setVisible(false);
+            return;
           }
+          gpuProfilingCapWarning.setText(NO_GPU_PROFILING_CAPABILITIY);
+          gpuProfilingCapWarning.setVisible(true);
         };
         device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
         api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
@@ -883,34 +882,6 @@ public class TracerDialog {
 
       private static boolean isPerfetto(TraceTypeCapabilities config) {
         return config.getType() == TraceType.Perfetto;
-      }
-
-      private static class GpuProfilingMissingDialog extends MessageDialog {
-        private static final String TITLE = "Warning: Selected device has no GPU profiling capability";
-        private static final String NOT_COMPATIBLE = "Could not detect GPU profiling capability from the selected Android device.";
-
-        public static void showNotCompatibleDialog(Shell shell, Models models, Widgets widgets) {
-          new GpuProfilingMissingDialog(shell, models.settings, widgets.theme, NOT_COMPATIBLE).open();
-        }
-
-        public GpuProfilingMissingDialog(Shell shell, Settings settings, Theme theme, String label) {
-          super(shell, TITLE, null, label, MessageDialog.NONE, new String[] { "Close" }, 0);
-        }
-
-        @Override
-        protected Control createDialogArea(Composite parent) {
-          Composite area = (Composite)super.createDialogArea(parent);
-
-          // Allow to press Esc button to close the dialog.
-          area.addKeyListener(new KeyAdapter() {
-            public void keyPressed(KeyEvent e) {
-              if (e.keyCode == SWT.ESC) {
-                close();
-              }
-            }
-          });
-          return area;
-        }
       }
     }
   }
