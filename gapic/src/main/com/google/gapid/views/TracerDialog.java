@@ -63,7 +63,6 @@ import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -71,8 +70,6 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.KeyAdapter;
-import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -264,8 +261,6 @@ public class TracerDialog {
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
-      private DeviceCaptureInfo selectedDevice;
-      private TraceType selectedTraceType;
 
       private final ComboViewer device;
       private final Label deviceLabel;
@@ -323,12 +318,6 @@ public class TracerDialog {
           // feedback that something is happening, in case the refresh is really quick.
           logFailure(LOG, Scheduler.EXECUTOR.schedule(refreshDevices, 300, TimeUnit.MILLISECONDS));
         });
-
-        gpuProfilingCapabilityWarning = withLayoutData(
-            createLabel(mainGroup, ""),
-            new GridData(SWT.FILL, SWT.FILL, true, false, 3, 1));
-        gpuProfilingCapabilityWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
-        gpuProfilingCapabilityWarning.setVisible(false);
 
         apiLabel = createLabel(mainGroup, "Type*:");
         api = createApiDropDown(mainGroup);
@@ -455,6 +444,12 @@ public class TracerDialog {
             new GridData(SWT.FILL, SWT.FILL, true, false));
         requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         requiredFieldMessage.setVisible(false);
+
+        gpuProfilingCapabilityWarning = withLayoutData(
+            createLabel(this, ""),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        gpuProfilingCapabilityWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        gpuProfilingCapabilityWarning.setVisible(false);
 
         Link adbWarning = withLayoutData(
             createLink(this, "Path to adb invalid/missing. " +
