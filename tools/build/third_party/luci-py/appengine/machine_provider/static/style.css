@@ -1,0 +1,54 @@
+/* Copyright 2016 The LUCI Authors. All rights reserved.
+ * Use of this source code is governed under the Apache License, Version 2.0
+ * that can be found in the LICENSE file.
+ */
+a {
+  text-decoration: none;
+}
+
+a.active {
+  color: #d14836;
+}
+
+a.link {
+  color: #15c;
+}
+
+a.visited {
+  color: #61c;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+}
+
+div.notice {
+  background: #f9edbe;
+  color: #333;
+  outline: #f0c36d 1px solid;
+  padding: 8px;
+}
+
+table {
+  border: none;
+}
+
+td {
+  color: #333;
+  padding-left: 6px;
+  padding-right: 6px;
+  white-space: nowrap;
+}
+
+th {
+  background: #f5f5f5;
+  font-weight: normal;
+  padding-left: 6px;
+  padding-right: 6px;
+  text-align: left;
+}
+
+tr:hover {
+  background: #d4e8ff;
+}

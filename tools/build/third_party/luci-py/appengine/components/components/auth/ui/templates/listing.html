@@ -1,0 +1,66 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+{# BEWARE: The following templates in 'raw' section are handled by handlebars
+javascript library and not jinja2. #}
+
+{% raw %}
+
+<script id="listing-template" type="text/x-handlebars-template">
+  <div class="row">
+    <div class="col-md-12">
+      <h3 style="margin-top: 0px; text-align: center;" >
+        <a href="/auth/groups/{{group}}">{{group}}</a>
+      </h3>
+      <h4 style="margin-top: 0px; text-align: center;">
+        <small>
+        {{membersCountStr}} &mdash;
+        {{#if globs}}{{globsCountStr}} &mdash; {{/if}}
+        {{nestedCountStr}}
+        </small>
+      </h4>
+      <hr style="margin-top: 20px; margin-bottom: 10px;">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8" style="border-right: 1px solid #ddd">
+      <h4>Members</h4>
+      <table class="table table-condensed" style="font-family:monospace;">
+        {{#each globs}}
+        <tr class="warning">
+          <td><a href={{this.lookupUrl}}>{{this.principal}}</a></td>
+        </tr>
+        {{/each}}
+        {{#each members}}
+        <tr>
+          <td><a href={{this.lookupUrl}}>{{this.principal}}</a></td>
+        </tr>
+        {{/each}}
+      </table>
+      {{#if emptyListing}}
+      <p style="color: #bbb"><i>No members</i></p>
+      {{/if}}
+    </div>
+
+    <div class="col-md-4">
+      <h4>Nested groups</h4>
+      {{#each nested}}
+      <div>
+        <a href="{{this.listingURL}}">{{this.principal}}</a>
+      </div>
+      {{/each}}
+      {{#if emptyNested}}
+      <p style="color: #bbb"><i>No nested groups</i></p>
+      {{/if}}
+    </div>
+  </div>
+
+</script>
+
+{% endraw %}
+
+<!-- Populated by js. -->
+<div id="listing-container"></div>
+
+{% endblock %}

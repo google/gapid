@@ -1,0 +1,184 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <pageable-data>
+
+  The pageable-data element allows for easy paging of data from the swarming
+  server. It displays a button to the user to go fetch more data, which will
+  be appended to the output, rather than replaced, which is typical in
+  elements like iron-ajax.
+
+  Typical usage is
+
+      this.$.page.clear();
+      this.$.page.load("/api/frobulator?alpha=beta", this.auth_headers, 20);
+
+  which initializes the url to query and goes to fetch the first 20 records
+  from the api. The user can then click the button to get the next page of
+  data. This can be done programatically with page().
+
+  Properties:
+    // input
+    label: String, what to label the button to page for more data.
+    parse: Function, This function takes the JSON object from the server and
+        returns an array of objects. Preprocessing should be done in this
+        function, if necessary.
+
+    // output
+    busy: Boolean, if a request is in flight. Calls to page() while busy will
+        be ignored.
+    output: Array<Object> the accumulated values from the server.
+
+  Methods:
+    clear(): Reset the element, emptying output.  page() will not work until
+        a call to load() has been made.
+
+    load(url, headers, [pageSize], [reset_before]): Initialize the element
+        and make a call to the server for the first batch of data. If [pageSize]
+        is omitted, the server default (or those specified in the url) will be used.
+        if reset_before is true, the underlying array will be cleared about before
+        the request is made. This can be useful, for example, when switching between
+        two bots to make it clear the data changes. This may be undesirable when
+        filtering a list of data.
+
+    page(): Must be called after a call to load().  Fetch the next batch of
+        data from the server.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/swarming-app.html">
+
+<dom-module id="pageable-data">
+  <template>
+    <style include="swarming-app-style">
+    </style>
+
+    <button
+        on-tap="page"
+        disabled$="[[_noMore(_cursor)]]">
+      [[label]]
+    </button>
+
+  </template>
+  <script>
+  (function(){
+    var END = "END";
+    Polymer({
+      is: 'pageable-data',
+
+      properties: {
+        // input
+        label: {
+          type: String,
+          value: "Show More",
+        },
+        parse: {
+          type: Function,
+          value: function(){
+            return function(a){
+              return a;
+            };
+          },
+        },
+
+        // output
+        busy: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+        output: {
+          type: Array,
+          notify: true,
+        },
+
+        _cursor: {
+          type: String,
+          value: null,
+        },
+        _url: {
+          type: String,
+        },
+        _headers: {
+          type: Object,
+        },
+        _page_size: {
+          type: Number,
+        }
+      },
+
+      clear: function() {
+        this.set("output", []);
+        this._cursor = null;
+        this._url = "";
+      },
+
+      load: function(url, headers, pageSize, reset_before) {
+        if (!url) {
+          throw "url can't be blank";
+        }
+        if (url.indexOf("?") === -1) {
+          url += "?";
+        }
+        this._url = url;
+        this._headers = headers;
+        this._page_size = pageSize;
+        this._cursor = null;
+        if (reset_before) {
+          this.set("output", []);
+        }
+        this.page();
+      },
+
+      page: function() {
+        if (this.busy || this._cursor === END) {
+          // ignore pages while we are loading or are at the end of the data.
+          return;
+        }
+        if (!this._url) {
+          throw "You must first call load() before calling page()";
+        }
+        this.set("busy", true);
+
+        var url = this._url;
+        if (this._page_size) {
+          if (!url.endsWith("?")) {
+            url += "&";
+          }
+          url += "limit=" + this._page_size;
+        }
+        if (this._cursor) {
+          if (!url.endsWith("?")) {
+            url += "&";
+          }
+          url += "cursor=" + this._cursor;
+        }
+
+        sk.request("GET", url, "", this._headers).then(JSON.parse).then(function(json){
+          var vals = this.parse(json);
+          // !this._cursor means this is our first load and we should empty the
+          // array
+          if (!this._cursor || !this.output) {
+            this.set("output", vals);
+          } else {
+            this.push("output", ...vals);
+          }
+          this.set("_cursor", json.cursor || END);
+          this.set("busy", false);
+        }.bind(this)).catch(function(reason){
+          console.log("Reason for failure of request to " + this._url, reason);
+          sk.errorMessage("Could not get next set of results. Try reloading the page?", 0);
+          this.set("busy", false);
+        }.bind(this));
+      },
+
+      _noMore: function(cursor) {
+        return cursor === END;
+      }
+    });
+  })();
+  </script>
+</dom-module>

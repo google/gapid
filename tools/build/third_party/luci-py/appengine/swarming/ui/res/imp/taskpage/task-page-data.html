@@ -1,0 +1,232 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-page-data>
+
+  This makes calls authenticated with Oauth 2 to the swarming apis.  It parses
+  that data into usable data structures.
+
+  Properties:
+    // input
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    task_id: String, the id of the task to fetch data on.
+    // output
+    busy: Boolean, if we are fetching any data from the server.
+    request: Object, the task request. This contains information such as the
+       name, id, created_ts, tags, and dimensions.  See the sample data in
+       task-request-demo.json for a full rundown.
+    result: Object, the result or progress of the task. This contains information such as the
+       modified_ts, duration, exit_code, information about the bot that picked
+       up the task, etc.  See the sample data in task-result-demo.json for a
+       full rundown.
+    stdout: String, the raw output of the task, if any.  See
+        task-stdout-demo.json for a full rundown.
+
+  Methods:
+    reload(): Force a fetch of the data. This happens automatically when
+        auth_headers is set or task_id is changed.
+    reloadStdout(): Force a fetch of just the stdout
+
+  Events:
+    None.
+-->
+
+
+<link rel="import" href="/res/imp/common/common-behavior.html">
+<link rel="import" href="/res/imp/common/task-behavior.html">
+
+<dom-module id="task-page-data">
+  <script>
+  (function() {
+    // Time to wait before requesting a new task. This is to allow a user to
+    // type in a name and not have it make one set of requests for each
+    // keystroke.
+    var TASK_ID_DEBOUNCE_MS = 400;
+    var lastRequest;
+
+    var TIMES = ["abandoned_ts", "completed_ts", "created_ts", "modified_ts", "started_ts"];
+
+    Polymer({
+      is: 'task-page-data',
+
+      behaviors: [
+          SwarmingBehaviors.CommonBehavior,
+          SwarmingBehaviors.TaskBehavior,
+      ],
+
+      properties: {
+        // inputs
+        auth_headers: {
+          type: Object,
+        },
+
+        task_id: {
+          type: String,
+        },
+
+        // outputs
+        busy: {
+          type: Boolean,
+          computed: "_or(_busy1,_busy2,_busy3)",
+          notify: true,
+        },
+        request: {
+          type: Object,
+          computed: "_parseRequest(_request)",
+          notify: true,
+        },
+        result: {
+          type: Object,
+          computed: "_parseResult(_result)",
+          notify: true,
+        },
+        stdout: {
+          type: String,
+          computed: "_parseStdout(_stdout)",
+          notify: true,
+        },
+        task_exists: {
+          type: Boolean,
+          value: true,
+          notify: true,
+        },
+
+        // private
+         _busy1: {
+          type: Boolean,
+          value: false
+        },
+        _busy2: {
+          type: Boolean,
+          value: false
+        },
+        _busy3: {
+          type: Boolean,
+          value: false
+        },
+        _request: {
+          type: Object,
+        },
+        _result: {
+          type: Object,
+        },
+        _stdout: {
+          type: Object,
+        },
+      },
+
+      observers: [
+        "reload(auth_headers,task_id)",
+      ],
+
+      reload: function(){
+        if (!this.task_id || !this.auth_headers) {
+          console.log("task_id and auth_headers can't be empty");
+          return;
+        }
+        if (lastRequest) {
+          this.cancelAsync(lastRequest);
+        }
+
+        var baseUrl = "/_ah/api/swarming/v1/task/" + this.task_id;
+        lastRequest = this.async(function(){
+          lastRequest = undefined;
+          var p = this._getJsonAsync("_request", baseUrl + "/request",
+            "_busy1", this.auth_headers);
+          p.then(function(){
+            this.set("task_exists", true);
+          }.bind(this)).catch(function(r){
+            if (r.status === 404) {
+              this.set("task_exists", false);
+            } else {
+              sk.errorMessage("Http response: "+ (r.status || " ") + " " + r.response);
+            }
+          }.bind(this));
+          this._getJsonAsync("_result",
+            baseUrl + "/result?include_performance_stats=true",
+            "_busy2", this.auth_headers);
+          this.reloadStdout();
+        }, TASK_ID_DEBOUNCE_MS);
+      },
+
+      _parseRequest: function(request) {
+        if (!request) {
+          return {};
+        }
+        request.tagMap = {};
+        request.tags = request.tags || [];
+        request.tags.forEach(function(tag) {
+          var split = tag.split(":", 1)
+          var key = split[0];
+          var rest = tag.substring(key.length + 1);
+          request.tagMap[key] = rest;
+        });
+
+        TIMES.forEach(function(time) {
+          swarming.sanitizeAndHumanizeTime(request, time);
+        });
+        return request;
+      },
+
+      _parseResult: function(result) {
+        if (!result) {
+          return {};
+        }
+        var now = new Date();
+        TIMES.forEach(function(time) {
+          swarming.sanitizeAndHumanizeTime(result, time);
+        });
+        // Running and bot_died tasks have no duration set, so we can figure it out.
+        if (!result.duration && result.state === this.RUNNING && result.started_ts) {
+          result.duration = (now - result.started_ts) / 1000;
+        } else if (!result.duration && result.state === this.BOT_DIED &&
+                    result.started_ts && result.abandoned_ts) {
+          result.duration = (result.abandoned_ts - result.started_ts) / 1000;
+        }
+        // Make the duration human readable
+        result.human_duration = this._humanDuration(result.duration);
+        if (result.state === this.RUNNING) {
+          result.human_duration += "*";
+        } else if (result.state === this.BOT_DIED) {
+          result.human_duration += " -- died";
+        }
+
+        var end = result.started_ts || result.abandoned_ts || new Date();
+        if (!result.created_ts) {
+          // This should never happen
+          result.pending = 0;
+          result.human_pending = "";
+        } else if (end <= result.created_ts) {
+          // In the case of deduplicated tasks, started_ts comes before the task.
+          result.pending = 0;
+          result.human_pending = "0s";
+        } else {
+          result.pending = (end - result.created_ts) / 1000; // convert to seconds.
+          result.human_pending = this._timeDiffExact(result.created_ts, end);
+        }
+
+        return result;
+      },
+
+      _parseStdout: function(stdout) {
+        if (!stdout || !stdout.output) {
+          return "";
+        }
+        return stdout.output;
+      },
+
+      reloadStdout: function() {
+        this._getJsonAsync("_stdout", "/_ah/api/swarming/v1/task/" +
+              this.task_id + "/stdout", "_busy3", this.auth_headers);
+      },
+
+    });
+  })();
+  </script>
+</dom-module>

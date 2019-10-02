@@ -1,0 +1,129 @@
+// Copyright 2015 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+// Configuration schema for configs fetched via a config service.
+//
+// See also //components/auth/proto/security_config.proto for the schema of
+// 'security.cfg', which is distributed to all linked services as is as part
+// of AuthDB proto.
+
+syntax = "proto3";
+
+package auth_service;
+
+
+// Auth service configuration that applies specifically to the service, not to
+// any linked services.
+//
+// Provided via 'settings.cfg' config file.
+message SettingsCfg {
+  // Enable ts_mon based monitoring.
+  bool enable_ts_monitoring = 1;
+}
+
+
+// Configuration of groups imported from external sources.
+//
+// Provided via 'imports.cfg' config file.
+message GroupImporterConfig {
+  // Periodically fetch a tarball with groups stored as individual files.
+  message TarballEntry {
+    // Where to import data from.
+    string url = 1;
+    // List of OAuth scopes to use for authentication (or empty to skip auth).
+    repeated string oauth_scopes = 2;
+    // Email domain to append to imported identities.
+    string domain = 3;
+    // List of group systems expected to be found in the archive. They act as
+    // prefixes to group names, e.g 'ldap'. Each system corresponds to
+    // a subdirectory in the tarball. Each tarball may have groups from multiple
+    // external systems, but groups from some external system must not be split
+    // between multiple tarballs. When importer sees <group system name>/* in
+    // a tarball, it modifies group list from that system on the auth_service to
+    // match group list in the tarball _exactly_. For example it removes groups
+    // that are on the server, but no longer present in the tarball.
+    repeated string systems = 4;
+    // List of groups to import from the tarball (as filenames relative to
+    // tarball root, e.g. 'ldap/some-group'). If empty, imports all groups in
+    // the tarball.
+    repeated string groups = 5;
+  }
+
+  // Accept a tarball upload from some external service.
+  //
+  // Same as 'TarballEntry', except the tarball is pushed to the service (via
+  // PUT to /auth_service/api/v1/importer/ingest_tarball/<name>) rather than
+  // being fetched from somewhere. See 'TarballEntry' comments for details.
+  message TarballUploadEntry {
+    // Identifies this particular entry. Used in push API requests.
+    string name = 1;
+    // A service account email that is allowed to do this push.
+    repeated string authorized_uploader = 2;
+    // Email domain to append to imported identities.
+    string domain = 3;
+    // List of group systems expected to be found in the archive.
+    repeated string systems = 4;
+    // List of groups to import from the tarball.
+    repeated string groups = 5;
+  }
+
+  // Periodically fetch a single group stored as a plain list of identities.
+  message PlainlistEntry {
+    // Where to import data from.
+    string url = 1;
+    // List of OAuth scopes to use for authentication (or empty to skip auth).
+    repeated string oauth_scopes = 2;
+    // Email domain to append to imported identities.
+    string domain = 3;
+    // A name of imported group. The full group name will be 'external/<group>'.
+    string group = 4;
+  }
+
+  repeated TarballEntry tarball = 1;
+  repeated PlainlistEntry plainlist = 2;
+  repeated TarballUploadEntry tarball_upload = 3;
+}
+
+
+// Global config. Includes OAuth client_id whitelist and token server URL.
+//
+// Provided via 'oauth.cfg' config file.
+message OAuthConfig {
+  // ClientID returned by /auth/api/v1/server/oauth_config endpoint to clients.
+  string primary_client_id = 1;
+  // Client secret (that's not really a secret, since it is visible) returned
+  // by /auth/api/v1/server/oauth_config endpoint to clients. Corresponding
+  // callback URL must be localhost or urn:ietf:wg:oauth:2.0:oob.
+  string primary_client_secret = 2;
+  // Whitelist of all accepted client_ids (in addition to the primary one).
+  repeated string client_ids = 3;
+  // URL of a token server to use to generate delegation tokens.
+  string token_server_url = 4;
+}
+
+
+// IP whitelists config: a set of named IP whitelists and a mapping between
+// identity name -> IP whitelist to restrict it to.
+message IPWhitelistConfig {
+  message IPWhitelist {
+    // Name of the IP whitelist.
+    string name = 1;
+    // List of subnets.
+    repeated string subnets = 2;
+    // Names of other IPWhitelist entities to include.
+    repeated string includes = 3;
+  }
+
+  message Assignment {
+    // Identity to restrict IPs to.
+    string identity = 1;
+    // Name of the corresponding IPWhitelist with a set of subnets.
+    string ip_whitelist_name = 2;
+  }
+
+  // A set of named subnets.
+  repeated IPWhitelist ip_whitelists = 1;
+  // A mapping "identity name -> IP whitelist name".
+  repeated Assignment assignments = 2;
+}

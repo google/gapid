@@ -1,0 +1,34 @@
+{% set title = 'Isolate Server' %}
+{% extends "isolate/base.html" %}
+
+
+{% block headers %}
+<style>
+  .message {
+    background-color: yellow;
+    border: 1px solid green;
+    display: inline-block;
+    font-family: monospace;
+    margin: 0.5em;
+    padding: 0.5em;
+  }
+</style>
+{% endblock %}
+
+
+{% block body %}
+<h1>Purge an object</h1>
+
+{% if message %}
+<div class="message">{{message}}</div>
+<p>
+{%endif%}
+
+Enter the namespace and digest of an object to purge:<br>
+<form id="form1" method="POST">
+  <input id="namespace" name="namespace" value="{{namespace}}" /><p>
+  <input id="digest" name="digest" maxlength=40 size=40 value="{{digest}}" /><p>
+  <input type="hidden" name="xsrf_token" value="{{xsrf_token}}" />
+  <input type=submit value="Purge item"/><br>
+</form>
+{% endblock %}

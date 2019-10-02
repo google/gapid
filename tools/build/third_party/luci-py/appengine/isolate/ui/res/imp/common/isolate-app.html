@@ -1,0 +1,356 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <isolate-app>
+
+  <isolate-app> is meant to be used in top level elements to provide the header
+      toolbar and authentication.
+
+  It contains the definition of the following style modules:
+
+    isolate-app-style
+
+  <style include="isolate-shared-style"> contains styles to be shared among all
+      apps, such as colors.
+
+  Properties:
+    busy: Boolean, If the busy spinner should be active.
+    client_id: String, Oauth 2.0 client id.  It will be set by server-side
+        template evaluation.
+    name: String, the name of the app to be displayed.
+
+    auth_headers: Object, Use this as an argument to sk.request to set oauth2 headers.
+    server_details: Object, containing multiple Strings including:
+        server_version: what git revision the server is using.
+        bot_version: A hash of the bot code being distributed. Isn't associated
+            with any git revisions
+    signed_in: Boolean, if the user is signed in.
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/bower_components/app-layout/app-layout.html">
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="/res/imp/bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="/res/imp/bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="/res/imp/bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="/res/imp/bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="/res/imp/bower_components/paper-item/paper-item.html">
+<link rel="import" href="/res/imp/bower_components/paper-menu/paper-menu.html">
+<link rel="import" href="/res/imp/bower_components/paper-spinner/paper-spinner-lite.html">
+
+<link rel="import" href="/res/imp/shared/auth-signin.html">
+<link rel="import" href="/res/imp/shared/error-toast.html">
+
+<link rel="import" href="common-behavior.html">
+
+<dom-module id="isolate-app">
+  <template>
+    <style include="iron-flex">
+      :host {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+
+      app-toolbar {
+        background-color: #1F78B4;
+        color: #fff;
+      }
+
+      app-toolbar.error {
+        background-color: #b41f1f;
+        color: #fff;
+      }
+
+      app-toolbar a {
+        color: #fff;
+      }
+      .left {
+        margin-right:15px;
+      }
+      .right {
+        margin-left:15px;
+      }
+      .main-content {
+        padding: 3px;
+      }
+
+      .main-content a {
+        color: #1F78B4;
+      }
+
+      .menu-button {
+        min-width: 40px;
+      }
+
+      auth-signin, .small {
+        font-size: .7em;
+      }
+
+      #mobile_menu {
+        z-index: 10;
+        --app-drawer-content-container: {
+          margin-top: 64px;
+        };
+      }
+
+      a[href] {
+        color: #1F78B4;
+      }
+
+      .menu-item {
+        padding: 8px 3px;
+        border-bottom: 1px solid #CCC;
+      }
+
+      paper-fab {
+        position: fixed;
+        bottom: 5px;
+        right: 5px;
+        background-color: #1F78B4;
+      }
+
+      paper-spinner-lite {
+        --paper-spinner-color: var(--google-yellow-500);
+      }
+    </style>
+
+    <app-header-layout>
+      <app-drawer id="mobile_menu">
+          <div class="menu-item"><a class="left" href="/">Home</a></div>
+      </app-drawer>
+      <app-header fixed>
+        <app-toolbar class$="[[_toolbarClass(client_id)]]">
+          <paper-icon-button
+              class="menu-button"
+              icon="icons:menu"
+              on-tap="_toggleMobileMenu"
+              hidden$="[[wide_layout]]">
+          </paper-icon-button>
+          <div class="title left">[[name]]</div>
+          <paper-spinner-lite class="left" active="[[_or(busy,_busy1,_busy2)]]"></paper-spinner-lite>
+
+          <a class="left" href="/" hidden$="[[!wide_layout]]">Home</a>
+          <div class="flex" hidden$="[[!wide_layout]]"></div>
+          <template is="dom-if" if="[[client_id]]">
+            <div class="small right">
+              Server:
+              <a href$="[[_versionLink(server_details)]]">
+                [[server_details.server_version]]
+              </a>
+            </div>
+            <auth-signin
+                class="right"
+                client_id="[[client_id]]"
+                auth_headers="{{auth_headers}}"
+                profile="{{profile}}"
+                signed_in="{{signed_in}}">
+            </auth-signin>
+          </template>
+          <template is="dom-if" if="[[!client_id]]">
+            <div class="right">No OAauth client id found.</div>
+          </template>
+        </app-toolbar>
+      </app-header>
+      <div class="main-content">
+        <content></content>
+      </div>
+      <error-toast></error-toast>
+      <a target="_blank" rel="noopener" href="https://bugs.chromium.org/p/chromium/issues/entry?components=Infra%3EPlatform%3ESwarming%3EWebUI&owner=kjlubick@chromium.org&status=Assigned">
+        <paper-fab mini icon="icons:bug-report"></paper-fab>
+      </a>
+    </app-header-layout>
+
+    <iron-media-query query="min-width: 600px" query-matches="{{wide_layout}}"></iron-media-query>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'isolate-app',
+
+      behaviors: [
+          IsolateBehaviors.CommonBehavior,
+      ],
+
+      properties: {
+        // input
+        busy: {
+          type: Boolean,
+        },
+        client_id: {
+          type: String,
+        },
+        name: {
+          type: String,
+        },
+        // outputs
+        auth_headers: {
+          type: Object,
+          notify: true,
+          observer: "_load"
+        },
+
+        profile: {
+          type: Object,
+          notify: true,
+        },
+
+        server_details: {
+          type: Object,
+          notify: true,
+        },
+
+        signed_in: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+
+        // private
+        _busy1: {
+          type: Boolean,
+          value: false,
+        },
+        _busy2: {
+          type: Boolean,
+          value: false,
+        }
+
+      },
+
+      _load: function() {
+        this._getJsonAsync("server_details", "/_ah/api/isolateservice/v1/server_details",
+          "_busy2", this.auth_headers).catch(function(r){
+            sk.errorMessage("Http response: "+ (r.status || " ") + " " + r.response);
+          });
+      },
+
+      _toggleMobileMenu: function() {
+        this.$.mobile_menu.toggle();
+      },
+
+      _toolbarClass: function(client_id) {
+        if (!client_id) {
+          return "error";
+        }
+        return "";
+      },
+
+      _versionLink: function(version) {
+        if (!version || !version.server_version) {
+          return undefined;
+        }
+        var split = version.server_version.split("-");
+        if (split.length !== 2) {
+          return undefined;
+        }
+        return "https://github.com/luci/luci-py/commit/"+split[1];
+      }
+
+    });
+  </script>
+</dom-module>
+
+<dom-module id="isolate-app-style">
+  <style>
+      * {
+        font-family: sans-serif;
+      }
+      /* Only style anchor tags that are actually linking somewhere.*/
+      a[href] {
+        color: #1F78B4;
+      }
+
+      /*
+       * A set of styles to make buttons and select/options look more Material
+       * Design-ish.
+       */
+      button {
+        min-width: 5.14em;
+        background-color: #fff;
+        color: #1f78b4;
+        text-align: center;
+        text-transform: uppercase;
+        outline: none;
+        border-radius: 3px;
+        padding: 0.6em 1.2em;
+        border: solid lightgray 1px;
+        margin: 0.6em;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #eee;
+      }
+
+      button:focus {
+        background-color: #ddd;
+        transition: background-color 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      button:active,
+      button.raised:active {
+        background-color: #999;
+        transition: background-color 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      button:disabled {
+        color: #999;
+      }
+
+      button:disabled:hover {
+        background: initial;
+        cursor: initial;
+      }
+
+      button.action:active {
+        background-color: #A6CEE3;
+        transition: background-color 0.1s color 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      button.action {
+        color: white;
+        background: #1f78b4;
+        border: none;
+      }
+
+      button.action:disabled {
+        color: white;
+        background: #999;
+        border: none;
+      }
+
+      button.raised {
+        transition: box-shadow 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 5px 5px 18px 0 rgba(0, 0, 0, 0.3);
+      }
+
+      button.raised:active {
+        box-shadow: 2px 2px 5px 0 rgba(0, 0, 0, 0.1);
+      }
+
+      select,
+      option {
+        padding: 0.4em 1.2em;
+        background-color: white;
+        border: none;
+        line-height: 20px;
+        vertical-align: middle;
+      }
+
+      select {
+        overflow-y: auto;
+      }
+  </style>
+</dom-module>

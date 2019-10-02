@@ -1,0 +1,59 @@
+// Copyright 2017 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto2";
+
+
+// Schema for settings.cfg service config file in luci-config.
+message SettingsCfg {
+  // id to inject into pages if applicable.
+  optional string google_analytics = 1;
+
+  // The number of seconds a cache entry must be kept for before it is evicted.
+  // Default: 30 days (30*24*60*60 seconds).
+  optional int32 default_expiration = 2;
+
+  // This determines the number of initial letters from the ContentEntry hash
+  // value to use as buckets in ContentShard. This is to even out writes across
+  // multiple entity groups. The goal is to get into the range of ~1 write per
+  // second per bucket.
+  //
+  // Each letter represent 4 bits of information, so the number of ContentShard
+  // will be 16**N. Nominal values are:
+  //   1: 16 buckets
+  //   2: 256 buckets
+  //   3: 4096 buckets
+  //   4: 65536 buckets
+  // Default: 4.
+  optional int32 sharding_letters = 3;
+
+  // The Google Cloud Storage bucket where to save the data. By
+  // default it's the name of the application instance.
+  optional string gs_bucket = 4;
+
+  // Email address of Service account used to access Google Storage.
+  optional string gs_client_id_email = 5;
+
+  // Enable ts_mon based monitoring. Default: False.
+  optional bool enable_ts_monitoring = 6;
+
+  // Names of the authorization groups used by components/auth.
+  optional AuthSettings auth = 7;
+
+  // oauth client id for the ui. This is created in the developer's console
+  // under Credentials.
+  optional string ui_client_id = 8;
+}
+
+// Access control groups for the isolate service. Custom group names
+// allow several isolate server instances to co-exist under the same
+// "auth" server.
+//
+// All groups default to 'administrators'.
+message AuthSettings {
+  // Group with read and write access.
+  optional string full_access_group = 1;
+  // Group with read-only access.
+  optional string readonly_access_group = 2;
+}

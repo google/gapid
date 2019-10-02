@@ -1,0 +1,38 @@
+Authentication management REST API and UI.
+--------------------------------------------------------------------------------
+
+REST API is defined in rest_api.py module.
+
+UI implemented as a client side Javascript application that uses REST API.
+
+UI is structured as a set of tabs in a navigation bar, each tab is a separate
+HTML page (see http://getbootstrap.com/components/#navbar) served by some
+handler defined ui.py module.
+
+Each page has a javascript module associated with it that implements all UI
+logic. Entry point in such module is 'onContentLoaded' function that is called
+once main page body is loaded. Anatomy of a javascript module defined in
+module_name.js:
+
+var module_name = (function() {
+var exports = {};
+
+exports.symbol = ....
+
+return exports;
+}());
+
+Code in base.html relies on correspondence of javascript file name and name of
+a module object it exports.
+
+Each module have access to several global objects (loaded in base.html)
+provided by third party libraries:
+ * $ - jQuery library, see static/third_party/jquery/.
+ * _ - underscore library, see static/third_party/underscore/.
+ * Handlebars - handlebars template library, see static/third_party/handlebars/.
+
+Additional global objects are:
+ * common - a module with utility functions, see common.js.
+ * api - a module with wrappers around auth service REST API, see api.js.
+ * config - an object with page configuration passed from python code,
+      see UIHandler class ui.py module.

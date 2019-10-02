@@ -1,0 +1,217 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <swarming-index>
+
+    Swarming Index is the landing page for the Swarming UI.
+    It will have links to all other pages and a high-level overview of the fleet.
+
+  Usage:
+
+    <swarming-index></swarming-index>
+
+  This is a top-level element.
+
+  Properties:
+    client_id: String, Oauth 2.0 client id.  It will be set by server-side
+        template evaluation.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/common-behavior.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+
+<dom-module id="swarming-index">
+  <template>
+    <style include="swarming-app-style">
+      .command {
+        font-family: monospace;
+        margin-bottom: 10px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        background-color: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+    </style>
+
+    <swarming-app
+      client_id="[[client_id]]"
+      auth_headers="{{_auth_headers}}"
+      permissions="{{_permissions}}"
+      server_details="{{_server_details}}"
+      name="Swarming Server"
+      busy="[[_or(_busy1,busy2)]]">
+
+      <h2>Service Status</h2>
+      <div>Server Version: [[_server_details.server_version]]</div>
+      <div>Bot Version: [[_server_details.bot_version]]</div>
+      <ul>
+        <li>
+          <!-- TODO(kjlubick) convert these linked pages to Polymer-->
+          <a href="/stats">Usage statistics</a>
+        </li>
+        <li>
+          <a href="/restricted/mapreduce/status">Map Reduce Jobs</a>
+        </li>
+        <li>
+          <a href$="[[_makeInstancesUrl(_server_details,_project_id)]]">View version's instances on Cloud Console</a>
+        </li>
+        <li>
+          <a><a href$="[[_makeErrorUrl(_project_id)]]">View server errors on Cloud Console</a></a>
+        </li>
+        <li>
+          <a><a href$="[[_makeLogUrl(_project_id)]]">View logs for HTTP 5xx on Cloud Console</a></a>
+        </li>
+      </ul>
+
+      <h2>Configuration</h2>
+      <ul>
+        <!-- TODO(kjlubick) convert these linked pages to Polymer-->
+        <li>
+          <a href="/restricted/config">View server config</a>
+        </li>
+        <li>
+          <a href="/restricted/upload/bootstrap">View/upload bootstrap.py</a>
+        </li>
+        <li>
+          <a href="/restricted/upload/bot_config">View/upload bot_config.py</a>
+        </li>
+        <li>
+          <a href="/auth/groups">View/edit user groups</a>
+        </li>
+      </ul>
+
+      <div hidden$="[[_cannotBootstrap(_permissions)]]">
+        <h2>Bootstrapping a bot</h2>
+        To bootstrap a bot, run one of these (all links are valid for 1 hour):
+        <ol>
+          <li>
+            <strong> TL;DR; </strong>
+  <pre class="command">python -c "import urllib; exec urllib.urlopen('[[_host_url]]/bootstrap?tok=[[_bootstrap_token]]').read()"</pre>
+          </li>
+          <li>
+            Escaped version to pass as a ssh argument:
+  <pre class="command">'python -c "import urllib; exec urllib.urlopen('"'[[_host_url]]/bootstrap?tok=[[_bootstrap_token]]'"').read()"'</pre>
+          </li>
+          <li>
+            Manually:
+  <pre class="command" style="margin-bottom:0">mkdir bot; cd bot
+  rm -f swarming_bot.zip; curl -sSLOJ [[_host_url]]/bot_code?tok=[[_bootstrap_token]]
+  python swarming_bot.zip</pre>
+          </li>
+        </ol>
+      </div>
+
+      <!-- TODO(kjlubick): Enable this when the stats endpoint uses oauth
+      <h2>Stats</h2>
+      <div class="stats">
+        <stats-overview
+          auth_headers=[[_auth_headers]]
+          busy="{{_busy2}}">
+        </stats-overview>
+      </div>
+      -->
+    </swarming-app>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'swarming-index',
+
+      behaviors: [
+          SwarmingBehaviors.CommonBehavior,
+      ],
+
+      properties: {
+        client_id: {
+          type: String,
+        },
+
+
+        _auth_headers: {
+          type: String,
+        },
+        _bootstrap_token: {
+          type: String,
+          value: "...",
+        },
+        _busy1: {
+          type: Boolean,
+          value: false,
+        },
+        _busy2: {
+          type: Boolean,
+          value: false,
+        },
+        _host_url: {
+          type: String,
+          value: function() {
+            return location.origin;
+          },
+        },
+        _permissions: {
+          type: Object,
+        },
+        _project_id: {
+          type: String,
+          value: function() {
+            var idx = location.hostname.indexOf(".appspot.com");
+            return location.hostname.substring(0, idx);
+          },
+        },
+        _server_details: {
+          type: Object,
+        },
+      },
+
+      observers: ["_fetchBootstrap(_permissions,_auth_headers)"],
+
+
+      _cannotBootstrap: function(permissions) {
+        return !(permissions && permissions.get_bootstrap_token);
+      },
+
+      _fetchBootstrap: function(permissions, auth_headers) {
+        if (!auth_headers || !permissions || this._cannotBootstrap(permissions)) {
+          return;
+        }
+        this.set("_busy1", true);
+
+        sk.request("POST", "/_ah/api/swarming/v1/server/token", undefined, auth_headers).then(JSON.parse).then(function(t) {
+          this.set("_bootstrap_token", t.bootstrap_token);
+          this.set("_busy1", false);
+        }.bind(this)).catch(function(reason) {
+          console.log("Could not get token", reason);
+          this.set("_busy1", false);
+        }.bind(this));
+      },
+
+      _makeInstancesUrl: function(details, project_id) {
+        return "https://console.cloud.google.com/appengine/instances?project="+
+            project_id+"&versionId="+details.server_version;
+      },
+
+      _makeErrorUrl: function(project_id) {
+        return "https://console.cloud.google.com/errors?project="+
+            project_id;
+      },
+
+      _makeLogUrl: function(project_id) {
+        return "https://console.cloud.google.com/logs/viewer?filters=status:500..599&project="+
+            project_id;
+      },
+
+    });
+  </script>
+</dom-module>

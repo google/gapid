@@ -1,0 +1,59 @@
+# Do not change. Use gae.py to upload a differently named instance.
+application: your-gce-backend-id
+version: 1
+runtime: python27
+threadsafe: true
+api_version: 1
+
+instance_class: F4
+automatic_scaling:
+  min_idle_instances: 1
+
+handlers:
+- url: /_ah/api/.*
+  script: main.endpoints_app
+  secure: always
+- url: /internal/cron/.*
+  login: admin
+  script: main.cron_app
+  secure: always
+- url: /internal/queues/.*
+  login: admin
+  script: main.queues_app
+  secure: always
+
+includes:
+- components/auth
+- components/config
+- gae_ts_mon
+
+libraries:
+- name: endpoints
+  version: 1.0
+- name: pycrypto
+  version: 2.6
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webob
+  version: 1.2.3
+- name: webapp2
+  version: 2.5.2
+
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$

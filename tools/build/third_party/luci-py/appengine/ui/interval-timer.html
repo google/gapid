@@ -1,0 +1,51 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  The interval-timer element fires the trigger event repeatedly using a
+  configurable property.
+
+  Properties:
+    period - The number of seconds that should elapse before the trigger event fires.  After
+      firing, the timer resets.  If the period is changed, the timer is also reset. -1 means to
+      stop the timer.
+
+  Methods:
+    None.
+
+  Events:
+    trigger - The specified time has come to perform some event.  The event object will have the
+      following attributes:
+        period: Number, the period that was used to create the event.
+-->
+<dom-module id="interval-timer">
+  <script>
+  (function() {
+    Polymer({
+      is: "interval-timer",
+
+      properties: {
+        period: {
+          type: Number,
+          value: -1,  // by default, never fire.
+          observer: "_periodChanged",
+        },
+      },
+
+      _periodChanged: function(period) {
+        if (this._timeout) {
+          window.clearTimeout(this._timeout);
+        }
+        if (period > 0) {
+          this._timeout = window.setTimeout(function() {
+            this.fire('trigger');
+            // refire event
+            this._periodChanged(period);
+          }.bind(this), period * 1000);
+        }
+      },
+    });
+  }());
+  </script>
+</dom-module>

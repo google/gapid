@@ -1,0 +1,163 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-disambiguation>
+
+  This element shows a table with all runs of a given task id.
+
+  It assumes that a task id ends with an integer, where 0 represents
+  a task summary and non-zero integers represent attempts at a task.
+
+  For example, task "abc" might have had its host die (BOT_DIED), and thus
+  was silently retried. The task id "abc1" would represent the first attempt
+  (BOT_DIED), "abc2" represents the second attempt (SUCCESS) and "abc0"
+  repreesents the summary of these two tasks.
+
+  This element assumes the client made a request for a task summary (ending in
+  0) and has passed in the task id and the object containing the task.result
+  API call pertaining to that task summary.  From this object, the "try_number"
+  is used to infer the total number of silent retires.
+
+  A number of XHR requests equal to the number of attempts, minus one (the one
+  passed in), is made and the state and bot id of those is displayed.
+
+  Properties:
+    // input
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    summary_result: Object, the result of the task.result API call pertaining
+        to task_id;
+    task_id: String, the id of the task summary.  Should end in 0.
+
+    // output
+    busy: A boolean represneting if any XHR requests are in flight.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/single-page-style.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/common/task-behavior.html">
+
+<link rel="import" href="/res/imp/common/common-behavior.html">
+
+<dom-module id="task-disambiguation">
+  <template>
+    <style include="swarming-app-style single-page-style task-style">
+    </style>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Try ID</th>
+          <th>Bot ID</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template id="result_list" is="dom-repeat"
+          items="[[_results]]" as="result" observe="task_id bot_id state">
+          <tr>
+            <td>
+              <a href$="[[_taskLink(result.task_id,'true')]]">
+                [[result.task_id]]
+              </a>
+            </td>
+            <td>
+              <a href$="[[_botLink(result.bot_id)]]">
+                [[result.bot_id]]
+              </a>
+            </td>
+            <td class$="[[_stateClass(result)]]">[[state(result)]]</td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'task-disambiguation',
+
+      behaviors: [
+          SwarmingBehaviors.CommonBehavior,
+          SwarmingBehaviors.TaskBehavior,
+      ],
+
+      properties: {
+        auth_headers: {
+          type: Object,
+        },
+        summary_result: {
+          type: Object,
+        },
+        task_id: {
+          type: String,
+        },
+
+        busy: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+
+
+        _busyArr: {
+          type: Array,
+          value: function() {
+            return [];
+          },
+        },
+
+        _results: {
+          type: Array,
+          value: function(){
+            return [];
+          }
+        }
+      },
+
+      observers: [
+        "_fetchRest(auth_headers,task_id,summary_result)",
+        "_computeBusy(_busyArr.*)",
+      ],
+
+      _computeBusy: function() {
+        for (var i = 0; i< this._busyArr.length; i++){
+          if (this._busyArr[i].status) {
+            return true;
+          }
+        }
+        return false;
+      },
+
+      _fetchRest: function(authHeaders, taskId, summaryResult) {
+        if (!authHeaders || !taskId || !summaryResult) {
+          return;
+        }
+        var numTries = summaryResult.try_number;
+
+        // reset all previous info
+        this.set("_busyArr", []);
+        this.set("_results", []);
+        var baseTaskId = taskId.substring(0, taskId.length - 1);
+        var baseUrl = "/_ah/api/swarming/v1/task/";
+
+        for (var i = 0; i < numTries -1; i++) {
+          var id = baseTaskId + (i + 1);
+          this.splice("_busyArr", i , 0, {});
+          this.splice("_results", i , 0, {task_id:id});
+          this._getJsonAsyncArr(i, "_results", baseUrl + id +"/result", "_busyArr", authHeaders);
+        }
+        summaryResult.task_id = baseTaskId+numTries;
+        this.splice("_results", numTries -1 , 1, summaryResult);
+      }
+
+    });
+  </script>
+</dom-module>

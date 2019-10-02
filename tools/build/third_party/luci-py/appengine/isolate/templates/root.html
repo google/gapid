@@ -1,0 +1,79 @@
+{% set title = 'Isolate Server' %}
+{% extends "isolate/base.html" %}
+
+{% block headers %}
+<style>
+  .highlight_section {
+    background-color: #ffffee;
+    border-radius: 20px;
+    padding: 10px;
+  }
+  .admin a {
+    {% if not is_admin %}
+      color: gray;
+      text-decoration: line-through;
+    {% endif %}
+  }
+  .user a {
+    {% if not is_user %}
+      color: gray;
+      text-decoration: line-through;
+    {% endif %}
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<h1>Isolate Server</h1>
+<div class=highlight_section>
+Isolate Server is a Content-Addressed Cache that is used by the Swarming
+project to distribute test execution accross a swarming bots.
+It is written in python and runs on <a
+href="https://cloud.google.com/appengine/">AppEngine</a>. It is part of <a
+href="https://github.com/luci/luci-py">LUCI</a>.
+</div>
+<p>
+
+{% if user_type %}
+As a {{user_type}}, you are entitled to see these pages:
+{% else %}
+Please <a href="{{signin_link|safe}}">sign in</a> for more access.
+{% endif %}
+
+<h3>Service Status</h3>
+<ul>
+  <li><a href="/stats">Usage statistics</a></li>
+  <li class="user"><a href="/browse">Browse files online</a></li>
+  <li class="admin"><a href="/restricted/ereporter2/report">Exceptions in server log</a></li>
+  <li class="admin"><a href="/restricted/ereporter2/errors">Ereporter2 errors</a></li>
+  <li class="admin"><a href="/mapreduce/status">Map reduce jobs</a></li>
+  <li class="admin">
+    <a href="https://console.cloud.google.com/appengine?project={{app_id|utf8}}&versionId={{app_version|utf8}}&duration=P2D&graph=AE_INSTANCES">View instances on AppEngine</a>
+  </li>
+  <li class="admin">
+    <a href="https://console.cloud.google.com/appengine?project={{app_id|utf8}}&versionId={{app_version|utf8}}&duration=P2D&graph=AE_ERROR_DETAILS">View HTTP 4xx/5xx on AppEngine</a>
+  </li>
+</ul>
+
+<h3>Configuration</h3>
+<ul class="admin">
+  <li><a href="/restricted/purge">Purge an object</a></li>
+  <li><a href="/restricted/config">Server config</a></li>
+  <li><a href="/auth/groups">User groups</a></li>
+</ul>
+
+<h3>Map reduce jobs</h3>
+<ul class="admin">
+  {% for job in mapreduce_jobs %}
+    <li>
+      <form action="/restricted/launch_mapreduce" method="post">
+        <input type="hidden" name="xsrf_token" value="{{xsrf_token}}" />
+        <input type="hidden" name="job_id" value="{{job.id}}" />
+        <button type="submit">Launch '{{job.name}}'</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

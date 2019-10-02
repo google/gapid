@@ -1,0 +1,52 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/iron-icons/maps-icons.html">
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout.html">
+
+<dom-module id="config-file-card">
+  <template>
+    <style>
+      a { 
+        text-decoration: none;
+        color: inherit;
+      }
+
+      paper-card {
+        width: 100%;
+      }
+
+    </style>
+
+    <a href="[[link]]" target="_blank">
+      <paper-card elevation="2" on-tap="_handleClick">
+        <div class="card-content">
+          [[name]]
+        </div>
+      </paper-card>
+    </a>
+  </template>
+  <script>
+    Polymer({
+      is: "config-file-card",
+
+      properties: {
+        name: {
+          type: String
+        },
+
+        link: {
+          type: String
+        },
+      }
+
+    });
+  </script>
+</dom-module>

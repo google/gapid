@@ -1,0 +1,126 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>bot-page Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+  <script src="../../../build/js/common-strings.js"></script>
+  <script src="../../../build/js/natural-sort.js"></script>
+  <script src="/res/js/common.js"></script>
+  <script src="/res/js/alias.js"></script>
+  <script src="../../../node_modules/sinon/pkg/sinon-1.17.5.js"></script>
+  <!-- Makes a var called bots.  It's an array of things that could be returned-->
+  <script type="text/javascript" src="bot-demo.json"></script>
+  <!-- Makes a var called events.  It's an array of things that could be returned-->
+  <script type="text/javascript" src="bot-events-demo.json"></script>
+  <!-- Makes a var called tasks.  It's an array of things that could be returned-->
+  <script type="text/javascript" src="bot-tasks-demo.json"></script>
+
+  <script type="text/javascript" charset="utf-8">
+    sinon.format = function(object) {return JSON.stringify(object);}
+    sinon.log = function(message) {console.log(message);};
+    var server = sinon.fakeServer.create();
+    server.autoRespond = true;
+    server.autoRespondAfter = 1000;
+    sk.now = function(){
+      // for stats, lock in "now" at Wed Sep 28 2016 16:23:04 GMT-0400 (EDT)
+      return 1475094184;
+    }
+
+    var genResponse = function(arr) {
+      return function(request){
+        if (!request.requestHeaders.authorization) {
+          sinon.log("You must be logged in (check your Oauth?)");
+          request.respond(403, {}, "You must be logged in (check your Oauth?)");
+          return;
+        }
+        sinon.log("User authenticated :) "+ request.requestHeaders.authorization);
+        sinon.log("Bot Request: "+sinon.format(request));
+        // If the user changes bot id, show them some of the other sample data.
+        var idx = request.url.indexOf("-00");
+        var item = 0;
+        if (idx !=-1) {
+          var name = request.url.substring(idx+1, idx+4);
+          item = parseInt(name) || 0;
+          item = Math.max(item - 1, 0);
+          item = Math.min(item, arr.length-1);
+        }
+
+
+        request.respond(200, {"Content-Type":"application/json"}, JSON.stringify(arr[item]));
+      }
+    }
+
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bot\/test-bot-\d+\/get.*/, genResponse(bots));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bot\/test-bot-\d+\/get.*/, genResponse(bots));
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bot\/test-bot-\d+\/events.*/, genResponse(events));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bot\/test-bot-\d+\/events.*/, genResponse(events));
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bot\/test-bot-\d+\/tasks.*/, genResponse(tasks));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bot\/test-bot-\d+\/tasks.*/, genResponse(tasks));
+
+    var permissions = {
+      cancel_task: true,
+      delete_bot: true,
+      terminate_bot: true,
+    };
+    server.respondWith("GET",  /^\/_ah\/api\/swarming\/v1\/server\/permissions/, JSON.stringify(permissions));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/server\/permissions/, JSON.stringify(permissions));
+
+    var details = {
+      server_version: "1234-deadbeef",
+      bot_version: "abcdoeraymeyouandme",
+      machine_provider_template: "http://example.com#/leases/%s?foo=bar",
+    };
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/server\/details/, JSON.stringify(details));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/server\/details/, JSON.stringify(details));
+
+    var deleteRequest = function(request) {
+      console.log("Deleting", request);
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+          request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      request.respond(200, {}, "Bot has been deleted.");
+    }
+
+    server.respondWith("POST", /^\/_ah\/api\/swarming\/v1\/bot\/.+\/delete/, deleteRequest);
+    server.respondWith("POST", /^\/api\/swarming\/v1\/bot\/.+\/delete/, deleteRequest);
+
+    var terminateRequest = function(request) {
+      console.log("Terminating", request);
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+          request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      request.respond(200, {}, "Bot has been terminated.");
+    }
+
+    server.respondWith("POST", /^\/_ah\/api\/swarming\/v1\/bot\/.+\/terminate/, terminateRequest);
+    server.respondWith("POST", /^\/api\/swarming\/v1\/bot\/.+\/terminate/, terminateRequest);
+    </script>
+
+    <link rel="import" href="bot-page.html">
+</head>
+<body>
+
+<bot-page
+  bot_id="test-bot-001"
+  client_id="20770472288-t5smpbpjptka4nd888fv0ctd23ftba2o.apps.googleusercontent.com">
+</bot-page>
+
+</body>
+</html>

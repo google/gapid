@@ -1,0 +1,56 @@
+/* Copyright 2013 The LUCI Authors. All rights reserved.
+ * Use of this source code is governed under the Apache License, Version 2.0
+ * that can be found in the LICENSE file.
+ */
+table.alterning_background {
+  border: 1;
+  border-color: black;
+  border-collapse: collapse;
+}
+
+table.alterning_background thead {
+  color: #fff;
+  background-color: #000;
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
+table.alterning_background tbody tr:nth-child(even) {
+  background-color: #eeeeee;
+}
+
+table.alterning_background td {
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
+table.alterning_background tbody .request {
+  border-top-style: solid;
+  border-top-color: black;
+  border-top-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: black;
+  border-bottom-width: 1px;
+}
+
+.failed_test {
+  background-color: #ffdddd !important;
+}
+
+.top_right_links {
+  display: inline-block;
+  float: right;
+}
+
+.data_table tr:not(:first-child) {
+  font-family: "Courier New", monospace;
+}
+
+.graph {
+  height: 600px;
+  width: 100%;
+}
+
+ul li {
+  padding-top: 5px;
+}

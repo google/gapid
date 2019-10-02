@@ -1,0 +1,37 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+{% set is_readonly = auth_service_config_locked or not is_admin %}
+<div class="row">
+  <div class="col-md-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">Group import configuration</h3>
+      </div>
+      <div class="panel-body">
+        <div id="import-config-alerts"></div>
+        <form class="form" role="form" id="import-config">
+          <div class="form-group">
+            <textarea class="form-control"
+                      style="font-family:monospace;"
+                      rows="20"
+                      name="config"
+                      {% if is_readonly %}readonly{% endif %}
+                      wrap="off"></textarea>
+          </div>
+          <div class="form-group">
+            {% if auth_service_config_locked %}
+              {{ render_config_locked("imports.cfg") }}
+            {% else %}
+              {% if is_admin %}
+                <button type="submit" class="btn btn-primary">Save</button>
+              {% endif %}
+            {% endif %}
+          </div>
+         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

@@ -1,0 +1,12 @@
+Name: jquery.validate
+URL: https://github.com/jzaefferer/jquery-validation
+Version: 1.11.1
+Revision: 3b39aec
+License: MIT
+
+Description:
+This jQuery plugin makes simple clientside form validation easy, whilst
+still offering plenty of customization options
+
+Local Modifications:
+Only minified version kept.

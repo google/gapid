@@ -1,0 +1,148 @@
+cron:
+
+
+### Tasks
+
+- description: >-
+    Catch TaskRunResult's where the bot died and failed sending updates.
+  url: /internal/cron/important/scheduler/abort_bot_missing
+  schedule: every 1 minutes
+  target: backend
+
+- description: Catch TaskToRun's that are expired.
+  url: /internal/cron/important/scheduler/abort_expired
+  schedule: every 1 minutes
+  target: backend
+
+- description: >-
+    Clean up stale BotTaskDimensions and TaskDimensions so no composite indexes
+    are needed.
+  url: /internal/cron/cleanup/task_queues
+  schedule: every 10 minutes
+  target: backend
+
+- description: >-
+    Count how many runnable bots per task queues for monitoring; send this to
+    ts_mon.
+  url: /internal/cron/monitoring/count_task_bot_distribution
+  schedule: every 1 minutes synchronized
+  target: backend
+
+- description: Delete old TaskRequest
+  url: /internal/cron/cleanup/tasks/delete_old
+  schedule: every 10 minutes synchronized
+  target: backend
+
+
+### Bots
+
+- description: Update BotInfo.composite for dead bots.
+  url: /internal/cron/monitoring/bots/update_bot_info
+  schedule: every 1 minutes
+  target: backend
+
+# This request spins for 600s and doesn't do anything. This should eventually be
+# reenabled but only after proper diagnosis.
+# https://crbug.com/939204
+#- description: Delete old Bot entity groups
+#  url: /internal/cron/cleanup/bots/delete_old
+#  schedule: every 5 minutes synchronized
+#  target: backend
+
+- description: Delete old BotEvent
+  url: /internal/cron/cleanup/bots/delete_old_bot_events
+  schedule: every 5 minutes synchronized
+  target: backend
+
+
+### Named caches
+
+- description: >-
+    Update named caches cache sizes; this is important to ensure the bots have
+    enough free disk space for cold named cache.
+  url: /internal/cron/important/named_caches/update
+  schedule: every 10 minutes synchronized
+  target: backend
+
+
+### MP
+
+- description: Compute Machine Provider bot utilization.
+  url: /internal/cron/monitoring/machine_provider/bot_usage
+  schedule: every 1 minutes synchronized
+  target: backend
+
+- description: Configure Machine Provider leases.
+  url: /internal/cron/important/machine_provider/update_config
+  schedule: every 1 minutes synchronized
+  target: backend
+
+- description: Manage Machine Provider leases.
+  url: /internal/cron/important/machine_provider/manage_leases
+  schedule: every 1 minutes synchronized
+  target: backend
+
+
+### Caches for the UI
+
+- description: Aggregate all bots dimensions for easier sorting.
+  url: /internal/cron/monitoring/bots/aggregate_dimensions
+  schedule: every 5 minutes
+  target: backend
+
+- description: Aggregate all tasks tags for easier sorting.
+  url: /internal/cron/monitoring/tasks/aggregate_tags
+  schedule: every 1 hours
+  target: backend
+
+
+### External schedulers
+
+- description: Cancel tasks at the behest of external scheduler.
+  url: /internal/cron/important/external_scheduler/cancellations
+  schedule: every 1 minutes
+  target: backend
+
+- description: Notify external scheduler based on its desired callbacks.
+  url: /internal/cron/important/external_scheduler/get_callbacks
+  schedule: every 1 minutes
+  target: backend
+
+### ereporter2
+
+- description: ereporter2 cleanup
+  url: /internal/cron/ereporter2/cleanup
+  schedule: every 1 hours
+  target: backend
+
+- description: ereporter2 mail exception report
+  url: /internal/cron/ereporter2/mail
+  schedule: every 1 hours synchronized
+  target: backend
+
+
+### gae_ts_mon and BigQuery
+
+- description: Send ts_mon metrics
+  url: /internal/cron/ts_mon/send
+  schedule: every 1 minutes
+  target: backend
+
+- description: Trigger task queues to send rows to to BigQuery
+  target: backend
+  url: /internal/cron/monitoring/bq
+  schedule: every 1 minutes
+
+
+### Configs
+
+- description: read luci-config configs
+  # Handled by inclusion of components/config in app.yaml.
+  url: /internal/cron/config/update
+  schedule: every 1 minutes
+  target: backend
+
+- description: assemble bot groups configs
+  url: /internal/cron/important/bot_groups_config
+  schedule: every 1 minutes
+  target: backend

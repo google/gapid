@@ -1,0 +1,170 @@
+<!--
+  Copyright 2018 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <stacked-time-chart>
+
+  This creates a stacked bar chart assuming the passed in values are
+  times/durations. The caller can customize the labels and colors (e.g. have
+  a label and color repeat)
+
+  Why not use the <google-chart> element directly?  Unfortunately
+  stacked-bar-charts are not one of the options.
+  https://google-developers.appspot.com/chart/interactive/docs/gallery
+
+  Properties:
+    colors: Array<String> CSS-style (hex) colors to be used for the stacked
+        chart. The colors will line up with the labels and values.
+    labels: Array<String> labels for the data
+    values: Array<Number> The numbers to be displayed. These values should be
+        in seconds, although some labels may be in minutes when durations get
+        long.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/google-chart-loader.html">
+
+<dom-module id="stacked-time-chart">
+  <template>
+    <style>
+      #chart {
+        height: 250px;
+        width:  400px;
+      }
+    </style>
+    <div id="chart">(waiting on data)</div>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: 'stacked-time-chart',
+
+    properties: {
+      colors: {
+        type: Array,
+      },
+      labels: {
+        type: Array,
+      },
+      values: {
+        type: Array,
+      },
+
+      _loaded: {
+        type: Boolean,
+        value: false,
+      }
+    },
+
+    observers: ['_draw(colors,labels,values)'],
+
+    ready: function() {
+      // Load the Visualization API and the corechart package.
+      google.charts.load('current', {'packages':['corechart']});
+
+      // Set a callback to run when the Google Visualization API is loaded.
+      google.charts.setOnLoadCallback(function(){
+        this._loaded = true;
+        this._draw()
+      }.bind(this));
+    },
+
+    _draw: function() {
+      if (!this.colors || !this.labels || !this.values || !this._loaded) {
+        this.$.chart.innerText = '(waiting on data)';
+        return;
+      }
+      // Create the data table. The first row is the headers. The second row
+      // (and any another rows) are the data that fill it in. This element
+      // is tuned for only one stacked chart, so there will only be one data row.
+      var data = google.visualization.arrayToDataTable([
+        // 'Type' is just a human-friendly value to remind us what the rest
+        // of the headers are. It could be empty, as it doesn't show up on the
+        // chart.
+        ['Type'].concat(this.labels),
+        // The empty string below would be a left-hand label, but since there
+        // is only one entry, the label is superfluous.
+        [''].concat(this.values),
+      ]);
+
+      // Do some computation to make axis lines show up nicely for different
+      // ranges of duration. ticks represents the major lines (and what) should
+      // be labeled. gridCount is the number of minor lines to show up between
+      // the major lines.
+      var total = 0;
+      for (v of this.values) {
+        total += +v;
+      }
+      var ticks = [{v: 0, f:''}];
+      var gridCount = 0;
+      if (total < 120) { // 2 min
+        for (var t = 10; t < total; t+=10) {
+          ticks.push({v: t, f: t+'s'});
+        }
+        gridCount = 5;
+      } else if (total < 1500) { // 25m
+        for (var t = 60; t < total; t+=60) {
+          ticks.push({v: t, f: t/60+'m'});
+        }
+        if (total < 300) {
+          gridCount = 5;
+        } else if (total < 900) {
+          gridCount = 1;
+        } else {
+          gridCount = 0;
+        }
+        // Prevent tasks with super long times (> 10 days) from locking up the drawing.
+      } else if (total < 1000000) {
+        for (var t = 600; t < total; t+=600) {
+          ticks.push({v: t, f: t/60+'m'});
+        }
+        if (total < 6000) {
+          gridCount = 10;
+        } else if (total < 12000){
+          gridCount = 5;
+        } else {
+          gridCount = 1;
+        }
+      }
+
+      // These options make a stacked bar chart, using the passed in colors
+      // with the legend on top, and the configured amount of minor grid lines.
+      var options = {
+        width: 400,
+        height: 250,
+        isStacked: true,
+        // chartArea is how big the chart should be in the allocated space.
+        // We want it to be as wide as possible, leaving a little bit of space
+        // on the top and bottom for the legend and labels.  These values
+        // were found via experimentation.
+        chartArea: {width: '100%', height:'65%'},
+        legend: {
+          position: 'top',
+          // Force the legend onto one line - can be tweaked if necessary
+          maxLines: 1,
+          alignment: 'center',
+          textStyle: {fontSize: 12}
+        },
+        colors: this.colors,
+        hAxis: {
+          title: 'Time',
+          ticks: ticks,
+          minorGridlines: {count: gridCount},
+        }
+      };
+      // Instantiate the chart and draw the chart. This call is async!
+      var chart = new google.visualization.BarChart(this.$.chart);
+      chart.draw(data, options);
+    },
+  });
+</script>

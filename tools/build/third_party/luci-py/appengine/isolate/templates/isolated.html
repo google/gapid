@@ -1,0 +1,47 @@
+{% block headers %}
+<style>
+  th, td {
+    padding: 5px;
+  }
+  tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+  table {
+    overflow-x: auto;
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div style="font-family:monospace;white-space:pre-wrap;">command:
+    {{isolated.get('command', '')|join('\n    ')}}
+algo: {{isolated.get('algo', '')}}
+includes:
+{% for digest in isolated.get('includes', []) %}
+    <a target="_blank" href="/browse?namespace={{namespace}}&digest={{digest}}">{{digest}}</a>
+{% endfor %}
+read_only: {{isolated.get('read_only', '')}}
+relative_cwd: {{isolated.get('relative_cwd', '')}}
+version: {{isolated.get('version', '')}}
+<table>
+    <thead><tr><th>file</th><th>digest</th><th>mode</th><th>size</th><th>symlink</th><th>filetype</th></tr></thead>
+    <tbody>
+        {% for filepath, file in isolated.get('files', {}).iteritems() %}
+        <tr>
+            <td>
+            {% if 'h' in file %}
+                <a target="_blank" href="/browse?namespace={{namespace}}&digest={{file.h}}&as={{filepath|basename|urlencode}}">{{filepath}}</a>
+            {% else %}
+                {{filepath}}
+            {% endif %}
+            </td>
+            <td>{{file.get('h', '')}}</td>
+            <td>{{file.get('m', '')}}</td>
+            <td>{{file.get('s', '')}}</td>
+            <td>{{file.get('l', '')}}</td>
+            <td>{{file.get('t', '')}}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

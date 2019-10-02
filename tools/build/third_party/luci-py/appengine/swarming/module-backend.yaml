@@ -1,0 +1,74 @@
+module: backend
+runtime: python27
+api_version: 1
+threadsafe: true
+
+# Approximately 512MB / 2.4GHz
+instance_class: F4
+automatic_scaling:
+  min_idle_instances: 1
+  max_concurrent_requests: 20
+  # Backend requests are not latency sensitive. The default value of 30ms causes
+  # a lot of churn as a ton of very small task queues causes an unreasonable
+  # number of instances to be created just to become idle right after.
+  min_pending_latency: 5000ms
+  max_pending_latency: 10000ms
+
+handlers:
+# Backend for mapreduce jobs.
+- url: /(internal|restricted)/mapreduce(/.*)?
+  script: main_backend.mapreduce_app
+  secure: always
+  login: admin
+
+# Cron jobs, task queues.
+- url: /internal/.+
+  script: main_backend.app
+  secure: always
+  login: admin
+
+includes:
+- components/auth
+- components/config
+- components/ereporter2
+- gae_ts_mon
+
+libraries:
+- name: endpoints
+  version: "1.0"
+- name: pycrypto
+  version: "2.6"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"
+
+# Keep this list in sync with app.yaml
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- .+\.zip$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+# Doc, readme and license.
+- ^doc/
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$
+- ui/node_modules/
+- ui/res/imp/bower_components/
+- ui2/node_modules/.+

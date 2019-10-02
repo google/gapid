@@ -1,0 +1,14 @@
+Name: depot_tools
+Short Name: depot_tools
+URL: https://chromium.googlesource.com/chromium/tools/depot_tools.git
+Revision: 3b4f228f10e2323e5b1063850e4e882412d5d9f8
+License: BSD
+
+Description:
+Tools for Chromium developers.
+
+Local Modifications:
+Kept git_common.py, git_number.py, subprocess2.py and subcommand.py.
+Copied testing_support/auto_stub.py as auto_stub.py.
+auto_stub.py: changed TestCase.has_failed so it works if _resultForDoCleanups
+  is not present.

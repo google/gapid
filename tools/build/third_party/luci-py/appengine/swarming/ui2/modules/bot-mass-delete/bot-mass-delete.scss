@@ -1,0 +1,17 @@
+bot-mass-delete {
+  button.delete {
+    background-color: red;
+    color: white;
+    font-weight: bold;
+    border: 2px #770707;
+  }
+
+  button.delete[disabled] {
+    background-color: #ddd;
+    color: #333;
+  }
+
+  button.delete:focus {
+    border: 5px solid #eaa017;
+  }
+}

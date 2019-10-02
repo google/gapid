@@ -1,0 +1,63 @@
+// Copyright 2016 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+// This file should match corresponding proto3 source-of-truth file in luci-go:
+// https://github.com/luci/luci-go/blob/master/common/api/tokenserver/machine_token.proto
+
+syntax = "proto3";
+
+package components.auth;
+
+
+// MachineTokenBody describes internal structure of the machine token.
+//
+// The token will be put in HTTP headers and its body shouldn't be too large.
+// For that reason we use unix timestamps instead of google.protobuf.Timestamp
+// (no need for microsecond precision), and assume certificate serial numbers
+// are smallish uint64 integers (not random blobs).
+message MachineTokenBody {
+  // Machine identity this token conveys (machine FQDN).
+  //
+  // It is extracted from a Common Name of a certificate used as a basis for
+  // the token.
+  string machine_fqdn = 1;
+
+  // Service account email that signed this token.
+  //
+  // When verifying the token backends will check that the issuer is in
+  // "auth-token-servers" group.
+  string issued_by = 2;
+
+  // Unix timestamp in seconds when this token was issued. Required.
+  uint64 issued_at = 3;
+
+  // Number of seconds the token is considered valid.
+  //
+  // Usually 3600. Set by the token server. Required.
+  uint64 lifetime  = 4;
+
+  // Id of a CA that issued machine certificate used to make this token.
+  //
+  // These IDs are defined in token server config (via unique_id field).
+  int64 ca_id = 5;
+
+  // Serial number of the machine certificate used to make this token.
+  //
+  // ca_id and cert_sn together uniquely identify the certificate, and can be
+  // used to check for certificate revocation (by asking token server whether
+  // the given certificate is in CRL). Revocation checks are optional, most
+  // callers can rely on expiration checks only.
+  uint64 cert_sn = 6;
+}
+
+
+// MachineTokenEnvelope is what is actually being serialized and represented
+// as a machine token (after being encoded using base64 standard raw encoding).
+//
+// Resulting token (including base64 encoding) is usually ~500 bytes long.
+message MachineTokenEnvelope {
+  bytes token_body = 1; // serialized MachineTokenBody
+  string key_id = 2;    // id of a token server private key used for signing
+  bytes rsa_sha256 = 3; // signature of 'token_body'
+}

@@ -1,0 +1,557 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This file contains most of the logic to create a column filter with query. It is broken up into two parts: a style dom-module called query-column-filter-style and a behavior called SwarmingBehaviors.QueryColumnFilter.  This behavior handles enabling/disabling filters, showing/hiding columns and other features related to the filtering ui.
+
+  A client of these two parts needs to create the templates to actually draw the dynamic <div> containing columns, filters, etc. See bot-filters for an example.
+
+  A client should use the provided style set as follows:
+
+    <link rel="import" href="/res/imp/common/query-column-filter.html">
+    ...
+    <template>
+      <style include="query-column-filter-style">
+      ...
+
+  This behavior has already defined the following properties, which a client should bind to:
+    _filters, Array<String>, The text form of the filters for display purposes.
+    _limit, String, The number of items that should be queried for.  This will be coereced to a number between 1-1000.
+    _primaryItems, Array<String>, The primary items (columns) to display.
+    _primarySelected, String, The selected primary item whose secondary items should be displayed.
+    _query, String, The query string typed in.
+    _secondaryItems, Array<String>, The secondary items (values) to display.
+
+  A client must define the following properties:
+    columns, Array<String>, The columns that should be displayed.
+    _filterMap, Object, a mapping of column name to a function that returns true if the item should be shown in the dynamic table. Used to create the filter property.  Will be bound to this element.
+    _prettyItem: Object, an object with a function apply(s) that takes a string and returns a string. This is used if the display of a column should be different than the column string. E.g. making foo-tag show up as foo (tag).
+
+  A client must define the following methods:
+    none.
+
+  A client may override the following methods:
+    _cantToggleColumn(col): return true if the column can be selected/deselected at will.
+    _cantRemoveFilter(filter): Return true if the filter cannot be removed at will.
+
+  This behavior provides the following properties:
+    // inputs
+     primary_map: Object, a mapping of primary keys to secondary items.
+        The primary keys are things that can be columns or sorted by.  The
+        primary values (aka the secondary items) are things that can be filtered
+        on. Primary consists of dimensions and state.  Secondary contains the
+        values primary things can be.
+    primary_arr: Array<String>, the display order of the primary keys.
+    special_columns: Array<String>, the sorted order for the special columns.
+        This is used to "float" the selected columns to the top of the list in
+        the order that corresponds to how they are displayed on screen.
+
+    // output
+    filter: Object, an object {filter:Function} where filter will take one param
+        (bot) and return a Boolean if it should be displayed given the
+        current filters.
+
+  This behavior also provides the following methods:
+    _addFilter(event): Add the filter clicked on by the user.
+    _cantAddFilter(primarySelected, item): Return true if filter cannot be added (e.g. it already is on the list).
+    _columnState(col): Returns true if the column is selected.
+    _removeFilter(event): Remove the filter clicked on by the user.
+    _toggleColumn(event): Toggle the column clicked on by the user.
+
+  -->
+<link rel="import" href="common-behavior.html">
+
+ <dom-module id="query-column-filter-style">
+  <template>
+    <style>
+      :host {
+        display: block;
+        font-family: sans-serif;
+      }
+      #filter {
+        display: inline-block;
+        min-width: calc(100% - 40px);
+      }
+
+      .container {
+        min-height: 120px;
+        width: 100%;
+      }
+
+      .item {
+        border-bottom: 1px solid #EEE;
+        max-width: 250px;
+        min-height: 1.0em;
+        min-width: 100px;
+        padding: 0.1em 0.2em;
+        line-height: 1.5em;
+      }
+
+      .header {
+        height: 2em;
+        padding: .25em;
+        line-height: 2em;
+      }
+
+      .selector {
+        border: 1px solid black;
+        margin: 0 5px;
+        max-height: 200px;
+        min-height: 130px;
+        min-width: 275px;
+        overflow-y: auto;
+      }
+
+      .selectable, .pointable {
+        cursor: pointer;
+      }
+
+      .selectable:hover {
+        /* See https://sites.google.com/a/google.com/skia-infrastructure/design-docs/general-design-guidance */
+        background-color: #A6CEE3;
+      }
+
+      .iron-selected {
+        /* See https://sites.google.com/a/google.com/skia-infrastructure/design-docs/general-design-guidance */
+        background-color: #1F78B4;
+        color: white;
+      }
+
+      .icons {
+        cursor:pointer;
+        height:20px;
+        margin:2px;
+        width:20px;
+        flex-shrink: 0;
+      }
+
+      .side-by-side {
+        display: inline-block;
+        vertical-align: top;
+      }
+
+      .bold {
+        font-weight: bold;
+      }
+
+      paper-checkbox {
+        max-height: 2em;
+        margin: 2px;
+        /* See https://sites.google.com/a/google.com/skia-infrastructure/design-docs/general-design-guidance */
+        --paper-checkbox-checked-color: black;
+        --paper-checkbox-checked-ink-color: black;
+        --paper-checkbox-unchecked-color: black;
+        --paper-checkbox-unchecked-ink-color: black;
+        --paper-checkbox-label-color: black;
+      }
+    </style>
+
+  </template>
+</dom-module>
+
+<script>
+  (function(){
+    // Given a space separated list of queries, matchPartCaseInsensitive
+    // returns an object of any query that matches a part of str, case
+    // insensitive.  The object has an idx (index) and the part that matched.
+    var matchPartCaseInsensitive = function(str, queries) {
+      if (!queries) {
+        return {
+          idx: 0,
+          part: "",
+        };
+      }
+      if (!str) {
+        return {
+          idx: -1,
+        };
+      }
+      queries = queries.trim().toLocaleLowerCase();
+      str = str.toLocaleLowerCase();
+      var xq = queries.split(" ");
+      for (var i = 0; i < xq.length; i++) {
+        var idx = str.indexOf(xq[i]);
+        if (idx !== -1) {
+          return {
+            idx: idx,
+            part: xq[i],
+          };
+        }
+      }
+      return {
+        idx: -1,
+      };
+    };
+
+    var matchFilter = function(toMatch, filterStr, isColumn) {
+      if (!filterStr) {
+        return true;
+      }
+      if (!toMatch) {
+        return false;
+      }
+
+      toMatch = toMatch.toLocaleLowerCase();
+      filterStr = filterStr.trim().toLocaleLowerCase();
+      if (filterStr.indexOf(" ") !== -1 || filterStr.indexOf(":") === -1) {
+        return false;
+      }
+      var col = filterStr.split(":", 1)[0];
+      var rest = filterStr.substring(col.length + 1);
+      if (isColumn) {
+        return toMatch === col;
+      }
+      return toMatch.startsWith(rest);
+    }
+
+    // Extend the Aliases behavior
+    SwarmingBehaviors.QueryColumnFilter = [SwarmingBehaviors.CommonBehavior, {
+
+      properties: {
+        // input
+        dimensions: {
+          type: Array,
+        },
+        primary_map: {
+          type: Object,
+        },
+        primary_arr: {
+          type: Array,
+        },
+        special_columns: {
+          type: Array,
+          value: function() {
+            return [];
+          }
+        },
+
+        // output
+        filter: {
+          type: Function,
+          computed: "_makeFilter(_filters.*)",
+          notify: true,
+        },
+
+        // private
+        _filters: {
+          type:Array,
+        },
+        _limit: {
+          type: Number,
+        },
+        _primaryItems: {
+          type: Array,
+          computed: "_primary(_query, primary_map, primary_arr, columns.*)",
+        },
+        _primarySelected: {
+          type: String,
+          value: "",
+        },
+        // query is treated as a space separated list.
+        _query: {
+          type:String,
+        },
+        _secondaryItems: {
+          type: Array,
+          computed: "_secondary(_primarySelected, _query, primary_map)",
+        },
+      },
+
+
+      _addFilter: function(e) {
+        // e.model.foo is a way to get access to the "foo" inside a dom-repeat
+        // that had the event (in our case, a tap) acted upon it.  This name,
+        // "foo", is set by the dom-repeat above 'as="foo"'
+        var filterItem = e.model.item;
+        if (this._cantAddFilter(this._primarySelected, filterItem)) {
+          return;
+        }
+        var filter = this._primarySelected + ":" + filterItem;
+        this.push("_filters", filter);
+      },
+
+      _removeFilter: function(e){
+        var filter = e.model.fil;
+        if (this._cantRemoveFilter(filter)){
+          return;
+        }
+        var idx = this._filters.indexOf(filter);
+        if (idx !== -1) {
+          this.splice("_filters", idx, 1);
+        }
+      },
+
+      _cantAddFilter: function(primarySelected, filterItem) {
+        // Check that everything is selected and this filter isn't already in
+        // the array.
+        if (!primarySelected || !filterItem) {
+          return true;
+        }
+        var filter = primarySelected + ":" + filterItem;
+        return this._filters.indexOf(filter) !== -1;
+      },
+
+      _cantRemoveFilter: function(filter) {
+        return !filter || this._filters.indexOf(filter) === -1;
+      },
+
+      _makeFilter: function() {
+        // All filters will be AND'd together.
+        // filterGroups will be a map of primary (i.e. column) -> array of
+        // options that should be filtered to.
+        // e.g. "os" -> ["Windows", "Linux"]
+        // Since they will be or'd together, order doesn't matter.
+        var filterGroups = {};
+        this._filters.forEach(function(filterString){
+          var idx = filterString.indexOf(":");
+          var primary = filterString.slice(0, idx);
+          var param = filterString.slice(idx + 1);
+          var arr = filterGroups[primary] || [];
+          arr.push(param);
+          filterGroups[primary] = arr;
+        }.bind(this));
+        var filterMap = this._filterMap || {};
+        return function(bot){
+          var retVal = true;
+          // Look up all the primary keys we are filter by, then look up how
+          // to filter (in filterMap) and apply the filter for each filter
+          // option.
+          for (primary in filterGroups){
+            var params = filterGroups[primary];
+            var filter = filterMap[primary];
+            if (!filter) {
+              filter = function(bot, c) {
+                var o = this._attribute(bot, primary);
+                return o.indexOf(c) !== -1;
+              }.bind(this);
+            }
+            if (filter) {
+              params.forEach(function(param){
+                retVal = retVal && filter.bind(this)(bot,param);
+              }.bind(this));
+            }
+          }
+          return retVal;
+        }
+      },
+
+      _manuallyAddFilter: function(){
+        var filter = this._query.trim();
+        var idx = filter.indexOf(":");
+        if (idx === -1) {
+          sk.errorMessage('Invalid filter.  Should be like "foo:bar"', 5000);
+          return;
+        }
+        var primary = filter.slice(0, idx);
+        var param = filter.slice(idx + 1);
+        if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(primary) !== -1) {
+          param = swarming.alias.apply(param, primary);
+        }
+        filter = primary + ":" + param;
+
+        if (this._filters.indexOf(filter) !== -1) {
+          sk.errorMessage('Filter "'+filter+'" is already active', 5000);
+          return;
+        }
+        this.push("_filters", filter);
+        this.set("_query", "");
+      },
+
+      _toggleColumn: function(e) {
+        var col = e.model.item;
+
+        if (this._cantToggleColumn(col)) {
+          return;
+        }
+        if (this._columnState(col)) {
+          var idx = this.columns.indexOf(col);
+          if (idx !== -1) {
+            this.splice("columns", idx, 1);
+          }
+          return;
+        }
+        this.push("columns", col);
+      },
+
+      _cantToggleColumn: function(col) {
+        // Clients can override this
+        return false;
+      },
+
+      _columnState: function(col) {
+        if (!col) {
+          return false;
+        }
+        return this.columns.indexOf(col) !== -1;
+      },
+
+
+      _primary: function(query, primary_map, primary_arr) {
+        // If the user has typed in a query, only show those primary keys that
+        // partially match the query or that have secondary values which
+        // partially match.
+        var arr = this.primary_arr.filter(function(s){
+          if (matchFilter(s, query, true)) {
+            return true;
+          }
+          if (matchPartCaseInsensitive(s, query).idx !== -1) {
+            return true;
+          }
+          var opts = primary_map[s] || [];
+          for (var i = 0; i < opts.length; i++) {
+            if (matchPartCaseInsensitive(opts[i], query).idx !== -1) {
+              return true;
+            }
+          }
+          return false;
+        });
+        // Update the selected to be the current one (if it is still with being
+        // shown) or the first match.  This saves the user from having to click
+        // the first result before seeing results.
+        if (query && arr.length > 0 &&
+            arr.indexOf(this._primarySelected) === -1) {
+          this.set("_primarySelected", arr[0]);
+        }
+        arr.sort(function(a, b){
+          // Show selected columns above non selected columns
+          var selA = this._columnState(a);
+          var selB = this._columnState(b);
+          if (selA && !selB) {
+            return -1;
+          }
+          if (selB && !selA) {
+            return 1;
+          }
+          if (selA && selB) {
+            // Put the selected special columns first in the order they are displayed.
+            selA = this.special_columns.indexOf(a);
+            selB = this.special_columns.indexOf(b);
+            if (selA !== -1 && selB === -1) {
+              return -1;
+            }
+            if (selA === -1 && selB !== -1) {
+              return 1;
+            }
+            if (selA !== -1 && selB !== -1) {
+              return selA - selB;
+            }
+            // neither column was special, fallback to alphabetical sorting.
+          }
+          return naturalSort(a, b);
+        }.bind(this));
+        return arr;
+      },
+
+      _secondary: function(primarySelected, query, primary_map) {
+        // Changing the secondary list doesn't always trigger a reorder of the
+        // secondary elements.  So, we request it be done asynchronously.
+        requestAnimationFrame(function(){
+          this.$.secondaryList.render();
+        }.bind(this));
+
+        // Only show secondary options when a primary option has been selected.
+        // If the user has typed in a query, show all secondary elements if
+        // their primary element matches.  If it doesn't match the primary
+        // element, only show those secondary elements that do.
+        if (!primarySelected) {
+          return [];
+        }
+        var arr = Object.assign([], primary_map[primarySelected]) || [];
+        if (!query) {
+          return arr;
+        }
+        if (matchFilter(primarySelected, query, true)) {
+          return arr.sort(function(a, b){
+            var aMatch = matchFilter(a, query, false);
+            var bMatch = matchFilter(b, query, false);
+            if (aMatch === bMatch) {
+              return naturalSort(a,b);
+            }
+            // true == 1 and false == 0.  So, put the one that matches first.
+            return bMatch - aMatch;
+          });
+        }
+        if (matchPartCaseInsensitive(primarySelected, query).idx !== -1) {
+          // For performance, don't worry about sorting this part until the query is
+          // of a useful length.
+          if (query.length > 3) {
+            // Sort the secondaries alphabetically, but prioritize query matches.
+            arr.sort(function(a, b){
+              var aMatch = matchPartCaseInsensitive(a, query).idx !== -1;
+              var bMatch = matchPartCaseInsensitive(b, query).idx !== -1;
+              if (aMatch === bMatch) {
+                return naturalSort(a,b);
+              }
+              // true == 1 and false == 0.  So, put the one that matches first.
+              return bMatch - aMatch;
+            });
+          }
+          return arr;
+        }
+        // Otherwise, filter out those that do not match.
+        return arr.filter(function(s) {
+          return matchPartCaseInsensitive(s, query).idx !== -1;
+        });
+      },
+
+      // These three methods (_beforeBold, _bold, _afterBold) bold the first
+      // instance of the filter query, making it easier to see why elements
+      // show up.
+      _beforeBold: function(item, query) {
+        item = this._prettyItem.apply(item);
+        var match = matchPartCaseInsensitive(item, query.replace(":", " "));
+        if (match.idx === -1) {
+          return item;
+        }
+        return item.substring(0, match.idx);
+      },
+
+      _bold: function(item, query) {
+        item = this._prettyItem.apply(item);
+        var match = matchPartCaseInsensitive(item, query.replace(":", " "));
+        if (match.idx === -1) {
+          return "";
+        }
+        return item.substring(match.idx, match.idx + match.part.length);
+      },
+
+      _afterBold: function(item, query) {
+        item = this._prettyItem.apply(item);
+        var match = matchPartCaseInsensitive(item, query.replace(":", " "));
+        if (match.idx === -1) {
+          return "";
+        }
+        return item.substring(match.idx + match.part.length);
+      },
+
+      // Common filters shared between tasklist and botlist
+      _commonFilters: function() {
+        // return a fresh object so all elements have their own copy
+        return {
+          android_devices: function(bot, num) {
+            var o = this._attribute(bot, "android_devices", "0");
+            return o.indexOf(num) !== -1;
+          },
+          device_os: function(bot, os) {
+            var o = this._attribute(bot, "device_os", "none");
+            return o.indexOf(os) !== -1;
+          },
+          device_type: function(bot, dt) {
+            var o = this._attribute(bot, "device_type", "none");
+            return o.indexOf(swarming.alias.unapply(dt)) !== -1;
+          },
+          device: function(bot, dt) {
+            var o = this._attribute(bot, "device", "none");
+            return o.indexOf(swarming.alias.unapply(dt)) !== -1;
+          },
+          gpu: function(bot, gpu) {
+            var o = this._attribute(bot, "gpu", "none");
+            return o.indexOf(swarming.alias.unapply(gpu)) !== -1;
+          },
+        };
+      },
+
+    }];
+  })();
+</script>

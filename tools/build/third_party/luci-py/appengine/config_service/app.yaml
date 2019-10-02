@@ -1,0 +1,81 @@
+# Copyright 2015 The LUCI Authors. All rights reserved.
+# Use of this source code is governed under the Apache License, Version 2.0
+# that can be found in the LICENSE file.
+
+application: luci-config
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /favicon.ico
+  static_files: static/favicon.ico
+  upload: static/favicon.ico
+  secure: always
+
+- url: /elements.html
+  static_files: ui/static/elements.html
+  upload: ui/static/elements.html
+
+- url: /static/images
+  static_dir: ui/static/images
+
+- url: /bower_components
+  static_dir: ui/bower_components
+
+- url: /common
+  static_dir: ui/common
+
+- url: /src
+  static_dir: ui/src
+
+- url: /_ah/api/.*
+  script: apps.endpoints
+
+- url: /.*
+  script: apps.html
+  secure: always
+
+libraries:
+- name: endpoints
+  version: 1.0
+- name: pycrypto
+  version: "2.6"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+
+builtins:
+- deferred: on
+- remote_api: on
+
+includes:
+- components/auth
+- components/ereporter2
+- gae_ts_mon
+
+inbound_services:
+- mail_bounce
+
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$

@@ -1,0 +1,34 @@
+cron:
+- description: fetch config from luci-config
+  target: backend
+  url: /internal/cron/update_config
+  schedule: every 1 minutes
+
+- description: group import from external sources
+  target: backend
+  url: /internal/cron/import_groups
+  schedule: every 15 minutes
+
+- description: revoke stale pubsub authorization
+  target: backend
+  url: /internal/cron/revoke_stale_pubsub_auth
+  schedule: every 30 minutes
+
+### ereporter2
+
+- description: ereporter2 cleanup
+  target: backend
+  url: /internal/cron/ereporter2/cleanup
+  schedule: every 1 hours
+
+- description: ereporter2 mail exception report
+  target: backend
+  url: /internal/cron/ereporter2/mail
+  schedule: every 1 hours synchronized
+
+### gae_ts_mon
+
+- description: ts_mon housekeeping
+  target: backend
+  url: /internal/cron/ts_mon/send
+  schedule: every 1 minutes

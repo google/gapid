@@ -1,0 +1,110 @@
+<!--
+# Copyright 2016 The LUCI Authors. All rights reserved.
+# Use of this source code is governed by the Apache v2.0 license that can be
+# found in the LICENSE file.
+-->
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <partial-line-chart>
+
+  A wrapper around google-chart (line) that can show a subset of the passed in
+  data.
+
+  Usage:
+
+    <partial-line-chart></partial-line-chart>
+
+  Properties:
+    all_data: Object, the data following the schema from
+        https://developers.google.com/chart/interactive/docs/datatables_dataviews#javascriptliteral
+    names: Array<String>, the names of the data columns to show.  If blank,
+        all will be shown.
+    title: String, the title of the line graph.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+<link rel="import" href="/res/imp/bower_components/google-chart/google-chart.html">
+
+<dom-module id="partial-line-chart">
+  <style>
+    google-chart {
+      width: 100%;
+      height: 250px;
+    }
+  </style>
+  <template>
+
+    <google-chart id="chart"
+      type="line"
+      data="[[_data]]"
+      options="[[_options]]">
+    </google-chart>
+
+  </template>
+  <script>
+  (function() {
+    Polymer({
+      is: 'partial-line-chart',
+      properties: {
+        // input
+        all_data: {
+          type: Object,
+        },
+        names: {
+          type: Array,
+        },
+        title: {
+          type: String,
+        },
+
+        // private
+        _data: {
+          type: Object,
+          computed: "trimData(all_data.*, names.*)"
+        },
+        _options: {
+          type: Object,
+          computed: "_getOptions(title)",
+        },
+      },
+
+      _getOptions: function(title) {
+        return {
+          "title": title,
+          "animation": {
+            "duration": 500,
+            "easing": "out"
+          },
+          "legend": {"position": "bottom"}
+        };
+      },
+
+      trimData: function() {
+        var table = new google.visualization.DataTable(this.all_data);
+        if (!this.names || this.names.length === 0) {
+          return JSON.parse(table.toJSON());
+        }
+
+        var view = new google.visualization.DataView(table);
+
+        var colsToShow = [0];
+        var cols = this.all_data.cols;
+        for (var i = 1;i < cols.length; i++) {
+          if (this.names.indexOf(cols[i].id) !== -1) {
+            colsToShow.push(i);
+          }
+        }
+
+        view.setColumns(colsToShow);
+        return JSON.parse(view.toDataTable().toJSON());
+      },
+    });
+  })();
+  </script>
+</dom-module>

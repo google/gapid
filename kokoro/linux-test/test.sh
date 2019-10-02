@@ -13,42 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Linux Build Script.
-set -ex
+# Temporary: try out isolate access
 
-BUILD_ROOT=$PWD
-SRC=$PWD/github/gapid/
+set -x
 
-# Get bazel
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-installer-linux-x86_64.sh
-mkdir bazel
-bash bazel-0.25.1-installer-linux-x86_64.sh --prefix=$PWD/bazel
+echo "Starting testing isolate access"
 
-# Get GCC 8
-sudo rm /etc/apt/sources.list.d/cuda.list*
-sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-sudo apt-get -q update
-sudo apt-get -qy install gcc-8 g++-8
-export CC=/usr/bin/gcc-8
+SRC=$PWD/github/gapid
 
-cd $SRC
-BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
+SERVER='https://chrome-isolated.appspot.com'
 
-function test {
-    echo $(date): Starting test for $@...
-    $BUILD_ROOT/bazel/bin/bazel \
-        --output_base="${TMP}/bazel_out" \
-        test -c opt --config symbols \
-        --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
-        --define GAPID_BUILD_SHA="$BUILD_SHA" \
-        --test_tag_filters=-needs_gpu \
-        $@
-    echo $(date): Tests completed.
-}
+LUCI_CLIENT_ROOT=$SRC/tools/build/third_party/luci-py/client
 
-# Running all the tests in one go leads to an out-of-memory error on Kokoro, hence the division in smaller test sets
-test tests-core
-test tests-gapis
-test tests-gapir
-test tests-gapil
-test tests-general
+isolatesha=f9296e7cc5e29130250b1933e08b32af0a73990d
+
+tmpdir=$SRC/my-tmp
+rm -rf $tmpdir
+
+echo "HERE Actual command"
+
+$LUCI_CLIENT_ROOT/isolateserver.py download -I $SERVER --namespace default-gzip -s f9296e7cc5e29130250b1933e08b32af0a73990d --target $tmpdir
+
+ls $tmpdir
+
+/usr/bin/python3 $tmpdir/hello.py
+
+echo "THIS IS THE END"
+

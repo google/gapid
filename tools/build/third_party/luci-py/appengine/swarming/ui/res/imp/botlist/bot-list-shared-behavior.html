@@ -1,0 +1,87 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  window.SwarmingBehaviors.BotListBehavior contains any shared functions and
+  constants used by the bot-list and its sub-elements.
+
+  To use it, include
+      behaviors: [SwarmingBehaviors.BotListBehavior]
+  in the creation of your Polymer element.
+-->
+<link rel="import" href="/res/imp/common/common-behavior.html">
+<script>
+  (function(){
+    var UNKNOWN = "unknown";
+
+    // This behavior wraps up all the shared bot-list functionality by
+    // extending SwarmingBehaviors.CommonBehavior
+    SwarmingBehaviors.BotListBehavior = [SwarmingBehaviors.CommonBehavior, {
+
+      properties: {
+        BOT_PROPERTIES: {
+          type: Array,
+          value: function() {
+            // TODO(kjlubick): Add more of these things from state, as they
+            // needed/useful/requested.
+            return ["disk_space", "uptime", "running_time", "task", "status", "version", "external_ip", "internal_ip", "mp_lease_id", "mp_lease_expires", "last_seen", "first_seen", "battery_level", "battery_voltage", "battery_temperature", "battery_status", "battery_health", "bot_temperature", "device_temperature", "is_mp_bot"];
+          }
+        },
+      },
+
+      // _attribute looks first in dimension and then in state for the
+      // specified attribute. This will always return an array. If there is
+      // no matching attribute, ["unknown"] will be returned.
+      _attribute: function(bot, attr, none) {
+        none = none || UNKNOWN;
+        return this._dimension(bot, attr) || this._state(bot, attr) || [none];
+      },
+
+      _devices: function(bot) {
+        return bot.state.devices || [];
+      },
+
+      // _deviceType returns the codename of a given Android device.
+      _deviceType: function(device) {
+        return device.device_type.toLowerCase();
+      },
+
+      // _dimension returns the given dimension of a bot. If it is defined, it
+      // is an array of strings.
+      _dimension: function(bot, dim) {
+        if (!bot || !bot.dimensions || !dim) {
+          return undefined;
+        }
+        for (var i = 0; i < bot.dimensions.length; i++) {
+          if (bot.dimensions[i].key === dim) {
+            return bot.dimensions[i].value;
+          }
+        }
+        return undefined;
+      },
+
+      // _state returns the requested attribute from a bot's state.
+      // For consistency with _dimension, if the attribute is not an array,
+      // it is put as the only element in an array.
+      _state: function(bot, attr) {
+        if (!bot || !bot.state || !bot.state[attr]) {
+          return undefined
+        }
+        var state = bot.state[attr];
+        if (Array.isArray(state)) {
+          return state;
+        }
+        return [state];
+      },
+
+      _taskId: function(bot) {
+        if (bot && bot.task_id) {
+          return bot.task_id;
+        }
+        return "idle";
+      },
+
+    }];
+  })()
+</script>

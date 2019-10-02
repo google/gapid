@@ -1,0 +1,38 @@
+queue:
+# Delete old entities that have expired.
+- name: cleanup-expired
+  rate: 1/s
+  retry_parameters:
+    # Do not retry these, they are triggered by a cron job.
+    task_retry_limit: 0
+
+# Delete orphan GCS files.
+- name: cleanup-orphan
+  rate: 1/s
+  retry_parameters:
+    # Do not retry these, they are triggered by a cron job.
+    task_retry_limit: 0
+
+# Tag entities after a preupload to update their expiration.
+- name: tag
+  bucket_size: 100
+  max_concurrent_requests: 10000
+  rate: 500/s
+  retry_parameters:
+    task_age_limit: 1d
+
+# Verify uploaded content to ensure the hash matches.
+- name: verify
+  bucket_size: 100
+  max_concurrent_requests: 10000
+  rate: 500/s
+  retry_parameters:
+    task_age_limit: 1d
+
+- name: mapreduce-jobs
+  bucket_size: 100
+  rate: 200/s
+  retry_parameters:
+    task_age_limit: 2h
+    min_backoff_seconds: 1
+    max_backoff_seconds: 600

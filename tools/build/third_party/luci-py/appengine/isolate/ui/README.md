@@ -1,0 +1,1 @@
+This folder will hold the Polymer Isolate UI.

@@ -1,0 +1,43 @@
+{% extends "templates/base.html" %}
+{% import "templates/macros.html" as macros %}
+{% block content %}
+<h2>Catalog</h2>
+{% if next_page_token %}
+  <a href="/catalog?page_token={{next_page_token}}">Next page</a>
+{% endif %}
+<table>
+  <tr>
+    <th>Backend</th>
+    <th>Hostname</th>
+    <th>Dimensions</th>
+    <th>State</th>
+    <th>Lease ID</th>
+  </tr>
+  {% for machine in machines %}
+  <tr>
+    <td>{{machine.dimensions.backend}}</td>
+    <td>{{machine.dimensions.hostname}}</td>
+    <td>{{macros.render_message(machine.dimensions)}}</td>
+    <td>
+    {{machine.state}}
+    {% if machine.leased_indefinitely %}
+      indefinitely
+    {% elif machine.lease_expiration_ts %}
+      until {{machine.lease_expiration_ts}}
+      {% if machine.lease_expiration_ts <= now %}
+        (expired)
+      {% endif %}
+    {% endif %}
+    </td>
+    <td>
+    {% if machine.lease_id %}
+      <a href="/leases/{{machine.lease_id}}">{{machine.lease_id}}</a>
+    {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% if next_page_token %}
+  <a href="/catalog?page_token={{next_page_token}}">Next page</a>
+{% endif %}
+{% endblock %}

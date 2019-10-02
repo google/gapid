@@ -1,0 +1,8 @@
+queue:
+- name: replication
+  max_concurrent_requests: 1
+  rate: 10/m
+
+- name: process-auth-db-change
+  max_concurrent_requests: 1
+  rate: 100/s

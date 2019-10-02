@@ -1,0 +1,57 @@
+application: auth-service
+module: backend
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+instance_class: F4_1G
+
+handlers:
+- url: /internal/cron/ts_mon/.*
+  script: main_backend.ts_mon_app
+  secure: always
+  login: admin
+- url: /internal.*
+  script: main_backend.app
+  secure: always
+  login: admin
+
+builtins:
+- remote_api: on
+
+includes:
+- components/ereporter2
+
+# https://developers.google.com/appengine/docs/python/tools/libraries27
+# As the doc says, serious applications should specify the third party versions.
+libraries:
+- name: endpoints
+  version: "1.0"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"
+
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$

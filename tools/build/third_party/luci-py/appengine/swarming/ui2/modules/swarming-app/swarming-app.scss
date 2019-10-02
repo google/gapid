@@ -1,0 +1,113 @@
+$header-height: 50px !default;
+
+body {
+  margin:0;
+  padding:0;
+}
+
+swarming-app {
+  font-family: sans-serif;
+}
+
+swarming-app > {
+
+  header {
+    background-color: #1F78B4;
+    color: #fff;
+    padding: 0 .5em;
+    display: flex;
+    flex-flow: row;
+    justify-content: flex-start;
+    height: $header-height;
+  }
+
+  header a {
+    color: inherit;
+  }
+
+  header .grow {
+    flex-grow: 1;
+  }
+
+  header .title {
+    font-size: 1.25em;
+  }
+  header aside a {
+    font-size: 1.1em;
+    margin: 0 2px;
+  }
+
+  header .right {
+    display: flex;
+  }
+
+  header > *, header .right > * {
+    margin: auto 5px; /* Center things vertically */
+  }
+
+  header .spinner-spacer {
+    min-width:40px;
+  }
+
+  header spinner-sk {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+  }
+
+  main {
+    padding: 0 5px;
+  }
+
+  @media screen and (min-width: 520px) {
+    header > .toggle-button {
+      display: none
+    }
+  }
+
+  @media screen and (max-width: 520px) {
+    header > .toggle-button {
+      display: block;
+      background-color: transparent;
+      border: none;
+      fill: white;
+    }
+
+    header > aside {
+      position: absolute;
+      top: $header-height;
+      bottom: 0;
+      width: 150px;
+      background-color: white;
+      z-index: 2;
+      padding: 0px 5px;
+      border-right: 1px solid black;
+    }
+    header > aside {
+      transition: 0.5s;
+      left: -170px;
+    }
+    header > aside.shown {
+      transition: 0.5s;
+      left: 0;
+    }
+    header > aside > a {
+      display: block;
+      color: black;
+      margin: 5px 0;
+    }
+  }
+
+  footer {
+    .fab {
+      position: fixed;
+      bottom: 5px;
+      right: 5px;
+      background-color: #1F78B4;
+      fill: #FFF;
+      border-radius: 50px;
+      padding: 4px;
+    }
+  }
+
+}

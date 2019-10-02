@@ -1,0 +1,15 @@
+Name: Beautiful Soup4
+Short Name: beautifulsoup4
+URL: http://www.crummy.com/software/BeautifulSoup/ and
+     https://code.launchpad.net/beautifulsoup/
+Revision: 4.6.0
+License: MIT license
+License File: COPYING.txt
+
+Description:
+Beautiful Soup sits atop an HTML or XML parser, providing Pythonic idioms for
+iterating, searching, and modifying the parse tree.
+
+Local Modifications:
+Kept bs4/ but removed bs4/tests/.
+Copied COPYING.txt.

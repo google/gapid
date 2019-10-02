@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<!-- Copyright 2014 The LUCI Authors. All rights reserved.
+Use of this source code is governed under the Apache License, Version 2.0
+that can be found in the LICENSE file. -->
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=UTF-8">
+  <title>{{app_name}} - {{page_title}}</title>
+  <link href="/third_party/bootstrap/css/bootstrap-3.1.0.min.css" rel="stylesheet">
+  <link href="/auth/static/css/common.css" rel="stylesheet">
+  <script src="/third_party/jquery/jquery-1.11.0.min.js"></script>
+  <script src="/auth/static/js/common.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Access denied</h2>
+    <p>Looks like you do not have access to this page. You are logged in as
+    <b>{{identity.name}}</b>.
+    <p>Login under a different account.</p>
+    <hr>
+    <p>Error details:</p>
+    <pre>{{error}}</pre>
+    <hr>
+    <p>
+      <a id="logout-btn" class="btn btn-primary" href="#">Logout</a>
+    </p>
+  </div>
+  <script type="text/javascript" nonce="{{csp_nonce}}">
+    // Expose 'config' as global js variable.
+    var config = {{config|safe}};
+
+    $('#logout-btn').click(function(e) {
+      common.logout();
+      e.preventDefault();
+    });
+  </script>
+</body>
+
+</html>

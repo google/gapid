@@ -1,0 +1,31 @@
+{% extends 'auth/admin/base.html' %}
+{% block content %}
+
+<h2>Add you to {{admin_group}} group?</h2>
+<p>You are logged in as <b>{{identity.name}}</b> and you'll be added to
+<b>{{admin_group}}</b> group. It will allow you to manage user groups and
+access protected pages.</p>
+<hr>
+<p>
+  <a id="proceed-btn" class="btn btn-primary" href="#">Proceed</a>
+  <a id="logout-btn" class="btn btn-default" href="#">Logout</a>
+</p>
+
+<form name="token" method="POST">
+  <input type="hidden" name="xsrf_token" value="{{xsrf_token}}" />
+  <input type="hidden" name="return_url" value="{{return_url}}" />
+</form>
+
+<script type="text/javascript" nonce="{{csp_nonce}}">
+  $('#proceed-btn').click(function(e) {
+    document.token.submit();
+    e.preventDefault();
+  });
+
+  $('#logout-btn').click(function(e) {
+    redirectToLogout();
+    e.preventDefault();
+  });
+</script>
+
+{% endblock %}

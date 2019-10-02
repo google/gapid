@@ -1,0 +1,38 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>Configuration Service</title>
+    <meta name="description" content="This is a UI for the configuration service">
+    <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="luci-config">
+
+    <!-- See https://goo.gl/OOhYW5 -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="import" href="elements.html">
+    <script src="../bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+  </head>
+  <body>
+    <config-ui
+      client_id="{{client_id}}">
+    </config-ui>
+  </body>
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['CrDXObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://storage.googleapis.com/crdx-feedback.appspot.com/feedback.js','crdx');
+
+    crdx('setFeedbackButtonLink', 'https://bugs.chromium.org/p/chromium/issues/' +
+         'entry?components=Infra%3EPlatform%3EConfig&labels=Infra-DX');
+  </script>
+
+</html>

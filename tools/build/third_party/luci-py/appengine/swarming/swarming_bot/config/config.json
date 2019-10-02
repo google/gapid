@@ -1,0 +1,7 @@
+{
+  "enable_ts_monitoring": false,
+  "isolate_grpc_proxy": false,
+  "server": "http://localhost:8080",
+  "server_version": "version1",
+  "swarming_grpc_proxy": false
+}

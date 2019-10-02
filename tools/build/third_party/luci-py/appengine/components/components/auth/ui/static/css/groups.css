@@ -1,0 +1,19 @@
+/* Copyright 2014 The LUCI Authors. All rights reserved.
+ * Use of this source code is governed under the Apache License, Version 2.0
+ * that can be found in the LICENSE file.
+*/
+
+#search-box-group {
+  padding-bottom: 10px;
+  padding-top: 2px;
+}
+
+#group-chooser-outter {
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#group-chooser {
+  margin-top: -1px;
+}

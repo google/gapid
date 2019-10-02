@@ -1,0 +1,11 @@
+[
+  {
+  "origin": [
+    "https://REPLACE-ME.appspot.com",
+    "https://*-dot-REPLACE-ME.appspot.com"
+  ],
+  "responseHeader": ["x-meta-goog-custom"],
+  "method": ["GET", "HEAD"],
+  "maxAgeSeconds": 3600
+  }
+]

@@ -1,0 +1,28 @@
+// Copyright 2016 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package discovery;
+
+import "google/protobuf/descriptor.proto";
+
+// Discovery describes services.
+service Discovery {
+  // Describe returns a list of services and a descriptor.FileDescriptorSet
+  // that covers them all.
+  rpc Describe (Void) returns (DescribeResponse) {}
+}
+
+// Void is an empty message.
+message Void {}
+
+// DescribeResponse describes services.
+message DescribeResponse {
+  // Description contains descriptions of all services, their types and all
+  // transitive dependencies.
+  google.protobuf.FileDescriptorSet description = 1;
+  // Services are service names provided by a server.
+  repeated string services = 2;
+}

@@ -1,0 +1,191 @@
+// Copyright 2018 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+// This proto file describes the external scheduler plugin API.
+
+syntax = "proto3";
+
+package swarming.v1;
+option go_package = "swarming";
+
+import "google/protobuf/timestamp.proto";
+import "swarming.proto";
+
+// Basic types used by the plugin API.
+
+// TaskSpec describes a task request and its state, for the purposes of the
+// external scheduler API.
+//
+// It intentionally elides aspects of a task request that are irrelevant
+// to scheduling decisions, to keep this proto small for performance reasons.
+//
+// This message format is in its early stages, and may be subject to frequent
+// or even breaking changes as the external scheduler API is rolled out.
+message TaskSpec {
+  // Id is the swarming task request ID.
+  //
+  // Other than being a unique string to track the lifecycle of this request,
+  // it is opaque to external scheduler. By convention, swarming uses a task's
+  // summary ID (trailing '0') here, not the run ID.
+  string id = 1;
+
+  // Tags is the list of tags applied to this task request.
+  repeated string tags = 2;
+
+  // Slices is the set of task slices for this spec. A TaskSpec must contain
+  // at least 1 slice.
+  repeated SliceSpec slices = 3;
+
+  // State is the current state of this task.
+  TaskState state = 4;
+
+  // BotID is the id of the bot that this task is running on. It is only
+  // valid if state=RUNNING.
+  string bot_id = 5;
+
+  // EnqueuedTime is the time at which a task was enqueued. It is only valid
+  // if state=PENDING.
+  google.protobuf.Timestamp enqueued_time = 6;
+}
+
+// SliceSpec describes a task request slice, for the purposes of TaskSpec.
+message SliceSpec {
+  // Dimensions is set dimension strings for this slice.
+  repeated string dimensions = 1;
+}
+
+message IdleBot {
+  // BotId is the id of the bot that is idle.
+  string bot_id = 1;
+
+  // Dimensions is the dimension set of the idle bot.
+  repeated string dimensions = 2;
+}
+
+// API Request/Response types.
+
+message AssignTasksRequest {
+  // SchedulerID is the id of the scheduler that this request should be run on.
+  string scheduler_id = 1;
+
+  // IdleBots is the set of idle bots that are trying to get tasks assigned.
+  repeated IdleBot idle_bots = 2;
+
+  // Time is the current time (according to swarming) at which these bots
+  // are attempting to have tasks assigned to them.
+  google.protobuf.Timestamp time = 3;
+}
+
+message AssignTasksResponse {
+  // Assignments is the set of (bot, task) assignments that the scheduler
+  // determined should be made.
+  repeated TaskAssignment assignments = 1;
+}
+
+message TaskAssignment {
+  // BotID is the bot that should be assigned a task.
+  string bot_id = 1;
+
+  // TaskID is the task that should be assigned to the bot.
+  string task_id = 2;
+
+  // SliceNumber is the slice within the task that should be assigned to the bot.
+  // If absent, slice 0 will be assumed.
+  int32 slice_number = 3;
+}
+
+message GetCancellationsRequest {
+  // SchedulerID is the id of the scheduler that this request should be run on.
+  string scheduler_id = 1;
+}
+
+message GetCancellationsResponse {
+  message Cancellation {
+      // BotID is the bot that a task should be cancelled on.
+      string bot_id = 1;
+
+      // TaskID is the task that should be cancelled on the bot.
+      string task_id = 2;
+
+      enum Reason {
+        // Invalid reason, do not use.
+        INVALID = 0;
+        // Task was running on a worker, but was interrupted by another task.
+        // Task may be retried by swarming.
+        PREEMPTED = 1;
+        // Task had invalid or erroneous properties that make it not handleable
+        // by scheduler. Task should not be retried.
+        ERROR = 2;
+      }
+
+      // Reason is the reason the task was cancelled.
+      Reason reason = 3;
+
+      // ExtraInfo is optional, human readable extra information about why the
+      // task was cancelled.
+      string extra_info = 4;
+  }
+
+  // Cancellations is the set of (bot, task) pairs for tasks that should be
+  // cancelled on bots.
+  repeated Cancellation cancellations = 1;
+}
+
+message NotifyTasksItem {
+  // Time is the time at which the given task was in the given state.
+  google.protobuf.Timestamp time = 1;
+
+  // Task describes a task request and its current state.
+  TaskSpec task = 2;
+}
+
+message NotifyTasksRequest {
+  // SchedulerID is the id of the scheduler that this request should be run on.
+  string scheduler_id = 1;
+
+  // Notifications is the set of task notifications to send to the scheduler.
+  repeated NotifyTasksItem notifications = 2;
+
+  // IsCallback specifies whether these notifications are in response to
+  // updates that were requested by a previous GetCallbacks call.
+  //
+  // This is for diagnostic purposes only.
+  bool is_callback = 3;
+}
+
+message NotifyTasksResponse {}
+
+message GetCallbacksRequest {
+    // SchedulerID is the id of the scheduler that this request should be run on.
+    string scheduler_id = 1;
+}
+
+message GetCallbacksResponse {
+  // TaskIds is the list of tasks that the external scheduler would like
+  // callback notifications about.
+  repeated string task_ids = 1;
+}
+
+// Service definition.
+
+// ExternalScheduler is the API by which swarming can delegate the assigning of
+// individuals task requests to individual bots to an external service.
+service ExternalScheduler {
+  // Swarming-scheduler plugin endpoints.
+
+  // AssignTasks determines which tasks should be run on which of the supplied
+  // idle bots.
+  rpc AssignTasks(AssignTasksRequest) returns (AssignTasksResponse);
+
+  // GetCancellations determines which tasks should be cancelled on which bots.
+  rpc GetCancellations(GetCancellationsRequest) returns (GetCancellationsResponse);
+
+  // NotifyTasks informs the scheduler about the state of tasks (either new
+  // tasks, or states of existing tasks).
+  rpc NotifyTasks(NotifyTasksRequest) returns (NotifyTasksResponse);
+
+  // GetCallbacks asks the scheduler for a set of request ids that the
+  // external scheduler wants to receive callback NotifyTasks calls about.
+  rpc GetCallbacks(GetCallbacksRequest) returns (GetCallbacksResponse);
+}

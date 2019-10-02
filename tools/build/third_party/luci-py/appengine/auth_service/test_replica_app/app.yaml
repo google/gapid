@@ -1,0 +1,21 @@
+application: replica-for-smoke-test
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /.*
+  script: main.app
+
+includes:
+- components/auth
+
+libraries:
+- name: pycrypto
+  version: "2.6"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"

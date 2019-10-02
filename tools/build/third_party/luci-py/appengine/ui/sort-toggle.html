@@ -1,0 +1,127 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <sort-toggle>
+
+  Sort-toggle is a small ui widget that can be tapped to change the way
+  something is sorted.  The preferred way to use this is to have multipe
+  of them created in dom-repeat.  The parent then listens to the
+  sort_change event and sets the current property on all the sort-toggles
+  to keep them up to date.
+
+  Only one sort-toggle will be active in this way.
+
+  Properties:
+    // input
+    current: Object, the current sort-toggle that should be active. Is
+        The same format as the event.detail Object.
+    name: String, the name of the thing being sorted. To be used in the
+        fired event.
+
+    // output
+    direction: String, the direction of the sorting.  "asc", "", "desc" for
+        ascending/nothing/descending.
+
+
+
+  Methods:
+    None.
+
+  Events:
+    sort_change: when a user has tapped this element.  The details includes
+        name and direction.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-icons/iron-icons.html">
+
+<dom-module id="sort-toggle">
+  <template>
+    <style>
+      :host {
+        display: inline-block;
+        position: relative;
+        min-width: 20px;
+        min-height: 16px;
+        vertical-align: middle;
+      }
+      iron-icon {
+        position: absolute;
+        left: 0;
+        cursor: pointer;
+      }
+      .hidden {
+        visibility: hidden;
+      }
+    </style>
+
+    <span on-click="toggle">
+      <iron-icon
+        style="top:0"
+        class$="[[_hidden(direction,'asc')]]"
+        icon="icons:arrow-drop-down">
+      </iron-icon>
+      <iron-icon
+        style="bottom:0"
+        class$="[[_hidden(direction,'desc')]]"
+        icon="icons:arrow-drop-up">
+      </iron-icon>
+    </span>
+
+  </template>
+  <script>
+    Polymer({
+      is: "sort-toggle",
+
+      properties: {
+        current: {
+          type: Object,
+          observer: "_resetSort",
+        },
+        name: {
+          type: String,
+          observer: "_resetSort",
+        },
+
+        direction: {
+          type: String,
+          value: "",
+          notify: true,
+        },
+      },
+
+      toggle: function() {
+        if (this.direction === "asc") {
+          this.set("direction", "desc");
+        } else {
+          this.set("direction", "asc");
+        }
+        this.fire("sort_change", {direction: this.direction, name: this.name});
+      },
+
+      _hidden: function(num, compare) {
+        if (num === compare) {
+          return "hidden";
+        }
+        return "";
+      },
+
+      _resetSort: function() {
+        // Because of how Polymer inserts and moves elements around, we need to
+        // update the direction value if the name changes so the ascending sort
+        // by "os" doesn't become the ascending sort by "gpu" if a column gets
+        // added before "os", for example.  Additionally, this makes sure that
+        // only one sort-toggle is active at a given time.
+        if (this.current && this.current.name === this.name) {
+          this.set("direction", this.current.direction);
+        } else {
+          this.set("direction", "");
+        }
+      },
+    });
+  </script>
+</dom-module>

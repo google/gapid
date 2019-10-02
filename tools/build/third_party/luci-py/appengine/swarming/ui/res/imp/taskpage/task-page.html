@@ -1,0 +1,1570 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-page>
+
+  task-page shows the request, results, stats, and standard output of a task.
+
+  This is a top-level element.
+
+  Properties:
+    task_id: String, Used in testing to specify a task_id
+    client_id: String, Oauth 2.0 client id.  It will be set by server-side
+        template evaluation.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="/res/imp/bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="/res/imp/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/res/imp/bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="/res/imp/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/res/imp/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/res/imp/bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+
+<link rel="import" href="/res/imp/common/common-behavior.html">
+<link rel="import" href="/res/imp/common/single-page-style.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/common/task-behavior.html">
+<link rel="import" href="/res/imp/shared/interval-timer.html">
+<link rel="import" href="/res/imp/shared/url-param.html">
+
+<link rel="import" href="stacked-time-chart.html">
+<link rel="import" href="task-disambiguation.html">
+<link rel="import" href="task-page-data.html">
+<link rel="import" href="task-retry-prompt.html">
+
+<dom-module id="task-page">
+  <template>
+    <style include="iron-flex iron-flex-alignment swarming-app-style single-page-style task-style">
+      .milo {
+        width: calc(100% - 11px);
+        /** We don't control the milo site and it's on a different domain than
+        us, so there's no good way to avoid scrolling other than tell the iframe
+        it is really tall.*/
+        height: 2000px;
+      }
+
+      .right {
+        margin-top: 8px;
+      }
+
+      .break-all {
+        word-break: break-all;
+      }
+
+      .bolded {
+        font-weight: bold;
+      }
+
+      .expand {
+        min-width: 3em;
+        vertical-align: middle;
+        padding: .5em;
+      }
+
+      .code {
+        font-family: monospace;
+      }
+
+      .bottom_space {
+        margin-bottom: 10px;
+      }
+
+      .stdout {
+        white-space: pre-wrap;
+        padding: 2px;
+      }
+      .stdout.wide {
+        white-space: pre;
+        overflow-x: auto
+      }
+
+      .refresh_input {
+        padding: 0 5px;
+      }
+
+      .reproduce {
+        margin-left: 5px;
+      }
+
+      .tabbed {
+        border: 3px solid #1F78B4;
+        margin-left: 5px;
+        min-height: 80vh;
+        min-width: 550px;
+      }
+
+      .task-info {
+        min-width: 500px;
+      }
+
+      .cipd-header {
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        font-weight: bold;
+        margin-left: 8px;
+      }
+
+      .full-width {
+        min-width: 100%;
+      }
+
+      .full-width-container {
+        position: relative;
+      }
+
+      .full-width-container > paper-checkbox {
+        position: absolute;
+        bottom: 10px;
+        width: 140px;
+        left: 5px;
+      }
+
+      .italic {
+        font-style: italic;
+      }
+
+      #milolink {
+        /* paper-tab tries to make anchors inside tabs take up the
+        full height, which does not line up well with everything else. */
+        height: initial;
+        /* undo standard anchor color, so it matches the tab */
+        color: #000;
+      }
+
+      paper-tab[aria-selected] #milolink {
+        color: #FFF;
+      }
+
+      /* Adds | between the dimensions, if there are more than 1*/
+      span.dim~span.dim:before {
+        content: " | ";
+      }
+
+      .slice-tabs {
+        max-width: 400px;
+      }
+
+      .chart {
+        margin-left: 5px;
+      }
+
+      .highlighted {
+        background-color: #fffc6c;
+      }
+
+      table.inactive {
+        background-color: #ddd;
+      }
+
+      .pending {
+        color: #E69F00;
+      }
+      .overhead {
+        color: #D55E00;
+      }
+      .running {
+        color: #0072B2;
+      }
+
+      /* Tell all the second td in a tr (i.e. the content) to break
+         to avoid wrapping.  This keeps the first columns nice and
+         unbroken without having to add a bunch of classes.*/
+      .task-info td:nth-child(2) {
+        word-break: break-word;
+      }
+    </style>
+
+    <url-param name="id"
+      value="{{task_id}}">
+    </url-param>
+    <url-param name="try_detail"
+      value="{{_try_detail}}">
+    </url-param>
+    <url-param name="request_detail"
+      value="{{_request_detail}}">
+    </url-param>
+    <url-param name="show_raw"
+      value="{{_show_raw}}">
+    </url-param>
+    <url-param name="wide_logs"
+      value="{{_wide_logs}}">
+    </url-param>
+    <url-param name="refresh"
+      value="{{_refresh_interval}}"
+      default_value="10">
+    </url-param>
+
+    <swarming-app
+      client_id="[[client_id]]"
+      auth_headers="{{_auth_headers}}"
+      permissions="{{_permissions}}"
+      profile="{{_profile}}"
+      server_details="{{_server_details}}"
+      signed_in="{{_signed_in}}"
+
+      busy="[[_or(_busyPageData,_busyTaskDisambiguation,_busyRunningCount,_busyPendingCount,_busyBotCount)]]"
+      name="Swarming Task Page">
+
+      <h2 hidden$="[[_signed_in]]">You must sign in to see anything useful.</h2>
+
+      <div hidden$="[[_not(_signed_in)]]">
+
+        <task-page-data
+          id="data"
+          auth_headers="[[_auth_headers]]"
+          task_id="[[task_id]]"
+
+          busy="{{_busyPageData}}"
+          request="{{_request}}"
+          result="{{_result}}"
+          stdout="{{_stdout}}"
+          task_exists="{{_task_exists}}">
+        </task-page-data>
+
+        <div class="horizontal layout wrap">
+          <div class="left flex">
+            <div class="horizontal layout">
+              <paper-input class="id_input" label="Task id" value="{{task_id}}"></paper-input>
+              <button on-click="_refresh">
+                <iron-icon class="refresh" icon="icons:refresh"></iron-icon>
+              </button>
+              <button on-click="_promptRetry"
+                  title="Retry this task. Dimensions can be altered before task is sent.">
+                Retry
+              </button>
+              <button on-click="_promptDebug"
+                  title="Send a request to reserve a machine like the one that ran this task.">
+                Debug
+              </button>
+              <template is="dom-if" if="[[_canCancelTask(_result)]]">
+                <button on-click="_promptCancel"
+                    disabled$="[[!_permissions.cancel_task]]"
+                    title="[[_cancelTaskText(_permissions,_profile)]]">
+                  [[_cancelOrKill(_result)]]
+                </button>
+              </template>
+            </div>
+            <h2 hidden$="[[_task_exists]]">Task not found.</h2>
+
+            <template is="dom-if" if="[[_disambiguate(task_id,_result)]]">
+              <h2>Displaying a summary for a task with multiple tries</h2>
+              <task-disambiguation
+                busy="{{_busyTaskDisambiguation}}"
+                auth_headers="[[_auth_headers]]"
+                task_id="[[task_id]]"
+                summary_result="[[_result]]">
+              </task-disambiguation>
+            </template>
+
+            <template is="dom-if" if="[[_hasMultipleSlices(_request.task_slices)]]">
+              <paper-tabs class="slice-tabs" selected="{{_currentSliceIdx}}" no-bar>
+                <template is="dom-repeat" items="[[_request.task_slices]]" indexAs="index">
+                  <paper-tab>Task Slice [[_add(index,1)]]</paper-tab>
+                </template>
+              </paper-tabs>
+            </template>
+
+            <table class$="task-info [[_activeSliceClass(_result.current_task_slice, _currentSliceIdx)]]"
+                hidden$="[[_not(_task_exists)]]">
+              <tbody>
+                <tr>
+                  <td>Name</td>
+                  <td>[[_request.name]]</td>
+                </tr>
+                <tr>
+                  <td>State</td>
+                  <template is="dom-if" if="[[_isActiveSlice(_result.current_task_slice, _currentSliceIdx)]]">
+                    <td class$="[[_stateClass(_result)]]">[[state(_result)]]</td>
+                  </template>
+                  <template is="dom-if" if="[[!_isActiveSlice(_result.current_task_slice, _currentSliceIdx)]]">
+                    <td>THIS SLICE DID NOT RUN. Select another slice above.</td>
+                  </template>
+                </tr>
+
+                <tr>
+                  <td>
+                    <template is="dom-if" if="[[_eq(_result.state,'PENDING')]]">
+                      <b>Why Pending?</b>
+                    </template>
+                    <template is="dom-if" if="[[_neq(_result.state,'PENDING')]]">
+                      Fleet Capacity
+                    </template>
+                  </td>
+                  <td>
+                    <span class$="[[_it(_bots_count.count)]]">[[_bots_count.count]]</span>
+                    <a
+                        title="The list of bots that matches the list of dimensions"
+                        href$="[[_botListLink(_currentSlice.properties.dimensions)]]">bots</a>
+                    could possibly run this task
+                    (<span class$="[[_it(_bots_count.busy)]]">[[_bots_count.busy]]</span>
+                    busy,
+                    <span class$="[[_it(_bots_count.dead)]]">[[_bots_count.dead]]</span>
+                    dead,
+                    <span class$="[[_it(_bots_count.quarantined)]]">[[_bots_count.quarantined]]</span>
+                    quarantined,
+                    <span class$="[[_it(_bots_count.maintenance)]]">[[_bots_count.maintenance]]</span>
+                    maintenance)
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>
+                    Similar Load
+                  </td>
+                  <td>
+                    <span class$="[[_it(_other_pending.count)]]">[[_other_pending.count]]</span>
+                    <a
+                      title="The list of pending tasks that matches the list of dimensions"
+                      href$='[[_taskListLink(_currentSlice.properties.dimensions,"","state:PENDING")]]'>similar pending tasks</a>,
+                    <span class$="[[_it(_other_running.count)]]">[[_other_running.count]]</span>
+                    <a
+                      title="The list of running tasks that matches the list of dimensions"
+                      href$='[[_taskListLink(_currentSlice.properties.dimensions,"","state:RUNNING")]]'>similar running tasks</a>
+                  </td>
+                </tr>
+
+                <template is="dom-if" if="[[_result.deduped_from]]">
+                  <tr class="highlighted">
+                    <td><b>Deduped from</b></td>
+                    <td>
+                      <a href$="[[_taskLink(_result.deduped_from)]]">
+                        [[_result.deduped_from]]
+                      </a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Deduped on</td>
+                    <td title$="[[_request.created_ts]]">[[_request.human_created_ts]]</td>
+                  </tr>
+                </template>
+                <tr>
+                  <td>Priority</td>
+                  <td>[[_request.priority]]</td>
+                </tr>
+                <tr>
+                  <td>Wait for Capacity</td>
+                  <td>[[_currentSlice.wait_for_capacity]]</td>
+                </tr>
+                <tr>
+                  <td>Slice Expires</td>
+                  <td>[[_expires(_request, _currentSliceIdx)]]</td>
+                </tr>
+                <tr>
+                  <td>User</td>
+                  <td>[[_request.user]]</td>
+                </tr>
+                <tr>
+                  <td>Authenticated</td>
+                  <td>[[_request.authenticated]]</td>
+                </tr>
+                <template is="dom-if" if="[[_request.service_account]]">
+                  <tr>
+                    <td>Service Account</td>
+                    <td>[[_request.service_account]]</td>
+                  </tr>
+                </template>
+                <template is="dom-if" if="[[_currentSlice.properties.secret_bytes]]">
+                  <tr>
+                    <td>Has Secret Bytes</td>
+                    <td title="The secret bytes on present on the machine, but not in the UI/API">true</td>
+                  </tr>
+                </template>
+                <template is="dom-if" if="[[_request.parent_task_id]]">
+                  <tr>
+                    <td>Parent Task</td>
+                    <td>
+                      <a href$="[[_taskLink(_request.parent_task_id)]]">[[_request.parent_task_id]]</a>
+                    </td>
+                  </tr>
+                </template>
+                <tr>
+                  <td rowspan$="[[_rowspan(_currentSlice.properties.dimensions)]]">
+                    Dimensions <br/>
+                    <a
+                        title="The list of bots that matches the list of dimensions"
+                        href$="[[_botListLink(_currentSlice.properties.dimensions)]]">Bots</a>
+                     <a
+                        title="The list of tasks that matches the list of dimensions"
+                        href$="[[_taskListLink(_currentSlice.properties.dimensions)]]">Tasks</a>
+                  </td>
+                </tr>
+                <template is="dom-repeat" items="[[_currentSlice.properties.dimensions]]" as="dimension">
+                  <tr>
+                    <td><b>[[dimension.key]]:</b> [[_aliasRequest(dimension)]]</td>
+                  </tr>
+                </template>
+                <tr>
+                  <td>Isolated Inputs</td>
+                  <td>
+                    <a href$="[[_isolateLink(_currentSlice.properties.inputs_ref)]]">
+                      [[_currentSlice.properties.inputs_ref.isolated]]
+                    </a>
+                  </td>
+                </tr>
+                <template is="dom-if" if="[[_currentSlice.properties.outputs.length]]">
+                  <tr>
+                    <td rowspan$="[[_rowspan(_currentSlice.properties.outputs)]]">Expected outputs</td>
+                  </tr>
+                  <template is="dom-repeat" items="[[_currentSlice.properties.outputs]]" as="output">
+                    <tr>
+                      <td>[[output]]</td>
+                    </tr>
+                  </template>
+                </template>
+                <tr hidden$="[[!_commitText(_request)]]">
+                  <td>Associated Commit</td>
+                  <td>
+                    <a href$="[[_commitLink(_request)]]">
+                      [[_commitText(_request)]]
+                    </a>
+                  </td>
+                </tr>
+                <template is="dom-if" if="[[_not(_request_detail)]]">
+                  <tr>
+                    <td>More Details</td>
+                    <td>
+                      <button on-click="_toggleDetails">
+                        <iron-icon icon="icons:add-circle-outline"></iron-icon>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+                <template is="dom-if" if="[[_request_detail]]">
+                  <tr>
+                    <td>Hide Details</td>
+                    <td>
+                      <button on-click="_toggleDetails">
+                        <iron-icon icon="icons:remove-circle-outline"></iron-icon>
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+              <tbody id="more_details" hidden$="[[!_request_detail]]">
+                <tr>
+                  <td>Extra Args</td>
+                  <td class="code break-all">[[_extraArgs(_currentSlice.properties)]]</td>
+                </tr>
+                <tr>
+                  <td>Command</td>
+                  <td class="code break-all">[[_command(_currentSlice.properties)]]</td>
+                </tr>
+                <tr>
+                  <td rowspan$="[[_rowspan(_currentSlice.properties.env)]]">Environment Vars</td>
+                </tr>
+                <template is="dom-repeat" items="[[_currentSlice.properties.env]]" as="env">
+                  <tr>
+                    <td class="break-all">[[env.key]]=[[env.value]]</td>
+                  </tr>
+                </template>
+                <tr>
+                  <td
+                    rowspan$="[[_rowspan(_currentSlice.properties.env_prefixes)]]">Environment Prefixes</td>
+                </tr>
+                <template is="dom-repeat" items="[[_currentSlice.properties.env_prefixes]]" as="env">
+                  <tr>
+                    <td class="break-all">[[env.key]]=[[[env.value]]]</td>
+                  </tr>
+                </template>
+                <tr>
+                  <td>Idempotent</td>
+                  <td>[[_currentSlice.properties.idempotent]]</td>
+                </tr>
+                <tr>
+                  <td rowspan$="[[_rowspan(_request.tags)]]">Tags</td>
+                </tr>
+                <template is="dom-repeat" items="{{_request.tags}}" as="tag">
+                  <tr>
+                    <td class="break-all">[[tag]]</td>
+                  </tr>
+                </template>
+
+                <tr>
+                  <td>Execution timeout</td>
+                  <td>[[_humanDuration(_currentSlice.properties.execution_timeout_secs)]]</td>
+                </tr>
+                <tr>
+                  <td>I/O timeout</td>
+                  <td>[[_humanDuration(_currentSlice.properties.io_timeout_secs)]]</td>
+                </tr>
+                <tr>
+                  <td>Grace period</td>
+                  <td>[[_humanDuration(_currentSlice.properties.grace_period_secs)]]</td>
+                </tr>
+
+                <tr>
+                  <td>CIPD server</td>
+                  <td>
+                    <a href$="[[_currentSlice.properties.cipd_input.server]]">
+                      [[_currentSlice.properties.cipd_input.server]]
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td>CIPD version</td>
+                  <td class="break-all">[[_currentSlice.properties.cipd_input.client_package.version]]</td>
+                </tr>
+                <template is="dom-if" if="[[_wasPickedUp(_result)]]">
+                  <tr>
+                    <td>CIPD package name</td>
+                    <td>[[_result.cipd_pins.client_package.package_name]]</td>
+                  </tr>
+                </template>
+
+                <tr hidden$="[[_not(_currentSlice.properties.cipd_input)]]">
+                  <td rowspan$="[[_cipdRowspan(_currentSlice.properties,_result)]]">CIPD packages</td>
+                </tr>
+                <template is="dom-repeat" items="[[_cipdPackages(_currentSlice.properties,_result)]]" as="cipd">
+                  <tr>
+                    <td>[[cipd.path]]/</td>
+                  </tr>
+                  <tr>
+                    <td class="break-all">
+                      <span class="cipd-header">Requested: </span>[[cipd.requested]]
+                    </td>
+                  </tr>
+                  <tr hidden$="[[!_hasActualCIPDPackages(_result)]]">
+                    <td class="break-all">
+                      <span class="cipd-header">Actual: </span>
+                      <a href$="[[_cipdLink(cipd.actual, _currentSlice.properties.cipd_input.server)]]"
+                         target="_blank" rel="noopener">
+                        [[cipd.actual]]
+                      </a>
+                    </td>
+                  </tr>
+                </template>
+
+                <tr hidden$="[[_empty(_currentSlice.properties.caches)]]">
+                  <td rowspan$="[[_rowspan(_currentSlice.properties.caches)]]">Named caches</td>
+                </tr>
+                <template is="dom-repeat" items="[[_currentSlice.properties.caches]]" as="cache">
+                  <tr>
+                    <td><span>[[cache.name]]</span>:<span>[[cache.path]]</span></td>
+                  </tr>
+                </template>
+
+              </tbody>
+            </table>
+
+            <div class="title" hidden$="[[!_deduped(_task_exists,_result)]]">Task Timing Information</div>
+            <div class="horizontal layout wrap" hidden$="[[!_deduped(_task_exists,_result)]]">
+              <div class="left flex">
+                <table class="task-info">
+                  <tbody>
+                    <tr>
+                      <td>Created</td>
+                      <td title$="[[_request.created_ts]]">[[_request.human_created_ts]]</td>
+                    </tr>
+                    <template is="dom-if" if="[[_wasPickedUp(_result)]]">
+                      <tr>
+                        <td>Started</td>
+                        <td title$="[[_result.started_ts]]">[[_result.human_started_ts]]</td>
+                      </tr>
+                    </template>
+                    <tr>
+                      <td>Expires</td>
+                      <td>[[_expires(_request, -1)]]</td>
+                    </tr>
+                    <template is="dom-if" if="[[_result.human_completed_ts]]">
+                      <tr>
+                        <td>Completed</td>
+                        <td title$="[[_result.completed_ts]]">[[_result.human_completed_ts]]</td>
+                      </tr>
+                    </template>
+                    <template is="dom-if" if="[[_result.human_abandoned_ts]]">
+                      <tr>
+                        <td>Abandoned</td>
+                        <td title$="[[_result.abandoned_ts]]">[[_result.human_abandoned_ts]]</td>
+                      </tr>
+                    </template>
+                    <tr>
+                      <td>Last updated</td>
+                      <td title$="[[_result.modified_ts]]">[[_result.human_modified_ts]]</td>
+                    </tr>
+                    <tr>
+                      <td>Pending Time</td>
+                      <td class="pending">[[_result.human_pending]]</td>
+                    </tr>
+                    <tr>
+                      <td>Total Overhead</td>
+                      <td class="overhead">[[_humanDuration(_result.performance_stats.bot_overhead)]]</td>
+                    </tr>
+                    <tr>
+                      <td>Running Time</td>
+                      <td class="running" title="An asterisk indicates the task is still running and thus the time is dynamic.">[[_result.human_duration]]</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="right flex chart">
+                <stacked-time-chart
+                  labels='["Pending", "Overhead", "Running", "Overhead"]'
+                  colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+                  values='[[_durationChart(_result, _result.*)]]'>
+                </stacked-time-chart>
+              </div>
+            </div>
+
+            <div class="title" hidden$="[[!_deduped(_task_exists,_result)]]">Task Execution</div>
+            <template is="dom-if" if="[[_wasPickedUp(_result)]]">
+              <table hidden$="[[!_deduped(_task_exists,_result)]]">
+                <tr>
+                  <td>Bot assigned to task</td>
+                  <td><a href$="[[_botLink(_result.bot_id)]]">[[_result.bot_id]]</td>
+                </tr>
+                <tr>
+                  <td rowspan$="[[_rowspan(_result.bot_dimensions)]]">
+                    Bot Dimensions
+                  </td>
+                </tr>
+                <template is="dom-repeat" items="[[_result.bot_dimensions]]" as="dimension">
+                  <tr>
+                    <td bgcolor$="[[_highlight(_currentSlice.properties.dimensions, dimension.key)]]">
+                      <b>[[dimension.key]]:</b>
+                      <template
+                        is="dom-repeat"
+                        items="[[_aliasResult(_currentSlice.properties.dimensions, dimension)]]"
+                        as="value">
+                        <span class$="break-all [[value.class]] dim">[[value.name]]</span>
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+
+                <tr>
+                  <td>Exit code</td>
+                  <td>[[_result.exit_code]]</td>
+                </tr>
+                <tr>
+                  <td>Try number</td>
+                  <td>[[_result.try_number]]</td>
+                </tr>
+                <tr>
+                  <td>Failure</td>
+                  <td class$="[[_failureClass(_result.failure)]]">[[_result.failure]]</td>
+                </tr>
+                <tr>
+                  <td>Internal Failure</td>
+                  <td class$="[[_internalClass(_result.internal_failure)]]">[[_result.internal_failure]]</td>
+                </tr>
+                <tr>
+                  <td>Cost (USD)</td>
+                  <td>$[[_cost(_result)]]</td>
+                </tr>
+                <tr>
+                  <td>Isolated Outputs</td>
+                  <td>
+                    <a href$="[[_isolateLink(_result.outputs_ref)]]">
+                      [[_result.outputs_ref.isolated]]
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Bot version</td>
+                  <td>[[_result.bot_version]]</td>
+                </tr>
+                <tr>
+                  <td>Server version</td>
+                  <td>[[_result.server_versions]]</td>
+                </tr>
+              </table>
+            </template>
+            <template is="dom-if" if="[[_canExpire(_result)]]">
+              This space left blank until a bot is assigned to the task.
+            </template>
+
+            <template is="dom-if" if="[[_result.performance_stats]]">
+              <div class="title">Performance Stats</div>
+              <table>
+                <tr>
+                  <td title="This includes time taken to download inputs, isolate outputs, and setup CIPD">Total Overhead</td>
+                  <td>[[_humanDuration(_result.performance_stats.bot_overhead)]]</td>
+                </tr>
+                <tr>
+                  <td>Downloading Inputs From Isolate</td>
+                  <td>[[_humanDuration(_result.performance_stats.isolated_download.duration)]]</td>
+                </tr>
+                <tr>
+                  <td>Uploading Outputs To Isolate</td>
+                  <td>[[_humanDuration(_result.performance_stats.isolated_upload.duration)]]</td>
+                </tr>
+                <tr hidden$="[[!_result.performance_stats.isolated_download.initial_size]]">
+                  <td>Initial bot cache</td>
+                  <td>[[_result.performance_stats.isolated_download.initial_number_items]] items;
+                  [[_bytes(_result.performance_stats.isolated_download.initial_size)]]</td>
+                </tr>
+                <tr>
+                  <td>Downloaded Cold Items</td>
+                  <td>[[_result.performance_stats.isolated_download.num_items_cold]] items;
+                  [[_bytes(_result.performance_stats.isolated_download.total_bytes_items_cold)]]</td>
+                </tr>
+                <tr>
+                  <td>Downloaded Hot Items</td>
+                  <td>[[_result.performance_stats.isolated_download.num_items_hot]] items;
+                  [[_bytes(_result.performance_stats.isolated_download.total_bytes_items_hot)]]</td>
+                </tr>
+                <tr>
+                  <td>Uploaded Cold Items</td>
+                  <td>[[_result.performance_stats.isolated_upload.num_items_cold]] items;
+                  [[_bytes(_result.performance_stats.isolated_upload.total_bytes_items_cold)]]</td>
+                </tr>
+                <tr>
+                  <td>Uploaded Hot Items</td>
+                  <td>[[_result.performance_stats.isolated_upload.num_items_hot]] items;
+                  [[_bytes(_result.performance_stats.isolated_upload.total_bytes_items_hot)]]</td>
+                </tr>
+              </table>
+            </template>
+
+            <template is="dom-if" if="[[_result.deduped_from]]">
+              <div class="title">Task was Deduplicated</div>
+
+              <p>This task was deduplicated from task
+                <a href$="[[_taskLink(_result.deduped_from)]]">[[_result.deduped_from]]</a>.
+                For more information on deduplication, see <a href="https://chromium.googlesource.com/infra/luci/luci-py/+/master/appengine/swarming/doc/Detailed-Design.md#task-deduplication">
+                the docs</a>.
+              </p>
+
+              <br>
+            </template>
+
+            <div hidden$="[[_not(_task_exists)]]">
+              <div class="title">Reproducing the task locally</div>
+              <div class="reproduce">
+                <div hidden$="[[_hasNoIsolated(_currentSlice.properties)]]">Download inputs files into directory <i>foo</i>:</div>
+                <div class="code bottom_space" hidden$="[[_hasNoIsolated(_currentSlice.properties)]]">
+                  # (if needed) git clone https://chromium.googlesource.com/infra/luci/client-py<br>
+                  python ./client-py/isolateserver.py download -I [[_currentSlice.properties.inputs_ref.isolatedserver]] --namespace [[_currentSlice.properties.inputs_ref.namespace]]
+                  -s [[_currentSlice.properties.inputs_ref.isolated]] --target foo
+                </div>
+
+                <div>Run this task locally:</div>
+                <div class="code bottom_space">
+                  # (if needed) git clone https://chromium.googlesource.com/infra/luci/client-py<br>
+                  python ./client-py/swarming.py reproduce -S [[_host_url]] [[task_id]]
+                </div>
+
+                <div>Download output results into directory <i>foo</i>:</div>
+                <div class="code bottom_space">
+                  # (if needed) git clone https://chromium.googlesource.com/infra/luci/client-py<br>
+                  python ./client-py/swarming.py collect -S [[_host_url]] --task-output-dir=foo [[task_id]]
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <div class$="flex right [[_classRight(_wide_logs)]]" hidden$="[[_not(_task_exists)]]">
+            <div class="horizontal layout">
+              <div class="tabs">
+                <paper-tabs selected="{{_show_raw}}" no-bar>
+                  <paper-tab disabled$="[[_noMilo(_request)]]">
+                    <a id="milolink" href$="[[_getDisplayServerLink(_server_details.display_server_url_template,task_id,_request)]]" target="_blank" rel="noopener">
+                      Milo Output
+                    </a>
+                  </paper-tab>
+                  <paper-tab>Raw Output</paper-tab>
+                </paper-tabs>
+              </div>
+
+              <paper-input
+                class="refresh_input"
+                label="Refresh Interval (seconds)"
+                value="{{_refresh_interval}}"
+                title="How often to refresh all information about the task"
+                auto-validate
+                min="1"
+                max="1000"
+                pattern="[0-9]+">
+              </paper-input>
+
+              <div class="full-width-container">
+                <paper-checkbox checked="{{_wide_logs}}">
+                    Full Width Logs
+                </paper-checkbox>
+              </div>
+
+            </div>
+
+            <template is="dom-if" if="[[_supportsMilo(_request,_show_raw)]]">
+              <div class="milo tabbed" hidden$="[[_isSummaryLink(task_id)]]">
+                Milo results are only generated for task summaries, that is, tasks whose ids end in 0.  Tasks ending in 1 or 2 represent possible retries of tasks.  See <a href="//goo.gl/LE4rwV">the docs</a> for more.
+              </div>
+              <iframe id="miloFrame" class="milo tabbed" src$="[[_getDisplayServerLink(_server_details.display_server_url_template,task_id,_request)]]"></iframe>
+            </template>
+            <template is="dom-if" if="[[_show_raw]]">
+              <div class$="code stdout tabbed break-all [[_classStdout(_wide_logs)]]">[[_rawOutput(_stdout,_result)]]</div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </swarming-app>
+
+    <paper-dialog id="prompt" modal on-iron-overlay-closed="_promptClosed">
+      <h2>Are you sure?</h2>
+      <div>Are you sure you want to [[_dialog_prompt]]?</div>
+      <div class="buttons">
+        <paper-button dialog-dismiss autofocus>No</paper-button>
+        <paper-button dialog-confirm>Yes</paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog id="retry_task" modal on-iron-overlay-closed="_retryClosed">
+      <task-retry-prompt id="retry_task_prompt"
+        task_id="[[task_id]]"
+        task_dimensions="{{_retry_dimensions}}">
+      </task-retry-prompt>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm>OK</paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog id="debug_task" modal on-iron-overlay-closed="_debugClosed">
+      <task-retry-prompt id="debug_task_prompt"
+        is_debug_task
+        lease_duration="{{_lease_duration}}"
+        task_id="[[task_id]]"
+        task_dimensions="{{_retry_dimensions}}"
+        task_use_same_bot="{{_use_same_bot}}">
+      </task-retry-prompt>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm>OK</paper-button>
+      </div>
+    </paper-dialog>
+
+    <interval-timer period="[[_refresh_interval]]" on-trigger="_softRefresh">
+    </interval-timer>
+
+  </template>
+  <script>
+  (function(){
+    Polymer({
+      is: 'task-page',
+
+      behaviors: [
+          SwarmingBehaviors.CommonBehavior,
+          SwarmingBehaviors.TaskBehavior,
+      ],
+
+      properties: {
+        task_id: {
+          type: String,
+        },
+        client_id: {
+          type: String,
+        },
+
+        _auth_headers: {
+          type: Object,
+        },
+        _bots_count: {
+          type: Object,
+          value: function() {
+            return {
+              busy: "<counting>",
+              count: "<counting>",
+              dead: "<counting>",
+              quarantined: "<counting>",
+              maintenance: "<counting>",
+            };
+          },
+        },
+        _busyPageData: {
+          type: Boolean,
+          value: false,
+        },
+        _busyTaskDisambiguation: {
+          type: Boolean,
+          value: false,
+        },
+        _busyRunningCount: {
+          type: Boolean,
+          value: false,
+        },
+        _busyPendingCount: {
+          type: Boolean,
+          value: false,
+        },
+        _busyBotCount: {
+          type: Boolean,
+          value: false,
+        },
+        _currentSlice: {
+          type: Object,
+          computed: "_getCurrSlice(_request,_currentSliceIdx)",
+        },
+        _currentSliceIdx: {
+          type: Number,
+          value: 0,
+        },
+        _dialog_prompt: {
+          type: String,
+          value: "",
+        },
+        _lease_duration: {
+          type: String,
+          value: "4h",
+        },
+        _host_url: {
+          type: String,
+          value: function() {
+            return window.location.hostname;
+          }
+        },
+        _other_pending: {
+          type: Object,
+          value: function(){
+            return {count: "<counting>"};
+          }
+        },
+        _other_running: {
+          type: Object,
+          value: function(){
+            return {count: "<counting>"};
+          }
+        },
+        _refresh_interval: {
+          type: Number,
+        },
+        _request: {
+          type: Object,
+          observer: "_requestUpdated",
+        },
+        _request_detail: {
+          type: Boolean,
+        },
+        _result: {
+          type: Object,
+          observer: "_resultUpdated",
+        },
+        _retry_dimensions: {
+          type: Array,
+        },
+        _server_details: {
+          type: Object,
+        },
+        _stdout: {
+          type: String,
+        },
+        _use_same_bot: {
+          type: Boolean,
+        },
+      },
+
+      observers: [
+        "_similarLoad(_currentSlice,_result,_auth_headers)"],
+
+      _activeSliceClass: function(activeSliceIdx, currentSliceIdx) {
+        if (this._isActiveSlice(activeSliceIdx, currentSliceIdx)) {
+          return "active";
+        }
+        return "inactive";
+      },
+
+      _isActiveSlice: function(activeSliceIdx, currentSliceIdx) {
+        // Intentionally use == here to allow for string -> int comparison.
+        return activeSliceIdx == currentSliceIdx;
+      },
+
+      _add: function(n, m) {
+        return n + m;
+      },
+
+      _aliasRequest: function(request) {
+        var values = request.value;
+        if (!Array.isArray(values)) {
+          values = [values];
+        }
+        if (swarming.alias.has(request.key)) {
+          values.forEach(function(v, i) {
+            values[i] = swarming.alias.apply(v, request.key);
+          });
+        }
+        return values.join(" | ");
+      },
+
+      _aliasResult: function(requested_dims, bot_dim) {
+        // requested_dims is the entire _currentSlice.properties.dimensions array, but we
+        // are only passed in one key at a time from _result.bot_dimensions as the
+        // bot_dim variable. Therefore we need to loop through the key-value pairs
+        // of requested_dims to determine whether the current bot dimension was
+        // requested.
+        var boldMap = [];
+        var target = null;
+        requested_dims.forEach(function(dim, i) {
+          if (dim.key === bot_dim.key) {
+            target = i;
+          }
+        });
+        var values = bot_dim.value;
+        if (!Array.isArray(values)) {
+          values = [values];
+        }
+        values.forEach(function(v, i) {
+          // Adjust the proper alias, if necessary
+          if (swarming.alias.has(bot_dim.key)) {
+            values[i] = swarming.alias.apply(v, bot_dim.key);
+          }
+          // Set class attribute to bolded if the value was included in the
+          // requested dimensions
+          var bold = "";
+          if (target != null && requested_dims[target].value === v) {
+            bold = "bolded";
+          }
+          boldMap.push({"name": values[i], "class": bold});
+        });
+
+        // Return an array of objects that map each value to its corresponding
+        // class name based on whether it should be bolded.
+        return boldMap;
+      },
+
+      _bytes: function(sizeInBytes) {
+        if (!sizeInBytes) {
+          return "0 B";
+        }
+        return sk.human.bytes(sizeInBytes);
+      },
+
+      _canCancelTask: function(result) {
+        return result && (result.state === "PENDING" || result.state === "RUNNING");
+      },
+
+      _cancelOrKill: function(result) {
+        if (result.state === "PENDING") {
+          return "Cancel";
+        } else if (result.state === "RUNNING") {
+          return "Kill";
+        }
+        return "";
+      },
+
+      _cancelTaskText: function(permissions, profile){
+        if (permissions.cancel_task) {
+          return "Cancel a pending task. Running tasks can not (yet) be canceled."
+        }
+        return profile.email +" does not have cancel_task permissions. Log in as a different profile that does.";
+      },
+
+      _cancelTask: function() {
+        var url = "/_ah/api/swarming/v1/task/" + this.task_id +"/cancel";
+        var body = {};
+        if (this._result.state === "RUNNING") {
+          body.kill_running = true;
+        }
+        swarming.postWithToast(url, "Canceling task " + this.task_id, this._auth_headers, body);
+      },
+
+      _cipdLink: function(actualStr, server) {
+        // actualStr looks like infra/python/cpython/windows-amd64:1ba7...
+        if (!actualStr || !server) {
+          return undefined;
+        }
+        var splits = actualStr.split(":");
+        if (splits.length !== 2) {
+          return undefined;
+        }
+        var pkg = splits[0];
+        var version = splits[1];
+        return server + "/p/" + pkg + "/+/" + version;
+      },
+
+      _cipdRowspan: function(properties, result) {
+        if (!properties || !properties.cipd_input) {
+          return 0;
+        }
+        // We always need to at least double the number of packages because we
+        // show the path and then the requested.  If the actual package info
+        // is available, we triple the number of packages to account for that.
+        var rowSpan = (properties.cipd_input.packages || []).length;
+        if (this._hasActualCIPDPackages(result)) {
+          rowSpan *= 3;
+        } else {
+          rowSpan *= 2;
+        }
+        // Add one because rowSpan counts from 1.
+        return rowSpan + 1;
+      },
+
+      _cipdPackages: function(properties, result) {
+        if (!properties || !properties.cipd_input) {
+          return [];
+        }
+        var packages = properties.cipd_input.packages || [];
+        var actual = (result && result.cipd_pins && result.cipd_pins.packages) || [];
+        packages.forEach(function(p, i) {
+          p.requested = p.package_name + ":" + p.version;
+          // This makes the key assumption that the actual cipd array is in the same order
+          // as the requested one. Otherwise, there's no easy way to match them up, because
+          // of the wildcards (e.g. requested is foo/${platform} and actual is foo/linux-amd64)
+          if (actual[i]) {
+            p.actual = actual[i].package_name + ":" + actual[i].version;
+          }
+        });
+        return packages;
+      },
+
+      _classRight: function(wide_logs) {
+        if (wide_logs) {
+          return "full-width";
+        }
+        return "";
+      },
+
+      _classStdout: function(wide_logs) {
+         if (wide_logs) {
+          return "wide";
+        }
+        return "";
+      },
+
+      _command: function(properties) {
+        if (!properties) {
+          return "";
+        }
+        var args = properties.command || [];
+        return args.join(" ");
+      },
+
+      _commitText: function(request) {
+        var rev = this._tag(request, "source_revision");
+        if (rev) {
+          return rev.substring(0, 12);
+        }
+      },
+
+      _commitLink: function(request) {
+        var rev = this._tag(request, "source_revision");
+        var url = this._tag(request, "source_repo");
+        if (rev && url) {
+          return url.replace("%s", rev);
+        }
+      },
+
+      _cost: function(result) {
+        if (!result || !result.costs_usd || !result.costs_usd.length) {
+          return 0;
+        }
+        return result.costs_usd[0].toFixed(4);
+      },
+
+      _deduped: function(exists, result) {
+        return exists && !result.deduped_from;
+      },
+
+      _disambiguate: function(taskId, result) {
+        if (!taskId.endsWith("0") || !result) {
+          return false;
+        }
+        return result.try_number > 1;
+      },
+
+      _durationChart: function(result) {
+        var oneDecimalPlace = function(a) {
+          if (!a) {
+            return 0.0;
+          }
+          return Math.round(a * 10)/10;
+        }
+        var preOverhead = 0;
+        var postOverhead = 0;
+        // These are only put in upon task completion.
+        if (result.performance_stats) {
+          postOverhead = (result.performance_stats.isolated_upload &&
+                          result.performance_stats.isolated_upload.duration) || 0;
+          // We only know the certain timings of isolating. To get
+          // close enough (tm) overhead timings, we assume CIPD is the only
+          // other source of overhead and all of CIPD's overhead is done pre-task.
+          preOverhead = result.performance_stats.bot_overhead - postOverhead;
+        }
+        return [result.pending, preOverhead,
+               result.duration, postOverhead].map(oneDecimalPlace);
+      },
+
+      _empty: function(array) {
+        return !array || array.length == 0;
+      },
+
+      _eq: function(a,b) {
+        return a === b;
+      },
+
+      _expires: function(request, currentSlice) {
+        var delta = 0;
+        if (currentSlice < 0) {
+          // magic number for "show all"
+          currentSlice = request.task_slices && (request.task_slices.length - 1);
+        }
+        for (var i = 0; i <= currentSlice; i++) {
+          delta += parseInt(request.task_slices[i].expiration_secs);
+        }
+        if (delta) {
+          return sk.human.localeTime(new Date(request.created_ts.getTime() + delta * 1000));
+        }
+        // Fall back to something
+        return request.expiration_secs + " seconds from created time";
+      },
+
+      _extraArgs: function(properties) {
+        if (!properties) {
+          return "";
+        }
+        return (properties.extra_args || []).join(" ");
+      },
+
+      _failureClass: function(failure) {
+        if (failure) {
+          return "failed_task";
+        }
+        return "";
+      },
+
+      _getCurrSlice: function(request, sliceIdx) {
+        if (!request || !request.task_slices) {
+          return {};
+        }
+        return request.task_slices[sliceIdx || 0];
+      },
+
+      _getDisplayServerLink: function(milo_template, id, request) {
+        var logs = this._tag(request, "log_location");
+        var miloHost = this._tag(request, "milo_host");
+        if (logs && miloHost) {
+          logs = logs.replace("logdog://", "");
+          return miloHost.replace("%s", logs);
+        }
+        if (!milo_template) {
+          return undefined;
+        }
+        return milo_template.replace("%s", id);
+      },
+
+      _hasActualCIPDPackages: function(result) {
+        return result && result.cipd_pins && result.cipd_pins.packages;
+      },
+
+      _hasMultipleSlices: function(task_slices) {
+        return task_slices && task_slices.length > 1;
+      },
+
+      _hasNoIsolated: function(props) {
+        return !(props && props.inputs_ref && props.inputs_ref.isolated);
+      },
+
+      _highlight: function(request, key) {
+        var highlight = false;
+        request.forEach(function (dim) {
+          if (dim.key == key) {
+            highlight = true;
+          }
+        });
+        return highlight ? "LightYellow" : "White";
+      },
+
+      _internalClass: function(failure) {
+        if (failure) {
+          return "exception";
+        }
+        return "";
+      },
+
+      _isolateLink: function(ref) {
+        if (!ref || !ref.isolatedserver) {
+          return undefined;
+        }
+        return ref.isolatedserver + "/browse?namespace="+ref.namespace +
+          "&hash=" + ref.isolated;
+      },
+
+      _isSummaryLink: function(taskId) {
+        return taskId && taskId.endsWith(0);
+      },
+
+      // makes text italic unless it's numbers (i.e. when loading)
+      _it: function(s) {
+        if (!s || (s[0] !== "<")) {
+          return "italic";
+        }
+        return "";
+      },
+
+      _neq: function(a,b) {
+        return a !== b;
+      },
+
+      _noMilo: function(request) {
+        return !(this._tag(request, "allow_milo") || this._tag(request, "luci_project"));
+      },
+
+      _promptClosed: function(e) {
+        if (e.detail.confirmed) {
+          this._cancelTask();
+        }
+      },
+
+      _promptCancel: function() {
+        var prompt = "cancel task "+this.task_id;
+        if (this._result.state === "RUNNING") {
+          prompt = "kill task "+this.task_id;
+        }
+        this.set("_dialog_prompt", prompt);
+        this.$.prompt.open();
+      },
+
+      _promptDebug: function() {
+        this.$.debug_task_prompt.setDimensions(this._currentSlice.properties.dimensions);
+        this.$.debug_task.open();
+      },
+
+      _debugClosed: function(e) {
+        if (!this._request) {
+          sk.errorMessage("Task not yet loaded", 3000);
+          return;
+        }
+        if (!e.detail.confirmed) {
+          return;
+        }
+        var newTask = {
+          expiration_secs: this._request.expiration_secs,
+          name: `leased to ${this._profile.email} for debugging`,
+          parent_task_id: this._request.parent_task_id,
+          priority: 20,
+          properties: this._currentSlice.properties,
+          service_account: this._request.service_account,
+          tags: ["debug_task:1"],
+          user: this._profile.email,
+        }
+        var leaseDuration = swarming.parseDuration(this._lease_duration);
+
+        newTask.properties.command = ["python", "-c", `import os, sys, time
+print 'Mapping task: ${location.origin}/task?id=${this._result.task_id}'
+print 'Files are mapped into: ' + os.getcwd()
+print ''
+print 'Bot id: ' + os.environ['SWARMING_BOT_ID']
+print 'Bot leased for: ${leaseDuration} seconds'
+print 'How to access this bot: http://go/swarming-ssh'
+print 'When done, reboot the host'
+sys.stdout.flush()
+time.sleep(${leaseDuration})`];
+        delete newTask.properties.extra_args;
+
+        newTask.properties.execution_timeout_secs = leaseDuration;
+        newTask.properties.io_timeout_secs = leaseDuration;
+        if (this._use_same_bot) {
+          newTask.properties.dimensions = [
+            {key: "id", value: this._getFirstResultDimension("id")},
+            {key: "pool", value: this._getFirstRequestDimension("pool")},
+          ];
+        } else {
+          newTask.properties.dimensions = this._retry_dimensions.filter(function(d){
+            return d && d.key && d.value;
+          });
+        }
+        this._newTask(newTask);
+      },
+
+      _promptRetry: function() {
+        this.$.retry_task_prompt.setDimensions(this._currentSlice.properties.dimensions);
+        this.$.retry_task.open();
+      },
+
+      _retryClosed: function(e) {
+        if (!this._request) {
+          sk.errorMessage("Task not yet loaded", 3000);
+          return;
+        }
+        if (!e.detail.confirmed) {
+          return;
+        }
+        var newTask = {
+          expiration_secs: this._request.expiration_secs,
+          name: this._request.name +" (retry)",
+          parent_task_id: this._request.parent_task_id,
+          priority: this._request.priority,
+          properties: this._currentSlice.properties,
+          service_account: this._request.service_account,
+          tags: this._request.tags,
+          user: this._profile.email,
+        }
+        newTask.tags.push("retry:1");
+        newTask.properties.dimensions = this._retry_dimensions.filter(function(d){
+          return d && d.key && d.value;
+        });
+        this._newTask(newTask);
+      },
+
+      // _newTask makes a request to the server to start a new task, given a request.
+      _newTask: function(newTask){
+        if (!newTask.properties.dimensions || !newTask.properties.dimensions.length) {
+          sk.errorMessage("Your retried task must specify dimensions", 5000);
+          return;
+        }
+        newTask.properties.idempotent = false;
+
+        console.log("New task has dimensions", newTask.properties.dimensions);
+        swarming.postWithToast("/_ah/api/swarming/v1/tasks/new", "Requesting new task",
+          this._auth_headers, newTask)
+        .then(function(response) {
+            response = JSON.parse(response);
+            if (response && response.task_id) {
+              var state = {id: this.task_id};
+              history.pushState(state, "Task Page");
+              this.set("task_id", response.task_id);
+            }
+          }.bind(this), function(err) {
+            console.log("Task could not be created", err);
+            var humanReadable = (err.error && err.error.message) || JSON.stringify(err);
+            humanReadable += " Perhaps you need to login to a different account?";
+            sk.errorMessage("Could not create new task. Error: "+ humanReadable, 15000);
+          }
+        );
+      },
+
+      _getFirstRequestDimension: function(key) {
+        var dimensions = this._currentSlice.properties.dimensions.filter(function (d) {
+          return d.key === key;
+        });
+        if (!dimensions.length) {
+          return null;
+        }
+        return dimensions[0].value;
+      },
+
+      _getFirstResultDimension: function(key) {
+        var dimensions = this._result.bot_dimensions.filter(function(d) {
+          return d.key === key;
+        });
+        if (!dimensions.length) {
+          return null;
+        }
+        var values = dimensions[0].value;
+        if (!values.length) {
+          return null;
+        }
+        return values[0];
+      },
+
+      _rawOutput: function(stdout, result) {
+        if (stdout) {
+          return stdout;
+        }
+        if (result.state === "PENDING" || result.state === "RUNNING") {
+          return "[No output yet]";
+        }
+        return "[No output received]";
+      },
+
+      _refresh: function() {
+        this.$.data.reload();
+        var miloFrame = this.$$("iframe")
+        if (miloFrame) {
+          var milo_templ = this._server_details.display_server_url_template;
+          miloFrame.src = this._getDisplayServerLink(milo_templ, this.task_id, this._request);
+        }
+      },
+
+      _requestUpdated: function(request) {
+        if (this._noMilo(request)) {
+          this.set("_show_raw", 1);
+        }
+      },
+
+      _resultUpdated: function(result) {
+        this.set("_currentSliceIdx", result.current_task_slice || 0);
+      },
+
+      _softRefresh: function() {
+        if (this._result && this._result.state !== "RUNNING" &&
+            this._result.state !==  "PENDING") {
+          return;
+        }
+        // Maintain the current slice index for soft-refreshes.
+        // See crbug.com/887616
+        var currindex = this._currentSliceIdx;
+        this._refresh();
+        this._currentSliceIdx = currindex;
+      },
+
+      _rowspan: function(dims) {
+        dims = dims || [];
+        return dims.length + 1;
+      },
+
+      _supportsMilo: function(request, showRaw) {
+        return !showRaw && request && !this._noMilo(request);
+      },
+
+      _toggleDetails: function() {
+        this.set("_request_detail", !this._request_detail);
+      },
+
+      _tag: function(request, col) {
+        if (!request || !request.tagMap) {
+          return undefined;
+        }
+        return request.tagMap[col];
+      },
+
+      _wasPickedUp: function(result) {
+        return result && result.state !== this.PENDING && result.state !== this.NO_RESOURCE &&
+              result.state !== this.CANCELED && result.state !== this.EXPIRED;
+      },
+
+      _canExpire: function(result) {
+        return result && !this._wasPickedUp(result) && result.state !== this.NO_RESOURCE;
+      },
+
+      _similarLoad: function() {
+        if (!this._currentSlice || !this._result || !this._auth_headers) {
+          return;
+        }
+        var currentSlice = this._currentSlice;
+        var request = this._request;
+        var botCountParams = {
+          dimensions: []
+        };
+        var dims = (currentSlice.properties && currentSlice.properties.dimensions) || [];
+        dims.forEach(function(d){
+          botCountParams.dimensions.push(`${d.key}:${d.value}`);
+        });
+        this._getJsonAsync("_bots_count", "/_ah/api/swarming/v1/bots/count", "_busyBotCount", this._auth_headers, botCountParams);
+
+        var start = new Date();
+        start.setSeconds(0);
+        // go back 24 hours, rounded to the nearest minute for better caching.
+        start = "" + (start.getTime() - 24*60*60*1000);
+        // convert to seconds, because that's what the API expects.
+        start = start.substring(0, start.length-3);
+
+        var taskCountParams = {
+          start: [start],
+          state: ["RUNNING"],
+          tags: botCountParams.dimensions,
+        };
+
+        this._getJsonAsync("_other_running", "/_ah/api/swarming/v1/tasks/count", "_busyRunningCount", this._auth_headers, taskCountParams);
+        // change running to pending
+        taskCountParams.state = ["PENDING"];
+        this._getJsonAsync("_other_pending", "/_ah/api/swarming/v1/tasks/count", "_busyPendingCount", this._auth_headers, taskCountParams);
+      }
+    });
+  })();
+  </script>
+</dom-module>

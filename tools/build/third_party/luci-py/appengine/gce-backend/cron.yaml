@@ -1,0 +1,55 @@
+cron:
+- url: /internal/cron/catalog-instances
+  schedule: every 1 minutes
+
+- url: /internal/cron/cleanup-entities
+  schedule: every 1 minutes
+
+- url: /internal/cron/create-disks
+  schedule: every 1 minutes
+
+- url: /internal/cron/create-instance-group-managers
+  schedule: every 1 minutes
+
+- url: /internal/cron/create-instance-templates
+  schedule: every 1 minutes
+
+- url: /internal/cron/delete-instance-group-managers
+  schedule: every 1 minutes
+
+- url: /internal/cron/delete-instances-pending-deletion
+  schedule: every 1 minutes
+
+- url: /internal/cron/delete-instance-templates
+  schedule: every 1 minutes
+
+- url: /internal/cron/fetch-instances
+  schedule: every 1 minutes
+
+- url: /internal/cron/fetch-snapshots
+  schedule: every 1 minutes
+
+- url: /internal/cron/import-config
+  schedule: every 1 minutes synchronized
+
+- url: /internal/cron/process-config
+  schedule: every 1 minutes
+
+- url: /internal/cron/remove-cataloged-instances
+  schedule: every 1 minutes
+
+- url: /internal/cron/resize-instance-groups
+  schedule: every 1 minutes
+
+- url: /internal/cron/update-cataloged-instances
+  schedule: every 1 minutes
+
+# External Handlers
+
+# components/config
+- url: /internal/cron/config/update
+  schedule: every 1 minutes
+
+# gae_ts_mon
+- url: /internal/cron/ts_mon/send
+  schedule: every 1 minutes

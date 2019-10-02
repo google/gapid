@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package google.devtools.remoteworkers.v1test2;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/field_mask.proto";
+import "status.proto";
+
+service Tasks {
+  rpc GetTask(GetTaskRequest) returns (Task) ;
+
+  rpc UpdateTaskResult(UpdateTaskResultRequest) returns (TaskResult) ;
+
+  rpc AddTaskLog(AddTaskLogRequest) returns (AddTaskLogResponse) ;
+}
+
+message Task {
+  string name = 1;
+
+  google.protobuf.Any description = 2;
+
+  map<string, string> logs = 3;
+}
+
+message TaskResult {
+  string name = 1;
+
+  bool complete = 2;
+
+  google.rpc.Status status = 3;
+
+  google.protobuf.Any output = 4;
+
+  google.protobuf.Any meta = 5;
+}
+
+message GetTaskRequest {
+  string name = 1;
+}
+
+message UpdateTaskResultRequest {
+  string name = 1;
+  TaskResult result = 2;
+  google.protobuf.FieldMask update_mask = 3;
+  string source = 4;
+}
+
+message AddTaskLogRequest {
+  string name = 1;
+  string log_id = 2;
+}
+
+message AddTaskLogResponse {
+  string handle = 1;
+}

@@ -1,0 +1,16 @@
+Name: underscore.js
+URL: https://github.com/jashkenas/underscore
+Version: 1.5.2
+Revision: 101c10a
+License: MIT
+
+Description:
+Underscore.js is a utility-belt library for JavaScript that provides support
+for the usual functional suspects (each, map, reduce, filter...) without
+extending any core JavaScript objects.
+
+Local Modifications:
+Only minified version kept.
+
+sourceMappingURL line is remove:
+- //# sourceMappingURL=underscore-min.map

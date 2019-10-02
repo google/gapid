@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!--
+      The full set of web components needed for any swarming app.
+      By making all apps use the same core, vulcanized file, we can better
+      use caching, as the one large file can be reused across sites.
+    -->
+    <link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+
+    <!-- List all the top-level elements here-->
+    <link rel="import" href="/res/imp/index/swarming-index.html" />
+    <link rel="import" href="/res/imp/botlist/bot-list.html" />
+    <link rel="import" href="/res/imp/tasklist/task-list.html" />
+    <link rel="import" href="/res/imp/botpage/bot-page.html" />
+    <link rel="import" href="/res/imp/taskpage/task-page.html" />
+</head>

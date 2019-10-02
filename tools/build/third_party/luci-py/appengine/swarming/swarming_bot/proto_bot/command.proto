@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package google.devtools.remoteworkers.v1test2;
+
+import "google/protobuf/duration.proto";
+
+
+
+message CommandTask {
+  message Inputs {
+    repeated string arguments = 1;
+
+    repeated Digest files = 2;
+
+    message EnvironmentVariable {
+      string name = 1;
+      string value = 2;
+    }
+    repeated EnvironmentVariable environment_variables = 3;
+  }
+  Inputs inputs = 1;
+
+  message Outputs {
+    repeated string files = 1;
+    repeated string directories = 2;
+  }
+  Outputs expected_outputs = 4;
+
+  message Timeouts {
+    google.protobuf.Duration execution = 1;
+
+    google.protobuf.Duration idle = 2;
+
+    google.protobuf.Duration shutdown = 3;
+  }
+  Timeouts timeouts = 5;
+}
+
+message CommandOutputs {
+  int32 exit_code = 1;
+
+  Digest outputs = 2;
+}
+
+message CommandOverhead {
+  google.protobuf.Duration duration = 1;
+
+  google.protobuf.Duration overhead = 2;
+}
+
+message FileMetadata {
+  string path = 1;
+
+  Digest digest = 2;
+
+  bytes contents = 3;
+
+  bool is_executable = 4;
+}
+
+message DirectoryMetadata {
+  string path = 1;
+
+  Digest digest = 2;
+}
+
+message Digest {
+  string hash = 1;
+
+  int64 size_bytes = 2;
+}
+
+message Directory {
+  repeated FileMetadata files = 1;
+
+  repeated DirectoryMetadata directories = 2;
+}

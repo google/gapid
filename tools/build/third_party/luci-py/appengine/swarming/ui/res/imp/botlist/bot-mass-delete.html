@@ -1,0 +1,201 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-mass-delete>
+
+  Usage:
+
+    <bot-mass-delete></bot-mass-delete>
+
+  bot-mass-delete offers an interface for the user to delete multiple bots
+  (and hopefully avoid doing so on accident). Care is taken such that only dead
+  bots are deleted.
+
+  Properties:
+    // input
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    dimensions: Array<String> the dimensions that match the bots being deleted.
+
+    // output
+    started_deleting: Boolean, If the user has hit the big red button to start
+      deleting bots.
+    finished_deleting: Boolean, If the dialog has finished canceling all the
+      bots.
+
+  Methods:
+    prompt() Set up the dialog, resetting started_deleting and
+      finished_deleting to false.
+
+  Events:
+    None.
+-->
+<link rel="import" href="/res/imp/bower_components/paper-button/paper-button.html">
+
+<dom-module id="bot-mass-delete">
+  <template>
+    <style>
+      .container {
+        padding: 5px;
+        max-width: 800px;
+      }
+      .delete-button {
+        background-color: red;
+        color: white;
+        font-weight: bold;
+      }
+      .delete[disabled] {
+        background-color: grey;
+      }
+    </style>
+    <div class="container">
+
+      <div>
+        You are about to delete all DEAD bots with the following dimensions:
+        <ul>
+          <template is="dom-repeat" items="[[dimensions]]" as="dim">
+            <li>[[dim]]</li>
+          </template>
+        </ul>
+        This is about [[_estimated_count]] bots. [[_note_about_max]]
+        Once you start the process, the only way to partially stop it is to close this
+        browser window.
+
+        If that sounds good, click the button below.
+      </div>
+
+      <paper-button
+          class="delete-button"
+          raised
+          disabled$="[[!_ready_to_delete]]"
+          hidden$="[[started_deleting]]"
+          on-tap="_delete">
+          Delete the bots
+      </paper-button>
+
+      <div >
+        <div hidden$="[[!started_deleting]]">Progress: [[_deleted_count]] deleted</div>
+        <div>Note: the bot deletion is being done in browser - closing the window will stop the mass deletion.</div>
+      </div>
+
+    </div>
+  </template>
+  <script>
+  (function(){
+    Polymer({
+      is: "bot-mass-delete",
+
+      properties: {
+        // input
+        auth_headers: {
+          type: Object,
+        },
+        dimensions: {
+          type: Array,
+        },
+        // output
+        finished_deleting: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+        started_deleting: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+
+
+        _deleted_count: {
+          type : Number,
+          value: 0,
+        },
+
+        _estimated_count: {
+          type: String,
+          value: "(counting...please wait)",
+        },
+        _note_about_max: {
+          type: String,
+          value: "",
+        },
+        _ready_to_delete: {
+          type: Boolean,
+          value: false,
+        },
+        _to_delete: {
+          type: Array,
+        }
+      },
+
+      _args: function() {
+        var args = "?is_dead=TRUE&dimensions=";
+        var dims = this.dimensions || [];
+        return args + dims.join("&dimensions=");
+      },
+
+      _delete: function() {
+        this.started_deleting = true;
+
+        // get list of bots that match
+        var toDeleteURL = "/_ah/api/swarming/v1/bots/list" + this._args();
+        sk.request("GET", toDeleteURL, null, this.auth_headers)
+          .then(JSON.parse).then(function(json){
+            this._to_delete = json.items;
+            this._deleted_count = 0;
+            this.async(this._deleteNext);
+          }.bind(this))
+          .catch(function(e){
+            console.log(e);
+            sk.errorMessage(e);
+          });
+
+      },
+
+      _deleteNext: function() {
+        if (!this._to_delete) {
+          return;
+        }
+        if (this._deleted_count >= this._to_delete.length) {
+          this.finished_deleting = true;
+          return;
+        }
+        var id = this._to_delete[this._deleted_count].bot_id;
+        if (!id) {
+          console.log("Skipping empty id in slot ",this._deleted_count);
+        }
+
+        sk.request("POST", `/_ah/api/swarming/v1/bot/${id}/delete`,
+                   "", this.auth_headers)
+          .then(function(){
+            this._deleted_count += 1;
+            this.async(this._deleteNext);
+          }.bind(this))
+          .catch(function(e){
+            console.log(e);
+            sk.errorMessage(e);
+          });
+
+      },
+
+      prompt: function(){
+        this.started_deleting = false;
+        this.finished_deleting = false;
+        this._ready_to_delete = false;
+
+        var countUrl = "/_ah/api/swarming/v1/bots/count" + this._args();
+        sk.request("GET", countUrl, null, this.auth_headers)
+          .then(JSON.parse).then(function(json){
+            this._ready_to_delete = true;
+            this._estimated_count = json.dead;
+          }.bind(this))
+          .catch(function(e){
+            console.log(e);
+            sk.errorMessage(e);
+          });
+      },
+    });
+  })()
+  </script>
+</dom-module>

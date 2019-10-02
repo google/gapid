@@ -1,0 +1,14 @@
+Name: WebTest
+Short Name: WebTest
+URL: https://github.com/Pylons/webtest
+Revision: 2.0.9
+License: "MIT-style license"
+License File: license.txt
+
+Description:
+Wraps any WSGI application and makes it easy to send test requests to that
+application, without starting up an HTTP server.
+
+Local Modifications:
+Kept only webtest/.
+Copied license.txt from docs/license.txt

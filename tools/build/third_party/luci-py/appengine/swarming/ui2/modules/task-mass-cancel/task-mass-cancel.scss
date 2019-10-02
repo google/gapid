@@ -1,0 +1,21 @@
+task-mass-cancel {
+  button.cancel {
+    background-color: red;
+    color: white;
+    font-weight: bold;
+    border: 2px #770707;
+  }
+
+  button.cancel[disabled] {
+    background-color: #ddd;
+    color: #333;
+  }
+
+  button.cancel:focus {
+    border: 5px solid #eaa017;
+  }
+
+   checkbox-sk {
+    display: inline-block;
+  }
+}

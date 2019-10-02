@@ -1,0 +1,84 @@
+<!--
+  Copyright 2018 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>stacked-time-chart Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+
+  <link rel="import" href="/res/imp/bower_components/polymer/polymer.html" />
+  <link rel="import" href="stacked-time-chart.html">
+</head>
+<body>
+
+  <h1>Several completed tasks' charts below</h1>
+  <!-- Note, the single quotes on the outside and double quotes on the inside are VERY
+    important to be valid JSON.
+    https://www.polymer-project.org/1.0/docs/devguide/properties#configuring-object-and-array-properties -->
+
+  <!-- These are loosely based off of real-world data-->
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[5, 1.6, 3.97, 0]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[36, 12.98, 22.45, 3.77]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[10, 11.7, 143.2, 0.99]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[1, 26.3, 815.2, 38.5]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[1, 26.3, 1075.2, 38.5]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[30.3, 184.6, 2455 ,4.1]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[30.3, 184.6, 24550 ,4.1]'>
+  </stacked-time-chart>
+
+  <h1>Several in progress tasks' charts below</h1>
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[195, 0, 0, 0]'>
+  </stacked-time-chart>
+
+  <stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[11, 0, 23, 0]'>
+  </stacked-time-chart>
+</body>
+</html>

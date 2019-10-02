@@ -1,0 +1,416 @@
+{% set title = 'Isolate Server Stats' %}
+{% extends "isolate/base.html" %}
+
+{% block headers %}
+<script type="text/javascript" src="//www.google.com/jsapi"></script>
+<script type="text/javascript">
+  {# Ref: https://developers.google.com/chart/interactive/docs/reference
+  # TODO(maruel): Do not reload the page to add or remove data, use AJAX;
+  #   See section: "Adding and removing rows" and "Changing the view window".
+  #   https://developers.google.com/chart/interactive/docs/animation
+  #
+  # TODO(maruel): Integrate hours + days in two layered graphs ala GFinance;
+  #   See section: "google.visualization.ChartRangeFilter" and
+  #   "google.visualization.DateRangeFilter", NumberRangeFilter.
+  #   https://developers.google.com/chart/interactive/docs/gallery/controls
+  #
+  # TODO(maruel): Add control to toggle chart.getOptions().vAxis.logScale on
+  # the graphs.
+  #
+  # TODO(maruel): Add control to toggle chart.getOptions().focusTarget on
+  # the graphs between 'category' and 'datum' (default).
+  #
+  # TODO(maruel): Use AnnotatedTimeLine to integrate ereporter2 errors. That'd
+  # be awesome but that represents an info leak so it can only be presented to
+  # admins.
+  #}
+  var local = (function() {
+    google.load(
+        "visualization", "1",
+        {
+          callback: loaded,
+          packages: ["corechart", "table"]
+        });
+
+    // Display parameters.
+    var current_resolution = '{{resolution}}';
+    var duration = {{duration}};
+    var show_as_raw = false;
+    // Common shared data.
+    var data_table = null;
+    // The three graphs.
+    var chart_requests = null;
+    var chart_io = null;
+    var chart_table = null;
+    // Current on-going HTTP request.
+    var current_query = null;
+
+    function set_resolution_internal(res) {
+      document.getElementById('resolution_days').checked = false;
+      document.getElementById('resolution_hours').checked = false;
+      document.getElementById('resolution_minutes').checked = false;
+      document.getElementById('resolution_' + res).checked = true;
+      current_resolution = res;
+    }
+
+    // Reloads the data with a new resolution.
+    function set_resolution(res) {
+      set_resolution_internal(res);
+      // Refresh the data even if the user requested the same res.
+      sendQuery();
+    }
+
+    // Updates cached js variable show_as_raw. Do not redraw unless necessary,
+    // unlike set_resolution().
+    function set_show_as_raw() {
+      var new_val = document.getElementById('show_as_raw').checked;
+      if (new_val != show_as_raw) {
+        show_as_raw = new_val;
+        redrawCharts();
+      }
+    }
+
+    // Formats a number into IEC 60027-2 A.2 / ISO 80000.
+    var BINARY_SUFFIXES = [
+      'B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB'
+    ];
+
+    function formatToBinaryUnit(val) {
+      // Prefer to display 1023 as 0.99KiB.
+      for (var n = 0; val >= 1000; n++) {
+        val /= 1024;
+      }
+      // Enforce 2 decimals.
+      if (n > 0) {
+        val = val.toFixed(2);
+      }
+      return val + BINARY_SUFFIXES[n];
+    }
+
+    // Formats data in a chart into 1024 based units.
+    function formatDataColumnToBinaryUnit(data, column) {
+      for (var i = 0; i < data.getNumberOfRows(); i++) {
+        data.setFormattedValue(
+            i, column, formatToBinaryUnit(data.getValue(i, column)));
+      }
+    }
+
+    var ISO_SUFFIXES = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z'];
+
+    function formatToIsoUnit(val) {
+      for (var n = 0; val >= 1000; n++) {
+        val /= 1000;
+      }
+      // Enforce 2 decimals.
+      if (n > 0) {
+        val = val.toFixed(2);
+      }
+      return val + ISO_SUFFIXES[n];
+    }
+
+    // Formats data in a chart into 1000 based units.
+    function formatDataColumnToIsoUnit(data, column) {
+      for (var i = 0; i < data.getNumberOfRows(); i++) {
+        data.setFormattedValue(
+            i, column, formatToIsoUnit(data.getValue(i, column)));
+      }
+    }
+
+    // Makes sure custom formatting is removed for a specific column.
+    function resetFormattedDataColumn(data, column) {
+      for (var i = 0; i < data.getNumberOfRows(); i++) {
+        data.setFormattedValue(i, column, null);
+      }
+    }
+
+    // Makes sure ALL custom formatting is removed.
+    function resetFormattedData(data) {
+      for (var i = 0; i < data.getNumberOfColumns(); i++) {
+        resetFormattedDataColumn(data, i);
+      }
+    }
+
+    // Removes any ticks. It is necessary when the data changes.
+    function clearCustomTicks(chart) {
+      // TODO(maruel): Make this automatic when chart.setDataTable() is used.
+      var options = chart.getOptions();
+      if (typeof options.vAxis != "undefined") {
+        delete options.vAxis.ticks;
+      }
+      if (typeof options.vAxes != "undefined") {
+        for (var i in options.vAxes) {
+          delete options.vAxes[i].ticks;
+        }
+      }
+    }
+
+    // Resets the axis 0 of the chart to binary prefix (1024).
+    function setAxisTicksToUnitsOnNextDraw(chart, as_binary, axe_index) {
+      // TODO(maruel): This code is racy and sometimes does not trigger
+      // correctly. It can be reproduced with:
+      // 1. Reload
+      // 2. click Day
+      // 3. click Hour
+      // 4. Repeat 2 and 3 until reproduced.
+      function callback() {
+        google.visualization.events.removeListener(runOnce);
+        var ticks = [];
+        // Warning: ChartWrapper really wraps the actual Chart, and the proxy
+        // fails to expose some methods, like .getChartLayoutInterface(). In
+        // this case, the user must call .getChart() to retrieve the underlying
+        // object.
+        var cli;
+        if (typeof chart.getChartLayoutInterface == "undefined") {
+          cli = chart.getChart().getChartLayoutInterface();
+        } else {
+          cli = chart.getChartLayoutInterface();
+        }
+        var power = 1000;
+        var suffixes = ISO_SUFFIXES;
+        if (as_binary) {
+          power = 1024;
+          suffixes = BINARY_SUFFIXES;
+        }
+        var bb;
+        for (var i = 0; bb = cli.getBoundingBox('vAxis#0#gridline#' + i); i++) {
+          var val = cli.getVAxisValue(bb.top);
+          // The axis value may fall 1/2 way though the pixel height of
+          // the gridline, so add in 1/2 the height. This assumes that all
+          // axis values will be integers.
+          if (val != parseInt(val)) {
+            val = cli.getVAxisValue(bb.top + bb.height / 2, axe_index);
+          }
+          // Converts the auto-selected base-10 values to 2^10 'rounded'
+          // values if necessary.
+          for (var n = 0; val >= 1000; n++) {
+            val /= 1000;
+          }
+          // Keep 2 decimals. Note that this code assumes the items are all
+          // integers. Fix accordingly if needed.
+          var formattedVal = val;
+          // TODO(maruel): Detect "almost equal".
+          if (n > 0 || formattedVal != formattedVal.toFixed(0)) {
+            formattedVal = formattedVal.toFixed(2);
+          }
+          val *= Math.pow(power, n);
+          ticks.push({v: val, f: formattedVal + suffixes[n]});
+        }
+        if (typeof axe_index == "undefined") {
+          // It's possible the object vAxis is not defined yet.
+          chart.getOptions().vAxis = chart.getOptions().vAxis || {};
+          chart.getOptions().vAxis.ticks = ticks;
+        } else {
+          // If axe_indexes is specified, vAxes must be defined.
+          chart.getOptions().vAxes = chart.getOptions().vAxes || [];
+          chart.getOptions().vAxes[axe_index] = chart.getOptions().vAxes[axe_index] || {};
+          chart.getOptions().vAxes[axe_index].ticks = ticks;
+        }
+        // Draw a second time.
+        // TODO(maruel): Sadly, this second draw is user visible.
+        chart.draw();
+      }
+
+      // TODO(maruel): This codes cause a visible redraw, it'd be nice to figure
+      // out a way to not cause it.
+      var runOnce = google.visualization.events.addListener(
+        chart, 'ready', callback);
+    }
+
+    // Sends a single query to feed data to two charts.
+    function sendQuery() {
+      var url = '/isolate/api/v1/stats/' + current_resolution + '?duration=' +
+        duration;
+
+      if (current_query != null) {
+        current_query.abort();
+      }
+      current_query = new google.visualization.Query(url);
+      current_query.send(
+        function(response) {
+          if (response.isError()) {
+            alert('Error in query: ' + response.getMessage() + ' ' +
+                response.getDetailedMessage());
+            return;
+          }
+
+          // Update the global variable.
+          data_table = response.getDataTable();
+          // TODO(maruel): Update the title with range covered.
+          redrawCharts();
+        });
+    }
+
+    // Redraws all the charts. This can happen in two situations; new data
+    // arrived via sendQuery() or the raw data toggle was changed.
+    function redrawCharts() {
+      if (data_table == null) {
+        return;
+      }
+      // Reformat some of the columns.
+      if (show_as_raw == false) {
+        // TODO(maruel): Enable by name instead of hardcoding by index.
+        // TODO(maruel): Add a toggle to show the raw values.
+        formatDataColumnToIsoUnit(data_table, 1);
+        formatDataColumnToIsoUnit(data_table, 2);
+        formatDataColumnToIsoUnit(data_table, 3);
+        formatDataColumnToIsoUnit(data_table, 4);
+        formatDataColumnToIsoUnit(data_table, 5);
+        formatDataColumnToIsoUnit(data_table, 6);
+        formatDataColumnToBinaryUnit(data_table, 7);
+        formatDataColumnToBinaryUnit(data_table, 8);
+        formatDataColumnToIsoUnit(data_table, 9);
+      } else {
+        resetFormattedData(data_table);
+      }
+
+      // Request graph.
+      clearCustomTicks(chart_requests);
+      var view = new google.visualization.DataView(data_table);
+      view.setColumns([0, 1, 2, 3, 4, 5, 6]);
+      chart_requests.setDataTable(view.toDataTable());
+      if (show_as_raw == false) {
+        setAxisTicksToUnitsOnNextDraw(chart_requests, false);
+      }
+      chart_requests.draw();
+
+      // I/O graph.
+      clearCustomTicks(chart_io);
+      var view = new google.visualization.DataView(data_table);
+      view.setColumns([0, 7, 8, 9]);
+      chart_io.setDataTable(view.toDataTable());
+      if (show_as_raw == false) {
+        setAxisTicksToUnitsOnNextDraw(chart_io, true, 0);
+        // TODO(maruel): Figure out how to make it work: probably need to do all
+        // axises at once.
+        //setAxisTicksToUnitsOnNextDraw(chart_io, false, 1);
+      }
+      chart_io.draw();
+
+      // Bottom raw data table.
+      chart_table.setDataTable(data_table);
+      chart_table.draw();
+    }
+
+    // Now the actual work.
+    // Callback when google viz is ready. Loads each graph.
+    function loaded() {
+      data_table = new google.visualization.DataTable({{initial_data|safe}});
+      chart_requests = new google.visualization.ChartWrapper(
+        {
+          chartType: 'LineChart',
+          dataTable: data_table,
+          containerId: 'request_graph',
+          options: {
+            animation: {
+              duration: 500,
+              easing: 'out'
+            },
+            height: '100%',
+            series: [
+              {},
+              {},
+              {
+                color: 'red',
+              },
+            ],
+            title: 'Requests',
+            width: '100%'
+          },
+        });
+      chart_io = new google.visualization.ChartWrapper(
+        {
+          chartType: 'LineChart',
+          dataTable: data_table,
+          containerId: 'io_graph',
+          options: {
+            animation: {
+              duration: 500,
+              easing: 'out'
+            },
+            height: '100%',
+            series: [
+              {},
+              {},
+              {
+                targetAxisIndex: 1,
+              },
+            ],
+            title: 'I/O summary',
+            vAxes: [
+              {
+                title: 'Bytes',
+                targetAxisIndex: 0,
+              },
+              {
+                title: 'Contains',
+                targetAxisIndex: 1,
+              },
+            ],
+            width: '100%'
+          },
+        });
+      chart_table = new google.visualization.ChartWrapper(
+        {
+          chartType: 'Table',
+          dataTable: data_table,
+          containerId: 'raw_data_table',
+          options: {
+            animation: {
+              duration: 500,
+              easing: 'out'
+            },
+            height: '100%',
+            title: 'Raw data',
+            width: '100%'
+          },
+          });
+
+      if (data_table != null) {
+        // Data was preloaded. Update the UI checkboxes.
+        set_resolution_internal(current_resolution);
+        redrawCharts();
+      } else {
+        // Do not draw yet, since it would fail because of the empty DataTable.
+        // sendQuery() will call .draw() on each chart.
+        set_resolution('hours');
+      }
+    }
+
+    // Public interface.
+    return {
+      set_resolution: set_resolution,
+      set_show_as_raw: set_show_as_raw,
+
+      // For debugging.
+      chart_io: function() { return chart_io; },
+      chart_requests: function() { return chart_requests; },
+      chart_table: function() { return chart_table; },
+      current_query: function() { return current_query; },
+      current_resolution: function() { return current_resolution; },
+      data_table: function() { return data_table; },
+      duration: function() { return duration; },
+      show_as_raw: function() { return show_as_raw; }
+    }
+  })();
+</script>
+{% endblock %}
+
+{% block body %}
+  <h1>Statistics</h1>
+
+  Resolution:
+  <input type="checkbox" id=resolution_days onclick="local.set_resolution('days')">Day</input>
+  <input type="checkbox" id=resolution_hours onclick="local.set_resolution('hours')">Hour</input>
+  <input type="checkbox" id=resolution_minutes onclick="local.set_resolution('minutes')">Minute</input>
+  <br>
+  <input type="checkbox" id=show_as_raw onclick="local.set_show_as_raw()">
+    Show as raw</input>
+
+  <hr/>
+  <div id="request_graph" class="graph">(Loading...)</div>
+  <hr/>
+  <div id="io_graph" class="graph">(Loading...)</div>
+  <hr/>
+  <div id="raw_data_table" class="data_table">(Loading...)</div>
+
+{% endblock %}

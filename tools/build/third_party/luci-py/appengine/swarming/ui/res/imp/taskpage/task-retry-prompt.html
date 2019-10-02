@@ -1,0 +1,151 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-retry-prompt>
+
+  To use this file import it:
+
+    <link href="/res/imp/task-retry-prompt" rel="import" />
+
+  Usage:
+
+    <task-retry-prompt></task-retry-prompt>
+
+  Properties:
+    is_debug_task: Boolean, Show the options used for debug tasks.
+    lease_duration: String, How long the task should be leased out for debugging.
+        (e.g. "2h", "30m", "5s")
+    task_id: String, Specifies the task_id of the task to be retried.
+    task_dimensions: Array, List of dimensions to restrict the new task to.
+        (e.g. [{key: "...", value: "..."}, ...])
+    task_use_same_bot: Boolean, If set to true, task_dimensions is ignored
+        and the task should be restricted to the exact bot it previously ran on.
+
+  Methods:
+    setDimensions(Array): Set the dimensions to show the user for editing.
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/res/imp/bower_components/paper-toggle-button/paper-toggle-button.html">
+
+<dom-module id="task-retry-prompt">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      th, td{
+        font-size: 16px;
+      }
+      paper-input {
+        --paper-input-container-input: {
+          font-family: sans-serif;
+        };
+      }
+    </style>
+
+  <h2>Are you sure you want to [[_retryOrDebug(is_debug_task)]] task [[task_id]]?</h2>
+
+  <template is="dom-if" if="[[is_debug_task]]">
+    <paper-input auto-validate pattern="[1-9][0-9]*[smh]" error-message="enter a duration (e.g. 30s, 2m, 6h)" label="Lease duration" value="{{lease_duration}}"></paper-input>
+    <paper-toggle-button checked="{{task_use_same_bot}}">
+      <template is="dom-if" if="[[task_use_same_bot]]">
+      Run task on the same bot
+      </template>
+      <template is="dom-if" if="[[!task_use_same_bot]]">
+      Run task on any bot matching the dimensions
+      </template>
+    </paper-toggle-button>
+  </template>
+
+  <div>If you want to modify any dimensions (e.g. specify a bot's id), do so now.</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+    <template is="dom-repeat" items="[[task_dimensions]]" as="dim">
+      <tr>
+        <td>
+          <paper-input
+            disabled="[[task_use_same_bot]]"
+            no-label-float=true
+            value="[[dim.key]]"
+            on-change="_updateKey">
+          </paper-input>
+        </td>
+        <td>
+          <paper-input
+            disabled="[[task_use_same_bot]]"
+            no-label-float=true
+            value="[[dim.value]]"
+            on-change="_updateValue">
+          </paper-input>
+        </td>
+      </tr>
+    </template>
+
+    </tbody>
+  </table>
+
+  </template>
+  <script>
+    Polymer({
+      is: "task-retry-prompt",
+      properties: {
+        is_debug_task: {
+          type: Boolean,
+          value: false,
+        },
+        lease_duration: {
+          // TODO: make this an Integer, so this element is entirely responsible
+          // for the duration validation.
+          type: String,
+          notify: true,
+        },
+        task_id: {
+          type: String,
+        },
+        task_dimensions: {
+          type: Array,
+          notify: true,
+        },
+        task_use_same_bot: {
+          type: Boolean,
+          notify: true,
+        },
+      },
+
+      _retryOrDebug: function(is_debug_task) {
+        if (is_debug_task) {
+          return "debug";
+        }
+        return "retry";
+      },
+
+      setDimensions: function(dims) {
+        dims = dims || [];
+        while (dims.length < 6) {
+          dims.push({key:"", value: ""});
+        }
+        this.set("task_dimensions", dims);
+      },
+
+      _updateKey: function(e) {
+        this.set("task_dimensions."+e.model.index+".key",
+                 e.currentTarget.value)
+      },
+
+      _updateValue: function(e) {
+        this.set("task_dimensions."+e.model.index+".value",
+                 e.currentTarget.value)
+      }
+    });
+  </script>
+</dom-module>

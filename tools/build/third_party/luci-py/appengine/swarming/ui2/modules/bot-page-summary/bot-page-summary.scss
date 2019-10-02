@@ -1,0 +1,33 @@
+bot-page-summary {
+  .controls {
+
+    > * {
+      display: inline-block;
+    }
+
+    > checkbox-sk {
+      vertical-align: middle;
+      margin-right: 0;
+      margin-left: 20px;
+    }
+  }
+
+  table {
+    border-collapse: collapse;
+    margin-left: 5px;
+    margin-bottom: 8px;
+  }
+
+  td, th {
+    border: 1px solid #BBB;
+    padding: 5px;
+  }
+
+  tr.thick {
+    border-top-style: solid;
+  }
+
+  .break-all {
+    word-break: break-all;
+  }
+}

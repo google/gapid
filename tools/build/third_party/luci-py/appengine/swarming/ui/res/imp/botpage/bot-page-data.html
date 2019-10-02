@@ -1,0 +1,240 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-page-data>
+
+  This makes calls authenticated with Oauth 2 to the swarming apis.  It parses
+  that data into usable data structures.
+
+  Properties:
+    // input
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    bot_id: String, the id of the bot to fetch data on.
+    // output
+    bot: Object, The information about the bot. See swarming_rpcs.py#BotInfo
+        for all relevent fields.
+    busy: Boolean, if we are fetching any data from the server.
+    events: Array<Object>, The most recent events that pertain to this bot.
+        Contains the following fields: "event_type", "message", "ts" (timestamp),
+        "quarantined", "version".
+    tasks: Array<Object>, The most recent tasks done by this bot.
+        Contains the following fields: "abandoned_ts", "bot_version", "duration",
+        "failure", "internal_failure", "modified_ts", "name", "started_ts",
+        "state", "task_id", "try_number".
+
+  Methods:
+    parseEvents(json): Given the json returned by the server on a request to
+        _ah/api/swarming/v1/bot/[botid]/events, return an array of event Objects.
+
+    parseTasks(json):  Given the json returned by the server on a request to
+        _ah/api/swarming/v1/bot/[botid]/events, return an array of task Objects.
+
+    request(): Force a fetch of the data. This happens automatically when
+        auth_headers is set or bot_id is changed.
+
+  Events:
+    reload: When this element is making a request for data. Other data sources
+        should also reload themselves.
+-->
+
+
+<link rel="import" href="bot-page-shared-behavior.html">
+
+<dom-module id="bot-page-data">
+  <script>
+  (function(){
+    // Time to wait before requesting a new bot. This is to allow a user to
+    // type in a name and not have it make one set of requests for each
+    // keystroke.
+    var BOT_ID_DEBOUNCE_MS = 400;
+    var lastRequest;
+
+    var BOT_TIMES = ["first_seen_ts", "last_seen_ts", "lease_expiration_ts"];
+    var TASK_TIMES = ["started_ts", "completed_ts", "abandoned_ts", "modified_ts"];
+
+    Polymer({
+      is: 'bot-page-data',
+
+      behaviors: [
+          SwarmingBehaviors.BotPageBehavior,
+      ],
+
+      properties: {
+        // inputs
+        auth_headers: {
+          type: Object,
+        },
+        bot_id: {
+          type: String,
+        },
+
+        // outputs
+        busy: {
+          type: Boolean,
+          computed: "_or(_busy1)",
+          notify: true,
+        },
+        bot: {
+          type: Object,
+          computed: "_parseBot(_bot)",
+          notify: true,
+        },
+        bot_exists: {
+          type: Boolean,
+          value: true,
+          notify: true,
+        },
+
+        // private
+         _busy1: {
+          type: Boolean,
+          value: false
+        },
+        _bot: {
+          type: Object,
+        },
+        _events: {
+          type: Object,
+        },
+        _tasks: {
+          type: Object,
+        },
+      },
+
+      observers: [
+        "request(auth_headers,bot_id)",
+      ],
+
+      request: function(){
+        if (!this.bot_id || !this.auth_headers) {
+          return;
+        }
+        if (lastRequest) {
+          this.cancelAsync(lastRequest);
+        }
+
+        lastRequest = this.async(function(){
+          lastRequest = undefined;
+          var baseUrl = "/_ah/api/swarming/v1/bot/"+this.bot_id;
+          var p = this._getJsonAsync("_bot", baseUrl + "/get",
+            "_busy1", this.auth_headers);
+          p.then(function(){
+            this.set("bot_exists", true);
+          }.bind(this)).catch(function(r){
+            if (r.status === 404) {
+              this.set("bot_exists", false);
+            } else {
+              sk.errorMessage("Http response: " + (r.status || " ") + " " + r.response);
+            }
+          }.bind(this));
+          this.fire("reload", {id: this.bot_id});
+        }, BOT_ID_DEBOUNCE_MS);
+
+      },
+
+      _parseBot: function(bot) {
+        if (!bot) {
+          return {};
+        }
+        // Do any preprocessing here
+        bot.state = bot.state || "{}";
+        bot.state = JSON.parse(bot.state) || {};
+
+        // get the disks in an easier to deal with format, sorted by size.
+        var disks = bot.state.disks || {};
+        var keys = Object.keys(disks);
+        if (!keys.length) {
+          bot.disks = [{"id": "unknown", "mb": 0}];
+        } else {
+          bot.disks = [];
+          for (var i = 0; i < keys.length; i++) {
+            bot.disks.push({"id":keys[i], "mb":disks[keys[i]].free_mb});
+          }
+          // Sort these so the biggest disk comes first.
+          bot.disks.sort(function(a, b) {
+            return b.mb - a.mb;
+          });
+        }
+
+        bot.dimensions = bot.dimensions || [];
+        bot.dimensions.forEach(function(dim) {
+          if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(dim.key) !== -1) {
+            dim.value.forEach(function(value, i){
+              dim.value[i] = swarming.alias.apply(value, dim.key);
+            });
+          }
+        });
+
+        BOT_TIMES.forEach(function(time) {
+          swarming.sanitizeAndHumanizeTime(bot, time);
+        });
+        return bot;
+      },
+
+      parseEvents: function(events) {
+        if (!events || !events.items) {
+          return [];
+        }
+        var events = events.items;
+        events.forEach(function(event){
+          // Do any preprocessing here
+          swarming.sanitizeAndHumanizeTime(event, "ts");
+        });
+
+        // Sort the most recent events first.
+        events.sort(function(a,b) {
+          return b.ts - a.ts;
+        });
+
+        return events;
+      },
+
+      parseTasks: function(tasks) {
+        if (!tasks || !tasks.items) {
+          return [];
+        }
+        var tasks = tasks.items;
+
+        tasks.forEach(function(task){
+          // Do any preprocessing here
+          TASK_TIMES.forEach(function(time) {
+            swarming.sanitizeAndHumanizeTime(task, time);
+          });
+
+          if (task.duration) {
+            task.human_duration = this._humanDuration(task.duration);
+          } else {
+            var end = task.completed_ts || task.abandoned_ts || task.modified_ts || new Date();
+            task.human_duration = this._timeDiffExact(task.started_ts, end);
+            task.duration = (end.getTime() - task.started_ts) / 1000;
+          }
+
+          task.state = task.state || "UNKNOWN";
+          if (task.state === "COMPLETED") {
+            if (task.failure) {
+              task.state = "FAILURE";
+            } else if (task.state !== "RUNNING") {
+              task.state = "SUCCESS";
+            }
+          }
+
+        }.bind(this));
+
+        // Sort the most recent tasks first.
+        tasks.sort(function(a,b) {
+          return b.started_ts - a.started_ts;
+        });
+
+        return tasks;
+      }
+
+    });
+  })();
+  </script>
+</dom-module>

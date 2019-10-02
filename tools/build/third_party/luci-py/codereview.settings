@@ -1,0 +1,5 @@
+# This file is used by git-cl to get repository specific information.
+CC_LIST: chromium-reviews@chromium.org, infra-reviews+luci-py@chromium.org
+GERRIT_HOST: True
+PROJECT: luci-py
+VIEW_VC: https://chromium.googlesource.com/infra/luci/luci-py/+/

@@ -1,0 +1,89 @@
+application: auth-service
+module: default
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+instance_class: F4
+automatic_scaling:
+  min_idle_instances: 2
+  min_pending_latency: 50ms
+  max_pending_latency: 250ms
+  max_concurrent_requests: 4
+
+handlers:
+- url: /_ah/api/.*
+  script: main_frontend.endpoints_app
+  secure: always
+
+# Auth service is extending components/auth in non-trivial way.
+# It's more manageable to list all auth components routes here instead of
+# including them via separate WSGI app (like components/auth/include.yaml does).
+- url: /auth/static/(.+)\.(css|gif|ico|js|ttf|svg)
+  static_files: components/auth/ui/static/\1.\2
+  upload: components/auth/ui/static/(.+)\.(css|gif|ico|js|ttf|svg)
+  secure: always
+  http_headers:
+    Content-Security-Policy: "default-src https: 'self'"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+- url: /auth_service/static/(.+)\.(css|gif|ico|js|ttf|svg)
+  static_files: static/\1.\2
+  upload: static/(.+)\.(css|gif|ico|js|ttf|svg)
+  secure: always
+  http_headers:
+    Content-Security-Policy: "default-src https: 'self'"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+- url: /.*
+  script: main_frontend.frontend_app
+  secure: always
+
+builtins:
+- remote_api: on
+
+includes:
+- components/ereporter2
+- components/static_third_party.yaml
+
+inbound_services:
+- mail
+- warmup
+
+# https://developers.google.com/appengine/docs/python/tools/libraries27
+# As the doc says, serious applications should specify the third party versions.
+libraries:
+- name: endpoints
+  version: "1.0"
+- name: pycrypto
+  version: "2.6"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"
+
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$

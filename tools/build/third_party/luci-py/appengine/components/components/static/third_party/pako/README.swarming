@@ -1,0 +1,11 @@
+Name: pako
+URL: https://github.com/nodeca/pako
+Version: 0.2.3
+Revision: d846c78df969fd4abc56356d91dfb48c662fc1a5
+License: MIT
+
+Description:
+pako - zlib port to javascript, very fast!
+
+Local Modifications:
+Only minified version kept.

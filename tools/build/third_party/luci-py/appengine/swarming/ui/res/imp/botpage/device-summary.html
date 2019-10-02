@@ -1,0 +1,127 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <device-summary>
+
+  Usage:
+
+    <device-summary></device-summary>
+
+    Shows a summary of Android devices, given the state variable from a bot.
+    It assumes that all the devices attached to one machine are the same type.
+
+  Properties:
+    state: A state Object, as sent by the server. For bots with Android devices,
+        this is expected include at least the following fields:
+        {
+          devices:{
+            [id]:{
+              battery: {
+                level: Integer
+              },
+              state: String,
+              temp: {
+                [sensor_name]: Float
+              }
+            },
+            [id]:{
+              // same as above
+            },
+          }
+        }
+
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/single-page-style.html">
+
+<dom-module id="device-summary">
+  <template>
+    <style include="single-page-style">
+      :host {
+        display: block;
+      }
+    </style>
+
+    <template is="dom-if" if="[[_devices.length]]">
+
+      <span class="title">Android Devices</span>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Battery</th>
+            <th>Avg Temp. (°C)</th>
+            <th>State</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template is="dom-repeat" items="[[_devices]]" as="device">
+            <tr>
+              <td>[[device.id]]</td>
+              <td>[[device.battery]]</td>
+              <td>[[device.temp]]</td>
+              <td>[[device.state]]</td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </template>
+
+
+  </template>
+  <script>
+    Polymer({
+      is: 'device-summary',
+
+      properties: {
+        state: {
+          type: Object,
+        },
+        _devices: {
+          type: Array,
+          computed: "_getDevices(state.*)",
+        },
+      },
+
+      _getDevices() {
+        var arr = [];
+        if (!this.state || !this.state.devices) {
+          return arr;
+        }
+        for (var id in this.state.devices) {
+          if (this.state.devices.hasOwnProperty(id)) {
+            var d = this.state.devices[id];
+            var device = {
+              id: id,
+              state: d.state || "???",
+            };
+            device.battery = (d.battery && d.battery.level) || "???"
+            var count = 0;
+            var totalTemp = 0;
+            d.temp = d.temp || [];
+            for (var t in d.temp) {
+              totalTemp += parseFloat(d.temp[t]);
+              count++;
+            }
+            // Report the average temperature of all sensors.
+            if (count) {
+              device.temp = (totalTemp/count).toFixed(1);
+            } else {
+              device.temp == "???";
+            }
+            arr.push(device);
+          }
+        }
+        return arr;
+      }
+    });
+  </script>
+</dom-module>

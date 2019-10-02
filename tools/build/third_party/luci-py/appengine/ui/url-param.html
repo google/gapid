@@ -1,0 +1,188 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <url-param>
+
+  This element uses two-way* data binding to synchronize a URL parameter with
+  a variable. On page load, if the parameter is provided in the URL, its value
+  is assigned to the variable. When the variable changes, its new value is
+  updated in the URL.  If there are problems, a toast message will pop up and
+  display it.
+
+  * It's not exactly two-way, because the URL is not watched for changes. This
+    is fine in most cases, since the page reloads when the URL is changed by the
+    user, and it should be rare that the parameter is changed by a different
+    piece of code.
+
+  This element requires version 1.0.1 or greater of the npm package
+  skia-common-js and that the common.js from that package is included before
+  the instantiation of this element.
+
+  Attributes:
+    default_value: String, Default value to be used.  This will be clobbered
+        by any value given in an element's properties.
+    default_values: Array<String>, Default values to be used if multi is set to
+        true.  This will be clobbered by any value given in an element's
+        properties.
+    multi: Boolean, Whether the variable can take multiple values. Default is
+        false.  If true, 'value' must be an array of strings and default_values
+        will be used instead of default_value.
+    name: String, The name of the URL parameter.
+    valid: Array<String> Acceptable values. Default is null. If empty or
+        null, any value is accepted. If an invalid value is provided in the
+        URL parameters, the existing or default value is used.
+    value: String|Array<String>, The value(s) of the URL parameter.
+
+
+  Events:
+    None
+
+  Methods:
+    None
+-->
+
+<link rel="import" href="/res/imp/bower_components/paper-toast/paper-toast.html">
+
+<dom-module id="url-param">
+  <template>
+    <paper-toast id="toast"></paper-toast>
+  </template>
+  <script>
+  (function(){
+    Polymer({
+      is: 'url-param',
+      properties: {
+        default_value: {
+          type: String,
+        },
+        default_values: {
+          type: Array,
+        },
+        multi: {
+          type: Boolean,
+          value: false,
+        },
+        name: {
+          type: String,
+        },
+        valid: {
+          type: Array,
+        },
+        value: {
+          type: String,
+          value: '',
+          notify: true,
+          observer: '_valueChanged',
+        },
+
+        _loaded: {
+          type: Boolean,
+          value: false,
+        }
+      },
+      // Listens to array changes for multi urls
+      observers: ["_valueChanged(value.splices)"],
+
+      ready: function () {
+        this._loaded = true;
+
+        // Read the URL parameters. If our variable is set, save its value.
+        // Otherwise, place our value in the URL.
+        var val = this._getURL();
+        if (val && this._isValid(val)) {
+          this.set('value', val);
+        } else if (this.default_value && this._isValid(this.default_value)) {
+          this.set('value', this.default_value);
+        }
+        else if (this.multi && this.default_values && this._isValid(this.default_values)) {
+          this.set('value', this.default_values);
+        }
+        else {
+          this._putURL();
+        }
+      },
+      // Retrieve the value for our variable from the URL.
+      _getURL: function () {
+        var vals = sk.query.toParamSet(window.location.search.substring(1))[this.name];
+        if (!vals) {
+          return null;
+        }
+        if (this.multi) {
+          return vals;
+        }
+        if (vals.length > 1) {
+          this._error('Multiple values provided for ' + this.name + ' but only one accepted: ' + vals);
+          return null;
+        }
+        return vals[0];
+      },
+      // Store the value for our variable in the URL.
+      _putURL: function () {
+        var params = sk.query.toParamSet(window.location.search.substring(1));
+        delete params[this.name];
+        if (!this.value || Array.isArray(this.value) && this.value.length == 0) {
+        } else
+          // Don't insert undefined/empty values.
+          {
+            if (this.multi) {
+              params[this.name] = this.value;
+            } else {
+              params[this.name] = [this.value];
+            }
+          }
+        var newUrl = window.location.href.split('?')[0] + '?' + sk.query.fromParamSet(params);
+        window.history.replaceState('', '', newUrl);
+      },
+      // Check to see whether the given value is valid.
+      _isValid: function (val) {
+        var checkValid = function (val) {
+          if (this.valid) {
+            for (var i = 0; i < this.valid.length; i++) {
+              if (val == this.valid[i]) {
+                return true;
+              }
+            }
+            this._error('Invalid value for ' + this.name + ': "' + val + '". Must be one of: ' + this.valid);
+            return false;
+          }
+          return true;
+        }.bind(this);
+        if (this.multi) {
+          // Verify that it's an array and that all elements are valid.
+          if (!Array.isArray(val)) {
+            this._error('url-param-sk: Value is not an array: ' + val);
+            return false;
+          }
+          for (var i = 0; i < val.length; i++) {
+            if (!checkValid(val[i])) {
+              return false;
+            }
+          }
+        } else {
+          if (Array.isArray(val)) {
+            this._error('Multiple values provided for ' + this.name + ' but only one accepted: ' + val);
+          }
+          return checkValid(val);
+        }
+        return true;
+      },
+      _valueChanged: function () {
+        if (this._loaded) {
+          // Save our value to the URL.
+          this._putURL();
+        }
+      },
+      _error: function (msg) {
+        console.log('[ERROR] '+msg);
+        this.set('$.toast.text', msg);
+        this.$.toast.show();
+      }
+    });
+  })()
+  </script>
+</dom-module>

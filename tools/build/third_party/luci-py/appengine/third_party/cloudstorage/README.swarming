@@ -1,0 +1,15 @@
+Name: App Engine Client for Google Cloud Storage
+Short Name: appengine-gcs-client
+URL: https://github.com/googlecloudplatform/appengine-gcs-client
+Revision: 0cffd5bf06058fd9523fe5949d1430e6f0551cdb
+License: Apache License, Version 2.0
+
+Description:
+This library is the preferred way of accessing Google Cloud Storage from
+App Engine. It was designed to replace the Files API. As a result it contains
+much of the functionality. (streaming reads and writes but not the complete
+set of GCS APIs) It also provides key stability improvements and a better
+overall developer experience.
+
+Local Modifications:
+Kept only src/cloudstorage/. Stripped test/ and demo/.

@@ -1,0 +1,106 @@
+{% set title = 'Error Report' %}
+{% extends "ereporter2/base.html" %}
+
+{% block header %}
+<script>
+  function on_silenced(self) {
+    if (self.checked) {
+      self.parentElement.getElementsByClassName('silenced_until')[0].value = "T";
+    }
+  }
+  function on_silenced_until(self) {
+    if (self.value) {
+      self.parentElement.getElementsByClassName('silenced')[0].checked = null;
+    }
+  }
+</script>
+{% endblock %}
+
+{% block body %}
+<h2>Report for {{start|epochformat}} ({{start}}) to {{end|epochformat}} ({{end}})</h2>
+<a href="/restricted/ereporter2/report?start={{start-3600}}&end={{start}}">
+  Previous hour</a><br>
+<a href="/restricted/ereporter2/silence">Silenced errors</a>
+<p>
+Modules-Versions:
+<ul>{% for i in module_versions %}<li>{{i.0}} - {{i.1}}</li>
+{% endfor %}
+</ul>
+
+<h3>
+  Found {{errors_count}} occurrences of {{errors|length}} errors across
+  {{errors_version_count}} versions.
+</h3>
+
+{% for category in errors %}
+  <span style="font-size:130%">{{category.signature}}</span><br>
+  Handler: {{category.events.head.0.handler_module}}<br>
+  Modules: {{category.modules|join(', ')}}<br>
+  Versions: {{category.versions|join(', ')}}<br>
+  {{category.events.head.0.method}} {{category.events.head.0.host}}{{category.events.head.0.resource}} (HTTP {{category.events.head.0.status}})<br>
+  <pre>{{category.events.head.0.message}}</pre>
+  {{category.events.total_count}} occurrences:
+  {% for event in category.events.head %}
+    <a href="/restricted/ereporter2/request/{{event.request_id}}">Entry</a>
+    {% endfor %}
+  {% if category.events.has_gap %}&hellip;{% endif %}
+  {% for event in category.events.tail %}
+    <a href="/restricted/ereporter2/request/{{event.request_id}}">Entry</a>
+    {% endfor %}
+  <p>
+  <form method="POST" action="/restricted/ereporter2/silence">
+    <strong>Silencing</strong><br>
+    {% if category.exception_type %}
+      Filter for: <label title="Signature">
+        <input type="radio" name="mute_type" value="signature" checked>Signature
+        </input>
+      </label>
+      <label title="Exception">
+        <input type="radio" name="mute_type" value="exception_type" checked>
+          Exception</input>
+      </label><br>
+      <input type="hidden" name="exception_type" value="{{category.exception_type}}"></input>
+    {% else %}
+      <input type="hidden" name="mute_type" value="signature"></input>
+      <input type="hidden" name="exception_type" value=""></input>
+    {% endif %}
+    When under threshold: <input name="threshold" type="number" value="10">
+      </input><br>
+    <input type="checkbox" class="silenced" name="silenced" checked onclick="on_silenced(this)">
+    Silence forever</input>
+    <strong>or</strong>
+    Silence up to (UTC): <input type="datetime-local" class="silenced_until" name="silenced_until" oninput="on_silenced_until(this)" value="T">
+    </input><br>
+    <input type="hidden" name="signature" value="{{category.signature}}"></input>
+    <input type="hidden" name="xsrf_token" value="{{xsrf_token}}"></input>
+    <input type="submit" value="Mute it!"></input>
+  </form>
+  <p>
+{% endfor %}
+
+<hr>
+
+<h3>
+  Ignored {{ignored_count}} occurrences of {{ignored|length}} errors across
+  {{ignored_version_count}} versions.
+</h3>
+
+{% for category in ignored %}
+  <span style="font-size:130%">{{category.signature}}</span><br>
+  Handler: {{category.events.head.0.handler_module}}<br>
+  Modules: {{category.modules|join(', ')}}<br>
+  Versions: {{category.versions|join(', ')}}<br>
+  {{category.events.head.0.method}} {{category.events.head.0.host}}{{category.events.head.0.resource}} (HTTP {{category.events.head.0.status}})<br>
+  <pre>{{category.events.head.0.message}}</pre>
+  {{category.events.total_count}} occurrences:
+  {% for event in category.events.head %}
+    <a href="/restricted/ereporter2/request/{{event.request_id}}">Entry</a>
+    {% endfor %}
+  {% if category.events.has_gap %}&hellip;{% endif %}
+  {% for event in category.events.tail %}
+    <a href="/restricted/ereporter2/request/{{event.request_id}}">Entry</a>
+  {% endfor %}<p>
+  <br>
+{% endfor %}
+
+{% endblock %}

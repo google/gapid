@@ -1,0 +1,7 @@
+{
+  "name": "Config UI",
+  "short_name": "Config UI",
+  "description": "This is a UI for the configuration service",
+  "start_url": "/",
+  "display": "standalone"
+}

@@ -1,0 +1,404 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-page-summary>
+
+  Usage:
+
+    <bot-page-summary></bot-page-summary>
+
+    This element shows a summary of all the tasks run on this bot. It attempts to
+    find commonalities in the names and shorten them to save screen space.
+
+    For example, if the there are two tasks:
+    Performance-Linux-Foo-Clang
+    Performance-Linux-Bar-GCC
+
+    The summary will (optionally) truncate these to
+    ...Foo-Clang
+    ...Bar-GCC
+
+    The summary includes information like total number of failures, average duration,
+    and more.
+
+  Properties:
+    None.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+<link rel="import" href="/res/imp/bower_components/paper-checkbox/paper-checkbox.html">
+
+<link rel="import" href="/res/imp/common/single-page-style.html">
+<link rel="import" href="/res/imp/shared/sort-toggle.html">
+<link rel="import" href="/res/imp/shared/url-param.html">
+
+<link rel="import" href="bot-page-shared-behavior.html">
+
+<dom-module id="bot-page-summary">
+  <template>
+    <style include="single-page-style">
+      .wrapper {
+        display: table;
+        margin-left: auto;
+        margin-bottom: 10px;
+        margin-right: 5px;
+      }
+
+      paper-checkbox {
+        margin-left: 5px;
+      }
+
+      .thick {
+        border-top-style: solid;
+      }
+    </style>
+
+    <url-param name="show_full_names"
+      value="{{_show_full_names}}">
+    </url-param>
+    <url-param name="show_all_tasks"
+      value="{{_show_all_tasks}}">
+    </url-param>
+    <url-param name="sort_stats"
+      value="{{_sortstr}}"
+      default_value="total:desc">
+    </url-param>
+
+    <div class="wrapper">
+      <table>
+        <thead on-sort_change="_sortChange">
+          <tr>
+            <th>
+              <span>Name</span>
+              <sort-toggle
+                  name="full_name"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>
+              <span>Total</span>
+              <sort-toggle
+                  name="total"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>
+              <span>Success</span>
+              <sort-toggle
+                  name="success"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>
+              <span>Failed</span>
+              <sort-toggle
+                  name="failed"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>
+              <span>Died</span>
+              <sort-toggle
+                  name="bot_died"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>
+              <span>Average Duration</span>
+              <sort-toggle
+                  name="avg_duration"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>
+              <span>Total Duration</span>
+              <sort-toggle
+                  name="total_time"
+                  current="[[_sort]]">
+              </sort-toggle>
+            </th>
+            <th>Percent of Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template is="dom-repeat" items="[[_tasksToShow]]" as="task">
+            <tr>
+              <td hidden$="[[_truthy(_show_full_names)]]" title="[[task.full_name]]">[[task.name]]</td>
+              <td hidden$="[[_not(_show_full_names)]]" title="[[task.full_name]]">[[task.full_name]]</td>
+              <td>[[task.total]]</td>
+              <td>[[task.success]]</td>
+              <td>[[task.failed]]</td>
+              <td>[[task.bot_died]]</td>
+              <td>[[_humanDuration(task.avg_duration)]]</td>
+              <td>[[_humanDuration(task.total_time)]]</td>
+              <td>[[task.total_time_percent]]%</td>
+            </tr>
+          </template>
+        </tbody>
+        <tr class="thick">
+          <td>Total</td>
+          <td>[[_totalStats.total]]</td>
+          <td>[[_totalStats.success]]</td>
+          <td>[[_totalStats.failed]]</td>
+          <td>[[_totalStats.bot_died]]</td>
+          <td>[[_humanDuration(_totalStats.avg_duration)]]</td>
+          <td>[[_humanDuration(_totalStats.total_time)]]</td>
+          <td>100.0%</td>
+        </tr>
+      </table>
+
+      <div>
+        <table>
+          <thead>
+            <tr>
+              <th title="How much time passed between the oldest task fetched and now.">
+                Total Wall Time
+              </th>
+              <th title="How much of the wall time this bot was busy with a task.">
+                Wall Time Utilization
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>[[_humanDuration(_totalStats.wall_time)]]</td>
+              <td>[[_totalStats.wall_time_utilization]]%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <paper-checkbox
+            checked="{{_show_full_names}}">
+          Show Full Names
+        </paper-checkbox>
+        <paper-checkbox
+            hidden$="[[_cannotExpand]]"
+            checked="{{_show_all_tasks}}">
+          Show All Tasks
+        </paper-checkbox>
+      </div>
+    </div>
+
+  </template>
+  <script>
+  (function(){
+    var SHOW_LIMIT = 15;
+    Polymer({
+      is: 'bot-page-summary',
+
+      behaviors: [
+          SwarmingBehaviors.BotPageBehavior,
+      ],
+
+      properties: {
+        // input
+        tasks: {
+          type: Array,
+        },
+
+        _cannotExpand: {
+          type: Boolean,
+          computed: "_countTasks(_taskStats.*)"
+        },
+        _show_all_tasks: {
+          type: Boolean
+        },
+        _show_full_names: {
+          type: Boolean
+        },
+        _sortstr: {
+          type: String
+        },
+        _sort: {
+          type: Object,
+          computed: "_makeSortObject(_sortstr)",
+        },
+        // _taskStats in an Array<Object> where each object represents one
+        // type of task (e.g. test_windows_release) and aggregate stats
+        // about it (e.g. average duration)
+        _taskStats: {
+          type: Array
+        },
+        // _tasksToShow is a sorted subset of _taskStats. This allows us to
+        // hide some of the tasks (if there are many)
+        _tasksToShow: {
+          type: Array,
+          computed: "_sortAndLimitTasks(_taskStats.*,_sort.*,_show_all_tasks)"
+        },
+        // _totalStats contains the aggregate stats for all tasks.
+        _totalStats: {
+          type: Object
+        }
+      },
+
+      // We define this down here to listen to all array events (e.g. splices)
+      // otherwise we don't update when more tasks are added.
+      observers: ["_aggregate(tasks.*)"],
+
+      _aggregate: function() {
+        var totalStats = {
+          total: 0,
+          success: 0,
+          failed: 0,
+          bot_died: 0,
+          avg_duration: 0,
+          total_time: 0
+        };
+        if (!this.tasks || !this.tasks.length) {
+          this.set("_totalStats", totalStats);
+          this.set("_taskStats", []);
+          return;
+        }
+
+        // TODO(kjlubick): Fix sk.now() to be less awkward to use.
+        var now = new Date(sk.now() * 1000);
+        var taskNames = [];
+        var taskAgg = {};
+        totalStats.total = this.tasks.length;
+        // to compute wall_time, we find the latest task (and assume tasks
+        // come to us chronologically) and find the difference between then
+        // and now.
+        totalStats.wall_time = (now - this.tasks[this.tasks.length - 1].started_ts) / 1000;
+        this.tasks.forEach(function(t) {
+          var n = t.name.trim();
+          var pieces = n.split('/');
+          if (pieces.length === 5) {
+            // this appears to be a buildbot name
+            // piece 0 is tag "name", piece 3 is "buildername"
+            // We throw the rest away (OS, commit hash, build number) so we
+            // can identify the "true name".
+            n = pieces[0] + "/" + pieces[3];
+          }
+
+          if (!taskAgg[n]) {
+            taskAgg[n] = {
+              full_name: n,
+              name: n,
+              total: 0,
+              success: 0,
+              failed: 0,
+              bot_died: 0,
+              avg_duration: 0,
+              total_time: 0,
+            }
+          }
+
+          taskAgg[n].total++;
+          if (t.failure) {
+            totalStats.failed++;
+            taskAgg[n].failed++;
+          } else if (t.internal_failure) {
+            totalStats.bot_died++;
+            taskAgg[n].bot_died++;
+          } else if (t.state !== "RUNNING") {
+            totalStats.success++;
+            taskAgg[n].success++;
+          }
+          totalStats.total_time += t.duration;
+          taskAgg[n].total_time += t.duration;
+        });
+
+        totalStats.avg_duration = totalStats.total_time / totalStats.total;
+        totalStats.wall_time_utilization = (totalStats.total_time * 100 / totalStats.wall_time).toFixed(1);
+        this.set("_totalStats", totalStats);
+
+        // Turn the map into the array and compute total time percent.
+        var names = Object.keys(taskAgg);
+        var taskStats = [];
+        var namesCleaned = [];
+        names.forEach(function(n) {
+          taskAgg[n].avg_duration = taskAgg[n].total_time / taskAgg[n].total;
+          taskAgg[n].total_time_percent = (taskAgg[n].total_time * 100 /totalStats.total_time).toFixed(1);
+          taskStats.push(taskAgg[n]);
+          // For the purposes of finding substrings in the tasks, the fact that a task was retried only
+          // muddies the results, so we remove them.
+          n = n.replace(/ \(retry\)/g, "");
+          // The substrings function works decent on long strings, but we want to prevent the page from
+          // hanging if really long names are used.
+          n = n.substring(0, Math.min(100, n.length));
+          namesCleaned.push(n);
+        });
+
+        // Shorten names if possible by finding the longest common substring
+        // of at least n-1 of the tasks. These parameters can be tweaked; see
+        // https://www.npmjs.com/package/common-substrings for documentation
+        // n-1 seems to be good to avoid not finding decent matches if there
+        // is an oddball task.
+        var substrings = new Substrings({
+          minOccurrence: Math.max(2, namesCleaned.length-1),
+          minLength: 6,
+        });
+        substrings.build(namesCleaned);
+        var result = substrings.weighByAverage() || [];
+        // result is an Array<{name:String, source:Array<int>} where the
+        // ints in source are the indices of names that have the substring.
+        // result is sorted with the "best" results first.
+        if (result.length) {
+          result[0].source.forEach(function(idx){
+            var name = taskStats[idx].full_name;
+            taskStats[idx].name = name.replace(result[0].name, "...");
+          });
+        }
+
+        this.set("_taskStats", taskStats);
+      },
+
+      _compare: function(a,b) {
+        if (!this._sort) {
+          return 0;
+        }
+        var dir = 1;
+        if (this._sort.direction === "desc") {
+          dir = -1;
+        }
+        return dir * naturalSort(a[this._sort.name], b[this._sort.name]);
+      },
+
+      _countTasks: function(){
+        return this._taskStats.length <= SHOW_LIMIT;
+      },
+
+      _makeSortObject: function(sortstr){
+        if (!sortstr) {
+          return undefined;
+        }
+        var pieces = sortstr.split(":");
+        if (pieces.length != 2) {
+          // fail safe
+          return {name: "full_name", direction: "asc"};
+        }
+        return {
+          name: pieces[0],
+          direction: pieces[1],
+        }
+      },
+
+      _sortAndLimitTasks: function() {
+        swarming.stableSort(this._taskStats, this._compare.bind(this));
+        var limit = this._taskStats.length;
+        if (!this._show_all_tasks && this._taskStats.length > SHOW_LIMIT) {
+          limit = SHOW_LIMIT;
+        }
+        return this._taskStats.slice(0, limit);
+      },
+
+      _sortChange: function(e) {
+        // The event we get from sort-toggle tells us the name of what needs
+        // to be sorting and how to sort it.
+        if (!(e && e.detail && e.detail.name)) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        this.set("_sortstr", e.detail.name + ":" + e.detail.direction);
+      },
+
+    });
+  })();
+  </script>
+</dom-module>

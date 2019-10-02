@@ -1,0 +1,175 @@
+{% set title = 'Error Request Report' %}
+{% extends "ereporter2/base.html" %}
+
+
+{% block header %}
+<style>
+  h1 {
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  h3 {
+    margin-bottom: 5px;
+  }
+
+  table.property_table {
+    font-family: monospace;
+    border-spacing: 0;
+  }
+
+  table.property_table tbody tr:nth-child(even) {
+    background-color: #eeeeee;
+  }
+
+  table.property_table td {
+    padding-left: 1em;
+    padding-right: 1em;
+  }
+
+  table.property_table td:first-child {
+    white-space: nowrap;
+  }
+
+  table.property_table tbody tr:hover {
+    background-color: #eeffee;
+  }
+</style>
+{% endblock %}
+
+
+{% block body %}
+<h1>Error</h1>
+<a href="/restricted/ereporter2/errors">Back to errors list</a><p>
+<p>
+<h3>Generic details</h3>
+<table class="property_table">
+  <tbody>
+    <tr>
+      <td>Timestamp</td>
+      <td>{{error.created_ts|datetimeformat}}</td>
+    </tr>
+    <tr>
+      <td>Source</td>
+      <td>{{error.source}}</td>
+    </tr>
+    <tr>
+      <td>Category</td>
+      <td>{{error.category or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Identity</td>
+      <td>{{error.identity or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Message</td>
+      <td><pre>{{error.message or '--'}}</pre></td>
+    </tr>
+    <tr>
+      <td>Exception type</td>
+      <td>{{error.exception_type or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Stack</td>
+      <td><pre>{{error.stack or '--'}}</pre></td>
+    </tr>
+    <tr>
+      <td>Version</td>
+      <td>{{error.version or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Python version</td>
+      <td>{{error.python_version or '--'}}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Server side details</h3>
+<table class="property_table">
+  <tbody>
+    <tr>
+      <td>Endpoint</td>
+      <td>{{error.endpoint or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Method</td>
+      <td>{{error.method or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Params</td>
+      <td>{{error.params or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Request ID</td>
+      <td>
+        {% if error.request_id %}
+          <a href="/restricted/ereporter2/request/{{error.request_id}}">
+            {{error.request_id}}
+          </a>
+        {% else %}
+          --
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>Source IP</td>
+      <td>{{error.source_ip or '--'}}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Client side details</h3>
+<table class="property_table">
+  <tbody>
+    <tr>
+      <td>Duration (secs)</td>
+      <td>
+        {% if error.duration %}
+          {{error.duration|round(5)}}
+        {% else %}
+          --
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>Arguments</td>
+      <td>
+        {% if error.args %}
+          {{error.args|join(' ')}}
+        {% else %}
+          --
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>CWD</td>
+      <td>{{error.cwd or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Environment vars</td>
+      <td>
+        {% if error.env %}
+          {% for k, v in error.env.iteritems()|sort %}
+            <strong>{{k}}</strong>: {{v}}<br>
+          {% endfor %}
+        {% else %}
+          --
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>Hostname</td>
+      <td>{{error.hostname or '--'}}</td>
+    </tr>
+    <tr>
+      <td>OS</td>
+      <td>{{error.os or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Local user</td>
+      <td>{{error.user or '--'}}</td>
+    </tr>
+  </tbody>
+</table>
+
+{% endblock %}

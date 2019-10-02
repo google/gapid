@@ -1,0 +1,5 @@
+handlers:
+- url: /internal/cron/config/.*
+  script: components.config.apps.backend
+  secure: always
+  login: admin

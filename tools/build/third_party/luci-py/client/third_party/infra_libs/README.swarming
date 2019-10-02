@@ -1,0 +1,20 @@
+Name: infra_libs
+Short Name: infra_libs
+URL: https://chromium.googlesource.com/infra/infra/+/master/packages/infra_libs/infra_libs/
+Version: 1.4.0
+Revision: e598398cae261b4a8f1ea4d7631e4d163c7ade6d
+License: Chromium License
+
+Description:
+Common libraries used by Chrome Infrastructure.
+
+Please roll in sync with appengine/third_party/gae_{ts,event}_mon.
+You may want to roll infra_libs in infra.git first, to make sure they
+are at compatible at the version you need.
+
+Local Modifications:
+- Installed using glyco (see ../README.txt for more info)
+- Copied LICENSE from the root of infra.git.
+- Removed silly imports from __init__.py
+- Took bqh.py from https://chromium-review.googlesource.com/1421479; will be
+  fixed later by maruel@ as infra_libs 2.0.0 is rolled in.

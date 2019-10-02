@@ -1,0 +1,5 @@
+# For more information, visit:
+# https://github.com/luci/luci-py/tree/master/appengine/swarming/tools/android/README.md
+
+# Google Vendor ID
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0664", GROUP="plugdev"

@@ -1,0 +1,117 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>task-list Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+  <script src="../../../build/js/natural-sort.js"></script>
+  <script src="/res/js/common.js"></script>
+  <script src="/res/js/alias.js"></script>
+  <script src="../../../node_modules/sinon/pkg/sinon-1.17.5.js"></script>
+  <!-- Makes a var called list-->
+  <script type="text/javascript" src="task-list-demo.json"></script>
+  <!-- Makes a var called tags-->
+  <script type="text/javascript" src="task-tags-demo.json"></script>
+  <!-- Makes a var called fleetData-->
+  <script type="text/javascript" src="task-list-fleet-data-demo.json"></script>
+
+  <script type="text/javascript" charset="utf-8">
+    // sinon.format = function(object) {return JSON.stringify(object);}
+    // sinon.log = function(message) {console.log(message);};
+    var server = sinon.fakeServer.create();
+    server.autoRespond = true;
+    server.autoRespondAfter = 1000;
+
+    var respond = function(request){
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+        request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      sinon.log("User authenticated :) "+ request.requestHeaders.authorization);
+      sinon.log("List Request: "+sinon.format(request));
+      request.respond(200, {"Content-Type":"application/json"}, JSON.stringify(list));
+    }
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/tasks\/list.*/, respond);
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/tasks\/tags/, JSON.stringify(tags));
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bots\/dimensions/, JSON.stringify(fleetData));
+
+    var cancel = function(request) {
+      console.log("Cancelling", request);
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+          request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      request.respond(200, {}, "Task has been cancelled");
+    }
+
+    server.respondWith("POST", /^\/_ah\/api\/swarming\/v1\/task\/.+\/cancel/, cancel);
+    server.respondWith("POST", /^\/api\/swarming\/v1\/task\/.+\/cancel/, cancel);
+
+    var permissions = {
+      cancel_task: true,
+      cancel_tasks: true
+    };
+    server.respondWith("GET",  /^\/_ah\/api\/swarming\/v1\/server\/permissions/, JSON.stringify(permissions));
+
+    var details = {
+      server_version: "1234-deadbeef",
+    };
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/server\/details/, JSON.stringify(details));
+
+    var countDetails = {
+      count: 450000,
+    }
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/tasks\/count/, function(request){
+      countDetails.count++;
+      request.respond(200, {}, JSON.stringify(countDetails));
+    });
+
+    var cancelCount = 0;
+    server.respondWith("POST", /^\/api\/swarming\/v1\/tasks\/cancel/, function(request){
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+        request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      request.requestBody = JSON.parse(request.requestBody);
+      if (!request.requestBody.tags || !request.requestBody.tags.length) {
+        request.respond(400, {}, "Tags cannot be empty");
+        return;
+      }
+      var response = {
+        matched: "49",
+      };
+      if (cancelCount < 4) {
+        response.matched = "100";
+        response.cursor = "foobar" + cancelCount;
+      }
+      cancelCount++;
+      request.respond(200, {}, JSON.stringify(response));
+    });
+    </script>
+
+    <link rel="import" href="task-list.html">
+</head>
+<body>
+
+<task-list
+  client_id="20770472288-t5smpbpjptka4nd888fv0ctd23ftba2o.apps.googleusercontent.com">
+</task-list>
+
+</body>
+</html>

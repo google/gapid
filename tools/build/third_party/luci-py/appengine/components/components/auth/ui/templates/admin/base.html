@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<!-- Copyright 2014 The LUCI Authors. All rights reserved.
+Use of this source code is governed under the Apache License, Version 2.0
+that can be found in the LICENSE file. -->
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=UTF-8">
+  <title>{{app_name}} - {{page_title}}</title>
+  <link href="/third_party/bootstrap/css/bootstrap-3.1.0.min.css" rel="stylesheet">
+  <link href="/auth/static/css/common.css" rel="stylesheet">
+  <script src="/third_party/jquery/jquery-1.11.0.min.js"></script>
+</head>
+
+<body>
+  <div class="container">
+  {% block content %}
+  {% endblock %}
+  </div>
+  <script type="text/javascript" nonce="{{csp_nonce}}">
+    function redirectToLogout() {
+      if (confirm('You\'ll be signed out from ALL your google accounts!')) {
+        window.location = {{logout_url|safe}};
+      }
+    };
+  </script>
+</body>
+
+</html>

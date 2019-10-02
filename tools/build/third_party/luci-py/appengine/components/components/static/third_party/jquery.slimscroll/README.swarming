@@ -1,0 +1,12 @@
+Name: jquery.slimscroll
+URL: https://github.com/rochal/jQuery-slimScroll
+Version: 1.3.0
+Revision: 1b20226
+License: MIT
+
+Description:
+Small jQuery plugin that transforms any div into a scrollable area with
+a nice scrollbar.
+
+Local Modifications:
+Only minified version kept.

@@ -1,0 +1,583 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-filters>
+
+  Usage:
+
+    <task-filters></task-filters>
+
+  Properties:
+    // inputs
+    dimensions: Array<String>, of all valid dimensions.
+    primary_map: Object, a mapping of primary keys to secondary items.
+        The primary keys are things that can be columns or sorted by.  The
+        primary values (aka the secondary items) are things that can be filtered
+        on. Primary consists of dimensions and state.  Secondary contains the
+        values primary things can be.
+    primary_arr: Array<String>, the display order of the primary keys.
+    profile: Object, information about the logged-in user; see swarming-app.
+    // outputs
+    columns: Array<String>, the columns that should be displayed.
+    query_params: Object, The query params that will filter the query
+        server-side. Should be in format of String:Array<String>
+    filter: Object, an object {filter:Function} where filter will take one param
+        (bot) and return a Boolean if it should be displayed given the
+        current filters.
+
+  Methods:
+    setEndDate(y, m, d): Sets the end date using the years, months and days. This is
+        expected to be the response after a prompt-date event is fired and the user has
+        made their choice.
+    setEndTime(h, m, s): Sets the end time using the hours, minutes and seconds.
+        This is expected to be the response after a prompt-date event is fired and
+        the user has made their choice.
+    setStartDate(y, m, d): Sets the start date using the years, months and days. This is
+        expected to be the response after a prompt-date event is fired and the user has
+        made their choice.
+    setStartTime(h, m, s): Sets the start time using the hours, minutes and seconds.
+        This is expected to be the response after a prompt-date event is fired and
+        the user has made their choice.
+
+  Events:
+  The events this element fires are to work around the fact that modal paper-dialog
+  elements need to be outside all other elements on the DOM.
+
+    cancel-all: The user wishes to cancel all tasks. The parent is expected to
+        show a paper-dialog and confirm the details.  The event's details is
+        {tags: {Array:String}} of the tags of tasks that need be canceled.
+    prompt-date: The user wishes to change the filter date. The parent is expected to
+        show a paper-dialog that lets the user pick a date.  The event's details
+        is {name: String, date: Date} naming the element to which the result will
+        go and the starting date.
+    prompt-time: The user wishes to change the filter time. The parent is expected to
+        show a paper-dialog that lets the user pick a time.  The event's details
+        is {name: String, date: Date} naming the element to which the result will
+        go and the starting date.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-a11y-keys/iron-a11y-keys.html">
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="/res/imp/bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="/res/imp/bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="/res/imp/bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="/res/imp/bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="/res/imp/bower_components/paper-input/paper-input.html">
+
+<link rel="import" href="/res/imp/common/query-column-filter-behavior.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/common/task-behavior.html">
+<link rel="import" href="/res/imp/shared/url-param.html">
+
+<dom-module id="task-filters">
+  <template>
+    <style include="iron-flex iron-flex-alignment iron-positioning query-column-filter-style swarming-app-style">
+      .item.wide {
+        max-width: 400px;
+      }
+      .selector.wide {
+        min-width: 275px;
+      }
+      .selector.narrow {
+        min-width: 250px;
+      }
+      .cancel-button {
+        display: block;
+        padding: 1.0em 1.5em;
+      }
+      .settings {
+        margin-left: 5px;
+      }
+      :host {
+        min-width: 850px;
+      }
+      .bold {
+        font-weight: bold
+      }
+      .end.date_time {
+        margin-top: 5px;
+      }
+
+       .pickable > span {
+        padding: 3px;
+        border: 1px solid black;
+        display: inline-block;
+        cursor: pointer;
+      }
+
+      .pickable.disabled > span {
+        color: #AAA;
+        cursor: default;
+      }
+    </style>
+
+    <url-param name="f"
+      value="{{_filters}}"
+      default_values="[]"
+      multi>
+    </url-param>
+    <url-param name="c"
+      value="{{columns}}"
+      default_values='["name","state","created_ts","duration","pending_time","pool","bot"]'
+      multi>
+    </url-param>
+    <url-param name="q"
+     value="{{_query}}"
+     default_value="">
+    </url-param>
+    <url-param name="l"
+      default_value="50"
+      value="{{_limit}}">
+    </url-param>
+    <url-param name="st"
+      value="{{_start_ts}}">
+    </url-param>
+    <url-param name="et"
+      value="{{_end_ts}}">
+    </url-param>
+    <url-param name="n"
+      value="{{_use_now}}">
+    </url-param>
+
+    <div class="container horizontal layout">
+    <!--
+    A common pattern below is to do something like
+    checked="[[_columnState(col,columns.*)]]"
+    The last argument here allows this value to change if anything in the
+    columns array is added or removed.  Arrays are weird in Polymer and this is
+    the best way to listen to those changes.
+    -->
+
+      <div class="narrow-down-selector">
+        <div>
+          <iron-a11y-keys target="[[_filter_input]]" keys="enter" on-keys-pressed="_possiblyTagFilter"></iron-a11y-keys>
+          <iron-icon class="icons" icon="icons:search"></iron-icon>
+          <paper-input id="filter"
+            label="Search columns and filters or supply a filter and press enter"
+            placeholder="gpu nvidia pool:Chrome"
+            value="{{_query::input}}">
+          </paper-input>
+        </div>
+
+        <div class="wide selector side-by-side"
+            title="This shows all task tags and other interesting task properties. Mark the check box to add as a column. Select the row to see filter options.">
+          <iron-selector attr-for-selected="label" selected="{{_primarySelected}}">
+            <template is="dom-repeat" items="[[_primaryItems]]" as="item">
+              <div class="selectable item horizontal layout" label="[[item]]">
+                <!-- No line break here to avoid awkward spaces-->
+                <span>[[_beforeBold(item,_query)]]<span class="bold">[[_bold(item,_query)]]</span>[[_afterBold(item,_query)]]</span>
+                <span class="flex"></span>
+                <paper-checkbox
+                  noink
+                  checked="[[_columnState(item,columns.*)]]"
+                  on-change="_toggleColumn">
+                </paper-checkbox>
+              </div>
+            </template>
+          </iron-selector>
+        </div>
+
+        <div class="selector side-by-side"
+            title="These are most of the options (if any) that the task list can be filtered on. This list is all that have been seen recently, augmented with the ones returned by the current query. There may be others.">
+          <template is="dom-repeat" id="secondaryList"
+              items="[[_secondaryItems]]" as="item">
+            <div class="item horizontal layout" label="[[item]]">
+              <!-- No line break here to avoid awkward spaces-->
+              <span>[[_beforeBold(item,_query)]]<span class="bold">[[_bold(item,_query)]]</span>[[_afterBold(item,_query)]]</span>
+              <span class="flex"></span>
+              <iron-icon
+                  class="icons"
+                  icon="icons:arrow-forward"
+                  hidden="[[_cantAddFilter(_primarySelected,item,_filters.*)]]"
+                  on-tap="_addFilter">
+              </iron-icon>
+            </div>
+          </template>
+          <template is="dom-if" if="[[_secondaryItems.length]]">
+            <div class="pointable item" title="There may be more valid options than just the ones shown.">...</div>
+          </template>
+          <template is="dom-if" if="[[_showTagMessage(_primarySelected,_secondaryItems.length)]]">
+            <div class="item">Only tags and dimensions can be used for filtering. <i>"[[_primarySelected]]"</i> is informational only.</div>
+          </template>
+        </div>
+
+        <div class="narrow selector side-by-side"
+            title="These tag filters are AND'd together and applied to all tasks.">
+          <template is="dom-repeat" items="[[_filters]]" as="fil">
+            <div class="item horizontal layout" label="[[fil]]">
+              <span>[[fil]]</span>
+              <span class="flex"></span>
+              <iron-icon
+                  class="icons"
+                  icon="icons:remove-circle-outline"
+                  hidden="[[_cantRemoveFilter(fil,_filters.*)]]"
+                  on-tap="_removeFilter">
+              </iron-icon>
+            </div>
+          </template>
+        </div>
+
+        <div class="side-by-side settings">
+          <paper-input id="_limit"
+            label="Limit Results"
+            auto-validate
+            min="0"
+            max="1000"
+            pattern="[0-9]+"
+            value="{{_limit}}">
+          </paper-input>
+          <a href$="[[_matchingBotsLink(query_params,dimensions.*)]]">View Matching Bots</a>
+          <template is="dom-if" if="">
+            <button class="cancel-button"
+                disabled$="[[!permissions.cancel_tasks]]"
+                title="[[_cancelTasksText(permissions, profile)]]"
+                on-tap="_promptCancel">
+              Cancel All Tasks
+            </button>
+          </template>
+        </div>
+
+        <div class="side-by-side settings">
+          <div class="end date_time">
+            <div class="bold" title="Should be earlier than end">Start:</div>
+            <div class="pickable">
+              <span on-click="_promptStartDate">[[_dateString(_start_ts)]]</span>
+              <span on-click="_promptStartTime">[[_timeString(_start_ts)]]</span>
+            </div>
+          </div>
+
+          <div class="end date_time">
+            <div class="bold" title="Should be later than start">End:</div>
+            <div class$="pickable [[_isEnabled(_use_now)]]">
+              <span on-click="_promptEndDate">[[_dateString(_end_ts)]]</span>
+              <span on-click="_promptEndTime">[[_timeString(_end_ts)]]</span>
+            </div>
+          </div>
+          <paper-checkbox checked="{{_use_now}}">Now</paper-checkbox>
+        </div>
+      </div>
+
+    </div>
+
+  </template>
+  <script>
+  (function(){
+    function _parseTS(ts) {
+      ts = ts || "1";
+      ts = parseInt(ts);
+      return new Date(ts);
+    }
+    // see query-column-filter for more documentation on these properties.
+    var filterMap = {
+      state: function(task, s) {
+        var state = this._attribute(task, "state")[0];
+        if (s === state || s === "ALL") {
+          return true;
+        }
+        if (s === "PENDING_RUNNING") {
+          return state === this.PENDING || state === this.RUNNING;
+        }
+        var failure = this._attribute(task, "failure", false)[0];
+        if (s === "COMPLETED_SUCCESS") {
+          return state === this.COMPLETED && !failure;
+        }
+        if (s === "COMPLETED_FAILURE") {
+          return state === this.COMPLETED && failure;
+        }
+        var tryNum = this._attribute(task, "try_number", "-1")[0];
+        if (s === "DEDUPED") {
+          return state === this.COMPLETED && tryNum === "0";
+        }
+      },
+    };
+
+    Polymer({
+      is: 'task-filters',
+
+      behaviors: [
+          SwarmingBehaviors.QueryColumnFilter,
+          SwarmingBehaviors.TaskBehavior,
+      ],
+
+      properties: {
+        profile: {
+          type: Object
+        },
+      // output
+        columns: {
+          type: Array,
+          notify: true,
+        },
+        query_params: {
+          type: Object,
+          computed: "_extractQueryParams(_filters.*, _limit, _start_ts, _end_ts, _use_now)",
+          notify: true,
+        },
+
+        permissions: {
+          type: Object,
+        },
+        // Because url params and the Swarming API queries deal with time stamps
+        // it is easiest to store the date as time stamps and not the native
+        // JS Date object. The time stamp will always be in UTC, although we
+        // display dates/times to the user in their own locale and timezone.
+        _end_ts: {
+          type: String,
+        },
+        _start_ts: {
+          type: String
+        },
+        // If we should use now() as the end time.
+        _use_now: {
+          type: Boolean
+        },
+
+        // for QueryColumnFilter
+        _filterMap: {
+          type: Object,
+          value: function() {
+            var base = this._commonFilters();
+            for (var attr in filterMap) {
+              base[attr] = filterMap[attr];
+            }
+            return base;
+          },
+        },
+        _prettyItem: {
+          type: Object,
+          value: function() {
+            return {
+              apply: function(s) {
+                if (s.endsWith("-tag")) {
+                  return s.slice(0, -4) + " (tag)"
+                }
+                return s;
+              }
+            };
+          }
+        },
+      },
+
+      ready: function() {
+        var now = new Date();
+        now.setSeconds(0);
+        now.setMilliseconds(0);
+        if (!this._end_ts && !this._use_now) {
+          this._use_now = true;
+        }
+        if (!this._end_ts) {
+          this._setEndTS(now.getTime());
+        }
+        if (!this._start_ts) {
+          this._setStartTS(now.getTime() - 24*60*60*1000);
+        }
+      },
+
+      _cancelTasksText: function(permissions, profile){
+        if (permissions.cancel_tasks) {
+          return "Cancel all pending tasks. Generally used for emergencies."
+        }
+        return profile.email +" does not have cancel_tasks permissions. Log in as a different profile that does.";
+      },
+
+      _dateString: function(ts) {
+        return _parseTS(ts).toLocaleDateString();
+      },
+
+      _extractQueryParams: function() {
+        var params = {};
+        var tags = [];
+        this._filters.forEach(function(f) {
+          var split = f.split(":", 1)
+          var col = split[0];
+          var rest = f.substring(col.length + 1);
+          if (col.endsWith("-tag")) {
+            // Trim off the 4 letters "-tag"
+            col = col.slice(0, -4);
+          }
+          if (col === "state") {
+            params["state"] = [rest];
+          } else {
+            if (col === "user" && rest === "none") {
+              // empty string means no user.  We use "none" in the UI because
+              // it is more user friendly.
+              rest = "";
+            }
+            if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(col) !== -1) {
+              rest = swarming.alias.unapply(rest);
+            }
+            tags.push(col + ":" + rest);
+          }
+        }.bind(this));
+        params["tags"] = tags;
+
+        // The server expects these in epoch seconds, so we trim off the last 3
+        // digits representing milliseconds.
+        if (this._start_ts) {
+          params["start"] = [this._start_ts.substring(0, this._start_ts.length - 3)];
+        }
+
+        if (!this._use_now && this._end_ts) {
+          params["end"] = [this._end_ts.substring(0, this._end_ts.length - 3)];
+        }
+        var lim = parseInt(this._limit);
+        if (Number.isInteger(lim)) {
+          // Clamp the limit
+          lim = Math.max(lim, 1);
+          lim = Math.min(1000, lim);
+          params["limit"] = [lim];
+          // not !== because limit could be the string "900"
+          if (this._limit != lim) {
+            this.set("_limit", lim);
+          }
+        }
+        return params;
+      },
+
+      _isEnabled: function(use_now) {
+        if (use_now) {
+          return "disabled";
+        }
+        return "";
+      },
+
+      _matchingBotsLink: function(queryParams) {
+        var cols = ["id", "os", "task", "status"];
+        if (!queryParams.tags || !this.dimensions) {
+          return this._botListLink([], cols);
+        }
+
+        var dimensions = queryParams.tags.filter(function(t){
+          var col = t.split(":", 1)[0];
+          return this.dimensions.indexOf(col) !== -1;
+        }.bind(this));
+
+        dimensions.forEach(function(f) {
+          var col = f.split(":", 1)[0];
+          if (cols.indexOf(col) === -1) {
+            cols.push(col);
+          }
+        }.bind(this));
+        return this._botListLink(dimensions, cols);
+      },
+
+      _possiblyTagFilter: function() {
+        var filter = this._query.trim();
+        var idx = filter.indexOf(":");
+        if (idx === -1) {
+          sk.errorMessage('Invalid filter.  Should be like "foo:bar"', 5000);
+          return;
+        }
+        var primary = filter.slice(0, idx);
+        // primary has an empty spot for "name" to deal with the top level one
+        // If a user typed in name:foo, they mean the tag, so we account for it here.
+        if (primary === "name" || (!this.primary_map[primary] && !primary.endsWith("-tag"))) {
+          // Make the tag filter for user-supplied tags, they may not have
+          // added the -tag suffix.
+          primary += "-tag";
+        }
+        var param = filter.slice(idx + 1);
+        if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(primary) !== -1) {
+          param = swarming.alias.apply(param, primary);
+        }
+        filter = primary + ":" + param;
+
+        if (this._filters.indexOf(filter) !== -1) {
+          sk.errorMessage('Filter "'+filter+'" is already active', 5000);
+          return;
+        }
+        this.push("_filters", filter);
+        this.set("_query", "");
+      },
+
+      _promptCancel: function() {
+        if (!this.query_params.tags || !this.query_params.tags.length) {
+          sk.errorMessage("You can't batch cancel everything.  Specify some tags to filter by first.", 8000);
+          return;
+        }
+        this.fire("cancel-all",{tags:this.query_params.tags});
+      },
+
+      _promptEndDate: function(e) {
+        if (!this._use_now) {
+          this._promptDate(_parseTS(this._end_ts), "end");
+        }
+      },
+      _promptStartDate: function(e) {
+        this._promptDate(_parseTS(this._start_ts), "start");
+      },
+
+      _promptDate: function(date, name) {
+        this.fire("prompt-date",{date:date, name:name});
+      },
+
+      _promptEndTime: function(e) {
+        if (!this._use_now) {
+          this._promptTime(_parseTS(this._end_ts), "end");
+        }
+      },
+      _promptStartTime: function(e) {
+        this._promptTime(_parseTS(this._start_ts), "start");
+      },
+
+      _promptTime: function(date, name) {
+        this.fire("prompt-time",{date:date, name:name});
+      },
+
+      _setEndTS: function(ts) {
+        // Make sure ts is a string. _parseTS() depends on it being a string.
+        this._end_ts = "" + ts;
+      },
+
+      setEndDate: function(y,m,days) {
+        var d = _parseTS(this._end_ts);
+        d.setFullYear(y);
+        d.setMonth(m);
+        d.setDate(days);
+        this._setEndTS(d.getTime());
+      },
+
+      setEndTime: function(h,m,s) {
+        var d = _parseTS(this._end_ts);
+        d.setHours(h);
+        d.setMinutes(m);
+        d.setSeconds(s);
+        d.setMilliseconds(0);
+        this._setEndTS(d.getTime());
+      },
+
+      _setStartTS: function(ts) {
+        // Make sure ts is a string. _parseTS() depends on it being a string.
+        this._start_ts = "" + ts;
+      },
+
+      setStartDate: function(y,m,days) {
+        var d = _parseTS(this._start_ts);
+        d.setFullYear(y);
+        d.setMonth(m);
+        d.setDate(days);
+        this._setStartTS(d.getTime());
+      },
+
+      setStartTime: function(h,m,s) {
+        var d = _parseTS(this._start_ts);
+        d.setHours(h);
+        d.setMinutes(m);
+        d.setSeconds(s);
+        d.setMilliseconds(0);
+        this._setStartTS(d.getTime());
+      },
+
+      _showTagMessage: function(primarySelected, selectedItems) {
+        return primarySelected && primarySelected !== "name" && !selectedItems;
+      },
+
+      _timeString: function(ts) {
+        return _parseTS(ts).toLocaleTimeString();
+      },
+
+    });
+  })();
+  </script>
+</dom-module>

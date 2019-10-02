@@ -1,0 +1,138 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+<style>
+.popover{
+  max-width: 100%;
+}
+</style>
+
+{# BEWARE: The following templates in 'raw' section are handled by handlebars
+javascript library and not jinja2. #}
+
+{% raw %}
+
+<script id="lookup-results-template" type="text/x-handlebars-template">
+  <div class="row">
+    <div class="col-md-12">
+      <hr>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-12 text-center">
+      <h3 style="margin-top: 0px; text-align: center;">
+        {{#if principalIsGroup}}
+          <a href="{{groupHref}}">{{principalName}}</a>
+        {{else}}
+          {{principalName}}
+        {{/if}}
+      </h3>
+      <hr style="margin-top: 20px; margin-bottom: 10px;">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <h4>Directly included by</h4>
+      {{#each directIncluders}}
+      <div>
+        <a href="{{this.href}}"
+           class="group-link"
+           data-group-name="{{this.name}}">{{this.name}}</a>
+        {{#if this.includesViaGlobs}}
+        <small>via {{#each this.includesViaGlobs}}{{this}} {{/each}}</small>
+        {{/if}}
+      </div>
+      {{else}}
+      <p style="color: #bbb"><i>None</i></p>
+      {{/each}}
+    </div>
+
+    <div class="col-md-6">
+      <h4>Indirectly included by</h4>
+      {{#each indirectIncluders}}
+      <div>
+        <a href="{{this.href}}"
+           class="group-link"
+           data-group-name="{{this.name}}"
+           data-toggle="popover"
+           data-trigger="hover"
+           data-placement="left">{{this.name}}</a>
+      </div>
+      {{else}}
+      <p style="color: #bbb"><i>None</i></p>
+      {{/each}}
+    </div>
+  </div>
+</script>
+
+<script id="indirect-group-popover" type="text/x-handlebars-template">
+<div style="font-size: small">
+  {{#each includesIndirectly}}
+  <p>
+    {{#each this}}
+      {{#if @index}}&rarr;{{/if}}
+      {{#if this}}{{this}}{{else}}&hellip;{{/if}}
+    {{/each}}
+  </p>
+  {{/each}}
+</div>
+</script>
+
+{% endraw %}
+
+<!-- Edit box for enter a principal ID to lookup. -->
+<div class="row">
+  <div class="col-md-12">
+    <form id="lookup-form">
+      <div class="input-group" id="search-box-group">
+        <input id="lookup-input" type="text" class="form-control"
+               placeholder="An email or a group name" autofocus />
+        <span class="input-group-btn">
+          <button id="lookup-btn" type="submit" class="btn btn-default"
+                  type="button">
+            <span class="glyphicon glyphicon-search"></span>
+          </button>
+        </span>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- Displayed when waiting for the backend to reply. -->
+<div class="row" id="lookup-busy-indicator" style="display:none">
+  <div class="col-md-12">
+    <hr>
+    <img
+      src="/auth/static/img/gear.gif"
+      class="center-block"
+      style="margin-bottom: 10px"
+    />
+  </div>
+</div>
+
+
+<!-- Displayed when the backend returns an error. -->
+<div class="row" id="lookup-error-box" style="display:none">
+  <div class="col-md-12">
+    <hr>
+    <div class="panel panel-danger">
+      <div class="panel-heading"><h3 class="panel-title">Error</h3></div>
+      <div class="panel-body">
+        <pre id="lookup-error-message"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Displayed when we have parsed lookup results. -->
+<div id="lookup-results-box" style="display:none">
+  <!-- Populated by JS -->
+  <div id="lookup-results"></div>
+</div>
+
+
+{% endblock %}

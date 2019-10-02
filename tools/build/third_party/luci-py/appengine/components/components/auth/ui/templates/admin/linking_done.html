@@ -1,0 +1,19 @@
+{% extends 'auth/admin/base.html' %}
+{% block content %}
+
+{% if success %}
+<h3>Success!</h3>
+<p>The service is now configured to use
+<a href="{{primary_url}}">{{primary_id}}</a> as a primary authentication and
+authorization service.
+</p>
+<p>
+The change may take several minutes to propagate.
+</p>
+{% else %}
+<h3>Failed to switch the primary authentication service.</h3>
+<p>{{error_msg}}</p>
+{% endif %}
+<hr>
+
+{% endblock %}

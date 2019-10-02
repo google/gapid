@@ -1,0 +1,40 @@
+cron:
+- description: Delete old entities that have expired
+  target: backend
+  url: /internal/cron/cleanup/trigger/expired
+  schedule: every 15 minutes
+
+- description: Cron job that gathers statistics
+  target: backend
+  url: /internal/cron/stats/update
+  schedule: every 1 minutes
+
+- description: Cron job that sends statistics to BigQuery
+  target: backend
+  url: /internal/cron/stats/send_to_bq
+  schedule: every 1 minutes
+
+### ereporter2
+
+- description: ereporter2 cleanup
+  target: backend
+  url: /internal/cron/ereporter2/cleanup
+  schedule: every 1 hours
+
+- description: ereporter2 mail exception report
+  target: backend
+  url: /internal/cron/ereporter2/mail
+  schedule: every 1 hours synchronized
+
+### gae_ts_mon
+
+- description: Send ts_mon metrics
+  url: /internal/cron/ts_mon/send
+  schedule: every 1 minutes
+
+### luci-config
+
+- description: read luci-config configs
+  # Handled by inclusion of components/config in app.yaml.
+  url: /internal/cron/config/update
+  schedule: every 1 minutes

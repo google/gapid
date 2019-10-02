@@ -1,0 +1,106 @@
+queue:
+
+## Tasks
+
+# /internal/taskqueue/important/tasks/cancel
+- name: cancel-tasks
+  rate: 500/s
+
+# /internal/taskqueue/important/tasks/cancel-task-on-bot
+- name: cancel-task-on-bot
+  rate: 500/s
+
+# /internal/taskqueue/important/pubsub/notify-task/<task_id:[0-9a-f]+>
+- name: pubsub
+  rate: 500/s
+
+# /internal/taskqueue/important/task_queues/rebuild-cache
+- name: rebuild-task-cache
+  bucket_size: 100
+  rate: 500/s
+
+# /internal/taskqueue/monitoring/bq/tasks/requests/<timestamp:\d{4}-\d\d-\d\dT\d\d:\d\d>
+- name: monitoring-bq-tasks-requests
+  rate: 10/s
+
+# /internal/taskqueue/monitoring/bq/tasks/results/run/<timestamp:\d{4}-\d\d-\d\dT\d\d:\d\d>
+- name: monitoring-bq-tasks-results-run
+  rate: 10/s
+
+# /internal/taskqueue/monitoring/bq/tasks/results/summary/<timestamp:\d{4}-\d\d-\d\dT\d\d:\d\d>
+- name: monitoring-bq-tasks-results-summary
+  rate: 10/s
+
+# /internal/taskqueue/cleanup/tasks/delete
+# An heavy workload produces 1000 tasks per minute, 10000 tasks per 10 minutes.
+# The cron job runs every 10 minutes and leaves 5 minutes for the tasks to
+# complete.
+# Each task is 1000 tasks, and takes around 3 minutes to complete. This means
+# around 10 tasks in practice should be sufficient, set it to 20 to keep a
+# safety margin.
+- name: delete-tasks
+  max_concurrent_requests: 20
+  rate: 1/s
+
+
+## External Scheduler
+
+# /internal/taskqueue/important/external_scheduler/notify-tasks
+- name: es-notify-tasks
+  rate: 100/s
+
+
+## Named caches
+
+# /internal/taskqueue/important/named_cache/update-pool
+- name: named-cache-task
+  rate: 10/s
+  # Cron will reschedule, so don't retry on failure.
+  # Need both limits, since AE semantics is "AND", not "OR".
+  retry_parameters:
+    task_retry_limit: 0
+    task_age_limit: 1s
+
+
+## Bots
+
+# /internal/taskqueue/monitoring/bq/bots/events/<timestamp:\d{4}-\d\d-\d\dT\d\d:\d\d>
+- name: monitoring-bq-bots-events
+  rate: 10/s
+
+
+## MP
+
+# /internal/taskqueue/important/machine-provider/manage
+- name: machine-provider-manage
+  rate: 500/s
+  # Cron will reschedule, so don't retry on failure.
+  # Need both limits, since AE semantics is "AND", not "OR".
+  retry_parameters:
+    task_retry_limit: 0
+    task_age_limit: 1s
+
+
+## General
+
+# /internal/taskqueue/mapreduce/launch/<job_id:[^\/]+>
+- name: mapreduce-jobs
+  bucket_size: 500
+  rate: 500/s
+  # This limits the burn rate:
+  max_concurrent_requests: 128
+  retry_parameters:
+    task_age_limit: 2h
+    min_backoff_seconds: 1
+    max_backoff_seconds: 600
+
+# /internal/taskqueue/monitoring/tsmon/<kind:[0-9A-Za-z_]+>
+- name: tsmon
+  bucket_size: 10
+  rate: 10/s
+  max_concurrent_requests: 10
+  # Cron will reschedule, so don't retry on failure.
+  # Need both limits, since AE semantics is "AND", not "OR".
+  retry_parameters:
+    task_retry_limit: 0
+    task_age_limit: 1s

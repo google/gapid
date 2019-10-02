@@ -1,0 +1,289 @@
+// Copyright 2016 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package swarming;
+
+option go_package = "go.chromium.org/luci/swarming/proto/config;configpb";
+
+// Schema for bots.cfg service config file in luci-config.
+//
+// It defines a function bot_id => (required credentials, trusted_dimensions,
+// config), where
+//    * "bot_id" is identifier of a bot as sent by the bot itself (usually
+//      machine hostname, short one, not FQDN)
+//    * "required credentials" describes how server should authenticate calls
+//      from the bot.
+//    * "trusted_dimensions" is a set of dimension set by the server itself.
+//      Such dimensions can't be spoofed by the bot.
+//    * "config" is any additional bot configuration.
+//
+// Connections from bots that do not appear in this config are rejected.
+//
+// The default config (used if bots.cfg is missing) represents IP-whitelist only
+// authentication, as was used before bots.cfg was implemented:
+//
+//  bot_group {
+//    auth {
+//      ip_whitelist: "<swarming-app-id>-bots"
+//    }
+//  }
+message BotsCfg {
+  // List of dimension names that are provided by the server.
+  //
+  // If bot attempts to set such dimension, it'll be ignored. Trusted dimensions
+  // are defined through bot_group configs below. Swarming users can trust such
+  // dimensions, since they are set by the server based on validated credentials
+  // (unlike other dimensions that can be arbitrary defined by the bot itself).
+  repeated string trusted_dimensions = 1;
+
+  // A list of groups of bots. Each group defines a bunch of bots that all
+  // have same dimensions and authenticate in the same way.
+  //
+  // The order of entries here is irrelevant. The server uses the following
+  // search algorithm when trying to pick a group for a bot with some bot_id:
+  //    1) First it tries to find a direct match: a group that lists the bot in
+  //       bot_id field.
+  //    2) Next it tries to find a group with matching bot_id_prefix. The config
+  //       validation process makes sure prefixes do not "intersect", so there
+  //       will be at most one matching group.
+  //    3) Finally, if there's a group with no defined bot_id or bot_id_prefix
+  //       fields (the "default" group), the bot is categorized to that group.
+  //       If there's no such group, the connection from the bot is rejected.
+  //       Config validation process ensures there can be only one such group.
+  repeated BotGroup bot_group = 2;
+}
+
+
+// A daily schedule for Machine Provider leases.
+//
+// Allows a MachineType to be resized during specific UTC hours.
+message DailySchedule {
+  // UTC time to resize the MachineType.
+  //
+  // Formatted as "<hour>:<minute>".
+  string start = 1;
+
+  // UTC time to resize the MachineType.
+  //
+  // Formatted as "<hour>:<minute>". Must be strictly later than start.
+  string end = 2;
+
+  // Days of the week to resize the MachineType.
+  //
+  // 0 - 6 (Mon - Sun).
+  repeated int32 days_of_the_week = 3;
+
+  // Target size to set this MachineType to.
+  //
+  // If omitted, defaults to zero.
+  int32 target_size = 4;
+}
+
+// A load-based schedule for Machine Provider leases.
+//
+// Allows a MachineType to be resized according to Swarming bot utilization.
+message LoadBased {
+  // Minimum size the MachineType may be resized to.
+  //
+  // If omitted, defaults to zero.
+  int32 minimum_size = 1;
+
+  // Maximum size the MachineType may be resized to.
+  //
+  // If omitted, defaults to zero.
+  int32 maximum_size = 2;
+}
+
+
+// A schedule for Machine Provider leases.
+message Schedule {
+  // Schedule to repeat every day.
+  repeated DailySchedule daily = 1;
+  // Load-based schedule.
+  repeated LoadBased load_based = 2;
+}
+
+
+// A type of machine to lease from the Machine Provider.
+message MachineType {
+  // Name for this type of machine. Must be globally unique.
+  string name = 1;
+
+  // Human-readable description for this type of machine.
+  string description = 2;
+
+  // Number of seconds ahead of lease_duration_ts to release leases.
+  //
+  // If omitted, defaults to zero. Must not be specified for indefinite leases.
+  int32 early_release_secs = 3;
+
+  oneof lease_duration {
+    // Duration to lease each machine for.
+    int32 lease_duration_secs = 4;
+
+    // Lease indefinitely.
+    bool lease_indefinitely = 8;
+  }
+
+  // Machine Provider dimensions describing this machine.
+  //
+  // Each string should be in the format "<key>:<value>".
+  repeated string mp_dimensions = 5;
+
+  // Target number of machines of this type to have leased at once.
+  int32 target_size = 6;
+
+  // Schedule for machines of this type.
+  Schedule schedule = 7;
+}
+
+
+// A group of bots that share authentication method, dimensions and owners.
+//
+// Union of bot_id, bot_id_prefix, and machine_type define a set of bots that
+// belong to this group. The rest of the fields define properties of this group.
+//
+// If bot_id, bot_id_prefix, and machine_type are all missing, the group defines
+// all bots that didn't fit into other groups. There can be only one such
+// "default" group.
+//
+// TODO(vadimsh): Introduce explicit field "use_as_default" instead.
+message BotGroup {
+  // Explicit enumeration of bot IDs belonging to this group.
+  //
+  // It supports subset of bash brace expansion syntax, in particular ranges
+  // and lists. For example:
+  //    * vm{1..3}-m1 will expand into vm1-m1, vm2-m1 and vm3-m1.
+  //    * vm{100,150,200}-m1 will expand into vm100-m1, vm150-m1 and vm200-m1.
+  //
+  // There can be only one "{...}" section in the string.
+  repeated string bot_id = 1;
+
+  // A prefix to match against bot ID string.
+  repeated string bot_id_prefix = 2;
+
+  // A type of machine to lease from the Machine Provider.
+  repeated MachineType machine_type = 3;
+
+  ////////////////////////
+
+  // Defines authentication methods for bots from this group.
+  //
+  // Evaluated sequentially until first match.
+  repeated BotAuth auth = 20;
+
+  // Emails of owners of these bots. Optional.
+  repeated string owners = 21;
+
+  // List of dimensions to assign to these bots.
+  //
+  // Each dimension is a "<key>:<value>" pair.
+  repeated string dimensions = 22;
+
+  // Path to an additional config script to inject into the swarming bot upon
+  // handshake.
+  //
+  // The path is relative to 'scripts/' directory in the service config repo.
+  string bot_config_script = 23;
+
+  // The actual body of the config script to inject into the swarming bot upon
+  // handshake (in whatever encoding it happened to be in the config repo).
+  //
+  // For internal use (unless you fancy writing python scripts as single line
+  // escaped text proto string). If present, overrides 'bot_config_script'.
+  bytes bot_config_script_content = 25;
+
+  // A service account to use on bots when authenticating calls to various
+  // system-level services (like Isolate and CIPD), required for correct
+  // operation of the bot.
+  //
+  // Tasks will be able to access this account too, but it is not recommended
+  // and should be used extremely rare.
+  //
+  // If set to a service account email (*@*.iam.gserviceaccount.com), bots will
+  // use this account, generating access token through Swarming server. For this
+  // to work, the server account (<app-id>@appspot.gserviceaccount.com) must
+  // have "serviceAccountActor" IAM role set on the account.
+  //
+  // If set to a special string "bot", bots will use exact same token they use
+  // when authenticating calls to Swarming server itself. This works only if
+  // bots use OAuth for authentication (see 'require_service_account' in
+  // BotAuth). This mode exists for cases when proliferation of various service
+  // accounts is undesirable. Note that in this mode Swarming processes won't be
+  // able to request a system account token with some new scopes: they get exact
+  // same token as returned by get_authentication_headers bot_config.py hook.
+  //
+  // If not set, bots will not use authentication at all.
+  string system_service_account = 24;
+}
+
+
+// Defines what kind of authentication to perform when handling requests from
+// bots belonging to some bot group.
+//
+// The following combinations are valid:
+//   * Either one of require_* alone.
+//   * IP whitelist alone.
+//   * IP + require_luci_machine_token: requires both to pass.
+//   * IP + require_service_account: requires both to pass.
+//   * IP + require_gce_vm_token: requires both to pass.
+//
+// Next ID: 6.
+message BotAuth {
+  // See require_gce_vm_token below.
+  message GCE {
+    string project = 1;
+  }
+
+  // If true, log an error (but proceed) if this method didn't succeed.
+  //
+  // This field is totally optional and makes sense only when there are more
+  // than one auth method. Affects only logging levels.
+  //
+  // Doesn't apply to methods that were skipped because some method before them
+  // succeeded. Thus methods that have 'log_if_failed' should be in front of
+  // BotGroup.auth list.
+  //
+  // This is useful when migrating from one auth method to another to verify
+  // the new method is used in 100% of cases, while still keeping a fallback
+  // to an old method.
+  bool log_if_failed = 5;
+
+  // If true, the bot should provide valid X-Luci-Machine-Token header.
+  //
+  // The machine FQDN embedded in the token should have hostname equal to the
+  // bot_id.
+  bool require_luci_machine_token = 1;
+
+  // If set, the bot should use OAuth access token belonging to any of these
+  // service accounts.
+  //
+  // The token should have "https://www.googleapis.com/auth/userinfo.email"
+  // scope.
+  repeated string require_service_account = 2;
+
+  // If set, the bot should provide valid X-Luci-Gce-Vm-Token header.
+  //
+  // This header should contain JWT with signed VM metadata with the following
+  // expectations:
+  //   * Audience matches https://[*-dot-]<app>.appspot.com
+  //   * google.compute_engine.project_id field matches the value of 'project'.
+  //   * instance_name matches bot_id reported by the bot (case insensitive).
+  GCE require_gce_vm_token = 4;
+
+  // If set, defines an IP whitelist name (in auth_service database) with a set
+  // of IPs allowed to be used by the bots in this group.
+  //
+  // Works in conjunction with other checks, e.g. if require_luci_machine_token
+  // is true, both valid X-Luci-Machine-Token and a whitelisted IP are needed to
+  // successfully authenticate.
+  //
+  // Can also be used on its own (when all other fields are empty). In that case
+  // the IP whitelist is the primary authentication mechanism. Note that in this
+  // case all bots that share the IP whitelist are effectively in a single trust
+  // domain (any bot can pretend to be some other bot).
+  string ip_whitelist = 3;
+}

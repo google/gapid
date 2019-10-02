@@ -1,0 +1,23 @@
+{
+  "name": "isolate",
+  "version": "0.0.0",
+  "authors": [],
+  "description": "Polymer 1.0 Elements for Isolate",
+  "ignore": [
+    "**/.*",
+    "bower_components",
+    "node_modules",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "app-layout": "PolymerElements/app-layout#^0.10.1",
+    "google-web-components": "GoogleWebComponents/google-web-components#^1.1.0",
+    "iron-elements": "PolymerElements/iron-elements#~1.0.0",
+    "paper-elements": "PolymerElements/paper-elements#~1.0.0",
+    "polymer": "Polymer/polymer#^1.0.0"
+  },
+  "resolutions": {
+    "firebase": "^2.3.1"
+  }
+}

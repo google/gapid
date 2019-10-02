@@ -1,0 +1,45 @@
+{% extends "templates/base.html" %}
+{% import "templates/macros.html" as macros %}
+{% block content %}
+<h2>Recent Lease Requests</h2>
+{% if next_page_token %}
+  <a href="/leases?page_token={{next_page_token}}">Next page</a>
+{% endif %}
+<table>
+  <tr>
+    <th>Requester</th>
+    <th>Requested Dimensions</th>
+    <th>On Lease</th>
+    <th>State</th>
+    <th>Machine ID</th>
+    <th>Last Modified (UTC)</th>
+  </tr>
+  {% for lease_request in lease_requests %}
+  <tr>
+    <td>{{lease_request.owner.name}}</td>
+    <td>{{macros.render_message(lease_request.request.dimensions)}}</td>
+    <td>{{macros.render_message(lease_request.request.on_lease)}}</td>
+    <td>
+    {{lease_request.response.state}}
+    {% if lease_request.response.leased_indefinitely %}
+      indefinitely
+    {% elif lease_request.response.lease_expiration_ts %}
+      until {{lease_request.response.lease_expiration_ts}}
+      {% if lease_request.response.lease_expiration_ts <= now_ts %}
+        (reclaimed)
+      {% endif %}
+    {% endif %}
+    </td>
+    <td>
+    {% if lease_request.machine_id %}
+      <a href="/catalog/{{lease_request.machine_id}}">{{lease_request.machine_id}}</a>
+    {% endif %}
+    </td>
+    <td>{{lease_request.last_modified_ts}}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% if next_page_token %}
+  <a href="/leases?page_token={{next_page_token}}">Next page</a>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,242 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-list-summary>
+
+  Usage:
+
+    <task-list-summary></task-list-summary>
+
+  This element summarizes and displays the results of the current query.
+  It links to some global queries (e.g. all running tasks) and some
+  sub queries (e.g. all pending tasks that match the rest of the
+  specified tags.)
+
+  Properties:
+    // inputs
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    columns: Array<String>, the columns the user has selected. Used to create
+        the links.
+    count_params: Object, representing the query params sent to the server based
+        on all the filterable items (e.g. tags). See task-filters for the
+        schema.
+    num_tasks: Number, The number of tasks shown (after filtering).
+    sort: String, the user's current sort string. Used to create the links.
+
+    // outputs
+    busy: Boolean, if there are any network requests pending.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/common/common-behavior.html">
+
+<dom-module id="task-list-summary">
+  <template>
+     <style include="swarming-app-style iron-flex">
+      :host {
+        display: block;
+        border-left: 1px solid black;
+        padding: 5px 5px;
+        font-family: sans-serif;
+      }
+      .header {
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+      .column.left {
+        margin-left: 10px;
+      }
+      .right {
+        text-align: right;
+      }
+      .left {
+        text-align: left;
+      }
+    </style>
+
+    <div class="horizontal layout">
+
+      <div class="column">
+        <table>
+          <thead>
+            <th class="header right" colspan=2>Selected Tasks</th>
+          </thead>
+          <tr>
+            <td class="right">
+              Displayed:
+            </td>
+            <td class="left">[[num_tasks]]</td>
+          </tr>
+          <tr title="These counts reflect the time period selected">
+            <td class="right" >
+              Total:
+            </td>
+            <td class="left">[[_selected_exact.count]]</td>
+          </tr>
+          <template is="dom-repeat" items="[[_selected_summary]]" as="item" index-as="idx">
+            <tr title="These counts reflect the time period selected">
+              <td class="right">
+                <a href$="[[_makeURL(item.name,'true',columns.*,sort,count_params.*)]]">[[item.human]]</a>:
+              </td>
+              <td class="left">[[_idx(_selected_counts, idx, _selected_counts.*)]]</td>
+            </tr>
+          </template>
+        </table>
+      </div>
+
+    </div>
+
+  </template>
+  <script>
+  (function(){
+    var SELECTED_TASKS_SUMMARY = [
+      {name:"BOT_DIED", human:"Bot Died"},
+      {name:"CANCELED", human:"Canceled"},
+      {name:"COMPLETED_SUCCESS", human:"Completed (Success)"},
+      {name:"COMPLETED_FAILURE", human:"Completed (Failure)"},
+      {name:"DEDUPED", human:"Deduplicated"},
+      {name:"EXPIRED", human:"Expired"},
+      {name:"PENDING", human:"Pending"},
+      {name:"RUNNING", human:"Running"},
+      {name:"TIMED_OUT", human:"Timed Out"},
+    ];
+    Polymer({
+      is: 'task-list-summary',
+
+      behaviors: [SwarmingBehaviors.CommonBehavior],
+
+      properties: {
+        auth_headers: {
+          type: Object,
+        },
+        busy: {
+          type: Boolean,
+          computed: "_anyBusy(_busyArr1.*,_busy3)",
+          notify: true,
+        },
+        count_params: {
+          type: Object,
+        },
+        columns: {
+          type: Array,
+        },
+        num_tasks: {
+          type: Number,
+        },
+        sort: {
+          type: String,
+        },
+
+        _busyArr1: {
+          type:Array,
+          value: function() {
+            return [];
+          }
+        },
+        _busy3: {
+          type: Boolean,
+          value: false,
+        },
+        _selected_counts: {
+          type: Array,
+          value: function() {
+            return [];
+          }
+        },
+        _selected_exact: {
+          type: Object,
+        },
+        _selected_summary: {
+          type: Array,
+          value: function() {
+            return SELECTED_TASKS_SUMMARY;
+          }
+        },
+
+      },
+
+      observers: [
+          "_recountEverything(auth_headers.*,count_params.*)"
+      ],
+
+      // Returns true if any of the busy signals are true.
+      _anyBusy: function() {
+        for (var i = 0; i<this._busyArr1.length; i++) {
+          if (this._busyArr1[i].status) {
+            return true;
+          }
+        }
+        return this._busy3;
+      },
+
+      // Returns the idx'th count of obj.
+      _idx: function(obj, idx) {
+        return obj && obj[idx] && obj[idx].count;
+      },
+
+      // Recount all the task counts. This will make use of _getJsonAsyncArr because
+      // the results will be generated in a dom-repeat.
+      _recountEverything: function() {
+        if (!this.auth_headers || !this.count_params) {
+          return;
+        }
+
+        var queryObj = JSON.parse(JSON.stringify(this.count_params));
+        this._getJsonAsync("_selected_exact","/_ah/api/swarming/v1/tasks/count","_busy3",
+          this.auth_headers, queryObj);
+
+        for (var j = 0; j < SELECTED_TASKS_SUMMARY.length; j++) {
+          if (this._selected_counts.length < SELECTED_TASKS_SUMMARY.length) {
+            this.push("_selected_counts", {});
+          }
+          queryObj.state = [SELECTED_TASKS_SUMMARY[j].name];
+          this._getJsonAsyncArr(j, "_selected_counts","/_ah/api/swarming/v1/tasks/count","_busyArr1",
+          this.auth_headers, queryObj);
+        }
+      },
+
+      // _makeURL creates a task-list url that keeps the columns and sort requirements the same
+      // while changing which state is represented.
+      _makeURL: function(state) {
+        var fstr = "state:"+state;
+        var cp = this.count_params;
+        var params = {
+          s: [this.sort],
+          c: this.columns,
+          f: [],
+        }
+        if (cp.start && cp.start[0]) {
+          // timestamps gleaned from count_params are in seconds, so we convert back to ms.
+          params.st = [cp.start[0] + "000"];
+        }
+        if (cp.end && cp.end[0]) {
+          // timestamps gleaned from count_params are in seconds, so we convert back to ms.
+          params.et = [cp.end[0] + "000"];
+        } else {
+          params.n = [true];
+        }
+        if (state) {
+          params.f.push(fstr);
+        }
+        if (cp.tags) {
+          cp.tags.forEach(function(t){
+            params.f.push(t);
+          });
+        }
+        return window.location.href.split('?')[0] + '?' + sk.query.fromParamSet(params);
+      },
+
+    });
+    })();
+  </script>
+</dom-module>

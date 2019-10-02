@@ -1,0 +1,18 @@
+// Copyright 2018 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package discovery_test;
+
+import "imported1_test.proto";
+
+service TestService {
+  rpc Hello(HelloRequest) returns (HelloResponse) {};
+}
+
+message HelloRequest {}
+message HelloResponse {
+  Imported1 imported = 1;
+}

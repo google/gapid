@@ -1,0 +1,11 @@
+handlers:
+# TODO(maruel): Figure out why it has to be rooted to the app directory.
+- url: /third_party/(.+)\.(css|gif|html|ico|js|ttf|svg|woff)
+  static_files: components/static/third_party/\1.\2
+  upload: components/static/third_party/(.+)\.(css|gif|html|ico|js|ttf|svg|woff)
+  secure: always
+  expiration: 30d
+  http_headers:
+    Content-Security-Policy: "default-src https: 'self'"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny

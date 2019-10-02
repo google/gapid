@@ -1,0 +1,14 @@
+// Copyright 2016 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+// Machine Provider config schema.
+
+package machine_provider;
+
+
+// Machine Provider Configuration
+message SettingsCfg {
+  // Enable ts_mon based monitoring.
+  optional bool enable_ts_monitoring = 1;
+}

@@ -1,0 +1,115 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+{# BEWARE: The following templates in 'raw' section are handled by handlebars
+javascript library and not jinja2. #}
+
+{% raw %}
+
+<script id="services-list-template" type="text/x-handlebars-template">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th>GAE admin</th>
+        <th>Ereporter2</th>
+        <th>Exceptions</th>
+        <th style="width:100px;" class="text-center">Auth API</th>
+        <th style="width:100px;" class="text-center">Lag</th>
+        <th style="width:100px;" class="text-center">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each services}}
+      <tr>
+        <td>
+          <a target="_blank" href="{{this.service_url}}">{{this.app_id}}</a>
+        </td>
+        <td>
+          <a target="_blank" href="https://appengine.google.com/dashboard?&app_id=s~{{this.app_id}}">
+            view <span class="glyphicon glyphicon-share-alt"></span>
+          </a>
+        </td>
+        <td>
+          <a target="_blank" href="{{this.service_url}}restricted/ereporter2/errors">
+            view <span class="glyphicon glyphicon-share-alt"></span>
+          </a>
+        </td>
+        <td>
+          <a target="_blank" href="{{this.service_url}}restricted/ereporter2/report">
+            view <span class="glyphicon glyphicon-share-alt"></span>
+          </a>
+        </td>
+        <td style="width:100px;" class="text-center">
+          {{this.auth_code_version}}
+        </td>
+        <td style="width:100px;" class="text-center">
+          {{this.lag_ms}}
+        </td>
+        <td style="width:100px;" class="text-center">
+          <span
+            class="label label-{{this.status.label}} status-label"
+            data-toggle="tooltip"
+            title="{{this.status.tooltip}}">{{this.status.text}}</span>
+        </td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</script>
+
+<script id="present-link-template" type="text/x-handlebars-template">
+  <div class="alert alert-success">
+    <strong>Linking URL:</strong> <a target="_blank" href="{{url}}">link</a>.
+    <p style="margin-top: 10px;">
+      GAE administrator of <strong>{{app_id}}</strong> can follow this link
+      to make <strong>{{app_id}}</strong> use this authentication service
+      as a primary one. It is safe to share the link.
+    </p>
+  </div>
+</script>
+
+{% endraw %}
+
+{# List of registered services. #}
+<div class="row">
+  <div class="col-md-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">Services</h3>
+      </div>
+      <div class="panel-body">
+        <div id="services-list-alerts"></div>
+        {# Populated by JS. #}
+        <div id="services-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Form to generate a link to register a new service. #}
+<div class="row" id="add-service-row">
+  <div class="col-md-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">Add service</h3>
+      </div>
+      <div class="panel-body">
+        <div id="add-service-form-alerts"></div>
+        <form class="form" role="form" id="add-service-form">
+          <div class="form-group">
+            <label class="control-label">GAE application id</label>
+            <input type="text" class="form-control" name="serviсe_app_id">
+          </div>
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">
+              Generate linking URL
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

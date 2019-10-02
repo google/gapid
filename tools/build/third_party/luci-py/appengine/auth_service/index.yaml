@@ -1,0 +1,17 @@
+indexes:
+
+# When adding AuthDBChange indexes here, also update the message in
+# components/auth/ui/rest_api.py, NEED_INDEX_ERROR_MESSAGE in ChangeLogHandler.
+
+- kind: AuthDBChange
+  ancestor: yes
+  properties:
+  - name: target
+  - name: __key__
+    direction: desc
+
+- kind: AuthDBChange
+  ancestor: yes
+  properties:
+  - name: __key__
+    direction: desc

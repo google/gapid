@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<title>stacked-time-chart demo</title>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" charset="utf-8">
+  // This bit of script loads the custom elements v1 polyfill, but only if required.
+  if (!window.customElements) {
+    var s = document.createElement('script');
+    s.src = '/newres/custom-elements.min.js';
+    document.write(s.outerHTML);
+  }
+</script>
+
+<!-- These are loosely based off of real-world data-->
+<h1>Some completed charts</h1>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[5, 1.6, 3.97, 0]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[36, 12.98, 22.45, 3.77]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[10, 11.7, 143.2, 0.99]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[1, 26.3, 815.2, 38.5]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[1, 26.3, 1075.2, 38.5]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[30.3, 184.6, 2455 ,4.1]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[30.3, 184.6, 24550 ,4.1]'>
+</stacked-time-chart>
+
+<h1>Several in progress tasks' charts below</h1>
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[195, 0, 0, 0]'>
+</stacked-time-chart>
+
+<stacked-time-chart
+    labels='["Pending", "Overhead", "Running", "Overhead"]'
+    colors='["#E69F00", "#D55E00", "#0072B2", "#D55E00"]'
+    values='[11, 0, 23, 0]'>
+</stacked-time-chart>

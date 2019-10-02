@@ -1,0 +1,172 @@
+{% set title = 'Error Request Report' %}
+{% extends "ereporter2/base.html" %}
+
+
+{% block header %}
+<style>
+  h1 {
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  h3 {
+    margin-bottom: 5px;
+  }
+
+  table.property_table {
+    font-family: monospace;
+    border-spacing: 0;
+  }
+
+  table.property_table tbody tr:nth-child(even) {
+    background-color: #eeeeee;
+  }
+
+  table.property_table td {
+    padding-left: 1em;
+    padding-right: 1em;
+  }
+
+  table.property_table tbody tr:hover {
+    background-color: #eeffee;
+  }
+</style>
+{% endblock %}
+
+
+{% block body %}
+<h1>Request error report</h1>
+<a href="/restricted/ereporter2/report">Back to errors in requests</a><p>
+<p>
+<table class=property_table>
+  <tbody>
+    <tr>
+      <td>Version</td>
+      <td>{{request.version_id|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Host</td>
+      <td>{{request.host|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Resource</td>
+      <td>{{request.resource|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Method</td>
+      <td>{{request.method|utf8}}</td>
+    </tr>
+    <tr>
+      <td>User agent</td>
+      <td>{{request.user_agent|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Client IP</td>
+      <td>{{request.ip|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Nickname</td>
+      <td>{{(request.nickname or '--')|utf8}}</td>
+    </tr>
+    <tr>
+      <td>HTTP version</td>
+      <td>{{request.http_version|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Referrer</td>
+      <td>{{(request.referrer or '--')|utf8}}</td>
+    </tr>
+    <tr>
+      <td>HTTP Status</td>
+      <td>{{request.status}}</td>
+    </tr>
+    <tr>
+      <td>Response size</td>
+      <td>{{request.response_size}}</td>
+    </tr>
+    <tr>
+      <td>Start time (UTC)</td>
+      <td>{{request.start_time|epochformat('%Y-%m-%d %H:%M:%S.%f')}}</td>
+    </tr>
+    <tr>
+      <td>End time (UTC)</td>
+      <td>{{request.end_time|epochformat('%Y-%m-%d %H:%M:%S.%f')}}</td>
+    </tr>
+    <tr>
+      <td>Cost</td>
+      <td>
+        {% if request.cost %}
+          {{'%0.5f' % (request.cost*100)}}¢
+        {% else %}
+          &#8209;&#8209;
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>Duration (secs)</td>
+      <td>{{request.latency}}</td>
+    </tr>
+    <tr>
+      <td>Pending (secs)</td>
+      <td>{{request.pending_time}}</td>
+    </tr>
+    <tr>
+      <td>Machine cycles</td>
+      <td>{{request.mcycles}}</td>
+    </tr>
+    <tr>
+      <td>API machine cycles</td>
+      <td>{{request.api_mcycles or '--'}}</td>
+    </tr>
+    <tr>
+      <td>Module</td>
+      <td>{{request.module_id|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Task queue name</td>
+      <td>{{(request.task_queue_name or '--')|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Task name</td>
+      <td>{{(request.task_name or '--')|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Loading request</td>
+      <td>{{request.was_loading_request}}</td>
+    </tr>
+    <tr>
+      <td>Appengine version</td>
+      <td>{{request.app_engine_release|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Instance ID</td>
+      <td>{{request.instance_key|utf8}}</td>
+    </tr>
+    <tr>
+      <td>Request ID</td>
+      <td>{{request.request_id|utf8}}</td>
+    </tr>
+  </tbody>
+</table>
+{# app_id, combined, finished, instance_key, offset, replica_index #}
+
+<p>
+
+<a href="https://console.cloud.google.com/logs/viewer?project={{request.app_id|utf8}}&expandAll=true&advancedFilter=metadata.labels.%22appengine.googleapis.com%2Frequest_id%22%3D%22{{request.request_id|utf8}}%22%0A">
+  View logs in AppEngine log viewer
+</a>
+<p>
+
+{% macro level(l) %}
+{% if l == 0 %}Debug{% elif l == 1 %}Info{% elif l == 2 %}Warning{% elif l == 3 %}Error{% else %}Critical{% endif %}
+{% endmacro %}
+
+
+<h3>Logs</h3>
+{% for log in request.app_logs %}
+<strong>{{level(log.level)}}</strong>:
+  {{log.time|epochformat('%Y-%m-%d %H:%M:%S.%f')}}
+<pre>{{log.message|utf8}}</pre><br>
+{% endfor %}
+
+{% endblock %}

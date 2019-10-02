@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<title>dialog-pop-over demo</title>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" charset="utf-8">
+  // This bit of script loads the custom elements v1 polyfill, but only if required.
+  if (!window.customElements) {
+    var s = document.createElement('script');
+    s.src = '/newres/custom-elements.min.js';
+    document.write(s.outerHTML);
+  }
+</script>
+<style>
+  dialog-pop-over > .content {
+    width: 500px;
+    padding: 10px;
+  }
+</style>
+<button id=show>Show popup</button>
+
+<div id=output></div>
+
+<dialog-pop-over>
+  <aside class=content>
+    <div>
+      <h1> This is a popup</h1>
+    </div>
+
+    <p>
+        It can have any content, but is hidden by default until .show()
+        is called on the element.
+    </p>
+
+    <button class=cancel>Cancel</button>
+    <button class=ok>OK</button>
+  </aside>
+</dialog-pop-over>

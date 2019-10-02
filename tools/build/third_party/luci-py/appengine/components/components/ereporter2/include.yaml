@@ -1,0 +1,14 @@
+handlers:
+- url: /ereporter2/api/.*
+  script: components.ereporter2.main.APP
+  secure: always
+
+- url: /restricted/ereporter2/.*
+  script: components.ereporter2.main.APP
+  secure: always
+  login: required
+
+- url: /internal/cron/ereporter2/.*
+  script: components.ereporter2.main.APP
+  secure: always
+  login: admin

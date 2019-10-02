@@ -1,0 +1,23 @@
+{% extends 'auth/admin/base.html' %}
+{% block content %}
+
+<h2>Access denied</h2>
+<p>Looks like you do not have access to this page. You are logged in as
+<b>{{identity.name}}</b>.
+<p>Login under a different account.</p>
+<hr>
+<p>Error details:</p>
+<pre>{{error}}</pre>
+<hr>
+<p>
+  <a id="logout-btn" class="btn btn-primary" href="#">Logout</a>
+</p>
+
+<script type="text/javascript" nonce="{{csp_nonce}}">
+  $('#logout-btn').click(function(e) {
+    redirectToLogout();
+    e.preventDefault();
+  });
+</script>
+
+{% endblock %}

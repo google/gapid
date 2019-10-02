@@ -1,0 +1,3 @@
+# Default mapreduce launcher UI doesn't work with custom modules, so disable it
+# by providing an empty list of jobs.
+mapreduce: []

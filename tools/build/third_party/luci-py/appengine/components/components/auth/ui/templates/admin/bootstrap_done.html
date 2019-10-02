@@ -1,0 +1,24 @@
+{% extends 'auth/admin/base.html' %}
+{% block content %}
+
+{% if added %}
+<h2>You've been added to {{admin_group}} group.</h2>
+<p>Once this change propagates (~1 min) you should be able to access
+<a href="/auth">Auth Admin UI</a> and other protected pages.</p>
+<p>Meanwhile, you can configure OAuth2 client ID used by the web UI by visiting
+<a href="/auth/bootstrap/oauth">OAuth client ID configuration</a> page.</p>
+{% else %}
+<h2>You are already a member of {{admin_group}} group.</h2>
+<p>You should be able to access <a href="/auth">Auth Admin UI</a> and other
+protected pages. It takes up to 1 min for recent changes to propagate, be
+patient.</p>
+<p>If you are looking for how to configure OAuth2 client ID used by the web UI,
+visit <a href="/auth/bootstrap/oauth">OAuth client ID configuration</a> page.
+</p>
+{% endif %}
+{% if return_url %}
+<p>Go back to <a href="{{return_url}}">{{return_url}}</a>.</p>
+{% endif %}
+<hr>
+
+{% endblock %}

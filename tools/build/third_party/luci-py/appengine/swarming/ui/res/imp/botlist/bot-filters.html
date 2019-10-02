@@ -1,0 +1,410 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-filters>
+
+  This element allows the user to pick which columns they want to see on the bot
+  list and which filters should be applied.
+
+  Usage:
+
+    <bot-filters></bot-filters>
+
+  Properties:
+    // inputs
+    dimensions: Array<String>, of all valid dimensions.
+    primary_map: Object, a mapping of primary keys to secondary items.
+        The primary keys are things that can be columns or sorted by.  The
+        primary values (aka the secondary items) are things that can be filtered
+        on. Primary consists of dimensions and state.  Secondary contains the
+        values primary things can be.
+    primary_arr: Array<String>, the display order of the primary keys.
+    profile: Object, information about the logged-in user; see swarming-app.
+
+    // outputs
+    columns: Array<String>, the columns that should be displayed.
+    query_params: Object, The query params that will filter the query
+        server-side.  This can have dimensions:Array<String>, quarantined:String,
+        is_dead: String and is_mp: String. For example:
+        {
+          "dimensions": ["pool:Skia", "device_type:Sprout"],
+          "quarantined": "FALSE",  // optional
+          "is_dead": "TRUE",       // optional
+          "is_mp": "TRUE",         // optional
+        }
+        For a full list of dimensions in the fleet, see the API call:
+        https://[swarming_url]/_ah/api/swarming/v1/bots/dimensions
+    filter: Object, an object {filter:Function} where filter will take one param
+        (bot) and return a Boolean if it should be displayed given the
+        current filters.
+    verbose: Boolean, if the data displayed should be verbose.
+
+  Methods:
+    None.
+
+  Events:
+  The events this element fires are to work around the fact that modal paper-dialog
+  elements need to be outside all other elements on the DOM.
+
+    delete-all: The user wishes to delete all dead bots. The parent is expected
+        to show a paper-dialog and confirm the details.  The event's details
+        is {dimensions: {Array:String}} of the dimensions of bots that need be
+        deleted. It is expected that the parent will add the &is_dead=TRUE to
+        the request.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-a11y-keys/iron-a11y-keys.html">
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="/res/imp/bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="/res/imp/bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="/res/imp/bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="/res/imp/bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="/res/imp/bower_components/paper-input/paper-input.html">
+
+<link rel="import" href="/res/imp/common/query-column-filter-behavior.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/shared/url-param.html">
+
+<link rel="import" href="bot-list-shared-behavior.html">
+
+<dom-module id="bot-filters">
+  <template>
+    <style include="iron-flex iron-flex-alignment iron-positioning query-column-filter-style swarming-app-style">
+    .delete-button {
+      display: block;
+      padding: 1.0em 1.5em;
+    }
+    </style>
+
+    <url-param name="f"
+      value="{{_filters}}"
+      default_values="[]"
+      multi>
+    </url-param>
+    <url-param name="c"
+      value="{{columns}}"
+      default_values='["id","os","task","status"]'
+      multi>
+    </url-param>
+    <url-param name="q"
+     value="{{_query}}"
+     default_value="">
+    </url-param>
+    <url-param name="v"
+      value="{{verbose}}">
+    </url-param>
+    <url-param name="l"
+      default_value="100"
+      value="{{_limit}}">
+    </url-param>
+
+    <div class="container horizontal layout">
+    <!--
+    A common pattern below is to do something like
+    checked="[[_columnState(col,columns.*)]]"
+    The last argument here allows this value to change if anything in the
+    columns array is added or removed.  Arrays are weird in Polymer and this is
+    the best way to listen to those changes.
+    -->
+
+      <div class="narrow-down-selector">
+        <div>
+          <iron-a11y-keys target="[[_filter_input]]" keys="enter" on-keys-pressed="_manuallyAddFilter"></iron-a11y-keys>
+          <iron-icon class="icons" icon="icons:search"></iron-icon>
+          <paper-input id="filter"
+            label="Search columns and filters or supply a filter and press enter"
+            placeholder="gpu nvidia pool:Chrome"
+            value="{{_query::input}}">
+          </paper-input>
+        </div>
+
+        <div class="selector side-by-side"
+            title="This shows all bot dimension names and other interesting bot properties. Mark the check box to add as a column. Select the row to see filter options.">
+          <iron-selector attr-for-selected="label" selected="{{_primarySelected}}">
+            <template is="dom-repeat" items="[[_primaryItems]]" as="item">
+              <div class="selectable item horizontal layout" label="[[item]]">
+                <!-- No line break here to avoid awkward spaces-->
+                <span>[[_beforeBold(item,_query)]]<span class="bold">[[_bold(item,_query)]]</span>[[_afterBold(item,_query)]]</span>
+                <span class="flex"></span>
+                <paper-checkbox
+                  noink
+                  disabled$="[[_cantToggleColumn(item)]]"
+                  checked="[[_columnState(item,columns.*)]]"
+                  on-change="_toggleColumn">
+                </paper-checkbox>
+              </div>
+            </template>
+          </iron-selector>
+        </div>
+
+        <div class="selector side-by-side"
+            title="These are all options (if any) that the bot list can be filtered on.">
+          <template is="dom-repeat" id="secondaryList"
+              items="[[_secondaryItems]]" as="item">
+            <div class="item horizontal layout" label="[[item]]">
+              <!-- No line break here to avoid awkward spaces-->
+              <span>[[_beforeBold(item,_query)]]<span class="bold">[[_bold(item,_query)]]</span>[[_afterBold(item,_query)]]</span>
+              <span class="flex"></span>
+              <iron-icon
+                  class="icons"
+                  icon="icons:arrow-forward"
+                  hidden="[[_cantAddFilter(_primarySelected,item,_filters.*)]]"
+                  on-tap="_addFilter">
+              </iron-icon>
+            </div>
+          </template>
+          <template is="dom-if" if="[[_showDimensionMessage(_primarySelected,_secondaryItems.length)]]">
+            <div class="item">
+              Only dimensions can be used for filtering.
+              <i>"[[_primarySelected]]"</i> is a part of the bot's state and is
+              informational only.
+            </div>
+          </template>
+        </div>
+
+        <div class="selector side-by-side"
+            title="These filters are AND'd together and applied to all bots in
+the fleet.">
+          <template is="dom-repeat" items="[[_filters]]" as="fil">
+            <div class="item horizontal layout" label="[[fil]]">
+              <span>[[fil]]</span>
+              <span class="flex"></span>
+              <iron-icon
+                  class="icons"
+                  icon="icons:remove-circle-outline"
+                  hidden="[[_cantRemoveFilter(fil,_filters.*)]]"
+                  on-tap="_removeFilter">
+              </iron-icon>
+            </div>
+          </template>
+        </div>
+
+        <div class="side-by-side">
+          <paper-checkbox checked="{{verbose}}">Verbose Entries</paper-checkbox>
+          <paper-input id="_limit"
+            label="Limit Results"
+            auto-validate
+            min="0"
+            max="1000"
+            pattern="[0-9]+"
+            value="{{_limit}}">
+          </paper-input>
+          <a href$="[[_matchingTasksLink(query_params)]]">View Matching Tasks</a>
+          <template is="dom-if" if=>
+            <button class="delete-button"
+                disabled$="[[!permissions.delete_bot]]"
+                title="[[_deleteBotsText(permissions, profile)]]"
+                on-tap="_promptDelete">
+              Delete All Dead bots
+            </button>
+          </template>
+        </div>
+      </div>
+
+    </div>
+
+  </template>
+  <script>
+  (function(){
+    // See SwarmingBehaviors.QueryColumnFilter for more documentation on these properties.
+    var filterMap = {
+      disk_space: function(bot, space) {
+        return true;
+      },
+      id: function(bot, id) {
+        return true;
+      },
+      is_mp_bot: function(bot, match) {
+        if (match === "true") {
+          return !!bot.lease_id;
+        } else if (match === "false") {
+          return !bot.lease_id;
+        }
+        return true;
+      },
+      status: function(bot, status) {
+        if (status === "quarantined") {
+          return bot.quarantined;
+        } else if (status === "maintenance") {
+          return !!bot.maintenance_msg;
+        } else if (status === "dead") {
+          return bot.is_dead;
+        } else {
+          // Status must be "alive".
+          return !bot.quarantined && !bot.is_dead;
+        }
+      },
+      task: function(bot, task) {
+        if (task === "idle") {
+          return this._taskId(bot) === "idle";
+        }
+        // Task must be "busy".
+        return this._taskId(bot) !== "idle";
+      }
+    };
+
+    Polymer({
+      is: "bot-filters",
+
+      behaviors: [
+        SwarmingBehaviors.BotListBehavior,
+        SwarmingBehaviors.QueryColumnFilter,
+      ],
+
+      properties: {
+        profile: {
+          type: Object
+        },
+        // url-param doesn't like columns to be defined in query_column-filter,
+        // so we define it here.
+        columns: {
+          type: Array,
+          notify: true,
+        },
+        permissions: {
+          type: Object,
+        },
+        query_params: {
+          type: Object,
+          computed: "_extractQueryParams(dimensions.*,_filters.*, _limit)",
+          notify: true,
+        },
+        verbose: {
+          type: Boolean,
+          notify: true,
+        },
+
+        _filter_input: {
+          type: Object,
+          value: function() {
+            return this.$.filter;
+          }
+        },
+
+        // for QueryColumnFilter
+        _filterMap: {
+          type: Object,
+          value: function() {
+            var base = this._commonFilters();
+            for (var attr in filterMap) {
+              base[attr] = filterMap[attr];
+            }
+            return base;
+          },
+        },
+        _prettyItem: {
+          type: Object,
+          value: function() {
+            return {
+              apply: function(s) {
+                // Nothing needs prettying
+                return s;
+              }
+            };
+          }
+        },
+      },
+
+      _cantToggleColumn: function(col) {
+        // Don't allow the id column to be removed, as the bot list is basically
+        // meaningless without it.
+        return !col || col === "id" ;
+      },
+
+      _deleteBotsText: function(permissions, profile) {
+        if (permissions.delete_bot) {
+          return "Delete all dead bots matching a set of dimensions."
+        }
+        return profile.email +" does not have delete_bot permissions. Log in as a different profile that does.";
+      },
+
+      _extractQueryParams: function() {
+        var params = {};
+        var dims = [];
+        this._filters.forEach(function(f) {
+          var split = f.split(":", 1)
+          var col = split[0];
+          var rest = f.substring(col.length + 1);
+          if (this.dimensions.indexOf(col) !== -1) {
+            if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(col) !== -1) {
+              rest = swarming.alias.unapply(rest);
+            }
+            dims.push(col + ":" + rest)
+          } else if (col === "status") {
+            if (rest === "alive") {
+              params["is_dead"] = ["FALSE"];
+              params["quarantined"] = ["FALSE"];
+              params["in_maintenance"] = ["FALSE"];
+            } else if (rest === "quarantined") {
+              params["quarantined"] = ["TRUE"];
+            } else if (rest === "maintenance") {
+              params["in_maintenance"] = ["TRUE"];
+            } else if (rest === "dead") {
+              params["is_dead"] = ["TRUE"];
+            }
+          } else if (col === "is_mp_bot") {
+            if (rest === "true") {
+              params["is_mp"] = ["TRUE"];
+            } else if (rest === "false") {
+              params["is_mp"] = ["FALSE"];
+            }
+          } else if (col === "task") {
+             if (rest === "busy") {
+              params["is_busy"] = ["TRUE"];
+            } else if (rest === "idle") {
+              params["is_busy"] = ["FALSE"];
+            }
+            // else if -- may be malformed, don't do anything.
+          }
+        }.bind(this));
+        params["dimensions"] = dims;
+        var lim = parseInt(this._limit);
+        if (Number.isInteger(lim)) {
+          // Clamp the limit
+          lim = Math.max(lim, 1);
+          lim = Math.min(1000, lim);
+          params["limit"] = [lim];
+          // not !== because limit could be a string, e.g. "900"
+          if (this._limit != lim) {
+            this.set("_limit", lim);
+          }
+        }
+        return params;
+      },
+
+      _matchingTasksLink: function(query_params) {
+        var cols = ["name", "state", "created_ts"];
+        if (!query_params.dimensions) {
+          return this._taskListLink([], cols);
+        }
+
+        query_params.dimensions.forEach(function(f) {
+          var col = f.split(":", 1)[0];
+          if (cols.indexOf(col) === -1) {
+            cols.push(col);
+          }
+        }.bind(this));
+        return this._taskListLink(query_params.dimensions, cols);
+      },
+
+      _promptDelete: function() {
+        if (!this.query_params.dimensions || !this.query_params.dimensions.length) {
+          sk.errorMessage("You must specify at least one dimension to filter by first.", 8000);
+          return;
+        }
+        this.fire("delete-all",{dimensions:this.query_params.dimensions});
+      },
+
+      _showDimensionMessage: function(primarySelected, selectedItems) {
+        return primarySelected && primarySelected !== "id" && !selectedItems;
+      }
+
+    });
+  })();
+  </script>
+</dom-module>

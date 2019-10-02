@@ -1,0 +1,329 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This file contains most of the logic needed to create a dynamic table. It is broken up into two
+  parts, a style dom-module called "dynamic-table-style" and a behavior called
+  SwarmingBehaviors.DynamicTableBehavior. This behavior ties together filtering, sorting and column
+  content. It also offers a few utilities to make creating the table easier. A client of these two
+  parts needs to create the templates to actually draw the <table>,<tr> and so on.  See
+  bot-list.html and task-list.html for examples.
+
+  A client should use the provided style set as follows:
+
+    <link rel="import" href="/res/imp/common/dynamic-table-behavior.html">
+    ...
+    <template>
+      <style include="dynamic-table-style">
+      ...
+
+  This behavior has already defined the following properties, which a client should bind to:
+    _columns, Array<String>, The columns that should be shown.
+    _items, Array<Object>, Those elements that may be displayed and/or sorted, depending on the
+        settings.
+    _filter, Function, Given an element from _items, return a boolean if the item should be shown.
+        This function will be bound to this element.
+    _sortstr, String, A String representation of the current state of sorting like
+        [name]:["asc", "desc"].
+    _verbose, Boolean, If the verbose contents of the table should be shown.
+
+  A client must define the following properties:
+    _columnMap: Object, a mapping of column name to a function that will return the content for a
+        given bot. These functions are bound to this element. If a column is not listed here, a sane
+        default will be used (see _column()).
+    _headerMap: Object, a mapping of column name to the displayed text for a column. There can be
+        a magic value "_displayHeader" that is a function(c) which returns a display version of
+        the column (e.g. foo-tag -> "foo (tag)")
+    _specialColumns, Array<String> A list of "special" column names, that is, columns which will
+        have html in them, provided by the client. non-special (i.e. plain columns) just contain
+        text and will have their content provided by _attribute (see below).
+    _specialSort, Object, A mapping of column name to a function that implements custom sorting
+        rules.  The function will be given (dir, a, b) and is expected to return an int, as a normal
+        sort comparison function would. Otherwise, natural comparison of a and b is used
+        (see _compare()).
+
+  A client may define the following properties:
+    _priorityColumns: Array<String> A list of "priority" column names, that is, plain columns which
+        should be sorted in the given order, before all other plain columns. If left blank, there
+        will be no priority columns.
+
+  A client must define the following methods:
+    _attribute(i, col, default): Given the item i, return an array of values for the column "col",
+        or an array containing just the default, if not. This is only used as a default when a
+        column does not appear in _columnMap.
+
+  This behavior provides the following properties:
+    _filteredSortedItems, Array<Object>, The list of items that should shown, after filtering and
+        sorting.
+    _plainColumns, Array<String>, the list of columns with any special columns stripped out.
+
+  This behavior provides the following methods:
+    _column(col, item): Return the text content of item for a column.
+    _header(col): Return the header for a column, defaulting to the column name.
+    _hide(col): Return a boolean based on whether to hide this column.
+    _sortChange(event): Update the sorting based on an event created by sort-toggle.
+ -->
+<link rel="import" href="common-behavior.html">
+<dom-module id="dynamic-table-style">
+  <template>
+    <style>
+      table {
+        border-collapse: collapse;
+        margin-left: 5px;
+      }
+      td, th {
+        border: 1px solid #DDD;
+        padding: 5px;
+      }
+      th {
+        position: relative;
+      }
+      sort-toggle {
+        position: absolute;
+        right: 0;
+        top: 0.4em;
+      }
+    </style>
+
+  </template>
+</dom-module>
+
+<script>
+  (function(){
+    // This behavior wraps up all the shared swarming functionality.
+    SwarmingBehaviors.DynamicTableBehavior = [SwarmingBehaviors.CommonBehavior, {
+
+      properties: {
+
+        _columns: {
+          type: Array,
+        },
+
+        _filter: {
+          type: Function,
+        },
+
+        _filteredSortedItems: {
+          type: Array,
+          computed: "_filterAndSort(_items.*,_filter.*,_sort.*)"
+        },
+
+        _items: {
+          type: Array,
+        },
+
+        _plainColumns: {
+          type: Array,
+          computed: "_stripSpecial(_columns.*)",
+        },
+
+        // _sort is an Object {name:String, direction:String}.
+        _sort: {
+          type: Object,
+          computed: "_makeSortObject(_sortstr)",
+        },
+
+        _sortstr: {
+          type: String,
+        },
+
+        _verbose: {
+          type: Boolean,
+        }
+      },
+
+      _column: function(col, item) {
+        var f = this._columnMap[col];
+        if (!f) {
+          f = function(item) {
+            var c = this._attribute(item, col, "none");
+            if (this._verbose) {
+              return c.join(" | ");
+            }
+            return swarming.longest(c);
+          }
+        }
+        return f.bind(this)(item);
+      },
+
+      _compare: function(a, b) {
+        if (!this._sort) {
+          return 0;
+        }
+        var dir = 1;
+        if (this._sort.direction === "desc") {
+          dir = -1;
+        }
+        var sort = this._specialSort[this._sort.name];
+        if (sort) {
+          return sort.bind(this)(dir, a, b);
+        }
+        // Default to a natural compare of the columns.
+        var aCol = this._column(this._sort.name, a);
+        if (aCol === "none"){
+          // put "none" at the bottom of the sort order
+          aCol = "ZZZ";
+        }
+        var bCol = this._column(this._sort.name, b);
+        if (bCol === "none"){
+          // put "none" at the bottom of the sort order
+          bCol = "ZZZ";
+        }
+
+        return dir * naturalSort(aCol, bCol);
+      },
+
+      _filterAndSort: function() {
+        // We intentionally sort this._items (and not a copy) to allow users to
+        // "chain" sorts, that is, sort by one thing and then another, and
+        // have both orderings properly impact the list.
+        swarming.stableSort(this._items, this._compare.bind(this));
+        var items = this._items;
+        if (this._filter) {
+          items = items.filter(this._filter.bind(this));
+        }
+
+        return items;
+      },
+
+      _header: function(col){
+        if (this._headerMap[col]) {
+          return this._headerMap[col];
+        }
+        var dh = this._headerMap["_displayHeader"];
+        if (dh) {
+          return dh(col);
+        }
+        return col;
+      },
+
+      _hide: function(col) {
+        return this._columns.indexOf(col) === -1;
+      },
+
+      _makeSortObject: function(sortstr){
+        if (!sortstr) {
+          return undefined;
+        }
+        var pieces = sortstr.split(":");
+        if (pieces.length != 2) {
+          // fail safe
+          return {name: "id", direction: "asc"};
+        }
+        return {
+          name: pieces[0],
+          direction: pieces[1],
+        }
+      },
+
+      _sortChange: function(e) {
+        // The event we get from sort-toggle tells us the name of what needs
+        // to be sorting and how to sort it.
+        if (!(e && e.detail && e.detail.name)) {
+          return;
+        }
+        // should trigger the computation of _sort and __filterAndSort
+        this.set("_sortstr", e.detail.name + ":" + e.detail.direction);
+      },
+      // _stripSpecial removes the special columns and sorts the remaining
+      // columns so they always appear in the same order, regardless of
+      // the order they are added.
+      _stripSpecial: function(){
+        return this._columns.filter(function(c) {
+          return this._specialColumns.indexOf(c) === -1;
+        }.bind(this)).sort(function(a, b) {
+          if (!this._priorityColumns ||
+                (this._priorityColumns.indexOf(a) === -1 &&
+                 this._priorityColumns.indexOf(b) === -1)) {
+            return a.localeCompare(b);
+          } else {
+            var idxA = this._priorityColumns.indexOf(a);
+            if (idxA === -1) {
+              idxA = 1000;
+            }
+            var idxB = this._priorityColumns.indexOf(b);
+            if (idxB === -1) {
+              idxB = 1000;
+            };
+            return idxA - idxB;
+          }
+        }.bind(this));
+
+      },
+
+      // Common columns shared between tasklist and botlist
+      _commonColumns: function() {
+        // return a fresh object so all elements have their own copy
+        return {
+          device: function(bot) {
+            var dt = this._attribute(bot, "device", "none");
+            dt = dt[0];
+            var alias = swarming.alias.device(dt);
+            if (alias === "unknown") {
+              return dt;
+            }
+            return swarming.alias.apply(dt, alias);
+          },
+          device_type: function(bot) {
+            var dt = this._attribute(bot, "device_type", "none");
+            dt = dt[0];
+            var alias = swarming.alias.android(dt);
+            if (alias === "unknown") {
+              return dt;
+            }
+            return swarming.alias.apply(dt, alias);
+          },
+          gpu: function(bot){
+            var gpus = this._attribute(bot, "gpu", "none");
+            var verbose = []
+            var named = [];
+            // non-verbose mode has only the top level full GPU names "e.g. NVidia GTX 660"
+            // which is found by looking for gpu ids w/ a dash (e.g. has a gpu driver).
+            gpus.forEach(function(g){
+              var alias = swarming.alias.gpu(g);
+              if (alias === "unknown") {
+                verbose.push(g);
+                if (g.indexOf("-") !== -1) {
+                  named.push(g);
+                }
+                return;
+              }
+              verbose.push(swarming.alias.apply(g, alias));
+              if (g.indexOf("-") !== -1) {
+                named.push(swarming.alias.apply(g, alias));
+              }
+            }.bind(this))
+            if (!named.length) {
+              // No gpu has a driver string, fall-back to longest name
+              var g = swarming.longest(this._attribute(bot, "gpu", "none"));
+              var alias = swarming.alias.gpu(g);
+              if (alias === "unknown") {
+                named = [g];
+              } else {
+                named = [swarming.alias.apply(g, alias)];
+              }
+            }
+            if (this._verbose || !named.length) {
+              return verbose.join(" | ");
+            }
+            return named.join(" | ");
+          },
+          os: function(bot) {
+            if (this._verbose) {
+              return this._attribute(bot, "os", "none").join(" | ");
+            }
+            return swarming.longest(this._attribute(bot, "os", "none"));
+          },
+          pool: function(bot) {
+            var pool = this._attribute(bot, "pool");
+            return pool.join(" | ");
+          },
+
+        };
+      },
+
+
+    }];
+  })();
+</script>

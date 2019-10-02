@@ -1,0 +1,61 @@
+# This is the official list of people who can contribute
+# (and typically have contributed) code to the LUCI project.
+# The AUTHORS file lists the copyright holders; this file
+# lists people.  For example, Google employees are listed here
+# but not in AUTHORS, because Google holds the copyright.
+#
+# Names should be added to this file only after verifying that
+# the individual or the individual's organization has agreed to
+# the appropriate Contributor License Agreement, found here:
+#
+#     https://cla.developers.google.com/
+#
+# When adding J Random Contributor's name to this file,
+# either J's name or J's organization's name should be
+# added to the AUTHORS file, depending on whether the
+# individual or corporate CLA was used.
+
+# Names should be added to this file like so:
+#     Individual's name <submission email address>
+#     Individual's name <submission email address> <email2> <emailN>
+#
+# An entry with multiple email addresses specifies that the
+# first address should be used in the submit logs and
+# that the other addresses should be recognized as the
+# same person when interacting with Gerrit.
+
+# Please keep the list sorted.
+
+Aaron Gable <agable@chromium.org>
+Andrew Wang <andrew.wang@cloudera.com>
+Andrii Shyshkalov <tandrii@chromium.org>
+Augie Fackler <augie@google.com>
+Ben Rudiak-Gould <benrg@chromium.org> <benrg@google.com>
+Cem Kocagil <ckocagil@chromium.org>
+Christopher Sharp <csharp@chromium.org> <csharp@google.com>
+Cory Massaro <cmassaro@chromium.org> <cmassaro@google.com>
+Dan Jacques <dnj@chromium.org>
+Eric Boren <borenet@chromium.org>
+Frank Farzan <frankf@chromium.org>
+Jason Ganetsky <ganetsky@chromium.org>
+John Abd-El-Malek <jam@chromium.org>
+John Bauman <jbauman@chromium.org>
+Ken Russell <kbr@chromium.org>
+Kevin Graney <kmg@chromium.org>
+Kevin Lubick <kjlubick@google.com>
+Mahdi Tayarani Najaran <tayarani@google.com>
+Marc-André (MAD) Decoste <mad@chromium.org> <mad@google.com>
+Marc-Antoine Ruel <maruel@chromium.org> <maruel@google.com>
+Michael Achenbach <machenbach@chromium.org>
+Mike Frysinger <vapier@gentoo.org> <vapier@google.com>
+Mike Stipicevic <stip@chromium.org>
+Nathaniel Manista <nathaniel@google.com>
+Nodir Turakulov <nodir@chromium.org>
+Paweł Hajdan <phajdan.jr@chromium.org>
+Robert Iannucci <robbie@rail.com> <iannucci@google.com>
+Sergey Berezin <sergeyberezin@chromium.org> <sergeyberezin@google.com>
+Sergey Matveev <earthdok@chromium.org>
+Sergiy Belozorov <sergiyb@chromium.org> <sergiyb@google.com>
+Tianyin Zhang <zty@google.com>
+Vadim Shtayura <vadimsh@chromium.org> <vadimsh@google.com>
+Yiyao Liu <yiyaoliu@chromium.org>

@@ -1,0 +1,14 @@
+Name: infra_libs
+Short Name: infra_libs
+URL: https://chromium.googlesource.com/infra/infra.git/+/master/appengine_module/
+Revision: 0c2b00962aec244573836a0fbb2e465e3426daa1
+License: Chromium License
+
+Description:
+Common libraries used by Chrome Infrastructure for AppEngine services.
+
+Please roll in sync with /client/third_party/infra_libs.
+
+Local Modifications:
+- Most content is in /client/third_party/infra_libs/, only GAE specific code is
+  left here.

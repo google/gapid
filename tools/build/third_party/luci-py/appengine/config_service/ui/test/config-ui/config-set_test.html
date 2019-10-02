@@ -1,0 +1,391 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>config-set test</title>
+
+    <script src="../../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../bower_components/web-component-tester/browser.js"></script>
+
+    <link rel="import" href="../../src/config-ui/config-set.html">
+  </head>
+  <body>
+
+    <test-fixture id="valid-project-with-config-files">
+      <template>
+        <config-set category="projects"
+                    name="valid-project-with-config-files"></config-set>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="invalid-project-without-config-files">
+      <template>
+        <config-set category="projects"
+                    name="invalid-project-without-config-files"></config-set>
+      </template>
+    </test-fixture>
+
+    <script>
+      suite('Valid project with config files', function() {
+          
+        var ajax;
+        var request;
+        var server;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var config_set;
+
+        setup(function() {
+          server = sinon.fakeServer.create();
+          config_set = fixture('valid-project-with-config-files');
+          ajax = Polymer.dom(config_set.root).querySelector('#requestConfigs');
+        });
+
+        teardown(function() {
+          server.restore();
+        });
+
+        function setserver(param) {
+          server.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?config_set=([a-z\-]+)\/([a-z\-]+)&include_files=true&include_last_import_attempt=true/,
+            [
+              200,
+              responseHeaders.json,
+              JSON.stringify(param)
+            ]
+          );
+        }
+
+        test('has correct category', function() {
+          assert.equal(config_set.category, 'projects');
+        });
+
+        test('has correct name', function() {
+          assert.equal(config_set.name, 'valid-project-with-config-files');
+        });
+
+        test('sets isLoading by default', function() {
+          assert.equal(config_set.isLoading, true);
+        });
+
+        test('gets iron-ajax response', function (done) {
+          var param = {
+            config_sets: [{
+              files: [{path: "OWNERS"}, {path: "README.md"}],
+              last_import_attempt: {
+                success: true,
+                revision: {
+                  url: "https://test.com",
+                  timestamp:  "1234567890"
+                }
+              }
+            }]
+          };
+          setserver(param);
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 200);
+          assert.isObject(request.response);
+          config_set.addEventListener('processedConfigFiles', function() {
+            assert.equal(config_set.isLoading, false);
+            assert.equal(config_set.files.length, 2);
+            assert.equal(config_set.lastImportAttempt.success, true);
+            done();
+          }.bind(config_set));
+        });
+
+        test('has correct url when revision is provided', function(done) {
+          var param = {
+            config_sets: [{
+              files: [{path: "OWNERS"}, {path: "README.md"}],
+              location: "https://test.com/refs/master/valid-project-with-config-files",
+              last_import_attempt: {
+                success: true,
+                revision: {
+                  url: "https://test.com/120c81237zv23hj22/valid-project-with-config-files",
+                  timestamp: "1501162530000000"
+                }
+              },
+              revision: {
+                url: "https://test.com/120c81237zv23hj22/valid-project-with-config-files",
+                id: "4acc18843ff0b8cc858d4cc92ea6fe030cefc2b7"
+              }
+            }]
+          };
+          setserver(param);
+          request = ajax.generateRequest();
+          server.respond();
+          config_set.addEventListener('processedConfigFiles', function() {
+            assert.equal(config_set.url, "https://test.com/120c81237zv23hj22/valid-project-with-config-files");
+            done();
+          }.bind(config_set));
+        });
+
+        test('has correct url when revision is not provided', function(done) {
+          var param = {
+            config_sets: [{
+              files: [{path: "OWNERS"}, {path: "README.md"}],
+              location: "https://test.com/refs/master/valid-project-with-config-files",
+            }]
+          };
+          setserver(param);
+          request = ajax.generateRequest();
+          server.respond();
+          config_set.addEventListener('processedConfigFiles', function() {
+            assert.equal(config_set.url, "https://test.com/refs/master/valid-project-with-config-files");
+            done();
+          }.bind(config_set));
+        });
+      });
+
+      suite('Inalid project without config files', function() {
+        var ajax;
+        var request;
+        var server;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var config_set;
+
+        setup(function() {
+          server = sinon.fakeServer.create();
+          var param = {
+            config_sets: [{
+              location: "https://test.com/invalid-project-without-config-files",
+              last_import_attempt: {success: false}
+            }]
+          };
+          server.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?config_set=([a-z\-]+)\/([a-z\-]+)&include_files=true&include_last_import_attempt=true/, 
+            [
+              200,
+              responseHeaders.json,
+              JSON.stringify(param)
+            ]
+          );
+          config_set = fixture('invalid-project-without-config-files');
+          ajax = Polymer.dom(config_set.root).querySelector('#requestConfigs');
+        });
+
+        teardown(function() {
+          server.restore();
+        });
+
+        test('has correct category', function() {
+          assert.equal(config_set.category, 'projects');
+        });
+
+        test('has correct  name', function() {
+          assert.equal(config_set.name, 'invalid-project-without-config-files');
+        });
+
+        test('sets isLoading by default', function() {
+          assert.equal(config_set.isLoading, true);
+        });
+
+        test('gets iron-ajax response', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 200);
+          assert.isObject(request.response);
+          config_set.addEventListener('processedConfigFiles', function() {
+            assert.equal(config_set.isLoading, false);
+            assert.equal(config_set.files.length, 0);
+            assert.equal(config_set.lastImportAttempt.success, false);
+            assert.equal(config_set.url,
+              "https://test.com/invalid-project-without-config-files");
+            done();
+          }.bind(config_set));
+        });
+      });
+
+      suite('Successful force refresh', function() {
+        var ajax;
+        var request;
+        var server;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var config_set;
+
+        setup(function() {
+          server = sinon.fakeServer.create();
+          server.respondWith(
+            'POST',
+            /\/_ah\/api\/config\/v1\/reimport\?config_set=([a-z\-]+)\/([a-z\-]+)/, 
+            [
+              204,
+              responseHeaders.json,
+              // the reimport API endpoint doesn't return a body, only a status.
+              "{}"
+            ]
+          );
+          config_set = fixture('valid-project-with-config-files');
+          ajax = Polymer.dom(config_set.root).querySelector('#refreshConfigs');
+        });
+
+        teardown(function() {
+          server.restore();
+        });
+
+        test('refreshes config set properly', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 204);
+          config_set.addEventListener('refreshComplete', function() {
+            assert.equal(config_set.isRefreshing, false);
+            assert.equal(config_set.refreshMessage, "Reimport successful.");
+            done();
+          }.bind(config_set));
+        });
+      });
+
+      suite('Unsuccessful force refresh', function() {
+        var ajax;
+        var request;
+        var server;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var config_set;
+
+        setup(function() {
+          server = sinon.fakeServer.create();
+          var param = {
+            error: {
+              errors: [{
+                domain: "global",
+                reason: "notFound",
+                message: "project valid-project-with-config-files not found"
+              }],
+              code: 404,
+              message: "project valid-project-with-config-files not found"
+            }
+          }
+          server.respondWith(
+            'POST',
+            /\/_ah\/api\/config\/v1\/reimport\?config_set=([a-z\-]+)\/([a-z\-]+)/, 
+            [
+              404,
+              responseHeaders.json,
+              JSON.stringify(param)
+            ]
+          );
+          config_set = fixture('valid-project-with-config-files');
+          ajax = Polymer.dom(config_set.root).querySelector('#refreshConfigs');
+        });
+
+        teardown(function() {
+          server.restore();
+        });
+
+        test('refreshes config set properly', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 404);
+          config_set.addEventListener('refreshError', function() {
+            assert.equal(config_set.isRefreshing, false);
+            assert.equal(config_set.refreshMessage, "Error: Files could not be reimported.");
+            done();
+          }.bind(config_set));
+        });
+      });
+
+      suite('Unsuccessful fetch of config files', function() {
+        var ajax;
+        var request;
+        var server;
+        var param;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var config_set;
+
+        setup(function() {
+          server = sinon.fakeServer.create();
+          config_set = fixture('valid-project-with-config-files');
+          ajax = Polymer.dom(config_set.root).querySelector('#requestConfigs');
+        });
+
+        teardown(function() {
+          server.restore();
+        });
+
+        function setserver(errorNumber) {
+          param = {
+            error: {
+              code: errorNumber,
+              message: "Error " + errorNumber.toString()
+            }
+          };
+          server.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?config_set=([a-z\-]+)\/([a-z\-]+)&include_files=true&include_last_import_attempt=true/,
+            [
+              errorNumber,
+              responseHeaders.json,
+              JSON.stringify(param)
+            ]
+          );
+        }
+
+        test('displays error on 403 when not signed in', function (done) {
+          setserver(403);
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 403);
+          config_set.addEventListener('fetchError', function() {
+            assert.equal(config_set.isLoading, false);
+            assert.equal(config_set.errorMessage, 
+                "Access denied, please sign in.");
+            done();
+          }.bind(config_set));
+        });
+
+        test('displays error on 403 when signed in', function (done) {
+          setserver(403);
+          config_set.auth_headers = {};
+          config_set.profile = {
+            email: "some_email@google.com"
+          };
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 403);
+          config_set.addEventListener('fetchError', function() {
+            assert.equal(config_set.isLoading, false);
+            assert.equal(config_set.errorMessage, 
+                "Access denied, some_email@google.com" + 
+                " is not authorized to access this config set." + 
+                " Request access or sign in as a different user.");
+            done();
+          }.bind(config_set));
+        });
+
+        test('displays error if fetch failed due to error 500', function (done) {
+          setserver(500);
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 500);
+          config_set.addEventListener('fetchError', function() {
+            assert.equal(config_set.isLoading, false);
+            assert.equal(config_set.errorMessage, "Internal server error.");
+            done();
+          }.bind(config_set));
+        });
+
+      });
+
+    </script>
+  </body>
+</html>

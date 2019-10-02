@@ -1,0 +1,24 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  window.SwarmingBehaviors.BotPageBehavior contains any shared functions and
+  constants used by the bot-page and its sub-elements.
+
+  To use it, include
+      behaviors: [SwarmingBehaviors.BotPageBehavior]
+  in the creation of your Polymer element.
+-->
+<link rel="import" href="/res/imp/common/common-behavior.html">
+<script>
+  (function(){
+
+
+    // This behavior wraps up all the shared bot-page functionality by
+    // extending SwarmingBehaviors.CommonBehavior
+    SwarmingBehaviors.BotPageBehavior = [SwarmingBehaviors.CommonBehavior, {
+
+    }];
+  })()
+</script>

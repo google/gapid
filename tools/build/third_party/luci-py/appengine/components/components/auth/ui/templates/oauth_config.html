@@ -1,0 +1,109 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+{% set is_readonly = auth_service_config_locked or not is_admin %}
+<div class="row">
+  <div class="col-md-12">
+    <div class="panel panel-default">
+      <div class="panel-heading"><h3 class="panel-title">OAuth and token server config</h3></div>
+      <div class="panel-body">
+        <div id="oauth-config-alerts"></div>
+        <form class="form-horizontal" role="form" id="oauth-config-form">
+
+          <div class="form-group">
+            <div class="col-sm-12">
+              <h4>OAuth client for authentication from scripts and tools</h4>
+              <p>
+                Various scripts and tools used by end users need an OAuth2
+                client to perform 3-legged OAuth flow. Rather than hardcode
+                the client ID and the client secret in the source code, we make
+                them available via Auth Service API, so any script can fetch and
+                use them. This kind of OAuth client can be created by using
+                "Other" option in Cloud Console. Such clients are usable only by
+                locally running tools (they have redirect URL set to localhost).
+                They also need the secret in the clear text form, so it is not
+                really a secret in this scenario.
+              </p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Client ID</label>
+            <div class="col-sm-10">
+              <input type="text" class="form-control"
+                     style="font-family:monospace;"
+                     {% if is_readonly %}readonly{% endif %}
+                     name="client_id" placeholder="Not set">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Client not-so-secret</label>
+            <div class="col-sm-10">
+              <input type="text" class="form-control"
+                     style="font-family:monospace;"
+                     {% if is_readonly %}readonly{% endif %}
+                     name="client_secret" placeholder="Not set">
+            </div>
+          </div>
+          <hr>
+
+          <div class="form-group">
+            <div class="col-sm-12">
+              <h4>List of known OAuth client IDs</h4>
+              <p>
+                Each OAuth2 token of an end-user account is associated with some
+                OAuth Client. This list enumerates all OAuth clients we trust,
+                one per line.
+              </p>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-sm-12">
+              <textarea class="form-control"
+                        style="font-family:monospace;"
+                        rows="3" name="more_ids"
+                        {% if is_readonly %}readonly{% endif %}
+                        wrap="off"></textarea>
+            </div>
+          </div>
+          <hr>
+
+          <div class="form-group">
+            <div class="col-sm-12">
+              <h4>Delegation tokens support</h4>
+              <p>
+                This is used by LUCI-specific authentication protocol extension.
+                If you don't know what it is, you probably don't need it and can
+                keep this section blank.
+              </p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-2 control-label">Token server URL</label>
+            <div class="col-sm-10">
+              <input type="text" class="form-control"
+                     {% if is_readonly %}readonly{% endif %}
+                     name="token_server_url" placeholder="Not set">
+            </div>
+          </div>
+          <hr>
+
+          <div class="form-group">
+            {% if auth_service_config_locked %}
+              <div class="col-sm-12">
+                {{ render_config_locked("oauth.cfg") }}
+              </div>
+            {% else %}
+              {% if is_admin %}
+              <div class="col-sm-offset-2 col-sm-10">
+                <button type="submit" class="btn btn-primary">Submit</button>
+              </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}

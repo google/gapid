@@ -1,0 +1,226 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+<style>
+.list-group-item.readonly-group,
+.list-group-item.readonly-group:hover {
+  background-color: #eeeeee;
+}
+.list-group-item {
+  position: relative;
+}
+{# Vertically align glyphicon icon #}
+.list-item-lock-box {
+  position: absolute;
+  right: 10px;
+  min-height: 30px;
+  line-height: 30px;
+  top: 50%;
+  margin-top: -15px;
+}
+</style>
+
+{# BEWARE: The following templates in 'raw' section are handled by handlebars
+javascript library and not jinja2. #}
+
+{% raw %}
+
+<script id="group-chooser-item-template" type="text/x-handlebars-template">
+  <a href="{{href}}" class="list-group-item {{#unless caller_can_modify}}readonly-group{{/unless}}">
+    <h5 class="list-group-item-heading">{{name}}</h5>
+    {{#if isExternal}}
+    <small class="list-group-item-text">External</small>
+    {{else}}
+    <small class="list-group-item-text">{{descriptionTrimmed}}</small>
+    {{/if}}
+    {{#unless caller_can_modify}}
+    <span class="glyphicon glyphicon-lock list-item-lock-box"></span>
+    {{/unless}}
+  </a>
+</script>
+
+<script id="group-chooser-button-template" type="text/x-handlebars-template">
+  <a href="{{href}}" class="list-group-item">
+    <b>Create a new group</b>
+  </a>
+</script>
+
+<script id="frame-error-pane" type="text/x-handlebars-template">
+  <div class="panel panel-danger">
+    <div class="panel-heading"><h3 class="panel-title">Error</h3></div>
+    <div class="panel-body"><pre>{{text}}</pre></div>
+  </div>
+</script>
+
+<script id="edit-group-form-template" type="text/x-handlebars-template">
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">{{name}}
+        {{#if isExternal}}
+        <span style="color: gray">(external)</span>
+        {{/if}}
+        <a href="{{fullListingUrl}}"
+           id="full-listing-button"
+           style="float: right; padding-left: 4px"
+           title="Full listing"
+           data-toggle="tooltip"
+           data-placement="top">
+          <span class="glyphicon glyphicon-list"></span>
+        </a>
+        <a href="{{lookupUrl}}"
+           id="lookup-button"
+           style="float: right; padding-right: 4px"
+           title="View in Lookup"
+           data-toggle="tooltip"
+           data-placement="top">
+          <span class="glyphicon glyphicon-search"></span>
+        </a>
+        <a href="{{changeLogUrl}}"
+           id="change-log-button"
+           style="float: right; padding-right: 4px"
+           title="Changes"
+           data-toggle="tooltip"
+           data-placement="top">
+          <span class="glyphicon glyphicon-calendar"></span>
+        </a>
+      </h3>
+    </div>
+    <div class="panel-body" style="padding-bottom: 5px;">
+      <div id="alerts"></div>
+      <form class="form-horizontal" role="form">
+        <input type="hidden" name="name" value="{{name}}">
+        {{#unless isExternal}}
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Description</label>
+          <div class="col-sm-10">
+            <textarea class="form-control" rows="3" name="description">{{description}}</textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Owners</label>
+          <div class="col-sm-10">
+            <input type="text" class="form-control" name="owners" value="{{owners}}">
+          </div>
+        </div>
+        <hr>
+        {{/unless}}
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Members</label>
+          <div class="col-sm-10" style="font-family:monospace;">
+            <textarea class="form-control"
+                      rows="{{#if isExternal}}30{{else}}12{{/if}}"
+                      name="membersAndGlobs">{{membersAndGlobs}}</textarea>
+          </div>
+        </div>
+        {{#unless isExternal}}
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Subgroups</label>
+          <div class="col-sm-10" style="font-family:monospace;">
+            <textarea class="form-control"
+                      rows="5" name="nested">{{nested}}</textarea>
+          </div>
+        </div>
+        <hr>
+        <div class="form-group">
+          <div class="col-sm-12">
+            {{#if caller_can_modify}}
+              <button type="submit" class="btn btn-primary">
+                Update group
+              </button>
+              <button id="delete-btn" type="button" class="btn btn-danger">
+                Delete group
+              </button>
+            {{else}}
+              <div style="text-align: center">
+                <i>You do not have sufficient permissions to modify this group.</i>
+              </div>
+            {{/if}}
+          </div>
+        </div>
+        {{/unless}}
+      </form>
+    </div>
+  </div>
+</script>
+
+<script id="new-group-form-template" type="text/x-handlebars-template">
+  <div class="panel panel-default">
+    <div class="panel-body" style="padding-bottom: 5px;">
+      <div id="alerts"></div>
+      <form class="form-horizontal" role="form">
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Group name</label>
+          <div class="col-sm-10">
+            <input type="text" class="form-control" name="name">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Description</label>
+          <div class="col-sm-10">
+            <textarea class="form-control" rows="3" name="description"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Owners</label>
+          <div class="col-sm-10">
+            <input type="text" class="form-control"
+                   placeholder="administrators" name="owners">
+          </div>
+        </div>
+        <hr>
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Members</label>
+          <div class="col-sm-10" style="font-family:monospace;">
+            <textarea class="form-control" rows="10" name="membersAndGlobs"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label">Subgroups</label>
+          <div class="col-sm-10" style="font-family:monospace;">
+            <textarea class="form-control" rows="5" name="nested"></textarea>
+          </div>
+        </div>
+        <hr>
+        <div class="form-group">
+          <div class="col-sm-12">
+            <button type="submit" class="btn btn-primary">Create group</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</script>
+
+{% endraw %}
+
+<div class="row">
+  <!-- Group chooser + 'Create new group' button. -->
+  <div class="col-md-4">
+    <div class="row">
+      <!-- Group search button. -->
+      <div class="input-group" id="search-box-group">
+          <input id="search-box" type="text"
+                 class="form-control" placeholder="Search" autofocus />
+          <span class="input-group-addon">
+            <i class="glyphicon glyphicon-search"></i>
+          </span>
+      </div>
+    </div>
+    <div class="row">
+      <!-- Populated by js. -->
+      <div id="group-chooser-outter">
+        <div id="group-chooser">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details of some single group. -->
+  <div class="col-md-8">
+    <!-- Populated by js. -->
+    <div id="main-content-pane">
+    </div>
+  </div>
+</div>
+
+{% endblock %}

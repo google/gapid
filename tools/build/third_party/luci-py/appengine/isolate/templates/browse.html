@@ -1,0 +1,59 @@
+{% set title = 'Isolate Server' %}
+{% extends "isolate/base.html" %}
+
+
+{% block headers %}
+<style>
+  html, body {
+    height: 95%;
+    margin: 0;
+    width: 100%;
+  }
+  div.use_all_space {
+    margin: 0;
+    overflow-y: hidden;
+    padding: 0;
+    width: 100%;
+  }
+  .monospace {
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
+  iframe.use_all_space {
+    margin: 0;
+    min-height: 800px;
+    overflow-y: hidden;
+    padding: 0;
+    width: 100%;
+  }
+</style>
+
+{% endblock %}
+
+{% block body %}
+
+<h1>File browser</h1>
+
+Enter the namespace and digest of an object:<br>
+<form id="form1" method="GET">
+  <input id="namespace" name="namespace" value="{{namespace}}" /><br>
+  <input id="digest" name="digest" maxlength=40 size=40 value="{{digest}}" />
+  <br>
+  <input type=submit value="Load item"/><br>
+</form>
+<hr>
+
+<div id="iframe-entry"></div>
+<script>
+function fixHeight(){
+  var i = document.getElementById("content");
+  // We only have access to the iframe's inner content because it is a same-origin
+  // request. Add 40 pixels to avoid a nested horizontal scroll bar.
+  i.height = i.contentWindow.document.body.scrollHeight + 40;
+}
+</script>
+<iframe id="content" class="use_all_space" sandbox="allow-same-origin allow-popups"
+        src="/content?namespace={{namespace}}&digest={{digest}}{% if as is defined %}&as={{as}}{% endif %}"
+        onload="fixHeight()">
+</iframe>
+{% endblock %}

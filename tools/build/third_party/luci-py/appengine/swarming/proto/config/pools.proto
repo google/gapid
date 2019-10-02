@@ -1,0 +1,443 @@
+// Copyright 2017 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package swarming;
+
+option go_package = "go.chromium.org/luci/swarming/proto/config;configpb";
+
+// Schema for pools.cfg service config file in luci-config.
+//
+// It defined a set of Pool objects, each one corresponding to a single Swarming
+// pool dimension. Each Swarming task resided in some pool, and each Swarming
+// bot belongs to at least one pool.
+//
+// Pools are used to isolate groups of tasks/bots from each other for security
+// and capacity reasons. Two different pools should not interfere with each
+// other at all (unless explicitly configured to share bots or accounts).
+message PoolsCfg {
+  reserved 2;
+
+  // List of all defined pools.
+  repeated Pool pool = 1;
+
+  // Configures the default isolate and CIPD services to use for all pools on
+  // this server.
+  ExternalServices default_external_services = 6;
+
+  // This is the "shared namespace" of task templates.
+  //
+  // Task templates allow pools to specify some property defaults (particularly
+  // around caches, CIPD packages and Environment variables) for tasks created
+  // within the pool. These templates can have 'include' statements, and those
+  // include statements draw from this namespace.
+  //
+  // Swarming will do a 2-pass parse of these so order doesn't matter (i.e. If
+  // A includes B, but is defined B-then-A, it's not an error).
+  repeated TaskTemplate task_template = 3;
+
+  // This is the "shared namespace" of deployments.
+  //
+  // When pools specify a task_template_deployment, it draws from this
+  // namespace.
+  repeated TaskTemplateDeployment task_template_deployment = 4;
+
+  // Defines about how to monitor bots in a pool. Each pool above may refer to
+  // one of the BotMonitoring message by name, which permits reusing
+  // BotMonitoring definitions.
+  repeated BotMonitoring bot_monitoring = 5;
+}
+
+
+// Properties of a single pool or a bunch of identically configured pools.
+//
+// In particular contains authorization configuration.
+message Pool {
+  // Names of the pools this config applies to.
+  //
+  // Tasks target the pool by specifying its name as 'pool' dimension, thus
+  // names here should be valid dimension value.
+  repeated string name = 1;
+
+  // Contact information for people that own this pool.
+  //
+  // Not used in any ACLs, just informational field.
+  repeated string owners = 2;
+
+  // Defines who can schedule tasks in this pool.
+  //
+  // The checks here act as a second authorization layer, consulted after the
+  // first server-global one (defined based on groups set in settings.cfg, see
+  // AuthSettings in config.proto).
+  Schedulers schedulers = 3;
+
+  // List of service account emails allowed to be used for tasks that target
+  // this pool. Tasks specify the service account via 'service_account' field
+  // in the tasks.New RPC.
+  //
+  // By associating accounts with pools in the config we make it more explicit
+  // that a bot belonging to a pool eventually can get access to service
+  // accounts of all tasks running in this pool (just by sitting there, grabbing
+  // tasks and sniffing service account tokens).
+  repeated string allowed_service_account = 4;
+
+  // Same as 'allowed_service_account', but the set of service accounts is
+  // specified through an auth group.
+  repeated string allowed_service_account_group = 5;
+
+  oneof task_deployment_scheme {
+    // Most Pools will include a task_template_deployment by name.
+    string task_template_deployment = 6;
+
+    // However, pools which substantially differ from other ones can define an
+    // entire deployment inline without putting it in the shared namespace.
+    //
+    // The name fields in this deployment and any embedded task_templates must
+    // not be specified.
+    TaskTemplateDeployment task_template_deployment_inline = 7;
+  }
+
+  // Refer to one bot_monitoring at the file level by name.
+  string bot_monitoring = 8;
+
+  // If specified, this is the description of the external schedulers to be used
+  // for tasks and bots for this pool that match the dimension set of a scheduler.
+  // For a given task or bot, the first entry in this list that matches based on
+  // dimension eligibility will be used.
+  repeated ExternalSchedulerConfig external_schedulers = 9;
+}
+
+
+// Defines who can schedule tasks in a pool.
+message Schedulers {
+  // Emails of individual end-users.
+  //
+  // Useful to avoid creating one-person groups.
+  repeated string user = 1;
+
+  // List of groups with end-users.
+  repeated string group = 2;
+
+  // See TrustedDelegation comment.
+  repeated TrustedDelegation trusted_delegation = 3;
+}
+
+
+// Defines a delegatee trusted to make authorization decisions for who can use
+// a pool.
+//
+// This is based on LUCI delegation protocol. Imagine an end user U calling
+// Swarming through an intermediary service X. In this case U is a delegator and
+// X is a delegatee. When X calls Swarming, it makes an RPC to the token server
+// to make a delegation token that says "<X can call Swarming on behalf of U>".
+//
+// This token is then sent to the Swarming with the RPC. Swarming sees that
+// the direct peer it's talking to is X, but the call should be performed under
+// the authority of U.
+//
+// We extend this to also allow X make authorization decisions about whether U
+// can use particular Swarming resource or not. The result of this decision is
+// encoded in the delegation token as a set of "key:value" tags. Swarming then
+// can treat presence of such tags as a signal that the particular call is
+// allowed.
+//
+// In this scenario we totally trust X to make the correct decision.
+message TrustedDelegation {
+  message TagList {
+    repeated string tag = 1;
+  }
+
+  // Email of a trusted delegatee (the one who's minting the delegation token).
+  string peer_id = 1;
+
+  // A list of tags to expected in the delegation token to allow the usage of
+  // a pool.
+  //
+  // Presence of any of the specified tags are enough. The format of these tags
+  // generally depends on what service is doing the delegation.
+  TagList require_any_of = 2;
+}
+
+
+// A TaskTemplate describes a set of properties (caches, CIPD packages and
+// envvars) which apply to tasks created within a swarming pool.
+//
+// TaskTemplates may either be defined inline inside of
+// a TaskTemplateDeployment, or in "shared namespace" of the
+// PoolsCfg.task_template field.
+//
+// TaskTemplates may also include other TaskTemplates by name from the "shared
+// namespace" in PoolsCfg. Swarming calculates the final value for a given
+// TaskTemplate by applying all of its `include` fields depth-first, and then by
+// applying the properties in the body of the TaskTemplate. Includes may never
+// be repeated, including transitively. This means that "diamond shaped
+// dependencies" are forbidden (i.e. A<-B<-D and A<-C<-D would be forbidden
+// because `A` is included in `D` twice (via both C and B)).
+message TaskTemplate {
+  // This gives the template a name for the 'include' field below. This only
+  // applies to templates defined within the PoolsCfg message (i.e. the
+  // top-level message), not to templates inlined into a TaskTemplateDeployment.
+  string name = 1;
+
+  // Includes properties from the named other TaskTemplate. This can only
+  // include templates defined in the top-level PoolsCfg message.
+  repeated string include = 2;
+
+  message CacheEntry {
+    // The name of the cache (required).
+    string name = 1;
+    // The path relative to the task root to mount the cache (required).
+    string path = 2;
+  }
+  // CacheEntries are keyed by `name`, and `path` is overridden wholesale.
+  //
+  // It is illegal to have any TaskTemplate with multiple cache entries mapping
+  // to the same path. It is illegal to have any cache paths overlap with cipd
+  // package paths.
+  repeated CacheEntry cache = 3;
+
+  message CipdPackage {
+    // The relative to the task root to unpack the CIPD package. A blank value
+    // is permitted and means 'the root directory of the task'.
+    string path = 1;
+    // The CIPD package name template to use (required).
+    string pkg = 2;
+    // The version of the CIPD package to use (required).
+    string version = 3;
+  }
+  // CipdPackages are keyed by (path, name), and `version` is overridden
+  // wholesale.
+  //
+  // It is illegal to have any cipd paths overlap with cache entry paths.
+  repeated CipdPackage cipd_package = 4;
+
+  message Env {
+    // The envvar you want to set (required).
+    string var = 1;
+
+    // The envvar value you want to set. Any prefixes are prepended to this
+    // value. If the value is unset, prefixes will be prepended to the bot's
+    // current value of this envvar (see examples)
+    string value = 2;
+
+    // Paths relative to the task root to prepend to this envvar on the bot.
+    // These will be resolved to absolute paths on the bot.
+    repeated string prefix = 3;
+
+    // If true, tasks setting this EnvVar can overwrite the value and/or the
+    // prefix. Otherwise, tasks will not be permitted to to set any env var or
+    // env_prefix for this var.
+    //
+    // This should be True for envvars you expect tasks to extend, like $PATH.
+    // Note that this only affects envvar manipulation at the Swarming API
+    // level; once the task is running it can (of course) manipulate the env
+    // however it wants.
+    bool soft = 4;
+  }
+  // Env vars are keyed by the `var` field,
+  //
+  // `value` fields overwrite included values.
+  // `soft` fields overwrite included values.
+  // `prefix` fields append to included values. For example, Doing:
+  //
+  //     {name: "1" env { var: "PATH" prefix: "a" }}
+  //     {name: "2" env { var: "PATH" prefix: "b" }}
+  //     {name: "3" include: "1" include: "2" }
+  //
+  //  Is equivalent to:
+  //
+  //     {name: "3" env { var: "PATH" prefix: "a" prefix: "b" }}
+  //
+  //
+  // Full Example:
+  //
+  //   env {
+  //     var: "PATH"
+  //     value: "/disable_system_path"
+  //     prefix: "a"
+  //     prefix: "b"
+  //     prefix: "c"
+  //     soft: true
+  //   }
+  //   env {
+  //     var: "OTHER"
+  //     value: "1"
+  //   }
+  //   env {
+  //     var: "PYTHONPATH"
+  //     prefix: "a"
+  //   }
+  //
+  // Results in, essentially:
+  //
+  //   $PATH=/path/to/a:/path/to/b:/path/to/c:/disable_system_path
+  //   $OTHER=1
+  //   $PYTHONPATH=/path/to/a:$PYTHONPATH
+  repeated Env env = 5;
+}
+
+
+// This is a tuple of (prod template, canary template, canary_chance), so that it
+// can be referenced from multiple pools simultaneously as a single unit.
+message TaskTemplateDeployment {
+  // This gives the deployment a name for the 'task_template_deployment' field
+  // in PoolCfg.
+  //
+  // When this TaskTemplateDeployment is inlined into another message (e.g.
+  // `TaskTemplate.task_template_deployment_inline`), the name field must not be
+  // specified.
+  string name = 1;
+
+  // Most Deployments will have a TaskTemplate with just a single include
+  // directive.
+  //
+  // However, pools which substantially differ from other ones could define an
+  // entire template inline without being forced to put it in the shared
+  // namespace.
+  //
+  // The name field in this template (and the canary template) must not be
+  // specified.
+  TaskTemplate prod = 2;
+
+  // The canary template can be defined like the `prod` field above. If this is
+  // defined and `canary_chance` is greater than 0, then this template will be
+  // selected instead of `prod`.
+  TaskTemplate canary = 3;
+
+  // range [0, 9999] where each tick corresponds to %0.01 chance of selecting
+  // the template. Exactly 0 means 'canary is disabled', meaning that tasks
+  // in this pool will always get the prod template.
+  //
+  // Examples:
+  //   * 1     ".01% chance of picking canary"
+  //   * 10    ".1% chance of picking canary"
+  //   * 100   "1% chance of picking canary"
+  //   * 1000  "10% chance of picking canary"
+  //   * 5000  "50% chance of picking canary"
+  //   * 7500  "75% chance of picking canary"
+  //   * 9999  "99.99% chance of picking canary"
+  int32 canary_chance = 4;
+}
+
+
+// Defines about how to monitor bots.
+message BotMonitoring {
+  // Name is used by Pool to describe how to monitor bots in this pool.
+  string name = 1;
+  // Dimension keys to be used to bucket the bots.
+  //
+  // The algorithm for a key with multiple values is:
+  //   def simplify(values):
+  //     values = sorted(values)
+  //     return '|'.join(
+  //         v for i, v in enumerate(values)
+  //         if not any(v.startswith(value) for v in values[i+1:]))
+  //
+  // For example, if 'os' is specified and a bot has the values
+  // ['Linux', 'Ubuntu', 'Ubuntu-16.04'], the bucket value used for this bot
+  // will be 'Linux|Ubuntu-16.04'.
+  //
+  // Then whole algorithm then works for each key:
+  //   def bucket(keys, bot_dimensions):
+  //     return ';'.join(
+  //         '%s:%s' % (key, simplify(bot_dimensions.get(values, []))
+  //         for key in keys)
+  //
+  // so the end result may look like: 'os:Linux|Ubuntu-16.04;pool:Testers'.
+  //
+  // More precisely, when this is used, the other bot dimensions are ignored.
+  // 'pool' is always implicit.
+  repeated string dimension_key = 2;
+}
+
+// Describes an external scheduler used by a particular swarming pool and
+// dimension set, via the external scheduler API.
+message ExternalSchedulerConfig {
+  // Service address of external scheduler.
+  string address = 1;
+
+  // Scheduler id within the external scheduler service to use. This value
+  // is opaque to swarming.
+  string id = 2;
+
+  // Dimensions is a list of dimension strings in "key:value" format (e.g.
+  // ["os:foo", "featureX:bar"]) that determines eligibility for a bot or task
+  // to use this external scheduler. In particular:
+  // - a bot will be eligible if it contains all of these dimensions.
+  // - a task will be eligible if all its slices contain all these dimensions.
+  //
+  // Note of care: if this list is empty, that means all requests in the pool
+  // are eligible to be forwarded to it.
+  //
+  // Note: To be deprecated, in favor of: any_dimensions and all_dimensions.
+  repeated string dimensions = 3;
+
+  // If not enabled, this external scheduler config will be ignored. This
+  // makes it safer to add new configs (the naive approach of adding a config
+  // with empty dimentions list would cause all requests to be routed to
+  // that config).
+  bool enabled = 4;
+
+  // Whether to fall back to native scheduling algorithm if external scheduler
+  // has no tasks for a bot.
+  //
+  // This can be helpful when
+  // - The external scheduler's snapshot of state doesn't contain all of the
+  //   eligible tasks, due to a service restart causing its snapshot to be
+  //   outdated.
+  // - The external scheduler has a bug that causes it to fail to match tasks
+  //   to bots.
+  // - There are tasks in the swarming queue that are eligible for a bot, but
+  //   are not eligible for the external scheduler that bot belongs to (due to
+  //   the bot having additional dimensions that the task does not). In this
+  //   case, the unusual task will be able to run on the bot whenever the
+  //   external scheduler has no other work for the bot.
+  bool fallback_when_empty = 5;
+
+  // A task or bot must have all of these dimensions in order to match this
+  // dimension set.
+  //
+  // Note: Support not yet implemented.
+  repeated string all_dimensions = 6;
+
+  // If any_dimensions is defined, a task or bot must have any of these
+  // dimensions in order to match this dimension set.
+  //
+  // Note: Support not yet implemented.
+  repeated string any_dimensions = 7;
+}
+
+message ExternalServices {
+  message Isolate {
+    // (required) URL of the default isolate server to use if it is not
+    // specified in the task.
+    //
+    // Must start with "https://" or "http://".
+    //
+    // e.g. "https://isolateserver.appspot.com"
+    string server = 1;
+
+    // (required) Default namespace to use if it is not specified in a task,
+    // e.g. "default-gzip"
+    string namespace = 2;
+  }
+  Isolate isolate = 1;
+
+  message CIPD {
+    // (required) URL of the default CIPD server to use, if it is not specified
+    // in the task.
+    //
+    // Must start with "https://" or "http://".
+    //
+    // e.g. "https://chrome-infra-packages.appspot.com"
+    string server = 1;
+
+    // (required) The version of the cipd client to use. This is the
+    // 'infra/tools/cipd/${platform}' package, but because it's part of the
+    // bootstrap needs special logic to handle its installation.
+    string client_version = 2;
+  }
+  CIPD cipd = 2;
+}

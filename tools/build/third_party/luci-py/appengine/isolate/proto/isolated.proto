@@ -1,0 +1,72 @@
+// Copyright 2018 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package isolated.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service Isolated {
+  // Stats returns statistics for this time range at the requested resolution.
+  rpc Stats(StatsRequest) returns (StatsResponse) {};
+  // TODO(maruel): Finish implementation. https://crbug.com/911660
+}
+
+// Resolution to use for Service.Stats request.
+enum Resolution {
+  RESOLUTION_UNSPECIFIED = 0;
+  MINUTE = 1;
+  HOUR = 2;
+  DAY = 3;
+}
+
+// Request for Isolated.Stats.
+message StatsRequest {
+  // latest is the last entry to be specified in the request. If not specified,
+  // latest defaults to the current time. If |latest| is too recent recent
+  // entries will be missing as they are not yet computed.
+  google.protobuf.Timestamp latest_time = 1;
+  // Requested resolution.
+  Resolution resolution = 2;
+  // Maximum number of StatsSnapshot entries to return.
+  int32 page_size = 3;
+}
+
+// Response of Isolated.Stats.
+message StatsResponse {
+  // Statistics snapshot in reverse chronological ordering. There can be holes
+  // in the list; there's a delay before recent entries are created.
+  repeated StatsSnapshot measurements = 1;
+}
+
+// StatsSnapshot contains service statistics.
+message StatsSnapshot {
+  // Start of this snapshot.
+  google.protobuf.Timestamp start_time = 1;
+
+  // Number of individual uploads that completed in this timeframe.
+  int64 uploads = 2;
+  // Number of bytes that were successfully uploaded in this timeframe.
+  //
+  // This value represents the compressed bytes, if compression was used.
+  int64 uploads_bytes = 3;
+  // Number of individual downloads that started in this timeframe.
+  int64 downloads = 4;
+  // Number of bytes that were started to be downloaded in this timeframe.
+  //
+  // This value represents the compressed bytes, if compression was used.
+  int64 downloads_bytes = 5;
+
+  // Number of /contains requests processed in this timeframe.
+  int64 contains_requests = 6;
+  // Total number of items looked up for presence in the cache, in aggregation
+  // across all RPCs.
+  int64 contains_lookups = 7;
+
+  // Total number of requests to calculate QPS.
+  int64 requests = 8;
+  // Number of non-200 requests.
+  int64 failures = 9;
+}

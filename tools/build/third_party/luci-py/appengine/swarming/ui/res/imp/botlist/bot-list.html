@@ -1,0 +1,760 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-list>
+
+  bot-list creats a dynamic table for viewing swarming bots.  Columns can be
+  dynamically filtered and it supports client-side filtering.
+
+  This is a top-level element.
+
+  Properties:
+    client_id: String, Oauth 2.0 client id.  It will be set by server-side
+        template evaluation.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="/res/imp/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+
+<link rel="import" href="/res/imp/common/dynamic-table-behavior.html">
+<link rel="import" href="/res/imp/common/pageable-data.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/shared/sort-toggle.html">
+<link rel="import" href="/res/imp/shared/url-param.html">
+
+<link rel="import" href="bot-filters.html">
+<link rel="import" href="bot-list-data.html">
+<link rel="import" href="bot-list-shared-behavior.html">
+<link rel="import" href="bot-list-summary.html">
+<link rel="import" href="bot-mass-delete.html">
+
+<dom-module id="bot-list">
+  <template>
+    <style include="iron-flex iron-flex-alignment iron-positioning swarming-app-style dynamic-table-style">
+      bot-filters, bot-list-summary {
+        margin-bottom: 8px;
+        margin-right: 10px;
+      }
+      .old_version {
+        background-color: #ffffdd;
+      }
+      .quarantined, .bad-device {
+        background-color: #ffdddd;
+      }
+      .maintenance {
+        background-color: #cee9f9;
+      }
+      .dead {
+        background-color: #cccccc;
+      }
+      .alt {
+        background-color: #f8f8f8;
+      }
+      .bot-list th > span {
+        /* Leave space for sort-toggle*/
+        padding-right: 30px;
+      }
+    </style>
+
+    <url-param name="s"
+      value="{{_sortstr}}"
+      default_value="id:asc">
+    </url-param>
+
+    <swarming-app
+      client_id="[[client_id]]"
+      auth_headers="{{_auth_headers}}"
+      permissions="{{_permissions}}"
+      profile="{{_profile}}"
+      signed_in="{{_signed_in}}"
+      server_details="{{_server_details}}"
+
+      busy="[[_or(_busy1,_busy2,_busy3)]]"
+      name="Swarming Bot List">
+
+      <h2 hidden$="[[_signed_in]]">You must sign in to see anything useful.</h2>
+
+      <div hidden$="[[_not(_signed_in)]]">
+
+        <div class="horizontal layout">
+
+          <bot-filters
+            dimensions="[[_dimensions]]"
+            primary_map="[[_primary_map]]"
+            primary_arr="[[_primary_arr]]"
+            special_columns="[[_specialColumns]]"
+            permissions="[[_permissions]]"
+            profile="[[_profile]]"
+
+            columns="{{_columns}}"
+            query_params="{{_query_params}}"
+            filter="{{_filter}}"
+            verbose="{{_verbose}}"
+
+            on-delete-all="_promptDeleteAll">
+          </bot-filters>
+
+          <bot-list-summary
+            auth_headers="[[_auth_headers]]"
+            columns="[[_columns]]"
+            count_params="[[_query_params]]"
+            fleet="[[_fleet]]"
+            num_bots="[[_filteredSortedItems.length]]"
+            sort="[[_sortstr]]"
+            verbose="[[_verbose]]"
+
+            busy="{{_busy3}}">
+          </bot-list-summary>
+
+        </div>
+
+        <bot-list-data
+          id="data"
+          auth_headers="[[_auth_headers]]"
+          query_params="[[_query_params]]"
+
+          busy="{{_busy1}}"
+          dimensions="{{_dimensions}}"
+          fleet="{{_fleet}}"
+          primary_map="{{_primary_map}}"
+          primary_arr="{{_primary_arr}}">
+        </bot-list-data>
+
+        <table class="bot-list">
+          <thead on-sort_change="_sortChange">
+          <!-- To allow for dynamic columns without having a lot of copy-pasted
+          code, we break columns up into "special" and "plain" columns. Special
+          columns require some sort of HTML output (e.g. anchor tags) and plain
+          columns just output text.  The plain columns use Polymer functions to
+          insert their text [_header(), _column(), _deviceColumn()].  Polymer
+          functions do not allow HTML (to avoid XSS), so special columns, like id
+          and task are inserted in a fixed order.
+          -->
+            <tr>
+              <th>
+                <span>Bot Id</span>
+                <sort-toggle
+                    name="id"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+              <!-- This wonky syntax is the proper way to listen to changes on an
+              array (we are listening to all subproperties). The element returned is
+              not of much use, so we'll ignore it in _hide() and use this._columns.
+              -->
+              <th hidden$="[[_hide('mp_lease_id', _columns.*)]]">
+                <span>Machine Provider Lease Id</span>
+                <sort-toggle
+                    name="mp_lease_id"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+              <th hidden$="[[_hide('task', _columns.*)]]">
+                <span>Current Task</span>
+                <sort-toggle
+                    name="task"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+
+              <template
+                  is="dom-repeat"
+                  items="[[_plainColumns]]"
+                  as="c">
+                <th hidden$="[[_hide(c)]]">
+                  <span>[[_header(c)]]</span>
+                  <sort-toggle
+                      name="[[c]]"
+                      current="[[_sort]]">
+                  </sort-toggle>
+                </th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template
+                id="bot_table"
+                is="dom-repeat"
+                items="[[_filteredSortedItems]]"
+                as="bot"
+                initial-count=50>
+
+              <tr class$="[[_botClass(bot,_server_details.bot_version)]]">
+                <td>
+                  <a
+                      class="center"
+                      href$="[[_botLink(bot.bot_id)]]"
+                      target="_blank"
+                      rel="noopener">
+                      [[bot.bot_id]]
+                  </a>
+                </td>
+                <td hidden$="[[_hide('mp_lease_id', _columns.*)]]">
+                  <a href$="[[_mpLink(bot, _server_details.machine_provider_template)]]">
+                    [[_column('mp_lease_id', bot,_verbose)]]
+                  </a>
+                </td>
+                <td hidden$="[[_hide('task', _columns.*)]]">
+                  <a href$="[[_taskLink(bot.task_id)]]">[[_taskId(bot)]]</a>
+                </td>
+
+                <template
+                    is="dom-repeat"
+                    items="[[_plainColumns]]"
+                    as="c">
+                  <td hidden$="[[_hide(c)]]">
+                    [[_column(c, bot, _verbose)]]
+                  </td>
+                </template>
+
+              </tr>
+              <template
+                  is="dom-repeat"
+                  items="[[_devices(bot)]]"
+                  as="device">
+                <tr
+                    hidden$="[[_hide('android_devices', _columns.*)]]"
+                    class$="[[_deviceClass(device,index)]]">
+                  <td></td>
+                  <td hidden$="[[_hide('mp_lease_id', _columns.*)]]"></td>
+                  <td hidden$="[[_hide('task', _columns.*)]]"></td>
+                  <template
+                      is="dom-repeat"
+                      items="[[_plainColumns]]"
+                      as="c">
+                    <td hidden$="[[_hide(c)]]">
+                      [[_deviceColumn(c, device, _verbose)]]
+                    </td>
+                  </template>
+                </tr>
+              </template> <!--devices repeat-->
+            </template> <!--bot-table repeat-->
+          </tbody>
+        </table>
+        <pageable-data
+          id="page_bots"
+          busy="{{_busy2}}"
+          label="Show more bots"
+          output="{{_items}}"
+          parse="[[_parseBots]]">
+        </pageable-data>
+      </div>
+
+    </swarming-app>
+
+     <!-- Paper dialogs must be on the "outside" of the DOM, that is, not inside of other elements, otherwise the shadow backdrop is weird.-->
+    <paper-dialog id="delete_all_dialog" modal>
+      <bot-mass-delete
+        id="mass_delete"
+        auth_headers="[[_auth_headers]]"
+        started_deleting="{{_started_deleting}}"
+        finished_deleting="{{_finished_deleting}}">
+      </bot-mass-delete>
+      <div class="buttons" >
+        <paper-button dialog-dismiss autofocus hidden$="[[_started_deleting]]">
+          Go Back - Don't Delete Anything
+        </paper-button>
+        <paper-button dialog-dismiss autofocus hidden$="[[!_finished_deleting]]" on-tap="_reload">
+          Done
+        </paper-button>
+      </div>
+    </paper-dialog>
+  </template>
+  <script>
+  (function(){
+    var UNKNOWN = "unknown";
+    // see dynamic-table for more information on specialColumns, headerMap,
+    // columnMap, and specialSort
+    var specialColumns = ["id", "mp_lease_id", "task"];
+
+    var deviceColumns = ["battery_health", "battery_level", "battery_status", "battery_temperature", "battery_voltage", "device_temperature"];
+
+    var headerMap = {
+      // "id", "task" and other special columns don't go here. They have their
+      // headers hard-coded above.
+      "android_devices": "Android Devices",
+      "battery_health": "Battery Health",
+      "battery_level": "Battery Level (%)",
+      "battery_status": "Battery Status",
+      "battery_temperature": "Battery Temp (°C)",
+      "battery_voltage": "Battery Voltage (mV)",
+      "bot_temperature": "Bot Temp (°C)",
+      "cores": "Cores",
+      "cpu": "CPU",
+      "device": "Non-android Device",
+      "device_os": "Device OS",
+      "device_temperature": "Device Temp (°C)",
+      "device_type": "Device Type",
+      "disk_space": "Free Space (MB)",
+      "external_ip": "External IP",
+      "first_seen": "First Seen",
+      "gpu": "GPU",
+      "internal_ip": "Internal or Local IP",
+      "last_seen": "Last Seen",
+      "mp_lease_expires": "Machine Provider Lease Expires",
+      "os": "OS",
+      "pool": "Pool",
+      "running_time": "Swarming Uptime",
+      "status": "Status",
+      "uptime": "Bot Uptime",
+      "xcode_version": "XCode Version",
+    };
+
+    var columnMap = {
+      android_devices: function(bot) {
+        var devs = this._attribute(bot, "android_devices", "0");
+        if (this._verbose) {
+          return devs.join(" | ") + " devices available";
+        }
+        // max() works on strings as long as they can be coerced to Number.
+        return Math.max(...devs) + " devices available";
+      },
+      battery_health: function(){
+        return "";
+      },
+      battery_level: function(){
+        return "";
+      },
+      battery_status: function(){
+        return "";
+      },
+      battery_temperature: function(){
+        return "";
+      },
+      battery_voltage: function(){
+        return "";
+      },
+      bot_temperature: function(bot){
+        if (this._verbose) {
+          return bot.state.temp.zones || UNKNOWN;
+        }
+        return bot.state.temp.average || UNKNOWN;
+      },
+      cpu: function(bot) {
+        if (this._verbose) {
+          return this._attribute(bot, "cpu", "none").join(" | ");
+        }
+        return swarming.longest(this._attribute(bot, "cpu", "none"));
+      },
+      device_temperature: function(){
+        return "";
+      },
+      device_os: function(bot) {
+        if (this._verbose) {
+          return this._attribute(bot, "device_os", "none").join(" | ");
+        }
+        // This assumes that all devices hooked up to a bot are the same OS.
+        return swarming.longest(this._attribute(bot, "device_os", "none"));
+      },
+      disk_space: function(bot) {
+        var aliased = [];
+        bot.disks.forEach(function(disk){
+          var alias = sk.human.bytes(disk.mb, sk.MB);
+          aliased.push(swarming.alias.apply(disk.mb, disk.id + " "+ alias));
+        }.bind(this));
+        if (this._verbose) {
+          return aliased.join(" | ");
+        }
+        return aliased[0];
+      },
+      external_ip: function(bot) {
+        return bot.external_ip || "none";
+      },
+      first_seen: function(bot) {
+        return sk.human.localeTime(bot.first_seen_ts)
+      },
+      id: function(bot) {
+        return bot.bot_id;
+      },
+      internal_ip: function(bot) {
+        return this._attribute(bot, "ip", "none")[0];
+      },
+      last_seen: function(bot) {
+        if (this._verbose) {
+          return sk.human.localeTime(bot.last_seen_ts);
+        }
+        return this._timeDiffApprox(bot.last_seen_ts) + " ago";
+      },
+      mp_lease_id: function(bot) {
+        var id = bot.lease_id || "none";
+        if (this._verbose) {
+          return id;
+        }
+        return id.substring(0, 10);
+      },
+      mp_lease_expires: function(bot) {
+        if (!bot.lease_expiration_ts) {
+          return "N/A";
+        }
+        if (this._verbose) {
+          return sk.human.localeTime(bot.lease_expiration_ts);
+        }
+        if (bot.lease_expiration_ts < new Date()) {
+          return this._timeDiffApprox(bot.lease_expiration_ts) + " ago";
+        }
+        return "in " + this._timeDiffApprox(bot.lease_expiration_ts);
+      },
+      running_time: function(bot) {
+        var u = this._state(bot, "running_time");
+        if (!u) {
+          return "unknown";
+        }
+        return sk.human.strDuration(u);
+      },
+      status: function(bot) {
+        // If a bot is both dead and quarantined, show the deadness over the
+        // quarentinedness.
+        if (bot.is_dead) {
+          return "Dead. Last seen " + sk.human.diffDate(bot.last_seen_ts) +
+              " ago";
+        }
+        if (bot.quarantined) {
+          var msg = this._state(bot, "quarantined");
+          if (msg) {
+            msg = msg[0];
+          };
+          // Sometimes, the quarantined message is actually in "error".  This
+          // happens when the bot code has thrown an exception.
+          if (!msg || msg === "true" || msg === true) {
+            msg = this._attribute(bot, "error")[0];
+          }
+          // Othertimes, the bot has reported it is quarantined by setting the
+          // dimension "quarantined" to be something.
+          if (msg === UNKNOWN) {
+            msg = this._dimension(bot, "quarantined") || UNKNOWN;
+          }
+          var errs = [];
+          // Show all the errors that are active on devices to make it more
+          // clear if this is a transient error (e.g. device is too hot)
+          // or if it is requires human interaction (e.g. device is unauthorized)
+          this._devices(bot).forEach(function(d){
+            if (d.state !== "available") {
+              errs.push(d.state);
+            }
+          });
+          if (errs.length) {
+            msg += " ["+errs.join(",")+"]";
+          }
+          return "Quarantined: " + msg;
+        }
+        if (bot.maintenance_msg) {
+          return "Maintenance: " + bot.maintenance_msg;
+        }
+        return "Alive";
+      },
+      task: function(bot) {
+        return this._taskId(bot);
+      },
+      uptime: function(bot) {
+        var u = this._state(bot, "uptime");
+        if (!u) {
+          return "unknown";
+        }
+        return sk.human.strDuration(u);
+      },
+      version: function(bot) {
+        var v = bot.version || UNKNOWN
+        return v.substring(0, 10);
+      }
+    };
+
+    var deviceColumnMap = {
+      android_devices: function(device) {
+        var str = this._androidAliasDevice(device);
+        if (device.okay) {
+          str = swarming.alias.apply(this._deviceType(device), str);
+        }
+        str += " S/N:";
+        str += device.serial;
+        return str;
+      },
+      battery_health: function(device){
+        var h = (device.battery && device.battery.health) || UNKNOWN;
+        return swarming.alias.apply(h, "battery_health");
+      },
+      battery_level: function(device){
+        return (device.battery && device.battery.level) || UNKNOWN;
+      },
+      battery_status: function(device){
+        var s = (device.battery && device.battery.status) || UNKNOWN;
+        return swarming.alias.apply(s, "battery_status");
+      },
+      battery_temperature: function(device){
+        // Battery temps are in tenths of degrees C - convert to more human range.
+        return (device.battery && device.battery.temperature / 10) || UNKNOWN
+      },
+      battery_voltage: function(device){
+        return (device.battery && device.battery.voltage) || UNKNOWN;
+      },
+      device_temperature: function(device){
+        if (this._verbose) {
+          return device.temp.zones || UNKNOWN;
+        }
+        return device.temp.average || UNKNOWN;
+      },
+      device_os: function(device) {
+        if (device.build) {
+          return device.build["build.id"];
+        }
+        return UNKNOWN;
+      },
+      status: function(device) {
+        return device.state;
+      }
+    }
+
+
+    function deviceAverage(col) {
+      return function(dir, botA, botB) {
+        // sort by average of all devices or 0 if no devices.
+        var avgA = 0;
+        var avgB = 0;
+        var devsA = this._devices(botA);
+        devsA.forEach(function(device) {
+          var v = deviceColumnMap[col](device);
+          v = parseFloat(swarming.alias.unapply(v)) || 0;
+          avgA += v / devsA.length;
+        }.bind(this));
+        var devsB = this._devices(botB);
+        devsB.forEach(function(device) {
+          var v = deviceColumnMap[col](device);
+          v = parseFloat(swarming.alias.unapply(v)) || 0;
+          avgB += v / devsB.length;
+        }.bind(this));
+        return dir * naturalSort(avgA, avgB);
+      };
+    }
+
+    var specialSort = {
+      android_devices: function(dir, botA, botB) {
+        // We sort on the number of attached devices. Note that this
+        // may not be the same as android_devices, because _devices().length
+        // counts all devices plugged into the bot, whereas android_devices
+        // counts just devices ready for work.
+        var botACol = this._devices(botA).length;
+        var botBCol = this._devices(botB).length;
+        return dir * naturalSort(botACol, botBCol);
+      },
+
+      battery_health: deviceAverage("battery_health"),
+      battery_level: deviceAverage("battery_level"),
+      battery_status: deviceAverage("battery_status"),
+      battery_temperature: deviceAverage("battery_temperature"),
+      battery_voltage: deviceAverage("battery_voltage"),
+      device_temperature: deviceAverage("device_temperature"),
+
+      bot_temperature: function(dir, botA, botB) {
+        // Sort by average temperature.
+        var botACol = botA.state.temp.average || 0;
+        var botBCol = botB.state.temp.average || 0;
+        return dir * naturalSort(botACol, botBCol);
+      },
+      disk_space: function(dir, botA, botB) {
+        // We sort based on the raw number of MB of the first disk.
+        var botACol = botA.disks[0].mb;
+        var botBCol = botB.disks[0].mb;
+        return dir * naturalSort(botACol, botBCol);
+      },
+      first_seen: function(dir, botA, botB) {
+        var botACol = botA.first_seen_ts;
+        var botBCol = botB.first_seen_ts;
+        return dir * naturalSort(botACol, botBCol);
+      },
+      last_seen: function(dir, botA, botB) {
+        var botACol = botA.last_seen_ts;
+        var botBCol = botB.last_seen_ts;
+        return dir * naturalSort(botACol, botBCol)
+      },
+      running_time: function(dir, botA, botB) {
+        var botACol = this._state(botA, "running_time") || 0;
+        var botBCol = this._state(botB, "running_time") || 0;
+        return dir * naturalSort(botACol, botBCol)
+      },
+      status: function(dir, botA, botB) {
+        function getStatusSortIndex(bot) {
+          if (bot.is_dead) return 4;
+          if (bot.quarantined) return 3;
+          if (bot.maintenance_msg) return 2;
+
+          // Bot is alive.
+          return 1;
+        }
+
+        // Sort by dead > quarantined > maintenance > alive.
+        var statusIndexA = getStatusSortIndex(botA);
+        var statusIndexB = getStatusSortIndex(botB);
+        if (getStatusSortIndex(botA) !== getStatusSortIndex(botB)) {
+          return dir * naturalSort(statusIndexA, statusIndexB);
+        }
+
+        // Tiebreakers when in bad states are broken by last seen time.
+        if (botA.is_dead || botA.quarantined || botA.maintenance_msg) {
+          return dir * naturalSort(botA.last_seen_ts, botB.last_seen_ts);
+        }
+
+        // Tiebreakers when alive are broken by ID.
+        return dir * naturalSort(botA.bot_id, botB.bot_id);
+      },
+      uptime: function(dir, botA, botB) {
+        var botACol = this._state(botA, "uptime") || 0;
+        var botBCol = this._state(botB, "uptime") || 0;
+        return dir * naturalSort(botACol, botBCol)
+      },
+    };
+
+    Polymer({
+      is: 'bot-list',
+
+      // The order behaviors are applied in matters - later ones overwrite
+      // attributes of earlier ones
+      behaviors: [
+          SwarmingBehaviors.BotListBehavior,
+          SwarmingBehaviors.DynamicTableBehavior,
+      ],
+
+      properties: {
+        client_id: {
+          type: String,
+        },
+
+        _busy1: {
+          type: Boolean,
+          value: false
+        },
+         _busy2: {
+          type: Boolean,
+          value: false
+        },
+        _parseBots: {
+          type: Function,
+          value: function() {
+            return this.$.data.parseBots.bind(this);
+          }
+        },
+
+        // For dynamic table.
+        _columnMap: {
+          type: Object,
+          value: function() {
+            var base = this._commonColumns();
+            for (var attr in columnMap) {
+              base[attr] = columnMap[attr];
+            }
+            return base;
+          },
+        },
+        _headerMap: {
+          type: Object,
+          value: headerMap,
+        },
+        _specialColumns: {
+          type: Array,
+          value: specialColumns,
+        },
+        _specialSort: {
+          type: Object,
+          value: specialSort,
+        },
+      },
+
+      observers:[
+        "_reload(_query_params,_auth_headers)",
+        "_checkDeviceColumns(_columns.*)"
+      ],
+
+      _androidAliasDevice: function(device) {
+        if (device.notReady) {
+          return UNAUTHENTICATED.toUpperCase();
+        }
+        return swarming.alias.android(this._deviceType(device));
+      },
+
+      _botClass: function(bot, serverVersion) {
+        var classes = "";
+        if (bot.is_dead) {
+          classes += "dead ";
+        }
+        if (bot.quarantined) {
+          classes += "quarantined ";
+        }
+        if (bot.maintenance_msg) {
+          classes += "maintenance ";
+        }
+        if (bot.version !== serverVersion) {
+          classes += "old_version";
+        }
+        return classes;
+      },
+
+      _checkDeviceColumns: function() {
+        var shouldAdd = false;
+        for (var i = 0; i< this._columns.length; i++) {
+          var col = this._columns[i];
+          if (col === "android_devices") {
+            return;
+          }
+          if (deviceColumns.indexOf(col) !== -1) {
+            shouldAdd = true;
+          }
+        }
+        if (shouldAdd) {
+          this.push("_columns", "android_devices");
+          sk.errorMessage("Some of the columns selected require 'android_devices' to be displayed.  It has been automatically added.", 4000);
+        }
+      },
+
+      _deviceColumn: function(col, device) {
+        var f = deviceColumnMap[col];
+        if (!f || !device) {
+          return "";
+        }
+        return f.bind(this)(device);
+      },
+
+      _deviceClass: function(device, idx) {
+        if (!device.okay) {
+          return "bad-device";
+        }
+        if (idx % 2 === 0){
+          return "alt";
+        }
+        return "";
+      },
+
+      _mpLink: function(bot, template) {
+        if (!bot || !bot.lease_id || !template) {
+          return false;
+        }
+        return template.replace("%s", bot.lease_id);
+      },
+
+      _promptDeleteAll: function(e) {
+        this.$.mass_delete.dimensions = e.detail.dimensions;
+        this.$.mass_delete.prompt();
+        this.$.delete_all_dialog.open();
+      },
+
+      _reload: function() {
+        if (!this._auth_headers || !this._query_params) {
+          return;
+        }
+        var url = "/_ah/api/swarming/v1/bots/list?" + sk.query.fromParamSet(this._query_params);
+        this.$.page_bots.load(url,this._auth_headers);
+      }
+
+    });
+  })();
+  </script>
+</dom-module>

@@ -1,0 +1,124 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+{# Bootstrap pager likes to stay "gray" after being clicked, annoying. #}
+<style>
+#change-log-pager .pager li > a:focus,
+#change-log-pager .pager li > a:hover {
+  background-color: #fff;
+}
+.tooltip-inner {
+  max-width: 400px;
+  text-align: left;
+}
+.change-log-who {
+  display: inline-block;
+  width: 280px;
+  white-space: nowrap;
+  overflow:hidden !important;
+  text-overflow: ellipsis;
+}
+</style>
+
+{# BEWARE: The following templates in 'raw' section are handled by handlebars
+javascript library and not jinja2. #}
+
+{% raw %}
+
+<script id="change-log-table-template" type="text/x-handlebars-template">
+  <table class="table table-condensed table-hover">
+    <thead>
+      <tr>
+        <th style="width: 80px">Rev</th>
+        <th style="width: 250px">Change</th>
+        <th style="width: 200px">When</th>
+        <th style="width: 280px">Who</th>
+        <th>What</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each changes}}
+      <tr>
+        <td><a href="{{revisionURL}}">r{{auth_db_rev}}</a></td>
+        <td>
+          <div>
+            <span class="view-change"
+                  style="cursor: pointer;"
+                  data-change-idx="{{@index}}">
+              {{change_type}}
+            </span>
+          </div>
+        </td>
+        <td>{{when}}</td>
+        <td class="change-log-who">{{who}}</td>
+        <td><a href="{{changeLogURL}}">{{targetTitle}}</a></td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</script>
+
+<script id="change-log-pager-template" type="text/x-handlebars-template">
+  <hr>
+  <nav id="change-log-pager">
+    <ul class="pager">
+      <li class="previous">
+        <a id="prev" href="#"><span aria-hidden="true">&larr;</span> Newer</a>
+      </li>
+      <li class="next">
+        <a id="next" href="#">Older <span aria-hidden="true">&rarr;</span></a>
+      </li>
+    </ul>
+  </nav>
+</script>
+
+<script id="change-log-header-template" type="text/x-handlebars-template">
+  <h3 style="margin-top: 0px; text-align: center;" >
+    {{#if targetURL}}
+      <a href="{{targetURL}}">{{title}}</a>
+    {{else}}
+      {{title}}
+    {{/if}}
+    {{# if authDbRev}} for revision {{authDbRev}}{{/if}}
+    {{#if kind}}<small>{{kind}}</small>{{/if}}
+  </h3>
+  <hr style="margin-top: 20px; margin-bottom: 10px;">
+</script>
+
+{% endraw %}
+
+
+{# Modal box with change details, copy-pasted straight from bootstrap docs. #}
+<div class="modal fade" id="show-change-details" tabindex="-1"
+     role="dialog" aria-labelledby="title-label" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">
+          <span aria-hidden="true">&times;</span>
+          <span class="sr-only">Close</span>
+        </button>
+        <h4 class="modal-title" id="title-label">Change Details</h4>
+      </div>
+      <div class="modal-body">
+        <pre id="details-text"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="row">
+  <div class="col-md-12">
+    <!-- Populated by js. -->
+    <div id="change-log-header"></div>
+    <div id="change-log-table"></div>
+  </div>
+</div>
+
+{% endblock %}

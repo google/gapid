@@ -1,0 +1,56 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  Listens for 'error-sk' events that bubble up to the document
+  and displays them.
+
+  The 'error-sk' event should have 'detail' of the form:
+
+    {
+      message: "The error message to display goes here.",
+      duration: Integer, the number of ms to display or 0 for indefinitely.
+                Defaults to 10000 (10s)
+    }
+
+  Attributes:
+    None
+
+  Events:
+    None
+
+  Methods:
+    None
+-->
+<link rel="import" href="/res/imp/bower_components/paper-toast/paper-toast.html" />
+
+<dom-module id="error-toast">
+  <template>
+    <paper-toast id=toast></paper-toast>
+  </template>
+</dom-module>
+
+<script>
+  Polymer({
+    is: "error-toast",
+
+    ready: function() {
+      document.addEventListener('error-sk', function(e) {
+        this.$.toast.close();
+        if (e.detail.message) {
+          this.$.toast.text = e.detail.message;
+          var duration = 10000;
+          // duration = 0 is a valid input for "keep open indefinitely".
+          if (e.detail.duration !== undefined) {
+            duration = e.detail.duration;
+          }
+          this.$.toast.duration = duration;
+          this.$.toast.show();
+        } else {
+          console.log("Empty message?", e);
+        }
+      }.bind(this));
+    },
+  });
+</script>

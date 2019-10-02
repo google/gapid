@@ -1,0 +1,22 @@
+handlers:
+- url: /auth/static/(.+)\.(css|gif|ico|js|ttf|svg)
+  static_files: components/auth/ui/static/\1.\2
+  upload: components/auth/ui/static/(.+)\.(css|gif|ico|js|ttf|svg)
+  secure: always
+  http_headers:
+    Content-Security-Policy: "default-src https: 'self'"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+- url: /auth.*
+  script: components.auth.main.APP
+  secure: always
+
+- url: /internal/auth.*
+  script: components.auth.main.APP
+  secure: always
+  login: admin
+
+
+includes:
+- components/static_third_party.yaml

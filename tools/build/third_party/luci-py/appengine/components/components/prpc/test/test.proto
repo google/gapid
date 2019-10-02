@@ -1,0 +1,42 @@
+// Copyright (c) 2017 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+// This file defines a common protocol to check what actions a given
+// impersonated user can do on a given resource.
+// For example, it can be used by one app against another.
+
+syntax = "proto3";
+
+package test;
+
+import "google/protobuf/empty.proto";
+
+// Test is a test service for testing various parts of the pRPC server runtime.
+service Test {
+  // Give sends a value to the server, which is stored.
+  rpc Give(GiveRequest) returns (google.protobuf.Empty) {};
+
+  // Take returns the value previously stored on the server.
+  rpc Take(google.protobuf.Empty) returns (TakeResponse) {};
+
+  // Echo stringifies the input argument and responds with it, also saying
+  // 'hello!'.
+  rpc Echo(EchoRequest) returns (EchoResponse) {};
+}
+
+message GiveRequest {
+  int64 m = 1;
+}
+
+message TakeResponse {
+  int64 k = 1;
+}
+
+message EchoRequest {
+  GiveRequest r = 1;
+}
+
+message EchoResponse {
+  repeated string response = 1;
+}

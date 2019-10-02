@@ -1,0 +1,245 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>front-page test</title>
+
+    <script src="../../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../bower_components/web-component-tester/browser.js"></script>
+
+    <link rel="import" href="../../src/config-ui/front-page.html">
+  </head>
+  <body>
+
+    <test-fixture id="front-pageTestFixture">
+      <template>
+        <front-page></front-page>
+      </template>
+    </test-fixture>
+
+    <script>
+
+      suite('Front page with config sets', function() {
+          
+        var ajax;
+        var request;
+        var server;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var front_page;
+        setup(function() {
+          server = sinon.fakeServer.create();
+          var param = {
+            config_sets: [
+            {
+              config_set: "valid-project",
+              location: "https://chromium.googlesource.com/valid-project",
+              last_import_attempt: {success: true}
+            },{
+              config_set: "invalid-project",
+              location: "https://chromium.googlesource.com/invalid-project",
+              last_import_attempt: {success: false}
+            }]
+          };
+          server.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?include_last_import_attempt=true/, 
+            [
+              200,
+              responseHeaders.json,
+              JSON.stringify(param)
+            ]
+          );
+          front_page = fixture('front-pageTestFixture');
+          ajax = Polymer.dom(front_page.root).querySelector('iron-ajax');
+        });
+
+        teardown(function() {
+          server.restore();
+        });
+
+        test('checks the config set list is empty before iron ajax call', 
+          function() {
+          assert.equal(front_page.configSetList.length, 0);
+        });
+
+        test('checks the search results list is empty before iron ajax call', 
+          function() {
+          assert.equal(front_page.searchResults.length, 0);
+        });        
+
+        test('checks that isLoading property is true by default', function() {
+          assert.equal(front_page.isLoading, true);
+        });
+
+        test('gets iron-ajax response', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          assert.equal(request.status, 200);
+          assert.isObject(request.response);
+          front_page.addEventListener('processedConfigSets', function() {
+            assert.equal(front_page.isLoading, false);
+            assert.equal(front_page.configSetList.length, 2);
+            var sortedResults = front_page.configSetList.slice();
+            sortedResults.sort(function(a, b) {
+              return front_page._formatName(a.config_set).localeCompare(front_page._formatName(b.config_set));
+            }.bind(front_page));
+            assert.deepEqual(sortedResults,
+              front_page.searchResults);
+            assert.equal(front_page.configSetList[0].last_import_attempt.success,
+              true);
+            assert.equal(front_page.configSetList[1].last_import_attempt.success,
+              false);
+            done();
+          }.bind(front_page));
+        });
+
+        test('query does not match any results', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          front_page.addEventListener('processedConfigSets', function() {
+            front_page.query = "service";
+            assert.notEqual(front_page.configSetList, 
+              front_page.searchResults);
+            assert.equal(front_page.searchResults.length, 0);
+            done();
+          }.bind(front_page));
+        });
+
+        test('query matches all results', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          front_page.addEventListener('processedConfigSets', function() {
+            front_page.query = "project";
+            var sortedResults = front_page.configSetList.slice();
+            sortedResults.sort(function(a, b) {
+              return front_page._formatName(a.config_set).localeCompare(front_page._formatName(b.config_set));
+            }.bind(front_page));
+            assert.deepEqual(sortedResults,
+              front_page.searchResults);
+            assert.equal(front_page.searchResults.length, 2);
+            done();
+          }.bind(front_page));
+        });
+
+        test('query matches one result', function (done) {
+          request = ajax.generateRequest();
+          server.respond();
+          front_page.addEventListener('processedConfigSets', function() {
+            front_page.query = "invalid-project";
+            assert.notEqual(front_page.configSetList, 
+              front_page.searchResults);
+            assert.equal(front_page.searchResults[0].config_set, "invalid-project");     
+            done();       
+          }.bind(front_page));
+        });
+      });
+
+      suite('Front page handles ajax errors correctly', function() {
+        var ajax;
+        var request;
+        var server500;
+        var server403;
+        var server400;
+        var responseHeaders = {
+          json: { 'Content-Type': 'application/json' }
+        };
+        var front_page;
+        setup(function() {
+          server500 = sinon.fakeServer.create();
+          var param500 = {
+            error: {
+              code: 500,
+              message: "Internal Server Error."
+            }
+          }
+          server500.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?include_last_import_attempt=true/, 
+            [
+              500,
+              responseHeaders.json,
+              JSON.stringify(param500)
+            ]
+          );
+
+          server403 = sinon.fakeServer.create();
+          var param403 = {
+            error: {
+              code: 403,
+              message: "The request returned with a status of 403."
+            }
+          }
+          server403.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?include_last_import_attempt=true/, 
+            [
+              403,
+              responseHeaders.json,
+              JSON.stringify(param403)
+            ]
+          );
+
+          server400 = sinon.fakeServer.create();
+          var param400 = {
+            error: {
+              code: 400,
+              message: "This error represents all errors that are not forbidden or internal server errors."
+            }
+          }
+          server400.respondWith(
+            'GET',
+            /\/_ah\/api\/config\/v1\/config-sets\?include_last_import_attempt=true/, 
+            [
+              400,
+              responseHeaders.json,
+              JSON.stringify(param400)
+            ]
+          );
+          front_page = fixture('front-pageTestFixture');
+          ajax = Polymer.dom(front_page.root).querySelector('iron-ajax');
+        });
+
+        teardown(function() {
+          server500.restore();
+          server403.restore();
+          server400.restore();
+        });
+
+        test('front page handles 500 error', function() {
+          request = ajax.generateRequest();
+          server500.respond();
+          front_page.addEventListener('fetchError', function() {
+            expect(front_page.errorMessage).to.be
+                .equal("Internal server error. Please refresh or try again later.");
+          })
+        });
+
+        test('front page handles 403 error', function() {
+          request = ajax.generateRequest();
+          server403.respond();
+          front_page.addEventListener('fetchError', function() {
+            expect(front_page.errorMessage).to.be.equal("Access denied.");
+          })
+        });
+
+        test('front page handles error that is not 403 or 500', function() {
+          request = ajax.generateRequest();
+          server400.respond();
+          front_page.addEventListener('fetchError', function() {
+            expect(front_page.errorMessage).to.be.equal("Error occured. Please try again later.");
+          })
+        });
+      });
+    </script>
+  </body>
+</html>

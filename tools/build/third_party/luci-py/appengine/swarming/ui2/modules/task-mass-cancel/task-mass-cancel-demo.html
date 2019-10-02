@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<title>task-mass-cancel demo</title>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" charset="utf-8">
+  // This bit of script loads the custom elements v1 polyfill, but only if required.
+  if (!window.customElements) {
+    var s = document.createElement('script');
+    s.src = '/newres/custom-elements.min.js';
+    document.write(s.outerHTML);
+  }
+</script>
+<style>
+  .container {
+    position: relative;
+    width: 600px;
+    max-height: 600px;
+    min-height: 200px;
+    border: 1px solid black;
+    margin: 10px;
+    padding: 5px;
+    box-shadow: 0 16px 24px 2px rgba(0,0,0,.14), 0 6px 30px 5px rgba(0,0,0,.12), 0 8px 10px -5px rgba(0,0,0,.4);
+  }
+</style>
+<div class=container>
+  <task-mass-cancel tags="pool:Chrome,os:Android" auth_header="fake"></task-mass-cancel>
+</div>

@@ -1,0 +1,14 @@
+Name: Python ADB + Fastboot implementation
+Short Name: python-adb
+URL: https://chromium.googlesource.com/infra/luci/python-adb
+Revision: 9e1c536518e9d3e35f7e9bd4f4496c7982897619
+License: Apache License, Version 2.0
+
+Description:
+This repository contains a pure-python implementation of the ADB and Fastboot
+protocols, using libusb1 for USB communications.
+
+
+Local Modifications:
+- Removed tests.
+- enable_resets flag

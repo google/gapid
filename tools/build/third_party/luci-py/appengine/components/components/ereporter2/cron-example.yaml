@@ -1,0 +1,13 @@
+# Example of cron job definitions required for ereporter2 to work. Copy it to
+# cron.yaml (optionally removing 'target:' for apps with single module only).
+
+cron:
+- description: ereporter2 cleanup
+  target: backend
+  url: /internal/cron/ereporter2/cleanup
+  schedule: every 1 hours
+
+- description: ereporter2 mail exception report
+  target: backend
+  url: /internal/cron/ereporter2/mail
+  schedule: every 1 hours synchronized

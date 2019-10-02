@@ -1,0 +1,242 @@
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-mass-cancel>
+
+  Usage:
+
+    <task-mass-cancel></task-mass-cancel>
+
+  task-mass-cancel offers an interface for the user to cancel multiple tasks
+  (and hopefully avoid doing so on accident).
+
+  Properties:
+    //input
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    tags: Array<String> the tags that match the tasks being canceled.
+
+    // output
+    started_canceling: Boolean, If the user has hit the big red button to start
+      canceling tasks.
+    finished_canceling: Boolean, If the dialog has finished canceling all the
+      tasks.
+
+  Methods:
+    prompt() Set up the dialog, resetting started_canceling and
+      finished_canceling to false.
+
+  Events:
+    None.
+-->
+<link rel="import" href="/res/imp/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/res/imp/bower_components/paper-checkbox/paper-checkbox.html">
+
+<dom-module id="task-mass-cancel">
+  <template>
+    <style>
+      .container {
+        padding: 5px;
+        max-width: 800px;
+      }
+      .cancel-button {
+        background-color: red;
+        color: white;
+        font-weight: bold;
+      }
+      .cancel-button[disabled] {
+        background-color: grey;
+      }
+    </style>
+
+    <div class="container">
+
+      <div>
+        You are about to cancel all PENDING [[_maybeRunning(_running_too)]] tasks with the following tags:
+        <ul>
+          <template is="dom-repeat" items="[[tags]]" as="tag">
+            <li>[[tag]]</li>
+          </template>
+        </ul>
+
+        <paper-checkbox checked="{{_running_too}}">Also kill RUNNING tasks</paper-checkbox>
+      </div>
+      <div>
+
+        This is about [[_estimated_count]] tasks.
+        Once you start the process, the only way to partially stop it is to close this
+        browser window.
+
+        If that sounds good, click the button below.
+      </div>
+
+      <paper-button
+          class="cancel-button"
+          raised
+          disabled$="[[!_ready_to_cancel]]"
+          hidden$="[[started_canceling]]"
+          on-tap="_cancel">
+          Cancel the Tasks
+      </paper-button>
+
+      <div >
+        <div hidden$="[[!started_canceling]]">Progress: [[_canceled_count]] queued for cancellation</div>
+        <div>Note: tasks queued for cancellation will be canceled as soon as possible, but there may be some delay between when this dialog box is closed and all tasks actually being canceled.</div>
+      </div>
+
+    </div>
+
+  </template>
+  <script>
+  (function(){
+    var CANCEL_BATCH_SIZE = 100;
+    Polymer({
+      is: "task-mass-cancel",
+
+      properties: {
+        // input
+        auth_headers: {
+          type: Object,
+        },
+        tags: {
+          type: Array,
+        },
+        // output
+        finished_canceling: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+        started_canceling: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+
+
+        _canceled_count: {
+          type : Number,
+          value: 0,
+        },
+        _cancel_cursor: {
+          type: String,
+        },
+
+        _estimated_count: {
+          type: String,
+          computed: "_count(_pending_count, _running_count, _running_too)"
+        },
+        _pending_count: {
+          type: Number,
+          value: -1,
+        },
+        _ready_to_cancel: {
+          type: Boolean,
+          value: false,
+        },
+        _running_count: {
+          type: Number,
+          value: -1,
+        },
+        _running_too: {
+          type: Boolean,
+          value: false,
+        }
+      },
+
+      _cancel: function() {
+        this.started_canceling = true;
+        this._cancel_cursor = "";
+        this.async(this._cancelNext);
+      },
+
+      _cancelNext: function() {
+        var cancel_payload = {
+          limit: CANCEL_BATCH_SIZE,
+          tags: this.tags,
+          cursor: this._cancel_cursor,
+        };
+
+        if (this._running_too) {
+          cancel_payload.kill_running = true;
+        }
+
+        sk.request("POST", "/_ah/api/swarming/v1/tasks/cancel",
+                   JSON.stringify(cancel_payload), this.auth_headers)
+          .then(JSON.parse).then(function(json) {
+            this._canceled_count += parseInt(json.matched);
+            if (json.cursor) {
+              this._cancel_cursor = json.cursor;
+              // Avoid doing a recursive call in case there are a huge number of tasks
+              // and we run out of stack space.
+              this.async(this._cancelNext);
+            } else {
+              this.finished_canceling = true;
+            }
+          }.bind(this))
+          .catch(function(e){
+            console.log(e);
+            sk.errorMessage(e);
+          });
+      },
+
+      _count: function() {
+        if (this._running_count === -1 || this._pending_count === -1) {
+          return "(counting... please wait)";
+        }
+        if (this._running_too) {
+          return this._running_count + this._pending_count;
+        }
+        return this._pending_count;
+      },
+
+      prompt: function() {
+        this.started_canceling = false;
+        this.finished_canceling = false;
+        this._ready_to_cancel = false;
+        var now = new Date();
+        // Search in the last week to get the count.  PENDING tasks should expire
+        // well before then, so this should be pretty accurate.
+        var start = (now.getTime() - 7*24*60*60*1000) / 1000;
+        var end = now.getTime() / 1000;
+
+        var countUrl = `/_ah/api/swarming/v1/tasks/count?start=${start}&end=${end}&state=PENDING&tags=`;
+        var tags = this.tags || [];
+        countUrl += tags.join("&tags=");
+        var pendingCount = sk.request("GET", countUrl, null, this.auth_headers)
+          .then(JSON.parse).then(function(json) {
+            this._pending_count = json.count;
+          }.bind(this))
+          .catch(function(e){
+            console.log(e);
+            sk.errorMessage(e);
+          });
+
+        console.log(pendingCount)
+        countUrl = `/_ah/api/swarming/v1/tasks/count?start=${start}&end=${end}&state=RUNNING&tags=`;
+        countUrl += tags.join("&tags=");
+        var runningCount = sk.request("GET", countUrl, null, this.auth_headers)
+          .then(JSON.parse).then(function(json) {
+            this._running_count = json.count;
+          }.bind(this))
+          .catch(function(e){
+            console.log(e);
+            sk.errorMessage(e);
+          });
+
+        Promise.all([pendingCount, runningCount]).then(function() {
+          this._ready_to_cancel = true;
+        }.bind(this));
+      },
+
+      _maybeRunning(running_too) {
+        if (running_too) {
+          return "tasks and kill all RUNNING";
+        }
+        return "";
+      }
+    });
+  })()
+  </script>
+</dom-module>

@@ -1,0 +1,77 @@
+# Do not retry task queues that are triggered by cron jobs.
+# If they fail, cron will schedule a retry later.
+queue:
+ - name: catalog-instance
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: check-deleted-instance
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: cleanup-deleted-instance
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: cleanup-drained-instance
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: create-disk
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: create-instance-group-manager
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: create-instance-template
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: delete-instance-group-manager
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: delete-instance-pending-deletion
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: delete-instance-template
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: fetch-instances
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: fetch-snapshots
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: remove-cataloged-instance
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: resize-instance-group
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0
+
+ - name: update-cataloged-instance
+   rate: 100/s
+   retry_parameters:
+     task_retry_limit: 0

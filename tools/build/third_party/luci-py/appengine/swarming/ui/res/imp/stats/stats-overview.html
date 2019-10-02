@@ -1,0 +1,130 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  For more on Google Charts and the data format, see https://developers.google.com/chart/interactive/docs/datatables_dataviews
+-->
+
+<link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+<link rel="import" href="/res/imp/bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+
+<link rel="import" href="load-charts-api.html">
+<link rel="import" href="partial-line-chart.html">
+
+<dom-module id="stats-overview">
+  <style include="iron-flex iron-flex-alignment iron-positioning">
+
+  </style>
+
+  <template>
+    <iron-ajax
+      auto url="/swarming/api/v1/stats/summary/minutes"
+      headers="[[headers]]"
+      params="[[params]]"
+      handle-as="json"
+      last-response="{{response}}">
+    </iron-ajax>
+
+    <load-charts-api loaded="{{charts_api_loaded}}"></load-charts-api>
+
+    <div class="vertical layout charts">
+
+    <!-- These arrays are JSON, so they must use double quotes-->
+      <partial-line-chart
+        all_data="{{data_table}}"
+        resolution="minutes"
+        names='["bots_active","tasks_active","tasks_bot_died","tasks_request_expired"]'
+        title="Shards Activity">
+      </partial-line-chart>
+
+      <partial-line-chart
+        all_data="{{data_table}}"
+        resolution="minutes"
+        names='["tasks_avg_pending_secs","tasks_total_runtime_secs","tasks_avg_runtime_secs"]'
+        title="Times">
+      </partial-line-chart>
+
+      <partial-line-chart
+        all_data="{{data_table}}"
+        resolution="minutes"
+        names='["http_requests","http_failures"]'
+        title="Requests">
+      </partial-line-chart>
+
+    </div>
+  </template>
+  <script>
+    Polymer({
+      is: 'stats-overview',
+      properties: {
+        // input
+        // TODO(kjlubick): Update the stats endpoints to use OAuth.
+        auth_headers: {
+          type: Object,
+        }
+
+        //output
+        busy: {
+          type: Boolean,
+          value: false,
+          notify: true,
+        },
+        data_table: {
+          type: Object,
+          computed: "_extractData(response,charts_api_loaded)",
+          notify: true,
+        },
+
+        //private
+        charts_api_loaded: {
+          type: Boolean,
+        },
+        _headers: {
+          type: Object,
+          value: {
+            "x-datasource-auth": "a",
+          },
+        },
+        params: {
+          type: Object,
+          value: {
+            duration: 20,
+          },
+        },
+        response: {
+          type: Object,
+        },
+      },
+
+      _extractData: function (_response, ready) {
+        // Times are coming in like Date(2016,4,13,12,10,0) which is supposed
+        // to be UTC but the browser interprets as browser local time. We fix
+        // the dates to be parsed as UTC and the partial-line-chart will show
+        // times in browser local time.
+        var table = _response.table;
+        // Our data looks like https://developers.google.com/chart/interactive/docs/datesandtimes#dates-and-times-using-the-date-string-representation
+        // i.e.
+        // rows: [
+        // {c: [v: "Date(2016,8,23,14,35,0)", v: ...]}
+        // {c: ... }
+        // ]
+        // and we parse the first part of each datum, the Date.
+        // TODO(kjlubick): Is there a cleaner way to do this server side?
+        table.rows.forEach(function(r) {
+          var time = r.c[0].v;
+          if (time.startsWith && time.startsWith("Date")) {
+            // Remove the Date() wrapper
+            time = time.substring(5, time.length-1);
+            // Split into an array of arguments
+            time = time.split(",");
+            // Parse and store.
+            r.c[0].v = new Date(Date.UTC(...time))
+          }
+        });
+        return _response.table;
+      },
+    });
+  </script>
+</dom-module>

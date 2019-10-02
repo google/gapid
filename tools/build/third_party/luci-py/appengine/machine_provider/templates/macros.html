@@ -1,0 +1,11 @@
+{% macro render_message(message) %}
+  {% if message %}
+    {% for field in message.all_fields()|sort(attribute='name') %}
+      {% if message.get_assigned_value(field.name) %}
+        <strong>{{field.name}}</strong>: {{message.get_assigned_value(field.name)}}<br />
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <i>null</i>
+  {% endif %}
+{% endmacro %}

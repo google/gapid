@@ -1,0 +1,135 @@
+module: default
+runtime: python27
+api_version: 1
+threadsafe: true
+
+# Approximately 512MB / 2.4GHz
+instance_class: F4
+automatic_scaling:
+  min_idle_instances: 2
+  max_concurrent_requests: 20
+  min_pending_latency: 50ms
+  max_pending_latency: 250ms
+
+default_expiration: "10m"
+
+handlers:
+# Cloud Endpoints APIs.
+- url: /_ah/api/.*
+  script: main_frontend.endpoints_app
+  secure: always
+
+- url: /prpc/.*
+  script: main_frontend.prpc_app
+  secure: always
+
+# Old API URLs.
+- url: /api/.*
+  script: main_frontend.app
+  secure: always
+
+# Sadly we have to put mapreduce in both the frontend and backend.
+- url: /(internal|restricted)/mapreduce(/.*)?
+  script: main.mapreduce_app
+  secure: always
+  login: admin
+- url: /mapreduce/pipeline/images
+  static_dir: third_party/mapreduce/lib/pipeline/ui/images
+  secure: always
+  http_headers:
+    Content-Security-Policy: "default-src https: 'self'"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+# Static content.
+- url: /([^/]+)\.(css|ico|txt)
+  static_files: static/\1.\2
+  upload: static/(.+)\.(css|ico|txt)
+  secure: always
+  http_headers:
+    Content-Security-Policy: "default-src https: 'self'"
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+# Frontend.
+- url: /(user|restricted)(|/.*)
+  script: main_frontend.app
+  secure: always
+  login: required
+
+- url: /res/(.+)
+  static_files: ui/build/\1
+  upload: ui/build/(.+)
+  secure: always
+  expiration: "1h"
+  http_headers:
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+- url: /newres/(.+)
+  static_files: ui2/dist/\1
+  upload: ui2/dist/(.+)
+  secure: always
+  expiration: "1h"
+  application_readable: true
+  http_headers:
+    Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    X-Frame-Options: deny
+
+# Warning: this includes the bot API at /swarming/api/...
+- url: .*
+  script: main_frontend.app
+  secure: always
+
+builtins:
+- remote_api: on
+
+inbound_services:
+- mail
+- warmup
+
+includes:
+- components/auth
+- components/config
+- components/ereporter2
+- components/static_third_party.yaml
+
+libraries:
+- name: endpoints
+  version: "1.0"
+- name: pycrypto
+  version: "2.6"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"
+
+# Keep this list in sync with module-backend.yaml
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- .+\.zip$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+# Doc, readme and license.
+- ^doc/
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$
+- ui/node_modules/
+- ui/res/imp/bower_components/
+- ui2/node_modules/.+

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<title>swarming-app demo</title>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" charset="utf-8">
+  // This bit of script loads the custom elements v1 polyfill, but only if required.
+  if (!window.customElements) {
+    var s = document.createElement('script');
+    s.src = '/newres/custom-elements.min.js';
+    document.write(s.outerHTML);
+  }
+</script>
+<swarming-app client_id="foo" testing_offline=true>
+  <header>
+    <div class="title">Swarming</div>
+      <aside class="hideable">
+        <a href="/">Home</a>
+        <a href="/otherlink">Other Link</a>
+        <a href="/otherzelda">Other Zelda</a>
+      </aside>
+  </header>
+  <main>
+
+    <h1>This is the main content</h1>
+
+    <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+    consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+    cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+
+    <p><button id=test-button>Press button to activate spinner</button></p>
+
+  </main>
+  <footer><error-toast-sk></error-toast-sk></footer>
+</swarming-app>
+

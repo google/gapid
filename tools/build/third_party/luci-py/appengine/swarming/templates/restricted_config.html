@@ -1,0 +1,172 @@
+{% set title = 'Swarming global config' %}
+{% extends "swarming/base.html" %}
+
+{% block body %}
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h1>Server global config</h1>
+  </div>
+
+  <div class="panel-body">
+    {% if not config_service_url %}
+      Config service URL is not configured for this instance of swarming.
+      Configure it using
+      <a href="/_ah/api/explorer#p/config/v1/config.settings">configuration api</a>.
+      Using default values.
+    {% else %}
+      This config is distributed by
+      <a href="{{config_service_url}}">luci-config</a>.
+      {% if not rev %}
+        Config file was not imported. Using default values.
+      {% else %}
+        Using revision <a href="{{rev_url}}">{{rev}}</a>.
+      {% endif %}
+    {% endif %}
+
+
+    <div class="form-horizontal">
+      <h2>General Settings</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Google Analytics ID:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.google_analytics}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Timeseries Monitoring:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{% if cfg.enable_ts_monitoring %}Enabled{% else %}Disabled{% endif %}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">UI Client ID:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.ui_client_id}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Task display server:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.display_server_url_template}}" disabled/>
+        </div>
+      </div>
+
+      <h2>Bots</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Death Timeout (sec):</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.bot_death_timeout_secs}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Max sleep time (sec):</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.max_bot_sleep_time}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Force to sleep (for emergencies):</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{% if cfg.force_bots_to_sleep_and_not_run_task %}Enabled{% else %}Disabled{% endif %}" disabled/>
+        </div>
+      </div>
+
+      <h2>Tasks</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Reusable age (sec):</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.reusable_task_age_secs}}" disabled/>
+        </div>
+      </div>
+
+      <h2>Isolate Server</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Default server:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.isolate.default_server}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Default namespace:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.isolate.default_namespace}}" disabled/>
+        </div>
+      </div>
+
+      <h2>CIPD Server</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Default Server:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.cipd.default_server}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Default Client Package:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.cipd.default_client_package.package_name}}:{{cfg.cipd.default_client_package.version}}" disabled/>
+        </div>
+      </div>
+
+      <h2>Machine Provider</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Swarming-MP Integration:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{% if cfg.mp.enabled %}Enabled{% else %}Disabled{% endif %}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Server:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.mp.server}}" disabled/>
+        </div>
+      </div>
+
+      <h2>Authorization Settings</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Admins Group:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.auth.admins_group}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Bot Bootstrap Group:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.auth.bot_bootstrap_group}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Privileged Users Group:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.auth.privileged_users_group}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Users Group:</label>
+        <div class="col-sm-9">
+          <input class="form-control" value="{{cfg.auth.users_group}}" disabled/>
+        </div>
+      </div>
+
+    </div> <!-- end form-horizontal -->
+  </div> <!-- end of panel-body -->
+</div> <!-- end of panel -->
+
+{% endblock %}

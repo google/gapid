@@ -1,0 +1,60 @@
+<!--
+# Copyright 2016 The LUCI Authors. All rights reserved.
+# Use of this source code is governed by the Apache v2.0 license that can be
+# found in the LICENSE file.
+-->
+<!--
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <load-charts-api>
+
+  It makes sure the Google Visualization api
+  (https://developers.google.com/chart/interactive/docs/) is loaded.  This api
+  is also loaded by the google-chart element, but we need to make sure it is
+  loaded before we start partitioning the data, e.g. partial-data-chart.
+
+  Usage:
+
+    <load-charts-api></load-charts-api>
+
+  Properties:
+    loaded: Boolean, true if the charts api has been loaded.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<link rel="import" href="/res/imp/bower_components/google-apis/google-legacy-loader.html">
+
+<dom-module id="load-charts-api">
+  <template>
+
+    <google-legacy-loader on-api-load="_readyForAction"></google-legacy-loader>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'load-charts-api',
+      properties: {
+        loaded: {
+          type: Boolean,
+          notify: true,
+        }
+      },
+
+      _readyForAction: function() {
+        google.load("visualization", "1", {
+          packages: {packages: ['corechart']},
+          callback: function() {
+            this.set("loaded", true);
+          }.bind(this)
+        });
+      }
+    });
+  </script>
+</dom-module>

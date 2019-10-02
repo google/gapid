@@ -1,0 +1,226 @@
+task-page {
+
+  main {
+
+    .title {
+      font-size: 1.5em;
+      font-weight: 700;
+      margin: 5px;
+    }
+
+    a[href] {
+      color: #105d90;
+    }
+
+    .right {
+      margin-top: 8px;
+    }
+  }
+
+  .id_buttons {
+    display: flex;
+
+    #id_input {
+      font-size: 1.5em;
+      width: 10em;
+      margin: 8px 5px;
+    }
+    .message {
+      margin: auto 5px;
+      font-size: 1.2em;
+    }
+  }
+
+  .ib > * {
+    display: inline-block;
+  }
+
+  .horizontal.layout {
+    display: flex;
+    flex-direction: row;
+
+    .grow {
+      flex: 1;
+      flex-basis: 0px;
+    }
+    &.end {
+      justify-content: flex-end;
+    }
+  }
+
+  .wrap.layout {
+    flex-wrap: wrap;
+  }
+
+
+  table {
+    border-collapse: collapse;
+    margin-left: 5px;
+    margin-bottom: 8px;
+  }
+  td, th {
+    border: 1px solid #BBB;
+    padding: 5px;
+  }
+
+  .task-info {
+    min-width: 500px;
+    &.inactive {
+      background-color: #ddd;
+    }
+
+    /* Tell all the second td in a tr (i.e. the content) to break
+       to avoid wrapping.  This keeps the first columns nice and
+       unbroken without having to add a bunch of classes.*/
+    td:nth-child(2) {
+      word-break: break-word;
+    }
+
+    .pending {
+      color: #E69F00;
+    }
+    .overhead {
+      color: #D55E00;
+    }
+    .running {
+      color: #0072B2;
+    }
+  }
+
+  /* Adds | between the dimensions, if there are more than 1*/
+  span.dim~span.dim:before {
+    content: " | ";
+  }
+
+  .bold {
+    font-weight: 700;
+  }
+  .italic {
+    font-style: italic;
+  }
+  .highlight {
+    background-color: #FFFFE0;
+  }
+  .reproduce {
+    margin-left: 5px;
+  }
+  .bottom_space {
+    margin-bottom: 10px;
+  }
+  .code {
+    font-family: monospace;
+  }
+  .break-all {
+    word-break: break-all;
+  }
+  .cipd-header {
+    font-weight: 700;
+    /* Make it easier for users to copy-paste the versions by
+       making the header not selectable.*/
+    user-select: none;
+    margin-left: 8px;
+  }
+
+  .slice-picker, .output-picker {
+    margin-left: 5px;
+    display: flex;
+    > * {
+      display: inline-block;
+    }
+  }
+
+  .output-picker {
+    > span {
+      margin: auto;
+      padding: 2px;
+    }
+    > tab {
+      padding: 2px;
+    }
+  }
+
+  .tab {
+    padding: 10px 40px;
+    margin: 0;
+    background-color: #a6cee3;
+    color: black;
+    cursor: pointer;
+    a[href] {
+      color: black;
+    }
+    &[selected] {
+      background-color: #1f78b4;
+      color: white;
+      font-weight: 700;
+      a[href] {
+        color: white;
+      }
+    }
+    &[disabled] {
+      background-color: #AAA;
+      text-decoration: line-through;
+      pointer-events: none;
+    }
+  }
+
+  .tabbed {
+    border: 3px solid #1F78B4;
+    margin-left: 5px;
+    min-height: 80vh;
+    min-width: 550px;
+    /* lets the logs take up as much space as possible, while still
+    sharing with the left side */
+    width: calc(100% - 15px);
+  }
+  .stdout {
+    white-space: pre-wrap;
+    padding: 2px;
+    &.wide {
+      white-space: pre;
+      overflow-x: auto;
+    }
+  }
+  #richLogsFrame {
+    /** We don't control the rich logs sites and they are likely on
+    a different domain than us, so there's no good way to avoid scrolling
+     other than tell the iframe it is really tall.*/
+    height: 2000px;
+  }
+
+/* These colors are from buildbot */
+  .failed_task {
+    background-color: #ffdddd;
+  }
+  .bot_died {
+    background-color: #cccccc;
+  }
+  .exception {
+    background-color: #edd2ff;
+  }
+  .pending_task, .highlighted {
+    background-color: #fffc6c;
+  }
+
+  .retry-prompt, .cancel-dialog {
+    padding: 10px;
+  }
+
+  .prompt {
+    padding: 10px 20px;
+
+    *[hidden] {
+      display: none;
+    }
+
+    #retry_inputs {
+      input {
+        border: none;
+        min-width: 200px;
+      }
+    }
+  }
+
+  .dim_key {
+    margin-right: .25em;
+  }
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<!-- Copyright 2014 The LUCI Authors. All rights reserved.
+Use of this source code is governed under the Apache License, Version 2.0
+that can be found in the LICENSE file. -->
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+
+  <link href="/third_party/bootstrap/css/bootstrap-3.1.0.min.css" rel="stylesheet">
+
+  <script src="/third_party/jquery/jquery-1.11.0.min.js">
+  </script>
+  <script src="/third_party/bootstrap/js/bootstrap-3.1.0.min.js">
+  </script>
+  <style>
+    .top_right_links {
+      display: inline-block;
+      float: right;
+    }
+  </style>
+  {% block header %}
+    {# Page specific headers goes there. #}
+  {% endblock %}
+</head>
+<body>
+  <div class="top_right_links">
+    <a href="{{signin_link|safe }}">{{nickname}}</a><br>
+    {{now|datetimeformat}}<br>
+    {% block floating %}
+    {% endblock %}
+  </div>
+
+  {% block body %}
+  {% endblock %}
+  <div style="width:100%">
+    <hr>
+    <div style="float: left;"><p>
+      <a target="_blank" href="https://cloud.google.com/appengine/"><img border="0"
+      src="/third_party/appengine-noborder-120x30.gif"
+      alt="Powered by Google App Engine" /></a></p>
+    </div>
+  </div>
+</body>
+</html>

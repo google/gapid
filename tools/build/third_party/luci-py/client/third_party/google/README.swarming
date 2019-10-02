@@ -1,0 +1,53 @@
+
+Name: Google Authentication
+Short Name: google-auth
+Version: 1.0.1
+Revision: 9bea1b15105d6851b315bd622702e0b201e4e874 (presumed; this is release 1.0.1)
+Home-page: https://github.com/GoogleCloudPlatform/google-auth-library-python
+License: Apache 2.0
+
+Local modifications: none beyond removing .pyc files and the modifications made
+for protobufs shown below (e.g. adding this file).
+
+----
+
+Name: Protocol Buffers
+Short Name: protobuf
+Version: 3.6.1
+Revision: 48cb18e5c419ddd23d9badcfe4e9df7bde1979b2
+Home-page: https://github.com/protocolbuffers/protobuf
+License: New BSD License
+
+Description:
+Protocol Buffers are Google's data interchange format.
+
+Reproduce:
+
+```
+curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protobuf-python-3.6.1.zip
+unzip protobuf-python-3.6.1.zip
+cd protobuf-3.6.1/python
+# You need protoc in $PATH from infra.git:
+python setup.py build
+rm -rf ../..
+git rm -rf protobuf
+mv protobuf-3.6.1/python/build/lib/google/protobuf .
+find protobuf -name "*_test.py" -delete
+git add protobuf
+rm -rf protobuf-3.6.1 protobuf-python-3.6.1.zip
+```
+
+---
+
+Name: Google RPC protocol buffers
+Revision: 943102cfb5fa8811a15a4c21bd12421aadb423b5
+Source: https://github.com/googleapis/googleapis/tree/943102cfb5fa8811a15a4c21bd12421aadb423b5/google/rpc
+Home-page: https://grpc.io/
+License: Apache License 2.0
+
+Local modifications in ./rpc
+```
+touch __init__.py
+cd ../..
+protoc --python_out=. google/rpc/*.proto
+```

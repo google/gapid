@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<title>sort-toggle demo</title>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="text/javascript" charset="utf-8">
+  // This bit of script loads the custom elements v1 polyfill, but only if required.
+  if (!window.customElements) {
+    var s = document.createElement('script');
+    s.src = '/newres/custom-elements.min.js';
+    document.write(s.outerHTML);
+  }
+</script>
+<div id=display> Now sorting by name (default)</div>
+
+<span>Name <sort-toggle key="name" currentKey="name" direction="desc"></sort-toggle></span>
+
+<span>Age <sort-toggle key="age" currentKey="name"></sort-toggle></span>
+
+<span>Favorite Food <sort-toggle key="fav_food" currentKey="name"></sort-toggle></span>

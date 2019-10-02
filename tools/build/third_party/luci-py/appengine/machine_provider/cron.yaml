@@ -1,0 +1,13 @@
+cron:
+- url: /internal/cron/process-lease-requests
+  schedule: every 1 minutes
+- url: /internal/cron/process-lease-releases
+  schedule: every 1 minutes
+- url: /internal/cron/process-machine-reclamations
+  schedule: every 1 minutes
+- url: /internal/cron/ts_mon/send
+  schedule: every 1 minutes
+- description: read luci-config configs
+  # Handled by inclusion of components/config in app.yaml.
+  url: /internal/cron/config/update
+  schedule: every 1 minutes

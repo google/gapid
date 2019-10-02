@@ -1,0 +1,106 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>pageable-data Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+  <script src="/res/js/common.js"></script>
+  <script src="/res/js/alias.js"></script>
+  <script src="../../../node_modules/sinon/pkg/sinon-1.17.5.js"></script>
+
+
+  <script type="text/javascript" charset="utf-8">
+    sinon.format = function(object) {return JSON.stringify(object);}
+    sinon.log = function(message) {console.log(message);};
+    var server = sinon.fakeServer.create();
+    server.autoRespond = true;
+    // server.autoRespondAfter = 1000;
+
+    var data = [];
+    for (var i = 0; i < 27; i++) {
+      data.push({alpha: Math.random(), beta: Math.random(), gamma: i});
+    }
+
+    var MAX = 20;
+
+    server.respondWith("GET", /^\/get.*/, function(request){
+        console.log("Request: ",request);
+
+        var query = request.url.substring(request.url.indexOf('?') + 1);
+        var params = sk.query.toObject(query,{cursor:-1, limit:-1});
+        console.log(query, params);
+        start = params.cursor || 0;
+        var limit = params.limit || MAX;
+        end = start + Math.min(limit, MAX);
+        var resp = {
+          "data": data.slice(start, end)
+        }
+        if (end < data.length) {
+          resp["cursor"] = end;
+        }
+        request.respond(200, {"Content-Type":"application/json"},JSON.stringify(resp));
+      });
+
+    </script>
+    <link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+    <link rel="import" href="pageable-data.html">
+</head>
+<body>
+
+<dom-module id="pageable-data-demo">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <div>Busy: [[busy]]</div>
+    <template is="dom-repeat" items="{{items}}" as="item">
+      <div>[[item.gamma]] [[item.alpha]]</div>
+    </template>
+
+    <pageable-data
+      id="pd"
+      busy="{{busy}}"
+      output="{{items}}"
+      parse="[[_parse]]">
+    </pageable-data>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'pageable-data-demo',
+
+      properties: {
+        _parse: {
+          type: Function,
+          value: function() {
+            return function(json) {
+              console.log("hello parse");
+              return json.data;
+            };
+          },
+        },
+      },
+
+      attached: function(){
+        this.$.pd.load("/get?foo=bar", {"X-Testing":"foobar"}, 10);
+      },
+
+    });
+  </script>
+</dom-module>
+
+<pageable-data-demo></pageable-data-demo>
+
+</body>
+</html>

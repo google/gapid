@@ -1,0 +1,157 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>auth-signin test</title>
+
+    <script src="../../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../bower_components/web-component-tester/browser.js"></script>
+
+    <link rel="import" href="../../src/config-ui/config-ui.html">
+    <link rel="import" href="../../common/auth-signin.html">
+  </head>
+  <body>
+
+    <test-fixture id="auth-signinTestFixture">
+      <template>
+        <auth-signin client_id="test-client-id"></auth-signin>
+      </template>
+    </test-fixture>
+
+    <script>
+
+      suite('auth-signin initial values are as expected', function() {
+        var auth_signin;
+        setup(function() {
+          auth_signin = fixture('auth-signinTestFixture');
+        });
+
+        test('signed_in is false', function() {
+          expect(auth_signin.signed_in).to.be.false;
+        });
+
+        test('initialized is false', function() {
+          expect(auth_signin.initialized).to.be.false;
+        });        
+
+        test('client_id is always present', function() {
+          expect(auth_signin.client_id).to.be.equal('test-client-id');
+        });
+      });
+
+      suite('fetch-configs always fired when gapi is initialized', function () {
+        var auth_signin;
+        var gapiWithUser;
+        var gapiWithoutUser;
+        var gapiWithoutAccessToken;
+        setup(function() {
+          auth_signin = fixture('auth-signinTestFixture');
+          gapiWithUser = {
+            "auth2": {
+              getAuthInstance: function() {
+                return {
+                  "currentUser": {
+                    get: function() {
+                      return {
+                        getAuthResponse: function () {
+                          return {
+                            "access_token": "test_token",
+                            "token_type": "Bearer"
+                          };
+                        },
+                        getBasicProfile: function() {
+                          return { 
+                            getEmail: function() {
+                              return "test@google.com";
+                            },
+                            getImageUrl: function() {
+                              return "test.jpg";
+                            }
+                          };
+                        }
+                      };
+                    }
+                  }
+                };
+              }
+            }
+          };
+
+          gapiWithoutUser = {
+            "auth2": {
+              getAuthInstance: function() {
+                return {
+                  "currentUser": {
+                    get: function() {
+                      return null;
+                    }
+                  }
+                };
+              }
+            }
+          };
+
+          gapiWithoutAccessToken = {
+            "auth2": {
+              getAuthInstance: function() {
+                return {
+                  "currentUser": {
+                    get: function() {
+                      return {
+                        getAuthResponse: function () {
+                          return {
+                            "access_token": null,
+                            "token_type": null
+                          };
+                        },
+                      };
+                    }
+                  }
+                };
+              }
+            }
+          };
+        });
+
+        test('when user exists', function() {
+          window.gapi = gapiWithUser;
+          auth_signin.initialized = true;
+          auth_signin.addEventListener('fetch-configs', function(done) {
+            expect(auth_signin.user).to.be.an('object');
+            expect(auth_signin.profile).to.be.an('object');
+            expect(auth_signin.auth_response).to.be.an('object');
+            expect(auth_signin.auth_headers).to.be.an('object');
+            done();
+          });
+        });
+
+        test('when user does not exist', function() {
+          window.gapi = gapiWithoutUser;
+          auth_signin.initialized = true;
+          auth_signin.addEventListener('fetch-configs', function(done) {
+            expect(auth_signin.user).to.be.null;
+            done();
+          });
+        });
+
+        test('when user does not have access token', function() {
+          window.gapi = gapiWithoutAccessToken;
+          auth_signin.initialized = true;
+          auth_signin.addEventListener('fetch-configs', function(done) {
+            expect(auth_signin.user).to.be.an('object');
+            expect(auth_signin.user.getAuthResponse().access_token).to.be.null;
+            done();
+          })
+        });
+      });
+    </script>
+  </body>
+</html>

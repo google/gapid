@@ -1,0 +1,125 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  It contains the definition of the following Behaviors:
+
+    SwarmingBehaviors.TaskBehavior
+
+  This behavior contains many constants and some functions that are useful
+  for task-related code.
+
+  It also includes the style module "task-style" to allow for common styles
+  to be shared across multiple pages.
+
+-->
+<script>
+  window.SwarmingBehaviors = window.SwarmingBehaviors || {};
+  (function(){
+    SwarmingBehaviors.TaskBehavior = {
+      properties: {
+        BOT_DIED: {
+          type: String,
+          value: "BOT_DIED",
+        },
+        CANCELED: {
+          type: String,
+          value: "CANCELED",
+        },
+        COMPLETED: {
+          type: String,
+          value: "COMPLETED",
+        },
+        COMPLETED_DEDUPED: {
+          type: String,
+          value: "COMPLETED (DEDUPED)",
+        },
+        COMPLETED_FAILURE: {
+          type: String,
+          value: "COMPLETED (FAILURE)",
+        },
+        COMPLETED_SUCCESS: {
+          type: String,
+          value: "COMPLETED (SUCCESS)",
+        },
+        EXPIRED: {
+          type: String,
+          value: "EXPIRED",
+        },
+        NO_RESOURCE: {
+          type: String,
+          value: "NO_RESOURCE",
+        },
+        PENDING: {
+          type: String,
+          value: "PENDING",
+        },
+        RUNNING: {
+          type: String,
+          value: "RUNNING",
+        },
+        TIMED_OUT: {
+          type: String,
+          value: "TIMED_OUT",
+        },
+      },
+
+      stateClass: function(state) {
+        if (state === this.CANCELED || state === this.TIMED_OUT || state === this.EXPIRED || state === this.NO_RESOURCE) {
+          return "exception";
+        }
+        if (state === this.BOT_DIED) {
+          return "bot_died";
+        }
+        if (state === this.COMPLETED_FAILURE) {
+          return "failed_task";
+        }
+        if (state === this.RUNNING || state === this.PENDING) {
+          return "pending_task";
+        }
+        return "";
+      },
+
+      state: function(result) {
+        if (!result) {
+          return "";
+        }
+        if (result.state === this.COMPLETED) {
+          if (result.failure) {
+            return this.COMPLETED_FAILURE;
+          }
+          if (result.try_number === "0") {
+            return this.COMPLETED_DEDUPED;
+          }
+          return this.COMPLETED_SUCCESS;
+        }
+        return result.state;
+      },
+
+      _stateClass: function(result) {
+        return this.stateClass(this.state(result));
+      },
+    };
+  })();
+</script>
+
+<dom-module id="task-style">
+  <template>
+    <style>
+      /* These colors are from buildbot */
+      .failed_task {
+        background-color: #ffdddd;
+      }
+      .bot_died {
+        background-color: #cccccc;
+      }
+      .exception {
+        background-color: #edd2ff;
+      }
+      .pending_task {
+        background-color: #fffc6c;
+      }
+    </style>
+  </template>
+</dom-module>

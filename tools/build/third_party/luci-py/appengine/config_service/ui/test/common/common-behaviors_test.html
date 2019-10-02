@@ -1,0 +1,106 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>auth-signin test</title>
+
+    <script src="../../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../bower_components/web-component-tester/browser.js"></script>
+
+    <link rel="import" href="../../src/config-ui/front-page.html">
+  </head>
+  <body>
+
+    <test-fixture id="common-behaviorsTestFixture">
+      <template>
+        <!-- The front-page element imports common-behaviors.html and has access to all methods -->
+        <front-page></front-page>
+      </template>
+    </test-fixture>
+
+    <script>
+
+      suite('_formatDate', function() {
+        var common;
+        setup(function() {
+          common = fixture('common-behaviorsTestFixture');
+        });
+
+        test('returns proper amount of time passed', function () {
+          // LUCI Config API formats timestamps in microseconds, so we multiply by 1000
+          var date = (new Date() - 5000) * 1000;
+          expect(common._formatDate(date)).to.be.equal("5 seconds ago");
+          expect(common._formatDate(null)).to.be.equal("Not Found");
+        });
+      });
+
+      suite('_formatRevision', function() {
+        var common;
+        setup(function() {
+          common = fixture('common-behaviorsTestFixture');
+        });
+
+        test('returns the first 7 characters of the revision number', function() {
+          expect(common._formatRevision('6c6d27675a369a7010f742aa456db0d3d0b7b094'))
+              .to.be.equal('6c6d276');
+          expect(common._formatRevision("Not Found")).to.be.equal("Not Found");
+        });
+      });
+
+      suite('_getExactTime', function() {
+        var common;
+        setup(function() {
+          common = fixture('common-behaviorsTestFixture');
+        });
+
+        test('formats timestamps into full dates', function() {
+          var date = common._getExactTime(1501507037000000);
+          var realDate = new Date(1501507037000);
+          assert.equal(date, realDate.toString());
+
+          expect(common._getExactTime(null)).to.be.equal("Not Found");
+        });
+      }),
+
+      suite('_getTimestamp', function() {
+        var common;
+        setup(function() {
+          common = fixture('common-behaviorsTestFixture');
+        });
+
+        test('returns the correct timestamp when lastImportAttempt is successful', function() {
+          var lastImportAttempt = {
+            "success": true,
+            "revision": {
+              "timestamp": "09061997"
+            } 
+          }
+          expect(common._getTimestamp(lastImportAttempt, null)).to.be.equal('09061997');
+        });
+
+        test('returns the correct timestamp when lastImportAttempt is unsuccessful', function() {
+          var lastImportAttempt = {
+            "success": false
+          }
+          var revision = {
+            "timestamp": "12345"
+          }
+          expect(common._getTimestamp(lastImportAttempt, revision)).to.be.equal('12345');
+        });
+
+        test('returns the correct timestamp when lastImportAttempt is unsuccessful' +
+            ' and revision is null', function() {
+          expect(common._getTimestamp(null, null)).to.be.null;
+        });
+      });
+    </script>
+  </body>
+</html>

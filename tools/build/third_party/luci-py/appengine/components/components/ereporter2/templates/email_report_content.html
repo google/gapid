@@ -1,0 +1,12 @@
+<h3><a href="{{report_url}}?start={{start}}&end={{end}}">{{occurrence_count}} occurrences of {{error_count}} errors across {{version_count}} versions.{% if ignored_count %}<br>
+Ignored {{ignored_count}} errors.{% endif %}{% if report_url %}</a>{% endif %}</h3>
+
+{% for category in errors %}<span style="font-size:130%">{{category.signature}}</span><br>
+Handler: {{category.events.head.0.handler_module}}<br>
+Modules: {{category.modules|join(', ')}}<br>
+Versions: {{category.versions|join(', ')}}<br>
+{{category.events.head.0.method}} {{category.events.head.0.host}}{{category.events.head.0.resource}} (HTTP {{category.events.head.0.status}})<br>
+<pre>{{category.events.head.0.message}}</pre>
+{{category.events.total_count}} occurrences: {% for event in category.events.head %}<a href="{{request_id_url}}{{event.request_id}}">Entry</a> {% endfor %}{% if category.events.has_gap %}&hellip;{% endif %}{% for event in category.events.tail %}<a href="{{request_id_url}}{{event.request_id}}">Entry</a> {% endfor %}<p>
+<br>
+{% endfor %}

@@ -1,0 +1,31 @@
+// Copyright 2019 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package components.auth;
+
+option go_package = "go.chromium.org/luci/server/auth/service/protocol;protocol";
+
+
+// SecurityConfig is read from 'security.cfg' by Auth Service and distributed to
+// all linked services (in its serialized form) as part of AuthDB proto.
+//
+// See AuthDB.security_config in replication.proto.
+message SecurityConfig {
+  // A list of regular expressions matching hostnames that should be recognized
+  // as being a part of single LUCI deployment.
+  //
+  // Different microservices within a single LUCI deployment may trust each
+  // other. This setting (coupled with the TLS certificate check) allows
+  // a service to recognize that a target of an RPC is another internal service
+  // belonging to the same LUCI deployment.
+  //
+  // '^' and '$' are implied. The regexp language is intersection of Python and
+  // Golang regexp languages and thus should use only very standard features
+  // common to both.
+  //
+  // Example: "(.*-dot-)?chromium-swarm\.appspot\.com".
+  repeated string internal_service_regexp = 1;
+}

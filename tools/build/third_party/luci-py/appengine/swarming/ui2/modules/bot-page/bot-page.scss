@@ -1,0 +1,135 @@
+bot-page {
+
+  main {
+
+    .title {
+      font-size: 1.5em;
+      font-weight: 700;
+      margin: 5px;
+    }
+
+    a[href] {
+      color: #105d90;
+    }
+
+    .top {
+      width: 100%;
+    }
+
+  }
+
+  .id_buttons {
+    display: flex;
+
+    #id_input {
+      font-size: 1.5em;
+      width: 10em;
+      margin: 8px 5px;
+    }
+    .message {
+      margin: auto 5px;
+      font-size: 1.2em;
+    }
+  }
+
+  .horizontal.layout {
+    display: flex;
+    flex-direction: row;
+
+    .grow {
+      flex: 1;
+      flex-basis: 0px;
+    }
+    .stats {
+      flex-grow: 1.5;
+    }
+    &.end {
+      justify-content: flex-end;
+    }
+  }
+
+  .all-events {
+    border: 3px solid #1F78B4;
+    border-bottom: none;
+    margin-left: 5px;
+    width: 300px;
+    > * {
+      display: inline-block;
+    }
+  }
+
+  .wrap.layout {
+    flex-wrap: wrap;
+  }
+
+  .break-all {
+    word-break: break-all;
+  }
+
+  .old_version {
+    background-color: #ffffdd;
+  }
+
+  .bot_state {
+    white-space: pre-wrap;
+    font-family: monospace;
+    margin-bottom: 10px;
+    word-break: break-all;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin-left: 5px;
+    margin-bottom: 8px;
+  }
+  td, th {
+    border: 1px solid #BBB;
+    padding: 5px;
+  }
+
+  .tasks-events-picker {
+    margin-left: 5px;
+    display: flex;
+    > * {
+      display: inline-block;
+    }
+    .tab {
+      padding: 10px 40px;
+      margin: 0;
+      background-color: #a6cee3;
+      color: black;
+      cursor: pointer;
+      &[selected] {
+        background-color: #1f78b4;
+        color: white;
+        font-weight: 700;
+      }
+    }
+  }
+
+  .tasks_table,
+  .events_table {
+    border: 3px solid #1F78B4;
+  }
+
+  /* These colors are from buildbot */
+  .failed_task, .quarantined {
+    background-color: #ffdddd;
+  }
+  .bot_died, .dead {
+    background-color: #cccccc;
+  }
+  .exception {
+    background-color: #edd2ff;
+  }
+  .pending_task, .highlighted {
+    background-color: #fffc6c;
+  }
+
+  .prompt-dialog {
+    padding: 10px;
+  }
+  *[hidden], .hidden {
+    display: none !important;
+  }
+}

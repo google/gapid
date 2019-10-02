@@ -1,0 +1,172 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-search/paper-search-bar.html">
+<link rel="import" href="../../bower_components/app-route/app-location.html">
+<link rel="import" href="../../bower_components/app-route/app-route.html">
+<link rel="import" href="../../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../../bower_components/app-layout/app-toolbar/app-toolbar.html">
+
+<link rel="import" href="../../common/auth-signin.html">
+<link rel="import" href="../../common/common-behaviors.html">
+<link rel="import" href="config-set.html">
+<link rel="import" href="front-page.html">
+
+<dom-module id="config-ui">
+  <template>
+    <style>
+      @media only screen and (min-width: 768px) {
+        app-toolbar {
+          height: 60px;
+        }
+
+        .logo {
+          height: 50px;
+        }
+
+        .right { margin-left:15px; }
+      }
+
+      * { font-family: sans-serif; }
+
+      app-toolbar {
+        background-color: var(--google-blue-500);
+        color: #232323;
+      }
+
+      .link {
+        font-size: 75%;
+        color: white;
+        margin-right: 10px;
+      }
+
+      .title {
+        text-decoration: none;
+        color: white;
+        font-size: 115%;
+      }
+
+      [main-title] {
+        pointer-events: auto;
+        margin-right: 100px;
+      }
+
+    </style>
+
+    <app-drawer-layout fullbleed force-narrow>
+      <app-header-layout>
+        <app-header reveals slot="header">
+          <app-toolbar>
+            <!--<image class="logo" src="/static/images/chromium.png"/>-->
+            <div main-title>
+              <a href="/#/q/" class="title">
+                Configuration Service
+              </a>
+            </div>
+
+            <a href="/_ah/api/explorer"
+               class="link"
+               target="_blank">APIs explorer
+            </a>
+
+            <template is="dom-if" if="[[client_id]]">
+              <auth-signin
+                  class="right"
+                  client_id="[[client_id]]"
+                  auth_headers="{{auth_headers}}"
+                  initialized="{{initialized}}"
+                  profile="{{profile}}"
+                  signed_in="{{signed_in}}">
+              </auth-signin>
+            </template>
+            <template is="dom-if" if="[[_not(client_id)]]">
+              <div class="right">No OAauth client id found.</div>
+            </template>
+          </app-toolbar>
+        </app-header>
+
+        <app-location route="{{route}}" use-hash-as-path></app-location>
+        <app-route  route="{{route}}"
+                    pattern="/services/:serviceName"
+                    data="{{serviceData}}"
+                    tail="{{serviceTail}}"
+                    active="{{serviceActive}}"></app-route>
+
+        <app-route  route="{{route}}"
+                    pattern="/projects/:projectName"
+                    data="{{projectData}}"
+                    tail="{{projectTail}}"
+                    active="{{projectActive}}"></app-route>
+
+        <app-route  route="{{route}}"
+                    pattern="/q/:query"
+                    data="{{queryData}}"
+                    active="{{frontPageActive}}"></app-route>
+
+        <template is="dom-if" if="[[frontPageActive]]">
+          <front-page auth_headers="[[auth_headers]]"
+                      initialized="[[initialized]]"
+                      signed_in="[[signed_in]]"
+                      query="[[queryData.query]]"></front-page>
+        </template>
+
+        <template is="dom-if" if="[[serviceActive]]" restamp="true">
+          <config-set category="services"
+                      name="[[serviceData.serviceName]]"
+                      route="[[serviceTail]]"
+                      auth_headers="[[auth_headers]]"
+                      initialized="[[initialized]]"
+                      front-page-is-active="[[frontPageActive]]"
+                      profile="[[profile]]"></config-set>
+        </template>
+
+        <template is="dom-if" if="[[projectActive]]" restamp="true">
+          <config-set category="projects"
+                      name="[[projectData.projectName]]"
+                      route="[[projectTail]]"
+                      auth_headers="[[auth_headers]]"
+                      initialized="[[initialized]]"
+                      front-page-is-active="[[frontPageActive]]"
+                      profile="[[profile]]"></config-set>
+        </template>
+      </app-header-layout>
+    </app-drawer-layout>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'config-ui',
+
+      behaviors: [ConfigUIBehaviors.CommonBehavior],
+
+      properties: {
+        client_id: {
+          type: String,
+          value: null
+        },
+        route: {
+          type: Object,
+          observer: '_routeChanged',
+        }
+      },
+
+      _routeChanged: function(route) {
+        // If the path is blank, redirect to /q/
+        if (!route.path || route.path == "/") {
+          this.set('route.path', '/q/');
+        }
+      },
+
+      ready: function() {
+        this._routeChanged(this.route);
+      },
+
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,13 @@
+Name: Graphy
+Short Name: graphy
+URL: https://code.google.com/p/graphy/
+Revision: 77
+License: Apache License, Version 2.0
+
+Description:
+Graphy is a chart library for python. It tries to get out of the way and just
+let you work with your data.
+
+Local Modifications:
+- Kept only trunk/graphy/
+- Deleted tests.

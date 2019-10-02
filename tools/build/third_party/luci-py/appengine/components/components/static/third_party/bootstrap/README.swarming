@@ -1,0 +1,12 @@
+Name: Bootstrap
+URL: https://github.com/twbs/bootstrap
+Version: 3.1.0
+Revision: 1409cde7e8
+License: MIT
+
+Description:
+The most popular front-end framework for developing responsive, mobile
+first projects on the web.
+
+Local Modifications:
+Only minified version kept.

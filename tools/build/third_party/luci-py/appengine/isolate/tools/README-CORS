@@ -1,0 +1,13 @@
+Using the embedded /browse functionality requires enabling CORS on the GS
+endpoint.
+
+Ref: https://developers.google.com/storage/docs/cross-origin
+
+HowTo
+=====
+
+  1. Replace 'REPLACE-ME' in cors.json with the AppEngine project's name or
+     whatever relevant hostname.
+  2. Use gsutil (https://developers.google.com/storage/docs/gsutil) to set the
+     CORS properties:
+        ~/path/to/gsutil cors set cors.json gs://REPLACE-ME

@@ -1,0 +1,16 @@
+Name: gae_ts_mon
+Short Name: gae_ts_mon
+URL: https://chromium.googlesource.com/infra/infra/+/master/appengine_module/gae_ts_mon/
+Revision: 0c2b00962aec244573836a0fbb2e465e3426daa1
+License: Chromium License
+
+Description:
+Timeseries monitoring library for Google AppEngine.
+
+Please roll in sync with client/third_party/infra_libs.  You may want
+to roll infra_libs in infra.git first, to make sure they are at
+compatible at the version you need.
+
+Local Modifications:
+- Removed all of the following directories: protobuf/, test/, third_party/ .
+- Copied the content of the symlinks.

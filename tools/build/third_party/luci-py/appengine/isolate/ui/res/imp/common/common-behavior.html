@@ -1,0 +1,140 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  It contains the definition of the following Behaviors:
+
+    IsolateBehaviors.CommonBehavior
+
+  To use it, include
+      behaviors: [IsolateBehaviors.CommonBehavior]
+  in the creation of any Polymer element.
+
+  IsolateBehaviors.CommonBehavior contains shared methods to ease
+  templating, such as _or() and _not() as well as general utility methods
+  such as _getJsonAsync.
+ -->
+
+<script>
+  window.IsolateBehaviors = window.IsolateBehaviors || {};
+  (function(){
+    // This behavior wraps up all the shared isolate functionality.
+    IsolateBehaviors.CommonBehavior = {
+
+      // _getJsonAsync makes an XHR to a url, parses the response as JSON
+      // and sticks the resulting object into the property with the name given
+      // by "bindTo". If busy is defined, the property with that name will be
+      // set to true while the request is in flight and false afterwards.
+      // request headers (e.g. authentication) and query params will be used if
+      // provided. Query params is an object like {String:Array<String>}. On
+      // error, bindTo will be set to false and the promise will be rejected
+      // with {status:Number, reason:String} where the reason is the text
+      // returned from the server.
+      // The object bindTo is not set to undefined because computed values in
+      // Polymer don't fire if a property is undefined. Clients should check
+      // that bindTo is not falsey.
+      // To avoid multiple requests clobering one another, an object _jsonAsync
+      // is created on "this" to debounce requests - the most recent request
+      // will win out.
+       _getJsonAsync: function(bindTo, url, busy, headers, params) {
+        if (!bindTo || !url || !busy) {
+          console.log("Need at least a polymer element to bind to, a busy element, and a url");
+          return;
+        }
+        this.set(busy, true);
+        var now = new Date();
+        this._jsonAsync = this._jsonAsync || {};
+        this._jsonAsync[bindTo] = now;
+        if (params) {
+          url = url + "?" + sk.query.fromParamSet(params);
+        }
+        return sk.request("GET", url, "", headers).then(JSON.parse).then(function(json){
+          if (this._jsonAsync[bindTo] !== now) {
+            console.log("ignoring result because a second request happened.");
+            this.set(busy, false);
+            return;
+          }
+          this.set(bindTo, json);
+          this.set(busy, false);
+        }.bind(this)).catch(function(reason){
+          console.log("Reason for failure of request to " + url, reason);
+
+          if (this._jsonAsync[bindTo] !== now) {
+            console.log("ignoring failure because a second request happened.");
+            this.set(busy, false);
+            return;
+          }
+          this.set(bindTo, false);
+          this.set(busy, false);
+          return Promise.reject(reason);
+        }.bind(this));
+      },
+
+      // _getJsonAsyncArr is the array analog to _getJsonAsync.  For example,
+      // if there is an array that will contain multiple results rendered with
+      // a dom-repeat, _getJsonAsyncArr will make an XHR GET request and put
+      // the results into the given array at the index specified by idx.
+      //
+      // Prior to making this call, it is assumed that arr is initialized to be
+      // an array of empty (or filler) objects. busyArr be initialized in the
+      // same way.  Due to how Polymer deals with arrays, arrays of primitives
+      // are not supported, thus clients observing busyArr should iterate over
+      // all objects in busyArr and test to see if busyArr[i].status is true.
+      //
+      // To avoid multiple requests clobering one another, an object _jsonAsync
+      // is created on "this" to debounce requests - the most recent request
+      // will win out.
+      _getJsonAsyncArr: function(idx, arr, url, busyArr, headers, params) {
+        if (!arr || !url || !busyArr) {
+          console.log("Need at least a polymer array to bind to, a busy element, and a url");
+          return;
+        }
+        var key = arr + ":" + idx;
+        this.splice(busyArr, idx, 1, {status:true});
+        var now = new Date();
+        this._jsonAsync = this._jsonAsync || {};
+        this._jsonAsync[key] = now;
+        if (params) {
+          url = url + "?" + sk.query.fromParamSet(params);
+        }
+        return sk.request("GET", url, "", headers).then(JSON.parse).then(function(json){
+          if (this._jsonAsync[key] !== now) {
+            console.log("ignoring result because a second request happened for ", key);
+            this.splice(busyArr, idx, 1, {status:false});
+            return;
+          }
+          this.splice(arr, idx, 1, json);
+          this.splice(busyArr, idx, 1, {status:false});
+        }.bind(this)).catch(function(reason){
+          console.log("Reason for failure of request to " + url, reason);
+
+          if (this._jsonAsync[key] !== now) {
+            console.log("ignoring failure because a second request happened.");
+            this.splice(busyArr, idx, 1, {status:false});
+            return;
+          }
+          this.splice(busyArr, idx, 1, {status:false});
+          return Promise.reject(reason);
+        }.bind(this));
+      },
+
+      _not: function(a) {
+        return !a;
+      },
+
+      _or: function() {
+        var result = false;
+        // can't use .foreach, as arguments isn't really an Array.
+        for (var i = 0; i < arguments.length; i++) {
+          result = result || arguments[i];
+        }
+        return result;
+      },
+
+      _truthy: function(a){
+        return !!a;
+      }
+    };
+  })();
+</script>

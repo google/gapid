@@ -1,0 +1,313 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-list-data>
+
+  This makes calls authenticated with Oauth 2 to the swarming apis.  It parses
+  that data into usable data structures.
+
+  Usage:
+
+    <bot-list-data></bot-list-data>
+
+  Properties:
+    // inputs
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+    query_params: Object, The query params that will filter the query
+        server-side.  This can have dimensions:Array<String>, quarantined:String
+        and is_dead: String. For example:
+        {
+          "dimensions": ["pool:Skia", "device_type:sprout"],
+          "quarantined": "FALSE",  // optional
+          "is_dead": "TRUE",       // optional
+        }
+        For a full list of dimensions in the fleet, see the API call:
+        https://[swarming_url]/_ah/api/swarming/v1/bots/dimensions
+    // outputs
+    dimensions: Array<String>, of all valid dimensions.
+    tasks: Array<Object>, all tasks returned by the server.
+    primary_map: Object, a mapping of primary keys to secondary items.
+        The primary keys are things that can be columns or sorted by.  The
+        primary values (aka the secondary items) are things that can be filtered
+        on. Primary consists of tags and state.  Secondary contains the
+        values primary things can be.
+    primary_arr: Array<String>, the display order of the primary keys.
+
+  Methods:
+    signIn(): Force a signin of the user using OAuth.  This happens
+        automatically when auth_headers is set.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/common-behavior.html">
+<link rel="import" href="/res/imp/common/task-behavior.html">
+
+<dom-module id="task-list-data">
+  <script>
+  (function(){
+    var TIMES = ["abandoned_ts", "completed_ts", "created_ts", "modified_ts", "started_ts"];
+    var BLACKLIST_DIMENSIONS = ["quarantined", "error"];
+
+    Polymer({
+      is: 'task-list-data',
+
+      behaviors: [
+          SwarmingBehaviors.CommonBehavior,
+          SwarmingBehaviors.TaskBehavior,
+      ],
+
+      properties: {
+        // inputs
+        auth_headers: {
+          type: Object,
+          observer: "signIn",
+        },
+        query_params: {
+          type: Object,
+        },
+        tasks: {
+          type: Array,
+        },
+
+        // outputs
+        busy: {
+          type: Boolean,
+          computed: "_or(_busy2,_busy1)",
+          notify: true,
+        },
+        dimensions: {
+          type: Array,
+          computed: "_makeArray(_dimensions)",
+          notify: true,
+        },
+        primary_map: {
+          type: Object,
+          computed: "_primaryMap(_tags,_dimensions,tasks.*)",
+          notify: true,
+        },
+        primary_arr: {
+          type: Array,
+          computed: "_primaryArr(primary_map)",
+          notify: true,
+        },
+
+
+        // private
+        _busy2: {
+          type: Boolean,
+          value: false
+        },
+        _busy1: {
+          type: Boolean,
+          value: false
+        },
+        _dimensions: {
+          type: Object,
+        },
+        _list: {
+          type: Object,
+        },
+        _tags: {
+          type: Object,
+        },
+      },
+
+      signIn: function(){
+        this._getJsonAsync("_tags", "/_ah/api/swarming/v1/tasks/tags",
+          "_busy2", this.auth_headers);
+        this._getJsonAsync("_dimensions","/_ah/api/swarming/v1/bots/dimensions",
+          "_busy1", this.auth_headers);
+      },
+
+      _makeArray: function(dimObj) {
+        if (!dimObj || !dimObj.bots_dimensions) {
+          return [];
+        }
+        var dims = [];
+        dimObj.bots_dimensions.forEach(function(d){
+          if (BLACKLIST_DIMENSIONS.indexOf(d.key) === -1) {
+            dims.push(d.key);
+          }
+        });
+        dims.push("id");
+        dims.sort();
+        return dims;
+      },
+
+      _primaryArr: function(map) {
+        var arr = Object.keys(map);
+        arr.sort();
+        return arr;
+      },
+
+      _primaryMap: function(tags, dims) {
+        tags = (tags && tags.tasks_tags) || [];
+        dims = (dims && dims.bots_dimensions) || [];
+        tasks = this.tasks || [];
+        var map = {};
+
+        dims.forEach(function(d) {
+          var vals = d.value;
+          if (!map[d.key]) {
+            map[d.key] = {};
+          }
+          vals.forEach(function(v) {
+            map[d.key][v] = true;
+          })
+        });
+
+        // We combine all the tags reported by the tags endpoint, all known
+        // dimensions from the dimensions endpoint, and the tags seen in the
+        // returned tasks, just in case they didn't show up in the first two.
+        // This way a user can filter by what the data actually has and can
+        // discover new tags to filter by.
+        tags.forEach(function(t) {
+          if (map[t.key]) {
+            // don't add a -tag version if it's already been seen.
+            return;
+          }
+          var k = t.key + "-tag";
+          if (!map[k]) {
+            map[k] = {};
+          }
+          var values = t.value || [];
+          values.forEach(function(v) {
+            map[k][v] = true;
+          })
+        });
+
+        tasks.forEach(function(t) {
+          Object.keys(t.tagMap).forEach(function(k) {
+            if (map[k]) {
+              // don't add a -tag version if it's already been seen.
+              return;
+            }
+            k = k + "-tag";
+            if (!map[k]) {
+              map[k] = {};
+            }
+            for (var v of t.tagMap[k] || []) {
+              map[k][v] = true;
+            }
+          });
+        });
+
+        if (map["user"]) {
+          delete map["user"][""];
+          map["user"]["none"] = true;
+        }
+
+        // Turn the Map<Object,Map<Boolean>> into a Map<Object,Array<String>>
+        // with all of the aliases applied.
+        var pMap = {};
+        for (key in map) {
+          var values = Object.keys(map[key]);
+          if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(key) === -1) {
+            pMap[key] = values;
+          } else {
+            var aliased = [];
+            values.forEach(function(value){
+              aliased.push(swarming.alias.apply(value, key));
+            });
+            pMap[key] = aliased;
+          }
+        }
+
+        // Custom filter options
+        pMap["name"] = [];
+        // Some of these are hard coded because the server expects something
+        // like "DEDUPED" instead of the more human friendly
+        // "COMPLETED (DEDUPED)"
+        pMap["state"] = [this.PENDING, this.RUNNING, "PENDING_RUNNING", this.COMPLETED,
+            "COMPLETED_SUCCESS", "COMPLETED_FAILURE", this.EXPIRED, this.TIMED_OUT,
+            this.BOT_DIED, this.CANCELED, "DEDUPED", "ALL", this.NO_RESOURCE];
+        pMap["costs_usd"] = [];
+        pMap["deduped_from"] = [];
+        pMap["duration"] = [];
+        pMap["pending_time"] = [];
+        pMap["server_versions"] = [];
+
+        // TODO(kjlubick): Allow a person to sort on the task list by bot
+        pMap["bot"] = [];
+        TIMES.forEach(function(t) {
+          pMap[t] = [];
+        });
+
+        return pMap;
+      },
+
+      parseTasks: function(json) {
+        if (!json|| !json.items) {
+          return [];
+        }
+        var now = new Date();
+
+        // Do any preprocessing here
+        json.items.forEach(function(t) {
+          var tagMap = {};
+          t.tags = t.tags || [];
+          t.tags.forEach(function(tag) {
+            var split = tag.split(":", 1)
+            var key = split[0];
+            var rest = tag.substring(key.length + 1);
+            if (!tagMap[key]) {
+              tagMap[key] = [rest];
+            } else {
+              tagMap[key].push(rest);
+            }
+          });
+          t.tagMap = tagMap;
+
+          TIMES.forEach(function(time) {
+            swarming.sanitizeAndHumanizeTime(t, time);
+          });
+
+          if (!t.costs_usd || !Array.isArray(t.costs_usd)) {
+            t.costs_usd = "--";
+          } else {
+            t.costs_usd.forEach(function(c, idx) {
+              t.costs_usd[idx] = c.toFixed(4) + "$";
+              if (t.state === this.RUNNING && t.started_ts) {
+                t.costs_usd[idx] = t.costs_usd[idx] + "*";
+              }
+            }.bind(this));
+          }
+
+          // Running tasks have no duration set, so we can figure it out.
+          if (!t.duration && t.state === this.RUNNING && t.started_ts) {
+            t.duration = (now - t.started_ts) / 1000;
+          }
+          // Make the duration human readable
+          t.human_duration = this._humanDuration(t.duration);
+          if (t.state === this.RUNNING && t.started_ts) {
+            t.human_duration = t.human_duration + "*";
+          }
+
+          // Deduplicated tasks usually have tasks that ended before they were
+          // created, so we need to account for that.
+          var et = t.started_ts || t.abandoned_ts || new Date();
+          var deduped = (t.created_ts && et < t.created_ts);
+
+          t.pending_time = null;
+          if (!deduped && t.created_ts) {
+            t.pending_time = (et - t.created_ts) / 1000;
+          }
+          t.human_pending_time = this._humanDuration(t.pending_time);
+          if (!deduped && t.created_ts && !t.started_ts && !t.abandoned_ts) {
+            t.human_pending_time = t.human_pending_time + "*";
+          }
+        }.bind(this));
+        return json.items;
+      }
+    });
+  })();
+  </script>
+</dom-module>

@@ -1,0 +1,8 @@
+URL: https://github.com/etingof/pyasn1-modules
+Version: 0.2.4
+License: BSD
+Description: Implementation of ASN.1 types and codecs.
+Revision: https://github.com/etingof/pyasn1-modules/archive/v0.2.4.tar.gz
+
+Local Modifications:
+- Only kept pyasn1/.

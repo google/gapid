@@ -1,0 +1,169 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  The `auth-signin` element displays sign-in/sign-out button, user email and
+  avatar.
+  It has a google-signin/google-signin-aware element under the hood that handles
+  the actual OAuth logic.
+
+  Usage:
+
+    <auth-signin></auth-signin>
+
+  Properties:
+    auth_headers: Object, Use this as an argument to sk.request to set oauth2 headers.
+    auth_response: Object, The raw gapi.auth2.AuthResponse object.
+    client_id: String, The client id to authenticate
+    profile: Object, Read Only, The email address and imageurl of the logged in user.
+    signed_in: Boolean, Read Only, if the user is logged in.
+
+  Methods:
+    signIn(): Signs the user in by popping up the authorization dialog.
+    signOut(): Signs the user out.
+
+  Events:
+    auth-signin: Fired when the oauth handshake has completed and a user has logged in.
+-->
+
+<link rel="import" href="/res/imp/bower_components/google-signin/google-signin-aware.html">
+<link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+
+
+<dom-module id="auth-signin">
+  <template>
+    <style>
+      #avatar {
+        border-radius: 5px;
+      }
+      a {
+        color: white;
+      }
+      .center {
+        vertical-align: middle;
+      }
+    </style>
+
+    <google-signin-aware id="aware"
+      client-id="[[client_id]]"
+      offline
+      scopes="email"
+      on-google-signin-aware-success="_onSignin"
+      on-google-signin-aware-signed-out="_onSignout">
+    </google-signin-aware>
+
+    <template is="dom-if" if="[[!signed_in]]">
+      <div id="signinContainer">
+        <a on-tap="signIn" href="#">Sign in</a>
+      </div>
+    </template>
+
+    <template is="dom-if" if="[[signed_in]]">
+      <img class="center" id="avatar" src="[[profile.imageUrl]]" width="30" height="30">
+      <span class="center" >[[profile.email]]</span>
+      <span class="center" >|</span>
+      <a class="center" on-tap="signOut" href="#">Sign out</a>
+    </template>
+  </template>
+  <script>
+    'use strict';
+    Polymer({
+      is: 'auth-signin',
+      properties: {
+        auth_headers: {
+          type: Object,
+          computed: "_makeHeader(auth_response)",
+          notify: true,
+        },
+        auth_response: {
+          type: Object,
+          notify: true,
+        },
+        client_id: {
+          type: String,
+        },
+        profile: {
+          type: Object,
+          readOnly: true,
+          notify: true,
+        },
+        signed_in: {
+          type: Boolean,
+          readOnly: true,
+          value: false,
+          notify: true,
+        },
+      },
+
+      ready: function() {
+        if (!this.client_id) {
+          return;
+        }
+        // If a page is opened in a new tab, we are (likely) already logged in
+        // so we wait for the gapi and auth2 to be loaded and re-extract our
+        // access_token.
+        window.setTimeout(function(){
+          // The 'gapi' checks are the same that signin-aware does. We do them
+          // to avoid extraneous errors in the console.
+          if (!this.signed_in && !this._signingIn){
+            if (('gapi' in window) && ('auth2' in window.gapi)) {
+              var user = gapi.auth2.getAuthInstance().currentUser.get();
+              if (user && user.getAuthResponse().access_token) {
+                // User is already logged in, can use the access_token.
+                this._onSignin();
+              } else {
+                window.setTimeout(this.ready.bind(this), 50);
+              }
+            } else {
+              window.setTimeout(this.ready.bind(this), 50);
+            }
+          }
+        }.bind(this), 50);
+      },
+
+      _onSignin: function() {
+        this._signingIn = true;
+        var user = gapi.auth2.getAuthInstance().currentUser.get();
+        var profile = user.getBasicProfile();
+        this._setProfile({
+          email: profile.getEmail(),
+          imageUrl: profile.getImageUrl()
+        });
+        this.set("auth_response", user.getAuthResponse());
+        this._setSigned_in(true);
+        this.fire("auth-signin");
+        // The credential will expire after a while (usually an hour)
+        // so we need to reload it.
+        this.async(function(){
+          console.log("reloading credentials");
+          user.reloadAuthResponse();
+          this._onSignin();
+        }, this.auth_response.expires_in * 1000);  // convert seconds to ms
+        this._signingIn = false;
+      },
+
+      _onSignout: function(e) {
+        this._setSigned_in(false);
+        this._setProfile(null);
+      },
+
+      _makeHeader: function(auth_response) {
+        if (!auth_response) {
+          return {};
+        }
+        return {
+          "authorization": auth_response.token_type + " " + auth_response.access_token
+        };
+      },
+
+      signIn: function() {
+        this.$.aware.signIn();
+      },
+
+      signOut: function() {
+        this.$.aware.signOut();
+      }
+    });
+  </script>
+</dom-module>

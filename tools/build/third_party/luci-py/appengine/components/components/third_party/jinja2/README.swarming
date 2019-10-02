@@ -1,0 +1,14 @@
+Name: Jinja2 template engine
+Short Name: jinja2
+URL: https://github.com/mitsuhiko/jinja2
+Revision: b78f2617b04cc549ed5fea4eca944c4d8054d187 (post 2.8, pre 2.8.1)
+License: BSD 3 clauses
+
+Description:
+Jinja2 is a template engine written in pure Python. It provides a Django
+inspired non-XML syntax but supports inline expressions and an optional
+sandboxed environment.
+
+Local Modifications:
+- Kept only jinja2/*.py
+- Included AUTHORS and LICENSE

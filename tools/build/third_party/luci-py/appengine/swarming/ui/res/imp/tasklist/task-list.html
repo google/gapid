@@ -1,0 +1,620 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <task-list>
+
+  task-list creats a dynamic table for viewing swarming tasks. Columns can be
+  dynamically filtered and it supports client-side filtering.
+
+  This is a top-level element.
+
+  Properties:
+    client_id: String, Oauth 2.0 client id.  It will be set by server-side
+        template evaluation.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="/res/imp/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/res/imp/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/res/imp/bower_components/paper-time-picker/paper-time-picker.html">
+<link rel="import" href="/res/imp/bower_components/polymer-paper-date-picker/paper-date-picker.html">
+<link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+
+<link rel="import" href="/res/imp/common/dynamic-table-behavior.html">
+<link rel="import" href="/res/imp/common/pageable-data.html">
+<link rel="import" href="/res/imp/common/swarming-app.html">
+<link rel="import" href="/res/imp/common/task-behavior.html">
+<link rel="import" href="/res/imp/shared/sort-toggle.html">
+<link rel="import" href="/res/imp/shared/url-param.html">
+
+<link rel="import" href="task-filters.html">
+<link rel="import" href="task-list-data.html">
+<link rel="import" href="task-list-summary.html">
+<link rel="import" href="task-mass-cancel.html">
+
+<dom-module id="task-list">
+  <template>
+    <style include="iron-flex iron-flex-alignment iron-positioning swarming-app-style dynamic-table-style task-style">
+      task-filters, task-list-summary {
+        margin-bottom: 8px;
+        margin-right: 10px;
+      }
+      .task-list th > span {
+        /* Leave space for sort-toggle*/
+        padding-right: 30px;
+      }
+    </style>
+
+    <url-param name="s"
+      value="{{_sortstr}}"
+      default_value="created_ts:desc">
+    </url-param>
+
+    <swarming-app
+      client_id="[[client_id]]"
+      auth_headers="{{_auth_headers}}"
+      permissions="{{_permissions}}"
+      profile="{{_profile}}"
+      signed_in="{{_signed_in}}"
+      busy="[[_or(_busy1,_busy2,_busy3)]]"
+      name="Swarming Task List">
+
+      <h2 hidden$="[[_signed_in]]">You must sign in to see anything useful.</h2>
+
+      <div hidden$="[[_not(_signed_in)]]">
+        <task-list-data
+          id="data"
+          auth_headers="[[_auth_headers]]"
+          query_params="[[_query_params]]"
+          tasks="[[_items]]"
+          busy="{{_busy1)}}"
+          dimensions="{{_dimensions}}"
+          primary_map="{{_primary_map}}"
+          primary_arr="{{_primary_arr}}">
+        </task-list-data>
+
+        <div class="horizontal layout">
+          <task-filters
+            id="task_filters"
+            dimensions="[[_dimensions]]"
+            permissions="[[_permissions]]"
+            primary_map="[[_primary_map]]"
+            primary_arr="[[_primary_arr]]"
+            profile="[[_profile]]"
+            special_columns="[[_specialColumns]]"
+
+            columns="{{_columns}}"
+            query_params="{{_query_params}}"
+            filter="{{_filter}}"
+
+            on-cancel-all="_promptCancelAll"
+            on-prompt-date="_promptDate"
+            on-prompt-time="_promptTime">
+          </task-filters>
+
+           <task-list-summary
+            auth_headers="[[_auth_headers]]"
+            busy="{{_busy3}}"
+            columns="[[_columns]]"
+            count_params="[[_query_params]]"
+            num_tasks="[[_filteredSortedItems.length]]"
+            sort="[[_sortstr]]">
+          </task-list-summary>
+        </div>
+
+        <table class="task-list">
+          <thead on-sort_change="_sortChange">
+          <!-- To allow for dynamic columns without having a lot of copy-pasted
+          code, we break columns up into "special" and "plain" columns. Special
+          columns require some sort of HTML output (e.g. anchor tags) and plain
+          columns just output text.  The plain columns use Polymer functions to
+          insert their text [_header(), _column(), _deviceColumn()].  Polymer
+          functions do not allow HTML (to avoid XSS), so special columns, like id
+          and task are inserted in a fixed order.
+          -->
+            <tr>
+              <th hidden$="[[_hide('name', _columns.*)]]">
+                <span>Task Name</span>
+                <sort-toggle
+                    name="name"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+              <!-- This wonky syntax is the proper way to listen to changes on an
+              array (we are listening to all subproperties). The element returned is
+              not of much use, so we'll ignore it in _hide() and use this._columns.
+              -->
+              <th hidden$="[[_hide('state', _columns.*)]]">
+                <span>State</span>
+                <sort-toggle
+                    name="state"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+
+              <th hidden$="[[_hide('bot', _columns.*)]]">
+                <span>Bot Assigned</span>
+                <sort-toggle
+                    name="bot"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+
+              <th hidden$="[[_hide('deduped_from', _columns.*)]]">
+                <span>Deduped from</span>
+                <sort-toggle
+                    name="deduped_from"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+
+              <th hidden$="[[_hide('source_revision', _columns.*)]]">
+                <span>Source Revision</span>
+                <sort-toggle
+                    name="source_revision"
+                    current="[[_sort]]">
+                </sort-toggle>
+              </th>
+
+              <template
+                    is="dom-repeat"
+                    items="[[_plainColumns]]"
+                    as="c">
+                <th hidden$="[[_hide(c)]]">
+                  <span>[[_header(c)]]</span>
+                  <sort-toggle
+                      name="[[c]]"
+                      current="[[_sort]]">
+                  </sort-toggle>
+                </th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template
+                id="tasks_table"
+                is="dom-repeat"
+                items="[[_filteredSortedItems]]"
+                as="task"
+                initial-count=50>
+
+              <tr class$="[[_taskClass(task)]]">
+                <td hidden$="[[_hide('name', _columns.*)]]">
+                  <a
+                      class="center"
+                      href$="[[_taskLink(task.task_id)]]"
+                      target="_blank">
+                      [[task.name]]
+                  </a>
+                </td>
+                <td hidden$="[[_hide('state', _columns.*)]]">
+                  [[_column('state', task)]]
+                  <button
+                      hidden$="[[!_canCancelTask(task)]]"
+                      disabled$="[[!_permissions.cancel_task]]"
+                      title="[[_cancelTaskText(_permissions,_profile)]]"
+                      on-tap="_promptCancel">
+                    Cancel
+                  </button>
+                </td>
+                <td hidden$="[[_hide('bot', _columns.*)]]">
+                  <a
+                      class="center"
+                      href$="[[_botLink(task.bot_id)]]"
+                      target="_blank">
+                      [[_column('bot',task)]]
+                  </a>
+                </td>
+                <td hidden$="[[_hide('deduped_from', _columns.*)]]">
+                  <a
+                      class="center"
+                      href$="[[_taskLink(task.deduped_from)]]"
+                      target="_blank">
+                      [[_column('deduped_from',task)]]
+                  </a>
+                </td>
+
+                <td hidden$="[[_hide('source_revision', _columns.*)]]">
+                  <a
+                      class="center"
+                      href$="[[_sourceLink(task)]]"
+                      target="_blank">
+                      [[_column('source_revision',task)]]
+                  </a>
+                </td>
+
+                <template
+                    is="dom-repeat"
+                    items="[[_plainColumns]]"
+                    as="c">
+                  <td hidden$="[[_hide(c)]]" title$="[[_tooltip(c)]]">
+                    [[_column(c, task)]]
+                  </td>
+                </template>
+
+              </tr>
+            </template> <!--tasks_table repeat-->
+          </tbody>
+        </table>
+
+        <pageable-data
+          id="page_tasks"
+          busy="{{_busy2}}"
+          label="Show more tasks"
+          output="{{_items}}"
+          parse="[[_parseTasks]]">
+        </pageable-data>
+      </div>
+    </swarming-app>
+
+    <!-- Paper dialogs must be on the "outside" of the DOM, that is, not inside of other elements, otherwise the shadow backdrop is weird.-->
+    <paper-dialog id="prompt" modal on-iron-overlay-closed="_promptClosed">
+      <h2>Are you sure?</h2>
+      <div>Are you sure you want to [[_dialogPrompt]]?</div>
+      <div class="buttons">
+        <paper-button dialog-dismiss autofocus>No</paper-button>
+        <paper-button dialog-confirm>Yes</paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog id="cancel_all_dialog" modal>
+      <task-mass-cancel
+        id="mass_cancel"
+        auth_headers="[[_auth_headers]]"
+        started_canceling="{{_started_canceling}}"
+        finished_canceling="{{_finished_canceling}}">
+      </task-mass-cancel>
+      <div class="buttons" >
+        <paper-button dialog-dismiss autofocus hidden$="[[_started_canceling]]">
+          Go Back - Don't Cancel Anything
+        </paper-button>
+        <paper-button dialog-dismiss autofocus hidden$="[[!_finished_canceling]]">
+          Done
+        </paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog id="date_picker_dialog" modal on-iron-overlay-closed="_setDate">
+      <paper-date-picker id="date_picker"></paper-date-picker>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm>OK</paper-button>
+      </div>
+    </paper-dialog>
+
+    <paper-dialog id="time_picker_dialog" modal on-iron-overlay-closed="_setTime">
+      <paper-time-picker id="time_picker"></paper-time-picker>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm>OK</paper-button>
+      </div>
+    </paper-dialog>
+
+  </template>
+  <script>
+  (function(){
+    var specialColumns = ["deduped_from", "name", "state", "bot", "source_revision"];
+
+    // Given a time attribute like "abandoned_ts", humanTime returns a function
+    // that returns the human-friendly version of that attribute. The human
+    // friendly time was created in task-list-data.
+    function humanTime(attr) {
+      return function(task) {
+        return this._attribute(task, "human_" + attr)[0];
+      }
+    }
+    var columnMap = {
+      abandoned_ts: humanTime("abandoned_ts"),
+      bot: function(task) {
+        return this._attribute(task, "bot_id")[0];
+      },
+      completed_ts: humanTime("completed_ts"),
+      costs_usd: function(task) {
+        return this._attribute(task, "costs_usd", 0)[0];
+      },
+      created_ts: humanTime("created_ts"),
+      duration: humanTime("duration"),
+      modified_ts: humanTime("modified_ts"),
+      pending_time: humanTime("pending_time"),
+      source_revision: function(task) {
+        var r = this._attribute(task, "source_revision")[0];
+        return r.substring(0, 8);
+      },
+      started_ts: humanTime("started_ts"),
+      state: function(task) {
+        var state = this._attribute(task, "state")[0];
+        if (state === "COMPLETED") {
+
+          if (this._attribute(task, "failure", false)[0]) {
+            return "COMPLETED (FAILURE)";
+          }
+          var tryNum = this._attribute(task, "try_number", "-1")[0];
+          if (tryNum === "0") {
+            return "COMPLETED (DEDUPED)";
+          }
+          return "COMPLETED (SUCCESS)";
+        }
+        return state;
+      },
+    };
+    var headerMap = {
+      "abandoned_ts": "Abandoned On",
+      "completed_ts": "Completed On",
+      "costs_usd": "Cost (USD)",
+      "created_ts": "Created On",
+      "duration": "Duration",
+      "modified_ts": "Last Modified",
+      "started_ts": "Started Working On",
+      "user": "Requesting User",
+      "pending_time": "Time Spent Pending",
+      "_displayHeader": function(s) {
+        if (s.endsWith("-tag")) {
+          return s.substring(0, s.length-4) + " (tag)"
+        }
+        return s;
+      },
+    };
+
+    var tooltipMap = {
+      "duration": "An asterisk indicates the task is still running and thus the time is dynamic.",
+      "costs_usd": "An asterisk indicates the task is still running and thus the cost is dynamic.",
+    }
+
+    // Given a time attribute like "abandoned_ts", sortableTime returns a function
+    // that compares the tasks based on the attribute.  This is used for sorting.
+    function sortableTime(attr) {
+      // sort times based on the string they come with, formatted like
+      // "2016-08-16T13:12:40.606300" which sorts correctly.  Locale time
+      // (used in the columns), does not.
+      return function(dir, a, b) {
+        var aCol = this._attribute(a, attr, "0")[0];
+        var bCol = this._attribute(b, attr, "0")[0];
+
+        return dir * (aCol - bCol);
+      }
+    }
+    var specialSort = {
+      abandoned_ts: sortableTime("abandoned_ts"),
+      completed_ts: sortableTime("completed_ts"),
+      created_ts: sortableTime("created_ts"),
+      duration: sortableTime("duration"),
+      modified_ts: sortableTime("modified_ts"),
+      pending_time: sortableTime("pending_time"),
+      started_ts: sortableTime("started_ts"),
+    };
+    var priorityColumns = ["created_ts", "pending_time", "started_ts", "duration", "completed_ts", "abandoned_ts", "modified_ts"];
+
+    Polymer({
+      is: "task-list",
+      behaviors: [
+          SwarmingBehaviors.DynamicTableBehavior,
+          SwarmingBehaviors.TaskBehavior,
+      ],
+
+      properties: {
+        client_id: {
+          type: String,
+        },
+
+        _busy1: {
+          type: Boolean,
+          value: false
+        },
+         _busy2: {
+          type: Boolean,
+          value: false
+        },
+        _parseTasks: {
+          type: Function,
+          value: function() {
+            return this.$.data.parseTasks.bind(this);
+          }
+        },
+        // The task id to cancel if the prompt is accepted.
+        _toCancel: {
+          type: String,
+        },
+
+        // For dynamic table.
+        _columnMap: {
+          type: Object,
+          value: function() {
+            var base = this._commonColumns();
+            for (var attr in columnMap) {
+              base[attr] = columnMap[attr];
+            }
+            return base;
+          },
+        },
+        _headerMap: {
+          type: Object,
+          value: headerMap,
+        },
+        _prettyItem: {
+          type: Object,
+          value: function() {
+            return {
+              apply: function(s) {
+                if (s.endsWith("-tag")) {
+                  return s.slice(0, -4) + " (tag)"
+                }
+                return s;
+              }
+            };
+          }
+        },
+        _priorityColumns: {
+          type: Array,
+          value: priorityColumns
+        },
+        _specialColumns: {
+          type: Array,
+          value: specialColumns,
+        },
+        _specialSort: {
+          type: Object,
+          value: specialSort,
+        },
+        _verbose: {
+          type: Boolean,
+          value: true
+        }
+      },
+
+      observers:["reload(_query_params,_auth_headers)"],
+
+      _attribute: function(task, col, def) {
+        if (def === undefined) {
+          def = "none";
+        }
+        var retVal = task[col];
+        if (col.endsWith("-tag")) {
+          // Trim off the last 4 letters "-tag"
+          retVal = this._tag(task, col.slice(0, -4));
+        }
+        if (!retVal) {
+          // Handle legacy links that don't have -tag
+          // TODO(kjlubick): remove this after old links have been updated (Mar 2019)
+          retVal = this._tag(task, col);
+        }
+        if (!retVal) {
+          retVal = [def];
+        }
+        if (!Array.isArray(retVal)) {
+          return [retVal];
+        }
+        return retVal;
+      },
+
+      _canCancelTask: function(task) {
+        return this._column("state", task) === "PENDING";
+      },
+
+      _cancelTaskText: function(permissions, profile){
+        if (permissions.cancel_task) {
+          return "Cancel a pending task. Running tasks can not (yet) be canceled."
+        }
+        return profile.email +" does not have cancel_task permissions. Log in as a different profile that does.";
+      },
+
+      _cancelTask: function() {
+        var url = "/_ah/api/swarming/v1/task/" + this._toCancel +"/cancel";
+        swarming.postWithToast(url, "Canceling task " + this._toCancel, this._auth_headers);
+        this.set("_toCancel", "");
+      },
+
+      _promptClosed: function(e) {
+        if (e.detail.confirmed) {
+          this._cancelTask();
+        }
+      },
+
+      _promptCancel: function(e) {
+        var task = e.model.task;
+        if (!task || !task.task_id) {
+          console.log("Missing task info", task);
+          return
+        }
+        this.set("_toCancel", task.task_id);
+        this.set("_dialogPrompt", 'cancel task "'+ task.name +'"');
+        this.$.prompt.open();
+      },
+
+      _promptCancelAll: function(e) {
+        this.$.mass_cancel.tags = e.detail.tags;
+        this.$.mass_cancel.prompt();
+        this.$.cancel_all_dialog.open();
+      },
+
+      _closeCancelAll: function() {
+        this.$.cancel_all_dialog.close();
+      },
+
+      _promptDate: function(e) {
+        this.$.date_picker.date = e.detail.date;
+        this.$.date_picker.name = e.detail.name;
+        this.$.date_picker_dialog.open();
+      },
+
+      _setDate: function(e) {
+        if (!e.detail.confirmed) {
+          return;
+        }
+        var date = this.$.date_picker.date;
+        var y = date.getFullYear();
+        var m = date.getMonth();
+        var d = date.getDate();
+        if ("start" === this.$.date_picker.name) {
+          this.$.task_filters.setStartDate(y,m,d);
+        } else {
+          this.$.task_filters.setEndDate(y,m,d);
+        }
+      },
+
+      _promptTime: function(e) {
+        this.$.time_picker.date = e.detail.date;
+        this.$.time_picker.hour = e.detail.date.getHours();
+        this.$.time_picker.minute = e.detail.date.getMinutes();
+        this.$.time_picker.name = e.detail.name;
+        this.$.time_picker_dialog.open();
+      },
+
+      _setTime: function(e) {
+        if (!e.detail.confirmed) {
+          return;
+        }
+        var h = this.$.time_picker.hour;
+        var m = this.$.time_picker.minute;
+        if ("start" === this.$.time_picker.name) {
+          this.$.task_filters.setStartTime(h,m,0);
+        } else {
+          this.$.task_filters.setEndTime(h,m,0);
+        }
+      },
+
+      reload: function() {
+        if (!this._auth_headers || !this._query_params) {
+          return;
+        }
+        var url = "/_ah/api/swarming/v1/tasks/list?" + sk.query.fromParamSet(this._query_params);
+        this.$.page_tasks.load(url,this._auth_headers);
+      },
+
+      _sourceLink: function(task) {
+        var rev = this._attribute(task, "source_revision")[0];
+        var repo = this._attribute(task, "source_repo")[0];
+        if (rev === "none" || repo === "none") {
+          return false;
+        }
+        return repo.replace("%s", rev);
+      },
+
+      _tag: function(task, col) {
+        if (!task || !task.tagMap) {
+          return undefined;
+        }
+        return task.tagMap[col];
+      },
+
+      _taskClass: function(task) {
+        return this.stateClass(this._column("state", task));
+      },
+
+      _tooltip: function(col) {
+        return tooltipMap[col];
+      }
+    });
+  })();
+  </script>
+</dom-module>

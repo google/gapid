@@ -1,0 +1,58 @@
+/**
+ * Copyright 2013 The LUCI Authors. All rights reserved.
+ * Use of this source code is governed under the Apache License, Version 2.0
+ * that can be found in the LICENSE file.
+ **/
+
+th {
+  color: #fff;
+  background-color: #000;
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
+td {
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
+table {
+  border: 1;
+  border-color: black;
+  border-collapse: collapse;
+}
+
+hr {
+  display: block;
+  height: 1px;
+  border: 0;
+  border-top: 1px solid #ccc;
+  margin: 0.1em 0;
+  padding: 0;
+}
+
+.request {
+  border-top-style: solid;
+  border-top-color: black;
+  border-top-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: black;
+  border-bottom-width: 1px;
+}
+
+.request tr:nth-child(odd) {
+  background-color: #eeeeee;
+}
+
+.failed_test {
+  background-color: #ffdddd;
+}
+
+.data_table tr:not(:first-child) {
+  font-family: "Courier New", monospace;
+}
+
+.graph {
+  height: 600px;
+  width: 100%;
+}

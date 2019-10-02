@@ -1,0 +1,35 @@
+<!--
+# Copyright 2016 The LUCI Authors. All rights reserved.
+# Use of this source code is governed by the Apache v2.0 license that can be
+# found in the LICENSE file.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stats Overview Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+  <script src="/res/js/common.js"></script>
+  <script src="/res/js/alias.js"></script>
+  <script src="../../../node_modules/sinon/pkg/sinon-1.17.5.js"></script>
+  <!-- Makes a var called data-->
+  <script type="text/javascript" src="overview-demo.json"></script>
+  <script type="text/javascript" charset="utf-8">
+    // sinon.format = function(object) {return JSON.stringify(object);}
+    // sinon.log = function(message) {console.log(message);};
+    var server = sinon.fakeServer.create();
+    server.autoRespond = true;
+    // Send the data, then slightly change the builds for the update.
+    server.respondWith("GET", "/swarming/api/v1/stats/summary/minutes?duration=20",JSON.stringify(data));
+    </script>
+    <link rel="import" href="stats-overview.html">
+</head>
+<body>
+  <div style="width: 1000px">
+    <stats-overview></stats-overview>
+  </div>
+</body>
+</html>

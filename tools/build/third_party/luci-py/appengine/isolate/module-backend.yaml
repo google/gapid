@@ -1,0 +1,67 @@
+application: isolateserver-dev
+module: backend
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+# Approximately 256MB / 1.2GHz
+instance_class: F2
+automatic_scaling:
+  # Backend requests are not latency sensitive. The default value of 30ms causes
+  # a lot of churn as a ton of very small task queues causes an unreasonable
+  # number of instances to be created just to become idle right after.
+  min_pending_latency: 5000ms
+  max_pending_latency: 10000ms
+
+handlers:
+- url: /mapreduce(/.*)?
+  script: mapreduce.main.APP
+  secure: always
+  login: admin
+
+- url: /internal.*
+  script: main_backend.app
+  secure: always
+  login: admin
+
+builtins:
+- remote_api: on
+
+includes:
+- components/ereporter2
+
+# https://developers.google.com/appengine/docs/python/tools/libraries27
+# As the doc says, serious applications should specify the third party versions.
+libraries:
+- name: endpoints
+  version: "1.0"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"
+- name: pycrypto
+  version: "2.6"
+
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$

@@ -1,0 +1,54 @@
+# Copyright 2015 The LUCI Authors. All rights reserved.
+# Use of this source code is governed under the Apache License, Version 2.0
+# that can be found in the LICENSE file.
+
+application: luci-config
+module: backend
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+instance_class: F2
+
+handlers:
+- url: /internal.*
+  script: apps.backend
+  secure: always
+  login: admin
+
+includes:
+- components/auth
+- components/ereporter2
+
+libraries:
+- name: endpoints
+  version: "1.0"
+- name: pycrypto
+  version: "2.6"
+- name: six
+  version: "1.9.0"
+- name: ssl
+  version: "2.7.11"
+- name: webapp2
+  version: "2.5.2"
+- name: webob
+  version: "1.2.3"
+- name: yaml
+  version: "3.10"
+
+skip_files:
+# Test and tools.
+- support/
+- ^tests/
+- ^tools/
+- test_.+
+- .+_test\.py$
+# Junk files.
+- ^(.*/)?\..*
+- .+\.orig$
+- .+\.rej$
+- ^(.*/)?#.*#
+- .+~
+- .+\.py[co]
+- ^[A-Z]+$
+- ^[A-Z]+\.[a-z]+$

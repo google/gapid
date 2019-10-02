@@ -1,0 +1,294 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <bot-list-data>
+
+  This makes calls authenticated with Oauth 2 to the swarming apis.  It parses
+  that data into usable data structures.
+
+  Usage:
+
+    <bot-list-data></bot-list-data>
+
+  Properties:
+    // inputs
+    auth_headers: Object, the OAuth2 header to include in the request.  This
+        should come from swarming-app.
+
+    // outputs
+    bots: Array<Object>, all bots returned by the server.  This is an Object
+        with at least the following structure:
+      dimensions: Array<Object>: Has key:String and value:Array<String>
+      task_id: String
+      external_ip: String
+      is_dead: Object: Is usually Boolean, but could be message string
+      quarantined: Object: Is usually Boolean, but could be message string
+      bot_id: String
+      state: String, Stringified JSON that has many pieces of information, like
+                devices, disk space, temperature, etc.
+    busy: Boolean, if any ajax requests are in flight.
+    dimensions: Array<String>, of all valid dimensions.
+    fleet: Object, counts of all bots in the fleet.  Contains "alive", "busy",
+        "idle", "dead", and "quarantined".
+    primary_map: Object, a mapping of primary keys to secondary items.
+        The primary keys are things that can be columns or sorted by.  The
+        primary values (aka the secondary items) are things that can be filtered
+        on. Primary consists of dimensions and state.  Secondary contains the
+        values primary things can be.
+    primary_arr: Array<String>, the display order of the primary keys.
+        This is dimensions, then bot properties, then elements from bot.state.
+
+  Methods:
+    signIn(): Force a signin of the user using OAuth.  This happens
+        automatically when auth_headers is set.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="bot-list-shared-behavior.html">
+
+<dom-module id="bot-list-data">
+
+  <script>
+  (function(){
+    var AVAILABLE = "available";
+    var BLACKLIST_DIMENSIONS = ["quarantined", "error"];
+
+    var BOT_TIMES = ["first_seen_ts", "last_seen_ts", "lease_expiration_ts"];
+
+    function aggregateTemps(temps) {
+      if (!temps) {
+        return {};
+      }
+      var zones = [];
+      var avg = 0;
+      for (var k in temps) {
+        zones.push(k +": "+temps[k]);
+        avg += (+temps[k]);
+      }
+      avg = avg / zones.length
+      if (avg) {
+        avg = avg.toFixed(1);
+      } else {
+        avg = "unknown";
+      }
+      return {
+        average: avg,
+        zones: zones.join(" | ") || "unknown",
+      }
+    }
+
+    Polymer({
+      is: 'bot-list-data',
+
+      behaviors: [
+          SwarmingBehaviors.BotListBehavior,
+      ],
+
+      properties: {
+        // inputs
+        auth_headers: {
+          type: Object,
+          observer: "signIn",
+        },
+
+        //outputs
+        bots: {
+          type: Array,
+          computed: "parseBots(_list)",
+          notify: true,
+        },
+        busy: {
+          type: Boolean,
+          computed: "_or(_busy2,_busy1)",
+          notify: true,
+        },
+        dimensions: {
+          type: Array,
+          computed: "_makeArray(_dimensions)",
+          notify: true,
+        },
+        fleet: {
+          type: Object,
+          computed: "_fleet(_count)",
+          notify: true,
+        },
+        primary_map: {
+          type: Object,
+          computed: "_primaryMap(_dimensions)",
+          notify: true,
+        },
+        primary_arr: {
+          type: Array,
+          //BOT_PROPERTIES is inherited from BotListBehavior
+          computed: "_primaryArr(dimensions, BOT_PROPERTIES)",
+          notify: true,
+        },
+
+        // private
+        _busy1: {
+          type: Boolean,
+          value: false
+        },
+        _busy2: {
+          type: Boolean,
+          value: false
+        },
+        _count: {
+          type: Object,
+        },
+        _dimensions: {
+          type: Object,
+        },
+        _list: {
+          type: Object,
+        },
+      },
+
+      signIn: function(){
+        this._getJsonAsync("_count", "/_ah/api/swarming/v1/bots/count",
+          "_busy2", this.auth_headers);
+        this._getJsonAsync("_dimensions","/_ah/api/swarming/v1/bots/dimensions",
+          "_busy1", this.auth_headers);
+      },
+
+      parseBots: function(json){
+        if (!json || !json.items) {
+          return [];
+        }
+        // Do any preprocessing here
+        json.items.forEach(function(bot){
+          // Parse the state, which is a JSON string.  This contains a lot of
+          // interesting information like details about the devices attached.
+          bot.state = bot.state || "{}";
+          bot.state = JSON.parse(bot.state) || {};
+          // get the disks in an easier to deal with format, sorted by size.
+          var disks = bot.state.disks || {};
+          var keys = Object.keys(disks);
+          if (!keys.length) {
+            bot.disks = [{"id": "unknown", "mb": 0}];
+          } else {
+            bot.disks = [];
+            for (var i = 0; i < keys.length; i++) {
+              bot.disks.push({"id":keys[i], "mb":disks[keys[i]].free_mb});
+            }
+            // Sort these so the biggest disk comes first.
+            bot.disks.sort(function(a, b) {
+              return b.mb - a.mb;
+            });
+          }
+
+          // Make sure every bot has a state.temp object and precompute
+          // average and list of temps by zone if applicable.
+          bot.state.temp = aggregateTemps(bot.state.temp);
+
+          var devices = [];
+          var d = (bot && bot.state && bot.state.devices) || {};
+          // state.devices is like {Serial:Object}, so we need to keep the serial
+          for (var key in d) {
+            var o = d[key];
+            o.serial = key;
+            o.okay = (o.state === AVAILABLE);
+            // It is easier to assume all devices on a bot are of the same type
+            // than to pick through the (incomplete) device state and find it.
+            // Bots that are quarantined because they have no devices
+            // still have devices in their state (the last known device attached)
+            // but don't have the device_type dimension. In that case, we punt
+            // on device type.
+            var types = this._dimension(bot, "device_type") || ["unknown"];
+            o.device_type = types[0];
+            o.temp = aggregateTemps(o.temp);
+            devices.push(o);
+          }
+          bot.state.devices = devices;
+
+          BOT_TIMES.forEach(function(time) {
+            swarming.sanitizeAndHumanizeTime(bot, time);
+          });
+
+        }.bind(this));
+        return json.items;
+      },
+
+      _fleet: function() {
+        if (!this._count) {
+          return {};
+        }
+        return {
+          all: this._count.count || -1,
+          alive: (this._count.count - this._count.dead) || -1,
+          busy: this._count.busy || -1,
+          idle: (this._count.count - this._count.busy) || -1,
+          dead: this._count.dead || -1,
+          quarantined: this._count.quarantined || -1,
+          maintenance: this._count.maintenance || -1,
+        }
+      },
+
+      _makeArray: function(dimObj) {
+        if (!dimObj || !dimObj.bots_dimensions) {
+          return [];
+        }
+        var dims = [];
+        dimObj.bots_dimensions.forEach(function(d){
+          if (BLACKLIST_DIMENSIONS.indexOf(d.key) === -1) {
+            dims.push(d.key);
+          }
+        });
+        dims.push("id");
+        dims.sort();
+        return dims;
+      },
+
+      _primaryArr: function(dimensions, properties) {
+        return dimensions.concat(properties);
+      },
+
+      _primaryMap: function(dimensions){
+        // pMap will have a list of columns to available values (primary key
+        // to secondary values). This includes bot dimensions, but also
+        // includes state like disk_space, quarantined, busy, etc.
+        dimensions = dimensions.bots_dimensions || [];
+
+        var pMap = {};
+        dimensions.forEach(function(d){
+          if (swarming.alias.DIMENSIONS_WITH_ALIASES.indexOf(d.key) === -1) {
+            // value is an array of all seen values for the dimension d.key
+            pMap[d.key] = d.value;
+          } else {
+            var aliased = [];
+            d.value.forEach(function(value){
+              aliased.push(swarming.alias.apply(value, d.key));
+            });
+            pMap[d.key] = aliased;
+          }
+        });
+
+        // Add some options that might not show up.
+        pMap["android_devices"] && pMap["android_devices"].push("0");
+        pMap["device_os"] && pMap["device_os"].push("none");
+        pMap["device_type"] && pMap["device_type"].push("none");
+
+        pMap["id"] = [];
+
+        // Create custom filter options
+        pMap["disk_space"] = [];
+        pMap["task"] = ["busy", "idle"];
+        pMap["status"] = ["alive", "dead", "quarantined", "maintenance"];
+        pMap["is_mp_bot"] = ["true", "false"];
+
+        // No need to sort any of this, bot-filters sorts secondary items
+        // automatically, especially when the user types a query.
+        return pMap;
+      },
+
+    });
+  })();
+  </script>
+</dom-module>

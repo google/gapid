@@ -1,0 +1,12 @@
+Name: Handlebars
+URL: https://github.com/wycats/handlebars.js/
+Version: 1.3.0
+Revision: 0c6829f
+License: MIT
+
+Description:
+Handlebars provides the power necessary to let you build semantic templates
+effectively with no frustration.
+
+Local Modifications:
+None

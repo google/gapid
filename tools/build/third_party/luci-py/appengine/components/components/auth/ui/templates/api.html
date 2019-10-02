@@ -1,0 +1,153 @@
+{% extends 'auth/base.html' %}
+{% block content %}
+
+
+<div class="row">
+  <div class="col-md-12">
+    <h2>Overview</h2>
+    <hr>
+
+    <p>The service exposes a REST-like API for managing groups and for
+    querying the groups database. This API is used by the service web interface
+    (via Javascript), as well as by standalone clients.
+    </p>
+
+    <p>It supports two ways of authentication:</p>
+    <ul>
+      <li>Cookies. This is used by the web interface and when issuing
+      requests directly from the browser
+      (like <a href="/auth/api/v1/accounts/self" target="_blank">so</a>). This
+      is useful when tinkering with GET requests using browser's address bar.
+      Any state-modifying requests (POST, PUT, DELETE) must also be accompanied
+      by X-XSRF-Token request header.
+      </li>
+      <li>Google OAuth2 access tokens in Authorization header. This is used by
+      all other clients. The token must have
+      'https://www.googleapis.com/auth/userinfo.email' OAuth scope, and its
+      associated client_id must be whitelisted.
+      </li>
+    </ul>
+
+    <h3>Identity strings</h3>
+
+    <p>Each group defines a set of identities, where an identity is generally
+    a pair "&lt;kind&gt;:&lt;name&gt;".
+    </p>
+
+    <p>Possible kinds of identities:</p>
+    <ul>
+      <li><b>user:&lt;email&gt;</b> (e.g. "user:someone@example.com") -
+      identities of this kind represent accounts of end users or service
+      accounts. They show up as a result of checking OAuth access tokens or GAE
+      cookies.
+      </li>
+      <li><b>anonymous:anonymous</b> - this special identity represents all
+      unauthenticated users. It is used to specify (e.g. by including it in
+      a group) that some action is allowed even if users are not authenticated.
+      </li>
+      <li><b>service:&lt;app-id&gt;</b> (e.g. "service:some-app-id") -
+      identities of this kind represent GAE applications. They show up if one
+      GAE application makes a request to another GAE application without
+      explicitly passing any authentication tokens. GAE has a built-in mechanism
+      for authenticating such requests (X-Appengine-Inbound-Appid header). Note
+      that GAE apps are encouraged to use OAuth access token when calling other
+      GAE apps. When they do, requests are authenticated as coming from
+      "user:&lt;service-account-email&gt;" identities.
+      </li>
+      <li><b>bot:&lt;hostname&gt;</b> (e.g. "bot:some-machine.example.com") -
+      identities of this kind represent machines that use PKI certificates to
+      authenticate requests. The exact authentication mechanism can vary. The
+      important part is that such identities are associated with particular
+      machines. This is used primarily in Swarming.
+      </li>
+    </ul>
+
+    <p>Identities of kind "user" are the most common ones, and the web UI
+    hides "user:" prefix automatically to remove the clutter. The REST API
+    though requires identities to be specified <b>in full</b> and
+    returns them <b>in full</b>.
+    </p>
+
+    <h3>Authorization</h3>
+
+    <p>API calls and the UI are accessible only to members of
+    <a href="/auth/groups/auth-service-access">auth-service-access</a> and
+    <a href="/auth/groups/administrators">administrators</a> groups.
+    </p>
+
+    <p>Membership in
+    <a href="/auth/groups/auth-service-access">auth-service-access</a> group
+    grants read-only access everywhere and acts as a gateway group for write
+    access: users can modify groups only if they belong to both
+    <a href="/auth/groups/auth-service-access">auth-service-access</a> group and
+    a group that owns the group being modified.
+    </p>
+
+    <p><a href="/auth/groups/administrators">Administrators</a> have full
+    read-write access everywhere.</p>
+  </div>
+</div>
+
+
+<div class="row">
+  <div class="col-md-12">
+    <h2>API methods</h2>
+    <hr>
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Verb</th>
+          <th style="width: 260px;">Path</th>
+          <th style="width: 140px">Request</th>
+          <th style="width: 140px">Response</th>
+          <th>Documentation</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for method in api_methods %}
+        <tr>
+          <td>{{method["verb"]}}</td>
+          <td>{{method["path"]}}</td>
+          <td>
+            {% if method["request_type"] %}
+              <a href="#{{method["request_type"]}}">{{method["request_type"]}}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            {% if method["response_type"] %}
+              <a href="#{{method["response_type"]}}">{{method["response_type"]}}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{method["doc"]}}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <h2>Request and response types</h2>
+    <hr>
+  </div>
+</div>
+
+
+{% for tp in doc_types %}
+<div class="row">
+  <div class="col-md-12">
+    <h3><a name="{{tp["name"]}}" href="#{{tp["name"]}}"></a>{{tp["name"]}}</h3>
+    <p>{{tp["doc"]}}</p>
+    <p>Example:</p>
+    <pre>{{tp["example"]}}</pre>
+  </div>
+</div>
+{% endfor %}
+
+
+{% endblock content %}

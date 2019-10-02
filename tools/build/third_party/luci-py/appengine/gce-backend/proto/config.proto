@@ -1,0 +1,99 @@
+// Copyright 2016 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+// GCE Backend config schema.
+
+package gce_backend;
+
+
+// List of InstanceTemplates to manage.
+message InstanceTemplateConfig {
+  // GCE instance template to manage.
+  message InstanceTemplate {
+    // GCE service account.
+    message ServiceAccount {
+      // Service account name.
+      optional string name = 1;
+      // Scopes to authorize.
+      repeated string scopes = 2;
+    }
+
+    // Globally-unique base name.
+    optional string base_name = 1;
+    // Project to create instance template in.
+    optional string project = 2;
+    // Machine Provider dimensions. Each string
+    // should be formatted as "key:value".
+    repeated string dimensions = 3;
+    // Image name.
+    optional string image_name = 4;
+    // Project which contains the specified image, if different than "project".
+    optional string image_project = 10;
+    // Disk type.
+    optional string disk_type = 15;
+    // Disk size (GiB).
+    optional int32 disk_size_gb = 5;
+    // Service accounts. Must be at least one.
+    // First one will be authorized to poll
+    // Machine Provider for instructions.
+    repeated ServiceAccount service_accounts = 6;
+    // Tags to attach when creating instances.
+    repeated string tags = 7;
+    // Metadata to attach when creating instances.
+    // Each string should be formatted as "key:value".
+    repeated string metadata = 8;
+    // Path to file with metadata.
+    // Value should be on the form 'key:path' and will be translated to a
+    // metadata field with a value on the form 'key:content(path)'.
+    repeated string metadata_from_file = 14;
+    // GCE machine type.
+    optional string machine_type = 9;
+    // Network resource attached to instance.
+    // If not specified, use 'default'.
+    optional string network_url = 11;
+    // Enables an external network with auto-assigned IP address.
+    optional bool auto_assign_external_ip = 12;
+    // Minimum CPU platform.
+    optional string min_cpu_platform = 13;
+    // Name of a snapshot to create a disk from for each VM.
+    optional string snapshot_name = 16;
+    // Labels identifying a snapshot to create a disk from for each VM.
+    // Each string should be formatted as "key:value".
+    repeated string snapshot_labels = 17;
+  }
+
+  repeated InstanceTemplate templates = 1;
+}
+
+
+// List of InstanceGroupManagers to manage.
+message InstanceGroupManagerConfig {
+  // GCE instance group manager to manage.
+  message InstanceGroupManager {
+    // Base name of an InstanceTemplate to use.
+    optional string template_base_name = 1;
+    // Minimum size of the instance group. Also used as
+    // initial size when creating the instance group.
+    // Must be at least 1.
+    optional int32 minimum_size = 2;
+    // Maximum size of the instance group. Must be at
+    // least equal to the minimum size. Leave unspecified
+    // for unlimited.
+    optional int32 maximum_size = 3;
+    // GCE zone to create the instance group manager in.
+    // Must be unique per template. e.g. us-central1-b.
+    optional string zone = 4;
+  }
+
+  repeated InstanceGroupManager managers = 1;
+}
+
+
+// GCE Backend Configuration
+message SettingsCfg {
+  // Enable ts_mon based monitoring.
+  optional bool enable_ts_monitoring = 1;
+  // URL of the Machine Provider server to use.
+  optional string mp_server = 2;
+}

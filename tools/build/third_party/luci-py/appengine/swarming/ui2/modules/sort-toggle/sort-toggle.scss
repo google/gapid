@@ -1,0 +1,21 @@
+sort-toggle {
+  position: relative;
+  display: inline-block;
+  min-width: 20px;
+  min-height: 16px;
+  vertical-align: middle;
+
+  arrow-drop-down-icon-sk, arrow-drop-up-icon-sk {
+    position: absolute;
+    left: 0;
+    cursor: pointer;
+  }
+
+  arrow-drop-down-icon-sk {
+    top: 0;
+  }
+
+  arrow-drop-up-icon-sk {
+    bottom: 0;
+  }
+}

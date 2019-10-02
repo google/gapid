@@ -1,0 +1,60 @@
+<!--
+  Copyright 2017 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+  This in an HTML Import-able file that contains the definition
+  of the following elements:
+
+    <isolate-index>
+
+    Isolate Index is the landing page for the Isolate UI.
+    It will have links to all other pages and a high-level overview of the fleet.
+
+  Usage:
+
+    <isolate-index></isolate-index>
+
+  This is a top-level element.
+
+  Properties:
+    client_id: String, Oauth 2.0 client id.  It will be set by server-side
+        template evaluation.
+
+  Methods:
+    None.
+
+  Events:
+    None.
+-->
+
+<link rel="import" href="/res/imp/common/isolate-app.html">
+
+<dom-module id="isolate-index">
+  <template>
+    <style include="isolate-app-style">
+    </style>
+
+    <isolate-app
+      client_id="[[client_id]]"
+      auth_headers="{{_auth_headers}}"
+      permissions="{{_permissions}}"
+      server_details="{{_server_details}}"
+      name="Isolate Server">
+      This is an isolate app placeholder.
+    </isolate-app>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'isolate-index',
+
+      properties: {
+        client_id: {
+          type: String,
+        }
+      },
+
+    });
+  </script>
+</dom-module>

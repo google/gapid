@@ -1,0 +1,17 @@
+Name: Mock
+Short Name: mock
+URL: https://pypi.python.org/pypi/mock
+     http://www.voidspace.org.uk/python/mock/
+Revision: 77a85ea26c94
+License: BSD License
+License File: LICENSE.txt
+
+Description:
+mock is a library for testing in Python. It allows you to replace parts of your
+system under test with mock objects and make assertions about how they have
+been used.
+
+Local Modifications:
+rm -r tests docs html setup* *egg-info, MANIFEST.in, tox.init
+mv mock.py __init__.py
+

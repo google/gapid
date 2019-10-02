@@ -1,0 +1,175 @@
+// Copyright 2016 The LUCI Authors. All rights reserved.
+// Use of this source code is governed under the Apache License, Version 2.0
+// that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package swarming;
+
+option go_package = "go.chromium.org/luci/swarming/proto/config;configpb";
+
+// Schema for settings.cfg service config file in luci-config.
+message SettingsCfg {
+  reserved 10;  // used to be dimension_acls
+
+  // id to inject into pages if applicable.
+  string google_analytics = 1;
+
+  // The number of seconds an old task can be deduped from.
+  // Default is one week: 7*24*60*60 = 604800
+  int32 reusable_task_age_secs = 2;
+
+  // The amount of time that has to pass before a machine is considered dead.
+  // Default is 600 (10 minutes).
+  int32 bot_death_timeout_secs = 3;
+
+  // Enable ts_mon based monitoring.
+  bool enable_ts_monitoring = 4;
+
+  // (deprecated, see pools.proto) Configuration for swarming-isolate integration.
+  IsolateSettings isolate = 5;
+
+  // (deprecated, see pools.proto) Configuration for swarming-cipd integration.
+  CipdSettings cipd = 6;
+
+  // Configuration for swarming-mp integration.
+  MachineProviderSettings mp = 7;
+
+  // Emergency setting to disable bot task reaping. When set, all bots are
+  // always put to sleep and are never granted task.
+  bool force_bots_to_sleep_and_not_run_task = 8;
+
+  // oauth client id for the ui. This is created in the developer's console
+  // under Credentials.
+  string ui_client_id = 9;
+
+  // A url to a task display server (e.g. milo).  This should have a %s where
+  // a task id can go.
+  string display_server_url_template = 11;
+
+  // Sets a maximum sleep time in seconds for bots that limits the exponental
+  // backoff. If missing, the task scheduler will provide the default maximum
+  // (usually 60s, but see bot_code/task_scheduler.py for details).
+  int32 max_bot_sleep_time = 12;
+
+  // Names of the authorization groups used by components/auth.
+  AuthSettings auth = 13;
+
+  // Sets the default gRPC proxy for the bot's Isolate server calls.
+  string bot_isolate_grpc_proxy = 14;
+
+  // Sets the default gRPC proxy for the bot's Swarming server calls.
+  string bot_swarming_grpc_proxy = 15;
+
+  // Any extra urls that should be added to frame-src, e.g. anything that
+  // will be linked to from the display server.
+  // This originally added things to child-src, which was deprecated:
+  // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/child-src
+  repeated string extra_child_src_csp_url = 16;
+
+  // Whether tasks should be run in FIFO or LIFO order.
+  bool use_lifo = 17;
+}
+
+
+// Configuration for swarming-isolate integration.
+message IsolateSettings {
+  // URL of the default isolate server to use if it is not specified in a
+  // task. Must start with "https://" or "http://",
+  // e.g. "https://isolateserver.appspot.com"
+  string default_server = 1;
+
+  // Default namespace to use if it is not specified in a task,
+  // e.g. "default-gzip"
+  string default_namespace = 2;
+}
+
+
+// A CIPD package.
+message CipdPackage {
+  // A template of a full CIPD package name, e.g.
+  // "infra/tools/cipd/${platform}"
+  // See also cipd.ALL_PARAMS.
+  string package_name = 1;
+
+  // Valid package version for all packages matched by package name.
+  string version = 2;
+}
+
+
+// Settings for Swarming-CIPD integration.
+message CipdSettings {
+  // URL of the default CIPD server to use if it is not specified in a task.
+  // Must start with "https://" or "http://",
+  // e.g. "https://chrome-infra-packages.appspot.com".
+  string default_server = 1;
+
+  // Package of the default CIPD client to use if it is not specified in a
+  // task.
+  CipdPackage default_client_package = 2;
+}
+
+
+// Settings for Swarming-MP integration.
+message MachineProviderSettings {
+  // Whether or not Swarming-MP integration is enabled.
+  bool enabled = 1;
+  // URL of the Machine Provider server to use.
+  string server = 2;
+}
+
+
+// Access control groups for the swarming service. Custom group names
+// allow several swarming instances to co-exist under the same "auth"
+// server.
+//
+// All groups default to 'administrators'.
+//
+// See
+// https://chromium.googlesource.com/infra/luci/luci-py.git/+/master/appengine/swarming/doc/Access-Groups.md
+// for more detail.
+
+message AuthSettings {
+  // Members of this group have full administrative access.
+  //
+  // Grants:
+  // - config view and edit
+  // - delete any bot
+  // - all of bot_bootstrap_group membership
+  // - all of privileged_users_group membership
+  string admins_group = 1;
+
+  // Members of this group can fetch swarming bot code and bootstrap bots.
+  //
+  // Grants:
+  // - bot create: create a token to anonymously fetch the bot code.
+  string bot_bootstrap_group = 2;
+
+  // Members of this group can schedule tasks and see everyone else's tasks.
+  //
+  // Grants:
+  // - cancel any task
+  // - edit (terminate) any bot
+  // - all of view_all_bots_group membership
+  // - all of view_all_tasks_group membership
+  string privileged_users_group = 3;
+
+  // Members of this group can schedule tasks and see only their own tasks.
+  //
+  // Grants:
+  // - create a task
+  // - view and edit own task
+  string users_group = 4;
+
+  // Members of this group can view all bots. This is a read-only group.
+  //
+  // Grants:
+  // - view all bots
+  string view_all_bots_group = 5;
+
+  // Members of this group can view all tasks. This is a read-only group.
+  //
+  // Grants:
+  // - view all tasks
+  string view_all_tasks_group = 6;
+}

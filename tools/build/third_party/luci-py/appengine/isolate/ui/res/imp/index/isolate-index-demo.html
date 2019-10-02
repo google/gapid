@@ -1,0 +1,55 @@
+<!--
+# Copyright 2017 The LUCI Authors. All rights reserved.
+# Use of this source code is governed by the Apache v2.0 license that can be
+# found in the LICENSE file.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Isolate index Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+
+  <script src="../../../node_modules/sinon/pkg/sinon-1.17.5.js"></script>
+
+
+  <script type="text/javascript" charset="utf-8">
+    sinon.format = function(object) {return JSON.stringify(object);}
+    sinon.log = function(message) {console.log(message);};
+    var server = sinon.fakeServer.create();
+    server.autoRespondAfter = 1200;
+    server.autoRespond = true;
+
+     var details = {
+      server_version: "1234-deadbeef",
+      bot_version: "abcdoeraymeyouandme",
+    };
+
+    var respond = function(request){
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+        request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      sinon.log("User authenticated :) "+ request.requestHeaders.authorization);
+      request.respond(200, {"Content-Type":"application/json"}, JSON.stringify(details));
+    }
+
+    server.respondWith("GET",  /^\/_ah\/api\/isolateservice\/v1\/server_details/, respond);
+
+
+    </script>
+    <link rel="import" href="/res/imp/bower_components/polymer/polymer.html">
+    <link rel="import" href="isolate-index.html">
+</head>
+<body>
+
+<isolate-index
+  client_id="540429983429-ftq2fch22a9puv03lj7sffhvh0e9962r.apps.googleusercontent.com">
+</isolate-index>
+
+</body>
+</html>

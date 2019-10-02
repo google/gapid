@@ -1,0 +1,10 @@
+steps:
+- name: gcr.io/chrome-infra-spinnaker/base
+  args: ['make', 'external_deps']
+- name: gcr.io/chrome-infra-spinnaker/tar
+  args: ['cf', '$BUILD_ID.tar','.']
+
+artifacts:
+  objects:
+    location: 'gs://chrome-infra-builds/luci-config'
+    paths: ['$BUILD_ID.tar']

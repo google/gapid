@@ -1,0 +1,13 @@
+Name: markupsafe
+Short Name: markupsafe
+URL: https://github.com/mitsuhiko/markupsafe
+Revision: feb1d70c16df62f60dcb521d127fdad8819fc036 (tag 0.23)
+License: BSD 3 clauses
+
+Description:
+A Python module that implements the jinja2.Markup string
+
+Local Modifications:
+- Kept only markupsafe/*.py
+- Deleted tests.py
+- Included AUTHORS and LICENSE

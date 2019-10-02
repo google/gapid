@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package google.devtools.remoteworkers.v1test2;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "status.proto";
+
+service Bots {
+  rpc CreateBotSession(CreateBotSessionRequest) returns (BotSession);
+
+  rpc UpdateBotSession(UpdateBotSessionRequest) returns (BotSession);
+
+  rpc PostBotEventTemp(PostBotEventTempRequest) returns (google.protobuf.Empty);
+}
+
+message BotSession {
+  string name = 1;
+
+  string bot_id = 2;
+
+  BotStatus status = 3;
+
+  Worker worker = 4;
+
+  repeated Lease leases = 5;
+
+  google.protobuf.Timestamp expire_time = 6;
+
+  string version = 7;
+}
+
+message Lease {
+  string assignment = 1;
+
+  LeaseState state = 2;
+
+  google.rpc.Status status = 3;
+
+  Worker requirements = 4;
+
+  google.protobuf.Timestamp expire_time = 5;
+
+  google.protobuf.Any inline_assignment = 6;
+}
+
+enum BotStatus {
+  BOT_STATUS_UNSPECIFIED = 0;
+
+  OK = 1;
+
+  UNHEALTHY = 2;
+
+  HOST_REBOOTING = 3;
+
+  BOT_TERMINATING = 4;
+}
+
+enum LeaseState {
+  LEASE_STATE_UNSPECIFIED = 0;
+
+  PENDING = 1;
+
+  ACTIVE = 2;
+
+  COMPLETED = 4;
+
+  CANCELLED = 5;
+}
+
+message Worker {
+  repeated Device devices = 1;
+
+  message Property {
+    string key = 1;
+    string value = 2;
+  }
+  repeated Property properties = 2;
+}
+
+message Device {
+  string handle = 1;
+
+  message Property {
+    string key = 1;
+    string value = 2;
+  }
+  repeated Property properties = 2;
+}
+
+message AdminTemp {
+  enum Command {
+    UNSPECIFIED = 0;
+
+    BOT_UPDATE = 1;
+
+    BOT_RESTART = 2;
+
+    BOT_TERMINATE = 3;
+
+    HOST_RESTART = 4;
+  }
+  Command command = 1;
+  string arg = 2;
+}
+
+
+message CreateBotSessionRequest {
+  string parent = 1;
+
+  BotSession bot_session = 2;
+}
+
+message UpdateBotSessionRequest {
+  string name = 1;
+
+  BotSession bot_session = 2;
+
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message PostBotEventTempRequest {
+  string name = 1;
+
+  enum Type {
+    UNSPECIFIED = 0;
+    INFO = 1;
+    ERROR = 2;
+  }
+  Type type = 2;
+
+  string msg = 3;
+
+  BotSession bot_session_temp = 4;
+}

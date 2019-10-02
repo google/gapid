@@ -1,0 +1,161 @@
+{% set title = 'Isolate global config' %}
+{% extends "isolate/base.html" %}
+
+{% block body %}
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h1>Server global config (config service)</h1>
+  </div>
+
+  <div class="panel-body">
+    {% if not config_service_url %}
+    Config service URL is not configured for this instance of swarming.
+    Configure it using
+    <a href="/_ah/api/explorer#p/config/v1/config.settings">configuration api</a>.
+    Using default values.
+    {% else %}
+    This config is distributed by
+    <a href="{{config_service_url}}">luci-config</a>.
+    {% if not rev %}
+    Config file was not imported. Using default values.
+    {% else %}
+    {% if rev_url %}
+    Using revision <a href="{{rev_url}}">{{rev}}</a>.
+    {% else %}
+    Using revision {{rev}}.
+    {% endif %}
+    {% endif %}
+    {% endif %}
+
+    <div class="form-horizontal">
+      <h2>General</h2>
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Google Analytics ID:</label>
+        <div class="col-sm-9">
+          <input class="form-control" name="google_analytics" value="{{luci_cfg.google_analytics}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Default cache expiration (secs):</label>
+        <div class="col-sm-9">
+          <input class="form-control" type="text" name="default_expiration"
+                 value="{{luci_cfg.default_expiration}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Timeseries Monitoring:</label>
+        <div class="col-sm-9">
+          <select class="form-control" name="enable_ts_monitoring" disabled>
+            <option value="True" {% if luci_cfg.enable_ts_monitoring %}selected="selected"{% endif %}>Enabled</option>
+            <option value="False" {% if not luci_cfg.enable_ts_monitoring %}selected="selected"{% endif %}>Disabled</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Sharding letters [0..5]:</label>
+        <div class="col-sm-9">
+        <input class="form-control" type="text" name="sharding_letters"
+            value="{{luci_cfg.sharding_letters}}" disabled/>
+        </div>
+      </div>
+
+      <h2>Access Control Lists</h2>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Full access group:</label>
+        <div class="col-sm-9">
+          <input class="form-control" type="text" name="full_access_group"
+                 value="{{luci_cfg.auth.full_access_group}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Read-only access group:</label>
+        <div class="col-sm-9">
+          <input class="form-control" type="text" name="readonly_access_group"
+                 value="{{luci_cfg.auth.readonly_access_group}}" disabled/>
+        </div>
+      </div>
+
+      <h2>Google storage</h2>
+      <div class="form-group">
+        <div class="col-sm-12">
+          See this <a href="https://developers.google.com/storage/docs/accesscontrol#About-the-Client-ID">
+            page</a> for instructions on how to setup Service account for
+          API Access to Google Storage.
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">Google Storage bucket:</label>
+        <div class="col-sm-9">
+          <input class="form-control" type="text" name="gs_bucket"
+                 value="{{luci_cfg.gs_bucket}}" disabled/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="col-sm-3 control-label">API access client email address:</label>
+        <div class="col-sm-9">
+          <input class="form-control" type="text" name="gs_client_id_email"
+                 value="{{luci_cfg.gs_client_id_email}}" disabled/>
+        </div>
+      </div>
+    </div> <!-- end of form-horizontal -->
+  </div> <!-- end of panel-body -->
+</div> <!-- end of panel -->
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h1>Datastore-based server config</h1>
+  </div>
+
+  <div class="panel-body">
+    Last updated by:
+    <strong>{% if cfg.updated_by %}{{cfg.updated_by}}{% else%}N/A{%endif%}
+      </strong>.<br>
+    Last updated on: <strong>{{cfg.updated_ts|datetimeformat}}</strong>.<br>
+
+    {% if note %}
+    <span style="color: red; font-style: italic">{{note}}</span><p>
+    {% endif %}
+
+    <form class="form-horizontal" method="post" action="{{path}}">
+      <h2>Google storage</h2>
+      <div class="form-group">
+        <label class="col-sm-3 control-label">API access base64 encoded *.der private key:</label>
+        <div class="col-sm-9">
+        <textarea class="form-control" rows="14" cols="80"
+            name="gs_private_key">{{cfg.gs_private_key}}</textarea>
+        </div>
+      </div>
+
+      <input type="hidden" name="keyid" value="{{cfg.key.integer_id()}}" />
+      <input type="hidden" name="xsrf_token" value="{{xsrf_token}}" />
+      <input type="submit" value="Submit" />
+    </form>
+  </div> <!-- end of panel-body -->
+</div> <!-- end of panel -->
+
+<div class="panel panel-default">
+  <div class="panel-body">
+  <p>To convert secret.p12 key generated by API Console into base64 encoded
+  *.der key use this script:
+  <pre>
+    # Convert *.p12 to *.pem. Use password 'notasecret'.
+    openssl pkcs12 -in secret.p12 -nodes -nocerts > secret.pem
+    # Convert *.pem into *.der.
+    openssl rsa -in secret.pem -inform PEM -out secret.der -outform DER
+    # Base64 encode *.der and copy-paste it into the form above.
+    cat secret.der | base64
+    # Remove temp files.
+    rm secret.der secret.pem
+  </pre>
+  </p>
+  </div>
+</div>
+
+{% endblock %}

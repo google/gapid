@@ -1,0 +1,126 @@
+<!--
+  Copyright 2016 The LUCI Authors. All rights reserved.
+  Use of this source code is governed under the Apache License, Version 2.0
+  that can be found in the LICENSE file.
+
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>bot-list Demo</title>
+    <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <script src="../bower_components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="../../../node_modules/skia-common-js/common.js"></script>
+  <script src="../../../build/js/natural-sort.js"></script>
+  <script src="/res/js/common.js"></script>
+  <script src="/res/js/alias.js"></script>
+  <script src="../../../node_modules/sinon/pkg/sinon-1.17.5.js"></script>
+  <!-- Makes a var called data-->
+  <script type="text/javascript" src="bot-list-demo.json"></script>
+  <!-- Makes a var called fleetData-->
+  <script type="text/javascript" src="bot-list-fleet-data-demo.json"></script>
+
+  <script type="text/javascript" charset="utf-8">
+    sinon.format = function(object) {return JSON.stringify(object);}
+    sinon.log = function(message) {console.log(message);};
+    var server = sinon.fakeServer.create();
+    server.autoRespond = true;
+    server.autoRespondAfter = 1300;
+
+    var respond = function(request){
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+        request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      sinon.log("User authenticated :) "+ request.requestHeaders.authorization);
+      sinon.log("List Request: "+sinon.format(request));
+      if (request.url.indexOf("is_dead") > 0) {
+        // pretend there are 5 bots to delete
+        request.respond(200, {"Content-Type":"application/json"}, JSON.stringify({
+          items:data.items.slice(0, 5),
+        }));
+      } else {
+        request.respond(200, {"Content-Type":"application/json"}, JSON.stringify(data));
+      }
+
+    }
+
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bots\/list.*/, respond);
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bots\/list.*/, respond);
+
+    var mockFleetSummary = {
+      "count": "2625",
+      "busy": "531",
+      "now": "2016-08-01T17:21:07.239940",
+      "dead": "22",
+      "quarantined": "15",
+      "maintenance": "1",
+      "kind": "swarming#botsItem",
+      "etag": "\"nhThK35uIVdvx1_Mr5DChu_DyBs/aO8fy5IdESDx-fy3If19oDKu0f0\""
+    };
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bots\/count$/, JSON.stringify(mockFleetSummary));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bots\/count$/, JSON.stringify(mockFleetSummary));
+
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/bots\/dimensions/, JSON.stringify(fleetData));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bots\/dimensions/, JSON.stringify(fleetData));
+
+    var details = {
+      server_version: "1234-deadbeef",
+      bot_version: "ec524892ac1cd0748b88c2271371df51402f3daf",
+      machine_provider_template: "http://example.com#/leases/%s?foo=bar",
+    };
+    server.respondWith("GET", /^\/_ah\/api\/swarming\/v1\/server\/details/, JSON.stringify(details));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/server\/details/, JSON.stringify(details));
+
+    var count = {
+      count: 25,
+      busy: 0,
+      dead: 5,
+      quarantined: 0,
+      maintenance: 0,
+    }
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bots\/count\?is_dead=TRUE.*/, JSON.stringify(count));
+
+    count = {
+      count: 905,
+      busy: 581,
+      dead: 10,
+      quarantined: 0,
+      maintenance: 0,
+    }
+    server.respondWith("GET", /^\/api\/swarming\/v1\/bots\/count\?[^i].*/, JSON.stringify(count));
+
+    var permissions = {
+      delete_bot: true
+    };
+    server.respondWith("GET",  /^\/_ah\/api\/swarming\/v1\/server\/permissions/, JSON.stringify(permissions));
+    server.respondWith("GET", /^\/api\/swarming\/v1\/server\/permissions/, JSON.stringify(permissions));
+
+    var deleteRequest = function(request) {
+      console.log("Deleting", request);
+      if (!request.requestHeaders.authorization) {
+        sinon.log("You must be logged in (check your Oauth?)");
+          request.respond(403, {}, "You must be logged in (check your Oauth?)");
+        return;
+      }
+      request.respond(200, {}, "Bot has been deleted.");
+    }
+
+    server.respondWith("POST", /^\/_ah\/api\/swarming\/v1\/bot\/.+\/delete/, deleteRequest);
+    server.respondWith("POST", /^\/api\/swarming\/v1\/bot\/.+\/delete/, deleteRequest);
+    </script>
+
+    <link rel="import" href="bot-list.html">
+</head>
+<body>
+
+<bot-list
+  client_id="20770472288-t5smpbpjptka4nd888fv0ctd23ftba2o.apps.googleusercontent.com">
+</bot-list>
+
+</body>
+</html>

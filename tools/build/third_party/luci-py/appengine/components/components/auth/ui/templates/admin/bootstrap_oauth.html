@@ -1,0 +1,29 @@
+{% extends 'auth/admin/base.html' %}
+{% block content %}
+
+<h2>OAuth2 web client ID setup</h2>
+<p>The service is using Google Sign-In for authenticating web users. It needs
+a properly configured client ID. See <a href="https://developers.google.com/identity/sign-in/web/devconsole-project">
+this page</a> for instructions how to create one.
+</p>
+
+<hr>
+
+{% if saved %}
+  <div class="alert alert-success alert-dismissible" role="alert">
+    <strong>Saved!</strong> The change can take up to 5 min to apply.
+  </div>
+{% endif %}
+
+<form method="POST">
+  <input type="hidden" name="xsrf_token" value="{{xsrf_token}}" />
+  <div class="form-group">
+    <label for="web_client_id">Client ID</label>
+    <input class="form-control" id="web_client_id" name="web_client_id" value="{{web_client_id}}">
+  </div>
+  <div class="form-group">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+
+{% endblock %}
