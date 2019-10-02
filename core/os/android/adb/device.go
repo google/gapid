@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
@@ -111,17 +110,6 @@ func Devices(ctx context.Context) (DeviceList, error) {
 	return out, nil
 }
 
-func gapidApkPackageName(abi *device.ABI) string {
-	switch {
-	case abi.SameAs(device.AndroidARMv7a):
-		return "com.google.android.gapid.armeabiv7a"
-	case abi.SameAs(device.AndroidARM64v8a):
-		return "com.google.android.gapid.arm64v8a"
-	default:
-		return fmt.Sprintf("com.google.android.gapid.%v", abi.Name)
-	}
-}
-
 func newDevice(ctx context.Context, serial string, status bind.Status) (*binding, error) {
 	d := &binding{
 		Simple: bind.Simple{
@@ -179,21 +167,6 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		}
 	}
 
-	startSignal, startFunc := task.NewSignal()
-	startFunc = task.Once(startFunc)
-	crash.Go(func() {
-		d.LaunchPerfettoProducerFromApk(ctx, gapidApkPackageName(d.To.Configuration.PreferredABI(nil)), startFunc)
-
-		// Make sure we fire the start signal.
-		startFunc(ctx)
-	})
-	startSignal.Wait(ctx)
-
-	// Query device Perfetto service state
-	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
-		d.To.Configuration.PerfettoCapability = perfettoCapability
-	}
-
 	// Run device info providers only if the API is supported
 	if d.To.Configuration.OS != nil && d.To.Configuration.OS.APIVersion >= device.AndroidMinimalSupportedAPIVersion {
 		devInfoProvidersMutex.Lock()
@@ -203,6 +176,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 				return nil, err
 			}
 		}
+	}
+
+	// Query device Perfetto service state
+	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
+		d.To.Configuration.PerfettoCapability = perfettoCapability
 	}
 
 	if d.To.Configuration == nil ||
