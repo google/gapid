@@ -33,33 +33,32 @@ const (
 	perfettoProducerLauncher = "launch_producer"
 )
 
-func (b *binding) preparePerfettoProducerLauncherFromApk(ctx context.Context, packageName string) (string, func(ctx context.Context), error) {
+func (b *binding) preparePerfettoProducerLauncherFromApk(ctx context.Context, packageName string) (string, error) {
 	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() < 29 {
-		return "", nil, log.Errf(ctx, nil, "Producer launcher requires Android API >= 29")
+		return "", log.Errf(ctx, nil, "Producer launcher requires Android API >= 29")
 	}
-	launcherPath, cleanupFunc, err := b.TempFile(ctx)
+	launcherPath, _, err := b.TempFile(ctx)
 	if err != nil {
-		return "", nil, log.Errf(ctx, err, "Can't create temporary file for perfetto producer launcher.")
+		return "", log.Errf(ctx, err, "Can't create temporary file for perfetto producer launcher.")
 	}
 
 	res, err := b.Shell("pm", "path", packageName).Call(ctx)
 	if err != nil {
-		return "", nil, log.Errf(ctx, err, "Failed to query path to apk %v", packageName)
+		return "", log.Errf(ctx, err, "Failed to query path to apk %v", packageName)
 	}
 	packagePath := strings.Split(res, ":")[1]
 	if _, err := b.Shell("unzip", "-o", packagePath, "assets/"+perfettoProducerLauncher, "-p", ">", launcherPath).Call(ctx); err != nil {
-		return "", nil, log.Errf(ctx, err, "Failed to unzip %v from %v", perfettoProducerLauncher, packageName)
+		return "", log.Errf(ctx, err, "Failed to unzip %v from %v", perfettoProducerLauncher, packageName)
 	}
 
 	// Finally, make sure the binary is executable
 	b.Shell("chmod", "a+x", launcherPath).Call(ctx)
-	return launcherPath, cleanupFunc, nil
+	return launcherPath, nil
 }
 
 func (b *binding) LaunchPerfettoProducerFromApk(ctx context.Context, packageName string, startFunc task.Task) error {
 	// Firstly, extract the producer launcher from Apk.
-	binaryPath, cleanupFunc, err := b.preparePerfettoProducerLauncherFromApk(ctx, packageName)
-	defer cleanupFunc(ctx)
+	binaryPath, err := b.preparePerfettoProducerLauncherFromApk(ctx, packageName)
 	if err != nil {
 		return err
 	}

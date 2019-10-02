@@ -182,10 +182,7 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 	startSignal, startFunc := task.NewSignal()
 	startFunc = task.Once(startFunc)
 	crash.Go(func() {
-		err := d.LaunchPerfettoProducerFromApk(ctx, gapidApkPackageName(d.To.Configuration.PreferredABI(nil)), startFunc)
-		if err != nil {
-			log.E(ctx, "launch Perfetto producer error: %v", err)
-		}
+		d.LaunchPerfettoProducerFromApk(ctx, gapidApkPackageName(d.To.Configuration.PreferredABI(nil)), startFunc)
 
 		// Make sure we fire the start signal.
 		startFunc(ctx)
