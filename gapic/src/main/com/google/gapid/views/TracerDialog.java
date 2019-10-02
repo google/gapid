@@ -308,7 +308,7 @@ public class TracerDialog {
         setLayout(new GridLayout(1, false));
 
         Group mainGroup = withLayoutData(
-            createGroup(this, "Device and Type", new GridLayout(4, false)),
+            createGroup(this, "Device and Type", new GridLayout(3, false)),
             new GridData(GridData.FILL_HORIZONTAL));
         deviceLabel = createLabel(mainGroup, "Device*:");
         device = createDeviceDropDown(mainGroup);
@@ -326,7 +326,7 @@ public class TracerDialog {
 
         gpuProfilingCapWarning = withLayoutData(
             createLabel(mainGroup, ""),
-            new GridData(SWT.FILL, SWT.FILL, true, false));
+            new GridData(SWT.FILL, SWT.FILL, true, false, 3, 1));
         gpuProfilingCapWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
         gpuProfilingCapWarning.setVisible(false);
 
