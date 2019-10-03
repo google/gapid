@@ -30,6 +30,8 @@ isolatesha=f9296e7cc5e29130250b1933e08b32af0a73990d
 tmpdir=$SRC/my-tmp
 rm -rf $tmpdir
 
+$LUCI_CLIENT_ROOT/auth.py -v -v login --service=$SERVER
+
 echo "HERE Actual command"
 
 $LUCI_CLIENT_ROOT/isolateserver.py download -I $SERVER --namespace default-gzip -s f9296e7cc5e29130250b1933e08b32af0a73990d --target $tmpdir
