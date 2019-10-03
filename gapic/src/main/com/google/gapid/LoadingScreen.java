@@ -47,11 +47,14 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Menu;
 
 import java.io.File;
+import java.util.Arrays;
 
 /**
  * The loading screen is a minimal view shown while the UI is loading, looking for gapis, etc.
  */
 public class LoadingScreen extends Composite {
+  private static final int MAX_FILE_NAME = 80;
+
   private final Theme theme;
   private final Label statusLabel;
   private final Composite optionsContainer;
@@ -128,12 +131,12 @@ public class LoadingScreen extends Composite {
     createLabel(optionsContainer, "", theme.recent());
     recentLink = createLink(optionsContainer, "<a>Open recent traces</a>", e -> {
       Menu popup = new Menu(optionsContainer);
-      for (String file : checkNotNull(models).settings.recentFiles) {
-        createMenuItem(popup, file, 0, ev -> {
-          checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
-          checkNotNull(models).capture.loadCapture(new File(file));
-        });
-      }
+      Arrays.stream(checkNotNull(models).settings.recentFiles)
+          .map(f -> truncate(f))
+          .forEachOrdered(file -> createMenuItem(popup, file, 0, ev -> {
+              checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
+              checkNotNull(models).capture.loadCapture(new File(file));
+          }));
       popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
       popup.setLocation(optionsContainer.toDisplay(bottomLeft(((Link)e.widget).getBounds())));
       popup.setVisible(true);
@@ -144,5 +147,20 @@ public class LoadingScreen extends Composite {
     createLink(optionsContainer, "<a>Help</a>", e -> showHelp(models.analytics));
 
     optionsContainer.setVisible(false);
+  }
+
+  private static String truncate(String file) {
+    if (file.length() <= MAX_FILE_NAME) {
+      return file;
+    }
+    for (int p = file.indexOf(File.separatorChar, 1); file.length() > MAX_FILE_NAME && p >= 0; ) {
+      file = file.substring(p);
+      p = file.indexOf(File.separatorChar, 1);
+    }
+
+    if (file.length() > MAX_FILE_NAME) {
+      return "..." + file.substring(file.length() - MAX_FILE_NAME + 3);
+    }
+    return "..." + file;
   }
 }
