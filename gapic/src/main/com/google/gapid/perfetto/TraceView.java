@@ -27,6 +27,7 @@ import com.google.gapid.models.Models;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.views.RootPanel;
 import com.google.gapid.perfetto.views.SelectionView;
 import com.google.gapid.perfetto.views.State;
@@ -117,6 +118,14 @@ public class TraceView extends Composite
       } else if (kb.isKeyDown('e')) {
         Point mouse = canvas.toControl(getDisplay().getCursorLocation());
         redraw = rootPanel.zoom(mouse.x, 1.0 + (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
+      }
+
+      if (kb.isKeyDown('m')) {
+        Selection selection = state.getSelection();
+        if (selection != null) {
+          selection.mark(state);
+          redraw = true;
+        }
       }
 
       if (redraw) {

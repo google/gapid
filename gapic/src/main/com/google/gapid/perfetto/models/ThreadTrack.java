@@ -196,6 +196,13 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     public Composite buildUi(Composite parent, State uiState) {
       return new ThreadStateSliceSelectionView(parent, uiState, this);
     }
+
+    @Override
+    public void mark(State uiState) {
+      if (dur > 0) {
+        uiState.setHighlight(new TimeSpan(time, time + dur));
+      }
+    }
   }
 
   public static class StateSlices implements Selection.CombiningBuilder.Combinable<StateSlices> {
