@@ -313,7 +313,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 				})
 				handlerInstalled = true
 			}
-			log.I(ctx, "Capturing %+v", status.BytesCaptured)
+			log.I(ctx, "Captured bytes: %+v", status.BytesCaptured)
 		}
 		if status.Status == service.TraceStatus_Done {
 			return true, nil
