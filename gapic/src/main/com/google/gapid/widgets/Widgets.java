@@ -745,6 +745,20 @@ public class Widgets {
     return composite;
   }
 
+  /**
+   * Recursively adds the given listener to the composite and all its children.
+   */
+  public static void recursiveAddListener(Composite composite, int eventType, Listener listener) {
+    composite.addListener(eventType, listener);
+    for (Control child : composite.getChildren()) {
+      if (child instanceof Composite) {
+        recursiveAddListener((Composite)child, eventType, listener);
+      } else {
+        child.addListener(eventType, listener);
+      }
+    }
+  }
+
   public static <C extends Control> C withLayoutData(C control, Object layoutData) {
     control.setLayoutData(layoutData);
     return control;
@@ -782,6 +796,15 @@ public class Widgets {
     return layout;
   }
 
+  public static GridLayout withMarginAndSpacing(GridLayout layout,
+      int marginWidth, int marginHeight, int horizontalSpacing, int verticalSpacing) {
+    layout.marginWidth = marginWidth;
+    layout.marginHeight = marginHeight;
+    layout.horizontalSpacing = horizontalSpacing;
+    layout.verticalSpacing = verticalSpacing;
+    return layout;
+  }
+
   public static GridLayout withSpacing(GridLayout layout, int horizontalSpacing, int verticalSpacing) {
     layout.horizontalSpacing = horizontalSpacing;
     layout.verticalSpacing = verticalSpacing;
@@ -791,6 +814,11 @@ public class Widgets {
   public static RowLayout withMargin(RowLayout layout, int marginWidth, int marginHeight) {
     layout.marginWidth = marginWidth;
     layout.marginHeight = marginHeight;
+    return layout;
+  }
+
+  public static RowLayout withSpacing(RowLayout layout, int spacing) {
+    layout.spacing = spacing;
     return layout;
   }
 
