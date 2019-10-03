@@ -256,6 +256,13 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
 
     @Override
+    public void mark(State state) {
+      if (dur > 0) {
+        state.setHighlight(new TimeSpan(time, time + dur));
+      }
+    }
+
+    @Override
     public String toString() {
       return "Slice{@" + time + " +" + dur + " " + utid + " " + endState + "/" + priority + "}";
     }

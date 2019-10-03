@@ -259,6 +259,13 @@ public class SliceTrack extends Track<SliceTrack.Data> {
     public Composite buildUi(Composite parent, State state) {
       return new SliceSelectionView(parent, state, this);
     }
+
+    @Override
+    public void mark(State state) {
+      if (dur > 0) {
+        state.setHighlight(new TimeSpan(time, time + dur));
+      }
+    }
   }
 
   public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
