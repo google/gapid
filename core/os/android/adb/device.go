@@ -145,11 +145,6 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 		d.To.Configuration.OS.Build = strings.TrimSpace(description)
 	}
 
-	// Query device Perfetto service state
-	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
-		d.To.Configuration.PerfettoCapability = perfettoCapability
-	}
-
 	// Check which abis the device says it supports
 	d.To.Configuration.ABIs = d.To.Configuration.ABIs[:0]
 
@@ -181,6 +176,11 @@ func newDevice(ctx context.Context, serial string, status bind.Status) (*binding
 				return nil, err
 			}
 		}
+	}
+
+	// Query device Perfetto service state
+	if perfettoCapability, err := d.QueryPerfettoServiceState(ctx); err == nil {
+		d.To.Configuration.PerfettoCapability = perfettoCapability
 	}
 
 	if d.To.Configuration == nil ||
