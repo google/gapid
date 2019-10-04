@@ -107,9 +107,12 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		startSignal, startFunc := task.NewSignal()
 		startFunc = task.Once(startFunc)
 		crash.Go(func() {
-			launchPerfettoProducerFromApk(ctx, d, startFunc)
+			err := launchPerfettoProducerFromApk(ctx, d, startFunc)
+			if err != nil {
+				log.E(ctx, "[launchPerfettoProducerFromApk] error: %v", err)
+			}
 
-			// Make sure we fire the start signal.
+			// Ensure the start signal is fired on failure/immediate return.
 			startFunc(ctx)
 		})
 		startSignal.Wait(ctx)
