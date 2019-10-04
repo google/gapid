@@ -256,6 +256,7 @@ public class TracerDialog {
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final int DEFAULT_START_FRAME = 100;
       private static final String PERFETTO_LABEL = "Profile Config: ";
+      private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
@@ -289,6 +290,7 @@ public class TracerDialog {
       private final Label fileLabel;
       private final Label pcsWarning;
       private final Label requiredFieldMessage;
+      private final Label gpuProfilingCapabilityWarning;
 
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
@@ -443,6 +445,12 @@ public class TracerDialog {
         requiredFieldMessage.setForeground(getDisplay().getSystemColor(SWT.COLOR_RED));
         requiredFieldMessage.setVisible(false);
 
+        gpuProfilingCapabilityWarning = withLayoutData(
+            createLabel(this, NO_GPU_PROFILING_CAPABILITY),
+            new GridData(SWT.FILL, SWT.FILL, true, false));
+        gpuProfilingCapabilityWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
+        gpuProfilingCapabilityWarning.setVisible(false);
+
         Link adbWarning = withLayoutData(
             createLink(this, "Path to adb invalid/missing. " +
                 "To trace on Android, please fix it in the <a>preferences</a>.",
@@ -454,6 +462,23 @@ public class TracerDialog {
         device.getCombo().addListener(
             SWT.Selection, e -> update(models.settings, getSelectedDevice()));
         api.getCombo().addListener(SWT.Selection, e -> update(models.settings, getSelectedApi()));
+
+        Listener gpuProfilingCapabilityListener = e -> {
+          // Skip if the device is not Android device, or trace type is not Perfetto.
+          if ((getSelectedDevice() != null && !getSelectedDevice().isAndroid())
+              || getSelectedApi().getType() != TraceType.Perfetto) {
+            gpuProfilingCapabilityWarning.setVisible(false);
+            return;
+          }
+          Device.GPUProfiling gpuCaps = getPerfettoCaps().getGpuProfiling();
+          if (gpuCaps.getHasRenderStage() && gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
+            gpuProfilingCapabilityWarning.setVisible(false);
+            return;
+          }
+          gpuProfilingCapabilityWarning.setVisible(true);
+        };
+        device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
+        api.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
