@@ -787,7 +787,7 @@ public class TracerDialog {
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
         if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
-          options.setDeferStart(settings.traceStartAt != 0);
+          options.setDeferStart(settings.traceStartAt < 0);
           if (settings.traceStartAt > 0) {
             options.setStartFrame(settings.traceStartAt);
           }
