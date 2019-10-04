@@ -97,6 +97,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.HashMap;
 
 /**
  * Dialogs used for capturing a trace.
@@ -257,6 +258,18 @@ public class TracerDialog {
       private static final int DEFAULT_START_FRAME = 100;
       private static final String PERFETTO_LABEL = "Profile Config: ";
 
+      private static final int TRACE_START_TYPE_BEGINNING = 0;
+      private static final int TRACE_START_TYPE_MANUAL = 1;
+      private static final int TRACE_START_TYPE_FRAME = 2;
+      private static final HashMap<Integer, String> startTypeTitles = new HashMap<Integer, String>();
+
+      static
+      {
+        startTypeTitles.put(TRACE_START_TYPE_BEGINNING, "Beginning");
+        startTypeTitles.put(TRACE_START_TYPE_MANUAL, "Manual");
+        startTypeTitles.put(TRACE_START_TYPE_FRAME, "Frame");
+      };
+
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
@@ -293,6 +306,8 @@ public class TracerDialog {
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
+
+
 
       public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
@@ -367,19 +382,21 @@ public class TracerDialog {
             new GridData(GridData.FILL_HORIZONTAL));
         createLabel(durGroup, "Start at:");
         startType = Widgets.createDropDown(durGroup);
-        startType.setItems("Beginning", "Manual", "Frame");
+        startType.setItems(startTypeTitles.get(TRACE_START_TYPE_BEGINNING),
+                           startTypeTitles.get(TRACE_START_TYPE_MANUAL),
+                           startTypeTitles.get(TRACE_START_TYPE_FRAME));
         startFrame = withLayoutData(
             createSpinner(durGroup, Math.max(1, models.settings.traceStartAt), 1, 999999),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         mecWarningLabel = createLabel(durGroup, "");
 
         if (models.settings.traceStartAt < 0) {
-          startType.select(1);
+          startType.select(TRACE_START_TYPE_MANUAL);
           startFrame.setSelection(DEFAULT_START_FRAME);
         } else if (models.settings.traceStartAt > 0) {
-          startType.select(2);
+          startType.select(TRACE_START_TYPE_FRAME);
         } else {
-          startType.select(0);
+          startType.select(TRACE_START_TYPE_BEGINNING);
           startFrame.setSelection(DEFAULT_START_FRAME);
         }
 
@@ -457,7 +474,7 @@ public class TracerDialog {
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
-          boolean beginning = startType.getSelectionIndex() == 0;
+          boolean beginning = startType.getSelectionIndex() == TRACE_START_TYPE_BEGINNING;
           if (!beginning && config != null &&
               config.getMidExecutionCaptureSupport() == Service.FeatureStatus.Experimental) {
             mecWarningLabel.setText(String.format(MEC_LABEL_WARNING, config.getApi()));
@@ -466,7 +483,7 @@ public class TracerDialog {
           }
           mecWarningLabel.requestLayout();
 
-          boolean startAtFrame = startType.getSelectionIndex() == 2;
+          boolean startAtFrame = startType.getSelectionIndex() == TRACE_START_TYPE_FRAME;
           startFrame.setVisible(startAtFrame);
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
@@ -575,13 +592,13 @@ public class TracerDialog {
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && settings.traceWithoutBuffering);
         if (isPerfetto && startType.getItemCount() == 3) {
-          if (startType.getSelectionIndex() == 2) {
+          if (startType.getSelectionIndex() == TRACE_START_TYPE_FRAME) {
             // Switch to manual if it was "start at frame x".
-            startType.select(1);
+            startType.select(TRACE_START_TYPE_MANUAL);
           }
-          startType.remove(2);
+          startType.remove(TRACE_START_TYPE_FRAME);
         } else if (!isPerfetto && startType.getItemCount() == 2) {
-          startType.add("Frame");
+          startType.add(startTypeTitles.get(TRACE_START_TYPE_FRAME));
         }
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
@@ -738,7 +755,7 @@ public class TracerDialog {
           case 0: // Beginning
             settings.traceStartAt = 0;
             break;
-          case 1: // Manaul
+          case 1: // Manual
             settings.traceStartAt = -1;
             break;
           default: // Frame
