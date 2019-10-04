@@ -56,7 +56,6 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 
 import java.io.File;
-import java.util.Arrays;
 
 /**
  * The loading screen is a minimal view shown while the UI is loading, looking for gapis, etc.
@@ -130,12 +129,12 @@ public class LoadingScreen extends Composite {
     });
     OptionBar.withDropDown(theme, optionsContainer, theme.recent(), "Open recent trace", e -> {
       Menu popup = new Menu(optionsContainer);
-      Arrays.stream(checkNotNull(models).settings.recentFiles)
-          .map(f -> truncate(f))
-          .forEachOrdered(file -> createMenuItem(popup, file, 0, ev -> {
-              checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
-              checkNotNull(models).capture.loadCapture(new File(file));
-          }));
+      for (String file : checkNotNull(models).settings.recentFiles) {
+        createMenuItem(popup, truncate(file), 0, ev -> {
+          checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
+          checkNotNull(models).capture.loadCapture(new File(file));
+        });
+      }
       popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
       popup.setLocation(
           optionsContainer.toDisplay(bottomLeft((((Control)e.widget).getParent().getBounds()))));
