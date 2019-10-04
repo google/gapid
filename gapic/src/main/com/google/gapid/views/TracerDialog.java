@@ -446,7 +446,7 @@ public class TracerDialog {
         requiredFieldMessage.setVisible(false);
 
         gpuProfilingCapabilityWarning = withLayoutData(
-            createLabel(this, ""),
+            createLabel(this, NO_GPU_PROFILING_CAPABILITY),
             new GridData(SWT.FILL, SWT.FILL, true, false));
         gpuProfilingCapabilityWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_YELLOW));
         gpuProfilingCapabilityWarning.setVisible(false);
@@ -475,7 +475,6 @@ public class TracerDialog {
             gpuProfilingCapabilityWarning.setVisible(false);
             return;
           }
-          gpuProfilingCapabilityWarning.setText(NO_GPU_PROFILING_CAPABILITY);
           gpuProfilingCapabilityWarning.setVisible(true);
         };
         device.getCombo().addListener(SWT.Selection, gpuProfilingCapabilityListener);
