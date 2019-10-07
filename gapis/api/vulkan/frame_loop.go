@@ -114,6 +114,10 @@ type frameLoop struct {
 	pipelineLayoutToDestroy map[VkPipelineLayout]bool
 	pipelineLayoutToCreate  map[VkPipelineLayout]bool
 
+	pipelineToDestroy        map[VkPipeline]bool
+	computePipelineToCreate  map[VkPipeline]bool
+	graphicsPipelineToCreate map[VkPipeline]bool
+
 	descriptorPoolToDestroy map[VkDescriptorPool]bool
 	descriptorPoolToCreate  map[VkDescriptorPool]bool
 
@@ -193,6 +197,10 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		pipelineLayoutToDestroy: make(map[VkPipelineLayout]bool),
 		pipelineLayoutToCreate:  make(map[VkPipelineLayout]bool),
+
+		pipelineToDestroy:        make(map[VkPipeline]bool),
+		computePipelineToCreate:  make(map[VkPipeline]bool),
+		graphicsPipelineToCreate: make(map[VkPipeline]bool),
 
 		descriptorPoolToDestroy: make(map[VkDescriptorPool]bool),
 		descriptorPoolToCreate:  make(map[VkDescriptorPool]bool),
@@ -462,7 +470,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroySampler:
 			vkCmd := cmd.(*VkDestroySampler)
 			sampler := vkCmd.Sampler()
-			log.D(ctx, "Sampler %v created", sampler)
+			log.D(ctx, "Sampler %v destroyed", sampler)
 			if _, ok := f.samplerToDestroy[sampler]; ok {
 				delete(f.samplerToDestroy, sampler)
 			} else {
@@ -479,7 +487,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyShaderModule:
 			vkCmd := cmd.(*VkDestroyShaderModule)
 			shaderModule := vkCmd.ShaderModule()
-			log.D(ctx, "ShaderModule %v created", shaderModule)
+			log.D(ctx, "ShaderModule %v destroyed", shaderModule)
 			if _, ok := f.shaderModuleToDestroy[shaderModule]; ok {
 				delete(f.shaderModuleToDestroy, shaderModule)
 			} else {
@@ -496,7 +504,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyDescriptorSetLayout:
 			vkCmd := cmd.(*VkDestroyDescriptorSetLayout)
 			descriptorSetLayout := vkCmd.DescriptorSetLayout()
-			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
+			log.D(ctx, "DescriptorSetLayout %v destroyed", descriptorSetLayout)
 			if _, ok := f.descriptorSetLayoutToDestroy[descriptorSetLayout]; ok {
 				delete(f.descriptorSetLayoutToDestroy, descriptorSetLayout)
 			} else {
@@ -513,11 +521,49 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyPipelineLayout:
 			vkCmd := cmd.(*VkDestroyPipelineLayout)
 			pipelineLayout := vkCmd.PipelineLayout()
-			log.D(ctx, "PipelineLayout %v created", pipelineLayout)
+			log.D(ctx, "PipelineLayout %v destroyed", pipelineLayout)
 			if _, ok := f.pipelineLayoutToDestroy[pipelineLayout]; ok {
 				delete(f.pipelineLayoutToDestroy, pipelineLayout)
 			} else {
 				f.pipelineLayoutToCreate[pipelineLayout] = true
+			}
+
+		// ComputePipelines(s)
+		case *VkCreateComputePipelines:
+			vkCmd := cmd.(*VkCreateComputePipelines)
+			count := vkCmd.CreateInfoCount()
+			pipelines := vkCmd.PPipelines().Slice(0, (uint64)(count), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			for index := range pipelines {
+				log.D(ctx, "ComputePipeline %v created", pipelines[index])
+				f.pipelineToDestroy[pipelines[index]] = true
+			}
+
+		// GraphicsPipelines(s)
+		case *VkCreateGraphicsPipelines:
+			vkCmd := cmd.(*VkCreateGraphicsPipelines)
+			count := vkCmd.CreateInfoCount()
+			pipelines := vkCmd.PPipelines().Slice(0, (uint64)(count), startState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			for index := range pipelines {
+				log.D(ctx, "GraphicsPipeline %v created", pipelines[index])
+				f.pipelineToDestroy[pipelines[index]] = true
+			}
+
+		case *VkDestroyPipeline:
+			vkCmd := cmd.(*VkDestroyPipeline)
+			pipeline := vkCmd.Pipeline()
+			log.D(ctx, "Pipeline %v destroyed", pipeline)
+			if _, ok := f.pipelineToDestroy[pipeline]; ok {
+				delete(f.pipelineToDestroy, pipeline)
+			} else {
+				isCompute := GetState(currentState).ComputePipelines().Contains(pipeline)
+				isGraphics := GetState(currentState).GraphicsPipelines().Contains(pipeline)
+				if isCompute {
+					f.computePipelineToCreate[pipeline] = true
+				} else if isGraphics {
+					f.graphicsPipelineToCreate[pipeline] = true
+				} else {
+					log.E(ctx, "Pipeline %v is of unknown type.", pipeline)
+				}
 			}
 
 		// DescriptorPool(s)
