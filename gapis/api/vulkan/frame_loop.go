@@ -97,10 +97,16 @@ type frameLoop struct {
 	bufferChanged   map[VkBuffer]bool
 	bufferToBackup  map[VkBuffer]VkBuffer
 
+	bufferViewToDestroy map[VkBufferView]bool
+	bufferViewToCreate  map[VkBufferView]bool
+
 	imageToDestroy map[VkImage]bool
 	imageToCreate  map[VkImage]bool
 	imageChanged   map[VkImage]bool
 	imageToBackup  map[VkImage]VkImage
+
+	imageViewToDestroy map[VkImageView]bool
+	imageViewToCreate  map[VkImageView]bool
 
 	samplerToDestroy map[VkSampler]bool
 	samplerToCreate  map[VkSampler]bool
@@ -177,10 +183,16 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		bufferChanged:   make(map[VkBuffer]bool),
 		bufferToBackup:  make(map[VkBuffer]VkBuffer),
 
+		bufferViewToDestroy: make(map[VkBufferView]bool),
+		bufferViewToCreate:  make(map[VkBufferView]bool),
+
 		imageToDestroy: make(map[VkImage]bool),
 		imageToCreate:  make(map[VkImage]bool),
 		imageChanged:   make(map[VkImage]bool),
 		imageToBackup:  make(map[VkImage]VkImage),
+
+		imageViewToDestroy: make(map[VkImageView]bool),
+		imageViewToCreate:  make(map[VkImageView]bool),
 
 		samplerToDestroy: make(map[VkSampler]bool),
 		samplerToCreate:  make(map[VkSampler]bool),
@@ -439,6 +451,24 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			log.D(ctx, "Buffer %v destroyed.", buffer)
 			f.bufferToCreate[buffer] = true
 
+		// BufferViews
+		case *VkCreateBufferView:
+			vkCmd := cmd.(*VkCreateBufferView)
+			buffer := vkCmd.PView().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "BuferView %v created", buffer)
+			f.bufferViewToDestroy[buffer] = true
+
+		case *VkDestroyBufferView:
+			vkCmd := cmd.(*VkDestroyBufferView)
+			bufferView := vkCmd.BufferView()
+			log.D(ctx, "BufferView %v destroyed", bufferView)
+			f.bufferViewToCreate[bufferView] = true
+			if _, ok := f.bufferViewToDestroy[bufferView]; ok {
+				delete(f.bufferViewToDestroy, bufferView)
+			} else {
+				f.bufferViewToCreate[bufferView] = true
+			}
+
 		// Images
 		case *VkCreateImage:
 			vkCmd := cmd.(*VkCreateImage)
@@ -452,6 +482,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			log.D(ctx, "Image %v destroyed", img)
 			f.imageToCreate[img] = true
 
+		// ImageViews
+		case *VkCreateImageView:
+			vkCmd := cmd.(*VkCreateImageView)
+			img := vkCmd.PView().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "ImageView %v created", img)
+			f.imageViewToDestroy[img] = true
+
+		case *VkDestroyImageView:
+			vkCmd := cmd.(*VkDestroyImageView)
+			img := vkCmd.ImageView()
+			log.D(ctx, "ImageView %v destroyed", img)
+			if _, ok := f.imageViewToDestroy[img]; ok {
+				delete(f.imageViewToDestroy, img)
+			} else {
+				f.imageViewToCreate[img] = true
+			}
+
 		// Sampler(s)
 		case *VkCreateSampler:
 			vkCmd := cmd.(*VkCreateSampler)
@@ -462,7 +509,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroySampler:
 			vkCmd := cmd.(*VkDestroySampler)
 			sampler := vkCmd.Sampler()
-			log.D(ctx, "Sampler %v created", sampler)
+			log.D(ctx, "Sampler %v destroyed", sampler)
 			if _, ok := f.samplerToDestroy[sampler]; ok {
 				delete(f.samplerToDestroy, sampler)
 			} else {
@@ -479,7 +526,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyShaderModule:
 			vkCmd := cmd.(*VkDestroyShaderModule)
 			shaderModule := vkCmd.ShaderModule()
-			log.D(ctx, "ShaderModule %v created", shaderModule)
+			log.D(ctx, "ShaderModule %v destroyed", shaderModule)
 			if _, ok := f.shaderModuleToDestroy[shaderModule]; ok {
 				delete(f.shaderModuleToDestroy, shaderModule)
 			} else {
@@ -496,7 +543,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyDescriptorSetLayout:
 			vkCmd := cmd.(*VkDestroyDescriptorSetLayout)
 			descriptorSetLayout := vkCmd.DescriptorSetLayout()
-			log.D(ctx, "DescriptorSetLayout %v created", descriptorSetLayout)
+			log.D(ctx, "DescriptorSetLayout %v destroyed", descriptorSetLayout)
 			if _, ok := f.descriptorSetLayoutToDestroy[descriptorSetLayout]; ok {
 				delete(f.descriptorSetLayoutToDestroy, descriptorSetLayout)
 			} else {
@@ -513,7 +560,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyPipelineLayout:
 			vkCmd := cmd.(*VkDestroyPipelineLayout)
 			pipelineLayout := vkCmd.PipelineLayout()
-			log.D(ctx, "PipelineLayout %v created", pipelineLayout)
+			log.D(ctx, "PipelineLayout %v destroyed", pipelineLayout)
 			if _, ok := f.pipelineLayoutToDestroy[pipelineLayout]; ok {
 				delete(f.pipelineLayoutToDestroy, pipelineLayout)
 			} else {
@@ -627,7 +674,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		case *VkDestroyRenderPass:
 			vkCmd := cmd.(*VkDestroyRenderPass)
 			renderPass := vkCmd.RenderPass()
-			log.D(ctx, "RenderPass %v created", renderPass)
+			log.D(ctx, "RenderPass %v destroyed", renderPass)
 			if _, ok := f.renderPassToDestroy[renderPass]; ok {
 				delete(f.renderPassToDestroy, renderPass)
 			} else {
@@ -895,7 +942,15 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetBufferViews(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetImages(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetImageViews(ctx, stateBuilder); err != nil {
 		return err
 	}
 
@@ -976,6 +1031,25 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 	return nil
 }
 
+func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every BufferView that we need to destroy at the end of the loop...
+	for toDestroy := range f.bufferViewToDestroy {
+		// Write the command to delete the created object
+		bufferView := GetState(f.loopEndState).bufferViews.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyBufferView(bufferView.Device(), bufferView.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every BufferView that we need to create at the end of the loop...
+	for toCreate := range f.bufferViewToCreate {
+		// Write the commands needed to recreate the destroyed object
+		bufferView := GetState(f.loopStartState).bufferViews.Get(toCreate)
+		stateBuilder.createBufferView(bufferView)
+	}
+
+	return nil
+}
+
 func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	if len(f.imageToBackup) == 0 {
@@ -1003,6 +1077,25 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 		}
 
 		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every ImageView that we need to destroy at the end of the loop...
+	for toDestroy := range f.imageViewToDestroy {
+		// Write the command to delete the created object
+		imageView := GetState(f.loopEndState).imageViews.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyImageView(imageView.Device(), imageView.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every ImageView that we need to create at the end of the loop...
+	for toCreate := range f.imageViewToCreate {
+		// Write the commands needed to recreate the destroyed object
+		imageView := GetState(f.loopStartState).imageViews.Get(toCreate)
+		stateBuilder.createImageView(imageView)
 	}
 
 	return nil
