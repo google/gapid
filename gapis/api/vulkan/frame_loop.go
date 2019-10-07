@@ -134,6 +134,9 @@ type frameLoop struct {
 	eventChanged   map[VkEvent]bool
 	eventDestroyed map[VkEvent]bool
 
+	framebuffersToDestroy map[VkFramebuffer]bool
+	framebuffersToCreate  map[VkFramebuffer]bool
+
 	renderPassToDestroy map[VkRenderPass]bool
 	renderPassToCreate  map[VkRenderPass]bool
 
@@ -213,6 +216,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		eventCreated:   make(map[VkEvent]bool),
 		eventChanged:   make(map[VkEvent]bool),
 		eventDestroyed: make(map[VkEvent]bool),
+
+		framebuffersToDestroy: make(map[VkFramebuffer]bool),
+		framebuffersToCreate:  make(map[VkFramebuffer]bool),
 
 		renderPassToDestroy: make(map[VkRenderPass]bool),
 		renderPassToCreate:  make(map[VkRenderPass]bool),
@@ -617,6 +623,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				delete(f.eventCreated, event)
 			}
 
+		// FrameBuffers
+		case *VkCreateFramebuffer:
+			vkCmd := cmd.(*VkCreateFramebuffer)
+			framebuffer := vkCmd.PFramebuffer().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Framebuffer %v created", framebuffer)
+			f.framebuffersToDestroy[framebuffer] = true
+
+		case *VkDestroyFramebuffer:
+			vkCmd := cmd.(*VkDestroyFramebuffer)
+			framebuffer := vkCmd.Framebuffer()
+			log.D(ctx, "Framebuffer %v created", framebuffer)
+			if _, ok := f.framebuffersToDestroy[framebuffer]; ok {
+				delete(f.framebuffersToDestroy, framebuffer)
+			} else {
+				f.framebuffersToCreate[framebuffer] = true
+			}
+
 		// RenderPass(s)
 		case *VkCreateRenderPass:
 			vkCmd := cmd.(*VkCreateRenderPass)
@@ -634,7 +657,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				f.renderPassToCreate[renderPass] = true
 			}
 
-			// TODO: Recreate destroyed resources.
+			// TODO:  Recreate destroyed resources.
 		}
 
 		if err := cmd.Mutate(ctx, cmdId, currentState, nil, f.watcher); err != nil {
@@ -932,6 +955,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	}
 
 	if err := f.resetEvents(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetFramebuffers(ctx, stateBuilder); err != nil {
 		return err
 	}
 
@@ -1368,6 +1395,25 @@ func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder)
 			stateBuilder.write(stateBuilder.cb.ReplayGetEventStatus(eventObj.Device(), eventObj.VulkanHandle(), VkResult_VK_EVENT_RESET, true, VkResult_VK_SUCCESS))
 			stateBuilder.write(stateBuilder.cb.VkSetEvent(eventObj.Device(), eventObj.VulkanHandle(), VkResult_VK_SUCCESS))
 		}
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetFramebuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Framebuffers that we need to destroy at the end of the loop...
+	for toDestroy := range f.framebuffersToDestroy {
+		// Write the command to delete the created object
+		framebuffer := GetState(f.loopEndState).framebuffers.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyFramebuffer(framebuffer.Device(), framebuffer.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every Framebuffers that we need to create at the end of the loop...
+	for toCreate := range f.framebuffersToCreate {
+		// Write the commands needed to recreate the destroyed object
+		framebuffer := GetState(f.loopStartState).framebuffers.Get(toCreate)
+		stateBuilder.createFramebuffer(framebuffer)
 	}
 
 	return nil
