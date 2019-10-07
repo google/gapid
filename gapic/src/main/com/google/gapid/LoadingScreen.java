@@ -29,7 +29,6 @@ import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMarginAndSpacing;
-import static com.google.gapid.widgets.Widgets.withSpacing;
 
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Models;
@@ -91,8 +90,9 @@ public class LoadingScreen extends Composite {
     statusLabel = createLabel(container, "Starting up...");
     statusLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-    optionsContainer = createComposite(
-        container, withSpacing(filling(new RowLayout(SWT.VERTICAL), true, true), 8));
+    optionsContainer = createComposite(container, filling(new RowLayout(SWT.VERTICAL), true, true));
+    optionsContainer.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
+
     createOptions();
   }
 
@@ -120,11 +120,11 @@ public class LoadingScreen extends Composite {
    * Initialize the links for layout settings. Hide them until server set up.
    */
   private void createOptions() {
-    OptionBar.withShortcut(theme, optionsContainer, theme.add(), "Capture a new trace", "T", e -> {
+    OptionBar.withShortcut(optionsContainer, theme.add(), "Capture a new trace", "T", e -> {
       showTracingDialog(
           checkNotNull(client), getShell(), checkNotNull(models), checkNotNull(widgets));
     });
-    OptionBar.withShortcut(theme, optionsContainer, theme.open(), "Open an existing trace", "O", e -> {
+    OptionBar.withShortcut(optionsContainer, theme.open(), "Open an existing trace", "O", e -> {
       showOpenTraceDialog(getShell(), checkNotNull(models));
     });
     OptionBar.withDropDown(theme, optionsContainer, theme.recent(), "Open recent trace", e -> {
@@ -140,7 +140,7 @@ public class LoadingScreen extends Composite {
           optionsContainer.toDisplay(bottomLeft((((Control)e.widget).getParent().getBounds()))));
       popup.setVisible(true);
     });
-    OptionBar.simple(theme, optionsContainer, theme.help(), "Help", e -> {
+    OptionBar.simple(optionsContainer, theme.help(), "Help", e -> {
       AboutDialog.showHelp(checkNotNull(models).analytics);
     });
 
@@ -163,10 +163,9 @@ public class LoadingScreen extends Composite {
   }
 
   private static class OptionBar extends Composite {
-    private OptionBar(
-        Composite parent, Image icon, String label, Image dropDown, String shortcut, Color hover) {
+    private OptionBar(Composite parent, Image icon, String label, Image dropDown, String shortcut) {
       super(parent, SWT.NONE);
-      setLayout(withMarginAndSpacing(new GridLayout(4, false), 10, 0, 0, 0));
+      setLayout(withMarginAndSpacing(new GridLayout(4, false), 10, 2, 0, 0));
 
       createLabel(this, "", icon);
       withLayoutData(createLabel(this, label),
@@ -180,29 +179,35 @@ public class LoadingScreen extends Composite {
       }
 
       setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
-      setBackgroundMode(SWT.INHERIT_FORCE);
-      recursiveAddListener(this, SWT.MouseEnter, e -> setBackground(hover));
-      recursiveAddListener(this, SWT.MouseExit, e -> setBackground(null));
+
+      Color fgColor = parent.getDisplay().getSystemColor(SWT.COLOR_LIST_SELECTION_TEXT);
+      Color bgColor = parent.getDisplay().getSystemColor(SWT.COLOR_LIST_SELECTION);
+      recursiveAddListener(this, SWT.MouseEnter, e -> {
+        Widgets.recursiveSetForeground(this, fgColor);
+        Widgets.recursiveSetBackground(this, bgColor);
+      });
+      recursiveAddListener(this, SWT.MouseExit, e -> {
+        Widgets.recursiveSetForeground(this, null);
+        Widgets.recursiveSetBackground(this, null);
+      });
     }
 
-    public static OptionBar simple(
-        Theme theme, Composite parent, Image icon, String label, Listener onClick) {
-      OptionBar bar = new OptionBar(parent, icon, label, null, null, theme.welcomeHoverColor());
+    public static OptionBar simple(Composite parent, Image icon, String label, Listener onClick) {
+      OptionBar bar = new OptionBar(parent, icon, label, null, null);
       recursiveAddListener(bar, SWT.MouseUp, onClick);
       return bar;
     }
 
-    public static OptionBar withShortcut(Theme theme,
+    public static OptionBar withShortcut(
         Composite parent, Image icon, String label, String shortcut, Listener onClick) {
-      OptionBar bar = new OptionBar(parent, icon, label, null, shortcut, theme.welcomeHoverColor());
+      OptionBar bar = new OptionBar(parent, icon, label, null, shortcut);
       recursiveAddListener(bar, SWT.MouseUp, onClick);
       return bar;
     }
 
     public static OptionBar withDropDown(
         Theme theme, Composite parent, Image icon, String label, Listener onClick) {
-      OptionBar bar = new OptionBar(
-          parent, icon, label, theme.arrowDropDownLight(), null, theme.welcomeHoverColor());
+      OptionBar bar = new OptionBar(parent, icon, label, theme.arrowDropDownLight(), null);
       recursiveAddListener(bar, SWT.MouseUp, onClick);
       return bar;
     }

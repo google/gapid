@@ -45,6 +45,7 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -755,6 +756,34 @@ public class Widgets {
         recursiveAddListener((Composite)child, eventType, listener);
       } else {
         child.addListener(eventType, listener);
+      }
+    }
+  }
+
+  /**
+   * Recursively sets the foreground color for the composite and all its children.
+   */
+  public static void recursiveSetForeground(Composite composite, Color color) {
+    composite.setForeground(color);
+    for (Control child : composite.getChildren()) {
+      if (child instanceof Composite) {
+        recursiveSetForeground((Composite)child, color);
+      } else {
+        child.setForeground(color);
+      }
+    }
+  }
+
+  /**
+   * Recursively sets the background color for the composite and all its children.
+   */
+  public static void recursiveSetBackground(Composite composite, Color color) {
+    composite.setBackground(color);
+    for (Control child : composite.getChildren()) {
+      if (child instanceof Composite) {
+        recursiveSetBackground((Composite)child, color);
+      } else {
+        child.setBackground(color);
       }
     }
   }
