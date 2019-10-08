@@ -101,7 +101,7 @@ public class TimeSpan {
     ns = Math.abs(ns);
     long u = NANOSECONDS.toMicros(ns) % 1000;
     long m = NANOSECONDS.toMillis(ns) % 1000;
-    long s = NANOSECONDS.toSeconds(ns) % 1000;
+    long s = NANOSECONDS.toSeconds(ns);
 
     if (s > 0) {
       if (u == 0) {
