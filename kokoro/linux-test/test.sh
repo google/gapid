@@ -19,26 +19,30 @@ set -x
 
 echo "Starting testing isolate access"
 
-SRC=$PWD/github/gapid
+date=`date`
 
-SERVER='https://chrome-isolated.appspot.com'
+echo $date
 
-LUCI_CLIENT_ROOT=$SRC/tools/build/third_party/luci-py/client
+# SRC=$PWD/github/gapid
 
-isolatesha=f9296e7cc5e29130250b1933e08b32af0a73990d
+# SERVER='https://chrome-isolated.appspot.com'
 
-tmpdir=$SRC/my-tmp
-rm -rf $tmpdir
+# LUCI_CLIENT_ROOT=$SRC/tools/build/third_party/luci-py/client
 
-$LUCI_CLIENT_ROOT/auth.py -v -v login --service=$SERVER
+# isolatesha=f9296e7cc5e29130250b1933e08b32af0a73990d
 
-echo "HERE Actual command"
+# tmpdir=$SRC/my-tmp
+# rm -rf $tmpdir
 
-$LUCI_CLIENT_ROOT/isolateserver.py download -I $SERVER --namespace default-gzip -s f9296e7cc5e29130250b1933e08b32af0a73990d --target $tmpdir
+# $LUCI_CLIENT_ROOT/auth.py -v -v login --service=$SERVER
 
-ls $tmpdir
+# echo "HERE Actual command"
 
-/usr/bin/python3 $tmpdir/hello.py
+# $LUCI_CLIENT_ROOT/isolateserver.py download -I $SERVER --namespace default-gzip -s f9296e7cc5e29130250b1933e08b32af0a73990d --target $tmpdir
+
+# ls $tmpdir
+
+# /usr/bin/python3 $tmpdir/hello.py
 
 echo "THIS IS THE END"
 
