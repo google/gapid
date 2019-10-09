@@ -32,6 +32,10 @@ import (
 	"github.com/google/gapid/core/log"
 )
 
+var (
+	ansiRegex = regexp.MustCompile("\u001b\\[\\d+m")
+)
+
 // StartPerfettoTrace starts a perfetto trace on this device.
 func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error {
 	// Silently attempt to delete the old trace in case the user has changed
@@ -89,14 +93,16 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 		if err != nil {
 			msg := ""
 			logRing.Do(func(p interface{}) {
-				if p != nil && len(p.(string)) > 0 {
-					msg += p.(string) + "\n"
+				if s, ok := p.(string); ok && len(s) > 0 {
+					msg += "\n" + s
 				}
 			})
 			// Remove ANSI color codes from perfetto output
-			ansiRegex := regexp.MustCompile("\u001b\\[\\d+m")
 			msg = ansiRegex.ReplaceAllString(msg, "")
-			err = errors.New(msg)
+
+			if msg != "" {
+				err = errors.New(err.Error() + "\nPerfetto Output:" + msg)
+			}
 		}
 	case <-stop:
 		// TODO: figure out why "killall -2 perfetto" doesn't work.
