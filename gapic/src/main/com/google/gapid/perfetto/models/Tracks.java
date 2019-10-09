@@ -66,7 +66,7 @@ public class Tracks {
     return transform(CpuTrack.enumerate(summary.getId(), data), configs -> {
       boolean hasAnyFrequency = configs.stream().anyMatch(c -> c.hasFrequency);
       Group.UiFactory ui = hasAnyFrequency ?
-          group(state -> new CpuSummaryPanel(state, summary), false, (group, filtered) -> {
+          group(state -> new CpuSummaryPanel(state, summary), true, (group, filtered) -> {
               for (int cpu = 0, track = 0; cpu < configs.size(); cpu++, track++) {
                 if (configs.get(cpu).hasFrequency) {
                   track++;
@@ -74,7 +74,7 @@ public class Tracks {
                 }
               }
             }, true) :
-          group(state -> new CpuSummaryPanel(state, summary), false);
+          group(state -> new CpuSummaryPanel(state, summary), true);
       data.tracks.addLabelGroup(null, summary.getId(), "CPU Usage", ui);
       return data;
     });
