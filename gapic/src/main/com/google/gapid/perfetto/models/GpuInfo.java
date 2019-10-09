@@ -43,6 +43,10 @@ public class GpuInfo {
     this.queues = queues;
   }
 
+  public int queueCount() {
+    return queues.size();
+  }
+
   public Iterable<Queue> queues() {
     return Iterables.unmodifiableIterable(queues);
   }

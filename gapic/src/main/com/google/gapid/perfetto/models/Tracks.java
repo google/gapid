@@ -19,6 +19,7 @@ import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
+import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -86,33 +87,37 @@ public class Tracks {
   }
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {
-    boolean found = false;
-    for (GpuInfo.Queue queue : data.getGpu().queues()) {
-      if (!found) {
-        addGpuGroup(data);
-        found = true;
-      }
-      SliceTrack track = SliceTrack.forGpuQueue(queue);
-      data.tracks.addTrack("gpu", track.getId(), queue.getDisplay(),
-          single(state -> new GpuQueuePanel(state, queue, track), true));
+    List<CounterInfo> counters = data.getCounters().values().stream()
+        .filter(c -> (c.count > 0) && ("gpu".equals(c.refType)))
+        .collect(toList());
+
+    if (counters.isEmpty() && (data.getGpu().queueCount() == 0)) {
+      // No GPU data available.
+      return data;
     }
 
-    for (CounterInfo counter : data.getCounters().values()) {
-      if ("gpu".equals(counter.refType) && counter.count > 0) {
-        if (!found) {
-          addGpuGroup(data);
-          found = true;
-        }
+    data.tracks.addLabelGroup(null, "gpu", "GPU", group(state -> new TitlePanel("GPU"), true));
+
+    if (data.getGpu().queueCount() > 0) {
+      data.tracks.addLabelGroup(
+          "gpu", "gpu_queues", "GPU Queues", group(state -> new TitlePanel("GPU Queues"), true));
+      for (GpuInfo.Queue queue : data.getGpu().queues()) {
+        SliceTrack track = SliceTrack.forGpuQueue(queue);
+        data.tracks.addTrack("gpu_queues", track.getId(), queue.getDisplay(),
+            single(state -> new GpuQueuePanel(state, queue, track), true));
+      }
+    }
+
+    if (!counters.isEmpty()) {
+      data.tracks.addLabelGroup("gpu", "gpu_counters", "GPU Counters",
+          group(state -> new TitlePanel("GPU Counters"), true));
+      for (CounterInfo counter : counters) {
         CounterTrack track = new CounterTrack(counter);
-        data.tracks.addTrack("gpu", track.getId(), counter.name,
+        data.tracks.addTrack("gpu_counters", track.getId(), counter.name,
             single(state -> new CounterPanel(state, track), true));
       }
     }
     return data;
-  }
-
-  private static void addGpuGroup(Perfetto.Data.Builder data) {
-    data.tracks.addLabelGroup(null, "gpu", "GPU", group(state -> new TitlePanel("GPU"), true));
   }
 
   public static Perfetto.Data.Builder enumerateProcesses(Perfetto.Data.Builder data) {
