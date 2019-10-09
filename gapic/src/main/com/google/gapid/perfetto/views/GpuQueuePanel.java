@@ -27,6 +27,7 @@ import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
+import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
@@ -85,8 +86,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         long tStart = data.starts[i];
         long tEnd = data.ends[i];
         int depth = data.depths[i];
-        //String cat = data.categories[i];
-        String title = data.titles[i];
+        String title = buildSliceTitle(data.titles[i], data.args[i]);
+
         if (tEnd <= visible.start || tStart >= visible.end) {
           continue;
         }
@@ -127,6 +128,11 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
     });
   }
 
+  private static String buildSliceTitle(String title, ArgSet args) {
+    Object w = args.get("width"), h = args.get("height");
+    return (w == null || h == null) ? title : title + " (" + w + "x" + h + ")";
+  }
+
   @Override
   protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
     SliceTrack.Data data = track.getData(state, () -> { /* nothing */ });
@@ -153,6 +159,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
           hoveredTitle = hoveredCategory;
           hoveredCategory = "";
         }
+        hoveredTitle = buildSliceTitle(hoveredTitle, data.args[i]);
 
         hoveredSize = Size.vertCombine(HOVER_PADDING, HOVER_PADDING / 2,
             m.measure(Fonts.Style.Normal, hoveredTitle),

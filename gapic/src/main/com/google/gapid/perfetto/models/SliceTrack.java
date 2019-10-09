@@ -50,7 +50,7 @@ import java.util.Set;
  */
 public abstract class SliceTrack extends Track<SliceTrack.Data> {
   private static final String BASE_COLUMNS =
-      "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id";
+      "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
   private static final String SLICES_VIEW =
       "select " + BASE_COLUMNS + " from %s where track_id = %d";
   private static final String SLICES_SQL =
@@ -86,8 +86,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
   public static SliceTrack forThread(ThreadInfo thread) {
     return new SliceTrack("slices", thread.trackId) {
       @Override
-      protected Slice buildSlice(Row row) {
-        return new Slice.ThreadSlice(row, thread);
+      protected Slice buildSlice(Row row, ArgSet args) {
+        return new Slice.ThreadSlice(row, args, thread);
       }
     };
   }
@@ -95,8 +95,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
   public static SliceTrack forGpuQueue(GpuInfo.Queue queue) {
     return new SliceTrack("gpu_slice", queue.trackId) {
       @Override
-      protected Slice buildSlice(Row row) {
-        return new Slice(row) {
+      protected Slice buildSlice(Row row, ArgSet args) {
+        return new Slice(row, args) {
           @Override
           public String getTitle() {
             return "GPU Render Stages";
@@ -131,7 +131,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     return transform(qe.query(slicesQuantSql()), res -> {
       int rows = res.getNumRows();
       Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
-          new String[rows], new String[rows]);
+          new String[rows], new String[rows], new ArgSet[rows]);
       res.forEachRow((i, row) -> {
         data.ids[i] = -1;
         data.starts[i] = row.getLong(0);
@@ -142,6 +142,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
         if (data.titles[i].length() >= 100 && row.getInt(4) > 1) {
           data.titles[i] += "...";
         }
+        data.args[i] = ArgSet.EMPTY;
       });
       return data;
     });
@@ -152,21 +153,23 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
   }
 
   private ListenableFuture<Data> computeSlices(QueryEngine qe, DataRequest req) {
-    return transform(qe.query(slicesSql(req)), res -> {
-      int rows = res.getNumRows();
-      Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
-          new String[rows], new String[rows]);
-      res.forEachRow((i, row) -> {
-        long start = row.getLong(1);
-        data.ids[i] = row.getLong(0);
-        data.starts[i] = start;
-        data.ends[i] = start + row.getLong(2);
-        data.categories[i] = row.getString(3);
-        data.titles[i] = row.getString(4);
-        data.depths[i] = row.getInt(5);
-      });
-      return data;
-    });
+    return transformAsync(qe.query(slicesSql(req)), res ->
+      transform(qe.getAllArgs(res.stream().mapToLong(r -> r.getLong(8))), args -> {
+        int rows = res.getNumRows();
+        Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
+            new String[rows], new String[rows], new ArgSet[rows]);
+        res.forEachRow((i, row) -> {
+          long start = row.getLong(1);
+          data.ids[i] = row.getLong(0);
+          data.starts[i] = start;
+          data.ends[i] = start + row.getLong(2);
+          data.categories[i] = row.getString(3);
+          data.titles[i] = row.getString(4);
+          data.depths[i] = row.getInt(5);
+          data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
+        });
+        return data;
+      }));
   }
 
   private String slicesSql(DataRequest req) {
@@ -174,10 +177,15 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
   }
 
   public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
-    return transform(expectOneRow(qe.query(sliceSql(id))), this::buildSlice);
+    return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
+        transform(qe.getArgs(r.getLong(8)), args -> buildSlice(r, args)));
   }
 
-  protected abstract Slice buildSlice(QueryEngine.Row row);
+  private Slice buildSlice(QueryEngine.Row row) {
+    return buildSlice(row, ArgSet.EMPTY);
+  }
+
+  protected abstract Slice buildSlice(QueryEngine.Row row, ArgSet args);
 
   private String sliceSql(long id) {
     return format(SLICE_SQL, tableName("slices"), id);
@@ -200,6 +208,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public final int[] depths;
     public final String[] titles;
     public final String[] categories;
+    public final ArgSet[] args;
 
     public Data(DataRequest request) {
       super(request);
@@ -209,10 +218,11 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
       this.depths = new int[0];
       this.titles = new String[0];
       this.categories = new String[0];
+      this.args = new ArgSet[0];
     }
 
     public Data(DataRequest request, long[] ids, long[] starts, long[] ends, int[] depths,
-        String[] titles, String[] categories) {
+        String[] titles, String[] categories, ArgSet[] args) {
       super(request);
       this.ids = ids;
       this.starts = starts;
@@ -220,6 +230,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
       this.depths = depths;
       this.titles = titles;
       this.categories = categories;
+      this.args = args;
     }
   }
 
@@ -230,19 +241,22 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public final String name;
     public final long stackId;
     public final long parentId;
+    public final ArgSet args;
 
-    public Slice(long time, long dur, String category, String name, long stackId, long parentId) {
+    public Slice(long time, long dur, String category, String name, long stackId, long parentId,
+        ArgSet args) {
       this.time = time;
       this.dur = dur;
       this.category = category;
       this.name = name;
       this.stackId = stackId;
       this.parentId = parentId;
+      this.args = args;
     }
 
-    public Slice(QueryEngine.Row row) {
+    public Slice(QueryEngine.Row row, ArgSet args) {
       this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getLong(6),
-          row.getLong(7));
+          row.getLong(7), args);
     }
 
     public ThreadInfo getThread() {
@@ -264,8 +278,8 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public static class ThreadSlice extends Slice {
       public final ThreadInfo thread;
 
-      public ThreadSlice(Row row, ThreadInfo thread) {
-        super(row);
+      public ThreadSlice(Row row, ArgSet args, ThreadInfo thread) {
+        super(row, args);
         this.thread = thread;
       }
 

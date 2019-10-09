@@ -17,10 +17,14 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
+import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
+import com.google.common.collect.Iterables;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.ThreadInfo;
@@ -34,38 +38,64 @@ import org.eclipse.swt.widgets.Composite;
  * Displays information about a selected slice.
  */
 public class SliceSelectionView extends Composite {
+  private static final int PROPERTIES_PER_PANEL = 8;
+  private static final int PANEL_INDENT = 25;
+
   public SliceSelectionView(Composite parent, State state, SliceTrack.Slice slice) {
     super(parent, SWT.NONE);
-    setLayout(new GridLayout(2, false));
+    setLayout(withMargin(new GridLayout(2, false), 0, 0));
 
-    withLayoutData(createBoldLabel(this, "Slice:"), withSpans(new GridData(), 2, 1));
+    Composite main = withLayoutData(createComposite(this, new GridLayout(2, false)),
+        new GridData(SWT.LEFT, SWT.TOP, false, false));
+    withLayoutData(createBoldLabel(main, "Slice:"), withSpans(new GridData(), 2, 1));
 
-    createLabel(this, "Time:");
-    createLabel(this, timeToString(slice.time - state.getTraceTime().start));
+    createLabel(main, "Time:");
+    createLabel(main, timeToString(slice.time - state.getTraceTime().start));
 
-    createLabel(this, "Duration:");
-    createLabel(this, timeToString(slice.dur));
+    createLabel(main, "Duration:");
+    createLabel(main, timeToString(slice.dur));
 
     ThreadInfo thread = slice.getThread();
     if (thread != null) {
       ProcessInfo process = state.getProcessInfo(thread.upid);
       if (process != null) {
-        createLabel(this, "Process:");
-        createLabel(this, process.getDisplay());
+        createLabel(main, "Process:");
+        createLabel(main, process.getDisplay());
       }
 
-      createLabel(this, "Thread:");
-      createLabel(this, thread.getDisplay());
+      createLabel(main, "Thread:");
+      createLabel(main, thread.getDisplay());
     }
 
     if (!slice.category.isEmpty()) {
-      createLabel(this, "Category:");
-      createLabel(this, slice.category);
+      createLabel(main, "Category:");
+      createLabel(main, slice.category);
     }
 
     if (!slice.name.isEmpty()) {
-      createLabel(this, "Name:");
-      createLabel(this, slice.name);
+      createLabel(main, "Name:");
+      createLabel(main, slice.name);
+    }
+
+    if (!slice.args.isEmpty()) {
+      String[] keys = Iterables.toArray(slice.args.keys(), String.class);
+      int panels = (keys.length + PROPERTIES_PER_PANEL - 1) / PROPERTIES_PER_PANEL;
+      Composite props = withLayoutData(createComposite(this, new GridLayout(2 * panels, false)),
+          withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), PANEL_INDENT, 0));
+      withLayoutData(createBoldLabel(props, "Properties:"),
+          withSpans(new GridData(), 2 * panels, 1));
+
+      for (int i = 0; i < keys.length && i < PROPERTIES_PER_PANEL; i++) {
+        int cols = (keys.length - i + PROPERTIES_PER_PANEL - 1) / PROPERTIES_PER_PANEL;
+        for (int c = 0; c < cols; c++) {
+          withLayoutData(createLabel(props, keys[i + c * PROPERTIES_PER_PANEL] + ":"),
+              withIndents(new GridData(), (c == 0) ? 0 : PANEL_INDENT, 0));
+          createLabel(props, String.valueOf(slice.args.get(keys[i + c * PROPERTIES_PER_PANEL])));
+        }
+        if (cols != panels) {
+          withLayoutData(createLabel(props, ""), withSpans(new GridData(), 2 * (panels - cols), 1));
+        }
+      }
     }
   }
 }
