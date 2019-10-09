@@ -22,7 +22,9 @@ import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.stream.Collectors.toList;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -32,16 +34,22 @@ import com.google.gapid.proto.perfetto.Perfetto;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.server.Client;
+import com.google.gapid.util.FutureCache;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.views.StatusBar;
 
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.SortedMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 /**
  * Interface to the trace processor query executor.
@@ -55,6 +63,7 @@ public class QueryEngine {
   private final Client client;
   private final Path.Capture capture;
   private final StatusBar status;
+  private final FutureCache<Long, ArgSet> argsCache;
   private final AtomicInteger scheduled = new AtomicInteger(0);
   private final AtomicInteger done = new AtomicInteger(0);
   private final AtomicBoolean updating = new AtomicBoolean(false);
@@ -63,6 +72,7 @@ public class QueryEngine {
     this.client = client;
     this.capture = capture;
     this.status = status;
+    this.argsCache = FutureCache.softCache(key -> ArgSet.get(this, key), Objects::nonNull);
   }
 
   public ListenableFuture<Perfetto.QueryResult> raw(String sql) {
@@ -95,6 +105,20 @@ public class QueryEngine {
       }
       return query(queries, idx + 1);
     });
+  }
+
+  public ListenableFuture<ArgSet> getArgs(long id) {
+    return argsCache.get(id);
+  }
+
+  public ListenableFuture<Map<Long, ArgSet>> getAllArgs(LongStream ids) {
+    return transform(
+        Futures.allAsList(ids
+          .distinct()
+          .mapToObj(id -> transform(
+              getArgs(id), r -> new AbstractMap.SimpleImmutableEntry<Long, ArgSet>(id, r)))
+          .collect(toList())),
+        list -> ImmutableMap.copyOf(list));
   }
 
   public static ListenableFuture<Row> expectOneRow(ListenableFuture<Result> future) {
@@ -182,6 +206,11 @@ public class QueryEngine {
     public Row getRow(int row) {
       return new Row() {
         @Override
+        public boolean isNull(int column) {
+          return Result.this.isNull(row, column);
+        }
+
+        @Override
         public long getLong(int column, long deflt) {
           return Result.this.getLong(row, column, deflt);
         }
@@ -223,6 +252,14 @@ public class QueryEngine {
       return list;
     }
 
+    public Stream<Row> stream() {
+      return IntStream.range(0, getNumRows()).mapToObj(this::getRow);
+    }
+
+    public boolean isNull(int row, int column) {
+      return res.getColumns(column).getIsNulls(row);
+    }
+
     public long getLong(int row, int column, long deflt) {
       Perfetto.QueryResult.ColumnValues c = res.getColumns(column);
       return (c.getIsNulls(row)) ? deflt : c.getLongValues(row);
@@ -240,6 +277,7 @@ public class QueryEngine {
   }
 
   public static interface Row {
+    public boolean isNull(int column);
     public default long getLong(int column) { return getLong(column, 0); }
     public long getLong(int column, long deflt);
     public default int getInt(int column) { return (int)getLong(column, 0); }
