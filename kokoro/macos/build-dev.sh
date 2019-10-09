@@ -15,6 +15,8 @@
 
 # MacOS dev Build Script.
 
-export DEV_PREFIX="dev-"
+devdate=`date '+%Y%m%d'`
+
+export DEV_PREFIX="dev-${devdate}-"
 
 . $PWD/github/gapid/kokoro/macos/build.sh

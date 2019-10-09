@@ -129,7 +129,7 @@ func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (
 	}
 	var mostRecent *service.Release
 	mostRecentVersion := app.Version
-	mostRecentDevVersion := -1
+	mostRecentDevVersion := app.Version.GetDevVersion()
 
 	for _, release := range releases {
 		if !includePrereleases && release.GetPrerelease() {

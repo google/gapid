@@ -16,6 +16,10 @@ limitations under the License.
 Windows Build Script.
 
 :start
-set DEV_PREFIX=dev-
+
+REM Get date in YYYYMMDD format
+for /f "tokens=1,2,3 delims=/ " %%a in ('date /t') do set devdate=%%c%%b%%a
+
+set DEV_PREFIX=dev-%devdate%-
 
 call %cd%\github\gapid\kokoro\windows\build.bat
