@@ -15,57 +15,61 @@
  */
 package com.google.gapid.perfetto.models;
 
-import static com.google.common.collect.Iterators.transform;
-import static com.google.common.collect.Iterators.unmodifiableIterator;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
-import com.google.gapid.perfetto.models.GpuInfo.Gpu;
 
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.SortedMap;
+import java.util.List;
 
 /**
  * Data about a GPU in the trace.
  */
-public class GpuInfo implements Iterable<Gpu> {
-  public static final GpuInfo NONE = new GpuInfo(Collections.emptySortedMap());
+public class GpuInfo {
+  public static final GpuInfo NONE = new GpuInfo(Collections.emptyList());
 
   private static final String MAX_DEPTH_QUERY =
-      "select ref, max(depth) + 1 from slices where ref_type = 'gpu' group by ref";
+      "select t.id, max(depth) + 1 " +
+      "from gpu_track t, gpu_slice s " +
+      "where t.id = s.track_id and t.scope = 'gpu_render_stage' " +
+      "group by t.id " +
+      "order by t.id";
 
-  private final SortedMap<Long, Integer> maxDepth;
+  private final List<Queue> queues;
 
-  private GpuInfo(SortedMap<Long, Integer> maxDepth) {
-    this.maxDepth = maxDepth;
+  private GpuInfo(List<Queue> queues) {
+    this.queues = queues;
   }
 
-  @Override
-  public Iterator<Gpu> iterator() {
-    return unmodifiableIterator(transform(
-        maxDepth.entrySet().iterator(), e -> new Gpu(e.getKey(), e.getValue())));
+  public Iterable<Queue> queues() {
+    return Iterables.unmodifiableIterable(queues);
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> listGpus(Perfetto.Data.Builder data) {
-    return transform(maxDepth(data.qe), maxDepth -> {
-      return data.setGpu(new GpuInfo(maxDepth));
+    return transform(queues(data.qe), queues -> {
+      return data.setGpu(new GpuInfo(queues));
     });
   }
 
-  private static ListenableFuture<SortedMap<Long, Integer>> maxDepth(QueryEngine qe) {
-    return transform(qe.queries(MAX_DEPTH_QUERY),
-        res -> res.sortedMap(row -> row.getLong(0), row -> row.getInt(1)));
+  private static ListenableFuture<List<Queue>> queues(QueryEngine qe) {
+    return transform(qe.queries(MAX_DEPTH_QUERY), res -> res.list(Queue::new));
   }
 
-  public static class Gpu {
-    public final long id;
+  public static class Queue {
+    public final int id;
+    public final long trackId;
     public final int maxDepth;
 
-    public Gpu(long id, int maxDepth) {
+    public Queue(int id, long trackId, int maxDepth) {
       this.id = id;
+      this.trackId = trackId;
       this.maxDepth = maxDepth;
+    }
+
+    public Queue(int id, QueryEngine.Row row) {
+      this(id, row.getLong(0), row.getInt(1));
     }
 
     public String getDisplay() {

@@ -43,7 +43,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
 
-  private final GpuInfo.Gpu gpu;
+  private final GpuInfo.Queue queue;
   protected final SliceTrack track;
 
   protected double mouseXpos, mouseYpos;
@@ -51,21 +51,21 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   protected String hoveredCategory;
   protected Size hoveredSize = Size.ZERO;
 
-  public GpuQueuePanel(State state, GpuInfo.Gpu gpu, SliceTrack track) {
+  public GpuQueuePanel(State state, GpuInfo.Queue queue, SliceTrack track) {
     super(state);
-    this.gpu = gpu;
+    this.queue = queue;
     this.track = track;
   }
 
 
   @Override
   public String getTitle() {
-    return gpu.getDisplay();
+    return queue.getDisplay();
   }
 
   @Override
   public double getHeight() {
-    return gpu.maxDepth * SLICE_HEIGHT;
+    return queue.maxDepth * SLICE_HEIGHT;
   }
 
   @Override
@@ -135,7 +135,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
     }
 
     int depth = (int)(y / SLICE_HEIGHT);
-    if (depth < 0 || depth > gpu.maxDepth) {
+    if (depth < 0 || depth > queue.maxDepth) {
       return Hover.NONE;
     }
 
@@ -158,9 +158,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
             m.measure(Fonts.Style.Normal, hoveredTitle),
             hoveredCategory.isEmpty() ? Size.ZERO : m.measure(Fonts.Style.Normal, hoveredCategory));
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
-            (1 + gpu.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
+            (1 + queue.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
         long id = data.ids[i];
-        long ts = data.starts[i];
 
         return new Hover() {
           @Override
@@ -176,14 +175,13 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
 
           @Override
           public Cursor getCursor(Display display) {
-            return (id == 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
+            return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
           }
 
           @Override
           public boolean click() {
-            if (id != 0) {
-              state.setSelection(SliceTrack.getSlice(
-                  state.getQueryEngine(), SliceTrack.SliceType.Gpu, id, ts));
+            if (id >= 0) {
+              state.setSelection(track.getSlice(state.getQueryEngine(), id));
             }
             return false;
           }
@@ -211,11 +209,12 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
     }
 
     if (endDepth >= 0) {
-      if (endDepth >= gpu.maxDepth) {
+      if (endDepth >= queue.maxDepth) {
         endDepth = Integer.MAX_VALUE;
       }
+
       builder.add(Kind.Gpu, transform(
-          SliceTrack.getGpuSlices(state.getQueryEngine(), gpu.id, ts, startDepth, endDepth),
+          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
           SliceTrack.Slices::new));
     }
   }

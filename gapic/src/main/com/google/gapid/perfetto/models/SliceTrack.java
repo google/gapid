@@ -34,6 +34,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.models.QueryEngine.Row;
 import com.google.gapid.perfetto.views.SliceSelectionView;
 import com.google.gapid.perfetto.views.SlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
@@ -47,13 +48,13 @@ import java.util.Set;
 /**
  * {@link Track} containing slices.
  */
-public class SliceTrack extends Track<SliceTrack.Data> {
-  private static final String THREAD_FILTER = "utid = %d";
-  private static final String GPU_FILTER = "ref_type = 'gpu' and ref = %d";
+public abstract class SliceTrack extends Track<SliceTrack.Data> {
+  private static final String BASE_COLUMNS =
+      "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id";
   private static final String SLICES_VIEW =
-      "select ts, dur, cat, name, depth, stack_id, parent_stack_id from slices where %s";
+      "select " + BASE_COLUMNS + " from %s where track_id = %d";
   private static final String SLICES_SQL =
-      "select ts, dur, depth, cat, name, stack_id from %s " +
+      "select " + BASE_COLUMNS + " from %s " +
       "where ts >= %d - dur and ts <= %d order by ts";
   private static final String SLICES_QUANT_SQL =
       "select min(start_ts), max(end_ts), depth, label, max(cnt) from (" +
@@ -66,30 +67,43 @@ public class SliceTrack extends Track<SliceTrack.Data> {
       "        range between unbounded preceding and unbounded following))" +
       "  group by quantum_ts, depth) " +
       "group by depth, label, i";
+
   private static final String SLICE_SQL =
-      "select stack_id, ts, dur, utid, cat, name, parent_stack_id from slices " +
-      "where stack_id = %d and ts = %d";
-  private static final String THREAD_SLICE_RANGE_SQL =
-      "select stack_id, ts, dur, utid, cat, name, parent_stack_id from slices " +
-      "where utid = %d and ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
-  private static final String GPU_SLICE_RANGE_SQL =
-      "select stack_id, ts, dur, utid, cat, name, parent_stack_id from slices " +
-      "where ref_type = 'gpu' and ref = %d and ts < %d and ts + dur >= %d " +
-      "and depth >= %d and depth <= %d";
+      "select " + BASE_COLUMNS + " from %s where slice_id = %d";
+  private static final String SLICE_RANGE_SQL =
+      "select " + BASE_COLUMNS + " from %s " +
+      "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
 
-  private final String filter;
+  private final String table;
+  private final long trackId;
 
-  private SliceTrack(String id, String filter) {
-    super(id);
-    this.filter = filter;
+  protected SliceTrack(String table, long trackId) {
+    super("slices_" + trackId);
+    this.table = table;
+    this.trackId = trackId;
   }
 
-  public static SliceTrack forThread(long utid) {
-    return new SliceTrack("thread_slices_" + utid, format(THREAD_FILTER, utid));
+  public static SliceTrack forThread(ThreadInfo thread) {
+    return new SliceTrack("slices", thread.trackId) {
+      @Override
+      protected Slice buildSlice(Row row) {
+        return new Slice.ThreadSlice(row, thread);
+      }
+    };
   }
 
-  public static SliceTrack forGpu(long gpu) {
-    return new SliceTrack("gpu_slices_" + gpu, format(GPU_FILTER, gpu));
+  public static SliceTrack forGpuQueue(GpuInfo.Queue queue) {
+    return new SliceTrack("gpu_slice", queue.trackId) {
+      @Override
+      protected Slice buildSlice(Row row) {
+        return new Slice(row) {
+          @Override
+          public String getTitle() {
+            return "GPU Render Stages";
+          }
+        };
+      }
+    };
   }
 
   @Override
@@ -102,7 +116,7 @@ public class SliceTrack extends Track<SliceTrack.Data> {
         dropView(slices),
         dropTable(window),
         createWindow(window),
-        createView(slices, format(SLICES_VIEW, filter)),
+        createView(slices, format(SLICES_VIEW, table, trackId)),
         createSpan(span, window + ", " + slices + " PARTITIONED depth"));
   }
 
@@ -119,6 +133,7 @@ public class SliceTrack extends Track<SliceTrack.Data> {
       Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
           new String[rows], new String[rows]);
       res.forEachRow((i, row) -> {
+        data.ids[i] = -1;
         data.starts[i] = row.getLong(0);
         data.ends[i] = row.getLong(1);
         data.depths[i] = row.getInt(2);
@@ -142,13 +157,13 @@ public class SliceTrack extends Track<SliceTrack.Data> {
       Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
           new String[rows], new String[rows]);
       res.forEachRow((i, row) -> {
-        long start = row.getLong(0);
+        long start = row.getLong(1);
+        data.ids[i] = row.getLong(0);
         data.starts[i] = start;
-        data.ends[i] = start + row.getLong(1);
-        data.depths[i] = row.getInt(2);
+        data.ends[i] = start + row.getLong(2);
         data.categories[i] = row.getString(3);
         data.titles[i] = row.getString(4);
-        data.ids[i] = row.getLong(5);
+        data.depths[i] = row.getInt(5);
       });
       return data;
     });
@@ -158,39 +173,24 @@ public class SliceTrack extends Track<SliceTrack.Data> {
     return format(SLICES_SQL, tableName("slices"), req.range.start, req.range.end);
   }
 
-  public static ListenableFuture<Slice> getSlice(
-      QueryEngine qe, SliceType type, long id, long ts) {
-    return transform(expectOneRow(qe.query(sliceSql(id, ts))), r -> new Slice(type, r));
+  public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
+    return transform(expectOneRow(qe.query(sliceSql(id))), this::buildSlice);
   }
 
-  private static String sliceSql(long id, long ts) {
-    return format(SLICE_SQL, id, ts);
+  protected abstract Slice buildSlice(QueryEngine.Row row);
+
+  private String sliceSql(long id) {
+    return format(SLICE_SQL, tableName("slices"), id);
   }
 
-  public static ListenableFuture<List<Slice>> getThreadSlices(
-      QueryEngine qe, long utid, TimeSpan ts, int minDepth, int maxDepth) {
-    return transform(qe.queries(threadSliceRangeSql(utid, ts, minDepth, maxDepth)), res -> {
-      List<Slice> slices = Lists.newArrayList();
-      res.forEachRow((i, r) -> slices.add(new Slice(SliceType.Thread, r)));
-      return slices;
-    });
+  public ListenableFuture<List<Slice>> getSlices(
+      QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
+    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
+        res -> res.list(($, row) -> buildSlice(row)));
   }
 
-  private static String threadSliceRangeSql(long utid, TimeSpan ts, int minDepth, int maxDepth) {
-    return format(THREAD_SLICE_RANGE_SQL, utid, ts.end, ts.start, minDepth, maxDepth);
-  }
-
-  public static ListenableFuture<List<Slice>> getGpuSlices(
-      QueryEngine qe, long gpu, TimeSpan ts, int minDepth, int maxDepth) {
-    return transform(qe.queries(gpuSliceRangeSql(gpu, ts, minDepth, maxDepth)), res -> {
-      List<Slice> slices = Lists.newArrayList();
-      res.forEachRow((i, r) -> slices.add(new Slice(SliceType.Gpu, r)));
-      return slices;
-    });
-  }
-
-  private static String gpuSliceRangeSql(long gpu, TimeSpan ts, int minDepth, int maxDepth) {
-    return format(GPU_SLICE_RANGE_SQL, gpu, ts.end, ts.start, minDepth, maxDepth);
+  private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
+    return format(SLICE_RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
   }
 
   public static class Data extends Track.Data {
@@ -200,6 +200,16 @@ public class SliceTrack extends Track<SliceTrack.Data> {
     public final int[] depths;
     public final String[] titles;
     public final String[] categories;
+
+    public Data(DataRequest request) {
+      super(request);
+      this.ids = new long[0];
+      this.starts = new long[0];
+      this.ends = new long[0];
+      this.depths = new int[0];
+      this.titles = new String[0];
+      this.categories = new String[0];
+    }
 
     public Data(DataRequest request, long[] ids, long[] starts, long[] ends, int[] depths,
         String[] titles, String[] categories) {
@@ -213,46 +223,30 @@ public class SliceTrack extends Track<SliceTrack.Data> {
     }
   }
 
-  public static enum SliceType {
-    Thread("Thread Slices"), Gpu("GPU Render Stages");
-
-    public final String title;
-
-    private SliceType(String title) {
-      this.title = title;
-    }
-  }
-
-  public static class Slice implements Selection {
-    public final SliceType type;
-    public final long id;
+  public static abstract class Slice implements Selection {
     public final long time;
     public final long dur;
-    public final long utid;
     public final String category;
     public final String name;
+    public final long stackId;
     public final long parentId;
 
-    public Slice(SliceType type, long id, long time, long dur, long utid, String category,
-        String name, long parentId) {
-      this.type = type;
-      this.id = id;
+    public Slice(long time, long dur, String category, String name, long stackId, long parentId) {
       this.time = time;
       this.dur = dur;
-      this.utid = utid;
       this.category = category;
       this.name = name;
+      this.stackId = stackId;
       this.parentId = parentId;
     }
 
-    public Slice(SliceType type, QueryEngine.Row row) {
-      this(type, row.getLong(0), row.getLong(1), row.getLong(2), row.getLong(3), row.getString(4),
-          row.getString(5), row.getLong(6));
+    public Slice(QueryEngine.Row row) {
+      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getLong(6),
+          row.getLong(7));
     }
 
-    @Override
-    public String getTitle() {
-      return type.title;
+    public ThreadInfo getThread() {
+      return null;
     }
 
     @Override
@@ -266,28 +260,47 @@ public class SliceTrack extends Track<SliceTrack.Data> {
         state.setHighlight(new TimeSpan(time, time + dur));
       }
     }
+
+    public static class ThreadSlice extends Slice {
+      public final ThreadInfo thread;
+
+      public ThreadSlice(Row row, ThreadInfo thread) {
+        super(row);
+        this.thread = thread;
+      }
+
+      @Override
+      public String getTitle() {
+        return "Thread Slices";
+      }
+
+      @Override
+      public ThreadInfo getThread() {
+        return thread;
+      }
+    }
   }
 
   public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
-    private final SliceType type;
+    private final String title;
     private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
     private final Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
     private final Set<Long> roots = Sets.newHashSet();
 
     public Slices(List<Slice> slices) {
-      SliceType ty = SliceType.Thread;
+      String ti = "";
       for (Slice slice : slices) {
-        Node.Builder child = byStack.get(slice.id);
+        ti = slice.getTitle();
+        Node.Builder child = byStack.get(slice.stackId);
         if (child == null) {
-          byStack.put(slice.id, child = new Node.Builder(slice.name, slice.id, slice.parentId));
+          byStack.put(slice.stackId, child = new Node.Builder(slice.name, slice.stackId, slice.parentId));
           byParent.computeIfAbsent(slice.parentId, $ -> Lists.newArrayList()).add(child);
           roots.add(slice.parentId);
         }
-        roots.remove(slice.id);
+        roots.remove(slice.stackId);
         child.add(slice.dur);
-        ty = slice.type;
       }
-      this.type = ty;
+      this.title = ti;
     }
 
     @Override
@@ -307,7 +320,7 @@ public class SliceTrack extends Track<SliceTrack.Data> {
 
     @Override
     public Selection build() {
-      return new Selection(type, roots.stream()
+      return new Selection(title, roots.stream()
           .filter(not(byStack::containsKey))
           .flatMap(root -> byParent.get(root).stream())
           .map(b -> b.build(byParent))
@@ -316,17 +329,17 @@ public class SliceTrack extends Track<SliceTrack.Data> {
     }
 
     public static class Selection implements com.google.gapid.perfetto.models.Selection {
-      private final SliceType type;
+      private final String title;
       public final ImmutableList<Node> nodes;
 
-      public Selection(SliceType type, ImmutableList<Node> nodes) {
-        this.type = type;
+      public Selection(String title, ImmutableList<Node> nodes) {
+        this.title = title;
         this.nodes = nodes;
       }
 
       @Override
       public String getTitle() {
-        return type.title;
+        return title;
       }
 
       @Override
