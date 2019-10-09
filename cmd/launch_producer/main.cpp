@@ -16,6 +16,7 @@
 
 #include <android/log.h>
 #include <dlfcn.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/system_properties.h>
 #include <string>
@@ -63,11 +64,37 @@ const char* kProducerPaths[] = {
     "/lib/" ABI "/libgpudataproducer.so",
 };
 
-std::string getDriver() {
+std::string getDriverPackageOverride() {
   std::string driver;
+  // Read gapid.driver_package_override setting to override default property.
+  FILE* fp = popen("settings get global gapid.driver_package_override", "r");
+  if (fp == nullptr) {
+    return driver;
+  }
+  char buffer[1024] = {0};
+  if (fgets(buffer, sizeof(buffer) - 1, fp) != nullptr) {
+    driver = buffer;
+    if (!driver.empty()) {
+      driver.pop_back();  // chop '\n'.
+    }
+    if (driver == "null") {
+      driver = "";
+    }
+    if (!driver.empty()) {
+      LOG_INFO("Driver package override: %s", driver.c_str());
+    }
+  }
+  pclose(fp);
+  return driver;
+}
 
-  GET_STRING_PROP(kDriverProperty, driver);
-  LOG_INFO("Driver package: %s", driver.c_str());
+std::string getDriver() {
+  std::string driver = getDriverPackageOverride();
+  if (driver.empty()) {
+    GET_STRING_PROP(kDriverProperty, driver);
+    LOG_INFO("Driver package: %s", driver.c_str());
+  }
+
   if (driver.empty()) {
     LOG_ERR("No driver package set");
     std::abort();
