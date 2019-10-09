@@ -286,7 +286,6 @@ public class ThreadPanel extends TrackPanel implements Selectable {
           mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
               (1 + track.getThread().maxDepth) * SLICE_HEIGHT - hoveredSize.h));
           long id = slices.ids[i];
-          long ts = slices.starts[i];
 
           return new Hover() {
             @Override
@@ -302,14 +301,13 @@ public class ThreadPanel extends TrackPanel implements Selectable {
 
             @Override
             public Cursor getCursor(Display display) {
-              return (id == 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
+              return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
             }
 
             @Override
             public boolean click() {
-              if (id != 0) {
-                state.setSelection(SliceTrack.getSlice(
-                    state.getQueryEngine(), SliceTrack.SliceType.Thread, id, ts));
+              if (id >= 0) {
+                state.setSelection(track.getSlice(state.getQueryEngine(), id));
               }
               return false;
             }
@@ -349,8 +347,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
         endDepth = Integer.MAX_VALUE;
       }
       builder.add(Kind.Thread, transform(
-          SliceTrack.getThreadSlices(
-              state.getQueryEngine(), track.getThread().utid, ts, startDepth, endDepth),
+          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
           SliceTrack.Slices::new));
     }
   }

@@ -28,15 +28,18 @@ import static java.lang.String.format;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.perfetto.views.ThreadStateSliceSelectionView;
 import com.google.gapid.perfetto.views.ThreadStateSlicesSelectionView;
 
 import org.eclipse.swt.widgets.Composite;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -71,12 +74,12 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
 
 
   private final ThreadInfo thread;
-  private final SliceTrack sliceTrack;
+  private final SliceFetcher sliceTrack;
 
   public ThreadTrack(ThreadInfo thread) {
     super("thread_" + thread.utid);
     this.thread = thread;
-    this.sliceTrack = SliceTrack.forThread(thread.utid);
+    this.sliceTrack = SliceFetcher.forThread(thread);
   }
 
   public ThreadInfo getThread() {
@@ -133,6 +136,15 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
 
   private String schedSql() {
     return format(SCHED_SQL, tableName("span"));
+  }
+
+  public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
+    return sliceTrack.getSlice(qe, id);
+  }
+
+  public ListenableFuture<List<Slice>> getSlices(
+      QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
+    return sliceTrack.getSlices(qe, ts, minDepth, maxDepth);
   }
 
   public ListenableFuture<List<StateSlice>> getStates(QueryEngine qe, TimeSpan ts) {
@@ -256,6 +268,61 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
           this.totalDur = totalDur;
         }
       }
+    }
+  }
+
+  private static interface SliceFetcher {
+    public static final SliceFetcher NONE = new SliceFetcher() { /* empty */ };
+
+    @SuppressWarnings("unused")
+    public default ListenableFuture<?> initialize(QueryEngine qe) {
+      return Futures.immediateFuture(null);
+    }
+
+    @SuppressWarnings("unused")
+    public default ListenableFuture<SliceTrack.Data> computeData(QueryEngine qe, DataRequest req) {
+      return Futures.immediateFuture(new SliceTrack.Data(req));
+    }
+
+    @SuppressWarnings("unused")
+    public default ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
+      throw new UnsupportedOperationException();
+    }
+
+    @SuppressWarnings("unused")
+    public default ListenableFuture<List<Slice>> getSlices(
+        QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
+      return Futures.immediateFuture(Collections.emptyList());
+    }
+
+    public static SliceFetcher forThread(ThreadInfo thread) {
+      if (thread.trackId < 0) {
+        return SliceFetcher.NONE;
+      }
+
+      SliceTrack track = SliceTrack.forThread(thread);
+      return new SliceFetcher() {
+        @Override
+        public ListenableFuture<?> initialize(QueryEngine qe) {
+          return track.initialize(qe);
+        }
+
+        @Override
+        public ListenableFuture<SliceTrack.Data> computeData(QueryEngine qe, DataRequest req) {
+          return track.computeData(qe, req);
+        }
+
+        @Override
+        public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
+          return track.getSlice(qe, id);
+        }
+
+        @Override
+        public ListenableFuture<List<Slice>> getSlices(
+            QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
+          return track.getSlices(qe, ts, minDepth, maxDepth);
+        }
+      };
     }
   }
 }

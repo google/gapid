@@ -46,7 +46,7 @@ public class SliceSelectionView extends Composite {
     createLabel(this, "Duration:");
     createLabel(this, timeToString(slice.dur));
 
-    ThreadInfo thread = state.getThreadInfo(slice.utid);
+    ThreadInfo thread = slice.getThread();
     if (thread != null) {
       ProcessInfo process = state.getProcessInfo(thread.upid);
       if (process != null) {

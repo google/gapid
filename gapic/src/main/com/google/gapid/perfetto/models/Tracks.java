@@ -87,14 +87,14 @@ public class Tracks {
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {
     boolean found = false;
-    for (GpuInfo.Gpu gpu : data.getGpu()) {
+    for (GpuInfo.Queue queue : data.getGpu().queues()) {
       if (!found) {
         addGpuGroup(data);
         found = true;
       }
-      SliceTrack track = SliceTrack.forGpu(gpu.id);
-      data.tracks.addTrack("gpu", track.getId(), gpu.getDisplay(),
-          single(state -> new GpuQueuePanel(state, gpu, track), true));
+      SliceTrack track = SliceTrack.forGpuQueue(queue);
+      data.tracks.addTrack("gpu", track.getId(), queue.getDisplay(),
+          single(state -> new GpuQueuePanel(state, queue, track), true));
     }
 
     for (CounterInfo counter : data.getCounters().values()) {

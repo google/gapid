@@ -23,6 +23,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -34,6 +35,7 @@ import com.google.gapid.server.Client;
 import com.google.gapid.util.Scheduler;
 import com.google.gapid.views.StatusBar;
 
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -215,6 +217,12 @@ public class QueryEngine {
       return map;
     }
 
+    public <V> List<V> list(Row.Callable<V> value) {
+      List<V> list = Lists.newArrayListWithCapacity(getNumRows());
+      forEachRow((i, row) -> list.add(value.call(i, row)));
+      return list;
+    }
+
     public long getLong(int row, int column, long deflt) {
       Perfetto.QueryResult.ColumnValues c = res.getColumns(column);
       return (c.getIsNulls(row)) ? deflt : c.getLongValues(row);
@@ -243,6 +251,10 @@ public class QueryEngine {
 
     public static interface Visitor {
       public void visit(int idx, Row row);
+    }
+
+    public static interface Callable<V> {
+      public V call(int idx, Row row);
     }
   }
 }
