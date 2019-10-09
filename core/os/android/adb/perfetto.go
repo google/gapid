@@ -16,9 +16,12 @@ package adb
 
 import (
 	"bufio"
+	"container/ring"
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
+	"regexp"
 	"strings"
 
 	perfetto_pb "perfetto/config"
@@ -31,7 +34,13 @@ import (
 
 // StartPerfettoTrace starts a perfetto trace on this device.
 func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error {
+	// Silently attempt to delete the old trace in case the user has changed
+	// If the user has changed from shell => root, this is fine. For root => shell,
+	// the root user will have still have to manually delete the old trace if it exists
+	b.RemoveFile(ctx, out)
+
 	reader, stdout := io.Pipe()
+	logRing := ring.New(10)
 	data, err := proto.Marshal(config)
 	if err != nil {
 		return err
@@ -42,6 +51,8 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 		buf := bufio.NewReader(reader)
 		for {
 			line, e := buf.ReadString('\n')
+			logRing.Value = line
+			logRing = logRing.Next()
 			switch e {
 			default:
 				log.E(ctx, "[perfetto] Read error %v", e)
@@ -74,7 +85,19 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 	case err = <-fail:
 		return err
 	case err = <-wait:
-		// Do nothing.
+		// Use perfetto's error messaging instead of the default
+		if err != nil {
+			msg := ""
+			logRing.Do(func(p interface{}) {
+				if p != nil && len(p.(string)) > 0 {
+					msg += p.(string) + "\n"
+				}
+			})
+			// Remove ANSI color codes from perfetto output
+			ansiRegex := regexp.MustCompile("\u001b\\[\\d+m")
+			msg = ansiRegex.ReplaceAllString(msg, "")
+			err = errors.New(msg)
+		}
 	case <-stop:
 		// TODO: figure out why "killall -2 perfetto" doesn't work.
 		var pid string
