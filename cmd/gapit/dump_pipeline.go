@@ -117,6 +117,14 @@ func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, da
 		} else {
 			fmt.Fprintf(w, "%s├── %s: \n", prefix, stage.StageName)
 		}
+
+		for j, group := range stage.Groups {
+			if j == len(stage.Groups)-1 {
+				fmt.Fprintf(w, "%s%s└── %s: \n", prefix, prefix, group.GroupName)
+			} else {
+				fmt.Fprintf(w, "%s%s├── %s: \n", prefix, prefix, group.GroupName)
+			}
+		}
 	}
 
 	return nil
