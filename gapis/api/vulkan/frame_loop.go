@@ -1184,6 +1184,15 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 		}
 
 		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
+
+		// If we (re)created an Image, then we will have invalidated all ImageViews that were using it at the time the loop started.
+		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
+		// These ImageViews will need to be (re)created, so add them to the maps to destroy and create in that order.
+		imageViewUsers := GetState(f.loopStartState).images.Get(dst).Views().All()
+		for imageView, _ := range imageViewUsers {
+			f.imageViewToDestroy[imageView] = true
+			f.imageViewToCreate[imageView] = true
+		}
 	}
 
 	return nil
