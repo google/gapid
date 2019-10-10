@@ -91,6 +91,7 @@ var dataSourceNameToLayerName = map[string]string{
 	"VirtualSwapchain":    "VirtualSwapchain",
 	"VulkanCPUTiming":     "CPUTiming",
 	"VulkanMemoryTracker": "MemoryTracker",
+	"VulkanAPI":           "CPUTiming",
 }
 
 var libTypeToJson = map[LibraryType]string{

@@ -29,6 +29,7 @@
 #include "perfetto/base/time.h"
 
 #include "perfetto/tracing/core/data_source_config.h"
+#include "protos/perfetto/trace/gpu/vulkan_api_event.pbzero.h"
 #include "protos/perfetto/trace/gpu/vulkan_memory_event.pbzero.h"
 #include "protos/perfetto/trace/interned_data/interned_data.pbzero.h"
 #include "protos/perfetto/trace/profiling/profile_common.pbzero.h"
@@ -407,4 +408,23 @@ void ThreadlocalEmitter<T>::EmitVulkanMemoryUsageEvent(
       });
 }
 
+template <typename T>
+void ThreadlocalEmitter<T>::EmitDebugUtilsObjectName(uint64_t vk_device, int32_t object_type, uint64_t handle, const char* name) {
+  PerfettoProducer<T>::Trace(
+      [this, vk_device, object_type, handle, name](typename PerfettoProducer<T>::TraceContext ctx) {
+      auto data_source = ctx.GetDataSourceLocked();
+      {
+        uint64_t time = perfetto::base::GetBootTimeNs().count();
+        auto packet = ctx.NewTracePacket();
+        packet->set_timestamp(time);
+        auto event = packet->set_vulkan_api_event()->set_vk_debug_utils_object_name();
+        event->set_vk_device(reinterpret_cast<uint64_t>(vk_device));
+        event->set_object_type(object_type);
+        event->set_object(handle);
+        event->set_object_name(name);
+      }
+  });
+}
+
 }  // namespace core
+

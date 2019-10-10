@@ -84,14 +84,15 @@ func setupProfileLayers(ctx context.Context, d adb.Device, driver adb.Driver, pa
 	packages := []string{}
 	enabledLayers := []string{}
 
-	if hasRenderStages {
-		packages = append(packages, driver.Package)
-		enabledLayers = append(enabledLayers, renderStageVulkanLayerName)
-	}
-
 	if abi != nil {
 		packages = append(packages, gapidapk.PackageName(abi))
 		enabledLayers = append(enabledLayers, layers...)
+	}
+
+	// Setup render stage layer. Render stage layer should be at the bottom (end of list).
+	if hasRenderStages {
+		packages = append(packages, driver.Package)
+		enabledLayers = append(enabledLayers, renderStageVulkanLayerName)
 	}
 
 	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, enabledLayers, true)

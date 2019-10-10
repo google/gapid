@@ -22,6 +22,7 @@
 #include "core/vulkan/perfetto_producer/perfetto_proto_structs.h"
 #include "core/vulkan/perfetto_producer/threadlocal_emitter_base.h"
 #include "gapil/runtime/cc/map.h"
+
 namespace gapil {
 
 template <>
@@ -58,6 +59,8 @@ class ThreadlocalEmitter : ThreadlocalEmitterBase {
   void StartEvent(const char* catagory, const char* name);
   void EndEvent(const char* category);
   void EmitVulkanMemoryUsageEvent(const VulkanMemoryEvent* vulkan_memory_event);
+  void EmitDebugUtilsObjectName(uint64_t vk_device, int32_t object_type,
+                                uint64_t handle, const char* name);
 
  private:
   void ResetIfNecessary();
