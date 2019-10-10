@@ -257,6 +257,11 @@ message Pipeline {
 message Stage {
   string stage_name = 1;
   string debug_name = 2;
+  repeated DataGroup groups = 3;
+}
+
+message DataGroup {
+  string group_name = 1;
 }
 
 // DescriptorBinding represents one descriptor binding in a pipeline.
