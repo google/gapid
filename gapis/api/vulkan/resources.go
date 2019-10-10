@@ -1014,45 +1014,14 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	}
 
 	stages := []*api.Stage{
-		&api.Stage{
-			StageName: "Input Assembly",
-			DebugName: "IA",
-		},
-
-		&api.Stage{
-			StageName: "Vertex Shader",
-			DebugName: "VS",
-		},
-
-		&api.Stage{
-			StageName: "Tessellation Control Shader",
-			DebugName: "TCS",
-		},
-
-		&api.Stage{
-			StageName: "Tessellation Evaluation Shader",
-			DebugName: "TES",
-		},
-
-		&api.Stage{
-			StageName: "Geometry Shader",
-			DebugName: "GS",
-		},
-
-		&api.Stage{
-			StageName: "Rasterizer",
-			DebugName: "RAST",
-		},
-
-		&api.Stage{
-			StageName: "Fragment Shader",
-			DebugName: "FS",
-		},
-
-		&api.Stage{
-			StageName: "Color Blending",
-			DebugName: "BLEND",
-		},
+		InputAssembly(),
+		VertexShader(),
+		TessellationControlShader(),
+		TessellationEvulationShader(),
+		GeometryShader(),
+		Rasterizer(),
+		FragmentShader(),
+		ColorBlending(),
 	}
 
 	return &api.ResourceData{
@@ -1066,6 +1035,202 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 			},
 		},
 	}, nil
+}
+
+func InputAssembly() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Vertex Bindings",
+		},
+
+		&api.DataGroup{
+			GroupName: "Vertex Attributes",
+		},
+
+		&api.DataGroup{
+			GroupName: "Input Assembly State",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Input Assembly",
+		DebugName: "IA",
+		Groups:    dataGroups,
+	}
+}
+
+func VertexShader() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Shader Code",
+		},
+
+		&api.DataGroup{
+			GroupName: "Resources",
+		},
+
+		&api.DataGroup{
+			GroupName: "Uniform Buffers",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Vertex Shader",
+		DebugName: "VS",
+		Groups:    dataGroups,
+	}
+}
+
+func TessellationControlShader() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Shader Code",
+		},
+
+		&api.DataGroup{
+			GroupName: "Resources",
+		},
+
+		&api.DataGroup{
+			GroupName: "Uniform Buffers",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Tessellation Control Shader",
+		DebugName: "TCS",
+		Groups:    dataGroups,
+	}
+}
+
+func TessellationEvulationShader() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Shader Code",
+		},
+
+		&api.DataGroup{
+			GroupName: "Resources",
+		},
+
+		&api.DataGroup{
+			GroupName: "Uniform Buffers",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Tessellation Evaluation Shader",
+		DebugName: "TES",
+		Groups:    dataGroups,
+	}
+}
+
+func GeometryShader() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Shader Code",
+		},
+
+		&api.DataGroup{
+			GroupName: "Resources",
+		},
+
+		&api.DataGroup{
+			GroupName: "Uniform Buffers",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Geometry Shader",
+		DebugName: "GS",
+		Groups:    dataGroups,
+	}
+}
+
+func Rasterizer() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Rasterization State",
+		},
+
+		&api.DataGroup{
+			GroupName: "Multisample State",
+		},
+
+		&api.DataGroup{
+			GroupName: "Viewports",
+		},
+
+		&api.DataGroup{
+			GroupName: "Scissors",
+		},
+
+		&api.DataGroup{
+			GroupName: "Depth State",
+		},
+
+		&api.DataGroup{
+			GroupName: "Stencil State",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Rasterizer",
+		DebugName: "RAST",
+		Groups:    dataGroups,
+	}
+}
+
+func FragmentShader() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Shader Code",
+		},
+
+		&api.DataGroup{
+			GroupName: "Resources",
+		},
+
+		&api.DataGroup{
+			GroupName: "Uniform Buffers",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Fragment Shader",
+		DebugName: "FS",
+		Groups:    dataGroups,
+	}
+}
+
+func ColorBlending() *api.Stage {
+	dataGroups := []*api.DataGroup{
+		&api.DataGroup{
+			GroupName: "Render Pass",
+		},
+
+		&api.DataGroup{
+			GroupName: "Target Blends",
+		},
+
+		&api.DataGroup{
+			GroupName: "Blend State",
+		},
+
+		&api.DataGroup{
+			GroupName: "Depth State",
+		},
+
+		&api.DataGroup{
+			GroupName: "Stencil State",
+		},
+	}
+
+	return &api.Stage{
+		StageName: "Color Blending",
+		DebugName: "BLEND",
+		Groups:    dataGroups,
+	}
 }
 
 // SetResourceData sets resource data in a new capture.
