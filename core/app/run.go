@@ -20,6 +20,7 @@ import (
 	"os"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -125,8 +126,7 @@ func (v VersionSpec) Format(f fmt.State, c rune) {
 func (v VersionSpec) GetDevVersion() int {
 	// A dev release has a Build string prefixed by "dev-YYYYMMDD-",
 	// where YYYYMMDD is the dev version.
-	const prefix = "dev-"
-	if len(v.Build) >= len(prefix) && v.Build[0:len(prefix)] == prefix {
+	if strings.HasPrefix(v.Build, "dev-") && len(v.Build) >= 12 {
 		if devVersion, err := strconv.Atoi(v.Build[4:12]); err == nil {
 			return devVersion
 		}
