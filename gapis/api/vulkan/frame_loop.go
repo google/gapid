@@ -93,17 +93,17 @@ type frameLoop struct {
 	loopEndState   *api.GlobalState
 
 	bufferToDestroy map[VkBuffer]bool
-	bufferToCreate  map[VkBuffer]bool
 	bufferChanged   map[VkBuffer]bool
-	bufferToBackup  map[VkBuffer]VkBuffer
+	bufferToCreate  map[VkBuffer]bool
+	bufferToRestore map[VkBuffer]VkBuffer
 
 	bufferViewToDestroy map[VkBufferView]bool
 	bufferViewToCreate  map[VkBufferView]bool
 
 	imageToDestroy map[VkImage]bool
-	imageToCreate  map[VkImage]bool
 	imageChanged   map[VkImage]bool
-	imageToBackup  map[VkImage]VkImage
+	imageToCreate  map[VkImage]bool
+	imageToRestore map[VkImage]VkImage
 
 	imageViewToDestroy map[VkImageView]bool
 	imageViewToCreate  map[VkImageView]bool
@@ -186,17 +186,17 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		},
 
 		bufferToDestroy: make(map[VkBuffer]bool),
-		bufferToCreate:  make(map[VkBuffer]bool),
 		bufferChanged:   make(map[VkBuffer]bool),
-		bufferToBackup:  make(map[VkBuffer]VkBuffer),
+		bufferToCreate:  make(map[VkBuffer]bool),
+		bufferToRestore: make(map[VkBuffer]VkBuffer),
 
 		bufferViewToDestroy: make(map[VkBufferView]bool),
 		bufferViewToCreate:  make(map[VkBufferView]bool),
 
 		imageToDestroy: make(map[VkImage]bool),
-		imageToCreate:  make(map[VkImage]bool),
 		imageChanged:   make(map[VkImage]bool),
-		imageToBackup:  make(map[VkImage]VkImage),
+		imageToCreate:  make(map[VkImage]bool),
+		imageToRestore: make(map[VkImage]VkImage),
 
 		imageViewToDestroy: make(map[VkImageView]bool),
 		imageViewToCreate:  make(map[VkImageView]bool),
@@ -463,8 +463,11 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkDestroyBuffer)
 			buffer := vkCmd.Buffer()
 			log.D(ctx, "Buffer %v destroyed.", buffer)
-			f.bufferToCreate[buffer] = true
-
+			if _, ok := f.bufferToDestroy[buffer]; ok {
+				delete(f.bufferToDestroy, buffer)
+			} else {
+				f.bufferToCreate[buffer] = true
+			}
 		// BufferViews
 		case *VkCreateBufferView:
 			vkCmd := cmd.(*VkCreateBufferView)
@@ -476,7 +479,6 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkDestroyBufferView)
 			bufferView := vkCmd.BufferView()
 			log.D(ctx, "BufferView %v destroyed", bufferView)
-			f.bufferViewToCreate[bufferView] = true
 			if _, ok := f.bufferViewToDestroy[bufferView]; ok {
 				delete(f.bufferViewToDestroy, bufferView)
 			} else {
@@ -494,7 +496,11 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkDestroyImage)
 			img := vkCmd.Image()
 			log.D(ctx, "Image %v destroyed", img)
-			f.imageToCreate[img] = true
+			if _, ok := f.imageToDestroy[img]; ok {
+				delete(f.imageToDestroy, img)
+			} else {
+				f.imageToCreate[img] = true
+			}
 
 		// ImageViews
 		case *VkCreateImageView:
@@ -781,21 +787,42 @@ func (f *frameLoop) detectChangedResources(ctx context.Context) {
 
 func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
 
-	apiState := GetState(f.loopEndState)
+	apiState := GetState(f.loopStartState)
 
 	// Find out changed buffers.
 	for bufferKey, buffer := range apiState.Buffers().All() {
 
-		data := buffer.Memory().Data()
-		span := interval.U64Span{data.Base(), data.Base() + data.Size()}
-		poolID := data.Pool()
+		toDestroy := f.bufferToDestroy[buffer.VulkanHandle()]
+		toCreate := f.bufferToCreate[buffer.VulkanHandle()]
 
-		// Did we see this buffer get written to during the loop? If we did, then we need to capture the values at the start of the loop.
-		if writes, ok := f.watcher.memoryWrites[poolID]; ok {
+		if toCreate == true {
 
-			// We do this by comparing the buffer's memory extent with all the observed written areas.
-			if _, count := interval.Intersect(writes, span); count != 0 {
-				f.bufferChanged[bufferKey] = true
+			// If we're going to recreate this object for the start of the loop we need to set its state back to the right conditions
+			f.bufferChanged[bufferKey] = true
+			continue
+
+		} else if toDestroy == true {
+
+			// If we created this object during the loop and we're going to destroy this object at the end of the loop then we don't need to capture the state
+			continue
+
+		} else {
+
+			// Otherwise, we'll need to capture this objects state IFF it was modified during the loop.
+
+			data := buffer.Memory().Data()
+			span := interval.U64Span{data.Base(), data.Base() + data.Size()}
+			poolID := data.Pool()
+
+			// Did we see this buffer get written to during the loop? If we did, then we need to capture the values at the start of the loop.
+			// TODO: This code does not handle the possibility of new DeviceMemory being bound to the object during the loop. Talk to @purvisa.
+			if writes, ok := f.watcher.memoryWrites[poolID]; ok {
+
+				// We do this by comparing the buffer's memory extent with all the observed written areas.
+				if _, count := interval.Intersect(writes, span); count != 0 {
+
+					f.bufferChanged[bufferKey] = true
+				}
 			}
 		}
 	}
@@ -803,7 +830,7 @@ func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
 
 func (f *frameLoop) detectChangedImages(ctx context.Context) {
 
-	apiState := GetState(f.loopEndState)
+	apiState := GetState(f.loopStartState)
 
 	// Find out changed images.
 	for imageKey, image := range apiState.Images().All() {
@@ -813,24 +840,43 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 			continue
 		}
 
-		// Gotta remember to process all aspects, layers and levels of an image
-		for _, imageAspect := range image.Aspects().All() {
+		toDestroy := f.imageToDestroy[image.VulkanHandle()]
+		toCreate := f.imageToCreate[image.VulkanHandle()]
+		if toCreate == true {
 
-			for _, layer := range imageAspect.Layers().All() {
+			// If we're going to recreate this object for the start of the loop we need to set its state back to the right conditions
+			f.imageChanged[image.VulkanHandle()] = true
+			continue
 
-				for _, level := range layer.Levels().All() {
+		} else if toDestroy == true {
 
-					data := level.Data()
-					span := interval.U64Span{data.Base(), data.Base() + data.Size()}
-					poolID := data.Pool()
+			// If we created this object during the loop and we're going to destroy this object at the end of the loop then we don't need to capture the state
+			continue
 
-					// Did we see this part of this image get written to during the loop? If we did, then we need to capture the values at the start of the loop.
-					if writes, ok := f.watcher.memoryWrites[poolID]; ok {
+		} else {
 
-						// We do this by comparing the image's part's memory extent with all the observed written areas.
-						if _, count := interval.Intersect(writes, span); count != 0 {
-							f.imageChanged[imageKey] = true
-							break
+			// Otherwise, we'll need to capture this objects state IFF it was modified during the loop
+			// Gotta remember to process all aspects, layers and levels of an image
+
+			for _, imageAspect := range image.Aspects().All() {
+
+				for _, layer := range imageAspect.Layers().All() {
+
+					for _, level := range layer.Levels().All() {
+
+						data := level.Data()
+						span := interval.U64Span{data.Base(), data.Base() + data.Size()}
+						poolID := data.Pool()
+
+						// Did we see this part of this image get written to during the loop? If we did, then we need to capture the values at the start of the loop.
+						// TODO: This code does not handle the possibility of new DeviceMemory being bound to the object during the loop. Talk to @purvisa.
+						if writes, ok := f.watcher.memoryWrites[poolID]; ok {
+
+							// We do this by comparing the image's part's memory extent with all the observed written areas.
+							if _, count := interval.Intersect(writes, span); count != 0 {
+								f.imageChanged[imageKey] = true
+								break
+							}
 						}
 					}
 				}
@@ -921,14 +967,6 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stat
 
 	for buffer := range f.bufferChanged {
 
-		if _, present := f.bufferToDestroy[buffer]; present {
-			continue
-		}
-
-		if _, preset := f.bufferToCreate[buffer]; preset {
-			continue
-		}
-
 		log.D(ctx, "Buffer [%v] changed during loop.", buffer)
 
 		bufferObj := GetState(stateBuilder.oldState).Buffers().Get(buffer)
@@ -965,7 +1003,7 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stat
 			return log.Errf(ctx, err, "Copy from buffer %v to %v failed", buffer, stagingBuffer)
 		}
 
-		f.bufferToBackup[buffer] = stagingBuffer
+		f.bufferToRestore[buffer] = stagingBuffer
 	}
 
 	stateBuilder.scratchRes.Free(stateBuilder)
@@ -981,10 +1019,6 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 
 	for img := range f.imageChanged {
 
-		if _, present := f.imageToDestroy[img]; present {
-			continue
-		}
-
 		log.D(ctx, "Image [%v] changed during loop.", img)
 
 		// Create staging Image which is used to backup the changed images
@@ -995,7 +1029,7 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 			return log.Err(ctx, err, "Create staging image failed.")
 		}
 
-		f.imageToBackup[img] = stagingImage.VulkanHandle()
+		f.imageToRestore[img] = stagingImage.VulkanHandle()
 
 		if err := f.copyImage(ctx, imgObj, stagingImage, stateBuilder); err != nil {
 			return log.Err(ctx, err, "Copy image failed")
@@ -1073,11 +1107,11 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 
 func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	if len(f.bufferToBackup) == 0 {
+	if len(f.bufferToRestore) == 0 {
 		return nil
 	}
 
-	for dst, src := range f.bufferToBackup {
+	for dst, src := range f.bufferToRestore {
 
 		bufferObj := GetState(stateBuilder.newState).Buffers().Get(src)
 
@@ -1125,7 +1159,7 @@ func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBui
 
 func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	if len(f.imageToBackup) == 0 {
+	if len(f.imageToRestore) == 0 {
 		return nil
 	}
 
@@ -1134,7 +1168,7 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 	imgPrimer := newImagePrimer(stateBuilder)
 	defer imgPrimer.Free()
 
-	for dst, src := range f.imageToBackup {
+	for dst, src := range f.imageToRestore {
 
 		dstObj := apiState.Images().Get(dst)
 
@@ -1150,6 +1184,13 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 		}
 
 		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
+
+		// // Iterate through all the descriptor sets that we just recreated, adding them to the list of descriptor sets
+		// // that need to be redefined.
+		// descriptorPoolData := GetState(f.loopStartState).DescriptorPools().All()[toCreate]
+		// for _, descriptorSetDataValue := range descriptorPoolData.DescriptorSets().All() {
+		// 	containedDescriptorSet := descriptorSetDataValue.VulkanHandle()
+		// }
 	}
 
 	return nil
