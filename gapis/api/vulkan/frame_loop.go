@@ -120,6 +120,9 @@ type frameLoop struct {
 	pipelineLayoutToDestroy map[VkPipelineLayout]bool
 	pipelineLayoutToCreate  map[VkPipelineLayout]bool
 
+	pipelineCacheToDestroy map[VkPipelineCache]bool
+	pipelineCacheToCreate  map[VkPipelineCache]bool
+
 	pipelineToDestroy        map[VkPipeline]bool
 	computePipelineToCreate  map[VkPipeline]bool
 	graphicsPipelineToCreate map[VkPipeline]bool
@@ -212,6 +215,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		pipelineLayoutToDestroy: make(map[VkPipelineLayout]bool),
 		pipelineLayoutToCreate:  make(map[VkPipelineLayout]bool),
+
+		pipelineCacheToDestroy: make(map[VkPipelineCache]bool),
+		pipelineCacheToCreate:  make(map[VkPipelineCache]bool),
 
 		pipelineToDestroy:        make(map[VkPipeline]bool),
 		computePipelineToCreate:  make(map[VkPipeline]bool),
@@ -585,6 +591,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				delete(f.pipelineLayoutToDestroy, pipelineLayout)
 			} else {
 				f.pipelineLayoutToCreate[pipelineLayout] = true
+			}
+
+		// PipelineCache(s)
+		case *VkCreatePipelineCache:
+			vkCmd := cmd.(*VkCreatePipelineCache)
+			pipelineCache := vkCmd.PPipelineCache().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "PipelineCache %v created", pipelineCache)
+			f.pipelineCacheToDestroy[pipelineCache] = true
+
+		case *VkDestroyPipelineCache:
+			vkCmd := cmd.(*VkDestroyPipelineCache)
+			pipelineCache := vkCmd.PipelineCache()
+			log.D(ctx, "PipelineCache %v destroyed", pipelineCache)
+			if _, ok := f.pipelineCacheToDestroy[pipelineCache]; ok {
+				delete(f.pipelineCacheToDestroy, pipelineCache)
+			} else {
+				f.pipelineCacheToCreate[pipelineCache] = true
 			}
 
 		// ComputePipelines(s)
@@ -1073,6 +1096,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetPipelineCaches(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetDescriptorPools(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -1324,6 +1351,42 @@ func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stat
 	for toCreate := range f.pipelineLayoutToCreate {
 		// Write the commands needed to recreate the destroyed object
 		stateBuilder.createPipelineLayout(GetState(f.loopStartState).pipelineLayouts.Get(toCreate))
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every PipelineCache that we need to destroy at the end of the loop...
+	for toDestroy := range f.pipelineCacheToDestroy {
+		// Write the command to delete the created object
+		pipelineCache := GetState(f.loopEndState).pipelineCaches.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyPipelineCache(pipelineCache.Device(), pipelineCache.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every PipelineCache that we need to create at the end of the loop...
+	for toCreate := range f.pipelineCacheToCreate {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createPipelineCache(GetState(f.loopStartState).pipelineCaches.Get(toCreate))
+	}
+
+	// The shadow state for PipelineCaches does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
+	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+		pipelineCache := computePipelineObject.PipelineCache()
+		if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
+			f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
+			f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
+		}
+	}
+
+	// The shadow state for PipelineCaches does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
+	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+		pipelineCache := graphicsPipelineObject.PipelineCache()
+		if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
+			f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
+			f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
+		}
 	}
 
 	return nil
