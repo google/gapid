@@ -123,6 +123,7 @@ cmd VkResult vkQueueSubmit(
       }
     }
     read(info.pWaitDstStageMask[0:info.waitSemaphoreCount])
+    read(info.pCommandBuffers[0:info.commandBufferCount])
 
     command_buffers := info.pCommandBuffers[0:info.commandBufferCount]
     command_buffers_all_valid := MutableBool(true)
