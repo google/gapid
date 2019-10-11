@@ -97,6 +97,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.Arrays;
 import java.util.HashMap;
 
 /**
@@ -258,16 +259,17 @@ public class TracerDialog {
       private static final int DEFAULT_START_FRAME = 100;
       private static final String PERFETTO_LABEL = "Profile Config: ";
 
-      private static final int TRACE_START_TYPE_BEGINNING = 0;
-      private static final int TRACE_START_TYPE_MANUAL = 1;
-      private static final int TRACE_START_TYPE_FRAME = 2;
+      private static enum StartType {
+        Beginning, Manual, Frame;
+      }
+
       private static final HashMap<Integer, String> startTypeTitles = new HashMap<Integer, String>();
 
       static
       {
-        startTypeTitles.put(TRACE_START_TYPE_BEGINNING, "Beginning");
-        startTypeTitles.put(TRACE_START_TYPE_MANUAL, "Manual");
-        startTypeTitles.put(TRACE_START_TYPE_FRAME, "Frame");
+        startTypeTitles.put(StartType.Beginning.ordinal(), "Beginning");
+        startTypeTitles.put(StartType.Manual.ordinal(), "Manual");
+        startTypeTitles.put(StartType.Frame.ordinal(), "Frame");
       };
 
       private final String date = TRACE_DATE_FORMAT.format(new Date());
@@ -382,21 +384,19 @@ public class TracerDialog {
             new GridData(GridData.FILL_HORIZONTAL));
         createLabel(durGroup, "Start at:");
         startType = Widgets.createDropDown(durGroup);
-        startType.setItems(startTypeTitles.get(TRACE_START_TYPE_BEGINNING),
-                           startTypeTitles.get(TRACE_START_TYPE_MANUAL),
-                           startTypeTitles.get(TRACE_START_TYPE_FRAME));
+        startType.setItems(Arrays.stream(StartType.values()).map(Enum::name).toArray(String[]::new));
         startFrame = withLayoutData(
             createSpinner(durGroup, Math.max(1, models.settings.traceStartAt), 1, 999999),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         mecWarningLabel = createLabel(durGroup, "");
 
         if (models.settings.traceStartAt < 0) {
-          startType.select(TRACE_START_TYPE_MANUAL);
+          startType.select(StartType.Manual.ordinal());
           startFrame.setSelection(DEFAULT_START_FRAME);
         } else if (models.settings.traceStartAt > 0) {
-          startType.select(TRACE_START_TYPE_FRAME);
+          startType.select(StartType.Frame.ordinal());
         } else {
-          startType.select(TRACE_START_TYPE_BEGINNING);
+          startType.select(StartType.Beginning.ordinal());
           startFrame.setSelection(DEFAULT_START_FRAME);
         }
 
@@ -474,8 +474,8 @@ public class TracerDialog {
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
-          boolean beginning = startType.getSelectionIndex() == TRACE_START_TYPE_BEGINNING;
-          if (!beginning && config != null &&
+          boolean beginning = startType.getSelectionIndex() == StartType.Beginning.ordinal();
+          if (beginning && config != null &&
               config.getMidExecutionCaptureSupport() == Service.FeatureStatus.Experimental) {
             mecWarningLabel.setText(String.format(MEC_LABEL_WARNING, config.getApi()));
           } else {
@@ -483,7 +483,7 @@ public class TracerDialog {
           }
           mecWarningLabel.requestLayout();
 
-          boolean startAtFrame = startType.getSelectionIndex() == TRACE_START_TYPE_FRAME;
+          boolean startAtFrame = startType.getSelectionIndex() == StartType.Frame.ordinal();
           startFrame.setVisible(startAtFrame);
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
@@ -592,13 +592,13 @@ public class TracerDialog {
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && settings.traceWithoutBuffering);
         if (isPerfetto && startType.getItemCount() == 3) {
-          if (startType.getSelectionIndex() == TRACE_START_TYPE_FRAME) {
+          if (startType.getSelectionIndex() == StartType.Frame.ordinal()) {
             // Switch to manual if it was "start at frame x".
-            startType.select(TRACE_START_TYPE_MANUAL);
+            startType.select(StartType.Manual.ordinal());
           }
-          startType.remove(TRACE_START_TYPE_FRAME);
+          startType.remove(StartType.Frame.ordinal());
         } else if (!isPerfetto && startType.getItemCount() == 2) {
-          startType.add(startTypeTitles.get(TRACE_START_TYPE_FRAME));
+          startType.add(startTypeTitles.get(StartType.Frame.ordinal()));
         }
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
