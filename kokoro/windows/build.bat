@@ -45,8 +45,9 @@ set PATH=c:\tools\msys64\mingw64\bin;c:\tools\msys64\usr\bin;%PATH%
 set BAZEL_SH=C:\tools\msys64\usr\bin\bash.exe
 
 REM Install Bazel.
-wget -q https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-windows-x86_64.zip
-unzip -q bazel-0.25.1-windows-x86_64.zip
+set BAZEL_VERSION=1.0.0
+wget -q https://github.com/bazelbuild/bazel/releases/download/%BAZEL_VERSION%/bazel-%BAZEL_VERSION%-windows-x86_64.zip
+unzip -q bazel-%BAZEL_VERSION%-windows-x86_64.zip
 set PATH=C:\python27;%PATH%
 
 cd %SRC%
