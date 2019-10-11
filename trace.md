@@ -17,10 +17,12 @@ GAPID supports capturing from both Android devices and Windows/Linux desktop mac
 * The device must have [USB debugging enabled](https://developer.android.com/studio/debug/dev-options.html) and the host machine must be authorized for debugging.
 * We recommend to set the "Stay awake" developer option to prevent issues that arise when the device screen sleeps.
 * Make sure to stop any program that may interact with the device over ADB, such as Android Studio, while using GAPID.
+* The app must **NOT** report any warning or error when run with [Vulkan validation layers](https://developer.android.com/ndk/guides/graphics/validation-layer).
 
 ### Windows/Linux
 
 * A Vulkan application compiled with x86-64. 32-bit applications are **NOT** currently supported. 
+* The app must **NOT** report any warning or error when run with [Vulkan validation layers](https://github.com/KhronosGroup/Vulkan-ValidationLayers/tree/master/layers#using-layers).
 
 ## Taking a capture
 
