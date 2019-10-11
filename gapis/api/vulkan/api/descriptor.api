@@ -871,7 +871,7 @@ sub void dovkCmdPushConstants(ref!vkCmdPushConstantsArgs args) {
   _ = PipelineLayouts[args.Layout]
   pushConstants := lastPushConstants()
   if pushConstants != null {
-    write(pushConstants.Data[args.Offset:args.Offset+args.Size])
+    copy(pushConstants.Data[args.Offset:args.Offset+args.Size], args.Data[0:args.Size])
   }
 }
 
