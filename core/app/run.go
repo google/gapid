@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -118,6 +120,18 @@ func (v VersionSpec) Format(f fmt.State, c rune) {
 	if v.Build != "" {
 		fmt.Fprint(f, ":", v.Build)
 	}
+}
+
+// GetDevVersion returns the dev version, or -1 if no dev version is found.
+func (v VersionSpec) GetDevVersion() int {
+	// A dev release has a Build string prefixed by "dev-YYYYMMDD-",
+	// where YYYYMMDD is the dev version.
+	if strings.HasPrefix(v.Build, "dev-") && len(v.Build) >= 12 {
+		if devVersion, err := strconv.Atoi(v.Build[4:12]); err == nil {
+			return devVersion
+		}
+	}
+	return -1
 }
 
 func init() {
