@@ -87,9 +87,6 @@ cmd VkResult vkQueueSubmit(
   LastSubmission = SUBMIT
   submitInfo := pSubmits[0:submitCount]
   LastBoundQueue = Queues[queue]
-  if (LastBoundQueue.VulkanHandle in LastDrawInfos) {
-    LastDrawInfos[LastBoundQueue.VulkanHandle] = new!DrawInfo()
-  }
 
   enterSubcontext()
   for i in (0 .. submitCount) {
@@ -129,6 +126,10 @@ cmd VkResult vkQueueSubmit(
 
     enterSubcontext()
     for j in (0 .. info.commandBufferCount) {
+      // all state is undefined at the start of each command buffer.
+      if (LastBoundQueue.VulkanHandle in LastDrawInfos) {
+        LastDrawInfos[LastBoundQueue.VulkanHandle] = new!DrawInfo()
+      }
       if command_buffers_all_valid.b {
         if !(command_buffers[j] in CommandBuffers) {
           command_buffers_all_valid.b = false
