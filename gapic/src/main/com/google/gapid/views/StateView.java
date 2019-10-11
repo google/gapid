@@ -271,7 +271,11 @@ public class StateView extends Composite
 
       @Override
       protected void onUiThread(TreePath[] treePaths) {
-        setExpanded(treePaths, paths, retry);
+        // Only apply the UI update if nothing else has already pulled the state out from under us.
+        // TODO: cancel the futures when this happens to avoid some wasted work.
+        if (root == models.state.getData()) {
+          setExpanded(treePaths, paths, retry);
+        }
       }
     });
   }
