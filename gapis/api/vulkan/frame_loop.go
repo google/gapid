@@ -913,6 +913,12 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 			continue
 		}
 
+		// Skip the multi-sampled images.
+		if image.Info().Samples() != VkSampleCountFlagBits_VK_SAMPLE_COUNT_1_BIT {
+			log.W(ctx, "Multi-sampled image %v is not supported for backup/reset.", image)
+			continue
+		}
+
 		toDestroy := f.imageToDestroy[image.VulkanHandle()]
 		toCreate := f.imageToCreate[image.VulkanHandle()]
 		if toCreate == true {
