@@ -1455,6 +1455,16 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 		}
 	}
 
+	// The shadow state for DescriptorSetLayouts does not contain reference to DescriptorSets that are created from them. So we have to loop around finding the story.
+	for _, descriptorSet := range GetState(f.loopStartState).DescriptorSets().All() {
+		descriptorSetLayout := descriptorSet.Layout()
+		if _, ok := f.descriptorSetLayoutToCreate[descriptorSetLayout.VulkanHandle()]; ok {
+			f.descriptorSetToDestroy[descriptorSet.VulkanHandle()] = true
+			f.descriptorSetToCreate[descriptorSet.VulkanHandle()] = true
+			f.descriptorSetChanged[descriptorSet.VulkanHandle()] = true
+		}
+	}
+
 	return nil
 }
 
