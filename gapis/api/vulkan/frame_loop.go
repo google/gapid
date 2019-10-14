@@ -150,6 +150,12 @@ type frameLoop struct {
 	renderPassToDestroy map[VkRenderPass]bool
 	renderPassToCreate  map[VkRenderPass]bool
 
+	commandBufferToFree      map[VkCommandBuffer]bool
+	commandBufferToAllocate  map[VkCommandBuffer]bool
+	commandBufferChanged     map[VkCommandBuffer]bool
+	commandBufferRecorded    map[VkCommandBuffer]bool // Command buffers recorded during loop.
+	commandBufferNotRecorded map[VkCommandBuffer]bool // Command buffers submitted but not recorded during loop.
+
 	loopCountPtr value.Pointer
 
 	frameNum uint32
@@ -242,6 +248,12 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		renderPassToDestroy: make(map[VkRenderPass]bool),
 		renderPassToCreate:  make(map[VkRenderPass]bool),
+
+		commandBufferToFree:      make(map[VkCommandBuffer]bool),
+		commandBufferToAllocate:  make(map[VkCommandBuffer]bool),
+		commandBufferChanged:     make(map[VkCommandBuffer]bool),
+		commandBufferRecorded:    make(map[VkCommandBuffer]bool),
+		commandBufferNotRecorded: make(map[VkCommandBuffer]bool),
 
 		loopTerminated:      false,
 		lastObservedCommand: api.CmdNoID,
@@ -756,14 +768,75 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				f.renderPassToCreate[renderPass] = true
 			}
 
-			// TODO:  Recreate destroyed resources.
+		// Command Buffers
+		case *VkAllocateCommandBuffers:
+			vkCmd := cmd.(*VkAllocateCommandBuffers)
+			cmdBuffers := vkCmd.PCommandBuffers().MustRead(ctx, vkCmd, currentState, nil)
+			f.commandBufferToFree[cmdBuffers] = true
+			log.D(ctx, "Command buffer %v allcoated.", cmdBuffers)
+		case *VkFreeCommandBuffers:
+			vkCmd := cmd.(*VkFreeCommandBuffers)
+			cmdBufCount := vkCmd.CommandBufferCount()
+			cmdBufs := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
+			for _, cmdBuf := range cmdBufs {
+				// The command buffer deleted in this call was created during loop, no action needed.
+				log.D(ctx, "Command buffer %v freed", cmdBufs)
+				if _, ok := f.commandBufferToFree[cmdBuf]; ok {
+					delete(f.commandBufferToFree, cmdBuf)
+				} else { // The command buffer deleted in this call was not created during loop, need to back up it
+					f.commandBufferToAllocate[cmdBuf] = true
+				}
+			}
+		case *VkBeginCommandBuffer:
+			vkCmd := cmd.(*VkBeginCommandBuffer)
+			cmdBuf := vkCmd.CommandBuffer()
+			f.commandBufferRecorded[cmdBuf] = true
+			log.D(ctx, "Command buffer %v began", cmdBuf)
+
+			// If this command buffer is allocated during loop then it is reset by the re-allocation step.
+			if _, ok := f.commandBufferToFree[cmdBuf]; ok {
+				break
+			}
+			// If this command buffer has not been submitted before no action needed.
+			if _, ok := f.commandBufferNotRecorded[cmdBuf]; !ok {
+				break
+			}
+			// Only backup the fist time it changes
+			if _, ok := f.commandBufferChanged[cmdBuf]; !ok {
+				f.commandBufferChanged[cmdBuf] = true
+			}
+
+		case *VkResetCommandBuffer:
+			vkCmd := cmd.(*VkResetCommandBuffer)
+			cmdBuf := vkCmd.CommandBuffer()
+			log.D(ctx, "Command buffer %v reset", cmdBuf)
+			// If this command buffer is allocated during loop then it is reset by the re-allocation step.
+			if _, ok := f.commandBufferToFree[cmdBuf]; ok {
+				break
+			}
+			// If this command buffer has not been submitted before no action needed.
+			if _, ok := f.commandBufferNotRecorded[cmdBuf]; !ok {
+				break
+			}
+			// Only backup the fist time it changes
+			if _, ok := f.commandBufferChanged[cmdBuf]; !ok {
+				f.commandBufferChanged[cmdBuf] = true
+			}
+		case *VkQueueSubmit:
+			vkCmd := cmd.(*VkQueueSubmit)
+			submitCount := vkCmd.SubmitCount()
+			submitInfos := vkCmd.pSubmits.Slice(0, uint64(submitCount), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
+			for _, si := range submitInfos {
+				cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
+				for _, cmdBuf := range cmdBuffers {
+					if _, ok := f.commandBufferRecorded[cmdBuf]; !ok {
+						f.commandBufferNotRecorded[cmdBuf] = true
+					}
+				}
+			}
 		}
 
-		if err := cmd.Mutate(ctx, cmdId, currentState, nil, f.watcher); err != nil {
-			return fmt.Errorf("%v: %v: %v", cmdId, cmd, err)
-		}
-
-		return nil
+		return cmd.Mutate(ctx, cmdId, currentState, nil, f.watcher)
 	})
 
 	if err != nil {
@@ -1098,6 +1171,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	}
 
 	if err := f.resetRenderPasses(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetCommandBuffers(ctx, stateBuilder); err != nil {
 		return err
 	}
 
@@ -1613,6 +1690,46 @@ func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBu
 		// Write the commands needed to recreate the destroyed object
 		renderPass := GetState(f.loopStartState).renderPasses.Get(toCreate)
 		stateBuilder.createRenderPass(renderPass)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetCommandBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	for cmdBuf := range f.commandBufferToFree {
+		log.D(ctx, "Command buffer %v allocated during loop, free it.", cmdBuf)
+		cmdBufObj := GetState(f.loopEndState).CommandBuffers().Get(cmdBuf)
+		if cmdBufObj != NilCommandBufferObjectʳ {
+			stateBuilder.write(stateBuilder.cb.VkFreeCommandBuffers(
+				cmdBufObj.Device(),
+				cmdBufObj.Pool(),
+				1,
+				stateBuilder.MustAllocReadData(cmdBufObj.VulkanHandle()).Ptr(),
+			))
+		} else {
+			log.F(ctx, true, "Command buffer %v cannot be found in loop ending state", cmdBuf)
+		}
+	}
+
+	for cmdBuf := range f.commandBufferToAllocate {
+		cmdBufObj := GetState(f.loopStartState).CommandBuffers().Get(cmdBuf)
+		if cmdBufObj == NilCommandBufferObjectʳ {
+			log.F(ctx, true, "Command buffer %v can not be found in loop starting state", cmdBuf)
+			continue
+		}
+		log.D(ctx, "Command buffer %v freed during loop, recreate it.", cmdBuf)
+		stateBuilder.createCommandBuffer(cmdBufObj, cmdBufObj.Level())
+		stateBuilder.recordCommandBuffer(cmdBufObj, cmdBufObj.Level(), f.loopStartState)
+	}
+
+	for cmdBuf := range f.commandBufferChanged {
+		cmdBufObj := GetState(f.loopStartState).CommandBuffers().Get(cmdBuf)
+		if cmdBufObj == NilCommandBufferObjectʳ {
+			log.F(ctx, true, "Command buffer %v can not be found in loop starting state", cmdBuf)
+		}
+		log.D(ctx, "Command buffer %v changed during loop, re-record it.", cmdBuf)
+		stateBuilder.recordCommandBuffer(cmdBufObj, cmdBufObj.Level(), f.loopStartState)
 	}
 
 	return nil
