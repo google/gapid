@@ -459,7 +459,7 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 			switch err {
 			case nil:
 			case adb.ErrDeviceNotRooted:
-				return ret, cleanup.Invoke(ctx), err
+				return ret, cleanup.Invoke(ctx), log.Err(ctx, err, "Cannot trace non-debuggable app")
 			default:
 				return ret, cleanup.Invoke(ctx), fmt.Errorf("Failed to restart ADB as root: %v", err)
 			}
