@@ -226,9 +226,15 @@ public class PipelineView extends Composite
           for (API.Stage stage : stages) {
             TabItem item = createStandardTabItem(folder, stage.getDebugName());
 
-            Group group = createGroup(folder, stage.getStageName());
+            Group stageGroup = createGroup(folder, stage.getStageName());
 
-            item.setControl(group);
+            item.setControl(stageGroup);
+
+            for (API.DataGroup dataGroup : stage.getGroupsList()) {
+              createGroup(stageGroup, dataGroup.getGroupName());
+            }
+
+            stageGroup.requestLayout();
           }
         }
       });
