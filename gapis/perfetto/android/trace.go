@@ -23,6 +23,7 @@ import (
 
 	perfetto_pb "perfetto/config"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
@@ -32,9 +33,14 @@ import (
 )
 
 const (
+	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
+
 	// perfettoTraceFile is the location on the device where we'll ask Perfetto
 	// to store the trace data while tracing.
-	perfettoTraceFile = "/data/misc/perfetto-traces/gapis-trace"
+	perfettoTraceFile                       = "/data/misc/perfetto-traces/gapis-trace"
+	prereleaseDriverProperty                = "ro.gfx.driver.1"
+	prereleaseDriverOverrideSettingVariable = "gapid.driver_package_override"
+	renderStageVulkanLayerName              = "VkRenderStagesProducer"
 )
 
 // Process represents a running Perfetto capture.
@@ -44,8 +50,38 @@ type Process struct {
 	deferred bool
 }
 
+func hasRenderStageEnabled(perfettoConfig *perfetto_pb.TraceConfig) bool {
+	for _, dataSource := range perfettoConfig.GetDataSources() {
+		if dataSource.Config.GetName() == gpuRenderStagesDataSourceDescriptorName {
+			return true
+		}
+	}
+	return false
+}
+
+func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName string, perfettoConfig *perfetto_pb.TraceConfig) (app.Cleanup, error) {
+	if !hasRenderStageEnabled(perfettoConfig) {
+		return nil, nil
+	}
+	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
+	if err != nil {
+		return nil, err
+	}
+	if driverPackageOverride, err := d.SystemSetting(ctx, "global", prereleaseDriverOverrideSettingVariable); driverPackageOverride != "" && driverPackageOverride != "null" && err == nil {
+		driverPackageName = driverPackageOverride
+	}
+	if driverPackageName == "" {
+		return nil, nil
+	}
+	cleanupFunc, err := android.SetupLayer(ctx, d, packageName, driverPackageName, renderStageVulkanLayerName, true)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
+	}
+	return cleanupFunc, nil
+}
+
 // Start optional starts an app and sets up a Perfetto trace
-func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions) (*Process, error) {
+func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
 	if a != nil {
 		ctx = log.V{
@@ -54,17 +90,20 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 	}
 
+	// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
+	cleanupFunc, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig)
+
 	log.I(ctx, "Unlocking device screen")
 	unlocked, err := d.UnlockScreen(ctx)
 	if err != nil {
 		log.W(ctx, "Failed to determine lock state: %s", err)
 	} else if !unlocked {
-		return nil, log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
+		return nil, cleanupFunc, log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
 	}
 
 	if a != nil {
 		if err := d.StartActivity(ctx, *a); err != nil {
-			return nil, log.Err(ctx, err, "Starting the activity")
+			return nil, cleanupFunc, log.Err(ctx, err, "Starting the activity")
 		}
 	}
 
@@ -72,7 +111,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		device:   d,
 		config:   opts.PerfettoConfig,
 		deferred: opts.DeferStart,
-	}, nil
+	}, cleanupFunc, nil
 }
 
 // Capture starts the perfetto capture.
