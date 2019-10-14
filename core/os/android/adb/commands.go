@@ -36,7 +36,7 @@ import (
 const (
 	// ErrDeviceNotRooted is returned by Device.Root when the device is running a
 	// production build as is not 'rooted'.
-	ErrDeviceNotRooted = fault.Const("Device is not rooted")
+	ErrDeviceNotRooted = fault.Const("Device is not a userdebug build")
 	ErrRootFailed      = fault.Const("Device failed to switch to root")
 
 	maxRootAttempts                         = 5
