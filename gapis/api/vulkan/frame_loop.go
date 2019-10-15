@@ -1179,6 +1179,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetPipelines(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetDescriptorPools(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -1481,6 +1485,61 @@ func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stat
 	for toCreate := range f.pipelineLayoutToCreate {
 		// Write the commands needed to recreate the destroyed object
 		stateBuilder.createPipelineLayout(GetState(f.loopStartState).pipelineLayouts.Get(toCreate))
+	}
+
+	// The shadow state for PipelineLayouts does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
+	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+		pipelineLayout := computePipelineObject.PipelineLayout()
+		if _, ok := f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()]; ok {
+			f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
+			f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
+		}
+	}
+
+	// The shadow state for PipelineLayouts does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
+	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+		pipelineLayout := graphicsPipelineObject.Layout()
+		if _, ok := f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()]; ok {
+			f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
+			f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
+		}
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetPipelines(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Pipeline that we need to destroy at the end of the loop...
+	for toDestroy := range f.pipelineToDestroy {
+
+		// Write the command to delete the created object
+		computePipeline, isComputePipeline := GetState(f.loopEndState).ComputePipelines().All()[toDestroy]
+		graphicsPipeline, isGraphicsPipeline := GetState(f.loopEndState).GraphicsPipelines().All()[toDestroy]
+
+		if isComputePipeline && isGraphicsPipeline {
+			log.F(ctx, true, "Control flow error: Pipeline can't be both Graphics and Compute at the same time.")
+		}
+
+		if isComputePipeline {
+			stateBuilder.write(stateBuilder.cb.VkDestroyPipeline(computePipeline.Device(), computePipeline.VulkanHandle(), memory.Nullptr))
+		} else if isGraphicsPipeline {
+			stateBuilder.write(stateBuilder.cb.VkDestroyPipeline(graphicsPipeline.Device(), graphicsPipeline.VulkanHandle(), memory.Nullptr))
+		} else {
+			log.F(ctx, true, "FrameLooping: resetPipelines(): Unknown pipeline type")
+		}
+	}
+
+	// For every ComputePipeline that we need to create at the end of the loop...
+	for toCreate := range f.computePipelineToCreate {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createComputePipeline(GetState(f.loopStartState).computePipelines.Get(toCreate))
+	}
+
+	// For every GraphicsPipeline that we need to create at the end of the loop...
+	for toCreate := range f.graphicsPipelineToCreate {
+		// Write the commands needed to recreate the destroyed object
+		stateBuilder.createGraphicsPipeline(GetState(f.loopStartState).graphicsPipelines.Get(toCreate))
 	}
 
 	return nil
