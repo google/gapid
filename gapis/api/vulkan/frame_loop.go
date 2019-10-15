@@ -1408,6 +1408,25 @@ func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateB
 		stateBuilder.createShaderModule(shaderModule)
 	}
 
+	// The shadow state for ShaderModules does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
+	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+		shaderModule := computePipelineObject.Stage().data.module
+		if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
+			f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
+			f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
+		}
+	}
+
+	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+		for _, stage := range graphicsPipelineObject.Stages().All() {
+			shaderModule := stage.data.module
+			if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
+				f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
+				f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
+			}
+		}
+	}
+
 	return nil
 }
 
