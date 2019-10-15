@@ -144,8 +144,8 @@ type frameLoop struct {
 	eventChanged   map[VkEvent]bool
 	eventDestroyed map[VkEvent]bool
 
-	framebuffersToDestroy map[VkFramebuffer]bool
-	framebuffersToCreate  map[VkFramebuffer]bool
+	framebufferToDestroy map[VkFramebuffer]bool
+	framebufferToCreate  map[VkFramebuffer]bool
 
 	renderPassToDestroy map[VkRenderPass]bool
 	renderPassToCreate  map[VkRenderPass]bool
@@ -243,8 +243,8 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		eventChanged:   make(map[VkEvent]bool),
 		eventDestroyed: make(map[VkEvent]bool),
 
-		framebuffersToDestroy: make(map[VkFramebuffer]bool),
-		framebuffersToCreate:  make(map[VkFramebuffer]bool),
+		framebufferToDestroy: make(map[VkFramebuffer]bool),
+		framebufferToCreate:  make(map[VkFramebuffer]bool),
 
 		renderPassToDestroy: make(map[VkRenderPass]bool),
 		renderPassToCreate:  make(map[VkRenderPass]bool),
@@ -739,16 +739,16 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkCreateFramebuffer)
 			framebuffer := vkCmd.PFramebuffer().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Framebuffer %v created", framebuffer)
-			f.framebuffersToDestroy[framebuffer] = true
+			f.framebufferToDestroy[framebuffer] = true
 
 		case *VkDestroyFramebuffer:
 			vkCmd := cmd.(*VkDestroyFramebuffer)
 			framebuffer := vkCmd.Framebuffer()
 			log.D(ctx, "Framebuffer %v created", framebuffer)
-			if _, ok := f.framebuffersToDestroy[framebuffer]; ok {
-				delete(f.framebuffersToDestroy, framebuffer)
+			if _, ok := f.framebufferToDestroy[framebuffer]; ok {
+				delete(f.framebufferToDestroy, framebuffer)
 			} else {
-				f.framebuffersToCreate[framebuffer] = true
+				f.framebufferToCreate[framebuffer] = true
 			}
 
 		// RenderPass(s)
@@ -1295,6 +1295,12 @@ func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuil
 		// Write the commands needed to recreate the destroyed object
 		imageView := GetState(f.loopStartState).imageViews.Get(toCreate)
 		stateBuilder.createImageView(imageView)
+
+		framebufferUsers := imageView.FramebufferUsers().All()
+		for framebuffer, _ := range framebufferUsers {
+			f.framebufferToDestroy[framebuffer] = true
+			f.framebufferToCreate[framebuffer] = true
+		}
 	}
 
 	return nil
@@ -1668,14 +1674,14 @@ func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder)
 func (f *frameLoop) resetFramebuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Framebuffers that we need to destroy at the end of the loop...
-	for toDestroy := range f.framebuffersToDestroy {
+	for toDestroy := range f.framebufferToDestroy {
 		// Write the command to delete the created object
 		framebuffer := GetState(f.loopEndState).framebuffers.Get(toDestroy)
 		stateBuilder.write(stateBuilder.cb.VkDestroyFramebuffer(framebuffer.Device(), framebuffer.VulkanHandle(), memory.Nullptr))
 	}
 
 	// For every Framebuffers that we need to create at the end of the loop...
-	for toCreate := range f.framebuffersToCreate {
+	for toCreate := range f.framebufferToCreate {
 		// Write the commands needed to recreate the destroyed object
 		framebuffer := GetState(f.loopStartState).framebuffers.Get(toCreate)
 		stateBuilder.createFramebuffer(framebuffer)
