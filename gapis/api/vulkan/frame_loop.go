@@ -888,7 +888,7 @@ func (f *frameLoop) detectChangedBuffers(ctx context.Context) {
 			poolID := data.Pool()
 
 			// Did we see this buffer get written to during the loop? If we did, then we need to capture the values at the start of the loop.
-			// TODO: This code does not handle the possibility of new DeviceMemory being bound to the object during the loop. Talk to @purvisa.
+			// TODO: This code does not handle the possibility of new DeviceMemory being bound to the object during the loop. TODO(purvisa).
 			if writes, ok := f.watcher.memoryWrites[poolID]; ok {
 
 				// We do this by comparing the buffer's memory extent with all the observed written areas.
@@ -948,7 +948,7 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 						poolID := data.Pool()
 
 						// Did we see this part of this image get written to during the loop? If we did, then we need to capture the values at the start of the loop.
-						// TODO: This code does not handle the possibility of new DeviceMemory being bound to the object during the loop. Talk to @purvisa.
+						// TODO: This code does not handle the possibility of new DeviceMemory being bound to the object during the loop. TODO(purvisa).
 						if writes, ok := f.watcher.memoryWrites[poolID]; ok {
 
 							// We do this by comparing the image's part's memory extent with all the observed written areas.
@@ -1268,12 +1268,14 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 
 		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
 
-		// // Iterate through all the descriptor sets that we just recreated, adding them to the list of descriptor sets
-		// // that need to be redefined.
-		// descriptorPoolData := GetState(f.loopStartState).DescriptorPools().All()[toCreate]
-		// for _, descriptorSetDataValue := range descriptorPoolData.DescriptorSets().All() {
-		// 	containedDescriptorSet := descriptorSetDataValue.VulkanHandle()
-		// }
+		// If we (re)created an Image, then we will have invalidated all ImageViews that were using it at the time the loop started.
+		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
+		// These ImageViews will need to be (re)created, so add them to the maps to destroy and create in that order.
+		imageViewUsers := GetState(f.loopStartState).images.Get(dst).Views().All()
+		for imageView, _ := range imageViewUsers {
+			f.imageViewToDestroy[imageView] = true
+			f.imageViewToCreate[imageView] = true
+		}
 	}
 
 	return nil
