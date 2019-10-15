@@ -73,11 +73,11 @@ func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName
 	if driverPackageName == "" {
 		return nil, nil
 	}
-	cleanupFunc, err := android.SetupLayer(ctx, d, packageName, driverPackageName, renderStageVulkanLayerName, true)
+	cleanup, err := android.SetupLayer(ctx, d, packageName, driverPackageName, renderStageVulkanLayerName, true)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
 	}
-	return cleanupFunc, nil
+	return cleanup, nil
 }
 
 // Start optional starts an app and sets up a Perfetto trace
@@ -91,19 +91,19 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 	}
 
 	// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
-	cleanupFunc, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig)
+	cleanup, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig)
 
 	log.I(ctx, "Unlocking device screen")
 	unlocked, err := d.UnlockScreen(ctx)
 	if err != nil {
 		log.W(ctx, "Failed to determine lock state: %s", err)
 	} else if !unlocked {
-		return nil, cleanupFunc, log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
+		return nil, cleanup.Invoke(ctx), log.Err(ctx, nil, "Please unlock your device screen: GAPID can automatically unlock the screen only when no PIN/password/pattern is needed")
 	}
 
 	if a != nil {
 		if err := d.StartActivity(ctx, *a); err != nil {
-			return nil, cleanupFunc, log.Err(ctx, err, "Starting the activity")
+			return nil, cleanup.Invoke(ctx), log.Err(ctx, err, "Starting the activity")
 		}
 	}
 
@@ -111,7 +111,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		device:   d,
 		config:   opts.PerfettoConfig,
 		deferred: opts.DeferStart,
-	}, cleanupFunc, nil
+	}, cleanup, nil
 }
 
 // Capture starts the perfetto capture.
