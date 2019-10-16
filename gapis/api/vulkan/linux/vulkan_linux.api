@@ -21,9 +21,6 @@
 @extension("VK_KHR_wayland_surface") define VK_KHR_WAYLAND_SURFACE_SPEC_VERSION   5
 @extension("VK_KHR_wayland_surface") define VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME "VK_KHR_wayland_surface"
 
-@extension("VK_KHR_mir_surface") define VK_KHR_MIR_SURFACE_SPEC_VERSION   4
-@extension("VK_KHR_mir_surface") define VK_KHR_MIR_SURFACE_EXTENSION_NAME "VK_KHR_mir_surface"
-
 
 
 // ----------------------------------------------------------------------------
@@ -200,64 +197,6 @@ cmd VkBool32 vkGetPhysicalDeviceWaylandPresentationSupportKHR(
     VkPhysicalDevice physicalDevice,
     u32              queueFamilyIndex,
     wl_display*      display) {
-  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
-  return ?
-}
-
-// ----------------------------------------------------------------------------
-// VK_KHR_mir_surface
-// ----------------------------------------------------------------------------
-
-@extension("VK_KHR_mir_surface")
-@reserved_flags
-type VkFlags VkMirSurfaceCreateFlagsKHR
-
-@extension("VK_KHR_mir_surface") @forwarddecl class MirConnection {}
-@extension("VK_KHR_mir_surface") @forwarddecl class MirSurface {}
-
-@platform("VK_USE_PLATFORM_MIR_KHR")
-@extension("VK_KHR_mir_surface")
-class VkMirSurfaceCreateInfoKHR {
-  VkStructureType            sType
-  const void*                pNext
-  VkMirSurfaceCreateFlagsKHR flags
-  MirConnection*             connection
-  MirSurface*                mirSurface
-}
-
-@platform("VK_USE_PLATFORM_MIR_KHR")
-@extension("VK_KHR_mir_surface")
-@indirect("VkInstance")
-@custom
-cmd VkResult vkCreateMirSurfaceKHR(
-    VkInstance                       instance,
-    const VkMirSurfaceCreateInfoKHR* pCreateInfo,
-    AllocationCallbacks              pAllocator,
-    VkSurfaceKHR*                    pSurface) {
-  info := pCreateInfo[0]
-  surface := new!SurfaceObject()
-  surface.Instance = instance
-  surface.Type = SURFACE_TYPE_MIR
-
-  if info.pNext != null {
-    vkErrorNotNullPointer("const void* (pNext)")
-  }
-
-  handle := ?
-  pSurface[0] = handle
-  surface.VulkanHandle = handle
-  Surfaces[handle] = surface
-
-  return ?
-}
-
-@platform("VK_USE_PLATFORM_MIR_KHR")
-@extension("VK_KHR_mir_surface")
-@indirect("VkPhysicalDevice", "VkInstance")
-cmd VkBool32 vkGetPhysicalDeviceMirPresentationSupportKHR(
-    VkPhysicalDevice physicalDevice,
-    u32              queueFamilyIndex,
-    MirConnection*   connection) {
   if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
   return ?
 }

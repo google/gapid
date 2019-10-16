@@ -167,9 +167,6 @@ enum VkStructureType: u32 {
   //@extension("VK_KHR_wayland_surface")
   VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000,
 
-  //@extension("VK_KHR_mir_surface")
-  VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR = 1000007000,
-
   //@extension("VK_KHR_android_surface")
   VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR = 1000008000,
 

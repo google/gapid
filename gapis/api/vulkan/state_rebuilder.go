@@ -619,20 +619,6 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
 			VkResult_VK_SUCCESS,
 		))
-	case SurfaceType_SURFACE_TYPE_MIR:
-		sb.write(sb.cb.VkCreateMirSurfaceKHR(
-			s.Instance(),
-			sb.MustAllocReadData(NewVkMirSurfaceCreateInfoKHR(sb.ta,
-				VkStructureType_VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR, // sType
-				0, // pNext
-				0, // flags
-				0, // connection
-				0, // mirSurface
-			)).Ptr(),
-			memory.Nullptr,
-			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
-			VkResult_VK_SUCCESS,
-		))
 	case SurfaceType_SURFACE_TYPE_GGP:
 		sb.write(sb.cb.VkCreateStreamDescriptorSurfaceGGP(
 			s.Instance(),

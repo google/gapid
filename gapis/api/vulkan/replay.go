@@ -677,10 +677,6 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
 		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR)
-	case *VkCreateMirSurfaceKHR:
-		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
-		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)
-		t.SurfaceTypes[uint64(surface)] = uint32(VkStructureType_VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR)
 	case *VkCreateWaylandSurfaceKHR:
 		cmd.Extras().Observations().ApplyWrites(out.State().Memory.ApplicationPool())
 		surface := c.PSurface().MustRead(ctx, cmd, out.State(), nil)

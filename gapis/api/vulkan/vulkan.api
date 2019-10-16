@@ -204,7 +204,6 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_xlib_surface"] = true
   supported.ExtensionNames["VK_KHR_xcb_surface"] = true
   supported.ExtensionNames["VK_KHR_wayland_surface"] = true
-  supported.ExtensionNames["VK_KHR_mir_surface"] = true
   supported.ExtensionNames["VK_KHR_android_surface"] = true
   supported.ExtensionNames["VK_KHR_win32_surface"] = true
   supported.ExtensionNames["VK_KHR_get_physical_device_properties2"] = true
