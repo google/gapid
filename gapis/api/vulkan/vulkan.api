@@ -222,7 +222,6 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_swapchain"] = true
   supported.ExtensionNames["VK_KHR_display_swapchain"] = true
   supported.ExtensionNames["VK_EXT_debug_marker"] = true
-  supported.ExtensionNames["VK_KHR_ANDROID_native_buffer"] = true
   supported.ExtensionNames["VK_NV_dedicated_allocation"] = true
   supported.ExtensionNames["VK_KHR_get_memory_requirements2"] = true
   supported.ExtensionNames["VK_KHR_dedicated_allocation"] = true

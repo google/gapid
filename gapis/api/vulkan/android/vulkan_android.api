@@ -15,9 +15,6 @@
 @extension("VK_KHR_android_surface") define VK_KHR_ANDROID_SURFACE_SPEC_VERSION 6
 @extension("VK_KHR_android_surface") define VK_KHR_ANDROID_SURFACE_EXTENSION_NAME         "VK_KHR_android_surface"
 
-@extension("VK_ANDROID_native_buffer") define VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION     5
-@extension("VK_ANDROID_native_buffer") define VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME             "VK_ANDROID_native_buffer"
-
 // ----------------------------------------------------------------------------
 // VK_KHR_android_surface
 // ----------------------------------------------------------------------------
