@@ -73,9 +73,12 @@ func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName
 	if driverPackageName == "" {
 		return nil, nil
 	}
+	if res, err := d.Shell("pm", "path", driverPackageName).Call(ctx); err != nil || res == "" {
+		return nil, log.Err(ctx, err, "No driver package found.")
+	}
 	cleanup, err := android.SetupLayer(ctx, d, packageName, driverPackageName, renderStageVulkanLayerName, true)
 	if err != nil {
-		return nil, log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
+		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
 	}
 	return cleanup, nil
 }
