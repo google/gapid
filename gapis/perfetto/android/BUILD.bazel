@@ -23,6 +23,7 @@ go_library(
     importpath = "github.com/google/gapid/gapis/perfetto/android",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/app:go_default_library",
         "//core/event/task:go_default_library",
         "//core/log:go_default_library",
         "//core/os/android:go_default_library",
