@@ -159,6 +159,9 @@ type frameLoop struct {
 	renderPassToDestroy map[VkRenderPass]bool
 	renderPassToCreate  map[VkRenderPass]bool
 
+	commandPoolToDestroy map[VkCommandPool]bool
+	commandPoolToCreate  map[VkCommandPool]bool
+
 	commandBufferToFree     map[VkCommandBuffer]bool
 	commandBufferToAllocate map[VkCommandBuffer]bool
 	commandBufferToRecord   map[VkCommandBuffer]bool
@@ -264,6 +267,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		renderPassToDestroy: make(map[VkRenderPass]bool),
 		renderPassToCreate:  make(map[VkRenderPass]bool),
+
+		commandPoolToDestroy: make(map[VkCommandPool]bool),
+		commandPoolToCreate:  make(map[VkCommandPool]bool),
 
 		commandBufferToFree:     make(map[VkCommandBuffer]bool),
 		commandBufferToAllocate: make(map[VkCommandBuffer]bool),
@@ -862,6 +868,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				f.renderPassToCreate[renderPass] = true
 			}
 
+		// CommandPool(s)
+		case *VkCreateCommandPool:
+			vkCmd := cmd.(*VkCreateCommandPool)
+			commandPool := vkCmd.PCommandPool().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "CommandPool %v created", commandPool)
+			f.commandPoolToDestroy[commandPool] = true
+
+		case *VkDestroyCommandPool:
+			vkCmd := cmd.(*VkDestroyCommandPool)
+			commandPool := vkCmd.CommandPool()
+			log.D(ctx, "CommandPool %v destroyed", commandPool)
+			if _, ok := f.commandPoolToDestroy[commandPool]; ok {
+				delete(f.commandPoolToDestroy, commandPool)
+			} else {
+				f.commandPoolToCreate[commandPool] = true
+			}
+
 		// Command Buffers
 		case *VkAllocateCommandBuffers:
 			vkCmd := cmd.(*VkAllocateCommandBuffers)
@@ -1257,6 +1280,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	}
 
 	if err := f.resetRenderPasses(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetCommandPools(ctx, stateBuilder); err != nil {
 		return err
 	}
 
@@ -2007,6 +2034,33 @@ func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBu
 		// Write the commands needed to recreate the destroyed object
 		renderPass := GetState(f.loopStartState).renderPasses.Get(toCreate)
 		stateBuilder.createRenderPass(renderPass)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetCommandPools(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every CommandPool that we need to destroy at the end of the loop...
+	for toDestroy := range f.commandPoolToDestroy {
+		// Write the command to delete the created object
+		commandPool := GetState(f.loopEndState).commandPools.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyCommandPool(commandPool.Device(), commandPool.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every CommandPool that we need to create at the end of the loop...
+	for toCreate := range f.commandPoolToCreate {
+		// Write the commands needed to recreate the destroyed object
+		commandPool := GetState(f.loopStartState).commandPools.Get(toCreate)
+		stateBuilder.createCommandPool(commandPool)
+
+		// Iterate through all the command pools that we just recreated, adding them to the list of command buffers
+		// that need to be redefined.
+		for _, commandSetDataValue := range commandPool.CommandBuffers().All() {
+			delete(f.commandBufferToFree, commandSetDataValue.VulkanHandle())
+			f.commandBufferToAllocate[commandSetDataValue.VulkanHandle()] = true
+			f.commandBufferToRecord[commandSetDataValue.VulkanHandle()] = true
+		}
 	}
 
 	return nil
