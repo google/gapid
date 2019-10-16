@@ -20,5 +20,7 @@ android_native_binary(
     linkopts = [
         "-llog",
         "-ldl",
+        "-fPIE",
+        "-pie",
     ],
 )
