@@ -159,11 +159,9 @@ type frameLoop struct {
 	renderPassToDestroy map[VkRenderPass]bool
 	renderPassToCreate  map[VkRenderPass]bool
 
-	commandBufferToFree      map[VkCommandBuffer]bool
-	commandBufferToAllocate  map[VkCommandBuffer]bool
-	commandBufferChanged     map[VkCommandBuffer]bool
-	commandBufferRecorded    map[VkCommandBuffer]bool // Command buffers recorded during loop.
-	commandBufferNotRecorded map[VkCommandBuffer]bool // Command buffers submitted but not recorded during loop.
+	commandBufferToFree     map[VkCommandBuffer]bool
+	commandBufferToAllocate map[VkCommandBuffer]bool
+	commandBufferToRecord   map[VkCommandBuffer]bool
 
 	loopCountPtr value.Pointer
 
@@ -267,11 +265,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		renderPassToDestroy: make(map[VkRenderPass]bool),
 		renderPassToCreate:  make(map[VkRenderPass]bool),
 
-		commandBufferToFree:      make(map[VkCommandBuffer]bool),
-		commandBufferToAllocate:  make(map[VkCommandBuffer]bool),
-		commandBufferChanged:     make(map[VkCommandBuffer]bool),
-		commandBufferRecorded:    make(map[VkCommandBuffer]bool),
-		commandBufferNotRecorded: make(map[VkCommandBuffer]bool),
+		commandBufferToFree:     make(map[VkCommandBuffer]bool),
+		commandBufferToAllocate: make(map[VkCommandBuffer]bool),
+		commandBufferToRecord:   make(map[VkCommandBuffer]bool),
 
 		loopTerminated:      false,
 		lastObservedCommand: api.CmdNoID,
@@ -869,57 +865,28 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		// Command Buffers
 		case *VkAllocateCommandBuffers:
 			vkCmd := cmd.(*VkAllocateCommandBuffers)
-			cmdBuffers := vkCmd.PCommandBuffers().MustRead(ctx, vkCmd, currentState, nil)
-			f.commandBufferToFree[cmdBuffers] = true
-			log.D(ctx, "Command buffer %v allcoated.", cmdBuffers)
+			cmdBufCount := vkCmd.PAllocateInfo().MustRead(ctx, vkCmd, currentState, nil).CommandBufferCount()
+			cmdBuffers := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
+			for _, cmdBuf := range cmdBuffers {
+				f.commandBufferToFree[cmdBuf] = true
+				log.D(ctx, "Command buffer %v allcoated.", cmdBuf)
+			}
+
 		case *VkFreeCommandBuffers:
 			vkCmd := cmd.(*VkFreeCommandBuffers)
 			cmdBufCount := vkCmd.CommandBufferCount()
 			cmdBufs := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
 			for _, cmdBuf := range cmdBufs {
-				// The command buffer deleted in this call was created during loop, no action needed.
 				log.D(ctx, "Command buffer %v freed", cmdBufs)
 				if _, ok := f.commandBufferToFree[cmdBuf]; ok {
+					// The command buffer freed in this call was created during loop, no action needed.
 					delete(f.commandBufferToFree, cmdBuf)
-				} else { // The command buffer deleted in this call was not created during loop, need to back up it
+				} else {
+					// The command buffer freed in this call was not created during loop, need to back up it
 					f.commandBufferToAllocate[cmdBuf] = true
 				}
 			}
-		case *VkBeginCommandBuffer:
-			vkCmd := cmd.(*VkBeginCommandBuffer)
-			cmdBuf := vkCmd.CommandBuffer()
-			f.commandBufferRecorded[cmdBuf] = true
-			log.D(ctx, "Command buffer %v began", cmdBuf)
 
-			// If this command buffer is allocated during loop then it is reset by the re-allocation step.
-			if _, ok := f.commandBufferToFree[cmdBuf]; ok {
-				break
-			}
-			// If this command buffer has not been submitted before no action needed.
-			if _, ok := f.commandBufferNotRecorded[cmdBuf]; !ok {
-				break
-			}
-			// Only backup the fist time it changes
-			if _, ok := f.commandBufferChanged[cmdBuf]; !ok {
-				f.commandBufferChanged[cmdBuf] = true
-			}
-
-		case *VkResetCommandBuffer:
-			vkCmd := cmd.(*VkResetCommandBuffer)
-			cmdBuf := vkCmd.CommandBuffer()
-			log.D(ctx, "Command buffer %v reset", cmdBuf)
-			// If this command buffer is allocated during loop then it is reset by the re-allocation step.
-			if _, ok := f.commandBufferToFree[cmdBuf]; ok {
-				break
-			}
-			// If this command buffer has not been submitted before no action needed.
-			if _, ok := f.commandBufferNotRecorded[cmdBuf]; !ok {
-				break
-			}
-			// Only backup the fist time it changes
-			if _, ok := f.commandBufferChanged[cmdBuf]; !ok {
-				f.commandBufferChanged[cmdBuf] = true
-			}
 		case *VkQueueSubmit:
 			vkCmd := cmd.(*VkQueueSubmit)
 			submitCount := vkCmd.SubmitCount()
@@ -927,8 +894,9 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			for _, si := range submitInfos {
 				cmdBuffers := si.PCommandBuffers().Slice(0, uint64(si.CommandBufferCount()), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
 				for _, cmdBuf := range cmdBuffers {
-					if _, ok := f.commandBufferRecorded[cmdBuf]; !ok {
-						f.commandBufferNotRecorded[cmdBuf] = true
+					// Re-record all command buffers that are not allocated during the loop for now.
+					if _, ok := f.commandBufferToFree[cmdBuf]; !ok {
+						f.commandBufferToRecord[cmdBuf] = true
 					}
 				}
 			}
@@ -2069,15 +2037,19 @@ func (f *frameLoop) resetCommandBuffers(ctx context.Context, stateBuilder *state
 		}
 		log.D(ctx, "Command buffer %v freed during loop, recreate it.", cmdBuf)
 		stateBuilder.createCommandBuffer(cmdBufObj, cmdBufObj.Level())
-		stateBuilder.recordCommandBuffer(cmdBufObj, cmdBufObj.Level(), f.loopStartState)
 	}
 
-	for cmdBuf := range f.commandBufferChanged {
+	for cmdBuf := range f.commandBufferToRecord {
 		cmdBufObj := GetState(f.loopStartState).CommandBuffers().Get(cmdBuf)
 		if cmdBufObj == NilCommandBufferObjectʳ {
 			log.F(ctx, true, "Command buffer %v can not be found in loop starting state", cmdBuf)
 		}
 		log.D(ctx, "Command buffer %v changed during loop, re-record it.", cmdBuf)
+		stateBuilder.write(stateBuilder.cb.VkResetCommandBuffer(
+			cmdBufObj.VulkanHandle(),
+			0,
+			VkResult_VK_SUCCESS,
+		))
 		stateBuilder.recordCommandBuffer(cmdBufObj, cmdBufObj.Level(), f.loopStartState)
 	}
 
