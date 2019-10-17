@@ -22,6 +22,7 @@ filegroup(
 
 android_library(
     name = "gapid",
+    custom_package = "com.google.android.gapid",
     srcs = [":source"],
     manifest = "//tools/build/rules:AndroidManifest.xml",
     resource_files = [

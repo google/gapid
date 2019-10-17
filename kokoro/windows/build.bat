@@ -62,14 +62,12 @@ if "%KOKORO_GITHUB_COMMIT%." == "." (
 
 REM Build each API package separately first, as the go-compiler needs ~8GB of RAM for each package.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --android_aapt=aapt ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
     //gapis/api/gles:go_default_library
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --android_aapt=aapt ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
     //gapis/api/vulkan:go_default_library
@@ -77,7 +75,6 @@ if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 
 REM Build everything else.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
-    --android_aapt=aapt ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
     //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests

@@ -40,7 +40,6 @@ function test {
     $BUILD_ROOT/bazel/bin/bazel \
         --output_base="${TMP}/bazel_out" \
         test -c opt --config symbols \
-        --android_aapt=aapt \
         --define GAPID_BUILD_NUMBER="$KOKORO_BUILD_NUMBER" \
         --define GAPID_BUILD_SHA="$BUILD_SHA" \
         --test_tag_filters=-needs_gpu \
