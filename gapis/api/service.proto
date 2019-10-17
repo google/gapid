@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "core/image/image.proto";
+import "core/data/pod/pod.proto";
 import "gapis/service/box/box.proto";
 import "gapis/service/path/path.proto";
 import "gapis/service/types/types.proto";
@@ -262,6 +263,54 @@ message Stage {
 
 message DataGroup {
   string group_name = 1;
+  oneof data {
+    KeyValuePairList key_values = 2;
+    Table table = 3;
+    Shader shader = 4;
+  }
+}
+
+message DataValue {
+  string type_name = 1;
+  oneof val {
+    pod.Value value = 2;
+    EnumValue enumVal = 3;
+    BitfieldValue bitfield = 4;
+    LinkedValue link = 5;
+  }
+}
+
+message EnumValue {
+  uint64 value = 2;
+  string string_value = 3;
+}
+
+message BitfieldValue {
+  repeated uint64 set_bits = 1;
+  repeated string set_bitnames = 2;
+}
+
+message LinkedValue {
+  path.Any link = 1;
+  DataValue display_val = 2;
+}
+
+message KeyValuePairList {
+  repeated KeyValuePair key_values = 1;
+}
+
+message KeyValuePair {
+  string name = 1;
+  DataValue value = 2;
+}
+
+message Table {
+  repeated string headers = 1;
+  repeated Row rows = 2;
+}
+
+message Row {
+  repeated DataValue f = 1;
 }
 
 // DescriptorBinding represents one descriptor binding in a pipeline.
