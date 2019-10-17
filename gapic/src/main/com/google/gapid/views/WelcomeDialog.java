@@ -75,7 +75,7 @@ public class WelcomeDialog {
           createLabel(c, Messages.WELCOME_TEXT)
               .setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-          form = withLayoutData(new SettingsDialog.SettingsFormBase(models, c, 0, 10),
+          form = withLayoutData(new SettingsDialog.SettingsFormBase(models, c, 0, 10, true),
               new GridData(SWT.FILL, SWT.FILL, true, true));
          });
       }
