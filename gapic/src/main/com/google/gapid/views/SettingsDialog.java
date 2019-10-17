@@ -71,7 +71,7 @@ public class SettingsDialog extends DialogBase {
   protected Control createDialogArea(Composite parent) {
     Composite area = (Composite)super.createDialogArea(parent);
 
-    form = new SettingsFormBase(models, area) {
+    form = new SettingsFormBase(models, area, false) {
       @Override
       protected void beforeAnalytics() {
         disableReplayOptimization = withLayoutData(createCheckbox(
@@ -110,11 +110,12 @@ public class SettingsDialog extends DialogBase {
     private final Button allowUpdateChecks;
     private final Button includePrerelease;
 
-    public SettingsFormBase(Models models, Composite parent) {
-      this(models, parent, 5, 5);
+    public SettingsFormBase(Models models, Composite parent, boolean override) {
+      this(models, parent, 5, 5, override);
     }
 
-    public SettingsFormBase(Models models, Composite parent, int marginWidth, int marginHeight) {
+    public SettingsFormBase(
+        Models models, Composite parent, int marginWidth, int marginHeight, boolean override) {
       super(parent, SWT.NONE);
       this.models = models;
       setLayout(withMargin(new GridLayout(2, false), marginWidth, marginHeight));
@@ -130,16 +131,20 @@ public class SettingsDialog extends DialogBase {
       beforeAnalytics();
 
       allowAnalytics = withLayoutData(
-          createCheckbox(this, Messages.ANALYTICS_OPTION, models.settings.analyticsEnabled()),
+          createCheckbox(this, Messages.ANALYTICS_OPTION,
+              override || models.settings.analyticsEnabled()),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       allowCrashReports = withLayoutData(
-          createCheckbox(this, Messages.CRASH_REPORTING_OPTION, models.settings.reportCrashes),
+          createCheckbox(this, Messages.CRASH_REPORTING_OPTION,
+              override || models.settings.reportCrashes),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       allowUpdateChecks = withLayoutData(
-          createCheckbox(this, Messages.UPDATE_CHECK_OPTION, models.settings.autoCheckForUpdates),
+          createCheckbox(this, Messages.UPDATE_CHECK_OPTION,
+              override || models.settings.autoCheckForUpdates),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       includePrerelease = withLayoutData(
-          createCheckbox(this, Messages.UPDATE_CHECK_PRERELEASE_OPTION, models.settings.includePrereleases),
+          createCheckbox(this, Messages.UPDATE_CHECK_PRERELEASE_OPTION,
+              models.settings.includePrereleases),
           withSpans(withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 20, 0), 2, 1));
       Label adbWarning = withLayoutData(createLabel(this, ""),
           withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
