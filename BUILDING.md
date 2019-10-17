@@ -1,6 +1,6 @@
 # Building GAPID
 
-GAPID uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **0.25.1**.
+GAPID uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **1.0.0**.
 
 Bazel is able to fetch most of the dependencies required to build GAPID, but currently the Android SDK and NDK both need to be downloaded and installed by hand.
 
