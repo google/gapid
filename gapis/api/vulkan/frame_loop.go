@@ -1486,6 +1486,10 @@ func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *state
 	// The shadow state for PipelineCaches does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
 	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
 		pipelineCache := computePipelineObject.PipelineCache()
+		if pipelineCache == NilPipelineCacheObjectʳ {
+			log.D(ctx, "computePipelineObject %v doesn't have a pipeline cache.", computePipelineObject)
+			continue
+		}
 		if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
 			f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
 			f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
@@ -1495,6 +1499,10 @@ func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *state
 	// The shadow state for PipelineCaches does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
 	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
 		pipelineCache := graphicsPipelineObject.PipelineCache()
+		if pipelineCache == NilPipelineCacheObjectʳ {
+			log.D(ctx, "graphicsPipelineObject %v doesn't have a pipeline cache.", graphicsPipelineObject)
+			continue
+		}
 		if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
 			f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
 			f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
