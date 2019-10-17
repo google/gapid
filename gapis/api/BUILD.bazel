@@ -116,6 +116,7 @@ proto_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/pod:pod_proto",
         "//core/image:image_proto",
         "//gapis/service/box:box_proto",
         "//gapis/service/path:path_proto",
@@ -136,6 +137,7 @@ go_proto_library(
     proto = ":api_proto",
     visibility = ["//visibility:public"],
     deps = [
+        "//core/data/pod:go_default_library",
         "//core/image:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/service/path:go_default_library",
