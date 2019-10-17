@@ -140,14 +140,13 @@ public class SettingsDialog extends DialogBase {
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
       includePrerelease = withLayoutData(
           createCheckbox(this, Messages.UPDATE_CHECK_PRERELEASE_OPTION, models.settings.includePrereleases),
-          withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 20, 0));
+          withSpans(withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 20, 0), 2, 1));
       Label adbWarning = withLayoutData(createLabel(this, ""),
           withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
       adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
       withLayoutData(
           createLink(this, Messages.PRIVACY_POLICY, WelcomeDialog::showPolicy),
-          withIndents(
-              withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1), 0, 20));
+          withSpans(withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 0, 20), 2, 1));
 
       Listener adbListener = e -> {
         String error = Settings.checkAdbIsValid(adbPath.getText().trim());
