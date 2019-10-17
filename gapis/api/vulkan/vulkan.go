@@ -106,6 +106,10 @@ func (API) GetFramebufferAttachmentInfo(
 	attachment api.FramebufferAttachment) (info api.FramebufferAttachmentInfo, err error) {
 
 	w, h, form, i, r, err := GetState(state).getFramebufferAttachmentInfo(attachment)
+	if err != nil {
+		return api.FramebufferAttachmentInfo{}, err
+	}
+
 	switch attachment {
 	case api.FramebufferAttachment_Stencil:
 		return api.FramebufferAttachmentInfo{}, fmt.Errorf("Unsupported Stencil")
