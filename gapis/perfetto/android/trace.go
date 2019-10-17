@@ -83,15 +83,20 @@ func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName
 // Start optional starts an app and sets up a Perfetto trace
 func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
+
+	var cleanup app.Cleanup
 	if a != nil {
 		ctx = log.V{
 			"package":  a.Package.Name,
 			"activity": a.Activity,
 		}.Bind(ctx)
+		// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
+		var err error
+		cleanup, err = setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig)
+		if err != nil {
+			return nil, cleanup.Invoke(ctx), err
+		}
 	}
-
-	// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
-	cleanup, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig)
 
 	log.I(ctx, "Unlocking device screen")
 	unlocked, err := d.UnlockScreen(ctx)
