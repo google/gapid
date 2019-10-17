@@ -23,7 +23,7 @@ SRC=$PWD/github/gapid/
 curl -L -k -O -s https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
 mkdir android
 unzip -q tools_r25.2.3-macosx.zip -d android
-echo y | ./android/tools/bin/sdkmanager build-tools\;26.0.1 platforms\;android-26
+echo y | ./android/tools/bin/sdkmanager build-tools\;29.0.2 platforms\;android-26
 curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r18b-darwin-x86_64.zip
 unzip -q android-ndk-r18b-darwin-x86_64.zip -d android
 export ANDROID_HOME=$PWD/android

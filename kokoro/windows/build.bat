@@ -24,7 +24,7 @@ set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
 
 REM Install the Android SDK components and NDK.
 set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
-echo y | %ANDROID_HOME%\tools\bin\sdkmanager build-tools;26.0.1 platforms;android-26
+echo y | %ANDROID_HOME%\tools\bin\sdkmanager build-tools;29.0.2 platforms;android-26
 wget -q https://dl.google.com/android/repository/android-ndk-r18b-windows-x86_64.zip
 unzip -q android-ndk-r18b-windows-x86_64.zip
 set ANDROID_NDK_HOME=%CD%\android-ndk-r18b

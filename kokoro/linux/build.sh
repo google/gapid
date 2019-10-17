@@ -37,6 +37,9 @@ curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r18b-linux
 unzip -q android-ndk-r18b-linux-x86_64.zip
 export ANDROID_NDK_HOME=$PWD/android-ndk-r18b
 
+# Get recent build tools
+echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
+
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
