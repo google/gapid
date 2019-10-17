@@ -92,6 +92,12 @@ type frameLoop struct {
 	loopStartState *api.GlobalState
 	loopEndState   *api.GlobalState
 
+	memoryToFree     map[VkDeviceMemory]bool
+	memoryToAllocate map[VkDeviceMemory]bool
+	memoryToUnmap    map[VkDeviceMemory]bool
+	memoryToMap      map[VkDeviceMemory]bool
+	mappedAddress    map[uint64]value.Pointer
+
 	bufferToDestroy map[VkBuffer]bool
 	bufferChanged   map[VkBuffer]bool
 	bufferToCreate  map[VkBuffer]bool
@@ -187,6 +193,12 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		watcher: &stateWatcher{
 			memoryWrites: make(map[memory.PoolID]*interval.U64SpanList),
 		},
+
+		memoryToFree:     make(map[VkDeviceMemory]bool),
+		memoryToAllocate: make(map[VkDeviceMemory]bool),
+		memoryToUnmap:    make(map[VkDeviceMemory]bool),
+		memoryToMap:      make(map[VkDeviceMemory]bool),
+		mappedAddress:    make(map[uint64]value.Pointer),
 
 		bufferToDestroy: make(map[VkBuffer]bool),
 		bufferChanged:   make(map[VkBuffer]bool),
@@ -346,8 +358,36 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 			// Do mid-loop stuff.
 			{
+				cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
+
 				// Iterate through the loop contents, emitting instructions one by one.
 				for cmdIndex, cmd := range f.capturedLoopCmds {
+
+					switch cmd.(type) {
+					case *VkUnmapMemory:
+						vkCmd := cmd.(*VkUnmapMemory)
+						mem := vkCmd.Memory()
+						if _, ok := f.memoryToMap[mem]; !ok {
+							break
+						}
+
+						memObj := GetState(out.State()).DeviceMemories().Get(mem)
+						addr := memObj.MappedLocation().Address()
+						if addr == 0 {
+							break
+						}
+
+						// Only remember the first mapped target.
+						if _, ok := f.mappedAddress[addr]; !ok {
+							out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+								target, err := b.GetMappedTarget(value.ObservedPointer(addr))
+								if err == nil {
+									f.mappedAddress[addr] = target
+								}
+								return err
+							}))
+						}
+					}
 
 					// We've already processed the first loop command, so skip that one.
 					// All others get emitted.
@@ -457,6 +497,40 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		cmd.Extras().Observations().ApplyWrites(currentState.Memory.ApplicationPool())
 
 		switch cmd.(type) {
+
+		// Memories
+		case *VkAllocateMemory:
+			vkCmd := cmd.(*VkAllocateMemory)
+			mem := vkCmd.PMemory().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Memory %v allocated", mem)
+			f.memoryToFree[mem] = true
+
+		case *VkFreeMemory:
+			vkCmd := cmd.(*VkFreeMemory)
+			mem := vkCmd.Memory()
+			log.D(ctx, "Memory %v freed", mem)
+			if _, ok := f.memoryToFree[mem]; ok {
+				delete(f.memoryToFree, mem)
+			} else {
+				f.memoryToAllocate[mem] = true
+			}
+
+		// Memory mappings
+		case *VkMapMemory:
+			vkCmd := cmd.(*VkMapMemory)
+			mem := vkCmd.Memory()
+			log.D(ctx, "Memory %v mapped", mem)
+			f.memoryToUnmap[mem] = true
+
+		case *VkUnmapMemory:
+			vkCmd := cmd.(*VkUnmapMemory)
+			mem := vkCmd.Memory()
+			log.D(ctx, "Memory %v unmapped", mem)
+			if _, ok := f.memoryToUnmap[mem]; ok {
+				delete(f.memoryToUnmap, mem)
+			} else {
+				f.memoryToMap[mem] = true
+			}
 
 		// Buffers.
 		case *VkCreateBuffer:
@@ -1073,6 +1147,10 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 
 func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
+	if err := f.resetDeviceMemory(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetBuffers(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -1145,6 +1223,82 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 
 	// Flush out the reset commands
 	stateBuilder.scratchRes.Free(stateBuilder)
+	return nil
+}
+
+func (f *frameLoop) resetDeviceMemory(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	for mem := range f.memoryToUnmap {
+		memObj := GetState(f.loopEndState).DeviceMemories().Get(mem)
+		if memObj == NilDeviceMemoryObjectʳ {
+			return fmt.Errorf("device memory %s doesn't exist in the loop ending state", mem)
+		}
+		stateBuilder.write(stateBuilder.cb.VkUnmapMemory(memObj.Device(), mem))
+	}
+
+	for mem := range f.memoryToFree {
+		log.D(ctx, "Free memory %v which was allocated during loop.", mem)
+		memObj := GetState(f.loopEndState).DeviceMemories().Get(mem)
+		if memObj == NilDeviceMemoryObjectʳ {
+			return fmt.Errorf("device memory %s doesn't exist in the loop ending state", mem)
+		}
+
+		stateBuilder.write(stateBuilder.cb.VkFreeMemory(
+			memObj.Device(),
+			memObj.VulkanHandle(),
+			memory.Nullptr,
+		))
+	}
+
+	for mem := range f.memoryToAllocate {
+		log.D(ctx, "Allcate memory %v which was freed during loop.", mem)
+		memObj := GetState(f.loopStartState).DeviceMemories().Get(mem)
+		if memObj == NilDeviceMemoryObjectʳ {
+			return fmt.Errorf("device memory %s doesn't exist in the loop starting state", mem)
+		}
+
+		stateBuilder.createDeviceMemory(memObj, false)
+	}
+
+	for mem := range f.memoryToMap {
+		memObj := GetState(f.loopStartState).DeviceMemories().Get(mem)
+		if memObj.MappedLocation().Address() == 0 {
+			return fmt.Errorf("device memory %s' mapped address is 0", mem)
+		}
+
+		// Memory allocation in state rebuilder will handle the VkMapMemory as well,
+		// so if the memory is not recreated, need to call VkMapMemory here
+		if _, ok := f.memoryToAllocate[mem]; !ok {
+			stateBuilder.write(stateBuilder.cb.VkMapMemory(
+				memObj.Device(),
+				memObj.VulkanHandle(),
+				memObj.MappedOffset(),
+				memObj.MappedSize(),
+				VkMemoryMapFlags(0),
+				NewVoidᵖᵖ(stateBuilder.MustAllocWriteData(memObj.MappedLocation()).Ptr()),
+				VkResult_VK_SUCCESS,
+			))
+		}
+
+		// Handles the remapping of the mapped address.
+		stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+			addr := memObj.MappedLocation().Address()
+			originalTarget, ok := f.mappedAddress[addr]
+			if !ok {
+				return fmt.Errorf("did not find the original mapped address: %v", addr)
+			}
+
+			newTarget, err := b.GetMappedTarget(value.ObservedPointer(addr))
+			if err != nil {
+				return err
+			}
+			b.Load(protocol.Type_AbsolutePointer, newTarget)
+			b.Store(originalTarget)
+
+			return nil
+		}))
+	}
+
 	return nil
 }
 
