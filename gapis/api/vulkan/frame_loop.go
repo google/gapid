@@ -141,17 +141,17 @@ type frameLoop struct {
 	descriptorSetChanged       map[VkDescriptorSet]bool
 	descriptorSetAutoDestroyed map[VkDescriptorSet]bool
 
-	semaphoreCreated   map[VkSemaphore]bool
+	semaphoreToDestroy map[VkSemaphore]bool
 	semaphoreChanged   map[VkSemaphore]bool
-	semaphoreDestroyed map[VkSemaphore]bool
+	semaphoreToCreate  map[VkSemaphore]bool
 
-	fenceCreated   map[VkFence]bool
+	fenceToDestroy map[VkFence]bool
 	fenceChanged   map[VkFence]bool
-	fenceDestroyed map[VkFence]bool
+	fenceToCreate  map[VkFence]bool
 
-	eventCreated   map[VkEvent]bool
+	eventToDestroy map[VkEvent]bool
 	eventChanged   map[VkEvent]bool
-	eventDestroyed map[VkEvent]bool
+	eventToCreate  map[VkEvent]bool
 
 	framebufferToDestroy map[VkFramebuffer]bool
 	framebufferToCreate  map[VkFramebuffer]bool
@@ -243,17 +243,17 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		descriptorSetChanged:       make(map[VkDescriptorSet]bool),
 		descriptorSetAutoDestroyed: make(map[VkDescriptorSet]bool),
 
-		semaphoreCreated:   make(map[VkSemaphore]bool),
+		semaphoreToDestroy: make(map[VkSemaphore]bool),
 		semaphoreChanged:   make(map[VkSemaphore]bool),
-		semaphoreDestroyed: make(map[VkSemaphore]bool),
+		semaphoreToCreate:  make(map[VkSemaphore]bool),
 
-		fenceCreated:   make(map[VkFence]bool),
+		fenceToDestroy: make(map[VkFence]bool),
 		fenceChanged:   make(map[VkFence]bool),
-		fenceDestroyed: make(map[VkFence]bool),
+		fenceToCreate:  make(map[VkFence]bool),
 
-		eventCreated:   make(map[VkEvent]bool),
+		eventToDestroy: make(map[VkEvent]bool),
 		eventChanged:   make(map[VkEvent]bool),
-		eventDestroyed: make(map[VkEvent]bool),
+		eventToCreate:  make(map[VkEvent]bool),
 
 		framebufferToDestroy: make(map[VkFramebuffer]bool),
 		framebufferToCreate:  make(map[VkFramebuffer]bool),
@@ -774,33 +774,33 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkCreateSemaphore)
 			sem := vkCmd.PSemaphore().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Semaphore %v is created during loop.", sem)
-			f.semaphoreCreated[sem] = true
+			f.semaphoreToDestroy[sem] = true
 
 		case *VkDestroySemaphore:
 			vkCmd := cmd.(*VkDestroySemaphore)
 			sem := vkCmd.Semaphore()
 			log.D(ctx, "Semaphore %v is destroyed during loop.", sem)
-			if _, ok := f.semaphoreCreated[sem]; !ok {
-				f.semaphoreDestroyed[sem] = true
+			if _, ok := f.semaphoreToDestroy[sem]; ok {
+				delete(f.semaphoreToDestroy, sem)
 			} else {
-				delete(f.semaphoreCreated, sem)
+				f.semaphoreToCreate[sem] = true
 			}
 
 		// Fences
 		case *VkCreateFence:
 			vkCmd := cmd.(*VkCreateFence)
 			fence := vkCmd.PFence().MustRead(ctx, vkCmd, currentState, nil)
-			f.fenceCreated[fence] = true
 			log.D(ctx, "Fence %v is created during loop.", fence)
+			f.fenceToDestroy[fence] = true
 
 		case *VkDestroyFence:
 			vkCmd := cmd.(*VkDestroyFence)
 			fence := vkCmd.Fence()
 			log.D(ctx, "Fence %v is destroyed during loop.", fence)
-			if _, ok := f.fenceCreated[fence]; !ok {
-				f.fenceDestroyed[fence] = true
+			if _, ok := f.fenceToDestroy[fence]; ok {
+				delete(f.fenceToDestroy, fence)
 			} else {
-				delete(f.fenceCreated, fence)
+				f.fenceToCreate[fence] = true
 			}
 
 		// Events
@@ -808,16 +808,16 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			vkCmd := cmd.(*VkCreateEvent)
 			event := vkCmd.PEvent().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Event %v is created during loop.", event)
-			f.eventCreated[event] = true
+			f.eventToDestroy[event] = true
 
 		case *VkDestroyEvent:
 			vkCmd := cmd.(*VkDestroyEvent)
 			event := vkCmd.Event()
 			log.D(ctx, "Event %v is destroyed during loop.", event)
-			if _, ok := f.eventCreated[event]; !ok {
-				f.eventDestroyed[event] = true
+			if _, ok := f.eventToDestroy[event]; ok {
+				delete(f.eventToDestroy, event)
 			} else {
-				delete(f.eventCreated, event)
+				f.eventToCreate[event] = true
 			}
 
 		// FrameBuffers
@@ -1742,7 +1742,7 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 
 func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	for sem := range f.semaphoreCreated {
+	for sem := range f.semaphoreToDestroy {
 		semObj := GetState(f.loopEndState).Semaphores().Get(sem)
 		if semObj != NilSemaphoreObjectʳ {
 			log.D(ctx, "Destroy semaphore %v which was created during loop.", sem)
@@ -1752,7 +1752,7 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuil
 		}
 	}
 
-	for sem := range f.semaphoreDestroyed {
+	for sem := range f.semaphoreToCreate {
 		semObj := GetState(f.loopStartState).Semaphores().Get(sem)
 		if semObj != NilSemaphoreObjectʳ {
 			log.D(ctx, "Create semaphore %v which was destroyed during loop.", sem)
@@ -1763,11 +1763,11 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuil
 	}
 
 	for sem := range f.semaphoreChanged {
-		if _, ok := f.semaphoreCreated[sem]; ok {
+		if _, ok := f.semaphoreToDestroy[sem]; ok {
 			continue
 		}
 
-		if _, ok := f.semaphoreDestroyed[sem]; ok {
+		if _, ok := f.semaphoreToCreate[sem]; ok {
 			continue
 		}
 
@@ -1814,7 +1814,7 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuil
 
 func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	for fence := range f.fenceCreated {
+	for fence := range f.fenceToDestroy {
 		fenceObj := GetState(f.loopEndState).Fences().Get(fence)
 		if fenceObj != NilFenceObjectʳ {
 			log.D(ctx, "Destroy fence: %v which was created during loop.", fence)
@@ -1824,7 +1824,7 @@ func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder)
 		}
 	}
 
-	for fence := range f.fenceDestroyed {
+	for fence := range f.fenceToCreate {
 		fenceObj := GetState(f.loopStartState).Fences().Get(fence)
 		if fenceObj != NilFenceObjectʳ {
 			log.D(ctx, "Create fence %v which was destroyed during loop.", fence)
@@ -1835,11 +1835,11 @@ func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder)
 	}
 
 	for fence := range f.fenceChanged {
-		if _, ok := f.fenceCreated[fence]; ok {
+		if _, ok := f.fenceToDestroy[fence]; ok {
 			continue
 		}
 
-		if _, ok := f.fenceDestroyed[fence]; ok {
+		if _, ok := f.fenceToCreate[fence]; ok {
 			continue
 		}
 
@@ -1881,7 +1881,7 @@ func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder)
 
 func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	for event := range f.eventCreated {
+	for event := range f.eventToDestroy {
 		eventObj := GetState(f.loopEndState).Events().Get(event)
 		if eventObj != NilEventObjectʳ {
 			log.D(ctx, "Destroy event: %v which was created during loop.", event)
@@ -1891,7 +1891,7 @@ func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder)
 		}
 	}
 
-	for event := range f.eventDestroyed {
+	for event := range f.eventToCreate {
 		eventObj := GetState(f.loopStartState).Events().Get(event)
 		if eventObj != NilEventObjectʳ {
 			log.D(ctx, "Create event %v which was destroyed during loop.", event)
@@ -1902,11 +1902,11 @@ func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder)
 	}
 
 	for event := range f.eventChanged {
-		if _, ok := f.eventCreated[event]; ok {
+		if _, ok := f.eventToDestroy[event]; ok {
 			continue
 		}
 
-		if _, ok := f.eventDestroyed[event]; ok {
+		if _, ok := f.eventToCreate[event]; ok {
 			continue
 		}
 
