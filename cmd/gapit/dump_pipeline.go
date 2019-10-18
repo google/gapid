@@ -103,6 +103,18 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 	return nil, fmt.Errorf("No bound %v pipeline found", targetType)
 }
 
+func toString(dataval *api.DataValue) string {
+	switch x := dataval.Val.(type) {
+	case *api.DataValue_Value:
+		return fmt.Sprintf("%v", x.Value.Get())
+
+	case *api.DataValue_EnumVal:
+		return x.EnumVal.StringValue
+	}
+
+	return ""
+}
+
 func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, data *api.Pipeline, prefix string) error {
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 0, ' ', 0)
 	defer w.Flush()
@@ -123,6 +135,15 @@ func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, da
 				fmt.Fprintf(w, "%s%s└── %s: \n", prefix, prefix, group.GroupName)
 			} else {
 				fmt.Fprintf(w, "%s%s├── %s: \n", prefix, prefix, group.GroupName)
+			}
+
+			if group.Data != nil {
+				switch x := group.Data.(type) {
+				case *api.DataGroup_KeyValues:
+					for _, pair := range x.KeyValues.KeyValues {
+						fmt.Fprintf(w, "%s%s\t\t\t%s: %s\n", prefix, prefix, pair.Name, toString(pair.Value))
+					}
+				}
 			}
 		}
 	}

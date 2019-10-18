@@ -1014,14 +1014,14 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	}
 
 	stages := []*api.Stage{
-		InputAssembly(),
-		VertexShader(),
-		TessellationControlShader(),
-		TessellationEvulationShader(),
-		GeometryShader(),
-		Rasterizer(),
-		FragmentShader(),
-		ColorBlending(),
+		p.inputAssembly(),
+		p.vertexShader(),
+		p.tessellationControlShader(),
+		p.tessellationEvulationShader(),
+		p.geometryShader(),
+		p.rasterizer(),
+		p.fragmentShader(),
+		p.colorBlending(),
 	}
 
 	return &api.ResourceData{
@@ -1037,7 +1037,13 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	}, nil
 }
 
-func InputAssembly() *api.Stage {
+func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
+	assemblyList := &api.KeyValuePairList{}
+	assemblyList = assemblyList.AppendKeyValuePair("Topology",
+		api.CreateEnumDataValue(uint64(p.InputAssemblyState().Topology()), p.InputAssemblyState().Topology().String()))
+	assemblyList = assemblyList.AppendKeyValuePair("PrimitiveRestartEnabled",
+		api.CreatePoDDataValue(p.InputAssemblyState().PrimitiveRestartEnable() != 0))
+
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Vertex Bindings",
@@ -1049,6 +1055,7 @@ func InputAssembly() *api.Stage {
 
 		&api.DataGroup{
 			GroupName: "Input Assembly State",
+			Data:      &api.DataGroup_KeyValues{assemblyList},
 		},
 	}
 
@@ -1059,7 +1066,7 @@ func InputAssembly() *api.Stage {
 	}
 }
 
-func VertexShader() *api.Stage {
+func (p GraphicsPipelineObjectʳ) vertexShader() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Shader Code",
@@ -1081,7 +1088,7 @@ func VertexShader() *api.Stage {
 	}
 }
 
-func TessellationControlShader() *api.Stage {
+func (p GraphicsPipelineObjectʳ) tessellationControlShader() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Shader Code",
@@ -1103,7 +1110,7 @@ func TessellationControlShader() *api.Stage {
 	}
 }
 
-func TessellationEvulationShader() *api.Stage {
+func (p GraphicsPipelineObjectʳ) tessellationEvulationShader() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Shader Code",
@@ -1125,7 +1132,7 @@ func TessellationEvulationShader() *api.Stage {
 	}
 }
 
-func GeometryShader() *api.Stage {
+func (p GraphicsPipelineObjectʳ) geometryShader() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Shader Code",
@@ -1147,7 +1154,7 @@ func GeometryShader() *api.Stage {
 	}
 }
 
-func Rasterizer() *api.Stage {
+func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Rasterization State",
@@ -1181,7 +1188,7 @@ func Rasterizer() *api.Stage {
 	}
 }
 
-func FragmentShader() *api.Stage {
+func (p GraphicsPipelineObjectʳ) fragmentShader() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Shader Code",
@@ -1203,7 +1210,7 @@ func FragmentShader() *api.Stage {
 	}
 }
 
-func ColorBlending() *api.Stage {
+func (p GraphicsPipelineObjectʳ) colorBlending() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Render Pass",
