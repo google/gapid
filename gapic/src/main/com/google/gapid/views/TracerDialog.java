@@ -98,7 +98,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.Arrays;
-import java.util.HashMap;
 
 /**
  * Dialogs used for capturing a trace.
