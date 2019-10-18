@@ -263,15 +263,6 @@ public class TracerDialog {
         Beginning, Manual, Frame;
       }
 
-      private static final HashMap<Integer, String> startTypeTitles = new HashMap<Integer, String>();
-
-      static
-      {
-        startTypeTitles.put(StartType.Beginning.ordinal(), "Beginning");
-        startTypeTitles.put(StartType.Manual.ordinal(), "Manual");
-        startTypeTitles.put(StartType.Frame.ordinal(), "Frame");
-      };
-
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
@@ -308,8 +299,6 @@ public class TracerDialog {
       protected String friendlyName = "";
       protected boolean userHasChangedOutputFile = false;
       protected boolean userHasChangedTarget = false;
-
-
 
       public TraceInput(Composite parent, Models models, Widgets widgets, Runnable refreshDevices) {
         super(parent, SWT.NONE);
@@ -475,7 +464,7 @@ public class TracerDialog {
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
           boolean beginning = startType.getSelectionIndex() == StartType.Beginning.ordinal();
-          if (beginning && config != null &&
+          if (!beginning && config != null &&
               config.getMidExecutionCaptureSupport() == Service.FeatureStatus.Experimental) {
             mecWarningLabel.setText(String.format(MEC_LABEL_WARNING, config.getApi()));
           } else {
@@ -598,7 +587,7 @@ public class TracerDialog {
           }
           startType.remove(StartType.Frame.ordinal());
         } else if (!isPerfetto && startType.getItemCount() == 2) {
-          startType.add(startTypeTitles.get(StartType.Frame.ordinal()));
+          startType.add(StartType.Frame.name());
         }
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
