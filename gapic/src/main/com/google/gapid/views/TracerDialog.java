@@ -465,8 +465,8 @@ public class TracerDialog {
 
         Listener gpuProfilingCapabilityListener = e -> {
           // Skip if the device is not Android device, or trace type is not Perfetto.
-          if ((getSelectedDevice() != null && !getSelectedDevice().isAndroid())
-              || getSelectedApi().getType() != TraceType.Perfetto) {
+          if (getSelectedDevice() == null || !getSelectedDevice().isAndroid() ||
+              getSelectedApi() == null || getSelectedApi().getType() != TraceType.Perfetto) {
             gpuProfilingCapabilityWarning.setVisible(false);
             return;
           }
