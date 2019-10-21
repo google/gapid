@@ -106,16 +106,16 @@ public class TraceView extends Composite
         redraw = state.dragX(state.getVisibleTime(), -(fast ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
       }
 
-      if (kb.isKeyDown('w') || kb.isKeyDown(SWT.ARROW_UP)) {
+      if (kb.isKeyDown('q') || kb.isKeyDown(SWT.ARROW_UP)) {
         redraw = state.dragY(fast ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
-      } else if (kb.isKeyDown('s') || kb.isKeyDown(SWT.ARROW_DOWN)) {
+      } else if (kb.isKeyDown('e') || kb.isKeyDown(SWT.ARROW_DOWN)) {
         redraw = state.dragY(-(fast ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
       }
 
-      if (kb.isKeyDown('q')) {
+      if (kb.isKeyDown('w')) {
         Point mouse = canvas.toControl(getDisplay().getCursorLocation());
         redraw = rootPanel.zoom(mouse.x, 1.0 - (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
-      } else if (kb.isKeyDown('e')) {
+      } else if (kb.isKeyDown('s')) {
         Point mouse = canvas.toControl(getDisplay().getCursorLocation());
         redraw = rootPanel.zoom(mouse.x, 1.0 + (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
       }
