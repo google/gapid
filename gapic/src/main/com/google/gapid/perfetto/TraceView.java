@@ -99,7 +99,7 @@ public class TraceView extends Composite
     });
     new Keyboard(canvas, KB_DELAY, kb -> {
       boolean redraw = false;
-      boolean shift = kb.isKeyDown(SWT.SHIFT), ctrl = kb.isKeyDown(SWT.MOD1);
+      boolean shift = kb.hasMod(SWT.SHIFT), ctrl = kb.hasMod(SWT.MOD1);
       if (kb.isKeyDown('a') || kb.isKeyDown(SWT.ARROW_LEFT)) {
         redraw = state.dragX(state.getVisibleTime(), shift ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
       } else if (kb.isKeyDown('d') || kb.isKeyDown(SWT.ARROW_RIGHT)) {

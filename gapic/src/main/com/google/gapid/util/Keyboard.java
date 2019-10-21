@@ -28,20 +28,28 @@ import java.util.function.Consumer;
 public class Keyboard {
   private final int delay;
   private final Set<Integer> down = Sets.newHashSet();
+  private int modifiers = 0;
   private final AtomicInteger scheduled = new AtomicInteger();
 
   public Keyboard(Widget owner, int delay, Consumer<Keyboard> onKey) {
     this.delay = delay;
     owner.addListener(SWT.KeyDown, e -> {
-      if (down.add(e.keyCode)) {
+      if ((e.keyCode & SWT.MODIFIER_MASK) == e.keyCode) {
+        modifiers = e.stateMask | e.keyCode;
+      } else if (down.add(e.keyCode)) {
+        modifiers = e.stateMask;
         schedule(owner, onKey);
       }
     });
 
-    owner.addListener(SWT.KeyUp, e -> {
-      down.remove(e.keyCode);
-      if (down.isEmpty()) {
-        scheduled.incrementAndGet(); // cancel any next onKey.
+    owner.getDisplay().addFilter(SWT.KeyUp, e -> {
+      if ((e.keyCode & SWT.MODIFIER_MASK) == e.keyCode) {
+        modifiers = e.stateMask & ~e.keyCode;
+      } else {
+        down.remove(e.keyCode);
+        if (down.isEmpty()) {
+          scheduled.incrementAndGet(); // cancel any next onKey.
+        }
       }
     });
   }
@@ -58,5 +66,9 @@ public class Keyboard {
 
   public boolean isKeyDown(int code) {
     return down.contains(code);
+  }
+
+  public boolean hasMod(int mask) {
+    return (modifiers & mask) == mask;
   }
 }
