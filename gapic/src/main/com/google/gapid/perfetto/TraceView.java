@@ -138,6 +138,10 @@ public class TraceView extends Composite
             redraw = true;
           }
           break;
+        case 'z':
+        case '0':
+          redraw = state.setVisibleTime(state.getTraceTime());
+          break;
       }
 
       if (redraw) {
