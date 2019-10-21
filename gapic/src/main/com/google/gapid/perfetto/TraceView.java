@@ -99,25 +99,25 @@ public class TraceView extends Composite
     });
     new Keyboard(canvas, KB_DELAY, kb -> {
       boolean redraw = false;
-      boolean fast = kb.isKeyDown(SWT.SHIFT);
+      boolean shift = kb.isKeyDown(SWT.SHIFT), ctrl = kb.isKeyDown(SWT.MOD1);
       if (kb.isKeyDown('a') || kb.isKeyDown(SWT.ARROW_LEFT)) {
-        redraw = state.dragX(state.getVisibleTime(), fast ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
+        redraw = state.dragX(state.getVisibleTime(), shift ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
       } else if (kb.isKeyDown('d') || kb.isKeyDown(SWT.ARROW_RIGHT)) {
-        redraw = state.dragX(state.getVisibleTime(), -(fast ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
+        redraw = state.dragX(state.getVisibleTime(), -(shift ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
       }
 
       if (kb.isKeyDown('q') || kb.isKeyDown(SWT.ARROW_UP)) {
-        redraw = state.dragY(fast ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
+        redraw = state.dragY(shift ? KB_PAN_FAST : KB_PAN_SLOW) || redraw;
       } else if (kb.isKeyDown('e') || kb.isKeyDown(SWT.ARROW_DOWN)) {
-        redraw = state.dragY(-(fast ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
+        redraw = state.dragY(-(shift ? KB_PAN_FAST : KB_PAN_SLOW)) || redraw;
       }
 
-      if (kb.isKeyDown('w')) {
+      if (kb.isKeyDown('w') || (ctrl && (kb.isKeyDown(SWT.KEYPAD_ADD) || kb.isKeyDown('=')))) {
         Point mouse = canvas.toControl(getDisplay().getCursorLocation());
-        redraw = rootPanel.zoom(mouse.x, 1.0 - (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
-      } else if (kb.isKeyDown('s')) {
+        redraw = rootPanel.zoom(mouse.x, 1.0 - (shift ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
+      } else if (kb.isKeyDown('s') || (ctrl && (kb.isKeyDown(SWT.KEYPAD_SUBTRACT) || kb.isKeyDown('-')))) {
         Point mouse = canvas.toControl(getDisplay().getCursorLocation());
-        redraw = rootPanel.zoom(mouse.x, 1.0 + (fast ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
+        redraw = rootPanel.zoom(mouse.x, 1.0 + (shift ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
       }
 
       if (kb.isKeyDown('m')) {
