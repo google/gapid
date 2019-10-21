@@ -97,6 +97,8 @@ public class TraceView extends Composite
         canvas.redraw(Area.FULL, true);
       }
     });
+
+    // Handle repeatable keys.
     new Keyboard(canvas, KB_DELAY, kb -> {
       boolean redraw = false;
       boolean shift = kb.hasMod(SWT.SHIFT), ctrl = kb.hasMod(SWT.MOD1);
@@ -120,12 +122,22 @@ public class TraceView extends Composite
         redraw = rootPanel.zoom(mouse.x, 1.0 + (shift ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
       }
 
-      if (kb.isKeyDown('m')) {
-        Selection selection = state.getSelection();
-        if (selection != null) {
-          selection.mark(state);
-          redraw = true;
-        }
+      if (redraw) {
+        canvas.redraw(Area.FULL, true);
+      }
+    });
+
+    // Handle single Keys.
+    canvas.addListener(SWT.KeyDown, e -> {
+      boolean redraw = false;
+      switch (e.keyCode) {
+        case 'm':
+          Selection selection = state.getSelection();
+          if (selection != null) {
+            selection.mark(state);
+            redraw = true;
+          }
+          break;
       }
 
       if (redraw) {
