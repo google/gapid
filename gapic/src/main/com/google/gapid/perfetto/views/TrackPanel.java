@@ -24,16 +24,11 @@ import static com.google.gapid.perfetto.views.TimelinePanel.drawGridLines;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
-import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
-
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Cursor;
-import org.eclipse.swt.widgets.Display;
 
 import java.util.List;
 
@@ -94,11 +89,6 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
   }
 
   @Override
-  public Dragger onDragStart(double x, double y, int mods) {
-    return new TrackDragger(state, x, y);
-  }
-
-  @Override
   public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     if (x < LABEL_WIDTH) {
       String text = getTooltip();
@@ -132,38 +122,6 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
   }
 
   protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y);
-
-  public static class TrackDragger implements Panel.Dragger {
-    private final State state;
-    private final double startX;
-    private final TimeSpan atStart;
-    private double lastY;
-
-    public TrackDragger(State state, double startX, double startY) {
-      this.state = state;
-      this.startX = startX;
-      this.atStart = state.getVisibleTime();
-      this.lastY = startY;
-    }
-
-    @Override
-    public Area onDrag(double x, double y) {
-      Area areaX = state.dragX(atStart, x - startX) ? Area.FULL : Area.NONE;
-      Area areaY = state.dragY(y - lastY) ? Area.FULL : Area.NONE;
-      lastY = y;
-      return areaX.combine(areaY);
-    }
-
-    @Override
-    public Area onDragEnd(double x, double y) {
-      return onDrag(x, y);
-    }
-
-    @Override
-    public Cursor getCursor(Display display) {
-      return display.getSystemCursor(SWT.CURSOR_SIZEWE);
-    }
-  }
 
   private static class Tooltip {
     private static final Splitter LINE_SPLITTER =

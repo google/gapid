@@ -61,6 +61,11 @@ public interface Panel {
       public Dragger translated(double dx, double dy) {
         return Dragger.NONE;
       }
+
+      @Override
+      public Dragger or(Dragger other) {
+        return other;
+      }
     };
 
     /** Returns the area requiring to be redrawn **/
@@ -70,6 +75,10 @@ public interface Panel {
     public Area onDragEnd(double x, double y);
 
     public default Cursor getCursor(@SuppressWarnings("unused") Display display) { return null; }
+
+    public default Panel.Dragger or(@SuppressWarnings("unused") Panel.Dragger other) {
+      return this;
+    }
 
     public default Panel.Dragger translated(double dx, double dy) {
       return new Dragger() {
