@@ -17,8 +17,6 @@ package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.rangeEnd;
-import static com.google.gapid.perfetto.views.StyleConstants.rangeStart;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -33,8 +31,9 @@ public class TimelinePanel extends Panel.Base {
   private static final double DESIRED_PX_PER_STEP = 160;
   private static final double HEIGHT = 40;
   private static final double MARGIN = 3;
-  private static final double ICON_SIZE = 24;
   private static final double TICK_SIZE = 8;
+  private static final double LABEL_Y = 5;
+  private static final double LEGEND_H = 4;
 
   private final State state;
 
@@ -60,40 +59,53 @@ public class TimelinePanel extends Panel.Base {
       long step = getGridStepSize(
           visible.getDuration(), (width - LABEL_WIDTH) / DESIRED_PX_PER_STEP);
       long offset = ((visible.start - trace.start) / step) * step;
-      long start = offset + trace.start + step;
+      long start = offset + trace.start;
 
       ctx.setForegroundColor(colors().textMain);
-      String label = TimeSpan.timeToString(step);
-      Size size = ctx.measure(Fonts.Style.Normal, label);
-      ctx.drawIcon(
-          rangeStart(ctx.theme), LABEL_WIDTH - MARGIN - 2 * ICON_SIZE - size.w, MARGIN, size.h);
-      ctx.drawText(Fonts.Style.Normal, label, LABEL_WIDTH - MARGIN - ICON_SIZE - size.w, MARGIN);
-      ctx.drawIcon(rangeEnd(ctx.theme),  LABEL_WIDTH - MARGIN - ICON_SIZE, MARGIN, size.h);
+      String label = TimeSpan.timeToString(step / 5);
+      Size labelSize = ctx.measure(Fonts.Style.Normal, label);
+      double labelX = Math.floor(LABEL_WIDTH - MARGIN - labelSize.w);
+      double legendX = labelX - 2 * MARGIN;
+      double legendY = Math.floor(LABEL_Y + labelSize.h - ctx.getDescent(Fonts.Style.Normal));
+      double legendW = state.durationToDeltaPx(step / 5);
+      ctx.drawText(Fonts.Style.Normal, label, labelX, LABEL_Y);
+
+      ctx.withClip(0, 0, legendX - legendW - MARGIN, height, () -> {
+        String duration = "Total Time: " + TimeSpan.timeToShortString(trace.getDuration());
+        ctx.drawText(Fonts.Style.Normal, duration, 2 * MARGIN, LABEL_Y);
+      });
+
 
       ctx.setForegroundColor(colors().timelineRuler);
+
+      ctx.drawLine(legendX, legendY, legendX, legendY - LEGEND_H);
+      ctx.drawLine(legendX - legendW, legendY, legendX, legendY);
+      ctx.drawLine(legendX - legendW, legendY, legendX - legendW, legendY - LEGEND_H);
+
       ctx.drawLine(LABEL_WIDTH - 1, 0, LABEL_WIDTH - 1, height);
       ctx.drawLine(0, height - 1, width, height - 1);
 
-      ctx.withTranslation(LABEL_WIDTH, 0, () -> {
-        for (long s = start; step > 0 && s < visible.end; s += step) {
-          double xPos = Math.floor(state.timeToPx(s));
-          if (xPos < 0) {
-            continue;
-          } else if (xPos > width - LABEL_WIDTH) {
-            break;
-          }
+      ctx.withClip(LABEL_WIDTH + 1, 0, width, height, () -> {
+        ctx.withTranslation(LABEL_WIDTH, 0, () -> {
+          for (long s = start; step > 0 && s < visible.end; s += step) {
+            double xPos = Math.floor(state.timeToPx(s));
+            if (xPos > width - LABEL_WIDTH) {
+              break;
+            } else if (xPos > 0) {
+              ctx.setForegroundColor(colors().textMain);
+              ctx.drawText(
+                  Fonts.Style.Normal, timeToString(s - trace.start, step), xPos + MARGIN, LABEL_Y);
+            }
 
-          ctx.setForegroundColor(colors().textMain);
-          ctx.drawText(
-              Fonts.Style.Normal, timeToString(s - trace.start, step), xPos + MARGIN, MARGIN);
-          ctx.setForegroundColor(colors().timelineRuler);
-          ctx.drawLine(xPos, 0, xPos, height);
+            ctx.setForegroundColor(colors().timelineRuler);
+            ctx.drawLine(xPos, 0, xPos, height);
 
-          for (int i = 1; i < 5; i++) {
-            double x = Math.floor(state.timeToPx(s + (i * step) / 5));
-            ctx.drawLine(x, height - TICK_SIZE, x, height);
+            for (int i = 1; i < 5; i++) {
+              double x = Math.floor(state.timeToPx(s + (i * step) / 5));
+              ctx.drawLine(x, height - TICK_SIZE, x, height);
+            }
           }
-        }
+        });
       });
     });
   }
