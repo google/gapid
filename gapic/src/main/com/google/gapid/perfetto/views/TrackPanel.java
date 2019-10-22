@@ -95,10 +95,6 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
 
   @Override
   public Dragger onDragStart(double x, double y, int mods) {
-    if (x < LABEL_WIDTH || mods != SWT.BUTTON1) {
-      // TODO: implement dragging of a track.
-      return Dragger.NONE;
-    }
     return new TrackDragger(state, x, y);
   }
 
