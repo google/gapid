@@ -149,13 +149,22 @@ public class TraceView extends Composite
         case SWT.KEYPAD_4:
           rootPanel.setMouseMode(RootPanel.MouseMode.TimeSelect);
           break;
-        case 'm':
+        case 'f': {
+          Selection selection = state.getSelection();
+          if (selection != null) {
+            selection.zoom(state);
+            redraw = true;
+          }
+          break;
+        }
+        case 'm': {
           Selection selection = state.getSelection();
           if (selection != null) {
             selection.mark(state);
             redraw = true;
           }
           break;
+        }
         case 'z':
         case '0':
           redraw = state.setVisibleTime(state.getTraceTime());
