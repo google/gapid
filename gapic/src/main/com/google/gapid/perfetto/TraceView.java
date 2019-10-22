@@ -122,6 +122,8 @@ public class TraceView extends Composite
         redraw = rootPanel.zoom(mouse.x, 1.0 + (shift ? KB_ZOOM_FAST : KB_ZOOM_SLOW)) || redraw;
       }
 
+      rootPanel.setPanOverride(kb.isKeyDown(SWT.SPACE));
+
       if (redraw) {
         canvas.redraw(Area.FULL, true);
       }

@@ -48,6 +48,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
   private final State state;
 
   private MouseMode mouseMode = MouseMode.Pan;
+  private boolean panOverride = false;
   private Area selection = Area.NONE;
 
   public RootPanel(State state) {
@@ -182,7 +183,10 @@ public class RootPanel extends Panel.Base implements State.Listener {
       mode = MouseMode.Select;
     } else if ((mods & SWT.MOD1) == SWT.MOD1) {
       mode = MouseMode.TimeSelect;
+    } else if (panOverride) {
+      mode = MouseMode.Pan;
     }
+
     switch (mode) {
       case Select: return selectDragger(sx, sy);
       case Pan: return panDragger(sx, sy, mods);
@@ -331,6 +335,10 @@ public class RootPanel extends Panel.Base implements State.Listener {
 
   public void setMouseMode(MouseMode mode) {
     this.mouseMode = mode;
+  }
+
+  public void setPanOverride(boolean panOverride) {
+    this.panOverride = panOverride;
   }
 
   public boolean zoom(double x, double zoomFactor) {
