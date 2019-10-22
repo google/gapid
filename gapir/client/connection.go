@@ -140,6 +140,28 @@ func (c *connection) SendPayload(ctx context.Context, payload gapir.Payload) err
 	return nil
 }
 
+// SendFenceReady signals the device to continue a replay.
+func (c *connection) SendFenceReady(ctx context.Context, id uint32) error {
+	if c.conn == nil || c.servClient == nil {
+		return log.Err(ctx, nil, "Gapir not connected")
+	}
+	if c.stream == nil {
+		return log.Err(ctx, nil, "Replay Communication not initiated")
+	}
+	fenceReadyReq := replaysrv.ReplayRequest{
+		Req: &replaysrv.ReplayRequest_FenceReady{
+			FenceReady: &replaysrv.FenceReady{
+				Id: id,
+			},
+		},
+	}
+	err := c.stream.Send(&fenceReadyReq)
+	if err != nil {
+		return log.Errf(ctx, err, "Sending replay fence %v ready", id)
+	}
+	return nil
+}
+
 // PrewarmReplay requests the GAPIR device to get itself into the given state
 func (c *connection) PrewarmReplay(ctx context.Context, payload string, cleanup string) error {
 	if c.conn == nil || c.servClient == nil {
@@ -233,6 +255,10 @@ func (c *connection) HandleReplayCommunication(
 		case *replaysrv.ReplayResponse_Finished:
 			if err := handler.HandleFinished(ctx, nil, c); err != nil {
 				return log.Errf(ctx, err, "Handling finished")
+			}
+		case *replaysrv.ReplayResponse_FenceReadyRequest:
+			if err := handler.HandleFenceReadyRequest(ctx, r.GetFenceReadyRequest(), c); err != nil {
+				return log.Errf(ctx, err, "Handling replay fence ready request")
 			}
 		default:
 			return log.Errf(ctx, nil, "Unhandled ReplayResponse type")

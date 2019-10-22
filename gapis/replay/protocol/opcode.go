@@ -40,6 +40,7 @@ const (
 	OpJumpLabel    = Opcode(17)
 	OpJumpNZ       = Opcode(18)
 	OpNotification = Opcode(19)
+	OpWait         = Opcode(20)
 )
 
 // String returns the human-readable name of the opcode.
@@ -85,6 +86,8 @@ func (t Opcode) String() string {
 		return "JumpNZ"
 	case OpNotification:
 		return "Notification"
+	case OpWait:
+		return "Wait"
 	default:
 		panic(fmt.Errorf("Unknown Opcode %d", uint32(t)))
 	}

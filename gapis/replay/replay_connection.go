@@ -108,6 +108,15 @@ func (e *backgroundConnection) HandlePayloadRequest(ctx context.Context, payload
 	return log.Errf(ctx, err, "Payload type is unexpected: %T", boxed)
 }
 
+// HandleFenceReadyRequest implements gapir.ReplayResponseHandler interface.
+func (e *backgroundConnection) HandleFenceReadyRequest(ctx context.Context, req *gapir.FenceReadyRequest, conn gapir.Connection) error {
+	ctx = status.Start(ctx, "Fence Ready Request")
+	defer status.Finish(ctx)
+	// TODO(apbodnar) Tell the connection executor to start a perfetto trace here
+
+	return conn.SendFenceReady(ctx, req.GetId())
+}
+
 // HandleCrashDump implements gapir.ReplayResponseHandler interface.
 func (e *backgroundConnection) HandleCrashDump(ctx context.Context, dump *gapir.CrashDump, conn gapir.Connection) error {
 	if dump == nil {

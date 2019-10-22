@@ -34,6 +34,7 @@ go_library(
         "replay.go",
         "replay_connection.go",
         "timestamps.go",
+        "wait_for_fence.go",
     ],
     embed = [":replay_go_proto"],
     importpath = "github.com/google/gapid/gapis/replay",

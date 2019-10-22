@@ -344,6 +344,18 @@ func (c Notification) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
+// Wait represents the Wait virtual machine opcode.
+type Wait struct {
+	ID uint32 // 26 bit fence ID.
+}
+
+func (c Wait) String() string { return fmt.Sprintf("Wait(ID: %v)", c.ID) }
+
+func (c Wait) Encode(w binary.Writer) error {
+	w.Uint32(packCX(protocol.OpWait, c.ID))
+	return w.Error()
+}
+
 // Decode returns the opcode decoded from decoder d.
 func Decode(r binary.Reader) (Opcode, error) {
 	i := r.Uint32()
@@ -392,6 +404,8 @@ func Decode(r binary.Reader) (Opcode, error) {
 		return Label{Value: unpackX(i)}, nil
 	case protocol.OpNotification:
 		return Notification{}, nil
+	case protocol.OpWait:
+		return Wait{ID: unpackX(i)}, nil
 	default:
 		return nil, fmt.Errorf("Unknown opcode with code %v", int(code))
 	}
@@ -415,3 +429,4 @@ func (Add) isOpcode()          {}
 func (Label) isOpcode()        {}
 func (SwitchThread) isOpcode() {}
 func (Notification) isOpcode() {}
+func (Wait) isOpcode()         {}

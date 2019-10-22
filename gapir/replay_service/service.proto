@@ -52,12 +52,17 @@ message Replay {
   string dependent_id = 2;
 }
 
+message FenceReady {
+  uint32 id = 1;
+}
+
 message ReplayRequest {
   oneof req {
     Replay replay = 1;
     PrewarmRequest prewarm = 2;
     Payload payload = 3;
     Resources resources = 4;
+    FenceReady fence_ready = 5;
   }
 }
 
@@ -139,6 +144,10 @@ message Notification {
   }
 }
 
+message FenceReadyRequest {
+  uint32 id = 1;
+}
+
 message ReplayResponse {
   oneof res {
     Finished finished = 1;
@@ -147,6 +156,7 @@ message ReplayResponse {
     CrashDump crash_dump = 4;
     PostData post_data = 5;
     Notification notification = 6;
+    FenceReadyRequest fence_ready_request = 7;
   }
 }
 

@@ -227,6 +227,12 @@ if the value on the top of the stack is not zero. Otherwise it is a Nop.
 Pops size and then a pointer from the top of the stack and streams back `size` bytes of
 data from the address to the server via the notification message.
 
+### `WAIT()` [no change]
+`<code:6> <fence-id:26>`
+
+Streams back the `fence-id` to the server. Replay pauses until
+the server streams back the same ID.
+
 ## Resources
 
 GAPIR is designed to be run on desktop and Android devices. When replaying on

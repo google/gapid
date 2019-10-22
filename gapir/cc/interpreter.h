@@ -64,6 +64,7 @@ class Interpreter {
     POST_FUNCTION_ID = 0xff00,
     RESOURCE_FUNCTION_ID = 0xff01,
     NOTIFICATION_FUNCTION_ID = 0xff02,
+    WAIT_FUNCTION_ID = 0xff03,
     // Debug function Ids
     PRINT_STACK_FUNCTION_ID = 0xff80,
     // 0xff81..0xffff reserved for synthetic functions
@@ -152,6 +153,7 @@ class Interpreter {
   Result jumpLabel(uint32_t opcode);
   Result jumpNZ(uint32_t opcode);
   Result notification();
+  Result wait(uint32_t opcode);
 
   // Returns true, if address..address+size(type) is "constant" memory.
   bool isConstantAddressForType(const void* address, BaseType type) const;

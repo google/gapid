@@ -206,6 +206,11 @@ void Context::registerCallbacks(Interpreter* interpreter) {
                                [this](uint32_t label, Stack* stack, bool) {
                                  return this->loadResource(stack);
                                });
+  interpreter->registerBuiltin(Interpreter::GLOBAL_INDEX,
+                               Interpreter::WAIT_FUNCTION_ID,
+                               [this](uint32_t label, Stack* stack, bool) {
+                                 return this->waitForFence(stack);
+                               });
 
   // Registering custom synthetic functions
   interpreter->registerBuiltin(Gles::INDEX, Builtins::StartTimer,
@@ -842,6 +847,24 @@ bool Context::sendNotificationData(Stack* stack) {
   }
 
   return mSrv->sendNotificationData(id, label, address, count);
+}
+
+bool Context::waitForFence(Stack* stack) {
+  const uint32_t id = stack->pop<uint32_t>();
+  if (!stack->isValid()) {
+    GAPID_WARNING("Stack is invalid during waitForFence");
+    return false;
+  }
+  auto fr = mSrv->getFenceReady(id);
+  if (fr == nullptr) {
+    GAPID_WARNING("FenceReady is invalid during waitForFence");
+    return false;
+  }
+  if (fr->id() != id) {
+    GAPID_WARNING("Fence ID is invalid during waitForFence");
+    return false;
+  }
+  return true;
 }
 
 }  // namespace gapir

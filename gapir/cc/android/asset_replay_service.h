@@ -48,6 +48,10 @@ class AssetReplayService : public ReplayService {
     return nullptr;
   }
 
+  std::unique_ptr<FenceReady> getFenceReady(const uint32_t& id) override {
+    return nullptr;
+  }
+
   bool sendReplayFinished() override { return true; }
 
   bool sendCrashDump(const std::string& filepath, const void* crash_data,
