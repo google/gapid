@@ -308,7 +308,7 @@ message Table {
 }
 
 message Row {
-  repeated DataValue f = 1;
+  repeated DataValue row_values = 1;
 }
 
 // DescriptorBinding represents one descriptor binding in a pipeline.
