@@ -30,6 +30,8 @@ import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.TrackConfig;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.widgets.Display;
 
 /**
  * The main {@link Panel} containing all track panels. Shows a {@link TimelinePanel} at the top,
@@ -211,8 +213,33 @@ public class RootPanel extends Panel.Base implements State.Listener {
 
   private Dragger panDragger(double sx, double sy, int mods) {
     double topHeight = top.getPreferredHeight();
-    return bottom.onDragStart(sx, sy - topHeight + state.getScrollOffset(), mods)
-        .translated(0, topHeight - state.getScrollOffset());
+    Dragger childDragger = (sy < topHeight) ? top.onDragStart(sx, sy, mods) :
+        bottom.onDragStart(sx, sy - topHeight + state.getScrollOffset(), mods)
+            .translated(0, topHeight - state.getScrollOffset());
+
+    State st = state;
+    return childDragger.or(new Dragger() {
+      private final TimeSpan atStart = st.getVisibleTime();
+      private double lastY = sy;
+
+      @Override
+      public Area onDrag(double x, double y) {
+        Area areaX = st.dragX(atStart, x - sx) ? Area.FULL : Area.NONE;
+        Area areaY = st.dragY(y - lastY) ? Area.FULL : Area.NONE;
+        lastY = y;
+        return areaX.combine(areaY);
+      }
+
+      @Override
+      public Area onDragEnd(double x, double y) {
+        return onDrag(x, y);
+      }
+
+      @Override
+      public Cursor getCursor(Display display) {
+        return display.getSystemCursor(SWT.CURSOR_SIZEWE);
+      }
+    });
   }
 
   private Dragger zoomDragger(double sx, double sy) {
