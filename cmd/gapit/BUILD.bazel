@@ -47,6 +47,7 @@ go_library(
         "trace.go",
         "trim.go",
         "unpack.go",
+        "validate_gpu_profiling.go",
         "video.go",
     ],
     importpath = "github.com/google/gapid/cmd/gapit",

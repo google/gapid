@@ -69,6 +69,10 @@ type Tracer interface {
 
 	// GetDevice returns the device associated with this tracer
 	GetDevice() bind.Device
+
+	// Validate validates the GPU profiling capabilities of the given device and returns
+	// an error if validation failed or the GPU profiling data is invalid.
+	Validate(ctx context.Context) error
 }
 
 // LayersFromOptions Parses the perfetto options, and returns the required layers

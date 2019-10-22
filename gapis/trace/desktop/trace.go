@@ -47,6 +47,10 @@ func (t *DesktopTracer) GetDevice() bind.Device {
 	return t.b
 }
 
+func (t *DesktopTracer) Validate(ctx context.Context) error {
+	return nil
+}
+
 // TraceConfiguration returns the device's supported trace configuration.
 func (t *DesktopTracer) TraceConfiguration(ctx context.Context) (*service.DeviceTraceConfiguration, error) {
 	apis := make([]*service.TraceTypeCapabilities, 0, 1)

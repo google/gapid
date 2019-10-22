@@ -399,4 +399,9 @@ type (
 
 	MakeDocFlags struct {
 	}
+
+	ValidateGpuProfilingFlags struct {
+		Gapis GapisFlags
+		OS    device.OSKind `help:"Only validate GPU profiling for devices of the given OS kind"`
+	}
 )

@@ -90,6 +90,18 @@ func TraceConfiguration(ctx context.Context, device *path.Device) (*service.Devi
 	return tracer.TraceConfiguration(ctx)
 }
 
+func Validate(ctx context.Context, p *path.Device) error {
+	if p == nil {
+		return log.Err(ctx, nil, "Invalid device path")
+	}
+	mgr := GetManager(ctx)
+	tracer, ok := mgr.tracers[p.ID.ID()]
+	if !ok || tracer == nil {
+		return log.Errf(ctx, nil, "Could not find tracer for device %d", p.ID.ID())
+	}
+	return tracer.Validate(ctx)
+}
+
 func isSupported(config *service.DeviceTraceConfiguration, options *service.TraceOptions) bool {
 	numApis := len(options.Apis)
 

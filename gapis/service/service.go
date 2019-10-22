@@ -186,6 +186,10 @@ type Service interface {
 
 	// Run a perfetto query
 	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error)
+
+	// ValidateDevice validates the GPU profiling capabilities of the given device and returns
+	// an error if validation failed or the GPU profiling data is invalid.
+	ValidateDevice(ctx context.Context, d *path.Device) error
 }
 
 type TraceHandler interface {
