@@ -114,6 +114,9 @@ type frameLoop struct {
 	imageViewToDestroy map[VkImageView]bool
 	imageViewToCreate  map[VkImageView]bool
 
+	samplerYcbcrConversionToDestroy map[VkSamplerYcbcrConversion]bool
+	samplerYcbcrConversionToCreate  map[VkSamplerYcbcrConversion]bool
+
 	samplerToDestroy map[VkSampler]bool
 	samplerToCreate  map[VkSampler]bool
 
@@ -222,6 +225,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		imageViewToDestroy: make(map[VkImageView]bool),
 		imageViewToCreate:  make(map[VkImageView]bool),
+
+		samplerYcbcrConversionToDestroy: make(map[VkSamplerYcbcrConversion]bool),
+		samplerYcbcrConversionToCreate:  make(map[VkSamplerYcbcrConversion]bool),
 
 		samplerToDestroy: make(map[VkSampler]bool),
 		samplerToCreate:  make(map[VkSampler]bool),
@@ -612,6 +618,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				delete(f.imageViewToDestroy, img)
 			} else {
 				f.imageViewToCreate[img] = true
+			}
+
+		// SamplerYcbcrConversion(s)
+		case *VkCreateSamplerYcbcrConversion:
+			vkCmd := cmd.(*VkCreateSamplerYcbcrConversion)
+			samplerYcbcrConversion := vkCmd.PYcbcrConversion().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "SamplerYcbcrConversion %v created", samplerYcbcrConversion)
+			f.samplerYcbcrConversionToDestroy[samplerYcbcrConversion] = true
+
+		case *VkDestroySamplerYcbcrConversion:
+			vkCmd := cmd.(*VkDestroySamplerYcbcrConversion)
+			samplerYcbcrConversion := vkCmd.YcbcrConversion()
+			log.D(ctx, "SamplerYcbcrConversion %v destroyed", samplerYcbcrConversion)
+			if _, ok := f.samplerYcbcrConversionToDestroy[samplerYcbcrConversion]; ok {
+				delete(f.samplerYcbcrConversionToDestroy, samplerYcbcrConversion)
+			} else {
+				f.samplerYcbcrConversionToCreate[samplerYcbcrConversion] = true
 			}
 
 		// Sampler(s)
@@ -1231,6 +1254,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetSamplerYcbcrConversions(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetSamplers(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -1529,6 +1556,34 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	return nil
 }
 
+func (f *frameLoop) resetSamplerYcbcrConversions(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every SamplerYcbcrConversion that we need to destroy at the end of the loop...
+	for toDestroy := range f.samplerYcbcrConversionToDestroy {
+		// Write the command to delete the created object
+		samplerYcbcrConversion := GetState(f.loopEndState).samplerYcbcrConversions.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroySamplerYcbcrConversion(samplerYcbcrConversion.Device(), samplerYcbcrConversion.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every SamplerYcbcrConversion that we need to create at the end of the loop...
+	for toCreate := range f.samplerYcbcrConversionToCreate {
+		// Write the commands needed to recreate the destroyed object
+		samplerYcbcrConversion := GetState(f.loopStartState).samplerYcbcrConversions.Get(toCreate)
+		stateBuilder.createSamplerYcbcrConversion(samplerYcbcrConversion)
+	}
+
+	// The shadow state for SamplerYcbcrConversions does not contain reference to the Samplers they are used in. So we have to loop around finding the story.
+	for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
+		ycbcrConversion := samplerObject.YcbcrConversion()
+		if _, ok := f.samplerYcbcrConversionToCreate[ycbcrConversion.VulkanHandle()]; ok {
+			f.samplerToDestroy[samplerObject.VulkanHandle()] = true
+			f.samplerToCreate[samplerObject.VulkanHandle()] = true
+		}
+	}
+
+	return nil
+}
+
 func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every Sampler that we need to destroy at the end of the loop...
@@ -1576,7 +1631,7 @@ func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateB
 
 	// The shadow state for ShaderModules does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
 	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
-		shaderModule := computePipelineObject.Stage().data.module
+		shaderModule := computePipelineObject.Stage().Module()
 		if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
 			f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
 			f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
@@ -1585,7 +1640,7 @@ func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateB
 
 	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
 		for _, stage := range graphicsPipelineObject.Stages().All() {
-			shaderModule := stage.data.module
+			shaderModule := stage.Module()
 			if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
 				f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
 				f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
