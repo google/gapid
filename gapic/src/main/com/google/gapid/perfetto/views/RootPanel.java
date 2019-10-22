@@ -45,6 +45,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
   private final PanelGroup bottom = new PanelGroup();
   private final State state;
 
+  private MouseMode mouseMode = MouseMode.Pan;
   private Area selection = Area.NONE;
 
   public RootPanel(State state) {
@@ -170,32 +171,80 @@ public class RootPanel extends Panel.Base implements State.Listener {
 
   @Override
   public Dragger onDragStart(double sx, double sy, int mods) {
-    // TODO: top vs bottom
-    double topHeight = top.getPreferredHeight();
-    if (mods == (SWT.BUTTON1 | SWT.SHIFT)) {
-      if (sx < LABEL_WIDTH) {
-        return Dragger.NONE;
+    if (sx < LABEL_WIDTH || (mods & SWT.BUTTON1) != SWT.BUTTON1) {
+      return Dragger.NONE;
+    }
+
+    MouseMode mode = mouseMode;
+    if ((mods & SWT.SHIFT) == SWT.SHIFT) {
+      mode = MouseMode.Select;
+    } else if ((mods & SWT.MOD1) == SWT.MOD1) {
+      mode = MouseMode.TimeSelect;
+    }
+    switch (mode) {
+      case Select: return selectDragger(sx, sy);
+      case Pan: return panDragger(sx, sy, mods);
+      case Zoom: return zoomDragger(sx, sy);
+      case TimeSelect: return timeSelectDragger(sx);
+      default: return Dragger.NONE;
+    }
+  }
+
+  private Dragger selectDragger(double sx, double sy) {
+    boolean onTop = sy <= top.getPreferredHeight();
+    return new Dragger() {
+      @Override
+      public Area onDrag(double x, double y) {
+        return onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
       }
 
-      boolean onTop = sy <= topHeight;
-      return new Dragger() {
-        @Override
-        public Area onDrag(double x, double y) {
-          return onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+      @Override
+      public Area onDragEnd(double x, double y) {
+        Area redraw = onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+        if (!onTop) {
+          finishSelection();
         }
+        return redraw;
+      }
+    };
+  }
 
-        @Override
-        public Area onDragEnd(double x, double y) {
-          Area redraw = onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
-          if (!onTop) {
-            finishSelection();
-          }
-          return redraw;
-        }
-      };
-    }
+  private Dragger panDragger(double sx, double sy, int mods) {
+    double topHeight = top.getPreferredHeight();
     return bottom.onDragStart(sx, sy - topHeight + state.getScrollOffset(), mods)
         .translated(0, topHeight - state.getScrollOffset());
+  }
+
+  private Dragger zoomDragger(double sx, double sy) {
+    return new Dragger() {
+      double lastY = sy;
+
+      @Override
+      public Area onDrag(double x, double y) {
+        double mag = 1 - StyleConstants.ZOOM_FACTOR_SCALE_DRAG * (lastY - y);
+        lastY = y;
+        return zoom(sx, mag) ? Area.FULL : Area.NONE;
+      }
+
+      @Override
+      public Area onDragEnd(double x, double y) {
+        return onDrag(x, y);
+      }
+    };
+  }
+
+  private Dragger timeSelectDragger(double sx) {
+    return new Dragger() {
+      @Override
+      public Area onDrag(double x, double y) {
+        return updateHighlight(sx, x);
+      }
+
+      @Override
+      public Area onDragEnd(double x, double y) {
+        return onDrag(x, y);
+      }
+    };
   }
 
   protected Area updateSelection(double sx, double sy, double x, double y) {
@@ -253,6 +302,10 @@ public class RootPanel extends Panel.Base implements State.Listener {
     }) : result;
   }
 
+  public void setMouseMode(MouseMode mode) {
+    this.mouseMode = mode;
+  }
+
   public boolean zoom(double x, double zoomFactor) {
     TimeSpan visible = state.getVisibleTime();
     long cursorTime = state.pxToTime(x - LABEL_WIDTH);
@@ -261,5 +314,9 @@ public class RootPanel extends Panel.Base implements State.Listener {
     long newStart = Math.round(cursorTime - (newSpan / curSpan) * (cursorTime - visible.start));
     long newEnd = Math.round(newStart + newSpan);
     return state.setVisibleTime(new TimeSpan(newStart, newEnd));
+  }
+
+  public static enum MouseMode {
+    Select, Pan, Zoom, TimeSelect;
   }
 }

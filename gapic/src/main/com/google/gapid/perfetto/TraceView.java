@@ -131,6 +131,22 @@ public class TraceView extends Composite
     canvas.addListener(SWT.KeyDown, e -> {
       boolean redraw = false;
       switch (e.keyCode) {
+        case '1':
+        case SWT.KEYPAD_1:
+          rootPanel.setMouseMode(RootPanel.MouseMode.Select);
+          break;
+        case '2':
+        case SWT.KEYPAD_2:
+          rootPanel.setMouseMode(RootPanel.MouseMode.Pan);
+          break;
+        case '3':
+        case SWT.KEYPAD_3:
+          rootPanel.setMouseMode(RootPanel.MouseMode.Zoom);
+          break;
+        case '4':
+        case SWT.KEYPAD_4:
+          rootPanel.setMouseMode(RootPanel.MouseMode.TimeSelect);
+          break;
         case 'm':
           Selection selection = state.getSelection();
           if (selection != null) {
