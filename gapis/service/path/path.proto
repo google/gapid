@@ -403,7 +403,7 @@ message Metrics {
 // Report is a path to a list of report items for a capture.
 message Report {
   Capture capture = 1;
-  // The optional path the the device used to generate replay information.
+  // The optional path to the device used to generate replay information.
   Device device = 2;
   // The optional filter to apply to the report items.
   CommandFilter filter = 3;

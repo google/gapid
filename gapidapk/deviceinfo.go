@@ -127,7 +127,7 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 	}
 
 	// Make sure the device is available to query device info, this is to prevent
-	// Vulkan trace from happening at the same with with device info query.
+	// Vulkan trace from happening at the same time than device info query.
 	m := flock.Lock(d.Instance().GetSerial())
 	defer m.Unlock()
 

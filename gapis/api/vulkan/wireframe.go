@@ -25,7 +25,7 @@ import (
 // wireframe returns a transform that set all the graphics pipeline to be
 // created with rasterization polygon mode == VK_POLYGON_MODE_LINE
 func wireframe(ctx context.Context) transform.Transformer {
-	ctx = log.Enter(ctx, "Wirefrmae")
+	ctx = log.Enter(ctx, "Wireframe")
 	return transform.Transform("Wireframe", func(ctx context.Context,
 		id api.CmdID, cmd api.Cmd, out transform.Writer) {
 		s := out.State()
