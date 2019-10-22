@@ -215,6 +215,13 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
         uiState.setHighlight(new TimeSpan(time, time + dur));
       }
     }
+
+    @Override
+    public void zoom(State uiState) {
+      if (dur > 0) {
+        uiState.setVisibleTime(new TimeSpan(time, time + dur));
+      }
+    }
   }
 
   public static class StateSlices implements Selection.CombiningBuilder.Combinable<StateSlices> {

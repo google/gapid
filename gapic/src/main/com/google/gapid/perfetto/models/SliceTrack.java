@@ -275,6 +275,13 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
       }
     }
 
+    @Override
+    public void zoom(State state) {
+      if (dur > 0) {
+        state.setVisibleTime(new TimeSpan(time, time + dur));
+      }
+    }
+
     public static class ThreadSlice extends Slice {
       public final ThreadInfo thread;
 

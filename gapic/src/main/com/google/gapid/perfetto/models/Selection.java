@@ -38,6 +38,7 @@ public interface Selection {
   public String getTitle();
   public Composite buildUi(Composite parent, State state);
   public default void mark(@SuppressWarnings("unused") State state) { /* do nothing */ }
+  public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
 
   public static class MultiSelection implements Selection {
     private final Selection[] selections;
@@ -65,6 +66,14 @@ public interface Selection {
       // TODO: is this good enough?
       if (selections.length == 1) {
         selections[0].mark(state);
+      }
+    }
+
+    @Override
+    public void zoom(State state) {
+      // TODO: handle zooming into multiple selections.
+      if (selections.length == 1) {
+        selections[0].zoom(state);
       }
     }
   }

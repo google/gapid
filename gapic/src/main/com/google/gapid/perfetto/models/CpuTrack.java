@@ -263,6 +263,13 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
 
     @Override
+    public void zoom(State state) {
+      if (dur > 0) {
+        state.setVisibleTime(new TimeSpan(time, time + dur));
+      }
+    }
+
+    @Override
     public String toString() {
       return "Slice{@" + time + " +" + dur + " " + utid + " " + endState + "/" + priority + "}";
     }
