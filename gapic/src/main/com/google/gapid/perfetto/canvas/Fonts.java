@@ -24,6 +24,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Device;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.widgets.Control;
 
@@ -43,6 +44,8 @@ public class Fonts {
 
   public static interface TextMeasurer {
     public Size measure(Style style, String text);
+    public double getAscent(Style style);
+    public double getDescent(Style style);
   }
 
   public static class Context implements TextMeasurer {
@@ -67,6 +70,16 @@ public class Fonts {
       }
     }
 
+    @Override
+    public double getAscent(Style style) {
+      return fonts[style.ordinal()].getAscent();
+    }
+
+    @Override
+    public double getDescent(Style style) {
+      return fonts[style.ordinal()].getDescent();
+    }
+
     public void setFont(GC gc, Style style) {
       fonts[style.ordinal()].apply(gc);
     }
@@ -83,21 +96,33 @@ public class Fonts {
     private static class FontAndGC {
       private final Font font;
       private final GC gc;
+      private final double ascent, descent;
 
-      private FontAndGC(Font font, GC gc) {
+      private FontAndGC(Font font, GC gc, double ascent, double descent) {
         this.font = font;
         this.gc = gc;
+        this.ascent = ascent;
+        this.descent = descent;
       }
 
       public static FontAndGC get(Control owner, int style) {
         Font font = scaleFont(owner.getDisplay(), owner.getFont(), style);
         GC gc = new GC(owner.getDisplay());
         gc.setFont(font);
-        return new FontAndGC(font, gc);
+        FontMetrics fm = gc.getFontMetrics();
+        return new FontAndGC(font, gc, fm.getAscent() / scale, fm.getDescent() / scale);
       }
 
       public Size measure(String text) {
-        return Size.of(gc.stringExtent(text), 1 / scale);
+        return Size.of(gc.textExtent(text, SWT.DRAW_TRANSPARENT), 1 / scale);
+      }
+
+      public double getAscent() {
+        return ascent;
+      }
+
+      public double getDescent() {
+        return descent;
       }
 
       public void apply(GC target) {

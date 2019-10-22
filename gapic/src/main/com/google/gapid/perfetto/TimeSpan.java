@@ -137,4 +137,22 @@ public class TimeSpan {
       return ns + "ns";
     }
   }
+
+  public static String timeToShortString(long ns) {
+    ns = Math.abs(ns);
+    long u = NANOSECONDS.toMicros(ns) % 1000;
+    long m = NANOSECONDS.toMillis(ns) % 1000;
+    long s = NANOSECONDS.toSeconds(ns);
+
+    if (s > 0) {
+      return (m == 0) ? s + "s" : String.format("%ds%03dms", s, m);
+    } else if (m > 0) {
+      return (u == 0) ? m + "ms" : String.format("%d.%03dms", m, u);
+    } else if (u > 0) {
+      long n = ns % 1000;
+      return (n == 0) ? u + "us" : String.format("%d.%03dus", u, n);
+    } else {
+      return ns + "ns";
+    }
+  }
 }

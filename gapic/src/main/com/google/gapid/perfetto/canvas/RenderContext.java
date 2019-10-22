@@ -82,6 +82,16 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
   }
 
   @Override
+  public double getAscent(Style style) {
+    return fontContext.getAscent(style);
+  }
+
+  @Override
+  public double getDescent(Style style) {
+    return fontContext.getDescent(style);
+  }
+
+  @Override
   public void close() {
     Preconditions.checkState(
         transformStack.size() == 1, "transform stack size != 1: %s", transformStack.size());
@@ -334,6 +344,16 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     @Override
     public Size measure(Style style, String text) {
       return fontContext.measure(style, text);
+    }
+
+    @Override
+    public double getAscent(Style style) {
+      return fontContext.getAscent(style);
+    }
+
+    @Override
+    public double getDescent(Style style) {
+      return fontContext.getDescent(style);
     }
 
     public void dispose() {

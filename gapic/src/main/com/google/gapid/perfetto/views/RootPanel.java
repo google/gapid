@@ -36,8 +36,8 @@ import org.eclipse.swt.SWT;
  * and tracks below.
  */
 public class RootPanel extends Panel.Base implements State.Listener {
-  private static final double HIGHLIGHT_TOP = 20;
-  private static final double HIGHLIGHT_BOTTOM = 28;
+  private static final double HIGHLIGHT_TOP = 22;
+  private static final double HIGHLIGHT_BOTTOM = 30;
   private static final double HIGHLIGHT_CENTER = (HIGHLIGHT_TOP + HIGHLIGHT_BOTTOM) / 2;
   private static final double HIGHLIGHT_PADDING = 3;
 

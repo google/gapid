@@ -114,6 +114,10 @@ public class State {
     return Math.round(visibleTime.start + px * nanosPerPx);
   }
 
+  public double durationToDeltaPx(long time) {
+    return time / nanosPerPx;
+  }
+
   public long deltaPxToDuration(double px) {
     return Math.round(px * nanosPerPx);
   }
