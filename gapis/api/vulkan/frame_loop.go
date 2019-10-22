@@ -869,7 +869,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			cmdBuffers := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, vkCmd, currentState, nil)
 			for _, cmdBuf := range cmdBuffers {
 				f.commandBufferToFree[cmdBuf] = true
-				log.D(ctx, "Command buffer %v allcoated.", cmdBuf)
+				log.D(ctx, "Command buffer %v allocated.", cmdBuf)
 			}
 
 		case *VkFreeCommandBuffers:
@@ -877,7 +877,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 			cmdBufCount := vkCmd.CommandBufferCount()
 			cmdBufs := vkCmd.PCommandBuffers().Slice(0, uint64(cmdBufCount), currentState.MemoryLayout).MustRead(ctx, cmd, currentState, nil)
 			for _, cmdBuf := range cmdBufs {
-				log.D(ctx, "Command buffer %v freed", cmdBufs)
+				log.D(ctx, "Command buffer %v freed.", cmdBufs)
 				if _, ok := f.commandBufferToFree[cmdBuf]; ok {
 					// The command buffer freed in this call was created during loop, no action needed.
 					delete(f.commandBufferToFree, cmdBuf)
