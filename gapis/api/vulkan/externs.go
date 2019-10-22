@@ -486,6 +486,14 @@ func (e externs) vkErrInvalidDescriptorBindingType(set VkDescriptorSet, binding 
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrSemaphoreNotSubmitted(semaphore VkSemaphore) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_WarningLevel
+	issue.Error = fmt.Errorf("Semaphore %v has not submitted for signal", uint64(semaphore))
+	e.onVkError(issue)
+}
+
 type fenceSignal uint64
 
 func (e externs) recordFenceSignal(fence VkFence) {

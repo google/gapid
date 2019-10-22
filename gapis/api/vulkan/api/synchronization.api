@@ -166,6 +166,7 @@ cmd VkResult vkWaitForFences(
   @unused VkDevice                  Device
   @unused VkSemaphore               VulkanHandle
   @unused VkQueue                   LastQueue
+  @unused s32                       SubmitCount
   @unused bool                      Signaled
   @unused ref!VulkanDebugMarkerInfo DebugInfo
   @unused VkQueue                   WaitingQueue

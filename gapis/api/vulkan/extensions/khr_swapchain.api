@@ -111,7 +111,7 @@ cmd VkResult vkCreateSwapchainKHR(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkSwapchainCreateInfoKHR") }
   create_info := pCreateInfo[0]
- 
+
   queueFamilyIndices := create_info.pQueueFamilyIndices[0:create_info.queueFamilyIndexCount]
 
   swapchainObject := new!SwapchainObject(Device: device,
@@ -320,11 +320,21 @@ cmd VkResult vkQueuePresentKHR(
   if (info.pWaitSemaphores != null) {
     wait_semaphores := info.pWaitSemaphores[0:info.waitSemaphoreCount]
     for i in (0 .. info.waitSemaphoreCount) {
-      if (Semaphores[wait_semaphores[i]].Signaled) {
-        Semaphores[wait_semaphores[i]].Signaled = false
+      semaphore := Semaphores[wait_semaphores[i]]
+
+      if semaphore.SubmitCount == 0 {
+        vkErrorSemaphoreNotSubmitted(wait_semaphores[i])
       } else {
-        // TODO: handle case when semaphore is not yet signaled
-        // see https://github.com/google/gapid/issues/1860
+        if (semaphore.Signaled) {
+          semaphore.Signaled = false
+          // TODO: This should be decreased not when it is processed but
+          // when it is submmitted for wait. Change the logic when we
+          // support handling unsignaled waits.
+          semaphore.SubmitCount = semaphore.SubmitCount - 1
+        } else {
+          // TODO: handle case when semaphore is not yet signaled
+          // see https://github.com/google/gapid/issues/1860
+        }
       }
     }
   }
