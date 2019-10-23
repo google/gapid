@@ -330,6 +330,10 @@ public class StyleConstants {
     return (128 + (32 * cpu)) % 256;
   }
 
+  public static HSL getGrayColor() {
+    return GRAY_COLOR;
+  }
+
   public static HSL colorForThread(ThreadInfo thread) {
     if (thread == null) {
       return GRAY_COLOR;

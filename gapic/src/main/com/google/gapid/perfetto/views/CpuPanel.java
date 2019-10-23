@@ -138,8 +138,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
       ThreadInfo.Display threadInfo = ThreadInfo.getDisplay(state.getData(), utid, false);
-      StyleConstants.HSL color = threadInfo.getColor();
-      color = color.adjusted(color.h, color.s - 20, Math.min(color.l + 10,  60));
+      StyleConstants.HSL color = ThreadInfo.getColor(state, utid);
 
       ctx.setBackgroundColor(color.rgb());
       ctx.fillRect(rectStart, 0, rectWidth, h);
@@ -200,6 +199,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -221,6 +221,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
           @Override
           public boolean click() {
             state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelectedCpuSliceIds(utid);
             return false;
           }
         };

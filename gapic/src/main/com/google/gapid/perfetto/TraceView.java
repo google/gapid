@@ -65,7 +65,7 @@ public class TraceView extends Composite
     loading = new LoadablePanel<SashForm>(this, widgets, p -> new SashForm(p, SWT.VERTICAL));
     SashForm topBottom = loading.getContents();
     rootPanel = new RootPanel(state);
-    canvas = new PanelCanvas(topBottom, SWT.H_SCROLL, widgets.theme, rootPanel);
+    canvas = new PanelCanvas(topBottom, SWT.H_SCROLL, widgets.theme, rootPanel, state);
     new SelectionView(topBottom, state);
     topBottom.setWeights(models.settings.perfettoSplitterWeights);
 

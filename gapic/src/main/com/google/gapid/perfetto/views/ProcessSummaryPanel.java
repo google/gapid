@@ -18,7 +18,6 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
-import static com.google.gapid.perfetto.views.StyleConstants.colorForThread;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
 import com.google.gapid.perfetto.TimeSpan;
@@ -149,8 +148,7 @@ public class ProcessSummaryPanel extends TrackPanel {
       double rectStart = state.timeToPx(tStart);
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
-      StyleConstants.HSL color = colorForThread(state.getThreadInfo(utid));
-      color = color.adjusted(color.h, color.s - 20, Math.min(color.l + 10,  60));
+      StyleConstants.HSL color = ThreadInfo.getColor(state, utid);
       double y = cpuH * cpu + cpu;
       ctx.setBackgroundColor(color.rgb());
       ctx.fillRect(rectStart, y, rectWidth, cpuH);
@@ -203,6 +201,7 @@ public class ProcessSummaryPanel extends TrackPanel {
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -224,6 +223,7 @@ public class ProcessSummaryPanel extends TrackPanel {
           @Override
           public boolean click() {
             state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelectedCpuSliceIds(utid);
             return false;
           }
         };

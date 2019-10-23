@@ -57,6 +57,8 @@ public class State {
   private long resolution;
   private Selection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
+  private long selectedUpid = -1;   // For a selected CPU slice.
+  private long selectedUtid = -1;   // For a selected CPU slice.
   private TimeSpan highlight = TimeSpan.ZERO;
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
@@ -73,6 +75,8 @@ public class State {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.selection = null;
+    this.selectedUpid = -1;
+    this.selectedUtid = -1;
     this.highlight = TimeSpan.ZERO;
     update();
     listeners.fire().onDataChanged();
@@ -134,6 +138,18 @@ public class State {
     return selection;
   }
 
+  public long getSelectedUpid() {
+    return selectedUpid;
+  }
+
+  public long getSelectedUtid() {
+    return selectedUtid;
+  }
+
+  public boolean shouldChangeCpuSlicesColor(long oldCpuUtid) {
+    return oldCpuUtid != getSelectedUtid();
+  }
+
   public TimeSpan getHighlight() {
     return highlight;
   }
@@ -189,6 +205,11 @@ public class State {
     return false;
   }
 
+  public void resetSelections() {
+    this.selectedUpid = -1;
+    this.selectedUtid = -1;
+  }
+
   public void setSelection(ListenableFuture<? extends Selection> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
@@ -202,6 +223,12 @@ public class State {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
     listeners.fire().onSelectionChanged(selection);
+  }
+
+  public void setSelectedCpuSliceIds(long utid) {
+    this.selectedUtid = utid;
+    ThreadInfo ti = getThreadInfo(utid);
+    this.selectedUpid = ti == null ? -1 : ti.upid;
   }
 
   public void setHighlight(TimeSpan highlight) {

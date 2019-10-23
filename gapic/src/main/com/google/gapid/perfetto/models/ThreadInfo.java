@@ -96,6 +96,22 @@ public class ThreadInfo {
         res -> res.map(row -> row.getLong(0), TrackDepth::new));
   }
 
+  public static StyleConstants.HSL getColor(State state, long utid) {
+    ThreadInfo threadInfo = state.getThreadInfo(utid);
+    StyleConstants.HSL baseColor = StyleConstants.colorForThread(threadInfo);
+
+    long upid = threadInfo.upid;
+    if (state.getSelectedUpid() == -1 || state.getSelectedUtid() == -1) {
+      return baseColor;
+    } else if (utid == state.getSelectedUtid()) {
+      return baseColor;
+    } else if (upid == state.getSelectedUpid()) {
+      return baseColor.adjusted(baseColor.h, baseColor.s - 20, Math.min(baseColor.l + 20,  60));
+    } else {
+      return StyleConstants.getGrayColor();
+    }
+  }
+
   public static Display getDisplay(Perfetto.Data data, long utid, boolean hover) {
     ThreadInfo thread = data.threads.get(utid);
     if (thread == null) {
@@ -124,10 +140,6 @@ public class ThreadInfo {
       this.thread = thread;
       this.title = title;
       this.subTitle = subTitle;
-    }
-
-    public StyleConstants.HSL getColor() {
-      return StyleConstants.colorForThread(thread);
     }
   }
 
