@@ -86,6 +86,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -278,7 +279,10 @@ public class Widgets {
     return new ToolItem(bar, SWT.SEPARATOR);
   }
 
-  public static void exclusiveSelection(ToolItem... items) {
+  /**
+   * Returns a function that allows manually selecting the ith item.
+   */
+  public static IntConsumer exclusiveSelection(ToolItem... items) {
     Listener listener = e -> {
       for (ToolItem item : items) {
         item.setSelection(e.widget == item);
@@ -289,6 +293,12 @@ public class Widgets {
       item.setSelection(false);
     }
     items[0].setSelection(true);
+
+    return index -> {
+      for (int i = 0; i < items.length; i++) {
+        items[i].setSelection(i == index);
+      }
+    };
   }
 
   public static Label createLabel(Composite parent, String label) {

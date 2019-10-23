@@ -18,6 +18,9 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.views.State.MAX_ZOOM_SPAN_NSEC;
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.widgets.Widgets.createToggleToolItem;
+import static com.google.gapid.widgets.Widgets.exclusiveSelection;
+import static java.util.Arrays.stream;
 
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
@@ -28,10 +31,18 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.TrackConfig;
+import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
+
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntConsumer;
 
 /**
  * The main {@link Panel} containing all track panels. Shows a {@link TimelinePanel} at the top,
@@ -352,6 +363,38 @@ public class RootPanel extends Panel.Base implements State.Listener {
   }
 
   public static enum MouseMode {
-    Select, Pan, Zoom, TimeSelect;
+    Select("Selection (1)", "Selection Mode (1): Drag to select items.", Theme::selectionMode),
+    Pan("Pan (2)", "Pan Mode (2): Drag to pan the view.", Theme::panMode),
+    Zoom("Zoom (3)", "Zoom Mode (3): Drag to zoom the view.", Theme::zoomMode),
+    TimeSelect("Timing (4)", "Timing Mode (4): Drag to select a time range.", Theme::timingMode);
+
+    private final String label;
+    private final String toolTip;
+    private final Function<Theme, Image> icon;
+
+    private MouseMode(String label, String toolTip, Function<Theme, Image> icon) {
+      this.label = label;
+      this.toolTip = toolTip;
+      this.icon = icon;
+    }
+
+    private ToolItem createItem(ToolBar bar, Theme theme, Consumer<MouseMode> onClick) {
+      ToolItem item = createToggleToolItem(
+          bar, icon.apply(theme), e -> onClick.accept(this), toolTip);
+      item.setText(label);
+      return item;
+    }
+
+    public static Consumer<MouseMode> createToolBar(
+        ToolBar bar, Theme theme, Consumer<MouseMode> onClick) {
+      IntConsumer itemSelector = exclusiveSelection(stream(values())
+          .map(m -> m.createItem(bar, theme, onClick))
+          .toArray(ToolItem[]::new));
+
+      return mode -> {
+        onClick.accept(mode);
+        itemSelector.accept(mode.ordinal());
+      };
+    }
   }
 }

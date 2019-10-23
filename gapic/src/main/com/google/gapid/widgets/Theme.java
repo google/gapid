@@ -84,6 +84,7 @@ public interface Theme {
   @Icon(file = "normals.png") public Image normals();
   @Icon(file = "open.png") public Image open();
   @Icon(file = "overdraw.png") public Image overdraw();
+  @Icon(file = "pan_mode.png") public Image panMode();
   @Icon(file = "point_cloud.png") public Image pointCloud();
   @Icon(file = "range_start.png") public Image rangeStartLight();
   @Icon(file = "range_end.png") public Image rangeEndLight();
@@ -92,9 +93,11 @@ public interface Theme {
   @Icon(file = "recent.png") public Image recent();
   @Icon(file = "refresh.png") public Image refresh();
   @Icon(file = "save.png") public Image save();
+  @Icon(file = "selection_mode.png") public Image selectionMode();
   @Icon(file = "settings.png") public Image settings();
   @Icon(file = "smile.png") public Image smile();
   @Icon(file = "smooth.png") public Image smooth();
+  @Icon(file = "timing_mode.png") public Image timingMode();
   @Icon(file = "transparency.png") public Image transparency();
   @Icon(file = "unfold_less.png") public Image unfoldLessLight();
   @Icon(file = "unfold_more.png") public Image unfoldMoreLight();
@@ -110,6 +113,7 @@ public interface Theme {
   @Icon(file = "zoom_actual.png") public Image zoomActual();
   @Icon(file = "zoom_fit.png") public Image zoomFit();
   @Icon(file = "zoom_in.png") public Image zoomIn();
+  @Icon(file = "zoom_mode.png") public Image zoomMode();
   @Icon(file = "zoom_out.png") public Image zoomOut();
 
   @IconSequence(names = {
