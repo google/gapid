@@ -39,8 +39,9 @@ const (
 	OpSwitchThread = Opcode(16)
 	OpJumpLabel    = Opcode(17)
 	OpJumpNZ       = Opcode(18)
-	OpNotification = Opcode(19)
-	OpWait         = Opcode(20)
+	OpJumpZ        = Opcode(19)
+	OpNotification = Opcode(20)
+	OpWait         = Opcode(21)
 )
 
 // String returns the human-readable name of the opcode.
@@ -84,6 +85,8 @@ func (t Opcode) String() string {
 		return "JumpLabel"
 	case OpJumpNZ:
 		return "JumpNZ"
+	case OpJumpZ:
+		return "JumpZ"
 	case OpNotification:
 		return "Notification"
 	case OpWait:

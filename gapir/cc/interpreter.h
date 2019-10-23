@@ -95,6 +95,9 @@ class Interpreter {
   // from this point.
   void resetInstructions();
 
+  // Scan the instructions building the jump destination table.
+  bool updateJumpTable(uint32_t jumpLabel);
+
   // Registers an API instance if it has not already been done.
   bool registerApi(uint8_t api);
 
@@ -152,6 +155,7 @@ class Interpreter {
   Result switchThread(uint32_t opcode);
   Result jumpLabel(uint32_t opcode);
   Result jumpNZ(uint32_t opcode);
+  Result jumpZ(uint32_t opcode);
   Result notification();
   Result wait(uint32_t opcode);
 
@@ -214,7 +218,7 @@ class Interpreter {
   ThreadPool mThreadPool;
 
   // Jump ID to instruction ID
-  std::unordered_map<uint32_t, uint32_t> mJumpLables;
+  std::map<uint32_t, uint32_t> mJumpLabels;
 };
 
 inline bool Interpreter::isConstantAddressForType(const void* address,

@@ -334,6 +334,18 @@ func (c JumpNZ) Encode(w binary.Writer) error {
 	return w.Error()
 }
 
+// JumpZ represents the JumpZ virtual machine opcode.
+type JumpZ struct {
+	Label uint32 // 26 bit jump label.
+}
+
+func (c JumpZ) String() string { return fmt.Sprintf("JumpZ(Label: 0x%x)", c.Label) }
+
+func (c JumpZ) Encode(w binary.Writer) error {
+	w.Uint32(packCX(protocol.OpJumpZ, c.Label))
+	return w.Error()
+}
+
 // Notification represents the NOTIFICATION virtual machine opcode.
 type Notification struct{}
 
@@ -401,6 +413,8 @@ func Decode(r binary.Reader) (Opcode, error) {
 	case protocol.OpJumpLabel:
 		return Label{Value: unpackX(i)}, nil
 	case protocol.OpJumpNZ:
+		return Label{Value: unpackX(i)}, nil
+	case protocol.OpJumpZ:
 		return Label{Value: unpackX(i)}, nil
 	case protocol.OpNotification:
 		return Notification{}, nil

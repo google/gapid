@@ -44,8 +44,9 @@ enum class Opcode {
   SWITCH_THREAD = 16,
   JUMP_LABEL = 17,
   JUMP_NZ = 18,
-  NOTIFICATION = 19,
-  WAIT = 20,
+  JUMP_Z = 19,
+  NOTIFICATION = 20,
+  WAIT = 21,
 };
 
 // Unique ID for each supported data type. The ID have to fit into 6 bits (0-63)

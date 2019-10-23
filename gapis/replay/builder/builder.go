@@ -555,6 +555,15 @@ func (b *Builder) JumpNZ(label uint32) {
 	})
 }
 
+// JumpZ jumps to the instruction specified label if the value
+// on top of the stack is zero. Otherwise it will be be a Nop.
+func (b *Builder) JumpZ(label uint32) {
+	b.popStack()
+	b.instructions = append(b.instructions, asm.JumpZ{
+		Label: label,
+	})
+}
+
 // Notification asks the GAPIR to stream back the size bytes from addr. The |ID| will
 // be sent back as well to help identify which reader will process the notification.
 // A Notification reader must be registered to read the data the from the stream.

@@ -105,14 +105,44 @@ void Interpreter::resetInstructions() {
   mInstructions = nullptr;
   mInstructionCount = 0;
   mCurrentInstruction = 0;
+  mJumpLabels.clear();
+}
+
+bool Interpreter::updateJumpTable(uint32_t jumpLabel) {
+  uint32_t instruction = 0;
+
+  if (mJumpLabels.rbegin() != mJumpLabels.rend()) {
+    instruction = mJumpLabels.rbegin()->second + 1;
+  }
+
+  for (; instruction < mInstructionCount; instruction++) {
+    auto opcode = mInstructions[instruction];
+
+    InstructionCode code =
+        static_cast<InstructionCode>(opcode >> OPCODE_BIT_SHIFT);
+
+    if (code == InstructionCode::JUMP_LABEL) {
+      auto jump_id = extract26bitData(opcode);
+      mJumpLabels[jump_id] = instruction;
+
+      if (jump_id == jumpLabel) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 bool Interpreter::run(const uint32_t* instructions, uint32_t count) {
   GAPID_ASSERT(mInstructions == nullptr);
   GAPID_ASSERT(mInstructionCount == 0);
   GAPID_ASSERT(mCurrentInstruction == 0);
+  GAPID_ASSERT(mJumpLabels.empty());
+
   mInstructions = instructions;
   mInstructionCount = count;
+
   // Reset the promise here, otherwise this may throw.
   mExecResult = std::promise<Result>();
   auto unregisterHandler = mCrashHandler.registerHandler(
@@ -121,8 +151,10 @@ bool Interpreter::run(const uint32_t* instructions, uint32_t count) {
         GAPID_ERROR("LAST COMMAND:     %d", mLabel);
         GAPID_ERROR("LAST INSTRUCTION: %d", mCurrentInstruction);
       });
+
   exec();
   unregisterHandler();
+
   return mExecResult.get_future().get() == SUCCESS;
 }
 
@@ -487,21 +519,48 @@ Interpreter::Result Interpreter::switchThread(uint32_t opcode) {
 }
 
 Interpreter::Result Interpreter::jumpLabel(uint32_t opcode) {
-  auto jump_id = extract26bitData(opcode);
-  mJumpLables[jump_id] = mCurrentInstruction;
   return mStack.isValid() ? SUCCESS : ERROR;
 }
 
 Interpreter::Result Interpreter::jumpNZ(uint32_t opcode) {
   auto jump_id = extract26bitData(opcode);
   auto should_jump = mStack.pop<int32_t>();
+
   if (!mStack.isEmpty()) {
     GAPID_WARNING("Error: stack is not empty before jumping to label %d",
                   jump_id);
     return ERROR;
   }
+
   if (should_jump != 0) {
-    mCurrentInstruction = mJumpLables[jump_id];
+    if (mJumpLabels.find(jump_id) == mJumpLabels.end() &&
+        updateJumpTable(jump_id) == false) {
+      GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
+    }
+
+    mCurrentInstruction = mJumpLabels[jump_id];
+  }
+
+  return mStack.isValid() ? SUCCESS : ERROR;
+}
+
+Interpreter::Result Interpreter::jumpZ(uint32_t opcode) {
+  auto jump_id = extract26bitData(opcode);
+  auto should_jump = mStack.pop<int32_t>();
+
+  if (!mStack.isEmpty()) {
+    GAPID_WARNING("Error: stack is not empty before jumping to label %d",
+                  jump_id);
+    return ERROR;
+  }
+
+  if (should_jump == 0) {
+    if (mJumpLabels.find(jump_id) == mJumpLabels.end() &&
+        updateJumpTable(jump_id) == false) {
+      GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
+    }
+
+    mCurrentInstruction = mJumpLabels[jump_id];
   }
 
   return mStack.isValid() ? SUCCESS : ERROR;
@@ -575,6 +634,9 @@ Interpreter::Result Interpreter::interpret(uint32_t opcode) {
     case InstructionCode::JUMP_NZ:
       DEBUG_OPCODE_26("JUMP_NZ", opcode);
       return this->jumpNZ(opcode);
+    case InstructionCode::JUMP_Z:
+      DEBUG_OPCODE_26("JUMP_Z", opcode);
+      return this->jumpZ(opcode);
     case InstructionCode::NOTIFICATION:
       DEBUG_OPCODE("NOTIFICATION", opcode);
       return this->notification();
