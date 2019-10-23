@@ -15,6 +15,7 @@
  */
 package com.google.gapid.util;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.gapid.widgets.Widgets;
 
@@ -26,6 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class Keyboard {
+  private static final ImmutableSet<Integer> ARROW_KEYS =
+      ImmutableSet.of(SWT.ARROW_UP, SWT.ARROW_DOWN, SWT.ARROW_LEFT, SWT.ARROW_RIGHT);
+
   private final int delay;
   private final Set<Integer> down = Sets.newHashSet();
   private int modifiers = 0;
@@ -38,6 +42,13 @@ public class Keyboard {
         modifiers = e.stateMask | e.keyCode;
       } else if (down.add(e.keyCode)) {
         modifiers = e.stateMask;
+        if (OS.isWindows) {
+          // On windows pressing multiple keys at once messes everything up. However, arrow keys
+          // sort of work correctly. Thus, let's remove all keys that are not the currently down
+          // key or an arrow key. See this 15 year old bug:
+          // https://bugs.eclipse.org/bugs/show_bug.cgi?id=50020
+          down.removeIf(key -> key != e.keyCode && !ARROW_KEYS.contains(key));
+        }
         schedule(owner, onKey);
       }
     });
