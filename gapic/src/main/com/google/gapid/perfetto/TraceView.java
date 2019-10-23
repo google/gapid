@@ -21,6 +21,9 @@ import static com.google.gapid.perfetto.views.StyleConstants.KB_PAN_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_FAST;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.ZOOM_FACTOR_SCALE;
+import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
+import static com.google.gapid.widgets.Widgets.withMargin;
 
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.Models;
@@ -29,20 +32,26 @@ import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.views.RootPanel;
+import com.google.gapid.perfetto.views.RootPanel.MouseMode;
 import com.google.gapid.perfetto.views.SelectionView;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.util.Keyboard;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.widgets.LoadablePanel;
+import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.ScrollBar;
+import org.eclipse.swt.widgets.ToolBar;
+
+import java.util.function.Consumer;
 
 /**
  * The main entry point of the Perfetto trace UI.
@@ -60,14 +69,21 @@ public class TraceView extends Composite
     this.models = models;
     this.state = new State(this);
 
-    setLayout(new FillLayout());
+    setLayout(withMargin(new GridLayout(1, false), 0, 0));
 
-    loading = new LoadablePanel<SashForm>(this, widgets, p -> new SashForm(p, SWT.VERTICAL));
+    TopBar topBar = withLayoutData(new TopBar(this), new GridData(SWT.FILL, SWT.TOP, true, false));
+    loading = withLayoutData(
+        new LoadablePanel<SashForm>(this, widgets, p -> new SashForm(p, SWT.VERTICAL)),
+        new GridData(SWT.FILL, SWT.FILL, true, true));
     SashForm topBottom = loading.getContents();
     rootPanel = new RootPanel(state);
     canvas = new PanelCanvas(topBottom, SWT.H_SCROLL, widgets.theme, rootPanel);
     new SelectionView(topBottom, state);
     topBottom.setWeights(models.settings.perfettoSplitterWeights);
+
+    Consumer<RootPanel.MouseMode> modeSelector =
+        topBar.buildModeActions(widgets.theme, m -> rootPanel.setMouseMode(m));
+    modeSelector.accept(RootPanel.MouseMode.Pan);
 
     canvas.addListener(SWT.MouseWheel, e -> {
       if ((e.stateMask & SWT.MODIFIER_MASK) == SWT.MOD1) {
@@ -135,19 +151,19 @@ public class TraceView extends Composite
       switch (e.keyCode) {
         case '1':
         case SWT.KEYPAD_1:
-          rootPanel.setMouseMode(RootPanel.MouseMode.Select);
+          modeSelector.accept(RootPanel.MouseMode.Select);
           break;
         case '2':
         case SWT.KEYPAD_2:
-          rootPanel.setMouseMode(RootPanel.MouseMode.Pan);
+          modeSelector.accept(RootPanel.MouseMode.Pan);
           break;
         case '3':
         case SWT.KEYPAD_3:
-          rootPanel.setMouseMode(RootPanel.MouseMode.Zoom);
+          modeSelector.accept(RootPanel.MouseMode.Zoom);
           break;
         case '4':
         case SWT.KEYPAD_4:
-          rootPanel.setMouseMode(RootPanel.MouseMode.TimeSelect);
+          modeSelector.accept(RootPanel.MouseMode.TimeSelect);
           break;
         case 'f': {
           Selection selection = state.getSelection();
@@ -298,5 +314,21 @@ public class TraceView extends Composite
 
   private static int permyriad(long v, long t) {
     return Math.max(0, Math.min(10000, (int)(10000 * v / t)));
+  }
+
+  private static class TopBar extends Composite {
+    private final ToolBar toolBar;
+
+    public TopBar(Composite parent) {
+      super(parent, SWT.NONE);
+      setLayout(new GridLayout(2, false));
+      createLabel(this, "Mode:");
+      toolBar = withLayoutData(new ToolBar(this, SWT.FLAT | SWT.HORIZONTAL | SWT.TRAIL),
+          new GridData(SWT.FILL, SWT.FILL, true, true));
+    }
+
+    public Consumer<RootPanel.MouseMode> buildModeActions(Theme theme, Consumer<MouseMode> onClick) {
+      return RootPanel.MouseMode.createToolBar(toolBar, theme, onClick);
+    }
   }
 }
