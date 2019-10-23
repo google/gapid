@@ -44,7 +44,6 @@ import (
 // Map of bazel external package names to the expected import names.
 var externals = map[string]string{
 	"com_github_golang_protobuf":       filepath.Join("github.com", "golang", "protobuf"),
-	"com_github_google_protobuf":       filepath.Join("github.com", "google", "protobuf"),
 	"com_github_google_go_github":      filepath.Join("github.com", "google", "go-github"),
 	"com_github_google_go_querystring": filepath.Join("github.com", "google", "go-querystring"),
 	"com_github_grpc_grpc":             filepath.Join("github.com", "grpc", "grpc"),
@@ -52,7 +51,9 @@ var externals = map[string]string{
 	"org_golang_google_grpc":           filepath.Join("google.golang.org", "grpc"),
 	"org_golang_x_crypto":              filepath.Join("golang.org", "x", "crypto"),
 	"org_golang_x_net":                 filepath.Join("golang.org", "x", "net"),
+	"org_golang_x_text":                filepath.Join("golang.org", "x", "text"),
 	"org_golang_x_tools":               filepath.Join("golang.org", "x", "tools"),
+	"org_golang_x_sys":                 filepath.Join("golang.org", "x", "sys"),
 	"llvm":                             "llvm",
 }
 
