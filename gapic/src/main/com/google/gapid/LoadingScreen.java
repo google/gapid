@@ -48,7 +48,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
@@ -64,6 +63,7 @@ public class LoadingScreen extends Composite {
   private final Theme theme;
   private final Label statusLabel;
   private final Composite optionsContainer;
+  private OptionBar recentBar;
   private Models models;
   private Client client;
   private Widgets widgets;
@@ -122,7 +122,8 @@ public class LoadingScreen extends Composite {
     OptionBar.withShortcut(optionsContainer, theme.open(), "Open an existing trace", "O", e -> {
       showOpenTraceDialog(getShell(), checkNotNull(models));
     });
-    OptionBar.withDropDown(theme, optionsContainer, theme.recent(), "Open recent trace", e -> {
+    recentBar = OptionBar.withDropDown(theme, optionsContainer, theme.recent(), "Open recent trace",
+        e -> {
       Menu popup = new Menu(optionsContainer);
       if (checkNotNull(models).settings.recentFiles.length == 0) {
         createMenuItem(popup, "No recent files.", 0,  ev -> { /* empty */ }).setEnabled(false);
@@ -135,8 +136,7 @@ public class LoadingScreen extends Composite {
         }
       }
       popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
-      popup.setLocation(
-          optionsContainer.toDisplay(bottomLeft((((Control)e.widget).getParent().getBounds()))));
+      popup.setLocation(optionsContainer.toDisplay(bottomLeft((recentBar.getBounds()))));
       popup.setVisible(true);
     });
     OptionBar.simple(optionsContainer, theme.help(), "Help", e -> {
