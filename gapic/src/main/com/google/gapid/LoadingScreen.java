@@ -50,7 +50,6 @@ import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 
@@ -65,7 +64,6 @@ public class LoadingScreen extends Composite {
   private final Theme theme;
   private final Label statusLabel;
   private final Composite optionsContainer;
-  private Link recentLink;
   private Models models;
   private Client client;
   private Widgets widgets;
@@ -111,9 +109,6 @@ public class LoadingScreen extends Composite {
 
     statusLabel.setVisible(false);
     optionsContainer.setVisible(true);
-    if (models.settings.getRecent().length <= 0) {
-      recentLink.setEnabled(false);
-    }
   }
 
   /**
@@ -129,11 +124,15 @@ public class LoadingScreen extends Composite {
     });
     OptionBar.withDropDown(theme, optionsContainer, theme.recent(), "Open recent trace", e -> {
       Menu popup = new Menu(optionsContainer);
-      for (String file : checkNotNull(models).settings.recentFiles) {
-        createMenuItem(popup, truncate(file), 0, ev -> {
-          checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
-          checkNotNull(models).capture.loadCapture(new File(file));
-        });
+      if (checkNotNull(models).settings.recentFiles.length == 0) {
+        createMenuItem(popup, "No recent files.", 0,  ev -> { /* empty */ }).setEnabled(false);
+      } else {
+        for (String file : checkNotNull(models).settings.recentFiles) {
+          createMenuItem(popup, truncate(file), 0, ev -> {
+            checkNotNull(models).analytics.postInteraction(View.Welcome, ClientAction.OpenRecent);
+            checkNotNull(models).capture.loadCapture(new File(file));
+          });
+        }
       }
       popup.addListener(SWT.Hide, ev -> scheduleIfNotDisposed(popup, popup::dispose));
       popup.setLocation(
