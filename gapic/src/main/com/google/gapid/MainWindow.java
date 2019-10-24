@@ -433,6 +433,7 @@ public class MainWindow extends ApplicationWindow {
 
     ViewThumbnails("Show Filmstrip"),
     ViewDarkMode("Dark Mode", 'D'),
+    ViewQueryShell("Open &Query Shell", 'M'),
 
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),

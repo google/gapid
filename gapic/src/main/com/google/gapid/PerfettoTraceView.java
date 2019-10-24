@@ -19,37 +19,36 @@ import com.google.gapid.models.Models;
 import com.google.gapid.perfetto.QueryViewer;
 import com.google.gapid.perfetto.TraceView;
 import com.google.gapid.perfetto.views.StyleConstants;
+import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.window.SameShellProvider;
+import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Layout;
+import org.eclipse.swt.widgets.Shell;
 
 /**
  * Main view shown when a Perfetto trace is loaded.
  */
 public class PerfettoTraceView extends Composite implements MainWindow.MainView {
-  private final Models models;
+  protected final Models models;
+  protected final Widgets widgets;
 
   public PerfettoTraceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
+    this.widgets = widgets;
 
     setLayout(new FillLayout());
-
-    TabFolder folder = new TabFolder(this, SWT.TOP);
-    TabItem main = new TabItem(folder, SWT.NONE);
-    main.setText("Perfetto");
-    main.setControl(new TraceView(folder, models, widgets));
-
-    TabItem query = new TabItem(folder, SWT.NONE);
-    query.setText("Query");
-    query.setControl(new QueryViewer(folder, models));
+    new TraceView(this, models, widgets);
   }
 
   @Override
@@ -65,6 +64,34 @@ public class PerfettoTraceView extends Composite implements MainWindow.MainView 
     darkMode.setChecked(models.settings.perfettoDarkMode);
     StyleConstants.setDark(models.settings.perfettoDarkMode);
 
+    Action queryView = MainWindow.MenuItems.ViewQueryShell.create(() -> {
+      Window window = new Window(new SameShellProvider(this)) {
+        @Override
+        protected void configureShell(Shell shell) {
+          shell.setText(Messages.QUERY_VIEW_WINDOW_TITLE);
+          shell.setImages(widgets.theme.windowLogo());
+          super.configureShell(shell);
+        }
+
+        @Override
+        protected Control createContents(Composite parent) {
+          return new QueryViewer(parent, models);
+        }
+
+        @Override
+        protected Layout getLayout() {
+          return new FillLayout();
+        }
+
+        @Override
+        protected Point getInitialSize() {
+          return new Point(800, 600);
+        }
+      };
+      window.open();
+    });
+
     manager.add(darkMode);
+    manager.add(queryView);
   }
 }

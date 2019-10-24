@@ -81,4 +81,5 @@ public interface Messages {
       "Failed to create an OpenGL context. OpenGL is required to use this application.";
   public static final String GEO_SEMANTICS_TITLE = "Vertex Semantics";
   public static final String GEO_SEMANTICS_HINT = "Manually configure the vertex stream semantics:";
+  public static final String QUERY_VIEW_WINDOW_TITLE = "GAPID - Query Shell";
 }

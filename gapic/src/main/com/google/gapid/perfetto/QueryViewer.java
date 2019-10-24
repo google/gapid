@@ -107,7 +107,7 @@ public class QueryViewer extends Composite
     table.setLabelProvider(new LabelProvider());
 
     splitter.setWeights(new int[] { 30, 70 });
-    run.setEnabled(false);
+    run.setEnabled(models.capture.isPerfetto());
 
     models.capture.addListener(this);
     models.perfetto.addListener(this);
@@ -129,7 +129,7 @@ public class QueryViewer extends Composite
 
   @Override
   public void onPerfettoLoaded(Loadable.Message error) {
-    run.setEnabled(error == null);
+    run.setEnabled(error == null && models.capture.isPerfetto());
   }
 
   private void exec() {
