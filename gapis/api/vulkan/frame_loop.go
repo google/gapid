@@ -430,19 +430,27 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 				// Notify the other transforms that we have just emitted the end of the loop.
 				out.NotifyPostLoop(ctx)
 
+				// Add conditional jump instruction to break us out of the loop if we are done.
+				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+					b.Load(protocol.Type_Int32, f.loopCountPtr)
+					b.Sub(1)
+					b.Clone(0)
+					b.Store(f.loopCountPtr)
+					b.JumpZ(uint32(0x2))
+					return nil
+				}))
+
 				// Now we need to emit the instructions to reset the state, before the conditional branch back to the start of the loop.
 				if err := f.resetResources(ctx, stateBuilder); err != nil {
 					log.E(ctx, "FrameLoop: Failed to reset changed resources %v.", err)
 					return
 				}
 
-				// Add conditional jump instruction to bring us back to the start of the loop while we've not done.
+				// Add unconditional jump instruction to bring us back to the start of the loop if we made it past the conditional break.
 				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					b.Load(protocol.Type_Int32, f.loopCountPtr)
-					b.Sub(1)
-					b.Clone(0)
-					b.Store(f.loopCountPtr)
+					b.Push(value.S32(1))
 					b.JumpNZ(uint32(0x1))
+					b.JumpLabel(uint32(0x2))
 					return nil
 				}))
 			}

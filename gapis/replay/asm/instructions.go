@@ -368,6 +368,14 @@ func (a JumpNZ) Encode(r value.PointerResolver, w binary.Writer) error {
 	return opcode.JumpNZ{Label: a.Label}.Encode(w)
 }
 
+type JumpZ struct {
+	Label uint32
+}
+
+func (a JumpZ) Encode(r value.PointerResolver, w binary.Writer) error {
+	return opcode.JumpZ{Label: a.Label}.Encode(w)
+}
+
 // Notification is an Instruction that sends Size bytes from Source to the server, with the ID returned as well.
 type Notification struct {
 	ID     uint64
