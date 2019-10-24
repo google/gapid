@@ -54,6 +54,7 @@ extern void vkErrQueryNotActive(VkQueryPool queryPool, u32 query)
 extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 level, VkImageLayout layout, VkImageLayout expectedLayout)
 extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
 extern void vkErrImageMemoryNotBound(VkImage img)
+extern void vkErrSemaphoreNotSubmitted(VkSemaphore semaphore)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
@@ -177,6 +178,10 @@ sub void vkErrorInvalidFence(VkFence fence) {
 
 sub void vkErrorInvalidSemaphore(VkSemaphore semaphore) {
   vkErrorInvalidHandle("VkSemaphore", as!u64(semaphore))
+}
+
+sub void vkErrorSemaphoreNotSubmitted(VkSemaphore semaphore) {
+  vkErrSemaphoreNotSubmitted(semaphore)
 }
 
 sub void vkErrorInvalidEvent(VkEvent event) {

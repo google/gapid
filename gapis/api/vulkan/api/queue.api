@@ -113,9 +113,16 @@ cmd VkResult vkQueueSubmit(
           wait_semaphores_all_valid.b = false
           vkErrorInvalidSemaphore(ws)
         } else {
-          LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-          = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-            Unsignal,    ws,    null, as!VkFence(0))
+          semaphore := Semaphores[ws]
+
+          if(semaphore.SubmitCount == 0) {
+            vkErrorSemaphoreNotSubmitted(ws)
+          } else {
+            LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+            = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+              Unsignal,    ws,    null, as!VkFence(0))
+            semaphore.SubmitCount = semaphore.SubmitCount - 1
+          }
         }
       }
     }
@@ -206,6 +213,8 @@ cmd VkResult vkQueueSubmit(
           signal_semaphores_all_valid.b = false
           vkErrorInvalidSemaphore(ss)
         } else {
+          semaphore := Semaphores[ss]
+          semaphore.SubmitCount = semaphore.SubmitCount + 1
           LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
           = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
             Signal,      ss,  null, as!VkFence(0))
