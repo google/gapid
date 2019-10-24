@@ -229,6 +229,11 @@ public class TraceView extends Composite
     updateScrollbars();
   }
 
+  @Override
+  public void onMarkChanged() {
+    canvas.redraw();
+  }
+
   private double lastZoom = 1;
   private void handleGesture(Event e) {
     switch (e.detail) {

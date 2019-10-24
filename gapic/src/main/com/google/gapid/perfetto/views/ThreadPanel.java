@@ -22,6 +22,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
@@ -37,6 +38,8 @@ import com.google.gapid.perfetto.views.State.Location;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Displays the thread state and slices of a thread.
@@ -362,6 +365,47 @@ public class ThreadPanel extends TrackPanel implements Selectable {
     }
   }
 
+  @Override
+  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts) {
+    int startDepth = (int)(area.y / SLICE_HEIGHT);
+    int endDepth = (int)((area.y + area.h) / SLICE_HEIGHT);
+    if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {
+      return;
+    }
+    if (((startDepth + 1) * SLICE_HEIGHT - area.y) / SLICE_HEIGHT < SELECTION_THRESHOLD) {
+      startDepth++;
+    }
+    if ((area.y + area.h - endDepth * SLICE_HEIGHT) / SLICE_HEIGHT < SELECTION_THRESHOLD) {
+      endDepth--;
+    }
+    if (startDepth > endDepth || !expanded && startDepth > 0) {
+      return;
+    }
+
+    if (startDepth == 0) {
+      updateTasks.add(transform(track.getStates(state.getQueryEngine(), ts), slices -> {
+        slices.stream().forEach(s ->
+            state.addMarkLocation(ThreadPanel.this, new Location(s.time, s.time + s.dur, -1)));
+        return null;
+      }));
+    }
+
+    startDepth = Math.max(0, startDepth - 1);
+    endDepth--;
+    if (endDepth >= 0) {
+      if (endDepth >= track.getThread().maxDepth) {
+        endDepth = Integer.MAX_VALUE;
+      }
+      updateTasks.add(transform(
+          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth), slices -> {
+            slices.stream().forEach(s -> state.addMarkLocation(
+                ThreadPanel.this, new Location(s.time, s.time + s.dur, s.depth)));
+            return null;
+          }));
+    }
+  }
+
+  @Override
   public void renderMarks(RenderContext ctx, double h) {
     if (state.getMarkLocations().containsKey(ThreadPanel.this)) {
       ctx.setForegroundColor(SWT.COLOR_BLACK);

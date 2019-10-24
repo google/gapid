@@ -22,6 +22,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -30,6 +31,8 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuSummaryTrack;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.Selection;
+
+import java.util.List;
 
 /**
  * Draws the CPU usage summary, aggregating the usage of all cores.
@@ -155,6 +158,16 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
       builder.add(Kind.Cpu, transform(CpuSummaryTrack.getSlices(state.getQueryEngine(), ts), r ->
           new CpuTrack.Slices(state, r)));
     }
+  }
+
+  @Override
+  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts) {
+    // TODO: mark selected CPU data point for CPU Summary Panel.
+  }
+
+  @Override
+  public void renderMarks(RenderContext ctx, double h) {
+ // TODO: mark selected CPU data point for CPU Summary Panel.
   }
 
   private static class HoverCard {

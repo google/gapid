@@ -24,6 +24,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.hueForCpu;
 import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -37,6 +38,8 @@ import com.google.gapid.perfetto.views.State.Location;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Draws the CPU usage or slices of a single core.
@@ -274,6 +277,17 @@ public class CpuPanel extends TrackPanel implements Selectable {
     }
   }
 
+  @Override
+  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts) {
+    updateTasks.add(transform(
+        CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts), slices -> {
+          slices.stream().forEach(s ->
+              state.addMarkLocation(CpuPanel.this, new Location(s.time, s.time + s.dur)));
+          return null;
+        }));
+  }
+
+  @Override
   public void renderMarks(RenderContext ctx, double h) {
     if (state.getMarkLocations().containsKey(CpuPanel.this)) {
       ctx.setForegroundColor(SWT.COLOR_BLACK);

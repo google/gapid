@@ -15,15 +15,21 @@
  */
 package com.google.gapid.perfetto.views;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
+import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.models.Selection;
+
+import java.util.List;
 
 /**
  * {@link Panel} that can contribute to the current selection. Use as a {@link Panel.Visitor}.
  */
 public interface Selectable {
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts);
+  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts);
+  public void renderMarks(RenderContext ctx, double h);
 
   public static enum Kind {
     // Order as shown in the UI.

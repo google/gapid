@@ -19,6 +19,8 @@ import static com.google.gapid.perfetto.views.State.MAX_ZOOM_SPAN_NSEC;
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -32,6 +34,9 @@ import com.google.gapid.perfetto.models.TrackConfig;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The main {@link Panel} containing all track panels. Shows a {@link TimelinePanel} at the top,
@@ -311,8 +316,13 @@ public class RootPanel extends Panel.Base implements State.Listener {
 
     Selection.CombiningBuilder builder = new Selection.CombiningBuilder();
     visit(Visitor.of(Selectable.class, (s, a) -> s.computeSelection(builder, a, ts)), selection);
-    selection = Area.NONE;
     state.setSelection(builder.build());
+
+    List<ListenableFuture<Void>> updateTasks = new ArrayList<>();
+    visit(Visitor.of(Selectable.class, (s, a) -> s.updateMarkLocations(updateTasks, a, ts)), selection);
+    state.setMarkLocations(Futures.allAsList(updateTasks));
+
+    selection = Area.NONE;
   }
 
   @Override

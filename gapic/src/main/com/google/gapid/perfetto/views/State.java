@@ -37,6 +37,7 @@ import com.google.gapid.util.Events;
 import org.eclipse.swt.widgets.Widget;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -242,6 +243,12 @@ public class State {
     listeners.fire().onSelectionChanged(selection);
   }
 
+  public void setMarkLocations(ListenableFuture<List<Void>> updateTasks) {
+    thenOnUiThread(updateTasks, $ -> {
+      listeners.fire().onMarkChanged();
+    });
+  }
+
   public void addMarkLocation(Panel panel, Location location) {
     this.markLocations.putIfAbsent(panel, new HashSet<Location>());
     this.markLocations.get(panel).add(location);
@@ -338,5 +345,6 @@ public class State {
     public default void onDataChanged() { /* do nothing */ }
     public default void onVisibleAreaChanged() { /* do nothing */ }
     public default void onSelectionChanged(Selection selection) { /* do nothing */}
+    public default void onMarkChanged() { /* do nothing */}
   }
 }
