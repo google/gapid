@@ -68,7 +68,7 @@ func (verb *pipeVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 		return log.Err(ctx, err, "Failed to get bound pipeline resource data")
 	}
 
-	return verb.printPipelineData(ctx, client, pipelineData, "")
+	return verb.printPipelineData(ctx, client, pipelineData)
 }
 
 func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Client, cmd *path.Command) (*api.Pipeline, error) {
@@ -115,33 +115,57 @@ func toString(dataval *api.DataValue) string {
 	return ""
 }
 
-func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, data *api.Pipeline, prefix string) error {
+func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, data *api.Pipeline) error {
 	w := tabwriter.NewWriter(os.Stdout, 4, 4, 0, ' ', 0)
 	defer w.Flush()
 
-	fmt.Fprintf(w, "%s├── %s: \n", prefix, data.PipelineType)
+	fmt.Fprintf(w, "└── %s: \n", data.PipelineType)
 
-	prefix = prefix + "│   "
+	prefix := "│   "
 
 	for i, stage := range data.Stages {
 		if i == len(data.Stages)-1 {
-			fmt.Fprintf(w, "%s└── %s: \n", prefix, stage.StageName)
+			fmt.Fprintf(w, "    └── %s: \n", stage.StageName)
+			prefix = "    "
 		} else {
-			fmt.Fprintf(w, "%s├── %s: \n", prefix, stage.StageName)
+			fmt.Fprintf(w, "    ├── %s: \n", stage.StageName)
 		}
 
 		for j, group := range stage.Groups {
+			groupPrefix := "│   "
 			if j == len(stage.Groups)-1 {
-				fmt.Fprintf(w, "%s%s└── %s: \n", prefix, prefix, group.GroupName)
+				fmt.Fprintf(w, "    %s└── %s: \n", prefix, group.GroupName)
+				groupPrefix = prefix
 			} else {
-				fmt.Fprintf(w, "%s%s├── %s: \n", prefix, prefix, group.GroupName)
+				fmt.Fprintf(w, "    %s├── %s: \n", prefix, group.GroupName)
 			}
 
 			if group.Data != nil {
 				switch x := group.Data.(type) {
 				case *api.DataGroup_KeyValues:
 					for _, pair := range x.KeyValues.KeyValues {
-						fmt.Fprintf(w, "%s%s\t\t\t%s: %s\n", prefix, prefix, pair.Name, toString(pair.Value))
+						fmt.Fprintf(w, "    %s\t\t\t%s: %s\n", groupPrefix, pair.Name, toString(pair.Value))
+					}
+
+				case *api.DataGroup_Table:
+					fmt.Fprintf(w, "    %s%s\t\t", prefix, groupPrefix)
+					for k, header := range x.Table.Headers {
+						if k == len(x.Table.Headers)-1 {
+							fmt.Fprintf(w, "%s\n", header)
+						} else {
+							fmt.Fprintf(w, "%s\t\t", header)
+						}
+					}
+
+					for _, row := range x.Table.Rows {
+						fmt.Fprintf(w, "    %s%s\t\t", prefix, groupPrefix)
+						for k, val := range row.RowValues {
+							if k == len(x.Table.Headers)-1 {
+								fmt.Fprintf(w, "%s\n", toString(val))
+							} else {
+								fmt.Fprintf(w, "%s\t\t", toString(val))
+							}
+						}
 					}
 				}
 			}
