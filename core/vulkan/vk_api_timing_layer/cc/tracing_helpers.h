@@ -24,7 +24,7 @@
 namespace api_timing {
 
 struct TimingTypeTraits {
-  static constexpr const char* producer_name = "APITiming";
+  static constexpr const char* producer_name = "VulkanCPUTiming";
 };
 
 using Producer = core::PerfettoProducer<TimingTypeTraits>;

@@ -37,6 +37,8 @@ inline PerfettoInitializer::PerfettoInitializer() {
   perfetto::TracingInitArgs init_args;
   init_args.backends = perfetto::kSystemBackend;
   init_args.platform = perfetto::Platform::GetDefaultPlatform();
+  init_args.shmem_size_hint_kb = 32 * 1024;
+  init_args.shmem_page_size_hint_kb = 32;
   perfetto::Tracing::Initialize(init_args);
 }
 }

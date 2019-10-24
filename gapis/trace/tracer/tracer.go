@@ -19,6 +19,7 @@ import (
 	"io"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/layout"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/os/device/bind"
 	gapii "github.com/google/gapid/gapii/client"
@@ -68,6 +69,22 @@ type Tracer interface {
 
 	// GetDevice returns the device associated with this tracer
 	GetDevice() bind.Device
+}
+
+// LayersFromOptions Parses the perfetto options, and returns the required layers
+func LayersFromOptions(ctx context.Context, o *service.TraceOptions) []string {
+	ret := []string{}
+	if o.PerfettoConfig == nil {
+		return ret
+	}
+	for _, x := range o.PerfettoConfig.GetDataSources() {
+		if layer, err := layout.LayerFromDataSource(x.GetConfig().GetName()); err == nil {
+			if _, err := layout.LibraryFromLayerName(layer); err == nil {
+				ret = append(ret, layer)
+			}
+		}
+	}
+	return ret
 }
 
 // GapiiOptions converts the given TraceOptions to gapii.Options.

@@ -14,9 +14,9 @@
  * limitations under the License.
  */}}
 
-{{Global "Vulkan.LayerName" "APITiming"}}
 {{Global "Vulkan.LayerNamespace" "api_timing"}}
-{{Global "Vulkan.Layer Description" "API Timing Layer"}}
+{{Global "Vulkan.LayerName" "CPUTiming"}}
+{{Global "Vulkan.LayerDescription" "Vulkan API CPU Call Timing"}}
 
 {{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
 
@@ -27,7 +27,6 @@
 #include "core/vulkan/vk_api_timing_layer/cc/layer.h"
 #include "core/vulkan/vk_api_timing_layer/cc/tracing_helpers.h"
 #include "core/cc/timer.h"
-
 #include <cinttypes>
 
 namespace api_timing {

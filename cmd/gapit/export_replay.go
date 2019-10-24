@@ -275,7 +275,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 			"classes.dex",
 			path.Join("lib", abi, "libgapir.so"),
 			path.Join("lib", abi, "libVkLayer_VirtualSwapchain.so"),
-			path.Join("lib", abi, "libVkLayer_APITiming.so"),
+			path.Join("lib", abi, "libVkLayer_CPUTiming.so"),
 		}
 
 		for _, f := range files {

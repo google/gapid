@@ -18,12 +18,13 @@ import (
 	"archive/zip"
 	"bufio"
 	"context"
+	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/os/device"
-	"github.com/google/gapid/core/os/device/host"
 	"github.com/google/gapid/core/os/file"
 )
 
@@ -38,7 +39,7 @@ type LibraryType int
 const (
 	LibGraphicsSpy LibraryType = iota
 	LibVirtualSwapChain
-	LibApiTiming
+	LibCPUTiming
 )
 
 // FileLayout provides a unified way of accessing various Gapid binaries.
@@ -75,13 +76,23 @@ func withExecutablePlatformSuffix(exe string, os device.OSKind) string {
 var libTypeToName = map[LibraryType]string{
 	LibGraphicsSpy:      "libgapii",
 	LibVirtualSwapChain: "libVkLayer_VirtualSwapchain",
-	LibApiTiming:        "libVkLayer_ApiTiming",
+	LibCPUTiming:        "libVkLayer_CPUTiming",
+}
+
+var layerNameToLibType = map[string]LibraryType{
+	"VirtualSwapchain": LibVirtualSwapChain,
+	"CPUTiming":        LibCPUTiming,
+}
+
+var dataSourceNameToLayerName = map[string]string{
+	"VirtualSwapchain": "VirtualSwapchain",
+	"VulkanCPUTiming":  "CPUTiming",
 }
 
 var libTypeToJson = map[LibraryType]string{
 	LibGraphicsSpy:      "GraphicsSpyLayer.json",
 	LibVirtualSwapChain: "VirtualSwapchainLayer.json",
-	LibApiTiming:        "ApiTimingLayer.json",
+	LibCPUTiming:        "CPUTimingLayer.json",
 }
 
 func withLibraryPlatformSuffix(lib string, os device.OSKind) string {
@@ -100,6 +111,30 @@ func LibraryName(lib LibraryType, abi *device.ABI) string {
 	return withLibraryPlatformSuffix(libTypeToName[lib], abi.OS)
 }
 
+// Returns a layer name from a data source name
+func LayerFromDataSource(name string) (string, error) {
+	if v, ok := dataSourceNameToLayerName[name]; ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("Invalid Datasource Name %s", name)
+}
+
+// Returns a library from a given LayerName
+func LibraryFromLayerName(name string) (LibraryType, error) {
+	if v, ok := layerNameToLibType[name]; ok {
+		return v, nil
+	}
+	return -1, fmt.Errorf("Invalid Layer Name %s", name)
+}
+
+func AllLayers() []string {
+	s := []string{}
+	for k := range layerNameToLibType {
+		s = append(s, k)
+	}
+	return s
+}
+
 var abiToApk = map[device.Architecture]string{
 	device.ARMv7a: "gapid-armeabi-v7a.apk",
 	device.ARMv8a: "gapid-arm64-v8a.apk",
@@ -107,7 +142,16 @@ var abiToApk = map[device.Architecture]string{
 }
 
 func hostOS(ctx context.Context) device.OSKind {
-	return host.Instance(ctx).Configuration.OS.Kind
+	var dev device.OSKind
+	switch runtime.GOOS {
+	case "windows":
+		dev = device.Windows
+	case "linux":
+		dev = device.Linux
+	case "darwin":
+		dev = device.OSX
+	}
+	return dev
 }
 
 // pkgLayout is the file layout used when running executables from a packaged
@@ -212,13 +256,13 @@ var abiToApkPath = map[device.Architecture]string{
 var libTypeToLibPath = map[LibraryType]string{
 	LibGraphicsSpy:      "gapid/gapii/cc/libgapii",
 	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/libVkLayer_VirtualSwapchain",
-	LibApiTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/libVkLayer_ApiTiming",
+	LibCPUTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/libVkLayer_CPUTiming",
 }
 
 var libTypeToJsonPath = map[LibraryType]string{
 	LibGraphicsSpy:      "gapid/gapii/vulkan/vk_graphics_spy/cc/GraphicsSpyLayer.json",
 	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/VirtualSwapchainLayer.json",
-	LibApiTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/ApiTimingLayer.json",
+	LibCPUTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/CPUTimingLayer.json",
 }
 
 // RunfilesLayout creates a new layout based on the given runfiles manifest.

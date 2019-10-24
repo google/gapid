@@ -98,14 +98,14 @@ cc_library(
 )
 
 cc_dynamic_library(
-    name = "libVkLayer_APITiming",
+    name = "libVkLayer_CPUTiming",
     visibility = ["//visibility:public"],
     exports = "api_timing_desktop.exports",
     deps = [":cc"],
 )
 
 android_dynamic_library(
-    name = "libVkLayer_APITiming_android",
+    name = "libVkLayer_CPUTiming_android",
     visibility = ["//visibility:public"],
     exports = "api_timing_android.exports",
     deps = [":cc"],
@@ -114,7 +114,7 @@ android_dynamic_library(
 filegroup(
     name = "json",
     srcs = [
-        "APITimingLayer.json",
+        "CPUTimingLayer.json",
     ],
     visibility = ["//visibility:public"],
 )

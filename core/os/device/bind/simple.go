@@ -16,9 +16,11 @@ package bind
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 	"os"
 
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
@@ -80,6 +82,39 @@ func (b *Simple) FileContents(ctx context.Context, path string) (string, error) 
 		return "", err
 	}
 	return string(contents), nil
+}
+
+func (b *Simple) PushFile(ctx context.Context, sourcePath, destPath string) error {
+	in, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	return b.WriteFile(ctx, in, 0666, destPath)
+}
+
+func (b *Simple) TempDir(ctx context.Context) (string, app.Cleanup, error) {
+	fl, e := ioutil.TempDir("", "")
+	if e != nil {
+		return "", nil, e
+	}
+
+	return fl, func(ctx context.Context) {
+		os.RemoveAll(fl)
+	}, nil
+}
+
+func (b *Simple) WriteFile(ctx context.Context, contents io.Reader, mode os.FileMode, destPath string) error {
+	out, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE, mode)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, contents)
+	if err != nil {
+		return err
+	}
+	return out.Close()
 }
 
 // RemoveFile removes the given file from the device

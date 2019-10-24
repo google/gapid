@@ -175,8 +175,13 @@ message Configuration {
   PerfettoCapability perfetto_capability = 5;
 }
 
+message VulkanProfilingLayers {
+  bool cpu_timing = 1;
+}
+
 message PerfettoCapability {
   GPUProfiling gpu_profiling = 1;
+  VulkanProfilingLayers vulkan_profile_layers = 2;
 }
 
 message GPUProfiling {

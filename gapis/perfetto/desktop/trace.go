@@ -95,7 +95,7 @@ func (*localSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error)
 }
 
 func (r *remoteSetup) makeTempDir(ctx context.Context) (string, app.Cleanup, error) {
-	return r.device.MakeTempDir(ctx)
+	return r.device.TempDir(ctx)
 }
 
 func (l *localSetup) initializePerfetto(ctx context.Context, tempdir string) (string, error) {

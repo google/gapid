@@ -476,8 +476,22 @@ func (t *androidTracer) SetupTrace(ctx context.Context, o *service.TraceOptions)
 
 	var process tracer.Process
 	if o.Type == service.TraceType_Perfetto {
+		var layers []string
+		var packageABI *device.ABI
+		if pkg != nil {
+
+			d := pkg.Device.(adb.Device)
+			abi := pkg.ABI
+			if abi.SameAs(device.UnknownABI) {
+				abi = pkg.Device.Instance().GetConfiguration().PreferredABI(nil)
+			}
+			// For NativeBridge emulated devices opt for the native ABI of the emulator.
+			packageABI = d.NativeBridgeABI(ctx, abi)
+			layers = tracer.LayersFromOptions(ctx, o)
+		}
 		var perfettoCleanup app.Cleanup
-		process, perfettoCleanup, err = perfetto.Start(ctx, t.b, a, o)
+		log.E(ctx, "Setting up layers %+v: %+v", packageABI, layers)
+		process, perfettoCleanup, err = perfetto.Start(ctx, t.b, a, o, packageABI, layers)
 		cleanup = cleanup.Then(perfettoCleanup)
 	} else {
 		log.I(ctx, "Starting with options %+v", tracer.GapiiOptions(o))
