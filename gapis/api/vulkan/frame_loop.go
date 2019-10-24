@@ -1655,6 +1655,17 @@ func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuil
 
 func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder) error {
 
+	for toDestroy := range f.imageToDestroy {
+		log.D(ctx, "Destroy image %v which was created during loop.", toDestroy)
+		image := GetState(f.loopEndState).Images().Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyImage(image.Device(), toDestroy, memory.Nullptr))
+
+		imageViewUsers := image.Views().All()
+		for imageView := range imageViewUsers {
+			f.imageViewToDestroy[imageView] = true
+		}
+	}
+
 	if len(f.imageToRestore) == 0 {
 		return nil
 	}
@@ -1663,6 +1674,13 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 
 	imgPrimer := newImagePrimer(stateBuilder)
 	defer imgPrimer.Free()
+
+	for toCreate := range f.imageToCreate {
+		log.D(ctx, "Recreate image %v which was destroyed during loop.", toCreate)
+		image := GetState(f.loopStartState).Images().Get(toCreate)
+		stateBuilder.createImage(image, f.loopStartState, toCreate)
+		// For image creation, the associated image views changes are handled in the restore step below.
+	}
 
 	for dst, src := range f.imageToRestore {
 
@@ -1685,7 +1703,7 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
 		// These ImageViews will need to be (re)created, so add them to the maps to destroy and create in that order.
 		imageViewUsers := GetState(f.loopStartState).images.Get(dst).Views().All()
-		for imageView, _ := range imageViewUsers {
+		for imageView := range imageViewUsers {
 			f.imageViewToDestroy[imageView] = true
 			f.imageViewToCreate[imageView] = true
 		}
@@ -1710,7 +1728,7 @@ func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuil
 		stateBuilder.createImageView(imageView)
 
 		framebufferUsers := imageView.FramebufferUsers().All()
-		for framebuffer, _ := range framebufferUsers {
+		for framebuffer := range framebufferUsers {
 			f.framebufferToDestroy[framebuffer] = true
 			f.framebufferToCreate[framebuffer] = true
 		}
@@ -1800,7 +1818,7 @@ func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilde
 		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
 		// These descriptor sets will need to be (re)created, so add them to the maps to destroy, create and restore state in that order.
 		descriptorSetUsers := sampler.DescriptorUsers().All()
-		for descriptorSet, _ := range descriptorSetUsers {
+		for descriptorSet := range descriptorSetUsers {
 			f.descriptorSetToFree[descriptorSet] = true
 			f.descriptorSetToAllocate[descriptorSet] = true
 			f.descriptorSetChanged[descriptorSet] = true
