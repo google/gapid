@@ -143,9 +143,7 @@ public class TraceConfigDialog extends DialogBase {
 
   public static PerfettoConfig.TraceConfig.Builder getConfig(
       Settings settings, Device.PerfettoCapability caps) {
-    PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder()
-        .addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
-            .setSizeKb(BUFFER_SIZE));
+    PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
 
     if (settings.perfettoCpu) {
       // Record process names.
@@ -212,6 +210,16 @@ public class TraceConfigDialog extends DialogBase {
                   .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS));
     }
 
+    boolean largeBuffer = false;
+    if (settings.perfettoVulkanCPUTiming) {
+      largeBuffer = true;
+      config.addDataSourcesBuilder()
+        .getConfigBuilder()
+          .setName("VulkanCPUTiming");
+    }
+
+    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
+      .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE));
     return config;
   }
 
@@ -256,6 +264,7 @@ public class TraceConfigDialog extends DialogBase {
     private final Button bat;
     private final Label[] batLabels;
     private final Spinner batRate;
+    private final Button vulkanCPUTiming;
 
     public InputArea(
         Composite parent, Settings settings, Theme theme, Device.PerfettoCapability caps) {
@@ -342,10 +351,21 @@ public class TraceConfigDialog extends DialogBase {
       batRate = createSpinner(batGroup, settings.perfettoBatteryRate, 250, 60000);
       batLabels[1] = createLabel(batGroup, "ms");
 
+      addSeparator();
+      Composite vulkanGroup = withLayoutData(
+        createComposite(this, new GridLayout(1, false)),
+        withIndents(new GridData(), GROUP_INDENT, 0));
+
+      if (caps.getVulkanProfileLayers().getCpuTiming()) {
+        vulkanCPUTiming = createCheckbox(this, "Vulkan CPU Timing", settings.perfettoVulkanCPUTiming, e -> updateVulkan());
+      } else {
+        vulkanCPUTiming = null;
+      }
       updateCpu();
       updateGpu();
       updateMem();
       updateBat();
+      updateVulkan();
     }
 
     public void update(Settings settings) {
@@ -369,6 +389,11 @@ public class TraceConfigDialog extends DialogBase {
       settings.perfettoMemRate = memRate.getSelection();
       settings.perfettoBattery = bat.getSelection();
       settings.perfettoBatteryRate = batRate.getSelection();
+      if (vulkanCPUTiming != null) {
+        settings.perfettoVulkanCPUTiming = vulkanCPUTiming.getSelection();
+      } else {
+        settings.perfettoVulkanCPUTiming = false;
+      }
     }
 
     private void addSeparator() {
@@ -401,6 +426,9 @@ public class TraceConfigDialog extends DialogBase {
           label.setEnabled(countersEnabled);
         }
       }
+    }
+
+    private void updateVulkan() {
     }
 
     private void updateMem() {

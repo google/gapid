@@ -1,0 +1,15 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "CPUTiming",
+    "type": "GLOBAL",
+    "library_path": "<library>",
+    "api_version": "1.0.5",
+    "implementation_version": "1",
+    "description": "Vulkan API CPU Call Timing",
+    "functions": {
+      "vkGetDeviceProcAddr": "CPUTimingGetDeviceProcAddr",
+      "vkGetInstanceProcAddr": "CPUTimingGetInstanceProcAddr"
+    }
+  }
+}

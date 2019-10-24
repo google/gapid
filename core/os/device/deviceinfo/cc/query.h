@@ -101,6 +101,8 @@ bool vkPhysicalDevices(
     device::VulkanDriver*, size_t vk_inst = 0,
     std::function<void*(size_t, const char*)> get_inst_proc_addr = nullptr);
 
+device::VulkanProfilingLayers* get_vulkan_profiling_layers();
+
 // hasVulkanLoader returns true if Vulkan loader is found, otherwise returns
 // false.
 bool hasVulkanLoader();

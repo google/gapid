@@ -63,6 +63,17 @@ func CloneEnv() *Env {
 	return out
 }
 
+func (e *Env) Apply() error {
+	os.Clearenv()
+	for _, evar := range e.vars {
+		k, v := splitEnvVar(evar)
+		if err := os.Setenv(k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Vars returns a copy of the full list of environment variables.
 func (e *Env) Vars() []string {
 	if e == nil {

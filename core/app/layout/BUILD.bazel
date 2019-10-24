@@ -27,7 +27,6 @@ go_library(
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
         "//core/os/device:go_default_library",
-        "//core/os/device/host:go_default_library",
         "//core/os/file:go_default_library",
     ],
 )

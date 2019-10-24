@@ -1,5 +1,5 @@
-APITimingGetDeviceProcAddr
-APITimingGetInstanceProcAddr
+CPUTimingGetDeviceProcAddr
+CPUTimingGetInstanceProcAddr
 vkEnumerateInstanceLayerProperties
 vkEnumerateInstanceExtensionProperties
 vkEnumerateDeviceLayerProperties

@@ -59,7 +59,7 @@ type stats struct {
 	FileSizes            struct { // in bytes
 		LibGAPII                   int `name:"libgapii"`
 		LibVkLayerVirtualSwapchain int `name:"libVkLayer_VirtualSwapchain"`
-		LibVkLayerApiTiming        int `name:"libVkLayer_ApiTiming"`
+		LibVkLayerCPUTiming        int `name:"libVkLayer_CPUTiming"`
 		GAPIDARMv8aAPK             int `name:"gapid-arm64-v8a"`
 		GAPIDARMv7aAPK             int `name:"gapid-armeabi-v7a"`
 		GAPIDX86APK                int `name:"gapid-x86"`
@@ -140,7 +140,7 @@ func run(ctx context.Context) error {
 		}{
 			{filepath.Join(pkgDir, "lib", dllExt("libgapii")), &r.FileSizes.LibGAPII},
 			{filepath.Join(pkgDir, "lib", dllExt("libVkLayer_VirtualSwapchain")), &r.FileSizes.LibVkLayerVirtualSwapchain},
-			{filepath.Join(pkgDir, "lib", dllExt("libVkLayer_ApiTiming")), &r.FileSizes.LibVkLayerApiTiming},
+			{filepath.Join(pkgDir, "lib", dllExt("libVkLayer_CPUTiming")), &r.FileSizes.LibVkLayerCPUTiming},
 			{filepath.Join(pkgDir, "gapid-armeabi-v7a.apk"), &r.FileSizes.GAPIDARMv7aAPK},
 			{filepath.Join(pkgDir, "gapid-arm64-v8a.apk"), &r.FileSizes.GAPIDARMv8aAPK},
 			{filepath.Join(pkgDir, "gapid-x86.apk"), &r.FileSizes.GAPIDX86APK},

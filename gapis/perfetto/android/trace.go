@@ -28,7 +28,9 @@ import (
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/android/adb"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/file"
+	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapis/service"
 )
 
@@ -59,8 +61,21 @@ func hasRenderStageEnabled(perfettoConfig *perfetto_pb.TraceConfig) bool {
 	return false
 }
 
-func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName string, perfettoConfig *perfetto_pb.TraceConfig) (app.Cleanup, error) {
+func setupVulkanLayers(ctx context.Context, d adb.Device, packageName string, abi *device.ABI, layers []string) (app.Cleanup, error) {
+	packages := []string{gapidapk.PackageName(abi)}
+
+	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, layers, true)
+	if err != nil {
+		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
+	}
+	return cleanup, nil
+}
+
+func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName string, perfettoConfig *perfetto_pb.TraceConfig, abi *device.ABI, layers []string) (app.Cleanup, error) {
 	if !hasRenderStageEnabled(perfettoConfig) {
+		if abi != nil {
+			return setupVulkanLayers(ctx, d, packageName, abi, layers)
+		}
 		return nil, nil
 	}
 	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
@@ -76,7 +91,14 @@ func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName
 	if res, err := d.Shell("pm", "path", driverPackageName).Call(ctx); err != nil || res == "" {
 		return nil, log.Err(ctx, err, "No driver package found.")
 	}
-	cleanup, err := android.SetupLayer(ctx, d, packageName, driverPackageName, renderStageVulkanLayerName, true)
+	packages := []string{driverPackageName}
+	enabledLayers := []string{renderStageVulkanLayerName}
+	if abi != nil {
+		packages = append(packages, gapidapk.PackageName(abi))
+		enabledLayers = append(enabledLayers, layers...)
+	}
+
+	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, enabledLayers, true)
 	if err != nil {
 		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
 	}
@@ -84,10 +106,16 @@ func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName
 }
 
 // Start optional starts an app and sets up a Perfetto trace
-func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions) (*Process, app.Cleanup, error) {
+func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions, abi *device.ABI, layers []string) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
 
 	var cleanup app.Cleanup
+	if abi != nil {
+		_, err := gapidapk.EnsureInstalled(ctx, d, abi)
+		if err != nil {
+			return nil, cleanup, err
+		}
+	}
 	if a != nil {
 		ctx = log.V{
 			"package":  a.Package.Name,
@@ -95,7 +123,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 		// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
 		var err error
-		cleanup, err = setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig)
+		cleanup, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig, abi, layers)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err
 		}

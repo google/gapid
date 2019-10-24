@@ -154,6 +154,15 @@ void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
     query::abi(i, configuration->add_abis());
   }
 
+  auto perfetto_config = new PerfettoCapability();
+  auto vulkan_performance_layers = query::get_vulkan_profiling_layers();
+  if (vulkan_performance_layers) {
+    perfetto_config->set_allocated_vulkan_profile_layers(
+        vulkan_performance_layers);
+  }
+
+  configuration->set_allocated_perfetto_capability(perfetto_config);
+
   // Instance
   auto instance = new Instance();
   instance->set_name(query::instanceName());

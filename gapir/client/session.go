@@ -90,7 +90,7 @@ func (s *session) newRemote(ctx context.Context, d remotessh.Device, abi *device
 	authTokenFile, authToken := auth.GenTokenFile()
 	defer os.Remove(authTokenFile)
 
-	otherdir, cleanup, err := d.MakeTempDir(ctx)
+	otherdir, cleanup, err := d.TempDir(ctx)
 	if err != nil {
 		return err
 	}

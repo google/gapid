@@ -62,12 +62,15 @@
 
 #include <unordered_map>
 #include <vector>
+
 #include "vulkan/vulkan.h"
 #include "core/vulkan/layer_helpers/vulkan_layer_helpers.h"
 
 #include "core/vulkan/layer_helpers/threading.h"
 
+
 namespace {{(Global "Vulkan.LayerNamespace")}} {
+
 typedef const VkAllocationCallbacks* AllocationCallbacks;
 typedef size_t size_val;
 ¶
@@ -98,6 +101,7 @@ struct InstanceData {
   PFN_vkEnumeratePhysicalDevices enumerate_physical_devices;
   PFN_vkCreateDevice create_device;
   PFN_vkDestroyInstance destroy_instance;
+  PFN_vkEnumerateDeviceExtensionProperties enumerate_device_extension_properties;
   InstanceFunctions* functions;
 };
 ¶
@@ -230,6 +234,7 @@ static const VkLayerProperties global_layer_properties[] = { {
 
 VKAPI_ATTR VkResult VKAPI_CALL get_layer_properties(uint32_t *pPropertyCount,
                               VkLayerProperties *pProperties) {
+
   if (pProperties == NULL) {
     *pPropertyCount = 1;
     return VK_SUCCESS;
@@ -238,6 +243,7 @@ VKAPI_ATTR VkResult VKAPI_CALL get_layer_properties(uint32_t *pPropertyCount,
   if (pPropertyCount == 0) {
     return VK_INCOMPLETE;
   }
+
   *pPropertyCount = 1;
   memcpy(pProperties, global_layer_properties, sizeof(global_layer_properties));
   return VK_SUCCESS;
@@ -278,19 +284,42 @@ vkEnumerateDeviceLayerProperties(VkPhysicalDevice device, uint32_t *pPropertyCou
 
 // Overload vkEnumerateInstanceExtensionProperties
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+enumerate_instance_layer_properties(
+    const char *, uint32_t * pPropertyCount,
+    VkExtensionProperties *) {
+    *pPropertyCount = 0;
+    return VK_SUCCESS;
+}
+// Overload vkEnumerateInstanceExtensionProperties
+VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateInstanceExtensionProperties(
-    const char * /*pLayerName*/, uint32_t *pPropertyCount,
-    VkExtensionProperties * /*pProperties*/) {
-  *pPropertyCount = 0;
-  return VK_SUCCESS;
+    const char * pLayerName, uint32_t *pPropertyCount,
+    VkExtensionProperties * pProperties) {
+  PFN_vkEnumerateInstanceExtensionProperties next = &enumerate_instance_layer_properties;
+  {{if Macro "NameInOverrides" "vkEnumerateInstanceExtensionProperties"}}
+    return (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumerateInstanceExtensionProperties(next, pLayerName, pPropertyCount, pProperties);
+  {{else}}
+    return next(pLayerName, pPropertyCount, pProperties);
+  {{end}}
 }
 
 // Overload vkEnumerateDeviceExtensionProperties
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice device,
-    const char * /*pLayerName*/, uint32_t *pPropertyCount,
-    VkExtensionProperties * /*pProperties*/) {
+    const char * pLayerName, uint32_t *pPropertyCount,
+    VkExtensionProperties * pProperties) {
+
+  if (!device) { return VK_SUCCESS; }
+  auto instance = GetGlobalContext().GetVkPhysicalDeviceData(device)->instance;
+
+  PFN_vkEnumerateDeviceExtensionProperties next = GetGlobalContext().GetVkInstanceData(instance)->enumerate_device_extension_properties;
+  {{if Macro "NameInOverrides" "vkEnumerateDeviceExtensionProperties"}}
+    return (VkResult){{(Global "Vulkan.LayerNamespace")}}::vkEnumerateDeviceExtensionProperties(next, device, pLayerName, pPropertyCount, pProperties);
+  {{else}}
+    return next(device, pLayerName, pPropertyCount, pProperties);
+  {{end}}
+
   *pPropertyCount = 0;
   return VK_SUCCESS;
 }
@@ -345,10 +374,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
   InstanceData data;
   data.get_instance_proc_addr = get_instance_proc_addr;
   data.enumerate_physical_devices = enumerate_physical_devices;
+
   data.create_device = reinterpret_cast<PFN_vkCreateDevice>(
       get_instance_proc_addr(*pInstance, "vkCreateDevice"));
   data.destroy_instance = reinterpret_cast<PFN_vkDestroyInstance>(
       get_instance_proc_addr(*pInstance, "vkDestroyInstance"));
+  data.enumerate_device_extension_properties = enumerate_device_extension_properties;
   data.functions = new InstanceFunctions();
 
 #define GET_PROC(name) \
@@ -387,6 +418,32 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
     }
     (*instances)[*pInstance] = data;
   }
+
+
+  {
+      auto instance = *pInstance;
+      std::vector<VkPhysicalDevice> devices;
+      uint32_t device_count = 0;
+
+      enumerate_physical_devices(*pInstance, &device_count, nullptr);
+      devices.resize(device_count);
+      enumerate_physical_devices(*pInstance, &device_count, devices.data());
+
+      auto instanceFunctions = GetGlobalContext().GetVkInstanceData(instance)->functions;
+      auto create_device = GetGlobalContext().GetVkInstanceData(instance)->create_device;
+      auto physicalDevices = GetGlobalContext().GetVkPhysicalDeviceMap();
+      for (size_t i = 0; i < device_count; ++i) {
+        PhysicalDeviceData dat;
+        dat.create_device = create_device;
+        dat.functions = instanceFunctions;
+        dat.instance = instance;
+        if (physicalDevices->find(devices[i]) != physicalDevices->end()) {
+          continue;
+        }
+        (*physicalDevices)[devices[i]] = dat;
+      }
+    }
+
   return result;
 }
 
@@ -512,11 +569,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
 
   return res;
 }
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+vkGetDeviceProcAddr(VkDevice device, const char *pName);
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
     const VkInstance  instance,
     const char* pName) {
-
     if (strcmp(pName, "vkCreateInstance") == 0) {
       return (PFN_vkVoidFunction)(internal::vkCreateInstance);
     }
@@ -526,10 +584,21 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
     if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0 ) {
       return (PFN_vkVoidFunction)(internal::vkEnumerateInstanceLayerProperties);
     }
+
+    if (strcmp(pName, "vkEnumerateDeviceExtensionProperties") == 0) {
+      return (PFN_vkVoidFunction)internal::vkEnumerateDeviceExtensionProperties;
+    }
+    if (strcmp(pName, "vkGetInstanceProcAddr") == 0) {
+      return (PFN_vkVoidFunction)internal::vkGetInstanceProcAddr;
+    }
+
+    if (strcmp(pName, "vkGetDeviceProcAddr") == 0) {
+      return (PFN_vkVoidFunction)internal::vkGetDeviceProcAddr;
+    }
+
   if (instance == 0) {
     return nullptr;
   }
-
 
 if (strcmp(pName, "vkEnumeratePhysicalDevices") == 0) {
   return (PFN_vkVoidFunction)(internal::vkEnumeratePhysicalDevices);
@@ -805,6 +874,14 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
   if (strcmp(pName, "vkFreeCommandBuffers") == 0) {
     return (PFN_vkVoidFunction)internal::vkFreeCommandBuffers;
   }
+  if (strcmp(pName, "vkEnumerateDeviceExtensionProperties") == 0) {
+    return (PFN_vkVoidFunction)internal::vkEnumerateDeviceExtensionProperties;
+  }
+
+  if (strcmp(pName, "vkGetDeviceProcAddr") == 0) {
+    return (PFN_vkVoidFunction)internal::vkGetDeviceProcAddr;
+  }
+
 
 #define INTERCEPT(func)         \
   if (strcmp(pName, #func) == 0) \

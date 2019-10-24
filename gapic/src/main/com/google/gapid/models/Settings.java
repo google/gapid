@@ -107,6 +107,7 @@ public class Settings {
   public int perfettoMemRate = 10;
   public boolean perfettoBattery = true;
   public int perfettoBatteryRate = 250;
+  public boolean perfettoVulkanCPUTiming = false;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -276,6 +277,7 @@ public class Settings {
     perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
     perfettoBattery = getBoolean(properties, "perfetto.battery", perfettoBattery);
     perfettoBatteryRate = getInt(properties, "perfetto.battery.rate", perfettoBatteryRate);
+    perfettoVulkanCPUTiming = getBoolean(properties, "perfetto.vulkan.cpu_timing", perfettoVulkanCPUTiming);
   }
 
   private void updateTo(Properties properties) {
@@ -334,6 +336,7 @@ public class Settings {
     properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
     properties.setProperty("perfetto.battery", Boolean.toString(perfettoBattery));
     properties.setProperty("perfetto.battery.rate", Integer.toString(perfettoBatteryRate));
+    properties.setProperty("perfetto.vulkan.cpu_timing", Boolean.toString(perfettoVulkanCPUTiming));
   }
 
   private static Point getPoint(Properties properties, String name) {

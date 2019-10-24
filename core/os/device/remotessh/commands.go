@@ -165,9 +165,9 @@ func (b binding) createWindowsTempDirectory(ctx context.Context) (string, app.Cl
 	return "", nil, fmt.Errorf("Windows remote targets are not yet supported.")
 }
 
-// MakeTempDir creates a temporary directory on the remote machine. It returns the
+// TempDir creates a temporary directory on the remote machine. It returns the
 // full path, and a function that can be called to clean up the directory.
-func (b binding) MakeTempDir(ctx context.Context) (string, app.Cleanup, error) {
+func (b binding) TempDir(ctx context.Context) (string, app.Cleanup, error) {
 	switch b.os {
 	case device.Linux, device.OSX, device.Stadia:
 		return b.createPosixTempDirectory(ctx)
