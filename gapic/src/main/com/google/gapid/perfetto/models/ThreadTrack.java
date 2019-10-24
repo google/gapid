@@ -210,7 +210,7 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     }
 
     @Override
-    public void mark(State uiState) {
+    public void markTime(State uiState) {
       if (dur > 0) {
         uiState.setHighlight(new TimeSpan(time, time + dur));
       }

@@ -32,6 +32,7 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
+import com.google.gapid.perfetto.views.State.Location;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -158,6 +159,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
       }
     }
 
+    renderMarks(ctx, h);
+
     if (hoveredThread != null) {
       ctx.setBackgroundColor(colors().hoverBackground);
       ctx.fillRect(mouseXpos + HOVER_MARGIN, 0, hoveredWidth + 2 * HOVER_PADDING, h);
@@ -200,6 +203,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
         long utid = data.utids[i];
+        long start = data.starts[i];
+        long end = data.ends[i];
 
         return new Hover() {
           @Override
@@ -222,7 +227,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
           public boolean click() {
             state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
             state.setSelectedCpuSliceIds(utid);
-            return false;
+            state.addMarkLocation(CpuPanel.this, new Location(start, end));
+            return true;
           }
         };
       }
@@ -265,6 +271,17 @@ public class CpuPanel extends TrackPanel implements Selectable {
       builder.add(Kind.Cpu, transform(
           CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts),
           r -> new CpuTrack.Slices(state, r)));
+    }
+  }
+
+  public void renderMarks(RenderContext ctx, double h) {
+    if (state.getMarkLocations().containsKey(CpuPanel.this)) {
+      ctx.setForegroundColor(SWT.COLOR_BLACK);
+      for (Location location : state.getMarkLocations().get(CpuPanel.this)) {
+        double rectStart = state.timeToPx(location.xTimeSpan.start);
+        double rectWidth = Math.max(1, state.timeToPx(location.xTimeSpan.end) - rectStart);
+        ctx.drawRect(rectStart, 0, rectWidth, h, 3);
+      }
     }
   }
 

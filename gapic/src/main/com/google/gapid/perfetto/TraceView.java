@@ -160,7 +160,7 @@ public class TraceView extends Composite
         case 'm': {
           Selection selection = state.getSelection();
           if (selection != null) {
-            selection.mark(state);
+            selection.markTime(state);
             redraw = true;
           }
           break;

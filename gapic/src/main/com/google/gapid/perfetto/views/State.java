@@ -18,10 +18,12 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.Selection;
@@ -34,6 +36,9 @@ import com.google.gapid.util.Events;
 
 import org.eclipse.swt.widgets.Widget;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -57,6 +62,7 @@ public class State {
   private long resolution;
   private Selection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
+  private Map<Panel, Set<Location>> markLocations = Maps.newHashMap();  // For selected selectables.
   private long selectedUpid = -1;   // For a selected CPU slice.
   private long selectedUtid = -1;   // For a selected CPU slice.
   private TimeSpan highlight = TimeSpan.ZERO;
@@ -75,6 +81,7 @@ public class State {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.selection = null;
+    this.markLocations = Maps.newHashMap();
     this.selectedUpid = -1;
     this.selectedUtid = -1;
     this.highlight = TimeSpan.ZERO;
@@ -136,6 +143,14 @@ public class State {
 
   public Selection getSelection() {
     return selection;
+  }
+
+  public Map<Panel, Set<Location>> getMarkLocations() {
+    return markLocations;
+  }
+
+  public boolean shouldRemoveMarks(Map<Panel, Set<Location>> oldMarks) {
+    return oldMarks.size() > 0 && getMarkLocations().size() == 0;
   }
 
   public long getSelectedUpid() {
@@ -206,6 +221,8 @@ public class State {
   }
 
   public void resetSelections() {
+    setSelection((Selection)null);
+    this.markLocations = Maps.newHashMap();
     this.selectedUpid = -1;
     this.selectedUtid = -1;
   }
@@ -223,6 +240,11 @@ public class State {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
     listeners.fire().onSelectionChanged(selection);
+  }
+
+  public void addMarkLocation(Panel panel, Location location) {
+    this.markLocations.putIfAbsent(panel, new HashSet<Location>());
+    this.markLocations.get(panel).add(location);
   }
 
   public void setSelectedCpuSliceIds(long utid) {
@@ -269,6 +291,37 @@ public class State {
       resolution = 0;
     } else {
       resolution = Math.round(Math.pow(10, Math.floor(Math.log10(nanosPerPx))));
+    }
+  }
+
+  public static class Location {
+    public TimeSpan xTimeSpan;
+    public double yOffset;
+
+    public Location(long start, long end) {
+      this.xTimeSpan = new TimeSpan(start, end);
+    }
+
+    public Location(long start, long end, double yOffset) {
+      this.xTimeSpan = new TimeSpan(start, end);
+      this.yOffset = yOffset;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof Location)) {
+        return false;
+      }
+      Location other = (Location) o;
+      return xTimeSpan.equals(other.xTimeSpan) && yOffset == other.yOffset;
+    }
+
+    @Override
+    public int hashCode() {
+      return xTimeSpan.hashCode() ^ Double.hashCode(yOffset);
     }
   }
 

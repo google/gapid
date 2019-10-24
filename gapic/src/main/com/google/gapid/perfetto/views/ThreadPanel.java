@@ -32,6 +32,7 @@ import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.ThreadTrack;
+import com.google.gapid.perfetto.views.State.Location;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -193,6 +194,8 @@ public class ThreadPanel extends TrackPanel implements Selectable {
         }
       }
 
+      renderMarks(ctx, h);
+
       if (hoveredTitle != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(
@@ -233,6 +236,8 @@ public class ThreadPanel extends TrackPanel implements Selectable {
           hoveredTitle = data.schedStates[i].label;
           hoveredCategory = "";
           hoveredSize = m.measure(Fonts.Style.Normal, hoveredTitle);
+          long start = data.schedStarts[i];
+          long end = data.schedEnds[i];
 
           return new Hover() {
             @Override
@@ -260,7 +265,8 @@ public class ThreadPanel extends TrackPanel implements Selectable {
                     data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
                     data.schedStates[index]));
               }
-              return false;
+              state.addMarkLocation(ThreadPanel.this, new Location(start, end, -1));
+              return true;
             }
           };
         }
@@ -286,6 +292,9 @@ public class ThreadPanel extends TrackPanel implements Selectable {
           mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
               (1 + track.getThread().maxDepth) * SLICE_HEIGHT - hoveredSize.h));
           long id = slices.ids[i];
+          long start = slices.starts[i];
+          long end = slices.ends[i];
+          long dpt = slices.depths[i];
 
           return new Hover() {
             @Override
@@ -308,8 +317,9 @@ public class ThreadPanel extends TrackPanel implements Selectable {
             public boolean click() {
               if (id >= 0) {
                 state.setSelection(track.getSlice(state.getQueryEngine(), id));
+                state.addMarkLocation(ThreadPanel.this, new Location(start, end, dpt));
               }
-              return false;
+              return true;
             }
           };
         }
@@ -349,6 +359,22 @@ public class ThreadPanel extends TrackPanel implements Selectable {
       builder.add(Kind.Thread, transform(
           track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
           SliceTrack.Slices::new));
+    }
+  }
+
+  public void renderMarks(RenderContext ctx, double h) {
+    if (state.getMarkLocations().containsKey(ThreadPanel.this)) {
+      ctx.setForegroundColor(SWT.COLOR_BLACK);
+      for (Location location : state.getMarkLocations().get(ThreadPanel.this)) {
+        double rectStart = state.timeToPx(location.xTimeSpan.start);
+        double rectWidth = Math.max(1, state.timeToPx(location.xTimeSpan.end) - rectStart);
+        double depth = location.yOffset;
+        if (depth == -1) {
+          ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, 2);
+        } else {
+          ctx.drawRect(rectStart, (1 + depth) * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, 2);
+        }
+      }
     }
   }
 }

@@ -37,7 +37,7 @@ import java.util.Map;
 public interface Selection {
   public String getTitle();
   public Composite buildUi(Composite parent, State state);
-  public default void mark(@SuppressWarnings("unused") State state) { /* do nothing */ }
+  public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
 
   public static class MultiSelection implements Selection {
@@ -62,10 +62,10 @@ public interface Selection {
     }
 
     @Override
-    public void mark(State state) {
+    public void markTime(State state) {
       // TODO: is this good enough?
       if (selections.length == 1) {
-        selections[0].mark(state);
+        selections[0].markTime(state);
       }
     }
 

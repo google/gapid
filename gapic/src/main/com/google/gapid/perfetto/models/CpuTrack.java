@@ -256,7 +256,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
 
     @Override
-    public void mark(State state) {
+    public void markTime(State state) {
       if (dur > 0) {
         state.setHighlight(new TimeSpan(time, time + dur));
       }

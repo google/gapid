@@ -239,24 +239,26 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public final long dur;
     public final String category;
     public final String name;
+    public final long depth;
     public final long stackId;
     public final long parentId;
     public final ArgSet args;
 
-    public Slice(long time, long dur, String category, String name, long stackId, long parentId,
-        ArgSet args) {
+    public Slice(long time, long dur, String category, String name, long depth, long stackId,
+        long parentId, ArgSet args) {
       this.time = time;
       this.dur = dur;
       this.category = category;
       this.name = name;
+      this.depth = depth;
       this.stackId = stackId;
       this.parentId = parentId;
       this.args = args;
     }
 
     public Slice(QueryEngine.Row row, ArgSet args) {
-      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getLong(6),
-          row.getLong(7), args);
+      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getLong(5),
+          row.getLong(6), row.getLong(7), args);
     }
 
     public ThreadInfo getThread() {
@@ -269,7 +271,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     }
 
     @Override
-    public void mark(State state) {
+    public void markTime(State state) {
       if (dur > 0) {
         state.setHighlight(new TimeSpan(time, time + dur));
       }

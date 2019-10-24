@@ -31,6 +31,7 @@ import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.GpuInfo;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.views.State.Location;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -110,6 +111,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
             Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
       }
 
+      renderMarks(ctx, h);
+
       if (hoveredTitle != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
         ctx.fillRect(
@@ -167,6 +170,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
             (1 + queue.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
         long id = data.ids[i];
+        long start = data.starts[i];
+        long end = data.ends[i];
 
         return new Hover() {
           @Override
@@ -189,8 +194,9 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
           public boolean click() {
             if (id >= 0) {
               state.setSelection(track.getSlice(state.getQueryEngine(), id));
+              state.addMarkLocation(GpuQueuePanel.this, new Location(start, end, depth));
             }
-            return false;
+            return true;
           }
         };
       }
@@ -223,6 +229,18 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
       builder.add(Kind.Gpu, transform(
           track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
           SliceTrack.Slices::new));
+    }
+  }
+
+  public void renderMarks(RenderContext ctx, double h) {
+    if (state.getMarkLocations().containsKey(GpuQueuePanel.this)) {
+      ctx.setForegroundColor(SWT.COLOR_BLACK);
+      for (Location location : state.getMarkLocations().get(GpuQueuePanel.this)) {
+        double rectStart = state.timeToPx(location.xTimeSpan.start);
+        double rectWidth = Math.max(1, state.timeToPx(location.xTimeSpan.end) - rectStart);
+        double depth = location.yOffset;
+        ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, 3);
+      }
     }
   }
 }
