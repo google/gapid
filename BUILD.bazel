@@ -287,15 +287,19 @@ test_suite(
 )
 
 test_suite(
-    name = "tests-gapis",
+    name = "tests-gapis-api",
     tests = [
         "//gapis/api:go_default_test",
         "//gapis/api/gles:go_default_test",
         "//gapis/api/test:go_default_test",
         "//gapis/api/transform:go_default_test",
         "//gapis/api/vulkan:go_default_test",
-        "//gapis/capture:go_default_test",
-        "//gapis/memory:go_default_test",
+    ],
+)
+
+test_suite(
+    name = "tests-gapis-replay-resolve",
+    tests = [
         "//gapis/replay/asm:go_default_test",
         "//gapis/replay/builder:go_default_test",
         "//gapis/replay/scheduler:go_default_test",
@@ -303,6 +307,14 @@ test_suite(
         "//gapis/resolve/dependencygraph:go_default_test",
         "//gapis/resolve/dependencygraph2:go_default_test",
         "//gapis/resolve/dependencygraph2/graph_visualization:go_default_test",
+    ],
+)
+
+test_suite(
+    name = "tests-gapis-other",
+    tests = [
+        "//gapis/capture:go_default_test",
+        "//gapis/memory:go_default_test",
         "//gapis/service/box:go_default_test",
         "//gapis/shadertools:go_default_test",
         "//gapis/shadertools/cc:tests",

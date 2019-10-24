@@ -48,7 +48,9 @@ function test {
 
 # Running all the tests in one go leads to an out-of-memory error on Kokoro, hence the division in smaller test sets
 test tests-core
-test tests-gapis
+test tests-gapis-api
+test tests-gapis-replay-resolve
+test tests-gapis-other
 test tests-gapir
 test tests-gapil
 test tests-general
