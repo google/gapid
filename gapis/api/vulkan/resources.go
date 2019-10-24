@@ -1038,6 +1038,47 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 }
 
 func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
+	bindings := p.VertexInputState().BindingDescriptions()
+
+	bindingRows := make([]*api.Row, bindings.Len())
+	for i, index := range bindings.Keys() {
+		binding := bindings.Get(index)
+
+		bindingRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue(binding.Binding()),
+				api.CreatePoDDataValue(binding.Stride()),
+				api.CreateEnumDataValue(uint64(binding.InputRate()), binding.InputRate().String()),
+			},
+		}
+	}
+
+	vertexBindingsTable := &api.Table{
+		Headers: []string{"Binding", "Stride", "Vertex Input Rate"},
+		Rows:    bindingRows,
+	}
+
+	attributes := p.VertexInputState().AttributeDescriptions()
+
+	attributeRows := make([]*api.Row, attributes.Len())
+	for i, index := range attributes.Keys() {
+		attribute := attributes.Get(index)
+
+		attributeRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue(attribute.Location()),
+				api.CreatePoDDataValue(attribute.Binding()),
+				api.CreateEnumDataValue(uint64(attribute.Fmt()), attribute.Fmt().String()),
+				api.CreatePoDDataValue(attribute.Offset()),
+			},
+		}
+	}
+
+	vertexAttributesTable := &api.Table{
+		Headers: []string{"Location", "Binding", "Format", "Offset"},
+		Rows:    attributeRows,
+	}
+
 	assemblyList := &api.KeyValuePairList{}
 	assemblyList = assemblyList.AppendKeyValuePair("Topology",
 		api.CreateEnumDataValue(uint64(p.InputAssemblyState().Topology()), p.InputAssemblyState().Topology().String()))
@@ -1047,10 +1088,12 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Vertex Bindings",
+			Data:      &api.DataGroup_Table{vertexBindingsTable},
 		},
 
 		&api.DataGroup{
 			GroupName: "Vertex Attributes",
+			Data:      &api.DataGroup_Table{vertexAttributesTable},
 		},
 
 		&api.DataGroup{
