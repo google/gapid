@@ -48,6 +48,7 @@ public class Keyboard {
       } else {
         down.remove(e.keyCode);
         if (down.isEmpty()) {
+          onKey.accept(this); // notify listener that no more keys are down.
           scheduled.incrementAndGet(); // cancel any next onKey.
         }
       }
