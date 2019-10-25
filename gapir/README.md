@@ -221,6 +221,12 @@ a jump instruction can jump to this instruction and start execution from there.
 Jump to the instruction specified by the jump label and start execution from there
 if the value on the top of the stack is not zero. Otherwise it is a Nop.
 
+### `JUMPZ(value)` [no change]
+`<code:6> <value:26>`
+
+Jump to the instruction specified by the jump label and start execution from there
+if the value on the top of the stack is zero. Otherwise it is a Nop.
+
 ### `NOTIFICATION()` [-2 (uint32_t, pointer)]
 `<code:6> <padding:26>`
 
