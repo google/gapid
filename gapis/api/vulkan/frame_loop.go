@@ -162,6 +162,9 @@ type frameLoop struct {
 	renderPassToDestroy map[VkRenderPass]bool
 	renderPassToCreate  map[VkRenderPass]bool
 
+	queryPoolToDestroy map[VkQueryPool]bool
+	queryPoolToCreate  map[VkQueryPool]bool
+
 	commandPoolToDestroy map[VkCommandPool]bool
 	commandPoolToCreate  map[VkCommandPool]bool
 
@@ -273,6 +276,9 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		renderPassToDestroy: make(map[VkRenderPass]bool),
 		renderPassToCreate:  make(map[VkRenderPass]bool),
+
+		queryPoolToDestroy: make(map[VkQueryPool]bool),
+		queryPoolToCreate:  make(map[VkQueryPool]bool),
 
 		commandPoolToDestroy: make(map[VkCommandPool]bool),
 		commandPoolToCreate:  make(map[VkCommandPool]bool),
@@ -899,6 +905,23 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				f.renderPassToCreate[renderPass] = true
 			}
 
+		// QueryPool(s)
+		case *VkCreateQueryPool:
+			vkCmd := cmd.(*VkCreateQueryPool)
+			queryPool := vkCmd.PQueryPool().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "QueryPool %v created", queryPool)
+			f.queryPoolToDestroy[queryPool] = true
+
+		case *VkDestroyQueryPool:
+			vkCmd := cmd.(*VkDestroyQueryPool)
+			queryPool := vkCmd.QueryPool()
+			log.D(ctx, "QueryPool %v destroyed", queryPool)
+			if _, ok := f.queryPoolToDestroy[queryPool]; ok {
+				delete(f.queryPoolToDestroy, queryPool)
+			} else {
+				f.queryPoolToCreate[queryPool] = true
+			}
+
 		// CommandPool(s)
 		case *VkCreateCommandPool:
 			vkCmd := cmd.(*VkCreateCommandPool)
@@ -1315,6 +1338,10 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	}
 
 	if err := f.resetRenderPasses(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetQueryPools(ctx, stateBuilder); err != nil {
 		return err
 	}
 
@@ -2097,6 +2124,25 @@ func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBu
 		// Write the commands needed to recreate the destroyed object
 		renderPass := GetState(f.loopStartState).renderPasses.Get(toCreate)
 		stateBuilder.createRenderPass(renderPass)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetQueryPools(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every QueryPools that we need to destroy at the end of the loop...
+	for toDestroy := range f.queryPoolToDestroy {
+		// Write the command to delete the created object
+		queryPool := GetState(f.loopEndState).queryPools.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyQueryPool(queryPool.Device(), queryPool.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every QueryPools that we need to create at the end of the loop...
+	for toCreate := range f.queryPoolToCreate {
+		// Write the commands needed to recreate the destroyed object
+		queryPool := GetState(f.loopStartState).queryPools.Get(toCreate)
+		stateBuilder.createQueryPool(queryPool)
 	}
 
 	return nil
