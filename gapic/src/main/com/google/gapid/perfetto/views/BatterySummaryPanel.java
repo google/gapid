@@ -31,7 +31,7 @@ import org.eclipse.swt.graphics.RGBA;
 import java.util.Arrays;
 
 public class BatterySummaryPanel extends TrackPanel {
-  private static final double HEIGHT = 80;
+  private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
@@ -68,15 +68,16 @@ public class BatterySummaryPanel extends TrackPanel {
         return;
       }
 
+      long maxAbs = maxAbsCurrent(data.current);
+
       // Draw outgoing battery current above the x axis.
       ctx.setBackgroundColor(colors().batteryCurrentOut);
       ctx.path(path -> {
         path.moveTo(0, h / 2);
         double lastX = 0, lastY = h / 2;
-        long maxAbsCurrent = maxAbsCurrent(data.current);
         for (int i = 0; i < data.ts.length; i++) {
           double nextX = state.timeToPx(data.ts[i]);
-          double nextY = data.current[i] < 0 ? h / 2 + h / 2 * data.current[i] / maxAbsCurrent : h / 2;
+          double nextY = data.current[i] > 0 ? h / 2 - h / 2 * data.current[i] / maxAbs : h / 2;
           path.lineTo(nextX, lastY);
           path.lineTo(nextX, nextY);
           lastX = nextX;
@@ -92,10 +93,9 @@ public class BatterySummaryPanel extends TrackPanel {
       ctx.path(path -> {
         path.moveTo(0, h / 2);
         double lastX = 0, lastY = h / 2;
-        long maxAbsCurrent = maxAbsCurrent(data.current);
         for (int i = 0; i < data.ts.length; i++) {
           double nextX = state.timeToPx(data.ts[i]);
-          double nextY = data.current[i] >= 0 ? h / 2 + h / 2 * data.current[i] / maxAbsCurrent : h / 2;
+          double nextY = data.current[i] <= 0 ? h / 2 - h / 2 * data.current[i] / maxAbs : h / 2;
           path.lineTo(nextX, lastY);
           path.lineTo(nextX, nextY);
           lastX = nextX;
@@ -115,21 +115,21 @@ public class BatterySummaryPanel extends TrackPanel {
         double x = mouseXpos + HOVER_MARGIN + HOVER_PADDING, y = mouseYpos;
         double dy = hovered.allSize.h / 2;
 
-        RGBA color = hovered.current < 0 ? colors().batteryCurrentOut : colors().batteryCurrentIn;
+        RGBA color = hovered.current > 0 ? colors().batteryCurrentOut : colors().batteryCurrentIn;
         ctx.setBackgroundColor(color);
         ctx.fillRect(x, y + dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
 
         x += LEGEND_SIZE + HOVER_PADDING;
         ctx.setForegroundColor(colors().textMain);
         ctx.drawText(Fonts.Style.Bold, HoverCard.REMAINING_POWER_LABEL, x, y, dy);
-        String s = hovered.current < 0 ? HoverCard.CURRENT_OUT_LABEL : HoverCard.CURRENT_IN_LABEL;
+        String s = hovered.current > 0 ? HoverCard.CURRENT_OUT_LABEL : HoverCard.CURRENT_IN_LABEL;
         ctx.drawText(Fonts.Style.Bold, s, x, y + dy, dy);
 
         x += hovered.labelSize.w + HOVER_PADDING + hovered.valueSize.w;
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.remainingS, x, y, dy);
         ctx.drawTextRightJustified(Fonts.Style.Normal, hovered.currentAbsS, x, y + dy, dy);
 
-        ctx.drawCircle(mouseXpos, h / 2 + h / 2 * hovered.current / maxAbsCurrent(data.current),
+        ctx.drawCircle(mouseXpos, h / 2 - h / 2 * hovered.current / maxAbs,
             CURSOR_SIZE / 2);
       }
     });
