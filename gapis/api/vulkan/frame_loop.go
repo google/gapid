@@ -1610,6 +1610,10 @@ func (f *frameLoop) resetSamplerYcbcrConversions(ctx context.Context, stateBuild
 	// The shadow state for SamplerYcbcrConversions does not contain reference to the Samplers they are used in. So we have to loop around finding the story.
 	for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
 		ycbcrConversion := samplerObject.YcbcrConversion()
+		if ycbcrConversion == NilSamplerYcbcrConversionObjectʳ {
+			log.D(ctx, "Sampler %v doesn't enable ycbcrConversion", samplerObject)
+			continue
+		}
 		if _, ok := f.samplerYcbcrConversionToCreate[ycbcrConversion.VulkanHandle()]; ok {
 			f.samplerToDestroy[samplerObject.VulkanHandle()] = true
 			f.samplerToCreate[samplerObject.VulkanHandle()] = true
