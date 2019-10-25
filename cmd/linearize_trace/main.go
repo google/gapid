@@ -51,7 +51,7 @@ func run(ctx context.Context) error {
 
 	name := filepath.Base(*path)
 
-	p, err := capture.Import(ctx, name, &capture.File{Path: *path})
+	p, err := capture.Import(ctx, name, name, &capture.File{Path: *path})
 	if err != nil {
 		return err
 	}
