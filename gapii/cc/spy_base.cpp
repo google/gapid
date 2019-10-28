@@ -52,7 +52,7 @@ void SpyBase::init(CallObserver* observer) {
   mIsSuspended = false;
 }
 
-void SpyBase::lock(CallObserver* observer) { mSpinLock.Lock(); }
+void SpyBase::lock() { mSpinLock.Lock(); }
 
 void SpyBase::unlock() { mSpinLock.Unlock(); }
 
