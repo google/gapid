@@ -97,6 +97,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.Arrays;
 
 /**
  * Dialogs used for capturing a trace.
@@ -258,6 +259,10 @@ public class TracerDialog {
       private static final String PERFETTO_LABEL = "Profile Config: ";
       private static final String NO_GPU_PROFILING_CAPABILITY = "Warning: Selected device has no GPU profiling capability.";
 
+      private static enum StartType {
+        Beginning, Manual, Frame;
+      }
+
       private final String date = TRACE_DATE_FORMAT.format(new Date());
 
       private List<DeviceCaptureInfo> devices;
@@ -369,19 +374,19 @@ public class TracerDialog {
             new GridData(GridData.FILL_HORIZONTAL));
         createLabel(durGroup, "Start at:");
         startType = Widgets.createDropDown(durGroup);
-        startType.setItems("Beginning", "Manual", "Frame");
+        startType.setItems(Arrays.stream(StartType.values()).map(Enum::name).toArray(String[]::new));
         startFrame = withLayoutData(
             createSpinner(durGroup, Math.max(1, models.settings.traceStartAt), 1, 999999),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         mecWarningLabel = createLabel(durGroup, "");
 
         if (models.settings.traceStartAt < 0) {
-          startType.select(1);
+          startType.select(StartType.Manual.ordinal());
           startFrame.setSelection(DEFAULT_START_FRAME);
         } else if (models.settings.traceStartAt > 0) {
-          startType.select(2);
+          startType.select(StartType.Frame.ordinal());
         } else {
-          startType.select(0);
+          startType.select(StartType.Beginning.ordinal());
           startFrame.setSelection(DEFAULT_START_FRAME);
         }
 
@@ -482,7 +487,7 @@ public class TracerDialog {
 
         Listener mecListener = e -> {
           TraceTypeCapabilities config = getSelectedApi();
-          boolean beginning = startType.getSelectionIndex() == 0;
+          boolean beginning = startType.getSelectionIndex() == StartType.Beginning.ordinal();
           if (!beginning && config != null &&
               config.getMidExecutionCaptureSupport() == Service.FeatureStatus.Experimental) {
             mecWarningLabel.setText(String.format(MEC_LABEL_WARNING, config.getApi()));
@@ -491,7 +496,7 @@ public class TracerDialog {
           }
           mecWarningLabel.requestLayout();
 
-          boolean startAtFrame = startType.getSelectionIndex() == 2;
+          boolean startAtFrame = startType.getSelectionIndex() == StartType.Frame.ordinal();
           startFrame.setVisible(startAtFrame);
         };
         api.getCombo().addListener(SWT.Selection, mecListener);
@@ -600,13 +605,13 @@ public class TracerDialog {
         withoutBuffering.setEnabled(!isPerfetto);
         withoutBuffering.setSelection(!isPerfetto && settings.traceWithoutBuffering);
         if (isPerfetto && startType.getItemCount() == 3) {
-          if (startType.getSelectionIndex() == 2) {
+          if (startType.getSelectionIndex() == StartType.Frame.ordinal()) {
             // Switch to manual if it was "start at frame x".
-            startType.select(1);
+            startType.select(StartType.Manual.ordinal());
           }
-          startType.remove(2);
+          startType.remove(StartType.Frame.ordinal());
         } else if (!isPerfetto && startType.getItemCount() == 2) {
-          startType.add("Frame");
+          startType.add(StartType.Frame.name());
         }
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
         durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
@@ -763,7 +768,7 @@ public class TracerDialog {
           case 0: // Beginning
             settings.traceStartAt = 0;
             break;
-          case 1: // Manaul
+          case 1: // Manual
             settings.traceStartAt = -1;
             break;
           default: // Frame
@@ -795,7 +800,7 @@ public class TracerDialog {
           options.addAllEnvironment(splitEnv(envVars.getText()));
         }
         if (config.getMidExecutionCaptureSupport() != Service.FeatureStatus.NotSupported) {
-          options.setDeferStart(settings.traceStartAt != 0);
+          options.setDeferStart(settings.traceStartAt < 0);
           if (settings.traceStartAt > 0) {
             options.setStartFrame(settings.traceStartAt);
           }
