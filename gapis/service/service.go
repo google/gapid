@@ -90,14 +90,14 @@ type Service interface {
 
 	GetGraphVisualization(ctx context.Context, capture *path.Capture, format GraphFormat) ([]byte, error)
 
-	// GetDevices returns the full list of replay devices avaliable to the server.
+	// GetDevices returns the full list of replay devices available to the server.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.
 	// If both connected Android and Local replay devices are found,
 	// the local Android devices will be returned first.
 	GetDevices(ctx context.Context) ([]*path.Device, error)
 
-	// GetDevicesForReplay returns the list of replay devices avaliable to the
+	// GetDevicesForReplay returns the list of replay devices available to the
 	// server that are capable of replaying the given capture.
 	// These include local replay devices and any connected Android devices.
 	// This list may change over time, as devices are connected and disconnected.

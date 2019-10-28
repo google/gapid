@@ -25,7 +25,7 @@ import (
 )
 
 // Simple is a very short implementation of the Device interface.
-// It directly holds the devices Information struct, and it's last known Status, but provides no other active
+// It directly holds the devices Information struct, and its last known Status, but provides no other active
 // functionality. It can be used for fake devices, or as a building block to create a more complete device.
 type Simple struct {
 	To         *device.Instance
