@@ -65,6 +65,7 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Sash;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.TabFolder;
@@ -761,6 +762,20 @@ public class Widgets {
     Composite composite = new Composite(parent, style);
     composite.setLayout(layout);
     return composite;
+  }
+
+  public static Sash createHorizontalSash(Composite parent, Listener selectionListener) {
+    return createSash(parent, SWT.HORIZONTAL, selectionListener);
+  }
+
+  public static Sash createVerticalSash(Composite parent, Listener selectionListener) {
+    return createSash(parent, SWT.VERTICAL, selectionListener);
+  }
+
+  public static Sash createSash(Composite parent, int style, Listener selectionListener) {
+    Sash sash = new Sash(parent, style);
+    sash.addListener(SWT.Selection, selectionListener);
+    return sash;
   }
 
   /**

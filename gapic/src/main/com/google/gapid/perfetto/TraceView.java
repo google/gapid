@@ -38,12 +38,12 @@ import com.google.gapid.perfetto.views.SelectionView;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.util.Keyboard;
 import com.google.gapid.util.Loadable;
+import com.google.gapid.widgets.DrawerComposite;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -61,7 +61,7 @@ public class TraceView extends Composite
     implements Capture.Listener, Perfetto.Listener, State.Listener {
   private final Models models;
   private final State state;
-  private final LoadablePanel<SashForm> loading;
+  private final LoadablePanel<DrawerComposite> loading;
   private final RootPanel rootPanel;
   private final PanelCanvas canvas;
 
@@ -74,13 +74,15 @@ public class TraceView extends Composite
 
     TopBar topBar = withLayoutData(new TopBar(this), new GridData(SWT.FILL, SWT.TOP, true, false));
     loading = withLayoutData(
-        new LoadablePanel<SashForm>(this, widgets, p -> new SashForm(p, SWT.VERTICAL)),
+        new LoadablePanel<DrawerComposite>(this, widgets, p ->
+          new DrawerComposite(p, SWT.NONE, models.settings.perfettoDrawerHeight, widgets.theme)),
         new GridData(SWT.FILL, SWT.FILL, true, true));
-    SashForm topBottom = loading.getContents();
     rootPanel = new RootPanel(state);
-    canvas = new PanelCanvas(topBottom, SWT.H_SCROLL, widgets.theme, rootPanel);
-    new SelectionView(topBottom, state);
-    topBottom.setWeights(models.settings.perfettoSplitterWeights);
+
+    DrawerComposite container = loading.getContents();
+    container.setText("Selection");
+    canvas = new PanelCanvas(container.getMain(), SWT.H_SCROLL, widgets.theme, rootPanel);
+    new SelectionView(container.getDrawer(), state);
 
     Consumer<RootPanel.MouseMode> modeSelector =
         topBar.buildModeActions(widgets.theme, m -> rootPanel.setMouseMode(m));
@@ -198,9 +200,9 @@ public class TraceView extends Composite
     models.perfetto.addListener(this);
     state.addListener(this);
     addListener(SWT.Dispose, e -> {
+      models.settings.perfettoDrawerHeight = container.getDrawerHeight();
       models.capture.removeListener(this);
       models.perfetto.removeListener(this);
-      models.settings.perfettoSplitterWeights = topBottom.getWeights();
     });
 
     if (!models.perfetto.isLoaded()) {
@@ -249,6 +251,7 @@ public class TraceView extends Composite
   @Override
   public void onSelectionChanged(Selection.MultiSelection selection) {
     canvas.redraw();
+    loading.getContents().setExpanded(selection != null);
   }
 
   private double lastZoom = 1;
