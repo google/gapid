@@ -106,6 +106,12 @@ type frameLoop struct {
 	bufferViewToDestroy map[VkBufferView]bool
 	bufferViewToCreate  map[VkBufferView]bool
 
+	surfaceToDestroy map[VkSurfaceKHR]bool
+	surfaceToCreate  map[VkSurfaceKHR]bool
+
+	swapchainToDestroy map[VkSwapchainKHR]bool
+	swapchainToCreate  map[VkSwapchainKHR]bool
+
 	imageToDestroy map[VkImage]bool
 	imageChanged   map[VkImage]bool
 	imageToCreate  map[VkImage]bool
@@ -220,6 +226,12 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 		bufferViewToDestroy: make(map[VkBufferView]bool),
 		bufferViewToCreate:  make(map[VkBufferView]bool),
+
+		surfaceToDestroy: make(map[VkSurfaceKHR]bool),
+		surfaceToCreate:  make(map[VkSurfaceKHR]bool),
+
+		swapchainToDestroy: make(map[VkSwapchainKHR]bool),
+		swapchainToCreate:  make(map[VkSwapchainKHR]bool),
 
 		imageToDestroy: make(map[VkImage]bool),
 		imageChanged:   make(map[VkImage]bool),
@@ -581,6 +593,64 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				delete(f.bufferToDestroy, buffer)
 			} else {
 				f.bufferToCreate[buffer] = true
+			}
+
+		// Surfaces
+		case *VkCreateXlibSurfaceKHR:
+			vkCmd := cmd.(*VkCreateXlibSurfaceKHR)
+			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Surface %v created", surface)
+			f.surfaceToDestroy[surface] = true
+
+		case *VkCreateWaylandSurfaceKHR:
+			vkCmd := cmd.(*VkCreateWaylandSurfaceKHR)
+			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Surface %v created", surface)
+			f.surfaceToDestroy[surface] = true
+
+		case *VkCreateWin32SurfaceKHR:
+			vkCmd := cmd.(*VkCreateWin32SurfaceKHR)
+			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Surface %v created", surface)
+			f.surfaceToDestroy[surface] = true
+
+		case *VkCreateAndroidSurfaceKHR:
+			vkCmd := cmd.(*VkCreateAndroidSurfaceKHR)
+			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Surface %v created", surface)
+			f.surfaceToDestroy[surface] = true
+
+		case *VkCreateDisplayPlaneSurfaceKHR:
+			vkCmd := cmd.(*VkCreateDisplayPlaneSurfaceKHR)
+			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Surface %v created", surface)
+			f.surfaceToDestroy[surface] = true
+
+		case *VkDestroySurfaceKHR:
+			vkCmd := cmd.(*VkDestroySurfaceKHR)
+			surface := vkCmd.Surface()
+			log.D(ctx, "Surface %v destroyed", surface)
+			if _, ok := f.surfaceToDestroy[surface]; ok {
+				delete(f.surfaceToDestroy, surface)
+			} else {
+				f.surfaceToCreate[surface] = true
+			}
+
+		// Swapchains
+		case *VkCreateSwapchainKHR:
+			vkCmd := cmd.(*VkCreateSwapchainKHR)
+			swapchain := vkCmd.PSwapchain().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Swapchain %v created", swapchain)
+			f.swapchainToDestroy[swapchain] = true
+
+		case *VkDestroySwapchainKHR:
+			vkCmd := cmd.(*VkDestroySwapchainKHR)
+			swapchain := vkCmd.Swapchain()
+			log.D(ctx, "Swapchain %v destroyed", swapchain)
+			if _, ok := f.swapchainToDestroy[swapchain]; ok {
+				delete(f.swapchainToDestroy, swapchain)
+			} else {
+				f.swapchainToCreate[swapchain] = true
 			}
 
 		// BufferViews
@@ -1305,6 +1375,14 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	if err := f.resetSurfaces(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetSwapchains(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetImages(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -1518,6 +1596,58 @@ func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBui
 		// Write the commands needed to recreate the destroyed object
 		bufferView := GetState(f.loopStartState).bufferViews.Get(toCreate)
 		stateBuilder.createBufferView(bufferView)
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetSurfaces(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Surface that we need to destroy at the end of the loop...
+	for toDestroy := range f.surfaceToDestroy {
+		// Write the command to delete the created object
+		surface := GetState(f.loopEndState).surfaces.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroySurfaceKHR(surface.Instance(), surface.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every Surface that we need to create at the end of the loop...
+	for toCreate := range f.surfaceToCreate {
+		// Write the commands needed to recreate the destroyed object
+		surface := GetState(f.loopStartState).surfaces.Get(toCreate)
+		stateBuilder.createSurface(surface)
+	}
+
+	// The shadow state for Surfaces does not contain reference to the Swapchains they are used in. So we have to loop around finding the story.
+	for _, swapchainObject := range GetState(f.loopStartState).Swapchains().All() {
+
+		surface := swapchainObject.Surface()
+		if surface == NilSurfaceObjectʳ {
+			continue
+		}
+
+		if _, ok := f.surfaceToCreate[surface.VulkanHandle()]; ok {
+			f.swapchainToDestroy[swapchainObject.VulkanHandle()] = true
+			f.swapchainToCreate[swapchainObject.VulkanHandle()] = true
+		}
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Swapchain that we need to destroy at the end of the loop...
+	for toDestroy := range f.swapchainToDestroy {
+		// Write the command to delete the created object
+		swapchain := GetState(f.loopEndState).swapchains.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroySwapchainKHR(swapchain.Device(), swapchain.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every Swapchain that we need to create at the end of the loop...
+	for toCreate := range f.swapchainToCreate {
+		// Write the commands needed to recreate the destroyed object
+		swapchain := GetState(f.loopStartState).swapchains.Get(toCreate)
+		stateBuilder.createSwapchain(swapchain)
 	}
 
 	return nil
