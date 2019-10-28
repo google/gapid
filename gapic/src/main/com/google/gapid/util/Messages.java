@@ -64,7 +64,7 @@ public interface Messages {
   public static final String CRASH_REPORTING_OPTION =
       "Help GAPID identify issues by sending crash reports to Google";
   public static final String UPDATE_CHECK_OPTION = "Automatically check for GAPID updates (please restart GAPID to force an update check)";
-  public static final String UPDATE_CHECK_PRERELEASE_OPTION = "Include developer preview releases";
+  public static final String UPDATE_CHECK_DEV_RELEASE_OPTION = "Include unstable developer releases";
   public static final String PRIVACY_POLICY =
       "Google's <a href=\"TOS\">APIs Terms of Service</a> and <a href=\"PP\">Privacy Policy</a>" +
       " govern your use of this application.";

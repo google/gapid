@@ -59,7 +59,7 @@ type Service interface {
 	// CheckForUpdates checks for a new build of GAPID on the hosting server.
 	// Care should be taken to call this infrequently to avoid reaching the
 	// server's maximum unauthenticated request limits.
-	CheckForUpdates(ctx context.Context, includePrereleases bool) (*Release, error)
+	CheckForUpdates(ctx context.Context, includeDevReleases bool) (*Release, error)
 
 	// GetAvailableStringTables returns list of available string table descriptions.
 	GetAvailableStringTables(ctx context.Context) ([]*stringtable.Info, error)
