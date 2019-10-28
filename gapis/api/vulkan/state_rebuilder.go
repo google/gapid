@@ -186,7 +186,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 		defer imgPrimer.Free()
 		for _, img := range s.Images().Keys() {
 			subRange, err := sb.createImage(s.Images().Get(img), sb.oldState, img)
-			if err == nil {
+			if len(subRange) != 0 && err == nil {
 				sb.primeImage(s.Images().Get(img), imgPrimer, subRange)
 			}
 		}
@@ -1305,7 +1305,7 @@ func IsFullyBound(offset VkDeviceSize, size VkDeviceSize,
 
 func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState, vkImage VkImage) ([]VkImageSubresourceRange, error) {
 	if img.IsSwapchainImage() {
-		return nil, fmt.Errorf("swapchian image needs to be skipep")
+		return nil, fmt.Errorf("swapchian image needs to be skipped")
 	}
 
 	vkCreateImage(sb, img.Device(), img.Info(), vkImage)
@@ -1501,18 +1501,13 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 	} else {
 		// Otherwise, we have no sparse bindings, we are either non-sparse, or empty.
 		if !isDenseBound(img) {
-			return nil, fmt.Errorf("no sparse bindings found")
+			return opaqueRanges, nil
 		}
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 		// TODO: Handle multi-planar images
 		planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, srcState, GetState(srcState), 0, nil, nil, img, VkImageAspectFlagBits(0))
 		vkBindImageMemory(sb, img.Device(), vkImage,
 			planeMemInfo.BoundMemory().VulkanHandle(), planeMemInfo.BoundMemoryOffset())
-	}
-	// opaqueRanges should contain all the bound image subresources by now.
-	if len(opaqueRanges) == 0 {
-		// There is no valid data in this image at all
-		return nil, fmt.Errorf("no valid data in the image")
 	}
 
 	return opaqueRanges, nil
