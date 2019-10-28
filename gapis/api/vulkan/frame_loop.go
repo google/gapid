@@ -922,6 +922,34 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 				f.queryPoolToCreate[queryPool] = true
 			}
 
+		case *VkCmdBeginQuery:
+			vkCmd := cmd.(*VkCmdBeginQuery)
+			queryPool := vkCmd.QueryPool()
+			log.D(ctx, "QueryPool %v began query", queryPool)
+			f.queryPoolToDestroy[queryPool] = true
+			f.queryPoolToCreate[queryPool] = true
+
+		case *VkCmdEndQuery:
+			vkCmd := cmd.(*VkCmdEndQuery)
+			queryPool := vkCmd.QueryPool()
+			log.D(ctx, "QueryPool %v ended query", queryPool)
+			f.queryPoolToDestroy[queryPool] = true
+			f.queryPoolToCreate[queryPool] = true
+
+		case *VkCmdWriteTimestamp:
+			vkCmd := cmd.(*VkCmdWriteTimestamp)
+			queryPool := vkCmd.QueryPool()
+			log.D(ctx, "QueryPool %v wrote timestamp", queryPool)
+			f.queryPoolToDestroy[queryPool] = true
+			f.queryPoolToCreate[queryPool] = true
+
+		case *VkCmdResetQueryPool:
+			vkCmd := cmd.(*VkCmdResetQueryPool)
+			queryPool := vkCmd.QueryPool()
+			log.D(ctx, "QueryPool %v reset", queryPool)
+			f.queryPoolToDestroy[queryPool] = true
+			f.queryPoolToCreate[queryPool] = true
+
 		// CommandPool(s)
 		case *VkCreateCommandPool:
 			vkCmd := cmd.(*VkCreateCommandPool)
