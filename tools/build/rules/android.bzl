@@ -108,7 +108,7 @@ android_native_app_glue = repository_rule(
 
 # Retrieve Vulkan validation layers from the Android NDK
 
-def _android_native_vulkan_validation_layers(ctx):
+def _ndk_vk_validation_layer(ctx):
     build = ""
     for abi in ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]:
 
@@ -121,8 +121,8 @@ def _android_native_vulkan_validation_layers(ctx):
             )
 
         build += "\n".join([
-            "filegroup(",
-            "    name = \"vulkan_validation_layer_" + abi + "\",",
+            "cc_library(",
+            "    name = \"" + abi + "\",",
             "    srcs = glob([\"" + abi + "/libVkLayer*.so\"]),",
             "    visibility = [\"//visibility:public\"],",
             ")",
@@ -130,8 +130,8 @@ def _android_native_vulkan_validation_layers(ctx):
 
     ctx.file("BUILD", build)
 
-android_native_vulkan_validation_layers = repository_rule(
-    implementation = _android_native_vulkan_validation_layers,
+ndk_vk_validation_layer = repository_rule(
+    implementation = _ndk_vk_validation_layer,
     local = True,
     environ = [
         "ANDROID_NDK_HOME",

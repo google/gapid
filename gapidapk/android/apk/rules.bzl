@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "android_native_vulkan_validation_layers", "extract", "filehash")
+load("//tools/build:rules.bzl", "extract", "filehash")
 load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def _strip_impl(ctx):
@@ -100,10 +100,11 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):
         name = name + "_native",
         linkstatic = 1,
         srcs = select({
-            "//tools/build:android-" + name: [
-                name + "_libs",
-                "@android_native_vulkan_validation_layers//:vulkan_validation_layer_" + abi,
-            ],
+            "//tools/build:android-" + name: [name + "_libs"],
+            "//conditions:default": [],
+        }),
+        deps = select({
+            "//tools/build:android-" + name: ["@ndk_vk_validation_layer//:" + abi],
             "//conditions:default": [],
         }),
     )

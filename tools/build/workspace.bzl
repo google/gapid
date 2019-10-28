@@ -16,7 +16,7 @@
 # dependencies and toolchains.
 
 load("@gapid//tools/build:cc_toolchain.bzl", "cc_configure")
-load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue", "android_native_vulkan_validation_layers")
+load("@gapid//tools/build/rules:android.bzl", "android_native_app_glue", "ndk_vk_validation_layer")
 load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
 load("@gapid//tools/build/third_party:breakpad.bzl", "breakpad")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
@@ -279,8 +279,8 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         )
 
         maybe_repository(
-            android_native_vulkan_validation_layers,
-            name = "android_native_vulkan_validation_layers",
+            ndk_vk_validation_layer,
+            name = "ndk_vk_validation_layer",
             locals = locals,
         )
 
