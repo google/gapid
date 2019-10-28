@@ -92,7 +92,7 @@ public class Settings {
   public String analyticsClientId = ""; // Empty means do not track.
   public boolean disableReplayOptimization = false;
   public boolean reportCrashes = false;
-  public int[] perfettoSplitterWeights = new int[] { 85, 15 };
+  public int perfettoDrawerHeight = 250;
   public boolean perfettoDarkMode = false;
   public boolean perfettoCpu = true;
   public boolean perfettoCpuFreq = false;
@@ -262,8 +262,7 @@ public class Settings {
     disableReplayOptimization =
         getBoolean(properties, "replay.disableOptimization", disableReplayOptimization);
     reportCrashes = getBoolean(properties, "crash.reporting", reportCrashes);
-    perfettoSplitterWeights =
-        getIntList(properties, "perfetto.splitter.weights", perfettoSplitterWeights);
+    perfettoDrawerHeight = getInt(properties, "perfetto.drawer.height", perfettoDrawerHeight);
     perfettoDarkMode = getBoolean(properties, "perfetto.dark", perfettoDarkMode);
     perfettoCpu = getBoolean(properties, "perfetto.cpu", perfettoCpu);
     perfettoCpuFreq = getBoolean(properties, "perfetto.cpu.freq", perfettoCpuFreq);
@@ -324,7 +323,7 @@ public class Settings {
     properties.setProperty(
         "replay.disableOptimization",  Boolean.toString(disableReplayOptimization));
     properties.setProperty("crash.reporting", Boolean.toString(reportCrashes));
-    setIntList(properties, "perfetto.splitter.weights", perfettoSplitterWeights);
+    properties.setProperty("perfetto.drawer.height", Integer.toString(perfettoDrawerHeight));
     properties.setProperty("perfetto.dark", Boolean.toString(perfettoDarkMode));
     properties.setProperty("perfetto.cpu", Boolean.toString(perfettoCpu));
     properties.setProperty("perfetto.cpu.freq", Boolean.toString(perfettoCpuFreq));
