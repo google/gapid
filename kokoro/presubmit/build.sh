@@ -47,3 +47,13 @@ export CLANG_FORMAT=clang-format-6.0
 cd $SRC
 
 . ./kokoro/presubmit/presubmit.sh
+
+# Sign
+echo "HUGUES start sign"
+
+/escalated_sign/escalated_sign.py --tool=linux_gpg_sign \
+    --job-dir=/escalated_sign_jobs -- --loglevel=debug ./kokoro/presubmit/presubmit.sh
+
+echo "HUGUES end sign"
+
+ls kokoro/presubmit/
