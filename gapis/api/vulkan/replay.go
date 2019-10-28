@@ -98,7 +98,9 @@ func (a API) GetReplayPriority(ctx context.Context, i *device.Instance, h *captu
 // makeAttachementReadable is a transformation marking all color/depth/stencil
 // attachment images created via vkCreateImage commands as readable (by patching
 // the transfer src bit).
-type makeAttachementReadable struct{}
+type makeAttachementReadable struct {
+	imagesOnly bool
+}
 
 // drawConfig is a replay.Config used by colorBufferRequest and
 // depthBufferRequests.
@@ -212,7 +214,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 			out.MutateAndWrite(ctx, id, newCmd)
 			return
 		}
-	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok {
+	} else if createRenderPass, ok := cmd.(*VkCreateRenderPass); ok && !t.imagesOnly {
 		pInfo := createRenderPass.PCreateInfo()
 		info := pInfo.MustRead(ctx, createRenderPass, s, nil)
 		pAttachments := info.PAttachments()
@@ -253,7 +255,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		out.MutateAndWrite(ctx, id, newCmd)
 		return
-	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok {
+	} else if e, ok := cmd.(*VkEnumeratePhysicalDevices); ok && !t.imagesOnly {
 		if e.PPhysicalDevices() == 0 {
 			// Querying for the number of devices.
 			// No changes needed here.
@@ -739,7 +741,7 @@ func (a API) GetInitialPayload(ctx context.Context,
 	device *device.Instance,
 	out transform.Writer) error {
 	transforms := transform.Transforms{}
-	transforms.Add(&makeAttachementReadable{})
+	transforms.Add(&makeAttachementReadable{false})
 	transforms.Add(&dropInvalidDestroy{tag: "GetInitialPayload"})
 	initialCmds, im, _ := initialcmds.InitialCommands(ctx, capture)
 	out.State().Allocator.ReserveRanges(im)
@@ -775,7 +777,8 @@ func (a API) Replay(
 	cmds := c.Commands
 
 	transforms := transform.Transforms{}
-	transforms.Add(&makeAttachementReadable{})
+	makeReadable := &makeAttachementReadable{false}
+	transforms.Add(makeReadable)
 	transforms.Add(&dropInvalidDestroy{tag: "Replay"})
 
 	readFramebuffer := newReadFramebuffer(ctx)
@@ -942,6 +945,7 @@ func (a API) Replay(
 				profile = &replay.EndOfReplay{}
 			}
 			profile.AddResult(rr.Result)
+			makeReadable.imagesOnly = true
 			optimize = false
 			if req.overrides.GetViewportSize() {
 				transforms.Add(minimizeViewport(ctx))
@@ -1003,7 +1007,7 @@ func (a API) Replay(
 		transforms.Add(overdraw)
 	}
 
-	if issues == nil {
+	if issues == nil && profile == nil {
 		transforms.Add(readFramebuffer, injector)
 	}
 
