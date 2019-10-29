@@ -235,12 +235,9 @@ public class ThreadPanel extends TrackPanel implements Selectable {
     if (depth == 0) {
       for (int i = 0; i < data.schedStarts.length; i++) {
         if (data.schedStarts[i] <= t && t <= data.schedEnds[i]) {
-          int index = i;
           hoveredTitle = data.schedStates[i].label;
           hoveredCategory = "";
           hoveredSize = m.measure(Fonts.Style.Normal, hoveredTitle);
-          long start = data.schedStarts[i];
-          long end = data.schedEnds[i];
 
           return new Hover() {
             @Override
@@ -257,19 +254,6 @@ public class ThreadPanel extends TrackPanel implements Selectable {
             @Override
             public void stop() {
               hoveredTitle = null;
-            }
-
-            @Override
-            public boolean click() {
-              if (data.schedIds[index] != 0) {
-                state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[index]));
-              } else {
-                state.setSelection(new ThreadTrack.StateSlice(data.schedStarts[index],
-                    data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
-                    data.schedStates[index]));
-              }
-              state.addMarkLocation(ThreadPanel.this, new Location(start, end, -1));
-              return true;
             }
           };
         }
@@ -295,9 +279,6 @@ public class ThreadPanel extends TrackPanel implements Selectable {
           mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
               (1 + track.getThread().maxDepth) * SLICE_HEIGHT - hoveredSize.h));
           long id = slices.ids[i];
-          long start = slices.starts[i];
-          long end = slices.ends[i];
-          long dpt = slices.depths[i];
 
           return new Hover() {
             @Override
@@ -315,20 +296,51 @@ public class ThreadPanel extends TrackPanel implements Selectable {
             public Cursor getCursor(Display display) {
               return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
             }
-
-            @Override
-            public boolean click() {
-              if (id >= 0) {
-                state.setSelection(track.getSlice(state.getQueryEngine(), id));
-                state.addMarkLocation(ThreadPanel.this, new Location(start, end, dpt));
-              }
-              return true;
-            }
           };
         }
       }
     }
     return Hover.NONE;
+  }
+
+  @Override
+  protected boolean onTrackMouseClick(double x, double y) {
+    ThreadTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    int depth = (int)(y / SLICE_HEIGHT);
+    if (data == null || depth < 0 || depth > track.getThread().maxDepth) {
+      return state.resetSelections();
+    }
+
+    long t = state.pxToTime(x);
+    if (depth == 0) {
+      for (int i = 0; i < data.schedStarts.length; i++) {
+        if (data.schedStarts[i] <= t && t <= data.schedEnds[i]) {
+          if (data.schedIds[i] != 0) {
+            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[i]));
+          } else {
+            state.setSelection(new ThreadTrack.StateSlice(data.schedStarts[i],
+                data.schedEnds[i] - data.schedStarts[i], track.getThread().utid,
+                data.schedStates[i]));
+          }
+          state.setMarkLocation(ThreadPanel.this,
+              new Location(data.schedStarts[i], data.schedEnds[i], -1));
+          return true;
+        }
+      }
+    } else if (expanded) {
+      depth--;
+      SliceTrack.Data slices = data.slices;
+      for (int i = 0; i < slices.starts.length; i++) {
+        if (slices.depths[i] == depth && slices.starts[i] <= t && t <= slices.ends[i]
+            && slices.ids[i] >= 0) {
+          state.setSelection(track.getSlice(state.getQueryEngine(), slices.ids[i]));
+          state.setMarkLocation(ThreadPanel.this,
+              new Location(slices.starts[i], slices.ends[i], slices.depths[i]));
+          return true;
+        }
+      }
+    }
+    return state.resetSelections();
   }
 
   @Override

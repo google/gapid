@@ -204,10 +204,6 @@ public class CpuPanel extends TrackPanel implements Selectable {
         hoveredWidth = Math.max(
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
-        long id = data.ids[i];
-        long utid = data.utids[i];
-        long start = data.starts[i];
-        long end = data.ends[i];
 
         return new Hover() {
           @Override
@@ -224,14 +220,6 @@ public class CpuPanel extends TrackPanel implements Selectable {
           @Override
           public Cursor getCursor(Display display) {
             return display.getSystemCursor(SWT.CURSOR_HAND);
-          }
-
-          @Override
-          public boolean click() {
-            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
-            state.setSelectedCpuSliceIds(utid);
-            state.addMarkLocation(CpuPanel.this, new Location(start, end));
-            return true;
           }
         };
       }
@@ -266,6 +254,25 @@ public class CpuPanel extends TrackPanel implements Selectable {
         hovered = null;
       }
     };
+  }
+
+  @Override
+  protected boolean onTrackMouseClick(double x, double y) {
+    CpuTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    if (data == null || data.kind != CpuTrack.Data.Kind.slice) {
+      return state.resetSelections();
+    }
+
+    long t = state.pxToTime(x);
+    for (int i = 0; i < data.starts.length; i++) {
+      if (data.starts[i] <= t && t <= data.ends[i]) {
+        state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), data.ids[i]));
+        state.setSelectedCpuSliceIds(data.utids[i]);
+        state.setMarkLocation(CpuPanel.this, new Location(data.starts[i], data.ends[i]));
+        return true;
+      }
+    }
+    return state.resetSelections();
   }
 
   @Override

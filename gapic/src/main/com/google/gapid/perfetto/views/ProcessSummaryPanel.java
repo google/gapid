@@ -185,6 +185,30 @@ public class ProcessSummaryPanel extends TrackPanel {
     }
   }
 
+  @Override
+  protected boolean onTrackMouseClick(double x, double y) {
+    ProcessSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    if (data == null || data.kind != ProcessSummaryTrack.Data.Kind.slice) {
+      return state.resetSelections();
+    }
+    int cpu = (int)(y * state.getData().numCpus / HEIGHT);
+    if (cpu < 0 || cpu >= state.getData().numCpus) {
+      return state.resetSelections();
+    }
+
+    long t = state.pxToTime(x);
+    for (int i = 0; i < data.starts.length; i++) {
+      if (data.cpus[i] == cpu && data.starts[i] <= t && t <= data.ends[i]) {
+        state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), data.ids[i]));
+        state.setSelectedCpuSliceIds(data.utids[i]);
+        state.setMarkLocation(ProcessSummaryPanel.this,
+            new Location(data.starts[i], data.ends[i], cpu));
+        return true;
+      }
+    }
+    return state.resetSelections();
+  }
+
   public void renderMarks(RenderContext ctx, double h) {
     if (state.getMarkLocations().containsKey(ProcessSummaryPanel.this)) {
       double cpuH = (h - state.getData().numCpus + 1) / state.getData().numCpus;
@@ -216,10 +240,6 @@ public class ProcessSummaryPanel extends TrackPanel {
         hoveredWidth = Math.max(
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
-        long id = data.ids[i];
-        long utid = data.utids[i];
-        long start = data.starts[i];
-        long end = data.ends[i];
 
         return new Hover() {
           @Override
@@ -236,14 +256,6 @@ public class ProcessSummaryPanel extends TrackPanel {
           @Override
           public Cursor getCursor(Display display) {
             return display.getSystemCursor(SWT.CURSOR_HAND);
-          }
-
-          @Override
-          public boolean click() {
-            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
-            state.setSelectedCpuSliceIds(utid);
-            state.addMarkLocation(ProcessSummaryPanel.this, new Location(start, end, cpu));
-            return true;
           }
         };
       }

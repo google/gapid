@@ -173,8 +173,6 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         mouseYpos = Math.max(0, Math.min(mouseYpos - (hoveredSize.h - SLICE_HEIGHT) / 2,
             (1 + queue.maxDepth) * SLICE_HEIGHT - hoveredSize.h));
         long id = data.ids[i];
-        long start = data.starts[i];
-        long end = data.ends[i];
 
         return new Hover() {
           @Override
@@ -192,19 +190,29 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
           public Cursor getCursor(Display display) {
             return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
           }
-
-          @Override
-          public boolean click() {
-            if (id >= 0) {
-              state.setSelection(track.getSlice(state.getQueryEngine(), id));
-              state.addMarkLocation(GpuQueuePanel.this, new Location(start, end, depth));
-            }
-            return true;
-          }
         };
       }
     }
     return Hover.NONE;
+  }
+
+  @Override
+  protected boolean onTrackMouseClick(double x, double y) {
+    SliceTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    int depth = (int)(y / SLICE_HEIGHT);
+    if (data == null || depth < 0 || depth > queue.maxDepth) {
+      return state.resetSelections();
+    }
+
+    long t = state.pxToTime(x);
+    for (int i = 0; i < data.starts.length; i++) {
+      if (data.depths[i] == depth && data.starts[i] <= t && t <= data.ends[i] && data.ids[i] >= 0) {
+        state.setSelection(track.getSlice(state.getQueryEngine(), data.ids[i]));
+        state.setMarkLocation(GpuQueuePanel.this, new Location(data.starts[i], data.ends[i], depth));
+        return true;
+      }
+    }
+    return state.resetSelections();
   }
 
   @Override

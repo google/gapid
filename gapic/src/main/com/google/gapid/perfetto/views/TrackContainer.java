@@ -154,6 +154,19 @@ public class TrackContainer {
       }
     }
 
+    @Override
+    public boolean onClick(Fonts.TextMeasurer m, double x, double y) {
+      if (filter != null &&
+          y < TITLE_HEIGHT && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
+        track.onClick(m, x, y);
+        filtered = !filtered;
+        filter.accept(filtered);
+        return true;
+      } else {
+        return track.onClick(m, x, y);
+      }
+    }
+
     private class FilterToggler implements Hover {
       private final Hover child;
 
@@ -169,14 +182,6 @@ public class TrackContainer {
       @Override
       public void stop() {
         child.stop();
-      }
-
-      @Override
-      public boolean click() {
-        child.click();
-        filtered = !filtered;
-        filter.accept(filtered);
-        return true;
       }
 
       @Override
@@ -302,6 +307,35 @@ public class TrackContainer {
       }
     }
 
+    @Override
+    public boolean onClick(Fonts.TextMeasurer m, double x, double y) {
+      if (expanded) {
+        if (y < TITLE_HEIGHT) {
+          if (filter != null && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
+            filtered = !filtered;
+            filter.accept(filtered);
+            return true;
+          } else if (x < LABEL_OFFSET + m.measure(Fonts.Style.Normal, summary.getTitle()).w) {
+            expanded = !expanded;
+            return true;
+          } else {
+            return false;
+          }
+        } else {
+          return detail.onClick(m, x, y - TITLE_HEIGHT);
+        }
+      } else {
+        if (y < TITLE_HEIGHT &&
+            x < Math.min(LABEL_WIDTH, LABEL_OFFSET + m.measure(Fonts.Style.Normal, summary.getTitle()).w)) {
+          summary.onClick(m, x, y);
+          expanded = !expanded;
+          return true;
+        } else {
+          return summary.onClick(m, x, y);
+        }
+      }
+    }
+
     private class ExpansionToggler implements Hover {
       private final Hover child;
 
@@ -320,13 +354,6 @@ public class TrackContainer {
       }
 
       @Override
-      public boolean click() {
-        child.click();
-        expanded = !expanded;
-        return true;
-      }
-
-      @Override
       public Cursor getCursor(Display display) {
         return display.getSystemCursor(SWT.CURSOR_HAND);
       }
@@ -334,13 +361,6 @@ public class TrackContainer {
 
     private class FilterToggler implements Hover {
       public FilterToggler() {
-      }
-
-      @Override
-      public boolean click() {
-        filtered = !filtered;
-        filter.accept(filtered);
-        return true;
       }
 
       @Override

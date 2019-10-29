@@ -121,6 +121,23 @@ public abstract class TrackPanel extends Panel.Base implements TitledPanel {
         .translated(LABEL_WIDTH, TRACK_MARGIN);
   }
 
+  @Override
+  public boolean onClick(Fonts.TextMeasurer m, double x, double y) {
+    if (x < LABEL_WIDTH) {
+      return false;
+    } else if (y < TRACK_MARGIN || y > height - TRACK_MARGIN) {
+      return state.resetSelections();
+    } else {
+      return onTrackMouseClick(x - LABEL_WIDTH, y - TRACK_MARGIN);
+    }
+  }
+
+  /** Returns whether the screen should be redrawn. */
+  @SuppressWarnings("unused")
+  protected boolean onTrackMouseClick(double x, double y) {
+    return state.resetSelections();
+  }
+
   protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y);
 
   private static class Tooltip {

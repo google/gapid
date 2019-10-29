@@ -4,7 +4,6 @@ import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.function.BiConsumer;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 /**
@@ -24,6 +23,12 @@ public interface Panel {
   @SuppressWarnings("unused")
   public default Panel.Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     return Hover.NONE;
+  }
+
+  @SuppressWarnings("unused")
+  /** Returns whether the screen should be redrawn. */
+  public default boolean onClick(Fonts.TextMeasurer m, double x, double y) {
+    return false;
   }
 
   public void visit(Visitor v, Area area);
@@ -118,9 +123,6 @@ public interface Panel {
     public default void stop() { /* empty */ }
     public default boolean isOverlay() { return false; }
 
-    /** Returns whether the screen should be redrawn. */
-    public default boolean click() { return false; }
-
     public default Panel.Hover translated(double dx, double dy) {
       return transformed(a -> a.translate(dx, dy));
     }
@@ -150,41 +152,6 @@ public interface Panel {
         @Override
         public boolean isOverlay() {
           return Hover.this.isOverlay();
-        }
-
-        @Override
-        public boolean click() {
-          return Hover.this.click();
-        }
-      };
-    }
-
-    public default Panel.Hover withClick(BooleanSupplier onClick) {
-      return new Hover() {
-        @Override
-        public Area getRedraw() {
-          return Hover.this.getRedraw();
-        }
-
-        @Override
-        public Cursor getCursor(Display display) {
-          return Hover.this.getCursor(display);
-        }
-
-        @Override
-        public void stop() {
-          Hover.this.stop();
-        }
-
-        @Override
-        public boolean isOverlay() {
-          return Hover.this.isOverlay();
-        }
-
-        @Override
-        public boolean click() {
-          boolean r1 = Hover.this.click(), r2 = onClick.getAsBoolean();
-          return r1 || r2;
         }
       };
     }

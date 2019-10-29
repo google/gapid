@@ -183,6 +183,8 @@ public class RootPanel extends Panel.Base implements State.Listener {
       return Dragger.NONE;
     }
 
+    state.resetMarkLocations();
+
     MouseMode mode = mouseMode;
     if ((mods & SWT.SHIFT) == SWT.SHIFT) {
       mode = MouseMode.Select;
@@ -333,14 +335,27 @@ public class RootPanel extends Panel.Base implements State.Listener {
       result = bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
           .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
     }
-    return (x >= LABEL_WIDTH) ? result.withClick(() -> {
+    return result;
+  }
+
+  @Override
+  public boolean onClick(Fonts.TextMeasurer m, double x, double y) {
+    boolean shouldRedraw = false;
+    if (x >= LABEL_WIDTH) {
+      // Reset and re-evaluate selections each single mouse click, to allow easy de-selection.
+      shouldRedraw |= state.resetSelections();
+      // Handle time range highlight de-selection.
       TimeSpan highlight = state.getHighlight();
       if (!highlight.isEmpty() && !highlight.contains(state.pxToTime(x - LABEL_WIDTH))) {
         state.setHighlight(TimeSpan.ZERO);
-        return true;
+        shouldRedraw = true;
       }
-      return false;
-    }) : result;
+    }
+    double topHeight = top.getPreferredHeight();
+    if (y >= topHeight) {
+      shouldRedraw |= bottom.onClick(m, x, y - topHeight + state.getScrollOffset());
+    }
+    return shouldRedraw;
   }
 
   public void setMouseMode(MouseMode mode) {

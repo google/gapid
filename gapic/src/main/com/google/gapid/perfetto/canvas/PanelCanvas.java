@@ -3,8 +3,6 @@ package com.google.gapid.perfetto.canvas;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 
-import com.google.gapid.perfetto.views.State;
-import com.google.gapid.perfetto.views.State.Location;
 import com.google.gapid.util.Flags;
 import com.google.gapid.util.Flags.Flag;
 import com.google.gapid.widgets.Theme;
@@ -16,7 +14,6 @@ import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,7 +34,7 @@ public class PanelCanvas extends Canvas {
   private Panel.Hover hover = Panel.Hover.NONE;
   private Point lastMouse = new Point(-1, -1);
 
-  public PanelCanvas(Composite parent, int style, Theme theme, Panel panel, State state) {
+  public PanelCanvas(Composite parent, int style, Theme theme, Panel panel) {
     super(parent, style | SWT.V_SCROLL | SWT.NO_BACKGROUND | SWT.DOUBLE_BUFFERED);
     this.panel = panel;
     this.context = new RenderContext.Global(theme, this);
@@ -81,10 +78,6 @@ public class PanelCanvas extends Canvas {
     });
     addListener(SWT.MouseUp, e -> {
       mouseDown = null;
-      // Reset and re-evaluate selections each time mouse is released, to allow easy deselection.
-      long oldCpuUtid = state.getSelectedUtid();
-      Map<Panel, Set<Location>> oldMarked = state.getMarkLocations();
-      state.resetSelections();
       if (dragging) {
         dragging = false;
         setCursor(null);
@@ -92,10 +85,7 @@ public class PanelCanvas extends Canvas {
         dragger = Panel.Dragger.NONE;
         updateMousePosition(e.x, e.y, 0, false, true);
       } else {
-        boolean shouldRedraw = hover.click();
-        shouldRedraw = shouldRedraw || state.shouldChangeCpuSlicesColor(oldCpuUtid)
-            || state.shouldRemoveMarks(oldMarked);
-        if (shouldRedraw) {
+        if (panel.onClick(context, e.x, e.y)) {
           structureHasChanged();
         }
       }

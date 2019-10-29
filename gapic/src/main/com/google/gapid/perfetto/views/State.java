@@ -221,11 +221,18 @@ public class State {
     return false;
   }
 
-  public void resetSelections() {
+  /* Return true if selection state changed. */
+  public boolean resetSelections() {
+    boolean hasDeselection = selection != null || !markLocations.isEmpty() || selectedUtid != -1;
     setSelection((Selection)null);
-    this.markLocations = Maps.newHashMap();
+    resetMarkLocations();
     this.selectedUpid = -1;
     this.selectedUtid = -1;
+    return hasDeselection;
+  }
+
+  public void resetMarkLocations() {
+    this.markLocations = Maps.newHashMap();
   }
 
   public void setSelection(ListenableFuture<? extends Selection> futureSel) {
@@ -247,6 +254,12 @@ public class State {
     thenOnUiThread(updateTasks, $ -> {
       listeners.fire().onMarkChanged();
     });
+  }
+
+  public void setMarkLocation(Panel panel, Location location) {
+    resetMarkLocations();
+    this.markLocations.put(panel, new HashSet<Location>());
+    this.markLocations.get(panel).add(location);
   }
 
   public void addMarkLocation(Panel panel, Location location) {
