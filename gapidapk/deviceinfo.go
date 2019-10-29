@@ -111,7 +111,12 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return nil
 	}
 
-	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
+	driverProperty, err := d.SystemProperty(ctx, "ro.gfx.driver.1")
+	if err != nil {
+		return err
+	}
+
+	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 && driverProperty != "" {
 		startSignal, startFunc := task.NewSignal()
 		startFunc = task.Once(startFunc)
 		crash.Go(func() {
