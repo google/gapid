@@ -123,16 +123,15 @@ func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "CheckForUpdates")
 
-	options := &github.ListOptions{}
 	client := github.NewClient(nil)
+	options := &github.ListOptions{}
 	releases, _, err := client.Repositories.ListReleases(ctx, githubOrg, githubRepo, options)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to list releases")
 	}
 
 	if includeDevReleases {
-		devClient := github.NewClient(nil)
-		devReleases, _, err := devClient.Repositories.ListReleases(ctx, githubOrg, devGithubRepo, options)
+		devReleases, _, err := client.Repositories.ListReleases(ctx, githubOrg, devGithubRepo, options)
 		if err != nil {
 			return nil, log.Err(ctx, err, "Failed to list dev-releases")
 		}
