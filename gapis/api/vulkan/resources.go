@@ -1046,9 +1046,9 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 
 		bindingRows[i] = &api.Row{
 			RowValues: []*api.DataValue{
-				api.CreatePoDDataValue(binding.Binding()),
-				api.CreatePoDDataValue(binding.Stride()),
-				api.CreateEnumDataValue(uint64(binding.InputRate()), binding.InputRate().String()),
+				api.CreatePoDDataValue("uint32_t ", binding.Binding()),
+				api.CreatePoDDataValue("uint32_t ", binding.Stride()),
+				api.CreateEnumDataValue("VkVertexInputRate", binding.InputRate()),
 			},
 		}
 	}
@@ -1066,10 +1066,10 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 
 		attributeRows[i] = &api.Row{
 			RowValues: []*api.DataValue{
-				api.CreatePoDDataValue(attribute.Location()),
-				api.CreatePoDDataValue(attribute.Binding()),
-				api.CreateEnumDataValue(uint64(attribute.Fmt()), attribute.Fmt().String()),
-				api.CreatePoDDataValue(attribute.Offset()),
+				api.CreatePoDDataValue("uint32_t", attribute.Location()),
+				api.CreatePoDDataValue("uint32_t", attribute.Binding()),
+				api.CreateEnumDataValue("VkFormat", attribute.Fmt()),
+				api.CreatePoDDataValue("uint32_t", attribute.Offset()),
 			},
 		}
 	}
@@ -1080,10 +1080,9 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 	}
 
 	assemblyList := &api.KeyValuePairList{}
-	assemblyList = assemblyList.AppendKeyValuePair("Topology",
-		api.CreateEnumDataValue(uint64(p.InputAssemblyState().Topology()), p.InputAssemblyState().Topology().String()))
-	assemblyList = assemblyList.AppendKeyValuePair("PrimitiveRestartEnabled",
-		api.CreatePoDDataValue(p.InputAssemblyState().PrimitiveRestartEnable() != 0))
+	assemblyList = assemblyList.AppendKeyValuePair("Topology", api.CreateEnumDataValue("VkPrimitiveTopology", p.InputAssemblyState().Topology()))
+	assemblyList = assemblyList.AppendKeyValuePair("PrimitiveRestartEnabled", api.CreatePoDDataValue("VkBool32",
+		p.InputAssemblyState().PrimitiveRestartEnable() != 0))
 
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{

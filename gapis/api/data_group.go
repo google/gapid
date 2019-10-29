@@ -15,6 +15,9 @@
 package api
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/google/gapid/core/data/pod"
 )
 
@@ -30,21 +33,33 @@ func (list *KeyValuePairList) AppendKeyValuePair(name string, value *DataValue) 
 	}
 }
 
-func CreateEnumDataValue(value uint64, stringValue string) *DataValue {
+func CreateEnumDataValue(typeName string, value fmt.Stringer) *DataValue {
+	s := value.String()
+
+	var i uint64 = 0
+	v := reflect.ValueOf(value)
+	switch v.Type().Kind() {
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		i = v.Uint()
+
+	default:
+		s = "INVALID ENUM"
+	}
+
 	return &DataValue{
-		TypeName: "Enum",
+		TypeName: typeName,
 		Val: &DataValue_EnumVal{
 			&EnumValue{
-				Value:       value,
-				StringValue: stringValue,
+				Value:       i,
+				StringValue: s,
 			},
 		},
 	}
 }
 
-func CreatePoDDataValue(val interface{}) *DataValue {
+func CreatePoDDataValue(typeName string, val interface{}) *DataValue {
 	return &DataValue{
-		TypeName: "PoD",
+		TypeName: typeName,
 		Val: &DataValue_Value{
 			pod.NewValue(val),
 		},
