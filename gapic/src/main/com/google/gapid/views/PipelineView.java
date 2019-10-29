@@ -25,10 +25,13 @@ import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
+import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
 import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
+import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.ColumnAndComparator;
 import static java.util.logging.Level.FINE;
 
@@ -49,6 +52,7 @@ import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
@@ -231,7 +235,42 @@ public class PipelineView extends Composite
             item.setControl(stageGroup);
 
             for (API.DataGroup dataGroup : stage.getGroupsList()) {
-              createGroup(stageGroup, dataGroup.getGroupName());
+              Group dataComposite = createGroup(stageGroup, dataGroup.getGroupName());
+
+              switch (dataGroup.getDataCase()) {
+                case KEY_VALUES:
+                  dataComposite.setLayout(new GridLayout(2, false));
+
+                  List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
+
+                  for (API.KeyValuePair kvp : kvpList) {
+                    withLayoutData(createBoldLabel(dataComposite, kvp.getName()+":"),
+                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+
+                    withLayoutData(createLabel(dataComposite, convertToString(kvp.getValue())),
+                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                  }
+
+                  break;
+
+                case TABLE:
+                  TableViewer groupTable = Widgets.createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+                  List<API.Row> rows = dataGroup.getTable().getRowsList();
+                  
+                  groupTable.setContentProvider(ArrayContentProvider.getInstance());
+
+                  for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
+                    int col = i;
+                    createTableColumn(groupTable, dataGroup.getTable().getHeaders(i), row -> {
+                      return convertToString(((API.Row)row).getRowValues(col));
+                    });
+                  }
+
+                  groupTable.setInput(rows);
+                  packColumns(groupTable.getTable());
+
+                  break;
+              }
             }
 
             stageGroup.requestLayout();
@@ -244,6 +283,64 @@ public class PipelineView extends Composite
   @Override
   public Control getControl() {
     return this;
+  }
+
+  private String convertToString(API.DataValue val) {
+    switch (val.getValCase()) {
+      case VALUE:
+        switch (val.getValue().getValCase()) {
+          case FLOAT32:
+            return Float.toString(val.getValue().getFloat32());
+
+          case FLOAT64:
+            return Double.toString(val.getValue().getFloat64());
+
+          case UINT:
+            return Long.toString(val.getValue().getUint());
+
+          case SINT:
+            return Long.toString(val.getValue().getSint());
+
+          case UINT8:
+            return Integer.toString(val.getValue().getUint8());
+
+          case SINT8:
+            return Integer.toString(val.getValue().getSint8());
+
+          case UINT16:
+            return Integer.toString(val.getValue().getUint16());
+
+          case SINT16:
+            return Integer.toString(val.getValue().getSint16());
+
+          case UINT32:
+            return Integer.toString(val.getValue().getUint32());
+
+          case SINT32:
+            return Integer.toString(val.getValue().getSint32());
+
+          case UINT64:
+            return Long.toString(val.getValue().getUint64());
+
+          case SINT64:
+            return Long.toString(val.getValue().getSint64());
+
+          case BOOL:
+            return Boolean.toString(val.getValue().getBool());
+
+          case STRING:
+            return val.getValue().getString();
+
+          default:
+            return "???";
+        }
+
+      case ENUMVAL:
+        return val.getEnumVal().getStringValue();
+
+      default:
+        return "???";
+    }
   }
 
   private static class Data {
