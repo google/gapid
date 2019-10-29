@@ -494,6 +494,14 @@ func (e externs) vkErrSemaphoreNotSubmitted(semaphore VkSemaphore) {
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrInvalidDescriptorCopy(srcSet VkDescriptorSet, srcBinding uint32, dstSet VkDescriptorSet, dstBinding uint32) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Copy descriptor set from %v to %v for the binding %v to %v is invalid", srcSet, dstSet, srcBinding, dstBinding)
+	e.onVkError(issue)
+}
+
 type fenceSignal uint64
 
 func (e externs) recordFenceSignal(fence VkFence) {

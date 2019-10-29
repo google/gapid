@@ -84,6 +84,10 @@ inline void VulkanSpy::vkErrSemaphoreNotSubmitted(CallObserver*, VkImage img) {
     GAPID_DEBUG("Error: Semaphore %" PRIu64 " has not submitted for signal", img);
 }
 
+inline void VulkanSpy::vkErrInvalidDescriptorCopy(CallObserver*, VkDescriptorSet srcSet, uint32_t srcBinding, VkDescriptorSet dstSet, uint32_t dstBinding) {
+    GAPID_WARNING("Error: Copy descriptor set from %" PRIu64 " to %" PRIu64 " for the binding %" PRIu64 " to %" PRIu64 " is invalid", srcSet, dstSet, srcBinding, dstBinding);
+}
+
 inline void VulkanSpy::vkErrInvalidDescriptorBindingType(CallObserver*, VkDescriptorSet set, uint32_t binding, uint32_t layout_type, uint32_t update_type) {
     GAPID_DEBUG("Error: Updating descriptor binding at: %" PRIu64 ": %" PRIu32 " with type: %" PRIu32 ", but the type defined in descriptor set layout is: %" PRIu32 "", set, binding, layout_type, update_type);
 }

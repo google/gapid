@@ -492,7 +492,7 @@ sub map!(u32, DescriptorSetCopy) RewriteWriteDescriptorCopies
       for k in (dstRecord.Binding .. dstSet.Layout.MaximumBinding + 1) {
         if !dstFound.b {
           if k in dstSet.Layout.Bindings {
-            if dstRecord.ArrayIndex < srcSet.Layout.Bindings[k].Count {
+            if dstRecord.ArrayIndex < dstSet.Layout.Bindings[k].Count {
               dstRecord.Binding = k
               dstFound.b = true
             } else {
@@ -562,9 +562,7 @@ cmd void vkUpdateDescriptorSets(
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
-
   }
-
 
   writes := RewriteWriteDescriptorSets(
     descriptorWriteCount,
@@ -643,28 +641,18 @@ cmd void vkUpdateDescriptorSets(
   for _ , _ , c in copies {
     srcSet := DescriptorSets[c.SrcSet]
     dstSet := DescriptorSets[c.DstSet]
-    srcBinding := switch srcSet.Bindings[c.SrcBinding] == null {
-      case false:
-        srcSet.Bindings[c.SrcBinding]
-      case true:
-        new!DescriptorBinding(BindingType: srcSet.Layout.Bindings[c.SrcBinding].Type)
-    }
-    dstBinding := switch dstSet.Bindings[c.DstBinding] == null {
-      case false:
-        dstSet.Bindings[c.DstBinding]
-      case true:
-        new!DescriptorBinding(BindingType: dstSet.Layout.Bindings[c.DstBinding].Type)
-    }
-    switch (srcBinding.BindingType) {
-      case VK_DESCRIPTOR_TYPE_SAMPLER,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-          VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-          VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+    srcBinding := srcSet.Bindings[c.SrcBinding]
+    dstBinding := dstSet.Bindings[c.DstBinding]
 
-        if srcBinding.ImageBinding[c.SrcArrayIndex] == null {
-           vkErrInvalidDescriptorArrayElement(as!u64(c.SrcSet), c.SrcBinding, c.SrcArrayIndex)
-        } else {
+    if ((srcBinding == null) || (dstBinding == null)) {
+      vkErrorInvalidDescriptorCopy(c.SrcSet, c.SrcBinding, c.DstSet, c.DstBinding)
+    } else {
+      switch (srcBinding.BindingType) {
+        case VK_DESCRIPTOR_TYPE_SAMPLER,
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
           imageBinding := dstBinding.ImageBinding
           imageBinding[c.DstArrayIndex] = srcBinding.ImageBinding[c.SrcArrayIndex]
           dstBinding.ImageBinding = imageBinding
@@ -685,40 +673,40 @@ cmd void vkUpdateDescriptorSets(
             }
           }
         }
-      }
 
-      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-          VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-        bufferViews := dstBinding.BufferViewBindings
-        bufferViews[c.DstArrayIndex] =
-        srcBinding.BufferViewBindings[c.SrcArrayIndex]
-        dstBinding.BufferViewBindings = bufferViews
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+          bufferViews := dstBinding.BufferViewBindings
+          bufferViews[c.DstArrayIndex] =
+          srcBinding.BufferViewBindings[c.SrcArrayIndex]
+          dstBinding.BufferViewBindings = bufferViews
 
-        vkView := srcBinding.BufferViewBindings[c.SrcArrayIndex]
-        if vkView in BufferViews {
-          viewObj := BufferViews[vkView]
-          if viewObj != null {
-            registerDescriptorUser!BufferViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+          vkView := srcBinding.BufferViewBindings[c.SrcArrayIndex]
+          if vkView in BufferViews {
+            viewObj := BufferViews[vkView]
+            if viewObj != null {
+              registerDescriptorUser!BufferViewObject(viewObj, c.DstSet, c.DstBinding, c.DstArrayIndex)
+            }
+          }
+        }
+
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+          bufferBinding := dstBinding.BufferBinding
+          bufferBinding[c.DstArrayIndex] =
+          srcBinding.BufferBinding[c.SrcArrayIndex]
+          dstBinding.BufferBinding = bufferBinding
+          for _, _, b in dstBinding.BufferBinding {
+            if !b.Buffer in Buffers {
+              vkErrorInvalidBuffer(b.Buffer)
+            }
           }
         }
       }
-
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-        bufferBinding := dstBinding.BufferBinding
-        bufferBinding[c.DstArrayIndex] =
-        srcBinding.BufferBinding[c.SrcArrayIndex]
-        dstBinding.BufferBinding = bufferBinding
-        for _, _, b in dstBinding.BufferBinding {
-          if !b.Buffer in Buffers {
-            vkErrorInvalidBuffer(b.Buffer)
-          }
-        }
-      }
+      dstSet.Bindings[c.DstBinding] = dstBinding
     }
-    dstSet.Bindings[c.DstBinding] = dstBinding
   }
 }
 

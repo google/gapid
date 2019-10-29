@@ -55,6 +55,7 @@ extern void vkErrInvalidImageLayout(VkImage img, u32 aspect, u32 layer, u32 leve
 extern void vkErrInvalidImageSubresource(VkImage img, string subresourceType, u32 value)
 extern void vkErrImageMemoryNotBound(VkImage img)
 extern void vkErrSemaphoreNotSubmitted(VkSemaphore semaphore)
+extern void vkErrInvalidDescriptorCopy(VkDescriptorSet srcSet, u32 srcBinding, VkDescriptorSet dstSet, u32 dstBinding)
 
 sub void vkErrorInvalidInstance(VkInstance inst) {
   vkErrorInvalidHandle("VkInstance", as!u64(inst))
@@ -156,12 +157,12 @@ sub void vkErrorInvalidPipelineLayout(VkPipelineLayout layout) {
   vkErrorInvalidHandle("VkPipelineLayout", as!u64(layout))
 }
 
-sub void vkErrorInvalidSampler(VkSampler sampler) {
-  vkErrorInvalidHandle("VkSampler", as!u64(sampler))
-}
-
 sub void vkErrorInvalidDescriptorSet(VkDescriptorSet set) {
   vkErrorInvalidHandle("VkDescriptorSet", as!u64(set))
+}
+
+sub void vkErrorInvalidDescriptorCopy(VkDescriptorSet srcSet, u32 srcBinding, VkDescriptorSet dstSet, u32 dstBinding) {
+  vkErrInvalidDescriptorCopy(srcSet, srcBinding, dstSet, dstBinding)
 }
 
 sub void vkErrorInvalidDescriptorSetLayout(VkDescriptorSetLayout layout) {
