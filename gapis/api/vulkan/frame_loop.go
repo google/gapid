@@ -92,6 +92,12 @@ type frameLoop struct {
 	loopStartState *api.GlobalState
 	loopEndState   *api.GlobalState
 
+	instanceToDestroy map[VkInstance]bool
+	instanceToCreate  map[VkInstance]bool
+
+	deviceToDestroy map[VkDevice]bool
+	deviceToCreate  map[VkDevice]bool
+
 	memoryToFree     map[VkDeviceMemory]bool
 	memoryToAllocate map[VkDeviceMemory]bool
 	memoryToUnmap    map[VkDeviceMemory]bool
@@ -212,6 +218,12 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		watcher: &stateWatcher{
 			memoryWrites: make(map[memory.PoolID]*interval.U64SpanList),
 		},
+
+		instanceToDestroy: make(map[VkInstance]bool),
+		instanceToCreate:  make(map[VkInstance]bool),
+
+		deviceToDestroy: make(map[VkDevice]bool),
+		deviceToCreate:  make(map[VkDevice]bool),
 
 		memoryToFree:     make(map[VkDeviceMemory]bool),
 		memoryToAllocate: make(map[VkDeviceMemory]bool),
@@ -543,6 +555,40 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 		cmd.Extras().Observations().ApplyWrites(currentState.Memory.ApplicationPool())
 
 		switch cmd.(type) {
+
+		// Instances
+		case *VkCreateInstance:
+			vkCmd := cmd.(*VkCreateInstance)
+			instance := vkCmd.PInstance().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Instance %v created.", instance)
+			f.instanceToDestroy[instance] = true
+
+		case *VkDestroyInstance:
+			vkCmd := cmd.(*VkDestroyInstance)
+			instance := vkCmd.Instance()
+			log.D(ctx, "Instance %v destroyed.", instance)
+			if _, ok := f.instanceToDestroy[instance]; ok {
+				delete(f.instanceToDestroy, instance)
+			} else {
+				f.instanceToCreate[instance] = true
+			}
+
+		// Device
+		case *VkCreateDevice:
+			vkCmd := cmd.(*VkCreateDevice)
+			device := vkCmd.PDevice().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Device %v created.", device)
+			f.deviceToDestroy[device] = true
+
+		case *VkDestroyDevice:
+			vkCmd := cmd.(*VkDestroyDevice)
+			device := vkCmd.Device()
+			log.D(ctx, "Device %v destroyed.", device)
+			if _, ok := f.deviceToDestroy[device]; ok {
+				delete(f.deviceToDestroy, device)
+			} else {
+				f.deviceToCreate[device] = true
+			}
 
 		// Memories
 		case *VkAllocateMemory:
@@ -1363,6 +1409,14 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 
 func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
+	if err := f.resetInstances(ctx, stateBuilder); err != nil {
+		return err
+	}
+
+	if err := f.resetDevices(ctx, stateBuilder); err != nil {
+		return err
+	}
+
 	if err := f.resetDeviceMemory(ctx, stateBuilder); err != nil {
 		return err
 	}
@@ -1463,6 +1517,273 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 
 	// Flush out the reset commands
 	stateBuilder.scratchRes.Free(stateBuilder)
+	return nil
+}
+
+func (f *frameLoop) resetInstances(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Instance that we need to destroy at the end of the loop...
+	for toDestroy := range f.instanceToDestroy {
+		// Write the command to delete the created object
+		instance := GetState(f.loopEndState).instances.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyInstance(instance.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every Instance that we need to create at the end of the loop...
+	for toCreate := range f.instanceToCreate {
+		// Write the commands needed to recreate the destroyed object
+		instance := GetState(f.loopStartState).instances.Get(toCreate)
+		stateBuilder.createInstance(instance.VulkanHandle(), instance)
+	}
+
+	for _, deviceObject := range GetState(f.loopStartState).Devices().All() {
+
+		physicalDevice := deviceObject.PhysicalDevice()
+		physicalDeviceObject := GetState(f.loopStartState).PhysicalDevices().All()[physicalDevice]
+		instance := physicalDeviceObject.Instance()
+
+		if _, ok := f.instanceToCreate[instance]; ok {
+			f.deviceToDestroy[deviceObject.VulkanHandle()] = true
+			f.deviceToCreate[deviceObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, surfaceObject := range GetState(f.loopStartState).Surfaces().All() {
+
+		instance := surfaceObject.Instance()
+
+		if _, ok := f.instanceToCreate[instance]; ok {
+			f.surfaceToDestroy[surfaceObject.VulkanHandle()] = true
+			f.surfaceToCreate[surfaceObject.VulkanHandle()] = true
+		}
+	}
+
+	return nil
+}
+
+func (f *frameLoop) resetDevices(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	// For every Device that we need to destroy at the end of the loop...
+	for toDestroy := range f.deviceToDestroy {
+		// Write the command to delete the created object
+		device := GetState(f.loopEndState).devices.Get(toDestroy)
+		stateBuilder.write(stateBuilder.cb.VkDestroyDevice(device.VulkanHandle(), memory.Nullptr))
+	}
+
+	// For every Device that we need to create at the end of the loop...
+	for toCreate := range f.deviceToCreate {
+		// Write the commands needed to recreate the destroyed object
+		device := GetState(f.loopStartState).devices.Get(toCreate)
+		stateBuilder.createDevice(device)
+	}
+
+	for _, memoryObject := range GetState(f.loopStartState).DeviceMemories().All() {
+
+		device := memoryObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.memoryToFree[memoryObject.VulkanHandle()] = true
+			f.memoryToAllocate[memoryObject.VulkanHandle()] = true
+			// TODO: @renfengliu What do we need to do here with memoryToUnmap/memoryToMap/mappedAddress?
+		}
+	}
+
+	for _, bufferObject := range GetState(f.loopStartState).Buffers().All() {
+
+		device := bufferObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.bufferToDestroy[bufferObject.VulkanHandle()] = true
+			f.bufferToCreate[bufferObject.VulkanHandle()] = true
+			// TODO: @renfengliu What do we need to do here with bufferChanged/bufferToRestore?
+		}
+	}
+
+	for _, imageObject := range GetState(f.loopStartState).Images().All() {
+
+		device := imageObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.imageToDestroy[imageObject.VulkanHandle()] = true
+			f.imageToCreate[imageObject.VulkanHandle()] = true
+			// TODO: @renfengliu What do we need to do here with imageChanged/imageToRestore?
+		}
+	}
+
+	for _, samplerYcbcrObject := range GetState(f.loopStartState).SamplerYcbcrConversions().All() {
+
+		device := samplerYcbcrObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.samplerYcbcrConversionToDestroy[samplerYcbcrObject.VulkanHandle()] = true
+			f.samplerYcbcrConversionToCreate[samplerYcbcrObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
+
+		device := samplerObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.samplerToDestroy[samplerObject.VulkanHandle()] = true
+			f.samplerToCreate[samplerObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, shaderModuleObject := range GetState(f.loopStartState).ShaderModules().All() {
+
+		device := shaderModuleObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.shaderModuleToDestroy[shaderModuleObject.VulkanHandle()] = true
+			f.shaderModuleToCreate[shaderModuleObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, descriptorSetLayoutObject := range GetState(f.loopStartState).DescriptorSetLayouts().All() {
+
+		device := descriptorSetLayoutObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.descriptorSetLayoutToDestroy[descriptorSetLayoutObject.VulkanHandle()] = true
+			f.descriptorSetLayoutToCreate[descriptorSetLayoutObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, pipelineLayoutObject := range GetState(f.loopStartState).PipelineLayouts().All() {
+
+		device := pipelineLayoutObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.pipelineLayoutToDestroy[pipelineLayoutObject.VulkanHandle()] = true
+			f.pipelineLayoutToCreate[pipelineLayoutObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, pipelineCacheObject := range GetState(f.loopStartState).PipelineCaches().All() {
+
+		device := pipelineCacheObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.pipelineCacheToDestroy[pipelineCacheObject.VulkanHandle()] = true
+			f.pipelineCacheToCreate[pipelineCacheObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, pipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+
+		device := pipelineObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.pipelineToDestroy[pipelineObject.VulkanHandle()] = true
+			f.graphicsPipelineToCreate[pipelineObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, pipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+
+		device := pipelineObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.pipelineToDestroy[pipelineObject.VulkanHandle()] = true
+			f.computePipelineToCreate[pipelineObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, descriptorPoolObject := range GetState(f.loopStartState).DescriptorPools().All() {
+
+		device := descriptorPoolObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.descriptorPoolToDestroy[descriptorPoolObject.VulkanHandle()] = true
+			f.descriptorPoolToCreate[descriptorPoolObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, descriptorSetObject := range GetState(f.loopStartState).DescriptorSets().All() {
+
+		device := descriptorSetObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.descriptorSetToFree[descriptorSetObject.VulkanHandle()] = true
+			f.descriptorSetChanged[descriptorSetObject.VulkanHandle()] = true
+			f.descriptorSetToAllocate[descriptorSetObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, semaphoreObject := range GetState(f.loopStartState).Semaphores().All() {
+
+		device := semaphoreObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.semaphoreToDestroy[semaphoreObject.VulkanHandle()] = true
+			f.semaphoreChanged[semaphoreObject.VulkanHandle()] = true
+			f.semaphoreToCreate[semaphoreObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, fenceObject := range GetState(f.loopStartState).Fences().All() {
+
+		device := fenceObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.fenceToDestroy[fenceObject.VulkanHandle()] = true
+			f.fenceChanged[fenceObject.VulkanHandle()] = true
+			f.fenceToCreate[fenceObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, eventObject := range GetState(f.loopStartState).Events().All() {
+
+		device := eventObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.eventToDestroy[eventObject.VulkanHandle()] = true
+			f.eventChanged[eventObject.VulkanHandle()] = true
+			f.eventToCreate[eventObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, framebufferObject := range GetState(f.loopStartState).Framebuffers().All() {
+
+		device := framebufferObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.framebufferToDestroy[framebufferObject.VulkanHandle()] = true
+			f.framebufferToCreate[framebufferObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, renderPassObject := range GetState(f.loopStartState).RenderPasses().All() {
+
+		device := renderPassObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.renderPassToDestroy[renderPassObject.VulkanHandle()] = true
+			f.renderPassToCreate[renderPassObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, queryPoolObject := range GetState(f.loopStartState).QueryPools().All() {
+
+		device := queryPoolObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.queryPoolToDestroy[queryPoolObject.VulkanHandle()] = true
+			f.queryPoolToCreate[queryPoolObject.VulkanHandle()] = true
+		}
+	}
+
+	for _, commandPoolObject := range GetState(f.loopStartState).CommandPools().All() {
+
+		device := commandPoolObject.Device()
+
+		if _, ok := f.deviceToCreate[device]; ok {
+			f.commandPoolToDestroy[commandPoolObject.VulkanHandle()] = true
+			f.commandPoolToCreate[commandPoolObject.VulkanHandle()] = true
+		}
+	}
+
 	return nil
 }
 
