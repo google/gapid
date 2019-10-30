@@ -52,7 +52,7 @@ function check() {
 
 function run_clang_format() {
   # Do not format files under core/vulkan/cc/include/vulkan/
-  find . -path ./core/vulkan/cc/include/vulkan -prune -o \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print| xargs $CLANG_FORMAT -i -style=Google
+  find . -path ./core/vulkan/cc/include/vulkan -prune -o \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print| xargs $CLANG_FORMAT -i -style=file
 }
 
 function run_gofmt() {
