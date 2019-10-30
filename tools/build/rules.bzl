@@ -13,7 +13,6 @@
 # limitations under the License.
 
 load("//tools/build/rules:android.bzl",
-    _android_native_app_glue = "android_native_app_glue",
     _android_native = "android_native",
     _android_native_binary = "android_native_binary",
 )
@@ -73,7 +72,6 @@ load("//tools/build/rules:zip.bzl",
     _extract = "extract",
 )
 
-android_native_app_glue = _android_native_app_glue
 android_native = _android_native
 android_native_binary = _android_native_binary
 apic_compile = _apic_compile

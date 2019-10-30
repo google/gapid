@@ -102,7 +102,11 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):
         srcs = select({
             "//tools/build:android-" + name: [name + "_libs"],
             "//conditions:default": [],
-        })
+        }),
+        deps = select({
+            "//tools/build:android-" + name: ["@ndk_vk_validation_layer//:" + abi],
+            "//conditions:default": [],
+        }),
     )
     native.android_binary(
         name = name,
