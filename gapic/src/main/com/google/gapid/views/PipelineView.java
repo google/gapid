@@ -19,6 +19,7 @@ import static com.google.gapid.proto.service.api.API.ResourceType.PipelineResour
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createScrolledComposite;
 import static com.google.gapid.widgets.Widgets.createTextarea;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
@@ -50,6 +51,7 @@ import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
+import com.google.common.base.Joiner;
 
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
@@ -57,6 +59,7 @@ import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Composite;
@@ -66,6 +69,7 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Widget;
 import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 
@@ -76,6 +80,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+import java.lang.StringBuilder;
 
 /**
  * View the displays the information for each stage of the pipeline.
@@ -239,17 +244,31 @@ public class PipelineView extends Composite
 
               switch (dataGroup.getDataCase()) {
                 case KEY_VALUES:
-                  dataComposite.setLayout(new GridLayout(2, false));
+                  RowLayout rowLayout = new RowLayout();
+                  rowLayout.wrap = true;
+                  ScrolledComposite scrollComposite = createScrolledComposite(dataComposite, new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
+
+                  Composite contentComposite = createComposite(scrollComposite, rowLayout);
 
                   List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
 
                   for (API.KeyValuePair kvp : kvpList) {
-                    withLayoutData(createBoldLabel(dataComposite, kvp.getName()+":"),
+                    Composite kvpComposite = createComposite(contentComposite, new GridLayout(2, false));
+
+                    withLayoutData(createBoldLabel(kvpComposite, kvp.getName()+":"),
                       new GridData(SWT.BEGINNING, SWT.TOP, false, false));
 
-                    withLayoutData(createLabel(dataComposite, convertToString(kvp.getValue())),
+                    withLayoutData(createLabel(kvpComposite, convertToString(kvp.getValue())),
                       new GridData(SWT.BEGINNING, SWT.TOP, false, false));
                   }
+
+                  scrollComposite.setContent(contentComposite);
+                  scrollComposite.setExpandVertical(true);
+                  scrollComposite.setExpandHorizontal(true);
+                  scrollComposite.addListener( SWT.Resize, event -> {
+                    int width = scrollComposite.getClientArea().width;
+                    scrollComposite.setMinHeight(contentComposite.computeSize(width, SWT.DEFAULT).y);
+                  });
 
                   break;
 
@@ -337,6 +356,11 @@ public class PipelineView extends Composite
 
       case ENUMVAL:
         return val.getEnumVal().getStringValue();
+
+      case BITFIELD:
+        Joiner joiner = Joiner.on(" | ");
+        return joiner.join(val.getBitfield().getSetBitnamesList());
+        
 
       default:
         return "???";

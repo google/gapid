@@ -65,3 +65,61 @@ func CreatePoDDataValue(typeName string, val interface{}) *DataValue {
 		},
 	}
 }
+
+func CreateBitfieldDataValue(typeName string, val interface{}, index int, a API) *DataValue {
+	v := reflect.ValueOf(val)
+	var n uint64
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		n = uint64(v.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		n = v.Uint()
+	default:
+		return &DataValue{
+			TypeName: typeName,
+			Val: &DataValue_Bitfield{
+				&BitfieldValue{
+					SetBits:     []uint64{0},
+					SetBitnames: []string{"INVALID BITFIELD"},
+				},
+			},
+		}
+	}
+
+	cs := a.ConstantSets()
+	set := cs.Sets[index]
+
+	bits := []uint64{}
+	names := []string{}
+	if set.IsBitfield {
+		for _, e := range set.Entries {
+			if n == 0 && e.V == 0 {
+				bits = append(bits, 0)
+				names = append(names, cs.Symbols.Get(e))
+				break
+			} else if n&e.V != 0 {
+				bits = append(bits, e.V)
+				names = append(names, cs.Symbols.Get(e))
+				n &^= e.V
+			}
+		}
+
+		if n != 0 {
+			bits = append(bits, n)
+			names = append(names, fmt.Sprintf("%s (%d)", typeName, n))
+		}
+	} else {
+		bits = append(bits, 0)
+		names = append(names, "INVALID BITFIELD")
+	}
+
+	return &DataValue{
+		TypeName: typeName,
+		Val: &DataValue_Bitfield{
+			&BitfieldValue{
+				SetBits:     bits,
+				SetBitnames: names,
+			},
+		},
+	}
+}

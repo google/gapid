@@ -45,6 +45,7 @@ import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
@@ -742,6 +743,12 @@ public class Widgets {
 
   public static Composite createComposite(Composite parent, Layout layout, int style) {
     Composite composite = new Composite(parent, style);
+    composite.setLayout(layout);
+    return composite;
+  }
+
+  public static ScrolledComposite createScrolledComposite(Composite parent, Layout layout, int style) {
+    ScrolledComposite composite = new ScrolledComposite(parent, style);
     composite.setLayout(layout);
     return composite;
   }
