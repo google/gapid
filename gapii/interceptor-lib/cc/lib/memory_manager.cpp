@@ -30,11 +30,11 @@ MemoryManager::MemoryManager(int prot, int flags)
     : prot_(prot), flags_(flags) {}
 
 MemoryManager::~MemoryManager() {
-  for (const auto &alloc : allocations_)
-    munmap(reinterpret_cast<void *>(alloc.start()), alloc.size());
+  for (const auto& alloc : allocations_)
+    munmap(reinterpret_cast<void*>(alloc.start()), alloc.size());
 }
 
-void *MemoryManager::Allocate(size_t size, size_t alignment,
+void* MemoryManager::Allocate(size_t size, size_t alignment,
                               uintptr_t range_start, uintptr_t range_end) {
   assert(size > 0 && "Can't allocate 0 or negative amount of memory.");
   assert(size <= PAGE_SIZE && "Can't allocate more then PAGE_SIZE memory");
@@ -42,13 +42,13 @@ void *MemoryManager::Allocate(size_t size, size_t alignment,
          "Can met alignment requiremenet not "
          "satisfied by a page boundary");
 
-  for (Allocation &alloc : allocations_) {
-    if (void *addr = alloc.Alloc(size, alignment, range_start, range_end))
+  for (Allocation& alloc : allocations_) {
+    if (void* addr = alloc.Alloc(size, alignment, range_start, range_end))
       return addr;
     if (range_start >= alloc.start() && range_start <= alloc.end())
       range_start = alloc.end();
   }
-  void *target = mmap(reinterpret_cast<void *>(range_start), PAGE_SIZE, prot_,
+  void* target = mmap(reinterpret_cast<void*>(range_start), PAGE_SIZE, prot_,
                       flags_, 0, 0);
   if (!target) return nullptr;
 
@@ -56,7 +56,7 @@ void *MemoryManager::Allocate(size_t size, size_t alignment,
   return allocations_.back().Alloc(size, alignment, range_start, range_end);
 }
 
-void *MemoryManager::Allocation::Alloc(size_t size, size_t alignment,
+void* MemoryManager::Allocation::Alloc(size_t size, size_t alignment,
                                        uintptr_t range_start,
                                        uintptr_t range_end) {
   size_t new_offset = CalculateNewOffset(size, alignment);

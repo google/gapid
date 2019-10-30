@@ -49,8 +49,8 @@ bool hasVulkanLoader() { return core::HasVulkanLoader(); }
   }
 
 bool vkLayersAndExtensions(
-    device::VulkanDriver *driver,
-    std::function<void *(size_t, const char *)> get_inst_proc_addr) {
+    device::VulkanDriver* driver,
+    std::function<void*(size_t, const char*)> get_inst_proc_addr) {
   if (!driver) {
     return false;
   }
@@ -75,7 +75,7 @@ bool vkLayersAndExtensions(
                                                   inst_layer_props.data()));
   driver->clear_layers();
   for (size_t i = 0; i < inst_layer_props.size(); i++) {
-    auto &l = inst_layer_props[i];
+    auto& l = inst_layer_props[i];
     uint32_t ext_count = 0;
     // Skip our layers.
     if (!strcmp(l.layerName, "GraphicsSpy") ||
@@ -111,8 +111,8 @@ bool vkLayersAndExtensions(
 }
 
 bool vkPhysicalDevices(
-    device::VulkanDriver *driver, size_t vk_inst_handle,
-    std::function<void *(size_t, const char *)> get_inst_proc_addr) {
+    device::VulkanDriver* driver, size_t vk_inst_handle,
+    std::function<void*(size_t, const char*)> get_inst_proc_addr) {
   if (!driver) {
     return false;
   }

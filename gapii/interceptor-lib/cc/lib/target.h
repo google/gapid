@@ -50,12 +50,12 @@ class Target {
 
   // Create a new code generator with the specified start alignment what can
   // generate code with the same ISA pointed by the address (e.g. thumb vs arm).
-  virtual CodeGenerator *GetCodeGenerator(void *address,
+  virtual CodeGenerator* GetCodeGenerator(void* address,
                                           size_t start_alignment) = 0;
 
   // Create a disassebler what can disassamble code coming from the specified
   // address.
-  virtual Disassembler *CreateDisassembler(void *address) = 0;
+  virtual Disassembler* CreateDisassembler(void* address) = 0;
 
   // Get the maximum alignment required by the target by any instruction in any
   // of the supported ISA.
@@ -64,7 +64,7 @@ class Target {
   // Return a load address from a function pointer. Have to be implemented for
   // architectures where some bits of the function pointers contain meta-data
   // (e.g. thumb bit)
-  virtual void *GetLoadAddress(void *addr) { return addr; }
+  virtual void* GetLoadAddress(void* addr) { return addr; }
 
   // Returns the full list of avaiulable trampolines on the given architecture
   // sorted to increasing order by the total size of instructions (including
@@ -79,31 +79,31 @@ class Target {
   // Emit a trampoline with the given config into the code generator what will
   // jump to the specified target address if it is placed into the location
   // specified by the source address.
-  virtual Error EmitTrampoline(const TrampolineConfig &config,
-                               CodeGenerator &codegen, void *target) = 0;
+  virtual Error EmitTrampoline(const TrampolineConfig& config,
+                               CodeGenerator& codegen, void* target) = 0;
 
   // Rewrite the specified instruction read from "data + offset "into the code
   // generator with a set of instructions with the exact same effect but without
   // any limitation about the location they have to be placed at. Additionally
   // it sets the "possible_end_of_function" flag to true if the instruction can
   // be the last one inside a function and to false otherwise.
-  virtual Error RewriteInstruction(const llvm::MCInst &inst,
-                                   CodeGenerator &codegen, void *data,
+  virtual Error RewriteInstruction(const llvm::MCInst& inst,
+                                   CodeGenerator& codegen, void* data,
                                    size_t offset,
-                                   bool &possible_end_of_function) = 0;
+                                   bool& possible_end_of_function) = 0;
 
   // Convert the pointer specified by "new_function" from a memory load address
   // to a function pointer with the same ISA as the function pointed by
   // "old_function". Have to be implemented for architectures where some bits of
   // the function pointers contain meta-data (e.g. thumb bit).
-  virtual void *FixupCallbackFunction(void *old_function, void *new_function) {
+  virtual void* FixupCallbackFunction(void* old_function, void* new_function) {
     return new_function;
   }
 
   // Checks if the old function is a simple PLT type function where it is
   // (likely) not possible to install a trampoline. Returns the address of the
   // PLT target or old_function.
-  virtual void *CheckIsPLT(void *old_function, void *new_function) {
+  virtual void* CheckIsPLT(void* old_function, void* new_function) {
     return old_function;
   }
 };

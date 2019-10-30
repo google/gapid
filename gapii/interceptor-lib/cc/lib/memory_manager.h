@@ -29,25 +29,25 @@ class MemoryManager {
   MemoryManager(int prot, int flags);
   ~MemoryManager();
 
-  void *Allocate(size_t size, size_t alignment,
+  void* Allocate(size_t size, size_t alignment,
                  uintptr_t range_start = std::numeric_limits<uintptr_t>::min(),
                  uintptr_t range_end = std::numeric_limits<uintptr_t>::max());
 
  private:
   class Allocation {
    public:
-    Allocation(void *start, size_t size)
-        : start_(static_cast<uint8_t *>(start)), size_(size), offset_(0) {}
+    Allocation(void* start, size_t size)
+        : start_(static_cast<uint8_t*>(start)), size_(size), offset_(0) {}
 
     uintptr_t start() const { return reinterpret_cast<uintptr_t>(start_); }
     uintptr_t end() const { return start() + size_; }
     size_t size() const { return size_; }
 
-    void *Alloc(size_t size, size_t alignment, uintptr_t range_start,
+    void* Alloc(size_t size, size_t alignment, uintptr_t range_start,
                 uintptr_t range_end);
 
    private:
-    uint8_t *const start_;
+    uint8_t* const start_;
     const size_t size_;
     size_t offset_;
 

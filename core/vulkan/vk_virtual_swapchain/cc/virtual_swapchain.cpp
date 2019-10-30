@@ -29,7 +29,7 @@ namespace {
 // Determines what heap memory should be allocated from, given
 // a set of bits.
 int32_t FindMemoryType(
-    const VkPhysicalDeviceMemoryProperties *memory_properties,
+    const VkPhysicalDeviceMemoryProperties* memory_properties,
     uint32_t memoryTypeBits, VkMemoryPropertyFlags properties) {
   for (uint32_t i = 0; i < memory_properties->memoryTypeCount; ++i) {
     if ((memoryTypeBits & (1 << i)) &&
@@ -40,17 +40,17 @@ int32_t FindMemoryType(
   return -1;
 }
 
-void null_callback(void *, uint8_t *, size_t) {}
+void null_callback(void*, uint8_t*, size_t) {}
 }  // namespace
 
 namespace swapchain {
 VirtualSwapchain::VirtualSwapchain(
     VkDevice device, uint32_t queue,
-    const VkPhysicalDeviceProperties *pProperties,
-    const VkPhysicalDeviceMemoryProperties *memory_properties,
-    const DeviceData *functions,
-    const VkSwapchainCreateInfoKHR *_swapchain_info,
-    const VkAllocationCallbacks *pAllocator,
+    const VkPhysicalDeviceProperties* pProperties,
+    const VkPhysicalDeviceMemoryProperties* memory_properties,
+    const DeviceData* functions,
+    const VkSwapchainCreateInfoKHR* _swapchain_info,
+    const VkAllocationCallbacks* pAllocator,
     uint32_t pending_image_timeout_in_milliseconds,
     bool always_get_acquired_image)
     : swapchain_info_(*_swapchain_info),
@@ -254,22 +254,22 @@ VirtualSwapchain::VirtualSwapchain(
 
 #ifdef _WIN32
   thread_ = CreateThread(NULL, 0,
-                         [](void *data) -> DWORD {
-                           ((VirtualSwapchain *)data)->CopyThreadFunc();
+                         [](void* data) -> DWORD {
+                           ((VirtualSwapchain*)data)->CopyThreadFunc();
                            return 0;
                          },
                          this, 0, nullptr);
 #else
   pthread_create(&thread_, nullptr,
-                 +[](void *data) -> void * {
-                   ((VirtualSwapchain *)data)->CopyThreadFunc();
+                 +[](void* data) -> void* {
+                   ((VirtualSwapchain*)data)->CopyThreadFunc();
                    return nullptr;
                  },
                  this);
 #endif
 }
 
-void VirtualSwapchain::Destroy(const VkAllocationCallbacks *pAllocator) {
+void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
   should_close_.store(true);
 #ifdef _WIN32
   WaitForSingleObject(thread_, INFINITE);
@@ -323,7 +323,7 @@ void VirtualSwapchain::CopyThreadFunc() {
     (void)ret;  // TODO: Check this?
     functions_->vkResetFences(device_, 1, &image_data_[pending_image].fence_);
 
-    void *mapped_value;
+    void* mapped_value;
     functions_->vkMapMemory(device_, image_data_[pending_image].buffer_memory_,
                             0, VK_WHOLE_SIZE, 0, &mapped_value);
     VkMappedMemoryRange range{
@@ -336,7 +336,7 @@ void VirtualSwapchain::CopyThreadFunc() {
     functions_->vkInvalidateMappedMemoryRanges(device_, 1, &range);
 
     uint32_t length = ImageByteSize();
-    { callback_(callback_user_data_, (uint8_t *)mapped_value, length); }
+    { callback_(callback_user_data_, (uint8_t*)mapped_value, length); }
     functions_->vkUnmapMemory(device_,
                               image_data_[pending_image].buffer_memory_);
     {
@@ -347,9 +347,9 @@ void VirtualSwapchain::CopyThreadFunc() {
   }
 }
 
-bool VirtualSwapchain::GetImage(uint64_t timeout, uint32_t *image) {
+bool VirtualSwapchain::GetImage(uint64_t timeout, uint32_t* image) {
   // A helper function that tries to get a free image.
-  auto try_get_image_index = [&](uint32_t *index) {
+  auto try_get_image_index = [&](uint32_t* index) {
     uint32_t i = 0;
     if (always_get_acquired_image_) {
       for (auto iter = free_images_.begin(); iter != free_images_.end();
@@ -384,8 +384,8 @@ bool VirtualSwapchain::GetImage(uint64_t timeout, uint32_t *image) {
   }
 }
 
-void VirtualSwapchain::SetCallback(void callback(void *, uint8_t *, size_t),
-                                   void *user_data) {
+void VirtualSwapchain::SetCallback(void callback(void*, uint8_t*, size_t),
+                                   void* user_data) {
   callback_ = callback;
   callback_user_data_ = user_data;
 }
@@ -397,8 +397,8 @@ uint32_t VirtualSwapchain::ImageByteSize() const {
 }
 
 void VirtualSwapchain::CreateBaseSwapchain(
-    VkInstance instance, const InstanceData *instance_functions,
-    const VkAllocationCallbacks *pAllocator, const void *platform_info) {
+    VkInstance instance, const InstanceData* instance_functions,
+    const VkAllocationCallbacks* pAllocator, const void* platform_info) {
   base_swapchain_ = std::unique_ptr<BaseSwapchain>(new BaseSwapchain(
       instance, device_, queue_, command_pool_, num_images_, instance_functions,
       functions_, &swapchain_info_, pAllocator, platform_info));

@@ -18,9 +18,9 @@
 
 using namespace interceptor;
 
-Disassembler::Disassembler(const llvm::Triple &triple) : triple_(triple) {}
+Disassembler::Disassembler(const llvm::Triple& triple) : triple_(triple) {}
 
-Disassembler *Disassembler::Create(const llvm::Triple &triple) {
+Disassembler* Disassembler::Create(const llvm::Triple& triple) {
   std::unique_ptr<Disassembler> disassembler(new Disassembler(triple));
   if (disassembler->Initialize()) return disassembler.release();
   return nullptr;
@@ -28,7 +28,7 @@ Disassembler *Disassembler::Create(const llvm::Triple &triple) {
 
 bool Disassembler::Initialize() {
   std::string error;
-  const llvm::Target *target =
+  const llvm::Target* target =
       llvm::TargetRegistry::lookupTarget(triple_.str().c_str(), error);
   if (!target) return false;
 
@@ -45,9 +45,9 @@ bool Disassembler::Initialize() {
   return true;
 }
 
-bool Disassembler::GetInstruction(const void *data, size_t offset,
-                                  llvm::MCInst &inst, uint64_t &inst_size) {
-  const uint8_t *data_p = static_cast<const uint8_t *>(data);
+bool Disassembler::GetInstruction(const void* data, size_t offset,
+                                  llvm::MCInst& inst, uint64_t& inst_size) {
+  const uint8_t* data_p = static_cast<const uint8_t*>(data);
   llvm::ArrayRef<uint8_t> data_arr(data_p + offset, 32);
   auto status = dis_->getInstruction(inst, inst_size, data_arr, offset,
                                      llvm::nulls(), llvm::nulls());

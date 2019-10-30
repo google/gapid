@@ -27,33 +27,33 @@ namespace interceptor {
 
 class ConstantPoolDataExpr : public llvm::MCTargetExpr {
  public:
-  void printImpl(llvm::raw_ostream &, const llvm::MCAsmInfo *) const override;
+  void printImpl(llvm::raw_ostream&, const llvm::MCAsmInfo*) const override;
 
-  void visitUsedExpr(llvm::MCStreamer &Streamer) const override;
+  void visitUsedExpr(llvm::MCStreamer& Streamer) const override;
 
-  llvm::MCFragment *findAssociatedFragment() const override;
+  llvm::MCFragment* findAssociatedFragment() const override;
 
-  bool evaluateAsRelocatableImpl(llvm::MCValue &res, const llvm::MCAsmLayout *,
-                                 const llvm::MCFixup *) const override;
+  bool evaluateAsRelocatableImpl(llvm::MCValue& res, const llvm::MCAsmLayout*,
+                                 const llvm::MCFixup*) const override;
 
-  void fixELFSymbolsInTLSFixups(llvm::MCAssembler &) const override;
+  void fixELFSymbolsInTLSFixups(llvm::MCAssembler&) const override;
 
-  bool allocate(llvm::raw_ostream &data);
+  bool allocate(llvm::raw_ostream& data);
 
   void setBaseLocation(uintptr_t location);
 
-  static const ConstantPoolDataExpr *Create(const llvm::MCExpr *expr,
+  static const ConstantPoolDataExpr* Create(const llvm::MCExpr* expr,
                                             size_t size, size_t alignment,
-                                            llvm::MCContext &ctx);
+                                            llvm::MCContext& ctx);
 
-  static bool classof(const MCExpr *E) {
+  static bool classof(const MCExpr* E) {
     return E->getKind() == MCExpr::Target;
   }
 
  private:
-  ConstantPoolDataExpr(const llvm::MCExpr *expr, size_t size, size_t alignment);
+  ConstantPoolDataExpr(const llvm::MCExpr* expr, size_t size, size_t alignment);
 
-  const llvm::MCExpr *expr_;
+  const llvm::MCExpr* expr_;
   const size_t size_;
   const size_t alignment_;
 

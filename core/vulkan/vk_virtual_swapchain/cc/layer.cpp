@@ -31,7 +31,7 @@
 
 namespace swapchain {
 
-Context &GetGlobalContext() {
+Context& GetGlobalContext() {
   // We rely on C++11 static initialization rules here.
   // kContext will get allocated on first use, and freed in the
   // same order (more or less).
@@ -58,20 +58,20 @@ struct link_info_traits {
 // VkLayerDeviceCreateInfo depending on the type of the pCreateInfo
 // passed in.
 template <typename T>
-typename link_info_traits<T>::layer_info_type *get_layer_link_info(
-    T *pCreateInfo) {
+typename link_info_traits<T>::layer_info_type* get_layer_link_info(
+    T* pCreateInfo) {
   using layer_info_type = typename link_info_traits<T>::layer_info_type;
 
-  auto layer_info = const_cast<layer_info_type *>(
-      static_cast<const layer_info_type *>(pCreateInfo->pNext));
+  auto layer_info = const_cast<layer_info_type*>(
+      static_cast<const layer_info_type*>(pCreateInfo->pNext));
 
   while (layer_info) {
     if (layer_info->sType == link_info_traits<T>::sType &&
         layer_info->function == VK_LAYER_LINK_INFO) {
       return layer_info;
     }
-    layer_info = const_cast<layer_info_type *>(
-        static_cast<const layer_info_type *>(layer_info->pNext));
+    layer_info = const_cast<layer_info_type*>(
+        static_cast<const layer_info_type*>(layer_info->pNext));
   }
   return layer_info;
 }
@@ -80,9 +80,9 @@ typename link_info_traits<T>::layer_info_type *get_layer_link_info(
 // Overload vkCreateInstance. It is all book-keeping
 // and passthrough to the next layer (or ICD) in the chain.
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
-    const VkInstanceCreateInfo *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
-  VkLayerInstanceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
+    const VkInstanceCreateInfo* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator, VkInstance* pInstance) {
+  VkLayerInstanceCreateInfo* layer_info = get_layer_link_info(pCreateInfo);
 
   // Grab the pointer to the next vkGetInstanceProcAddr in the chain.
   PFN_vkGetInstanceProcAddr get_instance_proc_addr =
@@ -169,7 +169,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(
 // On vkDestroyInstance, printf("VkDestroyInstance") and clean up our
 // tracking data.
 VKAPI_ATTR void vkDestroyInstance(VkInstance instance,
-                                  const VkAllocationCallbacks *pAllocator) {
+                                  const VkAllocationCallbacks* pAllocator) {
   // First we have to find the function to chain to, then we have to
   // remove this instance from our list, then we forward the call.
   auto instance_map = GetGlobalContext().GetInstanceMap();
@@ -181,9 +181,9 @@ VKAPI_ATTR void vkDestroyInstance(VkInstance instance,
 // Overload vkCreateDevice. It is all book-keeping
 // and passthrough to the next layer (or ICD) in the chain.
 VKAPI_ATTR VkResult VKAPI_CALL
-vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
-  VkLayerDeviceCreateInfo *layer_info = get_layer_link_info(pCreateInfo);
+vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo* pCreateInfo,
+               const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
+  VkLayerDeviceCreateInfo* layer_info = get_layer_link_info(pCreateInfo);
 
   // Grab the fpGetInstanceProcAddr from the layer_info. We will get
   // vkCreateDevice from this.
@@ -307,7 +307,7 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo *pCreateInfo,
 
 // On vkDestroyDevice, clean up our tracking data.
 VKAPI_ATTR void vkDestroyDevice(VkDevice device,
-                                const VkAllocationCallbacks *pAllocator) {
+                                const VkAllocationCallbacks* pAllocator) {
   // First we have to find the function to chain to, then we have to
   // remove this instance from our list, then we forward the call.
   auto device_map = GetGlobalContext().GetDeviceMap();
@@ -324,8 +324,8 @@ static const VkLayerProperties global_layer_properties[] = {{
     "Virtual Swapchain Layer",
 }};
 
-VkResult get_layer_properties(uint32_t *pPropertyCount,
-                              VkLayerProperties *pProperties) {
+VkResult get_layer_properties(uint32_t* pPropertyCount,
+                              VkLayerProperties* pProperties) {
   if (pProperties == NULL) {
     *pPropertyCount = 1;
     return VK_SUCCESS;
@@ -340,22 +340,22 @@ VkResult get_layer_properties(uint32_t *pPropertyCount,
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
-                                   VkLayerProperties *pProperties) {
+vkEnumerateInstanceLayerProperties(uint32_t* pPropertyCount,
+                                   VkLayerProperties* pProperties) {
   return get_layer_properties(pPropertyCount, pProperties);
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateDeviceLayerProperties(VkPhysicalDevice, uint32_t *pPropertyCount,
-                                 VkLayerProperties *pProperties) {
+vkEnumerateDeviceLayerProperties(VkPhysicalDevice, uint32_t* pPropertyCount,
+                                 VkLayerProperties* pProperties) {
   return get_layer_properties(pPropertyCount, pProperties);
 }
 
 // Overload EnumeratePhysicalDevices, this is entirely for
 // book-keeping.
 VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumeratePhysicalDevices(VkInstance instance, uint32_t *pPhysicalDeviceCount,
-                           VkPhysicalDevice *pPhysicalDevices) {
+vkEnumeratePhysicalDevices(VkInstance instance, uint32_t* pPhysicalDeviceCount,
+                           VkPhysicalDevice* pPhysicalDevices) {
   auto instance_data = GetGlobalContext().GetInstanceData(instance);
   if (instance_data->physical_devices_.empty()) {
     uint32_t count;
@@ -385,8 +385,8 @@ vkEnumeratePhysicalDevices(VkInstance instance, uint32_t *pPhysicalDeviceCount,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(
-    VkDevice device, const VkCommandBufferAllocateInfo *pAllocateInfo,
-    VkCommandBuffer *pCommandBuffers) {
+    VkDevice device, const VkCommandBufferAllocateInfo* pAllocateInfo,
+    VkCommandBuffer* pCommandBuffers) {
   auto command_buffer_map = GetGlobalContext().GetCommandBufferMap();
   const auto device_data = GetGlobalContext().GetDeviceData(device);
 
@@ -404,8 +404,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(
 
 // Overload vkEnumerateDeviceExtensionProperties
 VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceExtensionProperties(
-    VkPhysicalDevice physicalDevice, const char *pLayerName,
-    uint32_t *pPropertyCount, VkExtensionProperties *pProperties) {
+    VkPhysicalDevice physicalDevice, const char* pLayerName,
+    uint32_t* pPropertyCount, VkExtensionProperties* pProperties) {
   if (!physicalDevice) {
     *pPropertyCount = 0;
     return VK_SUCCESS;
@@ -420,16 +420,16 @@ VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceExtensionProperties(
 
 // Overload vkEnumerateInstanceExtensionProperties
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceExtensionProperties(
-    const char * /*pLayerName*/, uint32_t *pPropertyCount,
-    VkExtensionProperties * /*pProperties*/) {
+vkEnumerateInstanceExtensionProperties(const char* /*pLayerName*/,
+                                       uint32_t* pPropertyCount,
+                                       VkExtensionProperties* /*pProperties*/) {
   *pPropertyCount = 0;
   return VK_SUCCESS;
 }
 
 VKAPI_ATTR void VKAPI_CALL vkFreeCommandBuffers(
     VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
-    const VkCommandBuffer *pCommandBuffers) {
+    const VkCommandBuffer* pCommandBuffers) {
   auto command_buffer_map = GetGlobalContext().GetCommandBufferMap();
   for (size_t i = 0; i < commandBufferCount; ++i) {
     command_buffer_map->erase(pCommandBuffers[i]);
@@ -443,7 +443,7 @@ VKAPI_ATTR void VKAPI_CALL vkFreeCommandBuffers(
 // also hook vkGetDeviceProcAddr.
 // Lastly it provides vkDestroyInstance for book-keeping purposes.
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
+vkGetInstanceProcAddr(VkInstance instance, const char* funcName) {
 #define INTERCEPT(func)         \
   if (!strcmp(funcName, #func)) \
   return reinterpret_cast<PFN_vkVoidFunction>(func)
@@ -513,7 +513,7 @@ vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
 // We provide an overload of vkDestroyDevice for book-keeping.
 // The rest of the overloads are swapchain-specific.
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vkGetDeviceProcAddr(VkDevice dev, const char *funcName) {
+vkGetDeviceProcAddr(VkDevice dev, const char* funcName) {
 #define INTERCEPT(func)         \
   if (!strcmp(funcName, #func)) \
   return reinterpret_cast<PFN_vkVoidFunction>(func)
@@ -555,12 +555,12 @@ extern "C" {
 // This is a bit surprising given that we *MUST* also export
 // vkEnumerate*Layers without any prefix.
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-LAYER_NAME_FUNCTION(GetDeviceProcAddr)(VkDevice dev, const char *funcName) {
+LAYER_NAME_FUNCTION(GetDeviceProcAddr)(VkDevice dev, const char* funcName) {
   return swapchain::vkGetDeviceProcAddr(dev, funcName);
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL LAYER_NAME_FUNCTION(
-    GetInstanceProcAddr)(VkInstance instance, const char *funcName) {
+    GetInstanceProcAddr)(VkInstance instance, const char* funcName) {
   return swapchain::vkGetInstanceProcAddr(instance, funcName);
 }
 
@@ -569,8 +569,8 @@ VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL LAYER_NAME_FUNCTION(
 // be considered for loading.
 #if defined(__ANDROID__)
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
-                                   VkLayerProperties *pProperties) {
+vkEnumerateInstanceLayerProperties(uint32_t* pPropertyCount,
+                                   VkLayerProperties* pProperties) {
   return swapchain::vkEnumerateInstanceLayerProperties(pPropertyCount,
                                                        pProperties);
 }
@@ -578,16 +578,16 @@ vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
 // On Android this must also be defined, even if we have 0
 // layers to expose.
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkEnumerateInstanceExtensionProperties(const char *pLayerName,
-                                       uint32_t *pPropertyCount,
-                                       VkExtensionProperties *pProperties) {
+vkEnumerateInstanceExtensionProperties(const char* pLayerName,
+                                       uint32_t* pPropertyCount,
+                                       VkExtensionProperties* pProperties) {
   return swapchain::vkEnumerateInstanceExtensionProperties(
       pLayerName, pPropertyCount, pProperties);
 }
 
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
-    VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount,
-    VkLayerProperties *pProperties) {
+    VkPhysicalDevice physicalDevice, uint32_t* pPropertyCount,
+    VkLayerProperties* pProperties) {
   return swapchain::vkEnumerateDeviceLayerProperties(
       physicalDevice, pPropertyCount, pProperties);
 }
@@ -596,9 +596,9 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateDeviceLayerProperties(
 // layers to expose.
 VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
 vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
-                                     const char *pLayerName,
-                                     uint32_t *pPropertyCount,
-                                     VkExtensionProperties *pProperties) {
+                                     const char* pLayerName,
+                                     uint32_t* pPropertyCount,
+                                     VkExtensionProperties* pProperties) {
   return swapchain::vkEnumerateDeviceExtensionProperties(
       physicalDevice, pLayerName, pPropertyCount, pProperties);
 }

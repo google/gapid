@@ -58,46 +58,46 @@ class InterceptorImpl {
   InterceptorImpl();
   ~InterceptorImpl();
 
-  Error InterceptFunction(void *old_function, void *new_function,
-                          void **callback_function);
+  Error InterceptFunction(void* old_function, void* new_function,
+                          void** callback_function);
 
  private:
-  Error WriteMemory(void *target, const void *source, size_t num,
+  Error WriteMemory(void* target, const void* source, size_t num,
                     bool is_executable);
 
-  Error GetTrampolineSize(const TrampolineConfig &config, void *old_function,
-                          void *new_function, size_t &trampoline_size);
+  Error GetTrampolineSize(const TrampolineConfig& config, void* old_function,
+                          void* new_function, size_t& trampoline_size);
 
-  Error InstallTrampoline(const TrampolineConfig &config, void *old_function,
-                          void *new_function);
+  Error InstallTrampoline(const TrampolineConfig& config, void* old_function,
+                          void* new_function);
 
-  Error RewriteInstructions(void *old_function, size_t rewrite_size,
-                            std::unique_ptr<CodeGenerator> &codegen);
+  Error RewriteInstructions(void* old_function, size_t rewrite_size,
+                            std::unique_ptr<CodeGenerator>& codegen);
 
-  Error CreateCompensationFunction(void *old_function, size_t rewrite_size,
-                                   void **callback_function);
+  Error CreateCompensationFunction(void* old_function, size_t rewrite_size,
+                                   void** callback_function);
 
   std::unique_ptr<Target> target_;
   std::unique_ptr<MemoryManager> executable_memory_;
-  std::unordered_map<void *, std::vector<uint8_t>> original_codes_;
+  std::unordered_map<void*, std::vector<uint8_t>> original_codes_;
 };
 
 }  // end of namespace interceptor
 
 extern "C" {
 
-void *InitializeInterceptor() { return new InterceptorImpl(); }
+void* InitializeInterceptor() { return new InterceptorImpl(); }
 
-void TerminateInterceptor(void *interceptor) {
-  delete static_cast<InterceptorImpl *>(interceptor);
+void TerminateInterceptor(void* interceptor) {
+  delete static_cast<InterceptorImpl*>(interceptor);
 }
 
-bool InterceptFunction(void *interceptor, void *old_function,
-                       void *new_function, void **callback_function,
-                       void (*error_callback)(void *, const char *),
-                       void *error_callback_baton) {
+bool InterceptFunction(void* interceptor, void* old_function,
+                       void* new_function, void** callback_function,
+                       void (*error_callback)(void*, const char*),
+                       void* error_callback_baton) {
   Error error =
-      static_cast<InterceptorImpl *>(interceptor)
+      static_cast<InterceptorImpl*>(interceptor)
           ->InterceptFunction(old_function, new_function, callback_function);
   if (error_callback && error.Fail()) {
     std::ostringstream oss;
@@ -120,13 +120,13 @@ static void InitializeLLVM() {
   });
 }
 
-static Error ChangePageProtection(void *ptr, size_t size, int prot) {
+static Error ChangePageProtection(void* ptr, size_t size, int prot) {
   uintptr_t page_size = getpagesize();
   uintptr_t page_mask = ~(page_size - 1);
   uintptr_t ptr_val = reinterpret_cast<uintptr_t>(ptr);
   uintptr_t base = ptr_val & page_mask;
   uintptr_t end = (ptr_val + size + page_size - 1) & page_mask;
-  if (mprotect(reinterpret_cast<void *>(base), end - base, prot) != 0)
+  if (mprotect(reinterpret_cast<void*>(base), end - base, prot) != 0)
     return Error("Failed to change protection for %p to %x", ptr, prot);
   return Error();
 }
@@ -148,11 +148,11 @@ InterceptorImpl::InterceptorImpl()
 }
 
 InterceptorImpl::~InterceptorImpl() {
-  for (const auto &code : original_codes_)
+  for (const auto& code : original_codes_)
     WriteMemory(code.first, code.second.data(), code.second.size(), true);
 }
 
-Error InterceptorImpl::WriteMemory(void *target, const void *source, size_t num,
+Error InterceptorImpl::WriteMemory(void* target, const void* source, size_t num,
                                    bool is_executable) {
   int prot = PROT_READ;
   if (is_executable) prot |= PROT_EXEC;
@@ -168,15 +168,15 @@ Error InterceptorImpl::WriteMemory(void *target, const void *source, size_t num,
   return error;
 }
 
-static size_t GetCodeAligment(Target *target, void *function) {
+static size_t GetCodeAligment(Target* target, void* function) {
   uintptr_t load_address =
       reinterpret_cast<uintptr_t>(target->GetLoadAddress(function));
   return load_address % target->GetCodeAlignment();
 }
 
-Error InterceptorImpl::GetTrampolineSize(const TrampolineConfig &config,
-                                         void *old_function, void *new_function,
-                                         size_t &trampoline_size) {
+Error InterceptorImpl::GetTrampolineSize(const TrampolineConfig& config,
+                                         void* old_function, void* new_function,
+                                         size_t& trampoline_size) {
   size_t initial_alignment = GetCodeAligment(target_.get(), old_function);
   std::unique_ptr<CodeGenerator> codegen(
       target_->GetCodeGenerator(old_function, initial_alignment));
@@ -188,9 +188,9 @@ Error InterceptorImpl::GetTrampolineSize(const TrampolineConfig &config,
   return Error();
 }
 
-Error InterceptorImpl::InstallTrampoline(const TrampolineConfig &config,
-                                         void *old_function,
-                                         void *new_function) {
+Error InterceptorImpl::InstallTrampoline(const TrampolineConfig& config,
+                                         void* old_function,
+                                         void* new_function) {
   size_t initial_alignment = GetCodeAligment(target_.get(), old_function);
   std::unique_ptr<CodeGenerator> codegen(
       target_->GetCodeGenerator(old_function, initial_alignment));
@@ -201,10 +201,10 @@ Error InterceptorImpl::InstallTrampoline(const TrampolineConfig &config,
 
   codegen->LayoutCode();
 
-  void *load_address = target_->GetLoadAddress(old_function);
+  void* load_address = target_->GetLoadAddress(old_function);
   codegen->LinkCode(reinterpret_cast<uintptr_t>(load_address));
 
-  const llvm::SmallVectorImpl<char> &trampoline = codegen->GetCode();
+  const llvm::SmallVectorImpl<char>& trampoline = codegen->GetCode();
 
   std::vector<uint8_t> original_code(trampoline.size());
   memcpy(original_code.data(), load_address, trampoline.size());
@@ -217,8 +217,8 @@ Error InterceptorImpl::InstallTrampoline(const TrampolineConfig &config,
 }
 
 Error InterceptorImpl::RewriteInstructions(
-    void *old_function, size_t rewrite_size,
-    std::unique_ptr<CodeGenerator> &codegen) {
+    void* old_function, size_t rewrite_size,
+    std::unique_ptr<CodeGenerator>& codegen) {
   codegen.reset(target_->GetCodeGenerator(old_function, 0));
   if (!codegen) return Error("Failed to create codegen");
 
@@ -227,7 +227,7 @@ Error InterceptorImpl::RewriteInstructions(
   if (!disassembler) return Error("Failed to create disassembler");
 
   size_t offset = 0;
-  void *func_addr = target_->GetLoadAddress(old_function);
+  void* func_addr = target_->GetLoadAddress(old_function);
   bool reached_end_of_function = false;
   while (offset < rewrite_size && !reached_end_of_function) {
     llvm::MCInst inst;
@@ -248,7 +248,7 @@ Error InterceptorImpl::RewriteInstructions(
         "End of function reached after %zd byte when rewriting %zd bytes",
         offset, rewrite_size);
 
-  uint8_t *target_addr = static_cast<uint8_t *>(old_function) + offset;
+  uint8_t* target_addr = static_cast<uint8_t*>(old_function) + offset;
   TrampolineConfig full_config = target_->GetFullTrampolineConfig();
   Error error = target_->EmitTrampoline(full_config, *codegen, target_addr);
   if (error.Fail()) return error;
@@ -256,22 +256,22 @@ Error InterceptorImpl::RewriteInstructions(
   return Error();
 }
 
-Error InterceptorImpl::CreateCompensationFunction(void *old_function,
+Error InterceptorImpl::CreateCompensationFunction(void* old_function,
                                                   size_t rewrite_size,
-                                                  void **callback_function) {
+                                                  void** callback_function) {
   std::unique_ptr<CodeGenerator> codegen;
   Error error = RewriteInstructions(old_function, rewrite_size, codegen);
   if (error.Fail()) return error;
 
   size_t code_size = codegen->LayoutCode();
-  void *target =
+  void* target =
       executable_memory_->Allocate(code_size, target_->GetCodeAlignment());
   if (!target) return Error("Failed to allocate executable memory");
 
   error = codegen->LinkCode(reinterpret_cast<uintptr_t>(target));
   if (error.Fail()) return error;
 
-  const llvm::SmallVectorImpl<char> &instructions = codegen->GetCode();
+  const llvm::SmallVectorImpl<char>& instructions = codegen->GetCode();
   error = WriteMemory(target, instructions.data(), instructions.size(), true);
   if (error.Fail()) return error;
 
@@ -279,8 +279,8 @@ Error InterceptorImpl::CreateCompensationFunction(void *old_function,
   return Error();
 }
 
-Error InterceptorImpl::InterceptFunction(void *old_function, void *new_function,
-                                         void **callback_function) {
+Error InterceptorImpl::InterceptFunction(void* old_function, void* new_function,
+                                         void** callback_function) {
   old_function = target_->CheckIsPLT(old_function, new_function);
 
   if (!callback_function) {
@@ -304,7 +304,7 @@ Error InterceptorImpl::InterceptFunction(void *old_function, void *new_function,
 
   std::vector<TrampolineConfig> configs =
       target_->GetTrampolineConfigs(old_address);
-  for (const auto &config : configs) {
+  for (const auto& config : configs) {
     if (config.IsFullTrampoline()) {
       size_t trampoline_size = 0;
       error = GetTrampolineSize(config, old_function, new_function,
@@ -317,7 +317,7 @@ Error InterceptorImpl::InterceptFunction(void *old_function, void *new_function,
 
       return InstallTrampoline(config, old_function, new_function);
     } else {
-      void *intermediate_trampoline = executable_memory_->Allocate(
+      void* intermediate_trampoline = executable_memory_->Allocate(
           aligned_full_trampoline_size, target_->GetCodeAlignment(),
           config.start_address, config.end_address);
       if (!intermediate_trampoline) continue;

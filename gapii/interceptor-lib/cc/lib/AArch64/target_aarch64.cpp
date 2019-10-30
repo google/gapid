@@ -38,12 +38,12 @@ static llvm::Triple GetTriple() {
   return triple;
 }
 
-CodeGenerator *TargetAARCH64::GetCodeGenerator(void *address,
+CodeGenerator* TargetAARCH64::GetCodeGenerator(void* address,
                                                size_t start_alignment) {
   return CodeGenerator::Create(GetTriple(), start_alignment);
 }
 
-Disassembler *TargetAARCH64::CreateDisassembler(void *address) {
+Disassembler* TargetAARCH64::CreateDisassembler(void* address) {
   return Disassembler::Create(GetTriple());
 }
 
@@ -55,7 +55,7 @@ std::vector<TrampolineConfig> TargetAARCH64::GetTrampolineConfigs(
   return configs;
 }
 
-static Error getFreeRegister(CodeGenerator &codegen, unsigned int &reg) {
+static Error getFreeRegister(CodeGenerator& codegen, unsigned int& reg) {
   static const unsigned int regs[] = {// First try the scratch registers.
                                       llvm::AArch64::X17, llvm::AArch64::X16,
                                       // Then try the caller saved registers.
@@ -73,8 +73,8 @@ static Error getFreeRegister(CodeGenerator &codegen, unsigned int &reg) {
   return Error("No free scratch register available");
 }
 
-Error TargetAARCH64::EmitTrampoline(const TrampolineConfig &config,
-                                    CodeGenerator &codegen, void *target) {
+Error TargetAARCH64::EmitTrampoline(const TrampolineConfig& config,
+                                    CodeGenerator& codegen, void* target) {
   unsigned int reg;
   Error error = getFreeRegister(codegen, reg);
   if (error.Fail()) {
@@ -108,7 +108,7 @@ Error TargetAARCH64::EmitTrampoline(const TrampolineConfig &config,
   return Error("Unsupported trampoline type");
 }
 
-static void *calculatePcRelativeAddress(void *data, size_t pc_offset,
+static void* calculatePcRelativeAddress(void* data, size_t pc_offset,
                                         size_t offset, bool page_align) {
   uintptr_t data_addr = reinterpret_cast<uintptr_t>(data);
   assert((data_addr & 3) == 0 && "Unaligned data address");
@@ -120,22 +120,22 @@ static void *calculatePcRelativeAddress(void *data, size_t pc_offset,
     offset <<= 12;
   }
   data_addr += offset;  // Add the offset
-  return reinterpret_cast<void *>(data_addr);
+  return reinterpret_cast<void*>(data_addr);
 }
 
-static void reserveRegs(CodeGenerator &codegen, const llvm::MCInst &inst) {
+static void reserveRegs(CodeGenerator& codegen, const llvm::MCInst& inst) {
   for (size_t i = 0; i < inst.getNumOperands(); i++) {
-    const llvm::MCOperand &op = inst.getOperand(i);
+    const llvm::MCOperand& op = inst.getOperand(i);
     if (op.isReg()) {
       codegen.ReserveRegister(op.getReg());
     }
   }
 }
 
-Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
-                                        CodeGenerator &codegen, void *data,
+Error TargetAARCH64::RewriteInstruction(const llvm::MCInst& inst,
+                                        CodeGenerator& codegen, void* data,
                                         size_t offset,
-                                        bool &possible_end_of_function) {
+                                        bool& possible_end_of_function) {
   switch (inst.getOpcode()) {
     case llvm::AArch64::ADDXri:
     case llvm::AArch64::ANDXri:
@@ -228,7 +228,7 @@ Error TargetAARCH64::RewriteInstruction(const llvm::MCInst &inst,
   return Error();
 }
 
-void *TargetAARCH64::CheckIsPLT(void *old_function, void *new_function) {
+void* TargetAARCH64::CheckIsPLT(void* old_function, void* new_function) {
   // Currently only handles the case where the first instruction in the
   // function is an uncoditional branch.
   std::unique_ptr<Disassembler> disassembler(CreateDisassembler(old_function));
@@ -236,7 +236,7 @@ void *TargetAARCH64::CheckIsPLT(void *old_function, void *new_function) {
     return old_function;
   }
 
-  void *func_addr = GetLoadAddress(old_function);
+  void* func_addr = GetLoadAddress(old_function);
   llvm::MCInst inst;
   uint64_t inst_size = 0;
   if (!disassembler->GetInstruction(func_addr, 0, inst, inst_size)) {
