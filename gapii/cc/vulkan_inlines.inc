@@ -80,8 +80,8 @@ inline void VulkanSpy::vkErrImageMemoryNotBound(CallObserver*, VkImage img) {
     GAPID_DEBUG("Error: Image %" PRIu64 " has no bound memory", img);
 }
 
-inline void VulkanSpy::vkErrSemaphoreNotSubmitted(CallObserver*, VkImage img) {
-    GAPID_DEBUG("Error: Semaphore %" PRIu64 " has not submitted for signal", img);
+inline void VulkanSpy::vkErrSemaphoreNotSubmitted(CallObserver*, VkSemaphore semaphore) {
+    GAPID_DEBUG("Error: Semaphore %" PRIu64 " has not submitted for signal", semaphore);
 }
 
 inline void VulkanSpy::vkErrInvalidDescriptorBindingType(CallObserver*, VkDescriptorSet set, uint32_t binding, uint32_t layout_type, uint32_t update_type) {

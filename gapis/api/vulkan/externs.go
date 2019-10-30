@@ -489,7 +489,7 @@ func (e externs) vkErrInvalidDescriptorBindingType(set VkDescriptorSet, binding 
 func (e externs) vkErrSemaphoreNotSubmitted(semaphore VkSemaphore) {
 	var issue replay.Issue
 	issue.Command = e.cmdID
-	issue.Severity = service.Severity_WarningLevel
+	issue.Severity = service.Severity_ErrorLevel
 	issue.Error = fmt.Errorf("Semaphore %v has not submitted for signal", uint64(semaphore))
 	e.onVkError(issue)
 }
