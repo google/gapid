@@ -143,6 +143,11 @@ func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (
 	mostRecentDevVersion := app.Version.GetDevVersion()
 
 	for _, release := range releases {
+		// Filter out pre-releases
+		if release.GetPrerelease() {
+			continue
+		}
+
 		// tagName is either:
 		// Regular release: v<major>.<minor>.<point>
 		// Dev pre-release: v<major>.<minor>.<point>-dev-<dev>
