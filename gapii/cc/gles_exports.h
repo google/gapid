@@ -20,8 +20,8 @@
 namespace gapii {
 
 struct Symbol {
-  const char *mName;
-  void *mFunc;
+  const char* mName;
+  void* mFunc;
 };
 
 extern Symbol kGLESExports[];

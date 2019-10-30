@@ -18,7 +18,7 @@
 
 using namespace interceptor;
 
-ConstantPoolDataExpr::ConstantPoolDataExpr(const llvm::MCExpr *expr,
+ConstantPoolDataExpr::ConstantPoolDataExpr(const llvm::MCExpr* expr,
                                            size_t size, size_t alignment)
     : expr_(expr),
       size_(size),
@@ -26,35 +26,33 @@ ConstantPoolDataExpr::ConstantPoolDataExpr(const llvm::MCExpr *expr,
       allocated_(false),
       base_location_(0) {}
 
-const ConstantPoolDataExpr *ConstantPoolDataExpr::Create(
-    const llvm::MCExpr *expr, size_t size, size_t alignment,
-    llvm::MCContext &ctx) {
+const ConstantPoolDataExpr* ConstantPoolDataExpr::Create(
+    const llvm::MCExpr* expr, size_t size, size_t alignment,
+    llvm::MCContext& ctx) {
   return new (ctx) ConstantPoolDataExpr(expr, size, alignment);
 }
 
-void ConstantPoolDataExpr::printImpl(llvm::raw_ostream &,
-                                     const llvm::MCAsmInfo *) const {}
+void ConstantPoolDataExpr::printImpl(llvm::raw_ostream&,
+                                     const llvm::MCAsmInfo*) const {}
 
-void ConstantPoolDataExpr::fixELFSymbolsInTLSFixups(llvm::MCAssembler &) const {
-}
+void ConstantPoolDataExpr::fixELFSymbolsInTLSFixups(llvm::MCAssembler&) const {}
 
-void ConstantPoolDataExpr::visitUsedExpr(llvm::MCStreamer &Streamer) const {
+void ConstantPoolDataExpr::visitUsedExpr(llvm::MCStreamer& Streamer) const {
   Streamer.visitUsedExpr(*expr_);
 }
 
-llvm::MCFragment *ConstantPoolDataExpr::findAssociatedFragment() const {
+llvm::MCFragment* ConstantPoolDataExpr::findAssociatedFragment() const {
   llvm_unreachable("FIXME: what goes here?");
 }
 
 bool ConstantPoolDataExpr::evaluateAsRelocatableImpl(
-    llvm::MCValue &res, const llvm::MCAsmLayout *,
-    const llvm::MCFixup *) const {
+    llvm::MCValue& res, const llvm::MCAsmLayout*, const llvm::MCFixup*) const {
   if (!allocated_) return false;
   res = llvm::MCValue::get(base_location_);
   return true;
 }
 
-bool ConstantPoolDataExpr::allocate(llvm::raw_ostream &data) {
+bool ConstantPoolDataExpr::allocate(llvm::raw_ostream& data) {
   llvm::MCValue val;
   if (!expr_->evaluateAsRelocatable(val, nullptr, nullptr)) return false;
 
@@ -67,22 +65,22 @@ bool ConstantPoolDataExpr::allocate(llvm::raw_ostream &data) {
   switch (size_) {
     case 1: {
       uint8_t value = val.getConstant();
-      data.write((char *)&value, sizeof(value));
+      data.write((char*)&value, sizeof(value));
       break;
     }
     case 2: {
       uint16_t value = val.getConstant();
-      data.write((char *)&value, sizeof(value));
+      data.write((char*)&value, sizeof(value));
       break;
     }
     case 4: {
       uint32_t value = val.getConstant();
-      data.write((char *)&value, sizeof(value));
+      data.write((char*)&value, sizeof(value));
       break;
     }
     case 8: {
       uint64_t value = val.getConstant();
-      data.write((char *)&value, sizeof(value));
+      data.write((char*)&value, sizeof(value));
       break;
     }
     default: {

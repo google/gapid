@@ -24,26 +24,26 @@ namespace layer_helpers {
 // for the lifetime of the ContextToken.
 template <typename T>
 struct ContextToken {
-  ContextToken(T &object, threading::mutex &locker)
+  ContextToken(T& object, threading::mutex& locker)
       : object_(object), context_lock_(locker) {}
 
-  ContextToken(T &object, std::unique_lock<threading::mutex> &&locker)
+  ContextToken(T& object, std::unique_lock<threading::mutex>&& locker)
       : object_(object), context_lock_(std::move(locker)) {}
 
-  ContextToken(ContextToken &&_other)
+  ContextToken(ContextToken&& _other)
       : object_(_other.object_),
         context_lock_(std::move(_other.context_lock_)) {}
 
-  ContextToken(const ContextToken &_other) = delete;
-  ContextToken &operator=(const ContextToken &_other) = delete;
+  ContextToken(const ContextToken& _other) = delete;
+  ContextToken& operator=(const ContextToken& _other) = delete;
 
-  const T *operator->() const { return &object_; }
-  const T &operator*() const { return object_; }
-  T *operator->() { return &object_; }
-  T &operator*() { return object_; }
+  const T* operator->() const { return &object_; }
+  const T& operator*() const { return object_; }
+  T* operator->() { return &object_; }
+  T& operator*() { return object_; }
 
  private:
-  T &object_;
+  T& object_;
   std::unique_lock<threading::mutex> context_lock_;
 };
 

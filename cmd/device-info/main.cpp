@@ -36,7 +36,7 @@ void print_help() {
             << std::endl;
 }
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char const* argv[]) {
   bool output_binary = false;
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-help") == 0 ||
@@ -56,7 +56,7 @@ int main(int argc, char const *argv[]) {
 #if _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
-    std::cout << std::string(reinterpret_cast<char *>(instance.data),
+    std::cout << std::string(reinterpret_cast<char*>(instance.data),
                              instance.size);
   } else {
     device::Instance device_inst;

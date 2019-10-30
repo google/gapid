@@ -33,8 +33,8 @@ namespace threading {
 
 class mutex {
  public:
-  mutex(const mutex &) = delete;
-  mutex &operator=(const mutex &) = delete;
+  mutex(const mutex&) = delete;
+  mutex& operator=(const mutex&) = delete;
   mutex() {
 #ifdef _WIN32
     InitializeCriticalSection(&mutex_);
@@ -68,9 +68,9 @@ class mutex {
   }
 
 #ifdef _WIN32
-  CRITICAL_SECTION &native_handle() { return mutex_; }
+  CRITICAL_SECTION& native_handle() { return mutex_; }
 #else
-  pthread_mutex_t &native_handle() { return mutex_; }
+  pthread_mutex_t& native_handle() { return mutex_; }
 #endif
 
  private:
@@ -85,8 +85,8 @@ enum class cv_status { timeout, no_timeout };
 
 class condition_variable {
  public:
-  condition_variable(const condition_variable &) = delete;
-  condition_variable &operator=(const condition_variable &) = delete;
+  condition_variable(const condition_variable&) = delete;
+  condition_variable& operator=(const condition_variable&) = delete;
   condition_variable() {
 #ifdef _WIN32
     InitializeConditionVariable(&condition_);
@@ -102,9 +102,9 @@ class condition_variable {
 #endif
   }
   template <class Rep, class Period>
-  cv_status wait_for(std::unique_lock<mutex> &lock,
-                     const std::chrono::duration<Rep, Period> &rel_time) {
-    auto &native_handle = lock.mutex()->native_handle();
+  cv_status wait_for(std::unique_lock<mutex>& lock,
+                     const std::chrono::duration<Rep, Period>& rel_time) {
+    auto& native_handle = lock.mutex()->native_handle();
 #ifdef _WIN32
     auto time =
         std::chrono::duration_cast<std::chrono::milliseconds>(rel_time).count();
@@ -126,8 +126,8 @@ class condition_variable {
 #endif
   }
 
-  void wait(std::unique_lock<mutex> &lock) {
-    auto &native_handle = lock.mutex()->native_handle();
+  void wait(std::unique_lock<mutex>& lock) {
+    auto& native_handle = lock.mutex()->native_handle();
 #ifdef _WIN32
     SleepConditionVariableCS(&condition_, &native_handle, INFINITE);
 #else

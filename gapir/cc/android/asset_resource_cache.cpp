@@ -28,12 +28,12 @@ namespace gapir {
 
 namespace {
 
-const char *kAssetPathResourcesIndex = "replay_export/resources.index";
-const char *kAssetPathResourcesData = "replay_export/resources.data";
+const char* kAssetPathResourcesIndex = "replay_export/resources.index";
+const char* kAssetPathResourcesData = "replay_export/resources.data";
 
 // asset_read bails out if the read fails. Otherwise, it returns true unless EOF
 // is reached.
-bool asset_read(AAsset *asset, void *buf, size_t count) {
+bool asset_read(AAsset* asset, void* buf, size_t count) {
   int ret = AAsset_read(asset, buf, count);
   if (ret < 0) {
     GAPID_FATAL("Error on asset read");
@@ -50,10 +50,10 @@ bool asset_read(AAsset *asset, void *buf, size_t count) {
 
 // touch_pages will write at least one 0 onto every page in the given memory
 // span
-void touch_pages(void *addr, uint32_t size) {
+void touch_pages(void* addr, uint32_t size) {
   static const long pagesize = sysconf(_SC_PAGESIZE);
-  char *end = ((char *)addr) + size;
-  for (char *p = (char *)addr; p < end; p += pagesize) {
+  char* end = ((char*)addr) + size;
+  for (char* p = (char*)addr; p < end; p += pagesize) {
     *p = '0';
   }
   // Make sure the last page is touched, as the loop may exit without touching
@@ -66,13 +66,13 @@ void touch_pages(void *addr, uint32_t size) {
 }  // namespace
 
 std::unique_ptr<ResourceCache> AssetResourceCache::create(
-    AAssetManager *assetManager) {
+    AAssetManager* assetManager) {
   return std::unique_ptr<ResourceCache>(new AssetResourceCache(assetManager));
 }
 
-AssetResourceCache::AssetResourceCache(AAssetManager *assetManager) {
+AssetResourceCache::AssetResourceCache(AAssetManager* assetManager) {
   mAssetManager = assetManager;
-  AAsset *asset_resource_index = AAssetManager_open(
+  AAsset* asset_resource_index = AAssetManager_open(
       mAssetManager, kAssetPathResourcesIndex, AASSET_MODE_STREAMING);
 
   // Load the archive index in memory.
@@ -93,7 +93,7 @@ AssetResourceCache::AssetResourceCache(AAssetManager *assetManager) {
   AAsset_close(asset_resource_index);
 
   // Open the resource data file descriptor
-  AAsset *asset_resource_data = AAssetManager_open(
+  AAsset* asset_resource_data = AAssetManager_open(
       mAssetManager, kAssetPathResourcesData, AASSET_MODE_STREAMING);
   off64_t length;
   mResourceDataFd = AAsset_openFileDescriptor64(asset_resource_data,
@@ -112,16 +112,16 @@ AssetResourceCache::~AssetResourceCache() {
   }
 }
 
-bool AssetResourceCache::putCache(const Resource &resource, const void *data) {
+bool AssetResourceCache::putCache(const Resource& resource, const void* data) {
   // AssetResourceCache is read-only, putCache always fails.
   return false;
 }
 
-bool AssetResourceCache::hasCache(const Resource &resource) {
+bool AssetResourceCache::hasCache(const Resource& resource) {
   return (mRecords.find(resource.getID()) != mRecords.end());
 }
 
-bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
+bool AssetResourceCache::loadCache(const Resource& resource, void* data) {
   std::unordered_map<std::string, AssetRecord>::const_iterator it =
       mRecords.find(resource.getID());
   if (it == mRecords.end()) {
@@ -137,7 +137,7 @@ bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
   }
 
   size_t left_to_read = record.size;
-  char *p = (char *)data;
+  char* p = (char*)data;
   bool read_failed = false;
 
   while (left_to_read > 0) {
@@ -158,7 +158,7 @@ bool AssetResourceCache::loadCache(const Resource &resource, void *data) {
         continue;
       }
 
-      char *errmsg = strerror(errno);
+      char* errmsg = strerror(errno);
       GAPID_FATAL(
           "AssetResourceCache::loadCache() read() failed, errno: %d, strerror: "
           "%s",

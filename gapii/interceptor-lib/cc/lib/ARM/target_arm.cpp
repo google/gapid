@@ -28,15 +28,15 @@
 
 using namespace interceptor;
 
-static bool IsThumb(void *ptr) { return reinterpret_cast<uintptr_t>(ptr) & 1; }
+static bool IsThumb(void* ptr) { return reinterpret_cast<uintptr_t>(ptr) & 1; }
 
-static bool IsThumb(const CodeGenerator &codegen) {
+static bool IsThumb(const CodeGenerator& codegen) {
   llvm::Triple::ArchType arch =
       codegen.GetSubtargetInfo().getTargetTriple().getArch();
   return arch == llvm::Triple::thumb || arch == llvm::Triple::thumbeb;
 }
 
-static llvm::Triple GetTriple(void *addr) {
+static llvm::Triple GetTriple(void* addr) {
   llvm::Triple triple(llvm::sys::getProcessTriple());
   assert((triple.getArch() == llvm::Triple::arm ||
           triple.getArch() == llvm::Triple::thumb) &&
@@ -50,26 +50,26 @@ static llvm::Triple GetTriple(void *addr) {
   return triple;
 }
 
-CodeGenerator *TargetARM::GetCodeGenerator(void *address,
+CodeGenerator* TargetARM::GetCodeGenerator(void* address,
                                            size_t start_alignment) {
   return CodeGenerator::Create(GetTriple(address), start_alignment);
 }
 
-Disassembler *TargetARM::CreateDisassembler(void *address) {
+Disassembler* TargetARM::CreateDisassembler(void* address) {
   return Disassembler::Create(GetTriple(address));
 }
 
-void *TargetARM::GetLoadAddress(void *addr) {
+void* TargetARM::GetLoadAddress(void* addr) {
   uintptr_t addr_val = reinterpret_cast<uintptr_t>(addr);
   addr_val &= ~1;
-  return reinterpret_cast<void *>(addr_val);
+  return reinterpret_cast<void*>(addr_val);
 }
 
-void *TargetARM::FixupCallbackFunction(void *old_function, void *new_function) {
+void* TargetARM::FixupCallbackFunction(void* old_function, void* new_function) {
   if (IsThumb(old_function)) {
     uintptr_t new_func_addr = reinterpret_cast<uintptr_t>(new_function);
     new_func_addr |= 1;
-    return reinterpret_cast<void *>(new_func_addr);
+    return reinterpret_cast<void*>(new_func_addr);
   }
   return new_function;
 }
@@ -81,8 +81,8 @@ std::vector<TrampolineConfig> TargetARM::GetTrampolineConfigs(
   return configs;
 }
 
-Error TargetARM::EmitTrampoline(const TrampolineConfig &config,
-                                CodeGenerator &codegen, void *target) {
+Error TargetARM::EmitTrampoline(const TrampolineConfig& config,
+                                CodeGenerator& codegen, void* target) {
   switch (config.type) {
     case FULL_TRAMPOLINE: {
       uint32_t target_addr = (uintptr_t)target;
@@ -105,7 +105,7 @@ Error TargetARM::EmitTrampoline(const TrampolineConfig &config,
   return Error("Unsupported trampoline type");
 }
 
-static void *calculatePcRelativeAddressArm(void *data, size_t pc_offset,
+static void* calculatePcRelativeAddressArm(void* data, size_t pc_offset,
                                            size_t offset) {
   uintptr_t data_addr = reinterpret_cast<uintptr_t>(data);
   assert((data_addr & 3) == 0 && "Unaligned data address");
@@ -114,10 +114,10 @@ static void *calculatePcRelativeAddressArm(void *data, size_t pc_offset,
   data_addr += pc_offset;  // Add the PC
   data_addr += 8;          // Add the 8 byte implicit offset
   data_addr += offset;     // Add the offset
-  return reinterpret_cast<void *>(data_addr);
+  return reinterpret_cast<void*>(data_addr);
 }
 
-static void *calculatePcRelativeAddressThumb(void *data, size_t pc_offset,
+static void* calculatePcRelativeAddressThumb(void* data, size_t pc_offset,
                                              size_t offset, bool align) {
   uintptr_t data_addr = reinterpret_cast<uintptr_t>(data);
   assert((data_addr & 1) == 0 && "Unaligned data address");
@@ -128,10 +128,10 @@ static void *calculatePcRelativeAddressThumb(void *data, size_t pc_offset,
   data_addr += 4;              // Add the 4 byte implicit offset
   if (align) data_addr &= ~3;  // Align to 4 byte
   data_addr += offset;         // Add the offset
-  return reinterpret_cast<void *>(data_addr);
+  return reinterpret_cast<void*>(data_addr);
 }
 
-static uint32_t getThumbPc(void *data, size_t offset) {
+static uint32_t getThumbPc(void* data, size_t offset) {
   uintptr_t data_addr = reinterpret_cast<uintptr_t>(data);
   data_addr += offset;
   data_addr += 4;
@@ -139,18 +139,18 @@ static uint32_t getThumbPc(void *data, size_t offset) {
   return data_addr;
 }
 
-static bool hasPcOperand(const llvm::MCInst &inst) {
+static bool hasPcOperand(const llvm::MCInst& inst) {
   for (size_t i = 0; i < inst.getNumOperands(); ++i) {
-    const llvm::MCOperand &op = inst.getOperand(i);
+    const llvm::MCOperand& op = inst.getOperand(i);
     if (op.isReg() && op.getReg() == llvm::ARM::PC) return true;
   }
   return false;
 }
 
-Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
-                                    CodeGenerator &codegen, void *data,
+Error TargetARM::RewriteInstruction(const llvm::MCInst& inst,
+                                    CodeGenerator& codegen, void* data,
                                     size_t offset,
-                                    bool &possible_end_of_function) {
+                                    bool& possible_end_of_function) {
   switch (inst.getOpcode()) {
     case llvm::ARM::tADDspi:
     case llvm::ARM::tSUBspi: {
@@ -287,7 +287,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       possible_end_of_function = (Rt == llvm::ARM::PC);
 
       if (Rn == llvm::ARM::PC) {
-        void *load_source = calculatePcRelativeAddressArm(data, offset, imm);
+        void* load_source = calculatePcRelativeAddressArm(data, offset, imm);
         uint32_t load_data = 0;
         memcpy(&load_data, load_source, sizeof(uint32_t));
         codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::LDRi12)
@@ -307,7 +307,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       int64_t imm = inst.getOperand(1).getImm();
       possible_end_of_function = (Rt == llvm::ARM::PC);
 
-      void *load_source =
+      void* load_source =
           calculatePcRelativeAddressThumb(data, offset, imm, true);
       uint32_t load_data = 0;
       memcpy(&load_data, load_source, sizeof(uint32_t));
@@ -322,7 +322,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       uint32_t pred = inst.getOperand(1).getImm();
       possible_end_of_function = true;
 
-      void *target = calculatePcRelativeAddressArm(data, offset, imm);
+      void* target = calculatePcRelativeAddressArm(data, offset, imm);
       uint32_t target_addr = reinterpret_cast<uintptr_t>(target);
       codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::LDRi12)
                                  .addReg(llvm::ARM::PC)
@@ -336,7 +336,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
       uint32_t imm = inst.getOperand(0).getImm();
       possible_end_of_function = true;
 
-      void *target = calculatePcRelativeAddressThumb(data, offset, imm, false);
+      void* target = calculatePcRelativeAddressThumb(data, offset, imm, false);
       uint32_t target_addr = reinterpret_cast<uintptr_t>(target);
       codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::t2LDRpci)
                                  .addReg(llvm::ARM::PC)
@@ -356,7 +356,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
                                  .addImm(0)                // -
                                  .addReg(llvm::ARM::R0));  // S
 
-      void *target = calculatePcRelativeAddressThumb(data, offset, imm, false);
+      void* target = calculatePcRelativeAddressThumb(data, offset, imm, false);
       uint32_t target_addr = reinterpret_cast<uintptr_t>(target);
       codegen.AddInstruction(llvm::MCInstBuilder(llvm::ARM::t2LDRpci)
                                  .addReg(llvm::ARM::PC)
@@ -372,7 +372,7 @@ Error TargetARM::RewriteInstruction(const llvm::MCInst &inst,
   return Error();
 }
 
-void *TargetARM::CheckIsPLT(void *old_function, void *new_function) {
+void* TargetARM::CheckIsPLT(void* old_function, void* new_function) {
   // Currently only handles the case where the first instruction in the
   // function is an uncoditional branch.
   std::unique_ptr<Disassembler> disassembler(CreateDisassembler(old_function));
@@ -380,7 +380,7 @@ void *TargetARM::CheckIsPLT(void *old_function, void *new_function) {
     return old_function;
   }
 
-  void *func_addr = GetLoadAddress(old_function);
+  void* func_addr = GetLoadAddress(old_function);
   llvm::MCInst inst;
   uint64_t inst_size = 0;
   if (!disassembler->GetInstruction(func_addr, 0, inst, inst_size)) {

@@ -18,13 +18,13 @@
 
 using namespace interceptor;
 
-CodeGenerator::CodeGenerator(const llvm::Triple &triple, size_t start_alignment)
+CodeGenerator::CodeGenerator(const llvm::Triple& triple, size_t start_alignment)
     : start_alignment_(start_alignment), triple_(triple), code_stream_(code_) {
   // Set the start alignment of the stream to match with the specified value
   for (size_t i = 0; i < start_alignment_; ++i) code_stream_.write((char)0);
 }
 
-CodeGenerator *CodeGenerator::Create(const llvm::Triple &triple,
+CodeGenerator* CodeGenerator::Create(const llvm::Triple& triple,
                                      size_t start_alignment) {
   std::unique_ptr<CodeGenerator> codegen(
       new CodeGenerator(triple, start_alignment));
@@ -32,7 +32,7 @@ CodeGenerator *CodeGenerator::Create(const llvm::Triple &triple,
   return nullptr;
 }
 
-void CodeGenerator::AddInstruction(const llvm::MCInst &inst) {
+void CodeGenerator::AddInstruction(const llvm::MCInst& inst) {
   size_t offset = code_.size();
   llvm::SmallVector<llvm::MCFixup, 4> new_fixups;
   asm_->getEmitter().encodeInstruction(inst, code_stream_, new_fixups, *sti_);
@@ -40,7 +40,7 @@ void CodeGenerator::AddInstruction(const llvm::MCInst &inst) {
   // We have to offset the fixups with the offset of the generated instruction
   // in the data stream because encodeInstruction emits them as if it is
   // writing the new instructions from the beginning of the stream.
-  for (llvm::MCFixup &fixup : new_fixups)
+  for (llvm::MCFixup& fixup : new_fixups)
     fixup.setOffset(fixup.getOffset() + offset);
 
   fixups_.insert(fixups_.end(), new_fixups.begin(), new_fixups.end());
@@ -49,7 +49,7 @@ void CodeGenerator::AddInstruction(const llvm::MCInst &inst) {
 bool CodeGenerator::Initialize() {
   std::string error;
 
-  const llvm::Target *target =
+  const llvm::Target* target =
       llvm::TargetRegistry::lookupTarget(triple_.str().c_str(), error);
   if (!target) return false;
 
@@ -94,17 +94,17 @@ bool CodeGenerator::Initialize() {
 }
 
 size_t CodeGenerator::LayoutCode() {
-  for (const ConstantPoolDataExpr *pool : const_pool_exprs_)
-    const_cast<ConstantPoolDataExpr *>(pool)->allocate(code_stream_);
+  for (const ConstantPoolDataExpr* pool : const_pool_exprs_)
+    const_cast<ConstantPoolDataExpr*>(pool)->allocate(code_stream_);
   return code_.size() - start_alignment_;
 }
 
 Error CodeGenerator::LinkCode(uintptr_t location) {
-  for (const ConstantPoolDataExpr *pool : const_pool_exprs_)
-    const_cast<ConstantPoolDataExpr *>(pool)->setBaseLocation(location);
+  for (const ConstantPoolDataExpr* pool : const_pool_exprs_)
+    const_cast<ConstantPoolDataExpr*>(pool)->setBaseLocation(location);
 
-  for (const llvm::MCFixup &fixup : fixups_) {
-    const llvm::MCExpr *expr = fixup.getValue();
+  for (const llvm::MCFixup& fixup : fixups_) {
+    const llvm::MCExpr* expr = fixup.getValue();
 
     llvm::MCValue mc_value;
     uint64_t value = 0;
@@ -112,7 +112,7 @@ Error CodeGenerator::LinkCode(uintptr_t location) {
       return Error("Failed to evalue the value of an MCFixup");
     value = mc_value.getConstant();
 
-    auto &asmb = asm_->getBackend();
+    auto& asmb = asm_->getBackend();
     int flags = asmb.getFixupKindInfo(fixup.getKind()).Flags;
     bool pc_rel = flags & llvm::MCFixupKindInfo::FKF_IsPCRel;
     bool align_pc = flags & llvm::MCFixupKindInfo::FKF_IsAlignedDownTo32Bits;
@@ -134,11 +134,11 @@ Error CodeGenerator::LinkCode(uintptr_t location) {
   return Error();
 }
 
-const llvm::SmallVectorImpl<char> &CodeGenerator::GetCode() const {
+const llvm::SmallVectorImpl<char>& CodeGenerator::GetCode() const {
   return code_;
 }
 
-const llvm::MCSubtargetInfo &CodeGenerator::GetSubtargetInfo() const {
+const llvm::MCSubtargetInfo& CodeGenerator::GetSubtargetInfo() const {
   return *sti_;
 }
 
@@ -146,7 +146,7 @@ uint32_t CodeGenerator::GetAlignmentOffset(uint32_t alignment_base) const {
   return code_.size() % alignment_base;
 }
 
-std::string CodeGenerator::PrintInstruction(const llvm::MCInst &inst) {
+std::string CodeGenerator::PrintInstruction(const llvm::MCInst& inst) {
   std::string s;
   llvm::raw_string_ostream os(s);
   if (ipr_)

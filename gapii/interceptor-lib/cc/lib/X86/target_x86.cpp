@@ -35,12 +35,12 @@ static llvm::Triple GetTriple() {
   return triple;
 }
 
-CodeGenerator *TargetX86::GetCodeGenerator(void *address,
+CodeGenerator* TargetX86::GetCodeGenerator(void* address,
                                            size_t start_alignment) {
   return CodeGenerator::Create(GetTriple(), start_alignment);
 }
 
-Disassembler *TargetX86::CreateDisassembler(void *address) {
+Disassembler* TargetX86::CreateDisassembler(void* address) {
   return Disassembler::Create(GetTriple());
 }
 
@@ -51,8 +51,8 @@ std::vector<TrampolineConfig> TargetX86::GetTrampolineConfigs(
   return configs;
 }
 
-Error TargetX86::EmitTrampoline(const TrampolineConfig &config,
-                                CodeGenerator &codegen, void *target) {
+Error TargetX86::EmitTrampoline(const TrampolineConfig& config,
+                                CodeGenerator& codegen, void* target) {
   switch (config.type) {
     case FULL_TRAMPOLINE: {
       uintptr_t target_addr = reinterpret_cast<uintptr_t>(target);
@@ -64,7 +64,7 @@ Error TargetX86::EmitTrampoline(const TrampolineConfig &config,
   return Error("Unsupported trampoline type");
 }
 
-static uintptr_t calculatePcRelativeAddress(void *data, int64_t pc_offset,
+static uintptr_t calculatePcRelativeAddress(void* data, int64_t pc_offset,
                                             size_t offset, size_t instr_size) {
   uintptr_t data_addr = reinterpret_cast<uintptr_t>(data);
   data_addr += pc_offset;
@@ -78,7 +78,7 @@ static uintptr_t calculatePcRelativeAddress(void *data, int64_t pc_offset,
 // MOVL (%esp), %ebx; RETL
 // Additionally we detect functions with NOP instructions between the above
 // sepcified instructions.
-static Error IsGetPcThunk(TargetX86 *target, void *address, bool &res) {
+static Error IsGetPcThunk(TargetX86* target, void* address, bool& res) {
   std::unique_ptr<Disassembler> disassembler(
       target->CreateDisassembler(address));
   if (!disassembler) return Error("Failed to create disassembler");
@@ -127,10 +127,10 @@ static Error IsGetPcThunk(TargetX86 *target, void *address, bool &res) {
   }
 }
 
-Error TargetX86::RewriteInstruction(const llvm::MCInst &inst,
-                                    CodeGenerator &codegen, void *data,
+Error TargetX86::RewriteInstruction(const llvm::MCInst& inst,
+                                    CodeGenerator& codegen, void* data,
                                     size_t offset,
-                                    bool &possible_end_of_function) {
+                                    bool& possible_end_of_function) {
   switch (inst.getOpcode()) {
     case llvm::X86::AND32rr:
     case llvm::X86::AND32mr:
@@ -159,7 +159,7 @@ Error TargetX86::RewriteInstruction(const llvm::MCInst &inst,
           data, inst.getOperand(0).getImm(), offset, 5);
 
       bool is_get_pc_thunk = false;
-      Error error = IsGetPcThunk(this, reinterpret_cast<void *>(target_addr),
+      Error error = IsGetPcThunk(this, reinterpret_cast<void*>(target_addr),
                                  is_get_pc_thunk);
       if (error.Fail()) return error;
 

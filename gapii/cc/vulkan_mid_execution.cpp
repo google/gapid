@@ -35,12 +35,12 @@ const uint64_t kChunkSizeLimit =
 namespace gapii {
 
 template <typename T>
-gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R &queues,
-                                 VkDevice device, const gapil::Ref<T> &obj) {
+gapil::Ref<QueueObject> GetQueue(const VkQueueToQueueObject__R& queues,
+                                 VkDevice device, const gapil::Ref<T>& obj) {
   if (obj->mLastBoundQueue) {
     return obj->mLastBoundQueue;
   }
-  for (const auto &qi : queues) {
+  for (const auto& qi : queues) {
     if (qi.second->mDevice == device) {
       return qi.second;
     }
@@ -59,7 +59,7 @@ const uint32_t kQueueFamilyIgnore = 0xFFFFFFFF;
 // then fall back to just host-visible type. Returns the index of the memory
 // type. If no proper memory type is found, returns kInvalidMemoryTypeIndex.
 uint32_t GetMemoryTypeIndexForStagingResources(
-    const VkPhysicalDeviceMemoryProperties &phy_dev_prop,
+    const VkPhysicalDeviceMemoryProperties& phy_dev_prop,
     uint32_t requirement_type_bits) {
   uint32_t index = 0;
   uint32_t backup_index = kInvalidMemoryTypeIndex;
@@ -91,10 +91,10 @@ uint32_t GetMemoryTypeIndexForStagingResources(
 // Returns true if the resource range from |offset| with |size| is fully
 // covered in the |bindings|.
 bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
-                  const U64ToVkSparseMemoryBind &bindings) {
+                  const U64ToVkSparseMemoryBind& bindings) {
   std::vector<uint64_t> resource_offsets;
   resource_offsets.reserve(bindings.count());
-  for (const auto &bi : bindings) {
+  for (const auto& bi : bindings) {
     resource_offsets.push_back(bi.first);
   }
   std::sort(resource_offsets.begin(), resource_offsets.end());
@@ -131,10 +131,10 @@ bool IsFullyBound(VkDeviceSize offset, VkDeviceSize size,
 // hold incomming data from other GPU resources.
 class StagingBuffer {
  public:
-  StagingBuffer(core::Arena *arena,
-                VulkanImports::VkDeviceFunctions &device_functions,
+  StagingBuffer(core::Arena* arena,
+                VulkanImports::VkDeviceFunctions& device_functions,
                 VkDevice device,
-                const VkPhysicalDeviceMemoryProperties &memory_properties,
+                const VkPhysicalDeviceMemoryProperties& memory_properties,
                 uint32_t size)
       : device_functions_(device_functions), device_(device), size_(size) {
     VkBufferCreateInfo staging_buffer_create_info{arena};
@@ -170,7 +170,7 @@ class StagingBuffer {
                                          staging_memory_, 0);
   }
 
-  void *GetMappedMemory() {
+  void* GetMappedMemory() {
     if (!bound_memory_) {
       device_functions_.vkMapMemory(device_, staging_memory_, 0, size_, 0,
                                     &bound_memory_);
@@ -198,17 +198,17 @@ class StagingBuffer {
   }
 
  private:
-  VulkanImports::VkDeviceFunctions &device_functions_;
+  VulkanImports::VkDeviceFunctions& device_functions_;
   VkDevice device_;
   VkBuffer staging_buffer_ = VkBuffer(0);
   VkDeviceMemory staging_memory_ = VkDeviceMemory(0);
   size_t size_;
-  void *bound_memory_ = nullptr;
+  void* bound_memory_ = nullptr;
 };
 
 class StagingCommandBuffer {
  public:
-  StagingCommandBuffer(VulkanImports::VkDeviceFunctions &device_functions,
+  StagingCommandBuffer(VulkanImports::VkDeviceFunctions& device_functions,
                        VkDevice device, uint32_t queueFamilyIndex)
       : device_functions_(device_functions), device_(device) {
     VkCommandPoolCreateInfo pool_create_info = {
@@ -237,7 +237,7 @@ class StagingCommandBuffer {
     // and a child handle should share the same dispatch table key.
     // Ref:
     // https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md#creating-new-dispatchable-objects
-    *((const void **)command_buffer_) = *((const void **)device_);
+    *((const void**)command_buffer_) = *((const void**)device_);
 
     VkCommandBufferBeginInfo begin_info = {
         VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,  // sType
@@ -275,20 +275,20 @@ class StagingCommandBuffer {
   }
 
  private:
-  VulkanImports::VkDeviceFunctions &device_functions_;
+  VulkanImports::VkDeviceFunctions& device_functions_;
   VkDevice device_;
   VkCommandPool command_pool_;
   VkCommandBuffer command_buffer_;
 };
 
-void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
-  for (auto &device : mState.Devices) {
-    auto &device_functions =
+void VulkanSpy::serializeGPUBuffers(StateSerializer* serializer) {
+  for (auto& device : mState.Devices) {
+    auto& device_functions =
         mImports.mVkDeviceFunctions[device.second->mVulkanHandle];
     device_functions.vkDeviceWaitIdle(device.second->mVulkanHandle);
 
     // Prep fences
-    for (auto &fence : mState.Fences) {
+    for (auto& fence : mState.Fences) {
       if (fence.second->mDevice == device.second->mVulkanHandle) {
         ;
         fence.second->mSignaled =
@@ -322,8 +322,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         device.second->mVulkanHandle, buffer, nullptr);
   }
 
-  for (auto &mem : mState.DeviceMemories) {
-    auto &memory = mem.second;
+  for (auto& mem : mState.DeviceMemories) {
+    auto& memory = mem.second;
     serializer->encodeBuffer(memory->mAllocationSize, &memory->mData, nullptr);
     if (memory->mMappedLocation != nullptr) {
       if (subIsMemoryCoherent(nullptr, nullptr, memory)) {
@@ -334,15 +334,15 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     }
   }
 
-  for (auto &buffer : mState.Buffers) {
+  for (auto& buffer : mState.Buffers) {
     VkBuffer buf_handle = buffer.first;
     auto buf = buffer.second;
-    auto &device = mState.Devices[buf->mDevice];
+    auto& device = mState.Devices[buf->mDevice];
 
-    auto &device_functions = mImports.mVkDeviceFunctions[buf->mDevice];
+    auto& device_functions = mImports.mVkDeviceFunctions[buf->mDevice];
     device_functions.vkDeviceWaitIdle(device->mVulkanHandle);
 
-    const BufferInfo &buf_info = buf->mInfo;
+    const BufferInfo& buf_info = buf->mInfo;
     bool denseBound = buf->mMemory != nullptr;
     bool sparseBound = (buf->mSparseMemoryBindings.count() > 0);
     bool sparseBinding =
@@ -375,7 +375,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           continue;
         }
       }
-      for (auto &binds : buf->mSparseMemoryBindings) {
+      for (auto& binds : buf->mSparseMemoryBindings) {
         allBindings.push_back(binds.second);
       }
     }
@@ -383,12 +383,12 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     // TODO(awoloszyn): Avoid blocking on EVERY buffer read.
     // We can either batch them, or spin up a second thread that
     // simply waits for the reads to be done before continuing.
-    for (auto &bind : allBindings) {
+    for (auto& bind : allBindings) {
       if (mState.DeviceMemories.find(bind.mmemory) ==
           mState.DeviceMemories.end()) {
         continue;
       }
-      auto &deviceMemory = mState.DeviceMemories[bind.mmemory];
+      auto& deviceMemory = mState.DeviceMemories[bind.mmemory];
 
       StagingBuffer stage(
           arena(), device_functions, buf->mDevice,
@@ -442,10 +442,10 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     }
   }
 
-  for (auto &image : mState.Images) {
+  for (auto& image : mState.Images) {
     auto img = image.second;
-    const ImageInfo &image_info = img->mInfo;
-    auto &device_functions = mImports.mVkDeviceFunctions[img->mDevice];
+    const ImageInfo& image_info = img->mInfo;
+    auto& device_functions = mImports.mVkDeviceFunctions[img->mDevice];
 
     auto get_element_size = [this](uint32_t format, uint32_t aspect_bit,
                                    bool in_buffer) -> uint32_t {
@@ -475,8 +475,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
                            gapil::Ref<gapii::ImageObject> img,
                            uint32_t aspect_bit, uint32_t layer,
                            uint32_t level) -> pitch {
-      auto &info = img->mInfo;
-      auto &lev = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
+      auto& info = img->mInfo;
+      auto& lev = img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
       const bool has_linear_layout =
           (lev->mLinearLayout != nullptr) && (lev->mLinearLayout->msize != 0);
       auto elementAndTexelBlockSize = subGetElementAndTexelBlockSizeForAspect(
@@ -519,7 +519,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
     // extent pitch is calculated with the in-image element size.
     auto extent_pitch = [this, &get_element_size](
-                            const VkExtent3D &extent, uint32_t format,
+                            const VkExtent3D& extent, uint32_t format,
                             uint32_t aspect_bit) -> pitch {
       auto elementAndTexelBlockSize = subGetElementAndTexelBlockSizeForAspect(
           nullptr, nullptr, format, aspect_bit);
@@ -558,7 +558,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     };
 
     auto level_size = [this, &get_element_size, &next_multiple_of_8](
-                          const VkExtent3D &extent, uint32_t format,
+                          const VkExtent3D& extent, uint32_t format,
                           uint32_t mip_level, uint32_t aspect_bit,
                           bool account_for_plane) -> byte_size_and_extent {
       auto elementAndTexelBlockSize =
@@ -607,7 +607,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         img->mInfo.mArrayLayers  // layerCount
     };
 
-    std::unordered_map<ImageLevel *, byte_size_and_extent> level_sizes;
+    std::unordered_map<ImageLevel*, byte_size_and_extent> level_sizes;
     walkImageSubRng(
         img, img_whole_rng,
         [&serializer, &level_size, &img, &level_sizes](
@@ -660,8 +660,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         bool is_valid = true;
         // If this is a sparsely resident image, then at least ALL metadata
         // must be bound.
-        for (const auto &req : img->mSparseMemoryRequirements) {
-          const auto &prop = req.second.mformatProperties;
+        for (const auto& req : img->mSparseMemoryRequirements) {
+          const auto& prop = req.second.mformatProperties;
           if (prop.maspectMask ==
               VkImageAspectFlagBits::VK_IMAGE_ASPECT_METADATA_BIT) {
             if (!IsFullyBound(req.second.mimageMipTailOffset,
@@ -697,7 +697,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     auto append_image_level_to_opaque_pieces =
         [&img, &opaque_pieces](uint32_t aspect_bit, uint32_t layer,
                                uint32_t level) {
-          auto &img_level =
+          auto& img_level =
               img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
           if (img_level->mLayout == VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED) {
             return;
@@ -707,8 +707,8 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
     if (denseBound || !sparseResidency) {
       walkImageSubRng(img, img_whole_rng, append_image_level_to_opaque_pieces);
     } else {
-      for (const auto &req : img->mSparseMemoryRequirements) {
-        const auto &prop = req.second.mformatProperties;
+      for (const auto& req : img->mSparseMemoryRequirements) {
+        const auto& prop = req.second.mformatProperties;
         if (prop.maspectMask == img->mImageAspect) {
           if (prop.mflags & VkSparseImageFormatFlagBits::
                                 VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT) {
@@ -763,7 +763,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       std::unordered_map<uint32_t, std::vector<VkBufferImageCopy>> copies;
       // queue families to queues
       std::unordered_map<uint32_t, gapil::Ref<QueueObject>> queues;
-      for (auto &piece : opaque_pieces) {
+      for (auto& piece : opaque_pieces) {
         auto img_level = img->mAspects[piece.aspect_bit]
                              ->mLayers[piece.layer]
                              ->mLevels[piece.level];
@@ -795,14 +795,14 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
       }
 
       if (sparseResidency) {
-        for (auto &aspect_i : subUnpackImageAspectFlags(nullptr, nullptr, img,
+        for (auto& aspect_i : subUnpackImageAspectFlags(nullptr, nullptr, img,
                                                         img->mImageAspect)) {
           uint32_t aspect_bit = aspect_i.second;
           if (img->mSparseImageMemoryBindings.find(aspect_bit) !=
               img->mSparseImageMemoryBindings.end()) {
-            for (const auto &layer_i :
+            for (const auto& layer_i :
                  img->mSparseImageMemoryBindings[aspect_bit]->mLayers) {
-              for (const auto &level_i : layer_i.second->mLevels) {
+              for (const auto& level_i : layer_i.second->mLevels) {
                 auto img_level = img->mAspects[aspect_bit]
                                      ->mLayers[layer_i.first]
                                      ->mLevels[level_i.first];
@@ -814,7 +814,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
                 if (queues.find(queue_family) == queues.end()) {
                   queues[queue_family] = queue;
                 }
-                for (const auto &block_i : level_i.second->mBlocks) {
+                for (const auto& block_i : level_i.second->mBlocks) {
                   auto copy =
                       VkBufferImageCopy{offset,  // bufferOffset,
                                         0,       // bufferRowLength,
@@ -849,7 +849,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
 
       auto copyImageToBuffer = [&img, &img_whole_rng, &stage, &device_functions,
                                 this](
-                                   const std::vector<VkBufferImageCopy> &copies,
+                                   const std::vector<VkBufferImageCopy>& copies,
                                    gapil::Ref<QueueObject> queue) {
         const uint32_t queue_family = queue->mFamily;
         StagingCommandBuffer commandBuffer(device_functions, img->mDevice,
@@ -860,7 +860,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
             img, img_whole_rng,
             [&img, &img_barriers, &old_layouts, queue_family](
                 uint32_t aspect_bit, uint32_t layer, uint32_t level) {
-              auto &img_level =
+              auto& img_level =
                   img->mAspects[aspect_bit]->mLayers[layer]->mLevels[level];
               if (img_level->mLastBoundQueue != nullptr &&
                   img_level->mLastBoundQueue->mFamily == queue_family) {
@@ -903,14 +903,14 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
         device_functions.vkQueueWaitIdle(queue->mVulkanHandle);
       };
 
-      for (auto &family_copies : copies) {
+      for (auto& family_copies : copies) {
         copyImageToBuffer(family_copies.second, queues[family_copies.first]);
       }
 
-      uint8_t *pData = reinterpret_cast<uint8_t *>(stage.GetMappedMemory());
+      uint8_t* pData = reinterpret_cast<uint8_t*>(stage.GetMappedMemory());
       size_t new_offset = 0;
       for (uint32_t i = 0; i < copies_in_order.size(); ++i) {
-        auto &copy = copies_in_order[i];
+        auto& copy = copies_in_order[i];
         size_t next_offset = (i == copies_in_order.size() - 1)
                                  ? offset
                                  : copies_in_order[i + 1].mbufferOffset;
@@ -928,7 +928,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           size_t element_size_in_img = 3;
           size_t element_size_in_buf = 4;
           // It is always the MSB byte to be stripped.
-          uint8_t *buf = pData + new_offset;
+          uint8_t* buf = pData + new_offset;
           for (size_t i = 0;
                i < e.aligned_level_size_in_buf / element_size_in_buf; i++) {
             if (i < 3) {
@@ -956,7 +956,7 @@ void VulkanSpy::serializeGPUBuffers(StateSerializer *serializer) {
           // We cannot place partial blocks
           return;
         }
-        auto &img_level =
+        auto& img_level =
             img->mAspects[aspect_bit]->mLayers[array_layer]->mLevels[mip_level];
         // If the image has linear layout and its row pitch and depth pitch is
         // larger than the piches for tightly packed image, we need to set the

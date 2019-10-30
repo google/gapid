@@ -35,13 +35,13 @@ namespace interceptor {
 
 class Disassembler {
  public:
-  static Disassembler *Create(const llvm::Triple &triple);
+  static Disassembler* Create(const llvm::Triple& triple);
 
-  bool GetInstruction(const void *data, size_t offset, llvm::MCInst &inst,
-                      uint64_t &inst_size);
+  bool GetInstruction(const void* data, size_t offset, llvm::MCInst& inst,
+                      uint64_t& inst_size);
 
  private:
-  Disassembler(const llvm::Triple &triple);
+  Disassembler(const llvm::Triple& triple);
 
   bool Initialize();
 
