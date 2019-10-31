@@ -70,7 +70,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 
 	f(b)
 
-	payload, decoder, notification, err := b.Build(ctx)
+	payload, decoder, notification, fenceReady, err := b.Build(ctx)
 	if err != nil {
 		t.Errorf("Build failed with error: %v", err)
 		return err
@@ -83,7 +83,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 		return err
 	}
 
-	err = replay.Execute(ctx, "", payload, decoder, notification, bgc, abi.MemoryLayout, os)
+	err = replay.Execute(ctx, "", payload, decoder, notification, fenceReady, bgc, abi.MemoryLayout, os)
 	if err != nil {
 		t.Errorf("Executor failed with error: %v", err)
 		return err

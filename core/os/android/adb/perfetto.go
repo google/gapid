@@ -37,7 +37,7 @@ var (
 )
 
 // StartPerfettoTrace starts a perfetto trace on this device.
-func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error {
+func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal, ready task.Task) error {
 	// Silently attempt to delete the old trace in case the user has changed
 	// If the user has changed from shell => root, this is fine. For root => shell,
 	// the root user will have still have to manually delete the old trace if it exists
@@ -45,6 +45,7 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 
 	reader, stdout := io.Pipe()
 	logRing := ring.New(10)
+	readyOnce := task.Once(ready)
 	data, err := proto.Marshal(config)
 	if err != nil {
 		return err
@@ -55,6 +56,7 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 		buf := bufio.NewReader(reader)
 		for {
 			line, e := buf.ReadString('\n')
+			readyOnce(ctx)
 			logRing.Value = line
 			logRing = logRing.Next()
 			switch e {

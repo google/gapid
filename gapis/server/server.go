@@ -790,9 +790,10 @@ func (r *traceHandler) Initialize(ctx context.Context, opts *service.TraceOption
 	}
 	r.initialized = true
 	stopSignal, stopFunc := task.NewSignal()
+	readyFunc := task.Noop()
 	r.stopFunc = stopFunc
 	go func() {
-		r.err = trace.Trace(ctx, opts.Device, r.startSignal, stopSignal, opts, &r.bytesWritten)
+		r.err = trace.Trace(ctx, opts.Device, r.startSignal, stopSignal, readyFunc, opts, &r.bytesWritten)
 		r.done = true
 		r.doneSignalFunc(ctx)
 	}()

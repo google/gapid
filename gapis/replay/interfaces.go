@@ -89,6 +89,8 @@ type Profiler interface {
 		intent Intent,
 		mgr Manager,
 		hints *service.UsageHints,
+		traceOptions *service.TraceOptions,
+		handler *SignalHandler,
 		overrides *path.OverrideConfig) error
 }
 

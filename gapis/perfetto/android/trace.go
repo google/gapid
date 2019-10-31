@@ -151,7 +151,7 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 }
 
 // Capture starts the perfetto capture.
-func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, w io.Writer, written *int64) (int64, error) {
+func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (int64, error) {
 	tmp, err := file.Temp()
 	if err != nil {
 		return 0, log.Err(ctx, err, "Failed to create a temp file")
@@ -164,7 +164,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 		return 0, log.Err(ctx, nil, "Cancelled")
 	}
 
-	if err := p.device.StartPerfettoTrace(ctx, p.config, perfettoTraceFile, stop); err != nil {
+	if err := p.device.StartPerfettoTrace(ctx, p.config, perfettoTraceFile, stop, ready); err != nil {
 		return 0, err
 	}
 

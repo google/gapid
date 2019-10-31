@@ -47,7 +47,7 @@ type Process interface {
 	// until start is fired.
 	// Capturing will stop when the stop signal is fired (clean stop) or the
 	// context is cancelled (abort).
-	Capture(ctx context.Context, start task.Signal, stop task.Signal, w io.Writer, written *int64) (size int64, err error)
+	Capture(ctx context.Context, start task.Signal, stop task.Signal, ready task.Task, w io.Writer, written *int64) (size int64, err error)
 }
 
 // Tracer is an option interface that a bind.Device can implement.
