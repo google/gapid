@@ -28,6 +28,7 @@ import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.MultiSelection;
 import com.google.gapid.perfetto.views.RootPanel;
 import com.google.gapid.perfetto.views.SelectionView;
 import com.google.gapid.perfetto.views.State;
@@ -150,7 +151,7 @@ public class TraceView extends Composite
           rootPanel.setMouseMode(RootPanel.MouseMode.TimeSelect);
           break;
         case 'f': {
-          Selection selection = state.getSelection();
+          MultiSelection selection = state.getSelection();
           if (selection != null) {
             selection.zoom(state);
             redraw = true;
@@ -158,7 +159,7 @@ public class TraceView extends Composite
           break;
         }
         case 'm': {
-          Selection selection = state.getSelection();
+          MultiSelection selection = state.getSelection();
           if (selection != null) {
             selection.markTime(state);
             redraw = true;
@@ -230,7 +231,7 @@ public class TraceView extends Composite
   }
 
   @Override
-  public void onMarkChanged() {
+  public void onSelectionChanged(Selection.MultiSelection selection) {
     canvas.redraw();
   }
 

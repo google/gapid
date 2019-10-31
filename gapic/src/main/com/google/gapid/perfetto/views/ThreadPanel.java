@@ -22,7 +22,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
@@ -30,10 +30,12 @@ import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.ThreadTrack;
-import com.google.gapid.perfetto.views.State.Location;
+import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -98,6 +100,12 @@ public class ThreadPanel extends TrackPanel implements Selectable {
       }
 
       TimeSpan visible = state.getVisibleTime();
+      Selection<Long> selectedCpu = state.getSelection(Selection.Kind.Cpu);
+      Selection<StateSlice.Key> selectedThreadState = state.getSelection(Selection.Kind.ThreadState);
+      Selection<Slice.Key> selectedThread = state.getSelection(Selection.Kind.Thread);
+      List<Integer> visibleSelectedSched = Lists.newArrayList();
+      List<Integer> visibleSelectedExpanded = Lists.newArrayList();
+
       boolean merging = false;
       double mergeStartX = 0;
       double mergeEndX = 0;
@@ -160,6 +168,12 @@ public class ThreadPanel extends TrackPanel implements Selectable {
                 rectStart + 2, 2, rectWidth - 4, SLICE_HEIGHT - 4);
           }
         }
+
+        if (selectedCpu.contains(data.schedIds[i])
+            || selectedThreadState.contains(new StateSlice.Key(data.schedStarts[i],
+                data.schedEnds[i] - data.schedStarts[i], track.getThread().utid))) {
+          visibleSelectedSched.add(i);
+        }
       }
       if (merging) {
         ctx.setBackgroundColor(mergeState.color.get());
@@ -186,6 +200,10 @@ public class ThreadPanel extends TrackPanel implements Selectable {
           ctx.setBackgroundColor(hsl(hue, saturation, .65f));
           ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
+          if (selectedThread.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
+            visibleSelectedExpanded.add(i);
+          }
+
           // Don't render text when we have less than 7px to play with.
           if (rectWidth < 7) {
             continue;
@@ -197,7 +215,19 @@ public class ThreadPanel extends TrackPanel implements Selectable {
         }
       }
 
-      renderMarks(ctx, h);
+      // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+      ctx.setForegroundColor(SWT.COLOR_BLACK);
+      for (int index : visibleSelectedSched) {
+        double rectStart = state.timeToPx(data.schedStarts[index]);
+        double rectWidth = Math.max(1, state.timeToPx(data.schedEnds[index]) - rectStart);
+        ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, 2);
+      }
+      for (int index : visibleSelectedExpanded) {
+        double rectStart = state.timeToPx(data.slices.starts[index]);
+        double rectWidth = Math.max(1, state.timeToPx(data.slices.ends[index]) - rectStart);
+        double depth = data.slices.depths[index];
+        ctx.drawRect(rectStart, (1 + depth) * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, 2);
+      }
 
       if (hoveredTitle != null) {
         ctx.setBackgroundColor(colors().hoverBackground);
@@ -316,14 +346,14 @@ public class ThreadPanel extends TrackPanel implements Selectable {
       for (int i = 0; i < data.schedStarts.length; i++) {
         if (data.schedStarts[i] <= t && t <= data.schedEnds[i]) {
           if (data.schedIds[i] != 0) {
-            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[i]));
+            state.setSelection(Selection.Kind.Cpu,
+                CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[i]));
           } else {
-            state.setSelection(new ThreadTrack.StateSlice(data.schedStarts[i],
-                data.schedEnds[i] - data.schedStarts[i], track.getThread().utid,
-                data.schedStates[i]));
+            state.setSelection(Selection.Kind.ThreadState,
+                new ThreadTrack.StateSlice(data.schedStarts[i],
+                    data.schedEnds[i] - data.schedStarts[i], track.getThread().utid,
+                    data.schedStates[i]));
           }
-          state.setMarkLocation(ThreadPanel.this,
-              new Location(data.schedStarts[i], data.schedEnds[i], -1));
           return true;
         }
       }
@@ -333,9 +363,8 @@ public class ThreadPanel extends TrackPanel implements Selectable {
       for (int i = 0; i < slices.starts.length; i++) {
         if (slices.depths[i] == depth && slices.starts[i] <= t && t <= slices.ends[i]
             && slices.ids[i] >= 0) {
-          state.setSelection(track.getSlice(state.getQueryEngine(), slices.ids[i]));
-          state.setMarkLocation(ThreadPanel.this,
-              new Location(slices.starts[i], slices.ends[i], slices.depths[i]));
+          state.setSelection(Selection.Kind.Thread,
+              track.getSlice(state.getQueryEngine(), slices.ids[i]));
           return true;
         }
       }
@@ -361,7 +390,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
     }
 
     if (startDepth == 0) {
-      builder.add(Kind.ThreadState,
+      builder.add(Selection.Kind.ThreadState,
           transform(track.getStates(state.getQueryEngine(), ts), ThreadTrack.StateSlices::new));
     }
 
@@ -371,66 +400,9 @@ public class ThreadPanel extends TrackPanel implements Selectable {
       if (endDepth >= track.getThread().maxDepth) {
         endDepth = Integer.MAX_VALUE;
       }
-      builder.add(Kind.Thread, transform(
+      builder.add(Selection.Kind.Thread, transform(
           track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
           SliceTrack.Slices::new));
-    }
-  }
-
-  @Override
-  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts) {
-    int startDepth = (int)(area.y / SLICE_HEIGHT);
-    int endDepth = (int)((area.y + area.h) / SLICE_HEIGHT);
-    if (startDepth == endDepth && area.h / SLICE_HEIGHT < SELECTION_THRESHOLD) {
-      return;
-    }
-    if (((startDepth + 1) * SLICE_HEIGHT - area.y) / SLICE_HEIGHT < SELECTION_THRESHOLD) {
-      startDepth++;
-    }
-    if ((area.y + area.h - endDepth * SLICE_HEIGHT) / SLICE_HEIGHT < SELECTION_THRESHOLD) {
-      endDepth--;
-    }
-    if (startDepth > endDepth || !expanded && startDepth > 0) {
-      return;
-    }
-
-    if (startDepth == 0) {
-      updateTasks.add(transform(track.getStates(state.getQueryEngine(), ts), slices -> {
-        slices.stream().forEach(s ->
-            state.addMarkLocation(ThreadPanel.this, new Location(s.time, s.time + s.dur, -1)));
-        return null;
-      }));
-    }
-
-    startDepth = Math.max(0, startDepth - 1);
-    endDepth--;
-    if (endDepth >= 0) {
-      if (endDepth >= track.getThread().maxDepth) {
-        endDepth = Integer.MAX_VALUE;
-      }
-      updateTasks.add(transform(
-          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth), slices -> {
-            slices.stream().forEach(s -> state.addMarkLocation(
-                ThreadPanel.this, new Location(s.time, s.time + s.dur, s.depth)));
-            return null;
-          }));
-    }
-  }
-
-  @Override
-  public void renderMarks(RenderContext ctx, double h) {
-    if (state.getMarkLocations().containsKey(ThreadPanel.this)) {
-      ctx.setForegroundColor(SWT.COLOR_BLACK);
-      for (Location location : state.getMarkLocations().get(ThreadPanel.this)) {
-        double rectStart = state.timeToPx(location.xTimeSpan.start);
-        double rectWidth = Math.max(1, state.timeToPx(location.xTimeSpan.end) - rectStart);
-        double depth = location.yOffset;
-        if (depth == -1) {
-          ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, 2);
-        } else {
-          ctx.drawRect(rectStart, (1 + depth) * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, 2);
-        }
-      }
     }
   }
 }

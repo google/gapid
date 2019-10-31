@@ -26,8 +26,10 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.ThreadState;
@@ -42,6 +44,7 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * {@link Track} containing thread state and slices of a thread.
@@ -179,7 +182,7 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     }
   }
 
-  public static class StateSlice implements Selection {
+  public static class StateSlice implements Selection<StateSlice.Key> {
     public final long time;
     public final long dur;
     public final long utid;
@@ -205,6 +208,11 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     }
 
     @Override
+    public boolean contains(StateSlice.Key key) {
+      return key.matches(this);
+    }
+
+    @Override
     public Composite buildUi(Composite parent, State uiState) {
       return new ThreadStateSliceSelectionView(parent, uiState, this);
     }
@@ -222,14 +230,52 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
         uiState.setVisibleTime(new TimeSpan(time, time + dur));
       }
     }
+
+    public static class Key {
+      public final long time;
+      public final long dur;
+      public final long utid;
+
+      public Key(long time, long dur, long utid) {
+        this.time = time;
+        this.dur = dur;
+        this.utid = utid;
+      }
+
+      public Key(StateSlice slice) {
+        this(slice.time, slice.dur, slice.utid);
+      }
+
+      public boolean matches(StateSlice slice) {
+        return slice.time == time && slice.dur == dur && slice.utid == utid;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)obj;
+        return time == o.time && dur == o.dur && utid == o.utid;
+      }
+
+      @Override
+      public int hashCode() {
+        return Long.hashCode(time ^ dur ^ utid);
+      }
+    }
   }
 
   public static class StateSlices implements Selection.CombiningBuilder.Combinable<StateSlices> {
     private final Map<ThreadState, Long> byState = Maps.newHashMap();
+    private final Set<StateSlice.Key> sliceKeys = Sets.newHashSet();
 
     public StateSlices(List<StateSlice> slices) {
       for (StateSlice slice : slices) {
         byState.compute(slice.state, (state, old) -> (old == null) ? slice.dur : old + slice.dur);
+        sliceKeys.add(new StateSlice.Key(slice));
       }
     }
 
@@ -238,6 +284,7 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
       for (Map.Entry<ThreadState, Long> e : other.byState.entrySet()) {
         byState.merge(e.getKey(), e.getValue(), Long::sum);
       }
+      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
@@ -246,19 +293,26 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
       return new Selection(byState.entrySet().stream()
           .map(e -> new Selection.Entry(e.getKey(), e.getValue()))
           .sorted((e1, e2) -> Long.compare(e2.totalDur, e1.totalDur))
-          .collect(ImmutableList.toImmutableList()));
+          .collect(ImmutableList.toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection {
+    public static class Selection implements com.google.gapid.perfetto.models.Selection<StateSlice.Key> {
       public final ImmutableList<Entry> entries;
+      public final ImmutableSet<StateSlice.Key> sliceKeys;
 
-      public Selection(ImmutableList<Entry> entries) {
+      public Selection(ImmutableList<Entry> entries, ImmutableSet<StateSlice.Key> sliceKeys) {
         this.entries = entries;
+        this.sliceKeys = sliceKeys;
       }
 
       @Override
       public String getTitle() {
         return "Thread States";
+      }
+
+      @Override
+      public boolean contains(StateSlice.Key key) {
+        return sliceKeys.contains(key);
       }
 
       @Override

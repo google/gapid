@@ -20,7 +20,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.MoreFutures.transform;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -28,9 +27,8 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
-
-import java.util.List;
 
 public class CounterPanel extends TrackPanel implements Selectable {
   private static final double HEIGHT = 45;
@@ -167,18 +165,8 @@ public class CounterPanel extends TrackPanel implements Selectable {
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Kind.Counter, transform(track.getValues(state.getQueryEngine(), ts),
+    builder.add(Selection.Kind.Counter, transform(track.getValues(state.getQueryEngine(), ts),
         data -> new CounterTrack.Values(track.getCounter().name, data)));
-  }
-
-  @Override
-  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts) {
-    // TODO: mark selected counter data point for Counter Panel.
-  }
-
-  @Override
-  public void renderMarks(RenderContext ctx, double h) {
-    // TODO: mark selected counter data point for Counter Panel.
   }
 
   private static class HoverCard {

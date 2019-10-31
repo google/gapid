@@ -24,16 +24,16 @@ import static com.google.gapid.perfetto.views.StyleConstants.hueForCpu;
 import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
-import com.google.gapid.perfetto.views.State.Location;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -131,6 +131,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
     //boolean isHovering = feGlobals().getFrontendLocalState().hoveredUtid != -1;
 
     TimeSpan visible = state.getVisibleTime();
+    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    List<Integer> visibleSelected = Lists.newArrayList();
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
@@ -147,6 +149,10 @@ public class CpuPanel extends TrackPanel implements Selectable {
       ctx.setBackgroundColor(color.rgb());
       ctx.fillRect(rectStart, 0, rectWidth, h);
 
+      if (selected.contains(data.ids[i])) {
+        visibleSelected.add(i);
+      }
+
       // Don't render text when we have less than 7px to play with.
       if (rectWidth < 7) {
         continue;
@@ -162,7 +168,13 @@ public class CpuPanel extends TrackPanel implements Selectable {
       }
     }
 
-    renderMarks(ctx, h);
+    // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+    ctx.setForegroundColor(SWT.COLOR_BLACK);
+    for (int index : visibleSelected) {
+      double rectStart = state.timeToPx(data.starts[index]);
+      double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
+      ctx.drawRect(rectStart, 0, rectWidth, h, 3);
+    }
 
     if (hoveredThread != null) {
       ctx.setBackgroundColor(colors().hoverBackground);
@@ -266,9 +278,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
       if (data.starts[i] <= t && t <= data.ends[i]) {
-        state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), data.ids[i]));
+        state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), data.ids[i]));
         state.setSelectedCpuSliceIds(data.utids[i]);
-        state.setMarkLocation(CpuPanel.this, new Location(data.starts[i], data.ends[i]));
         return true;
       }
     }
@@ -278,31 +289,9 @@ public class CpuPanel extends TrackPanel implements Selectable {
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Kind.Cpu, transform(
+      builder.add(Selection.Kind.Cpu, transform(
           CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts),
           r -> new CpuTrack.Slices(state, r)));
-    }
-  }
-
-  @Override
-  public void updateMarkLocations(List<ListenableFuture<Void>> updateTasks, Area area, TimeSpan ts) {
-    updateTasks.add(transform(
-        CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts), slices -> {
-          slices.stream().forEach(s ->
-              state.addMarkLocation(CpuPanel.this, new Location(s.time, s.time + s.dur)));
-          return null;
-        }));
-  }
-
-  @Override
-  public void renderMarks(RenderContext ctx, double h) {
-    if (state.getMarkLocations().containsKey(CpuPanel.this)) {
-      ctx.setForegroundColor(SWT.COLOR_BLACK);
-      for (Location location : state.getMarkLocations().get(CpuPanel.this)) {
-        double rectStart = state.timeToPx(location.xTimeSpan.start);
-        double rectWidth = Math.max(1, state.timeToPx(location.xTimeSpan.end) - rectStart);
-        ctx.drawRect(rectStart, 0, rectWidth, h, 3);
-      }
     }
   }
 

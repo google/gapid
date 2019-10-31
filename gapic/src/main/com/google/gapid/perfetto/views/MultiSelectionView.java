@@ -19,22 +19,26 @@ import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 
 import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.models.Selection.Kind;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.TabFolder;
 
+import java.util.NavigableMap;
+
 /**
  * Displays multiple different selections.
  */
 public class MultiSelectionView extends Composite {
-  public MultiSelectionView(Composite parent, Selection[] selections, State state) {
+  public MultiSelectionView(Composite parent, NavigableMap<Kind<?>, Selection<?>> selections,
+      State state) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
     TabFolder folder = createStandardTabFolder(this);
-    for (Selection s : selections) {
+    for (Selection<?> s : selections.values()) {
       createStandardTabItem(folder, s.getTitle(), s.buildUi(folder, state));
     }
   }

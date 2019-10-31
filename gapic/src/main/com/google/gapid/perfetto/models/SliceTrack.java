@@ -29,6 +29,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -234,7 +235,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     }
   }
 
-  public static abstract class Slice implements Selection {
+  public static abstract class Slice implements Selection<Slice.Key> {
     public final long time;
     public final long dur;
     public final String category;
@@ -266,6 +267,11 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     }
 
     @Override
+    public boolean contains(Slice.Key key) {
+      return key.matches(this);
+    }
+
+    @Override
     public Composite buildUi(Composite parent, State state) {
       return new SliceSelectionView(parent, state, this);
     }
@@ -281,6 +287,42 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public void zoom(State state) {
       if (dur > 0) {
         state.setVisibleTime(new TimeSpan(time, time + dur));
+      }
+    }
+
+    public static class Key {
+      public final long time;
+      public final long dur;
+      public final long depth;
+
+      public Key(long time, long dur, long depth) {
+        this.time = time;
+        this.dur = dur;
+        this.depth = depth;
+      }
+
+      public Key(Slice slice) {
+        this(slice.time, slice.dur, slice.depth);
+      }
+
+      public boolean matches(Slice slice) {
+        return slice.time == time && slice.dur == dur && slice.depth == depth;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)obj;
+        return time == o.time && dur == o.dur && depth == o.depth;
+      }
+
+      @Override
+      public int hashCode() {
+        return Long.hashCode(time ^ dur ^ depth);
       }
     }
 
@@ -309,6 +351,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
     private final Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
     private final Set<Long> roots = Sets.newHashSet();
+    private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
 
     public Slices(List<Slice> slices) {
       String ti = "";
@@ -322,6 +365,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
         }
         roots.remove(slice.stackId);
         child.add(slice.dur);
+        sliceKeys.add(new Slice.Key(slice));
       }
       this.title = ti;
     }
@@ -338,6 +382,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
         }
       }
       roots.addAll(other.roots);
+      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
@@ -348,21 +393,28 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
           .flatMap(root -> byParent.get(root).stream())
           .map(b -> b.build(byParent))
           .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
-          .collect(toImmutableList()));
+          .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection {
+    public static class Selection implements com.google.gapid.perfetto.models.Selection<Slice.Key> {
       private final String title;
       public final ImmutableList<Node> nodes;
+      public final ImmutableSet<Slice.Key> sliceKeys;
 
-      public Selection(String title, ImmutableList<Node> nodes) {
+      public Selection(String title, ImmutableList<Node> nodes, ImmutableSet<Slice.Key> sliceKeys) {
         this.title = title;
         this.nodes = nodes;
+        this.sliceKeys = sliceKeys;
       }
 
       @Override
       public String getTitle() {
         return title;
+      }
+
+      @Override
+      public boolean contains(Slice.Key key) {
+        return sliceKeys.contains(key);
       }
 
       @Override

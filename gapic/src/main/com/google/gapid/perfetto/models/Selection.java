@@ -17,87 +17,94 @@ package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.joining;
 
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.models.SliceTrack.Slice;
+import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
 import com.google.gapid.perfetto.views.MultiSelectionView;
 import com.google.gapid.perfetto.views.State;
 
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 /**
  * Data about the current selection in the UI.
  */
-public interface Selection {
+public interface Selection<Key> {
   public String getTitle();
+  public boolean contains(Key key);
   public Composite buildUi(Composite parent, State state);
   public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
 
-  public static class MultiSelection implements Selection {
-    private final Selection[] selections;
+  public static class MultiSelection {
+    private final NavigableMap<Kind<?>, Selection<?>> selections;
 
-    public MultiSelection(Selection[] selections) {
+    public <Key> MultiSelection(Kind<Key> type, Selection<Key> selection) {
+      this.selections = Maps.newTreeMap();
+      this.selections.put(type, selection);
+    }
+
+    public MultiSelection(NavigableMap<Kind<?>, Selection<?>> selections) {
       this.selections = selections;
     }
 
-    @Override
-    public String getTitle() {
-      return stream(selections).map(Selection::getTitle).collect(joining(", "));
-    }
-
-    @Override
     public Composite buildUi(Composite parent, State state) {
-      if (selections.length == 1) {
-        return selections[0].buildUi(parent, state);
+      if (selections.size() == 1) {
+        return firstSelection().buildUi(parent, state);
       } else {
         return new MultiSelectionView(parent, selections, state);
       }
     }
 
-    @Override
+    public <Key> Selection<Key> getSelection(Kind<Key> type) {
+      return selections.containsKey(type) ? (Selection<Key>) selections.get(type) :type.EmptySelection();
+    }
+
     public void markTime(State state) {
       // TODO: is this good enough?
-      if (selections.length == 1) {
-        selections[0].markTime(state);
+      if (selections.size() == 1) {
+        firstSelection().markTime(state);
       }
     }
 
-    @Override
     public void zoom(State state) {
       // TODO: handle zooming into multiple selections.
-      if (selections.length == 1) {
-        selections[0].zoom(state);
+      if (selections.size() == 1) {
+        firstSelection().zoom(state);
       }
+    }
+
+    private Selection<?> firstSelection() {
+      return selections.firstEntry().getValue();
     }
   }
 
   public static class CombiningBuilder {
-    private final Map<Comparable<?>, ListenableFuture<Combinable<?>>> selections =
+    private final Map<Kind<?>, ListenableFuture<Combinable<?>>> selections =
         Maps.newTreeMap();
 
     @SuppressWarnings("unchecked")
     public <T extends Combinable<T>> void add(
-        Comparable<?> type, ListenableFuture<Combinable<?>> selection) {
+        Kind<?> type, ListenableFuture<Combinable<?>> selection) {
       selections.merge(type, selection, (f1, f2) -> transformAsync(f1, r1 ->
         transform(f2, r2 -> (((T)r1).combine((T)r2)))));
     }
 
-    public ListenableFuture<? extends Selection> build() {
-      if (selections.size() == 1) {
-        return transform(Iterables.getOnlyElement(selections.values()), Combinable::build);
-      }
-
+    public ListenableFuture<MultiSelection> build() {
       return transform(Futures.allAsList(selections.values()), sels -> {
-        Selection[] res = new Selection[sels.size()];
-        for (int i = 0; i < res.length; i++) {
-          res[i] = sels.get(i).build();
+        Iterator<Kind<?>> keys = selections.keySet().iterator();
+        Iterator<Combinable<?>> vals = sels.iterator();
+        TreeMap<Kind<?>, Selection<?>> res = Maps.newTreeMap();
+        while (keys.hasNext()) {
+          res.put(keys.next(), vals.next().build());
         }
         return new MultiSelection(res);
       });
@@ -105,7 +112,45 @@ public interface Selection {
 
     public static interface Combinable<T extends Combinable<T>> {
       public T combine(T other);
-      public Selection build();
+      public Selection<?> build();
     }
+  }
+
+  public static class Kind<Key> implements Comparable<Kind<?>>{
+    public int priority;
+
+    public Kind(int priority) {
+      this.priority = priority;
+    }
+
+    public Selection<Key> EmptySelection() {
+      return new Selection<Key>() {
+        @Override
+        public String getTitle() {
+          return "";
+        }
+
+        @Override
+        public boolean contains(Key key) {
+          return false;
+        }
+
+        @Override
+        public Composite buildUi(Composite parent, State state) {
+          return new Composite(parent, SWT.NONE);
+        }
+      };
+    }
+
+    @Override
+    public int compareTo(Kind<?> other) {
+      return this.priority - other.priority;
+    }
+
+    public static final Kind<Slice.Key> Thread = new Kind<Slice.Key>(0);
+    public static final Kind<StateSlice.Key> ThreadState = new Kind<StateSlice.Key>(1);
+    public static final Kind<Long> Cpu = new Kind<Long>(2);
+    public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
+    public static final Kind<Long> Counter = new Kind<Long>(4);
   }
 }

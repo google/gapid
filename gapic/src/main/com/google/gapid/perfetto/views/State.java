@@ -18,12 +18,10 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
-import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.Selection;
@@ -36,10 +34,6 @@ import com.google.gapid.util.Events;
 
 import org.eclipse.swt.widgets.Widget;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -61,9 +55,8 @@ public class State {
   private double maxScrollOffset = 0;
   private double nanosPerPx;
   private long resolution;
-  private Selection selection;
+  private Selection.MultiSelection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
-  private Map<Panel, Set<Location>> markLocations = Maps.newHashMap();  // For selected selectables.
   private long selectedUpid = -1;   // For a selected CPU slice.
   private long selectedUtid = -1;   // For a selected CPU slice.
   private TimeSpan highlight = TimeSpan.ZERO;
@@ -82,7 +75,6 @@ public class State {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.selection = null;
-    this.markLocations = Maps.newHashMap();
     this.selectedUpid = -1;
     this.selectedUtid = -1;
     this.highlight = TimeSpan.ZERO;
@@ -142,16 +134,16 @@ public class State {
     return data.threads.get(id);
   }
 
-  public Selection getSelection() {
+  public Selection.MultiSelection getSelection() {
     return selection;
   }
 
-  public Map<Panel, Set<Location>> getMarkLocations() {
-    return markLocations;
-  }
-
-  public boolean shouldRemoveMarks(Map<Panel, Set<Location>> oldMarks) {
-    return oldMarks.size() > 0 && getMarkLocations().size() == 0;
+  public <T> Selection<T> getSelection(Selection.Kind<T> type) {
+    if (selection == null) {
+      return type.EmptySelection();
+    } else {
+      return selection.getSelection(type);
+    }
   }
 
   public long getSelectedUpid() {
@@ -223,19 +215,27 @@ public class State {
 
   /* Return true if selection state changed. */
   public boolean resetSelections() {
-    boolean hasDeselection = selection != null || !markLocations.isEmpty() || selectedUtid != -1;
-    setSelection((Selection)null);
-    resetMarkLocations();
+    boolean hasDeselection = selection != null || selectedUtid != -1;
+    setSelection((Selection.MultiSelection)null);
     this.selectedUpid = -1;
     this.selectedUtid = -1;
     return hasDeselection;
   }
 
-  public void resetMarkLocations() {
-    this.markLocations = Maps.newHashMap();
+  public <Key> void setSelection(Selection.Kind<Key> type, ListenableFuture<? extends Selection<Key>> futureSel) {
+    int myId = lastSelectionUpdateId.incrementAndGet();
+    thenOnUiThread(futureSel, newSelection -> {
+      if (lastSelectionUpdateId.get() == myId) {
+        setSelection(new Selection.MultiSelection(type, newSelection));
+      }
+    });
   }
 
-  public void setSelection(ListenableFuture<? extends Selection> futureSel) {
+  public <Key> void setSelection(Selection.Kind<Key> type, Selection<Key> selection) {
+    setSelection(new Selection.MultiSelection(type, selection));
+  }
+
+  public void setSelection(ListenableFuture<Selection.MultiSelection> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
       if (lastSelectionUpdateId.get() == myId) {
@@ -244,27 +244,10 @@ public class State {
     });
   }
 
-  public void setSelection(Selection selection) {
+  public void setSelection(Selection.MultiSelection selection) {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
     listeners.fire().onSelectionChanged(selection);
-  }
-
-  public void setMarkLocations(ListenableFuture<List<Void>> updateTasks) {
-    thenOnUiThread(updateTasks, $ -> {
-      listeners.fire().onMarkChanged();
-    });
-  }
-
-  public void setMarkLocation(Panel panel, Location location) {
-    resetMarkLocations();
-    this.markLocations.put(panel, new HashSet<Location>());
-    this.markLocations.get(panel).add(location);
-  }
-
-  public void addMarkLocation(Panel panel, Location location) {
-    this.markLocations.putIfAbsent(panel, new HashSet<Location>());
-    this.markLocations.get(panel).add(location);
   }
 
   public void setSelectedCpuSliceIds(long utid) {
@@ -357,7 +340,6 @@ public class State {
   public static interface Listener extends Events.Listener {
     public default void onDataChanged() { /* do nothing */ }
     public default void onVisibleAreaChanged() { /* do nothing */ }
-    public default void onSelectionChanged(Selection selection) { /* do nothing */}
-    public default void onMarkChanged() { /* do nothing */}
+    public default void onSelectionChanged(Selection.MultiSelection selection) { /* do nothing */}
   }
 }

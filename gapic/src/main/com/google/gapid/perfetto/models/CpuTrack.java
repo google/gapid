@@ -27,8 +27,10 @@ import static java.lang.String.format;
 import static java.util.function.Function.identity;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.ThreadState;
@@ -44,6 +46,7 @@ import org.eclipse.swt.widgets.Composite;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * {@link Track} containing CPU slices for a single core.
@@ -220,7 +223,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
   }
 
-  public static class Slice implements Selection {
+  public static class Slice implements Selection<Long> {
     public final long id;
     public final long time;
     public final long dur;
@@ -251,6 +254,11 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     }
 
     @Override
+    public boolean contains(Long key) {
+      return id == key;
+    }
+
+    @Override
     public Composite buildUi(Composite parent, State state) {
       return new CpuSliceSelectionView(parent, state, this);
     }
@@ -277,12 +285,14 @@ public class CpuTrack extends Track<CpuTrack.Data> {
 
   public static class Slices implements Selection.CombiningBuilder.Combinable<Slices> {
     private final Map<Long, ByProcess.Builder> processes = Maps.newHashMap();
+    private final Set<Long> sliceKeys = Sets.newHashSet();
 
     public Slices(State state, List<Slice> slices) {
       for (Slice slice : slices) {
         ThreadInfo ti = state.getThreadInfo(slice.utid);
         long pid = (ti == null) ? 0 : ti.upid;
         processes.computeIfAbsent(pid, ByProcess.Builder::new).add(slice);
+        sliceKeys.add(slice.id);
       }
     }
 
@@ -291,6 +301,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
       for (Map.Entry<Long, ByProcess.Builder> e : other.processes.entrySet()) {
         processes.merge(e.getKey(), e.getValue(), ByProcess.Builder::combine);
       }
+      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
@@ -299,19 +310,26 @@ public class CpuTrack extends Track<CpuTrack.Data> {
       return new Selection(processes.values().stream()
           .map(ByProcess.Builder::build)
           .sorted((p1, p2) -> Long.compare(p2.dur, p1.dur))
-          .collect(toImmutableList()));
+          .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection {
+    public static class Selection implements com.google.gapid.perfetto.models.Selection<Long> {
       public final ImmutableList<ByProcess> processes;
+      public final ImmutableSet<Long> sliceKeys;
 
-      public Selection(ImmutableList<ByProcess> processes) {
+      public Selection(ImmutableList<ByProcess> processes, ImmutableSet<Long> sliceKeys) {
         this.processes = processes;
+        this.sliceKeys = sliceKeys;
       }
 
       @Override
       public String getTitle() {
         return "CPU Slices";
+      }
+
+      @Override
+      public boolean contains(Long key) {
+        return sliceKeys.contains(key);
       }
 
       @Override
