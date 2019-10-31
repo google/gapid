@@ -68,6 +68,7 @@ import "api/util.api"
 import "extensions/ext_debug_marker.api"
 import "extensions/ext_debug_report.api"
 import "extensions/ext_debug_utils.api"
+import "extensions/ext_pipeline_creation_feedback.api"
 import "extensions/amd_buffer_marker.api"
 import "extensions/khr_dedicated_allocation.api"
 import "extensions/khr_display.api"
@@ -241,6 +242,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
   supported.ExtensionNames["VK_KHR_image_format_list"] = true
   supported.ExtensionNames["VK_KHR_sampler_mirror_clamp_to_edge"] = true
+  supported.ExtensionNames["VK_EXT_pipeline_creation_feedback"] = true
   return supported
 }
 
