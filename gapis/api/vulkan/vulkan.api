@@ -239,6 +239,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_AMD_buffer_marker"] = true
   supported.ExtensionNames["VK_KHR_sampler_ycbcr_conversion"] = true
   supported.ExtensionNames["VK_KHR_image_format_list"] = true
+  supported.ExtensionNames["VK_KHR_sampler_mirror_clamp_to_edge"] = true
   return supported
 }
 
