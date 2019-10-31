@@ -220,6 +220,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSwapchainKHR(
   return VK_SUCCESS;
 }
 
+VKAPI_ATTR void VKAPI_CALL vkSetHdrMetadataEXT(
+    VkDevice device, uint32_t swapchainCount, const VkSwapchainKHR* pSwapchains,
+    const VkHdrMetadataEXT* pMetadata) {
+  // This is a no-op for the virtual swapchain
+}
+
 VKAPI_ATTR void VKAPI_CALL
 vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain,
                       const VkAllocationCallbacks* pAllocator) {
