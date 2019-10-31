@@ -536,6 +536,8 @@ vkGetDeviceProcAddr(VkDevice dev, const char* funcName) {
   INTERCEPT(vkAllocateCommandBuffers);
   INTERCEPT(vkFreeCommandBuffers);
   INTERCEPT(vkSetSwapchainCallback);
+
+  INTERCEPT(vkSetHdrMetadataEXT);
 #undef INTERCEPT
 
   // If we are calling a non-overloaded function then we have to

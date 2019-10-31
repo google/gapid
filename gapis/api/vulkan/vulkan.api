@@ -94,6 +94,7 @@ import "extensions/amd_draw_indirect_count.api"
 import "extensions/khr_draw_indirect_count.api"
 import "extensions/khr_image_format_list.api"
 import "extensions/ext_scalar_block_layout.api"
+import "extensions/ext_hdr_metadata.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -245,6 +246,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_sampler_mirror_clamp_to_edge"] = true
   supported.ExtensionNames["VK_EXT_pipeline_creation_feedback"] = true
   supported.ExtensionNames["VK_EXT_scalar_block_layout"] = true
+  supported.ExtensionNames["VK_EXT_hdr_metadata"] = true
   return supported
 }
 

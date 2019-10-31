@@ -905,13 +905,25 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		VkResult_VK_SUCCESS,
 	))
 
-	sb.write(sb.cb.VkGetSwapchainImagesKHR(
-		swp.Device(),
-		swp.VulkanHandle(),
-		NewU32ᶜᵖ(sb.MustAllocWriteData(uint32(swp.SwapchainImages().Len())).Ptr()),
-		memory.Nullptr,
-		VkResult_VK_SUCCESS,
-	))
+	if !swp.HDRMetadata().IsNil() {
+		sb.write(sb.cb.VkSetHdrMetadataEXT(
+			swp.Device(),
+			1,
+			sb.MustAllocReadData(swp.VulkanHandle()).Ptr(),
+			sb.MustAllocReadData(NewVkHdrMetadataEXT(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_HDR_METADATA_EXT,
+				0, // pNext
+				swp.HDRMetadata().DisplayPrimaryRed(),
+				swp.HDRMetadata().DisplayPrimaryGreen(),
+				swp.HDRMetadata().DisplayPrimaryBlue(),
+				swp.HDRMetadata().WhitePoint(),
+				swp.HDRMetadata().MaxLuminance(),
+				swp.HDRMetadata().MinLuminance(),
+				swp.HDRMetadata().MaxContentLightLevel(),
+				swp.HDRMetadata().MaxFrameAverageLightLevel(),
+			)).Ptr(),
+		))
+	}
 
 	images := []VkImage{}
 	for _, v := range swp.SwapchainImages().Keys() {

@@ -397,6 +397,7 @@ cmd VkResult vkQueuePresentKHR(
   map!(u32, ref!ImageObject)            SwapchainImages
   map!(u32, bool)                       ImagesAcquired
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
+  @unused ref!ExtHDRMetadata            HDRMetadata
 }
 
 extern void recordAcquireNextImage(VkSwapchainKHR swapchain, u32 imageIndex)
