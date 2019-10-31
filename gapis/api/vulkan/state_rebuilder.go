@@ -726,6 +726,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceScalarBlockLayoutFeaturesEXT(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT, // sType
+				pNext, // pNext
+				d.PhysicalDeviceScalarBlockLayoutFeaturesEXT().ScalarBlockLayout(), // samplerYcbcrConversion
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),
