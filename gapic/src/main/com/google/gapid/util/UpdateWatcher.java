@@ -64,7 +64,7 @@ public class UpdateWatcher {
 
   private void doCheck() {
     if (settings.autoCheckForUpdates) {
-      ListenableFuture<Release> future = client.checkForUpdates(settings.includePrereleases);
+      ListenableFuture<Release> future = client.checkForUpdates(settings.includeDevReleases);
       settings.updateAvailable = false;
       try {
         Release release = future.get();

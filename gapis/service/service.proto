@@ -135,7 +135,7 @@ message GetServerInfoResponse {
 }
 
 message CheckForUpdatesRequest {
-  bool include_prereleases = 1;
+  bool include_dev_releases = 1;
 }
 message CheckForUpdatesResponse {
   oneof res {

@@ -74,9 +74,9 @@ func (c *client) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 	return res.GetInfo(), nil
 }
 
-func (c *client) CheckForUpdates(ctx context.Context, includePrereleases bool) (*service.Release, error) {
+func (c *client) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Release, error) {
 	res, err := c.client.CheckForUpdates(ctx, &service.CheckForUpdatesRequest{
-		IncludePrereleases: includePrereleases,
+		IncludeDevReleases: includeDevReleases,
 	})
 	if err != nil {
 		return nil, err

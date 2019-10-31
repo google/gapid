@@ -244,8 +244,7 @@
           {{end}}
         {{end}}
         {{if (GetAnnotation $ "threadsafe")}}
-        lock();
-        observer->reenter();
+        lock(observer);
         {{end}}
 ¶
         {{if IsVoid $.Return.Type}}
@@ -274,16 +273,10 @@
       {{if GetAnnotation $ "draw_call"}}onPostDrawCall(observer, {{Global "ApiIndex"}});{{end}}
 
       observer->observePending();
-
-      // onPostStartOfFrame() and onPostEndOfFrame() may stop the capture, this
-      // impacts observers of concurrently running commands, so they must be
-      // called before the observer exits its critical section.
+      observer->exit();
 
       {{if GetAnnotation $ "frame_start"}}onPostStartOfFrame();{{end}}
       {{if GetAnnotation $ "frame_end"}}onPostEndOfFrame();{{end}}
-
-      observer->exit();
-
       {{if not (IsVoid $.Return.Type)}}¶
         return result;
       {{end}}
