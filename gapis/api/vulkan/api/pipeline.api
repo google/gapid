@@ -261,7 +261,13 @@ cmd VkResult vkCreateGraphicsPipelines(
       next := MutableVoidPtr(as!void*(create_info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
+        switch(sType) {
+          case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
+            pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)
+            read(pcfcie[0:1])
+          }
+          default: {}
+        }
         // TODO: handle extensions for VkGraphicsPipelineCreateInfo
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -579,6 +585,25 @@ cmd VkResult vkCreateGraphicsPipelines(
       createdPipelines.Objects[i].BasePipeline = pipelines[createdPipelines.Objects[i].BasePipelineIndex]
     }
     GraphicsPipelines[pipeline] = createdPipelines.Objects[i]
+
+    create_info := infos[i]
+    // handle pNext
+    if create_info.pNext != null {
+      numPNext := numberOfPNext(create_info.pNext)
+      next := MutableVoidPtr(as!void*(create_info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        switch(sType) {
+          case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
+            pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)[0]
+            write(pcfcie.pPipelineCreationFeedback[0:1])
+            write(pcfcie.pPipelineStageCreationFeedbacks[0:pcfcie.pipelineStageCreationFeedbackCount])
+          }
+          default: {}
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
   }
 
   return ?
@@ -612,8 +637,13 @@ cmd VkResult vkCreateComputePipelines(
       next := MutableVoidPtr(as!void*(info.pNext))
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
-        _ = sType
-        // TODO: handle extensions for VkComputePipelineCreateInfo
+        switch(sType) {
+          case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
+            pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)
+            read(pcfcie[0:1])
+          }
+          default: {}
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -679,6 +709,8 @@ cmd VkResult vkCreateComputePipelines(
     created_pipelines.Objects[i] = obj
   }
 
+  fence
+
   pipelines := pPipelines[0:createInfoCount]
   for i in (0 .. createInfoCount) {
     pipeline := ?
@@ -688,6 +720,25 @@ cmd VkResult vkCreateComputePipelines(
       created_pipelines.Objects[i].BasePipeline = pipelines[created_pipelines.Objects[i].BasePipelineIndex]
     }
     ComputePipelines[pipeline] = created_pipelines.Objects[i]
+
+    create_info := infos[i]
+    // handle pNext
+    if create_info.pNext != null {
+      numPNext := numberOfPNext(create_info.pNext)
+      next := MutableVoidPtr(as!void*(create_info.pNext))
+      for i in (0 .. numPNext) {
+        sType := as!const VkStructureType*(next.Ptr)[0:1][0]
+        switch(sType) {
+          case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
+            pcfcie := as!const VkPipelineCreationFeedbackCreateInfoEXT*(next.Ptr)[0]
+            write(pcfcie.pPipelineCreationFeedback[0:1])
+            write(pcfcie.pPipelineStageCreationFeedbacks[0:pcfcie.pipelineStageCreationFeedbackCount])
+          }
+          default: {}
+        }
+        next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
+      }
+    }
   }
 
   return ?
