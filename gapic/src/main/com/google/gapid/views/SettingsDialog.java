@@ -108,7 +108,7 @@ public class SettingsDialog extends DialogBase {
     private final Button allowAnalytics;
     private final Button allowCrashReports;
     private final Button allowUpdateChecks;
-    private final Button includePrerelease;
+    private final Button includeDevReleases;
 
     public SettingsFormBase(Models models, Composite parent, boolean override) {
       this(models, parent, 5, 5, override);
@@ -142,9 +142,9 @@ public class SettingsDialog extends DialogBase {
           createCheckbox(this, Messages.UPDATE_CHECK_OPTION,
               override || models.settings.autoCheckForUpdates),
           withSpans(new GridData(SWT.LEFT, SWT.TOP, false, false), 2, 1));
-      includePrerelease = withLayoutData(
-          createCheckbox(this, Messages.UPDATE_CHECK_PRERELEASE_OPTION,
-              models.settings.includePrereleases),
+      includeDevReleases = withLayoutData(
+          createCheckbox(this, Messages.UPDATE_CHECK_DEV_RELEASE_OPTION,
+              models.settings.includeDevReleases),
           withSpans(withIndents(new GridData(SWT.LEFT, SWT.TOP, false, false), 20, 0), 2, 1));
       Label adbWarning = withLayoutData(createLabel(this, ""),
           withSpans(new GridData(SWT.FILL, SWT.FILL, true, false), 2, 1));
@@ -167,9 +167,9 @@ public class SettingsDialog extends DialogBase {
 
       allowUpdateChecks.addListener(SWT.Selection, e -> {
         if (!allowUpdateChecks.getSelection()) {
-          includePrerelease.setSelection(false);
+          includeDevReleases.setSelection(false);
         }
-        includePrerelease.setEnabled(allowUpdateChecks.getSelection());
+        includeDevReleases.setEnabled(allowUpdateChecks.getSelection());
       });
     }
 
@@ -182,7 +182,7 @@ public class SettingsDialog extends DialogBase {
       models.settings.setAnalyticsEnabled(allowAnalytics.getSelection());
       models.settings.reportCrashes = allowCrashReports.getSelection();
       models.settings.autoCheckForUpdates = allowUpdateChecks.getSelection();
-      models.settings.includePrereleases = includePrerelease.getSelection();
+      models.settings.includeDevReleases = includeDevReleases.getSelection();
       // When settings are saved, reset the update timer, to force update check on next start
       models.settings.lastCheckForUpdates = 0;
       models.settings.save();

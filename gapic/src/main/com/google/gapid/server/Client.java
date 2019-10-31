@@ -79,11 +79,11 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getInfo(), in.getError(), stack))));
   }
 
-  public ListenableFuture<Release> checkForUpdates(boolean includePrereleases) {
-    return call(() -> String.format("RPC->checkForUpdates(%b)", includePrereleases),
+  public ListenableFuture<Release> checkForUpdates(boolean includeDevReleases) {
+    return call(() -> String.format("RPC->checkForUpdates(%b)", includeDevReleases),
         stack -> MoreFutures.transformAsync(
             client.checkForUpdates(CheckForUpdatesRequest.newBuilder()
-                .setIncludePrereleases(includePrereleases)
+                .setIncludeDevReleases(includeDevReleases)
                 .build()),
             in -> immediateFuture(throwIfError(in.getRelease(), in.getError(), stack))));
   }

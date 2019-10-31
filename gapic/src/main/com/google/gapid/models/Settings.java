@@ -86,7 +86,7 @@ public class Settings {
   public String[] recentFiles = new String[0];
   public String adb = "";
   public boolean autoCheckForUpdates = true;
-  public boolean includePrereleases = false;
+  public boolean includeDevReleases = false;
   public boolean updateAvailable = false;
   public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
   public String analyticsClientId = ""; // Empty means do not track.
@@ -251,7 +251,7 @@ public class Settings {
     recentFiles = getStringList(properties, "open.recent", recentFiles);
     adb = tryFindAdb(properties.getProperty("adb.path", ""));
     autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
-    includePrereleases = getBoolean(properties, "updates.includePrereleases", includePrereleases);
+    includeDevReleases = getBoolean(properties, "updates.includeDevReleases", includeDevReleases);
     lastCheckForUpdates = getLong(properties, "updates.lastCheck", 0);
     updateAvailable = getBoolean(properties, "updates.available", updateAvailable);
     analyticsClientId = properties.getProperty("analytics.clientId", "");
@@ -308,7 +308,7 @@ public class Settings {
     setStringList(properties, "open.recent", recentFiles);
     properties.setProperty("adb.path", adb);
     properties.setProperty("updates.autoCheck", Boolean.toString(autoCheckForUpdates));
-    properties.setProperty("updates.includePrereleases", Boolean.toString(includePrereleases));
+    properties.setProperty("updates.includeDevReleases", Boolean.toString(includeDevReleases));
     properties.setProperty("updates.lastCheck", Long.toString(lastCheckForUpdates));
     properties.setProperty("updates.available", Boolean.toString(updateAvailable));
     properties.setProperty("analytics.clientId", analyticsClientId);

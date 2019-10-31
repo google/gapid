@@ -113,26 +113,38 @@ func (s *server) GetServerInfo(ctx context.Context) (*service.ServerInfo, error)
 	return s.info, nil
 }
 
-func (s *server) CheckForUpdates(ctx context.Context, includePrereleases bool) (*service.Release, error) {
+func (s *server) CheckForUpdates(ctx context.Context, includeDevReleases bool) (*service.Release, error) {
 	const (
-		githubOrg  = "google"
-		githubRepo = "gapid"
+		githubOrg     = "google"
+		githubRepo    = "gapid"
+		devGithubRepo = "gapid-dev-releases"
 	)
 	ctx = status.Start(ctx, "RPC CheckForUpdates")
 	defer status.Finish(ctx)
 	ctx = log.Enter(ctx, "CheckForUpdates")
+
 	client := github.NewClient(nil)
 	options := &github.ListOptions{}
 	releases, _, err := client.Repositories.ListReleases(ctx, githubOrg, githubRepo, options)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to list releases")
 	}
+
+	if includeDevReleases {
+		devReleases, _, err := client.Repositories.ListReleases(ctx, githubOrg, devGithubRepo, options)
+		if err != nil {
+			return nil, log.Err(ctx, err, "Failed to list dev-releases")
+		}
+		releases = append(releases, devReleases...)
+	}
+
 	var mostRecent *service.Release
 	mostRecentVersion := app.Version
 	mostRecentDevVersion := app.Version.GetDevVersion()
 
 	for _, release := range releases {
-		if !includePrereleases && release.GetPrerelease() {
+		// Filter out pre-releases
+		if release.GetPrerelease() {
 			continue
 		}
 
