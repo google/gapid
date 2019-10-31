@@ -212,6 +212,7 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_external_semaphore_capabilities"] = true
   supported.ExtensionNames["VK_KHR_external_fence_capabilities"] = true
   supported.ExtensionNames["VK_GGP_stream_descriptor_surface"] = true
+  supported.ExtensionNames["VK_EXT_swapchain_colorspace"] = true
   return supported
 }
 
