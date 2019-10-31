@@ -51,6 +51,7 @@
   @unused VkPhysicalDeviceFeatures   EnabledFeatures
   @unused VkDevice                   VulkanHandle
   @unused ref!VulkanDebugMarkerInfo  DebugInfo
+  @unused bool                       CreatedWithDeviceGroup
 
   // Vulkan 1.1
   @unused ref!VariablePointerFeatures VariablePointerFeatures
@@ -81,8 +82,11 @@ cmd VkResult vkCreateDevice(
   // NOTE: The logic for this function should be identical to the one of
   // replayCreateVkDevice() in synthetic.api. Change both together.
   device := createDeviceObject(pCreateInfo)
-  if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
-  device.PhysicalDevice = physicalDevice
+
+  if (device.PhysicalDevice != null) {
+    if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
+    device.PhysicalDevice = physicalDevice
+  }
 
   handle := ?
   if pDevice == null { vkErrorNullPointer("VkDevice*") }
@@ -165,6 +169,17 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0]
           object.PhysicalDeviceScalarBlockLayoutFeaturesEXT = new!PhysicalDeviceScalarBlockLayoutFeaturesEXT(
             ScalarBlockLayout: ext.scalarBlockLayout)
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: {
+          ext := as!VkDeviceGroupDeviceCreateInfo*(next.Ptr)[0]
+          if (ext.physicalDeviceCount > 1) {
+            vkErrorUnsupported("More than one physical device in a devicegroup")
+          }
+          if (ext.physicalDeviceCount > 0) {
+            if !(ext.pPhysicalDevices[0] in PhysicalDevices) { vkErrorInvalidPhysicalDevice(ext.pPhysicalDevices[0]) }
+            object.PhysicalDevice = ext.pPhysicalDevices[0]
+            object.CreatedWithDeviceGroup = true
+          }
         }
         default: {
           // do nothing
