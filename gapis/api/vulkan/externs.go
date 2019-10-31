@@ -502,6 +502,14 @@ func (e externs) vkErrInvalidDescriptorCopy(srcSet VkDescriptorSet, srcBinding u
 	e.onVkError(issue)
 }
 
+func (e externs) vkErrUnsupported(str string) {
+	var issue replay.Issue
+	issue.Command = e.cmdID
+	issue.Severity = service.Severity_ErrorLevel
+	issue.Error = fmt.Errorf("Unsupported: %v", str)
+	e.onVkError(issue)
+}
+
 type fenceSignal uint64
 
 func (e externs) recordFenceSignal(fence VkFence) {

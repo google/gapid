@@ -95,6 +95,7 @@ import "extensions/khr_draw_indirect_count.api"
 import "extensions/khr_image_format_list.api"
 import "extensions/ext_scalar_block_layout.api"
 import "extensions/ext_hdr_metadata.api"
+import "extensions/khr_device_group_creation.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -216,6 +217,7 @@ sub ref!ExtensionSet supportedInstanceExtensions() {
   supported.ExtensionNames["VK_KHR_external_fence_capabilities"] = true
   supported.ExtensionNames["VK_GGP_stream_descriptor_surface"] = true
   supported.ExtensionNames["VK_EXT_swapchain_colorspace"] = true
+  supported.ExtensionNames["VK_KHR_device_group_creation"] = true
   return supported
 }
 
