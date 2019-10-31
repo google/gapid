@@ -56,6 +56,7 @@
   @unused ref!VariablePointerFeatures VariablePointerFeatures
   @unused ref!HalfPrecisionStorageFeatures HalfPrecisionStorageFeatures
   @unused ref!SamplerYcbcrConversionFeatures SamplerYcbcrConversionFeatures
+  @unused ref!PhysicalDeviceScalarBlockLayoutFeaturesEXT PhysicalDeviceScalarBlockLayoutFeaturesEXT
 }
 
 @indirect("VkDevice")
@@ -159,6 +160,11 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
           ext := as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
           object.SamplerYcbcrConversionFeatures = new!SamplerYcbcrConversionFeatures(
             SamplerYcbcrConversion: ext.samplerYcbcrConversion)
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+          ext := as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0]
+          object.PhysicalDeviceScalarBlockLayoutFeaturesEXT = new!PhysicalDeviceScalarBlockLayoutFeaturesEXT(
+            ScalarBlockLayout: ext.scalarBlockLayout)
         }
         default: {
           // do nothing

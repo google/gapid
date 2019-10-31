@@ -340,6 +340,9 @@ enum VkStructureType: u32 {
 
   // @extension("VK_EXT_pipeline_creation_feedback")
   VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT = 1000192000,
+
+  // @extension("VK_EXT_scalar_block_layout")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT = 1000221000,
 }
 
 @analyze_usage

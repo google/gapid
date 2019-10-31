@@ -357,6 +357,9 @@ sub void GetPhysicalDeviceFeatures2(
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
             _ = as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0]
           }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+            _ = as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0]
+          }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
@@ -382,6 +385,9 @@ sub void GetPhysicalDeviceFeatures2(
           }
           case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
             write(as!VkPhysicalDeviceSamplerYcbcrConversionFeatures*(next.Ptr)[0:1])
+          }
+          case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+            write(as!VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*(next.Ptr)[0:1])
           }
         }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
