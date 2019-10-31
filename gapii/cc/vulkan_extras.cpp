@@ -749,6 +749,44 @@ uint32_t VulkanSpy::SpyOverride_vkEnumerateInstanceExtensionProperties(
   return VkResult::VK_SUCCESS;
 }
 
+uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroups(
+    VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties) {
+  auto inst_func_iter = mImports.mVkInstanceFunctions.find(instance);
+  gapii::VulkanImports::PFNVKENUMERATEPHYSICALDEVICEGROUPS next =
+      inst_func_iter->second.vkEnumeratePhysicalDeviceGroups;
+
+  auto ret =
+      next(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+  if (!pPhysicalDeviceGroupProperties) {
+    return ret;
+  }
+  for (size_t i = 0; i < *pPhysicalDeviceGroupCount; ++i) {
+    pPhysicalDeviceGroupProperties[i].mphysicalDeviceCount = 1;
+    pPhysicalDeviceGroupProperties[i].msubsetAllocation = 0;
+  }
+  return ret;
+}
+
+uint32_t VulkanSpy::SpyOverride_vkEnumeratePhysicalDeviceGroupsKHR(
+    VkInstance instance, uint32_t* pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties) {
+  auto inst_func_iter = mImports.mVkInstanceFunctions.find(instance);
+  gapii::VulkanImports::PFNVKENUMERATEPHYSICALDEVICEGROUPSKHR next =
+      inst_func_iter->second.vkEnumeratePhysicalDeviceGroupsKHR;
+
+  auto ret =
+      next(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+  if (!pPhysicalDeviceGroupProperties) {
+    return ret;
+  }
+  for (size_t i = 0; i < *pPhysicalDeviceGroupCount; ++i) {
+    pPhysicalDeviceGroupProperties[i].mphysicalDeviceCount = 1;
+    pPhysicalDeviceGroupProperties[i].msubsetAllocation = 0;
+  }
+  return ret;
+}
+
 uint32_t VulkanSpy::SpyOverride_vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice physicalDevice, const char* pLayerName, uint32_t* pCount,
     VkExtensionProperties* pProperties) {

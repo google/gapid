@@ -40,6 +40,7 @@
 // en-us.stb.md.
 extern void vkErrInvalidHandle(string handleType, u64 handle)
 extern void vkErrNullPointer(string pointerType)
+extern void vkErrUnsupported(string pointerType)
 extern void vkErrNotNullPointer(string pointerType)
 extern void vkErrUnrecognizedExtension(string name)
 extern void vkErrExpectNVDedicatedlyAllocatedHandle(string handleType, u64 handle)
@@ -232,6 +233,11 @@ sub void vkErrorInvalidDescriptorUpdateTemplate(VkDescriptorUpdateTemplate set) 
 
 sub void vkErrorNullPointer(string pointerType) {
   vkErrNullPointer(pointerType)
+  abort
+}
+
+sub void vkErrorUnsupported(string unsupported) {
+  vkErrUnsupported(unsupported)
   abort
 }
 

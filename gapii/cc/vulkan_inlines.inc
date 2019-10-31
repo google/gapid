@@ -27,6 +27,10 @@ inline void VulkanSpy::vkErrNullPointer(CallObserver*, std::string pointerType) 
     GAPID_WARNING("Error: Null pointer of %s", pointerType.c_str())
 }
 
+inline void VulkanSpy::vkErrUnsupported(CallObserver*, std::string val) {
+    GAPID_WARNING("Error: Unsupported: %s", val.c_str())
+}
+
 inline void VulkanSpy::vkErrNotNullPointer(CallObserver*, std::string pointerType) {
     GAPID_WARNING("Error: Not Null Pointer: %s", pointerType.c_str());
 }
