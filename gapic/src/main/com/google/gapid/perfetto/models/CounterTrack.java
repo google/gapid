@@ -43,7 +43,6 @@ public class CounterTrack extends Track<CounterTrack.Data> {
   private static final String RANGE_SQL =
       "select ts, ts + dur, value from %s " +
       "where ts + dur >= %d and ts <= %d order by ts";
-  private static final long QUANTIZE_CUT_OFF = 10000;
 
   private final CounterInfo counter;
 
@@ -76,7 +75,8 @@ public class CounterTrack extends Track<CounterTrack.Data> {
 
   @Override
   protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
-    Window win = (counter.count > QUANTIZE_CUT_OFF) ? Window.compute(req, 5) : Window.compute(req);
+    Window win = (counter.count > Track.QUANTIZE_CUT_OFF) ? Window.compute(req, 5) :
+        Window.compute(req);
     return transformAsync(win.update(qe, tableName("window")), $ -> computeData(qe, req, win));
   }
 

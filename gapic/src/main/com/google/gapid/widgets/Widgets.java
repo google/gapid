@@ -369,8 +369,15 @@ public class Widgets {
 
   public static Spinner createSpinner(Composite parent, int value, int min, int max) {
     Spinner result = new Spinner(parent, SWT.BORDER);
-    result.setMinimum(min);
-    result.setMaximum(max);
+    // Avoid not being able to update the minimum value.
+    // According to SWT's API, min will be ignored if it's greater then the previous max.
+    if (min > result.getMaximum()) {
+      result.setMaximum(max);
+      result.setMinimum(min);
+    } else {
+      result.setMinimum(min);
+      result.setMaximum(max);
+    }
     result.setSelection(value);
 
     if (OS.isMac) {
