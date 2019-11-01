@@ -297,37 +297,6 @@ public class State {
     }
   }
 
-  public static class Location {
-    public TimeSpan xTimeSpan;
-    public double yOffset;
-
-    public Location(long start, long end) {
-      this.xTimeSpan = new TimeSpan(start, end);
-    }
-
-    public Location(long start, long end, double yOffset) {
-      this.xTimeSpan = new TimeSpan(start, end);
-      this.yOffset = yOffset;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (!(o instanceof Location)) {
-        return false;
-      }
-      Location other = (Location) o;
-      return xTimeSpan.equals(other.xTimeSpan) && yOffset == other.yOffset;
-    }
-
-    @Override
-    public int hashCode() {
-      return xTimeSpan.hashCode() ^ Double.hashCode(yOffset);
-    }
-  }
-
   public void addListener(Listener listener) {
     listeners.addListener(listener);
   }
