@@ -25,8 +25,15 @@ namespace gapir {
 std::unique_ptr<ReplayService::Payload> ArchiveReplayService::getPayload(
     const std::string&) {
   std::fstream input(mFilePrefix, std::ios::in | std::ios::binary);
+  if (!input) {
+    GAPID_ERROR("Replay archive does not exist at path %s.",
+                mFilePrefix.c_str());
+    return NULL;
+  }
+
   std::unique_ptr<replay_service::Payload> payload(new replay_service::Payload);
   payload->ParseFromIstream(&input);
+
   return std::unique_ptr<Payload>(new Payload(std::move(payload)));
 }
 
@@ -35,8 +42,10 @@ bool ArchiveReplayService::sendPosts(
   if (mPostbackDir.empty()) {
     return true;
   }
+
   std::unique_ptr<replay_service::PostData> postdata(posts->release_to_proto());
   int nMessages = postdata->post_data_pieces_size();
+
   for (int i = 0; i < nMessages; ++i) {
     uint64_t id = postdata->post_data_pieces(i).id();
     std::string data = postdata->post_data_pieces(i).data();
@@ -44,6 +53,7 @@ bool ArchiveReplayService::sendPosts(
     std::fstream output(path, std::ios::out | std::ios::binary);
     output.write(data.data(), data.size());
   }
+
   return true;
 }
 }  // namespace gapir
