@@ -82,8 +82,11 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
           fenceObj.Signaled = true
           recordFenceSignal(cmd.SignalFence)
         }
-      }
+      } 
       if processSubcommand.b {
+        if (cmd.DeviceMask != 0) {
+          LastBoundQueue.DeviceMask = cmd.DeviceMask
+        }
         // Handle sparse buffer/image binding.
         if (cmd.SparseBinds != null) {
           for _ , buf , binds in cmd.SparseBinds.BufferBinds {
@@ -328,6 +331,14 @@ sub void callCommand(ref!CommandReference reference) {
       dovkCmdEndDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdEndDebugUtilsLabelEXT[reference.MapIndex])
     case cmd_vkCmdInsertDebugUtilsLabelEXT:
       dovkCmdInsertDebugUtilsLabelEXT(CommandBuffers[reference.Buffer].BufferCommands.vkCmdInsertDebugUtilsLabelEXT[reference.MapIndex])
+    case cmd_vkCmdSetDeviceMaskKHR:
+      dovkCmdSetDeviceMaskKHR(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetDeviceMaskKHR[reference.MapIndex])
+    case cmd_vkCmdSetDeviceMask:
+      dovkCmdSetDeviceMask(CommandBuffers[reference.Buffer].BufferCommands.vkCmdSetDeviceMask[reference.MapIndex])
+    case cmd_vkCmdDispatchBaseKHR:
+      dovkCmdDispatchBaseKHR(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchBaseKHR[reference.MapIndex])
+    case cmd_vkCmdDispatchBase:
+      dovkCmdDispatchBase(CommandBuffers[reference.Buffer].BufferCommands.vkCmdDispatchBase[reference.MapIndex])
     default:
       vkErrorInvalidCommandBuffer(reference.Buffer)
   }

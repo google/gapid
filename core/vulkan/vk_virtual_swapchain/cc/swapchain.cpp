@@ -317,6 +317,19 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
   return swapchain::vkQueueSubmit(q, 1, &info, fence);
 }
 
+// We actually have to be able to submit data to the Queue right now.
+// The user can supply either a semaphore, or a fence or both to this function.
+// Because of this, once the image is available we have to submit
+// a command to the queue to signal these.
+VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImage2KHR(
+    VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo,
+    uint32_t* pImageIndex) {
+  // TODO(awoloszyn): Implement proper multiGPU here eventually.
+  return swapchain::vkAcquireNextImageKHR(
+      device, pAcquireInfo->swapchain, pAcquireInfo->timeout,
+      pAcquireInfo->semaphore, pAcquireInfo->fence, pImageIndex);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
   // We submit to the queue the commands set up by the virtual swapchain.

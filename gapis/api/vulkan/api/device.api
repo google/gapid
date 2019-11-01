@@ -83,7 +83,7 @@ cmd VkResult vkCreateDevice(
   // replayCreateVkDevice() in synthetic.api. Change both together.
   device := createDeviceObject(pCreateInfo)
 
-  if (device.PhysicalDevice != null) {
+  if (device.PhysicalDevice == null) {
     if !(physicalDevice in PhysicalDevices) { vkErrorInvalidPhysicalDevice(physicalDevice) }
     device.PhysicalDevice = physicalDevice
   }

@@ -50,6 +50,7 @@
   @unused ref!VulkanDebugMarkerInfo                              DebugInfo
   @untracked @untrackedMap dense_map!(u32, ref!CommandReference) PendingCommands
   @untracked @untrackedMap map!(VkBuffer, bool) ReadCoherentBuffers
+  @unused u32                                                    DeviceMask
 }
 
 @threadSafety("system")
@@ -99,7 +100,30 @@ cmd VkResult vkQueueSubmit(
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
         _ = sType
-        // TODO: handle extensions for VkQueueSubmitInfo
+        switch sType {
+          case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: {
+            ext := as!VkDeviceGroupSubmitInfo*(next.Ptr)[0:1][0]
+            waitsemaphoreindices := ext.pWaitSemaphoreDeviceIndices[0:ext.waitSemaphoreCount]
+            for j in (0 .. ext.waitSemaphoreCount) {
+              if waitsemaphoreindices[j] != 0 {
+                vkErrUnsupported("Multiple devices in a group not supported yet")
+              }
+            }
+            cbmasks := ext.pCommandBufferDeviceMasks[0:ext.commandBufferCount]
+            for j in (0 .. ext.commandBufferCount) {
+              if cbmasks[j] > 1 {
+                vkErrUnsupported("Multiple devices in a group are not yet supported")
+              }
+            }
+            signalsemaphoreindices := ext.pSignalSemaphoreDeviceIndices[0:ext.signalSemaphoreCount]
+            for j in (0 .. ext.signalSemaphoreCount) {
+              if signalsemaphoreindices[j] != 0 {
+                vkErrUnsupported("Multiple devices in a group not supported yet")
+              }
+            }
+          }
+          default: {}
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -120,7 +144,7 @@ cmd VkResult vkQueueSubmit(
           } else {
             LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
             = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-              Unsignal,    ws,    null, as!VkFence(0))
+              Unsignal,    ws,    null, as!VkFence(0), 0)
             semaphore.SubmitCount = semaphore.SubmitCount - 1
           }
         }
@@ -150,6 +174,13 @@ cmd VkResult vkQueueSubmit(
           if (as!u32(cb.BeginInfo.Flags) & as!u32(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)) != as!u32(0) {
             cb.Recording = TO_BE_RESET
           }
+          if (cb.BeginInfo.DeviceGroupBegin != null) {
+            if (cb.BeginInfo.DeviceGroupBegin.DeviceMask != 0) {
+              LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+                = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+                  None, as!VkSemaphore(0), null, as!VkFence(0), cb.BeginInfo.DeviceGroupBegin.DeviceMask)
+            }
+          }
           numCmdRefs := len(cb.CommandReferences)
           for k in (0 .. numCmdRefs) {
             ref := cb.CommandReferences[as!u32(k)]
@@ -163,6 +194,7 @@ cmd VkResult vkQueueSubmit(
               ref.Semaphore,
               ref.SparseBinds,
               ref.SignalFence,
+              0,
             )
             notifyPendingCommandAdded(queue)
             if ref.Type == cmd_vkCmdExecuteCommands {
@@ -188,6 +220,7 @@ cmd VkResult vkQueueSubmit(
                     sref.Semaphore,
                     sref.SparseBinds,
                     sref.SignalFence,
+                    0,
                   )
                   notifyPendingCommandAdded(queue)
                 }
@@ -217,7 +250,7 @@ cmd VkResult vkQueueSubmit(
           semaphore.SubmitCount = semaphore.SubmitCount + 1
           LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
           = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-            Signal,      ss,  null, as!VkFence(0))
+            Signal,      ss,  null, as!VkFence(0), 0)
         }
       }
     }
@@ -228,7 +261,7 @@ cmd VkResult vkQueueSubmit(
     if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
       = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-        as!VkSemaphore(0), null, fence)
+        as!VkSemaphore(0), null, fence, 0)
     }
   }
 
@@ -321,7 +354,13 @@ cmd VkResult vkQueueBindSparse(
       for i in (0 .. numPNext) {
         sType := as!const VkStructureType*(next.Ptr)[0:1][0]
         _ = sType
-        // TODO: handle extensions for VkBindSparseInfo
+        switch sType {
+          case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
+            s := as!VkDeviceGroupBindSparseInfo*(next.Ptr)[0:1][0]
+            _ = s
+          }
+          default: {}
+        }
         next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
       }
     }
@@ -330,7 +369,7 @@ cmd VkResult vkQueueBindSparse(
     for j in (0 .. info.waitSemaphoreCount) {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
       = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Unsignal,    wait_semaphores[j],    null)
+        Unsignal,    wait_semaphores[j],    null, 0)
     }
 
     queuedBinds := new!QueuedSparseBinds()
@@ -385,7 +424,7 @@ cmd VkResult vkQueueBindSparse(
 
     LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
     = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-      None,          as!VkSemaphore(0),     queuedBinds)
+      None,          as!VkSemaphore(0),     queuedBinds, 0)
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     for j in (0 .. info.signalSemaphoreCount) {
@@ -397,7 +436,7 @@ cmd VkResult vkQueueBindSparse(
         semaphore.SubmitCount = semaphore.SubmitCount + 1
         LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
         = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-         Signal,      ss,  null)
+         Signal,      ss,  null, 0)
       }
     }
   }
@@ -407,7 +446,7 @@ cmd VkResult vkQueueBindSparse(
     if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
       LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
       = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0, None,
-        as!VkSemaphore(0), null, fence)
+        as!VkSemaphore(0), null, fence, 0)
     }
   }
 

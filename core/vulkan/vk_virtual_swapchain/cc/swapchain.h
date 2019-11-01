@@ -74,6 +74,10 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImageKHR(
     VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout,
     VkSemaphore semaphore, VkFence fence, uint32_t* pImageIndex);
 
+VKAPI_ATTR VkResult VKAPI_CALL vkAcquireNextImage2KHR(
+    VkDevice device, const VkAcquireNextImageInfoKHR* pAcquireInfo,
+    uint32_t* pImageIndex);
+
 VKAPI_ATTR void VKAPI_CALL vkSetSwapchainCallback(
     VkSwapchainKHR swapchain, void callback(void*, uint8_t*, size_t), void*);
 

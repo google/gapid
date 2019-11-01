@@ -270,6 +270,7 @@ vkCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo* pCreateInfo,
   GET_PROC(vkCreateSwapchainKHR);
   GET_PROC(vkGetSwapchainImagesKHR);
   GET_PROC(vkAcquireNextImageKHR);
+  GET_PROC(vkAcquireNextImage2KHR);
   GET_PROC(vkQueuePresentKHR);
   GET_PROC(vkDestroySwapchainKHR);
 
@@ -479,6 +480,7 @@ vkGetInstanceProcAddr(VkInstance instance, const char* funcName) {
   INTERCEPT(vkDestroySwapchainKHR);
   INTERCEPT(vkGetSwapchainImagesKHR);
   INTERCEPT(vkAcquireNextImageKHR);
+  INTERCEPT(vkAcquireNextImage2KHR);
 
   INTERCEPT(vkAllocateCommandBuffers);
   INTERCEPT(vkFreeCommandBuffers);
@@ -532,6 +534,7 @@ vkGetDeviceProcAddr(VkDevice dev, const char* funcName) {
   INTERCEPT(vkDestroySwapchainKHR);
   INTERCEPT(vkGetSwapchainImagesKHR);
   INTERCEPT(vkAcquireNextImageKHR);
+  INTERCEPT(vkAcquireNextImage2KHR);
 
   INTERCEPT(vkAllocateCommandBuffers);
   INTERCEPT(vkFreeCommandBuffers);

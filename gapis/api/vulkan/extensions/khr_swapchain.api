@@ -52,6 +52,13 @@
 ///////////////
 // Bitfields //
 ///////////////
+@unused
+bitfield VkSwapchainCreateFlagBitsKHR {
+    VK_SWAPCHAIN_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR = 0x00000001,
+    VK_SWAPCHAIN_CREATE_PROTECTED_BIT_KHR = 0x00000002,
+    VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR = 0x00000004,
+    VK_SWAPCHAIN_CREATE_FLAG_BITS_MAX_ENUM_KHR = 0x7FFFFFFF
+}
 
 @extension("VK_KHR_swapchain")
 @reserved_flags
@@ -132,7 +139,8 @@ cmd VkResult vkCreateSwapchainKHR(
     PreTransform:    create_info.preTransform,
     CompositeAlpha:  create_info.compositeAlpha,
     PresentMode:     create_info.presentMode,
-    Clipped:         create_info.clipped
+    Clipped:         create_info.clipped,
+    Flags:           create_info.flags
   )
 
   for i in (0 .. create_info.queueFamilyIndexCount) {
@@ -399,6 +407,7 @@ cmd VkResult vkQueuePresentKHR(
   map!(u32, bool)                       ImagesAcquired
   @unused ref!VulkanDebugMarkerInfo     DebugInfo
   @unused ref!ExtHDRMetadata            HDRMetadata
+  VkSwapchainCreateFlagsKHR             Flags
 }
 
 extern void recordAcquireNextImage(VkSwapchainKHR swapchain, u32 imageIndex)

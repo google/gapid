@@ -135,6 +135,7 @@ struct DeviceData {
   PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
   PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
   PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR;
+  PFN_vkAcquireNextImage2KHR vkAcquireNextImage2KHR;
   PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR;
 };
 
