@@ -252,8 +252,8 @@ Spy::Spy()
 void Spy::resolveImports() { GlesSpy::mImports.resolve(); }
 
 CallObserver* Spy::enter(const char* name, uint32_t api) {
+  lock();
   auto ctx = new CallObserver(this, gContext, api);
-  lock(ctx);
   ctx->setCurrentCommandName(name);
   gContext = ctx;
   return ctx;
@@ -546,8 +546,10 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
   }
   if (mSuspendCaptureFrames.load() > 0) {
     if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
-      exit();
+      // We must change suspended state BEFORE releasing the Spy lock with
+      // exit(), because the suspended state affects concurrent CallObservers.
       set_suspended(false);
+      exit();
       saveInitialState();
       enter("RecreateState", 2);
     }
