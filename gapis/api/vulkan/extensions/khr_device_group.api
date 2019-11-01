@@ -1,0 +1,363 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+///////////////
+// Constants //
+///////////////
+@extension("VK_KHR_device_group") define VK_KHR_DEVICE_GROUP_SPEC_VERSION 1
+@extension("VK_KHR_device_group") define VK_KHR_DEVICE_GROUP_EXTENSION_NAME "VK_KHR_device_group"
+
+enum VkDeviceGroupPresentModeFlagBitsKHR {
+    VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR = 0x00000001,
+    VK_DEVICE_GROUP_PRESENT_MODE_REMOTE_BIT_KHR = 0x00000002,
+    VK_DEVICE_GROUP_PRESENT_MODE_SUM_BIT_KHR = 0x00000004,
+    VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_MULTI_DEVICE_BIT_KHR = 0x00000008,
+    VK_DEVICE_GROUP_PRESENT_MODE_FLAG_BITS_MAX_ENUM_KHR = 0x7FFFFFFF
+}
+
+type VkFlags VkDeviceGroupPresentModeFlagsKHR
+
+////////////////////////////////////////////////
+// Structs                                    //
+////////////////////////////////////////////////
+@extension("VK_KHR_device_group")
+class VkDeviceGroupPresentCapabilitiesKHR {
+    VkStructureType                     sType
+    const void*                         pNext
+    u32[32]                             presentMask
+    VkDeviceGroupPresentModeFlagsKHR    modes
+}
+
+@extension("VK_KHR_device_group")
+class VkImageSwapchainCreateInfoKHR {
+    VkStructureType    sType
+    const void*        pNext
+    VkSwapchainKHR     swapchain
+}
+
+@extension("VK_KHR_device_group")
+class VkBindImageMemorySwapchainInfoKHR {
+    VkStructureType    sType
+    const void*        pNext
+    VkSwapchainKHR     swapchain
+    u32                imageIndex
+}
+
+@extension("VK_KHR_device_group")
+class VkAcquireNextImageInfoKHR {
+    VkStructureType    sType
+    const void*        pNext
+    VkSwapchainKHR     swapchain
+    u64                timeout
+    VkSemaphore        semaphore
+    VkFence            fence
+    u32                deviceMask
+}
+
+@extension("VK_KHR_device_group")
+class VkDeviceGroupPresentInfoKHR {
+    VkStructureType                        sType
+    const void*                            pNext
+    u32                                    swapchainCount
+    const u32*                             pDeviceMasks
+    VkDeviceGroupPresentModeFlagBitsKHR    mode
+}
+
+@extension("VK_KHR_device_group")
+class VkDeviceGroupSwapchainCreateInfoKHR {
+    VkStructureType                     sType
+    const void*                         pNext
+    VkDeviceGroupPresentModeFlagsKHR    modes
+}
+
+//////////////
+// Commands //
+//////////////
+@extension("VK_KHR_device_group")
+@indirect("VkDevice")
+cmd void vkGetDeviceGroupPeerMemoryFeaturesKHR(
+    VkDevice                                    device,
+    u32                                         heapIndex,
+    u32                                         localDeviceIndex,
+    u32                                         remoteDeviceIndex,
+    VkPeerMemoryFeatureFlags*                   pPeerMemoryFeatures) {
+  mf := ?
+  pPeerMemoryFeatures[0] = mf
+}
+
+// Vulkan 1.1
+@indirect("VkDevice")
+cmd void vkGetDeviceGroupPeerMemoryFeatures(
+    VkDevice                                    device,
+    u32                                         heapIndex,
+    u32                                         localDeviceIndex,
+    u32                                         remoteDeviceIndex,
+    VkPeerMemoryFeatureFlags*                   pPeerMemoryFeatures) {
+  mf := ?
+  pPeerMemoryFeatures[0] = mf
+}
+
+@extension("VK_KHR_device_group")
+@internal class vkCmdSetDeviceMaskKHRArgs {
+  u32 deviceMask
+}
+
+@extension("VK_KHR_device_group")
+sub void dovkCmdSetDeviceMaskKHR(ref!vkCmdSetDeviceMaskKHRArgs args) {
+  LastBoundQueue.DeviceMask = args.deviceMask
+}
+
+@extension("VK_KHR_device_group")
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
+cmd void vkCmdSetDeviceMaskKHR(
+  VkCommandBuffer commandBuffer,
+  u32             deviceMask) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdSetDeviceMaskKHRArgs(deviceMask)
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdSetDeviceMaskKHR))
+    cmdBuf.BufferCommands.vkCmdSetDeviceMaskKHR[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdSetDeviceMaskKHR, mapPos)
+  }
+}
+
+
+// Vulkan 1.1
+@internal class vkCmdSetDeviceMaskArgs {
+  u32 deviceMask
+}
+
+// Vulkan 1.1
+sub void dovkCmdSetDeviceMask(ref!vkCmdSetDeviceMaskArgs args) {
+  LastBoundQueue.DeviceMask = args.deviceMask
+}
+
+// Vulkan 1.1
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@threadsafe
+cmd void vkCmdSetDeviceMask(
+  VkCommandBuffer commandBuffer,
+  u32             deviceMask) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdSetDeviceMaskArgs(deviceMask)
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdSetDeviceMask))
+    cmdBuf.BufferCommands.vkCmdSetDeviceMask[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdSetDeviceMask, mapPos)
+  }
+}
+
+@extension("VK_KHR_device_group")
+@internal class vkCmdDispatchBaseKHRArgs {
+  u32 BaseGroupX,
+  u32 BaseGroupY,
+  u32 BaseGroupZ,
+  u32 GroupCountX,
+  u32 GroupCountY,
+  u32 GroupCountZ
+}
+
+@extension("VK_KHR_device_group")
+sub void dovkCmdDispatchBaseKHR(ref!vkCmdDispatchBaseKHRArgs args) {
+  readComputeState()
+  readWriteMemoryInBoundComputeDescriptorSets()
+}
+
+@extension("VK_KHR_device_group")
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
+@threadsafe
+cmd void vkCmdDispatchBaseKHR(
+    VkCommandBuffer                             commandBuffer,
+    u32                                         baseGroupX,
+    u32                                         baseGroupY,
+    u32                                         baseGroupZ,
+    u32                                         groupCountX,
+    u32                                         groupCountY,
+    u32                                         groupCountZ) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdDispatchBaseKHRArgs(
+      baseGroupX,
+      baseGroupY,
+      baseGroupZ,
+      groupCountX,
+      groupCountY,
+      groupCountZ
+    )
+
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDispatchBaseKHR))
+    cmdBuf.BufferCommands.vkCmdDispatchBaseKHR[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdDispatchBaseKHR, mapPos)
+  }
+}
+
+// Vulkan 1.1
+@internal class vkCmdDispatchBaseArgs {
+  u32 BaseGroupX,
+  u32 BaseGroupY,
+  u32 BaseGroupZ,
+  u32 GroupCountX,
+  u32 GroupCountY,
+  u32 GroupCountZ
+}
+
+// Vulkan 1.1
+sub void dovkCmdDispatchBase(ref!vkCmdDispatchBaseArgs args) {
+  readComputeState()
+  readWriteMemoryInBoundComputeDescriptorSets()
+}
+
+// Vulkan 1.1
+@threadSafety("app")
+@indirect("VkCommandBuffer", "VkDevice")
+@executed_draw
+@threadsafe
+cmd void vkCmdDispatchBase(
+    VkCommandBuffer                             commandBuffer,
+    u32                                         baseGroupX,
+    u32                                         baseGroupY,
+    u32                                         baseGroupZ,
+    u32                                         groupCountX,
+    u32                                         groupCountY,
+    u32                                         groupCountZ) {
+  if !(commandBuffer in CommandBuffers) {
+    vkErrorInvalidCommandBuffer(commandBuffer)
+  } else {
+    args := new!vkCmdDispatchBaseArgs(
+      baseGroupX,
+      baseGroupY,
+      baseGroupZ,
+      groupCountX,
+      groupCountY,
+      groupCountZ
+    )
+
+    cmdBuf := CommandBuffers[commandBuffer]
+    mapPos := as!u32(len(cmdBuf.BufferCommands.vkCmdDispatchBase))
+    cmdBuf.BufferCommands.vkCmdDispatchBase[mapPos] = args
+
+    AddCommand(commandBuffer, cmd_vkCmdDispatchBase, mapPos)
+  }
+}
+
+@extension("VK_KHR_device_group")
+@indirect("VkDevice")
+cmd VkResult vkGetDeviceGroupPresentCapabilitiesKHR(
+    VkDevice                                    device,
+    VkDeviceGroupPresentCapabilitiesKHR*        pDeviceGroupPresentCapabilities) {
+  caps := ?
+  pDeviceGroupPresentCapabilities[0] = caps
+  return ?
+}
+
+@extension("VK_KHR_device_group")
+@indirect("VkDevice")
+cmd VkResult vkGetDeviceGroupSurfacePresentModesKHR(
+  VkDevice                                    device,
+  VkSurfaceKHR                                surface,
+  VkDeviceGroupPresentModeFlagsKHR*           pModes
+) {
+  modes := ?
+  pModes[0] = modes
+  return ?
+}
+
+@extension("VK_KHR_device_group")
+@indirect("VkPhysicalDevice", "VkInstance")
+cmd VkResult vkGetPhysicalDevicePresentRectanglesKHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkSurfaceKHR                                surface,
+    u32*                                        pRectCount,
+    VkRect2D*                                   pRects) {
+  _ = pRectCount[0]
+  fence
+  count := as!u32(?)
+  if (pRects == null) {
+    pRectCount[0] = count
+  } else {
+    rects := pRects[0:count]
+    for i in (0 .. count) {
+      rect := ?
+      rects[i] = rect
+    }
+  }
+  return ?
+}
+
+@extension("VK_KHR_device_group")
+@indirect("VkDevice")
+@custom
+@threadsafe
+cmd VkResult vkAcquireNextImage2KHR(
+    VkDevice       device,
+    const VkAcquireNextImageInfoKHR* pAcquireInfo,
+    u32*           pImageIndex) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  info := pAcquireInfo[0]
+
+  if !(info.swapchain in Swapchains) { vkErrorInvalidSwapchain(info.swapchain) }
+  if pImageIndex == null { vkErrorNullPointer("uint32_t") }
+  imageIndex := ?
+  pImageIndex[0] = imageIndex
+  if (info.semaphore != as!VkSemaphore(0)) {
+    Semaphores[info.semaphore].Signaled = true
+  }
+  if (info.fence != 0) {
+    if (Fences[info.fence].Signaled) { vkErrorInvalidFence(info.fence) } else {
+      Fences[info.fence].Signaled = true
+      recordFenceSignal(info.fence)
+    }
+  }
+  Swapchains[info.swapchain].ImagesAcquired[imageIndex] = true
+  recordAcquireNextImage(info.swapchain, imageIndex)
+  return ?
+}

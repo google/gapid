@@ -97,6 +97,7 @@ import "extensions/ext_scalar_block_layout.api"
 import "extensions/ext_hdr_metadata.api"
 import "extensions/khr_descriptor_update_template.api"
 import "extensions/khr_device_group_creation.api"
+import "extensions/khr_device_group.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -251,6 +252,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_scalar_block_layout"] = true
   supported.ExtensionNames["VK_EXT_hdr_metadata"] = true
   supported.ExtensionNames["VK_KHR_descriptor_update_template"] = true
+  supported.ExtensionNames["VK_KHR_device_group"] = true
   return supported
 }
 

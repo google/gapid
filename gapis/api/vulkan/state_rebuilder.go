@@ -879,7 +879,7 @@ func (sb *stateBuilder) createSwapchain(swp SwapchainObjectʳ) {
 		sb.MustAllocReadData(NewVkSwapchainCreateInfoKHR(sb.ta,
 			VkStructureType_VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR, // sType
 			0,                                   // pNext
-			0,                                   // flags
+			swp.Flags(),                         // flags
 			swp.Surface().VulkanHandle(),        // surface
 			uint32(swp.SwapchainImages().Len()), // minImageCount
 			swp.Info().Fmt(),                    // imageFormat
@@ -985,6 +985,18 @@ func (sb *stateBuilder) createDeviceMemory(mem DeviceMemoryObjectʳ, allowDedica
 				0,                                    // pNext
 				mem.DedicatedAllocationNV().Image(),  // image
 				mem.DedicatedAllocationNV().Buffer(), // buffer
+			),
+		).Ptr())
+	}
+
+	if !mem.MemoryAllocateFlagsInfo().IsNil() {
+		flags := mem.MemoryAllocateFlagsInfo()
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkMemoryAllocateFlagsInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+				pNext,              // pNext
+				flags.Flags(),      // flags
+				flags.DeviceMask(), // deviceMask
 			),
 		).Ptr())
 	}
@@ -1524,8 +1536,35 @@ func (sb *stateBuilder) createImage(img ImageObjectʳ, srcState *api.GlobalState
 		walkImageSubresourceRange(sb, img, sb.imageWholeSubresourceRange(img), appendImageLevelToOpaqueRanges)
 		// TODO: Handle multi-planar images
 		planeMemInfo, _ := subGetImagePlaneMemoryInfo(sb.ctx, nil, api.CmdNoID, nil, srcState, GetState(srcState), 0, nil, nil, img, VkImageAspectFlagBits(0))
-		vkBindImageMemory(sb, img.Device(), vkImage,
-			planeMemInfo.BoundMemory().VulkanHandle(), planeMemInfo.BoundMemoryOffset())
+
+		if !planeMemInfo.ImageDeviceGroupBinding().IsNil() {
+			dg := planeMemInfo.ImageDeviceGroupBinding()
+			sb.write(sb.cb.VkBindImageMemory2(
+				img.Device(),
+				1,
+				sb.MustAllocReadData(
+					NewVkBindImageMemoryInfo(sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO, // sType
+						NewVoidᶜᵖ(sb.MustAllocReadData(
+							NewVkBindImageMemoryDeviceGroupInfo(sb.ta,
+								VkStructureType_VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO, // sType
+								NewVoidᶜᵖ(memory.Nullptr),
+								uint32(dg.Bindings().Len()),
+								NewU32ᶜᵖ(sb.MustUnpackReadMap(dg.Bindings().All()).Ptr()),
+								uint32(dg.SplitInstanceBindings().Len()),
+								NewVkRect2Dᶜᵖ(sb.MustUnpackReadMap(dg.SplitInstanceBindings().All()).Ptr()),
+							),
+						).Ptr()),
+						img.VulkanHandle(),
+						planeMemInfo.BoundMemory().VulkanHandle(),
+						planeMemInfo.BoundMemoryOffset(),
+					)).Ptr(),
+				VkResult_VK_SUCCESS,
+			))
+		} else {
+			vkBindImageMemory(sb, img.Device(), vkImage,
+				planeMemInfo.BoundMemory().VulkanHandle(), planeMemInfo.BoundMemoryOffset())
+		}
 	}
 
 	return opaqueRanges, nil
@@ -2787,9 +2826,20 @@ func (sb *stateBuilder) recordCommandBuffer(cb CommandBufferObjectʳ, level VkCo
 		return
 	}
 
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !cb.BeginInfo().DeviceGroupBegin().IsNil() {
+		pNext = NewVoidᶜᵖ(sb.MustAllocReadData(
+			NewVkDeviceGroupCommandBufferBeginInfo(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO, // sType
+				pNext, // pNext
+				cb.BeginInfo().DeviceGroupBegin().DeviceMask(), // deviceMask
+			),
+		).Ptr())
+	}
+
 	beginInfo := NewVkCommandBufferBeginInfo(sb.ta,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // sType
-		0, // pNext
+		pNext, // pNext
 		VkCommandBufferUsageFlags(cb.BeginInfo().Flags()), // flags
 		0, // pInheritanceInfo
 	)
@@ -2981,14 +3031,37 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, me
 			return fmt.Errorf("buffer memory is nil for buffer %v", src)
 		}
 
-		sb.write(sb.cb.VkBindBufferMemory(
-			dst.Device(),
-			dst.VulkanHandle(),
-			mem.VulkanHandle(),
-			dst.MemoryOffset(),
-			VkResult_VK_SUCCESS,
-		))
-
+		if !src.DeviceGroupBinding().IsNil() {
+			dg := src.DeviceGroupBinding()
+			sb.write(sb.cb.VkBindBufferMemory2(
+				dst.Device(),
+				1,
+				sb.MustAllocReadData(
+					NewVkBindBufferMemoryInfo(sb.ta,
+						VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO, // sType
+						NewVoidᶜᵖ(sb.MustAllocReadData(
+							NewVkBindBufferMemoryDeviceGroupInfo(sb.ta,
+								VkStructureType_VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO, // sType
+								0, // pNext
+								uint32(dg.Bindings().Len()),
+								NewU32ᶜᵖ(sb.MustUnpackReadMap(dg.Bindings().All()).Ptr()),
+							),
+						).Ptr()),
+						dst.VulkanHandle(),
+						mem.VulkanHandle(),
+						dst.MemoryOffset(),
+					)).Ptr(),
+				VkResult_VK_SUCCESS,
+			))
+		} else {
+			sb.write(sb.cb.VkBindBufferMemory(
+				dst.Device(),
+				dst.VulkanHandle(),
+				mem.VulkanHandle(),
+				dst.MemoryOffset(),
+				VkResult_VK_SUCCESS,
+			))
+		}
 	}
 
 	return nil

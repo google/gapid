@@ -445,6 +445,21 @@ func (a *VkAcquireNextImageKHR) Mutate(ctx context.Context, id api.CmdID, s *api
 	return err
 }
 
+func (a *VkAcquireNextImage2KHR) Mutate(ctx context.Context, id api.CmdID, s *api.GlobalState, b *builder.Builder, w api.StateWatcher) error {
+	// Do the mutation, including applying memory write observations, before having the replay device call the vkAcquireNextImageKHR() command.
+	// This is to pass the returned image index value captured in the trace, into the replay device to acquire for the specific image.
+	// Note that this is only necessary for building replay instructions
+	err := a.mutate(ctx, id, s, nil, w)
+	if b != nil {
+		l := s.MemoryLayout
+		// Ensure that the builder reads pImageIndex (which points to the correct image index at this point).
+		a.PImageIndex().Slice(0, 1, l).OnRead(ctx, a, s, b)
+		a.PAcquireInfo().Slice(0, 1, l).OnRead(ctx, a, s, b)
+		a.Call(ctx, s, b)
+	}
+	return err
+}
+
 type structWithPNext interface {
 	PNext() Voidᶜᵖ
 	SetPNext(v Voidᶜᵖ)
@@ -822,6 +837,7 @@ func (a *ReplayAllocateImageMemory) Mutate(ctx context.Context, id api.CmdID, s 
 		NilVulkanDebugMarkerInfoʳ,         // DebugInfo
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationNV
 		NilMemoryDedicatedAllocationInfoʳ, // DedicatedAllocationKHR
+		NilMemoryAllocateFlagsInfoʳ,       // MemoryAllocateFlagsInfo
 	)
 
 	c.DeviceMemories().Add(memory, memoryObject)

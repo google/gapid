@@ -96,9 +96,23 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 			allocateData.Ptr(), newCmdBufData.Ptr(), VkResult_VK_SUCCESS,
 		).AddRead(allocateData.Data()).AddWrite(newCmdBufData.Data()))
 
+	mem := []api.AllocResult{}
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+	if !modelCmdBufObj.BeginInfo().DeviceGroupBegin().IsNil() {
+		beginInfo := NewVkDeviceGroupCommandBufferBeginInfo(a,
+			VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO, // sType
+			pNext, // pNext
+			modelCmdBufObj.BeginInfo().DeviceGroupBegin().DeviceMask(), // deviceMask
+		)
+		beginInfoData := s.AllocDataOrPanic(ctx, beginInfo)
+		cleanup = append(cleanup, func() { beginInfoData.Free() })
+		pNext = NewVoidᶜᵖ(beginInfoData.Ptr())
+		mem = append(mem, beginInfoData)
+	}
+
 	beginInfo := NewVkCommandBufferBeginInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-		NewVoidᶜᵖ(memory.Nullptr),
+		pNext,
 		VkCommandBufferUsageFlags(VkCommandBufferUsageFlagBits_VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT),
 		NewVkCommandBufferInheritanceInfoᶜᵖ(memory.Nullptr),
 	)
@@ -119,8 +133,12 @@ func allocateNewCmdBufFromExistingOneAndBegin(
 	}
 	beginInfoData := s.AllocDataOrPanic(ctx, beginInfo)
 	cleanup = append(cleanup, func() { beginInfoData.Free() })
-	x = append(x,
-		cb.VkBeginCommandBuffer(newCmdBufID, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data()))
+
+	cmd := cb.VkBeginCommandBuffer(newCmdBufID, beginInfoData.Ptr(), VkResult_VK_SUCCESS).AddRead(beginInfoData.Data())
+	for _, m := range mem {
+		cmd.AddRead(m.Data())
+	}
+	x = append(x, cmd)
 	return newCmdBufID, x, cleanup
 }
 
@@ -131,6 +149,7 @@ func rebuildVkCmdBeginRenderPass(
 	r *api.GlobalState,
 	s *api.GlobalState,
 	d VkCmdBeginRenderPassArgsʳ) (func(), api.Cmd, error) {
+	mem := []api.AllocResult{}
 
 	a := s.Arena // TODO: Should this be a seperate temporary arena?
 
@@ -147,6 +166,31 @@ func rebuildVkCmdBeginRenderPass(
 	}
 
 	clearValuesData := s.AllocDataOrPanic(ctx, clearValues)
+	mem = append(mem, clearValuesData)
+	pNext := NewVoidᶜᵖ(memory.Nullptr)
+
+	if !d.DeviceGroupBeginInfo().IsNil() {
+		dgbi := d.DeviceGroupBeginInfo()
+
+		rects := make([]VkRect2D, dgbi.RenderAreas().Len())
+		for i := range rects {
+			rects[i] = dgbi.RenderAreas().Get(uint32(i))
+		}
+		rectMem := s.AllocDataOrPanic(ctx, clearValues)
+		mem = append(mem, rectMem)
+
+		pNextData := s.AllocDataOrPanic(ctx,
+			NewVkDeviceGroupRenderPassBeginInfo(a,
+				VkStructureType_VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO, // sType
+				pNext,                            // pNext
+				dgbi.DeviceMask(),                // deviceMask
+				uint32(dgbi.RenderAreas().Len()), // deviceRenderAreaCount
+				NewVkRect2Dᶜᵖ(rectMem.Ptr()),     // pDeviceRenderAreas
+			),
+		)
+		mem = append(mem, pNextData)
+		pNext = NewVoidᶜᵖ(pNextData.Ptr())
+	}
 
 	begin := NewVkRenderPassBeginInfo(a,
 		VkStructureType_VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // sType
@@ -158,14 +202,21 @@ func rebuildVkCmdBeginRenderPass(
 		NewVkClearValueᶜᵖ(clearValuesData.Ptr()), // pClearValues
 	)
 	beginData := s.AllocDataOrPanic(ctx, begin)
+	mem = append(mem, beginData)
 
-	return func() {
-			clearValuesData.Free()
-			beginData.Free()
-		}, cb.VkCmdBeginRenderPass(
-			commandBuffer,
-			beginData.Ptr(),
-			d.Contents()).AddRead(beginData.Data()).AddRead(clearValuesData.Data()), nil
+	cleanup := func() {
+		for _, d := range mem {
+			d.Free()
+		}
+	}
+	cmd := cb.VkCmdBeginRenderPass(
+		commandBuffer,
+		beginData.Ptr(),
+		d.Contents())
+	for _, d := range mem {
+		cmd.AddRead(d.Data())
+	}
+	return cleanup, cmd, nil
 }
 
 func rebuildVkCmdEndRenderPass(
@@ -1309,6 +1360,64 @@ func rebuildVkCmdInsertDebugUtilsLabelEXT(
 			markerNameData.Data()).AddRead(markerInfoData.Data()), nil
 }
 
+func rebuildVkCmdSetDeviceMaskKHR(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdSetDeviceMaskKHRArgsʳ) (func(), api.Cmd, error) {
+	return func() {}, cb.VkCmdSetDeviceMaskKHR(commandBuffer,
+		d.DeviceMask()), nil
+}
+
+func rebuildVkCmdSetDeviceMask(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdSetDeviceMaskArgsʳ) (func(), api.Cmd, error) {
+	return func() {}, cb.VkCmdSetDeviceMask(commandBuffer,
+		d.DeviceMask()), nil
+}
+
+func rebuildVkCmdDispatchBaseKHR(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdDispatchBaseKHRArgsʳ) (func(), api.Cmd, error) {
+
+	return func() {}, cb.VkCmdDispatchBaseKHR(commandBuffer,
+		d.BaseGroupX(),
+		d.BaseGroupY(),
+		d.BaseGroupZ(),
+		d.GroupCountX(),
+		d.GroupCountY(),
+		d.GroupCountZ(),
+	), nil
+}
+
+func rebuildVkCmdDispatchBase(
+	ctx context.Context,
+	cb CommandBuilder,
+	commandBuffer VkCommandBuffer,
+	r *api.GlobalState,
+	s *api.GlobalState,
+	d VkCmdDispatchBaseArgsʳ) (func(), api.Cmd, error) {
+
+	return func() {}, cb.VkCmdDispatchBase(commandBuffer,
+		d.BaseGroupX(),
+		d.BaseGroupY(),
+		d.BaseGroupZ(),
+		d.GroupCountX(),
+		d.GroupCountY(),
+		d.GroupCountZ(),
+	), nil
+}
+
 // GetCommandArgs takes a command reference and returns the command arguments
 // of that recorded command.
 func GetCommandArgs(ctx context.Context,
@@ -1426,6 +1535,14 @@ func GetCommandArgs(ctx context.Context,
 		return cmds.VkCmdEndDebugUtilsLabelEXT().Get(cr.MapIndex())
 	case CommandType_cmd_vkCmdInsertDebugUtilsLabelEXT:
 		return cmds.VkCmdInsertDebugUtilsLabelEXT().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdSetDeviceMaskKHR:
+		return cmds.VkCmdSetDeviceMaskKHR().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdSetDeviceMask:
+		return cmds.VkCmdSetDeviceMask().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdDispatchBaseKHR:
+		return cmds.VkCmdDispatchBaseKHR().Get(cr.MapIndex())
+	case CommandType_cmd_vkCmdDispatchBase:
+		return cmds.VkCmdDispatchBase().Get(cr.MapIndex())
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
@@ -1545,6 +1662,14 @@ func GetCommandFunction(cr *CommandReference) interface{} {
 		return subDovkCmdEndDebugUtilsLabelEXT
 	case CommandType_cmd_vkCmdInsertDebugUtilsLabelEXT:
 		return subDovkCmdInsertDebugUtilsLabelEXT
+	case CommandType_cmd_vkCmdSetDeviceMaskKHR:
+		return subDovkCmdSetDeviceMaskKHR
+	case CommandType_cmd_vkCmdSetDeviceMask:
+		return subDovkCmdSetDeviceMask
+	case CommandType_cmd_vkCmdDispatchBaseKHR:
+		return subDovkCmdDispatchBaseKHR
+	case CommandType_cmd_vkCmdDispatchBase:
+		return subDovkCmdDispatchBase
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", cr)
 		panic(x)
@@ -1671,6 +1796,14 @@ func AddCommand(ctx context.Context,
 		return rebuildVkCmdEndDebugUtilsLabelEXT(ctx, cb, commandBuffer, r, s, t)
 	case VkCmdInsertDebugUtilsLabelEXTArgsʳ:
 		return rebuildVkCmdInsertDebugUtilsLabelEXT(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdSetDeviceMaskKHRArgsʳ:
+		return rebuildVkCmdSetDeviceMaskKHR(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdSetDeviceMaskArgsʳ:
+		return rebuildVkCmdSetDeviceMask(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdDispatchBaseKHRArgsʳ:
+		return rebuildVkCmdDispatchBaseKHR(ctx, cb, commandBuffer, r, s, t)
+	case VkCmdDispatchBaseArgsʳ:
+		return rebuildVkCmdDispatchBase(ctx, cb, commandBuffer, r, s, t)
 	default:
 		x := fmt.Sprintf("Should not reach here: %T", t)
 		panic(x)

@@ -260,13 +260,19 @@ cmd void vkGetRenderAreaGranularity(
 // Command buffer commands //
 /////////////////////////////
 
+@internal class DeviceGroupBeginInfo {
+  u32    DeviceMask,
+  map!(u32, VkRect2D) RenderAreas
+}
+
 @internal class
 vkCmdBeginRenderPassArgs {
-  VkSubpassContents       Contents
-  VkRenderPass            RenderPass
-  VkFramebuffer           Framebuffer
-  VkRect2D                RenderArea
-  map!(u32, VkClearValue) ClearValues
+  VkSubpassContents        Contents
+  VkRenderPass             RenderPass
+  VkFramebuffer            Framebuffer
+  VkRect2D                 RenderArea
+  map!(u32, VkClearValue)  ClearValues
+  ref!DeviceGroupBeginInfo DeviceGroupBeginInfo
 }
 
 sub void dovkCmdBeginRenderPass(ref!vkCmdBeginRenderPassArgs args) {
@@ -295,6 +301,14 @@ cmd void vkCmdBeginRenderPass(
   begin_info := pRenderPassBegin[0]
   if !(begin_info.renderPass in RenderPasses) { vkErrorInvalidRenderPass(begin_info.renderPass) }
   if !(begin_info.framebuffer in Framebuffers) { vkErrorInvalidFramebuffer(begin_info.framebuffer) }
+  
+   args := new!vkCmdBeginRenderPassArgs(
+    Contents:     contents,
+    RenderPass:   begin_info.renderPass,
+    Framebuffer:  begin_info.framebuffer,
+    RenderArea:   begin_info.renderArea
+  )
+  
   // handle pNext
   if begin_info.pNext != null {
     numPNext := numberOfPNext(begin_info.pNext)
@@ -302,7 +316,19 @@ cmd void vkCmdBeginRenderPass(
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
       _ = sType
-      // TODO: handle extensions for VkRenderPassCreateInfo
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
+          ext := as!VkDeviceGroupRenderPassBeginInfo*(next.Ptr)[0:1][0]
+          args.DeviceGroupBeginInfo = new!DeviceGroupBeginInfo(
+            DeviceMask: ext.deviceMask,
+          )
+          rects := ext.pDeviceRenderAreas[0:ext.deviceRenderAreaCount]
+          for j in (0 .. ext.deviceRenderAreaCount) {
+            args.DeviceGroupBeginInfo.RenderAreas[j] = rects[j]
+          }
+        }
+        default: {}
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -311,12 +337,7 @@ cmd void vkCmdBeginRenderPass(
     vkErrorInvalidCommandBuffer(commandBuffer)
   } else {
     cmdBuf := CommandBuffers[commandBuffer]
-    args := new!vkCmdBeginRenderPassArgs(
-      Contents:     contents,
-      RenderPass:   begin_info.renderPass,
-      Framebuffer:  begin_info.framebuffer,
-      RenderArea:   begin_info.renderArea
-    )
+   
     clear_values := begin_info.pClearValues[0:begin_info.clearValueCount]
     for i in (0 .. begin_info.clearValueCount) {
       args.ClearValues[i] = clear_values[i]

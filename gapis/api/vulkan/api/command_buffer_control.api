@@ -124,6 +124,10 @@ enum RecordingState {
   TO_BE_RESET  = 3
 }
 
+@internal class DeviceGroupBegin {
+  u32         DeviceMask
+}
+
 @internal class CommandBufferBegin {
   VkCommandBufferUsageFlags     Flags
   bool                          Inherited
@@ -133,6 +137,7 @@ enum RecordingState {
   VkBool32                      InheritedOcclusionQuery
   VkQueryControlFlags           InheritedQueryFlags
   VkQueryPipelineStatisticFlags InheritedPipelineStatsFlags
+  ref!DeviceGroupBegin          DeviceGroupBegin
 }
 
 enum CommandType {
@@ -190,7 +195,11 @@ enum CommandType {
   cmd_vkCmdBeginDebugUtilsLabelEXT       = 51,
   cmd_vkCmdEndDebugUtilsLabelEXT         = 52,
   cmd_vkCmdInsertDebugUtilsLabelEXT      = 53,
-  cmd_vkNoCommand                 = 0xFFFFFFFF
+  cmd_vkCmdSetDeviceMaskKHR              = 54,
+  cmd_vkCmdSetDeviceMask                 = 55,
+  cmd_vkCmdDispatchBaseKHR               = 56,
+  cmd_vkCmdDispatchBase                  = 57,
+  cmd_vkNoCommand                        = 0xFFFFFFFF
 }
 
 enum SemaphoreUpdate {
@@ -214,6 +223,7 @@ enum SemaphoreUpdate {
   @unused VkSemaphore           Semaphore
   @unused ref!QueuedSparseBinds SparseBinds
   @unused VkFence               SignalFence
+  @unused u32                   DeviceMask
 }
 
 @internal class BufferCommands {
@@ -271,6 +281,10 @@ enum SemaphoreUpdate {
   @untrackedMap dense_map!(u32, ref!vkCmdBeginDebugUtilsLabelEXTArgs)  vkCmdBeginDebugUtilsLabelEXT
   @untrackedMap dense_map!(u32, ref!vkCmdEndDebugUtilsLabelEXTArgs)    vkCmdEndDebugUtilsLabelEXT
   @untrackedMap dense_map!(u32, ref!vkCmdInsertDebugUtilsLabelEXTArgs) vkCmdInsertDebugUtilsLabelEXT
+  @untrackedMap dense_map!(u32, ref!vkCmdSetDeviceMaskKHRArgs)         vkCmdSetDeviceMaskKHR
+  @untrackedMap dense_map!(u32, ref!vkCmdSetDeviceMaskArgs)            vkCmdSetDeviceMask
+  @untrackedMap dense_map!(u32, ref!vkCmdDispatchBaseKHRArgs)          vkCmdDispatchBaseKHR
+  @untrackedMap dense_map!(u32, ref!vkCmdDispatchBaseArgs)             vkCmdDispatchBase
 }
 
 @internal class CommandBufferObject {
@@ -300,6 +314,7 @@ sub void AddCommand(
     Semaphore: as!VkSemaphore(0),
     SparseBinds: as!ref!QueuedSparseBinds(null),
     SignalFence: as!VkFence(0),
+    DeviceMask: 0,
   )
   cb := CommandBuffers[commandBuffer]
   if cb.Recording != RECORDING {
@@ -398,7 +413,15 @@ cmd VkResult vkBeginCommandBuffer(
     for i in (0 .. numPNext) {
       sType := as!const VkStructureType*(next.Ptr)[0:1][0]
       _ = sType
-      // TODO: handle extensions for VkCommandBufferBeginInfo
+      switch sType {
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO: {
+          ext := as!VkDeviceGroupCommandBufferBeginInfo*(next.Ptr)[0:1][0]
+          begin.DeviceGroupBegin = new!DeviceGroupBegin(
+            DeviceMask: ext.deviceMask,
+          )
+        }
+        default: {}
+      }
       next.Ptr = as!VulkanStructHeader*(next.Ptr)[0:1][0].PNext
     }
   }
@@ -526,6 +549,10 @@ sub void resetBufferCommands(ref!CommandBufferObject obj) {
   clear(obj.BufferCommands.vkCmdBeginDebugUtilsLabelEXT)
   clear(obj.BufferCommands.vkCmdEndDebugUtilsLabelEXT)
   clear(obj.BufferCommands.vkCmdInsertDebugUtilsLabelEXT)
+  clear(obj.BufferCommands.vkCmdSetDeviceMaskKHR)
+  clear(obj.BufferCommands.vkCmdSetDeviceMask)
+  clear(obj.BufferCommands.vkCmdDispatchBaseKHR)
+  clear(obj.BufferCommands.vkCmdDispatchBase)
 }
 
 sub void resetCommandBuffer(ref!CommandBufferObject obj) {
