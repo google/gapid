@@ -538,6 +538,8 @@ Interpreter::Result Interpreter::jumpNZ(uint32_t opcode) {
       GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
     }
 
+    GAPID_WARNING("Jump from %d to %d\n\n\n", mCurrentInstruction,
+                  mJumpLabels[jump_id])
     mCurrentInstruction = mJumpLabels[jump_id];
   }
 

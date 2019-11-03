@@ -775,7 +775,8 @@ bool Context::loadResource(Stack* stack) {
     GAPID_WARNING("Can't load resource: %s", resource.getID().c_str());
     return false;
   }
-
+  // GAPID_WARNING("load resource %s, size %u, to address %x",
+  //               resource.getID().c_str(), resource.getSize(), address);
   return true;
 }
 

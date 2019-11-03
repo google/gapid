@@ -149,6 +149,37 @@
       {{else}}
         if (mFunctionStubs.{{$name}} != nullptr) {
       {{end}}
+
+
+
+      {{if eq "vkUpdateDescriptorSets" $name}} 
+            for (uint32_t i = 0; i < descriptorWriteCount; i++) {
+              auto write = pDescriptorWrites + i;
+                if (write->pImageInfo) {
+                  GAPID_WARNING("descriptorCount %u, type %u, sampler %u imageview %u imagelayout %u", 
+                  write->descriptorCount, (uint64_t)write->descriptorType,
+                  write->pImageInfo->Sampler, write->pImageInfo->ImageView, (uint64_t)write->pImageInfo->ImageLayout
+                  )
+                }
+                
+                if (write->pBufferInfo) {
+                  GAPID_WARNING("descriptorCount %u, type %u, vkBuffer %u offset %u range %u", 
+                  write->descriptorCount, (uint64_t)write->descriptorType,
+                  write->pBufferInfo->Buffer, write->pBufferInfo->Offset, (uint64_t)write->pBufferInfo->Range
+                  )
+                }
+
+                if (write->pTexelBufferView) {
+                  GAPID_WARNING("descriptorCount %u, type %u, VkBufferView %u", 
+                  write->descriptorCount, (uint64_t)write->descriptorType,
+                  *write->pTexelBufferView
+                  )
+                }
+            }
+        {{end}}
+
+
+
         {{if not (IsVoid $.Return.Type)}}
           {{Template "C++.ReturnType" $}} return_value = {{Template "Call" $}};
           GAPID_DEBUG("[%u]{{$name}} returned {{Template "C++.PrintfFormatCode" $.Return.Type}}", cmdLabel, return_value);
@@ -168,6 +199,75 @@
         {{else}}
           {{Template "Call" $}};
         {{end}}
+
+        {{if eq "vkCreateBuffer" $name}} 
+          GAPID_WARNING("vKBuffer %u created", *pBuffer);
+        {{end}}
+
+        {{if eq "vkDestroyBuffer" $name}} 
+          GAPID_WARNING("vKBuffer %u destroyed", buffer);
+        {{end}}
+
+        {{if eq "vkAllocateMemory" $name}} 
+          GAPID_WARNING("vkDeviceMemory %u allocated", *pMemory);
+        {{end}}
+
+        {{if eq "vkFreeMemory" $name}} 
+          GAPID_WARNING("vkDeviceMemory %u freed", memory);
+        {{end}}
+
+        {{if eq "vkBindBufferMemory" $name}} 
+          GAPID_WARNING("vkDeviceMemory %u bind to vkBuffer %u", memory, buffer);
+        {{end}}
+
+        {{if eq "vkMapMemory" $name}} 
+          GAPID_WARNING("memory %u  is mapped to %x", memory, *ppData);
+        {{end}}
+
+        {{if eq "vkUnmapMemory" $name}} 
+          GAPID_WARNING("memory %u  is unmapped", memory);
+        {{end}}
+
+        {{if eq "vkFlushMappedMemoryRanges" $name}} 
+          GAPID_WARNING("vkFlushMappedMemoryRanges: memory %u size %u", pMemoryRanges->memory, pMemoryRanges->size);
+        {{end}}
+        
+        {{if eq "vkCmdBindVertexBuffers" $name}} 
+          GAPID_WARNING("vKBuffer %u  is bind to command buffer %u", *pBuffers, commandBuffer);
+        {{end}}
+
+
+        {{if eq "vkAllocateCommandBuffers" $name}} 
+          GAPID_WARNING("VkCommandBuffer %u allocated", *pCommandBuffers);
+        {{end}}
+
+        {{if eq "vkFreeCommandBuffers" $name}} 
+          GAPID_WARNING("VkCommandBuffer %u allocated", *pCommandBuffers);
+        {{end}}
+
+
+        {{if eq "vkQueuePresentKHR" $name}} 
+          static int frame_cnt = 1;
+          GAPID_WARNING("frame %d vkQueuePresentKHR \n\n\n", frame_cnt++);
+        {{end}}
+
+        {{if eq "vkQueueSubmit" $name}} 
+          for (uint32_t i = 0; i < submitCount; i++) {
+            auto submit = pSubmits + i;
+            for (uint32_t j = 0; j < submit->commandBufferCount; j++) {
+              auto cmdBuffer = submit->pCommandBuffers + j;
+              GAPID_WARNING("CommandBuffer %u submitted", *cmdBuffer);
+            }
+          }
+        {{end}}
+
+        
+        {{if eq "vkCreateImageView" $name}} 
+          GAPID_WARNING("Imageview %u created", *pView);
+        {{end}}
+
+
+
 
         {{if and 0 (eq (Global "API") "gles")}} {{/* Enable for debugging */}}
           const Gles::GLenum err = mFunctionStubs.glGetError();

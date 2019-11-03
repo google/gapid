@@ -478,58 +478,58 @@ func (t *queryTimestamps) processNotification(ctx context.Context, s *api.Global
 
 func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	ctx = log.Enter(ctx, "queryTimestamps")
-	if t.willLoop && !t.readyToLoop {
-		out.MutateAndWrite(ctx, id, cmd)
-		return
-	}
-	s := out.State()
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
+	// if t.willLoop && !t.readyToLoop {
+	// 	out.MutateAndWrite(ctx, id, cmd)
+	// 	return
+	// }
+	// s := out.State()
+	// cb := CommandBuilder{Thread: cmd.Thread(), Arena: s.Arena}
 
-	defer func() {
-		for _, d := range t.allocated {
-			d.Free()
-		}
-	}()
+	// defer func() {
+	// 	for _, d := range t.allocated {
+	// 		d.Free()
+	// 	}
+	// }()
 
 	switch cmd := cmd.(type) {
-	case *VkQueueSubmit:
-		cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
-		vkQueue := cmd.Queue()
-		queue := GetState(s).Queues().Get(vkQueue)
-		queueFamilyIndex := queue.Family()
-		vkDevice := queue.Device()
-		device := GetState(s).Devices().Get(vkDevice)
-		vkPhysicalDevice := device.PhysicalDevice()
-		physicalDevice := GetState(s).PhysicalDevices().Get(vkPhysicalDevice)
-		t.timestampPeriod = physicalDevice.PhysicalDeviceProperties().Limits().TimestampPeriod()
+	// case *VkQueueSubmit:
+	// 	cmd.Extras().Observations().ApplyReads(s.Memory.ApplicationPool())
+	// 	vkQueue := cmd.Queue()
+	// 	queue := GetState(s).Queues().Get(vkQueue)
+	// 	queueFamilyIndex := queue.Family()
+	// 	vkDevice := queue.Device()
+	// 	device := GetState(s).Devices().Get(vkDevice)
+	// 	vkPhysicalDevice := device.PhysicalDevice()
+	// 	physicalDevice := GetState(s).PhysicalDevices().Get(vkPhysicalDevice)
+	// 	t.timestampPeriod = physicalDevice.PhysicalDeviceProperties().Limits().TimestampPeriod()
 
-		submitCount := cmd.SubmitCount()
-		submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
-		cmdBufferCount := uint32(0)
-		for i := uint32(0); i < submitCount; i++ {
-			si := submitInfos[i]
-			cmdBufferCount += si.CommandBufferCount()
-		}
-		queryCount := cmdBufferCount * 2
+	// 	submitCount := cmd.SubmitCount()
+	// 	submitInfos := cmd.pSubmits.Slice(0, uint64(submitCount), s.MemoryLayout).MustRead(ctx, cmd, s, nil)
+	// 	cmdBufferCount := uint32(0)
+	// 	for i := uint32(0); i < submitCount; i++ {
+	// 		si := submitInfos[i]
+	// 		cmdBufferCount += si.CommandBufferCount()
+	// 	}
+	// 	queryCount := cmdBufferCount * 2
 
-		commandPool := t.createCommandpoolIfNeeded(ctx, cb, out, vkDevice, queueFamilyIndex)
-		queryPoolInfo := t.createQueryPoolIfNeeded(ctx, cb, out, vkQueue, vkDevice, queryCount)
-		numSlotAvailable := queryPoolInfo.queryPoolSize - queryPoolInfo.queryCount
-		if numSlotAvailable < queryCount {
-			t.GetQueryResults(ctx, cb, out, queryPoolInfo)
-		}
-		t.rewriteQueueSubmit(ctx, cb, out, id, vkDevice, queryPoolInfo, commandPool, cmd)
+	// 	commandPool := t.createCommandpoolIfNeeded(ctx, cb, out, vkDevice, queueFamilyIndex)
+	// 	queryPoolInfo := t.createQueryPoolIfNeeded(ctx, cb, out, vkQueue, vkDevice, queryCount)
+	// 	numSlotAvailable := queryPoolInfo.queryPoolSize - queryPoolInfo.queryCount
+	// 	if numSlotAvailable < queryCount {
+	// 		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
+	// 	}
+	// 	t.rewriteQueueSubmit(ctx, cb, out, id, vkDevice, queryPoolInfo, commandPool, cmd)
 	default:
 		out.MutateAndWrite(ctx, id, cmd)
 	}
 }
 
 func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
-	s := out.State()
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
-	for _, queryPoolInfo := range t.queryPools {
-		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
-	}
+	// s := out.State()
+	// cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	// for _, queryPoolInfo := range t.queryPools {
+	// 	t.GetQueryResults(ctx, cb, out, queryPoolInfo)
+	// }
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.replayResult })
 }
 
@@ -538,10 +538,10 @@ func (t *queryTimestamps) PreLoop(ctx context.Context, out transform.Writer) {
 }
 
 func (t *queryTimestamps) PostLoop(ctx context.Context, out transform.Writer) {
-	t.readyToLoop = false
-	s := out.State()
-	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
-	for _, queryPoolInfo := range t.queryPools {
-		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
-	}
+	// t.readyToLoop = false
+	// s := out.State()
+	// cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+	// for _, queryPoolInfo := range t.queryPools {
+	// 	t.GetQueryResults(ctx, cb, out, queryPoolInfo)
+	// }
 }
