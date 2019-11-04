@@ -83,7 +83,7 @@ func (m *manager) batch(ctx context.Context, r *status.Replay, e []scheduler.Exe
 		}.Bind(ctx)
 		log.I(ctx, "Replay for %d requests", len(e))
 
-		return m.execute(ctx, d, r, batch.device, batch.capture, batch.config, batch.generator, requests)
+		return m.execute(ctx, d, r, batch.device, batch.capture, batch.config, batch.generator, batch.forceNonSplitReplay, requests)
 	}()
 
 	if err != nil {
@@ -232,6 +232,7 @@ func (m *manager) execute(
 	deviceID, captureID id.ID,
 	cfg Config,
 	generator Generator,
+	forceNonSplitReplay bool,
 	requests []RequestAndResult) error {
 
 	capturePath := path.NewCapture(captureID)
@@ -276,30 +277,32 @@ func (m *manager) execute(
 	var depID string
 	var depBuilder *builder.Builder
 	var depState *api.GlobalState
-	if g, ok := generator.(SplitGenerator); ok {
-		a, ok := g.(api.API)
-		if ok {
-			ipl := InitialPayloadResolvable{
-				CaptureID: NewID(captureID),
-				ApiID:     NewID(id.ID(a.ID())),
-				DeviceID:  NewID(d.Instance().ID.ID()),
-			}
-			ipr, err := database.Build(ctx, &ipl)
-			if err != nil {
-				return err
-			}
-			i, ok := ipr.(InitialPayloadResult)
-			if !ok {
-				return log.Err(ctx, nil, "Invalid Initial Payload")
-			}
+	if !forceNonSplitReplay {
+		if g, ok := generator.(SplitGenerator); ok {
+			a, ok := g.(api.API)
+			if ok {
+				ipl := InitialPayloadResolvable{
+					CaptureID: NewID(captureID),
+					ApiID:     NewID(id.ID(a.ID())),
+					DeviceID:  NewID(d.Instance().ID.ID()),
+				}
+				ipr, err := database.Build(ctx, &ipl)
+				if err != nil {
+					return err
+				}
+				i, ok := ipr.(InitialPayloadResult)
+				if !ok {
+					return log.Err(ctx, nil, "Invalid Initial Payload")
+				}
 
-			depID = i.prerunID
-			depBuilder = i.oldBuilder
-			depState = i.oldState
+				depID = i.prerunID
+				depBuilder = i.oldBuilder
+				depState = i.oldState
 
-			err = connection.PrewarmReplay(ctx, i.prerunID, i.cleanupID)
-			if err != nil {
-				return log.Err(ctx, err, "Replay returned error")
+				err = connection.PrewarmReplay(ctx, i.prerunID, i.cleanupID)
+				if err != nil {
+					return log.Err(ctx, err, "Replay returned error")
+				}
 			}
 		}
 	}

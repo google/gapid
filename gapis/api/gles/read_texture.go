@@ -148,7 +148,7 @@ func (r *ReadGPUTextureDataResolveable) Resolve(ctx context.Context) (interface{
 		Capture: r.Capture,
 	}
 	hints := &service.UsageHints{}
-	res, err := mgr.Replay(ctx, intent, c, textureRequest{r}, API{}, hints)
+	res, err := mgr.Replay(ctx, intent, c, textureRequest{r}, API{}, hints, true)
 	if err != nil {
 		return nil, err
 	}

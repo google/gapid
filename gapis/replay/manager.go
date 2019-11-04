@@ -47,7 +47,8 @@ type Manager interface {
 		cfg Config,
 		req Request,
 		generator Generator,
-		hints *service.UsageHints) (val interface{}, err error)
+		hints *service.UsageHints,
+		forceNonSplitReplay bool) (val interface{}, err error)
 }
 
 // Manager is used discover replay devices and to send replay requests to those
@@ -63,10 +64,11 @@ type manager struct {
 type batchKey struct {
 	// Do not be tempted to turn these IDs into path nodes - go equality will
 	// break and no batches will be formed.
-	capture   id.ID
-	device    id.ID
-	config    Config
-	generator Generator
+	capture             id.ID
+	device              id.ID
+	config              Config
+	generator           Generator
+	forceNonSplitReplay bool
 }
 
 // New returns a new Manager instance using the database db.
@@ -89,7 +91,8 @@ func (m *manager) Replay(
 	cfg Config,
 	req Request,
 	generator Generator,
-	hints *service.UsageHints) (val interface{}, err error) {
+	hints *service.UsageHints,
+	forceNonSplitReplay bool) (val interface{}, err error) {
 
 	ctx = status.Start(ctx, "Replay Request")
 	defer status.Finish(ctx)
@@ -104,14 +107,16 @@ func (m *manager) Replay(
 
 	b := scheduler.Batch{
 		Key: batchKey{
-			capture:   intent.Capture.ID.ID(),
-			device:    intent.Device.ID.ID(),
-			config:    cfg,
-			generator: generator,
+			capture:             intent.Capture.ID.ID(),
+			device:              intent.Device.ID.ID(),
+			config:              cfg,
+			generator:           generator,
+			forceNonSplitReplay: forceNonSplitReplay,
 		},
 		Priority:     defaultPriority,
 		Precondition: defaultBatchDelay,
 	}
+
 	if hints != nil {
 		if hints.Preview {
 			b.Priority = lowPriority

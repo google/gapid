@@ -132,13 +132,15 @@ func (m *exportManager) Replay(
 	cfg Config,
 	req Request,
 	generator Generator,
-	hints *service.UsageHints) (val interface{}, err error) {
+	hints *service.UsageHints,
+	forceNonSplitReplay bool) (val interface{}, err error) {
 
 	key := &batchKey{
-		capture:   intent.Capture.ID.ID(),
-		device:    intent.Device.ID.ID(),
-		config:    cfg,
-		generator: generator,
+		capture:             intent.Capture.ID.ID(),
+		device:              intent.Device.ID.ID(),
+		config:              cfg,
+		generator:           generator,
+		forceNonSplitReplay: forceNonSplitReplay,
 	}
 
 	if m.key == nil {

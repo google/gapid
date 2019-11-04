@@ -1096,7 +1096,7 @@ func (a API) QueryFramebufferAttachment(
 	c := drawConfig{beginIndex, endIndex, subcommand, drawMode, disableReplayOptimization}
 	out := make(chan imgRes, 1)
 	r := framebufferRequest{after: after, width: width, height: height, framebufferIndex: framebufferIndex, attachment: attachment, out: out, displayToSurface: displayToSurface}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1114,7 +1114,7 @@ func (a API) QueryIssues(
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
 	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1135,7 +1135,7 @@ func (a API) QueryTimestamps(
 	c, r := timestampsConfig{}, timestampsRequest{
 		handler:   handler,
 		loopCount: loopCount}
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
 	if err != nil {
 		return err
 	}
@@ -1155,6 +1155,6 @@ func (a API) Profile(
 	c := uniqueConfig()
 	r := profileRequest{overrides}
 
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
 	return err
 }
