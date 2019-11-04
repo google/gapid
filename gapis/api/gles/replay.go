@@ -305,7 +305,7 @@ func (a API) QueryIssues(
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
 	c, r := issuesConfig{}, issuesRequest{}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (a API) QueryFramebufferAttachment(
 		fb:         FramebufferId(framebufferIndex),
 		attachment: attachment,
 	}
-	res, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func (a API) Profile(
 	c := uniqueConfig()
 	r := profileRequest{overrides}
 
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints)
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	return err
 }
 
