@@ -132,6 +132,21 @@ void CallObserver::encode(const ::google::protobuf::Message* cmd) {
   encoder()->object(cmd);
 }
 
+void CallObserver::resume() {
+  if (!mShouldTrace) {
+    // This observer was disabled from the start of the command, nothing to do.
+    return;
+  }
+  mShouldTrace = mSpy->should_trace(mApi);
+  if (!mShouldTrace) {
+    // This branch is taken when this observer was enabled for pre-fence
+    // observations, but a concurrent command terminated the trace while this
+    // command was passed on to the driver. Pop the encoder which was pushed at
+    // creation.
+    mEncoderStack.pop();
+  }
+}
+
 void CallObserver::exit() {
   if (!mShouldTrace) {
     return;

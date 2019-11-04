@@ -244,7 +244,8 @@
           {{end}}
         {{end}}
         {{if (GetAnnotation $ "threadsafe")}}
-        lock(observer);
+        lock();
+        observer->resume();
         {{end}}
 ¶
         {{if IsVoid $.Return.Type}}

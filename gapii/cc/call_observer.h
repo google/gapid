@@ -171,6 +171,11 @@ class CallObserver : public context_t {
   template <typename T, typename = enable_if_encodable<T> >
   inline void encode(const T& obj);
 
+  // resume updates whether the observer should keep on tracing or not. It is
+  // meant to be called when observation of a threadsafe command is resumed
+  // after the actual driver call, and after re-acquiring the Spy lock.
+  void resume();
+
   // exit returns encoding to the group bound before calling enter().
   void exit();
 
