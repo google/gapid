@@ -91,13 +91,14 @@ import org.eclipse.swt.widgets.Text;
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Arrays;
 
 /**
  * Dialogs used for capturing a trace.
@@ -239,6 +240,9 @@ public class TracerDialog {
     protected void buttonPressed(int buttonId) {
       if (buttonId == IDialogConstants.OK_ID) {
         value = traceInput.getTraceRequest(models.settings);
+        if (LOG.isLoggable(Level.FINE)) {
+          LOG.log(Level.FINE, "Trace request: {0}", value.options);
+        }
       }
       super.buttonPressed(buttonId);
     }
@@ -818,7 +822,7 @@ public class TracerDialog {
           int durationMs = duration.getSelection() * 1000;
           // TODO: this isn't really unlimitted.
           durationMs = (durationMs == 0) ? (int)MINUTES.toMillis(10) : durationMs;
-          options.setPerfettoConfig(getConfig(settings, getPerfettoCaps())
+          options.setPerfettoConfig(getConfig(settings, getPerfettoCaps(), traceTarget.getText())
               .setDurationMs(durationMs));
         }
 
