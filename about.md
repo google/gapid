@@ -8,6 +8,10 @@ GAPID is a developer tool for recording and inspecting calls made by an applicat
 
 It is open-source: [https://github.com/google/gapid](https://github.com/google/gapid)
 
+[Download a GAPID release](https://github.com/google/gapid/releases)
+
+Unstable developer releases are also available [here](https://github.com/google/gapid-dev-releases).
+
 <div style="text-align: center;">
     <img src="../images/hero.gif" alt="GAPID image" width="540" height="337">
     <figcaption>Using GAPID to step through each individual draw call of a frame</figcaption>
