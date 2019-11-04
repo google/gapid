@@ -52,6 +52,8 @@ import org.eclipse.swt.widgets.TableItem;
 
 import java.util.Arrays;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import perfetto.protos.PerfettoConfig;
 
@@ -95,6 +97,8 @@ public class TraceConfigDialog extends DialogBase {
       PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CHARGE,
       PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CURRENT,
   };
+
+  private static final Pattern APP_REGEX = Pattern.compile("(?:[^:]*)?:([^/]+)(?:/[^/]+)");
 
   private final Settings settings;
   private final Device.PerfettoCapability caps;
@@ -142,7 +146,7 @@ public class TraceConfigDialog extends DialogBase {
   }
 
   public static PerfettoConfig.TraceConfig.Builder getConfig(
-      Settings settings, Device.PerfettoCapability caps) {
+      Settings settings, Device.PerfettoCapability caps, String traceTarget) {
     PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
 
     if (settings.perfettoCpu) {
@@ -167,6 +171,10 @@ public class TraceConfigDialog extends DialogBase {
       }
       if (settings.perfettoCpuSlices) {
         ftrace.addAllAtraceCategories(Arrays.asList(CPU_SLICES_ATRACE));
+        if (!traceTarget.isEmpty()) {
+          Matcher m = APP_REGEX.matcher(traceTarget);
+          ftrace.addAtraceApps(m.matches() ? m.group(1) : traceTarget);
+        }
       }
     }
 
