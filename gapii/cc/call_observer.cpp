@@ -132,7 +132,7 @@ void CallObserver::encode(const ::google::protobuf::Message* cmd) {
   encoder()->object(cmd);
 }
 
-void CallObserver::reenter() {
+void CallObserver::resume() {
   if (!mShouldTrace) {
     // This observer was disabled from the start of the command, nothing to do.
     return;
