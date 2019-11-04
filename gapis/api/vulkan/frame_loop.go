@@ -461,14 +461,14 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 				out.NotifyPostLoop(ctx)
 
 				// Add conditional jump instruction to break us out of the loop if we are done.
-				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					b.Load(protocol.Type_Int32, f.loopCountPtr)
-					b.Sub(1)
-					b.Clone(0)
-					b.Store(f.loopCountPtr)
-					b.JumpZ(uint32(0x2))
-					return nil
-				}))
+				// stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+				// 	// b.Load(protocol.Type_Int32, f.loopCountPtr)
+				// 	// b.Sub(1)
+				// 	// b.Clone(0)
+				// 	// b.Store(f.loopCountPtr)
+				// 	// b.JumpZ(uint32(0x2))
+				// 	return nil
+				// }))
 
 				// Now we need to emit the instructions to reset the state, before the conditional branch back to the start of the loop.
 				if err := f.resetResources(ctx, stateBuilder); err != nil {
@@ -478,9 +478,13 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 				// Add unconditional jump instruction to bring us back to the start of the loop if we made it past the conditional break.
 				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					b.Push(value.S32(1))
+					// b.Push(value.S32(1))
+					b.Load(protocol.Type_Int32, f.loopCountPtr)
+					b.Sub(1)
+					b.Clone(0)
+					b.Store(f.loopCountPtr)
 					b.JumpNZ(uint32(0x1))
-					b.JumpLabel(uint32(0x2))
+					// b.JumpLabel(uint32(0x2))
 					return nil
 				}))
 			}
