@@ -519,6 +519,8 @@ Interpreter::Result Interpreter::switchThread(uint32_t opcode) {
 }
 
 Interpreter::Result Interpreter::jumpLabel(uint32_t opcode) {
+    auto jump_label = extract26bitData(opcode);
+  GAPID_WARNING("Add jump lable %d, at instruction %d", jump_label, mCurrentInstruction);
   return mStack.isValid() ? SUCCESS : ERROR;
 }
 
@@ -537,6 +539,7 @@ Interpreter::Result Interpreter::jumpNZ(uint32_t opcode) {
         updateJumpTable(jump_id) == false) {
       GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
     }
+    GAPID_WARNING("Jump from %d to %d", mCurrentInstruction, mJumpLabels[jump_id]);
 
     GAPID_WARNING("Jump from %d to %d\n\n\n", mCurrentInstruction,
                   mJumpLabels[jump_id])
@@ -561,6 +564,7 @@ Interpreter::Result Interpreter::jumpZ(uint32_t opcode) {
         updateJumpTable(jump_id) == false) {
       GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
     }
+        GAPID_WARNING("Jump from %d to %d", mCurrentInstruction, mJumpLabels[jump_id]);
 
     mCurrentInstruction = mJumpLabels[jump_id];
   }
