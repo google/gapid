@@ -186,7 +186,7 @@ tools/bin/sdkmanager platform-tools
 
 ```
 sudo apt-get update
-sudo apt-get install mesa-common-dev libncurses5-dev libgl1-mesa-dev
+sudo apt-get install mesa-common-dev libncurses5-dev libgl1-mesa-dev zlib1g-dev
 ```
 
 ### Configure the environment
