@@ -89,6 +89,8 @@ class ReplayService {
     Payload(std::unique_ptr<replay_service::Payload> protoPayload);
 
     ~Payload();
+
+    Payload() = delete;
     Payload(const Payload&) = delete;
     Payload(Payload&&) = delete;
     Payload& operator=(const Payload&) = delete;

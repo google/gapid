@@ -478,6 +478,8 @@ static int replayArchive(core::CrashHandler* crashHandler,
                          gapir::ReplayService* replayArchiveService) {
   std::shared_ptr<MemoryAllocator> allocator = createAllocator();
 
+  const std::string payloadName = "payload";
+
   // The directory consists an archive(resources.{index,data}) and payload.bin.
   MemoryManager memoryManager(allocator);
 
@@ -487,7 +489,11 @@ static int replayArchive(core::CrashHandler* crashHandler,
   std::unique_ptr<Context> context = Context::create(
       replayArchiveService, *crashHandler, resLoader.get(), &memoryManager);
 
-  if (context->initialize("payload")) {
+  if (replayArchiveService->getPayload(payloadName) == NULL) {
+    GAPID_ERROR("Replay payload could not be found.");
+  }
+
+  if (context->initialize(payloadName)) {
     GAPID_DEBUG("Replay context initialized successfully");
   } else {
     GAPID_ERROR("Replay context initialization failed");
