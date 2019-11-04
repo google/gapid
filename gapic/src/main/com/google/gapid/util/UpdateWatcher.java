@@ -32,7 +32,7 @@ import java.util.logging.Logger;
 public class UpdateWatcher {
   private static final Logger LOG = Logger.getLogger(UpdateWatcher.class.getName());
 
-  private static final long CHECK_INTERVAL_MS = TimeUnit.HOURS.toMillis(8);
+  private static final long CHECK_INTERVAL_MS = TimeUnit.HOURS.toMillis(4);
 
   private final Settings settings;
   private final Client client;
