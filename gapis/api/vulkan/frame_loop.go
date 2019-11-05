@@ -1315,6 +1315,13 @@ func (f *frameLoop) detectChangedEvents(ctx context.Context) {
 	}
 }
 
+func (f *frameLoop) waitDeviceIdle(stateBuilder *stateBuilder) {
+	currentState := GetState(stateBuilder.newState)
+	for device := range currentState.Devices().All() {
+		stateBuilder.write(stateBuilder.cb.VkDeviceWaitIdle(device, VkResult_VK_SUCCESS))
+	}
+}
+
 func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	if err := f.backupChangedBuffers(ctx, stateBuilder); err != nil {
@@ -1329,6 +1336,8 @@ func (f *frameLoop) backupChangedResources(ctx context.Context, stateBuilder *st
 
 	// Flush out the backup commands
 	stateBuilder.scratchRes.Free(stateBuilder)
+
+	f.waitDeviceIdle(stateBuilder)
 	return nil
 }
 
@@ -1408,6 +1417,8 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 }
 
 func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
+
+	f.waitDeviceIdle(stateBuilder)
 
 	if err := f.resetInstances(ctx, stateBuilder); err != nil {
 		return err
@@ -1517,6 +1528,9 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 
 	// Flush out the reset commands
 	stateBuilder.scratchRes.Free(stateBuilder)
+
+	f.waitDeviceIdle(stateBuilder)
+
 	return nil
 }
 
