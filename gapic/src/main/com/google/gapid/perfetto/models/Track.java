@@ -22,10 +22,12 @@ import static com.google.gapid.util.Scheduler.EXECUTOR;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.google.common.cache.Cache;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.State;
+import com.google.gapid.util.Caches;
 
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,6 +53,8 @@ public abstract class Track<D extends Track.Data> {
   private static final long ACQUIRE_TIMEOUT_MS = 5;
   private static final long ACQUIRE_RETRY_MS = 10;
   private static final long PAGE_SIZE = 3600;
+
+  private static DataCache cache = new DataCache();
 
   private final String trackId;
 
@@ -96,6 +100,12 @@ public abstract class Track<D extends Track.Data> {
   // on UI Thread
   private void schedule(State state, Runnable repainter) {
     DataRequest request = DataRequest.from(state);
+    D newData = cache.getIfPresent(this, request);
+    if (newData != null) {
+      data = newData;
+      return;
+    }
+
     scheduledRequest.set(request);
     scheduledFuture = EXECUTOR.schedule(
         () -> getData(state, request, repainter), REQUEST_DELAY_MS, MILLISECONDS);
@@ -134,6 +144,7 @@ public abstract class Track<D extends Track.Data> {
 
   // on UI Thread
   private void update(DataRequest req, D newData, Runnable repainter) {
+    cache.put(this, req, newData);
     if (scheduledRequest.compareAndSet(req, null)) {
       data = newData;
       scheduledFuture = null;
@@ -235,6 +246,55 @@ public abstract class Track<D extends Track.Data> {
     public String toString() {
       return "window{start: " + start + ", end: " + end +
           (quantized ? ", " + getNumberOfBuckets() : "") + "}";
+    }
+  }
+
+  private static class DataCache {
+    private final Cache<Key, Object> dataCache = Caches.softCache();
+
+    public DataCache() {
+    }
+
+    @SuppressWarnings("unchecked")
+    public <D extends Track.Data> D getIfPresent(Track<D> track, DataRequest req) {
+      return (D)dataCache.getIfPresent(new Key(track, req));
+    }
+
+    public <D extends Track.Data> void put(Track<D> track, DataRequest req, D data) {
+      dataCache.put(new Key(track, req), data);
+    }
+
+    private static class Key {
+      private final Track<?> track;
+      private final long resolution;
+      private final long start;
+      private final long end;
+      private final int h;
+
+      public Key(Track<?> track, DataRequest req) {
+        this.track = track;
+        this.resolution = req.resolution;
+        this.start = req.range.start;
+        this.end = req.range.end;
+        this.h = ((track.hashCode() * 31 + Long.hashCode(resolution)) * 31 +
+            Long.hashCode(start)) + Long.hashCode(end);
+      }
+
+      @Override
+      public int hashCode() {
+        return h;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)obj;
+        return track == o.track && resolution == o.resolution && start == o.start && end == o.end;
+      }
     }
   }
 }
