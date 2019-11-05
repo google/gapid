@@ -231,6 +231,12 @@ func (t *GGPTracer) SetupTrace(ctx context.Context, o *service.TraceOptions) (tr
 	var p tracer.Process
 
 	if o.Type == service.TraceType_Perfetto {
+		layers := tracer.LayersFromOptions(ctx, o)
+		c, err := loader.SetupLayers(ctx, layers, false, t.b, t.b.Instance().Configuration.ABIs[0], env)
+		if err != nil {
+			cleanup.Invoke(ctx)
+		}
+		cleanup = cleanup.Then(c)
 		p, err = perfetto.Start(ctx, t.b, t.b.Instance().Configuration.ABIs[0], o)
 	}
 
