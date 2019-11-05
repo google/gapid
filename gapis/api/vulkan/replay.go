@@ -715,6 +715,7 @@ type issuesConfig struct {
 type issuesRequest struct {
 	out              chan<- replay.Issue
 	displayToSurface bool
+	loopCount        int32
 }
 
 type timestampsConfig struct {
@@ -855,30 +856,38 @@ func (a API) Replay(
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
 		case issuesRequest:
+			var numInitialCommands int
+			var err error
 			if issues == nil {
-				n, err := expandCommands(false)
+				numInitialCommands, err = expandCommands(false)
 				if err != nil {
 					return err
 				}
-				issues = newFindIssues(ctx, c, n)
+				issues = newFindIssues(ctx, c, numInitialCommands)
 			}
 			issues.AddResult(rr.Result)
 			optimize = false
 			if req.displayToSurface {
 				doDisplayToSurface = true
 			}
+			willLoop := req.loopCount > 1
+			if willLoop {
+				frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), api.CmdID(len(cmds)-1), req.loopCount)
+			}
 		case timestampsRequest:
+			var numInitialCommands int
+			var err error
 			if timestamps == nil {
-				n, err := expandCommands(false)
+				numInitialCommands, err = expandCommands(false)
 				if err != nil {
 					return err
 				}
-				willLoop := req.loopCount > 0
+				willLoop := req.loopCount > 1
 				if willLoop {
-					frameloop = newFrameLoop(ctx, c, 0, api.CmdID(len(cmds)-1), req.loopCount)
+					frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), api.CmdID(len(cmds)-1), req.loopCount)
 				}
 
-				timestamps = newQueryTimestamps(ctx, c, n, cmds, willLoop, req.handler)
+				timestamps = newQueryTimestamps(ctx, c, numInitialCommands, cmds, willLoop, req.handler)
 			}
 			timestamps.AddResult(rr.Result)
 			optimize = false
@@ -989,6 +998,9 @@ func (a API) Replay(
 
 	if issues != nil {
 		transforms.Add(issues) // Issue reporting required.
+		if frameloop != nil {
+			transforms.Add(frameloop)
+		}
 	} else if profile != nil {
 		transforms.Add(profile)
 	} else {
@@ -1110,11 +1122,13 @@ func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	loopCount int32,
 	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
 
-	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface}
+	c, r := issuesConfig{}, issuesRequest{displayToSurface: displayToSurface, loopCount: loopCount}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
+
 	if err != nil {
 		return nil, err
 	}

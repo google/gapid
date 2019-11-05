@@ -33,7 +33,7 @@ import (
 type profileVerb struct{ GetTimestampsFlags }
 
 func init() {
-	verb := &profileVerb{}
+	verb := &profileVerb{GetTimestampsFlags{LoopCount: 1}}
 	app.AddVerb(&app.Verb{
 		Name:      "profile",
 		ShortHelp: "Profile a replay to get the time of executing the commands.",

@@ -487,6 +487,10 @@ static int replayArchive(core::CrashHandler* crashHandler,
   std::unique_ptr<Context> context = Context::create(
       replayArchiveService, *crashHandler, resLoader.get(), &memoryManager);
 
+  if (replayArchiveService->getPayload("payload") == NULL) {
+    GAPID_ERROR("Replay payload could not be found.");
+  }
+
   if (context->initialize("payload")) {
     GAPID_DEBUG("Replay context initialized successfully");
   } else {

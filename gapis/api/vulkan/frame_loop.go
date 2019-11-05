@@ -319,7 +319,8 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out transform.Writer) {
 
 	ctx = log.Enter(ctx, "FrameLoop Transform")
-	log.D(ctx, "FrameLoop: looping from %v to %v.", f.loopStartIdx, f.loopEndIdx)
+	log.D(ctx, "FrameLoop: looping from %v to %v. Current CmdID/CmD = %v/%v", f.loopStartIdx, f.loopEndIdx, cmdId, cmd)
+	log.D(ctx, "f.loopTerminated = %v, f.lastObservedCommand = %v", f.loopTerminated, f.lastObservedCommand)
 
 	// Lets capture and update the last observed frame from f. From this point on use the local lastObservedCommand variable.
 	lastObservedCommand := f.lastObservedCommand
@@ -335,10 +336,10 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 	}
 
 	// Are we before the loop or just at the start of it?
-	if lastObservedCommand == api.CmdNoID {
+	if lastObservedCommand == api.CmdNoID || lastObservedCommand < f.loopStartIdx {
 
 		// This is the start of the loop.
-		if api.CmdID.Real(cmdId) >= f.loopStartIdx {
+		if api.CmdID.Real(cmdId) >= f.loopStartIdx && cmdId != api.CmdNoID {
 
 			log.D(ctx, "FrameLoop: start loop at frame %v, cmdId %v, cmd %v.", f.frameNum, cmdId, cmd)
 
@@ -368,7 +369,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			}
 
 			f.loopTerminated = true
-			log.D(ctx, "FrameLoop: last frame is %v cmdId %v, cmd is %v.", f.frameNum, cmdId, cmd)
+			log.D(ctx, "FrameLoop: end loop at frame %v cmdId %v, cmd is %v.", f.frameNum, cmdId, cmd)
 
 			// Do start loop stuff.
 			{

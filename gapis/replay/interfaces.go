@@ -45,6 +45,7 @@ type QueryIssues interface {
 		ctx context.Context,
 		intent Intent,
 		mgr Manager,
+		loopCount int32,
 		displayToSurface bool,
 		hints *service.UsageHints) ([]Issue, error)
 }

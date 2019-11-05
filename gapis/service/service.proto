@@ -368,6 +368,7 @@ message ExportReplayOptions {
       2;
   GetTimestampsRequest get_timestamps_request = 3;
   bool display_to_surface = 4;
+  int32 LoopCount = 5;
 }
 
 message ExportReplayRequest {
@@ -1280,7 +1281,6 @@ message TraceTypeCapabilities {
 message GetTimestampsRequest {
   path.Capture capture = 1;
   path.Device device = 2;
-  // The number of times to loop the trace.
   int32 LoopCount = 3;
 }
 

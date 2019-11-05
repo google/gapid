@@ -301,8 +301,13 @@ func (a API) QueryIssues(
 	ctx context.Context,
 	intent replay.Intent,
 	mgr replay.Manager,
+	loopCount int32,
 	displayToSurface bool,
 	hints *service.UsageHints) ([]replay.Issue, error) {
+
+	if loopCount != 1 {
+		return nil, log.Errf(ctx, nil, "GLES does not support frame looping")
+	}
 
 	c, r := issuesConfig{}, issuesRequest{}
 	res, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
