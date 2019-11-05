@@ -69,6 +69,9 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   private static final String SLICE_RANGE_SQL =
       "select row_id, ts, dur, cpu, utid, end_state, priority from sched " +
       "where cpu = %d and utid != 0 and ts < %d and ts_end >= %d";
+  private static final String SLICE_RANGE_FOR_THREAD_SQL =
+      "select row_id, ts, dur, cpu, utid, end_state, priority from sched " +
+      "where utid = %d and ts < %d and ts_end >= %d";
 
   private final int cpu;
 
@@ -145,8 +148,21 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     });
   }
 
+  public static ListenableFuture<List<Slice>> getSlicesForThread(QueryEngine qe, long utid,
+      TimeSpan ts) {
+    return transform(qe.query(sliceRangeForThreadSql(utid, ts)), result -> {
+      List<Slice> slices = Lists.newArrayList();
+      result.forEachRow((i, r) -> slices.add(new Slice(r)));
+      return slices;
+    });
+  }
+
   private static String sliceRangeSql(int cpu, TimeSpan ts) {
     return format(SLICE_RANGE_SQL, cpu, ts.end, ts.start);
+  }
+
+  private static String sliceRangeForThreadSql(long utid, TimeSpan ts) {
+    return format(SLICE_RANGE_FOR_THREAD_SQL, utid, ts.end, ts.start);
   }
 
   public static ListenableFuture<List<CpuConfig>> enumerate(

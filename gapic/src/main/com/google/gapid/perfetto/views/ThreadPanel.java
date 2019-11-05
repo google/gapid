@@ -293,6 +293,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
               if (data.schedIds[index] != 0) {
                 state.setSelection(Selection.Kind.Cpu,
                     CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[index]));
+                state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
               } else {
                 state.setSelection(Selection.Kind.ThreadState,
                     new ThreadTrack.StateSlice(data.schedStarts[index],
@@ -378,6 +379,9 @@ public class ThreadPanel extends TrackPanel implements Selectable {
     if (startDepth == 0) {
       builder.add(Selection.Kind.ThreadState,
           transform(track.getStates(state.getQueryEngine(), ts), ThreadTrack.StateSlices::new));
+      builder.add(Selection.Kind.Cpu, transform(
+          CpuTrack.getSlicesForThread(state.getQueryEngine(), track.getThread().utid, ts),
+          r -> new CpuTrack.Slices(state, r)));
     }
 
     startDepth = Math.max(0, startDepth - 1);
