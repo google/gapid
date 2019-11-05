@@ -50,6 +50,7 @@ public abstract class Track<D extends Track.Data> {
   private static final long REQUEST_DELAY_MS = 50;
   private static final long ACQUIRE_TIMEOUT_MS = 5;
   private static final long ACQUIRE_RETRY_MS = 10;
+  private static final long PAGE_SIZE = 3600;
 
   private final String trackId;
 
@@ -172,8 +173,8 @@ public abstract class Track<D extends Track.Data> {
     }
 
     public static DataRequest from(State state) {
-      TimeSpan range = state.getVisibleTime();
-      return new DataRequest(range.expand(range.getDuration()), state.getResolution());
+      long resolution = state.getResolution();
+      return new DataRequest(state.getVisibleTime().align(PAGE_SIZE * resolution), resolution);
     }
 
     public boolean satisfies(State state) {
