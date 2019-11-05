@@ -72,6 +72,12 @@ public class TimeSpan {
     return new TimeSpan(start - deltaStartNs, end + deltaEndNs);
   }
 
+  public TimeSpan align(long page) {
+    long s = (start / page) * page;
+    long e = ((end + page - 1) / page) * page;
+    return new TimeSpan(s, e);
+  }
+
   public TimeSpan move(long deltaNs) {
     return new TimeSpan(start + deltaNs, end + deltaNs);
   }
