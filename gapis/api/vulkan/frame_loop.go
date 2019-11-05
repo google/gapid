@@ -1400,7 +1400,10 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 		log.D(ctx, "Image [%v] changed during loop.", img)
 
 		// Create staging Image which is used to backup the changed images
-		imgObj := apiState.Images().Get(img)
+		imgObj := apiState.Images().Get(img).Clone(apiState.Arena(), api.CloneContext{})
+		usage := VkImageUsageFlags(uint32(imgObj.Info().Usage()) | uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT))
+		imgObj.Info().SetUsage(usage)
+
 		stagingImage, _, err := imgPrimer.CreateSameStagingImage(imgObj)
 
 		if err != nil {
