@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
+import com.google.common.math.DoubleMath;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Perfetto;
@@ -34,6 +35,7 @@ import com.google.gapid.util.Events;
 
 import org.eclipse.swt.widgets.Widget;
 
+import java.math.RoundingMode;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -241,7 +243,7 @@ public class State {
       nanosPerPx = 0;
       resolution = 0;
     } else {
-      resolution = Math.round(Math.pow(10, Math.floor(Math.log10(nanosPerPx))));
+      resolution = 1 << DoubleMath.log2(nanosPerPx, RoundingMode.FLOOR);
     }
   }
 
