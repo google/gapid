@@ -35,8 +35,8 @@ import java.util.Arrays;
 
 public class CounterTrack extends Track<CounterTrack.Data> {
   private static final String VIEW_SQL =
-      "select ts, lead(ts) over (order by ts) - ts dur, value " +
-      "from counter_values where counter_id = %d";
+      "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win value " +
+      "from counter_values where counter_id = %d window win as (order by ts)";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), avg(value) from %s group by quantum_ts";
   private static final String COUNTER_SQL = "select ts, ts + dur, value from %s";
