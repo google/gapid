@@ -17,12 +17,14 @@
 #include "virtual_swapchain.h"
 #include <cassert>
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
 
 namespace {
 
@@ -41,6 +43,8 @@ int32_t FindMemoryType(
 }
 
 void null_callback(void*, uint8_t*, size_t) {}
+
+constexpr char kImageDumpPathEnv[] = "IMAGE_DUMP_PATH";
 }  // namespace
 
 namespace swapchain {
@@ -63,6 +67,7 @@ VirtualSwapchain::VirtualSwapchain(
       device_(device),
       should_close_(false),
       callback_(null_callback),
+      callback_user_data_(nullptr),
       queue_(queue),
       functions_(functions),
       pending_image_timeout_in_milliseconds_(
@@ -267,6 +272,12 @@ VirtualSwapchain::VirtualSwapchain(
                  },
                  this);
 #endif
+  const char* const image_dump_dir = std::getenv(kImageDumpPathEnv);
+  if (image_dump_dir != nullptr) {
+    image_dump_dir_ = std::string(image_dump_dir);
+    std::cout << "Swapchain images will be dumped to " << image_dump_dir_
+              << std::endl;
+  }
 }
 
 void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
@@ -292,6 +303,64 @@ void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
   }
 
   functions_->vkDestroyCommandPool(device_, command_pool_, pAllocator);
+}
+
+void VirtualSwapchain::DumpImageToFile(uint8_t* image_data, size_t size) {
+  std::unique_ptr<char[]> image_data_owned(new char[size]());
+  memcpy(image_data_owned.get(), image_data, size);
+
+  auto now = std::chrono::system_clock::now().time_since_epoch().count();
+  auto image_path = image_dump_dir_ + "/image_" +
+                    std::to_string(dumped_frame_count_++) + "_ts_" +
+                    std::to_string(now) + ".ppm";
+
+  auto ppm_writer = [](std::unique_ptr<char[]> image_data, size_t size,
+                       std::string file_name, uint32_t width, uint32_t height,
+                       VkFormat image_format) {
+    std::ofstream out(file_name, std::ios::out | std::ios::binary);
+    if (!out) {
+      std::cout << "Create file " << file_name << " failed." << std::endl;
+      return;
+    }
+    auto data = image_data.get();
+    out << "P6\n" << width << "\n" << height << "\n" << 255 << "\n";
+    switch (image_format) {
+      case VK_FORMAT_B8G8R8A8_UNORM:
+      case VK_FORMAT_B8G8R8A8_UINT:
+        for (uint32_t y = 0; y < height; y++) {
+          uint32_t* row = (uint32_t*)data;
+          for (uint32_t x = 0; x < width; x++) {
+            out.write((char*)row + 2, 1);
+            out.write((char*)row + 1, 1);
+            out.write((char*)row, 1);
+            row++;
+          }
+          data += width * 4;
+        }
+        break;
+      case VK_FORMAT_R8G8B8A8_UNORM:
+      case VK_FORMAT_R8G8B8A8_UINT:
+        for (uint32_t y = 0; y < height; y++) {
+          uint32_t* row = (uint32_t*)data;
+          for (uint32_t x = 0; x < width; x++) {
+            out.write((char*)row, 3);
+            row++;
+          }
+          data += width * 4;
+        }
+        break;
+      default:
+        std::cout << "Format " << image_format
+                  << " not supported for dump yet.";
+        break;
+    }
+    out.close();
+  };
+
+  std::thread file_writer(ppm_writer, std::move(image_data_owned), size,
+                          std::move(image_path), width_, height_,
+                          swapchain_info_.imageFormat);
+  file_writer.detach();
 }
 
 void VirtualSwapchain::CopyThreadFunc() {
@@ -336,7 +405,13 @@ void VirtualSwapchain::CopyThreadFunc() {
     functions_->vkInvalidateMappedMemoryRanges(device_, 1, &range);
 
     uint32_t length = ImageByteSize();
-    { callback_(callback_user_data_, (uint8_t*)mapped_value, length); }
+    {
+      callback_(callback_user_data_, (uint8_t*)mapped_value, length);
+      if (image_dump_dir_ != "") {
+        DumpImageToFile((uint8_t*)mapped_value, length);
+      }
+    }
+
     functions_->vkUnmapMemory(device_,
                               image_data_[pending_image].buffer_memory_);
     {
