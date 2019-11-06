@@ -95,6 +95,7 @@ import "extensions/khr_draw_indirect_count.api"
 import "extensions/khr_image_format_list.api"
 import "extensions/ext_scalar_block_layout.api"
 import "extensions/ext_hdr_metadata.api"
+import "extensions/khr_descriptor_update_template.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -247,6 +248,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_EXT_pipeline_creation_feedback"] = true
   supported.ExtensionNames["VK_EXT_scalar_block_layout"] = true
   supported.ExtensionNames["VK_EXT_hdr_metadata"] = true
+  supported.ExtensionNames["VK_KHR_descriptor_update_template"] = true
   return supported
 }
 
@@ -384,6 +386,7 @@ enum LastSubmissionType {
 @handleMap @serialize map!(VkDebugReportCallbackEXT, ref!DebugReportCallbackObject) DebugReportCallbacks
 // Vulkan 1.1 core
 @handleMap @serialize map!(VkSamplerYcbcrConversion, ref!SamplerYcbcrConversionObject) SamplerYcbcrConversions
+@handleMap @serialize map!(VkDescriptorUpdateTemplate, ref!DescriptorUpdateTemplateObject) DescriptorUpdateTemplates
 // Other state Tracking
 @hidden @serialize map!(VkDevice, VkMemoryRequirements) TransferBufferMemoryRequirements
 @serialize @untracked ref!QueueObject                   LastBoundQueue
