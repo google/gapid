@@ -2086,7 +2086,9 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	queue := getQueueForPriming(stateBuilder, srcImg, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
 
 	queueHandler := stateBuilder.scratchRes.GetQueueCommandHandler(stateBuilder, queue.VulkanHandle())
-	preCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(srcImg.Info().InitialLayout()), useSpecifiedLayout(ipHostCopyImageLayout))
+	srcPreCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, srcImg, sameLayoutsOfImage(srcImg), useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL))
+	dstPreCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, sameLayoutsOfImage(dstImg), useSpecifiedLayout(ipHostCopyImageLayout))
+	preCopyBarriers := append(srcPreCopyBarriers, dstPreCopyBarriers...)
 
 	if err = ipRecordImageMemoryBarriers(stateBuilder, queueHandler, preCopyBarriers...); err != nil {
 		return log.Err(ctx, err, "Failed at pre device copy image layout transition")
@@ -2098,7 +2100,9 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 		return log.Err(ctx, err, "Failed at commit buffer image copy commands")
 	}
 
-	postCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(ipHostCopyImageLayout), sameLayoutsOfImage(dstImg))
+	dstPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(ipHostCopyImageLayout), sameLayoutsOfImage(dstImg))
+	srcPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, srcImg, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), sameLayoutsOfImage(dstImg))
+	postCopyBarriers := append(dstPostCopyBarriers, srcPostCopyBarriers...)
 	if err = ipRecordImageMemoryBarriers(stateBuilder, queueHandler, postCopyBarriers...); err != nil {
 		return log.Err(ctx, err, "Failed at post device copy image layout transition")
 	}
