@@ -18,7 +18,7 @@ Windows Build Script.
 :start
 
 REM Get date in YYYYMMDD format
-for /f "tokens=1,2,3 delims=/ " %%a in ('date /t') do set devdate=%%c%%b%%a
+for /f "tokens=1,2,3,4 delims=/ " %%a in ('date /t') do set devdate=%%d%%b%%c
 
 set DEV_PREFIX=dev-%devdate%-
 
