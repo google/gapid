@@ -26,6 +26,8 @@
 #include <string>
 #include <thread>
 
+#include "lodepng.h"
+
 namespace {
 
 // Determines what heap memory should be allocated from, given
@@ -44,7 +46,40 @@ int32_t FindMemoryType(
 
 void null_callback(void*, uint8_t*, size_t) {}
 
-constexpr char kImageDumpPathEnv[] = "IMAGE_DUMP_PATH";
+const char* kImageDumpPathEnv = "IMAGE_DUMP_PATH";
+
+void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
+                  std::string file_name, uint32_t width, uint32_t height,
+                  VkFormat image_format) {
+  auto data = image_data.get();
+
+  switch (image_format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UINT:
+      for (uint32_t y = 0; y < height; y++) {
+        uint32_t* row = (uint32_t*)data;
+        for (uint32_t x = 0; x < width; x++) {
+          uint8_t* bgra = (uint8_t*)row;
+          uint8_t b = *bgra;
+          *bgra = *(bgra + 2);
+          *(bgra + 2) = b;
+          row++;
+        }
+        data += width * 4;
+      }
+      // fall through
+
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_UINT:
+      data = image_data.get();
+      ::lodepng::encode(file_name.c_str(), data, width, height, LCT_RGBA, 8);
+      break;
+
+    default:
+      break;
+  }
+}
+
 }  // namespace
 
 namespace swapchain {
@@ -275,8 +310,6 @@ VirtualSwapchain::VirtualSwapchain(
   const char* const image_dump_dir = std::getenv(kImageDumpPathEnv);
   if (image_dump_dir != nullptr) {
     image_dump_dir_ = std::string(image_dump_dir);
-    std::cout << "Swapchain images will be dumped to " << image_dump_dir_
-              << std::endl;
   }
 }
 
@@ -306,59 +339,16 @@ void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
 }
 
 void VirtualSwapchain::DumpImageToFile(uint8_t* image_data, size_t size) {
-  std::unique_ptr<char[]> image_data_owned(new char[size]());
+  std::unique_ptr<uint8_t[]> image_data_owned(new uint8_t[size]());
   memcpy(image_data_owned.get(), image_data, size);
 
   auto now = std::chrono::system_clock::now().time_since_epoch().count();
   auto image_path = image_dump_dir_ + "/image_" +
                     std::to_string(dumped_frame_count_++) + "_ts_" +
-                    std::to_string(now) + ".ppm";
+                    std::to_string(now) + ".png";
 
-  auto ppm_writer = [](std::unique_ptr<char[]> image_data, size_t size,
-                       std::string file_name, uint32_t width, uint32_t height,
-                       VkFormat image_format) {
-    std::ofstream out(file_name, std::ios::out | std::ios::binary);
-    if (!out) {
-      std::cout << "Create file " << file_name << " failed." << std::endl;
-      return;
-    }
-    auto data = image_data.get();
-    out << "P6\n" << width << "\n" << height << "\n" << 255 << "\n";
-    switch (image_format) {
-      case VK_FORMAT_B8G8R8A8_UNORM:
-      case VK_FORMAT_B8G8R8A8_UINT:
-        for (uint32_t y = 0; y < height; y++) {
-          uint32_t* row = (uint32_t*)data;
-          for (uint32_t x = 0; x < width; x++) {
-            out.write((char*)row + 2, 1);
-            out.write((char*)row + 1, 1);
-            out.write((char*)row, 1);
-            row++;
-          }
-          data += width * 4;
-        }
-        break;
-      case VK_FORMAT_R8G8B8A8_UNORM:
-      case VK_FORMAT_R8G8B8A8_UINT:
-        for (uint32_t y = 0; y < height; y++) {
-          uint32_t* row = (uint32_t*)data;
-          for (uint32_t x = 0; x < width; x++) {
-            out.write((char*)row, 3);
-            row++;
-          }
-          data += width * 4;
-        }
-        break;
-      default:
-        std::cout << "Format " << image_format
-                  << " not supported for dump yet.";
-        break;
-    }
-    out.close();
-  };
-
-  std::thread file_writer(ppm_writer, std::move(image_data_owned), size,
-                          std::move(image_path), width_, height_,
+  std::thread file_writer(WritePngFile, std::move(image_data_owned), size,
+                          image_path, width_, height_,
                           swapchain_info_.imageFormat);
   file_writer.detach();
 }
