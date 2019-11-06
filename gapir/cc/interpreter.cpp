@@ -538,7 +538,12 @@ Interpreter::Result Interpreter::jumpNZ(uint32_t opcode) {
       GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
     }
 
-    mCurrentInstruction = mJumpLabels[jump_id];
+    GAPID_VERBOSE("JUMP TAKEN");
+    // The -1 on the following line is present because the program counter
+    // is going to step forwards after this instruction is complete.
+    mCurrentInstruction = mJumpLabels[jump_id] - 1;
+  } else {
+    GAPID_VERBOSE("JUMP NOT TAKEN");
   }
 
   return mStack.isValid() ? SUCCESS : ERROR;
@@ -560,7 +565,12 @@ Interpreter::Result Interpreter::jumpZ(uint32_t opcode) {
       GAPID_WARNING("Error: unknown jumpLabel %i", jump_id);
     }
 
-    mCurrentInstruction = mJumpLabels[jump_id];
+    GAPID_VERBOSE("JUMP TAKEN");
+    // The -1 on the following line is present because the program counter
+    // is going to step forwards after this instruction is complete.
+    mCurrentInstruction = mJumpLabels[jump_id] - 1;
+  } else {
+    GAPID_VERBOSE("JUMP NOT TAKEN");
   }
 
   return mStack.isValid() ? SUCCESS : ERROR;
