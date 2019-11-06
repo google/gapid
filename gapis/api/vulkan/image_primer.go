@@ -317,7 +317,9 @@ func ipImageLayoutTransitionBarriers(sb *stateBuilder, imgObj ImageObjectʳ, old
 	barriers := []VkImageMemoryBarrier{}
 	walkImageSubresourceRange(sb, imgObj, sb.imageWholeSubresourceRange(imgObj),
 		func(aspect VkImageAspectFlagBits, layer, level uint32, unused byteSizeAndExtent) {
-			if newLayouts.layoutOf(aspect, layer, level) == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || newLayouts.layoutOf(aspect, layer, level) == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED {
+			oldLayout := oldLayouts.layoutOf(aspect, layer, level)
+			newLayout := newLayouts.layoutOf(aspect, layer, level)
+			if newLayout == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || newLayout == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED || oldLayout == newLayout {
 				return
 			}
 			barriers = append(barriers, ipImageSubresourceLayoutTransitionBarrier(
@@ -326,8 +328,8 @@ func ipImageLayoutTransitionBarriers(sb *stateBuilder, imgObj ImageObjectʳ, old
 				aspect,
 				layer,
 				level,
-				oldLayouts.layoutOf(aspect, layer, level),
-				newLayouts.layoutOf(aspect, layer, level),
+				oldLayout,
+				newLayout,
 			))
 		})
 	return barriers
