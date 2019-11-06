@@ -44,6 +44,31 @@ public interface Selection<Key> {
   public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
 
+  @SuppressWarnings("rawtypes")
+  public static final Selection EMPTY_SELECTION = new EmptySelection<>();
+
+  @SuppressWarnings("unchecked")
+  public static <K> Selection<K> emptySelection() {
+      return EMPTY_SELECTION;
+  }
+
+  public static class EmptySelection<K> implements Selection<K> {
+    @Override
+    public String getTitle() {
+      return "";
+    }
+
+    @Override
+    public boolean contains(K key) {
+      return false;
+    }
+
+    @Override
+    public Composite buildUi(Composite parent, State state) {
+      return new Composite(parent, SWT.NONE);
+    }
+  }
+
   public static class MultiSelection {
     private final NavigableMap<Kind<?>, Selection<?>> selections;
 
@@ -64,8 +89,10 @@ public interface Selection<Key> {
       }
     }
 
+    @SuppressWarnings("unchecked")
     public <Key> Selection<Key> getSelection(Kind<Key> type) {
-      return selections.containsKey(type) ? (Selection<Key>) selections.get(type) :type.EmptySelection();
+      return selections.containsKey(type) ?
+          (Selection<Key>) selections.get(type) : Selection.emptySelection();
     }
 
     public void markTime(State state) {
@@ -116,41 +143,23 @@ public interface Selection<Key> {
     }
   }
 
+  @SuppressWarnings("unused")
   public static class Kind<Key> implements Comparable<Kind<?>>{
+    public static final Kind<Slice.Key> Thread = new Kind<Slice.Key>(0);
+    public static final Kind<StateSlice.Key> ThreadState = new Kind<StateSlice.Key>(1);
+    public static final Kind<Long> Cpu = new Kind<Long>(2);
+    public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
+    public static final Kind<Long> Counter = new Kind<Long>(4);
+
     public int priority;
 
     public Kind(int priority) {
       this.priority = priority;
     }
 
-    public Selection<Key> EmptySelection() {
-      return new Selection<Key>() {
-        @Override
-        public String getTitle() {
-          return "";
-        }
-
-        @Override
-        public boolean contains(Key key) {
-          return false;
-        }
-
-        @Override
-        public Composite buildUi(Composite parent, State state) {
-          return new Composite(parent, SWT.NONE);
-        }
-      };
-    }
-
     @Override
     public int compareTo(Kind<?> other) {
       return this.priority - other.priority;
     }
-
-    public static final Kind<Slice.Key> Thread = new Kind<Slice.Key>(0);
-    public static final Kind<StateSlice.Key> ThreadState = new Kind<StateSlice.Key>(1);
-    public static final Kind<Long> Cpu = new Kind<Long>(2);
-    public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
-    public static final Kind<Long> Counter = new Kind<Long>(4);
   }
 }

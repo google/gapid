@@ -53,6 +53,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
   private static final double MERGE_SLICE_THRESHOLD = 1;
   private static final double MERGE_GAP_THRESHOLD = 2;
   private static final double MERGE_STATE_RATIO = 3;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 2;
 
   protected final ThreadTrack track;
   private boolean expanded;
@@ -220,7 +221,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
       for (int index : visibleSelectedSched) {
         double rectStart = state.timeToPx(data.schedStarts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.schedEnds[index]) - rectStart);
-        ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, 2);
+        ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
       for (int index : visibleSelectedExpanded) {
         double rectStart = state.timeToPx(data.slices.starts[index]);
@@ -265,6 +266,7 @@ public class ThreadPanel extends TrackPanel implements Selectable {
     if (depth == 0) {
       for (int i = 0; i < data.schedStarts.length; i++) {
         if (data.schedStarts[i] <= t && t <= data.schedEnds[i]) {
+          int index = i;
           hoveredTitle = data.schedStates[i].label;
           hoveredCategory = "";
           hoveredSize = m.measure(Fonts.Style.Normal, hoveredTitle);
@@ -284,6 +286,20 @@ public class ThreadPanel extends TrackPanel implements Selectable {
             @Override
             public void stop() {
               hoveredTitle = null;
+            }
+
+            @Override
+            public boolean click() {
+              if (data.schedIds[index] != 0) {
+                state.setSelection(Selection.Kind.Cpu,
+                    CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[index]));
+              } else {
+                state.setSelection(Selection.Kind.ThreadState,
+                    new ThreadTrack.StateSlice(data.schedStarts[index],
+                        data.schedEnds[index] - data.schedStarts[index], track.getThread().utid,
+                        data.schedStates[index]));
+              }
+              return true;
             }
           };
         }
@@ -326,50 +342,20 @@ public class ThreadPanel extends TrackPanel implements Selectable {
             public Cursor getCursor(Display display) {
               return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
             }
+
+            @Override
+            public boolean click() {
+              if (id >= 0) {
+                state.setSelection(Selection.Kind.Thread,
+                    track.getSlice(state.getQueryEngine(), id));
+              }
+              return true;
+            }
           };
         }
       }
     }
     return Hover.NONE;
-  }
-
-  @Override
-  protected boolean onTrackMouseClick(double x, double y) {
-    ThreadTrack.Data data = track.getData(state, () -> { /* nothing */ });
-    int depth = (int)(y / SLICE_HEIGHT);
-    if (data == null || depth < 0 || depth > track.getThread().maxDepth) {
-      return state.resetSelections();
-    }
-
-    long t = state.pxToTime(x);
-    if (depth == 0) {
-      for (int i = 0; i < data.schedStarts.length; i++) {
-        if (data.schedStarts[i] <= t && t <= data.schedEnds[i]) {
-          if (data.schedIds[i] != 0) {
-            state.setSelection(Selection.Kind.Cpu,
-                CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[i]));
-          } else {
-            state.setSelection(Selection.Kind.ThreadState,
-                new ThreadTrack.StateSlice(data.schedStarts[i],
-                    data.schedEnds[i] - data.schedStarts[i], track.getThread().utid,
-                    data.schedStates[i]));
-          }
-          return true;
-        }
-      }
-    } else if (expanded) {
-      depth--;
-      SliceTrack.Data slices = data.slices;
-      for (int i = 0; i < slices.starts.length; i++) {
-        if (slices.depths[i] == depth && slices.starts[i] <= t && t <= slices.ends[i]
-            && slices.ids[i] >= 0) {
-          state.setSelection(Selection.Kind.Thread,
-              track.getSlice(state.getQueryEngine(), slices.ids[i]));
-          return true;
-        }
-      }
-    }
-    return state.resetSelections();
   }
 
   @Override

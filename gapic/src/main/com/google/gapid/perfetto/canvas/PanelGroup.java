@@ -111,15 +111,6 @@ public class PanelGroup extends Panel.Base {
     return child.panel.onMouseMove(m, x, y - child.y).translated(0, child.y);
   }
 
-  @Override
-  public boolean onClick(Fonts.TextMeasurer m, double x, double y) {
-    Child child = findPanel(y);
-    if (child != null) {
-      return child.panel.onClick(m, x, y - child.y);
-    }
-    return false;
-  }
-
   private int findPanelIdx(double y) {
     int first = Collections.binarySearch(panels, null, (c1, ign) -> {
       if (c1.visible) {

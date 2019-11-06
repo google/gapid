@@ -54,9 +54,7 @@ public class SelectionView extends Composite implements State.Listener {
       c.dispose();
     }
 
-    if (selection == null) {
-      new Composite(group, SWT.NONE).requestLayout();
-    } else {
+    if (selection != null) {
       selection.buildUi(group, state).requestLayout();
     }
   }

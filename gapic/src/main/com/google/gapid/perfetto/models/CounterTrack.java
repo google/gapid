@@ -34,7 +34,6 @@ import org.eclipse.swt.widgets.Composite;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 public class CounterTrack extends Track<CounterTrack.Data> {
@@ -151,7 +150,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
       this.ts = data.ts;
       this.names = new String[] { name };
       this.values = new double[][] { data.values };
-      this.valueKeys.addAll(LongStream.of(ts).boxed().collect(Collectors.toList()));
+      LongStream.of(ts).boxed().forEach(this.valueKeys::add);
     }
 
     private Values(long[] ts, String[] names, double[][] values) {

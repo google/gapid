@@ -97,15 +97,15 @@ public class ThreadInfo {
   }
 
   public static StyleConstants.HSL getColor(State state, long utid) {
-    ThreadInfo threadInfo = state.getThreadInfo(utid);
-    StyleConstants.HSL baseColor = StyleConstants.colorForThread(threadInfo);
+    ThreadInfo selected = state.getSelectedThread();
+    ThreadInfo queried = state.getThreadInfo(utid);
+    StyleConstants.HSL baseColor = StyleConstants.colorForThread(queried);
 
-    long upid = threadInfo.upid;
-    if (state.getSelectedUpid() == -1 || state.getSelectedUtid() == -1) {
+    if (selected == null) {
       return baseColor;
-    } else if (utid == state.getSelectedUtid()) {
+    } else if (queried.utid == selected.utid) {
       return baseColor;
-    } else if (upid == state.getSelectedUpid()) {
+    } else if (queried.upid == selected.upid) {
       return baseColor.adjusted(baseColor.h, baseColor.s - 20, Math.min(baseColor.l + 20,  60));
     } else {
       return StyleConstants.getGrayColor();

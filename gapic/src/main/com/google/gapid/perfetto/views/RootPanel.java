@@ -311,8 +311,8 @@ public class RootPanel extends Panel.Base implements State.Listener {
 
     Selection.CombiningBuilder builder = new Selection.CombiningBuilder();
     visit(Visitor.of(Selectable.class, (s, a) -> s.computeSelection(builder, a, ts)), selection);
-    state.setSelection(builder.build());
     selection = Area.NONE;
+    state.setSelection(builder.build());
   }
 
   @Override
@@ -323,27 +323,17 @@ public class RootPanel extends Panel.Base implements State.Listener {
       result = bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
           .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
     }
-    return result;
-  }
-
-  @Override
-  public boolean onClick(Fonts.TextMeasurer m, double x, double y) {
-    boolean shouldRedraw = false;
-    if (x >= LABEL_WIDTH) {
-      // Reset and re-evaluate selections each single mouse click, to allow easy de-selection.
-      shouldRedraw |= state.resetSelections();
-      // Handle time range highlight de-selection.
+    if (x >= LABEL_WIDTH && y >= topHeight && result == Hover.NONE) {
+      result = result.withClick(() -> state.resetSelections());
+    }
+    return (x >= LABEL_WIDTH) ? result.withClick(() -> {
       TimeSpan highlight = state.getHighlight();
       if (!highlight.isEmpty() && !highlight.contains(state.pxToTime(x - LABEL_WIDTH))) {
         state.setHighlight(TimeSpan.ZERO);
-        shouldRedraw = true;
+        return true;
       }
-    }
-    double topHeight = top.getPreferredHeight();
-    if (y >= topHeight) {
-      shouldRedraw |= bottom.onClick(m, x, y - topHeight + state.getScrollOffset());
-    }
-    return shouldRedraw;
+      return false;
+    }) : result;
   }
 
   public void setMouseMode(MouseMode mode) {

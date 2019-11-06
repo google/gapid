@@ -45,6 +45,7 @@ public class ProcessSummaryPanel extends TrackPanel {
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 1;
 
   private final ProcessSummaryTrack track;
   protected double mouseXpos;
@@ -170,7 +171,7 @@ public class ProcessSummaryPanel extends TrackPanel {
       double rectStart = state.timeToPx(data.starts[index]);
       double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
       double cpu = data.cpus[index];
-      ctx.drawRect(rectStart, cpuH * cpu + cpu, rectWidth, cpuH, 1);
+      ctx.drawRect(rectStart, cpuH * cpu + cpu, rectWidth, cpuH, BOUNDING_BOX_LINE_WIDTH);
     }
 
     if (hoveredThread != null) {
@@ -201,28 +202,6 @@ public class ProcessSummaryPanel extends TrackPanel {
     }
   }
 
-  @Override
-  protected boolean onTrackMouseClick(double x, double y) {
-    ProcessSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
-    if (data == null || data.kind != ProcessSummaryTrack.Data.Kind.slice) {
-      return state.resetSelections();
-    }
-    int cpu = (int)(y * state.getData().numCpus / HEIGHT);
-    if (cpu < 0 || cpu >= state.getData().numCpus) {
-      return state.resetSelections();
-    }
-
-    long t = state.pxToTime(x);
-    for (int i = 0; i < data.starts.length; i++) {
-      if (data.cpus[i] == cpu && data.starts[i] <= t && t <= data.ends[i]) {
-        state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), data.ids[i]));
-        state.setSelectedCpuSliceIds(data.utids[i]);
-        return true;
-      }
-    }
-    return state.resetSelections();
-  }
-
   private Hover sliceHover(
       ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
     int cpu = (int)(y * state.getData().numCpus / HEIGHT);
@@ -241,6 +220,8 @@ public class ProcessSummaryPanel extends TrackPanel {
         hoveredWidth = Math.max(
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
+        long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -257,6 +238,13 @@ public class ProcessSummaryPanel extends TrackPanel {
           @Override
           public Cursor getCursor(Display display) {
             return display.getSystemCursor(SWT.CURSOR_HAND);
+          }
+
+          @Override
+          public boolean click() {
+            state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelectedThread(state.getThreadInfo(utid));
+            return true;
           }
         };
       }

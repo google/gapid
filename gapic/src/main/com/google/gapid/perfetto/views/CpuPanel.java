@@ -49,6 +49,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final CpuTrack track;
   private final float hue;
@@ -173,7 +174,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
     for (int index : visibleSelected) {
       double rectStart = state.timeToPx(data.starts[index]);
       double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
-      ctx.drawRect(rectStart, 0, rectWidth, h, 3);
+      ctx.drawRect(rectStart, 0, rectWidth, h, BOUNDING_BOX_LINE_WIDTH);
     }
 
     if (hoveredThread != null) {
@@ -216,6 +217,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
         hoveredWidth = Math.max(
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
+        long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -232,6 +235,13 @@ public class CpuPanel extends TrackPanel implements Selectable {
           @Override
           public Cursor getCursor(Display display) {
             return display.getSystemCursor(SWT.CURSOR_HAND);
+          }
+
+          @Override
+          public boolean click() {
+            state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelectedThread(state.getThreadInfo(utid));
+            return true;
           }
         };
       }
@@ -266,24 +276,6 @@ public class CpuPanel extends TrackPanel implements Selectable {
         hovered = null;
       }
     };
-  }
-
-  @Override
-  protected boolean onTrackMouseClick(double x, double y) {
-    CpuTrack.Data data = track.getData(state, () -> { /* nothing */ });
-    if (data == null || data.kind != CpuTrack.Data.Kind.slice) {
-      return state.resetSelections();
-    }
-
-    long t = state.pxToTime(x);
-    for (int i = 0; i < data.starts.length; i++) {
-      if (data.starts[i] <= t && t <= data.ends[i]) {
-        state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), data.ids[i]));
-        state.setSelectedCpuSliceIds(data.utids[i]);
-        return true;
-      }
-    }
-    return state.resetSelections();
   }
 
   @Override

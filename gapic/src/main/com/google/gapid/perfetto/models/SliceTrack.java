@@ -240,12 +240,12 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public final long dur;
     public final String category;
     public final String name;
-    public final long depth;
+    public final int depth;
     public final long stackId;
     public final long parentId;
     public final ArgSet args;
 
-    public Slice(long time, long dur, String category, String name, long depth, long stackId,
+    public Slice(long time, long dur, String category, String name, int depth, long stackId,
         long parentId, ArgSet args) {
       this.time = time;
       this.dur = dur;
@@ -258,7 +258,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     }
 
     public Slice(QueryEngine.Row row, ArgSet args) {
-      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getLong(5),
+      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getInt(5),
           row.getLong(6), row.getLong(7), args);
     }
 
@@ -293,9 +293,9 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public static class Key {
       public final long time;
       public final long dur;
-      public final long depth;
+      public final int depth;
 
-      public Key(long time, long dur, long depth) {
+      public Key(long time, long dur, int depth) {
         this.time = time;
         this.dur = dur;
         this.depth = depth;
@@ -322,7 +322,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
 
       @Override
       public int hashCode() {
-        return Long.hashCode(time ^ dur ^ depth);
+        return Long.hashCode(time ^ dur) ^ Integer.hashCode(depth);
       }
     }
 

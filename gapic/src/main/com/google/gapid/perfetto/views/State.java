@@ -57,8 +57,7 @@ public class State {
   private long resolution;
   private Selection.MultiSelection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
-  private long selectedUpid = -1;   // For a selected CPU slice.
-  private long selectedUtid = -1;   // For a selected CPU slice.
+  private ThreadInfo selectedThread;
   private TimeSpan highlight = TimeSpan.ZERO;
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
@@ -69,14 +68,14 @@ public class State {
     this.visibleTime = TimeSpan.ZERO;
     this.width = 0;
     this.selection = null;
+    this.selectedThread = null;
   }
 
   public void update(Perfetto.Data newData) {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.selection = null;
-    this.selectedUpid = -1;
-    this.selectedUtid = -1;
+    this.selectedThread = null;
     this.highlight = TimeSpan.ZERO;
     update();
     listeners.fire().onDataChanged();
@@ -140,22 +139,14 @@ public class State {
 
   public <T> Selection<T> getSelection(Selection.Kind<T> type) {
     if (selection == null) {
-      return type.EmptySelection();
+      return Selection.emptySelection();
     } else {
       return selection.getSelection(type);
     }
   }
 
-  public long getSelectedUpid() {
-    return selectedUpid;
-  }
-
-  public long getSelectedUtid() {
-    return selectedUtid;
-  }
-
-  public boolean shouldChangeCpuSlicesColor(long oldCpuUtid) {
-    return oldCpuUtid != getSelectedUtid();
+  public ThreadInfo getSelectedThread() {
+    return selectedThread;
   }
 
   public TimeSpan getHighlight() {
@@ -215,10 +206,9 @@ public class State {
 
   /* Return true if selection state changed. */
   public boolean resetSelections() {
-    boolean hasDeselection = selection != null || selectedUtid != -1;
+    boolean hasDeselection = selection != null || selectedThread != null;
     setSelection((Selection.MultiSelection)null);
-    this.selectedUpid = -1;
-    this.selectedUtid = -1;
+    selectedThread = null;
     return hasDeselection;
   }
 
@@ -250,10 +240,8 @@ public class State {
     listeners.fire().onSelectionChanged(selection);
   }
 
-  public void setSelectedCpuSliceIds(long utid) {
-    this.selectedUtid = utid;
-    ThreadInfo ti = getThreadInfo(utid);
-    this.selectedUpid = ti == null ? -1 : ti.upid;
+  public void setSelectedThread(ThreadInfo threadInfo) {
+    this.selectedThread = threadInfo;
   }
 
   public void setHighlight(TimeSpan highlight) {

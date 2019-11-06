@@ -84,10 +84,8 @@ public class PanelCanvas extends Canvas {
         redraw(dragger.onDragEnd(e.x, e.y), false);
         dragger = Panel.Dragger.NONE;
         updateMousePosition(e.x, e.y, 0, false, true);
-      } else {
-        if (panel.onClick(context, e.x, e.y)) {
-          structureHasChanged();
-        }
+      } else if (hover.click()){
+        structureHasChanged();
       }
     });
     addListener(SWT.MouseExit, e -> {

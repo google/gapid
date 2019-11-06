@@ -48,6 +48,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   private static final double SLICE_HEIGHT = 25 - 2 * TRACK_MARGIN;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final GpuInfo.Queue queue;
   protected final SliceTrack track;
@@ -127,7 +128,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         double rectStart = state.timeToPx(data.starts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
         double depth = data.depths[index];
-        ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, 3);
+        ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
       if (hoveredTitle != null) {
@@ -204,28 +205,19 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
           public Cursor getCursor(Display display) {
             return (id < 0) ? null : display.getSystemCursor(SWT.CURSOR_HAND);
           }
+
+          @Override
+          public boolean click() {
+            if (id >= 0) {
+              state.setSelection(Selection.Kind.Gpu, track.getSlice(state.getQueryEngine(), id));
+              return true;
+            }
+            return false;
+          }
         };
       }
     }
     return Hover.NONE;
-  }
-
-  @Override
-  protected boolean onTrackMouseClick(double x, double y) {
-    SliceTrack.Data data = track.getData(state, () -> { /* nothing */ });
-    int depth = (int)(y / SLICE_HEIGHT);
-    if (data == null || depth < 0 || depth > queue.maxDepth) {
-      return state.resetSelections();
-    }
-
-    long t = state.pxToTime(x);
-    for (int i = 0; i < data.starts.length; i++) {
-      if (data.depths[i] == depth && data.starts[i] <= t && t <= data.ends[i] && data.ids[i] >= 0) {
-        state.setSelection(Selection.Kind.Gpu, track.getSlice(state.getQueryEngine(), data.ids[i]));
-        return true;
-      }
-    }
-    return state.resetSelections();
   }
 
   @Override
