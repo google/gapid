@@ -225,6 +225,11 @@ sub void vkErrorInvalidHandle(string handleType, u64 handle) {
   vkErrInvalidHandle(handleType, handle)
 }
 
+sub void vkErrorInvalidDescriptorUpdateTemplate(VkDescriptorUpdateTemplate set) {
+  vkErrorInvalidHandle("VkDescriptorUpdateTemplate", as!u64(set))
+}
+
+
 sub void vkErrorNullPointer(string pointerType) {
   vkErrNullPointer(pointerType)
   abort
