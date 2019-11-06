@@ -659,3 +659,11 @@ func (s *grpcServer) PerfettoQuery(ctx xctx.Context, req *service.PerfettoQueryR
 	}
 	return &service.PerfettoQueryResponse{Res: &service.PerfettoQueryResponse_Result{Result: data}}, nil
 }
+
+func (s *grpcServer) ValidateDevice(ctx xctx.Context, req *service.ValidateDeviceRequest) (*service.ValidateDeviceResponse, error) {
+	err := s.handler.ValidateDevice(s.bindCtx(ctx), req.Device)
+	if err := service.NewError(err); err != nil {
+		return &service.ValidateDeviceResponse{Error: err}, nil
+	}
+	return &service.ValidateDeviceResponse{}, nil
+}

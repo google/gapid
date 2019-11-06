@@ -759,6 +759,17 @@ service Gapid {
   rpc GetTimestamps(GetTimestampsRequest)
       returns (stream GetTimestampsResponse) {
   }
+
+  rpc ValidateDevice(ValidateDeviceRequest) returns (ValidateDeviceResponse) {
+  }
+}
+
+message ValidateDeviceRequest {
+  path.Device device = 1;
+}
+
+message ValidateDeviceResponse {
+  Error error = 1;
 }
 
 message Error {
