@@ -71,8 +71,8 @@ func setupVulkanLayers(ctx context.Context, d adb.Device, packageName string, ab
 	return cleanup, nil
 }
 
-func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName string, perfettoConfig *perfetto_pb.TraceConfig, abi *device.ABI, layers []string) (app.Cleanup, error) {
-	if !hasRenderStageEnabled(perfettoConfig) {
+func SetupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName string, hasRenderStages bool, abi *device.ABI, layers []string) (app.Cleanup, error) {
+	if !hasRenderStages {
 		if abi != nil {
 			return setupVulkanLayers(ctx, d, packageName, abi, layers)
 		}
@@ -108,7 +108,6 @@ func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName
 // Start optional starts an app and sets up a Perfetto trace
 func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions, abi *device.ABI, layers []string) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
-
 	var cleanup app.Cleanup
 	if abi != nil {
 		_, err := gapidapk.EnsureInstalled(ctx, d, abi)
@@ -123,7 +122,8 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 		// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
 		var err error
-		cleanup, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig, abi, layers)
+		hasRenderStages := hasRenderStageEnabled(opts.PerfettoConfig)
+		cleanup, err := SetupRenderStagesEnvironment(ctx, d, a.Package.Name, hasRenderStages, abi, layers)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err
 		}

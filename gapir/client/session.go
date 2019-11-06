@@ -40,6 +40,7 @@ import (
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapir"
+	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
 )
 
 const (
@@ -327,6 +328,7 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 	}
 
 	log.I(ctx, "Launching GAPIR...")
+	perfetto_android.SetupRenderStagesEnvironment(ctx, d, apk.Name, true, abi, []string{})
 	if err := d.StartActivity(ctx, *apk.ActivityActions[gapirActivityIndex],
 		android.StringExtra{"gapir-intent-flag", strings.Join(completeLaunchArgs, " ")},
 	); err != nil {

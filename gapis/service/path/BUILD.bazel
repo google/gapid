@@ -60,7 +60,7 @@ go_proto_library(
         "//core/image:go_default_library",
         "//gapis/service/box:go_default_library",
         "//gapis/vertex:go_default_library",
-        "@gapid//tools/build/third_party/perfetto:config_go_proto",
+        "//tools/build/third_party/perfetto:config_go_proto",
     ],
 )
 

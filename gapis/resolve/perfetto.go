@@ -17,7 +17,6 @@ package resolve
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/event/task"
@@ -29,7 +28,6 @@ import (
 	"github.com/google/gapid/gapis/replay"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
-	"github.com/google/gapid/gapis/trace"
 )
 
 func Perfetto(ctx context.Context, p *path.Perfetto, r *path.ResolveConfig) (*path.Capture, error) {
@@ -71,23 +69,15 @@ func (r *PerfettoResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	for _, a := range c.APIs {
 		if pf, ok := a.(replay.Profiler); ok {
-			h := startTrace(ctx, options(r.Path, r.Config.ReplayDevice, out.System()))
+			opts := options(r.Path, r.Config.ReplayDevice, out.System())
+			handler := createHandler()
 
-			for h.written == 0 {
-				time.Sleep(5 * time.Millisecond)
-			}
-
-			err := pf.Profile(ctx, intent, mgr, hints, r.Path.Overrides)
-			h.stopFunc(ctx)
-
+			err := pf.Profile(ctx, intent, mgr, hints, opts, handler, r.Path.Overrides)
 			if err != nil {
 				return nil, err
 			}
 
-			h.doneSignal.Wait(ctx)
-			if h.err != nil {
-				return nil, h.err
-			}
+			handler.DoneSignal.Wait(ctx)
 
 			src := &capture.File{Path: out.System()}
 			r, err := capture.Import(ctx, c.Name()+"_perfetto", out.System(), src)
@@ -105,27 +95,24 @@ func (r *PerfettoResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	return nil, errors.New("The capture does not support profiling")
 }
 
-type handler struct {
-	stopFunc   task.Task
-	doneSignal task.Signal
-	written    int64
-	err        error
-}
-
-func startTrace(ctx context.Context, opts *service.TraceOptions) *handler {
-	startSignal, _ := task.NewSignal()
+func createHandler() *replay.SignalHandler {
+	startSignal, startFunc := task.NewSignal()
+	readySignal, readyFunc := task.NewSignal()
 	stopSignal, stopFunc := task.NewSignal()
 	doneSignal, doneFunc := task.NewSignal()
 
-	r := &handler{
-		stopFunc:   stopFunc,
-		doneSignal: doneSignal,
+	handler := &replay.SignalHandler{
+		StartSignal: startSignal,
+		StartFunc:   startFunc,
+		ReadySignal: readySignal,
+		ReadyFunc:   readyFunc,
+		StopSignal:  stopSignal,
+		StopFunc:    stopFunc,
+		DoneSignal:  doneSignal,
+		DoneFunc:    doneFunc,
 	}
-	go func() {
-		r.err = trace.Trace(ctx, opts.Device, startSignal, stopSignal, opts, &r.written)
-		doneFunc(ctx)
-	}()
-	return r
+
+	return handler
 }
 
 func options(p *path.Perfetto, d *path.Device, out string) *service.TraceOptions {
