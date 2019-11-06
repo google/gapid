@@ -322,7 +322,7 @@ func ipImageLayoutTransitionBarriers(sb *stateBuilder, imgObj ImageObjectʳ, old
 			if newLayout == VkImageLayout_VK_IMAGE_LAYOUT_UNDEFINED || newLayout == VkImageLayout_VK_IMAGE_LAYOUT_PREINITIALIZED || oldLayout == newLayout {
 				return
 			}
-			barriers = append(barriers, ipImageSubresourceLayoutTransitionBarrier(
+			imageBarrier := ipImageSubresourceLayoutTransitionBarrier(
 				sb,
 				imgObj,
 				aspect,
@@ -330,7 +330,13 @@ func ipImageLayoutTransitionBarriers(sb *stateBuilder, imgObj ImageObjectʳ, old
 				level,
 				oldLayout,
 				newLayout,
-			))
+			)
+			for _, barrier := range barriers {
+				if barrier.Equals(imageBarrier) {
+					return
+				}
+			}
+			barriers = append(barriers, imageBarrier)
 		})
 	return barriers
 }
