@@ -1,0 +1,109 @@
+// Copyright (C) 2019 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Based off of the original vulkan.h header file which has the following
+// license.
+
+// Copyright (c) 2015 The Khronos Group Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and/or associated documentation files (the
+// "Materials"), to deal in the Materials without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Materials, and to
+// permit persons to whom the Materials are furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Materials.
+//
+// THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+
+@extension("VK_GOOGLE_display_timing") define VK_GOOGLE_DISPLAY_TIMING_SPEC_VERSION 1
+@extension("VK_GOOGLE_display_timing") define VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME "VK_GOOGLE_display_timing"
+
+@extension("VK_GOOGLE_display_timing")
+class VkRefreshCycleDurationGOOGLE {
+    u64         refreshDuration
+}
+
+@extension("VK_GOOGLE_display_timing")
+class VkPastPresentationTimingGOOGLE {
+    u32         presentID
+    u64         desiredPresentTime
+    u64         actualPresentTime
+    u64         earliestPresentTime
+    u64         presentMargin
+}
+
+@extension("VK_GOOGLE_display_timing")
+class VkPresentTimeGOOGLE {
+    u32         presentID
+    u64         desiredPresentTime
+}
+
+@extension("VK_GOOGLE_display_timing")
+class VkPresentTimesInfoGOOGLE {
+    VkStructureType               sType
+    const void*                   pNext
+    u32                           swapchainCount
+    const VkPresentTimeGOOGLE*    pTimes
+}
+
+@extension("VK_GOOGLE_display_timing")
+@indirect("VkDevice")
+@no_replay
+cmd VkResult vkGetRefreshCycleDurationGOOGLE(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
+  if !(device in Devices) { vkErrorInvalidDevice(device) }
+  if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
+  if pDisplayTimingProperties == null { vkErrorNullPointer("VkRefreshCycleDurationGOOGLE") }
+  write(pDisplayTimingProperties[0:1])
+  return ?
+}
+
+@extension("VK_GOOGLE_display_timing")
+@indirect("VkDevice")
+@no_replay
+cmd VkResult vkGetPastPresentationTimingGOOGLE(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    u32*                                        pPresentationTimingCount,
+    VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if !(swapchain in Swapchains) { vkErrorInvalidSwapchain(swapchain) }
+    _ = pPresentationTimingCount[0]
+    fence
+
+    if pPresentationTimings == null {
+        pPresentationTimingCount[0] = ?
+    } else {
+        count := as!u32(?)
+        timings := pPresentationTimings[0:count]
+        for i in (0 .. count) {
+            timing := ?
+            timings[i] = timing
+        }
+        pPresentationTimingCount[0] = count
+    }
+    return ?
+}
