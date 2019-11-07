@@ -1081,7 +1081,7 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 
 	assemblyList := &api.KeyValuePairList{}
 	assemblyList = assemblyList.AppendKeyValuePair("Topology", api.CreateEnumDataValue("VkPrimitiveTopology", p.InputAssemblyState().Topology()))
-	assemblyList = assemblyList.AppendKeyValuePair("PrimitiveRestartEnabled", api.CreatePoDDataValue("VkBool32",
+	assemblyList = assemblyList.AppendKeyValuePair("Primitive Restart Enabled", api.CreatePoDDataValue("VkBool32",
 		p.InputAssemblyState().PrimitiveRestartEnable() != 0))
 
 	dataGroups := []*api.DataGroup{
@@ -1197,9 +1197,23 @@ func (p GraphicsPipelineObjectʳ) geometryShader() *api.Stage {
 }
 
 func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
+	rasterState := p.RasterizationState()
+	rasterList := &api.KeyValuePairList{}
+	rasterList = rasterList.AppendKeyValuePair("Depth Clamp Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthClampEnable() != 0))
+	rasterList = rasterList.AppendKeyValuePair("Rasterizer Discard", api.CreatePoDDataValue("VkBool32", rasterState.RasterizerDiscardEnable() != 0))
+	rasterList = rasterList.AppendKeyValuePair("Polygon Mode", api.CreateEnumDataValue("VkPolygonMode", rasterState.PolygonMode()))
+	rasterList = rasterList.AppendKeyValuePair("Cull Mode", api.CreateBitfieldDataValue("VkCullModeFlags", rasterState.CullMode(), VkCullModeFlagBitsConstants(), API{}))
+	rasterList = rasterList.AppendKeyValuePair("Front Face", api.CreateEnumDataValue("VkFrontFace", rasterState.FrontFace()))
+	rasterList = rasterList.AppendKeyValuePair("Depth Bias Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthBiasEnable() != 0))
+	rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasConstantFactor()))
+	rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", rasterState.DepthBiasClamp()))
+	rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()))
+	rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()))
+
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Rasterization State",
+			Data:      &api.DataGroup_KeyValues{rasterList},
 		},
 
 		&api.DataGroup{

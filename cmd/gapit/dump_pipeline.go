@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/google/gapid/core/app"
@@ -110,6 +111,9 @@ func toString(dataval *api.DataValue) string {
 
 	case *api.DataValue_EnumVal:
 		return x.EnumVal.StringValue
+
+	case *api.DataValue_Bitfield:
+		return strings.Join(x.Bitfield.SetBitnames, " | ")
 	}
 
 	return ""
@@ -135,7 +139,7 @@ func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, da
 			groupPrefix := "│   "
 			if j == len(stage.Groups)-1 {
 				fmt.Fprintf(w, "    %s└── %s: \n", prefix, group.GroupName)
-				groupPrefix = prefix
+				groupPrefix = "    "
 			} else {
 				fmt.Fprintf(w, "    %s├── %s: \n", prefix, group.GroupName)
 			}
@@ -144,7 +148,7 @@ func (verb *pipeVerb) printPipelineData(ctx context.Context, c client.Client, da
 				switch x := group.Data.(type) {
 				case *api.DataGroup_KeyValues:
 					for _, pair := range x.KeyValues.KeyValues {
-						fmt.Fprintf(w, "    %s\t\t\t%s: %s\n", groupPrefix, pair.Name, toString(pair.Value))
+						fmt.Fprintf(w, "    %s%s\t\t%s: %s\n", prefix, groupPrefix, pair.Name, toString(pair.Value))
 					}
 
 				case *api.DataGroup_Table:
