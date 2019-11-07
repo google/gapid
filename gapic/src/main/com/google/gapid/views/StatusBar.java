@@ -22,6 +22,7 @@ import static com.google.gapid.widgets.Widgets.filling;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static com.google.gapid.widgets.Widgets.withSpacing;
+import static com.google.gapid.widgets.Widgets.withSpans;
 
 import com.google.gapid.widgets.Theme;
 
@@ -56,6 +57,9 @@ public class StatusBar extends Composite {
     super(parent, SWT.NONE);
 
     setLayout(withSpacing(withMargin(new GridLayout(5, false), 0, 0), 5, 0));
+    withLayoutData(new Label(this, SWT.SEPARATOR | SWT.HORIZONTAL),
+        withSpans(new GridData(SWT.FILL, SWT.TOP, true, false), 5, 1));
+
     memoryStatus = withLayoutData(
         createComposite(this, filling(new RowLayout(SWT.HORIZONTAL), true, false)),
         new GridData(SWT.LEFT, SWT.FILL, false, false));
