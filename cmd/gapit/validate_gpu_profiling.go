@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/device"
 )
 
 type validateGpuProfilingVerb struct{ ValidateGpuProfilingFlags }
@@ -43,25 +42,13 @@ func (verb *validateGpuProfilingVerb) Run(ctx context.Context, flags flag.FlagSe
 		return log.Err(ctx, err, "Failed to connect to the GAPIS server.")
 	}
 	defer client.Close()
-	devices, err := client.GetDevices(ctx)
+	devices, err := filterDevices(ctx, &verb.DeviceFlags, client)
 	if err != nil {
 		return log.Err(ctx, err, "Failed to get device list.")
 	}
-
 	stdout := os.Stdout
-
-	// TODO(lpy): Allow to specify an Android device.
 	for i, p := range devices {
 		fmt.Fprintf(stdout, "-- Device %v: %v --\n", i, p.ID.ID())
-		o, err := client.Get(ctx, p.Path(), nil)
-		if err != nil {
-			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Couldn't resolve device"))
-			continue
-		}
-		d := o.(*device.Instance)
-		if verb.OS != device.UnknownOS && verb.OS != d.GetConfiguration().GetOS().GetKind() {
-			continue
-		}
 		err = client.ValidateDevice(ctx, p)
 		if err != nil {
 			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Failed to validate device"))
