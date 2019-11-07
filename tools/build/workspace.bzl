@@ -58,7 +58,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         organization = "google",
         project = "protobuf",
-        commit = "815ff7e1fb2d417d5aebcbf5fc46e626b18dc834",  # Head of 3.8.x branch
+        commit = "815ff7e1fb2d417d5aebcbf5fc46e626b18dc834", # Head of 3.8.x branch
         sha256 = "083646275522dc57e145f769c2daf39d469757bafcc5b7d09b119dfaf1b873b8",
         repo_mapping = {"@zlib": "@net_zlib"},
     )
@@ -254,7 +254,7 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         locals = locals,
         url = "https://registry.npmjs.org/vscode-jsonrpc/-/vscode-jsonrpc-2.4.0.tgz",
         build_file = "@gapid//tools/build/third_party:vscode-jsonrpc.BUILD",
-        sha256 = "bed9b2facb7d179f14c8a710db8e613be56bd88b2a75443143778813048b5c89",
+        sha256= "bed9b2facb7d179f14c8a710db8e613be56bd88b2a75443143778813048b5c89",
     )
 
     maybe_repository(
@@ -271,14 +271,14 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
             native.android_sdk_repository,
             name = "androidsdk",
             locals = locals,
-            api_level = 26,  # This is the target API
+            api_level = 26, # This is the target API
         )
 
         maybe_repository(
             native.android_ndk_repository,
             name = "androidndk",
             locals = locals,
-            api_level = 23,  # This is the minimum API
+            api_level = 23, # This is the minimum API
         )
 
         maybe_repository(
@@ -313,17 +313,15 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
 # Function to setup all the GRPC deps and bindings.
 def _grpc_deps(locals):
-    maybe_repository(
-        http_archive,
+    maybe_repository(http_archive,
         name = "boringssl",
         locals = locals,
         # on the master-with-bazel branch
         url = "https://boringssl.googlesource.com/boringssl/+archive/afc30d43eef92979b05776ec0963c9cede5fb80f.tar.gz",
     )
 
-    maybe_repository(
-        github_repository,
-        name = "net_zlib",  # name used by rules_go
+    maybe_repository(github_repository,
+        name = "net_zlib", # name used by rules_go
         locals = locals,
         organization = "madler",
         project = "zlib",
@@ -332,8 +330,7 @@ def _grpc_deps(locals):
         sha256 = "1cce3828ec2ba80ff8a4cac0ab5aa03756026517154c4b450e617ede751d41bd",
     )
 
-    maybe_repository(
-        github_repository,
+    maybe_repository(github_repository,
         name = "com_github_nanopb_nanopb",
         locals = locals,
         organization = "nanopb",
