@@ -142,6 +142,15 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
     maybe_repository(
         new_git_repository,
+        name = "lodepng",
+        locals = locals,
+        remote = "https://github.com/lvandeve/lodepng",
+        commit = "3606db5a71359a4165308e7cd5afe67bd42f7edf",
+        build_file = "@gapid//tools/build/third_party:lodepng.BUILD",
+    )
+
+    maybe_repository(
+        new_git_repository,
         name = "lss",
         locals = locals,
         remote = "https://chromium.googlesource.com/linux-syscall-support",

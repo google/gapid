@@ -17,12 +17,16 @@
 #include "virtual_swapchain.h"
 #include <cassert>
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
+
+#include "lodepng.h"
 
 namespace {
 
@@ -41,6 +45,41 @@ int32_t FindMemoryType(
 }
 
 void null_callback(void*, uint8_t*, size_t) {}
+
+const char* kImageDumpPathEnv = "IMAGE_DUMP_PATH";
+
+void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
+                  std::string file_name, uint32_t width, uint32_t height,
+                  VkFormat image_format) {
+  auto data = image_data.get();
+
+  switch (image_format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UINT:
+      for (uint32_t y = 0; y < height; y++) {
+        uint32_t* row = (uint32_t*)data;
+        for (uint32_t x = 0; x < width; x++) {
+          uint8_t* bgra = (uint8_t*)row;
+          uint8_t b = *bgra;
+          *bgra = *(bgra + 2);
+          *(bgra + 2) = b;
+          row++;
+        }
+        data += width * 4;
+      }
+      // fall through
+
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_UINT:
+      data = image_data.get();
+      ::lodepng::encode(file_name.c_str(), data, width, height, LCT_RGBA, 8);
+      break;
+
+    default:
+      break;
+  }
+}
+
 }  // namespace
 
 namespace swapchain {
@@ -63,6 +102,7 @@ VirtualSwapchain::VirtualSwapchain(
       device_(device),
       should_close_(false),
       callback_(null_callback),
+      callback_user_data_(nullptr),
       queue_(queue),
       functions_(functions),
       pending_image_timeout_in_milliseconds_(
@@ -267,6 +307,10 @@ VirtualSwapchain::VirtualSwapchain(
                  },
                  this);
 #endif
+  const char* const image_dump_dir = std::getenv(kImageDumpPathEnv);
+  if (image_dump_dir != nullptr) {
+    image_dump_dir_ = std::string(image_dump_dir);
+  }
 }
 
 void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
@@ -292,6 +336,21 @@ void VirtualSwapchain::Destroy(const VkAllocationCallbacks* pAllocator) {
   }
 
   functions_->vkDestroyCommandPool(device_, command_pool_, pAllocator);
+}
+
+void VirtualSwapchain::DumpImageToFile(uint8_t* image_data, size_t size) {
+  std::unique_ptr<uint8_t[]> image_data_owned(new uint8_t[size]());
+  memcpy(image_data_owned.get(), image_data, size);
+
+  auto now = std::chrono::system_clock::now().time_since_epoch().count();
+  auto image_path = image_dump_dir_ + "/image_" +
+                    std::to_string(dumped_frame_count_++) + "_ts_" +
+                    std::to_string(now) + ".png";
+
+  std::thread file_writer(WritePngFile, std::move(image_data_owned), size,
+                          image_path, width_, height_,
+                          swapchain_info_.imageFormat);
+  file_writer.detach();
 }
 
 void VirtualSwapchain::CopyThreadFunc() {
@@ -336,7 +395,13 @@ void VirtualSwapchain::CopyThreadFunc() {
     functions_->vkInvalidateMappedMemoryRanges(device_, 1, &range);
 
     uint32_t length = ImageByteSize();
-    { callback_(callback_user_data_, (uint8_t*)mapped_value, length); }
+    {
+      callback_(callback_user_data_, (uint8_t*)mapped_value, length);
+      if (image_dump_dir_ != "") {
+        DumpImageToFile((uint8_t*)mapped_value, length);
+      }
+    }
+
     functions_->vkUnmapMemory(device_,
                               image_data_[pending_image].buffer_memory_);
     {
