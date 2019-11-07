@@ -30,6 +30,7 @@ import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
+import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -110,8 +111,8 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
 
-    ctx.setBackgroundColor(colors().cpuUsageFill);
-    ctx.setForegroundColor(colors().cpuUsageStroke);
+    ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
+    ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
     ctx.path(path -> {
       path.moveTo(0, h);
       double y = h, x = 0;
@@ -161,9 +162,8 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
       double rectStart = state.timeToPx(tStart);
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
-      StyleConstants.HSL color = ThreadInfo.getColor(state, utid);
       double y = cpuH * cpu + cpu;
-      ctx.setBackgroundColor(color.rgb());
+      ctx.setBackgroundColor(ThreadInfo.getColor(state, utid));
       ctx.fillRect(rectStart, y, rectWidth, cpuH);
 
       if (selected.contains(data.ids[i])) {
@@ -172,8 +172,8 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
     }
 
     // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
-    ctx.setForegroundColor(SWT.COLOR_BLACK);
     for (int index : visibleSelected) {
+      ctx.setForegroundColor(ThreadInfo.getBorderColor(state, data.utids[index]));
       double rectStart = state.timeToPx(data.starts[index]);
       double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
       double cpu = data.cpus[index];

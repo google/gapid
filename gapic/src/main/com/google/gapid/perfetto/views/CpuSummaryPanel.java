@@ -30,6 +30,7 @@ import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuSummaryTrack;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.Selection;
+import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 /**
  * Draws the CPU usage summary, aggregating the usage of all cores.
@@ -84,8 +85,8 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
       long tStart = data.request.range.start;
       int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
 
-      ctx.setBackgroundColor(colors().cpuUsageFill);
-      ctx.setForegroundColor(colors().cpuUsageStroke);
+      ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
+      ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
       ctx.path(path -> {
         path.moveTo(0, h);
         double y = h, x = 0;

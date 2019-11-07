@@ -29,6 +29,7 @@ import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
+import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
   private static final double HEIGHT = 45;
@@ -84,8 +85,8 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       CounterInfo counter = track.getCounter();
       double min = Math.min(0, counter.min), range = counter.max - min;
-      ctx.setBackgroundColor(colors().counterFill);
-      ctx.setForegroundColor(colors().counterStroke);
+      ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
+      ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
       ctx.path(path -> {
         path.moveTo(0, h);
         double lastX = 0, lastY = h;
@@ -104,7 +105,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       if (hovered != null) {
         double y = (HEIGHT - 1) * (1 - (hovered.value - min) / range);
-        ctx.setBackgroundColor(colors().counterHighlight);
+        ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
         ctx.fillRect(hovered.startX, y - 1, hovered.endX - hovered.startX, 3);
         ctx.setForegroundColor(colors().textMain);
         ctx.drawCircle(mouseXpos, y, CURSOR_SIZE / 2);

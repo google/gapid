@@ -19,7 +19,6 @@ import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.Colors.rgb;
 import static com.google.gapid.util.Colors.rgba;
 
-import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
@@ -61,31 +60,13 @@ public class StyleConstants {
     public final RGBA timeHighlight;
     public final RGBA timeHighlightBorder;
     public final RGBA timeHighlightCover;
-    public final RGBA cpuUsageFill;
-    public final RGBA cpuUsageStroke;
     public final RGBA cpuFreqIdle;
     public final RGBA timelineRuler;
-    public final RGBA counterFill;
-    public final RGBA counterStroke;
-    public final RGBA counterHighlight;
 
     public final RGBA textMain;
     public final RGBA textAlt;
     public final RGBA textInvertedMain;
     public final RGBA textInvertedAlt;
-
-    public final RGBA threadStateRunning;
-    public final RGBA threadStateRunnable;
-    public final RGBA threadStateIowait;
-    public final RGBA threadStateUninterruptile;
-    public final RGBA threadStateSleep;
-    public final RGBA threadStateUnknown;
-
-    public final RGBA memoryBufferedCached;
-    public final RGBA memoryUsed;
-
-    public final RGBA batteryCurrentOut;
-    public final RGBA batteryCurrentIn;
 
     public Colors(int background,
         RGBA titleBackground,
@@ -98,27 +79,12 @@ public class StyleConstants {
         RGBA timeHighlight,
         RGBA timeHighlightBorder,
         RGBA timeHighlightCover,
-        RGBA cpuUsageFill,
-        RGBA cpuUsageStroke,
         RGBA cpuFreqIdle,
         RGBA timelineRuler,
-        RGBA counterFill,
-        RGBA counterStroke,
-        RGBA counterHighlight,
         RGBA textMain,
         RGBA textAlt,
         RGBA textInvertedMain,
-        RGBA textInvertedAlt,
-        RGBA threadStateRunning,
-        RGBA threadStateRunnable,
-        RGBA threadStateIowait,
-        RGBA threadStateUninterruptile,
-        RGBA threadStateSleep,
-        RGBA threadStateUnknown,
-        RGBA memoryBufferedCached,
-        RGBA memoryUsed,
-        RGBA batteryCurrentOut,
-        RGBA batteryCurrentIn) {
+        RGBA textInvertedAlt) {
       this.background = background;
       this.titleBackground = titleBackground;
       this.gridline = gridline;
@@ -130,27 +96,12 @@ public class StyleConstants {
       this.timeHighlight = timeHighlight;
       this.timeHighlightBorder = timeHighlightBorder;
       this.timeHighlightCover = timeHighlightCover;
-      this.cpuUsageFill = cpuUsageFill;
-      this.cpuUsageStroke = cpuUsageStroke;
       this.cpuFreqIdle = cpuFreqIdle;
       this.timelineRuler = timelineRuler;
-      this.counterFill = counterFill;
-      this.counterStroke = counterStroke;
-      this.counterHighlight = counterHighlight;
       this.textMain = textMain;
       this.textAlt = textAlt;
       this.textInvertedMain = textInvertedMain;
       this.textInvertedAlt = textInvertedAlt;
-      this.threadStateRunning = threadStateRunning;
-      this.threadStateRunnable = threadStateRunnable;
-      this.threadStateIowait = threadStateIowait;
-      this.threadStateUninterruptile = threadStateUninterruptile;
-      this.threadStateSleep = threadStateSleep;
-      this.threadStateUnknown = threadStateUnknown;
-      this.memoryBufferedCached = memoryBufferedCached;
-      this.memoryUsed = memoryUsed;
-      this.batteryCurrentOut = batteryCurrentOut;
-      this.batteryCurrentIn = batteryCurrentIn;
     }
 
     private static final int LIGHT_BACKGROUND = SWT.COLOR_WHITE;
@@ -164,31 +115,13 @@ public class StyleConstants {
     private static final RGBA LIGHT_TIME_HIGHLIGHT = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TIME_HIGHLIGHT_BORDER = LIGHT_GRIDLINE;
     private static final RGBA LIGHT_TIME_HIGHLIGHT_COVER = rgba(0, 0, 0, 0.2f);
-    private static final RGBA LIGHT_CPU_USAGE_FILL = rgb(0x00, 0xB8, 0xD4);
-    private static final RGBA LIGHT_CPU_USAGE_STROKE = rgb(0x0D, 0x9A, 0xA8);
     private static final RGBA LIGHT_CPU_FREQ_IDLE = rgb(240, 240, 240);
     private static final RGBA LIGHT_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
-    private static final RGBA LIGHT_COUNTER_FILL = LIGHT_CPU_USAGE_FILL;
-    private static final RGBA LIGHT_COUNTER_STROKE = LIGHT_CPU_USAGE_STROKE;
-    private static final RGBA LIGHT_COUNTER_HIGHLIGHT = rgb(0x0A, 0x77, 0x82);
 
     private static final RGBA LIGHT_TEXT_MAIN = rgb(0x32, 0x34, 0x35);
     private static final RGBA LIGHT_TEXT_ALT = rgb(101, 102, 104);
     private static final RGBA LIGHT_TEXT_INVERTED_MAIN = rgb(0xff, 0xff, 0xff);
     private static final RGBA LIGHT_TEXT_INVERTED_ALT = rgb(0xdd, 0xdd, 0xdd);
-
-    private static final RGBA LIGHT_THREAD_STATE_RUNNING = LIGHT_CPU_USAGE_FILL;
-    private static final RGBA LIGHT_THREAD_STATE_RUNNABLE = rgb(126, 200, 148);
-    private static final RGBA LIGHT_THREAD_STATE_IOWAIT = rgb(255, 140, 0);
-    private static final RGBA LIGHT_THREAD_STATE_UNINTERRUPTILE = rgb(182, 125, 143);
-    private static final RGBA LIGHT_THREAD_STATE_SLEEP = rgb(240, 240, 240);
-    private static final RGBA LIGHT_THREAD_STATE_UNKNOWN = rgb(199, 155, 125);
-
-    private static final RGBA LIGHT_MEMORY_BUFFERED_CACHED = rgb(0x76, 0xD2, 0xff);
-    private static final RGBA LIGHT_MEMORY_USED = rgb(0x34, 0x65, 0xA4);
-
-    private static final RGBA LIGHT_BATTERY_CURRENT_OUT = rgb(0xF9, 0xA1, 0x2E);
-    private static final RGBA LIGHT_BATTERY_CURRENT_IN = rgb(0x9F, 0xC1, 0x31);
 
     public static Colors light() {
       return new Colors(
@@ -203,27 +136,12 @@ public class StyleConstants {
             LIGHT_TIME_HIGHLIGHT,
             LIGHT_TIME_HIGHLIGHT_BORDER,
             LIGHT_TIME_HIGHLIGHT_COVER,
-            LIGHT_CPU_USAGE_FILL,
-            LIGHT_CPU_USAGE_STROKE,
             LIGHT_CPU_FREQ_IDLE,
             LIGHT_TIMELINE_RULER,
-            LIGHT_COUNTER_FILL,
-            LIGHT_COUNTER_STROKE,
-            LIGHT_COUNTER_HIGHLIGHT,
             LIGHT_TEXT_MAIN,
             LIGHT_TEXT_ALT,
             LIGHT_TEXT_INVERTED_MAIN,
-            LIGHT_TEXT_INVERTED_ALT,
-            LIGHT_THREAD_STATE_RUNNING,
-            LIGHT_THREAD_STATE_RUNNABLE,
-            LIGHT_THREAD_STATE_IOWAIT,
-            LIGHT_THREAD_STATE_UNINTERRUPTILE,
-            LIGHT_THREAD_STATE_SLEEP,
-            LIGHT_THREAD_STATE_UNKNOWN,
-            LIGHT_MEMORY_BUFFERED_CACHED,
-            LIGHT_MEMORY_USED,
-            LIGHT_BATTERY_CURRENT_OUT,
-            LIGHT_BATTERY_CURRENT_IN);
+            LIGHT_TEXT_INVERTED_ALT);
     }
 
     private static final int DARK_BACKGROUND = SWT.COLOR_BLACK;
@@ -237,31 +155,13 @@ public class StyleConstants {
     private static final RGBA DARK_TIME_HIGHLIGHT = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TIME_HIGHLIGHT_BORDER = DARK_GRIDLINE;
     private static final RGBA DARK_TIME_HIGHLIGHT_COVER = rgba(0xff, 0xff, 0xff, 0.4f);
-    private static final RGBA DARK_CPU_USAGE_FILL = rgb(0x00, 0xB8, 0xD4);
-    private static final RGBA DARK_CPU_USAGE_STROKE = rgb(0x0D, 0x9A, 0xA8);
     private static final RGBA DARK_CPU_FREQ_IDLE = rgb(240, 240, 240);
     private static final RGBA DARK_TIMELINE_RULER = rgb(0x99, 0x99, 0x99);
-    private static final RGBA DARK_COUNTER_FILL = DARK_CPU_USAGE_FILL;
-    private static final RGBA DARK_COUNTER_STROKE = DARK_CPU_USAGE_STROKE;
-    private static final RGBA DARK_COUNTER_HIGHLIHGT = rgb(0x0A, 0x77, 0x82);
 
     private static final RGBA DARK_TEXT_MAIN = rgb(0xff, 0xff, 0xff);
     private static final RGBA DARK_TEXT_ALT = rgb(0xdd, 0xdd, 0xdd);
     private static final RGBA DARK_TEXT_INVERTED_MAIN = rgb(0x19, 0x1A, 0x19);
     private static final RGBA DARK_TEXT_INVERTED_ALT = rgb(50, 51, 52);
-
-    private static final RGBA DARK_THREAD_STATE_RUNNING = DARK_CPU_USAGE_FILL;
-    private static final RGBA DARK_THREAD_STATE_RUNNABLE = rgb(126, 200, 148);
-    private static final RGBA DARK_THREAD_STATE_IOWAIT = rgb(255, 140, 0);
-    private static final RGBA DARK_THREAD_STATE_UNINTERRUPTILE = rgb(182, 125, 143);
-    private static final RGBA DARK_THREAD_STATE_SLEEP = rgb(240, 240, 240);
-    private static final RGBA DARK_THREAD_STATE_UNKNOWN = rgb(199, 155, 125);
-
-    private static final RGBA DARK_MEMORY_BUFFERED_CACHED = rgb(0x76, 0xD2, 0xff);
-    private static final RGBA DARK_MEMORY_USED = rgb(0x34, 0x65, 0xA4);
-
-    private static final RGBA DARK_BATTERY_CURRENT_OUT = rgb(0xD8, 0x9C, 0xA2);
-    private static final RGBA DARK_BATTERY_CURRENT_IN = rgb(0x7A, 0xB7, 0x73);
 
     public static Colors dark() {
       return new Colors(
@@ -276,51 +176,110 @@ public class StyleConstants {
             DARK_TIME_HIGHLIGHT,
             DARK_TIME_HIGHLIGHT_BORDER,
             DARK_TIME_HIGHLIGHT_COVER,
-            DARK_CPU_USAGE_FILL,
-            DARK_CPU_USAGE_STROKE,
             DARK_CPU_FREQ_IDLE,
             DARK_TIMELINE_RULER,
-            DARK_COUNTER_FILL,
-            DARK_COUNTER_STROKE,
-            DARK_COUNTER_HIGHLIHGT,
             DARK_TEXT_MAIN,
             DARK_TEXT_ALT,
             DARK_TEXT_INVERTED_MAIN,
-            DARK_TEXT_INVERTED_ALT,
-            DARK_THREAD_STATE_RUNNING,
-            DARK_THREAD_STATE_RUNNABLE,
-            DARK_THREAD_STATE_IOWAIT,
-            DARK_THREAD_STATE_UNINTERRUPTILE,
-            DARK_THREAD_STATE_SLEEP,
-            DARK_THREAD_STATE_UNKNOWN,
-            DARK_MEMORY_BUFFERED_CACHED,
-            DARK_MEMORY_USED,
-            DARK_BATTERY_CURRENT_OUT,
-            DARK_BATTERY_CURRENT_IN);
+            DARK_TEXT_INVERTED_ALT);
     }
   }
 
-  private static final HSL[] MD_PALETTE = new HSL[] {
-      new HSL(4, 90, 58),
-      new HSL(340, 82, 52),
-      new HSL(291, 64, 42),
-      new HSL( 262, 52, 47),
-      new HSL(231, 48, 48),
-      new HSL(207, 90, 54),
-      new HSL(199, 98, 48),
-      new HSL(187, 100, 42),
-      new HSL(174, 100, 29),
-      new HSL(122, 39, 49),
-      new HSL(88, 50, 53),
-      new HSL(66, 70, 54),
-      new HSL(45, 100, 51),
-      new HSL(36, 100, 50),
-      new HSL(14, 100, 57),
-      new HSL(16, 25, 38),
-      new HSL(200, 18, 46),
-      new HSL(54, 100, 62),
-  };
   private static final HSL GRAY_COLOR = new HSL(0, 0, 62);
+
+  /*
+   * Definition and API for colors in GAPID.
+   * */
+  public static class Palette {
+    public static enum BaseColor {
+      GREY(new HSL(202, 25, 67)),
+      LIGHT_BLUE(new HSL(200, 98, 82)),
+      ORANGE(new HSL(20, 90, 70)),
+      GREEN(new HSL(131, 65, 67)),
+      LIGHT_PURPLE(new HSL(262, 51, 70)),
+      PINK(new HSL(338, 70, 67)),
+      TURQUOISE(new HSL(171, 74, 61)),
+      TAN(new HSL(42, 50, 75)),
+      PACIFIC_BLUE(new HSL(198, 100, 42)),
+      TEAL(new HSL(172, 74, 29)),
+      PURPLE(new HSL(262, 70, 58)),
+      DARK_ORANGE(new HSL(22, 76, 43)),
+      INDIGO(new HSL(217, 50, 40)),
+      LIME(new HSL(59, 51, 45)),
+      MAGENTA(new HSL(320, 53, 47)),
+      VIVID_BLUE(new HSL(215, 100, 55));
+
+      public final HSL hsl;
+      public final RGBA rgb;
+
+      private BaseColor(HSL hsl) {
+        this.hsl = hsl;
+        this.rgb = hsl.rgb();
+      }
+    }
+
+    private static final int COLOR_COUNT = BaseColor.values().length;
+    private static final int[] LIGHT_OFFSETS = new int[] {
+        5, 2, 4, 5, 4, 5, 6, 3, 10, 12, 6, 9, 10, 9, 9, 7,
+    };
+    private static final int[] DARK_OFFSETS = new int[] {
+        -3, -6, -4, -3, -4, -3, -2, -5, -1, -1, -2, -1, -1, -1, -1, -1,
+    };
+    private static final int LIGHT_SHADE_COUNT = 5;
+    private static final int DARK_SHADE_COUNT = 5;
+    private static final HSL[][] LIGHT_COLORS = createLightThemeColor();
+    private static final HSL[][] DARK_COLORS = createDarkThemeColor();
+
+    /**
+     * Retrieve the color from the basic palette.
+     */
+    public static RGBA getColor(int hueIdx) {
+      return BaseColor.values()[hueIdx % COLOR_COUNT].rgb;
+    }
+
+    /**
+     * Retrieve the color with an adjusted brightness.
+     *
+     * @param hueIdx decides what color you get, e.g. it's green or purple.
+     * @param shadeIdx decides how pale the color you get. If it's positive ,the color is retrieved
+     * from Light theme, otherwise Dark theme. Within a limit, the larger the number, the lighter.
+     */
+    public static RGBA getColor(int hueIdx, int shadeIdx) {
+      if (shadeIdx == 0) {
+        return BaseColor.values()[hueIdx % COLOR_COUNT].rgb;
+      } else if (shadeIdx > 0) {
+        shadeIdx = shadeIdx > LIGHT_SHADE_COUNT ? (LIGHT_SHADE_COUNT - 1) : (shadeIdx - 1);
+        return LIGHT_COLORS[hueIdx % COLOR_COUNT][shadeIdx].rgb();
+      } else {
+        shadeIdx = shadeIdx < -DARK_SHADE_COUNT ? (DARK_SHADE_COUNT - 1) : (-shadeIdx - 1);
+        return DARK_COLORS[hueIdx % COLOR_COUNT][shadeIdx].rgb();
+      }
+    }
+
+    private static HSL[][] createLightThemeColor() {
+      HSL[][] light = new HSL[COLOR_COUNT][LIGHT_SHADE_COUNT];
+      for (int hueIdx = 0; hueIdx < COLOR_COUNT; hueIdx++) {
+        HSL base = BaseColor.values()[hueIdx].hsl;
+        int offset = LIGHT_OFFSETS[hueIdx];
+        for (int shade = 0; shade < LIGHT_SHADE_COUNT; shade++) {
+          light[hueIdx][shade] = new HSL(base.h, base.s, base.l + (shade + 1) * offset);
+        }
+      }
+      return light;
+    }
+
+    private static HSL[][] createDarkThemeColor() {
+      HSL[][] dark = new HSL[COLOR_COUNT][DARK_SHADE_COUNT];
+      for (int hueIdx = 0; hueIdx < COLOR_COUNT; hueIdx++) {
+        HSL base = BaseColor.values()[hueIdx].hsl;
+        int offset = DARK_OFFSETS[hueIdx];
+        for (int shade = 0; shade < DARK_SHADE_COUNT; shade++) {
+          dark[hueIdx][shade] = new HSL(base.h, base.s, base.l + (shade + 1) * offset);
+        }
+      }
+      return dark;
+    }
+  }
 
   private static Colors colors = Colors.light();
   private static boolean isDark = false;
@@ -330,6 +289,10 @@ public class StyleConstants {
 
   public static Colors colors() {
     return colors;
+  }
+
+  public static boolean isLight() {
+    return !isDark;
   }
 
   public static boolean isDark() {
@@ -345,19 +308,8 @@ public class StyleConstants {
     setDark(!isDark);
   }
 
-  public static float hueForCpu(int cpu) {
-    return (128 + (32 * cpu)) % 256;
-  }
-
   public static HSL getGrayColor() {
     return GRAY_COLOR;
-  }
-
-  public static HSL colorForThread(ThreadInfo thread) {
-    if (thread == null) {
-      return GRAY_COLOR;
-    }
-    return MD_PALETTE[(int)((thread.upid != 0 ? thread.upid : thread.utid) % MD_PALETTE.length)];
   }
 
   public static Image arrowDown(Theme theme) {

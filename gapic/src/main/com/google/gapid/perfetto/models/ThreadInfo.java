@@ -25,6 +25,8 @@ import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.views.State;
 import com.google.gapid.perfetto.views.StyleConstants;
 
+import org.eclipse.swt.graphics.RGBA;
+
 import java.util.Map;
 
 /**
@@ -96,20 +98,30 @@ public class ThreadInfo {
         res -> res.map(row -> row.getLong(0), TrackDepth::new));
   }
 
-  public static StyleConstants.HSL getColor(State state, long utid) {
+  public static RGBA getColor(State state, long utid) {
     ThreadInfo selected = state.getSelectedThread();
     ThreadInfo queried = state.getThreadInfo(utid);
-    StyleConstants.HSL baseColor = StyleConstants.colorForThread(queried);
 
     if (selected == null) {
-      return baseColor;
+      return colorForThread(queried, 0);
     } else if (queried.utid == selected.utid) {
-      return baseColor;
+      return colorForThread(queried, 0);
     } else if (queried.upid == selected.upid) {
-      return baseColor.adjusted(baseColor.h, baseColor.s - 20, Math.min(baseColor.l + 20,  60));
+      return colorForThread(queried, StyleConstants.isLight() ? 3 : -3);
     } else {
-      return StyleConstants.getGrayColor();
+      return StyleConstants.getGrayColor().rgb();
     }
+  }
+
+  public static RGBA getBorderColor(State state, long utid) {
+    return colorForThread(state.getThreadInfo(utid), StyleConstants.isLight() ? -5 : 5);
+  }
+
+  private static RGBA colorForThread(ThreadInfo ti, int shadeIdx) {
+    if (ti == null) {
+      return StyleConstants.getGrayColor().rgb();
+    }
+    return StyleConstants.Palette.getColor((int)(ti.upid != 0 ? ti.upid : ti.utid), shadeIdx);
   }
 
   public static Display getDisplay(Perfetto.Data data, long utid, boolean hover) {

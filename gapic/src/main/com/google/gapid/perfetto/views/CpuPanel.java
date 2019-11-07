@@ -20,8 +20,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.perfetto.views.StyleConstants.hueForCpu;
-import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -52,26 +50,19 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final CpuTrack track;
-  private final float hue;
-
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
   protected double hoveredWidth;
   protected HoverCard hovered;
 
   public CpuPanel(State state, CpuTrack track) {
-    this(state, track, hueForCpu(track.getCpu()));
-  }
-
-  private CpuPanel(State state, CpuTrack track, float hue) {
     super(state);
     this.track = track;
-    this.hue = hue;
   }
 
   @Override
   public CpuPanel copy() {
-    return new CpuPanel(state, track, hue);
+    return new CpuPanel(state, track);
   }
 
   @Override
@@ -106,7 +97,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   private void renderSummary(RenderContext ctx, CpuTrack.Data data, double w, double h) {
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
-    ctx.setBackgroundColor(hsl(hue, .5f, .6f));
+    ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu()));
     ctx.path(path -> {
       path.moveTo(0, h);
       double y = h, x = 0;
@@ -155,9 +146,8 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
       ThreadInfo.Display threadInfo = ThreadInfo.getDisplay(state.getData(), utid, false);
-      StyleConstants.HSL color = ThreadInfo.getColor(state, utid);
 
-      ctx.setBackgroundColor(color.rgb());
+      ctx.setBackgroundColor(ThreadInfo.getColor(state, utid));
       ctx.fillRect(rectStart, 0, rectWidth, h);
 
       if (selected.contains(data.ids[i])) {
@@ -180,8 +170,8 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     }
 
     // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
-    ctx.setForegroundColor(SWT.COLOR_BLACK);
     for (int index : visibleSelected) {
+      ctx.setForegroundColor(ThreadInfo.getBorderColor(state, data.utids[index]));
       double rectStart = state.timeToPx(data.starts[index]);
       double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
       ctx.drawRect(rectStart, 0, rectWidth, h, BOUNDING_BOX_LINE_WIDTH);

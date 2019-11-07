@@ -16,7 +16,8 @@
 package com.google.gapid.perfetto;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.gapid.perfetto.views.StyleConstants.colors;
+
+import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.graphics.RGBA;
 
@@ -27,40 +28,39 @@ import java.util.function.Supplier;
  */
 public class ThreadState {
   public static final ThreadState DEBUG = new ThreadState(
-      "Debug", () -> colors().threadStateUninterruptile, 9);
+      "Debug", () -> BaseColor.MAGENTA.rgb, 9);
   public static final ThreadState EXIT_DEAD = new ThreadState(
-      "Exit Dead", () -> colors().threadStateUninterruptile, 8);
+      "Exit Dead", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState RUNNABLE = new ThreadState(
-      "Runnable", () -> colors().threadStateRunnable, 1);
+      "Runnable", () -> BaseColor.GREEN.rgb, 1);
   public static final ThreadState RUNNING = new ThreadState(
-      "Running", () -> colors().threadStateRunning, 0);
+      "Running", () -> BaseColor.PACIFIC_BLUE.rgb, 0);
   public static final ThreadState SLEEPING = new ThreadState(
-      "Sleeping", () -> colors().threadStateSleep, 5);
+      "Sleeping", () -> BaseColor.GREY.rgb, 5);
   public static final ThreadState STOPPED = new ThreadState(
-      "Stopped", () -> colors().threadStateUninterruptile, 8);
+      "Stopped", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState TASK_DEAD = new ThreadState(
-      "Task Dead", () -> colors().threadStateUninterruptile, 8);
+      "Task Dead", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState UNINTR_SLEEP = new ThreadState(
-      "Uninterruptible Sleep", () -> colors().threadStateUninterruptile, 6);
+      "Uninterruptible Sleep", () -> BaseColor.MAGENTA.rgb, 6);
   public static final ThreadState UNINTR_SLEEP_WAKE_KILL = new ThreadState(
-      "Uninterruptible Sleep | WakeKill", () -> colors().threadStateUninterruptile, 7);
+      "Uninterruptible Sleep | WakeKill", () -> BaseColor.MAGENTA.rgb, 7);
   public static final ThreadState UNINTR_SLEEP_WAKING = new ThreadState(
-      "Uninterruptible Sleep | Waking", () -> colors().threadStateUninterruptile, 7);
+      "Uninterruptible Sleep | Waking", () -> BaseColor.MAGENTA.rgb, 7);
   public static final ThreadState UNINTR_SLEEP_IO = new ThreadState(
-      "Uninterruptible Sleep - Block I/O", () -> colors().threadStateIowait, 3);
+      "Uninterruptible Sleep - Block I/O", () -> BaseColor.ORANGE.rgb, 3);
   public static final ThreadState UNINTR_SLEEP_WAKE_KILL_IO = new ThreadState(
-      "Uninterruptible Sleep | WakeKill - Block I/O", () -> colors().threadStateIowait, 4);
+      "Uninterruptible Sleep | WakeKill - Block I/O", () -> BaseColor.ORANGE.rgb, 4);
   public static final ThreadState UNINTR_SLEEP_WAKING_IO = new ThreadState(
-      "Uninterruptible Sleep | Waking - Block I/O", () -> colors().threadStateIowait, 4);
+      "Uninterruptible Sleep | Waking - Block I/O", () -> BaseColor.ORANGE.rgb, 4);
   public static final ThreadState WAKE_KILL = new ThreadState(
-      "Wakekill", () -> colors().threadStateUninterruptile, 8);
+      "Wakekill", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState WAKING = new ThreadState(
-      "Waking", () -> colors().threadStateUninterruptile, 8);
+      "Waking", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState ZOMBIE = new ThreadState(
-      "Zombie", () -> colors().threadStateUninterruptile, 8);
-
+      "Zombie", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState NONE = new ThreadState(
-      "", () -> colors().threadStateUnknown, 10);
+      "", () -> BaseColor.DARK_ORANGE.rgb, 10);
 
   public final String label;
   public final Supplier<RGBA> color;
@@ -104,7 +104,7 @@ public class ThreadState {
       case "Z":
         return ZOMBIE;
       default:
-        return new ThreadState("Unknown (" + state + ")", () -> colors().threadStateUnknown, 10);
+        return new ThreadState("Unknown (" + state + ")", () -> BaseColor.DARK_ORANGE.rgb, 10);
     }
   }
 
