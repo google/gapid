@@ -265,7 +265,7 @@ public class PipelineView extends Composite
                   scrollComposite.setContent(contentComposite);
                   scrollComposite.setExpandVertical(true);
                   scrollComposite.setExpandHorizontal(true);
-                  scrollComposite.addListener( SWT.Resize, event -> {
+                  scrollComposite.addListener(SWT.Resize, event -> {
                     int width = scrollComposite.getClientArea().width;
                     scrollComposite.setMinHeight(contentComposite.computeSize(width, SWT.DEFAULT).y);
                   });
