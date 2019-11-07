@@ -277,6 +277,7 @@ func (verb *exportReplayVerb) Run(ctx context.Context, flags flag.FlagSet) error
 			path.Join("lib", abi, "libgapir.so"),
 			path.Join("lib", abi, "libVkLayer_VirtualSwapchain.so"),
 			path.Join("lib", abi, "libVkLayer_CPUTiming.so"),
+			path.Join("lib", abi, "libVkLayer_MemoryTracker.so"),
 		}
 
 		for _, f := range files {

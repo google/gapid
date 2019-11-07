@@ -19,6 +19,7 @@
 #define __PERFETTO_THREADLOCAL_EMITTER_H__
 #include <atomic>
 #include "core/memory/arena/cc/arena.h"
+#include "core/vulkan/perfetto_producer/perfetto_proto_structs.h"
 #include "core/vulkan/perfetto_producer/threadlocal_emitter_base.h"
 #include "gapil/runtime/cc/map.h"
 namespace gapil {
@@ -33,6 +34,9 @@ struct hash<std::string, void> {
 }  // namespace gapil
 
 namespace core {
+
+const uint32_t SEQUENCE_RESET_PERIOD_MS = 2000;
+
 template <typename T>
 class ThreadlocalEmitter : ThreadlocalEmitterBase {
  public:
@@ -44,8 +48,10 @@ class ThreadlocalEmitter : ThreadlocalEmitterBase {
     enabled_ = true;
   }
   void StopTracing() override { enabled_ = false; }
+  bool Enabled() { return enabled_; }
   void StartEvent(const char* name);
   void EndEvent();
+  void EmitVulkanMemoryUsageEvent(const VulkanMemoryEvent* vulkan_memory_event);
 
  private:
   void ResetIfNecessary();
@@ -64,6 +70,14 @@ class ThreadlocalEmitter : ThreadlocalEmitterBase {
       const char* name,
       typename PerfettoProducer<T>::TraceContext::TracePacketHandle& packet,
       perfetto::protos::pbzero::InternedData** interned_data);
+  uint64_t InternFunctionName(
+      const char* name,
+      typename PerfettoProducer<T>::TraceContext::TracePacketHandle& packet,
+      perfetto::protos::pbzero::InternedData** interned_data);
+  uint64_t InternVulkanAnnotationKey(
+      const char* name,
+      typename PerfettoProducer<T>::TraceContext::TracePacketHandle& packet,
+      perfetto::protos::pbzero::InternedData** interned_data);
 
   std::string thread_name_;
   std::string process_name_;
@@ -74,8 +88,12 @@ class ThreadlocalEmitter : ThreadlocalEmitterBase {
   gapil::Map<std::string, uint64_t, false> interned_names_;
   gapil::Map<std::string, uint64_t, false> interned_annotation_names_;
   gapil::Map<std::string, uint64_t, false> interned_categories_;
+  gapil::Map<std::string, uint64_t, false> interned_function_names_;
+  gapil::Map<std::string, uint64_t, false> interned_vulkan_annotation_keys_;
   bool emitted_thread_data_ = false;
   bool emitted_process_data_ = false;
+  uint64_t last_reset_timestamp_;
+  uint64_t reset_period_ms_;
   std::atomic_bool reset_;
   std::atomic_bool enabled_;
 };

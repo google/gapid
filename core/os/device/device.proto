@@ -177,6 +177,7 @@ message Configuration {
 
 message VulkanProfilingLayers {
   bool cpu_timing = 1;
+  bool memory_tracker = 2;
 }
 
 message PerfettoCapability {

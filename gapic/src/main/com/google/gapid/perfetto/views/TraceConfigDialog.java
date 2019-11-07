@@ -138,6 +138,12 @@ public class TraceConfigDialog extends DialogBase {
       }
       sb.append("Battery");
     }
+    if (settings.perfettoVulkanCPUTiming || settings.perfettoVulkanMemoryTracker) {
+      if (sb.length() > 0) {
+        sb.append(", ");
+      }
+      sb.append("Vulkan");
+    }
     return sb.toString();
   }
 
@@ -220,6 +226,11 @@ public class TraceConfigDialog extends DialogBase {
 
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
       .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE));
+
+    if (settings.perfettoVulkanMemoryTracker) {
+      config.addDataSourcesBuilder().getConfigBuilder().setName("VulkanMemoryTracker");
+    }
+
     return config;
   }
 
@@ -265,6 +276,7 @@ public class TraceConfigDialog extends DialogBase {
     private final Label[] batLabels;
     private final Spinner batRate;
     private final Button vulkanCPUTiming;
+    private final Button vulkanMemoryTracking;
 
     public InputArea(
         Composite parent, Settings settings, Theme theme, Device.PerfettoCapability caps) {
@@ -361,6 +373,13 @@ public class TraceConfigDialog extends DialogBase {
       } else {
         vulkanCPUTiming = null;
       }
+      if (caps.getVulkanProfileLayers().getMemoryTracker()) {
+        vulkanMemoryTracking = createCheckbox(this, "Vulkan Memory Tracking",
+            settings.perfettoVulkanMemoryTracker, e -> updateVulkan());
+      } else {
+        vulkanMemoryTracking = null;
+      }
+
       updateCpu();
       updateGpu();
       updateMem();
@@ -393,6 +412,11 @@ public class TraceConfigDialog extends DialogBase {
         settings.perfettoVulkanCPUTiming = vulkanCPUTiming.getSelection();
       } else {
         settings.perfettoVulkanCPUTiming = false;
+      }
+      if (vulkanMemoryTracking != null) {
+        settings.perfettoVulkanMemoryTracker = vulkanMemoryTracking.getSelection();
+      } else {
+        settings.perfettoVulkanMemoryTracker = false;
       }
     }
 

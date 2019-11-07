@@ -40,6 +40,7 @@ const (
 	LibGraphicsSpy LibraryType = iota
 	LibVirtualSwapChain
 	LibCPUTiming
+	LibMemoryTracker
 )
 
 // FileLayout provides a unified way of accessing various Gapid binaries.
@@ -77,22 +78,26 @@ var libTypeToName = map[LibraryType]string{
 	LibGraphicsSpy:      "libgapii",
 	LibVirtualSwapChain: "libVkLayer_VirtualSwapchain",
 	LibCPUTiming:        "libVkLayer_CPUTiming",
+	LibMemoryTracker:    "libVkLayer_MemoryTracker",
 }
 
 var layerNameToLibType = map[string]LibraryType{
 	"VirtualSwapchain": LibVirtualSwapChain,
 	"CPUTiming":        LibCPUTiming,
+	"MemoryTracker":    LibMemoryTracker,
 }
 
 var dataSourceNameToLayerName = map[string]string{
-	"VirtualSwapchain": "VirtualSwapchain",
-	"VulkanCPUTiming":  "CPUTiming",
+	"VirtualSwapchain":    "VirtualSwapchain",
+	"VulkanCPUTiming":     "CPUTiming",
+	"VulkanMemoryTracker": "MemoryTracker",
 }
 
 var libTypeToJson = map[LibraryType]string{
 	LibGraphicsSpy:      "GraphicsSpyLayer.json",
 	LibVirtualSwapChain: "VirtualSwapchainLayer.json",
 	LibCPUTiming:        "CPUTimingLayer.json",
+	LibMemoryTracker:    "MemoryTrackerLayer.json",
 }
 
 func withLibraryPlatformSuffix(lib string, os device.OSKind) string {
@@ -257,12 +262,14 @@ var libTypeToLibPath = map[LibraryType]string{
 	LibGraphicsSpy:      "gapid/gapii/cc/libgapii",
 	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/libVkLayer_VirtualSwapchain",
 	LibCPUTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/libVkLayer_CPUTiming",
+	LibMemoryTracker:    "gapid/core/vulkan/vk_memory_tracker_layer/cc/libVkLayer_MemoryTracker",
 }
 
 var libTypeToJsonPath = map[LibraryType]string{
 	LibGraphicsSpy:      "gapid/gapii/vulkan/vk_graphics_spy/cc/GraphicsSpyLayer.json",
 	LibVirtualSwapChain: "gapid/core/vulkan/vk_virtual_swapchain/cc/VirtualSwapchainLayer.json",
 	LibCPUTiming:        "gapid/core/vulkan/vk_api_timing_layer/cc/CPUTimingLayer.json",
+	LibMemoryTracker:    "gapid/core/vulkan/vk_memory_tracker_layer/cc/MemoryTrackerLayer.json",
 }
 
 // RunfilesLayout creates a new layout based on the given runfiles manifest.
