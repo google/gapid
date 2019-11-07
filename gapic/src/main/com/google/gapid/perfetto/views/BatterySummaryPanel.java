@@ -25,6 +25,7 @@ import com.google.gapid.perfetto.canvas.Fonts.TextMeasurer;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.BatterySummaryTrack;
+import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.graphics.RGBA;
 
@@ -76,7 +77,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       long maxAbs = maxAbsCurrent(data.current);
 
       // Draw outgoing battery current above the x axis.
-      ctx.setBackgroundColor(colors().batteryCurrentOut);
+      ctx.setBackgroundColor(BaseColor.ORANGE.rgb);
       ctx.path(path -> {
         path.moveTo(0, h / 2);
         double lastX = 0, lastY = h / 2;
@@ -94,7 +95,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
       });
 
       // Draw ingoing battery current below the x axis.
-      ctx.setBackgroundColor(colors().batteryCurrentIn);
+      ctx.setBackgroundColor(BaseColor.GREEN.rgb);
       ctx.path(path -> {
         path.moveTo(0, h / 2);
         double lastX = 0, lastY = h / 2;
@@ -120,7 +121,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
         double x = mouseXpos + HOVER_MARGIN + HOVER_PADDING, y = mouseYpos;
         double dy = hovered.allSize.h / 2;
 
-        RGBA color = hovered.current > 0 ? colors().batteryCurrentOut : colors().batteryCurrentIn;
+        RGBA color = hovered.current > 0 ? BaseColor.ORANGE.rgb : BaseColor.GREEN.rgb;
         ctx.setBackgroundColor(color);
         ctx.fillRect(x, y + dy + (dy - LEGEND_SIZE) / 2, LEGEND_SIZE, LEGEND_SIZE);
 

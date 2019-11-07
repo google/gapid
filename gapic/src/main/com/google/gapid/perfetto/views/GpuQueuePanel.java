@@ -19,7 +19,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -107,9 +106,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
         double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
         double y = depth * SLICE_HEIGHT;
 
-        float hue = (title.hashCode() & 0x7fffffff) % 360;
-        float saturation = Math.min(20 + depth * 10, 70) / 100f;
-        ctx.setBackgroundColor(hsl(hue, saturation, .65f));
+        ctx.setBackgroundColor(SliceTrack.getColor(data.titles[i], depth));
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
         if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
@@ -127,8 +124,8 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       }
 
       // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
-      ctx.setForegroundColor(SWT.COLOR_BLACK);
       for (int index : visibleSelected) {
+        ctx.setForegroundColor(SliceTrack.getBorderColor(data.titles[index], data.depths[index]));
         double rectStart = state.timeToPx(data.starts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
         double depth = data.depths[index];

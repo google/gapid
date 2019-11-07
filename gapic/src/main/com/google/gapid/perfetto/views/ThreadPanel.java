@@ -19,7 +19,6 @@ import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.SELECTION_THRESHOLD;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
-import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Lists;
@@ -36,6 +35,7 @@ import com.google.gapid.perfetto.models.SliceTrack;
 import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.ThreadTrack;
 import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
+import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
@@ -205,9 +205,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
           double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
           double y = (1 + depth) * SLICE_HEIGHT;
 
-          float hue = (title.hashCode() & 0x7fffffff) % 360;
-          float saturation = Math.min(20 + depth * 10, 70) / 100f;
-          ctx.setBackgroundColor(hsl(hue, saturation, .65f));
+          ctx.setBackgroundColor(SliceTrack.getColor(title, depth));
           ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
           if (selectedThread.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
@@ -226,13 +224,15 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       }
 
       // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
-      ctx.setForegroundColor(SWT.COLOR_BLACK);
       for (int index : visibleSelectedSched) {
+        ctx.setForegroundColor(BaseColor.INDIGO.rgb);
         double rectStart = state.timeToPx(data.schedStarts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.schedEnds[index]) - rectStart);
         ctx.drawRect(rectStart, 0, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
       for (int index : visibleSelectedExpanded) {
+        ctx.setForegroundColor(
+            SliceTrack.getBorderColor(data.slices.titles[index], data.slices.depths[index]));
         double rectStart = state.timeToPx(data.slices.starts[index]);
         double rectWidth = Math.max(1, state.timeToPx(data.slices.ends[index]) - rectStart);
         double depth = data.slices.depths[index];
