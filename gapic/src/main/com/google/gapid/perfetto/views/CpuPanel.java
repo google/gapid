@@ -24,18 +24,22 @@ import static com.google.gapid.perfetto.views.StyleConstants.hueForCpu;
 import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Draws the CPU usage or slices of a single core.
@@ -45,6 +49,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final CpuTrack track;
   private final float hue;
@@ -127,6 +132,8 @@ public class CpuPanel extends TrackPanel implements Selectable {
     //boolean isHovering = feGlobals().getFrontendLocalState().hoveredUtid != -1;
 
     TimeSpan visible = state.getVisibleTime();
+    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    List<Integer> visibleSelected = Lists.newArrayList();
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
@@ -138,11 +145,14 @@ public class CpuPanel extends TrackPanel implements Selectable {
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
       ThreadInfo.Display threadInfo = ThreadInfo.getDisplay(state.getData(), utid, false);
-      StyleConstants.HSL color = threadInfo.getColor();
-      color = color.adjusted(color.h, color.s - 20, Math.min(color.l + 10,  60));
+      StyleConstants.HSL color = ThreadInfo.getColor(state, utid);
 
       ctx.setBackgroundColor(color.rgb());
       ctx.fillRect(rectStart, 0, rectWidth, h);
+
+      if (selected.contains(data.ids[i])) {
+        visibleSelected.add(i);
+      }
 
       // Don't render text when we have less than 7px to play with.
       if (rectWidth < 7) {
@@ -157,6 +167,14 @@ public class CpuPanel extends TrackPanel implements Selectable {
         ctx.drawText(Fonts.Style.Normal, threadInfo.subTitle,
             rectStart + 2, (h / 2) + 2, rectWidth - 4, (h / 2) - 4);
       }
+    }
+
+    // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+    ctx.setForegroundColor(SWT.COLOR_BLACK);
+    for (int index : visibleSelected) {
+      double rectStart = state.timeToPx(data.starts[index]);
+      double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
+      ctx.drawRect(rectStart, 0, rectWidth, h, BOUNDING_BOX_LINE_WIDTH);
     }
 
     if (hoveredThread != null) {
@@ -200,6 +218,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -220,8 +239,9 @@ public class CpuPanel extends TrackPanel implements Selectable {
 
           @Override
           public boolean click() {
-            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
-            return false;
+            state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelectedThread(state.getThreadInfo(utid));
+            return true;
           }
         };
       }
@@ -261,7 +281,7 @@ public class CpuPanel extends TrackPanel implements Selectable {
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Kind.Cpu, transform(
+      builder.add(Selection.Kind.Cpu, transform(
           CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts),
           r -> new CpuTrack.Slices(state, r)));
     }

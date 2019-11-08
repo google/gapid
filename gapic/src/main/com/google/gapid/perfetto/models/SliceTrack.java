@@ -29,6 +29,7 @@ import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -234,33 +235,40 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     }
   }
 
-  public static abstract class Slice implements Selection {
+  public static abstract class Slice implements Selection<Slice.Key> {
     public final long time;
     public final long dur;
     public final String category;
     public final String name;
+    public final int depth;
     public final long stackId;
     public final long parentId;
     public final ArgSet args;
 
-    public Slice(long time, long dur, String category, String name, long stackId, long parentId,
-        ArgSet args) {
+    public Slice(long time, long dur, String category, String name, int depth, long stackId,
+        long parentId, ArgSet args) {
       this.time = time;
       this.dur = dur;
       this.category = category;
       this.name = name;
+      this.depth = depth;
       this.stackId = stackId;
       this.parentId = parentId;
       this.args = args;
     }
 
     public Slice(QueryEngine.Row row, ArgSet args) {
-      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getLong(6),
-          row.getLong(7), args);
+      this(row.getLong(1), row.getLong(2), row.getString(3), row.getString(4), row.getInt(5),
+          row.getLong(6), row.getLong(7), args);
     }
 
     public ThreadInfo getThread() {
       return null;
+    }
+
+    @Override
+    public boolean contains(Slice.Key key) {
+      return key.matches(this);
     }
 
     @Override
@@ -269,7 +277,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     }
 
     @Override
-    public void mark(State state) {
+    public void markTime(State state) {
       if (dur > 0) {
         state.setHighlight(new TimeSpan(time, time + dur));
       }
@@ -279,6 +287,42 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     public void zoom(State state) {
       if (dur > 0) {
         state.setVisibleTime(new TimeSpan(time, time + dur));
+      }
+    }
+
+    public static class Key {
+      public final long time;
+      public final long dur;
+      public final int depth;
+
+      public Key(long time, long dur, int depth) {
+        this.time = time;
+        this.dur = dur;
+        this.depth = depth;
+      }
+
+      public Key(Slice slice) {
+        this(slice.time, slice.dur, slice.depth);
+      }
+
+      public boolean matches(Slice slice) {
+        return slice.time == time && slice.dur == dur && slice.depth == depth;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)obj;
+        return time == o.time && dur == o.dur && depth == o.depth;
+      }
+
+      @Override
+      public int hashCode() {
+        return Long.hashCode(time ^ dur) ^ Integer.hashCode(depth);
       }
     }
 
@@ -307,6 +351,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
     private final Map<Long, Node.Builder> byStack = Maps.newHashMap();
     private final Map<Long, List<Node.Builder>> byParent = Maps.newHashMap();
     private final Set<Long> roots = Sets.newHashSet();
+    private final Set<Slice.Key> sliceKeys = Sets.newHashSet();
 
     public Slices(List<Slice> slices) {
       String ti = "";
@@ -320,6 +365,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
         }
         roots.remove(slice.stackId);
         child.add(slice.dur);
+        sliceKeys.add(new Slice.Key(slice));
       }
       this.title = ti;
     }
@@ -336,6 +382,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
         }
       }
       roots.addAll(other.roots);
+      sliceKeys.addAll(other.sliceKeys);
       return this;
     }
 
@@ -346,21 +393,28 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
           .flatMap(root -> byParent.get(root).stream())
           .map(b -> b.build(byParent))
           .sorted((n1, n2) -> Long.compare(n2.dur, n1.dur))
-          .collect(toImmutableList()));
+          .collect(toImmutableList()), ImmutableSet.copyOf(sliceKeys));
     }
 
-    public static class Selection implements com.google.gapid.perfetto.models.Selection {
+    public static class Selection implements com.google.gapid.perfetto.models.Selection<Slice.Key> {
       private final String title;
       public final ImmutableList<Node> nodes;
+      public final ImmutableSet<Slice.Key> sliceKeys;
 
-      public Selection(String title, ImmutableList<Node> nodes) {
+      public Selection(String title, ImmutableList<Node> nodes, ImmutableSet<Slice.Key> sliceKeys) {
         this.title = title;
         this.nodes = nodes;
+        this.sliceKeys = sliceKeys;
       }
 
       @Override
       public String getTitle() {
         return title;
+      }
+
+      @Override
+      public boolean contains(Slice.Key key) {
+        return sliceKeys.contains(key);
       }
 
       @Override

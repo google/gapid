@@ -334,6 +334,9 @@ public class RootPanel extends Panel.Base implements State.Listener {
       result = bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
           .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
     }
+    if (x >= LABEL_WIDTH && y >= topHeight && result == Hover.NONE) {
+      result = result.withClick(() -> state.resetSelections());
+    }
     return (x >= LABEL_WIDTH) ? result.withClick(() -> {
       TimeSpan highlight = state.getHighlight();
       if (!highlight.isEmpty() && !highlight.contains(state.pxToTime(x - LABEL_WIDTH))) {

@@ -22,6 +22,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.Colors.hsl;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -29,12 +30,16 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.ArgSet;
 import com.google.gapid.perfetto.models.GpuInfo;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.models.SliceTrack;
+import com.google.gapid.perfetto.models.SliceTrack.Slice;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Draws the GPU Queue slices.
@@ -43,6 +48,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
   private static final double SLICE_HEIGHT = 25 - 2 * TRACK_MARGIN;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
   private final GpuInfo.Queue queue;
   protected final SliceTrack track;
@@ -82,6 +88,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
       }
 
       TimeSpan visible = state.getVisibleTime();
+      Selection<Slice.Key> selected = state.getSelection(Selection.Kind.Gpu);
+      List<Integer> visibleSelected = Lists.newArrayList();
       for (int i = 0; i < data.starts.length; i++) {
         long tStart = data.starts[i];
         long tEnd = data.ends[i];
@@ -100,6 +108,10 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         ctx.setBackgroundColor(hsl(hue, saturation, .65f));
         ctx.fillRect(rectStart, y, rectWidth, SLICE_HEIGHT);
 
+        if (selected.contains(new Slice.Key(tStart, tEnd - tStart, depth))) {
+          visibleSelected.add(i);
+        }
+
         // Don't render text when we have less than 7px to play with.
         if (rectWidth < 7) {
           continue;
@@ -108,6 +120,15 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         ctx.setForegroundColor(colors().textInvertedMain);
         ctx.drawText(
             Fonts.Style.Normal, title, rectStart + 2, y + 2, rectWidth - 4, SLICE_HEIGHT - 4);
+      }
+
+      // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+      ctx.setForegroundColor(SWT.COLOR_BLACK);
+      for (int index : visibleSelected) {
+        double rectStart = state.timeToPx(data.starts[index]);
+        double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
+        double depth = data.depths[index];
+        ctx.drawRect(rectStart, depth * SLICE_HEIGHT, rectWidth, SLICE_HEIGHT, BOUNDING_BOX_LINE_WIDTH);
       }
 
       if (hoveredTitle != null) {
@@ -188,7 +209,8 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
           @Override
           public boolean click() {
             if (id >= 0) {
-              state.setSelection(track.getSlice(state.getQueryEngine(), id));
+              state.setSelection(Selection.Kind.Gpu, track.getSlice(state.getQueryEngine(), id));
+              return true;
             }
             return false;
           }
@@ -220,7 +242,7 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
         endDepth = Integer.MAX_VALUE;
       }
 
-      builder.add(Kind.Gpu, transform(
+      builder.add(Selection.Kind.Gpu, transform(
           track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
           SliceTrack.Slices::new));
     }

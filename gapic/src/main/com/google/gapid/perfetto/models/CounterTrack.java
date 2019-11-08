@@ -24,6 +24,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
+import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.CountersSelectionView;
@@ -32,6 +33,8 @@ import com.google.gapid.perfetto.views.State;
 import org.eclipse.swt.widgets.Composite;
 
 import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.LongStream;
 
 public class CounterTrack extends Track<CounterTrack.Data> {
   private static final String VIEW_SQL =
@@ -137,15 +140,17 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     }
   }
 
-  public static class Values implements Selection, Selection.CombiningBuilder.Combinable<Values> {
+  public static class Values implements Selection<Long>, Selection.CombiningBuilder.Combinable<Values> {
     public final long[] ts;
     public final String[] names;
     public final double[][] values;
+    private final Set<Long> valueKeys = Sets.newHashSet();
 
     public Values(String name, Data data) {
       this.ts = data.ts;
       this.names = new String[] { name };
       this.values = new double[][] { data.values };
+      LongStream.of(ts).boxed().forEach(this.valueKeys::add);
     }
 
     private Values(long[] ts, String[] names, double[][] values) {
@@ -157,6 +162,11 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     @Override
     public String getTitle() {
       return "Counters";
+    }
+
+    @Override
+    public boolean contains(Long key) {
+      return valueKeys.contains(key);
     }
 
     @Override
@@ -229,7 +239,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     }
 
     @Override
-    public Selection build() {
+    public Selection<Long> build() {
       return this;
     }
   }

@@ -152,7 +152,7 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   @Override
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Kind.Cpu, transform(CpuSummaryTrack.getSlices(state.getQueryEngine(), ts), r ->
+      builder.add(Selection.Kind.Cpu, transform(CpuSummaryTrack.getSlices(state.getQueryEngine(), ts), r ->
           new CpuTrack.Slices(state, r)));
     }
   }

@@ -24,9 +24,4 @@ import com.google.gapid.perfetto.models.Selection;
  */
 public interface Selectable {
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts);
-
-  public static enum Kind {
-    // Order as shown in the UI.
-    Thread, ThreadState, Cpu, Gpu, Counter;
-  }
 }

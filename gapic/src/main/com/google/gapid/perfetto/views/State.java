@@ -57,8 +57,9 @@ public class State {
   private double maxScrollOffset = 0;
   private double nanosPerPx;
   private long resolution;
-  private Selection selection;
+  private Selection.MultiSelection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
+  private ThreadInfo selectedThread;
   private TimeSpan highlight = TimeSpan.ZERO;
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
@@ -69,12 +70,14 @@ public class State {
     this.visibleTime = TimeSpan.ZERO;
     this.width = 0;
     this.selection = null;
+    this.selectedThread = null;
   }
 
   public void update(Perfetto.Data newData) {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.selection = null;
+    this.selectedThread = null;
     this.highlight = TimeSpan.ZERO;
     update();
     listeners.fire().onDataChanged();
@@ -132,8 +135,20 @@ public class State {
     return data.threads.get(id);
   }
 
-  public Selection getSelection() {
+  public Selection.MultiSelection getSelection() {
     return selection;
+  }
+
+  public <T> Selection<T> getSelection(Selection.Kind<T> type) {
+    if (selection == null) {
+      return Selection.emptySelection();
+    } else {
+      return selection.getSelection(type);
+    }
+  }
+
+  public ThreadInfo getSelectedThread() {
+    return selectedThread;
   }
 
   public TimeSpan getHighlight() {
@@ -191,7 +206,28 @@ public class State {
     return false;
   }
 
-  public void setSelection(ListenableFuture<? extends Selection> futureSel) {
+  /* Return true if selection state changed. */
+  public boolean resetSelections() {
+    boolean hasDeselection = selection != null || selectedThread != null;
+    setSelection((Selection.MultiSelection)null);
+    selectedThread = null;
+    return hasDeselection;
+  }
+
+  public <Key> void setSelection(Selection.Kind<Key> type, ListenableFuture<? extends Selection<Key>> futureSel) {
+    int myId = lastSelectionUpdateId.incrementAndGet();
+    thenOnUiThread(futureSel, newSelection -> {
+      if (lastSelectionUpdateId.get() == myId) {
+        setSelection(new Selection.MultiSelection(type, newSelection));
+      }
+    });
+  }
+
+  public <Key> void setSelection(Selection.Kind<Key> type, Selection<Key> selection) {
+    setSelection(new Selection.MultiSelection(type, selection));
+  }
+
+  public void setSelection(ListenableFuture<Selection.MultiSelection> futureSel) {
     int myId = lastSelectionUpdateId.incrementAndGet();
     thenOnUiThread(futureSel, newSelection -> {
       if (lastSelectionUpdateId.get() == myId) {
@@ -200,10 +236,14 @@ public class State {
     });
   }
 
-  public void setSelection(Selection selection) {
+  public void setSelection(Selection.MultiSelection selection) {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
     listeners.fire().onSelectionChanged(selection);
+  }
+
+  public void setSelectedThread(ThreadInfo threadInfo) {
+    this.selectedThread = threadInfo;
   }
 
   public void setHighlight(TimeSpan highlight) {
@@ -259,6 +299,6 @@ public class State {
   public static interface Listener extends Events.Listener {
     public default void onDataChanged() { /* do nothing */ }
     public default void onVisibleAreaChanged() { /* do nothing */ }
-    public default void onSelectionChanged(Selection selection) { /* do nothing */}
+    public default void onSelectionChanged(Selection.MultiSelection selection) { /* do nothing */}
   }
 }

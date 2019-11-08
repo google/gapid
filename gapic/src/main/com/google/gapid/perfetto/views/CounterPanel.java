@@ -27,6 +27,7 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
 public class CounterPanel extends TrackPanel implements Selectable {
@@ -164,7 +165,7 @@ public class CounterPanel extends TrackPanel implements Selectable {
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Kind.Counter, transform(track.getValues(state.getQueryEngine(), ts),
+    builder.add(Selection.Kind.Counter, transform(track.getValues(state.getQueryEngine(), ts),
         data -> new CounterTrack.Values(track.getCounter().name, data)));
   }
 

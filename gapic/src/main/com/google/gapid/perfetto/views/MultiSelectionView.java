@@ -25,16 +25,19 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.TabFolder;
 
+import java.util.Map;
+
 /**
  * Displays multiple different selections.
  */
 public class MultiSelectionView extends Composite {
-  public MultiSelectionView(Composite parent, Selection[] selections, State state) {
+  public MultiSelectionView(Composite parent, Map<Selection.Kind<?>, Selection<?>> selections,
+      State state) {
     super(parent, SWT.NONE);
     setLayout(new FillLayout());
 
     TabFolder folder = createStandardTabFolder(this);
-    for (Selection s : selections) {
+    for (Selection<?> s : selections.values()) {
       createStandardTabItem(folder, s.getTitle(), s.buildUi(folder, state));
     }
   }

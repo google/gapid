@@ -49,7 +49,7 @@ public class SelectionView extends Composite implements State.Listener {
   }
 
   @Override
-  public void onSelectionChanged(Selection selection) {
+  public void onSelectionChanged(Selection.MultiSelection selection) {
     for (Control c : group.getChildren()) {
       c.dispose();
     }

@@ -18,9 +18,9 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.perfetto.TimeSpan.timeToString;
 import static com.google.gapid.perfetto.views.Loading.drawLoading;
 import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
-import static com.google.gapid.perfetto.views.StyleConstants.colorForThread;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -28,11 +28,14 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
+import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
+
+import java.util.List;
 
 /**
  * Displays the CPU usage summary of a process, aggregating all threads.
@@ -42,6 +45,7 @@ public class ProcessSummaryPanel extends TrackPanel {
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
+  private static final int BOUNDING_BOX_LINE_WIDTH = 1;
 
   private final ProcessSummaryTrack track;
   protected double mouseXpos;
@@ -137,6 +141,8 @@ public class ProcessSummaryPanel extends TrackPanel {
   private void renderSlices(RenderContext ctx, ProcessSummaryTrack.Data data, double h) {
     // TODO: dedupe with CpuRenderer
     TimeSpan visible = state.getVisibleTime();
+    Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
+    List<Integer> visibleSelected = Lists.newArrayList();
     double cpuH = (h - state.getData().numCpus + 1) / state.getData().numCpus;
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
@@ -149,11 +155,23 @@ public class ProcessSummaryPanel extends TrackPanel {
       double rectStart = state.timeToPx(tStart);
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
-      StyleConstants.HSL color = colorForThread(state.getThreadInfo(utid));
-      color = color.adjusted(color.h, color.s - 20, Math.min(color.l + 10,  60));
+      StyleConstants.HSL color = ThreadInfo.getColor(state, utid);
       double y = cpuH * cpu + cpu;
       ctx.setBackgroundColor(color.rgb());
       ctx.fillRect(rectStart, y, rectWidth, cpuH);
+
+      if (selected.contains(data.ids[i])) {
+        visibleSelected.add(i);
+      }
+    }
+
+    // Draw bounding rectangles after all the slices are rendered, so that the border is on the top.
+    ctx.setForegroundColor(SWT.COLOR_BLACK);
+    for (int index : visibleSelected) {
+      double rectStart = state.timeToPx(data.starts[index]);
+      double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
+      double cpu = data.cpus[index];
+      ctx.drawRect(rectStart, cpuH * cpu + cpu, rectWidth, cpuH, BOUNDING_BOX_LINE_WIDTH);
     }
 
     if (hoveredThread != null) {
@@ -203,6 +221,7 @@ public class ProcessSummaryPanel extends TrackPanel {
             m.measure(Fonts.Style.Normal, hoveredThread.title).w,
             m.measure(Fonts.Style.Normal, hoveredThread.subTitle).w);
         long id = data.ids[i];
+        long utid = data.utids[i];
 
         return new Hover() {
           @Override
@@ -223,8 +242,9 @@ public class ProcessSummaryPanel extends TrackPanel {
 
           @Override
           public boolean click() {
-            state.setSelection(CpuTrack.getSlice(state.getQueryEngine(), id));
-            return false;
+            state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelectedThread(state.getThreadInfo(utid));
+            return true;
           }
         };
       }
