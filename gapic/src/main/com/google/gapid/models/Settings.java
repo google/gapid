@@ -113,6 +113,7 @@ public class Settings {
   public boolean perfettoVulkanCPUTimingPhysicalDevice = false;
   public boolean perfettoVulkanCPUTimingQueue = false;
   public boolean perfettoVulkanMemoryTracker = false;
+  public boolean perfettoSurfaceFlinger = true;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -288,6 +289,7 @@ public class Settings {
     perfettoVulkanCPUTimingPhysicalDevice = getBoolean(properties, "perfetto.vulkan.cpu_timing.physical_device", perfettoVulkanCPUTimingPhysicalDevice);
     perfettoVulkanMemoryTracker =
         getBoolean(properties, "perfetto.vulkan.memory_tracker", perfettoVulkanMemoryTracker);
+    perfettoSurfaceFlinger = getBoolean(properties, "perfetto.surfaceflinger.frame", perfettoSurfaceFlinger);
   }
 
   private void updateTo(Properties properties) {
@@ -354,6 +356,7 @@ public class Settings {
 
     properties.setProperty(
         "perfetto.vulkan.memory_tracker", Boolean.toString(perfettoVulkanMemoryTracker));
+    properties.setProperty("perfetto.surfaceflinger.frame", Boolean.toString(perfettoSurfaceFlinger));
   }
 
   private static Point getPoint(Properties properties, String name) {

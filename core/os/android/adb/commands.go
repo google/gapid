@@ -287,6 +287,10 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 	perfettoCapability := &device.PerfettoCapability{
 		GpuProfiling: &device.GPUProfiling{},
 	}
+	if b.Instance().GetConfiguration().GetOS().GetName() == "R" {
+		// TODO(b/146384733): Change this to API version when it releases
+		perfettoCapability.GpuProfiling.HasFrameLifecycle = true
+	}
 	dataSources := tracingServiceState.GetDataSources()
 	for _, dataSource := range dataSources {
 		dataSourceDescriptor := dataSource.GetDsDescriptor()

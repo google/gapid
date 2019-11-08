@@ -30,6 +30,7 @@ import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.CpuFrequencyPanel;
 import com.google.gapid.perfetto.views.CpuPanel;
 import com.google.gapid.perfetto.views.CpuSummaryPanel;
+import com.google.gapid.perfetto.views.FrameEventsSummaryPanel;
 import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
@@ -55,6 +56,7 @@ public class Tracks {
     enumerateCpu(data);
     return transform(enumerateCounters(data), $2 -> {
       enumerateGpu(data);
+      enumerateFrameEvents(data);
       enumerateProcesses(data);
       return data;
     });
@@ -129,6 +131,19 @@ public class Tracks {
         data.tracks.addTrack("gpu_counters", track.getId(), counter.name,
             single(state -> new CounterPanel(state, track), true));
       }
+    }
+    return data;
+  }
+
+  public static Perfetto.Data.Builder enumerateFrameEvents(Perfetto.Data.Builder data) {
+    if (data.getFrameEvents().bufferCount() == 0)
+      return data;
+    data.tracks.addLabelGroup(null, "sf_events", "Surface Flinger Frame Events",
+        group(state -> new TitlePanel("Surface Flinger Frame Events"), true));
+    for (FrameEvents.Buffer queue : data.getFrameEvents().buffers()) {
+      FrameEventsTrack track = FrameEventsTrack.forSfEventsQueue(queue);
+      data.tracks.addTrack("sf_events", track.getId(), queue.getDisplay(),
+          single(state -> new FrameEventsSummaryPanel(state, queue, track), true));
     }
     return data;
   }

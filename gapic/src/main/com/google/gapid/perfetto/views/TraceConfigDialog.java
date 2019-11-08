@@ -148,6 +148,14 @@ public class TraceConfigDialog extends DialogBase {
       }
       sb.append("Battery");
     }
+    if (gpuCaps.getHasFrameLifecycle()) {
+      if (settings.perfettoSurfaceFlinger) {
+         if (sb.length() > 0) {
+           sb.append(", ");
+         }
+         sb.append("Frame Lifecycle");
+      }
+    }
     if (settings.perfettoVulkanCPUTiming || settings.perfettoVulkanMemoryTracker) {
       if (sb.length() > 0) {
         sb.append(", ");
@@ -191,6 +199,13 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
+    if (gpuCaps.getHasFrameLifecycle()) {
+      if (settings.perfettoSurfaceFlinger) {
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("android.surfaceflinger.frame");
+      }
+    }
     if (gpuCaps.getHasRenderStage() || gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
       if (settings.perfettoGpu) {
         if (settings.perfettoGpuSlices) {
@@ -325,6 +340,8 @@ public class TraceConfigDialog extends DialogBase {
 
     private final Button vulkanMemoryTracking;
 
+    private final Button frame;
+
     public InputArea(
         Composite parent, Settings settings, Theme theme, Device.PerfettoCapability caps) {
       super(parent, SWT.NONE);
@@ -411,6 +428,14 @@ public class TraceConfigDialog extends DialogBase {
       batLabels[1] = createLabel(batGroup, "ms");
 
       addSeparator();
+
+      if (gpuCaps.getHasFrameLifecycle()) {
+        frame = createCheckbox(this, "Frame Lifecycle", settings.perfettoSurfaceFlinger, e -> {});
+        addSeparator();
+      } else {
+        frame = null;
+      }
+
       Composite vulkanGroup = withLayoutData(
         createComposite(this, new GridLayout(1, false)),
         withIndents(new GridData(), GROUP_INDENT, 0));
@@ -489,6 +514,9 @@ public class TraceConfigDialog extends DialogBase {
         settings.perfettoVulkanMemoryTracker = vulkanMemoryTracking.getSelection();
       } else {
         settings.perfettoVulkanMemoryTracker = false;
+      }
+      if (frame != null) {
+        settings.perfettoSurfaceFlinger = frame.getSelection();
       }
     }
 
