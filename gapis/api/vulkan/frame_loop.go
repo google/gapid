@@ -2101,7 +2101,7 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 	}
 
 	dstPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(ipHostCopyImageLayout), sameLayoutsOfImage(dstImg))
-	srcPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, srcImg, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), sameLayoutsOfImage(dstImg))
+	srcPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, srcImg, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), sameLayoutsOfImage(srcImg))
 	postCopyBarriers := append(dstPostCopyBarriers, srcPostCopyBarriers...)
 	if err = ipRecordImageMemoryBarriers(stateBuilder, queueHandler, postCopyBarriers...); err != nil {
 		return log.Err(ctx, err, "Failed at post device copy image layout transition")
