@@ -1210,6 +1210,64 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 	rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()))
 	rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()))
 
+	multiState := p.MultisampleState()
+	multiList := &api.KeyValuePairList{}
+	multiList = multiList.AppendKeyValuePair("Sample Count", api.CreateBitfieldDataValue("VkSampleCountFlagBits", multiState.RasterizationSamples(), VkSampleCountFlagBitsConstants(), API{}))
+
+	// // For now, only display the first element of the sample mask array. There's rarely more in practice.
+	mask := uint64(0xFFFFFFFF)
+	if multiState.SampleMask().Len() > 0 {
+		mask = uint64(multiState.SampleMask().Get(multiState.SampleMask().Keys()[0]))
+	}
+	multiList = multiList.AppendKeyValuePair("Sample Mask", api.CreatePoDDataValue("VkSampleMask", fmt.Sprintf("%X", mask)))
+
+	multiList = multiList.AppendKeyValuePair("Sample Shading Enabled", api.CreatePoDDataValue("VkBool32", multiState.SampleShadingEnable() != 0))
+	multiList = multiList.AppendKeyValuePair("Min Sample Shading", api.CreatePoDDataValue("f32", multiState.MinSampleShading()))
+	multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0))
+	multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0))
+
+	viewports := p.ViewportState().Viewports()
+	viewportRows := make([]*api.Row, viewports.Len())
+	for i, index := range viewports.Keys() {
+		viewport := viewports.Get(index)
+
+		viewportRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("f32", viewport.X()),
+				api.CreatePoDDataValue("f32", viewport.Y()),
+				api.CreatePoDDataValue("f32", viewport.Width()),
+				api.CreatePoDDataValue("f32", viewport.Height()),
+				api.CreatePoDDataValue("f32", viewport.MinDepth()),
+				api.CreatePoDDataValue("f32", viewport.MaxDepth()),
+			},
+		}
+	}
+
+	viewportTable := &api.Table{
+		Headers: []string{"X", "Y", "Width", "Height", "Min Depth", "Max Depth"},
+		Rows:    viewportRows,
+	}
+
+	scissors := p.ViewportState().Scissors()
+	scissorRows := make([]*api.Row, scissors.Len())
+	for i, index := range scissors.Keys() {
+		scissor := scissors.Get(index)
+
+		scissorRows[i] = &api.Row{
+			RowValues: []*api.DataValue{
+				api.CreatePoDDataValue("s32", scissor.Offset().X()),
+				api.CreatePoDDataValue("s32", scissor.Offset().Y()),
+				api.CreatePoDDataValue("u32", scissor.Extent().Width()),
+				api.CreatePoDDataValue("u32", scissor.Extent().Height()),
+			},
+		}
+	}
+
+	scissorTable := &api.Table{
+		Headers: []string{"X", "Y", "Width", "Height"},
+		Rows:    scissorRows,
+	}
+
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Rasterization State",
@@ -1218,22 +1276,17 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 
 		&api.DataGroup{
 			GroupName: "Multisample State",
+			Data:      &api.DataGroup_KeyValues{multiList},
 		},
 
 		&api.DataGroup{
 			GroupName: "Viewports",
+			Data:      &api.DataGroup_Table{viewportTable},
 		},
 
 		&api.DataGroup{
 			GroupName: "Scissors",
-		},
-
-		&api.DataGroup{
-			GroupName: "Depth State",
-		},
-
-		&api.DataGroup{
-			GroupName: "Stencil State",
+			Data:      &api.DataGroup_Table{scissorTable},
 		},
 	}
 
