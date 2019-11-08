@@ -159,6 +159,67 @@ class condition_variable {
 #endif
 };
 
+class rwlock {
+ public:
+  rwlock(const rwlock&) = delete;
+  rwlock& operator=(const rwlock&) = delete;
+
+  rwlock() {
+#ifdef _WIN32
+    rwlock_ = SRWLOCK_INIT;
+#else
+    pthread_rwlock_init(&rwlock_, nullptr);
+#endif
+  }
+
+  ~rwlock() {
+#ifdef _WIN32
+    ;
+#else
+    pthread_rwlock_destroy(&rwlock_);
+#endif
+  }
+
+  void wlock() {
+#ifdef _WIN32
+    AcquireSRWLockExclusive(&rwlock_);
+#else
+    pthread_rwlock_wrlock(&rwlock_);
+#endif
+  }
+
+  void rlock() {
+#ifdef _WIN32
+    AcquireSRWLockShared(&rwlock_);
+#else
+    pthread_rwlock_rdlock(&rwlock_);
+#endif
+  }
+
+  void wunlock() {
+#ifdef _WIN32
+    ReleaseSRWLockExclusive(&rwlock_);
+#else
+    pthread_rwlock_unlock(&rwlock_);
+#endif
+  }
+
+  void runlock() {
+#ifdef _WIN32
+    ReleaseSRWLockShared(&rwlock_);
+#else
+    pthread_rwlock_unlock(&rwlock_);
+#endif
+  }
+
+ private:
+#ifdef _WIN32
+  PSRWLOCK rwlock_;
+#else
+  pthread_rwlock_t rwlock_;
+#endif
+};
+
 }  // namespace threading
 }  // namespace layer_helpers
 #endif  // VULKAN_LAYER_THREADING_H__
