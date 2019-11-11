@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,23 +13,13 @@
 # limitations under the License.
 
 filegroup(
-    name = "source",
-    srcs = glob([
-        "java/com/google/android/gapid/*.java",
-    ]),
-    visibility = ["//visibility:public"],
-)
-
-android_library(
-    name = "gapid",
-    srcs = [":source"],
-    manifest = "//tools/build/rules:AndroidManifest.xml",
-    resource_files = [
-        "res/drawable-xxxhdpi/logo.png",
+    name = "assets",
+    srcs = [
+        "assets/cube.frag",
+        "assets/cube.frag.spv",
+        "assets/cube.vert",
+        "assets/cube.vert.spv",
+        "assets/gapid.ppm",
     ],
-    assets = [
-        "//tools/build/third_party/validate:assets",
-    ],
-    assets_dir = "assets/",
     visibility = ["//visibility:public"],
 )

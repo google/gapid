@@ -1,0 +1,53 @@
+# Copyright (C) 2019 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts")
+
+cc_library(
+    name = "cc",
+    srcs = glob(["*.cpp"]),
+    hdrs = glob(["*.h"]),
+    copts = cc_copts() + select({
+        # Android
+        "//conditions:default": ["-DVK_USE_PLATFORM_ANDROID_KHR"],
+    }) + [
+        "-std=c++17",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-DNDEBUG",  # always ndebug for perfetto
+    ],
+    linkopts = select({
+        "//tools/build:linux": ["-lpthread"],
+        # Android
+        "//conditions:default": [
+            "-landroid",
+            "-ldl",
+            "-lm",
+            "-llog",
+            "-lvulkan",
+        ],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//core/vulkan/cc/include/vulkan",
+        "@android_native_app_glue//:native_app_glue",
+    ],
+)
+
+android_dynamic_library(
+    name = "libVKCube_android",
+    visibility = ["//visibility:public"],
+    exports = "vk_cube_android.exports",
+    deps = [":cc"],
+)

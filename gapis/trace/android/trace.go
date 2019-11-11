@@ -53,9 +53,8 @@ import (
 )
 
 const (
-	activityName                            = "com.samples.cube.VKCubeActivity"
+	activityName                            = "com.google.android.gapid.VKCubeActivity"
 	intentAction                            = "android.intent.action.MAIN"
-	validationPackageName                   = "com.samples.cube"
 	bufferSizeKb                            = uint32(131072)
 	counterPeriodNs                         = uint64(50000000)
 	durationMs                              = 7000
@@ -136,13 +135,14 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 
 	// Get ActivityAction
 	packages, _ := d.InstalledPackages(ctx)
-	pkg := packages.FindByName(validationPackageName)
+	packageName := gapidapk.PackageName(d.Instance().GetConfiguration().PreferredABI(nil))
+	pkg := packages.FindByName(packageName)
 	if pkg == nil {
-		return log.Errf(ctx, nil, "Package %v not found", validationPackageName)
+		return log.Errf(ctx, nil, "Package %v not found", packageName)
 	}
 	activityAction := pkg.ActivityActions.FindByName(intentAction, activityName)
 	if activityAction == nil {
-		return log.Errf(ctx, nil, "Activity %v not found in %v", activityName, validationPackageName)
+		return log.Errf(ctx, nil, "Activity %v not found in %v", activityName, packageName)
 	}
 
 	// Construct trace config
@@ -159,7 +159,7 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 
 	// Force to stop the application, ignore any error that happens as it
 	// doesn't affect validation.
-	defer d.ForceStop(ctx, validationPackageName)
+	defer d.ForceStop(ctx, packageName)
 
 	var buf bytes.Buffer
 	var written int64

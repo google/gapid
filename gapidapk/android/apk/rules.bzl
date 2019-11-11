@@ -78,6 +78,13 @@ def gapid_apk(name = "", abi = "", pkg = "", libs = {}, bins = {}):
         )
         assets += [":" + binname]
 
+    native.filegroup(
+        name = name + "_assets",
+        srcs = ["//tools/build/third_party/validate:assets"],
+        output_group = abi,
+    )
+    assets += [":" + name + "_assets"]
+
     filehash(
         name = name+"_manifest",
         template = "AndroidManifest.xml.in",

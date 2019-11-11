@@ -23,6 +23,7 @@ _NATIVE_LIBRARIES = {
     "interceptor": "//gapii/apk",
     "VkLayer_GraphicsSpy": "//gapii/apk",
     "gapir": "//cmd/gapir/apk",
+    "native_cube": "//tools/build/third_party/validate/apk",
 }
 
 _NATIVE_BINARIES = {
