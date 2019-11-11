@@ -85,7 +85,7 @@ function run_gazelle() {
 function run_copyright_headers() {
   tmpfile=`mktemp`
   for suffix in "cc" "cpp" "frag" "glsl" "go" "h" "hpp" "java" "js" "sh" "vert" "xml"; do
-    for i in `find . -type f -name '*.'"$suffix" -not -path "./tools/build/third_party/*" -not -path "./core/vulkan/cc/include/vulkan/*"`; do
+    for i in `find . -type f -name '*.'"$suffix" -not -path "./tools/build/third_party/*"`; do
       # This regex is a bit loose because GAPID legacy code does not match the
       # latest requirements in terms of Copyright headers format.
       # More info at go/copyright
