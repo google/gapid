@@ -71,7 +71,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
-        "//core/vulkan/cc/include/vulkan",
+        "//tools/build/third_party/vulkan_headers/vulkan",
         "//core/vulkan/layer_helpers",
         "//core/vulkan/perfetto_producer",
         "@cityhash",
@@ -94,7 +94,7 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        "//core/vulkan/cc/include/vulkan",
+        "//tools/build/third_party/vulkan_headers/vulkan",
     ],
 )
 
