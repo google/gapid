@@ -112,3 +112,6 @@ _configure_toolchain = repository_rule(
 def cc_configure():
   _configure_toolchain(name = "local_config_cc")
   native.bind(name = "cc_toolchain", actual = "@local_config_cc//:toolchain")
+  native.register_toolchains(
+    "@local_config_cc//:all",
+  )
