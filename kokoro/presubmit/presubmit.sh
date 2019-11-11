@@ -82,8 +82,37 @@ function run_gazelle() {
   $BAZEL run gazelle
 }
 
+function run_copyright_headers() {
+  tmpfile=`mktemp`
+  for suffix in "cc" "cpp" "frag" "glsl" "go" "h" "hpp" "java" "js" "sh" "vert" "xml"; do
+    for i in `find . -type f -name '*.'"$suffix" -not -path "./tools/build/third_party/*"`; do
+      # This regex is a bit loose because GAPID legacy code does not match the
+      # latest requirements in terms of Copyright headers format.
+      # More info at go/copyright
+      grep 'Copyright .* Google' $i > /dev/null
+      retval=$?
+      if test $retval != 0; then
+        echo $i >> $tmpfile
+      fi
+    done
+  done
+  num_files=`wc -l $tmpfile | sed -e 's/ .*$//'`
+  if test $num_files != 0; then
+    echo ""
+    echo "ERROR: Copyright header is missing or incorrect in these files:"
+    cat $tmpfile
+    rm $tmpfile
+    return 1
+  fi
+  rm $tmpfile
+  return 0
+}
+
 # Ensure we are clean to start out with.
 check "git workspace must be clean" true
+
+# Ensure presence of copyright headers
+check "Valid copyright headers" run_copyright_headers
 
 # Check clang-format.
 check clang-format run_clang_format

@@ -111,20 +111,20 @@ func fetchDeviceInfo(ctx context.Context, d adb.Device) error {
 		return nil
 	}
 
-	if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
-		startSignal, startFunc := task.NewSignal()
-		startFunc = task.Once(startFunc)
-		crash.Go(func() {
-			err := launchPerfettoProducerFromApk(ctx, d, startFunc)
-			if err != nil {
-				log.E(ctx, "[launchPerfettoProducerFromApk] error: %v", err)
-			}
+	// if d.Instance().GetConfiguration().GetOS().GetAPIVersion() >= 29 {
+	// 	startSignal, startFunc := task.NewSignal()
+	// 	startFunc = task.Once(startFunc)
+	// 	crash.Go(func() {
+	// 		err := launchPerfettoProducerFromApk(ctx, d, startFunc)
+	// 		if err != nil {
+	// 			log.E(ctx, "[launchPerfettoProducerFromApk] error: %v", err)
+	// 		}
 
-			// Ensure the start signal is fired on failure/immediate return.
-			startFunc(ctx)
-		})
-		startSignal.Wait(ctx)
-	}
+	// 		// Ensure the start signal is fired on failure/immediate return.
+	// 		startFunc(ctx)
+	// 	})
+	// 	startSignal.Wait(ctx)
+	// }
 
 	// Make sure the device is available to query device info, this is to prevent
 	// Vulkan trace from happening at the same time than device info query.
