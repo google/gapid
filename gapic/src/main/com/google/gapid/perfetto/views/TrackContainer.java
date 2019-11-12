@@ -15,10 +15,13 @@
  */
 package com.google.gapid.perfetto.views;
 
+import static com.google.gapid.perfetto.views.StyleConstants.LABEL_ICON_SIZE;
+import static com.google.gapid.perfetto.views.StyleConstants.LABEL_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_OFFSET;
+import static com.google.gapid.perfetto.views.StyleConstants.LABEL_PIN_X;
+import static com.google.gapid.perfetto.views.StyleConstants.LABEL_TOGGLE_X;
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.TITLE_HEIGHT;
-import static com.google.gapid.perfetto.views.StyleConstants.TOGGLE_ICON_OFFSET;
 import static com.google.gapid.perfetto.views.StyleConstants.arrowDown;
 import static com.google.gapid.perfetto.views.StyleConstants.arrowRight;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
@@ -96,6 +99,7 @@ public class TrackContainer {
     protected final Consumer<Boolean> filter;
 
     protected boolean filtered;
+    protected boolean hovered = false;
 
     public Single(TrackPanel track, boolean sep, Consumer<Boolean> filter, boolean filtered) {
       this.track = track;
@@ -119,11 +123,12 @@ public class TrackContainer {
     public void render(RenderContext ctx, Repainter repainter) {
       ctx.withClip(0, 0, LABEL_WIDTH, height, () -> {
         ctx.setForegroundColor(colors().textMain);
-        ctx.drawTextLeftTruncate(Fonts.Style.Normal, track.getTitle(),
-            10, 0, LABEL_WIDTH - 10 - ((filter != null) ? TOGGLE_ICON_OFFSET : 0), TITLE_HEIGHT);
+        ctx.drawTextLeftTruncate(Fonts.Style.Normal, track.getTitle(), LABEL_OFFSET, 0,
+            ((filter == null) ? LABEL_PIN_X  : LABEL_TOGGLE_X) - LABEL_MARGIN - LABEL_OFFSET,
+            TITLE_HEIGHT);
         if (filter != null) {
           ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
-              LABEL_WIDTH - TOGGLE_ICON_OFFSET, 0, TITLE_HEIGHT);
+              LABEL_TOGGLE_X, 0, TITLE_HEIGHT);
         }
       });
 
@@ -146,42 +151,30 @@ public class TrackContainer {
 
     @Override
     public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
-      if (filter != null &&
-          y < TITLE_HEIGHT && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
-        return new FilterToggler(track.onMouseMove(m, x, y));
+      if (x < LABEL_WIDTH) {
+        hovered = true;
+        if (filter != null && y < TITLE_HEIGHT && x >= LABEL_TOGGLE_X && x < LABEL_PIN_X) {
+          return new TrackTitleHover(track.onMouseMove(m, x, y), () -> {
+            filtered = !filtered;
+            filter.accept(filtered);
+          });
+        } else {
+          return new TrackTitleHover(track.onMouseMove(m, x, y), null);
+        }
       } else {
         return track.onMouseMove(m, x, y);
       }
     }
 
-    private class FilterToggler implements Hover {
-      private final Hover child;
-
-      public FilterToggler(Hover child) {
-        this.child = child;
-      }
-
-      @Override
-      public Area getRedraw() {
-        return child.getRedraw();
+    private class TrackTitleHover extends TrackContainer.TrackTitleHover {
+      public TrackTitleHover(Panel.Hover child, Runnable click) {
+        super(child, click);
       }
 
       @Override
       public void stop() {
-        child.stop();
-      }
-
-      @Override
-      public boolean click() {
-        child.click();
-        filtered = !filtered;
-        filter.accept(filtered);
-        return true;
-      }
-
-      @Override
-      public Cursor getCursor(Display display) {
-        return display.getSystemCursor(SWT.CURSOR_HAND);
+        super.stop();
+        hovered = false;
       }
     }
   }
@@ -193,6 +186,7 @@ public class TrackContainer {
 
     protected boolean expanded;
     protected boolean filtered;
+    protected boolean hovered = false;
 
     public Group(TitledPanel summary, Panel detail, boolean expanded, Consumer<Boolean> filter,
         boolean filtered) {
@@ -227,9 +221,13 @@ public class TrackContainer {
         ctx.setForegroundColor(colors().textMain);
         ctx.drawIcon(arrowDown(ctx.theme), 0, 0, TITLE_HEIGHT);
         ctx.drawText(Fonts.Style.Normal, summary.getTitle(), LABEL_OFFSET, 0, TITLE_HEIGHT);
+
+        double x = Math.max(LABEL_TOGGLE_X,
+            LABEL_OFFSET + ctx.measure(Fonts.Style.Normal, summary.getTitle()).w + LABEL_MARGIN);
         if (filter != null) {
-          ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
-              LABEL_WIDTH - TOGGLE_ICON_OFFSET, 0, TITLE_HEIGHT);
+          ctx.drawIcon(
+              filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme), x, 0, TITLE_HEIGHT);
+          x += LABEL_ICON_SIZE;
         }
 
         ctx.setForegroundColor(colors().panelBorder);
@@ -243,7 +241,7 @@ public class TrackContainer {
           ctx.setForegroundColor(colors().textMain);
           ctx.drawIcon(arrowRight(ctx.theme), 0, 0, TITLE_HEIGHT);
           ctx.drawTextLeftTruncate(Fonts.Style.Normal, summary.getTitle(),
-              LABEL_OFFSET, 0, LABEL_WIDTH - LABEL_OFFSET, TITLE_HEIGHT);
+              LABEL_OFFSET, 0, LABEL_PIN_X - LABEL_MARGIN - LABEL_OFFSET, TITLE_HEIGHT);
           if (!summary.getSubTitle().isEmpty()) {
             ctx.setForegroundColor(colors().textAlt);
             ctx.drawText(Fonts.Style.Normal, summary.getSubTitle(), LABEL_OFFSET, TITLE_HEIGHT);
@@ -280,73 +278,84 @@ public class TrackContainer {
 
     @Override
     public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
-      if (expanded) {
-        if (y < TITLE_HEIGHT) {
-          if (filter != null && x >= LABEL_WIDTH - TOGGLE_ICON_OFFSET && x < LABEL_WIDTH) {
-            return new FilterToggler();
-          } else if (x < LABEL_OFFSET + m.measure(Fonts.Style.Normal, summary.getTitle()).w) {
-            return new ExpansionToggler(Hover.NONE);
-          } else {
-            return Hover.NONE;
+      if (y < TITLE_HEIGHT && (expanded || x < LABEL_WIDTH)) {
+        hovered = true;
+        double p = m.measure(Fonts.Style.Normal, summary.getTitle()).w + LABEL_OFFSET;
+        if (expanded) {
+          if (x < p) {
+            return new TrackTitleHover(Hover.NONE, () -> expanded = false);
           }
+          p = Math.max(p + LABEL_MARGIN, LABEL_TOGGLE_X);
         } else {
-          return detail.onMouseMove(m, x, y - TITLE_HEIGHT).translated(0, TITLE_HEIGHT);
+          if (x < Math.min(p, LABEL_PIN_X - LABEL_MARGIN)) {
+            return new TrackTitleHover(summary.onMouseMove(m, x, y), () -> expanded = true);
+          }
+          p = LABEL_PIN_X;
         }
+        if (expanded && filter != null && x >= p && x < p + LABEL_ICON_SIZE) {
+          return new TrackTitleHover(Hover.NONE, () -> {
+            filtered = !filtered;
+            filter.accept(filtered);
+          });
+        }
+        return new TrackTitleHover(Hover.NONE, null);
+      } else if (!expanded && x < LABEL_WIDTH) {
+        hovered = true;
+        return new TrackTitleHover(Hover.NONE, null);
+      }
+
+      if (expanded) {
+        return detail.onMouseMove(m, x, y - TITLE_HEIGHT).translated(0, TITLE_HEIGHT);
       } else {
-        if (y < TITLE_HEIGHT &&
-            x < Math.min(LABEL_WIDTH, LABEL_OFFSET + m.measure(Fonts.Style.Normal, summary.getTitle()).w)) {
-          return new ExpansionToggler(summary.onMouseMove(m, x, y));
-        } else {
-          return summary.onMouseMove(m, x, y);
-        }
+        return summary.onMouseMove(m, x, y);
       }
     }
 
-    private class ExpansionToggler implements Hover {
-      private final Hover child;
-
-      public ExpansionToggler(Hover child) {
-        this.child = child;
-      }
-
-      @Override
-      public Area getRedraw() {
-        return child.getRedraw();
+    private class TrackTitleHover extends TrackContainer.TrackTitleHover {
+      public TrackTitleHover(Hover child, Runnable click) {
+        super(child, click);
       }
 
       @Override
       public void stop() {
-        child.stop();
-      }
-
-      @Override
-      public boolean click() {
-        child.click();
-        expanded = !expanded;
-        return true;
-      }
-
-      @Override
-      public Cursor getCursor(Display display) {
-        return display.getSystemCursor(SWT.CURSOR_HAND);
+        super.stop();
+        hovered = false;
       }
     }
+  }
 
-    private class FilterToggler implements Hover {
-      public FilterToggler() {
-      }
+  private static class TrackTitleHover implements Panel.Hover {
+    private final Panel.Hover child;
+    private final Runnable click;
 
-      @Override
-      public boolean click() {
-        filtered = !filtered;
-        filter.accept(filtered);
+    public TrackTitleHover(Panel.Hover child, Runnable click) {
+      this.child = child;
+      this.click = click;
+    }
+
+    @Override
+    public Area getRedraw() {
+      return child.getRedraw().combine(new Area(0, 0, LABEL_WIDTH, TITLE_HEIGHT));
+    }
+
+    @Override
+    public void stop() {
+      child.stop();
+    }
+
+    @Override
+    public boolean click() {
+      boolean r = child.click();
+      if (click != null) {
+        click.run();
         return true;
       }
+      return r;
+    }
 
-      @Override
-      public Cursor getCursor(Display display) {
-        return display.getSystemCursor(SWT.CURSOR_HAND);
-      }
+    @Override
+    public Cursor getCursor(Display d) {
+      return (click == null) ? child.getCursor(d) : d.getSystemCursor(SWT.CURSOR_HAND);
     }
   }
 }
