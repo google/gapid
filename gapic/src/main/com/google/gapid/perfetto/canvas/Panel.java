@@ -142,10 +142,6 @@ public interface Panel {
 
     public default Panel.Hover transformed(Function<Area, Area> transform) {
       Area redraw = getRedraw();
-      if (redraw == Area.NONE) {
-        return this;
-      }
-
       return new Hover() {
         @Override
         public Area getRedraw() {
