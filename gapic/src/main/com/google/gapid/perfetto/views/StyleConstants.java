@@ -32,9 +32,11 @@ import org.eclipse.swt.graphics.RGBA;
 public class StyleConstants {
   public static final double TITLE_HEIGHT = 25;
   public static final double LABEL_OFFSET = 20;
-  public static final double ICON_SIZE = 24;
-  public static final double TOGGLE_ICON_OFFSET = 30;
-  public static final double LABEL_WIDTH = 250;
+  public static final double LABEL_ICON_SIZE = 16;
+  public static final double LABEL_WIDTH = 280;
+  public static final double LABEL_MARGIN = 4;
+  public static final double LABEL_PIN_X = LABEL_WIDTH - LABEL_MARGIN - LABEL_ICON_SIZE;
+  public static final double LABEL_TOGGLE_X = LABEL_PIN_X - LABEL_ICON_SIZE;
   public static final double TRACK_MARGIN = 4;
   public static final double SELECTION_THRESHOLD = 0.333;
   public static final double ZOOM_FACTOR_SCALE = 0.05;
