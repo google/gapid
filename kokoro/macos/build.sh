@@ -16,6 +16,8 @@
 # MacOS Build Script.
 set -ex
 
+exit 0
+
 BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
 

@@ -13,11 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+lsb_release -a
+
 # Linux Build Script.
-set -ex
+#set -ex
+set -x
 
 BUILD_ROOT=$PWD
-SRC=$PWD/github/gapid/
+SRC=$PWD/github/gapid
 
 # Get bazel
 BAZEL_VERSION=1.2.0
@@ -32,7 +35,49 @@ sudo apt-get -q update
 sudo apt-get -qy install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
 
+######################################################################
+# Try our vulkan sample
+
+# use xvfb to have virtual framebuffer
+# alternative: use gapir to replay in headless, and use this replay as an app.
+# store binaries, if need be, could be done on GCP.
+
+
 cd $SRC
+$BUILD_ROOT/bazel/bin/bazel build -c dbg //cmd/vulkan_sample
+
+export VK_ICD_FILENAMES=$SRC/tools/build/third_party/swiftshader/vk_swiftshader_icd.json
+export VK_LOADER_DEBUG=all
+
+sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb
+Xvfb :99 &
+pid_xvfb=$!
+export DISPLAY=:99
+
+(
+  catchsegv $SRC/bazel-bin/cmd/vulkan_sample/vulkan_sample &
+  pid=$!
+  sleep 1
+  kill $pid
+) 2>&1 | tee _log
+
+$SRC/bazel-bin/cmd/vulkan_sample/vulkan_sample &
+pid_cube=$!
+
+sleep 2
+
+kill $pid_cube
+
+
+
+
+
+kill $pid_xvfb
+
+exit 1
+
+######################################################################
+
 BUILD_SHA=${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
 function test {

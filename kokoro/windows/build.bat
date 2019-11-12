@@ -16,6 +16,9 @@ limitations under the License.
 Windows Build Script.
 
 :start
+
+exit
+
 set BUILD_ROOT=%cd%
 set SRC=%cd%\github\gapid
 
