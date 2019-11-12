@@ -336,7 +336,7 @@ void ThreadlocalEmitter<T>::EmitVulkanMemoryUsageEvent(
 
         auto memory_event = packet->set_vulkan_memory_event();
         memory_event->set_source(event->source);
-        memory_event->set_type(event->type);
+        memory_event->set_operation(event->operation);
         memory_event->set_timestamp(event->timestamp);
         memory_event->set_pid(process_id_);
 
@@ -344,12 +344,16 @@ void ThreadlocalEmitter<T>::EmitVulkanMemoryUsageEvent(
         if (event->has_device_memory)
           memory_event->set_device_memory(event->device_memory);
         if (event->has_heap) memory_event->set_heap(event->heap);
+        if (event->has_memory_type)
+          memory_event->set_memory_type(event->memory_type);
         if (event->function_name.length() > 0) {
           memory_event->set_caller_iid(
               interned_strings[event->function_name.c_str()]);
         }
         if (event->has_object_handle)
           memory_event->set_object_handle(event->object_handle);
+        if (event->has_allocation_scope)
+          memory_event->set_allocation_scope(event->allocation_scope);
         if (event->has_memory_address)
           memory_event->set_memory_address(event->memory_address);
         if (event->has_memory_size)
@@ -362,7 +366,6 @@ void ThreadlocalEmitter<T>::EmitVulkanMemoryUsageEvent(
           switch (annotation.value_type) {
             case VulkanMemoryEventAnnotationValType::kInt:
               vulkan_annotation->set_int_value(annotation.int_value);
-              GAPID_INFO("int_value: %ld", annotation.int_value);
               break;
             case VulkanMemoryEventAnnotationValType::kString:
               uint64_t string_iid =

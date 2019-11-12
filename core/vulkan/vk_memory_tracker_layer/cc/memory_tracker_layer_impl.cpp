@@ -29,7 +29,7 @@
 #include "core/vulkan/vk_memory_tracker_layer/cc/tracing_helpers.h"
 #include "perfetto/base/time.h"
 
-#include "memory_tracker_layer_impl.h"
+#include "core/vulkan/vk_memory_tracker_layer/cc/memory_tracker_layer_impl.h"
 
 using namespace std::chrono;
 
@@ -152,7 +152,8 @@ void* AllocationCallbacksTracker::TrackedAllocationFunction(
 #if defined(WIN32)
     ptr = _aligned_malloc(size, alignment);
 #else
-    if (posix_memalign(&ptr, alignment, size) == 0) {
+    auto corrected_alignment = std::max(alignment, sizeof(void*));
+    if (posix_memalign(&ptr, corrected_alignment, size) == 0) {
       rwl_global_allocation_size_mapping.wlock();
       global_allocation_size_mapping[(uintptr_t)ptr] = size;
       rwl_global_allocation_size_mapping.wunlock();
@@ -192,7 +193,8 @@ void* AllocationCallbacksTracker::TrackedReallocationFunction(
                        ? 0
                        : global_allocation_size_mapping[(uintptr_t)pOriginal];
     rwl_global_allocation_size_mapping.runlock();
-    if (posix_memalign(&ptr, alignment, size) == 0) {
+    auto corrected_alignment = std::max(alignment, sizeof(void*));
+    if (posix_memalign(&ptr, corrected_alignment, size) == 0) {
       size_t cpsize = osize < size ? osize : size;
       memcpy(ptr, pOriginal, cpsize);
       free(pOriginal);
@@ -234,32 +236,37 @@ void AllocationCallbacksTracker::TrackedFreeFunction(void* pUserData,
 
 BindMemoryInfo::BindMemoryInfo(VkDeviceMemory device_memory,
                                UniqueHandle device_memory_handle,
-                               VkDeviceSize memory_offset) {
+                               VkDeviceSize memory_offset,
+                               uint32_t memory_type) {
   timestamp_ = perfetto::base::GetBootTimeNs().count();
   device_memory_ = device_memory;
   device_memory_handle_ = device_memory_handle;
   memory_offset_ = memory_offset;
+  memory_type_ = memory_type;
 }
 
 VulkanMemoryEventPtr BindMemoryInfo::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
   // event->source will be set by the object that this bind memory info is
   // attached to, which can be a buffer or an image.
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_BIND;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_BIND;
   event->timestamp = timestamp_;
   event->has_device_memory = true;
   event->device_memory = device_memory_handle_;
   event->has_memory_address = true;
   event->memory_address = memory_offset_;
+  event->has_memory_type = true;
+  event->memory_type = memory_type_;
   return event;
 }
 
 //                     ------------------------------------
 
-CreateBufferInfo::CreateBufferInfo(
-    VkBufferCreateInfo const* create_buffer_info) {
+CreateBufferInfo::CreateBufferInfo(VkBufferCreateInfo const* create_buffer_info,
+                                   VkDevice device) {
   timestamp = perfetto::base::GetBootTimeNs().count();
+  this->device = device;
   flags = create_buffer_info->flags;
   size = create_buffer_info->size;
   usage = create_buffer_info->usage;
@@ -271,12 +278,12 @@ CreateBufferInfo::CreateBufferInfo(
 VulkanMemoryEventPtr CreateBufferInfo::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_BUFFER;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_CREATE;
+      VulkanMemoryEvent_Source_SOURCE_BUFFER;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_CREATE;
   event->timestamp = timestamp;
-  event->has_memory_size = true;
-  event->memory_size = size;
+  event->has_device = true;
+  event->device = (uint64_t)(device);
 
   event->annotations.push_back(
       VulkanMemoryEventAnnotation("flags", (int)(flags)));
@@ -303,6 +310,14 @@ VulkanMemoryEventContainerPtr Buffer::GetVulkanMemoryEvents() {
   auto create_event = create_buffer_info->GetVulkanMemoryEvent();
   create_event->has_object_handle = true;
   create_event->object_handle = unique_handle;
+  VkMemoryRequirements memory_requirements;
+  GetGlobalContext()
+      .GetVkDeviceData(create_buffer_info->GetVkDevice())
+      ->functions->vkGetBufferMemoryRequirements(
+          create_buffer_info->GetVkDevice(), vk_buffer, &memory_requirements);
+  auto memory_size = memory_requirements.size;
+  create_event->has_memory_size = true;
+  create_event->memory_size = memory_size;
   create_event->annotations.push_back(
       VulkanMemoryEventAnnotation("vk_handle", (uint64_t)(vk_buffer)));
   events->push_back(std::move(create_event));
@@ -310,7 +325,9 @@ VulkanMemoryEventContainerPtr Buffer::GetVulkanMemoryEvents() {
   if (is_bound) {
     auto bind_event = bind_buffer_info->GetVulkanMemoryEvent();
     bind_event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-        VulkanMemoryEvent_Source_GPU_BUFFER;
+        VulkanMemoryEvent_Source_SOURCE_BUFFER;
+    bind_event->has_memory_size = true;
+    bind_event->memory_size = memory_size;
     bind_event->has_object_handle = true;
     bind_event->object_handle = unique_handle;
     events->push_back(std::move(bind_event));
@@ -320,8 +337,10 @@ VulkanMemoryEventContainerPtr Buffer::GetVulkanMemoryEvents() {
 
 //                     ------------------------------------
 
-CreateImageInfo::CreateImageInfo(VkImageCreateInfo const* create_image_info) {
+CreateImageInfo::CreateImageInfo(VkImageCreateInfo const* create_image_info,
+                                 VkDevice device) {
   timestamp = perfetto::base::GetBootTimeNs().count();
+  this->device = device;
   flags = create_image_info->flags;
   image_type = create_image_info->imageType;
   format = create_image_info->format;
@@ -340,10 +359,12 @@ CreateImageInfo::CreateImageInfo(VkImageCreateInfo const* create_image_info) {
 VulkanMemoryEventPtr CreateImageInfo::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_IMAGE;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_CREATE;
+      VulkanMemoryEvent_Source_SOURCE_IMAGE;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_CREATE;
   event->timestamp = timestamp;
+  event->has_device = true;
+  event->device = (uint64_t)(device);
 
   event->annotations.push_back(
       VulkanMemoryEventAnnotation("flags", (int)(flags)));
@@ -390,6 +411,15 @@ VulkanMemoryEventContainerPtr Image::GetVulkanMemoryEvents() {
   auto create_event = create_image_info->GetVulkanMemoryEvent();
   create_event->has_object_handle = true;
   create_event->object_handle = unique_handle;
+  VkMemoryRequirements memory_requirements;
+  GetGlobalContext()
+      .GetVkDeviceData(create_image_info->GetVkDevice())
+      ->functions->vkGetImageMemoryRequirements(
+          create_image_info->GetVkDevice(), vk_image, &memory_requirements);
+  auto memory_size = memory_requirements.size;
+  create_event->has_memory_size = true;
+  create_event->memory_size = memory_size;
+
   create_event->annotations.push_back(
       VulkanMemoryEventAnnotation("vk_handle", (uint64_t)(vk_image)));
   events->push_back(std::move(create_event));
@@ -397,7 +427,9 @@ VulkanMemoryEventContainerPtr Image::GetVulkanMemoryEvents() {
   if (is_bound) {
     auto bind_event = bind_image_info->GetVulkanMemoryEvent();
     bind_event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-        VulkanMemoryEvent_Source_GPU_IMAGE;
+        VulkanMemoryEvent_Source_SOURCE_IMAGE;
+    bind_event->has_memory_size = true;
+    bind_event->memory_size = memory_size;
     events->push_back(std::move(bind_event));
   }
   return events;
@@ -417,18 +449,18 @@ DeviceMemory::DeviceMemory(VkDeviceMemory memory_,
 VulkanMemoryEventPtr DeviceMemory::GetVulkanMemoryEvent() {
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_DEVICE_MEMORY;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_CREATE;
+      VulkanMemoryEvent_Source_SOURCE_DEVICE_MEMORY;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_CREATE;
   event->timestamp = timestamp;
   event->has_object_handle = true;
   event->object_handle = unique_handle;
   event->has_memory_size = true;
   event->memory_size = allocation_size;
+  event->has_memory_type = true;
+  event->memory_type = memory_type;
   event->annotations.push_back(
       VulkanMemoryEventAnnotation("vk_handle", (uint64_t)(memory)));
-  event->annotations.push_back(
-      VulkanMemoryEventAnnotation("memory_type", (int)(memory_type)));
   return event;
 }
 
@@ -490,16 +522,16 @@ void Heap::DestroyDeviceMemory(VkDeviceMemory vk_device_memory) {
 
 void Heap::BindBuffer(BufferPtr buffer, VkDeviceMemory device_memory,
                       VkDeviceSize memory_offset) {
+  uint32_t memory_type = UINT32_MAX;
   rwl_device_memories.rlock();
-  auto device_memory_found =
-      (device_memories.find(device_memory) != device_memories.end());
+  if (device_memories.find(device_memory) != device_memories.end())
+    memory_type = device_memories[device_memory]->GetMemoryType();
   rwl_device_memories.runlock();
-  if (!device_memory_found) return;
 
   buffer->SetBound();
   buffer->SetBindBufferInfo(make_unique<BindMemoryInfo>(
       device_memory, device_memories[device_memory]->GetUniqueHandle(),
-      memory_offset));
+      memory_offset, memory_type));
   // Add to the device memory list of bound buffers
   rwl_device_memories.wlock();
   device_memories[device_memory]->EmplaceBoundBuffer(buffer->GetVkBuffer());
@@ -530,16 +562,16 @@ void Heap::DestroyBuffer(VkBuffer vk_buffer) {
 
 void Heap::BindImage(ImagePtr image, VkDeviceMemory device_memory,
                      VkDeviceSize memory_offset) {
+  uint32_t memory_type = UINT32_MAX;
   rwl_device_memories.rlock();
-  auto device_memory_found =
-      (device_memories.find(device_memory) != device_memories.end());
+  if (device_memories.find(device_memory) != device_memories.end())
+    memory_type = device_memories[device_memory]->GetMemoryType();
   rwl_device_memories.runlock();
-  if (!device_memory_found) return;
 
   image->SetBound();
   image->SetBindImageInfo(make_unique<BindMemoryInfo>(
       device_memory, device_memories[device_memory]->GetUniqueHandle(),
-      memory_offset));
+      memory_offset, memory_type));
   // Add to the device memory list of bound images
   rwl_device_memories.wlock();
   device_memories[device_memory]->EmplaceBoundImage(image->GetVkImage());
@@ -751,18 +783,12 @@ void PhysicalDevice::DestroyImage(VkImage vk_image) {
 VulkanMemoryEventPtr PhysicalDevice::GetVulkanMemoryEvent(VkDevice device) {
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_DEVICE;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_ANNOTATIONS;
+      VulkanMemoryEvent_Source_SOURCE_DEVICE;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_ANNOTATIONS;
   event->timestamp = timestamp;
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
-
-  for (size_t i = 0; i < memory_type_index_to_heap_index.size(); i++) {
-    event->annotations.push_back(VulkanMemoryEventAnnotation(
-        "memory_type_" + std::to_string(i) + "_heap_index",
-        memory_type_index_to_heap_index[i]));
-  }
 
   rwl_heaps.rlock();
   for (auto it = heaps.begin(); it != heaps.end(); it++) {
@@ -884,9 +910,9 @@ VulkanMemoryEventContainerSetPtr Device::GetVulkanMemoryEvents() {
   // Add an event for the device itself
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_DEVICE;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_CREATE;
+      VulkanMemoryEvent_Source_SOURCE_DEVICE;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_CREATE;
   event->timestamp = timestamp;
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -933,20 +959,22 @@ VulkanMemoryEventContainerSetPtr Device::GetVulkanMemoryEvents() {
 VulkanMemoryEventPtr HostAllocation::GetVulkanMemoryEvent() {
   auto event = make_unique<core::VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_HOST;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_CREATE;
+      VulkanMemoryEvent_Source_SOURCE_DRIVER;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_CREATE;
   event->timestamp = timestamp;
   event->has_memory_address = true;
   event->memory_address = ptr;
   event->has_memory_size = true;
   event->memory_size = size;
   event->function_name = caller_api;
+  event->has_allocation_scope = true;
+  event->allocation_scope =
+      static_cast<perfetto::protos::pbzero::VulkanMemoryEvent::AllocationScope>(
+          scope + 1);
 
   event->annotations.push_back(
       VulkanMemoryEventAnnotation("alignment", (int)(alignment)));
-  event->annotations.push_back(
-      VulkanMemoryEventAnnotation("scope", (int)(scope)));
   event->annotations.push_back(VulkanMemoryEventAnnotation(
       "allocator", (allocator_type == atDefault) ? "dafault" : "user"));
   return event;
@@ -990,6 +1018,8 @@ void MemoryTracker::StoreCreateDeviceEvent(
     physical_devices[physical_device] =
         make_unique<PhysicalDevice>(physical_device);
   }
+  memory_type_index_to_heap_index =
+      physical_devices[physical_device]->GetHeapIndexMap();
   rwl_physical_devices.wunlock();
 
   rwl_devices.wlock();
@@ -1017,6 +1047,9 @@ void MemoryTracker::StoreAllocateMemoryEvent(
   if (devices.find(device) != devices.end())
     devices[device]->AddDeviceMemory(std::move(device_memory));
   rwl_devices.runlock();
+  rwl_device_memory_type_map.wlock();
+  device_memory_type_map[memory] = allocate_info->memoryTypeIndex;
+  rwl_device_memory_type_map.wunlock();
 }
 
 void MemoryTracker::StoreFreeMemoryEvent(VkDevice device,
@@ -1030,7 +1063,7 @@ void MemoryTracker::StoreFreeMemoryEvent(VkDevice device,
 void MemoryTracker::StoreCreateBufferEvent(
     VkDevice device, VkBuffer buffer, VkBufferCreateInfo const* create_info) {
   CreateBufferInfoPtr create_info_ptr =
-      make_unique<CreateBufferInfo>(create_info);
+      make_unique<CreateBufferInfo>(create_info, device);
   BufferPtr buffer_ptr =
       make_unique<Buffer>(buffer, std::move(create_info_ptr));
   rwl_devices.rlock();
@@ -1054,7 +1087,7 @@ void MemoryTracker::StoreDestroyBufferEvent(VkDevice device, VkBuffer buffer) {
 void MemoryTracker::StoreCreateImageEvent(
     VkDevice device, VkImage image, const VkImageCreateInfo* create_info) {
   CreateImageInfoPtr create_info_ptr =
-      make_unique<CreateImageInfo>(create_info);
+      make_unique<CreateImageInfo>(create_info, device);
   ImagePtr image_ptr = make_unique<Image>(image, std::move(create_info_ptr));
   rwl_devices.rlock();
   if (devices.find(device) != devices.end())
@@ -1084,7 +1117,7 @@ void MemoryTracker::StoreHostMemoryAllocationEvent(
   HostAllocationPtr allocation = make_unique<HostAllocation>(
       timestamp, ptr, size, alignment, scope, caller_api, allocator_type);
   rwl_host_allocations.wlock();
-  m_host_allocations[ptr] = std::move(allocation);
+  host_allocations[ptr] = std::move(allocation);
   rwl_host_allocations.wunlock();
 }
 
@@ -1096,17 +1129,17 @@ void MemoryTracker::StoreHostMemoryReallocationEvent(
   HostAllocationPtr allocation = make_unique<HostAllocation>(
       timestamp, ptr, size, alignment, scope, caller_api, allocator_type);
   rwl_host_allocations.wlock();
-  m_host_allocations[ptr] = std::move(allocation);
+  host_allocations[ptr] = std::move(allocation);
   if (original != ptr) {
-    m_host_allocations[original].reset(nullptr);
-    m_host_allocations.erase(original);
+    host_allocations[original].reset(nullptr);
+    host_allocations.erase(original);
   }
   rwl_host_allocations.wunlock();
 }
 
 void MemoryTracker::StoreHostMemoryFreeEvent(uintptr_t ptr) {
   rwl_host_allocations.wlock();
-  m_host_allocations.erase(ptr);
+  host_allocations.erase(ptr);
   rwl_host_allocations.wunlock();
 }
 
@@ -1130,12 +1163,12 @@ void MemoryTracker::EmitAndClearAllStoredEvents() {
   // Emit and clear host memory events
   if (track_host_memory_) {
     rwl_host_allocations.wlock();
-    for (auto it = m_host_allocations.begin(); it != m_host_allocations.end();
+    for (auto it = host_allocations.begin(); it != host_allocations.end();
          it++) {
       Emit().EmitVulkanMemoryUsageEvent(
           it->second->GetVulkanMemoryEvent().get());
     }
-    m_host_allocations.clear();
+    host_allocations.clear();
     rwl_host_allocations.wunlock();
   }
 }
@@ -1160,6 +1193,8 @@ void MemoryTracker::EmitCreateDeviceEvent(VkPhysicalDevice physical_device,
   if (physical_devices.find(physical_device) == physical_devices.end()) {
     physical_devices[physical_device] =
         make_unique<PhysicalDevice>(physical_device);
+    memory_type_index_to_heap_index =
+        physical_devices[physical_device]->GetHeapIndexMap();
     pdevice_event =
         physical_devices[physical_device]->GetVulkanMemoryEvent(device);
   }
@@ -1172,9 +1207,9 @@ void MemoryTracker::EmitCreateDeviceEvent(VkPhysicalDevice physical_device,
   rwl_devices.wunlock();
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_DEVICE;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_CREATE;
+      VulkanMemoryEvent_Source_SOURCE_DEVICE;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_CREATE;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -1185,9 +1220,9 @@ void MemoryTracker::EmitDestoryDeviceEvent(VkDevice device) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_DEVICE;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_DESTROY;
+      VulkanMemoryEvent_Source_SOURCE_DEVICE;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_object_handle = true;
   event->object_handle = (uint64_t)(device);
@@ -1202,11 +1237,17 @@ void MemoryTracker::EmitAllocateMemoryEvent(
   auto event = device_memory->GetVulkanMemoryEvent();
   event->has_device = true;
   event->device = (uint64_t)(device);
+  auto memory_type = allocate_info->memoryTypeIndex;
   event->has_heap = true;
   if (!devices[device])
     event->heap = UINT32_MAX;
   else
-    event->heap = devices[device]->GetHeapIndex(allocate_info->memoryTypeIndex);
+    event->heap = devices[device]->GetHeapIndex(memory_type);
+  event->has_memory_type = true;
+  event->memory_type = memory_type;
+  rwl_device_memory_type_map.wlock();
+  device_memory_type_map[memory] = memory_type;
+  rwl_device_memory_type_map.wunlock();
   Emit().EmitVulkanMemoryUsageEvent(event.get());
 }
 
@@ -1215,9 +1256,9 @@ void MemoryTracker::EmitFreeMemoryEvent(VkDevice device,
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_DEVICE_MEMORY;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_DESTROY;
+      VulkanMemoryEvent_Source_SOURCE_DEVICE_MEMORY;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -1229,10 +1270,17 @@ void MemoryTracker::EmitFreeMemoryEvent(VkDevice device,
 void MemoryTracker::EmitCreateBufferEvent(
     VkDevice device, VkBuffer buffer, VkBufferCreateInfo const* create_info) {
   EmitAllStoredEventsIfNecessary();
-  auto crinfo = CreateBufferInfo(create_info);
+  auto crinfo = CreateBufferInfo(create_info, device);
   auto event = crinfo.GetVulkanMemoryEvent();
   event->has_device = true;
   event->device = (uint64_t)(device);
+  VkMemoryRequirements memory_requirements;
+  GetGlobalContext()
+      .GetVkDeviceData(device)
+      ->functions->vkGetBufferMemoryRequirements(device, buffer,
+                                                 &memory_requirements);
+  event->has_memory_size = true;
+  event->memory_size = memory_requirements.size;
   event->has_object_handle = true;
   auto buffer_handle = UniqueHandleGenerator::GetBufferHandle(buffer);
   event->object_handle = buffer_handle;
@@ -1245,15 +1293,28 @@ void MemoryTracker::EmitBindBufferEvent(VkDevice device, VkBuffer buffer,
                                         VkDeviceMemory device_memory,
                                         size_t offset) {
   EmitAllStoredEventsIfNecessary();
+  rwl_device_memory_type_map.rlock();
+  auto memory_type = device_memory_type_map[device_memory];
+  rwl_device_memory_type_map.runlock();
   auto bindinfo = BindMemoryInfo(
-      device_memory, global_unique_handles[(uint64_t)(device_memory)], offset);
+      device_memory, global_unique_handles[(uint64_t)(device_memory)], offset,
+      memory_type);
   auto event = bindinfo.GetVulkanMemoryEvent();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_BUFFER;
+      VulkanMemoryEvent_Source_SOURCE_BUFFER;
   event->has_device = true;
   event->device = (uint64_t)(device);
+  event->has_heap = true;
+  event->heap = memory_type_index_to_heap_index[memory_type];
   event->has_object_handle = true;
   event->object_handle = global_unique_handles[(uint64_t)(buffer)];
+  VkMemoryRequirements memory_requirements;
+  GetGlobalContext()
+      .GetVkDeviceData(device)
+      ->functions->vkGetBufferMemoryRequirements(device, buffer,
+                                                 &memory_requirements);
+  event->has_memory_size = true;
+  event->memory_size = memory_requirements.size;
   Emit().EmitVulkanMemoryUsageEvent(event.get());
 }
 
@@ -1261,9 +1322,9 @@ void MemoryTracker::EmitDestroyBufferEvent(VkDevice device, VkBuffer buffer) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_BUFFER;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_DESTROY;
+      VulkanMemoryEvent_Source_SOURCE_BUFFER;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -1275,10 +1336,17 @@ void MemoryTracker::EmitDestroyBufferEvent(VkDevice device, VkBuffer buffer) {
 void MemoryTracker::EmitCreateImageEvent(VkDevice device, VkImage image,
                                          VkImageCreateInfo const* create_info) {
   EmitAllStoredEventsIfNecessary();
-  auto crinfo = CreateImageInfo(create_info);
+  auto crinfo = CreateImageInfo(create_info, device);
   auto event = crinfo.GetVulkanMemoryEvent();
   event->has_device = true;
   event->device = (uint64_t)(device);
+  VkMemoryRequirements memory_requirements;
+  GetGlobalContext()
+      .GetVkDeviceData(device)
+      ->functions->vkGetImageMemoryRequirements(device, image,
+                                                &memory_requirements);
+  event->has_memory_size = true;
+  event->memory_size = memory_requirements.size;
   event->has_object_handle = true;
   auto image_handle = UniqueHandleGenerator::GetImageHandle(image);
   event->object_handle = image_handle;
@@ -1291,15 +1359,28 @@ void MemoryTracker::EmitBindImageEvent(VkDevice device, VkImage image,
                                        VkDeviceMemory device_memory,
                                        size_t offset) {
   EmitAllStoredEventsIfNecessary();
+  rwl_device_memory_type_map.rlock();
+  auto memory_type = device_memory_type_map[device_memory];
+  rwl_device_memory_type_map.runlock();
   auto bindinfo = BindMemoryInfo(
-      device_memory, global_unique_handles[(uint64_t)(device_memory)], offset);
+      device_memory, global_unique_handles[(uint64_t)(device_memory)], offset,
+      memory_type);
   auto event = bindinfo.GetVulkanMemoryEvent();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_IMAGE;
+      VulkanMemoryEvent_Source_SOURCE_IMAGE;
   event->has_device = true;
   event->device = (uint64_t)(device);
+  event->has_heap = true;
+  event->heap = memory_type_index_to_heap_index[memory_type];
   event->has_object_handle = true;
   event->object_handle = global_unique_handles[(uint64_t)(image)];
+  VkMemoryRequirements memory_requirements;
+  GetGlobalContext()
+      .GetVkDeviceData(device)
+      ->functions->vkGetImageMemoryRequirements(device, image,
+                                                &memory_requirements);
+  event->has_memory_size = true;
+  event->memory_size = memory_requirements.size;
   Emit().EmitVulkanMemoryUsageEvent(event.get());
 }
 
@@ -1307,9 +1388,9 @@ void MemoryTracker::EmitDestroyImageEvent(VkDevice device, VkImage image) {
   EmitAllStoredEventsIfNecessary();
   auto event = make_unique<VulkanMemoryEvent>();
   event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
-      VulkanMemoryEvent_Source_GPU_IMAGE;
-  event->type = perfetto::protos::pbzero::VulkanMemoryEvent_Type::
-      VulkanMemoryEvent_Type_DESTROY;
+      VulkanMemoryEvent_Source_SOURCE_IMAGE;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_DESTROY;
   event->timestamp = perfetto::base::GetBootTimeNs().count();
   event->has_device = true;
   event->device = (uint64_t)(device);
@@ -1345,6 +1426,15 @@ void MemoryTracker::EmitHostMemoryReallocationEvent(
 
 void MemoryTracker::EmitHostMemoryFreeEvent(uintptr_t ptr) {
   EmitAllStoredEventsIfNecessary();
+  auto event = make_unique<core::VulkanMemoryEvent>();
+  event->source = perfetto::protos::pbzero::VulkanMemoryEvent_Source::
+      VulkanMemoryEvent_Source_SOURCE_DRIVER;
+  event->operation = perfetto::protos::pbzero::VulkanMemoryEvent_Operation::
+      VulkanMemoryEvent_Operation_OP_DESTROY;
+  event->timestamp = perfetto::base::GetBootTimeNs().count();
+  event->has_memory_address = true;
+  event->memory_address = ptr;
+  Emit().EmitVulkanMemoryUsageEvent(event.get());
 }
 
 // ---------------------------- Process the events ----------------------------

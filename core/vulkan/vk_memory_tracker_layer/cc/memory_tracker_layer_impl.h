@@ -76,7 +76,8 @@ using VulkanMemoryEventContainerSetPtr =
 // Used for CreateImageInfo and
 class BindMemoryInfo {
  public:
-  BindMemoryInfo(VkDeviceMemory, UniqueHandle, VkDeviceSize);
+  BindMemoryInfo(VkDeviceMemory, UniqueHandle, VkDeviceSize,
+                 uint32_t /*memory_type*/);
   VulkanMemoryEventPtr GetVulkanMemoryEvent();
   VkDeviceMemory GetDeviceMemory() { return device_memory_; }
 
@@ -85,16 +86,19 @@ class BindMemoryInfo {
   VkDeviceMemory device_memory_;
   UniqueHandle device_memory_handle_;
   VkDeviceSize memory_offset_;
+  uint32_t memory_type_;
 };
 using BindMemoryInfoPtr = std::unique_ptr<BindMemoryInfo>;
 
 class CreateBufferInfo {
  public:
-  CreateBufferInfo(VkBufferCreateInfo const*);
+  CreateBufferInfo(VkBufferCreateInfo const*, VkDevice);
   VulkanMemoryEventPtr GetVulkanMemoryEvent();
+  VkDevice GetVkDevice() { return device; }
 
  private:
   uint64_t timestamp;
+  VkDevice device;
   VkBufferCreateFlags flags;
   VkDeviceSize size;
   VkBufferUsageFlags usage;
@@ -138,11 +142,13 @@ using BufferMapInvalid = std::unordered_map<UniqueHandle, BufferPtr>;
 
 class CreateImageInfo {
  public:
-  CreateImageInfo(VkImageCreateInfo const*);
+  CreateImageInfo(VkImageCreateInfo const*, VkDevice);
   VulkanMemoryEventPtr GetVulkanMemoryEvent();
+  VkDevice GetVkDevice() { return device; }
 
  private:
   uint64_t timestamp;
+  VkDevice device;
   VkImageCreateFlags flags;
   VkImageType image_type;
   VkFormat format;
@@ -284,6 +290,9 @@ class PhysicalDevice {
   uint32_t GetHeapIndex(uint32_t memory_type) {
     return memory_type_index_to_heap_index[memory_type];
   }
+  std::deque<uint32_t> GetHeapIndexMap() {
+    return memory_type_index_to_heap_index;
+  }
 
   VulkanMemoryEventPtr GetVulkanMemoryEvent(VkDevice);
   VulkanMemoryEventContainerSetPtr GetVulkanMemoryEventsForHeaps(VkDevice);
@@ -324,6 +333,9 @@ class Device {
   void DestroyImage(VkImage);
   uint32_t GetHeapIndex(uint32_t /*memory_type*/);
   VulkanMemoryEventContainerSetPtr GetVulkanMemoryEvents();
+  VkPhysicalDevice GetVkPhysicalDevice() {
+    return physical_device->GetVkPhysicalDevice();
+  }
 
  private:
   uint64_t timestamp;
@@ -474,13 +486,16 @@ class MemoryTracker {
   AllocationCallbacksTrackerMap m_allocation_callbacks_trackers;
 
   rwlock rwl_host_allocations;
-  HostAllocationMap m_host_allocations;
+  HostAllocationMap host_allocations;
 
   rwlock rwl_physical_devices;
   PhysicalDeviceMap physical_devices;
 
   bool track_host_memory_;
   bool initial_state_is_sent_;
+
+  rwlock rwl_device_memory_type_map;
+  std::unordered_map<VkDeviceMemory, uint32_t> device_memory_type_map;
 
   std::deque<uint32_t> memory_type_index_to_heap_index;
 
@@ -514,6 +529,7 @@ class MemoryTracker {
                                         const std::string& caller_api,
                                         AllocatorType allocator_type);
   void StoreHostMemoryFreeEvent(uintptr_t ptr);
+
   void EmitAndClearAllStoredEvents();
   void EmitAllStoredEventsIfNecessary();
 
