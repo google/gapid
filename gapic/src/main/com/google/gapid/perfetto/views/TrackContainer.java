@@ -31,7 +31,6 @@ import static com.google.gapid.perfetto.views.StyleConstants.unfoldMore;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
-import com.google.gapid.perfetto.canvas.PanelGroup;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.models.TrackConfig;
 
@@ -40,7 +39,6 @@ import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 // TODO: dedupe some of the below code.
 /**
@@ -50,12 +48,12 @@ public class TrackContainer {
   private TrackContainer() {
   }
 
-  public static TrackConfig.Track.UiFactory<Panel> single(
-      TrackConfig.Track.UiFactory<TrackPanel> track, boolean sep) {
-    return state -> new Single(track.createPanel(state), sep, null, true);
+  public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
+      TrackConfig.Track.UiFactory<T> track, boolean sep) {
+    return state -> new Single<T>(track.createPanel(state), sep, null, true);
   }
 
-  public static <T extends TrackPanel> TrackConfig.Track.UiFactory<Panel> single(
+  public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
       TrackConfig.Track.UiFactory<T> track, boolean sep, BiConsumer<T, Boolean> filter,
       boolean initial) {
     return state -> {
@@ -63,49 +61,55 @@ public class TrackContainer {
       if (initial) {
         filter.accept(panel, initial);
       }
-      return new Single(panel, sep, filtered -> filter.accept(panel, filtered), initial);
+      return new Single<T>(panel, sep, filter, initial);
     };
   }
 
-  public static TrackConfig.Group.UiFactory group(
-      TrackConfig.Track.UiFactory<TitledPanel> summary, boolean expanded) {
+  public static <T extends TitledPanel & CopyablePanel<T>> TrackConfig.Group.UiFactory group(
+      TrackConfig.Track.UiFactory<T> summary, boolean expanded) {
     return (state, detail) -> {
-      PanelGroup group = new PanelGroup();
-      for (Panel track : detail) {
+      CopyablePanel.Group group = new CopyablePanel.Group();
+      for (CopyablePanel<?> track : detail) {
         group.add(track);
       }
-      return new Group(summary.createPanel(state), group, expanded, null, false);
+      return Group.of(summary.createPanel(state), group, expanded, null, false);
     };
   }
 
-  public static TrackConfig.Group.UiFactory group(TrackConfig.Track.UiFactory<TitledPanel> summary,
-      boolean expanded, BiConsumer<PanelGroup, Boolean> filter, boolean initial) {
+  public static <T extends TitledPanel & CopyablePanel<T>> TrackConfig.Group.UiFactory group(
+      TrackConfig.Track.UiFactory<T> summary, boolean expanded,
+      BiConsumer<CopyablePanel.Group, Boolean> filter, boolean initial) {
     return (state, detail) -> {
-      PanelGroup group = new PanelGroup();
-      for (Panel track : detail) {
+      CopyablePanel.Group group = new CopyablePanel.Group();
+      for (CopyablePanel<?> track : detail) {
         group.add(track);
       }
       if (initial) {
         filter.accept(group, true);
       }
-      return new Group(summary.createPanel(state), group, expanded,
-          filtered -> filter.accept(group, filtered), initial);
+      return Group.of(summary.createPanel(state), group, expanded, filter, initial);
     };
   }
 
-  private static class Single extends Panel.Base {
-    private final TrackPanel track;
+  private static class Single<T extends TrackPanel<T>> extends Panel.Base
+      implements CopyablePanel<Single<T>> {
+    private final T track;
     private final boolean sep;
-    protected final Consumer<Boolean> filter;
+    protected final BiConsumer<T, Boolean> filter;
 
     protected boolean filtered;
     protected boolean hovered = false;
 
-    public Single(TrackPanel track, boolean sep, Consumer<Boolean> filter, boolean filtered) {
+    public Single(T track, boolean sep, BiConsumer<T, Boolean> filter, boolean filtered) {
       this.track = track;
       this.sep = sep;
       this.filter = filter;
       this.filtered = filtered;
+    }
+
+    @Override
+    public Single<T> copy() {
+      return new Single<T>(track.copy(), sep, filter, filtered);
     }
 
     @Override
@@ -156,7 +160,7 @@ public class TrackContainer {
         if (filter != null && y < TITLE_HEIGHT && x >= LABEL_TOGGLE_X && x < LABEL_PIN_X) {
           return new TrackTitleHover(track.onMouseMove(m, x, y), () -> {
             filtered = !filtered;
-            filter.accept(filtered);
+            filter.accept(track, filtered);
           });
         } else {
           return new TrackTitleHover(track.onMouseMove(m, x, y), null);
@@ -179,22 +183,34 @@ public class TrackContainer {
     }
   }
 
-  private static class Group extends Panel.Base {
-    private final TitledPanel summary;
-    private final Panel detail;
-    protected final Consumer<Boolean> filter;
+  private static class Group<T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
+      extends Panel.Base implements CopyablePanel<Group<T, D>> {
+    private final T summary;
+    private final CopyablePanel.Group detail;
+    protected final BiConsumer<CopyablePanel.Group, Boolean> filter;
 
     protected boolean expanded;
     protected boolean filtered;
     protected boolean hovered = false;
 
-    public Group(TitledPanel summary, Panel detail, boolean expanded, Consumer<Boolean> filter,
-        boolean filtered) {
+    public Group(T summary, CopyablePanel.Group detail, boolean expanded,
+        BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
       this.summary = summary;
       this.detail = detail;
       this.expanded = expanded;
       this.filter = filter;
       this.filtered = filtered;
+    }
+
+    public static <T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
+        TrackContainer.Group<T, D> of(T summary, CopyablePanel.Group detail, boolean expanded,
+            BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
+      return new TrackContainer.Group<T, D>(summary, detail, expanded, filter, filtered);
+    }
+
+    @Override
+    public TrackContainer.Group<T, D> copy() {
+      return of(summary.copy(), detail.copy(), expanded, filter, filtered);
     }
 
     @Override
@@ -295,7 +311,7 @@ public class TrackContainer {
         if (expanded && filter != null && x >= p && x < p + LABEL_ICON_SIZE) {
           return new TrackTitleHover(Hover.NONE, () -> {
             filtered = !filtered;
-            filter.accept(filtered);
+            filter.accept(detail, filtered);
           });
         }
         return new TrackTitleHover(Hover.NONE, null);

@@ -44,7 +44,7 @@ import java.util.List;
 /**
  * Draws the GPU Queue slices.
  */
-public class GpuQueuePanel extends TrackPanel implements Selectable {
+public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectable {
   private static final double SLICE_HEIGHT = 25 - 2 * TRACK_MARGIN;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -64,6 +64,10 @@ public class GpuQueuePanel extends TrackPanel implements Selectable {
     this.track = track;
   }
 
+  @Override
+  public GpuQueuePanel copy() {
+    return new GpuQueuePanel(state, queue, track);
+  }
 
   @Override
   public String getTitle() {

@@ -30,7 +30,7 @@ import com.google.gapid.perfetto.models.CpuFrequencyTrack;
 /**
  * Draws the CPU frequency and idle graph.
  */
-public class CpuFrequencyPanel extends TrackPanel {
+public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
   private static final double HEIGHT = 30;
 
   private final CpuFrequencyTrack track;
@@ -45,6 +45,11 @@ public class CpuFrequencyPanel extends TrackPanel {
   public CpuFrequencyPanel(State state, CpuFrequencyTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public CpuFrequencyPanel copy() {
+    return new CpuFrequencyPanel(state, track);
   }
 
   @Override

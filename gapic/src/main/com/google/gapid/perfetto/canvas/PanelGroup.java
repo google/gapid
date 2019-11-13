@@ -46,6 +46,10 @@ public class PanelGroup extends Panel.Base {
     panels.clear();
   }
 
+  public boolean isVisible(int idx) {
+    return panels.get(idx).visible;
+  }
+
   public void setVisible(int idx, boolean visible) {
     panels.get(idx).visible = visible;
   }

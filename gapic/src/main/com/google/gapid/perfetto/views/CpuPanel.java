@@ -44,7 +44,7 @@ import java.util.List;
 /**
  * Draws the CPU usage or slices of a single core.
  */
-public class CpuPanel extends TrackPanel implements Selectable {
+public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   private static final double HEIGHT = 30;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -53,15 +53,25 @@ public class CpuPanel extends TrackPanel implements Selectable {
 
   private final CpuTrack track;
   private final float hue;
+
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
   protected double hoveredWidth;
   protected HoverCard hovered;
 
   public CpuPanel(State state, CpuTrack track) {
+    this(state, track, hueForCpu(track.getCpu()));
+  }
+
+  private CpuPanel(State state, CpuTrack track, float hue) {
     super(state);
     this.track = track;
-    this.hue = hueForCpu(track.getCpu());
+    this.hue = hue;
+  }
+
+  @Override
+  public CpuPanel copy() {
+    return new CpuPanel(state, track, hue);
   }
 
   @Override

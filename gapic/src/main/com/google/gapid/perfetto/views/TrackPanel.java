@@ -35,7 +35,8 @@ import java.util.List;
 /**
  * {@link Panel} displaying a {@link Track}.
  */
-public abstract class TrackPanel extends Panel.Base implements TitledPanel {
+public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
+    implements TitledPanel, CopyablePanel<T> {
   private static final double HOVER_X_OFF = 10;
   private static final double HOVER_Y_OFF = 7;
   private static final double HOVER_PADDING = 4;

@@ -46,7 +46,7 @@ import java.util.List;
 /**
  * Displays the thread state and slices of a thread.
  */
-public class ThreadPanel extends TrackPanel implements Selectable {
+public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
   private static final double SLICE_HEIGHT = 25 - 2 * TRACK_MARGIN;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -64,9 +64,18 @@ public class ThreadPanel extends TrackPanel implements Selectable {
   protected Size hoveredSize = Size.ZERO;
 
   public ThreadPanel(State state, ThreadTrack track) {
+    this(state, track, false);
+  }
+
+  private ThreadPanel(State state, ThreadTrack track, boolean expanded) {
     super(state);
     this.track = track;
-    this.expanded = false;
+    this.expanded = expanded;
+  }
+
+  @Override
+  public ThreadPanel copy() {
+    return new ThreadPanel(state, track, expanded);
   }
 
   public void setCollapsed(boolean collapsed) {

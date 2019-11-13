@@ -40,7 +40,7 @@ import java.util.List;
 /**
  * Displays the CPU usage summary of a process, aggregating all threads.
  */
-public class ProcessSummaryPanel extends TrackPanel {
+public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
   private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -48,6 +48,7 @@ public class ProcessSummaryPanel extends TrackPanel {
   private static final int BOUNDING_BOX_LINE_WIDTH = 1;
 
   private final ProcessSummaryTrack track;
+
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
   protected double hoveredWidth;
@@ -56,6 +57,11 @@ public class ProcessSummaryPanel extends TrackPanel {
   public ProcessSummaryPanel(State state, ProcessSummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public ProcessSummaryPanel copy() {
+    return new ProcessSummaryPanel(state, track);
   }
 
   @Override
