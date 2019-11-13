@@ -25,9 +25,12 @@ import static com.google.gapid.perfetto.views.StyleConstants.TITLE_HEIGHT;
 import static com.google.gapid.perfetto.views.StyleConstants.arrowDown;
 import static com.google.gapid.perfetto.views.StyleConstants.arrowRight;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
+import static com.google.gapid.perfetto.views.StyleConstants.pinActive;
+import static com.google.gapid.perfetto.views.StyleConstants.pinInactive;
 import static com.google.gapid.perfetto.views.StyleConstants.unfoldLess;
 import static com.google.gapid.perfetto.views.StyleConstants.unfoldMore;
 
+import com.google.common.base.Supplier;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
@@ -36,6 +39,7 @@ import com.google.gapid.perfetto.models.TrackConfig;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Cursor;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
 
 import java.util.function.BiConsumer;
@@ -50,7 +54,7 @@ public class TrackContainer {
 
   public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
       TrackConfig.Track.UiFactory<T> track, boolean sep) {
-    return state -> new Single<T>(track.createPanel(state), sep, null, true);
+    return state -> new Single<T>(state, track.createPanel(state), sep, null, true);
   }
 
   public static <T extends TrackPanel<T>> TrackConfig.Track.UiFactory<Panel> single(
@@ -61,7 +65,7 @@ public class TrackContainer {
       if (initial) {
         filter.accept(panel, initial);
       }
-      return new Single<T>(panel, sep, filter, initial);
+      return new Single<T>(state, panel, sep, filter, initial);
     };
   }
 
@@ -72,7 +76,7 @@ public class TrackContainer {
       for (CopyablePanel<?> track : detail) {
         group.add(track);
       }
-      return Group.of(summary.createPanel(state), group, expanded, null, false);
+      return Group.of(state, summary.createPanel(state), group, expanded, null, false);
     };
   }
 
@@ -87,7 +91,7 @@ public class TrackContainer {
       if (initial) {
         filter.accept(group, true);
       }
-      return Group.of(summary.createPanel(state), group, expanded, filter, initial);
+      return Group.of(state, summary.createPanel(state), group, expanded, filter, initial);
     };
   }
 
@@ -96,20 +100,32 @@ public class TrackContainer {
     private final T track;
     private final boolean sep;
     protected final BiConsumer<T, Boolean> filter;
+    private final PinState pinState;
 
     protected boolean filtered;
     protected boolean hovered = false;
 
-    public Single(T track, boolean sep, BiConsumer<T, Boolean> filter, boolean filtered) {
+    public Single(
+        State state, T track, boolean sep, BiConsumer<T, Boolean> filter, boolean filtered) {
+      this(track ,sep, filter, filtered, new PinState(state.getPinnedTracks()));
+    }
+
+    private Single(T track, boolean sep, BiConsumer<T, Boolean> filter,
+        boolean filtered, PinState pinState) {
       this.track = track;
       this.sep = sep;
       this.filter = filter;
+      this.pinState = pinState;
       this.filtered = filtered;
     }
 
     @Override
     public Single<T> copy() {
-      return new Single<T>(track.copy(), sep, filter, filtered);
+      return new Single<T>(track.copy(), sep, filter, filtered, pinState);
+    }
+
+    private Single<T> copyWithSeparator() {
+      return new Single<T>(track.copy(), true, filter, filtered, pinState);
     }
 
     @Override
@@ -133,6 +149,9 @@ public class TrackContainer {
         if (filter != null) {
           ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
               LABEL_TOGGLE_X, 0, TITLE_HEIGHT);
+        }
+        if (hovered) {
+          ctx.drawIcon(pinState.icon(ctx), LABEL_PIN_X, 0, TITLE_HEIGHT);
         }
       });
 
@@ -162,6 +181,9 @@ public class TrackContainer {
             filtered = !filtered;
             filter.accept(track, filtered);
           });
+        } else if (y < TITLE_HEIGHT && x >= LABEL_PIN_X) {
+          return new TrackTitleHover(
+              track.onMouseMove(m, x, y), () -> pinState.toggle(this::copyWithSeparator));
         } else {
           return new TrackTitleHover(track.onMouseMove(m, x, y), null);
         }
@@ -188,29 +210,33 @@ public class TrackContainer {
     private final T summary;
     private final CopyablePanel.Group detail;
     protected final BiConsumer<CopyablePanel.Group, Boolean> filter;
+    private final PinState pinState;
 
     protected boolean expanded;
     protected boolean filtered;
     protected boolean hovered = false;
 
-    public Group(T summary, CopyablePanel.Group detail, boolean expanded,
-        BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
+    private Group(T summary, CopyablePanel.Group detail, boolean expanded,
+        BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered, PinState pinState) {
       this.summary = summary;
       this.detail = detail;
       this.expanded = expanded;
       this.filter = filter;
       this.filtered = filtered;
+      this.pinState = pinState;
     }
 
     public static <T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
-        TrackContainer.Group<T, D> of(T summary, CopyablePanel.Group detail, boolean expanded,
-            BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
-      return new TrackContainer.Group<T, D>(summary, detail, expanded, filter, filtered);
+        TrackContainer.Group<T, D> of(State state, T summary, CopyablePanel.Group detail,
+            boolean expanded, BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
+      return new TrackContainer.Group<T, D>(
+          summary, detail, expanded, filter, filtered, new PinState(state.getPinnedTracks()));
     }
 
     @Override
     public TrackContainer.Group<T, D> copy() {
-      return of(summary.copy(), detail.copy(), expanded, filter, filtered);
+      return new TrackContainer.Group<T, D>(
+          summary.copy(), detail.copy(), expanded, filter, filtered, pinState);
     }
 
     @Override
@@ -245,6 +271,9 @@ public class TrackContainer {
               filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme), x, 0, TITLE_HEIGHT);
           x += LABEL_ICON_SIZE;
         }
+        if (hovered) {
+          ctx.drawIcon(pinState.icon(ctx), Math.max(x, LABEL_PIN_X), 0, TITLE_HEIGHT);
+        }
 
         ctx.setForegroundColor(colors().panelBorder);
         ctx.drawLine(0, height - 1, width - 1 , height - 1);
@@ -258,6 +287,9 @@ public class TrackContainer {
           ctx.drawIcon(arrowRight(ctx.theme), 0, 0, TITLE_HEIGHT);
           ctx.drawTextLeftTruncate(Fonts.Style.Normal, summary.getTitle(),
               LABEL_OFFSET, 0, LABEL_PIN_X - LABEL_MARGIN - LABEL_OFFSET, TITLE_HEIGHT);
+          if (hovered) {
+            ctx.drawIcon(pinState.icon(ctx), LABEL_PIN_X, 0, TITLE_HEIGHT);
+          }
           if (!summary.getSubTitle().isEmpty()) {
             ctx.setForegroundColor(colors().textAlt);
             ctx.drawText(Fonts.Style.Normal, summary.getSubTitle(), LABEL_OFFSET, TITLE_HEIGHT);
@@ -314,6 +346,10 @@ public class TrackContainer {
             filter.accept(detail, filtered);
           });
         }
+        p = Math.max(p, LABEL_PIN_X);
+        if (x >= p && x < p + LABEL_ICON_SIZE) {
+          return new TrackTitleHover(Hover.NONE, () -> pinState.toggle(this::copy));
+        }
         return new TrackTitleHover(Hover.NONE, null);
       } else if (!expanded && x < LABEL_WIDTH) {
         hovered = true;
@@ -336,6 +372,34 @@ public class TrackContainer {
       public void stop() {
         super.stop();
         hovered = false;
+      }
+    }
+  }
+
+  private static class PinState {
+    private final PinnedTracks state;
+    private Panel pinned;
+
+    public PinState(PinnedTracks state) {
+      this.state = state;
+      pinned = null;
+    }
+
+    public boolean isPinned() {
+      return pinned != null;
+    }
+
+    public Image icon(RenderContext ctx) {
+      return isPinned() ? pinActive(ctx.theme) : pinInactive(ctx.theme);
+    }
+
+    public void toggle(Supplier<Panel> copy) {
+      if (isPinned()) {
+        state.unpin(pinned);
+        pinned = null;
+      } else {
+        pinned = copy.get();
+        state.pin(pinned);
       }
     }
   }
