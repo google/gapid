@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"text/tabwriter"
 
@@ -107,7 +108,18 @@ func (verb *pipeVerb) getBoundPipelineResource(ctx context.Context, c client.Cli
 func toString(dataval *api.DataValue) string {
 	switch x := dataval.Val.(type) {
 	case *api.DataValue_Value:
-		return fmt.Sprintf("%v", x.Value.Get())
+		y := reflect.ValueOf(x.Value.Get())
+		switch y.Type().Kind() {
+		case reflect.Slice, reflect.Array:
+			elements := make([]string, y.Len())
+			for i := 0; i < y.Len(); i++ {
+				elements[i] = fmt.Sprintf("%v", y.Index(i))
+			}
+			return strings.Join(elements, ", ")
+
+		default:
+			return fmt.Sprintf("%v", x.Value.Get())
+		}
 
 	case *api.DataValue_EnumVal:
 		return x.EnumVal.StringValue
