@@ -155,7 +155,7 @@ public class PanelCanvas extends Canvas {
   public void structureHasChanged() {
     Rectangle size = getClientArea();
     panel.setSize(size.width, size.height);
-    redraw(Area.FULL, false);
+    redraw(Area.FULL, true);
   }
 
   public void redraw(Area area, boolean refreshMouse) {
