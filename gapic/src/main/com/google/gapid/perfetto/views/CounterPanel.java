@@ -30,7 +30,7 @@ import com.google.gapid.perfetto.models.CounterTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 
-public class CounterPanel extends TrackPanel implements Selectable {
+public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
   private static final double HEIGHT = 45;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -43,6 +43,11 @@ public class CounterPanel extends TrackPanel implements Selectable {
   public CounterPanel(State state, CounterTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public CounterPanel copy() {
+    return new CounterPanel(state, track);
   }
 
   @Override

@@ -30,7 +30,7 @@ import org.eclipse.swt.graphics.RGBA;
 
 import java.util.Arrays;
 
-public class BatterySummaryPanel extends TrackPanel {
+public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
   private static final double HEIGHT = 50;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -44,6 +44,11 @@ public class BatterySummaryPanel extends TrackPanel {
   public BatterySummaryPanel(State state, BatterySummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public BatterySummaryPanel copy() {
+    return new BatterySummaryPanel(state, track);
   }
 
   @Override

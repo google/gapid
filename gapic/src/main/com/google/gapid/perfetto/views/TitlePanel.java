@@ -23,11 +23,17 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 /**
  * A {@link Panel} displaying a highlighted title in the UI.
  */
-public class TitlePanel extends Panel.Base implements TitledPanel {
+public class TitlePanel extends Panel.Base implements TitledPanel, CopyablePanel<TitlePanel> {
   private final String title;
 
   public TitlePanel(String title) {
     this.title = title;
+  }
+
+  @Override
+  public TitlePanel copy() {
+    // We are stateless, bum ba-dum bum bum bum.
+    return this;
   }
 
   @Override

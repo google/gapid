@@ -28,7 +28,7 @@ import com.google.gapid.perfetto.models.MemorySummaryTrack;
 /**
  * Displays information about the system memory usage.
  */
-public class MemorySummaryPanel extends TrackPanel {
+public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
   private static final double HEIGHT = 80;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -36,12 +36,18 @@ public class MemorySummaryPanel extends TrackPanel {
   private static final double LEGEND_SIZE = 8;
 
   private final MemorySummaryTrack track;
+
   protected HoverCard hovered = null;
   protected double mouseXpos, mouseYpos;
 
   public MemorySummaryPanel(State state, MemorySummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public MemorySummaryPanel copy() {
+    return new MemorySummaryPanel(state, track);
   }
 
   @Override

@@ -34,7 +34,7 @@ import com.google.gapid.perfetto.models.Selection;
 /**
  * Draws the CPU usage summary, aggregating the usage of all cores.
  */
-public class CpuSummaryPanel extends TrackPanel implements Selectable {
+public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Selectable {
   private static final double HEIGHT = 80;
   private static final double HOVER_MARGIN = 10;
   private static final double HOVER_PADDING = 4;
@@ -46,6 +46,11 @@ public class CpuSummaryPanel extends TrackPanel implements Selectable {
   public CpuSummaryPanel(State state, CpuSummaryTrack track) {
     super(state);
     this.track = track;
+  }
+
+  @Override
+  public CpuSummaryPanel copy() {
+    return new CpuSummaryPanel(state, track);
   }
 
   @Override
