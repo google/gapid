@@ -54,6 +54,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
   private static final double HIGHLIGHT_CENTER = (HIGHLIGHT_TOP + HIGHLIGHT_BOTTOM) / 2;
   private static final double HIGHLIGHT_PADDING = 3;
 
+  private final TimelinePanel timeline;
   private final PanelGroup top = new PanelGroup();
   private final PanelGroup bottom = new PanelGroup();
   private final State state;
@@ -63,6 +64,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
   private Area selection = Area.NONE;
 
   public RootPanel(State state) {
+    this.timeline = new TimelinePanel(state);
     this.state = state;
     state.addListener(this);
   }
@@ -76,7 +78,8 @@ public class RootPanel extends Panel.Base implements State.Listener {
   public void onDataChanged() {
     clear();
 
-    top.add(new TimelinePanel(state));
+    top.add(timeline);
+    top.add(state.getPinnedTracks());
     for (TrackConfig.Element<?> el : state.getData().tracks.elements) {
       bottom.add(el.createUi(state));
     }
@@ -208,17 +211,17 @@ public class RootPanel extends Panel.Base implements State.Listener {
   }
 
   private Dragger selectDragger(double sx, double sy) {
-    boolean onTop = sy <= top.getPreferredHeight();
+    boolean onTimeline = sy <= timeline.getPreferredHeight();
     return new Dragger() {
       @Override
       public Area onDrag(double x, double y) {
-        return onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+        return onTimeline ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
       }
 
       @Override
       public Area onDragEnd(double x, double y) {
-        Area redraw = onTop ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
-        if (!onTop) {
+        Area redraw = onTimeline ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+        if (!onTimeline) {
           finishSelection();
         }
         return redraw;
@@ -329,11 +332,9 @@ public class RootPanel extends Panel.Base implements State.Listener {
   @Override
   public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
     double topHeight = top.getPreferredHeight();
-    Hover result = Hover.NONE;
-    if (y >= topHeight) {
-      result = bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
+    Hover result = (y < topHeight) ? top.onMouseMove(m, x, y) :
+      bottom.onMouseMove(m, x, y - topHeight + state.getScrollOffset())
           .transformed(a -> a.translate(0, topHeight - state.getScrollOffset()));
-    }
     if (x >= LABEL_WIDTH && y >= topHeight && result == Hover.NONE) {
       result = result.withClick(() -> state.resetSelections());
     }

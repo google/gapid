@@ -384,6 +384,14 @@ public class StyleConstants {
     return isDark ? theme.rangeEndDark() : theme.rangeEndLight();
   }
 
+  public static Image pinActive(Theme theme) {
+    return isDark ? theme.pinActiveDark() : theme.pinActiveLight();
+  }
+
+  public static Image pinInactive(Theme theme) {
+    return isDark ? theme.pinInactiveDark() : theme.pinInactiveLight();
+  }
+
   public static class HSL {
     public final int h, s, l;
 

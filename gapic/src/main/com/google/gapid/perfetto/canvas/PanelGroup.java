@@ -42,6 +42,24 @@ public class PanelGroup extends Panel.Base {
     panels.add(new Child(panel, y, 0));
   }
 
+  public void remove(int idx) {
+    double y = panels.remove(idx).y;
+    for (int i = idx; i < panels.size(); i++) {
+      Child child = panels.get(i);
+      child.y = y;
+      y += child.h;
+    }
+  }
+
+  public void remove(Panel panel) {
+    for (int i = 0; i < panels.size(); i++) {
+      if (panels.get(i).panel == panel) {
+        remove(i);
+        return;
+      }
+    }
+  }
+
   public void clear() {
     panels.clear();
   }

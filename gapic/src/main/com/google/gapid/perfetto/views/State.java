@@ -52,6 +52,7 @@ public class State {
   private final Widget owner;
   private Perfetto.Data data;
   private TimeSpan visibleTime;
+  private final PinnedTracks pinnedTracks;
   private double scrollOffset = 0;
   private double width;
   private double maxScrollOffset = 0;
@@ -68,6 +69,7 @@ public class State {
     this.data = null; // TODO: zero value
     this.owner = owner;
     this.visibleTime = TimeSpan.ZERO;
+    this.pinnedTracks = new PinnedTracks();
     this.width = 0;
     this.selection = null;
     this.selectedThread = null;
@@ -76,6 +78,7 @@ public class State {
   public void update(Perfetto.Data newData) {
     this.data = newData;
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
+    this.pinnedTracks.clear();
     this.selection = null;
     this.selectedThread = null;
     this.highlight = TimeSpan.ZERO;
@@ -93,6 +96,10 @@ public class State {
 
   public TimeSpan getVisibleTime() {
     return visibleTime;
+  }
+
+  public PinnedTracks getPinnedTracks() {
+    return pinnedTracks;
   }
 
   public double getScrollOffset() {
