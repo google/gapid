@@ -166,11 +166,12 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 	// Start to capture.
 	status.Do(ctx, "Tracing", func(ctx context.Context) {
 		startSignal, startFunc := task.NewSignal()
+		readyFunc := task.Noop()
 		stopSignal, _ := task.NewSignal()
 		doneSignal, doneFunc := task.NewSignal()
 
 		crash.Go(func() {
-			_, err = process.Capture(ctx, startSignal, stopSignal, &buf, &written)
+			_, err = process.Capture(ctx, startSignal, stopSignal, readyFunc, &buf, &written)
 			doneFunc(ctx)
 		})
 

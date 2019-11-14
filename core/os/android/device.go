@@ -89,7 +89,7 @@ type Device interface {
 	// namespaced key.
 	DeleteSystemSetting(ctx context.Context, namespace, key string) error
 	// StartPerfettoTrace starts a perfetto trace.
-	StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal) error
+	StartPerfettoTrace(ctx context.Context, config *perfetto_pb.TraceConfig, out string, stop task.Signal, ready task.Task) error
 }
 
 // LogcatMessage represents a single logcat message.

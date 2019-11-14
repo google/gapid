@@ -37,6 +37,12 @@ func Once(task Task) Task {
 	}
 }
 
+func Noop() Task {
+	return func(context.Context) error {
+		return nil
+	}
+}
+
 // Retry repeatedly calls f until f returns a true, the number of attempts
 // reaches maxAttempts or the context is cancelled. Retry will sleep for
 // retryDelay between retry attempts.

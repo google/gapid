@@ -41,6 +41,8 @@ type ReplayExecutor interface {
 	HandleNotification(context.Context, *gapir.Notification, gapir.Connection) error
 	// HandleFinished is notified when the given replay is finished.
 	HandleFinished(context.Context, error, gapir.Connection) error
+
+	HandleFenceReadyRequest(context.Context, *gapir.FenceReadyRequest, gapir.Connection) error
 }
 
 type backgroundConnection struct {
@@ -110,11 +112,10 @@ func (e *backgroundConnection) HandlePayloadRequest(ctx context.Context, payload
 
 // HandleFenceReadyRequest implements gapir.ReplayResponseHandler interface.
 func (e *backgroundConnection) HandleFenceReadyRequest(ctx context.Context, req *gapir.FenceReadyRequest, conn gapir.Connection) error {
-	ctx = status.Start(ctx, "Fence Ready Request")
-	defer status.Finish(ctx)
-	// TODO(apbodnar) Tell the connection executor to start a perfetto trace here
-
-	return conn.SendFenceReady(ctx, req.GetId())
+	if e.executor == nil {
+		return log.Err(ctx, nil, "No active replay connection for this returned data")
+	}
+	return e.executor.HandleFenceReadyRequest(ctx, req, conn)
 }
 
 // HandleCrashDump implements gapir.ReplayResponseHandler interface.

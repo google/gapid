@@ -167,7 +167,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	var payload gapir.Payload
 	builderBuildTimer.Time(func() {
 		log.D(ctx, "Initial Payload:")
-		payload, _, _, err = b.Build(ctx)
+		payload, _, _, _, err = b.Build(ctx)
 	})
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to build initial payload")
@@ -204,7 +204,7 @@ func (r *InitialPayloadResolvable) Resolve(
 	var cleanupPayload gapir.Payload
 	builderBuildTimer.Time(func() {
 		log.D(ctx, "Cleanup Payload:")
-		cleanupPayload, _, _, err = b.Build(ctx)
+		cleanupPayload, _, _, _, err = b.Build(ctx)
 	})
 
 	id, err := database.Store(ctx, &payload)
@@ -351,9 +351,10 @@ func (m *manager) execute(
 	var payload gapir.Payload
 	var handlePost builder.PostDataHandler
 	var handleNotification builder.NotificationHandler
+	var fenceReadyCallback builder.FenceReadyRequestCallback
 	builderBuildTimer.Time(func() {
 		log.D(ctx, "Main Payload:")
-		payload, handlePost, handleNotification, err = b.Build(ctx)
+		payload, handlePost, handleNotification, fenceReadyCallback, err = b.Build(ctx)
 	})
 	if err != nil {
 		return log.Err(ctx, err, "Failed to build replay payload")
@@ -374,6 +375,7 @@ func (m *manager) execute(
 			payload,
 			handlePost,
 			handleNotification,
+			fenceReadyCallback,
 			connection,
 			replayABI.MemoryLayout,
 			d.Instance().GetConfiguration().GetOS(),
