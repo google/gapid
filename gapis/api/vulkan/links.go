@@ -382,3 +382,18 @@ func (o VkSamplerYcbcrConversion) Link(ctx context.Context, p path.Node, r *path
 	}
 	return path.NewField("SamplerYcbcrConversions", i).MapIndex(o), nil
 }
+
+// Link returns the link to the pipeline in the state block.
+func (o VkPipeline) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := state(ctx, p, r)
+	if err != nil {
+		return nil, err
+	}
+	if c.GraphicsPipelines().Contains(o) {
+		return path.NewField("GraphicsPipelines", i).MapIndex(o), nil
+	} else if c.ComputePipelines().Contains(o) {
+		return path.NewField("ComputePipelines", i).MapIndex(o), nil
+	} else {
+		return nil, fmt.Errorf("State does not contain link target")
+	}
+}
