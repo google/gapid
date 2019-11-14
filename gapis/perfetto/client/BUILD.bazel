@@ -17,19 +17,21 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "client.go",
+        "connection.go",
         "doc.go",
-        "processor.go",
+        "sync.go",
     ],
-    cdeps = ["//gapis/perfetto/cc:cc"],
-    cgo = True,
-    importpath = "github.com/google/gapid/gapis/perfetto",
+    importpath = "github.com/google/gapid/gapis/perfetto/client",
     visibility = ["//visibility:public"],
     deps = [
         "//core/app:go_default_library",
+        "//core/app/crash:go_default_library",
+        "//core/data/binary:go_default_library",
+        "//core/data/endian:go_default_library",
+        "//core/event/task:go_default_library",
         "//core/log:go_default_library",
-        "//gapis/perfetto/client:go_default_library",
-        "//gapis/perfetto/service:go_default_library",
+        "//core/os/device:go_default_library",
+        "//tools/build/third_party/perfetto:wire_go_proto",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
 )
