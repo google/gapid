@@ -51,6 +51,24 @@ go_proto_library(
     deps = [":common_go_proto"],
 )
 
+go_proto_library(
+    name = "ipc_go_proto",
+    importpath = "protos/perfetto/ipc",
+    proto = "@perfetto//:protos_perfetto_ipc_protos",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common_go_proto",
+        ":config_go_proto",
+    ],
+)
+
+go_proto_library(
+    name = "wire_go_proto",
+    importpath = "protos/perfetto/wire",
+    proto = "@perfetto//:protos_perfetto_ipc_wire_protocol_protos",
+    visibility = ["//visibility:public"],
+)
+
 java_proto_library(
     name = "config_java_proto",
     visibility = ["//visibility:public"],
