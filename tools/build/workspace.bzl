@@ -266,6 +266,17 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
         sha256 = "0cd219ac388c41a70c3ff4f72d25bd54fa351bc0850196c25c6c3361e799ac79",
     )
 
+    maybe_repository(
+        github_repository,
+        name = "vulkan-headers",
+        locals = locals,
+        organization = "KhronosGroup",
+        project = "Vulkan-Headers",
+        commit = "5bc459e2921304c32568b73edaac8d6df5f98b84",  # 1.1.127
+        build_file = "@gapid//tools/build/third_party:vulkan-headers.BUILD",
+        sha256 = "e5d3169f6d2e2f0bcd95f89c5e2f7bb3090af1682f96e3117bd0a74fca78936d",
+    )
+
     if android:
         maybe_repository(
             native.android_sdk_repository,

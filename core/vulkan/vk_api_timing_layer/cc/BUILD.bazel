@@ -71,9 +71,10 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/cc",
-        "//core/vulkan/cc/include/vulkan",
+        "//core/vulkan/cc/include/ggp_c:vulkan_ggp_dummy",
         "//core/vulkan/layer_helpers",
         "//core/vulkan/perfetto_producer",
+        "@vulkan-headers//:vulkan",
     ],
 )
 
@@ -93,7 +94,7 @@ cc_library(
     }),
     visibility = ["//visibility:public"],
     deps = [
-        "//core/vulkan/cc/include/vulkan",
+        "@vulkan-headers//:vulkan",
     ],
 )
 

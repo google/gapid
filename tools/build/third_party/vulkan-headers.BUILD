@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,7 @@
 
 cc_library(
     name = "vulkan",
-    hdrs = glob(["*.h"]),
-    include_prefix = "vulkan",
+    hdrs = glob(["include/vulkan/*.h"]),
+    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
-    deps = [
-        "//core/vulkan/cc/include/ggp_c:vulkan_ggp_dummy",
-    ],
 )
