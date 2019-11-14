@@ -38,6 +38,8 @@ message Command {
   Parameter result = 4;
   // The identifier of the thread that issued this command.
   uint64 thread = 5;
+  // True if the command has terminated, i.e., has post-fence observations.
+  bool terminated = 6;
 }
 
 // Parameter is the service representation of a parameter of a command.

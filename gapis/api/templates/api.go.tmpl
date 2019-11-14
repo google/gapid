@@ -1747,6 +1747,7 @@ import (
     {{end}}
     arena arena.Arena
     refID ϟapi.RefID
+    terminated bool
   }
 
   // Arena returns the memory arena used to allocate this command.
@@ -1759,6 +1760,10 @@ import (
   func (ϟc *{{$name}}) Caller() ϟapi.CmdID { return ϟc.caller }
 
   func (ϟc *{{$name}}) SetCaller(id ϟapi.CmdID) { ϟc.caller = id }
+
+  func (ϟc *{{$name}}) Terminated() bool { return ϟc.terminated }
+
+  func (ϟc *{{$name}}) SetTerminated(terminated bool) { ϟc.terminated = terminated }
 
   func (ϟc *{{$name}}) CmdName() string { return "{{$.Name}}" }
 

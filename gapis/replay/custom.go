@@ -53,3 +53,5 @@ func (Custom) CmdFlags(context.Context, api.CmdID, *api.GlobalState) api.CmdFlag
 func (Custom) Extras() *api.CmdExtras                                             { return nil }
 func (cmd Custom) Clone(arena.Arena) api.Cmd                                      { return Custom{cmd.T, cmd.F} }
 func (Custom) Alive() bool                                                        { return false }
+func (Custom) Terminated() bool                                                   { return false }
+func (Custom) SetTerminated(bool)                                                 {}
