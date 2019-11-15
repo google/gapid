@@ -673,7 +673,7 @@
         {{/* Perform the call */}}
         ϟc{{if $f.Subroutine}}.(callable){{end}}.Call(ϟctx, ϟg, ϟb);
       } else {
-        return &api.NonTerminatedCommandError{}
+        api.Abort(ϟc.CmdName)
       }
 
       {{if IsCopy $.Statement}}
