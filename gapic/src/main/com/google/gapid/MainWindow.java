@@ -431,7 +431,6 @@ public class MainWindow extends ApplicationWindow {
     GotoCommand("&Command", 'G'),
     GotoMemory("&Memory Location", 'M'),
 
-    ViewThumbnails("Show Filmstrip"),
     ViewDarkMode("Dark Mode", 'D'),
     ViewQueryShell("Open &Query Shell", 'M'),
 
