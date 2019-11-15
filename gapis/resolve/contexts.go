@@ -100,7 +100,7 @@ func (r *ContextListResolvable) Resolve(ctx context.Context) (interface{}, error
 	contexts := []*ctxInfo{}
 
 	s := c.NewState(ctx)
-	err = api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, i api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, i, s, nil, nil)
 
 		api := cmd.API()

@@ -484,7 +484,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 		// Mutating the delete command ensures the object is removed from all maps,
 		// and that we will not try to remove it again when iterating over the second context.
 		cmds = append(cmds, cb.EglMakeCurrent(memory.Nullptr, memory.Nullptr, memory.Nullptr, memory.Nullptr, 1))
-		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 			out.MutateAndWrite(ctx, api.CmdNoID, cmd)
 			return nil
 		})

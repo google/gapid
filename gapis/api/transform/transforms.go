@@ -35,7 +35,7 @@ func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		chain.MutateAndWrite(ctx, id, cmd)
 		return nil
 	})

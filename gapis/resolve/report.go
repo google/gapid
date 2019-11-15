@@ -119,7 +119,7 @@ func (r *ReportResolvable) Resolve(ctx context.Context) (interface{}, error) {
 
 	// Gather report items from the state mutator, and collect together all the
 	// APIs in use.
-	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		items, currentCmd = items[:0], uint64(id)
 
 		if as := cmd.Extras().Aborted(); as != nil && as.IsAssert {

@@ -357,7 +357,7 @@ func (API) ResolveSynchronization(ctx context.Context, d *sync.Data, c *path.Cap
 		}
 	}
 
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		i = id
 		if err := cmd.Mutate(ctx, id, st, nil, nil); err != nil {
 			return err
@@ -452,7 +452,7 @@ func dependencySync(ctx context.Context, d *sync.Data, c *path.Capture) error {
 		}
 	}
 
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		// only track the commands that do anything
 		switch c := cmd.(type) {
 		case *VkQueueSubmit:

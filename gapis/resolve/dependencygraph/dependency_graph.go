@@ -26,11 +26,10 @@ import (
 	"github.com/google/gapid/gapis/resolve"
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service/path"
-)
 
-// The following are the imports that generated source files pull in when present
-// Having these here helps out tools that can't cope with missing dependancies
-import (
+	// The following are the imports that generated source files pull in when present
+	// Having these here helps out tools that can't cope with missing dependancies
+
 	_ "github.com/google/gapid/gapis/service/path"
 )
 
@@ -190,7 +189,7 @@ func (r *DependencyGraphResolvable) Resolve(ctx context.Context) (interface{}, e
 	s := c.NewUninitializedState(ctx).ReserveMemory(ranges)
 
 	dependencyGraphBuildCounter.Time(func() {
-		api.ForeachCmd(ctx, cmds, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+		api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 			a := cmd.API()
 			id := g.GetCmdID(int(index))
 			if _, ok := behaviourProviders[a]; !ok {
