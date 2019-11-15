@@ -28,7 +28,7 @@ cc_library(
 
 go_proto_library(
     name = "config_go_proto",
-    importpath = "perfetto/config",
+    importpath = "protos/perfetto/config",
     proto = "@perfetto//:protos_perfetto_config_merged_config_protos",
     visibility = ["//visibility:public"],
 )
