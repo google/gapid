@@ -35,7 +35,7 @@ import java.util.List;
  */
 public class TabArea extends TabComposite {
   public TabArea(Composite parent, Analytics analytics, Theme theme, Persistance persistance) {
-    super(parent, theme, true);
+    super(parent, theme, false);
 
     restore(getRoot(), persistance.restore());
 
