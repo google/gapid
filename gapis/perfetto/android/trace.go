@@ -21,7 +21,7 @@ import (
 	"os"
 	"sync/atomic"
 
-	perfetto_pb "perfetto/config"
+	perfetto_pb "protos/perfetto/config"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"

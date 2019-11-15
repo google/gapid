@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	perfetto_pb "perfetto/config"
+	perfetto_pb "protos/perfetto/config"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app/crash"
