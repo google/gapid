@@ -36,7 +36,6 @@ import com.google.gapid.views.StateView;
 import com.google.gapid.views.Tab;
 import com.google.gapid.views.TextureView;
 import com.google.gapid.views.ThumbnailScrubber;
-import com.google.gapid.widgets.FixedTopSplitter;
 import com.google.gapid.widgets.TabArea;
 import com.google.gapid.widgets.TabArea.FolderInfo;
 import com.google.gapid.widgets.TabArea.Persistance;
@@ -67,7 +66,6 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
   private final Widgets widgets;
   protected final Set<MainTab.Type> hiddenTabs;
 
-  private final FixedTopSplitter splitter;
   protected TabArea tabs;
 
   public GraphicsTraceView(Composite parent, Models models, Widgets widgets) {
@@ -80,34 +78,20 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
     new ContextSelector(this, models)
         .setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-    splitter = new FixedTopSplitter(this, models.settings.splitterTopHeight) {
+
+    tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {
       @Override
-      protected Control createTopControl() {
-        return new ThumbnailScrubber(this, models, widgets);
+      public void store(TabArea.FolderInfo[] folders) {
+        MainTab.store(models, folders);
       }
 
       @Override
-      protected Control createBottomControl() {
-        tabs = new TabArea(this, models.analytics, widgets.theme, new Persistance() {
-          @Override
-          public void store(TabArea.FolderInfo[] folders) {
-            MainTab.store(models, folders);
-          }
-
-          @Override
-          public TabArea.FolderInfo[] restore() {
-            return MainTab.getFolders(models, widgets, hiddenTabs);
-          }
-        });
-        return tabs;
+      public TabArea.FolderInfo[] restore() {
+        return MainTab.getFolders(models, widgets, hiddenTabs);
       }
-    };
-    splitter.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    splitter.setTopVisible(!models.settings.hideScrubber);
-
-    splitter.addListener(SWT.Dispose, e -> {
-      models.settings.splitterTopHeight = splitter.getTopHeight();
     });
+
+    tabs.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
     models.follower.addListener(new Follower.Listener() {
       @Override
@@ -137,18 +121,6 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
   @Override
   public void updateViewMenu(MenuManager manager) {
     manager.removeAll();
-
-    Action viewScrubber = MainWindow.MenuItems.ViewThumbnails.createCheckbox(show -> {
-      if (splitter != null) {
-        models.analytics.postInteraction(
-            View.FilmStrip, show ? ClientAction.Enable : ClientAction.Disable);
-        splitter.setTopVisible(show);
-        models.settings.hideScrubber = !show;
-      }
-    });
-    viewScrubber.setChecked(!models.settings.hideScrubber);
-
-    manager.add(viewScrubber);
     manager.add(createViewTabsMenu());
   }
 
@@ -368,7 +340,8 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       Log(View.Log, "Log", (p, m, w) -> new LogView(p, w)),
 
       ApiState(View.State, "State", StateView::new),
-      Memory(View.Memory, "Memory", MemoryView::new);
+      Memory(View.Memory, "Memory", MemoryView::new),
+      Filmstrip(View.FilmStrip, "Filmstrip", ThumbnailScrubber::new);
 
       public final View view;
       public final String label;

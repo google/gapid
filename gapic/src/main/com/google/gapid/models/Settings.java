@@ -55,11 +55,10 @@ public class Settings {
 
   public Point windowLocation = null;
   public Point windowSize = null;
-  public boolean hideScrubber = false;
   public int splitterTopHeight = 200;
   public int[] tabWeights = new int[] { 1, 3, 1 };
-  public String tabStructure = "g3;f1;f1;f2"; // See GraphicsTraceView.MainTab.getFolders().
-  public String[] tabs = new String[] { "ApiCalls", "Framebuffer", "ApiState", "Memory" };
+  public String tabStructure = "g2;g2;g1;g2;g1;g5;f2;"; // See GraphicsTraceView.MainTab.getFolders().
+  public String[] tabs = new String[] { "Filmstrip", "ApiCalls", "Framebuffer", "Textures", "Geometry", "Shaders", "Report", "ApiState", "Memory" };
   public String[] hiddenTabs = new String[] { "Log" };
   public String lastOpenDir = "";
   public int[] programTreeSplitterWeights = new int[] { 20, 80 };
@@ -219,7 +218,6 @@ public class Settings {
   private void updateFrom(Properties properties) {
     windowLocation = getPoint(properties, "window.pos");
     windowSize = getPoint(properties, "window.size");
-    hideScrubber = getBoolean(properties, "hide.scrubber", hideScrubber);
     splitterTopHeight = getInt(properties, "splitter.topHeight", splitterTopHeight);
     tabs = getStringList(properties, "tabs", tabs);
     tabWeights = getIntList(properties, "tabs.iweights", tabWeights);
@@ -286,7 +284,6 @@ public class Settings {
   private void updateTo(Properties properties) {
     setPoint(properties, "window.pos", windowLocation);
     setPoint(properties, "window.size", windowSize);
-    properties.setProperty("hide.scrubber", Boolean.toString(hideScrubber));
     properties.setProperty("splitter.topHeight", Integer.toString(splitterTopHeight));
     setStringList(properties, "tabs", tabs);
     setIntList(properties, "tabs.iweights", tabWeights);
