@@ -35,7 +35,6 @@ go_library(
         "replay_connection.go",
         "timestamps.go",
         "wait_for_fence.go",
-        "wait_for_perfetto.go",
     ],
     embed = [":replay_go_proto"],
     importpath = "github.com/google/gapid/gapis/replay",
@@ -71,7 +70,6 @@ go_library(
         "//gapis/resolve/initialcmds:go_default_library",
         "//gapis/service:go_default_library",
         "//gapis/service/path:go_default_library",
-        "//gapis/trace:go_default_library",
     ],
 )
 

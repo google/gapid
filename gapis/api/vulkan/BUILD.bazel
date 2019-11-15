@@ -94,6 +94,7 @@ go_library(
         "state_rebuilder.go",
         "vulkan.go",
         "vulkan_terminator.go",
+        "wait_for_perfetto.go",
         "wireframe.go",
     ],
     embed = [
@@ -146,6 +147,7 @@ go_library(
         "//gapis/service/types:go_default_library",  #keep
         "//gapis/shadertools:go_default_library",
         "//gapis/stringtable:go_default_library",  # keep
+        "//gapis/trace:go_default_library",
         "//gapis/vertex:go_default_library",
         "@com_github_golang_protobuf//proto:go_default_library",
     ],
