@@ -307,6 +307,9 @@ public class PipelineView extends Composite
   private String convertToString(API.DataValue val) {
     switch (val.getValCase()) {
       case VALUE:
+        Joiner valueJoiner = Joiner.on(", ");
+        ArrayList<String> values = new ArrayList<String>();
+
         switch (val.getValue().getValCase()) {
           case FLOAT32:
             return Float.toString(val.getValue().getFloat32());
@@ -349,6 +352,87 @@ public class PipelineView extends Composite
 
           case STRING:
             return val.getValue().getString();
+
+          case FLOAT32_ARRAY:
+            for (float value : val.getValue().getFloat32Array().getValList()) {
+              values.add(Float.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case FLOAT64_ARRAY:
+            for (double value : val.getValue().getFloat64Array().getValList()) {
+              values.add(Double.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case UINT_ARRAY:
+            for (long value : val.getValue().getUintArray().getValList()) {
+              values.add(Long.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case SINT_ARRAY:
+            for (long value : val.getValue().getSintArray().getValList()) {
+              values.add(Long.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case UINT8_ARRAY:
+            for (byte value : val.getValue().getUint8Array()) {
+              values.add(Byte.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case SINT8_ARRAY:
+            for (int value : val.getValue().getSint8Array().getValList()) {
+              values.add(Integer.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case UINT16_ARRAY:
+            for (int value : val.getValue().getUint16Array().getValList()) {
+              values.add(Integer.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case SINT16_ARRAY:
+            for (int value : val.getValue().getSint16Array().getValList()) {
+              values.add(Integer.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case UINT32_ARRAY:
+            for (int value : val.getValue().getUint32Array().getValList()) {
+              values.add(Integer.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case SINT32_ARRAY:
+            for (int value : val.getValue().getSint32Array().getValList()) {
+              values.add(Integer.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case UINT64_ARRAY:
+            for (long value : val.getValue().getUint64Array().getValList()) {
+              values.add(Long.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case SINT64_ARRAY:
+            for (long value : val.getValue().getSint64Array().getValList()) {
+              values.add(Long.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case BOOL_ARRAY:
+            for (boolean value : val.getValue().getBoolArray().getValList()) {
+              values.add(Boolean.toString(value));
+            }
+            return valueJoiner.join(values);
+
+          case STRING_ARRAY:
+            return valueJoiner.join(val.getValue().getStringArray().getValList());
 
           default:
             return "???";
