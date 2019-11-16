@@ -49,17 +49,22 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
+import com.google.gapid.widgets.Theme;
 import com.google.common.base.Joiner;
 
+import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Composite;
@@ -94,6 +99,7 @@ public class PipelineView extends Composite
 
   private final LoadablePanel<Composite> loading;
   private final TableViewer pipelineTable;
+  private final Theme theme;
 
   private List<Data> pipelines = Collections.emptyList();
 
@@ -101,6 +107,7 @@ public class PipelineView extends Composite
     super(parent, SWT.NONE);
     this.models = models;
     this.widgets = widgets;
+    this.theme = widgets.theme;
 
     setLayout(new FillLayout());
 
@@ -239,6 +246,10 @@ public class PipelineView extends Composite
 
             item.setControl(stageGroup);
 
+            if (!stage.getEnabled()) {
+                continue;
+            }
+
             for (API.DataGroup dataGroup : stage.getGroupsList()) {
               Group dataComposite = createGroup(stageGroup, dataGroup.getGroupName());
 
@@ -287,6 +298,17 @@ public class PipelineView extends Composite
 
                   groupTable.setInput(rows);
                   packColumns(groupTable.getTable());
+
+                  break;
+
+                case SHADER:
+                  SourceViewer viewer = new SourceViewer(dataComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+                  StyledText textWidget = viewer.getTextWidget();
+                  textWidget.setFont(theme.monoSpaceFont());
+                  textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+                  viewer.configure(new GlslSourceConfiguration(theme));
+                  viewer.setEditable(false);
+                  viewer.setDocument(GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
 
                   break;
               }

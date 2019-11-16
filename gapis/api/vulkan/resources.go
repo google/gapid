@@ -1015,12 +1015,12 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 
 	stages := []*api.Stage{
 		p.inputAssembly(),
-		p.vertexShader(),
-		p.tessellationControlShader(),
-		p.tessellationEvulationShader(),
-		p.geometryShader(),
+		p.vertexShader(ctx, s),
+		p.tessellationControlShader(ctx, s),
+		p.tessellationEvulationShader(ctx, s),
+		p.geometryShader(ctx, s),
 		p.rasterizer(),
-		p.fragmentShader(),
+		p.fragmentShader(ctx, s),
 		p.colorBlending(),
 	}
 
@@ -1104,95 +1104,153 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 	return &api.Stage{
 		StageName: "Input Assembly",
 		DebugName: "IA",
+		Enabled:   true,
 		Groups:    dataGroups,
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) vertexShader() *api.Stage {
-	dataGroups := []*api.DataGroup{
-		&api.DataGroup{
-			GroupName: "Shader Code",
-		},
+func (p GraphicsPipelineObjectʳ) vertexShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Resources",
-		},
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT {
+			module := stage.Module()
 
-		&api.DataGroup{
-			GroupName: "Uniform Buffers",
-		},
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Vertex Shader",
+				DebugName: "VS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
 	}
 
+	// For vertex shader, technically shouldn't happen
 	return &api.Stage{
 		StageName: "Vertex Shader",
 		DebugName: "VS",
-		Groups:    dataGroups,
+		Enabled:   false,
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) tessellationControlShader() *api.Stage {
-	dataGroups := []*api.DataGroup{
-		&api.DataGroup{
-			GroupName: "Shader Code",
-		},
+func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Resources",
-		},
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT {
+			module := stage.Module()
 
-		&api.DataGroup{
-			GroupName: "Uniform Buffers",
-		},
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Tessellation Control Shader",
+				DebugName: "TCS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
 	}
 
 	return &api.Stage{
 		StageName: "Tessellation Control Shader",
 		DebugName: "TCS",
-		Groups:    dataGroups,
+		Enabled:   false,
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) tessellationEvulationShader() *api.Stage {
-	dataGroups := []*api.DataGroup{
-		&api.DataGroup{
-			GroupName: "Shader Code",
-		},
+func (p GraphicsPipelineObjectʳ) tessellationEvulationShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Resources",
-		},
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT {
+			stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Uniform Buffers",
-		},
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Tessellation Evaluation Shader",
+				DebugName: "TES",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
 	}
 
 	return &api.Stage{
 		StageName: "Tessellation Evaluation Shader",
 		DebugName: "TES",
-		Groups:    dataGroups,
+		Enabled:   false,
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) geometryShader() *api.Stage {
-	dataGroups := []*api.DataGroup{
-		&api.DataGroup{
-			GroupName: "Shader Code",
-		},
+func (p GraphicsPipelineObjectʳ) geometryShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Resources",
-		},
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT {
+			stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Uniform Buffers",
-		},
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Geometry Shader",
+				DebugName: "GS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
 	}
 
 	return &api.Stage{
 		StageName: "Geometry Shader",
 		DebugName: "GS",
-		Groups:    dataGroups,
+		Enabled:   false,
 	}
 }
 
@@ -1293,29 +1351,45 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 	return &api.Stage{
 		StageName: "Rasterizer",
 		DebugName: "RAST",
+		Enabled:   true,
 		Groups:    dataGroups,
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) fragmentShader() *api.Stage {
-	dataGroups := []*api.DataGroup{
-		&api.DataGroup{
-			GroupName: "Shader Code",
-		},
+func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.GlobalState) *api.Stage {
+	stages := p.Stages()
+	for _, index := range stages.Keys() {
+		stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Resources",
-		},
+		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT {
+			stage := stages.Get(index)
 
-		&api.DataGroup{
-			GroupName: "Uniform Buffers",
-		},
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dataGroups := []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			}
+
+			return &api.Stage{
+				StageName: "Fragment Shader",
+				DebugName: "FS",
+				Enabled:   true,
+				Groups:    dataGroups,
+			}
+		}
 	}
 
 	return &api.Stage{
 		StageName: "Fragment Shader",
 		DebugName: "FS",
-		Groups:    dataGroups,
+		Enabled:   false,
 	}
 }
 
@@ -1451,6 +1525,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending() *api.Stage {
 	return &api.Stage{
 		StageName: "Color Blending",
 		DebugName: "BLEND",
+		Enabled:   true,
 		Groups:    dataGroups,
 	}
 }
@@ -1516,10 +1591,24 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 		}
 	}
 
+	stage := p.Stage()
+	module := stage.Module()
+
+	words, _ := module.Words().Read(ctx, nil, s, nil)
+	source := shadertools.DisassembleSpirvBinary(words)
+	shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
 	stages := []*api.Stage{
 		&api.Stage{
 			StageName: "Compute Shader",
 			DebugName: "CS",
+			Enabled:   true,
+			Groups: []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+			},
 		},
 	}
 

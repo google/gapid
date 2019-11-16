@@ -256,7 +256,8 @@ message Pipeline {
 message Stage {
   string stage_name = 1;
   string debug_name = 2;
-  repeated DataGroup groups = 3;
+  bool enabled = 3;
+  repeated DataGroup groups = 4;
 }
 
 message DataGroup {
