@@ -27,8 +27,9 @@ import (
 // CmdToService returns the service command representing command c.
 func CmdToService(c Cmd) (*Command, error) {
 	out := &Command{
-		Name:   c.CmdName(),
-		Thread: c.Thread(),
+		Name:       c.CmdName(),
+		Thread:     c.Thread(),
+		Terminated: c.Terminated(),
 	}
 
 	if api := c.API(); api != nil {
