@@ -637,6 +637,19 @@ func (sb *stateBuilder) createSurface(s SurfaceObjectʳ) {
 			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
 			VkResult_VK_SUCCESS,
 		))
+	case SurfaceType_SURFACE_TYPE_MACOS_MVK:
+		sb.write(sb.cb.VkCreateMacOSSurfaceMVK(
+			s.Instance(),
+			sb.MustAllocReadData(NewVkMacOSSurfaceCreateInfoMVK(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK, // sType
+				0, // pNext
+				0, // flags
+				0, // window
+			)).Ptr(),
+			memory.Nullptr,
+			sb.MustAllocWriteData(s.VulkanHandle()).Ptr(),
+			VkResult_VK_SUCCESS,
+		))
 	}
 	for phyDev, familyIndices := range s.PhysicalDeviceSupports().All() {
 		for index, supported := range familyIndices.QueueFamilySupports().All() {

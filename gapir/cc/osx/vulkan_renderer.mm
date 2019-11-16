@@ -33,7 +33,7 @@ class VulkanRendererImpl : public VulkanRenderer {
   Vulkan mApi;
 };
 
-VulkanRendererImpl::VulkanRendererImpl() {}
+VulkanRendererImpl::VulkanRendererImpl() { mApi.resolve(); }
 
 VulkanRendererImpl::~VulkanRendererImpl() {}
 

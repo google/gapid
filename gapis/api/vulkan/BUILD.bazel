@@ -24,6 +24,7 @@ filegroup(
         "extensions/*.api",
         "linux/*.api",
         "windows/*.api",
+        "mac/*.api",
         "android/*.api",
         "ggp/*.api",
     ]),
