@@ -99,14 +99,12 @@ public class ThreadInfo {
   }
 
   public static RGBA getColor(State state, long utid) {
-    ThreadInfo selected = state.getSelectedThread();
     ThreadInfo queried = state.getThreadInfo(utid);
-
-    if (selected == null) {
+    if (!state.hasSelectedThreads()) {
       return colorForThread(queried, 0);
-    } else if (queried.utid == selected.utid) {
+    } else if (state.isUtidInSelection(queried.utid)) {
       return colorForThread(queried, 0);
-    } else if (queried.upid == selected.upid) {
+    } else if (state.isUpidInSelection(queried.upid)) {
       return colorForThread(queried, StyleConstants.isLight() ? 3 : -3);
     } else {
       return StyleConstants.getGrayColor().rgb();

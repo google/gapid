@@ -323,6 +323,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
     TimeSpan ts = new TimeSpan(
         state.pxToTime(onTrack.x), state.pxToTime(onTrack.x + onTrack.w));
 
+    state.clearSelectedThreads();
     Selection.CombiningBuilder builder = new Selection.CombiningBuilder();
     visit(Visitor.of(Selectable.class, (s, a) -> s.computeSelection(builder, a, ts)), selection);
     selection = Area.NONE;
