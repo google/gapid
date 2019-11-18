@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "cc_copts", "cc_stripped_binary")
+load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_stripped_binary")
 
-cc_stripped_binary(
-    name = "vulkan_sample",
+cc_library(
+    name = "cc",
     srcs = [
         "cube.h",
         "frag.h",
@@ -31,11 +31,39 @@ cc_stripped_binary(
         ],
         "//tools/build:darwin": [],
         "//tools/build:windows": [],
-        # Android.
-        "//conditions:default": ["-ldl"],
+        # Android
+        "//conditions:default": [
+            "-landroid",
+            "-ldl",
+            "-llog",
+            "-lm",
+            "-pthread",
+        ],
     }),
-    visibility = ["//visibility:public"],
     deps = [
-        "//core/vulkan/cc/include/vulkan",
-    ],
+        "@vulkan-headers//:vulkan",
+    ] + select({
+        "//tools/build:linux": [],
+        "//tools/build:windows": [],
+        "//tools/build:darwin": [],
+        # Android
+        "//conditions:default": [
+            "@android_native_app_glue//:native_app_glue",
+        ],
+    }),
+)
+
+cc_stripped_binary(
+    name = "vulkan_sample",
+    copts = cc_copts(),
+    visibility = ["//visibility:public"],
+    deps = [":cc"],
+)
+
+android_dynamic_library(
+    name = "libvulkan_sample",
+    copts = cc_copts(),
+    visibility = ["//visibility:public"],
+    exports = "vulkan_sample.exports",
+    deps = [":cc"],
 )

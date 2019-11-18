@@ -23,6 +23,7 @@ _NATIVE_LIBRARIES = {
     "interceptor": "//gapii/apk",
     "VkLayer_GraphicsSpy": "//gapii/apk",
     "gapir": "//cmd/gapir/apk",
+    "vulkan_sample": "//cmd/vulkan_sample/apk",
 }
 
 _NATIVE_BINARIES = {

@@ -26,6 +26,12 @@
 #if _WIN32
 #include <windows.h>
 #define VK_USE_PLATFORM_WIN32_KHR
+#elif defined(__ANDROID__)
+#include <android/log.h>
+#include <dlfcn.h>
+#include <pthread.h>
+#include "android_native_app_glue.h"
+#define VK_USE_PLATFORM_ANDROID_KHR
 #elif defined(__linux__)
 #include <dlfcn.h>
 #include <xcb/xcb.h>
@@ -131,6 +137,91 @@ void ProcessNativeWindowEvents() {
   }
 }
 
+#elif defined(__ANDROID__)
+
+const int kOutHandle = 0;
+void write_error(int, const char* message) {
+  __android_log_print(ANDROID_LOG_ERROR, "GAPIDVKSAMPLE", "%s", message);
+}
+
+const char* kRequiredInstanceExtensions[] = {
+    VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_ANDROID_SURFACE_EXTENSION_NAME};
+struct ANativeWindow* kANativeWindowHandle = nullptr;
+void* kVulkanLibraryHandle = nullptr;
+
+void* LoadVulkan() {
+  void* v = dlopen("libvulkan.so", RTLD_NOW);
+  if (v == nullptr) {
+    write_error(kOutHandle, "Failed to open libvulkan");
+    std::terminate();
+  }
+  return v;
+}
+
+void processAppCmd(struct android_app* app, int32_t cmd) {
+  switch (cmd) {
+    case APP_CMD_INIT_WINDOW:
+      kANativeWindowHandle = app->window;
+      break;
+    case APP_CMD_PAUSE:
+    case APP_CMD_STOP:
+    case APP_CMD_DESTROY:
+      ANativeActivity_finish(app->activity);
+      break;
+  }
+  return;
+}
+
+bool CreateNativeWindow() {
+  // At that point, we should already have a window in kANativeWindowHandle
+  return kANativeWindowHandle != nullptr;
+}
+
+// Forward declaration, must use an other name than "main"
+int main_impl();
+// Wrapper to pass to pthread_create()
+void* main_wrapper(void*) {
+  main_impl();
+  return nullptr;
+}
+
+void ProcessNativeWindowEvents() {
+  // nothing
+}
+
+void android_main(struct android_app* app) {
+  app->onAppCmd = processAppCmd;
+
+  bool started = false;
+  pthread_t renderThread;
+
+  while (true) {
+    int events;
+    int timeoutMillis = 1000;
+    struct android_poll_source* source;
+
+    while ((ALooper_pollOnce(timeoutMillis, nullptr, &events,
+                             (void**)&source)) >= 0) {
+      if (source != nullptr) {
+        source->process(app, source);
+      }
+
+      if (!started && kANativeWindowHandle != nullptr) {
+        if (pthread_create(&renderThread, nullptr, main_wrapper, nullptr) !=
+            0) {
+          write_error(kOutHandle, "Error creating render thread");
+          std::terminate();
+        }
+        started = true;
+      }
+
+      if (app->destroyRequested != 0) {
+        return;
+      }
+    }
+  }
+};
+
 #elif defined(__linux__)
 typedef xcb_connection_t* (*pfn_xcb_connect)(const char*, int*);
 typedef xcb_screen_iterator_t (*pfn_xcb_setup_roots_iterator)(
@@ -171,6 +262,10 @@ void* load_xcb() {
 void* kVulkanLibraryHandle;
 void* LoadVulkan() {
   void* v = dlopen("libvulkan.so.1", RTLD_NOW);
+  if (v == nullptr) {
+    write_error(kOutHandle, "Failed to open libvulkan");
+    std::terminate();
+  }
   return v;
 }
 
@@ -257,6 +352,7 @@ void ProcessNativeWindowEvents() {
 }
 
 #endif
+
 uint32_t inline GetMemoryIndex(
     const VkPhysicalDeviceMemoryProperties& properties,
     uint32_t required_index_bits,
@@ -279,18 +375,23 @@ uint32_t inline GetMemoryIndex(
   return memory_index;
 }
 
+#ifdef __ANDROID__
+int main_impl() {
+#else
 int main(int argc, const char** argv) {
+#endif
   if (!CreateNativeWindow()) {
     write_error(kOutHandle, "Exiting due to no available window");
     return -1;
   }
 
   kVulkanLibraryHandle = LoadVulkan();
+
 #ifdef _WIN32
   PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
       reinterpret_cast<PFN_vkGetInstanceProcAddr>(
           GetLibraryProcAddr(kVulkanLibraryHandle, "vkGetInstanceProcAddr"));
-#else
+#elif defined(__linux__)  // Similar for Android
   PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
       reinterpret_cast<PFN_vkGetInstanceProcAddr>(
           dlsym(kVulkanLibraryHandle, "vkGetInstanceProcAddr"));
@@ -365,15 +466,24 @@ int main(int argc, const char** argv) {
     REQUIRE_SUCCESS(
         vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface));
   }
-#elif defined(__linux__)
+#elif defined(__ANDROID__)
   {
-    LOAD_INSTANCE_FUNCTION(vkCreateXcbSurfaceKHR, instance);
-    VkXcbSurfaceCreateInfoKHR create_info{
-        VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR, nullptr, 0,
-        k_native_connection_handle_, k_native_window_handle_};
+    LOAD_INSTANCE_FUNCTION(vkCreateAndroidSurfaceKHR, instance);
+    VkAndroidSurfaceCreateInfoKHR create_info{
+        VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR, nullptr, 0,
+        kANativeWindowHandle};
     REQUIRE_SUCCESS(
-        vkCreateXcbSurfaceKHR(instance, &create_info, nullptr, &surface));
+        vkCreateAndroidSurfaceKHR(instance, &create_info, nullptr, &surface));
   }
+#elif defined(__linux__)
+{
+  LOAD_INSTANCE_FUNCTION(vkCreateXcbSurfaceKHR, instance);
+  VkXcbSurfaceCreateInfoKHR create_info{
+      VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR, nullptr, 0,
+      k_native_connection_handle_, k_native_window_handle_};
+  REQUIRE_SUCCESS(
+      vkCreateXcbSurfaceKHR(instance, &create_info, nullptr, &surface));
+}
 #endif
   VkSurfaceCapabilitiesKHR surface_capabilities;
   VkSurfaceFormatKHR surface_format;
