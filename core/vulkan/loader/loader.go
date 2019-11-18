@@ -30,22 +30,6 @@ import (
 	"github.com/google/gapid/core/os/shell"
 )
 
-// deviceReplaySetup handles getting files from/to the right location
-// for a particular Device
-type deviceReplaySetup interface {
-	// makeTempDir returns a path to a created temporary. The returned function
-	// can be called to clean up the temporary directory.
-	makeTempDir(ctx context.Context) (string, app.Cleanup, error)
-
-	// initializeLibrary takes a library, and if necessary copies it
-	// into the given temporary directory. It returns the library
-	// location if necessary.
-	initializeLibrary(ctx context.Context, tempdir string, library layout.LibraryType) (string, error)
-
-	// finalizeJSON puts the given JSON content in the given file
-	finalizeJSON(ctx context.Context, jsonName string, content string) (string, error)
-}
-
 // setupHelper describes setting up the files on the device
 type setupHelper struct {
 	device bind.Device
@@ -187,20 +171,20 @@ func SetupReplay(ctx context.Context, d bind.Device, abi *device.ABI, env *shell
 // findLibraryAndJSON moves the library to the correct location (either locally or remotely) and returns
 // a string representing the location, it also returns the file.Path of the associated JSON file for this
 // library.
-func findLibraryAndJSON(ctx context.Context, rs deviceReplaySetup, tempdir string, libType layout.LibraryType) (string, file.Path, error) {
+func findLibraryAndJSON(ctx context.Context, rs *setupHelper, tempdir string, libType layout.LibraryType) (string, file.Path, error) {
 	lib, err := rs.initializeLibrary(ctx, tempdir, libType)
 	if err != nil {
 		return "", file.Path{}, err
 	}
 
-	json, err := layout.Json(ctx, libType)
+	json, err := layout.Json(ctx, libType, rs.abi)
 	if err != nil {
 		return "", file.Path{}, err
 	}
 	return lib, json, nil
 }
 
-func setupJSON(ctx context.Context, library string, json file.Path, rs deviceReplaySetup, tempdir string, env *shell.Env) error {
+func setupJSON(ctx context.Context, library string, json file.Path, rs *setupHelper, tempdir string, env *shell.Env) error {
 	sourceContent, err := ioutil.ReadFile(json.System())
 	if err != nil {
 		return err

@@ -128,11 +128,11 @@ func doReplay(ctx context.Context, action string, in *Input, store *stash.Client
 	if err != nil {
 		return nil, err
 	}
-	vscLib, err := extractedLayout.Json(ctx, layout.LibVirtualSwapChain)
+	vscLib, err := extractedLayout.Json(ctx, layout.LibVirtualSwapChain, in.GetToolingLayout().GetGapidAbi())
 	if err != nil {
 		return nil, err
 	}
-	vscJson, err := extractedLayout.Json(ctx, layout.LibVirtualSwapChain)
+	vscJson, err := extractedLayout.Json(ctx, layout.LibVirtualSwapChain, in.GetToolingLayout().GetGapidAbi())
 	if err != nil {
 		return nil, err
 	}
