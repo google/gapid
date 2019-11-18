@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.views;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.math.DoubleMath;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
@@ -60,7 +61,7 @@ public class State {
   private long resolution;
   private Selection.MultiSelection selection;
   private final AtomicInteger lastSelectionUpdateId = new AtomicInteger(0);
-  private ThreadInfo selectedThread;
+  private HashMultimap<Long, Long> selectedThreads;     // upid -> utids
   private TimeSpan highlight = TimeSpan.ZERO;
 
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
@@ -72,7 +73,7 @@ public class State {
     this.pinnedTracks = new PinnedTracks();
     this.width = 0;
     this.selection = null;
-    this.selectedThread = null;
+    this.selectedThreads = HashMultimap.create();
   }
 
   public void update(Perfetto.Data newData) {
@@ -80,7 +81,7 @@ public class State {
     this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
     this.pinnedTracks.clear();
     this.selection = null;
-    this.selectedThread = null;
+    this.selectedThreads = HashMultimap.create();
     this.highlight = TimeSpan.ZERO;
     update();
     listeners.fire().onDataChanged();
@@ -154,8 +155,16 @@ public class State {
     }
   }
 
-  public ThreadInfo getSelectedThread() {
-    return selectedThread;
+  public boolean hasSelectedThreads() {
+    return selectedThreads.size() > 0;
+  }
+
+  public boolean isUpidInSelection(long upid) {
+    return selectedThreads.containsKey(upid);
+  }
+
+  public boolean isUtidInSelection(long utid) {
+    return selectedThreads.containsValue(utid);
   }
 
   public TimeSpan getHighlight() {
@@ -215,9 +224,9 @@ public class State {
 
   /* Return true if selection state changed. */
   public boolean resetSelections() {
-    boolean hasDeselection = selection != null || selectedThread != null;
+    boolean hasDeselection = selection != null || selectedThreads.size() > 0;
     setSelection((Selection.MultiSelection)null);
-    selectedThread = null;
+    selectedThreads = HashMultimap.create();
     return hasDeselection;
   }
 
@@ -249,8 +258,17 @@ public class State {
     listeners.fire().onSelectionChanged(selection);
   }
 
+  public void clearSelectedThreads() {
+    selectedThreads = HashMultimap.create();
+  }
+
+  public void addSelectedThread(ThreadInfo threadInfo) {
+    selectedThreads.put(threadInfo.upid, threadInfo.utid);
+  }
+
   public void setSelectedThread(ThreadInfo threadInfo) {
-    this.selectedThread = threadInfo;
+    clearSelectedThreads();
+    selectedThreads.put(threadInfo.upid, threadInfo.utid);
   }
 
   public void setHighlight(TimeSpan highlight) {
