@@ -333,14 +333,14 @@ func (l *runfilesLayout) GapidApk(ctx context.Context, abi *device.ABI) (file.Pa
 }
 
 func (l *runfilesLayout) Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
-	if hostOS(ctx) == abi.OS {
+	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.find(withLibraryPlatformSuffix(libTypeToLibPath[lib], hostOS(ctx)))
 	}
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
 func (l *runfilesLayout) Json(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
-	if hostOS(ctx) == abi.OS {
+	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.find(libTypeToJsonPath[lib])
 	}
 	return file.Path{}, ErrCannotFindPackageFiles
@@ -358,7 +358,7 @@ func (l *runfilesLayout) DeviceInfo(ctx context.Context, os device.OSKind) (file
 }
 
 func (l *runfilesLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path, error) {
-	if hostOS(ctx) == abi.OS {
+	if abi == nil || hostOS(ctx) == abi.OS {
 		return l.find("external/perfetto/" + withExecutablePlatformSuffix("perfetto_cmd", hostOS(ctx)))
 	}
 	return file.Path{}, ErrCannotFindPackageFiles
