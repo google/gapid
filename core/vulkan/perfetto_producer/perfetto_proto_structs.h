@@ -56,28 +56,34 @@ struct VulkanMemoryEvent {
       : has_device(false),
         has_device_memory(false),
         has_heap(false),
+        has_memory_type(false),
         has_object_handle(false),
+        has_allocation_scope(false),
         has_memory_address(false),
         has_memory_size(false) {}
 
   // Mandatory fields
-  perfetto::protos::pbzero::VulkanMemoryEvent_Source source;
-  perfetto::protos::pbzero::VulkanMemoryEvent_Type type;
+  perfetto::protos::pbzero::VulkanMemoryEvent::Source source;
+  perfetto::protos::pbzero::VulkanMemoryEvent::Operation operation;
   uint64_t timestamp;
 
   // Optional fields
   bool has_device;
   bool has_device_memory;
   bool has_heap;
+  bool has_memory_type;
   bool has_object_handle;
+  bool has_allocation_scope;
   bool has_memory_address;
   bool has_memory_size;
 
   uint64_t device;
   uint64_t device_memory;
   uint32_t heap;
+  uint32_t memory_type;
   std::string function_name;
   uint64_t object_handle;
+  perfetto::protos::pbzero::VulkanMemoryEvent::AllocationScope allocation_scope;
   uint64_t memory_address;
   uint64_t memory_size;
   std::deque<VulkanMemoryEventAnnotation> annotations;

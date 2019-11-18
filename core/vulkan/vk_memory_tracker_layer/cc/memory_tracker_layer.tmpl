@@ -75,7 +75,7 @@ vkDestroyImage
 {{end}}
 
 {{Global "Vulkan.OverrideFunctions" ((Global "Vulkan.OverrideFunctions") | SplitEOL)}}
-{{Global "Vulkan.OtherUsedFunctions" "dummy" "vkGetPhysicalDeviceMemoryProperties"}}
+{{Global "Vulkan.OtherUsedFunctions" "dummy" "vkGetPhysicalDeviceMemoryProperties" "vkGetBufferMemoryRequirements" "vkGetImageMemoryRequirements"}}
 
 {{$ | Macro "AllocationCallbackTracking" | Reflow 4 | Write "allocation_callbacks_impl.cpp"}}
 
