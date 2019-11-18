@@ -154,6 +154,14 @@ func (kb *ipRenderKitBuilder) BuildRenderKits(sb *stateBuilder, recipes ...ipRen
 	for i := range kits {
 		kits[i].dependentPieces = append(kits[i].dependentPieces, descSetReservation)
 		des := descSets[i]
+		inputImage := GetState(sb.newState).Images().Get(recipes[i].inputAttachmentImage)
+		queue := getQueueForPriming(sb, inputImage, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
+		queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, queue.VulkanHandle())
+		inputAttachmentBarriers := ipImageLayoutTransitionBarriers(sb, inputImage, sameLayoutsOfImage(inputImage), useSpecifiedLayout(ipRenderInputAttachmentLayout))
+		if err = ipRecordImageMemoryBarriers(sb, queueHandler, inputAttachmentBarriers...); err != nil {
+			return nil, log.Err(sb.ctx, err, "Failed to record image layout transition for input attachment")
+		}
+
 		inputView := kb.imageViewPool.getOrCreateImageView(sb, kb.nm, ipImageViewInfo{
 			image:  recipes[i].inputAttachmentImage,
 			aspect: recipes[i].inputAttachmentAspect,
