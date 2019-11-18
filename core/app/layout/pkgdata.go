@@ -109,8 +109,8 @@ func Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, 
 }
 
 // Json returns the path to the Vulkan layer JSON definition for the given library.
-func Json(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return layout(ctx).Json(ctx, lib)
+func Json(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
+	return layout(ctx).Json(ctx, lib, abi)
 }
 
 // GoArgs returns additional arguments to pass to go binaries.

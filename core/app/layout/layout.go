@@ -59,7 +59,7 @@ type FileLayout interface {
 	// Library returns the path to the requested library.
 	Library(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error)
 	// Json returns the path to the Vulkan layer JSON definition for the given library.
-	Json(ctx context.Context, lib LibraryType) (file.Path, error)
+	Json(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error)
 	// GoArgs returns additional arguments to pass to go binaries.
 	GoArgs(ctx context.Context) []string
 	// DeviceInfo returns the device info executable for the given ABI.
@@ -210,8 +210,11 @@ func (l pkgLayout) PerfettoCmd(ctx context.Context, abi *device.ABI) (file.Path,
 	return l.root.Join(osToDir(abi.OS), "perfetto", withExecutablePlatformSuffix("perfetto", abi.OS)), nil
 }
 
-func (l pkgLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.root.Join("lib", libTypeToJson[lib]), nil
+func (l pkgLayout) Json(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
+	if abi == nil || hostOS(ctx) == abi.OS {
+		return l.root.Join("lib", libTypeToJson[lib]), nil
+	}
+	return l.root.Join(osToDir(abi.OS), "lib", libTypeToJson[lib]), nil
 }
 
 func (l pkgLayout) GoArgs(ctx context.Context) []string {
@@ -329,8 +332,11 @@ func (l *runfilesLayout) Library(ctx context.Context, lib LibraryType, abi *devi
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (l *runfilesLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
-	return l.find(libTypeToJsonPath[lib])
+func (l *runfilesLayout) Json(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
+	if hostOS(ctx) == abi.OS {
+		return l.find(libTypeToJsonPath[lib])
+	}
+	return file.Path{}, ErrCannotFindPackageFiles
 }
 
 func (l *runfilesLayout) GoArgs(ctx context.Context) []string {
@@ -379,7 +385,7 @@ func (l unknownLayout) Library(ctx context.Context, lib LibraryType, abi *device
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
-func (l unknownLayout) Json(ctx context.Context, lib LibraryType) (file.Path, error) {
+func (l unknownLayout) Json(ctx context.Context, lib LibraryType, abi *device.ABI) (file.Path, error) {
 	return file.Path{}, ErrCannotFindPackageFiles
 }
 
@@ -462,8 +468,11 @@ func (l *ZipLayout) Library(ctx context.Context, lib LibraryType, abi *device.AB
 }
 
 // Json returns the path to the Vulkan layer JSON definition for the given library.
-func (l *ZipLayout) Json(ctx context.Context, lib LibraryType) (*zip.File, error) {
-	return l.file("lib/" + libTypeToJson[lib])
+func (l *ZipLayout) Json(ctx context.Context, lib LibraryType, abi *device.ABI) (*zip.File, error) {
+	if abi == nil || l.os == abi.OS {
+		return l.file("lib/" + libTypeToJson[lib])
+	}
+	return l.file(osToDir(abi.OS) + "lib/" + libTypeToJson[lib])
 }
 
 // DeviceInfo returns the device info executable for the given ABI.
