@@ -70,7 +70,8 @@ iconutil -c icns -o GAPID.app/Contents/Resources/GAPID.icns GAPID.iconset
 pip install --upgrade --user dmgbuild pyobjc-framework-Quartz
 cp "$SRC"/background*.png .
 cp "$SRC/dmg-settings.py" .
-~/Library/Python/2.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION-macos.dmg
+# Path to dmgbuild must match where pip installs it
+~/Library/Python/3.7/bin/dmgbuild -s dmg-settings.py GAPID gapid-$VERSION-macos.dmg
 
 # Copy the symbol file to the output.
 [ -f "$BIN/cmd/gapir/cc/gapir.sym" ] && cp "$BIN/cmd/gapir/cc/gapir.sym" gapir-$VERSION-macos.sym
