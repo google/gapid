@@ -21,6 +21,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.SliceTrack.Slice;
 import com.google.gapid.perfetto.models.ThreadTrack.StateSlice;
 import com.google.gapid.perfetto.views.MultiSelectionView;
@@ -149,7 +150,7 @@ public interface Selection<Key> {
     public static final Kind<StateSlice.Key> ThreadState = new Kind<StateSlice.Key>(1);
     public static final Kind<Long> Cpu = new Kind<Long>(2);
     public static final Kind<Slice.Key> Gpu = new Kind<Slice.Key>(3);
-    public static final Kind<Long> Counter = new Kind<Long>(4);
+    public static final Kind<Values.Key> Counter = new Kind<Values.Key>(4);
 
     public int priority;
 
