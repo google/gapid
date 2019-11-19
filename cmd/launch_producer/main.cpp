@@ -16,9 +16,12 @@
 
 #include <android/log.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/system_properties.h>
+#include <unistd.h>
+
 #include <string>
 
 #define _LOG(lvl, name, msg, ...)                          \
@@ -60,9 +63,9 @@ typedef void (*FN_PTR)(void);
 
 const char* kDriverProperty = "ro.gfx.driver.1";
 const char* kProducerPaths[] = {
-    "/assets/libgpudataproducer.so",
     "/lib/" ABI "/libgpudataproducer.so",
 };
+const char* kPidFileName = "/data/local/tmp/gapid_launch_producer.pid";
 
 std::string getDriverPackageOverride() {
   std::string driver;
@@ -159,8 +162,48 @@ FN_PTR loadLibrary(const std::string& path, const char* lib) {
   return startFunc;
 }
 
+// If a previous producer has died without cleaning up its pidfile,
+// here we kill a PID that may be related to another process.
+// This is a risk we take, it would be rare for a previous PID to be reused,
+// and in the worst case we kill a non-critical application as core services
+// are not killable that easily.
+void killExistingProcess() {
+  int fd = open(kPidFileName, O_RDONLY);
+  if (fd == -1) {
+    return;
+  }
+  char pidString[10];
+  if (read(fd, pidString, 10) > 0) {
+    int pid = -1;
+    sscanf(pidString, "%d", &pid);
+    if (pid > 0) {
+      kill(pid, SIGINT);
+    }
+  }
+  close(fd);
+}
+
+bool writeToPidFile() {
+  killExistingProcess();
+  int fd = open(kPidFileName, O_CREAT | O_WRONLY | O_TRUNC,
+                S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+  if (fd == -1) {
+    return false;
+  }
+  pid_t pid = getpid();
+  char pidString[10];
+  sprintf(pidString, "%d", pid);
+  write(fd, pidString, strlen(pidString));
+  close(fd);
+  return true;
+}
+
 // Program to load the GPU Perfetto producer .so and call start().
 int main(int argc, char** argv) {
+  if (!writeToPidFile()) {
+    LOG_ERR("Could not open %s", kPidFileName);
+    std::abort();
+  }
   std::string driver = getDriver();
   std::string path = getApkPath(driver);
 
