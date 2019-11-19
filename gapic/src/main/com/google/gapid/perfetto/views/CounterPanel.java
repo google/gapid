@@ -20,6 +20,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.TRACK_MARGIN;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.util.MoreFutures.transform;
 
+import com.google.common.collect.Lists;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -27,9 +28,12 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CounterInfo;
 import com.google.gapid.perfetto.models.CounterTrack;
+import com.google.gapid.perfetto.models.CounterTrack.Values;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.CombiningBuilder;
 import com.google.gapid.perfetto.views.StyleConstants.Palette.BaseColor;
+
+import java.util.List;
 
 public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable {
   private static final double HEIGHT = 45;
@@ -37,7 +41,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   private static final double HOVER_PADDING = 4;
   private static final double CURSOR_SIZE = 5;
 
-  private final CounterTrack track;
+  protected final CounterTrack track;
   protected HoverCard hovered = null;
   protected double mouseXpos = 0;
 
@@ -85,6 +89,9 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
       CounterInfo counter = track.getCounter();
       double min = Math.min(0, counter.min), range = counter.max - min;
+
+      Selection<Values.Key> selected = state.getSelection(Selection.Kind.Counter);
+      List<Integer> visibleSelected = Lists.newArrayList();
       ctx.setBackgroundColor(BaseColor.LIGHT_BLUE.rgb);
       ctx.setForegroundColor(BaseColor.PACIFIC_BLUE.rgb);
       ctx.path(path -> {
@@ -97,11 +104,23 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
           path.lineTo(nextX, nextY);
           lastX = nextX;
           lastY = nextY;
+          if (selected.contains(new Values.Key(track.getCounter().name, data.ts[i]))) {
+            visibleSelected.add(i);
+          }
         }
         path.lineTo(lastX, h);
         ctx.fillPath(path);
         ctx.drawPath(path);
       });
+
+      // Draw highlight line after the whole graph is rendered, so that the highlight is on the top.
+      ctx.setBackgroundColor(BaseColor.INDIGO.rgb);
+      for (int index : visibleSelected) {
+        double startX = state.timeToPx(data.ts[index]);
+        double endX = (index >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[index + 1]);
+        double y = (HEIGHT - 1) * (1 - (data.values[index] - min) / range);
+        ctx.fillRect(startX, y - 1, endX - startX, 3);
+      }
 
       if (hovered != null) {
         double y = (HEIGHT - 1) * (1 - (hovered.value - min) / range);
@@ -147,6 +166,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       return Hover.NONE;
     }
 
+    long t = data.ts[idx];
     double startX = state.timeToPx(data.ts[idx]);
     double endX = (idx >= data.ts.length - 1) ? startX : state.timeToPx(data.ts[idx + 1]);
     hovered = new HoverCard(m, data.values[idx], startX, endX);
@@ -165,6 +185,14 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       @Override
       public void stop() {
         hovered = null;
+      }
+
+      @Override
+      public boolean click() {
+        state.setSelection(Selection.Kind.Counter,
+            transform(track.getValue(state.getQueryEngine(), t),
+                d -> new CounterTrack.Values(track.getCounter().name, d)));
+        return true;
       }
     };
   }

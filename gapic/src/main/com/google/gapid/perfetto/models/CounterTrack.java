@@ -20,6 +20,7 @@ import static com.google.gapid.perfetto.models.QueryEngine.createView;
 import static com.google.gapid.perfetto.models.QueryEngine.createWindow;
 import static com.google.gapid.perfetto.models.QueryEngine.dropTable;
 import static com.google.gapid.perfetto.models.QueryEngine.dropView;
+import static com.google.gapid.perfetto.models.QueryEngine.expectOneRow;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
@@ -43,6 +44,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), avg(value) from %s group by quantum_ts";
   private static final String COUNTER_SQL = "select ts, ts + dur, value from %s";
+  private static final String VALUE_SQL = "select ts, ts + dur, value from %s where ts = %d";
   private static final String RANGE_SQL =
       "select ts, ts + dur, value from %s " +
       "where ts + dur >= %d and ts <= %d order by ts";
@@ -109,6 +111,15 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     return format(COUNTER_SQL, tableName("span"));
   }
 
+  public ListenableFuture<Data> getValue(QueryEngine qe, long t) {
+    return transform(expectOneRow(qe.query(valueSql(t))), row -> {
+      Data data = new Data(null, new long[1], new double[1]);
+      data.ts[0] = row.getLong(0);
+      data.values[0] = row.getDouble(2);
+      return data;
+    });
+  }
+
   public ListenableFuture<Data> getValues(QueryEngine qe, TimeSpan ts) {
     return transform(qe.query(rangeSql(ts)), res -> {
       int rows = res.getNumRows();
@@ -119,6 +130,10 @@ public class CounterTrack extends Track<CounterTrack.Data> {
       });
       return data;
     });
+  }
+
+  private String valueSql(long t) {
+    return format(VALUE_SQL, tableName("vals"), t);
   }
 
   private String rangeSql(TimeSpan ts) {
@@ -140,23 +155,27 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     }
   }
 
-  public static class Values implements Selection<Long>, Selection.CombiningBuilder.Combinable<Values> {
+  public static class Values implements Selection<Values.Key>,
+      Selection.CombiningBuilder.Combinable<Values> {
     public final long[] ts;
     public final String[] names;
     public final double[][] values;
-    private final Set<Long> valueKeys = Sets.newHashSet();
+    private final Set<Values.Key> valueKeys = Sets.newHashSet();
 
     public Values(String name, Data data) {
       this.ts = data.ts;
       this.names = new String[] { name };
       this.values = new double[][] { data.values };
-      LongStream.of(ts).boxed().forEach(this.valueKeys::add);
+      LongStream.of(ts).boxed().forEach(t -> valueKeys.add(new Values.Key(name, t)));
     }
 
     private Values(long[] ts, String[] names, double[][] values) {
       this.ts = ts;
       this.names = names;
       this.values = values;
+      for (String name : names) {
+        LongStream.of(ts).boxed().forEach(t -> valueKeys.add(new Values.Key(name, t)));
+      }
     }
 
     @Override
@@ -165,7 +184,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     }
 
     @Override
-    public boolean contains(Long key) {
+    public boolean contains(Values.Key key) {
       return valueKeys.contains(key);
     }
 
@@ -239,8 +258,34 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     }
 
     @Override
-    public Selection<Long> build() {
+    public Selection<Values.Key> build() {
       return this;
+    }
+
+    public static class Key {
+      public final String name;
+      public final long ts;
+
+      public Key(String name, long ts) {
+        this.name = name;
+        this.ts = ts;
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        if (obj == this) {
+          return true;
+        } else if (!(obj instanceof Key)) {
+          return false;
+        }
+        Key o = (Key)obj;
+        return name.equals(o.name) && ts == o.ts;
+      }
+
+      @Override
+      public int hashCode() {
+        return name.hashCode() ^ Long.hashCode(ts);
+      }
     }
   }
 }
