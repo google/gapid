@@ -23,14 +23,14 @@ import (
 	"strings"
 	"time"
 
-	perfetto_pb "protos/perfetto/config"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+
+	common_pb "protos/perfetto/common"
 )
 
 const (
@@ -281,7 +281,7 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		return result, log.Errf(ctx, err, "adb shell perfetto returned error: %s", res)
 	}
 	decoded, _ := base64.StdEncoding.DecodeString(res)
-	tracingServiceState := &perfetto_pb.TracingServiceState{}
+	tracingServiceState := &common_pb.TracingServiceState{}
 	if err = proto.Unmarshal(decoded, tracingServiceState); err != nil {
 		return result, log.Errf(ctx, err, "Unmarshal returned error")
 	}
