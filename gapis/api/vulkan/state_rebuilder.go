@@ -1148,7 +1148,8 @@ func (sb *stateBuilder) createBuffer(buffer BufferObjectʳ) {
 		buffer.LastBoundQueue())
 	newBuffer := buffer.VulkanHandle()
 
-	if err := sb.createSameBuffer(buffer, newBuffer); err != nil {
+	mem := GetState(sb.newState).DeviceMemories().Get(buffer.Memory().VulkanHandle())
+	if err := sb.createSameBuffer(buffer, newBuffer, mem); err != nil {
 		log.E(sb.ctx, "create buffer %v failed", buffer)
 		return
 	}
@@ -2855,7 +2856,7 @@ func queueFamilyIndicesToU32Slice(m U32ːu32ᵐ) []uint32 {
 }
 
 // createSameBuffer creates a new buffer with ID |buffer| using the same information from |src| object
-func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) error {
+func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer, mem DeviceMemoryObjectʳ) error {
 	os := sb.s
 	pNext := NewVoidᶜᵖ(memory.Nullptr)
 
@@ -2913,18 +2914,8 @@ func (sb *stateBuilder) createSameBuffer(src BufferObjectʳ, buffer VkBuffer) er
 		subVkErrorExpectNVDedicatedlyAllocatedHandle(sb.ctx, nil, api.CmdNoID, nil,
 			sb.oldState, GetState(sb.oldState), 0, nil, nil, "VkDeviceMemory", uint64(src.Memory().VulkanHandle()))
 	}
-	mem := dst.Memory()
-	if mem.IsNil() {
-		mem = src.Memory().Clone(sb.ta, api.CloneContext{})
-		memID := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
-			return os.DeviceMemories().Contains(VkDeviceMemory(x))
-		}))
-		mem.SetVulkanHandle(memID)
-		mem.SetMappedLocation(Voidᵖ(0))
-		mem.SetMappedOffset(VkDeviceSize(uint64(0)))
-		mem.SetMappedSize(VkDeviceSize(uint64(0)))
-		sb.createDeviceMemory(mem, false)
-	} else if dedicatedMemoryNV {
+
+	if dedicatedMemoryNV {
 		sb.createDeviceMemory(mem, true)
 	}
 
