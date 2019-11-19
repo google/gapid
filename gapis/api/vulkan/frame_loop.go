@@ -1364,10 +1364,22 @@ func (f *frameLoop) backupChangedBuffers(ctx context.Context, stateBuilder *stat
 		}
 
 		stagingBuffer := VkBuffer(newUnusedID(true, func(x uint64) bool {
-			return GetState(stateBuilder.oldState).Buffers().Contains(VkBuffer(x))
+			return GetState(stateBuilder.newState).Buffers().Contains(VkBuffer(x))
 		}))
 
-		err := stateBuilder.createSameBuffer(bufferObj, stagingBuffer)
+		mem := VkDeviceMemory(newUnusedID(true, func(x uint64) bool {
+			return GetState(stateBuilder.newState).DeviceMemories().Contains(VkDeviceMemory(x))
+		}))
+
+		memObj := bufferObj.Memory().Clone(GetState(stateBuilder.newState).Arena(), api.CloneContext{})
+		memObj.SetVulkanHandle(mem)
+		memObj.SetMappedLocation(Voidᵖ(0))
+		memObj.SetMappedOffset(VkDeviceSize(uint64(0)))
+		memObj.SetMappedSize(VkDeviceSize(uint64(0)))
+
+		stateBuilder.createDeviceMemory(memObj, false)
+
+		err := stateBuilder.createSameBuffer(bufferObj, stagingBuffer, memObj)
 		if err != nil {
 			return log.Errf(ctx, err, "Create staging buffer for buffer %v failed: %v", buffer)
 		}
@@ -1891,8 +1903,9 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 
 	for buf := range f.bufferToCreate {
 		log.D(ctx, "Recreate buffer %v which was destroyed during loop.", buf)
-		buffer := GetState(f.loopStartState).Buffers().Get(buf)
-		stateBuilder.createSameBuffer(buffer, buf)
+		srcBuffer := GetState(f.loopStartState).Buffers().Get(buf)
+		mem := GetState(stateBuilder.newState).DeviceMemories().Get(srcBuffer.Memory().VulkanHandle())
+		stateBuilder.createSameBuffer(srcBuffer, buf, mem)
 	}
 
 	for dst, src := range f.bufferToRestore {
