@@ -356,25 +356,23 @@ void VirtualSwapchain::DumpImageToFile(uint8_t* image_data, size_t size) {
 void VirtualSwapchain::CopyThreadFunc() {
   while (true) {
     uint32_t pending_image = 0;
-    // We have to wait until there is a pending image.
-    {
-      // Wait 10ms for our next image.
+    while (true) {
       std::unique_lock<threading::mutex> pl(pending_images_lock_);
-      while (pending_images_.empty()) {
-        if (threading::cv_status::timeout ==
-            pending_images_condition_.wait_for(
-                pl, std::chrono::milliseconds(
-                        pending_image_timeout_in_milliseconds_))) {
-          if (should_close_.load()) {
-            // One last check to see if there are any more pending images.
-            // If not we can return.
-            if (!pending_images_.empty()) break;
-            return;
-          }
+
+      if (pending_images_.empty() == false) {
+        pending_image = pending_images_.front();
+        pending_images_.pop_front();
+
+        break;
+      } else {
+        pending_images_condition_.wait_for(
+            pl,
+            std::chrono::milliseconds(pending_image_timeout_in_milliseconds_));
+
+        if (should_close_.load() && pending_images_.empty()) {
+          return;
         }
       }
-      pending_image = pending_images_.front();
-      pending_images_.pop_front();
     }
 
     VkResult ret = functions_->vkWaitForFences(
