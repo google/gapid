@@ -17,6 +17,7 @@ package validate
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/gapis/perfetto"
@@ -75,6 +76,44 @@ func CheckLargerThanZero(column *perfetto_service.QueryResult_ColumnValues, colu
 		}
 	}
 	return true
+}
+
+func CheckEqualTo(num float64) Checker {
+	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
+		longValues := column.GetLongValues()
+		doubleValues := column.GetDoubleValues()
+		for i := 0; i < sampleCounter; i++ {
+			if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
+				if longValues[i] != int64(num) {
+					return false
+				}
+			} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
+				if doubleValues[i] != num {
+					return false
+				}
+			}
+		}
+		return true
+	}
+}
+
+func CheckApproximateTo(num, err float64) Checker {
+	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
+		longValues := column.GetLongValues()
+		doubleValues := column.GetDoubleValues()
+		for i := 0; i < sampleCounter; i++ {
+			if columnType == perfetto_service.QueryResult_ColumnDesc_LONG {
+				if math.Abs(num-float64(longValues[i])) > err {
+					return false
+				}
+			} else if columnType == perfetto_service.QueryResult_ColumnDesc_DOUBLE {
+				if math.Abs(num-doubleValues[i]) > err {
+					return false
+				}
+			}
+		}
+		return true
+	}
 }
 
 // GPU counters validation will fail in the below cases:
