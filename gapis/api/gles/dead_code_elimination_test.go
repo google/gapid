@@ -259,7 +259,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		uc, _ := capture.Resolve(ctx)
 		c := uc.(*capture.GraphicsCapture)
 		s := c.NewState(ctx)
-		err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 			if err := cmd.Mutate(ctx, id, s, nil, nil); err != nil {
 				return fmt.Errorf("%v: %v: %v", id, cmd, err)
 			}
@@ -276,7 +276,7 @@ func TestDeadCommandRemoval(t *testing.T) {
 		dce := dependencygraph.NewDeadCodeElimination(ctx, dependencyGraph)
 
 		expectedCmds := []api.Cmd{}
-		api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+		api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 			if isLive[cmd] {
 				dce.Request(id)
 			}
