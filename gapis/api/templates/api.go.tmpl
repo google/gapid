@@ -1747,6 +1747,8 @@ import (
     {{end}}
     arena arena.Arena
     refID ϟapi.RefID
+    // Use "notTerminated" such that default (false) is terminated command
+    notTerminated bool
   }
 
   // Arena returns the memory arena used to allocate this command.
@@ -1759,6 +1761,10 @@ import (
   func (ϟc *{{$name}}) Caller() ϟapi.CmdID { return ϟc.caller }
 
   func (ϟc *{{$name}}) SetCaller(id ϟapi.CmdID) { ϟc.caller = id }
+
+  func (ϟc *{{$name}}) Terminated() bool { return !ϟc.notTerminated }
+
+  func (ϟc *{{$name}}) SetTerminated(terminated bool) { ϟc.notTerminated = !terminated }
 
   func (ϟc *{{$name}}) CmdName() string { return "{{$.Name}}" }
 

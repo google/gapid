@@ -65,6 +65,12 @@ type Cmd interface {
 
 	// Alive returns true if this command should be marked alive for DCE
 	Alive() bool
+
+	// Terminated returns true if this command did terminate during capture
+	Terminated() bool
+
+	// SetTerminated sets whether this command has terminated or not
+	SetTerminated(terminated bool)
 }
 
 const (

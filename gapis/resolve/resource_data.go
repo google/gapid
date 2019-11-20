@@ -90,13 +90,13 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 		resources[i] = r
 	}
 
-	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
 			log.W(ctx, "Get resources at %v: Initial cmd [%v]%v - %v", p.Indices, id, cmd, err)
 		}
 		return nil
 	})
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
 		cmd.Mutate(ctx, id, state, nil, nil)

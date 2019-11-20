@@ -31,7 +31,7 @@ import (
 )
 
 // NoMECSubcommandsError is used to notify the caller that this API does not
-// support MEC subcomands.
+// support MEC subcommands.
 type NoMECSubcommandsError struct{}
 
 func (e NoMECSubcommandsError) Error() string {
@@ -174,7 +174,7 @@ func MutateWithSubcommands(ctx context.Context, c *path.Capture, cmds []api.Cmd,
 	}
 	s := rc.NewState(ctx)
 
-	return api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	return api.ForeachCmd(ctx, cmds, false, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		if sync, ok := cmd.API().(SynchronizedAPI); ok {
 			sync.MutateSubcommands(ctx, id, cmd, s, preSubCmdCb, postSubCmdCb)
 		} else {

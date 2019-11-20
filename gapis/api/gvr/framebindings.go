@@ -73,7 +73,7 @@ func (r *FrameBindingsResolvable) Resolve(ctx context.Context) (interface{}, err
 	}
 	frameToBuffer := map[GvrFrameᵖ]gles.FramebufferId{}
 
-	api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		switch cmd := cmd.(type) {
 		case *Gvr_frame_submit:
 			// Annoyingly gvr_frame_submit takes a pointer to the frame pointer,

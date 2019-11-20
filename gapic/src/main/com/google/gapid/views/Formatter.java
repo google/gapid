@@ -73,6 +73,10 @@ public class Formatter {
     }
 
     string.append(")", string.structureStyle());
+    if (!command.getTerminated()) {
+      string.append("-> (did not terminate)", string.structureStyle());
+      return;
+    }
     if (command.hasResult()) {
       string.append("->", string.structureStyle());
       Path.Any follow = followResolver.apply(Follower.RESULT_NAME);

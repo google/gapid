@@ -263,11 +263,11 @@ func (g *dependencyGraph) ForeachCmd(ctx context.Context, cb func(context.Contex
 		cbDerived := func(ctx context.Context, cmdID api.CmdID, cmd api.Cmd) error {
 			return cb(ctx, cmdID.Derived(), cmd)
 		}
-		if err := api.ForeachCmd(ctx, g.initialCommands, cbDerived); err != nil {
+		if err := api.ForeachCmd(ctx, g.initialCommands, true, cbDerived); err != nil {
 			return err
 		}
 	}
-	return api.ForeachCmd(ctx, g.capture.Commands, cb)
+	return api.ForeachCmd(ctx, g.capture.Commands, true, cb)
 }
 
 // ForeachNode iterates over all nodes in the graph

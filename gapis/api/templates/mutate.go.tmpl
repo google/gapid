@@ -669,8 +669,12 @@
         ϟgsrcElems := ϟgsrc.MustReadʷ(ϟctx, ϟc, ϟg, ϟb, ϟw)
       {{end}}
 
-      {{/* Perform the call */}}
-      ϟc{{if $f.Subroutine}}.(callable){{end}}.Call(ϟctx, ϟg, ϟb);
+      if (ϟc.Terminated()) {
+        {{/* Perform the call */}}
+        ϟc{{if $f.Subroutine}}.(callable){{end}}.Call(ϟctx, ϟg, ϟb);
+      } else {
+        api.Abort(ϟc.CmdName())
+      }
 
       {{if IsCopy $.Statement}}
         {{/* Apply the fenced-copy write */}}

@@ -72,7 +72,7 @@ func (r *GlobalStateResolvable) Resolve(ctx context.Context) (interface{}, error
 		return nil, err
 	}
 
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil, nil)
 		return nil
 	})

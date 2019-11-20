@@ -550,7 +550,7 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 	currentState := f.cloneState(ctx, startState)
 
 	// Loop through each command mutating the shadow state and looking at what has been created/destroyed
-	err := api.ForeachCmd(ctx, f.capturedLoopCmds, func(ctx context.Context, cmdId api.CmdID, cmd api.Cmd) error {
+	err := api.ForeachCmd(ctx, f.capturedLoopCmds, true, func(ctx context.Context, cmdId api.CmdID, cmd api.Cmd) error {
 
 		cmd.Extras().Observations().ApplyReads(currentState.Memory.ApplicationPool())
 		cmd.Extras().Observations().ApplyWrites(currentState.Memory.ApplicationPool())

@@ -87,7 +87,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	defer status.Finish(ctx)
 
 	if t.KeepAllAlive {
-		api.ForeachCmd(ctx, t.depGraph.Commands, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+		api.ForeachCmd(ctx, t.depGraph.Commands, true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 			out.MutateAndWrite(ctx, t.depGraph.GetCmdID(int(index)), cmd)
 			return nil
 		})
@@ -96,7 +96,7 @@ func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	t0 := deadCodeEliminationCounter.Start()
 	isLive := t.propagateLiveness(ctx)
 	deadCodeEliminationCounter.Stop(t0)
-	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, t.depGraph.Commands[:len(isLive)], true, func(ctx context.Context, index api.CmdID, cmd api.Cmd) error {
 		id := t.depGraph.GetCmdID(int(index))
 		if isLive[index] {
 			out.MutateAndWrite(ctx, id, cmd)

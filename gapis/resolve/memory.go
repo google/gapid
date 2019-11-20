@@ -105,7 +105,7 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 	if err != nil {
 		return nil, err
 	}
-	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds[:len(cmds)-1], true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil, nil)
 		return nil
 	})
@@ -222,7 +222,7 @@ func MemoryAsType(ctx context.Context, p *path.MemoryAsType, rc *path.ResolveCon
 	if err != nil {
 		return nil, err
 	}
-	err = api.ForeachCmd(ctx, cmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	err = api.ForeachCmd(ctx, cmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		cmd.Mutate(ctx, id, s, nil, nil)
 		return nil
 	})

@@ -89,7 +89,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		delete(seen, r)
 	}
 
-	api.ForeachCmd(ctx, initialCmds, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, initialCmds, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentThread = cmd.Thread()
 		currentAPI = cmd.API()
 		if err := cmd.Mutate(ctx, id, state, nil, nil); err != nil {
@@ -104,7 +104,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		}
 	}
 
-	api.ForeachCmd(ctx, c.Commands, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
 		currentThread = cmd.Thread()

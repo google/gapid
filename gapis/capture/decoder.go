@@ -81,13 +81,14 @@ func (d *decoder) BeginChildGroup(ctx context.Context, msg proto.Message, id, pa
 	return d.add(ctx, obj, d.groups[parentID])
 }
 
-func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
+func (d *decoder) endGroupImpl(ctx context.Context, id uint64, terminated bool) error {
 	obj := d.groups[id]
 	delete(d.groups, id)
 
 	switch obj := obj.(type) {
 	case *cmdGroup:
 		obj.invoked = true
+		obj.cmd.SetTerminated(terminated)
 		id := d.builder.addCmd(ctx, obj.cmd)
 		for _, c := range obj.children {
 			c.SetCaller(id)
@@ -95,6 +96,14 @@ func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
 	}
 
 	return nil
+}
+
+func (d *decoder) EndGroup(ctx context.Context, id uint64) error {
+	return d.endGroupImpl(ctx, id, true)
+}
+
+func (d *decoder) EndGroupNonTerminated(ctx context.Context, id uint64) error {
+	return d.endGroupImpl(ctx, id, false)
 }
 
 func (d *decoder) Object(ctx context.Context, msg proto.Message) error {
@@ -207,6 +216,6 @@ func (d *decoder) decode(ctx context.Context, in proto.Message) (interface{}, er
 
 func (d *decoder) flush(ctx context.Context) {
 	for k := range d.groups {
-		d.EndGroup(ctx, k)
+		d.EndGroupNonTerminated(ctx, k)
 	}
 }
