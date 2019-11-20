@@ -20,15 +20,18 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/shell"
+	"github.com/google/gapid/gapis/perfetto"
 
 	common_pb "protos/perfetto/common"
 )
@@ -41,6 +44,8 @@ const (
 
 	maxRootAttempts                         = 5
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
+
+	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
 )
 
 func isRootSuccessful(line string) bool {
@@ -269,6 +274,31 @@ func (b *binding) GetEnv(ctx context.Context) (*shell.Env, error) {
 func (b *binding) SupportsPerfetto(ctx context.Context) bool {
 	os := b.Instance().GetConfiguration().GetOS()
 	return os.GetAPIVersion() >= 28
+}
+
+func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+	if !b.SupportsPerfetto(ctx) {
+		return nil, fmt.Errorf("Perfetto is not supported on this device")
+	}
+
+	localPort, err := LocalFreeTCPPort()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := b.Forward(ctx, localPort, perfettoPort); err != nil {
+		return nil, err
+	}
+	cleanup := app.Cleanup(func(ctx context.Context) {
+		b.RemoveForward(ctx, localPort)
+	})
+
+	conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%v", localPort))
+	if err != nil {
+		cleanup.Invoke(ctx)
+		return nil, err
+	}
+	return perfetto.NewClient(ctx, conn, cleanup)
 }
 
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {

@@ -24,6 +24,8 @@ import (
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"github.com/google/gapid/gapis/perfetto"
 )
 
 // ListExecutables returns the executables in a particular directory as given by path
@@ -119,4 +121,10 @@ func (b *Simple) ListDirectories(ctx context.Context, path string) ([]string, er
 // Perfetto trace.
 func (b *Simple) SupportsPerfetto(ctx context.Context) bool {
 	return false
+}
+
+// ConnectPerfetto connects to a Perfetto service running on this device
+// and returns an open socket connection to the service.
+func (b *Simple) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+	return nil, fmt.Errorf("Perfetto is not supported on this device")
 }
