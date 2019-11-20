@@ -788,6 +788,7 @@ type profileRequest struct {
 	traceOptions *service.TraceOptions
 	handler      *replay.SignalHandler
 	buffer       *bytes.Buffer
+	mappings     *[]replay.VulkanHandleMappingItem
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1014,6 +1015,7 @@ func (a API) Replay(
 			optimize = false
 			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer, api.CmdID(numInitialCommands)))
 			transforms.Add(&profilingLayers{})
+			transforms.Add(replay.NewMappingExporter(ctx, req.mappings))
 			if req.overrides.GetViewportSize() {
 				transforms.Add(minimizeViewport(ctx))
 			}
@@ -1111,7 +1113,7 @@ func (a API) Replay(
 		transforms.Add(transform.NewCaptureLog(ctx, c, "replay_log.gfxtrace"))
 	}
 	if config.LogMappingsToFile {
-		transforms.Add(replay.NewMappingPrinter(ctx, "mappings.txt"))
+		transforms.Add(replay.NewMappingExporterWithPrint(ctx, "mappings.txt"))
 	}
 
 	transforms.Transform(ctx, cmds, out)
@@ -1228,9 +1230,11 @@ func (a API) Profile(
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
-	r := profileRequest{overrides, traceOptions, handler, &buffer}
+	mappings := make([]replay.VulkanHandleMappingItem, 0, 0)
+	r := profileRequest{overrides, traceOptions, handler, &buffer, &mappings}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	handler.DoneSignal.Wait(ctx)
+
 	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer)
 	return d, err
 }
