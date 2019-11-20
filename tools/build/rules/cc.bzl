@@ -84,7 +84,7 @@ strip = rule(
             allow_empty = False,
         ),
         "_cc_toolchain": attr.label(
-            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain"),
         ),
     },
     executable = True,
@@ -108,12 +108,12 @@ def _symbols_impl(ctx):
         bin = dsym
     ctx.actions.run_shell(
         command = "{} {} > {}".format(ctx.executable._dump_syms.path, bin.path, out.path),
-        inputs = [ctx.executable._dump_syms, bin],
+        tools = [ctx.executable._dump_syms, bin],
         outputs = [out],
         use_default_shell_env = True,
     )
     return struct(
-        files = depset([out])
+        files = depset([out]),
     )
 
 # Symbol rule to dump the symbol information of a binary to be uploaded to the
@@ -133,7 +133,7 @@ _symbols = rule(
             default = Label("@breakpad//:dump_syms"),
         ),
         "_cc_toolchain": attr.label(
-            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain")
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain"),
         ),
     },
 )
