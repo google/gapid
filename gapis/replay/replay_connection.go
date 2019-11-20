@@ -176,9 +176,17 @@ func (e *backgroundConnection) HandleResourceRequest(ctx context.Context, req *g
 	return nil
 }
 
-// MakeBackgroundConnection creates a connection to the replay device that persists in the background.
-func MakeBackgroundConnection(ctx context.Context, device bind.Device, conn gapir.Connection, replayABI *device.ABI) (*backgroundConnection, error) {
+// MakeBackgroundConnectionForTest creates a connection to the replay device that persists in the background for test.
+func MakeBackgroundConnectionForTest(ctx context.Context, device bind.Device, conn gapir.Connection, replayABI *device.ABI) (*backgroundConnection, error) {
+	// TODO: Refactor the test and remove this.
+	m := manager{connections: make(map[id.ID]*backgroundConnection)}
+	return m.makeBackgroundConnection(ctx, device, conn, replayABI)
+}
+
+// makeBackgroundConnection creates a connection to the replay device that persists in the background.
+func (m *manager) makeBackgroundConnection(ctx context.Context, device bind.Device, conn gapir.Connection, replayABI *device.ABI) (*backgroundConnection, error) {
 	bgc := &backgroundConnection{conn: conn, ABI: replayABI, OS: device.Instance().GetConfiguration().GetOS()}
+
 	c := make(chan error)
 	cctx := keys.Clone(context.Background(), ctx)
 	crash.Go(func() {
@@ -186,11 +194,17 @@ func MakeBackgroundConnection(ctx context.Context, device bind.Device, conn gapi
 		cctx := status.PutTask(cctx, nil)
 		cctx = status.StartBackground(cctx, "Handle Replay Communication")
 		defer status.Finish(cctx)
+
 		// Kick the communication handler
-		err := conn.HandleReplayCommunication(
-			cctx, bgc, c)
-		if err != nil {
+		if err := conn.HandleReplayCommunication(cctx, bgc, c); err != nil {
 			log.E(cctx, "Error communication with gapir: %v", err)
+		}
+
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+
+		if current, ok := m.connections[device.Instance().ID.ID()]; ok && current == bgc {
+			delete(m.connections, device.Instance().ID.ID())
 		}
 	})
 	err := <-c
@@ -216,7 +230,8 @@ func (m *manager) connect(ctx context.Context, device bind.Device, replayABI *de
 	if err != nil {
 		return nil, err
 	}
-	bgc, err := MakeBackgroundConnection(ctx, device, conn, replayABI)
+
+	bgc, err := m.makeBackgroundConnection(ctx, device, conn, replayABI)
 	m.connections[device.Instance().ID.ID()] = bgc
 	return bgc, nil
 }

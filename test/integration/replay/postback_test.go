@@ -60,7 +60,7 @@ func doReplay(t *testing.T, f func(*builder.Builder)) error {
 		t.Errorf("Failed to connect to '%v': %v", device, err)
 		return err
 	}
-	bgc, err := replay.MakeBackgroundConnection(ctx, device, connection, abi)
+	bgc, err := replay.MakeBackgroundConnectionForTest(ctx, device, connection, abi)
 	if err != nil {
 		t.Errorf("Failed to set up background connection to '%v': %v", device, err)
 		return err
