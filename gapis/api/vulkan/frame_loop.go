@@ -1252,6 +1252,63 @@ func (f *frameLoop) detectChangedImages(ctx context.Context) {
 	}
 }
 
+func (f *frameLoop) isSameDescriptorSet(src, dst DescriptorSetObjectʳ) bool {
+
+	if src.VulkanHandle() != dst.VulkanHandle() || src.Device() != dst.Device() || src.DescriptorPool() != dst.DescriptorPool() {
+		return false
+	}
+
+	for i, srcBinding := range src.Bindings().All() {
+
+		dstBinding, ok := dst.Bindings().All()[i]
+		if !ok {
+			return false
+		}
+
+		if srcBinding.BindingType() != dstBinding.BindingType() {
+			return false
+		}
+
+		for j, srcBufferInfo := range srcBinding.BufferBinding().All() {
+
+			dstBufferInfo, ok := dstBinding.BufferBinding().All()[j]
+			if !ok {
+				return false
+			}
+			if srcBufferInfo.Buffer() != dstBufferInfo.Buffer() || srcBufferInfo.Offset() != dstBufferInfo.Offset() || srcBufferInfo.Range() != dstBufferInfo.Range() {
+				return false
+			}
+
+		}
+
+		for j, srcImageInfo := range srcBinding.ImageBinding().All() {
+
+			dstImageInfo, ok := dstBinding.ImageBinding().All()[j]
+			if !ok {
+				return false
+			}
+			if srcImageInfo.Sampler() != dstImageInfo.Sampler() || srcImageInfo.ImageView() != dstImageInfo.ImageView() || srcImageInfo.ImageLayout() != dstImageInfo.ImageLayout() {
+				return false
+			}
+
+		}
+
+		for j, srcbufferView := range srcBinding.BufferViewBindings().All() {
+
+			dstbufferView, ok := dstBinding.BufferViewBindings().All()[j]
+			if !ok {
+				return false
+			}
+			if srcbufferView != dstbufferView {
+				return false
+			}
+
+		}
+	}
+
+	return true
+}
+
 func (f *frameLoop) detectChangedDescriptorSets(ctx context.Context) {
 
 	startState := GetState(f.loopStartState)
@@ -1267,18 +1324,10 @@ func (f *frameLoop) detectChangedDescriptorSets(ctx context.Context) {
 
 		if descriptorExistsOverLoop == true && descriptorDestroyedDuringLoop == false {
 
-			descriptorChanged := false
-
-			descriptorChanged = descriptorChanged || descriptorSetDataAtStart.Device() != descriptorSetDataAtEnd.Device()
-			descriptorChanged = descriptorChanged || descriptorSetDataAtStart.Bindings() != descriptorSetDataAtEnd.Bindings()
-			descriptorChanged = descriptorChanged || descriptorSetDataAtStart.Layout() != descriptorSetDataAtEnd.Layout()
-			descriptorChanged = descriptorChanged || descriptorSetDataAtStart.DebugInfo() != descriptorSetDataAtEnd.DebugInfo()
-
-			if descriptorChanged == true {
+			if f.isSameDescriptorSet(descriptorSetDataAtStart, descriptorSetDataAtEnd) == false {
 				log.D(ctx, "DescriptorSet %v modified", descriptorSetKey)
 				f.descriptorSetChanged[descriptorSetKey] = true
 			}
-
 		}
 	}
 }
