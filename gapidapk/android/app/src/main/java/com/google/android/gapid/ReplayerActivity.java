@@ -20,5 +20,5 @@ import android.app.NativeActivity;
 
 // This class exists to disambiguate activity names between native activities inside the GAPID
 // APK. It just needs to extend NativeActivity.
-public class VkSampleActivity extends NativeActivity {
+public class ReplayerActivity extends NativeActivity {
 }

@@ -315,8 +315,19 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 		completeLaunchArgs = append(completeLaunchArgs, arg)
 	}
 
+	gapirActivityIndex := -1
+	for i, activityAction := range apk.ActivityActions {
+		if activityAction.Activity == "com.google.android.gapid.ReplayerActivity" {
+			gapirActivityIndex = i
+			break
+		}
+	}
+	if gapirActivityIndex < 0 {
+		return log.Errf(ctx, nil, "Cannot find gapir activity in gapid APK")
+	}
+
 	log.I(ctx, "Launching GAPIR...")
-	if err := d.StartActivity(ctx, *apk.ActivityActions[0],
+	if err := d.StartActivity(ctx, *apk.ActivityActions[gapirActivityIndex],
 		android.StringExtra{"gapir-intent-flag", strings.Join(completeLaunchArgs, " ")},
 	); err != nil {
 		return err

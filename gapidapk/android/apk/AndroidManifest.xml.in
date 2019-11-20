@@ -31,7 +31,7 @@
         android:supportsRtl="true"
         android:debuggable="true"
         >
-        <activity android:name="android.app.NativeActivity"
+        <activity android:name="com.google.android.gapid.ReplayerActivity"
                   android:label="GAPID - ${name}">
             <meta-data android:name="android.app.lib_name"
                        android:value="gapir"/>
