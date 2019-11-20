@@ -894,6 +894,7 @@ func (a API) Replay(
 	doDisplayToSurface := false
 	var overdraw *stencilOverdraw
 	var profile *replay.EndOfReplay
+	var exporter *replay.MappingExporter
 
 	for _, rr := range rrs {
 		switch req := rr.Request.(type) {
@@ -919,6 +920,10 @@ func (a API) Replay(
 		case timestampsRequest:
 			var numInitialCommands int
 			var err error
+			if exporter == nil {
+				exporter = replay.NewMappingExporter(ctx)
+			}
+
 			if timestamps == nil {
 				numInitialCommands, err = expandCommands(false)
 				if err != nil {
@@ -929,8 +934,9 @@ func (a API) Replay(
 					frameloop = newFrameLoop(ctx, c, api.CmdID(numInitialCommands), api.CmdID(len(cmds)-1), req.loopCount)
 				}
 
-				timestamps = newQueryTimestamps(ctx, c, numInitialCommands, cmds, willLoop, req.handler)
+				timestamps = newQueryTimestamps(ctx, c, numInitialCommands, cmds, exporter, willLoop, req.handler)
 			}
+
 			timestamps.AddResult(rr.Result)
 			optimize = false
 		case framebufferRequest:
@@ -1096,7 +1102,7 @@ func (a API) Replay(
 		transforms.Add(transform.NewCaptureLog(ctx, c, "replay_log.gfxtrace"))
 	}
 	if config.LogMappingsToFile {
-		transforms.Add(replay.NewMappingPrinter(ctx, "mappings.txt"))
+		transforms.Add(replay.NewMappingExporterWithPrint(ctx, "mappings.txt"))
 	}
 
 	transforms.Transform(ctx, cmds, out)

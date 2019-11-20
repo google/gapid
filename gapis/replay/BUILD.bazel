@@ -30,7 +30,7 @@ go_library(
         "id.go",
         "interfaces.go",
         "manager.go",
-        "mapping_printer.go",
+        "mapping_exporter.go",
         "replay.go",
         "replay_connection.go",
         "timestamps.go",

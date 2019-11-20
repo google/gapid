@@ -1299,6 +1299,13 @@ message GetTimestampsRequest {
 // is specified in a TimestampsItem message.
 message Timestamps {
   repeated TimestampsItem timestamps = 1;
+  repeated VulkanHandleMappingItem mappings = 2;
+}
+
+message VulkanHandleMappingItem {
+  string handle_type = 1;
+  string trace_value = 2;
+  string replay_value = 3;
 }
 
 // TimestampsItem represents one entry in a Timestamps report.

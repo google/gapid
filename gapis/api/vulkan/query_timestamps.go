@@ -62,6 +62,7 @@ type commandPoolKey struct {
 
 type queryTimestamps struct {
 	replay.EndOfReplay
+	exporter        *replay.MappingExporter
 	cmds            []api.Cmd
 	commandPools    map[commandPoolKey]VkCommandPool
 	queryPools      map[VkQueue]*queryPoolInfo
@@ -72,9 +73,10 @@ type queryTimestamps struct {
 	readyToLoop     bool
 	handler         service.TimeStampsHandler
 	results         map[uint64]queryResults
+	timestamps      []*service.TimestampsItem
 }
 
-func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int, Cmds []api.Cmd, willLoop bool, handler service.TimeStampsHandler) *queryTimestamps {
+func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInitialCmds int, Cmds []api.Cmd, exporter *replay.MappingExporter, willLoop bool, handler service.TimeStampsHandler) *queryTimestamps {
 	transform := &queryTimestamps{
 		cmds:         Cmds,
 		commandPools: make(map[commandPoolKey]VkCommandPool),
@@ -82,6 +84,8 @@ func newQueryTimestamps(ctx context.Context, c *capture.GraphicsCapture, numInit
 		willLoop:     willLoop,
 		handler:      handler,
 		results:      make(map[uint64]queryResults),
+		exporter:     exporter,
+		timestamps:   make([]*service.TimestampsItem, 0, 0),
 	}
 	return transform
 }
@@ -389,6 +393,18 @@ func (t *queryTimestamps) rewriteQueueSubmit(ctx context.Context,
 	out.MutateAndWrite(ctx, id, newCmd)
 }
 
+func (t *queryTimestamps) sendData() {
+	var timestamps service.Timestamps
+	timestamps.Timestamps = t.timestamps
+	timestamps.Mappings = t.exporter.GetMappings()
+
+	t.handler(&service.GetTimestampsResponse{
+		Res: &service.GetTimestampsResponse_Timestamps{
+			Timestamps: &timestamps,
+		},
+	})
+}
+
 func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 	cb CommandBuilder,
 	out transform.Writer,
@@ -427,6 +443,10 @@ func (t *queryTimestamps) GetQueryResults(ctx context.Context,
 		notificationID := b.GetNotificationID()
 		t.results[notificationID] = queryPoolInfo.results
 		b.Notification(notificationID, value.ObservedPointer(tmp.Address()), buflen)
+		t.exporter.ExtractRemappings(ctx, s, b, func() {
+			t.sendData()
+		})
+
 		return b.RegisterNotificationReader(notificationID, func(n gapir.Notification) {
 			t.processNotification(ctx, s, n)
 		})
@@ -451,7 +471,6 @@ func (t *queryTimestamps) processNotification(ctx context.Context, s *api.Global
 	byteOrder := s.MemoryLayout.GetEndian()
 	r := endian.Reader(bytes.NewReader(timestampsData), byteOrder)
 	tStart := r.Uint64()
-	var timestamps service.Timestamps
 	resultCount := uint32(len(timestampsData) / 8)
 	resIdx := 0
 
@@ -465,15 +484,9 @@ func (t *queryTimestamps) processNotification(ctx context.Context, s *api.Global
 		} else {
 			tStart = tEnd
 		}
-		timestamps.Timestamps = append(timestamps.Timestamps, &record.timestamp)
+		t.timestamps = append(t.timestamps, &record.timestamp)
 		resIdx++
 	}
-
-	t.handler(&service.GetTimestampsResponse{
-		Res: &service.GetTimestampsResponse_Timestamps{
-			Timestamps: &timestamps,
-		},
-	})
 }
 
 func (t *queryTimestamps) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
