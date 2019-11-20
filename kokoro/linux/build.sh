@@ -33,9 +33,9 @@ sudo apt-get -qy install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
 
 # Get the Android NDK
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r18b-linux-x86_64.zip
-unzip -q android-ndk-r18b-linux-x86_64.zip
-export ANDROID_NDK_HOME=$PWD/android-ndk-r18b
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip
+unzip -q android-ndk-r20b-linux-x86_64.zip
+export ANDROID_NDK_HOME=$PWD/android-ndk-r20b
 
 # Get recent build tools
 echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
