@@ -185,7 +185,8 @@ void ProcessNativeWindowEvents() {
   int events;
   int timeoutMillis = 0;
   struct android_poll_source* source;
-  while ((ALooper_pollOnce(timeoutMillis, nullptr, &events, (void**)&source)) >= 0) {
+  while ((ALooper_pollOnce(timeoutMillis, nullptr, &events, (void**)&source)) >=
+         0) {
     if (source != nullptr) {
       source->process(kAndroidApp, source);
     }
