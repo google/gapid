@@ -25,7 +25,6 @@ var (
 	// All counters must be inside this array.
 	counters = []validate.GpuCounter{
 		{1, "Clocks / Second", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
-		{4, "% CP Overhead", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{21, "% Shaders Busy", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{26, "Fragment ALU Instructions / Sec (Full)", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{29, "Fragment EFU Instructions / Second", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
