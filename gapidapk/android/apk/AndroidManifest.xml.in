@@ -31,12 +31,21 @@
         android:supportsRtl="true"
         android:debuggable="true"
         >
-        <activity android:name="android.app.NativeActivity"
+        <activity android:name="com.google.android.gapid.ReplayerActivity"
                   android:label="GAPID - ${name}">
             <meta-data android:name="android.app.lib_name"
                        android:value="gapir"/>
             <intent-filter>
                 <action android:name=".gapir"/>
+            </intent-filter>
+        </activity>
+        <activity android:name="com.google.android.gapid.VkSampleActivity"
+                  android:label="GAPID - Vulkan Sample">
+            <meta-data android:name="android.app.lib_name"
+                       android:value="vulkan_sample" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <service
