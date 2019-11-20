@@ -389,9 +389,16 @@ cmd VkResult vkQueueBindSparse(
 
     signal_semaphores := info.pSignalSemaphores[0:info.signalSemaphoreCount]
     for j in (0 .. info.signalSemaphoreCount) {
-      LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
-      = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
-        Signal,      signal_semaphores[j],  null)
+      ss := signal_semaphores[j]
+      if !(ss in Semaphores) {
+        vkErrorInvalidSemaphore(ss)
+      } else {
+        semaphore := Semaphores[ss]
+        semaphore.SubmitCount = semaphore.SubmitCount + 1
+        LastBoundQueue.PendingCommands[len(LastBoundQueue.PendingCommands)]
+        = new!CommandReference(as!VkCommandBuffer(0), 0, cmd_vkNoCommand, 0,
+         Signal,      ss,  null)
+      }
     }
   }
   leaveSubcontext()
