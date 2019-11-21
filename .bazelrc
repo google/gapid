@@ -52,6 +52,3 @@ build:nodroid --define NO_ANDROID=1
 
 # Tests requiring a GPU fail in the sandbox.
 test --strategy TestRunner=standalone --test_env DISPLAY
-
-# Use AAPT before we switch to AAPT2
-build --android_aapt=aapt
