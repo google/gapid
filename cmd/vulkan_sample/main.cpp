@@ -29,7 +29,6 @@
 #elif defined(__ANDROID__)
 #include <android/log.h>
 #include <dlfcn.h>
-#include <pthread.h>
 #include "android_native_app_glue.h"
 #define VK_USE_PLATFORM_ANDROID_KHR
 #elif defined(__linux__)
@@ -179,47 +178,50 @@ bool CreateNativeWindow() {
 
 // Forward declaration, must use an other name than "main"
 int main_impl();
-// Wrapper to pass to pthread_create()
-void* main_wrapper(void*) {
-  main_impl();
-  return nullptr;
-}
+
+struct android_app* kAndroidApp = nullptr;
 
 void ProcessNativeWindowEvents() {
-  // nothing
+  int events;
+  int timeoutMillis = 0;
+  struct android_poll_source* source;
+  while ((ALooper_pollOnce(timeoutMillis, nullptr, &events, (void**)&source)) >=
+         0) {
+    if (source != nullptr) {
+      source->process(kAndroidApp, source);
+    }
+
+    if (kAndroidApp->destroyRequested != 0) {
+      // Abrupt termination
+      std::terminate();
+    }
+  }
 }
 
 void android_main(struct android_app* app) {
-  app->onAppCmd = processAppCmd;
+  kAndroidApp = app;
+  kAndroidApp->onAppCmd = processAppCmd;
 
-  bool started = false;
-  pthread_t renderThread;
-
-  while (true) {
+  bool waiting_for_window = true;
+  while (waiting_for_window) {
     int events;
-    int timeoutMillis = 1000;
+    int timeoutMillis = 100;
     struct android_poll_source* source;
-
     while ((ALooper_pollOnce(timeoutMillis, nullptr, &events,
                              (void**)&source)) >= 0) {
       if (source != nullptr) {
-        source->process(app, source);
+        source->process(kAndroidApp, source);
       }
-
-      if (!started && kANativeWindowHandle != nullptr) {
-        if (pthread_create(&renderThread, nullptr, main_wrapper, nullptr) !=
-            0) {
-          write_error(kOutHandle, "Error creating render thread");
-          std::terminate();
-        }
-        started = true;
+      if (waiting_for_window && kANativeWindowHandle != nullptr) {
+        waiting_for_window = false;
       }
-
-      if (app->destroyRequested != 0) {
+      if (kAndroidApp->destroyRequested != 0) {
         return;
       }
     }
   }
+
+  main_impl();
 };
 
 #elif defined(__linux__)

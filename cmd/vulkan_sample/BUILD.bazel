@@ -27,7 +27,7 @@ cc_library(
     linkopts = select({
         "//tools/build:linux": [
             "-ldl",
-            "-lpthread",
+            "-lpthread",  # Needed to run on Swiftshader (Nov. 2019)
         ],
         "//tools/build:darwin": [],
         "//tools/build:windows": [],
