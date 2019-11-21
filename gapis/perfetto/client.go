@@ -16,14 +16,19 @@ package perfetto
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/gapis/perfetto/client"
+
+	common "protos/perfetto/common"
+	ipc "protos/perfetto/ipc"
 )
 
 const (
 	consumerService = "ConsumerPort"
+	queryMethod     = "QueryServiceState"
 )
 
 // Client is a client ("consumer") of a Perfetto service.
@@ -58,6 +63,22 @@ func NewClient(ctx context.Context, conn net.Conn, cleanup app.Cleanup) (*Client
 		conn:    c,
 		methods: methods,
 	}, nil
+}
+
+// Query queries the Perfetto service for producer and data source info and
+// invokes the given callback on each received result. This is a streaming,
+// synchronous RPC and the callback may be invoked multiple times.
+func (c *Client) Query(ctx context.Context, cb func(*common.TracingServiceState) error) error {
+	m, ok := c.methods[queryMethod]
+	if !ok {
+		return errors.New("Remote service doesn't have a query method")
+	}
+
+	query := client.NewQuerySync(ctx, cb)
+	if err := c.conn.Invoke(ctx, m, &ipc.QueryServiceStateRequest{}, query.Handler); err != nil {
+		return err
+	}
+	return query.Wait(ctx)
 }
 
 // Close closes the underlying connection to the Perfetto service of this client.

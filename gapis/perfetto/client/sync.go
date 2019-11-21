@@ -48,3 +48,38 @@ func (s *BindSync) Wait(ctx context.Context) (map[string]*Method, error) {
 	}
 	return s.methods, s.err
 }
+
+// InvokeSync is a sync helper to turn async Invoke calls into sync ones. Use
+// the Handler struct member in calling Invoke() and then call Wait.
+type InvokeSync struct {
+	Handler InvokeHandler
+	err     error
+	wait    task.Signal
+}
+
+// NewInvokeSync returns a new InvokeSync. The given callback is called upon
+// every successful streamed result.
+func NewInvokeSync(ctx context.Context, cb func(data []byte) error) *InvokeSync {
+	wait, fire := task.NewSignal()
+	s := &InvokeSync{wait: wait}
+	s.Handler = func(data []byte, more bool, err error) {
+		if err != nil {
+			s.err = err
+		} else {
+			s.err = cb(data)
+		}
+
+		if !more || s.err != nil {
+			fire(ctx)
+		}
+	}
+	return s
+}
+
+// Wait waits on the sync and returns the error the Invoke call.
+func (s *InvokeSync) Wait(ctx context.Context) error {
+	if !s.wait.Wait(ctx) {
+		return task.StopReason(ctx)
+	}
+	return s.err
+}

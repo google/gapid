@@ -162,6 +162,43 @@ func (c *Connection) Bind(ctx context.Context, service string, handler BindHandl
 	})
 }
 
+// InvokeHandler is the callback invoked when an Invoke gets a response. For
+// streaming RPCs it may be invoked multiple times.
+type InvokeHandler func(data []byte, more bool, err error)
+
+// Invoke invokes the given method and calls the handler on a response.
+func (c *Connection) Invoke(ctx context.Context, m *Method, args proto.Message, handler InvokeHandler) error {
+	argsBuf, err := proto.Marshal(args)
+	if err != nil {
+		return err
+	}
+
+	f := c.newFrame()
+	f.Msg = &wire.IPCFrame_MsgInvokeMethod{
+		MsgInvokeMethod: &wire.IPCFrame_InvokeMethod{
+			ServiceId: proto.Uint32(m.serviceID),
+			MethodId:  proto.Uint32(m.methodID),
+			ArgsProto: argsBuf,
+		},
+	}
+	return c.writeFrame(ctx, f, func(frame *wire.IPCFrame, err error) bool {
+		if err != nil {
+			handler(nil, false, err)
+			return false
+		}
+
+		reply := frame.GetMsgInvokeMethodReply()
+		if !reply.GetSuccess() {
+			handler(nil, false, fmt.Errorf("Failed to invoke consumer method %s", m.Name))
+			return false
+		}
+
+		more := reply.GetHasMore()
+		handler(reply.GetReplyProto(), more, nil)
+		return more
+	})
+}
+
 // Close closes this connection and the underlying socket.
 func (c *Connection) Close(ctx context.Context) {
 	if c != nil {
