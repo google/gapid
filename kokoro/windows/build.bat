@@ -26,7 +26,7 @@ REM Install the Android SDK components and NDK.
 set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
 ren %ANDROID_HOME%\build-tools\26.0.0-preview 26.0.0-rc1
 copy /Y "%SRC%\kokoro\windows\android-sdk-license" "%ANDROID_HOME%\licenses\"
-%ANDROID_HOME%\tools\bin\sdkmanager platforms;android-26 build-tools;29.0.2
+echo y | %ANDROID_HOME%\tools\bin\sdkmanager platforms;android-26 build-tools;29.0.2
 wget -q https://dl.google.com/android/repository/android-ndk-r20b-windows-x86_64.zip
 unzip -q android-ndk-r20b-windows-x86_64.zip
 set ANDROID_NDK_HOME=%CD%\android-ndk-r20b
