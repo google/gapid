@@ -180,15 +180,11 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	for _, buf := range s.Buffers().Keys() {
 		sb.createBuffer(s.Buffers().Get(buf))
 	}
-
-	{
-		imgPrimer := newImagePrimer(sb)
-		defer imgPrimer.Free()
-		for _, img := range s.Images().Keys() {
-			subRange, err := sb.createImage(s.Images().Get(img), sb.oldState, img)
-			if len(subRange) != 0 && err == nil {
-				sb.primeImage(s.Images().Get(img), imgPrimer, subRange)
-			}
+	imgPrimer := newImagePrimer(sb)
+	for _, img := range s.Images().Keys() {
+		subRange, err := sb.createImage(s.Images().Get(img), sb.oldState, img)
+		if len(subRange) != 0 && err == nil {
+			sb.primeImage(s.Images().Get(img), imgPrimer, subRange)
 		}
 	}
 
@@ -279,7 +275,7 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 	}
 
 	sb.scratchRes.Free(sb)
-
+	imgPrimer.Free()
 	return out.cmds, sb.memoryIntervals
 }
 
