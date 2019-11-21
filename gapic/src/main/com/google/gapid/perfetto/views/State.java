@@ -226,7 +226,6 @@ public class State {
   public boolean resetSelections() {
     boolean hasDeselection = selection != null || selectedThreads.size() > 0;
     setSelection((Selection.MultiSelection)null);
-    selectedThreads = HashMultimap.create();
     return hasDeselection;
   }
 
@@ -255,6 +254,10 @@ public class State {
   public void setSelection(Selection.MultiSelection selection) {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
+    // If selection is cleared or set to a non-cpu one, don't do color grouping for cpu slices.
+    if (selection == null || selection.getSelection(Selection.Kind.Cpu) == Selection.EMPTY_SELECTION) {
+      clearSelectedThreads();
+    }
     listeners.fire().onSelectionChanged(selection);
   }
 
