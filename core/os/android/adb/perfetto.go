@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	ansiRegex = regexp.MustCompile("\u001b\\[\\d+m")
+	AnsiRegex = regexp.MustCompile("\u001b\\[\\d+m")
 )
 
 // StartPerfettoTrace starts a perfetto trace on this device.
@@ -56,6 +56,8 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 		buf := bufio.NewReader(reader)
 		for {
 			line, e := buf.ReadString('\n')
+			// Remove ANSI color codes from perfetto output
+			line = AnsiRegex.ReplaceAllString(line, "")
 			readyOnce(ctx)
 			logRing.Value = line
 			logRing = logRing.Next()
@@ -99,8 +101,6 @@ func (b *binding) StartPerfettoTrace(ctx context.Context, config *perfetto_pb.Tr
 					msg += "\n" + s
 				}
 			})
-			// Remove ANSI color codes from perfetto output
-			msg = ansiRegex.ReplaceAllString(msg, "")
 
 			if msg != "" {
 				err = errors.New(err.Error() + "\nPerfetto Output:" + msg)

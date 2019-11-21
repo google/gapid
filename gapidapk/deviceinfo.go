@@ -205,7 +205,7 @@ func launchPerfettoProducerFromApk(ctx context.Context, d adb.Device, startFunc 
 				fail <- nil
 				return
 			case nil:
-				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(line, "\n"))
+				log.E(ctx, "[launch producer] %s", strings.TrimSuffix(adb.AnsiRegex.ReplaceAllString(line, ""), "\n"))
 			}
 		}
 	})
