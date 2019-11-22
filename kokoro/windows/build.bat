@@ -24,7 +24,12 @@ set JAVA_HOME=c:\Program Files\Java\jdk1.8.0_144
 
 REM Install the Android SDK components and NDK.
 set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
+
+REM Install a license file for the Android SDK to avoid license query.
+REM This file might need to be updated in the future.
 copy /Y "%SRC%\kokoro\windows\android-sdk-license" "%ANDROID_HOME%\licenses\"
+
+REM Install Android SDK platform, build tools and NDK
 call %ANDROID_HOME%\tools\bin\sdkmanager.bat platforms;android-26 build-tools;29.0.2
 wget -q https://dl.google.com/android/repository/android-ndk-r20b-windows-x86_64.zip
 unzip -q android-ndk-r20b-windows-x86_64.zip
