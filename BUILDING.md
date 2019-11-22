@@ -1,6 +1,6 @@
 # Building GAPID
 
-GAPID uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **0.25.1**.
+GAPID uses the [Bazel build system](https://bazel.build/). The recommended version of Bazel is **1.2.0**.
 
 Bazel is able to fetch most of the dependencies required to build GAPID, but currently the Android SDK and NDK both need to be downloaded and installed by hand.
 
@@ -54,7 +54,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;26.0.1" ndk-bundle
+tools\bin\sdkmanager.bat "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
 Note: this will install the latest NDK in `<sdk-path>\ndk-bundle`. The minimum required version of the NDK is r16b.
@@ -110,7 +110,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-26" "build-tools;26.0.1" ndk-bundle
+tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
 Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.
@@ -171,7 +171,7 @@ To fetch the required packages, using a console type:
 
 ```
 cd <sdk-path>
-tools/bin/sdkmanager "platforms;android-26" "build-tools;26.0.1" ndk-bundle
+tools/bin/sdkmanager "platforms;android-26" "build-tools;29.0.2" ndk-bundle
 ```
 
 Note: this will install the latest NDK in `<sdk-path>/ndk-bundle`. The minimum required version of the NDK is r16b.

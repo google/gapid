@@ -20,9 +20,10 @@ BUILD_ROOT=$PWD
 SRC=$PWD/github/gapid/
 
 # Get bazel.
-curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/0.25.1/bazel-0.25.1-installer-linux-x86_64.sh
+BAZEL_VERSION=1.2.0
+curl -L -k -O -s https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh
 mkdir bazel
-bash bazel-0.25.1-installer-linux-x86_64.sh --prefix=$PWD/bazel
+bash bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh --prefix=$PWD/bazel
 
 # Get GCC 8
 sudo rm /etc/apt/sources.list.d/cuda.list*
@@ -32,9 +33,12 @@ sudo apt-get -qy install gcc-8 g++-8
 export CC=/usr/bin/gcc-8
 
 # Get the Android NDK
-curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r18b-linux-x86_64.zip
-unzip -q android-ndk-r18b-linux-x86_64.zip
-export ANDROID_NDK_HOME=$PWD/android-ndk-r18b
+curl -L -k -O -s https://dl.google.com/android/repository/android-ndk-r20b-linux-x86_64.zip
+unzip -q android-ndk-r20b-linux-x86_64.zip
+export ANDROID_NDK_HOME=$PWD/android-ndk-r20b
+
+# Get recent build tools
+echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
 
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}

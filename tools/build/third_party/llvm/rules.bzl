@@ -16,9 +16,18 @@ load("@gapid//tools/build:rules.bzl", "cc_copts")
 
 # llvm_cc_copts returns cc_copts() but with LLVM warnings muted.
 def llvm_cc_copts():
-    # LLVM is full of warnings that are hard to separate into individual
-    # compiler exclusions. Go nuclear.
-    return cc_copts() + ["-w"]
+    return cc_copts() + [
+            # LLVM is full of warnings that are hard to separate into
+            # individual compiler exclusions. Go nuclear.
+            "-w",
+            # LLVM is used to build parts of GAPID. We're not so interested in
+            # debugging LLVM itself, but we would like the parts of the build
+            # using LLVM to be as fast as possible, so always build LLVM
+            # optimized.
+            "-g0",
+            "-O2",
+            "-DNDEBUG",
+        ]
 
 def llvm_sources(name, exclude=[]):
     return native.glob([
@@ -48,14 +57,7 @@ def llvmLibrary(name, path="", deps=[], excludes={}, extras={}):
         srcs = llvm_sources(path, exclude=exclude),
         hdrs = native.glob([path + "/*.def"]),
         deps = deps,
-        copts = llvm_cc_copts() + [
-            # LLVM is used to build parts of GAPID. We're not so interested in
-            # debugging LLVM itself, but we would like the parts of the build
-            # using LLVM to be as fast as possible, so always build LLVM
-            # optimized.
-            "-O2",
-            "-DNDEBUG",
-        ] + select({
+        copts = llvm_cc_copts() + select({
             "@gapid//tools/build:linux": [],
             "@gapid//tools/build:darwin": [],
             "@gapid//tools/build:windows": ["-D__STDC_FORMAT_MACROS"],
