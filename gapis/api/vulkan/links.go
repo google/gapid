@@ -397,3 +397,16 @@ func (o VkPipeline) Link(ctx context.Context, p path.Node, r *path.ResolveConfig
 		return nil, fmt.Errorf("State does not contain link target")
 	}
 }
+
+// Link returns the link to the descriptorUpdateTemplate in the state block.
+func (o VkDescriptorUpdateTemplate) Link(ctx context.Context, p path.Node, r *path.ResolveConfig) (path.Node, error) {
+	i, c, err := state(ctx, p, r)
+	if err != nil {
+		return nil, err
+	}
+	if c.DescriptorUpdateTemplates().Contains(o) {
+		return path.NewField("DescriptorUpdateTemplates", i).MapIndex(o), nil
+	} else {
+		return nil, fmt.Errorf("State does not contain link target")
+	}
+}
