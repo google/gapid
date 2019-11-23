@@ -28,6 +28,7 @@ import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.createGroup;
 import static com.google.gapid.widgets.Widgets.createLabel;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
+import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.sorting;
@@ -43,6 +44,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
+import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
@@ -269,8 +271,15 @@ public class PipelineView extends Composite
                     withLayoutData(createBoldLabel(kvpComposite, kvp.getName()+":"),
                       new GridData(SWT.BEGINNING, SWT.TOP, false, false));
 
-                    withLayoutData(createLabel(kvpComposite, convertToString(kvp.getValue())),
-                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                    DataValue dv = convertDataValue(kvp.getValue());
+
+                    if (dv.link != null) {
+                      withLayoutData(createLink(kvpComposite, dv.displayValue, e -> {models.follower.onFollow(dv.link);}),
+                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                    } else {
+                      withLayoutData(createLabel(kvpComposite, dv.displayValue),
+                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                    }
                   }
 
                   scrollComposite.setContent(contentComposite);
@@ -292,7 +301,7 @@ public class PipelineView extends Composite
                   for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
                     int col = i;
                     createTableColumn(groupTable, dataGroup.getTable().getHeaders(i), row -> {
-                      return convertToString(((API.Row)row).getRowValues(col));
+                      return convertDataValue(((API.Row)row).getRowValues(col)).displayValue;
                     });
                   }
 
@@ -326,7 +335,17 @@ public class PipelineView extends Composite
     return this;
   }
 
-  private String convertToString(API.DataValue val) {
+  private class DataValue {
+    public String displayValue;
+    public Path.Any link;
+
+    public DataValue(String displayValue) {
+      link = null;
+      this.displayValue = displayValue;
+    }
+  }
+
+  private DataValue convertDataValue(API.DataValue val) {
     switch (val.getValCase()) {
       case VALUE:
         Joiner valueJoiner = Joiner.on(", ");
@@ -334,142 +353,148 @@ public class PipelineView extends Composite
 
         switch (val.getValue().getValCase()) {
           case FLOAT32:
-            return Float.toString(val.getValue().getFloat32());
+            return new DataValue(Float.toString(val.getValue().getFloat32()));
 
           case FLOAT64:
-            return Double.toString(val.getValue().getFloat64());
+            return new DataValue(Double.toString(val.getValue().getFloat64()));
 
           case UINT:
-            return Long.toString(val.getValue().getUint());
+            return new DataValue(Long.toString(val.getValue().getUint()));
 
           case SINT:
-            return Long.toString(val.getValue().getSint());
+            return new DataValue(Long.toString(val.getValue().getSint()));
 
           case UINT8:
-            return Integer.toString(val.getValue().getUint8());
+            return new DataValue(Integer.toString(val.getValue().getUint8()));
 
           case SINT8:
-            return Integer.toString(val.getValue().getSint8());
+            return new DataValue(Integer.toString(val.getValue().getSint8()));
 
           case UINT16:
-            return Integer.toString(val.getValue().getUint16());
+            return new DataValue(Integer.toString(val.getValue().getUint16()));
 
           case SINT16:
-            return Integer.toString(val.getValue().getSint16());
+            return new DataValue(Integer.toString(val.getValue().getSint16()));
 
           case UINT32:
-            return Integer.toString(val.getValue().getUint32());
+            return new DataValue(Integer.toString(val.getValue().getUint32()));
 
           case SINT32:
-            return Integer.toString(val.getValue().getSint32());
+            return new DataValue(Integer.toString(val.getValue().getSint32()));
 
           case UINT64:
-            return Long.toString(val.getValue().getUint64());
+            return new DataValue(Long.toString(val.getValue().getUint64()));
 
           case SINT64:
-            return Long.toString(val.getValue().getSint64());
+            return new DataValue(Long.toString(val.getValue().getSint64()));
 
           case BOOL:
-            return Boolean.toString(val.getValue().getBool());
+            return new DataValue(Boolean.toString(val.getValue().getBool()));
 
           case STRING:
-            return val.getValue().getString();
+            return new DataValue(val.getValue().getString());
 
           case FLOAT32_ARRAY:
             for (float value : val.getValue().getFloat32Array().getValList()) {
               values.add(Float.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case FLOAT64_ARRAY:
             for (double value : val.getValue().getFloat64Array().getValList()) {
               values.add(Double.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case UINT_ARRAY:
             for (long value : val.getValue().getUintArray().getValList()) {
               values.add(Long.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case SINT_ARRAY:
             for (long value : val.getValue().getSintArray().getValList()) {
               values.add(Long.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case UINT8_ARRAY:
             for (byte value : val.getValue().getUint8Array()) {
               values.add(Byte.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case SINT8_ARRAY:
             for (int value : val.getValue().getSint8Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case UINT16_ARRAY:
             for (int value : val.getValue().getUint16Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case SINT16_ARRAY:
             for (int value : val.getValue().getSint16Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case UINT32_ARRAY:
             for (int value : val.getValue().getUint32Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case SINT32_ARRAY:
             for (int value : val.getValue().getSint32Array().getValList()) {
               values.add(Integer.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case UINT64_ARRAY:
             for (long value : val.getValue().getUint64Array().getValList()) {
               values.add(Long.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case SINT64_ARRAY:
             for (long value : val.getValue().getSint64Array().getValList()) {
               values.add(Long.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case BOOL_ARRAY:
             for (boolean value : val.getValue().getBoolArray().getValList()) {
               values.add(Boolean.toString(value));
             }
-            return valueJoiner.join(values);
+            return new DataValue(valueJoiner.join(values));
 
           case STRING_ARRAY:
-            return valueJoiner.join(val.getValue().getStringArray().getValList());
+            return new DataValue(valueJoiner.join(val.getValue().getStringArray().getValList()));
 
           default:
-            return "???";
+            return new DataValue("???");
         }
 
       case ENUMVAL:
-        return val.getEnumVal().getStringValue();
+        return new DataValue(val.getEnumVal().getStringValue());
 
       case BITFIELD:
         Joiner joiner = Joiner.on(" | ");
-        return joiner.join(val.getBitfield().getSetBitnamesList());
+        return new DataValue(joiner.join(val.getBitfield().getSetBitnamesList()));
+
+      case LINK:
+        DataValue dv = convertDataValue(val.getLink().getDisplayVal());
+        dv.displayValue = "<a>" + dv.displayValue + "</a>";
+        dv.link = val.getLink().getLink();
+        return dv;
         
 
       default:
-        return "???";
+        return new DataValue("???");
     }
   }
 

@@ -43,7 +43,7 @@ type Resource interface {
 	ResourceType(ctx context.Context) ResourceType
 
 	// ResourceData returns the resource data given the current state.
-	ResourceData(ctx context.Context, s *GlobalState) (*ResourceData, error)
+	ResourceData(ctx context.Context, s *GlobalState, cmd *path.Command) (*ResourceData, error)
 
 	// SetResourceData sets resource data in a new capture.
 	SetResourceData(
