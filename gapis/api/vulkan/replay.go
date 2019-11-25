@@ -958,7 +958,7 @@ func (a API) Replay(
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
-			transforms.Add(replay.WaitForPerfetto(req.traceOptions, req.handler))
+			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler))
 			if req.overrides.GetViewportSize() {
 				transforms.Add(minimizeViewport(ctx))
 			}

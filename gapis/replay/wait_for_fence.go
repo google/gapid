@@ -24,20 +24,20 @@ import (
 )
 
 type WaitForFence struct {
-	transformCallback func(ctx context.Context, p *gapir.FenceReadyRequest)
-	flushCallback     func(ctx context.Context, p *gapir.FenceReadyRequest)
-	shouldWait        func(ctx context.Context, id api.CmdID, cmd api.Cmd) bool
+	TransformCallback func(ctx context.Context, p *gapir.FenceReadyRequest)
+	FlushCallback     func(ctx context.Context, p *gapir.FenceReadyRequest)
+	ShouldWait        func(ctx context.Context, id api.CmdID, cmd api.Cmd) bool
 }
 
 func (t *WaitForFence) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
-	if t.transformCallback != nil && t.shouldWait != nil && t.shouldWait(ctx, id, cmd) {
+	if t.TransformCallback != nil && t.ShouldWait != nil && t.ShouldWait(ctx, id, cmd) {
 		t.AddTransformWait(ctx, id, out)
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
 func (t *WaitForFence) Flush(ctx context.Context, out transform.Writer) {
-	if t.flushCallback != nil {
+	if t.FlushCallback != nil {
 		t.AddFlushWait(ctx, out)
 	}
 }
@@ -50,7 +50,7 @@ func (t *WaitForFence) AddTransformWait(ctx context.Context, id api.CmdID, out t
 		fenceID := uint32(id)
 		b.Wait(fenceID)
 		tcb := func(p *gapir.FenceReadyRequest) {
-			t.transformCallback(ctx, p)
+			t.TransformCallback(ctx, p)
 		}
 		return b.RegisterFenceReadyRequestCallback(fenceID, tcb)
 	}})
@@ -61,7 +61,7 @@ func (t *WaitForFence) AddFlushWait(ctx context.Context, out transform.Writer) {
 		fenceID := uint32(0x3ffffff)
 		b.Wait(fenceID)
 		fcb := func(p *gapir.FenceReadyRequest) {
-			t.flushCallback(ctx, p)
+			t.FlushCallback(ctx, p)
 		}
 		return b.RegisterFenceReadyRequestCallback(fenceID, fcb)
 	}})
