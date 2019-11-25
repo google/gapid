@@ -15,14 +15,17 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
 
@@ -78,6 +81,15 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	if err != nil {
 		return log.Errf(ctx, err, "Failed to start Perfetto trace")
 	}
+
+	crash.Go(func() {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Println("Press enter to stop capturing...")
+		if _, err := reader.ReadString('\n'); err != nil {
+			return
+		}
+		sess.Stop(ctx)
+	})
 
 	if err := sess.Wait(ctx); err != nil {
 		return log.Errf(ctx, err, "Perfetto trace failed")
