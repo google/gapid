@@ -15,6 +15,8 @@
  */
 
 #include "core/cc/target.h"
+#include "core/memory/arena/cc/arena.h"
+#include "core/memory/arena/cc/stl_compatible_allocator.h"
 
 #ifndef GAPII_MEMORY_TRACKER_H
 #define GAPII_MEMORY_TRACKER_H
@@ -371,8 +373,11 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
   using derived_tracker_type = SpecificMemoryTracker;
   // Assume mapped coherement memory range can not be larger than 4GB.
   using tracking_range_type = TrackingRange<uint32_t>;
+  using tracking_range_list_allocator = core::StlCompatibleAllocator<
+      std::pair<const uintptr_t, std::unique_ptr<tracking_range_type>>>;
   using tracking_range_list_type =
-      std::map<uintptr_t, std::unique_ptr<tracking_range_type> >;
+      std::map<uintptr_t, std::unique_ptr<tracking_range_type>,
+               std::less<uintptr_t>, tracking_range_list_allocator>;
 
   // Creates a memory tracker to track memory write operations. If
   // |track_read| is set to true, also tracks the memory read operations.
@@ -381,7 +386,7 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
       : SpecificMemoryTracker([this](void* v) { return DoHandleSegfault(v); }),
         track_read_(track_read),
         l_(),
-        tracking_ranges_(),
+        tracking_ranges_(std::less<uintptr_t>(), &arena_),
 #define CONSTRUCT_SIGNAL_SAFE(function) \
   function(this, &MemoryTrackerImpl::function##Impl, &l_, SIGSEGV)
         CONSTRUCT_SIGNAL_SAFE(TrackRange),
@@ -480,6 +485,8 @@ class MemoryTrackerImpl : public SpecificMemoryTracker {
 
   // Spin lock to guard the accesses of shared data
   SpinLock l_;
+
+  core::Arena arena_;
 
   // Ranges registered for tracking. Stored in ordered map according to their
   // end address.
