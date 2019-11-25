@@ -269,6 +269,7 @@ cmd VkResult vkAcquireNextImageKHR(
   pImageIndex[0] = imageIndex
   if (semaphore != as!VkSemaphore(0)) {
     Semaphores[semaphore].Signaled = true
+    Semaphores[semaphore].SubmitCount = Semaphores[semaphore].SubmitCount + 1
   }
   if (fence != 0) {
     if (Fences[fence].Signaled) { vkErrorInvalidFence(fence) } else {
