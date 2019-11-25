@@ -67,9 +67,30 @@ func (c ipPrimeableHostCopy) prime(sb *stateBuilder, srcLayout, dstLayout ipLayo
 	if len(c.kits) == 0 {
 		return fmt.Errorf("None host copy kit for priming by host copy")
 	}
-	dstImgObj := GetState(sb.newState).Images().Get(c.kits[0].dstImage)
+	dstImageObjs := []ImageObjectʳ{}
+	for _, kit := range c.kits {
+		dstImgObj := GetState(sb.newState).Images().Get(kit.dstImage)
+		inList := false
+		for _, dst := range dstImageObjs {
+			if dst.VulkanHandle() == dstImgObj.VulkanHandle() {
+				inList = true
+				break
+			}
+		}
+		if inList == false {
+			dstImageObjs = append(dstImageObjs, dstImgObj)
+		}
+	}
+
+	preCopyBarriers := []VkImageMemoryBarrier{}
+	postCopyBarriers := []VkImageMemoryBarrier{}
+
 	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, c.queue)
-	preCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImgObj, srcLayout, useSpecifiedLayout(ipHostCopyImageLayout))
+	for _, dstImgObj := range dstImageObjs {
+		preCopyBarriers = append(preCopyBarriers, ipImageLayoutTransitionBarriers(sb, dstImgObj, srcLayout, useSpecifiedLayout(ipHostCopyImageLayout))...)
+		postCopyBarriers = append(postCopyBarriers, ipImageLayoutTransitionBarriers(sb, dstImgObj, useSpecifiedLayout(ipHostCopyImageLayout), dstLayout)...)
+
+	}
 	err = ipRecordImageMemoryBarriers(sb, queueHandler, preCopyBarriers...)
 	if err != nil {
 		return log.Errf(sb.ctx, err, "failed at pre host copy image layout transition")
@@ -81,7 +102,7 @@ func (c ipPrimeableHostCopy) prime(sb *stateBuilder, srcLayout, dstLayout ipLayo
 			return log.Errf(sb.ctx, err, "failed at commit buffer image copy commands")
 		}
 	}
-	postCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImgObj, useSpecifiedLayout(ipHostCopyImageLayout), dstLayout)
+
 	err = ipRecordImageMemoryBarriers(sb, queueHandler, postCopyBarriers...)
 	if err != nil {
 		return log.Errf(sb.ctx, err, "failed at post host copy image layout transition")
