@@ -144,7 +144,7 @@ func checkTextureBuffer(ctx context.Context, c *path.Capture, d *device.Instance
 		return
 	}
 
-	res, err := t.ResourceData(ctx, globalState)
+	res, err := t.ResourceData(ctx, globalState, cmdPath)
 	if !assert.For(ctx, "resource data").ThatError(err).Succeeded() {
 		return
 	}

@@ -676,7 +676,7 @@ func (t ImageObjectʳ) imageInfo(ctx context.Context, s *api.GlobalState, vkFmt 
 }
 
 // ResourceData returns the resource data given the current state.
-func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (t ImageObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ImageObject.ResourceData()")
 	vkFmt := t.Info().Fmt()
 	_, err := getImageFormatFromVulkanFormat(vkFmt)
@@ -825,7 +825,7 @@ func (s ShaderModuleObjectʳ) ResourceType(ctx context.Context) api.ResourceType
 }
 
 // ResourceData returns the resource data given the current state.
-func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState) (*api.ResourceData, error) {
+func (s ShaderModuleObjectʳ) ResourceData(ctx context.Context, t *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	ctx = log.Enter(ctx, "ShaderModuleObject.ResourceData()")
 	words, err := s.Words().Read(ctx, nil, t, nil)
 	if err != nil {
@@ -997,7 +997,7 @@ func (p GraphicsPipelineObjectʳ) ResourceType(ctx context.Context) api.Resource
 }
 
 // ResourceData returns the resource data given the current state.
-func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	vkState := GetState(s)
 	isBound := false
 	// Use LastDrawInfos to get bound descriptor set data.
@@ -1021,7 +1021,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		p.geometryShader(ctx, s),
 		p.rasterizer(),
 		p.fragmentShader(ctx, s),
-		p.colorBlending(),
+		p.colorBlending(ctx, s, cmd),
 	}
 
 	return &api.ResourceData{
@@ -1393,7 +1393,7 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.Glo
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) colorBlending() *api.Stage {
+func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command) *api.Stage {
 	depthData := p.DepthState()
 	depthList := &api.KeyValuePairList{}
 	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0))
@@ -1471,34 +1471,15 @@ func (p GraphicsPipelineObjectʳ) colorBlending() *api.Stage {
 		Rows:    targetRows,
 	}
 
-	renderAttachments := p.RenderPass().AttachmentDescriptions()
-	attachmentRows := make([]*api.Row, renderAttachments.Len())
-	for i, index := range renderAttachments.Keys() {
-		attach := renderAttachments.Get(index)
-
-		attachmentRows[i] = &api.Row{
-			RowValues: []*api.DataValue{
-				api.CreateEnumDataValue("VkFormat", attach.Fmt()),
-				api.CreateBitfieldDataValue("VkSampleCountFlagBits", attach.Samples(), VkSampleCountFlagBitsConstants(), API{}),
-				api.CreateEnumDataValue("VkAttachmentLoadOp", attach.LoadOp()),
-				api.CreateEnumDataValue("VkAttachmentStoreOp", attach.StoreOp()),
-				api.CreateEnumDataValue("VkAttachmentLoadOp", attach.StencilLoadOp()),
-				api.CreateEnumDataValue("VkAttachmentStoreOp", attach.StencilStoreOp()),
-				api.CreateEnumDataValue("VkImageLayout", attach.InitialLayout()),
-				api.CreateEnumDataValue("VkImageLayout", attach.FinalLayout()),
-			},
-		}
-	}
-
-	attachTable := &api.Table{
-		Headers: []string{"Format", "Samples", "Load Op", "Store Op", "Stencil Load Op", "Stencil Store Op", "Init Layout", "Final Layout"},
-		Rows:    attachmentRows,
-	}
+	renderPassList := &api.KeyValuePairList{}
+	renderPassHandle := p.RenderPass().VulkanHandle()
+	renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
+	renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)))
 
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Render Pass Attachments",
-			Data:      &api.DataGroup_Table{attachTable},
+			Data:      &api.DataGroup_KeyValues{renderPassList},
 		},
 
 		&api.DataGroup{
@@ -1575,7 +1556,7 @@ func (p ComputePipelineObjectʳ) ResourceType(ctx context.Context) api.ResourceT
 }
 
 // ResourceData returns the resource data given the current state.
-func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState) (*api.ResourceData, error) {
+func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	vkState := GetState(s)
 	isBound := false
 	// Use LastComputeInfos to get bound descriptor set data.

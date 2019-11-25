@@ -19,6 +19,7 @@ import (
 	"reflect"
 
 	"github.com/google/gapid/core/data/pod"
+	"github.com/google/gapid/gapis/service/path"
 )
 
 func (list *KeyValuePairList) AppendKeyValuePair(name string, value *DataValue) *KeyValuePairList {
@@ -119,6 +120,18 @@ func CreateBitfieldDataValue(typeName string, val interface{}, index int, a API)
 			&BitfieldValue{
 				SetBits:     bits,
 				SetBitnames: names,
+			},
+		},
+	}
+}
+
+func CreateLinkedDataValue(typeName string, p path.Node, val *DataValue) *DataValue {
+	return &DataValue{
+		TypeName: typeName,
+		Val: &DataValue_Link{
+			&LinkedValue{
+				Link:       p.Path(),
+				DisplayVal: val,
 			},
 		},
 	}
