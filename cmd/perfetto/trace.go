@@ -84,6 +84,14 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 
 	crash.Go(func() {
 		reader := bufio.NewReader(os.Stdin)
+		if cfg.GetDeferredStart() {
+			fmt.Println("Press enter to start capturing...")
+			if _, err := reader.ReadString('\n'); err != nil {
+				return
+			}
+			sess.Start(ctx)
+		}
+
 		fmt.Println("Press enter to stop capturing...")
 		if _, err := reader.ReadString('\n'); err != nil {
 			return
