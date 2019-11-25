@@ -89,8 +89,10 @@ func (c *Client) Query(ctx context.Context, cb func(*common.TracingServiceState)
 
 // TraceSession is the interface to a currently running Perfetto trace.
 type TraceSession struct {
+	conn *client.Connection
 	wait task.Signal
 	done task.Task
+	stop *client.Method
 	err  error
 }
 
@@ -104,26 +106,21 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 	if !okTrace || !okStop || !okRead {
 		return nil, errors.New("Remote service doesn't have the trace methods")
 	}
-	_ = stop
 
 	wait, done := task.NewSignal()
 	s := &TraceSession{
+		conn: c.conn,
 		wait: wait,
 		done: done,
+		stop: stop,
 	}
 
 	pw := client.NewPacketWriter(out)
 
 	h := client.NewTraceHandler(ctx, func(r *ipc.EnableTracingResponse, err error) {
-		if s.err == nil && err != nil {
-			s.err = err
+		if !s.onResult(ctx, err) {
+			c.readBuffers(ctx, read, s, pw)
 		}
-
-		if err != nil {
-			s.done(ctx)
-			return
-		}
-		c.readBuffers(ctx, read, s, pw)
 	})
 
 	if err := c.conn.Invoke(ctx, trace, &ipc.EnableTracingRequest{TraceConfig: cfg}, h); err != nil {
@@ -135,20 +132,11 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 
 func (c *Client) readBuffers(ctx context.Context, m *client.Method, s *TraceSession, out *client.PacketWriter) {
 	h := client.NewReadHandler(ctx, func(r *ipc.ReadBuffersResponse, more bool, err error) {
-		if s.err == nil && err != nil {
-			s.err = err
-		}
-
-		if err != nil {
-			s.done(ctx)
+		if s.onResult(ctx, err) {
 			return
 		}
 
-		if err := out.Write(r.Slices); err != nil {
-			if s.err == nil {
-				s.err = err
-			}
-			s.done(ctx)
+		if s.onResult(ctx, out.Write(r.Slices)) {
 			return
 		}
 
@@ -156,12 +144,26 @@ func (c *Client) readBuffers(ctx context.Context, m *client.Method, s *TraceSess
 			s.done(ctx)
 		}
 	})
-	if err := c.conn.Invoke(ctx, m, &ipc.ReadBuffersRequest{}, h); err != nil {
-		if s.err == nil {
-			s.err = err
-		}
-		s.done(ctx)
+	s.onResult(ctx, c.conn.Invoke(ctx, m, &ipc.ReadBuffersRequest{}, h))
+}
+
+// Stop stops the currently running trace of this session.
+func (s *TraceSession) Stop(ctx context.Context) {
+	if s.wait.Fired() {
+		// Ignore any stops after we've already marked this session as done.
+		return
 	}
+
+	h := func(data []byte, more bool, err error) {
+		if s.onResult(ctx, err) {
+			return
+		}
+		if more {
+			s.onResult(ctx, errors.New("Got a streaming response to a DisableTrace request"))
+			return
+		}
+	}
+	s.onResult(ctx, s.conn.Invoke(ctx, s.stop, &ipc.DisableTracingRequest{}, h))
 }
 
 // Wait waits for this trace session to finish and returns any error encountered
@@ -171,6 +173,17 @@ func (s *TraceSession) Wait(ctx context.Context) error {
 		return task.StopReason(ctx)
 	}
 	return s.err
+}
+
+func (s *TraceSession) onResult(ctx context.Context, err error) bool {
+	if err != nil {
+		if s.err == nil {
+			s.err = err
+		}
+		s.done(ctx)
+		return true
+	}
+	return false
 }
 
 // Close closes the underlying connection to the Perfetto service of this client.
