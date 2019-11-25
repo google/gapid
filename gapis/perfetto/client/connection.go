@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
@@ -221,9 +222,9 @@ func (c *Connection) unregisterHandler(reqID uint64) {
 }
 
 func (c *Connection) newFrame() *wire.IPCFrame {
-	c.reqID++
+	reqID := atomic.AddUint64(&c.reqID, 1)
 	return &wire.IPCFrame{
-		RequestId: proto.Uint64(c.reqID - 1),
+		RequestId: proto.Uint64(reqID - 1),
 	}
 }
 
@@ -233,12 +234,16 @@ func (c *Connection) writeFrame(ctx context.Context, frame *wire.IPCFrame, handl
 		return err
 	}
 
-	c.registerHandler(frame.GetRequestId(), handler)
+	reqID := frame.GetRequestId()
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.handlers[reqID] = handler
 	c.out.Uint32(uint32(len(buf)))
 	c.out.Data(buf)
 
 	if err := c.out.Error(); err != nil {
-		c.unregisterHandler(frame.GetRequestId())
+		delete(c.handlers, reqID)
 		return err
 	}
 	return nil
