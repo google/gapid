@@ -142,11 +142,11 @@ def gapid_dependencies(android = True, mingw = True, locals = {}):
 
     maybe_repository(
         new_git_repository,
-        name = "lodepng",
+        name = "stb",
         locals = locals,
-        remote = "https://github.com/lvandeve/lodepng",
-        commit = "3606db5a71359a4165308e7cd5afe67bd42f7edf",
-        build_file = "@gapid//tools/build/third_party:lodepng.BUILD",
+        remote = "https://github.com/nothings/stb",
+        commit = "f67165c2bb2af3060ecae7d20d6f731173485ad0",
+        build_file = "@gapid//tools/build/third_party:stb.BUILD",
     )
 
     maybe_repository(

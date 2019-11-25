@@ -13,12 +13,9 @@
 # limitations under the License.
 
 cc_library(
-    name = "lodepng",
-    srcs = [
-        "lodepng.cpp",
-    ],
+    name = "stb",
     hdrs = [
-        "lodepng.h",
+        "stb_image_write.h",
     ],
     visibility = ["//visibility:public"],
 )

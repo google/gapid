@@ -26,7 +26,8 @@
 #include <string>
 #include <thread>
 
-#include "lodepng.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 namespace {
 
@@ -72,7 +73,7 @@ void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
     case VK_FORMAT_R8G8B8A8_UNORM:
     case VK_FORMAT_R8G8B8A8_UINT:
       data = image_data.get();
-      ::lodepng::encode(file_name.c_str(), data, width, height, LCT_RGBA, 8);
+      stbi_write_png(file_name.c_str(), width, height, 4, data, width * 4);
       break;
 
     default:
