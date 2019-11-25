@@ -33,6 +33,7 @@ const (
 	consumerService = "ConsumerPort"
 	queryMethod     = "QueryServiceState"
 	traceMethod     = "EnableTracing"
+	startMethod     = "StartTracing"
 	stopMethod      = "DisableTracing"
 	readMethod      = "ReadBuffers"
 )
@@ -89,11 +90,12 @@ func (c *Client) Query(ctx context.Context, cb func(*common.TracingServiceState)
 
 // TraceSession is the interface to a currently running Perfetto trace.
 type TraceSession struct {
-	conn *client.Connection
-	wait task.Signal
-	done task.Task
-	stop *client.Method
-	err  error
+	conn  *client.Connection
+	wait  task.Signal
+	done  task.Task
+	start *client.Method
+	stop  *client.Method
+	err   error
 }
 
 // Trace initiates a new Perfetto trace session using the given config. The
@@ -101,18 +103,24 @@ type TraceSession struct {
 // RPC that can be controlled/waited on using the returned trace session.
 func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writer) (*TraceSession, error) {
 	trace, okTrace := c.methods[traceMethod]
+	start, _ := c.methods[startMethod] // ignore missing start
 	stop, okStop := c.methods[stopMethod]
 	read, okRead := c.methods[readMethod]
 	if !okTrace || !okStop || !okRead {
 		return nil, errors.New("Remote service doesn't have the trace methods")
 	}
 
+	if !cfg.GetDeferredStart() {
+		start = nil
+	}
+
 	wait, done := task.NewSignal()
 	s := &TraceSession{
-		conn: c.conn,
-		wait: wait,
-		done: done,
-		stop: stop,
+		conn:  c.conn,
+		wait:  wait,
+		done:  done,
+		start: start,
+		stop:  stop,
 	}
 
 	pw := client.NewPacketWriter(out)
@@ -147,6 +155,22 @@ func (c *Client) readBuffers(ctx context.Context, m *client.Method, s *TraceSess
 	s.onResult(ctx, c.conn.Invoke(ctx, m, &ipc.ReadBuffersRequest{}, h))
 }
 
+// Start starts the currently deferred trace of this session. Does nothing, if
+// the Perfetto service doesn't support deferred tracing or the trace was not
+// started in deferred mode.
+func (s *TraceSession) Start(ctx context.Context) {
+	if s.start == nil || s.wait.Fired() {
+		// Ignore any starts if the trace was not defferred or after we've
+		// already marked this session as done
+		return
+	}
+
+	h := client.NewIgnoreHandler(ctx, func(err error) {
+		s.onResult(ctx, err)
+	})
+	s.onResult(ctx, s.conn.Invoke(ctx, s.start, &ipc.StartTracingRequest{}, h))
+}
+
 // Stop stops the currently running trace of this session.
 func (s *TraceSession) Stop(ctx context.Context) {
 	if s.wait.Fired() {
@@ -154,15 +178,9 @@ func (s *TraceSession) Stop(ctx context.Context) {
 		return
 	}
 
-	h := func(data []byte, more bool, err error) {
-		if s.onResult(ctx, err) {
-			return
-		}
-		if more {
-			s.onResult(ctx, errors.New("Got a streaming response to a DisableTrace request"))
-			return
-		}
-	}
+	h := client.NewIgnoreHandler(ctx, func(err error) {
+		s.onResult(ctx, err)
+	})
 	s.onResult(ctx, s.conn.Invoke(ctx, s.stop, &ipc.DisableTracingRequest{}, h))
 }
 

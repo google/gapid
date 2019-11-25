@@ -73,3 +73,19 @@ func NewReadHandler(ctx context.Context, cb func(*ipc.ReadBuffersResponse, bool,
 		cb(resp, more, nil)
 	}
 }
+
+// NewIgnoreHandler returns an InvokeHanlder that ignores the returned result,
+// but propagates errors and ensure the response is not streaming.
+func NewIgnoreHandler(ctx context.Context, cb func(error)) InvokeHandler {
+	return func(data []byte, more bool, err error) {
+		if err != nil {
+			cb(err)
+			return
+		}
+		if more {
+			cb(errors.New("Got a streaming response to non-streaming request"))
+			return
+		}
+		cb(nil)
+	}
+}
