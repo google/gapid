@@ -50,14 +50,11 @@ func (verb *queryVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			continue
 		}
 
-		log.I(ctx, "Connecting to Perfetto...")
-		c, err := d.ConnectPerfetto(ctx)
+		c, err := connectToPerfetto(ctx, d)
 		if err != nil {
-			log.E(ctx, "Failed to connect to perfetto: %s", err)
 			return err
 		}
 		defer c.Close(ctx)
-		log.I(ctx, "Connected.")
 
 		if err := c.Query(ctx, func(r *common.TracingServiceState) error {
 			jsonBytes, err := json.MarshalIndent(r, "", "  ")

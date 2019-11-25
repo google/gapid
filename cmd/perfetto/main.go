@@ -21,10 +21,12 @@ import (
 	"os"
 
 	"github.com/google/gapid/core/app"
+	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/device/remotessh"
 	_ "github.com/google/gapid/gapidapk"
+	"github.com/google/gapid/gapis/perfetto"
 )
 
 var (
@@ -62,4 +64,15 @@ func setupContext(ctx context.Context) context.Context {
 	}
 
 	return ctx
+}
+
+func connectToPerfetto(ctx context.Context, d bind.Device) (*perfetto.Client, error) {
+	log.I(ctx, "Connecting to Perfetto...")
+	c, err := d.ConnectPerfetto(ctx)
+	if err != nil {
+		log.E(ctx, "Failed to connect to perfetto: %s", err)
+		return nil, err
+	}
+	log.I(ctx, "Connected.")
+	return c, nil
 }
