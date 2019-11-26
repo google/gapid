@@ -50,29 +50,33 @@ export VK_ICD_FILENAMES=$SRC/tools/build/third_party/swiftshader/vk_swiftshader_
 export VK_LOADER_DEBUG=all
 
 sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb
-Xvfb +extension GLX :99 &
-pid_xvfb=$!
-export DISPLAY=:99
 
-(
-  catchsegv $SRC/bazel-bin/cmd/vulkan_sample/vulkan_sample &
-  pid=$!
-  sleep 1
-  kill $pid
-) 2>&1 | tee _log
-
-$SRC/bazel-bin/cmd/vulkan_sample/vulkan_sample &
-pid_cube=$!
+xvfb-run -a bazel run //cmd/vulkan_sample &
+mypid=$!
 
 sleep 2
 
-kill $pid_cube
+kill $mypid
 
+# Xvfb +extension GLX :99 &
+# pid_xvfb=$!
+# export DISPLAY=:99
 
+# (
+#   catchsegv $SRC/bazel-bin/cmd/vulkan_sample/vulkan_sample &
+#   pid=$!
+#   sleep 1
+#   kill $pid
+# ) 2>&1 | tee _log
 
+# $SRC/bazel-bin/cmd/vulkan_sample/vulkan_sample &
+# pid_cube=$!
 
+# sleep 2
 
-kill $pid_xvfb
+# kill $pid_cube
+
+# kill $pid_xvfb
 
 exit 1
 
