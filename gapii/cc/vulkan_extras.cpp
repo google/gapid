@@ -318,7 +318,7 @@ bool VulkanSpy::observeFramebuffer(CallObserver* observer, uint32_t* w,
   fn.vkCmdBlitImage(command_buffer, image->mVulkanHandle,
                     VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                     resolve_image,
-                    VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 1,
+                    VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
                     &blit, VkFilter::VK_FILTER_NEAREST);
 
   barriers[0].msrcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT;
