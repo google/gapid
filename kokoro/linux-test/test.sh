@@ -50,7 +50,7 @@ export VK_ICD_FILENAMES=$SRC/tools/build/third_party/swiftshader/vk_swiftshader_
 export VK_LOADER_DEBUG=all
 
 sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb
-Xvfb :99 &
+Xvfb +extension GLX :99 &
 pid_xvfb=$!
 export DISPLAY=:99
 
