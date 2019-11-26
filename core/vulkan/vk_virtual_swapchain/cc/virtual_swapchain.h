@@ -23,6 +23,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 #include "base_swapchain.h"
 #include "layer.h"
 
