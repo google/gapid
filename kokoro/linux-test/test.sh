@@ -51,12 +51,14 @@ export VK_LOADER_DEBUG=all
 
 sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb
 
-xvfb-run -a bazel run //cmd/vulkan_sample &
+xvfb-run -e xvfb.log -a bazel run //cmd/vulkan_sample &
 mypid=$!
 
 sleep 2
 
 kill $mypid
+
+cat xvfb.log
 
 # Xvfb +extension GLX :99 &
 # pid_xvfb=$!
