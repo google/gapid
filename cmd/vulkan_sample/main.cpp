@@ -487,11 +487,11 @@ int main(int argc, const char** argv) {
       vkCreateXcbSurfaceKHR(instance, &create_info, nullptr, &surface));
 }
 #endif
-  VkSurfaceCapabilitiesKHR surface_capabilities;
-  VkSurfaceFormatKHR surface_format;
-  VkPresentModeKHR present_mode;
+  VkSurfaceCapabilitiesKHR surface_capabilities = {};
+  VkSurfaceFormatKHR surface_format = {};
+  VkPresentModeKHR present_mode = {};
 
-  VkPhysicalDevice physical_device;
+  VkPhysicalDevice physical_device = {};
   uint32_t queue_family_index = static_cast<uint32_t>(-1);
 
   {
