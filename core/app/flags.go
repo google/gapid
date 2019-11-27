@@ -38,5 +38,6 @@ type (
 		CPU   string `help:"_write cpu profile to file"`
 		Mem   string `help:"_write mem profile to file"`
 		Trace string `help:"_write a trace to file"`
+		Pprof bool   `help:"_enable pprof profiling"`
 	}
 )
