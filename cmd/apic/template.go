@@ -21,6 +21,7 @@ import (
 	"go/build"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/google/gapid/gapil/resolver"
@@ -42,11 +43,24 @@ func init() {
 }
 
 type templateVerb struct {
-	Dir        string        `help:"The output directory"`
-	Tracer     string        `help:"The template function trace expression"`
-	Gopath     string        `help:"the go path to use when looking up packages"`
-	GlobalList []string      `help:"A global value setting for the template"`
-	Search     file.PathList `help:"The set of paths to search for includes"`
+	Dir            string        `help:"The output directory"`
+	Tracer         string        `help:"The template function trace expression"`
+	Gopath         string        `help:"the go path to use when looking up packages"`
+	GlobalList     []string      `help:"A global value setting for the template"`
+	Search         file.PathList `help:"The set of paths to search for includes"`
+	TemplateSearch file.PathList `help:"Search path apic includes"`
+}
+
+func (v *templateVerb) templateLoader(filename string) ([]byte, error) {
+	if bytes, err := ioutil.ReadFile(filename); err == nil {
+		return bytes, err
+	}
+	for _, p := range v.TemplateSearch {
+		if bytes, err := ioutil.ReadFile(path.Join(p.String(), filename)); err == nil {
+			return bytes, err
+		}
+	}
+	return nil, fmt.Errorf("Could not find %s", filename)
 }
 
 func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
@@ -74,7 +88,7 @@ func (v *templateVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	options := template.Options{
 		Dir:     v.Dir,
 		APIFile: api.Name(),
-		Loader:  ioutil.ReadFile,
+		Loader:  v.templateLoader,
 		Globals: v.GlobalList,
 		Tracer:  v.Tracer,
 	}
