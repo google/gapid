@@ -46,7 +46,7 @@ sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb ffmpeg
 mkdir $BUILD_ROOT/swiftshader
 cd $BUILD_ROOT/swiftshader
 SWIFTSHADER_SHA=663dcefa22ea5eec1b108feebaf40a683fb104ff
-SWIFTSHADER_URL="https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F${SWIFTSHADER_SHA}/gfbuild-swiftshader-${SWIFTSHADER_SHA}-Linux_x64_Release.zip"
+SWIFTSHADER_URL="https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F${SWIFTSHADER_SHA}/gfbuild-swiftshader-${SWIFTSHADER_SHA}-Linux_x64_Debug.zip"
 curl -L -o swiftshader.zip ${SWIFTSHADER_URL}
 unzip swiftshader.zip
 export VK_ICD_FILENAMES=$BUILD_ROOT/swiftshader/lib/vk_swiftshader_icd.json
@@ -97,7 +97,7 @@ echo $(date): Smoketests completed.
 
 cd $SRC
 echo $(date): Run trace and replay of vulkan_sample
-./bazel-bin/pkg/gapit trace -api vulkan -start-at-frame 2 -capture-frames 10 -observe-frames 1 -out vulkan_sample.gfxtrace -uri `which xvfb-run` --additionalargs "-e xfvb.log -a ./bazel-bin/cmd/vulkan_sample/vulkan_sample"
+./bazel-bin/pkg/gapit trace -api vulkan -start-at-frame 2 -capture-frames 10 -observe-frames 1 -out vulkan_sample.gfxtrace -uri `which catchsegv` --additionalargs "xvfb-run -e xfvb.log -a ./bazel-bin/cmd/vulkan_sample/vulkan_sample"
 killall vulkan_sample
 ./bazel-bin/pkg/gapit video -type sxs vulkan_sample.gfxtrace
 echo $(date): Run trace and replay of vulkan_sample
