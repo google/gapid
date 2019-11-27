@@ -40,6 +40,18 @@ export ANDROID_NDK_HOME=$PWD/android-ndk-r20b
 # Get recent build tools
 echo y | $ANDROID_HOME/tools/bin/sdkmanager --install 'build-tools;29.0.2'
 
+# Install dependencies
+sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb ffmpeg
+# Install swiftshader
+mkdir $BUILD_ROOT/swiftshader
+cd $BUILD_ROOT/swiftshader
+SWIFTSHADER_SHA=663dcefa22ea5eec1b108feebaf40a683fb104ff
+SWIFTSHADER_URL="https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F${SWIFTSHADER_SHA}/gfbuild-swiftshader-${SWIFTSHADER_SHA}-Linux_x64_Release.zip"
+curl -L -o swiftshader.zip ${SWIFTSHADER_URL}
+unzip swiftshader.zip
+export VK_ICD_FILENAMES=$BUILD_ROOT/swiftshader/lib/vk_swiftshader_icd.json
+export VK_LOADER_DEBUG=all
+
 cd $SRC
 BUILD_SHA=${DEV_PREFIX}${KOKORO_GITHUB_COMMIT:-$KOKORO_GITHUB_PULL_REQUEST_COMMIT}
 
@@ -82,17 +94,6 @@ done
 echo $(date): Smoketests completed.
 
 # End-to-end smoketest: trace and replay vulkan_sample on top of swiftshader
-# Install dependencies
-sudo apt-get -qy install libvulkan1 libvulkan-dev xvfb ffmpeg
-# Install swiftshader
-mkdir $BUILD_ROOT/swiftshader
-cd $BUILD_ROOT/swiftshader
-SWIFTSHADER_SHA=f2637d0dd7ebeab8190f55cbf746d87210c28d23
-SWIFTSHADER_URL="https://github.com/google/gfbuild-swiftshader/releases/download/github%2Fgoogle%2Fgfbuild-swiftshader%2F${SWIFTSHADER_SHA}gfbuild-swiftshader-${SWIFTSHADER_SHA}-Linux_x64_Release.zip"
-curl -L -o swiftshader.zip ${SWIFTSHADER_URL}
-unzip swiftshader.zip
-export VK_ICD_FILENAMES=$BUILD_ROOT/swiftshader/lib/vk_swiftshader_icd.json
-export VK_LOADER_DEBUG=all
 
 cd $SRC
 echo $(date): Run trace and replay of vulkan_sample
