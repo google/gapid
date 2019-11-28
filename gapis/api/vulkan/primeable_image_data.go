@@ -128,9 +128,25 @@ func (c ipPrimeableDeviceCopy) prime(sb *stateBuilder, srcLayout, dstLayout ipLa
 	if len(c.kits) == 0 {
 		return fmt.Errorf("None device copy kit for priming by device copy")
 	}
-	dstImgObj := GetState(sb.newState).Images().Get(c.kits[0].dstImage)
 	queueHandler := sb.scratchRes.GetQueueCommandHandler(sb, c.queue)
-	preCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImgObj, srcLayout, useSpecifiedLayout(ipDeviceCopyDstImageLayout))
+	dstImageObjs := []ImageObjectʳ{}
+	for _, kit := range c.kits {
+		dstImgObj := GetState(sb.newState).Images().Get(kit.dstImage)
+		inList := false
+		for _, dst := range dstImageObjs {
+			if dst.VulkanHandle() == dstImgObj.VulkanHandle() {
+				inList = true
+				break
+			}
+		}
+		if inList == false {
+			dstImageObjs = append(dstImageObjs, dstImgObj)
+		}
+	}
+
+	preCopyBarriers := []VkImageMemoryBarrier{}
+	postCopyBarriers := []VkImageMemoryBarrier{}
+
 	err = ipRecordImageMemoryBarriers(sb, queueHandler, preCopyBarriers...)
 	if err != nil {
 		return log.Errf(sb.ctx, err, "failed at pre device copy image layout transition")
@@ -144,7 +160,6 @@ func (c ipPrimeableDeviceCopy) prime(sb *stateBuilder, srcLayout, dstLayout ipLa
 		}
 	}
 
-	postCopyBarriers := ipImageLayoutTransitionBarriers(sb, dstImgObj, useSpecifiedLayout(ipDeviceCopyDstImageLayout), dstLayout)
 	err = ipRecordImageMemoryBarriers(sb, queueHandler, postCopyBarriers...)
 	if err != nil {
 		return log.Errf(sb.ctx, err, "failed at post device copy image layout transition")
@@ -699,14 +714,14 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
-	isDepth := (srcImgObj.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
+	isDepth := (dstImgObj.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
 
-	if isSparseResidency(srcImgObj) != isSparseResidency(dstImgObj) {
+	if isSparseResidency(dstImgObj) != isSparseResidency(dstImgObj) {
 		return nil, fmt.Errorf("src image residency does not match with dst image residency")
 	}
-	primeByCopy := (srcImgObj.Info().Usage()&transDstBit) != 0 && (!isDepth)
+	primeByCopy := (dstImgObj.Info().Usage()&transDstBit) != 0 && (!isDepth)
 	if primeByCopy {
-		queue := getQueueForPriming(p.sb, srcImgObj,
+		queue := getQueueForPriming(p.sb, dstImgObj,
 			VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT|VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
 		if queue.IsNil() {
 			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by copy from on device image: %v]", srcImg)
@@ -718,9 +733,9 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 		return &ipPrimeableDeviceCopy{queue: queue.VulkanHandle(), kits: []ipDeviceCopyKit{kit}}, nil
 	}
 
-	primeByRendering := (!primeByCopy) && ((srcImgObj.Info().Usage() & attBits) != 0)
+	primeByRendering := (!primeByCopy) && ((dstImgObj.Info().Usage() & attBits) != 0)
 	if primeByRendering {
-		queue := getQueueForPriming(p.sb, srcImgObj, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
+		queue := getQueueForPriming(p.sb, dstImgObj, VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT)
 		if queue.IsNil() {
 			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by rendering from on device image: %v]", srcImg)
 		}
@@ -730,9 +745,9 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 		kb := p.GetRenderKitBuilder(dev)
 		recipes := []ipRenderRecipe{}
 
-		if isSparseResidency(srcImgObj) {
-			walkSparseImageMemoryBindings(p.sb, srcImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
-				sizes := p.sb.levelSize(srcImgObj.Info().Extent(), srcImgObj.Info().Fmt(), level, aspect)
+		if isSparseResidency(dstImgObj) {
+			walkSparseImageMemoryBindings(p.sb, dstImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+				sizes := p.sb.levelSize(dstImgObj.Info().Extent(), dstImgObj.Info().Fmt(), level, aspect)
 				r := ipRenderRecipe{
 					inputAttachmentImage:  srcImg,
 					inputAttachmentAspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
@@ -751,9 +766,9 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 				recipes = append(recipes, r)
 			})
 		} else {
-			walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
+			walkImageSubresourceRange(p.sb, dstImgObj, p.sb.imageWholeSubresourceRange(dstImgObj),
 				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
-					sizes := p.sb.levelSize(srcImgObj.Info().Extent(), srcImgObj.Info().Fmt(), level, aspect)
+					sizes := p.sb.levelSize(dstImgObj.Info().Extent(), dstImgObj.Info().Fmt(), level, aspect)
 					r := ipRenderRecipe{
 						inputAttachmentImage:  srcImg,
 						inputAttachmentAspect: VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT,
@@ -781,9 +796,9 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 		return primeable, nil
 	}
 
-	primeByImageStore := (!primeByCopy) && (!primeByRendering) && ((srcImgObj.Info().Usage() & storageBit) != 0)
+	primeByImageStore := (!primeByCopy) && (!primeByRendering) && ((dstImgObj.Info().Usage() & storageBit) != 0)
 	if primeByImageStore {
-		queue := getQueueForPriming(p.sb, srcImgObj, VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
+		queue := getQueueForPriming(p.sb, dstImgObj, VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT)
 		if queue.IsNil() {
 			return nil, log.Errf(p.sb.ctx, nilQueueErr, "[Building primeable image data that can be primed by imageStore operation from device image: %v]", srcImg)
 		}
@@ -795,8 +810,8 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 		primeable := &ipPrimeableStoreKits{img: srcImg, queue: queue.VulkanHandle(), kits: []ipStoreKit{}}
 
 		recipes := []ipStoreRecipe{}
-		if isSparseResidency(srcImgObj) {
-			walkSparseImageMemoryBindings(p.sb, srcImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
+		if isSparseResidency(dstImgObj) {
+			walkSparseImageMemoryBindings(p.sb, dstImgObj, func(aspect VkImageAspectFlagBits, layer, level uint32, blockData SparseBoundImageBlockInfoʳ) {
 				r := ipStoreRecipe{
 					inputImage:   srcImg,
 					inputAspect:  aspect,
@@ -815,7 +830,7 @@ func (p *imagePrimer) newPrimeableImageDataFromDevice(srcImg, dstImg VkImage) (p
 				recipes = append(recipes, r)
 			})
 		} else {
-			walkImageSubresourceRange(p.sb, srcImgObj, p.sb.imageWholeSubresourceRange(srcImgObj),
+			walkImageSubresourceRange(p.sb, dstImgObj, p.sb.imageWholeSubresourceRange(dstImgObj),
 				func(aspect VkImageAspectFlagBits, layer, level uint32, levelSize byteSizeAndExtent) {
 					r := ipStoreRecipe{
 						inputImage:   srcImg,
