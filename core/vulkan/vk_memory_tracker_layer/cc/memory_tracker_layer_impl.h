@@ -497,8 +497,6 @@ class MemoryTracker {
   rwlock rwl_device_memory_type_map;
   std::unordered_map<VkDeviceMemory, uint32_t> device_memory_type_map;
 
-  std::deque<uint32_t> memory_type_index_to_heap_index;
-
   // Add the event to the current state of the memory usage.
   void StoreCreateDeviceEvent(VkPhysicalDevice physical_device,
                               VkDeviceCreateInfo const* create_info,
