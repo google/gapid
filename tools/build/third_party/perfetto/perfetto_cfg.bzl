@@ -52,6 +52,7 @@ PERFETTO_CONFIG = struct(
     sqlite_ext_percentile = ["@sqlite_src//:percentile_ext"],
     zlib = ["@net_zlib//:zlib"],
   ),
+  proto_library_visibility = "//visibility:private",
   deps_copts = struct(
     zlib = [],
     jsoncpp = [],
