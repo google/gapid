@@ -113,7 +113,9 @@ public class Settings {
   public boolean perfettoVulkanCPUTimingInstance = false;
   public boolean perfettoVulkanCPUTimingPhysicalDevice = false;
   public boolean perfettoVulkanCPUTimingQueue = false;
-  public boolean perfettoVulkanMemoryTracker = false;
+  public boolean perfettoVulkanMemoryTracking = false;
+  public boolean perfettoVulkanMemoryTrackingDevice = false;
+  public boolean perfettoVulkanMemoryTrackingDriver = false;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -288,8 +290,9 @@ public class Settings {
     perfettoVulkanCPUTimingInstance = getBoolean(properties, "perfetto.vulkan.cpu_timing.instance", perfettoVulkanCPUTimingInstance);
     perfettoVulkanCPUTimingQueue = getBoolean(properties, "perfetto.vulkan.cpu_timing.queue", perfettoVulkanCPUTimingQueue);
     perfettoVulkanCPUTimingPhysicalDevice = getBoolean(properties, "perfetto.vulkan.cpu_timing.physical_device", perfettoVulkanCPUTimingPhysicalDevice);
-    perfettoVulkanMemoryTracker =
-        getBoolean(properties, "perfetto.vulkan.memory_tracker", perfettoVulkanMemoryTracker);
+    perfettoVulkanMemoryTracking = getBoolean(properties, "perfetto.vulkan.memory_tracking", perfettoVulkanMemoryTracking);
+    perfettoVulkanMemoryTrackingDevice = getBoolean(properties, "perfetto.vulkan.memory_tracking.device", perfettoVulkanMemoryTrackingDevice);
+    perfettoVulkanMemoryTrackingDriver = getBoolean(properties, "perfetto.vulkan.memory_tracking.driver", perfettoVulkanMemoryTrackingDriver);
   }
 
   private void updateTo(Properties properties) {
@@ -354,8 +357,9 @@ public class Settings {
     properties.setProperty("perfetto.vulkan.cpu_timing.instance", Boolean.toString(perfettoVulkanCPUTimingInstance));
     properties.setProperty("perfetto.vulkan.cpu_timing.queue", Boolean.toString(perfettoVulkanCPUTimingQueue));
     properties.setProperty("perfetto.vulkan.cpu_timing.physical_device", Boolean.toString(perfettoVulkanCPUTimingPhysicalDevice));
-    properties.setProperty(
-        "perfetto.vulkan.memory_tracker", Boolean.toString(perfettoVulkanMemoryTracker));
+    properties.setProperty("perfetto.vulkan.memory_tracking", Boolean.toString(perfettoVulkanMemoryTracking));
+    properties.setProperty("perfetto.vulkan.memory_tracking.device", Boolean.toString(perfettoVulkanMemoryTrackingDevice));
+    properties.setProperty("perfetto.vulkan.memory_tracking.driver", Boolean.toString(perfettoVulkanMemoryTrackingDriver));
   }
 
   private static Point getPoint(Properties properties, String name) {

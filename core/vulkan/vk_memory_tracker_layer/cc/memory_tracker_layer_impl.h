@@ -441,7 +441,6 @@ using HostAllocationMap = std::unordered_map<uintptr_t, HostAllocationPtr>;
 class MemoryTracker {
  public:
   MemoryTracker();
-  void EnableTrackHostMemory() { track_host_memory_ = true; }
 
   const VkAllocationCallbacks* GetTrackedAllocator(const VkAllocationCallbacks*,
                                                    const std::string& caller);
@@ -491,7 +490,6 @@ class MemoryTracker {
   rwlock rwl_physical_devices;
   PhysicalDeviceMap physical_devices;
 
-  bool track_host_memory_;
   bool initial_state_is_sent_;
 
   rwlock rwl_device_memory_type_map;

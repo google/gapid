@@ -979,13 +979,11 @@ VulkanMemoryEventPtr HostAllocation::GetVulkanMemoryEvent() {
 }
 
 // --------------------------- Memory events tracker ---------------------------
-
-MemoryTracker::MemoryTracker()
-    : track_host_memory_(true), initial_state_is_sent_(false) {}
+MemoryTracker::MemoryTracker() : initial_state_is_sent_(false) {}
 
 const VkAllocationCallbacks* MemoryTracker::GetTrackedAllocator(
     const VkAllocationCallbacks* pUserAllocator, const std::string& caller) {
-  if (!track_host_memory_) return pUserAllocator;
+  if (!Emit().CategoryEnabled("Driver")) return pUserAllocator;
 
   auto cb_handle = AllocationCallbacksTracker::GetAllocationCallbacksHandle(
       pUserAllocator, caller);
@@ -1157,7 +1155,7 @@ void MemoryTracker::EmitAndClearAllStoredEvents() {
   rwl_devices.wunlock();
 
   // Emit and clear host memory events
-  if (track_host_memory_) {
+  if (Emit().CategoryEnabled("Driver")) {
     rwl_host_allocations.wlock();
     for (auto it = host_allocations.begin(); it != host_allocations.end();
          it++) {
@@ -1442,12 +1440,14 @@ void MemoryTracker::EmitHostMemoryFreeEvent(uintptr_t ptr) {
 void MemoryTracker::ProcessCreateDeviceEvent(
     VkPhysicalDevice physical_device, VkDeviceCreateInfo const* create_info,
     VkDevice device) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled())
     return EmitCreateDeviceEvent(physical_device, create_info, device);
   return StoreCreateDeviceEvent(physical_device, create_info, device);
 }
 
 void MemoryTracker::ProcessDestoryDeviceEvent(VkDevice vk_device) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled()) return EmitDestoryDeviceEvent(vk_device);
   return StoreDestoryDeviceEvent(vk_device);
 }
@@ -1455,6 +1455,7 @@ void MemoryTracker::ProcessDestoryDeviceEvent(VkDevice vk_device) {
 void MemoryTracker::ProcessAllocateMemoryEvent(
     VkDevice device, VkDeviceMemory memory,
     VkMemoryAllocateInfo const* allocate_info) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled())
     return EmitAllocateMemoryEvent(device, memory, allocate_info);
   return StoreAllocateMemoryEvent(device, memory, allocate_info);
@@ -1462,12 +1463,14 @@ void MemoryTracker::ProcessAllocateMemoryEvent(
 
 void MemoryTracker::ProcessFreeMemoryEvent(VkDevice vk_device,
                                            VkDeviceMemory vk_device_memory) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled()) return EmitFreeMemoryEvent(vk_device, vk_device_memory);
   return StoreFreeMemoryEvent(vk_device, vk_device_memory);
 }
 
 void MemoryTracker::ProcessCreateBufferEvent(
     VkDevice device, VkBuffer buffer, VkBufferCreateInfo const* create_info) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled())
     return EmitCreateBufferEvent(device, buffer, create_info);
   return StoreCreateBufferEvent(device, buffer, create_info);
@@ -1476,6 +1479,7 @@ void MemoryTracker::ProcessCreateBufferEvent(
 void MemoryTracker::ProcessBindBufferEvent(VkDevice device, VkBuffer buffer,
                                            VkDeviceMemory memory,
                                            size_t offset) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled())
     return EmitBindBufferEvent(device, buffer, memory, offset);
   return StoreBindBufferEvent(device, buffer, memory, offset);
@@ -1483,12 +1487,14 @@ void MemoryTracker::ProcessBindBufferEvent(VkDevice device, VkBuffer buffer,
 
 void MemoryTracker::ProcessDestroyBufferEvent(VkDevice device,
                                               VkBuffer buffer) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled()) return EmitDestroyBufferEvent(device, buffer);
   return StoreDestroyBufferEvent(device, buffer);
 }
 
 void MemoryTracker::ProcessCreateImageEvent(
     VkDevice device, VkImage image, const VkImageCreateInfo* create_info) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled()) return EmitCreateImageEvent(device, image, create_info);
   return StoreCreateImageEvent(device, image, create_info);
 }
@@ -1496,12 +1502,14 @@ void MemoryTracker::ProcessCreateImageEvent(
 void MemoryTracker::ProcessBindImageEvent(VkDevice device, VkImage image,
                                           VkDeviceMemory memory,
                                           size_t offset) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled())
     return EmitBindImageEvent(device, image, memory, offset);
   return StoreBindImageEvent(device, image, memory, offset);
 }
 
 void MemoryTracker::ProcessDestroyImageEvent(VkDevice device, VkImage image) {
+  if (!Emit().CategoryEnabled("Device")) return;
   if (Emit().Enabled()) return EmitDestroyImageEvent(device, image);
   return StoreDestroyImageEvent(device, image);
 }
