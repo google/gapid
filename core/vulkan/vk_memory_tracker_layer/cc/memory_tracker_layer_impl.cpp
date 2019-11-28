@@ -1018,8 +1018,6 @@ void MemoryTracker::StoreCreateDeviceEvent(
     physical_devices[physical_device] =
         make_unique<PhysicalDevice>(physical_device);
   }
-  memory_type_index_to_heap_index =
-      physical_devices[physical_device]->GetHeapIndexMap();
   rwl_physical_devices.wunlock();
 
   rwl_devices.wlock();
@@ -1176,9 +1174,11 @@ void MemoryTracker::EmitAndClearAllStoredEvents() {
 void MemoryTracker::EmitAllStoredEventsIfNecessary() {
   if (initial_state_is_sent_) return;
   initial_state_is_sent_ = true;
-  // std::thread emitter(&MemoryTracker::EmitAndClearAllStoredEvents, this);
-  // emitter.join();
-  EmitAndClearAllStoredEvents();
+  // While generating the memory usage events, we do not care about the thread
+  // info. Therefore, we can safely delegate sending the stored events to
+  // another thread.
+  std::thread emitter(&MemoryTracker::EmitAndClearAllStoredEvents, this);
+  emitter.join();
 }
 
 // ----------------- Send the events directly to trace daemon -----------------
@@ -1193,8 +1193,6 @@ void MemoryTracker::EmitCreateDeviceEvent(VkPhysicalDevice physical_device,
   if (physical_devices.find(physical_device) == physical_devices.end()) {
     physical_devices[physical_device] =
         make_unique<PhysicalDevice>(physical_device);
-    memory_type_index_to_heap_index =
-        physical_devices[physical_device]->GetHeapIndexMap();
     pdevice_event =
         physical_devices[physical_device]->GetVulkanMemoryEvent(device);
   }
@@ -1305,7 +1303,9 @@ void MemoryTracker::EmitBindBufferEvent(VkDevice device, VkBuffer buffer,
   event->has_device = true;
   event->device = (uint64_t)(device);
   event->has_heap = true;
-  event->heap = memory_type_index_to_heap_index[memory_type];
+  rwl_devices.rlock();
+  event->heap = devices[device]->GetHeapIndex(memory_type);
+  rwl_devices.runlock();
   event->has_object_handle = true;
   event->object_handle = global_unique_handles[(uint64_t)(buffer)];
   VkMemoryRequirements memory_requirements;
@@ -1371,7 +1371,9 @@ void MemoryTracker::EmitBindImageEvent(VkDevice device, VkImage image,
   event->has_device = true;
   event->device = (uint64_t)(device);
   event->has_heap = true;
-  event->heap = memory_type_index_to_heap_index[memory_type];
+  rwl_devices.rlock();
+  event->heap = devices[device]->GetHeapIndex(memory_type);
+  rwl_devices.runlock();
   event->has_object_handle = true;
   event->object_handle = global_unique_handles[(uint64_t)(image)];
   VkMemoryRequirements memory_requirements;
