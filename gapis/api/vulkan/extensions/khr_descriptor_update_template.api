@@ -105,6 +105,7 @@ sub dense_map!(u32, VkDescriptorUpdateTemplateEntry) rewriteDescriptorUpdateEntr
 
 @internal
 class DescriptorUpdateTemplateObject {
+    @unused VkDevice                           Device
     VkDescriptorUpdateTemplate                 VulkanHandle
     VkDescriptorUpdateTemplateCreateFlags      Flags
     dense_map!(u32, VkDescriptorUpdateTemplateEntry) Entries
@@ -126,6 +127,7 @@ sub ref!DescriptorUpdateTemplateObject createDescriptorUpdateTemplate(
     info := pCreateInfo[0]
     if !(info.descriptorSetLayout in DescriptorSetLayouts) { vkErrorInvalidDescriptorSetLayout(info.descriptorSetLayout) }
     obj := new!DescriptorUpdateTemplateObject(
+        Device: device,
         Flags: info.flags,
         TemplateType: info.templateType,
         DescriptorSetLayout: info.descriptorSetLayout,

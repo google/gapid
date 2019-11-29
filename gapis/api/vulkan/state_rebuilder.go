@@ -220,6 +220,10 @@ func (API) RebuildState(ctx context.Context, oldState *api.GlobalState) ([]api.C
 		sb.createDescriptorSetLayout(s.DescriptorSetLayouts().Get(dsl))
 	}
 
+	for _, dut := range s.DescriptorUpdateTemplates().Keys() {
+		sb.createDescriptorUpdateTemplate(s.DescriptorUpdateTemplates().Get(dut))
+	}
+
 	for _, pl := range s.PipelineLayouts().Keys() {
 		sb.createPipelineLayout(s.PipelineLayouts().Get(pl))
 	}
@@ -1896,6 +1900,47 @@ func (sb *stateBuilder) createDescriptorSetLayout(dsl DescriptorSetLayoutObject�
 		sb.MustAllocWriteData(dsl.VulkanHandle()).Ptr(),
 		VkResult_VK_SUCCESS,
 	))
+}
+
+func (sb *stateBuilder) createDescriptorUpdateTemplate(dut DescriptorUpdateTemplateObjectʳ) {
+	entries := []VkDescriptorUpdateTemplateEntry{}
+	for _, k := range dut.Entries().Keys() {
+		entry := dut.Entries().Get(k)
+		entries = append(entries, entry)
+	}
+
+	createInfo := sb.MustAllocReadData(NewVkDescriptorUpdateTemplateCreateInfo(sb.ta,
+		VkStructureType_VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO, //sType
+		0,                    // pNext
+		0,                    // flags
+		uint32(len(entries)), // descriptorUpdateEntryCount
+		NewVkDescriptorUpdateTemplateEntryᶜᵖ( // pDescriptorUpdateEntries
+			sb.MustAllocReadData(entries).Ptr(),
+		),
+		dut.TemplateType(),        // templateType
+		dut.DescriptorSetLayout(), // descriptorSetLayout
+		dut.PipelineBindPoint(),   // pipelineBindPoint
+		dut.PipelineLayout(),      // pipelineLayout
+		0,                         // set
+	)).Ptr()
+
+	if dut.FromKHR() {
+		sb.write(sb.cb.VkCreateDescriptorUpdateTemplateKHR(
+			dut.Device(),
+			createInfo,
+			memory.Nullptr, // pAllocator
+			sb.MustAllocWriteData(dut.VulkanHandle()).Ptr(), // pDescriptorUpdateTemplate
+			VkResult_VK_SUCCESS,
+		))
+	} else {
+		sb.write(sb.cb.VkCreateDescriptorUpdateTemplate(
+			dut.Device(),
+			createInfo,
+			memory.Nullptr, // pAllocator
+			sb.MustAllocWriteData(dut.VulkanHandle()).Ptr(), // pDescriptorUpdateTemplate
+			VkResult_VK_SUCCESS,
+		))
+	}
 }
 
 func (sb *stateBuilder) createPipelineLayout(pl PipelineLayoutObjectʳ) {
