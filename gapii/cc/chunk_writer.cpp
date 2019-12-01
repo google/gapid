@@ -15,12 +15,11 @@
  */
 
 #include "chunk_writer.h"
+#include "protocol.h"
 
 #include "core/cc/stream_writer.h"
 
-#include <google/protobuf/io/coded_stream.h>
-
-using ::google::protobuf::io::CodedOutputStream;
+using namespace gapii::protocol;
 
 namespace {
 
@@ -37,6 +36,11 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
   virtual void flush() override;
 
  private:
+  // returns effective buffer size without reserved space
+  size_t getBufferSize() const {
+    return mBuffer.size() - gapii::protocol::kMaxHeaderSize;
+  }
+
   std::string mBuffer;
 
   std::shared_ptr<core::StreamWriter> mWriter;
@@ -48,10 +52,14 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
 
 ChunkWriterImpl::ChunkWriterImpl(
     const std::shared_ptr<core::StreamWriter>& writer, bool no_buffer)
-    : mWriter(writer), mStreamGood(true), mNoBuffer(no_buffer) {}
+    // always reserve space for max protocol header size at buffer start
+    : mBuffer(kMaxHeaderSize, 'X'),
+      mWriter(writer),
+      mStreamGood(true),
+      mNoBuffer(no_buffer) {}
 
 ChunkWriterImpl::~ChunkWriterImpl() {
-  if (mBuffer.size() && mStreamGood) {
+  if (getBufferSize() > 0u && mStreamGood) {
     flush();
   }
 }
@@ -60,7 +68,7 @@ bool ChunkWriterImpl::write(std::string& s) {
   if (mStreamGood) {
     mBuffer.append(s);
 
-    if (mNoBuffer || (mBuffer.size() >= kBufferSize)) {
+    if (mNoBuffer || (getBufferSize() >= kBufferSize)) {
       flush();
     }
   }
@@ -69,9 +77,20 @@ bool ChunkWriterImpl::write(std::string& s) {
 }
 
 void ChunkWriterImpl::flush() {
-  size_t bufferSize = mBuffer.size();
-  mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size()) == bufferSize;
-  mBuffer.clear();
+  size_t buf_size = getBufferSize();
+  if (buf_size > 0u) {
+    // replace reserved space at start of buffer with actual header
+    const std::string hdr = createHeader(MessageType::kData, buf_size);
+    const size_t offset = kMaxHeaderSize - hdr.size();
+    mBuffer.replace(offset, hdr.size(), hdr);
+
+    // send buffer including header with a single write command
+    buf_size += hdr.size();
+    mStreamGood = mWriter->write(mBuffer.data() + offset, buf_size) == buf_size;
+
+    // continue to reserve max header size
+    mBuffer.resize(kMaxHeaderSize);
+  }
 }
 
 }  // anonymous namespace
