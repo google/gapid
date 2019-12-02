@@ -233,9 +233,9 @@ type (
 	StateFlags struct {
 		Gapis  GapisFlags
 		Gapir  GapirFlags
-		At     flags.U64Slice    `help:"command/subcommand index to get the state after. Empty for last"`
+		At     flags.U64Slice    `help:"command/subcommand index to get the state after. 0 for first command. Empty for last"`
 		Depth  int               `help:"How many nodes deep should the state tree be displayed. -1 for all"`
-		Filter flags.StringSlice `help:"Which path through the tree should we filter to, default All"`
+		Filter flags.StringSlice `help:"Which path (e.g. '[root, Devices]') through the tree should we filter to, default All"`
 		CaptureFileFlags
 	}
 	StressTestFlags struct {
