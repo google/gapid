@@ -141,6 +141,20 @@ func patchImageUsage(usage VkImageUsageFlags) (VkImageUsageFlags, bool) {
 	return usage, false
 }
 
+// Add VK_BUFFER_USAGE_TRANSFER_SRC_BIT to the buffer usage bit.
+// TODO(renfeng) using shader to do the copy instead of change the usage bit.
+func patchBufferusage(usage VkBufferUsageFlags) (VkBufferUsageFlags, bool) {
+	hasBit := func(flag VkBufferUsageFlags, bit VkBufferUsageFlagBits) bool {
+		return (uint32(flag) & uint32(bit)) == uint32(bit)
+	}
+
+	if hasBit(usage, VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT) {
+		return usage, false
+	}
+
+	return VkBufferUsageFlags(uint32(usage) | uint32(VkBufferUsageFlagBits_VK_BUFFER_USAGE_TRANSFER_SRC_BIT)), true
+}
+
 func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
 	s := out.State()
 	l := s.MemoryLayout
@@ -278,6 +292,32 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 		}
 		out.MutateAndWrite(ctx, id, newEnumerate)
 		return
+	} else if buffer, ok := cmd.(*VkCreateBuffer); ok {
+		pinfo := buffer.PCreateInfo()
+		info := pinfo.MustRead(ctx, buffer, s, nil)
+
+		if newUsage, changed := patchBufferusage(info.Usage()); changed {
+
+			info.SetUsage(newUsage)
+			newInfo := s.AllocDataOrPanic(ctx, info)
+			newCmd := cb.VkCreateBuffer(buffer.Device(), newInfo.Ptr(), buffer.PAllocator(), buffer.PBuffer(), buffer.Result())
+			for _, e := range buffer.Extras().All() {
+				if _, ok := e.(*api.CmdObservations); !ok {
+					newCmd.Extras().Add(e)
+				}
+			}
+
+			observations := buffer.Extras().Observations()
+			for _, r := range observations.Reads {
+				newCmd.AddRead(r.Range, r.ID)
+			}
+			newCmd.AddRead(newInfo.Data())
+			for _, w := range observations.Writes {
+				newCmd.AddWrite(w.Range, w.ID)
+			}
+			out.MutateAndWrite(ctx, id, newCmd)
+			return
+		}
 	}
 	out.MutateAndWrite(ctx, id, cmd)
 }
