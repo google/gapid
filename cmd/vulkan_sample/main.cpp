@@ -385,6 +385,8 @@ void usage() {
 
 #ifdef __ANDROID__
 int main_impl() {
+  int argc = 0;
+  char** argv = nullptr;
 #else
 int main(int argc, const char** argv) {
 #endif
@@ -400,7 +402,7 @@ int main(int argc, const char** argv) {
     } else {
       std::cout << "Unrecognized argument: " << arg << '\n';
       usage();
-      std::exit(EXIT_FAILURE);
+      return -1;
     }
   }
 
