@@ -41,7 +41,7 @@ func Resources(ctx context.Context, c *path.Capture, r *path.ResolveConfig) (*se
 func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) {
 	ctx = SetupContext(ctx, r.Capture, r.Config)
 
-	c, err := capture.ResolveGraphics(ctx)
+	capture, err := capture.ResolveGraphics(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	state := c.NewUninitializedState(ctx).ReserveMemory(ranges)
+	state := capture.NewUninitializedState(ctx).ReserveMemory(ranges)
 	state.OnResourceCreated = func(res api.Resource) {
 		currentCmdResourceCount++
 		context := currentAPI.Context(ctx, state, currentThread)
@@ -76,8 +76,8 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 	}
 	state.OnResourceAccessed = func(r api.Resource) {
 		if index, ok := seen[r]; ok { // Update the list of accesses
-			c := len(resources[index].accesses)
-			if c == 0 || resources[index].accesses[c-1] != currentCmdIndex {
+			numAccesses := len(resources[index].accesses)
+			if numAccesses == 0 || resources[index].accesses[numAccesses-1] != currentCmdIndex {
 				resources[index].accesses = append(resources[index].accesses, currentCmdIndex)
 			}
 		}
@@ -104,7 +104,7 @@ func (r *ResourcesResolvable) Resolve(ctx context.Context) (interface{}, error) 
 		}
 	}
 
-	api.ForeachCmd(ctx, c.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
+	api.ForeachCmd(ctx, capture.Commands, true, func(ctx context.Context, id api.CmdID, cmd api.Cmd) error {
 		currentCmdResourceCount = 0
 		currentCmdIndex = uint64(id)
 		currentThread = cmd.Thread()
