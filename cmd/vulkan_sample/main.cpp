@@ -17,6 +17,7 @@
 #include <math.h>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -80,7 +81,7 @@ void* GetLibraryProcAddr(HMODULE library, const char* function_name) {
 }
 
 // Create Win32 window
-bool CreateNativeWindow() {
+bool CreateNativeWindow(int width, int height) {
   kOutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
   if (kOutHandle == INVALID_HANDLE_VALUE) {
     AllocConsole();
@@ -108,7 +109,7 @@ bool CreateNativeWindow() {
     write_error(kOutHandle, "Could not register class");
     return false;
   }
-  RECT rect = {0, 0, LONG(1024), LONG(768)};
+  RECT rect = {0, 0, LONG(width), LONG(heigth)};
 
   AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
@@ -171,7 +172,8 @@ void processAppCmd(struct android_app* app, int32_t cmd) {
   return;
 }
 
-bool CreateNativeWindow() {
+bool CreateNativeWindow(int width, int height) {
+  // Window dimensions are ignored on Android
   // At that point, we should already have a window in kANativeWindowHandle
   return kANativeWindowHandle != nullptr;
 }
@@ -278,9 +280,7 @@ void* get_xcb() {
 
 void* get_xcb_function(void* v, const char* fn) { return dlsym(v, fn); }
 
-bool CreateNativeWindow() {
-  uint32_t width = 1024;
-  uint32_t height = 768;
+bool CreateNativeWindow(int width, int height) {
   void* xcb = get_xcb();
   pfn_xcb_connect _connect =
       (pfn_xcb_connect)get_xcb_function(xcb, "xcb_connect");
@@ -377,12 +377,36 @@ uint32_t inline GetMemoryIndex(
   return memory_index;
 }
 
+void usage() {
+  std::cout << "Options: \n";
+  std::cout << "-h=<height> Set desktop window heigth (default: 768)\n";
+  std::cout << "-w=<width>  Set desktop window width (default: 1024)\n";
+}
+
 #ifdef __ANDROID__
 int main_impl() {
+  int argc = 0;
+  char** argv = nullptr;
 #else
 int main(int argc, const char** argv) {
 #endif
-  if (!CreateNativeWindow()) {
+  int width = 1024;
+  int height = 768;
+
+  for (int i = 1; i < argc; i++) {
+    std::string arg(argv[i]);
+    if (arg.compare(0, 3, "-h=") == 0) {
+      height = std::stoi(&(arg[3]));
+    } else if (arg.compare(0, 3, "-w=") == 0) {
+      width = std::stoi(&(arg[3]));
+    } else {
+      std::cout << "Unrecognized argument: " << arg << '\n';
+      usage();
+      return -1;
+    }
+  }
+
+  if (!CreateNativeWindow(width, height)) {
     write_error(kOutHandle, "Exiting due to no available window");
     return -1;
   }
