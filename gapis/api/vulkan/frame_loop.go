@@ -318,6 +318,12 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 
 func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd, out transform.Writer) {
 
+	// If we're looping only once we can just passthrough commands
+	if f.loopCount == 1 {
+		out.MutateAndWrite(ctx, cmdId, cmd)
+		return
+	}
+
 	ctx = log.Enter(ctx, "FrameLoop Transform")
 	log.D(ctx, "FrameLoop: looping from %v to %v. Current CmdID/CmD = %v/%v", f.loopStartIdx, f.loopEndIdx, cmdId, cmd)
 	log.D(ctx, "f.loopTerminated = %v, f.lastObservedCommand = %v", f.loopTerminated, f.lastObservedCommand)
@@ -371,6 +377,22 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 			f.loopTerminated = true
 			log.D(ctx, "FrameLoop: end loop at frame %v cmdId %v, cmd is %v.", f.frameNum, cmdId, cmd)
 
+			// This command is the last in the loop so lets add it to the captured commands so we don't need to special case it.
+			f.capturedLoopCmds = append(f.capturedLoopCmds, cmd)
+			f.capturedLoopCmdIds = append(f.capturedLoopCmdIds, cmdId)
+
+			// If we are looping zero times we can just drop the commands inside the loop.
+			if f.loopCount == 0 {
+				f.capturedLoopCmds = make([]api.Cmd, 0)
+				f.capturedLoopCmdIds = make([]api.CmdID, 0)
+				return
+			}
+
+			// Some things we're going to need for the next work...
+			apiState := GetState(out.State())
+			stateBuilder := apiState.newStateBuilder(ctx, newTransformerOutput(out))
+			defer stateBuilder.ta.Dispose()
+
 			// Do start loop stuff.
 			{
 				// Now that we know the complete contents of the loop (only since we've just seen it finish!)...
@@ -380,108 +402,51 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 				f.buildStartEndStates(ctx, out.State())
 				f.detectChangedResources(ctx)
 
-				apiState := GetState(out.State())
-
-				stateBuilder := apiState.newStateBuilder(ctx, newTransformerOutput(out))
-				defer stateBuilder.ta.Dispose()
-
 				// Back up the resources that change in the loop (as indentified above)
 				if err := f.backupChangedResources(ctx, stateBuilder); err != nil {
 					log.E(ctx, "FrameLoop: Failed to backup changed resources: %v", err)
 					return
 				}
 
-				// Write out some custom bytecode for the start of the loop...
+				// Notify the other transforms that we're about to emit the start of the loop.
+				out.NotifyPreLoop(ctx)
+			}
+
+			// Do first iteration of mid-loop stuff.
+			f.writeLoopContents(ctx, cmd, out)
+
+			// Mark branch target for loop jump
+			{
+				// Write out some custom bytecode for the loop.
 				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 					f.loopCountPtr = b.AllocateMemory(4)
-					b.Push(value.S32(f.loopCount))
+					b.Push(value.S32(f.loopCount - 1))
 					b.Store(f.loopCountPtr)
 					b.JumpLabel(uint32(0x1))
 					return nil
 				}))
-
-				// Notify the other transforms that we're about to emit the start of the loop.
-				out.NotifyPreLoop(ctx)
-
-				// Write out the command that started all of this loop work.
-				out.MutateAndWrite(ctx, f.capturedLoopCmdIds[0], f.capturedLoopCmds[0])
 			}
 
-			// Do mid-loop stuff.
+			// Do state rewind stuff.
 			{
-				cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
-
-				// Iterate through the loop contents, emitting instructions one by one.
-				for cmdIndex, cmd := range f.capturedLoopCmds {
-
-					switch cmd.(type) {
-					case *VkUnmapMemory:
-						vkCmd := cmd.(*VkUnmapMemory)
-						mem := vkCmd.Memory()
-						if _, ok := f.memoryToMap[mem]; !ok {
-							break
-						}
-
-						memObj := GetState(out.State()).DeviceMemories().Get(mem)
-						addr := memObj.MappedLocation().Address()
-						if addr == 0 {
-							break
-						}
-
-						// Only remember the first mapped target.
-						if _, ok := f.mappedAddress[addr]; !ok {
-							out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-								target, err := b.GetMappedTarget(value.ObservedPointer(addr))
-								if err == nil {
-									f.mappedAddress[addr] = target
-								}
-								return err
-							}))
-						}
-					}
-
-					// We've already processed the first loop command, so skip that one.
-					// All others get emitted.
-					if cmdIndex > 0 {
-						out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd)
-					}
-				}
-			}
-
-			// Do end loop stuff.
-			{
-				apiState := GetState(out.State())
-
-				stateBuilder := apiState.newStateBuilder(ctx, newTransformerOutput(out))
-				defer stateBuilder.ta.Dispose()
-
-				// Write out the command that ended the loop. That one is outside of the captured commands since it's the one that called this code.
-				out.MutateAndWrite(ctx, cmdId, cmd)
-
-				// Notify the other transforms that we have just emitted the end of the loop.
-				out.NotifyPostLoop(ctx)
-
-				// Add conditional jump instruction to break us out of the loop if we are done.
-				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					b.Load(protocol.Type_Int32, f.loopCountPtr)
-					b.Sub(1)
-					b.Clone(0)
-					b.Store(f.loopCountPtr)
-					b.JumpZ(uint32(0x2))
-					return nil
-				}))
-
 				// Now we need to emit the instructions to reset the state, before the conditional branch back to the start of the loop.
 				if err := f.resetResources(ctx, stateBuilder); err != nil {
 					log.E(ctx, "FrameLoop: Failed to reset changed resources %v.", err)
 					return
 				}
+			}
 
-				// Add unconditional jump instruction to bring us back to the start of the loop if we made it past the conditional break.
+			// Do first iteration mid-loop stuff.
+			f.writeLoopContents(ctx, cmd, out)
+
+			// Write out the conditional jump to the start of the state rewind code to provide the actual looping behaviour
+			{
 				stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					b.Push(value.S32(1))
+					b.Load(protocol.Type_Int32, f.loopCountPtr)
+					b.Sub(1)
+					b.Clone(0)
+					b.Store(f.loopCountPtr)
 					b.JumpNZ(uint32(0x1))
-					b.JumpLabel(uint32(0x2))
 					return nil
 				}))
 			}
@@ -509,6 +474,43 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 	// Should have early out-ed before this point.
 	log.F(ctx, true, "FrameLoop: Internal control flow error: Should not be possible to reach this statement.")
+}
+
+func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out transform.Writer) {
+
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
+
+	// Iterate through the loop contents, emitting instructions one by one.
+	for cmdIndex, cmd := range f.capturedLoopCmds {
+
+		switch cmd.(type) {
+		case *VkUnmapMemory:
+			vkCmd := cmd.(*VkUnmapMemory)
+			mem := vkCmd.Memory()
+			if _, ok := f.memoryToMap[mem]; !ok {
+				break
+			}
+
+			memObj := GetState(out.State()).DeviceMemories().Get(mem)
+			addr := memObj.MappedLocation().Address()
+			if addr == 0 {
+				break
+			}
+
+			// Only remember the first mapped target.
+			if _, ok := f.mappedAddress[addr]; !ok {
+				out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+					target, err := b.GetMappedTarget(value.ObservedPointer(addr))
+					if err == nil {
+						f.mappedAddress[addr] = target
+					}
+					return err
+				}))
+			}
+		}
+
+		out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd)
+	}
 }
 
 func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) {
