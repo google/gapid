@@ -166,6 +166,9 @@ public class TraceView extends Composite
         case SWT.KEYPAD_4:
           modeSelector.accept(RootPanel.MouseMode.TimeSelect);
           break;
+        case SWT.ESC:
+          state.resetSelections(); // Already causes a redraw.
+          break;
         case 'f': {
           MultiSelection selection = state.getSelection();
           if (selection != null) {
