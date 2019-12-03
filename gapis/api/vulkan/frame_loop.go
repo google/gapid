@@ -2460,6 +2460,46 @@ func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stat
 	return nil
 }
 
+func (f *frameLoop) updateChangedDescriptorSet(ctx context.Context) {
+	endState := GetState(f.loopEndState)
+
+	for descriptorSet, descriptorSetData := range endState.descriptorSets.All() {
+		for _, binding := range descriptorSetData.Bindings().All() {
+			for _, bufferInfo := range binding.BufferBinding().All() {
+				buf := bufferInfo.Buffer()
+				if _, ok := f.bufferChanged[buf]; ok {
+					log.D(ctx, "descriptorSet %v changed due to buffer %v changed", descriptorSet, buf)
+					f.descriptorSetChanged[descriptorSet] = true
+				}
+
+				if _, ok := f.bufferToCreate[buf]; ok {
+					log.D(ctx, "descriptorSet %v changed due to buffer %v recreated", descriptorSet, buf)
+					f.descriptorSetChanged[descriptorSet] = true
+				}
+			}
+
+			for _, imageInfo := range binding.ImageBinding().All() {
+				if _, ok := f.imageViewToCreate[imageInfo.ImageView()]; ok {
+					log.D(ctx, "descriptorSet %v changed due to imageview %v recreated", descriptorSet, imageInfo.ImageView())
+					f.descriptorSetChanged[descriptorSet] = true
+				}
+
+				if _, ok := f.samplerToCreate[imageInfo.Sampler()]; ok {
+					log.D(ctx, "descriptorSet %v changed due to sampler %v recreated", descriptorSet, imageInfo.Sampler())
+					f.descriptorSetChanged[descriptorSet] = true
+				}
+			}
+
+			for _, bufferView := range binding.BufferViewBindings().All() {
+				if _, ok := f.bufferViewToCreate[bufferView]; ok {
+					log.D(ctx, "descriptorSet %v changed due to bufferView %v recreated", descriptorSet, bufferView)
+					f.descriptorSetChanged[descriptorSet] = true
+				}
+			}
+		}
+	}
+}
+
 func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *stateBuilder) error {
 
 	// For every DescriptorSet that we need to free at the end of the loop...
@@ -2485,6 +2525,8 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 		stateBuilder.allocateDescriptorSets(descPoolObj, descSetHandles, descSetLayoutHandles)
 	}
 
+	// Update the map of changed descriptorset due to the buffer/image recreateion etc.
+	f.updateChangedDescriptorSet(ctx)
 	// For every DescriptorSet that was modified during the loop...
 	for changed := range f.descriptorSetChanged {
 		// Write the commands needed to restore the modified object
