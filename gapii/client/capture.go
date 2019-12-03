@@ -26,10 +26,8 @@ import (
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/status"
-	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
-	"github.com/google/gapid/core/os/device"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +47,7 @@ const (
 	// NoBuffer causes the trace to not buffer any data. This will allow
 	// more data to be preserved if an application may crash.
 	NoBuffer Flags = 0x00000020
-	// HideUnkownExtensions will prevent any unknown extensions from being
+	// HideUnknownExtensions will prevent any unknown extensions from being
 	// seen by the application
 	HideUnknownExtensions Flags = 0x00000040
 	// StoreTimestamps requests that the capture contain timestamps
@@ -66,6 +64,14 @@ const (
 	// GvrAPI is hard-coded bit mask for GVR API, it needs to be kept in sync
 	// with the api_index in the gvr.api file.
 	GvrAPI = uint32(1 << 3)
+)
+
+const (
+	messageData       byte = 0x00
+	messageStartTrace byte = 0x01
+	messageEndTrace   byte = 0x02
+	messageError      byte = 0x03
+	messageInvalid    byte = 0xff
 )
 
 // Options to use when creating a capture.
@@ -90,7 +96,6 @@ type Options struct {
 
 const sizeGap = 1024 * 1024 * 5
 const timeGap = time.Second
-const startMidExecutionCapture = 0xdeadbeef
 
 type siSize int64
 
@@ -181,41 +186,104 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	conn := p.conn
 	defer conn.Close()
 
-	var count siSize
-	started := false
+	buf := make([]byte, 64*1024)
+	var bufSize, bufPos int
+	var varintPos uint
+	var chunkSize uint64
+	var readErr error
+	var count, remain siSize
+	var messageType byte = messageInvalid
+	started, stopped, ended := false, false, false
 	for {
-		if task.Stopped(ctx) || stop.Fired() {
+		if task.Stopped(ctx) {
 			log.I(ctx, "Stop: %v", count)
 			break
 		}
 		if (p.Options.Flags & DeferStart) != 0 {
 			if !started && start.Fired() {
 				started = true
-				w := endian.Writer(conn, device.LittleEndian)
-				w.Uint32(startMidExecutionCapture)
+				conn.Write([]byte{0x1, messageStartTrace})
 			}
 		}
-		now := time.Now()
-		conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-		n, err := io.CopyN(w, conn, 1024*64)
-		count += siSize(n)
-		atomic.StoreInt64(written, int64(count))
-		switch {
-		case errors.Cause(err) == io.EOF:
-			// End of stream. End.
-			log.I(ctx, "EOF: %v", count)
-			return int64(count), nil
-		case err != nil && count > 0:
-			err, isnet := err.(net.Error)
-			if !isnet || (!err.Temporary() && !err.Timeout()) {
-				log.I(ctx, "Connection error: %v", err)
-				// Got an error mid-stream terminate.
-				return int64(count), err
+		if !stopped && stop.Fired() {
+			stopped = true
+			conn.Write([]byte{0x1, messageEndTrace})
+		}
+		if bufPos >= bufSize {
+			// handle read error after processing buffer
+			switch {
+			case errors.Cause(readErr) == io.EOF:
+				log.I(ctx, "EOF: %v", count)
+				if ended {
+					// expected end of stream
+					return int64(count), nil
+				}
+				// unexpected end of stream
+				return int64(count), readErr
+			case readErr != nil && count > 0:
+				err, isnet := readErr.(net.Error)
+				if !isnet || (!err.Temporary() && !err.Timeout()) {
+					log.I(ctx, "Connection error: %v", err)
+					// Got an error mid-stream terminate.
+					return int64(count), err
+				}
+			case readErr != nil && count == 0:
+				// Got an error without receiving a byte of data.
+				// Treat failure-to-connect as target-not-ready instead of an error.
+				return 0, nil
 			}
-		case err != nil && count == 0:
-			// Got an error without receiving a byte of data.
-			// Treat failure-to-connect as target-not-ready instead of an error.
-			return 0, nil
+			bufPos = 0
+			now := time.Now()
+			conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
+			bufSize, readErr = conn.Read(buf)
+		} else if remain > 0 {
+			if messageType == messageInvalid {
+				messageType = buf[bufPos]
+				bufPos++
+				remain--
+			} else {
+				copyCount := bufSize - bufPos
+				if siSize(copyCount) > remain {
+					copyCount = int(remain)
+				}
+				switch messageType {
+				case messageData:
+					if _, writeErr := w.Write(buf[bufPos : bufPos+copyCount]); writeErr != nil {
+						return int64(count), writeErr
+					}
+					count += siSize(copyCount)
+					atomic.StoreInt64(written, int64(count))
+				case messageError:
+					// TODO
+				}
+				bufPos += copyCount
+				remain -= siSize(copyCount)
+			}
+			if remain == 0 {
+				switch messageType {
+				case messageEndTrace:
+					ended = true
+				case messageError:
+					// TODO
+				}
+				messageType = messageInvalid
+			}
+		} else {
+			varintByte := buf[bufPos]
+			bufPos++
+			chunkSize += uint64(varintByte&0x7f) << (varintPos * 7)
+			varintPos++
+			if varintByte < 0x80 {
+				remain = siSize(chunkSize >> 1)
+				if (chunkSize & 0x1) == 0 {
+					messageType = messageData
+				} else {
+					messageType = messageInvalid
+					remain++
+				}
+				chunkSize = 0
+				varintPos = 0
+			}
 		}
 	}
 	return int64(count), nil

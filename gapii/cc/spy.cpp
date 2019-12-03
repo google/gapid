@@ -18,6 +18,7 @@
 
 #include "connection_header.h"
 #include "connection_stream.h"
+#include "protocol.h"
 
 #include "gapil/runtime/cc/runtime.h"
 
@@ -90,8 +91,6 @@ const EGLint EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR = 0x30FD;
 
 const uint32_t kMaxFramebufferObservationWidth = 3840;
 const uint32_t kMaxFramebufferObservationHeight = 2560;
-
-const uint32_t kStartMidExecutionCapture = 0xdeadbeef;
 
 const int32_t kSuspendIndefinitely = -1;
 
@@ -181,13 +180,10 @@ Spy::Spy()
   set_record_timestamps(
       0 != (header.mFlags & ConnectionHeader::FLAG_STORE_TIMESTAMPS));
 
-  // This will be over-written if we also set the header flags
-  mSuspendCaptureFrames = header.mStartFrame;
+  mSuspendCaptureFrames = (header.mFlags & ConnectionHeader::FLAG_DEFER_START)
+                              ? kSuspendIndefinitely
+                              : header.mStartFrame;
   mCaptureFrames = header.mNumFrames;
-  mSuspendCaptureFrames.store(
-      (header.mFlags & ConnectionHeader::FLAG_DEFER_START)
-          ? kSuspendIndefinitely
-          : mSuspendCaptureFrames.load());
 
   set_valid_apis(header.mAPIs);
   GAPID_ERROR("APIS %08x", header.mAPIs);
@@ -234,18 +230,45 @@ Spy::Spy()
   SpyBase::init(context);
   exit();
 
-  if (mSuspendCaptureFrames.load() == kSuspendIndefinitely && this_executable) {
-    mDeferStartJob =
+  if (this_executable) {
+    mMessageReceiverJob =
         std::unique_ptr<core::AsyncJob>(new core::AsyncJob([this]() {
-          uint32_t buffer;
-          if (4 == mConnection->read(&buffer, 4)) {
-            if (buffer == kStartMidExecutionCapture) {
-              mSuspendCaptureFrames.store(1);
+          uint8_t buffer[2] = {};
+          uint64_t count;
+          do {
+            count = mConnection->read(&buffer[0], 2u);
+            if (count == 2u) {
+              if (buffer[0] == 0x01u) {
+                switch (static_cast<protocol::MessageType>(buffer[1])) {
+                  case protocol::MessageType::kStartTrace:
+                    GAPID_INFO("Received start trace message");
+                    if (is_suspended()) {
+                      GAPID_INFO("Starting capture");
+                      mSuspendCaptureFrames = 1;
+                    }
+                    break;
+                  case protocol::MessageType::kEndTrace:
+                    GAPID_INFO("Received end trace message");
+                    if (!is_suspended()) {
+                      GAPID_INFO("Ending capture");
+                      mCaptureFrames = 1;
+                    }
+                    break;
+                  default:
+                    GAPID_WARNING("Invalid message type: %u", buffer[1]);
+                    break;
+                }
+              } else {
+                GAPID_WARNING("Received invalid message: %u %u", buffer[0], buffer[1]);
+              }
+            } else if (count > 0u) {
+              GAPID_WARNING("Received unexpected byte: %u", buffer[0]);
             }
-          }
+          } while (count == 2u);
+          GAPID_WARNING("Receive count: %ull", count);
         }));
   }
-  set_suspended(mSuspendCaptureFrames.load() != 0);
+  set_suspended(mSuspendCaptureFrames != 0);
   set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
 }
 
@@ -536,22 +559,24 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
     mEncoder->object(&timestamp);
   }
 
-  if (!is_suspended() && mCaptureFrames >= 1) {
-    mCaptureFrames -= 1;
-    if (mCaptureFrames == 0) {
-      mEncoder->flush();
-      mConnection->close();
-      set_suspended(true);
-    }
-  }
-  if (mSuspendCaptureFrames.load() > 0) {
-    if (is_suspended() && mSuspendCaptureFrames.fetch_sub(1) == 1) {
+  if (is_suspended()) {
+    if (mSuspendCaptureFrames > 0 && --mSuspendCaptureFrames == 0) {
+      GAPID_INFO("Started capture");
       // We must change suspended state BEFORE releasing the Spy lock with
       // exit(), because the suspended state affects concurrent CallObservers.
       set_suspended(false);
       exit();
       saveInitialState();
       enter("RecreateState", 2);
+    }
+  } else {
+    if (mCaptureFrames > 0 && --mCaptureFrames == 0) {
+      GAPID_INFO("Ended capture");
+      mEncoder->flush();
+      auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
+      mConnection->write(msg.data(), msg.size());
+      mConnection->close();
+      set_suspended(true);
     }
   }
 }

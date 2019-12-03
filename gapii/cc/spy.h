@@ -120,12 +120,12 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   int mNumFrames;
   // The number of frames that we want to suspend capture for before
   // we start.
-  std::atomic<int> mSuspendCaptureFrames;
+  std::atomic_int mSuspendCaptureFrames;
 
   // The connection stream to the server
   std::shared_ptr<ConnectionStream> mConnection;
   // The number of frames that we want to capture
-  int mCaptureFrames;
+  std::atomic_int mCaptureFrames;
   int mNumDraws;
   int mNumDrawsPerFrame;
   int mObserveFrameFrequency;
@@ -138,7 +138,7 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   uint64_t mFrameNumber;
 
   std::unordered_map<ContextID, GLenum_Error> mFakeGlError;
-  std::unique_ptr<core::AsyncJob> mDeferStartJob;
+  std::unique_ptr<core::AsyncJob> mMessageReceiverJob;
 };
 
 }  // namespace gapii

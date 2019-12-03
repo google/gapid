@@ -34,7 +34,7 @@ enum class MessageType : uint8_t {
   kError = 0x03u
 };
 
-std::string createHeader(MessageType msg_type, uint64_t msg_size = 0u) {
+inline std::string createHeader(MessageType msg_type, uint64_t msg_size = 0u) {
   msg_size <<= 1u;
   if (msg_type != MessageType::kData) {
     ++msg_size;
