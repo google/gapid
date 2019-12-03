@@ -726,7 +726,7 @@ bool Vulkan::replayDebugReportCallback(uint32_t flags, uint32_t objectType,
   std::ostringstream ss;
   ss << "Flags: " << uint32_t(flags) << ", ObjectType: " << objectType
      << ", Object: " << object << ", LayerPrefix: " << pLayerPrefix
-     << ", Layer Mesage Code: " << messageCode << ", Message: " << pMessage;
+     << ", Layer Message Code: " << messageCode << ", Message: " << pMessage;
   ctx->onDebugMessage(sev, Vulkan::INDEX, ss.str().c_str());
   return false;
 }
