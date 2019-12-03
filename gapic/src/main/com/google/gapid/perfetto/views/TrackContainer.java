@@ -150,7 +150,7 @@ public class TrackContainer {
           ctx.drawIcon(filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme),
               LABEL_TOGGLE_X, 0, TITLE_HEIGHT);
         }
-        if (hovered) {
+        if (hovered || pinState.isPinned()) {
           ctx.drawIcon(pinState.icon(ctx), LABEL_PIN_X, 0, TITLE_HEIGHT);
         }
       });
@@ -271,7 +271,7 @@ public class TrackContainer {
               filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme), x, 0, TITLE_HEIGHT);
           x += LABEL_ICON_SIZE;
         }
-        if (hovered) {
+        if (hovered || pinState.isPinned()) {
           ctx.drawIcon(pinState.icon(ctx), Math.max(x, LABEL_PIN_X), 0, TITLE_HEIGHT);
         }
 
@@ -287,7 +287,7 @@ public class TrackContainer {
           ctx.drawIcon(arrowRight(ctx.theme), 0, 0, TITLE_HEIGHT);
           ctx.drawTextLeftTruncate(Fonts.Style.Normal, summary.getTitle(),
               LABEL_OFFSET, 0, LABEL_PIN_X - LABEL_MARGIN - LABEL_OFFSET, TITLE_HEIGHT);
-          if (hovered) {
+          if (hovered || pinState.isPinned()) {
             ctx.drawIcon(pinState.icon(ctx), LABEL_PIN_X, 0, TITLE_HEIGHT);
           }
           if (!summary.getSubTitle().isEmpty()) {
