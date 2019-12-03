@@ -736,6 +736,10 @@ service Gapid {
   rpc PerfettoQuery(PerfettoQueryRequest) returns (PerfettoQueryResponse) {
   }
 
+  // GpuProfile starts a perfetto trace of a gfxtrace
+  rpc GpuProfile(GpuProfileRequest) returns (GpuProfileResponse) {
+  }
+
   ///////////////////////////////////////////////////////////////
   // Below are debugging APIs which may be removed in the future.
   ///////////////////////////////////////////////////////////////
@@ -1285,6 +1289,53 @@ message TraceTypeCapabilities {
   bool can_enable_unsupported_extensions = 4;
   // Does this trace require starting an application.
   bool requires_application = 6;
+}
+
+message ProfilingData {
+  message GpuSlices {
+    message Slice {
+      message Extra {
+        string name = 1;
+        oneof value {
+          uint64 int_value = 2;
+          double double_value = 3;
+          string string_value = 4;
+        }
+      }
+
+      uint64 ts = 1;
+      uint64 dur = 2;
+      string label = 3;
+      int32 depth = 4;
+      repeated Extra extras = 5;
+
+      path.Commands link = 6;
+      int32 group = 7;  // references Group.id
+    }
+
+    message Group {
+      int32 id = 1;
+      int32 parent = 2;  // references Group.id
+      path.Commands link = 3;
+    }
+
+    repeated Slice slices = 1;
+    repeated Group groups = 2;
+  }
+
+  GpuSlices slices = 1;
+}
+
+message GpuProfileResponse {
+  oneof res {
+    ProfilingData profiling_data = 1;
+    Error error = 2;
+  }
+}
+
+message GpuProfileRequest {
+  path.Capture capture = 1;
+  path.Device device = 2;
 }
 
 // GetTimestampsRequest is the request send to server to get the timestamps for

@@ -90,8 +90,7 @@ type Profiler interface {
 		mgr Manager,
 		hints *service.UsageHints,
 		traceOptions *service.TraceOptions,
-		handler *SignalHandler,
-		overrides *path.OverrideConfig) error
+		overrides *path.OverrideConfig) (*service.ProfilingData, error)
 }
 
 // Issue represents a single replay issue reported by QueryIssues.

@@ -1,6 +1,7 @@
 package vulkan
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/google/gapid/gapir"
@@ -49,10 +50,10 @@ func (t *WaitForPerfetto) Flush(ctx context.Context, out transform.Writer) {
 func (t *WaitForPerfetto) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *WaitForPerfetto) PostLoop(ctx context.Context, out transform.Writer) {}
 
-func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHandler) *WaitForPerfetto {
+func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHandler, buffer *bytes.Buffer) *WaitForPerfetto {
 	tcb := func(ctx context.Context, p *gapir.FenceReadyRequest) {
 		go func() {
-			trace.Trace(ctx, traceOptions.Device, h.StartSignal, h.StopSignal, h.ReadyFunc, traceOptions, &h.Written)
+			trace.TraceBuffered(ctx, traceOptions.Device, h.StartSignal, h.StopSignal, h.ReadyFunc, traceOptions, buffer)
 			if !h.DoneSignal.Fired() {
 				h.DoneFunc(ctx)
 			}

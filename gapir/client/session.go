@@ -40,6 +40,7 @@ import (
 	"github.com/google/gapid/core/vulkan/loader"
 	"github.com/google/gapid/gapidapk"
 	"github.com/google/gapid/gapir"
+	perfetto_android "github.com/google/gapid/gapis/perfetto/android"
 )
 
 const (
@@ -327,6 +328,17 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 	}
 
 	log.I(ctx, "Launching GAPIR...")
+	// Configure GAPIR to be traceable for replay profiling
+	cleanup, err := perfetto_android.SetupProfileLayers(ctx, d, apk.Name, true, abi, []string{})
+	s.onClose(func() {
+		cleanup.Invoke(ctx)
+	})
+	if err != nil {
+		// TODO(apbodnar) Fail here if we know we need render stages
+		log.W(ctx, "Failed to setup render stage environment for replayer")
+		cleanup.Invoke(ctx)
+	}
+
 	if err := d.StartActivity(ctx, *apk.ActivityActions[gapirActivityIndex],
 		android.StringExtra{"gapir-intent-flag", strings.Join(completeLaunchArgs, " ")},
 	); err != nil {

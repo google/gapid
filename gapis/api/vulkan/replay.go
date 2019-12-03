@@ -15,6 +15,7 @@
 package vulkan
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -33,6 +34,7 @@ import (
 	"github.com/google/gapid/gapis/resolve/initialcmds"
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
+	"github.com/google/gapid/gapis/trace"
 )
 
 var (
@@ -781,6 +783,7 @@ type profileRequest struct {
 	overrides    *path.OverrideConfig
 	traceOptions *service.TraceOptions
 	handler      *replay.SignalHandler
+	buffer       *bytes.Buffer
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1002,7 +1005,7 @@ func (a API) Replay(
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
-			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler))
+			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
 			if req.overrides.GetViewportSize() {
 				transforms.Add(minimizeViewport(ctx))
 			}
@@ -1212,12 +1215,14 @@ func (a API) Profile(
 	mgr replay.Manager,
 	hints *service.UsageHints,
 	traceOptions *service.TraceOptions,
-	handler *replay.SignalHandler,
-	overrides *path.OverrideConfig) error {
+	overrides *path.OverrideConfig) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
-	r := profileRequest{overrides, traceOptions, handler}
-
+	handler := replay.NewSignalHandler()
+	var buffer bytes.Buffer
+	r := profileRequest{overrides, traceOptions, handler, &buffer}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
-	return err
+	handler.DoneSignal.Wait(ctx)
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer)
+	return d, err
 }

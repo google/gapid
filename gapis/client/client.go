@@ -529,6 +529,10 @@ func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettings
 	return nil
 }
 
+func (c *client) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.GpuProfileResponse, error) {
+	return c.client.GpuProfile(ctx, req)
+}
+
 func (c *client) GetTimestamps(ctx context.Context, req *service.GetTimestampsRequest, handler service.TimeStampsHandler) error {
 	stream, err := c.client.GetTimestamps(ctx, req)
 	if err != nil {

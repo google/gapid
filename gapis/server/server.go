@@ -914,6 +914,13 @@ func (s *server) GetTimestamps(ctx context.Context, req *service.GetTimestampsRe
 	return replay.GetTimestamps(ctx, req.Capture, req.Device, req.LoopCount, h)
 }
 
+func (s *server) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.GpuProfileResponse, error) {
+	ctx = status.Start(ctx, "RPC GpuProfile")
+	defer status.Finish(ctx)
+	ctx = log.Enter(ctx, "GpuProfile")
+	return replay.GpuProfile(ctx, req.Capture, req.Device)
+}
+
 func (s *server) PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error) {
 	ctx = status.Start(ctx, "RPC PerfettoQuery")
 	defer status.Finish(ctx)

@@ -129,3 +129,22 @@ type SignalHandler struct {
 	Written     int64
 	Err         error
 }
+
+func NewSignalHandler() *SignalHandler {
+	startSignal, startFunc := task.NewSignal()
+	readySignal, readyFunc := task.NewSignal()
+	stopSignal, stopFunc := task.NewSignal()
+	doneSignal, doneFunc := task.NewSignal()
+
+	handler := &SignalHandler{
+		StartSignal: startSignal,
+		StartFunc:   startFunc,
+		ReadySignal: readySignal,
+		ReadyFunc:   readyFunc,
+		StopSignal:  stopSignal,
+		StopFunc:    stopFunc,
+		DoneSignal:  doneSignal,
+		DoneFunc:    doneFunc,
+	}
+	return handler
+}

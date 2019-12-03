@@ -381,6 +381,11 @@ type (
 		Out       string `help:"output file to save the profiling result"`
 	}
 
+	GpuProfileFlags struct {
+		Gapis GapisFlags
+		Gapir GapirFlags
+	}
+
 	CreateGraphVisualizationFlags struct {
 		Gapis  GapisFlags
 		Out    string `help:"path to save graph visualization"`

@@ -46,6 +46,7 @@ go_library(
         "//gapidapk:go_default_library",
         "//gapir:go_default_library",
         "//gapir/replay_service:go_default_library",
+        "//gapis/perfetto/android:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//metadata:go_default_library",
     ],

@@ -15,6 +15,7 @@
 package tracer
 
 import (
+	"bytes"
 	"context"
 	"io"
 
@@ -69,7 +70,9 @@ type Tracer interface {
 
 	// GetDevice returns the device associated with this tracer
 	GetDevice() bind.Device
-
+	// ProcessProfilingData takes a buffer for a Perfetto trace and translates it into
+	// a ProfilingData
+	ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer) (*service.ProfilingData, error)
 	// Validate validates the GPU profiling capabilities of the given device and returns
 	// an error if validation failed or the GPU profiling data is invalid.
 	Validate(ctx context.Context) error
