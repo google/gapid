@@ -83,6 +83,7 @@ public class TimelinePanel extends Panel.Base {
       ctx.drawLine(legendX - legendW, legendY, legendX - legendW, legendY - LEGEND_H);
 
       ctx.drawLine(LABEL_WIDTH - 1, 0, LABEL_WIDTH - 1, height);
+      ctx.drawLine(0, 0, width, 0);
       ctx.drawLine(0, height - 1, width, height - 1);
 
       ctx.withClip(LABEL_WIDTH + 1, 0, width, height, () -> {
