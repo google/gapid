@@ -297,10 +297,9 @@ void PackEncoderImpl::writeVarint(std::string& buffer, uint64_t value) {
 
 uint64_t PackEncoderImpl::flushChunk(std::string& buffer, bool isTypeDefChunk) {
   const int64_t size = buffer.size();
-  std::string bufferWithHeader;
-  writeZigzag(bufferWithHeader, isTypeDefChunk ? -size : size);
-  bufferWithHeader.append(buffer);
-  mShared->writer->write(bufferWithHeader);
+  std::string sizeBuffer;
+  writeZigzag(sizeBuffer, isTypeDefChunk ? -size : size);
+  mShared->writer->write({&sizeBuffer, &buffer});
   buffer.clear();
   return mShared->mCurrentChunkId++;
 }

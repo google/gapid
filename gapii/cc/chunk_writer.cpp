@@ -32,8 +32,9 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
 
   ~ChunkWriterImpl();
 
-  virtual bool write(std::string& s) override;
-  virtual void flush() override;
+  // virtual from core::StringWriter
+  bool write(std::initializer_list<std::string*> strings) override;
+  void flush() override;
 
  private:
   // returns effective buffer size without reserved space
@@ -64,15 +65,15 @@ ChunkWriterImpl::~ChunkWriterImpl() {
   }
 }
 
-bool ChunkWriterImpl::write(std::string& s) {
+bool ChunkWriterImpl::write(std::initializer_list<std::string*> strings) {
   if (mStreamGood) {
-    mBuffer.append(s);
-
+    for (auto* s : strings) {
+      mBuffer.append(*s);
+    }
     if (mNoBuffer || (getBufferSize() >= kBufferSize)) {
       flush();
     }
   }
-
   return mStreamGood;
 }
 

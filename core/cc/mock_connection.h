@@ -33,14 +33,19 @@ namespace test {
 
 class MockConnection : public Connection {
  public:
-  MockConnection() : read_pos(0), out_limit(-1) {}
+  MockConnection() : read_pos(0u), out_limit(-1) {}
+
   virtual size_t send(const void* data, size_t size) override {
-    if (out_limit >= 0 && out.size() + size > out_limit) {
-      size = out_limit > out.size() ? out_limit - out.size() : 0u;
+    if (out_limit >= 0) {
+      const auto limit = static_cast<size_t>(out_limit);
+      if (out.size() + size > limit) {
+        size = limit > out.size() ? limit - out.size() : 0u;
+      }
     }
     out.insert(out.end(), (char*)data, (char*)data + size);
     return size;
   }
+
   virtual size_t recv(void* data, size_t size) override {
     if (read_pos + size > in.size()) {
       size = in.size() > read_pos ? in.size() - read_pos : 0u;
@@ -52,7 +57,7 @@ class MockConnection : public Connection {
 
   const char* error() override { return ""; }
   std::unique_ptr<Connection> accept(int timeoutMs) override {
-    if (connections.size() == 0) {
+    if (connections.size() == 0u) {
       return nullptr;
     }
     auto conn = connections.front();
@@ -63,7 +68,7 @@ class MockConnection : public Connection {
 
   std::queue<Connection*> connections;
   std::vector<uint8_t> in;
-  int read_pos;
+  size_t read_pos;
   std::vector<uint8_t> out;
   int out_limit;
 };

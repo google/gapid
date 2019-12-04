@@ -51,6 +51,11 @@ static const int ACCEPT_TIMEOUT = -2;
 int gWinsockUsageCount = 0;
 #endif  // TARGET_OS == GAPID_OS_WINDOWS
 
+template <typename T>
+size_t clamp_size_t(T val) {
+  return static_cast<size_t>(val > 0 ? val : 0);
+}
+
 int error() {
 #if TARGET_OS == GAPID_OS_WINDOWS
   return ::WSAGetLastError();
@@ -69,20 +74,17 @@ void close(int fd) {
 
 size_t recv(int sockfd, void* buf, size_t len, int flags) {
 #if TARGET_OS == GAPID_OS_WINDOWS
-  auto result =
-      ::recv(sockfd, static_cast<char*>(buf), static_cast<int>(len), flags);
-  return static_cast<size_t>(result > 0 ? result : 0);
+  return clamp_size_t(
+      ::recv(sockfd, static_cast<char*>(buf), static_cast<int>(len), flags));
 #else   // TARGET_OS == GAPID_OS_WINDOWS
-  auto result = ::recv(sockfd, buf, len, flags);
-  return static_cast<size_t>(result > 0 ? result : 0);
+  return clamp_size_t(::recv(sockfd, buf, len, flags));
 #endif  // TARGET_OS == GAPID_OS_WINDOWS
 }
 
 size_t send(int sockfd, const void* buf, size_t len, int flags) {
 #if TARGET_OS == GAPID_OS_WINDOWS
-  auto result = ::send(sockfd, static_cast<const char*>(buf),
-                       static_cast<int>(len), flags);
-  return static_cast<size_t>(result > 0 ? result : 0);
+  return clamp_size_t(::send(sockfd, static_cast<const char*>(buf),
+                             static_cast<int>(len), flags));
 #else   // TARGET_OS == GAPID_OS_WINDOWS
   const size_t result = len;
   while (len > 0u) {

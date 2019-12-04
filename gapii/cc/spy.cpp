@@ -146,9 +146,9 @@ Spy::Spy()
       pipe = envPipe;
     }
     mConnection = ConnectionStream::listenPipe(pipe.c_str(), true);
-#else                                       // TARGET_OS
+#else                                           // TARGET_OS
     mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
-#endif                                      // TARGET_OS
+#endif                                          // TARGET_OS
     if (mConnection->write("gapii", 5) != 5) {  // handshake magic
       GAPID_FATAL("Couldn't send handshake magic");
     }
@@ -259,7 +259,7 @@ Spy::Spy()
                     break;
                 }
               } else {
-                GAPID_WARNING("Received invalid message: %u %u", buffer[0], buffer[1]);
+                GAPID_WARNING("Invalid message: %u %u", buffer[0], buffer[1]);
               }
             } else if (count > 0u) {
               GAPID_WARNING("Received unexpected byte: %u", buffer[0]);
