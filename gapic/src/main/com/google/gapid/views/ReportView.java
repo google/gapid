@@ -147,7 +147,7 @@ public class ReportView extends Composite
   private Text getDetails() {
     // Lazy init'ed due to https://github.com/google/gapid/issues/2624
     if (reportDetails == null) {
-      reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.H_SCROLL | SWT.V_SCROLL);
+      reportDetails = new Text(detailsGroup, SWT.MULTI | SWT.READ_ONLY | SWT.WRAP | SWT.V_SCROLL);
     }
     return reportDetails;
   }
