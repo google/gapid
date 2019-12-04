@@ -951,7 +951,12 @@ func ipCreateShaderModule(sb *stateBuilder, nm debugMarkerName, dev VkDevice, in
 		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_STENCIL_BIT:
 			code, err = ipRenderStencilShaderSpirv()
 		case VkImageAspectFlagBits_VK_IMAGE_ASPECT_COLOR_BIT:
-			code, err = ipRenderColorShaderSpirv(info.outputFormat)
+			// Prime from host image data, the staging image is always in format of VkFormat_VK_FORMAT_R32G32B32A32_UINT
+			if info.inputFormat == stagingColorImageBufferFormat {
+				code, err = ipRenderColorShaderSpirv(info.outputFormat)
+			} else { // Otherwise, the input and output format should be the same.
+				code, err = ipCopyByRenderShaderSpirv(info.outputFormat)
+			}
 		default:
 			return VkShaderModule(0), fmt.Errorf("Unsupported output aspect: %v for stage: %v", info.outputAspect, info.stage)
 		}
