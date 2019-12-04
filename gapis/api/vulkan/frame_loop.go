@@ -1470,11 +1470,12 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 		log.D(ctx, "Image [%v] changed during loop.", img)
 
 		// Create staging Image which is used to backup the changed images
-		imgObj := apiState.Images().Get(img).Clone(apiState.Arena(), api.CloneContext{})
-		usage := VkImageUsageFlags(uint32(imgObj.Info().Usage()) | uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
-		imgObj.Info().SetUsage(usage)
+		imgObj := apiState.Images().Get(img)
+		clonedImgObj := imgObj.Clone(apiState.Arena(), api.CloneContext{})
+		usage := VkImageUsageFlags(uint32(clonedImgObj.Info().Usage()) | uint32(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VkImageUsageFlagBits_VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
+		clonedImgObj.Info().SetUsage(usage)
 
-		stagingImage, _, err := imgPrimer.CreateSameStagingImage(imgObj)
+		stagingImage, _, err := imgPrimer.CreateSameStagingImage(clonedImgObj)
 
 		if err != nil {
 			return log.Err(ctx, err, "Create staging image failed.")
@@ -2101,7 +2102,7 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder,
 		}
 		defer primeable.free(stateBuilder)
 
-		err = primeable.prime(stateBuilder, useSpecifiedLayout(dstObj.Info().InitialLayout()), sameLayoutsOfImage(dstObj))
+		err = primeable.prime(stateBuilder, sameLayoutsOfImage(dstObj), sameLayoutsOfImage(dstObj))
 		if err != nil {
 			return log.Errf(ctx, err, "Priming image %v with data", dst)
 		}
@@ -2146,6 +2147,30 @@ func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuil
 	return nil
 }
 
+func (f *frameLoop) getBackupImageTargetLayout(ctx context.Context, srcImg ImageObjectʳ) ipLayoutInfo {
+	dstImageLayout := sameLayoutsOfImage(srcImg)
+
+	transDstBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+	attBits := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+	storageBit := VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_STORAGE_BIT)
+	isDepth := (srcImg.Info().Usage() & VkImageUsageFlags(VkImageUsageFlagBits_VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0
+
+	primeByCopy := (srcImg.Info().Usage()&transDstBit) != 0 && (!isDepth)
+	primeByRendering := (!primeByCopy) && ((srcImg.Info().Usage() & attBits) != 0)
+	primeByImageStore := (!primeByCopy) && (!primeByRendering) && ((srcImg.Info().Usage() & storageBit) != 0)
+
+	if primeByCopy {
+		log.D(ctx, "Image %v will be primbed by copy", srcImg.VulkanHandle())
+		dstImageLayout = useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	}
+	if primeByRendering || primeByImageStore {
+		log.D(ctx, "Image %v will be primbed by rendering", srcImg.VulkanHandle())
+		dstImageLayout = useSpecifiedLayout(ipRenderInputAttachmentLayout)
+	}
+
+	return dstImageLayout
+}
+
 func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ, stateBuilder *stateBuilder) error {
 
 	deviceCopyKit, err := ipBuildDeviceCopyKit(stateBuilder, srcImg.VulkanHandle(), dstImg.VulkanHandle())
@@ -2170,7 +2195,8 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 		return log.Err(ctx, err, "Failed at commit buffer image copy commands")
 	}
 
-	dstPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(ipHostCopyImageLayout), sameLayoutsOfImage(dstImg))
+	dstImageLayout := f.getBackupImageTargetLayout(ctx, srcImg)
+	dstPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, dstImg, useSpecifiedLayout(ipHostCopyImageLayout), dstImageLayout)
 	srcPostCopyBarriers := ipImageLayoutTransitionBarriers(stateBuilder, srcImg, useSpecifiedLayout(VkImageLayout_VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL), sameLayoutsOfImage(srcImg))
 	postCopyBarriers := append(dstPostCopyBarriers, srcPostCopyBarriers...)
 	if err = ipRecordImageMemoryBarriers(stateBuilder, queueHandler, postCopyBarriers...); err != nil {
