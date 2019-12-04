@@ -50,6 +50,10 @@ inline std::string createHeader(MessageType msg_type, uint64_t msg_size = 0u) {
   return std::string(reinterpret_cast<char*>(&buf[0]), count);
 }
 
+inline std::string createError(const std::string& error) {
+  return createHeader(MessageType::kError, error.size()) + error;
+}
+
 }  // namespace protocol
 }  // namespace gapii
 

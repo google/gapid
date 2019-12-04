@@ -296,11 +296,11 @@ void PackEncoderImpl::writeVarint(std::string& buffer, uint64_t value) {
 }
 
 uint64_t PackEncoderImpl::flushChunk(std::string& buffer, bool isTypeDefChunk) {
-  int64_t size = buffer.size();
-  std::string sizeBuffer;
-  writeZigzag(sizeBuffer, isTypeDefChunk ? -size : size);
-  mShared->writer->write(sizeBuffer);
-  mShared->writer->write(buffer);
+  const int64_t size = buffer.size();
+  std::string bufferWithHeader;
+  writeZigzag(bufferWithHeader, isTypeDefChunk ? -size : size);
+  bufferWithHeader.append(buffer);
+  mShared->writer->write(bufferWithHeader);
   buffer.clear();
   return mShared->mCurrentChunkId++;
 }
@@ -336,7 +336,7 @@ PackEncoder::SPtr PackEncoder::create(
     std::shared_ptr<core::StreamWriter> stream, bool no_buffer) {
   std::string header_chunk =
       protocol::createHeader(protocol::MessageType::kData, sizeof(header));
-  header_chunk += header;
+  header_chunk.append(header, sizeof(header));
   stream->write(header_chunk.data(), header_chunk.size());
   auto writer = ChunkWriter::create(stream, no_buffer);
   return PackEncoder::SPtr(new PackEncoderImpl(writer));

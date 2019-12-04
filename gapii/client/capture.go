@@ -193,11 +193,13 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	var readErr error
 	var count, remain siSize
 	var messageType byte = messageInvalid
-	started, stopped, ended := false, false, false
+	var bufErr []byte
+	started, stopped := false, false
+mainLoop:
 	for {
 		if task.Stopped(ctx) {
 			log.I(ctx, "Stop: %v", count)
-			break
+			break mainLoop
 		}
 		if (p.Options.Flags & DeferStart) != 0 {
 			if !started && start.Fired() {
@@ -213,17 +215,13 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 			// handle read error after processing buffer
 			switch {
 			case errors.Cause(readErr) == io.EOF:
-				log.I(ctx, "EOF: %v", count)
-				if ended {
-					// expected end of stream
-					return int64(count), nil
-				}
 				// unexpected end of stream
+				log.E(ctx, "EOF: %v", count)
 				return int64(count), readErr
 			case readErr != nil && count > 0:
 				err, isnet := readErr.(net.Error)
 				if !isnet || (!err.Temporary() && !err.Timeout()) {
-					log.I(ctx, "Connection error: %v", err)
+					log.E(ctx, "Connection error: %v", err)
 					// Got an error mid-stream terminate.
 					return int64(count), err
 				}
@@ -241,6 +239,9 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 				messageType = buf[bufPos]
 				bufPos++
 				remain--
+				if messageType == messageError {
+					bufErr = nil
+				}
 			} else {
 				copyCount := bufSize - bufPos
 				if siSize(copyCount) > remain {
@@ -254,7 +255,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 					count += siSize(copyCount)
 					atomic.StoreInt64(written, int64(count))
 				case messageError:
-					// TODO
+					bufErr = append(bufErr, buf[bufPos:bufPos+copyCount]...)
 				}
 				bufPos += copyCount
 				remain -= siSize(copyCount)
@@ -262,9 +263,14 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 			if remain == 0 {
 				switch messageType {
 				case messageEndTrace:
-					ended = true
+					log.I(ctx, "Received end trace message: %v", count)
+					// if received error messages, return most recent
+					if bufErr != nil {
+						return int64(count), errors.New(string(bufErr))
+					}
+					break mainLoop
 				case messageError:
-					// TODO
+					log.E(ctx, "Received error: %s", string(bufErr))
 				}
 				messageType = messageInvalid
 			}

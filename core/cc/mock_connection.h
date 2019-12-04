@@ -35,15 +35,15 @@ class MockConnection : public Connection {
  public:
   MockConnection() : read_pos(0), out_limit(-1) {}
   virtual size_t send(const void* data, size_t size) override {
-    if ((out_limit >= 0) && (size > out_limit - out.size())) {
-      size = out_limit - out.size();
+    if (out_limit >= 0 && out.size() + size > out_limit) {
+      size = out_limit > out.size() ? out_limit - out.size() : 0u;
     }
     out.insert(out.end(), (char*)data, (char*)data + size);
     return size;
   }
   virtual size_t recv(void* data, size_t size) override {
-    if (size > in.size() - read_pos) {
-      size = in.size() - read_pos;
+    if (read_pos + size > in.size()) {
+      size = in.size() > read_pos ? in.size() - read_pos : 0u;
     }
     memcpy(data, &in[read_pos], size);
     read_pos += size;

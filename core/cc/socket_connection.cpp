@@ -69,19 +69,23 @@ void close(int fd) {
 
 size_t recv(int sockfd, void* buf, size_t len, int flags) {
 #if TARGET_OS == GAPID_OS_WINDOWS
-  return ::recv(sockfd, static_cast<char*>(buf), static_cast<int>(len), flags);
+  auto result =
+      ::recv(sockfd, static_cast<char*>(buf), static_cast<int>(len), flags);
+  return static_cast<size_t>(result > 0 ? result : 0);
 #else   // TARGET_OS == GAPID_OS_WINDOWS
-  return ::recv(sockfd, buf, len, flags);
+  auto result = ::recv(sockfd, buf, len, flags);
+  return static_cast<size_t>(result > 0 ? result : 0);
 #endif  // TARGET_OS == GAPID_OS_WINDOWS
 }
 
 size_t send(int sockfd, const void* buf, size_t len, int flags) {
 #if TARGET_OS == GAPID_OS_WINDOWS
-  return ::send(sockfd, static_cast<const char*>(buf), static_cast<int>(len),
-                flags);
+  auto result = ::send(sockfd, static_cast<const char*>(buf),
+                       static_cast<int>(len), flags);
+  return static_cast<size_t>(result > 0 ? result : 0);
 #else   // TARGET_OS == GAPID_OS_WINDOWS
-  const ssize_t result = len;
-  while (len > 0) {
+  const size_t result = len;
+  while (len > 0u) {
     const ssize_t n = ::send(sockfd, buf, len, flags);
     if (n != -1) {
       // A signal after some data was transmitted can result in partial send.
@@ -92,7 +96,7 @@ size_t send(int sockfd, const void* buf, size_t len, int flags) {
       continue;
     } else {
       // Other error.
-      return -1;
+      return 0u;
     }
   }
   return result;

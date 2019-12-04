@@ -149,7 +149,7 @@ Spy::Spy()
 #else                                       // TARGET_OS
     mConnection = ConnectionStream::listenSocket("127.0.0.1", "9286");
 #endif                                      // TARGET_OS
-    if (!mConnection->write("gapii", 5)) {  // handshake magic
+    if (mConnection->write("gapii", 5) != 5) {  // handshake magic
       GAPID_FATAL("Couldn't send handshake magic");
     }
 
@@ -265,7 +265,6 @@ Spy::Spy()
               GAPID_WARNING("Received unexpected byte: %u", buffer[0]);
             }
           } while (count == 2u);
-          GAPID_WARNING("Receive count: %ull", count);
         }));
   }
   set_suspended(mSuspendCaptureFrames != 0);
@@ -573,6 +572,9 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
     if (mCaptureFrames > 0 && --mCaptureFrames == 0) {
       GAPID_INFO("Ended capture");
       mEncoder->flush();
+      // Error messages can be transferred any time during the trace, e.g.:
+      // auto err = protocol::createError("end of the world");
+      // mConnection->write(err.data(), err.size());
       auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
       mConnection->write(msg.data(), msg.size());
       mConnection->close();
