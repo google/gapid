@@ -1492,7 +1492,16 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 
 func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
+	// TODO: remove those waitdeviceidle after we're sure it is safe to do so.
 	f.waitDeviceIdle(stateBuilder)
+	defer f.waitDeviceIdle(stateBuilder)
+
+	imgPrimer := newImagePrimer(stateBuilder)
+	// imgPrimer.Free() needs to be called after stateBuilder.scratchRes.Free().
+	// As the later will submit all the commands and wait for queue to be idle.
+	// Only after that we can release the resource used in the image primer.
+	defer imgPrimer.Free()
+	defer stateBuilder.scratchRes.Free(stateBuilder)
 
 	if err := f.resetInstances(ctx, stateBuilder); err != nil {
 		return err
@@ -1522,7 +1531,7 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
-	if err := f.resetImages(ctx, stateBuilder); err != nil {
+	if err := f.resetImages(ctx, stateBuilder, imgPrimer); err != nil {
 		return err
 	}
 
@@ -1597,13 +1606,6 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 	if err := f.resetCommandBuffers(ctx, stateBuilder); err != nil {
 		return err
 	}
-
-	//TODO: Reset other resources.
-
-	// Flush out the reset commands
-	stateBuilder.scratchRes.Free(stateBuilder)
-
-	f.waitDeviceIdle(stateBuilder)
 
 	return nil
 }
@@ -2063,7 +2065,7 @@ func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuil
 	return nil
 }
 
-func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder) error {
+func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder, imgPrimer *imagePrimer) error {
 
 	for toDestroy := range f.imageToDestroy {
 		log.D(ctx, "Destroy image %v which was created during loop.", toDestroy)
@@ -2081,9 +2083,6 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder)
 	}
 
 	apiState := GetState(stateBuilder.newState)
-
-	imgPrimer := newImagePrimer(stateBuilder)
-	defer imgPrimer.Free()
 
 	for toCreate := range f.imageToCreate {
 		log.D(ctx, "Recreate image %v which was destroyed during loop.", toCreate)
