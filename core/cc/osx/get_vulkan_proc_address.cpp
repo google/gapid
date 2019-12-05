@@ -68,7 +68,6 @@ void* getVulkanDeviceProcAddress(size_t instance, size_t device,
 
 void* getVulkanProcAddress(const char* name) {
   auto ret = getVulkanInstanceProcAddress(0u, name);
-  std::cerr << "AAAAA" << ret << "\n";
   return ret;
 }
 
@@ -84,9 +83,6 @@ GetVulkanProcAddressFunc* GetVulkanProcAddress = getVulkanProcAddress;
 bool HasVulkanLoader() {
   auto ret = DlLoader::can_load("libvulkan.dylib") ||
              DlLoader::can_load("libvulkan.1.dylib");
-
-  std::cerr << "ret = " << ret << "\n";
-
   return ret;
 }
 }  // namespace core
