@@ -44,7 +44,7 @@ Using the msys64 shell at `C:\tools\msys64\mingw64`:
 
 ### Install Java Runtime 8
 
-A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
+A JRE is required by the Android SDK tools. If you do not already have a JRE installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
 
 ### Install Android SDK and NDK
 
@@ -100,7 +100,7 @@ Follow the [MacOS Bazel Install](https://docs.bazel.build/versions/master/instal
 
 ### Install Java Runtime 8
 
-A JRE is required by the Android SDK tools. If you do not already have a JRE installed, please [install the Java Runtime Environment from here](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
+A JRE is required by the Android SDK tools. If you do not already have a JRE installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
 
 ### Install Android SDK and NDK
 
