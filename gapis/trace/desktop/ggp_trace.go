@@ -150,16 +150,16 @@ func (t *GGPTracer) StartOnDevice(ctx context.Context, name string, opts *proces
 			cmdArgs = append(cmdArgs, "--cmd", execArgStr)
 		}
 
-		envs := ""
+		vars := ""
 		for _, e := range opts.Env.Vars() {
-			if envs != "" {
-				envs += ";"
+			if vars != "" {
+				vars += ";"
 			}
-			envs += text.Quote([]string{e})[0]
+			vars += text.Quote([]string{e})[0]
 		}
 
-		if envs != "" {
-			cmdArgs = append(cmdArgs, "--env", envs)
+		if vars != "" {
+			cmdArgs = append(cmdArgs, "--vars", vars)
 		}
 
 		execCmd := ggpExecutable.System()
