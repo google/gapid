@@ -41,7 +41,6 @@ type VkFlags VkInstanceCreateFlags
 
 /// Format capability flags
 @unused
-@analyze_usage
 bitfield VkFormatFeatureFlagBits {
   VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT                  = 0x00000001, /// Format can be used for sampled images (SAMPLED_IMAGE and COMBINED_IMAGE_SAMPLER descriptor types)
   VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT                  = 0x00000002, /// Format can be used for storage images (STORAGE_IMAGE descriptor type)
@@ -535,7 +534,6 @@ bitfield VkExternalSemaphoreHandleTypeFlagBits {
 type VkFlags VkExternalSemaphoreHandleTypeFlags
 
 @unused
-@analyze_usage
 bitfield VkFenceImportFlagBits {
   VK_FENCE_IMPORT_TEMPORARY_BIT     = 0x000000001,
   VK_FENCE_IMPORT_TEMPORARY_BIT_KHR = 0x000000001, // VK_FENCE_IMPORT_TEMPORARY_BIT,
@@ -558,7 +556,6 @@ bitfield VkPeerMemoryFeatureFlagBits {
 type VkFlags VkPeerMemoryFeatureFlags
 
 @unused
-@analyze_usage
 bitfield VkSemaphoreImportFlagBits {
   VK_SEMAPHORE_IMPORT_TEMPORARY_BIT     = 0x00000001,
   VK_SEMAPHORE_IMPORT_TEMPORARY_BIT_KHR = 0x00000001, // VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,

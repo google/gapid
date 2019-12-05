@@ -86,6 +86,9 @@ type ID id.ID
 func (i ID) IsValid() bool  { return id.ID(i).IsValid() }
 func (i ID) String() string { return id.ID(i).String() }
 
+// CoreId return id in gapid/core/data/id.ID type instead of api.ID type.
+func (i ID) CoreId() id.ID { return id.ID(i) }
+
 // APIObject is the interface implemented by types that belong to an API.
 type APIObject interface {
 	// API returns the API identifier that this type belongs to.

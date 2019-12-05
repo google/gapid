@@ -95,7 +95,6 @@ enum VkResult : u32 {
 }
 
 /// Structure type enumerant
-@analyze_usage
 enum VkStructureType: u32 {
   VK_STRUCTURE_TYPE_APPLICATION_INFO                          = 0,
   VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO                      = 1,
@@ -354,7 +353,6 @@ enum VkStructureType: u32 {
   VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR = 1000060012,
 }
 
-@analyze_usage
 enum VkObjectType: u32 {
   VK_OBJECT_TYPE_UNKNOWN                        = 0,
   VK_OBJECT_TYPE_INSTANCE                       = 1,

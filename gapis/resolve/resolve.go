@@ -100,7 +100,11 @@ func Field(ctx context.Context, p *path.Field, r *path.ResolveConfig) (interface
 }
 
 func Type(ctx context.Context, p *path.Type, r *path.ResolveConfig) (interface{}, error) {
-	return types.GetType(p.TypeIndex)
+	t, err := types.GetType(p.TypeIndex)
+	if _, isEnum := t.GetTy().(*types.Type_Enum); isEnum {
+		t.GetEnum().Constants.API = p.API
+	}
+	return t, err
 }
 
 func Messages(ctx context.Context, p *path.Messages) (interface{}, error) {

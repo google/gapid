@@ -367,9 +367,10 @@ public class Paths {
         .build();
   }
 
-  public static Path.Type type(long typeIndex) {
+  public static Path.Type type(long typeIndex, Path.API api) {
     return Path.Type.newBuilder()
         .setTypeIndex(typeIndex)
+        .setAPI(api)
         .build();
   }
 

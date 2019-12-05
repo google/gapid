@@ -20,6 +20,7 @@ import (
 	"sort"
 
 	"github.com/google/gapid/core/app/analytics"
+	coreid "github.com/google/gapid/core/data/id"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/math/interval"
 	"github.com/google/gapid/gapis/api"
@@ -119,13 +120,16 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 
 	s.Memory.SetOnCreate(func(id memory.PoolID, pool *memory.Pool) {
 		if id == memory.PoolID(p.Pool) {
-			pool.OnRead = func(rng memory.Range, root uint64, id uint64) {
+			pool.OnRead = func(rng memory.Range, root uint64, id uint64, apiId coreid.ID) {
 				if rng.Overlaps(r) {
 					interval.Merge(&reads, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
-								Type: &path.Type{TypeIndex: id},
+								Type: &path.Type{
+									TypeIndex: id,
+									API:       &path.API{ID: path.NewID(apiId)},
+								},
 								Range: &service.MemoryRange{
 									Base: rng.Base,
 									Size: rng.Size,
@@ -136,13 +140,16 @@ func Memory(ctx context.Context, p *path.Memory, rc *path.ResolveConfig) (*servi
 					}
 				}
 			}
-			pool.OnWrite = func(rng memory.Range, root uint64, id uint64) {
+			pool.OnWrite = func(rng memory.Range, root uint64, id uint64, apiId coreid.ID) {
 				if rng.Overlaps(r) {
 					interval.Merge(&writes, rng.Window(r).Span(), false)
 					if p.IncludeTypes {
 						typedRanges = append(typedRanges,
 							&service.TypedMemoryRange{
-								Type: &path.Type{TypeIndex: id},
+								Type: &path.Type{
+									TypeIndex: id,
+									API:       &path.API{ID: path.NewID(apiId)},
+								},
 								Range: &service.MemoryRange{
 									Base: rng.Base,
 									Size: rng.Size,

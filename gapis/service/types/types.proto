@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "core/data/pod/pod.proto";
+import "gapis/service/path/path.proto";
 
 package types;
 option java_package = "com.google.gapid.proto.service.types";
@@ -77,6 +78,7 @@ message PseudonymType {
 
 message EnumType {
   uint64 underlying = 1;
+  path.ConstantSet constants = 2;
 }
 
 enum SizedType {

@@ -189,7 +189,7 @@ func getConstantSetMap(ctx context.Context, c client.Client, api *path.API, inde
 	if index != -1 {
 		boxedConstants, err := c.Get(ctx, (&path.ConstantSet{
 			API:   api,
-			Index: uint32(index),
+			Index: index,
 		}).Path(), nil)
 		if err != nil {
 			return nil, log.Errf(ctx, err, "Failed to load constant set (%v, %v)", api, index)

@@ -44,7 +44,10 @@ func CmdToService(c Cmd) (*Command, error) {
 		param := &Parameter{
 			Name:  p.Name,
 			Value: box.NewValue(p.Get()),
-			Type:  &path.Type{TypeIndex: t},
+			Type: &path.Type{
+				TypeIndex: t,
+				API:       out.API,
+			},
 		}
 		if p.Constants > 0 {
 			param.Constants = out.API.ConstantSet(p.Constants)
