@@ -513,6 +513,8 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) {
 
+	log.W(ctx, "FrameLoop FLUSH")
+
 	if f.loopTerminated == false {
 		if f.lastObservedCommand == api.CmdNoID {
 			log.W(ctx, "FrameLoop transform was applied to whole trace (Flush() has been called) without the loop starting.")
@@ -669,6 +671,12 @@ func (f *frameLoop) buildStartEndStates(ctx context.Context, startState *api.Glo
 
 		case *VkCreateDisplayPlaneSurfaceKHR:
 			vkCmd := cmd.(*VkCreateDisplayPlaneSurfaceKHR)
+			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
+			log.D(ctx, "Surface %v created", surface)
+			f.surfaceToDestroy[surface] = true
+
+		case *VkCreateMacOSSurfaceMVK:
+			vkCmd := cmd.(*VkCreateMacOSSurfaceMVK)
 			surface := vkCmd.PSurface().MustRead(ctx, vkCmd, currentState, nil)
 			log.D(ctx, "Surface %v created", surface)
 			f.surfaceToDestroy[surface] = true

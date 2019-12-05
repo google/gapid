@@ -173,6 +173,9 @@ enum VkStructureType: u32 {
   //@extension("VK_KHR_win32_surface")
   VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000,
 
+  //@extension("VK_MVK_macos_surface")
+  VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK = 1000123000,
+
   //@extension("VK_EXT_debug_report")
   VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT = 1000011000,
 

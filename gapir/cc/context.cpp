@@ -122,8 +122,10 @@ bool Context::interpret(bool cleanup, bool isPrewarm) {
                                                     uint8_t api_index) -> bool {
     if (api_index == gapir::Vulkan::INDEX) {
       // There is only one vulkan "renderer" so we create it when requested.
+      GAPID_WARNING("TRYING TO CREATE VK RENDERER");
       mVulkanRenderer = VulkanRenderer::create();
       if (mVulkanRenderer->isValid()) {
+        GAPID_WARNING("DID CREATE VK RENDERER");
         mVulkanRenderer->setListener(this);
         Api* api = mVulkanRenderer->api();
         interpreter->setRendererFunctions(api->index(), &api->mFunctions);

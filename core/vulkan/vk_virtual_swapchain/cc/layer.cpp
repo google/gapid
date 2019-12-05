@@ -500,6 +500,7 @@ vkGetInstanceProcAddr(VkInstance instance, const char* funcName) {
   INTERCEPT_SURFACE(vkCreateXcbSurfaceKHR);
   INTERCEPT_SURFACE(vkCreateXlibSurfaceKHR);
   INTERCEPT_SURFACE(vkCreateStreamDescriptorSurfaceGGP);
+  INTERCEPT_SURFACE(vkCreateMacOSSurfaceMVK);
 
 #undef INTERCEPT_SURFACE
   // If we are calling a non-overloaded function then we have to

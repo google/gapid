@@ -1,0 +1,61 @@
+// Copyright (C) 2017 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+@extension("VK_MVK_macos_surface") define VK_MVK_MACOS_SURFACE_SPEC_VERSION   6
+@extension("VK_MVK_macos_surface") define VK_MVK_MACOS_SURFACE_EXTENSION_NAME "VK_MVK_macos_surface"
+
+
+
+// ----------------------------------------------------------------------------
+// VK_MVK_macos_surface
+// ----------------------------------------------------------------------------
+
+@extension("VK_MVK_macos_surface")
+@reserved_flags
+type VkFlags VkMacOSSurfaceCreateFlagsMVK
+
+@platform("VK_USE_PLATFORM_MACOS_MVK")
+@extension("VK_MVK_macos_surface")
+class VkMacOSSurfaceCreateInfoMVK {
+  VkStructureType              sType
+  const void*                  pNext
+  VkMacOSSurfaceCreateFlagsMVK flags
+  const void *                 view
+}
+
+@platform("VK_USE_PLATFORM_MACOS_MVK")
+@extension("VK_MVK_macos_surface")
+@indirect("VkInstance")
+@custom
+cmd VkResult vkCreateMacOSSurfaceMVK(
+    VkInstance                         instance,
+    const VkMacOSSurfaceCreateInfoMVK* pCreateInfo,
+    AllocationCallbacks                pAllocator,
+    VkSurfaceKHR*                      pSurface) {
+  info := pCreateInfo[0]
+  surface := new!SurfaceObject()
+  surface.Instance = instance
+  surface.Type = SURFACE_TYPE_MACOS_MVK
+
+  if info.pNext != null {
+    vkErrorNotNullPointer("const void* (pNext)")
+  }
+
+  handle := ?
+  pSurface[0] = handle
+  surface.VulkanHandle = handle
+  Surfaces[handle] = surface
+
+  return ?
+}
