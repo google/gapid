@@ -32,10 +32,10 @@ static bool handleCrash(const google_breakpad::MinidumpDescriptor& descriptor,
 
 namespace core {
 
-CrashHandler::CrashHandler()
+CrashHandler::CrashHandler(const std::string& crashDir)
     : mNextHandlerID(0),
       mExceptionHandler(new google_breakpad::ExceptionHandler(
-          google_breakpad::MinidumpDescriptor("./crashes"), NULL, ::handleCrash,
+          google_breakpad::MinidumpDescriptor(crashDir), NULL, ::handleCrash,
           reinterpret_cast<void*>(this), true, -1)) {
   registerHandler(defaultHandler);
 }
