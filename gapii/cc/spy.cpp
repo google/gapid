@@ -233,38 +233,34 @@ Spy::Spy()
   if (this_executable) {
     mMessageReceiverJob =
         std::unique_ptr<core::AsyncJob>(new core::AsyncJob([this]() {
-          uint8_t buffer[2] = {};
+          uint8_t buffer[protocol::kHeaderSize] = {};
           uint64_t count;
           do {
-            count = mConnection->read(&buffer[0], 2u);
-            if (count == 2u) {
-              if (buffer[0] == 0x01u) {
-                switch (static_cast<protocol::MessageType>(buffer[1])) {
-                  case protocol::MessageType::kStartTrace:
-                    GAPID_INFO("Received start trace message");
-                    if (is_suspended()) {
-                      GAPID_INFO("Starting capture");
-                      mSuspendCaptureFrames = 1;
-                    }
-                    break;
-                  case protocol::MessageType::kEndTrace:
-                    GAPID_INFO("Received end trace message");
-                    if (!is_suspended()) {
-                      GAPID_INFO("Ending capture");
-                      mCaptureFrames = 1;
-                    }
-                    break;
-                  default:
-                    GAPID_WARNING("Invalid message type: %u", buffer[1]);
-                    break;
-                }
-              } else {
-                GAPID_WARNING("Invalid message: %u %u", buffer[0], buffer[1]);
+            count = mConnection->read(&buffer[0], protocol::kHeaderSize);
+            if (count == protocol::kHeaderSize) {
+              switch (static_cast<protocol::MessageType>(buffer[0])) {
+                case protocol::MessageType::kStartTrace:
+                  GAPID_INFO("Received start trace message");
+                  if (is_suspended()) {
+                    GAPID_INFO("Starting capture");
+                    mSuspendCaptureFrames = 1;
+                  }
+                  break;
+                case protocol::MessageType::kEndTrace:
+                  GAPID_INFO("Received end trace message");
+                  if (!is_suspended()) {
+                    GAPID_INFO("Ending capture");
+                    mCaptureFrames = 1;
+                  }
+                  break;
+                default:
+                  GAPID_WARNING("Invalid message type: %u", buffer[0]);
+                  break;
               }
             } else if (count > 0u) {
-              GAPID_WARNING("Received unexpected byte: %u", buffer[0]);
+              GAPID_WARNING("Received unexpected data");
             }
-          } while (count == 2u);
+          } while (count == protocol::kHeaderSize);
         }));
   }
   set_suspended(mSuspendCaptureFrames != 0);
@@ -559,26 +555,30 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
   }
 
   if (is_suspended()) {
-    if (mSuspendCaptureFrames > 0 && --mSuspendCaptureFrames == 0) {
-      GAPID_INFO("Started capture");
-      // We must change suspended state BEFORE releasing the Spy lock with
-      // exit(), because the suspended state affects concurrent CallObservers.
-      set_suspended(false);
-      exit();
-      saveInitialState();
-      enter("RecreateState", 2);
+    if (mSuspendCaptureFrames > 0) {
+      if (--mSuspendCaptureFrames == 0) {
+        GAPID_INFO("Started capture");
+        // We must change suspended state BEFORE releasing the Spy lock with
+        // exit(), because the suspended state affects concurrent CallObservers.
+        set_suspended(false);
+        exit();
+        saveInitialState();
+        enter("RecreateState", 2);
+      }
     }
   } else {
-    if (mCaptureFrames > 0 && --mCaptureFrames == 0) {
-      GAPID_INFO("Ended capture");
-      mEncoder->flush();
-      // Error messages can be transferred any time during the trace, e.g.:
-      // auto err = protocol::createError("end of the world");
-      // mConnection->write(err.data(), err.size());
-      auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
-      mConnection->write(msg.data(), msg.size());
-      mConnection->close();
-      set_suspended(true);
+    if (mCaptureFrames > 0) {
+      if (--mCaptureFrames == 0) {
+        GAPID_INFO("Ended capture");
+        mEncoder->flush();
+        // Error messages can be transferred any time during the trace, e.g.:
+        // auto err = protocol::createError("end of the world");
+        // mConnection->write(err.data(), err.size());
+        auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
+        mConnection->write(msg.data(), msg.size());
+        mConnection->close();
+        set_suspended(true);
+      }
     }
   }
 }

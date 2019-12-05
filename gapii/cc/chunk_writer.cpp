@@ -38,9 +38,7 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
 
  private:
   // returns effective buffer size without reserved space
-  size_t getBufferSize() const {
-    return mBuffer.size() - gapii::protocol::kMaxHeaderSize;
-  }
+  size_t getBufferSize() const { return mBuffer.size() - kHeaderSize; }
 
   std::string mBuffer;
 
@@ -53,8 +51,8 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
 
 ChunkWriterImpl::ChunkWriterImpl(
     const std::shared_ptr<core::StreamWriter>& writer, bool no_buffer)
-    // always reserve space for max protocol header size at buffer start
-    : mBuffer(kMaxHeaderSize, 'X'),
+    // always reserve space for protocol header size at buffer start
+    : mBuffer(kHeaderSize, '\0'),
       mWriter(writer),
       mStreamGood(true),
       mNoBuffer(no_buffer) {}
@@ -81,16 +79,15 @@ void ChunkWriterImpl::flush() {
   size_t buf_size = getBufferSize();
   if (buf_size > 0u) {
     // replace reserved space at start of buffer with actual header
-    const std::string hdr = createHeader(MessageType::kData, buf_size);
-    const size_t offset = kMaxHeaderSize - hdr.size();
-    mBuffer.replace(offset, hdr.size(), hdr);
+    writeHeader(reinterpret_cast<uint8_t*>(&mBuffer.front()),
+                MessageType::kData, buf_size);
 
     // send buffer including header with a single write command
-    buf_size += hdr.size();
-    mStreamGood = mWriter->write(mBuffer.data() + offset, buf_size) == buf_size;
+    mStreamGood =
+        mWriter->write(mBuffer.data(), mBuffer.size()) == mBuffer.size();
 
-    // continue to reserve max header size
-    mBuffer.resize(kMaxHeaderSize);
+    // continue to reserve protocol header size
+    mBuffer.resize(kHeaderSize);
   }
 }
 

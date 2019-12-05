@@ -16,7 +16,6 @@
 
 #include "pack_encoder.h"
 #include "chunk_writer.h"
-#include "protocol.h"
 
 #include "core/cc/stream_writer.h"
 
@@ -333,11 +332,9 @@ namespace gapii {
 // create returns a PackEncoder::SPtr that writes to output.
 PackEncoder::SPtr PackEncoder::create(
     std::shared_ptr<core::StreamWriter> stream, bool no_buffer) {
-  std::string header_chunk =
-      protocol::createHeader(protocol::MessageType::kData, sizeof(header));
-  header_chunk.append(header, sizeof(header));
-  stream->write(header_chunk.data(), header_chunk.size());
   auto writer = ChunkWriter::create(stream, no_buffer);
+  std::string header_chunk(header, sizeof(header));
+  writer->write({&header_chunk});
   return PackEncoder::SPtr(new PackEncoderImpl(writer));
 }
 
