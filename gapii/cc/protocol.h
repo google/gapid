@@ -16,10 +16,10 @@
 
 /*
  * GAPII-GAPIS Protocol
- * 
+ *
  * Messages sent between GAPII and GAPIS consists of a fixed-size header
  * followed by the message data, which can be empty.
- * 
+ *
  * The header starts with one byte describing the message type, as defined
  * below in the enum MessageType. It is followed by the data size, expressed
  * as a 64bit unsigned integer, sent as 8 little-endian bytes.
