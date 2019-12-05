@@ -493,6 +493,7 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
   public static class StructNode {
     private static final int MAX_CHILDREN_SIZE = 100;
 
+    private final Path.API api;
     private final TypeInfo.Type type;
     private final MemoryBox.Value value;
     private final long rootAddress;     // The root address of the observation this node belongs to.
@@ -501,8 +502,9 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
     private String structName = "";     // Name information for node of type TypeInfo.StructField.
     private boolean isLargeArray = false;   // True if this node denotes a large array or slice.
 
-    public StructNode(TypeInfo.Type type, MemoryBox.Value value, long rootAddress,
+    public StructNode(Path.API api, TypeInfo.Type type, MemoryBox.Value value, long rootAddress,
         MemoryTypes typesModel) {
+      this.api = api;
       this.type = type;
       this.value = value;
       this.rootAddress = rootAddress;
@@ -531,7 +533,12 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
     }
 
     public String getValueFormatted() {
-      return MemoryBoxes.format(value, rootAddress);
+      if (type.getTyCase() == TyCase.ENUM && type.getEnum().hasConstants()) {
+        return ConstantSets.find(typesModel.constants.getConstants(type.getEnum().getConstants()),
+            value.getPod()).getName();
+      } else {
+        return MemoryBoxes.format(value, rootAddress);
+      }
     }
 
     public long getRootAddress() {
@@ -576,9 +583,9 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
           // Don't create and append children nodes if it's a large slice.
           if (value.getSlice().getValuesCount() < MAX_CHILDREN_SIZE) {
             TypeInfo.SliceType slice = type.getSlice();
-            childType = typesModel.getType(type(slice.getUnderlying()));
+            childType = typesModel.getType(type(slice.getUnderlying(), api));
             for (MemoryBox.Value childValue : value.getSlice().getValuesList()) {
-              children.add(new StructNode(childType, childValue, rootAddress, typesModel));
+              children.add(new StructNode(api, childType, childValue, rootAddress, typesModel));
             }
           } else {
             isLargeArray = true;
@@ -589,8 +596,8 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
           List<TypeInfo.StructField> childrenTypes = struct.getFieldsList();
           List<MemoryBox.Value> childrenValues = value.getStruct().getFieldsList();
           for (int i = 0; i < childrenValues.size(); i++) {
-            StructNode childNode = new StructNode(
-                typesModel.getType(type(childrenTypes.get(i).getType())), childrenValues.get(i),
+            StructNode childNode = new StructNode(api,
+                typesModel.getType(type(childrenTypes.get(i).getType(), api)), childrenValues.get(i),
                 rootAddress, typesModel);
             childNode.setStructName(childrenTypes.get(i).getName());
             children.add(childNode);
@@ -600,9 +607,9 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
           // Don't create and append children nodes if it's a large array.
           if (value.getArray().getEntriesCount() < MAX_CHILDREN_SIZE) {
             TypeInfo.ArrayType array = type.getArray();
-            childType = typesModel.getType(type(array.getElementType()));
+            childType = typesModel.getType(type(array.getElementType(), api));
             for (MemoryBox.Value childValue : value.getArray().getEntriesList()) {
-              children.add(new StructNode(childType, childValue, rootAddress, typesModel));
+              children.add(new StructNode(api, childType, childValue, rootAddress, typesModel));
             }
           } else {
             isLargeArray = true;
@@ -610,8 +617,8 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
           break;
         case PSEUDONYM:
           TypeInfo.PseudonymType pseudonym = type.getPseudonym();
-          childType = typesModel.getType(type(pseudonym.getUnderlying()));
-          children.add(new StructNode(childType, value, rootAddress, typesModel));
+          childType = typesModel.getType(type(pseudonym.getUnderlying(), api));
+          children.add(new StructNode(api, childType, value, rootAddress, typesModel));
           break;
         default:
           break;

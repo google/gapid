@@ -84,7 +84,7 @@ public class Models {
     ImagesModel images = new ImagesModel(client, devices, capture, settings);
     Geometries geometries = new Geometries(shell, analytics, client, devices, commands);
     Memory memory = new Memory(shell, analytics, client, devices, commands);
-    MemoryTypes types = new MemoryTypes(client, devices);
+    MemoryTypes types = new MemoryTypes(client, devices, constants);
     Perfetto perfetto = new Perfetto(shell, analytics, client, capture, status);
     return new Models(settings, analytics, follower, capture, devices, commands, contexts, timeline,
         resources, state, reports, images, constants, geometries, memory, types, perfetto, status);

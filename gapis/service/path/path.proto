@@ -148,7 +148,7 @@ message Commands {
 // Resolves to a service.ConstantSet.
 message ConstantSet {
   API API = 1;
-  uint32 index = 2;
+  int32 index = 2;
 }
 
 // Events is a path to a list of events in a capture.
@@ -179,6 +179,7 @@ message Parameter {
 // Type is the path to a type used in an API.
 message Type {
   uint64 type_index = 1;
+  API API = 2;
 }
 
 // Result is the path to the result value of a command.

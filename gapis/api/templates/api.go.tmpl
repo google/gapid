@@ -286,7 +286,7 @@ import (
     return {{$name}}({{Template "Go.Decode" $.NumberType}})
   }
 
-  func {{$name}}Constants() int {
+  func {{$name}}Constants() int32 {
     return {{ConstantSetIndex $}}
   }
 {{end}}
@@ -1168,7 +1168,7 @@ import (
     }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnRead; f != nil {
-        f(s.Range(),  s.root, {{$slice_ty}}TypeIndex)
+        f(s.Range(),  s.root, {{$slice_ty}}TypeIndex, ϟc.API().ID().CoreId())
       }
     }
     if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {
@@ -1225,7 +1225,7 @@ import (
     }
     if pool, err := ϟg.Memory.Get(s.Pool()); err == nil {
       if f := pool.OnWrite; f != nil {
-        f(s.Range(), s.root, {{$slice_ty}}TypeIndex)
+        f(s.Range(), s.root, {{$slice_ty}}TypeIndex, ϟc.API().ID().CoreId())
       }
     }
     if ϟb != nil && s.Pool() == ϟmem.ApplicationPool {

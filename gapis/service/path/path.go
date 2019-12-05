@@ -542,7 +542,7 @@ func NewSlice(s, e uint64, n Node) *Slice {
 func (n *API) ConstantSet(i int) *ConstantSet {
 	return &ConstantSet{
 		API:   n,
-		Index: uint32(i),
+		Index: int32(i),
 	}
 }
 
