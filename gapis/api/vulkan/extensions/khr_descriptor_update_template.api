@@ -49,7 +49,7 @@
 }
 
 
-// Rewrites all descriptorupdatetemplateentries to be 
+// Rewrites all descriptorupdatetemplateentries to be
 //   single updates (which avoid the overflow issues)
 sub dense_map!(u32, VkDescriptorUpdateTemplateEntry) rewriteDescriptorUpdateEntries
     (u32                                    descriptorUpdateEntryCount,
@@ -94,7 +94,7 @@ sub dense_map!(u32, VkDescriptorUpdateTemplateEntry) rewriteDescriptorUpdateEntr
         update.offset + (as!size(updating.UpdateIndex) * update.stride),
         update.stride,
       )
-      
+
       updating.ArrayIndex += 1
       updating.UpdateIndex += 1
     }
@@ -217,6 +217,7 @@ sub void updateDescriptorSetWithTemplate(
                 setBinding.BufferBinding = bufferBindings
             }
         }
+        set.Bindings[entry.dstBinding] = setBinding
     }
 }
 
