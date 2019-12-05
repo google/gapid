@@ -105,9 +105,7 @@ void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
 
   // Checks if the device supports Vulkan (have Vulkan loader) first, then
   // populates the VulkanDriver message.
-  std::cerr << "inside out\n";
   if (query::hasVulkanLoader()) {
-    std::cerr << "inside if\n";
     auto vulkan_driver = new VulkanDriver();
     if (opt.vulkan.query_layers_and_extensions()) {
       query::vkLayersAndExtensions(vulkan_driver);
