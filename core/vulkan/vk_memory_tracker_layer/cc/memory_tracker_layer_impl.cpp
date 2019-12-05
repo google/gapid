@@ -981,7 +981,7 @@ VulkanMemoryEventPtr HostAllocation::GetVulkanMemoryEvent() {
 // --------------------------- Memory events tracker ---------------------------
 
 MemoryTracker::MemoryTracker()
-    : track_host_memory_(false), initial_state_is_sent_(false) {}
+    : track_host_memory_(true), initial_state_is_sent_(false) {}
 
 const VkAllocationCallbacks* MemoryTracker::GetTrackedAllocator(
     const VkAllocationCallbacks* pUserAllocator, const std::string& caller) {

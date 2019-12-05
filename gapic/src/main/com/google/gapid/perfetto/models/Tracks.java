@@ -34,6 +34,7 @@ import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
+import com.google.gapid.perfetto.views.VulkanCounterPanel;
 
 import java.util.Collections;
 import java.util.List;
@@ -188,6 +189,21 @@ public class Tracks {
         final int idleCount = threads.size() - firstIdle;
         data.tracks.addLabelGroup(summary.getId(), summary.getId() + "_idle", "Idle Threads",
             group(state -> new TitlePanel(idleCount + " Idle Threads (< 0.1%)"), false));
+      }
+
+      // For each process, add Vulkan memory usage counters if any exist
+      List<CounterInfo> counters = data.getCounters().values().stream()
+      .filter(c -> (c.count > 0) && (c.name.startsWith("vulkan")))
+      .collect(toList());
+
+      if (!counters.isEmpty()) {
+        data.tracks.addLabelGroup(summary.getId(), "vulkan_counters", "Vulkan Counters",
+            group(state -> new TitlePanel("Vulkan Memory Usage Counters"), true));
+        for (CounterInfo counter : counters) {
+          CounterTrack track = new CounterTrack(counter);
+          data.tracks.addTrack("vulkan_counters", track.getId(), counter.name,
+              single(state -> new VulkanCounterPanel(state, track), true));
+        }
       }
     });
 
