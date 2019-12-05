@@ -500,8 +500,9 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
   PFN_vkGetInstanceProcAddr get_instance_proc_addr =
       layer_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
 
+  auto instance = GetGlobalContext().GetVkPhysicalDeviceData(physicalDevice)->instance;
   PFN_vkCreateDevice next = reinterpret_cast<PFN_vkCreateDevice>(
-      get_instance_proc_addr(NULL, "vkCreateDevice"));
+      get_instance_proc_addr(instance, "vkCreateDevice"));
 
   if (!next) {
     return VK_ERROR_INITIALIZATION_FAILED;
@@ -529,7 +530,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(
   DeviceData data;
   data.functions = new DeviceFunctions();
   data.physical_device = physicalDevice;
-  data.instance = GetGlobalContext().GetVkPhysicalDeviceData(physicalDevice)->instance;
+  data.instance = instance;
   data.get_device_proc_addr = get_device_proc_addr;
   data.allocate_command_buffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(get_device_proc_addr(*pDevice, "vkAllocateCommandBuffers"));
   data.get_device_queue = reinterpret_cast<PFN_vkGetDeviceQueue>(get_device_proc_addr(*pDevice, "vkGetDeviceQueue"));
