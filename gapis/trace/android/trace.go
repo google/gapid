@@ -171,12 +171,13 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 		doneSignal, doneFunc := task.NewSignal()
 
 		crash.Go(func() {
+			// TODO(b/142824856): This is a workaround to a problem that render stages data
+			// is not captured if the application starts after tracing.
+			time.Sleep(2 * time.Second)
 			_, err = process.Capture(ctx, startSignal, stopSignal, readyFunc, &buf, &written)
 			doneFunc(ctx)
 		})
 
-		// TODO(lpy): If we start tracing too early, the data has a lot of noise
-		// at the beginning, need to figure out a sweet spot.
 		startFunc(ctx)
 		if !doneSignal.Wait(ctx) {
 			err = log.Err(ctx, err, "Fail to wait for done signal from Perfetto.")

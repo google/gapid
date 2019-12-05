@@ -32,6 +32,9 @@ const (
 		"select value from counter_values " +
 		"where counter_id = %v order by ts " +
 		"limit %v offset 10"
+	renderStageTrackIdsQuery = "" +
+		"select id from gpu_track " +
+		"where scope = 'gpu_render_stage'"
 	sampleCounter = 100
 )
 
@@ -154,4 +157,17 @@ func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, cou
 		}
 	}
 	return nil
+}
+
+// GetRenderStageTrackIDs returns all track ids from gpu_track where the scope is gpu_render_stage
+func GetRenderStageTrackIDs(ctx context.Context, processor *perfetto.Processor) ([]int64, error) {
+	queryResult, err := processor.Query(renderStageTrackIdsQuery)
+	if err != nil || queryResult.GetNumRecords() <= 0 {
+		return []int64{}, log.Err(ctx, err, "Failed to query GPU render stage track ids")
+	}
+	result := make([]int64, queryResult.GetNumRecords())
+	for i, v := range queryResult.GetColumns()[0].GetLongValues() {
+		result[i] = v
+	}
+	return result, nil
 }
