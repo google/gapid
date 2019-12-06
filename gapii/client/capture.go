@@ -66,12 +66,13 @@ const (
 	GvrAPI = uint32(1 << 3)
 )
 
+type messageType byte
 const (
-	messageData       byte = 0x00
-	messageStartTrace byte = 0x01
-	messageEndTrace   byte = 0x02
-	messageError      byte = 0x03
-	messageInvalid    byte = 0xff
+	messageData       messageType = 0x00
+	messageStartTrace messageType = 0x01
+	messageEndTrace   messageType = 0x02
+	messageError      messageType = 0x03
+	messageInvalid    messageType = 0xff
 )
 
 // Options to use when creating a capture.
@@ -151,6 +152,78 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 	})
 }
 
+func handleCommError(ctx context.Context, commErr error, anyDataReceived bool) (abort bool, err error) {
+	switch {
+	case errors.Cause(commErr) == io.EOF:
+		log.E(ctx, "unexpected end of stream")
+		abort = true
+		err = commErr
+	case commErr != nil && anyDataReceived:
+		netErr, isnet := commErr.(net.Error)
+		if !isnet || (!netErr.Temporary() && !netErr.Timeout()) {
+			log.E(ctx, "Connection error: %v", netErr)
+			// Got an error mid-stream terminate.
+			abort = true
+			err = netErr
+		}
+	case commErr != nil && !anyDataReceived:
+		// Got an error without receiving a byte of data.
+		// Treat failure-to-connect as target-not-ready instead of an error.
+		abort = true
+	}
+	return
+}
+
+func readHeader(conn net.Conn) (msgType messageType, dataSize uint64, err error) {
+	msgType = messageInvalid
+	now := time.Now()
+	conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
+	var bufSize int
+	buf := make([]byte, 6)
+	bufSize, err = io.ReadFull(conn, buf)
+	if bufSize == 6 {
+		// first header byte contains the message type
+		msgType = messageType(buf[0])
+		// next 5 bytes contain the data size as little-endian 40bit unsigned integer
+		for i := uint(0); i < 5; i++ {
+			dataSize += uint64(buf[i + 1]) << (i * 8)
+		}
+	}
+	return
+}
+
+func readData(ctx context.Context, conn net.Conn, dataSize uint64, w io.Writer, written *int64) (read siSize, err error) {
+	const bufSize siSize = 64 * 1024
+	for ; read < siSize(dataSize); {
+		copyCount := siSize(dataSize) - read
+		if copyCount > bufSize {
+			copyCount = bufSize
+		}
+		now := time.Now()
+		conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
+		copySize, copyErr := io.CopyN(w, conn, int64(bufSize))
+		read += siSize(copySize)
+		atomic.AddInt64(written, int64(copySize))
+		if abort, abortErr := handleCommError(ctx, copyErr, true); abort {
+			err = abortErr
+			return
+		}
+	}
+	return
+}
+
+func readError(conn net.Conn, dataSize uint64) (errorMsg string, err error) {
+	now := time.Now()
+	conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
+	var bufSize int
+	buf := make([]byte, dataSize)
+	bufSize, err = io.ReadFull(conn, buf)
+	if bufSize == int(dataSize) {
+		errorMsg = string(buf)
+	}
+	return
+}
+
 // Capture opens up the specified port and then waits for a capture to be
 // delivered using the specified capture options o.
 // It copies the capture into the supplied writer.
@@ -186,108 +259,63 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	conn := p.conn
 	defer conn.Close()
 
+	writeErr := make(chan error)
 	if (p.Options.Flags & DeferStart) != 0 {
 		go func() {
 			if start.Wait(ctx) {
-				conn.Write([]byte{0x1, messageStartTrace})
+				if _, err := conn.Write([]byte{byte(messageStartTrace), 0, 0, 0, 0, 0}); err != nil {
+					writeErr <- err
+				}
 			}
 		}()
 	}
-
 	go func() {
 		if stop.Wait(ctx) {
-			conn.Write([]byte{0x1, messageEndTrace})
+			if _, err := conn.Write([]byte{byte(messageEndTrace), 0, 0, 0, 0, 0}); err != nil {
+				writeErr <- err
+			}
 		}
 	}()
 
-	buf := make([]byte, 64*1024)
-	var bufSize, bufPos int
-	var headerPos uint
-	var chunkSize uint64
-	var readErr error
-	var count, remain siSize
-	var messageType byte = messageInvalid
-	var bufErr []byte
+	var count siSize
+	var lastErrorMsg string
 mainLoop:
 	for {
+		select {
+		case err := <- writeErr:
+			return int64(count), err
+		default:
+		}
 		if task.Stopped(ctx) {
 			log.I(ctx, "Stop: %v", count)
 			break mainLoop
 		}
-		if bufPos >= bufSize {
-			// handle read error after processing buffer
-			switch {
-			case errors.Cause(readErr) == io.EOF:
-				// unexpected end of stream
-				log.E(ctx, "EOF: %v", count)
+		msgType, dataSize, readErr := readHeader(conn)
+		if abort, err := handleCommError(ctx, readErr, count > 0); abort {
+			return int64(count), err
+		}
+		switch msgType {
+		case messageData:
+			read, readErr := readData(ctx, conn, dataSize, w, written)
+			count += read
+			if readErr != nil {
 				return int64(count), readErr
-			case readErr != nil && count > 0:
-				err, isnet := readErr.(net.Error)
-				if !isnet || (!err.Temporary() && !err.Timeout()) {
-					log.E(ctx, "Connection error: %v", err)
-					// Got an error mid-stream terminate.
-					return int64(count), err
-				}
-			case readErr != nil && count == 0:
-				// Got an error without receiving a byte of data.
-				// Treat failure-to-connect as target-not-ready instead of an error.
-				return 0, nil
 			}
-			// read new buffer from connection
-			bufPos = 0
-			now := time.Now()
-			conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-			bufSize, readErr = conn.Read(buf)
-		} else if remain == 0 {
-			// read message header
-			if headerPos == 0 {
-				messageType = buf[bufPos]
-				if messageType == messageError {
-					bufErr = nil
-				}
-			} else {
-				chunkSize += uint64(buf[bufPos]) << ((headerPos - 1) * 8)
+		case messageEndTrace:
+			log.D(ctx, "Received end trace message: %v", count)
+			// if received error messages, return most recent
+			if lastErrorMsg != "" {
+				return int64(count), errors.New(lastErrorMsg)
 			}
-			bufPos++
-			headerPos++
-			// if message header complete
-			if headerPos == 9 {
-				headerPos = 0
-				remain = siSize(chunkSize)
-				chunkSize = 0
-				if messageType == messageEndTrace {
-					log.I(ctx, "Received end trace message: %v", count)
-					// if received error messages, return most recent
-					if bufErr != nil {
-						return int64(count), errors.New(string(bufErr))
-					}
-					break mainLoop
-				}
+			break mainLoop
+		case messageError:
+			errorMsg, readErr := readError(conn, dataSize)
+			if errorMsg != "" {
+				log.E(ctx, "Received error: %s", errorMsg)
+				lastErrorMsg = errorMsg
 			}
-		} else {
-			// read message data
-			copyCount := bufSize - bufPos
-			if siSize(copyCount) > remain {
-				copyCount = int(remain)
-			}
-			switch messageType {
-			case messageData:
-				if _, writeErr := w.Write(buf[bufPos : bufPos+copyCount]); writeErr != nil {
-					return int64(count), writeErr
-				}
-				count += siSize(copyCount)
-				atomic.StoreInt64(written, int64(count))
-			case messageError:
-				bufErr = append(bufErr, buf[bufPos:bufPos+copyCount]...)
-			}
-			bufPos += copyCount
-			remain -= siSize(copyCount)
-			// if message data complete
-			if remain == 0 {
-				if messageType == messageError {
-					log.E(ctx, "Received error: %s", string(bufErr))
-				}
-				messageType = messageInvalid
+			if abort, err := handleCommError(ctx, readErr, true); abort {
+				return int64(count), err
 			}
 		}
 	}

@@ -240,16 +240,16 @@ Spy::Spy()
             if (count == protocol::kHeaderSize) {
               switch (static_cast<protocol::MessageType>(buffer[0])) {
                 case protocol::MessageType::kStartTrace:
-                  GAPID_INFO("Received start trace message");
+                  GAPID_DEBUG("Received start trace message");
                   if (is_suspended()) {
-                    GAPID_INFO("Starting capture");
+                    GAPID_DEBUG("Starting capture");
                     mSuspendCaptureFrames = 1;
                   }
                   break;
                 case protocol::MessageType::kEndTrace:
-                  GAPID_INFO("Received end trace message");
+                  GAPID_DEBUG("Received end trace message");
                   if (!is_suspended()) {
-                    GAPID_INFO("Ending capture");
+                    GAPID_DEBUG("Ending capture");
                     mCaptureFrames = 1;
                   }
                   break;
@@ -557,7 +557,7 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
   if (is_suspended()) {
     if (mSuspendCaptureFrames > 0) {
       if (--mSuspendCaptureFrames == 0) {
-        GAPID_INFO("Started capture");
+        GAPID_DEBUG("Started capture");
         // We must change suspended state BEFORE releasing the Spy lock with
         // exit(), because the suspended state affects concurrent CallObservers.
         set_suspended(false);
@@ -569,7 +569,7 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
   } else {
     if (mCaptureFrames > 0) {
       if (--mCaptureFrames == 0) {
-        GAPID_INFO("Ended capture");
+        GAPID_DEBUG("Ended capture");
         mEncoder->flush();
         // Error messages can be transferred any time during the trace, e.g.:
         // auto err = protocol::createError("end of the world");

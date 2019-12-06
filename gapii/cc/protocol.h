@@ -22,7 +22,7 @@
  *
  * The header starts with one byte describing the message type, as defined
  * below in the enum MessageType. It is followed by the data size, expressed
- * as a 64bit unsigned integer, sent as 8 little-endian bytes.
+ * as a 40bit unsigned integer, sent as 5 little-endian bytes.
  */
 
 #ifndef GAPII_PROTOCOL_H
@@ -33,8 +33,8 @@
 namespace gapii {
 namespace protocol {
 
-// Header size is one byte for the type and 8 bytes for the data size
-const uint8_t kHeaderSize = 1u + 8u;
+// Header size is one byte for the type and 5 bytes for the data size
+const uint8_t kHeaderSize = 1u + 5u;
 
 enum class MessageType : uint8_t {
   kData = 0x00u,
@@ -52,9 +52,6 @@ inline void writeHeader(uint8_t* buffer, MessageType msg_type,
   buffer[3] = static_cast<uint8_t>(data_size >> 16u);
   buffer[4] = static_cast<uint8_t>(data_size >> 24u);
   buffer[5] = static_cast<uint8_t>(data_size >> 32u);
-  buffer[6] = static_cast<uint8_t>(data_size >> 40u);
-  buffer[7] = static_cast<uint8_t>(data_size >> 48u);
-  buffer[8] = static_cast<uint8_t>(data_size >> 56u);
 }
 
 inline std::string createHeader(MessageType msg_type, uint64_t msg_size = 0u) {
