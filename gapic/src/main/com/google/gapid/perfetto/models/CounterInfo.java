@@ -23,27 +23,25 @@ import com.google.gapid.models.Perfetto;
 
 public class CounterInfo {
   private static final String LIST_SQL =
-      "select counter_id, name, ref, ref_type, description, count(value)," +
+      "select counter_id, name, type, description, count(value)," +
       " min(value), max(value), avg(value) " +
       "from counter_definitions left join counter_values using (counter_id) " +
       "group by counter_id";
 
   public final long id;
   public final String name;
-  public final long ref;
-  public final String refType;
+  public final String type;
   public final String description;
   public final long count;
   public final double min;
   public final double max;
   public final double avg;
 
-  public CounterInfo(long id, String name, long ref, String refType, String description, long count,
+  public CounterInfo(long id, String name, String type, String description, long count,
       double min, double max, double avg) {
     this.id = id;
     this.name = name;
-    this.ref = ref;
-    this.refType = refType;
+    this.type = type;
     this.description = description;
     this.count = count;
     this.min = min;
@@ -52,8 +50,8 @@ public class CounterInfo {
   }
 
   private CounterInfo(QueryEngine.Row row) {
-    this(row.getLong(0), row.getString(1), row.getLong(2), row.getString(3), row.getString(4),
-        row.getLong(5), row.getDouble(6), row.getDouble(7), row.getDouble(8));
+    this(row.getLong(0), row.getString(1), row.getString(2), row.getString(3),
+        row.getLong(4), row.getDouble(5), row.getDouble(6), row.getDouble(7));
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> listCounters(Perfetto.Data.Builder data) {
