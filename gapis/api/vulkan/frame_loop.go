@@ -2525,7 +2525,7 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 		stateBuilder.allocateDescriptorSets(descPoolObj, descSetHandles, descSetLayoutHandles)
 	}
 
-	// Update the map of changed descriptorset due to the buffer/image recreateion etc.
+	// Update the map of changed descriptorset due to the buffer/image recreation etc.
 	f.updateChangedDescriptorSet(ctx)
 	// For every DescriptorSet that was modified during the loop...
 	for changed := range f.descriptorSetChanged {
