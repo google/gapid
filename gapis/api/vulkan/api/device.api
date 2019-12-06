@@ -52,6 +52,7 @@
   @unused VkDevice                   VulkanHandle
   @unused ref!VulkanDebugMarkerInfo  DebugInfo
   @unused bool                       CreatedWithDeviceGroup
+  @unused VkBool32                   HostQueryReset
 
   // Vulkan 1.1
   @unused ref!VariablePointerFeatures VariablePointerFeatures
@@ -181,6 +182,10 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             object.CreatedWithDeviceGroup = true
           }
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+            ext := as!VkPhysicalDeviceHostQueryResetFeaturesEXT*(next.Ptr)[0]
+            object.HostQueryReset = ext.hostQueryReset
+        }
         default: {
           // do nothing
         }
@@ -194,7 +199,7 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   for i in (0 .. info.queueCreateInfoCount) {
     queue_info := queueCreateInfos[i]
 
-    // handle pNext 
+    // handle pNext
     if queue_info.pNext != null {
       numPNext := numberOfPNext(queue_info.pNext)
       next := MutableVoidPtr(as!void*(queue_info.pNext))

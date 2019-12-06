@@ -99,6 +99,7 @@ import "extensions/khr_descriptor_update_template.api"
 import "extensions/khr_device_group_creation.api"
 import "extensions/khr_device_group.api"
 import "extensions/google_display_timing.api"
+import "extensions/ext_host_query_reset.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -255,6 +256,7 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_descriptor_update_template"] = true
   supported.ExtensionNames["VK_KHR_device_group"] = true
   supported.ExtensionNames["VK_GOOGLE_display_timing"] = true
+  supported.ExtensionNames["VK_EXT_host_query_reset"] = true
   return supported
 }
 
