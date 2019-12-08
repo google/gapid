@@ -335,6 +335,7 @@ PackEncoder::SPtr PackEncoder::create(
   auto writer = ChunkWriter::create(stream, no_buffer);
   std::string header_chunk(header, sizeof(header));
   writer->write({&header_chunk});
+  writer->flush();  // don't buffer header, otherwise client will time out
   return PackEncoder::SPtr(new PackEncoderImpl(writer));
 }
 

@@ -67,6 +67,7 @@ const (
 )
 
 type messageType byte
+
 const (
 	messageData       messageType = 0x00
 	messageStartTrace messageType = 0x01
@@ -167,6 +168,7 @@ func handleCommError(ctx context.Context, commErr error, anyDataReceived bool) (
 			err = netErr
 		}
 	case commErr != nil && !anyDataReceived:
+		log.E(ctx, "Target not ready: %v", commErr)
 		// Got an error without receiving a byte of data.
 		// Treat failure-to-connect as target-not-ready instead of an error.
 		abort = true
@@ -186,7 +188,7 @@ func readHeader(conn net.Conn) (msgType messageType, dataSize uint64, err error)
 		msgType = messageType(buf[0])
 		// next 5 bytes contain the data size as little-endian 40bit unsigned integer
 		for i := uint(0); i < 5; i++ {
-			dataSize += uint64(buf[i + 1]) << (i * 8)
+			dataSize += uint64(buf[i+1]) << (i * 8)
 		}
 	}
 	return
@@ -194,7 +196,7 @@ func readHeader(conn net.Conn) (msgType messageType, dataSize uint64, err error)
 
 func readData(ctx context.Context, conn net.Conn, dataSize uint64, w io.Writer, written *int64) (read siSize, err error) {
 	const bufSize siSize = 64 * 1024
-	for ; read < siSize(dataSize); {
+	for read < siSize(dataSize) {
 		copyCount := siSize(dataSize) - read
 		if copyCount > bufSize {
 			copyCount = bufSize
@@ -282,7 +284,8 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 mainLoop:
 	for {
 		select {
-		case err := <- writeErr:
+		case err := <-writeErr:
+			log.E(ctx, "Write error: %v", err)
 			return int64(count), err
 		default:
 		}
