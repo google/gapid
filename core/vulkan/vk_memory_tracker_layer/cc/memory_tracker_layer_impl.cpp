@@ -15,8 +15,6 @@
  */
 
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/sysinfo.h>
 #include <algorithm>
 #include <sstream>
 #include <thread>
