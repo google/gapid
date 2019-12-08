@@ -162,10 +162,10 @@ func handleCommError(ctx context.Context, commErr error, anyDataReceived bool) (
 	case commErr != nil && anyDataReceived:
 		netErr, isnet := commErr.(net.Error)
 		if !isnet || (!netErr.Temporary() && !netErr.Timeout()) {
-			log.E(ctx, "Connection error: %v", netErr)
+			log.E(ctx, "Connection error: %v", commErr)
 			// Got an error mid-stream terminate.
 			abort = true
-			err = netErr
+			err = commErr
 		}
 	case commErr != nil && !anyDataReceived:
 		log.E(ctx, "Target not ready: %v", commErr)
@@ -195,17 +195,17 @@ func readHeader(conn net.Conn) (msgType messageType, dataSize uint64, err error)
 }
 
 func readData(ctx context.Context, conn net.Conn, dataSize uint64, w io.Writer, written *int64) (read siSize, err error) {
-	const bufSize siSize = 64 * 1024
+	const maxBufSize siSize = 64 * 1024
 	for read < siSize(dataSize) {
 		copyCount := siSize(dataSize) - read
-		if copyCount > bufSize {
-			copyCount = bufSize
+		if copyCount > maxBufSize {
+			copyCount = maxBufSize
 		}
 		now := time.Now()
 		conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-		copySize, copyErr := io.CopyN(w, conn, int64(bufSize))
-		read += siSize(copySize)
-		atomic.AddInt64(written, int64(copySize))
+		writeCount, copyErr := io.CopyN(w, conn, int64(copyCount))
+		read += siSize(writeCount)
+		atomic.AddInt64(written, writeCount)
 		if abort, abortErr := handleCommError(ctx, copyErr, true); abort {
 			err = abortErr
 			return
@@ -293,16 +293,16 @@ mainLoop:
 			log.I(ctx, "Stop: %v", count)
 			break mainLoop
 		}
-		msgType, dataSize, readErr := readHeader(conn)
-		if abort, err := handleCommError(ctx, readErr, count > 0); abort {
+		msgType, dataSize, headerErr := readHeader(conn)
+		if abort, err := handleCommError(ctx, headerErr, count > 0); abort {
 			return int64(count), err
 		}
 		switch msgType {
 		case messageData:
-			read, readErr := readData(ctx, conn, dataSize, w, written)
+			read, dataErr := readData(ctx, conn, dataSize, w, written)
 			count += read
-			if readErr != nil {
-				return int64(count), readErr
+			if dataErr != nil {
+				return int64(count), dataErr
 			}
 		case messageEndTrace:
 			log.D(ctx, "Received end trace message: %v", count)
@@ -312,12 +312,12 @@ mainLoop:
 			}
 			break mainLoop
 		case messageError:
-			errorMsg, readErr := readError(conn, dataSize)
+			errorMsg, errorErr := readError(conn, dataSize)
 			if errorMsg != "" {
 				log.E(ctx, "Received error: %s", errorMsg)
 				lastErrorMsg = errorMsg
 			}
-			if abort, err := handleCommError(ctx, readErr, true); abort {
+			if abort, err := handleCommError(ctx, errorErr, true); abort {
 				return int64(count), err
 			}
 		}
