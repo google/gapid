@@ -57,7 +57,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
         "from counter_definitions cd left join counter_values cv using(counter_id) " +
         "where name = 'cpufreq' group by counter_id), " +
       "idle as (select ref, counter_id idle_id from counter_definitions where name = 'cpuidle') " +
-      "select ref, freq_id, freq, idle_id from idle innter join freq using (ref)";
+      "select ref, freq_id, freq, idle_id from idle inner join freq using (ref)";
   private static final String SUMMARY_SQL =
       "select quantum_ts, sum(dur)/cast(%d as float) " +
       "from %s where cpu = %d and utid != 0 " +
