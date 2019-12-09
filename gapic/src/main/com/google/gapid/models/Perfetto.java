@@ -27,6 +27,7 @@ import static java.util.logging.Level.WARNING;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
@@ -96,7 +97,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   private static ListenableFuture<Data.Builder> examineTrace(Data.Builder data) {
     return transformAsync(data.qe.getTraceTimeBounds(), traceTime -> {
       data.setTraceTime(traceTime);
-      return transform(data.qe.getNumberOfCpus(), numCpus -> data.setNumCpus(numCpus));
+      return transform(data.qe.getCpuIds(), cpuIds -> data.setCpuIds(cpuIds));
     });
   }
 
@@ -168,6 +169,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   public static class Data {
     public final QueryEngine qe;
     public final TimeSpan traceTime;
+    public final ImmutableList<Integer> cpuIds;
     public final int numCpus;
     public final ImmutableMap<Long, ProcessInfo> processes;
     public final ImmutableMap<Long, ThreadInfo> threads;
@@ -175,12 +177,13 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public final ImmutableMap<Long, CounterInfo> counters;
     public final TrackConfig tracks;
 
-    public Data(QueryEngine queries, TimeSpan traceTime, int numCpus,
+    public Data(QueryEngine queries, TimeSpan traceTime, ImmutableList<Integer> cpuIds,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
         GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
-      this.numCpus = numCpus;
+      this.cpuIds = cpuIds;
+      this.numCpus = cpuIds.size();
       this.processes = processes;
       this.threads = threads;
       this.gpu = gpu;
@@ -191,6 +194,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public static class Builder {
       public final QueryEngine qe;
       private TimeSpan traceTime;
+      private ImmutableList<Integer> cpuIds;
       private int numCpus;
       private ImmutableMap<Long, ProcessInfo> processes;
       private ImmutableMap<Long, ThreadInfo> threads;
@@ -213,11 +217,16 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       }
 
       public int getNumCpus() {
-        return numCpus;
+        return cpuIds.size();
       }
 
-      public Builder setNumCpus(int numCpus) {
-        this.numCpus = numCpus;
+      public ImmutableList<Integer> getCpuIds() {
+        return cpuIds;
+      }
+
+      public Builder setCpuIds(ImmutableList<Integer> cpuIds) {
+        this.numCpus = cpuIds.size();
+        this.cpuIds = cpuIds;
         return this;
       }
 
@@ -264,7 +273,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       }
 
       public Data build() {
-        return new Data(qe, traceTime, numCpus, processes, threads, gpu, counters, tracks.build());
+        return new Data(qe, traceTime, cpuIds, processes, threads, gpu, counters, tracks.build());
       }
     }
   }

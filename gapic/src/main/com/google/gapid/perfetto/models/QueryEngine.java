@@ -25,6 +25,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -39,6 +40,7 @@ import com.google.gapid.util.Scheduler;
 import com.google.gapid.views.StatusBar;
 
 import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -139,6 +141,20 @@ public class QueryEngine {
   public ListenableFuture<Integer> getNumberOfCpus() {
     return transform(expectOneRow(query(NUM_CPUS_QUERY)), r -> r.getInt(0));
   }
+
+  public ListenableFuture<ImmutableList<Integer>> getCpuIds() {
+    return transform(query("select distinct(cpu) from sched"), result -> {
+      List<Integer> cpuIds = Lists.newArrayListWithCapacity(result.getNumRows());
+      for (int i = 0; i < result.getNumRows(); ++i) {
+        cpuIds.add(result.getRow(i).getInt(0));
+      }
+      // We sort so that the CPUs show up in the right order in the UI.
+      Collections.sort(cpuIds);
+      return ImmutableList.copyOf(cpuIds);
+    });
+  }
+
+
 
   public static String dropTable(String name) {
     return "drop table if exists " + name;

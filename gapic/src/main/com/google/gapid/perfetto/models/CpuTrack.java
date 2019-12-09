@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Arrays;
 
 /**
  * {@link Track} containing CPU slices for a single core.
@@ -165,23 +166,21 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SLICE_RANGE_FOR_THREAD_SQL, utid, ts.end, ts.start);
   }
 
-  public static ListenableFuture<List<CpuConfig>> enumerate(
-      String parent, Perfetto.Data.Builder data) {
+  public static ListenableFuture<List<CpuConfig>> enumerate(String parent, Perfetto.Data.Builder data) {
     return transform(freqMap(data.qe), freqMap -> {
       List<CpuConfig> configs = Lists.newArrayList();
-      for (int i = 0; i < data.getNumCpus(); i++) {
-        QueryEngine.Row freq = freqMap.get(Long.valueOf(i));
-        CpuTrack track = new CpuTrack(i);
-        data.tracks.addTrack(parent, track.getId(), "CPU " + (i + 1),
+      for (int i = 0; i < data.getCpuIds().size(); i++) {
+        QueryEngine.Row freq = freqMap.get(Long.valueOf(data.getCpuIds().get(i)));
+        CpuTrack track = new CpuTrack(data.getCpuIds().get(i));
+        data.tracks.addTrack(parent, track.getId(), "CPU " + data.getCpuIds().get(i),
             single(state -> new CpuPanel(state, track), false));
         if (freq != null) {
-          CpuFrequencyTrack freqTrack =
-              new CpuFrequencyTrack(i, freq.getLong(1), freq.getDouble(2), freq.getLong(3));
-          data.tracks.addTrack(
-              parent, freqTrack.getId(), "CPU " + (i + 1) + " Frequency",
+          CpuFrequencyTrack freqTrack = 
+              new CpuFrequencyTrack(data.getCpuIds().get(i), freq.getLong(1), freq.getDouble(2), freq.getLong(3));
+          data.tracks.addTrack(parent, freqTrack.getId(), "CPU " + data.getCpuIds().get(i) + " Frequency", 
               single(state -> new CpuFrequencyPanel(state, freqTrack), false));
         }
-        configs.add(new CpuConfig(i, freq != null));
+        configs.add(new CpuConfig(data.getCpuIds().get(i), freq != null));
       }
       return configs;
     });
