@@ -40,7 +40,6 @@ type customState struct {
 	IsRebuilding      bool
 	pushMarkerGroup   func(name string, next bool, ty MarkerType)
 	popMarkerGroup    func(ty MarkerType)
-	postBindSparse    func(binds QueuedSparseBindsʳ)
 	queuedCommands    map[CommandReferenceʳ]QueuedCommand
 	initialCommands   map[VkCommandBuffer][]api.Cmd
 }
