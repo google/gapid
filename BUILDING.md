@@ -42,9 +42,11 @@ Using the msys64 shell at `C:\tools\msys64\mingw64`:
 6. Install gcc with: `pacman -U mingw-w64-x86_64-gcc*-7.3.0-2-any.pkg.tar.xz`
 7. Close the MSYS terminal
 
-### Install Java Runtime 8
+### Install Java Development Kit 8
 
-A JRE is required by the Android SDK tools. If you do not already have a JRE installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+
+Make sure the `JAVA_HOME` environment variable points to the JDK.
 
 ### Install Android SDK and NDK
 
@@ -98,9 +100,11 @@ The following environment variables will need to be set prior to building:
 
 Follow the [MacOS Bazel Install](https://docs.bazel.build/versions/master/install-os-x.html) directions to install bazel.
 
-### Install Java Runtime 8
+### Install Java Development Kit 8
 
-A JRE is required by the Android SDK tools. If you do not already have a JRE installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+
+Make sure the `JAVA_HOME` environment variable points to the JDK.
 
 ### Install Android SDK and NDK
 
@@ -162,6 +166,12 @@ The following environment variables will need to be set prior to building:
 Follow the [Ubuntu Bazel Install](https://docs.bazel.build/versions/master/install-ubuntu.html) or the[Fedora/CentOS Bazel Install](https://docs.bazel.build/versions/master/install-redhat.html) directions to install bazel.
 
 Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://github.com/bazelbuild/bazel/releases).
+
+### Install Java Development Kit 8
+
+A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+
+Make sure the `JAVA_HOME` environment variable points to the JDK.
 
 ### Install Android SDK and NDK
 
