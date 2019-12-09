@@ -264,8 +264,8 @@ public class TrackContainer {
         ctx.drawIcon(arrowDown(ctx.theme), 0, 0, TITLE_HEIGHT);
         ctx.drawText(Fonts.Style.Normal, summary.getTitle(), LABEL_OFFSET, 0, TITLE_HEIGHT);
 
-        double x = Math.max(LABEL_TOGGLE_X,
-            LABEL_OFFSET + ctx.measure(Fonts.Style.Normal, summary.getTitle()).w + LABEL_MARGIN);
+        double x = Math.max(LABEL_TOGGLE_X, LABEL_OFFSET +
+            Math.ceil(ctx.measure(Fonts.Style.Normal, summary.getTitle()).w) + LABEL_MARGIN);
         if (filter != null) {
           ctx.drawIcon(
               filtered ? unfoldMore(ctx.theme) : unfoldLess(ctx.theme), x, 0, TITLE_HEIGHT);
@@ -328,32 +328,36 @@ public class TrackContainer {
     public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
       if (y < TITLE_HEIGHT && (expanded || x < LABEL_WIDTH)) {
         hovered = true;
-        double p = m.measure(Fonts.Style.Normal, summary.getTitle()).w + LABEL_OFFSET;
+        double textEnd =
+            Math.ceil(m.measure(Fonts.Style.Normal, summary.getTitle()).w) + LABEL_OFFSET;
+        double gapEnd = expanded ? Math.max(textEnd, LABEL_TOGGLE_X) : LABEL_TOGGLE_X;
+        double toggleEnd = (expanded && filter != null) ? gapEnd + LABEL_ICON_SIZE : gapEnd;
+        double pinEnd = Math.max(LABEL_PIN_X, toggleEnd) + LABEL_ICON_SIZE;
+        double redraw = (pinEnd > LABEL_WIDTH) ? pinEnd + LABEL_MARGIN : 0;
         if (expanded) {
-          if (x < p) {
-            return new TrackTitleHover(Hover.NONE, () -> expanded = false);
+          if (x < textEnd) {
+            return new TrackTitleHover(Hover.NONE, redraw, () -> expanded = false);
           }
-          p = Math.max(p + LABEL_MARGIN, LABEL_TOGGLE_X);
         } else {
-          if (x < Math.min(p, LABEL_PIN_X - LABEL_MARGIN)) {
-            return new TrackTitleHover(summary.onMouseMove(m, x, y), () -> expanded = true);
+          if (x < Math.min(textEnd, LABEL_PIN_X - LABEL_MARGIN)) {
+            return new TrackTitleHover(summary.onMouseMove(m, x, y), redraw, () -> expanded = true);
           }
-          p = LABEL_PIN_X;
+          toggleEnd = LABEL_PIN_X;
+          pinEnd = LABEL_WIDTH;
         }
-        if (expanded && filter != null && x >= p && x < p + LABEL_ICON_SIZE) {
-          return new TrackTitleHover(Hover.NONE, () -> {
+        if (expanded && filter != null && x >= gapEnd && x < toggleEnd) {
+          return new TrackTitleHover(Hover.NONE, redraw, () -> {
             filtered = !filtered;
             filter.accept(detail, filtered);
           });
         }
-        p = Math.max(p, LABEL_PIN_X);
-        if (x >= p && x < p + LABEL_ICON_SIZE) {
-          return new TrackTitleHover(Hover.NONE, () -> pinState.toggle(this::copy));
+        if (x >= toggleEnd && x < pinEnd) {
+          return new TrackTitleHover(Hover.NONE, redraw, () -> pinState.toggle(this::copy));
         }
-        return new TrackTitleHover(Hover.NONE, null);
+        return new TrackTitleHover(Hover.NONE, redraw, null);
       } else if (!expanded && x < LABEL_WIDTH) {
         hovered = true;
-        return new TrackTitleHover(Hover.NONE, null);
+        return new TrackTitleHover(Hover.NONE, 0, null);
       }
 
       if (expanded) {
@@ -364,8 +368,16 @@ public class TrackContainer {
     }
 
     private class TrackTitleHover extends TrackContainer.TrackTitleHover {
-      public TrackTitleHover(Hover child, Runnable click) {
+      private double redraw;
+
+      public TrackTitleHover(Hover child, double width, Runnable click) {
         super(child, click);
+        this.redraw = width;
+      }
+
+      @Override
+      public Area getRedraw() {
+        return super.getRedraw().combine(new Area(0, 0, redraw, TITLE_HEIGHT));
       }
 
       @Override
