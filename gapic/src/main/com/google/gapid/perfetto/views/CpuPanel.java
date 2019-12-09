@@ -67,7 +67,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
 
   @Override
   public String getTitle() {
-    return "CPU " + (track.getCpu() + 1);
+    return "CPU " + (track.getCpu().id + 1);
   }
 
   @Override
@@ -97,7 +97,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   private void renderSummary(RenderContext ctx, CpuTrack.Data data, double w, double h) {
     long tStart = data.request.range.start;
     int start = Math.max(0, (int)((state.getVisibleTime().start - tStart) / data.bucketSize));
-    ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu()));
+    ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu().id));
     ctx.path(path -> {
       path.moveTo(0, h);
       double y = h, x = 0;
@@ -282,7 +282,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
       builder.add(Selection.Kind.Cpu, transform(
-          CpuTrack.getSlices(state.getQueryEngine(), track.getCpu(), ts), r -> {
+          CpuTrack.getSlices(state.getQueryEngine(), track.getCpu().id, ts), r -> {
             r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
             return new CpuTrack.Slices(state, r);
           }));

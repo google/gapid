@@ -22,12 +22,14 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.CpuInfo;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.models.TrackConfig.Group;
 import com.google.gapid.perfetto.views.CounterPanel;
+import com.google.gapid.perfetto.views.CpuFrequencyPanel;
+import com.google.gapid.perfetto.views.CpuPanel;
 import com.google.gapid.perfetto.views.CpuSummaryPanel;
 import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
@@ -50,35 +52,46 @@ public class Tracks {
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
-    return transformAsync(enumerateCpu(data), $1 ->
-        transform(enumerateCounters(data), $2 -> {
-          enumerateGpu(data);
-          enumerateProcesses(data);
-          return data;
-        }));
-  }
-
-  private static ListenableFuture<Perfetto.Data.Builder> enumerateCpu(Perfetto.Data.Builder data) {
-    if (data.getNumCpus() == 0) {
-      return Futures.immediateFuture(data);
-    }
-
-    CpuSummaryTrack summary = new CpuSummaryTrack(data.getNumCpus());
-    return transform(CpuTrack.enumerate(summary.getId(), data), configs -> {
-      boolean hasAnyFrequency = configs.stream().anyMatch(c -> c.hasFrequency);
-      Group.UiFactory ui = hasAnyFrequency ?
-          group(state -> new CpuSummaryPanel(state, summary), true, (group, filtered) -> {
-              for (int cpu = 0, track = 0; cpu < configs.size(); cpu++, track++) {
-                if (configs.get(cpu).hasFrequency) {
-                  track++;
-                  group.setVisible(track, !filtered);
-                }
-              }
-            }, true) :
-          group(state -> new CpuSummaryPanel(state, summary), true);
-      data.tracks.addLabelGroup(null, summary.getId(), "CPU Usage", ui);
+    enumerateCpu(data);
+    return transform(enumerateCounters(data), $2 -> {
+      enumerateGpu(data);
+      enumerateProcesses(data);
       return data;
     });
+  }
+
+  private static Perfetto.Data.Builder enumerateCpu(Perfetto.Data.Builder data) {
+    if (!data.getCpu().hasCpus()) {
+      return data;
+    }
+
+    CpuSummaryTrack summary = new CpuSummaryTrack(data.getCpu().count());
+    boolean hasAnyFrequency = false;
+    for (CpuInfo.Cpu cpu : data.getCpu().cpus()) {
+      CpuTrack track = new CpuTrack(cpu);
+      data.tracks.addTrack(summary.getId(), track.getId(), "CPU " + (cpu.id + 1),
+          single(state -> new CpuPanel(state, track), false));
+      if (cpu.hasFrequency()) {
+        CpuFrequencyTrack freqTrack = new CpuFrequencyTrack(cpu);
+        data.tracks.addTrack(summary.getId(), freqTrack.getId(),
+            "CPU " + (cpu.id + 1) + " Frequency",
+            single(state -> new CpuFrequencyPanel(state, freqTrack), false));
+        hasAnyFrequency = true;
+      }
+    }
+
+    Group.UiFactory ui = hasAnyFrequency ?
+        group(state -> new CpuSummaryPanel(state, summary), true, (group, filtered) -> {
+          for (int cpu = 0, track = 0; cpu < data.getCpu().count(); cpu++, track++) {
+            if (data.getCpu().get(cpu).hasFrequency()) {
+              track++;
+              group.setVisible(track, !filtered);
+            }
+          }
+        }, true) :
+        group(state -> new CpuSummaryPanel(state, summary), true);
+    data.tracks.addLabelGroup(null, summary.getId(), "CPU Usage", ui);
+    return data;
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerateCounters(
@@ -136,7 +149,7 @@ public class Tracks {
     // Whether we have at least two idle processes.
     boolean hasIdles = count > 1 && processes.get(processes.size() - 2).totalDur < idleCutoffProc;
     processes.forEach(process -> {
-      ProcessSummaryTrack summary = new ProcessSummaryTrack(data.getNumCpus(), process);
+      ProcessSummaryTrack summary = new ProcessSummaryTrack(data.getCpu().count(), process);
       String parent = (process.totalDur >= idleCutoffProc || !hasIdles) ? "procs" : "procs_idle";
       data.tracks.addGroup(parent, summary.getId(), process.getDisplay(),
           group(state -> new ProcessSummaryPanel(state, summary), false));
