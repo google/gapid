@@ -180,10 +180,8 @@ func readHeader(conn net.Conn) (msgType messageType, dataSize uint64, err error)
 	msgType = messageInvalid
 	now := time.Now()
 	conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-	var bufSize int
 	buf := make([]byte, 6)
-	bufSize, err = io.ReadFull(conn, buf)
-	if bufSize == 6 {
+	if _, err = io.ReadFull(conn, buf); err == nil {
 		// first header byte contains the message type
 		msgType = messageType(buf[0])
 		// next 5 bytes contain the data size as little-endian 40bit unsigned integer
@@ -217,10 +215,8 @@ func readData(ctx context.Context, conn net.Conn, dataSize uint64, w io.Writer, 
 func readError(conn net.Conn, dataSize uint64) (errorMsg string, err error) {
 	now := time.Now()
 	conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-	var bufSize int
 	buf := make([]byte, dataSize)
-	bufSize, err = io.ReadFull(conn, buf)
-	if bufSize == int(dataSize) {
+	if _, err = io.ReadFull(conn, buf); err == nil {
 		errorMsg = string(buf)
 	}
 	return
