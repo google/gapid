@@ -100,6 +100,10 @@ import "extensions/khr_device_group_creation.api"
 import "extensions/khr_device_group.api"
 import "extensions/google_display_timing.api"
 import "extensions/ext_host_query_reset.api"
+import "extensions/ext_pci_bus_info.api"
+import "extensions/khr_8bit_storage.api"
+import "extensions/amd_shader_core_properties.api"
+import "extensions/khr_uniform_buffer_standard_layout.api"
 
 import "android/vulkan_android.api"
 import "linux/vulkan_linux.api"
@@ -257,6 +261,18 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   supported.ExtensionNames["VK_KHR_device_group"] = true
   supported.ExtensionNames["VK_GOOGLE_display_timing"] = true
   supported.ExtensionNames["VK_EXT_host_query_reset"] = true
+  supported.ExtensionNames["VK_EXT_depth_range_unrestricted"] = true
+  supported.ExtensionNames["VK_EXT_pci_bus_info"] = true
+  supported.ExtensionNames["VK_EXT_shader_stencil_export"] = true
+  supported.ExtensionNames["VK_EXT_shader_subgroup_ballot"] = true
+  supported.ExtensionNames["VK_EXT_shader_subgroup_vote"] = true
+  supported.ExtensionNames["VK_EXT_shader_viewport_index_layer"] = true
+  supported.ExtensionNames["VK_KHR_storage_buffer_storage_class"] = true
+  supported.ExtensionNames["VK_KHR_8bit_storage"] = true
+  supported.ExtensionNames["VK_AMD_shader_core_properties"] = true
+  supported.ExtensionNames["VK_GOOGLE_decorate_string"] = true
+  supported.ExtensionNames["VK_GOOGLE_hlsl_functionality1"] = true
+  supported.ExtensionNames["VK_KHR_spirv_1_4"] = true
   return supported
 }
 

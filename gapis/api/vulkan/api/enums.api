@@ -350,6 +350,9 @@ enum VkStructureType: u32 {
   // @extension("VK_EXT_host_query_reset")
   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT = 1000261000,
 
+  // @extension("VK_EXT_pci_bus_info")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT = 1000212000,
+
   // @extension("VK_EXT_scalar_block_layout")
   VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT = 1000221000,
 
@@ -362,6 +365,15 @@ enum VkStructureType: u32 {
 
   // @extension("VK_GOOGLE_display_timing")
   VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE = 1000092000,
+
+  // @extension ("VK_KHR_8bit_storage")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR = 1000177000,
+
+  // @extension ("VK_AMD_shader_core_properties")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD = 1000185000,
+
+  // @extension("VK_KHR_uniform_buffer_standard_layout")
+  VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR = 1000253000,
 }
 
 @analyze_usage

@@ -59,6 +59,9 @@
   @unused ref!HalfPrecisionStorageFeatures HalfPrecisionStorageFeatures
   @unused ref!SamplerYcbcrConversionFeatures SamplerYcbcrConversionFeatures
   @unused ref!PhysicalDeviceScalarBlockLayoutFeaturesEXT PhysicalDeviceScalarBlockLayoutFeaturesEXT
+
+  @unused ref!Vk8BitStorageFeatures Vk8BitStorageFeatures
+  @unused ref!PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR
 }
 
 @indirect("VkDevice")
@@ -186,6 +189,19 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
             ext := as!VkPhysicalDeviceHostQueryResetFeaturesEXT*(next.Ptr)[0]
             object.HostQueryReset = ext.hostQueryReset
         }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+          ext := as!VkPhysicalDevice8BitStorageFeaturesKHR*(next.Ptr)[0]
+          object.Vk8BitStorageFeatures = new!Vk8BitStorageFeatures(
+            StorageBuffer8BitAccess: ext.storageBuffer8BitAccess,
+            UniformAndStorageBuffer8BitAccess: ext.uniformAndStorageBuffer8BitAccess,
+            StoragePushConstant8: ext.storagePushConstant8)
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR = new!PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(
+            UniformBufferStandardLayout: ext.uniformBufferStandardLayout,
+          )
+        }
         default: {
           // do nothing
         }
@@ -254,6 +270,12 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
   VkBool32        UniformAndStorageBuffer16BitAccess
   VkBool32        StoragePushConstant16
   VkBool32        StorageInputOutput16
+}
+
+@internal class Vk8BitStorageFeatures {
+  VkBool32        StorageBuffer8BitAccess
+  VkBool32        UniformAndStorageBuffer8BitAccess
+  VkBool32        StoragePushConstant8
 }
 
 @internal class SamplerYcbcrConversionFeatures {

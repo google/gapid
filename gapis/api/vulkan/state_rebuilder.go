@@ -730,6 +730,17 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.Vk8BitStorageFeatures().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDevice8BitStorageFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.Vk8BitStorageFeatures().StorageBuffer8BitAccess(),           // storageBuffer8BitAccess
+				d.Vk8BitStorageFeatures().UniformAndStorageBuffer8BitAccess(), // uniformAndStorageBuffer8BitAccess
+				d.Vk8BitStorageFeatures().StoragePushConstant8(),              // storagePushConstant8
+			),
+		).Ptr())
+	}
 	if !d.SamplerYcbcrConversionFeatures().IsNil() {
 		pNext = NewVoidᵖ(sb.MustAllocReadData(
 			NewVkPhysicalDeviceSamplerYcbcrConversionFeatures(sb.ta,
@@ -754,6 +765,15 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT, // sType
 				pNext,              // pNext
 				d.HostQueryReset(), // hostQueryReset
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR().UniformBufferStandardLayout(), // uniformBufferStandardLayout
 			),
 		).Ptr())
 	}
