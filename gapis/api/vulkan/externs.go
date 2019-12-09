@@ -176,13 +176,6 @@ func (e externs) onDeferSubcommand(ref CommandReferenceʳ) {
 	o.queuedCommands[ref] = r
 }
 
-func (e externs) postBindSparse(binds QueuedSparseBindsʳ) {
-	o := GetState(e.s)
-	if o.postBindSparse != nil {
-		o.postBindSparse(binds)
-	}
-}
-
 func (e externs) unmapMemory(handle VkDeviceMemory, slice memory.Slice) {
 	if b := e.b; b != nil {
 		b.UnmapMemory(memory.Range{Base: slice.Base(), Size: slice.Size()})

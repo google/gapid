@@ -502,7 +502,6 @@ void VulkanSpy::onPostSubcommand(CallObserver*, gapil::Ref<CommandReference>) {}
 void VulkanSpy::onDeferSubcommand(CallObserver*, gapil::Ref<CommandReference>) {
 }
 void VulkanSpy::onCommandAdded(CallObserver*, VkCommandBuffer) {}
-void VulkanSpy::postBindSparse(CallObserver*, gapil::Ref<QueuedSparseBinds>) {}
 void VulkanSpy::pushDebugMarker(CallObserver*, std::string) {}
 void VulkanSpy::popDebugMarker(CallObserver*) {}
 void VulkanSpy::pushRenderPassMarker(CallObserver*, VkRenderPass) {}

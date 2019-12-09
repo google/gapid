@@ -82,7 +82,7 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
           fenceObj.Signaled = true
           recordFenceSignal(cmd.SignalFence)
         }
-      } 
+      }
       if processSubcommand.b {
         if (cmd.DeviceMask != 0) {
           LastBoundQueue.DeviceMask = cmd.DeviceMask
@@ -193,7 +193,6 @@ sub void execPendingCommands(VkQueue queue, bool isRoot) {
               }
             }
           }
-          postBindSparse(cmd.SparseBinds)
         } // Done sparse images
 
         if ((cmd.Buffer != as!VkCommandBuffer(0))) {
