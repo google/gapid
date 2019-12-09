@@ -480,11 +480,11 @@ public class PipelineView extends Composite
         }
 
       case ENUMVAL:
-        return new DataValue(val.getEnumVal().getStringValue());
+        return new DataValue(val.getEnumVal().getDisplayValue());
 
       case BITFIELD:
-        Joiner joiner = Joiner.on(" | ");
-        return new DataValue(joiner.join(val.getBitfield().getSetBitnamesList()));
+        Joiner joiner = Joiner.on((val.getBitfield().getCombined()) ? "" : " | ");
+        return new DataValue(joiner.join(val.getBitfield().getSetDisplayNamesList()));
 
       case LINK:
         DataValue dv = convertDataValue(val.getLink().getDisplayVal());

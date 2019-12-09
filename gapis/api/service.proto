@@ -282,13 +282,16 @@ message DataValue {
 }
 
 message EnumValue {
-  uint64 value = 2;
-  string string_value = 3;
+  uint64 value = 1;
+  string string_value = 2;
+  string display_value = 3;
 }
 
 message BitfieldValue {
   repeated uint64 set_bits = 1;
   repeated string set_bitnames = 2;
+  repeated string set_display_names = 3;
+  bool combined = 4;
 }
 
 message LinkedValue {

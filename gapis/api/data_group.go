@@ -17,6 +17,7 @@ package api
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/google/gapid/core/data/pod"
 	"github.com/google/gapid/gapis/service/path"
@@ -35,7 +36,7 @@ func (list *KeyValuePairList) AppendKeyValuePair(name string, value *DataValue) 
 }
 
 func CreateEnumDataValue(typeName string, value fmt.Stringer) *DataValue {
-	s := value.String()
+	s := truncateEnumString(typeName, value.String())
 
 	var i uint64 = 0
 	v := reflect.ValueOf(value)
@@ -51,8 +52,9 @@ func CreateEnumDataValue(typeName string, value fmt.Stringer) *DataValue {
 		TypeName: typeName,
 		Val: &DataValue_EnumVal{
 			&EnumValue{
-				Value:       i,
-				StringValue: s,
+				Value:        i,
+				StringValue:  value.String(),
+				DisplayValue: s,
 			},
 		},
 	}
@@ -80,8 +82,9 @@ func CreateBitfieldDataValue(typeName string, val interface{}, index int, a API)
 			TypeName: typeName,
 			Val: &DataValue_Bitfield{
 				&BitfieldValue{
-					SetBits:     []uint64{0},
-					SetBitnames: []string{"INVALID BITFIELD"},
+					SetBits:         []uint64{0},
+					SetBitnames:     []string{"INVALID BITFIELD"},
+					SetDisplayNames: []string{"INVALID BITFIELD"},
 				},
 			},
 		}
@@ -90,17 +93,24 @@ func CreateBitfieldDataValue(typeName string, val interface{}, index int, a API)
 	cs := a.ConstantSets()
 	set := cs.Sets[index]
 
+	truncatedTypeName := strings.ToUpper(typeName)
+	truncatedTypeName = strings.TrimSuffix(truncatedTypeName, "FLAGBITS")
+	truncatedTypeName = strings.TrimSuffix(truncatedTypeName, "FLAGS")
+
 	bits := []uint64{}
 	names := []string{}
+	displayNames := []string{}
 	if set.IsBitfield {
 		for _, e := range set.Entries {
 			if n == 0 && e.V == 0 {
 				bits = append(bits, 0)
 				names = append(names, cs.Symbols.Get(e))
+				displayNames = append(displayNames, truncateEnumString(typeName, cs.Symbols.Get(e)))
 				break
 			} else if n&e.V != 0 {
 				bits = append(bits, e.V)
 				names = append(names, cs.Symbols.Get(e))
+				displayNames = append(displayNames, truncateEnumString(typeName, cs.Symbols.Get(e)))
 				n &^= e.V
 			}
 		}
@@ -108,18 +118,22 @@ func CreateBitfieldDataValue(typeName string, val interface{}, index int, a API)
 		if n != 0 {
 			bits = append(bits, n)
 			names = append(names, fmt.Sprintf("%s (%d)", typeName, n))
+			displayNames = append(displayNames, fmt.Sprintf("%s (%d)", typeName, n))
 		}
 	} else {
 		bits = append(bits, 0)
 		names = append(names, "INVALID BITFIELD")
+		displayNames = append(displayNames, "INVALID BITFIELD")
 	}
 
 	return &DataValue{
 		TypeName: typeName,
 		Val: &DataValue_Bitfield{
 			&BitfieldValue{
-				SetBits:     bits,
-				SetBitnames: names,
+				SetBits:         bits,
+				SetBitnames:     names,
+				SetDisplayNames: displayNames,
+				Combined:        typeName == "VkColorComponentFlagBits",
 			},
 		},
 	}
@@ -135,4 +149,25 @@ func CreateLinkedDataValue(typeName string, p path.Node, val *DataValue) *DataVa
 			},
 		},
 	}
+}
+
+func truncateEnumString(typeName string, s string) string {
+	typeName = strings.ToUpper(typeName)
+	typeName = strings.TrimSuffix(typeName, "FLAGBITS")
+	typeName = strings.TrimSuffix(typeName, "FLAGS")
+
+	for i, j := 0, 0; i < len(s); i++ {
+		if s[i] == typeName[j] {
+			j++
+		}
+
+		if j == len(typeName) {
+			s = s[i+2:]
+			break
+		}
+	}
+
+	s = strings.TrimSuffix(s, "_BIT")
+
+	return s
 }
