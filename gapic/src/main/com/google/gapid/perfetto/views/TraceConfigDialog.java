@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
+import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toSet;
 
@@ -230,6 +231,8 @@ public class TraceConfigDialog extends DialogBase {
       config.addDataSourcesBuilder()
         .getConfigBuilder()
           .setName("VulkanCPUTiming");
+      config.setWriteIntoFile(true);
+      config.setFileWritePeriodMs((int)HOURS.toMillis(1));
     }
 
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
