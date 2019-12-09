@@ -122,9 +122,8 @@ sub ref!DescriptorUpdateTemplateObject createDescriptorUpdateTemplate(
     VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate,
     bool fromKHR) {
     obj := new!DescriptorUpdateTemplateObject()
-    if !(device in Devices) {
-        vkErrorInvalidDevice(device)
-    } else if pCreateInfo == null {
+    if !(device in Devices) { vkErrorInvalidDevice(device) }
+    if pCreateInfo == null {
         vkErrorNullPointer("pDescriptorUpdateTemplate")
     } else if !(pCreateInfo[0].descriptorSetLayout in DescriptorSetLayouts) {
         vkErrorInvalidDescriptorSetLayout(pCreateInfo[0].descriptorSetLayout)
