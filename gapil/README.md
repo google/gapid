@@ -94,6 +94,44 @@ Aliases are declared using the syntax:
 type base_type alias_name
 ```
 
+### Map
+Maps are a set of key-value pairs.
+
+```cpp
+map!(u32, u32) uint_to_uint_map
+```
+
+The key must be a comparable type (or string).
+Maps have the following operations
+
+```
+x := uint_to_uint_map[2]; // Access
+uint_to_uint_map[2] = x; // Insert
+for index, key, value in uint_to_uint_map {} // Iteration
+```
+
+The Access operation returns the value in question, or a default
+value if it did not exist in the map.
+
+The insert operations inserts the given value at the given
+location in the map.
+
+Iterating a map will iterate over the indices/keys/values in the map.
+
+### DenseMap
+
+DenseMaps are a specialization of Map
+
+```cpp
+dense_map!(u32, u32) uint_to_uint_map
+```
+
+They have the same semantics as Map, although their underlying
+storage is different. They are optimized for a set of small sequential
+keys. They take an amount of storage on the order of the largest
+key inserted into the map. They must be keyed on an unsigned integer
+value.
+
 ## Commands
 
 Commands are declared with a C-style function signature, prefixed with `cmd`.
