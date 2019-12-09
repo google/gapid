@@ -107,7 +107,7 @@ public class TrackContainer {
 
     public Single(
         State state, T track, boolean sep, BiConsumer<T, Boolean> filter, boolean filtered) {
-      this(track ,sep, filter, filtered, new PinState(state.getPinnedTracks()));
+      this(track ,sep, filter, filtered, new PinState(state));
     }
 
     private Single(T track, boolean sep, BiConsumer<T, Boolean> filter,
@@ -230,7 +230,7 @@ public class TrackContainer {
         TrackContainer.Group<T, D> of(State state, T summary, CopyablePanel.Group detail,
             boolean expanded, BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
       return new TrackContainer.Group<T, D>(
-          summary, detail, expanded, filter, filtered, new PinState(state.getPinnedTracks()));
+          summary, detail, expanded, filter, filtered, new PinState(state));
     }
 
     @Override
@@ -377,10 +377,10 @@ public class TrackContainer {
   }
 
   private static class PinState {
-    private final PinnedTracks state;
+    private final State state;
     private Panel pinned;
 
-    public PinState(PinnedTracks state) {
+    public PinState(State state) {
       this.state = state;
       pinned = null;
     }
@@ -394,13 +394,16 @@ public class TrackContainer {
     }
 
     public void toggle(Supplier<Panel> copy) {
+      PinnedTracks tracks = state.getPinnedTracks();
+      double current =  tracks.getPreferredHeight();
       if (isPinned()) {
-        state.unpin(pinned);
+        tracks.unpin(pinned);
         pinned = null;
       } else {
         pinned = copy.get();
-        state.pin(pinned);
+        tracks.pin(pinned);
       }
+      state.dragY(current -  tracks.getPreferredHeight());
     }
   }
 
