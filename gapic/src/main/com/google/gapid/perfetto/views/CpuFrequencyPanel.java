@@ -52,7 +52,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
 
   @Override
   public String getTitle() {
-    return "CPU " + (track.getCpu() + 1) + " Frequency";
+    return "CPU " + (track.getCpu().id + 1) + " Frequency";
   }
 
   @Override
@@ -77,16 +77,16 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
       double endPx = state.timeToPx(visible.end);
 
       final String[] kUnits = new String[] { "", "K", "M", "G", "T", "E" };
-      double exp = Math.ceil(Math.log10(Math.max(data.maximumValue, 1)));
+      double exp = Math.ceil(Math.log10(Math.max(track.getCpu().maxFreq, 1)));
       double pow10 = Math.pow(10, exp);
-      double yMax = Math.ceil(data.maximumValue / (pow10 / 4)) * (pow10 / 4);
+      double yMax = Math.ceil(track.getCpu().maxFreq / (pow10 / 4)) * (pow10 / 4);
       int unitGroup = (int)Math.floor(exp / 3);
       // The values we have for cpufreq are in kHz so +1 to unitGroup.
       String yLabel = (yMax / Math.pow(10, unitGroup * 3)) + " " + kUnits[unitGroup + 1] + "Hz";
 
       // Draw the CPU frequency graph.
-      ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu(), 3));
-      ctx.setForegroundColor(StyleConstants.Palette.getColor(track.getCpu()));
+      ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu().id, 3));
+      ctx.setForegroundColor(StyleConstants.Palette.getColor(track.getCpu().id));
       ctx.path(path -> {
         double lastX = startPx, lastY = h;
         path.moveTo(lastX, lastY);
@@ -129,8 +129,8 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
       }
 
       if (hoveredValue != null && hoveredTs != null) {
-        ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu(), 3));
-        ctx.setForegroundColor(StyleConstants.Palette.getColor(track.getCpu()));
+        ctx.setBackgroundColor(StyleConstants.Palette.getColor(track.getCpu().id, 3));
+        ctx.setForegroundColor(StyleConstants.Palette.getColor(track.getCpu().id));
 
         Size textSize = ctx.measure(Fonts.Style.Normal, hoverLabel);
         double xStart = Math.floor(state.timeToPx(hoveredTs));

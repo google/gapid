@@ -96,7 +96,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   private static ListenableFuture<Data.Builder> examineTrace(Data.Builder data) {
     return transformAsync(data.qe.getTraceTimeBounds(), traceTime -> {
       data.setTraceTime(traceTime);
-      return transform(data.qe.getNumberOfCpus(), numCpus -> data.setNumCpus(numCpus));
+      return CpuInfo.listCpus(data);
     });
   }
 
@@ -168,19 +168,19 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
   public static class Data {
     public final QueryEngine qe;
     public final TimeSpan traceTime;
-    public final int numCpus;
+    public final CpuInfo cpu;
     public final ImmutableMap<Long, ProcessInfo> processes;
     public final ImmutableMap<Long, ThreadInfo> threads;
     public final GpuInfo gpu;
     public final ImmutableMap<Long, CounterInfo> counters;
     public final TrackConfig tracks;
 
-    public Data(QueryEngine queries, TimeSpan traceTime, int numCpus,
+    public Data(QueryEngine queries, TimeSpan traceTime, CpuInfo cpu,
         ImmutableMap<Long, ProcessInfo> processes, ImmutableMap<Long, ThreadInfo> threads,
         GpuInfo gpu, ImmutableMap<Long, CounterInfo> counters, TrackConfig tracks) {
       this.qe = queries;
       this.traceTime = traceTime;
-      this.numCpus = numCpus;
+      this.cpu = cpu;
       this.processes = processes;
       this.threads = threads;
       this.gpu = gpu;
@@ -191,7 +191,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
     public static class Builder {
       public final QueryEngine qe;
       private TimeSpan traceTime;
-      private int numCpus;
+      private CpuInfo cpu = CpuInfo.NONE;
       private ImmutableMap<Long, ProcessInfo> processes;
       private ImmutableMap<Long, ThreadInfo> threads;
       private GpuInfo gpu = GpuInfo.NONE;
@@ -212,12 +212,12 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return this;
       }
 
-      public int getNumCpus() {
-        return numCpus;
+      public CpuInfo getCpu() {
+        return cpu;
       }
 
-      public Builder setNumCpus(int numCpus) {
-        this.numCpus = numCpus;
+      public Builder setCpu(CpuInfo cpu) {
+        this.cpu = cpu;
         return this;
       }
 
@@ -264,7 +264,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       }
 
       public Data build() {
-        return new Data(qe, traceTime, numCpus, processes, threads, gpu, counters, tracks.build());
+        return new Data(qe, traceTime, cpu, processes, threads, gpu, counters, tracks.build());
       }
     }
   }

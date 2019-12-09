@@ -25,6 +25,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.models.CpuInfo;
 
 /**
  * {@link Track} containing the CPU frequency and idle data.
@@ -47,20 +48,15 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
       "sum(weighted_freq) / sum(dur), quantum_ts " +
       "from (select ts, dur, quantum_ts, freq * dur as weighted_freq, idle from %s) " +
       "group by quantum_ts";
-  private final int cpu;
-  private final long freqId;
-  private final double maxFreq;
-  private final long idleId;
 
-  public CpuFrequencyTrack(int cpu, long freqId, double maxFreq, long idleId) {
-    super("cpu_freq_" + cpu);
+  private final CpuInfo.Cpu cpu;
+
+  public CpuFrequencyTrack(CpuInfo.Cpu cpu) {
+    super("cpu_freq_" + cpu.id);
     this.cpu = cpu;
-    this.freqId = freqId;
-    this.maxFreq = maxFreq;
-    this.idleId = idleId;
   }
 
-  public int getCpu() {
+  public CpuInfo.Cpu getCpu() {
     return cpu;
   }
 
@@ -80,8 +76,8 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
         dropTable(freqIdle),
         dropTable(window),
         createWindow(window),
-        createView(freq, format(FREQ_VIEW_SQL, cpu, freqId)),
-        createView(idle, format(IDLE_VIEW_SQL, cpu, idleId)),
+        createView(freq, format(FREQ_VIEW_SQL, cpu.id, cpu.freqId)),
+        createView(idle, format(IDLE_VIEW_SQL, cpu.id, cpu.idleId)),
         createSpan(freqIdle, freq + " PARTITIONED cpu, " + idle + " PARTITIONED cpu"),
         createSpan(span, freqIdle + " PARTITIONED cpu, " + window),
         createView(activity, format(ACT_VIEW_SQL, span))
@@ -100,7 +96,7 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
         format(quantized ? DATA_QUANTIZED_SQL : DATA_SQL, tableName("activity"))), result -> {
       int rows = result.getNumRows();
       Data data = new Data(
-          req, quantized, maxFreq, new long[rows], new long[rows], new byte[rows], new int[rows]);
+          req, quantized, new long[rows], new long[rows], new byte[rows], new int[rows]);
       result.forEachRow((i, r) -> {
         long start = r.getLong(0);
         data.tsStarts[i] = start;
@@ -114,17 +110,15 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
 
   public static class Data extends Track.Data {
     public final boolean quantized;
-    public final double maximumValue;
     public final long[] tsStarts;
     public final long[] tsEnds;
     public final byte[] idles;
     public final int[] freqKHz;
 
-    public Data(DataRequest request, boolean quantized, double maximumValue, long[] tsStarts,
-        long[] tsEnds, byte[] idles, int[] freqKHz) {
+    public Data(DataRequest request, boolean quantized, long[] tsStarts, long[] tsEnds,
+        byte[] idles, int[] freqKHz) {
       super(request);
       this.quantized = quantized;
-      this.maximumValue = maximumValue;
       this.tsStarts = tsStarts;
       this.tsEnds = tsEnds;
       this.idles = idles;

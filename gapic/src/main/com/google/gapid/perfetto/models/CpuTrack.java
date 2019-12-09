@@ -20,11 +20,9 @@ import static com.google.gapid.perfetto.models.QueryEngine.createSpan;
 import static com.google.gapid.perfetto.models.QueryEngine.createWindow;
 import static com.google.gapid.perfetto.models.QueryEngine.dropTable;
 import static com.google.gapid.perfetto.models.QueryEngine.expectOneRow;
-import static com.google.gapid.perfetto.views.TrackContainer.single;
 import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
-import static java.util.function.Function.identity;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -32,11 +30,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.Perfetto;
+import com.google.gapid.models.CpuInfo;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.views.CpuFrequencyPanel;
-import com.google.gapid.perfetto.views.CpuPanel;
 import com.google.gapid.perfetto.views.CpuSliceSelectionView;
 import com.google.gapid.perfetto.views.CpuSlicesSelectionView;
 import com.google.gapid.perfetto.views.State;
@@ -52,12 +48,6 @@ import java.util.Set;
  * {@link Track} containing CPU slices for a single core.
  */
 public class CpuTrack extends Track<CpuTrack.Data> {
-  private static final String FREQ_IDLE_QUERY = "with " +
-      "freq as (select ref, counter_id freq_id, max(value) freq " +
-        "from counter_definitions cd left join counter_values cv using(counter_id) " +
-        "where name = 'cpufreq' group by counter_id), " +
-      "idle as (select ref, counter_id idle_id from counter_definitions where name = 'cpuidle') " +
-      "select ref, freq_id, freq, idle_id from idle inner join freq using (ref)";
   private static final String SUMMARY_SQL =
       "select quantum_ts, sum(dur)/cast(%d as float) " +
       "from %s where cpu = %d and utid != 0 " +
@@ -73,14 +63,14 @@ public class CpuTrack extends Track<CpuTrack.Data> {
       "select row_id, ts, dur, cpu, utid, end_state, priority from sched " +
       "where utid = %d and ts < %d and ts_end >= %d";
 
-  private final int cpu;
+  private final CpuInfo.Cpu cpu;
 
-  public CpuTrack(int cpu) {
-    super("cpu_" + cpu);
+  public CpuTrack(CpuInfo.Cpu cpu) {
+    super("cpu_" + cpu.id);
     this.cpu = cpu;
   }
 
-  public int getCpu() {
+  public CpuInfo.Cpu getCpu() {
     return cpu;
   }
 
@@ -110,7 +100,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   private String summarySql(long ns) {
-    return format(SUMMARY_SQL, ns, tableName("span"), cpu);
+    return format(SUMMARY_SQL, ns, tableName("span"), cpu.id);
   }
 
   private ListenableFuture<Data> computeSlices(QueryEngine qe, DataRequest req) {
@@ -129,7 +119,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   private String slicesSql() {
-    return format(SLICES_SQL, tableName("span"), cpu);
+    return format(SLICES_SQL, tableName("span"), cpu.id);
   }
 
   public static ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
@@ -163,42 +153,6 @@ public class CpuTrack extends Track<CpuTrack.Data> {
 
   private static String sliceRangeForThreadSql(long utid, TimeSpan ts) {
     return format(SLICE_RANGE_FOR_THREAD_SQL, utid, ts.end, ts.start);
-  }
-
-  public static ListenableFuture<List<CpuConfig>> enumerate(
-      String parent, Perfetto.Data.Builder data) {
-    return transform(freqMap(data.qe), freqMap -> {
-      List<CpuConfig> configs = Lists.newArrayList();
-      for (int i = 0; i < data.getNumCpus(); i++) {
-        QueryEngine.Row freq = freqMap.get(Long.valueOf(i));
-        CpuTrack track = new CpuTrack(i);
-        data.tracks.addTrack(parent, track.getId(), "CPU " + (i + 1),
-            single(state -> new CpuPanel(state, track), false));
-        if (freq != null) {
-          CpuFrequencyTrack freqTrack =
-              new CpuFrequencyTrack(i, freq.getLong(1), freq.getDouble(2), freq.getLong(3));
-          data.tracks.addTrack(
-              parent, freqTrack.getId(), "CPU " + (i + 1) + " Frequency",
-              single(state -> new CpuFrequencyPanel(state, freqTrack), false));
-        }
-        configs.add(new CpuConfig(i, freq != null));
-      }
-      return configs;
-    });
-  }
-
-  private static ListenableFuture<Map<Long, QueryEngine.Row>> freqMap(QueryEngine qe) {
-    return transform(qe.query(FREQ_IDLE_QUERY), res -> res.map(row -> row.getLong(0), identity()));
-  }
-
-  public static class CpuConfig {
-    public final int id;
-    public final boolean hasFrequency;
-
-    public CpuConfig(int id, boolean hasFrequency) {
-      this.id = id;
-      this.hasFrequency = hasFrequency;
-    }
   }
 
   public static class Data extends Track.Data {

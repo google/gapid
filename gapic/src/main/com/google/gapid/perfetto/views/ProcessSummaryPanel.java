@@ -150,7 +150,8 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
     TimeSpan visible = state.getVisibleTime();
     Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
     List<Integer> visibleSelected = Lists.newArrayList();
-    double cpuH = (h - state.getData().numCpus + 1) / state.getData().numCpus;
+    int cpuCount = state.getData().cpu.count();
+    double cpuH = (h - cpuCount + 1) / cpuCount;
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
@@ -210,10 +211,12 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
 
   private Hover sliceHover(
       ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
-    int cpu = (int)(y * state.getData().numCpus / HEIGHT);
-    if (cpu < 0 || cpu >= state.getData().numCpus) {
+    int cpuCount = state.getData().cpu.count();
+    int cpuIdx = (int)(y * cpuCount / HEIGHT);
+    if (cpuIdx < 0 || cpuIdx >= cpuCount) {
       return Hover.NONE;
     }
+    int cpu = state.getData().cpu.get(cpuIdx).id;
 
     mouseXpos = x;
     long t = state.pxToTime(x);
