@@ -62,6 +62,10 @@
 
   @unused ref!Vk8BitStorageFeatures Vk8BitStorageFeatures
   @unused ref!PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR
+  @unused ref!PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR
+  @unused ref!PhysicalDeviceShaderClockFeaturesKHR PhysicalDeviceShaderClockFeaturesKHR
+  @unused ref!PhysicalDeviceVulkanMemoryModelFeaturesKHR PhysicalDeviceVulkanMemoryModelFeaturesKHR
+  @unused ref!PhysicalDeviceShaderFloat16Int8FeaturesKHR PhysicalDeviceShaderFloat16Int8FeaturesKHR
 }
 
 @indirect("VkDevice")
@@ -199,7 +203,34 @@ sub ref!DeviceObject createDeviceObject(const VkDeviceCreateInfo* data) {
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
           ext := as!VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*(next.Ptr)[0]
           object.PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR = new!PhysicalDeviceUniformBufferStandardLayoutFeaturesKHR(
-            UniformBufferStandardLayout: ext.uniformBufferStandardLayout,
+            UniformBufferStandardLayout: ext.uniformBufferStandardLayout
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR = new!PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR(
+            ShaderSubgroupExtendedTypes: ext.shaderSubgroupExtendedTypes)
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceShaderClockFeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceShaderClockFeaturesKHR = new!PhysicalDeviceShaderClockFeaturesKHR(
+            ShaderSubgroupClock: ext.shaderSubgroupClock,
+            ShaderDeviceClock: ext.shaderDeviceClock
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceVulkanMemoryModelFeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceVulkanMemoryModelFeaturesKHR = new!PhysicalDeviceVulkanMemoryModelFeaturesKHR(
+            VulkanMemoryModel: ext.vulkanMemoryModel,
+            VulkanMemoryModelDeviceScope: ext.vulkanMemoryModelDeviceScope,
+            VulkanMemoryModelAvailabilityVisibilityChains: ext.vulkanMemoryModelAvailabilityVisibilityChains,
+          )
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR: {
+          ext := as!VkPhysicalDeviceShaderFloat16Int8FeaturesKHR*(next.Ptr)[0]
+          object.PhysicalDeviceShaderFloat16Int8FeaturesKHR = new!PhysicalDeviceShaderFloat16Int8FeaturesKHR(
+            ShaderFloat16: ext.shaderFloat16,
+            ShaderInt8: ext.shaderInt8,
           )
         }
         default: {

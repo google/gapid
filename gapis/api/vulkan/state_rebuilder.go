@@ -777,6 +777,46 @@ func (sb *stateBuilder) createDevice(d DeviceObjectʳ) {
 			),
 		).Ptr())
 	}
+	if !d.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderSubgroupExtendedTypesFeaturesKHR().ShaderSubgroupExtendedTypes(), // shaderSubgroupExtendedTypes
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceShaderClockFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderClockFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderClockFeaturesKHR().ShaderSubgroupClock(), // shaderSubgroupClock
+				d.PhysicalDeviceShaderClockFeaturesKHR().ShaderDeviceClock(),   // shaderDeviceClock
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceVulkanMemoryModelFeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModel(),                             // vulkanMemoryModel
+				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModelDeviceScope(),                  // vulkanMemoryModelDeviceScope
+				d.PhysicalDeviceVulkanMemoryModelFeaturesKHR().VulkanMemoryModelAvailabilityVisibilityChains(), // vulkanMemoryModelAvailabilityVisibilityChains
+			),
+		).Ptr())
+	}
+	if !d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().IsNil() {
+		pNext = NewVoidᵖ(sb.MustAllocReadData(
+			NewVkPhysicalDeviceShaderFloat16Int8FeaturesKHR(sb.ta,
+				VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR, // sType
+				pNext, // pNext
+				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderFloat16(), // shaderFloat16
+				d.PhysicalDeviceShaderFloat16Int8FeaturesKHR().ShaderInt8(),    // shaderInt8
+			),
+		).Ptr())
+	}
 
 	sb.write(sb.cb.VkCreateDevice(
 		d.PhysicalDevice(),

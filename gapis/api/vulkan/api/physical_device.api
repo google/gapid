@@ -54,6 +54,8 @@
   // Extensions
   @unused ref!PhysicalDevicePCIBusInfoPropertiesEXT PhysicalDevicePCIBusInfoPropertiesEXT
   @unused ref!PhysicalDeviceShaderCorePropertiesAMD PhysicalDeviceShaderCorePropertiesAMD
+  @unused ref!PhysicalDeviceFloatControlsPropertiesKHR PhysicalDeviceFloatControlsPropertiesKHR
+  @unused ref!PhysicalDeviceDriverPropertiesKHR PhysicalDeviceDriverPropertiesKHR
 }
 
 @internal class PhysicalDevicesAndProperties {
@@ -113,9 +115,9 @@ cmd VkResult vkEnumeratePhysicalDevices(
         if queueProps != null {
           object.QueueFamilyProperties = queueProps.PhyDevToQueueFamilyProperties[devices[i]]
         }
-	if formatProps != null {
-          object.FormatProperties = formatProps.PhyDevToFormatProperties[devices[i]]
-	}
+        if formatProps != null {
+                object.FormatProperties = formatProps.PhyDevToFormatProperties[devices[i]]
+        }
         PhysicalDevices[devices[i]] = object
       }
     }
