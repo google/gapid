@@ -60,6 +60,7 @@ class PerfettoProducerData {
   void UnregisterEmitter(ThreadlocalEmitterBase*);
   void OnStart(const typename perfetto::DataSourceBase::StartArgs&);
   void OnStop(const typename perfetto::DataSourceBase::StopArgs&);
+  void OnSetup(const typename perfetto::DataSourceBase::SetupArgs&);
 
  private:
   core::Arena arena_;

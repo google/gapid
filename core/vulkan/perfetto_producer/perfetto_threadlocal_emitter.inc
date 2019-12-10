@@ -20,12 +20,15 @@
     "It is invalid to include this file directly. Include the header instead."
 #endif
 #include <mutex>
+#include <sstream>
+#include <string>
 #include "core/cc/process_name.h"
 #include "core/cc/thread.h"
 #include "core/cc/timer.h"
 #include "core/vulkan/perfetto_producer/perfetto_data_source.h"
 #include "perfetto/base/time.h"
 
+#include "perfetto/tracing/core/data_source_config.h"
 #include "protos/perfetto/trace/gpu/vulkan_memory_event.pbzero.h"
 #include "protos/perfetto/trace/interned_data/interned_data.pbzero.h"
 #include "protos/perfetto/trace/profiling/profile_common.pbzero.h"
@@ -45,6 +48,7 @@ ThreadlocalEmitter<T>::ThreadlocalEmitter()
       interned_categories_(&arena_),
       interned_function_names_(&arena_),
       interned_vulkan_annotation_keys_(&arena_),
+      enabled_categories(&arena_),
       last_reset_timestamp_(0),
       reset_period_ms_(SEQUENCE_RESET_PERIOD_MS),
       reset_(false) {
@@ -231,8 +235,29 @@ void ThreadlocalEmitter<T>::EmitProcessData() {
 }
 
 template <typename T>
-void ThreadlocalEmitter<T>::StartEvent(const char* name) {
+void ThreadlocalEmitter<T>::SetupTracing(
+    const typename perfetto::DataSourceBase::SetupArgs& a) {
+  auto config = a.config;
+  if (config) {
+    enabled_categories.clear();
+    std::istringstream f(config->legacy_config());
+    std::string s;
+    enabled_categories[""] = 1;
+    while (std::getline(f, s, ':')) {
+      enabled_categories[s] = 1;
+    }
+  } else {
+    enabled_categories.clear();
+    enabled_categories[""] = 1;
+  }
+}
+
+template <typename T>
+void ThreadlocalEmitter<T>::StartEvent(const char* category, const char* name) {
   if (!enabled_) {
+    return;
+  }
+  if (category && !enabled_categories.contains(category)) {
     return;
   }
   ResetIfNecessary();
@@ -240,14 +265,16 @@ void ThreadlocalEmitter<T>::StartEvent(const char* name) {
   uint64_t time = perfetto::base::GetBootTimeNs().count();
 
   PerfettoProducer<T>::Trace(
-      [this, name, time](typename PerfettoProducer<T>::TraceContext ctx) {
+      [this, name, time,
+       category](typename PerfettoProducer<T>::TraceContext ctx) {
         auto packet = ctx.NewTracePacket();
         packet->set_timestamp(time);
         perfetto::protos::pbzero::InternedData* interned_data = nullptr;
         uint64_t name_iid = InternName(name, packet, &interned_data);
 
         // TODO: proper categories
-        uint64_t category_iid = InternCategory("cat", packet, &interned_data);
+        uint64_t category_iid =
+            InternCategory(category, packet, &interned_data);
 
         auto track_event = packet->set_track_event();
         track_event->set_timestamp_absolute_us(time / 1000);
@@ -260,18 +287,22 @@ void ThreadlocalEmitter<T>::StartEvent(const char* name) {
 }
 
 template <typename T>
-void ThreadlocalEmitter<T>::EndEvent() {
+void ThreadlocalEmitter<T>::EndEvent(const char* category) {
   if (!enabled_) {
+    return;
+  }
+  if (category && !enabled_categories.contains(category)) {
     return;
   }
   uint64_t time = perfetto::base::GetBootTimeNs().count();
   PerfettoProducer<T>::Trace(
-      [this, time](typename PerfettoProducer<T>::TraceContext ctx) {
+      [this, time, category](typename PerfettoProducer<T>::TraceContext ctx) {
         auto packet = ctx.NewTracePacket();
         packet->set_timestamp(time);
 
         perfetto::protos::pbzero::InternedData* interned_data = nullptr;
-        uint64_t category_iid = InternCategory("cat", packet, &interned_data);
+        uint64_t category_iid =
+            InternCategory(category, packet, &interned_data);
 
         auto track_event = packet->set_track_event();
         track_event->set_timestamp_absolute_us(time / 1000);

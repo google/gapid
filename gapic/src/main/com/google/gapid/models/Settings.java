@@ -108,6 +108,11 @@ public class Settings {
   public boolean perfettoBattery = true;
   public int perfettoBatteryRate = 250;
   public boolean perfettoVulkanCPUTiming = false;
+  public boolean perfettoVulkanCPUTimingCommandBuffer = false;
+  public boolean perfettoVulkanCPUTimingDevice = false;
+  public boolean perfettoVulkanCPUTimingInstance = false;
+  public boolean perfettoVulkanCPUTimingPhysicalDevice = false;
+  public boolean perfettoVulkanCPUTimingQueue = false;
   public boolean perfettoVulkanMemoryTracker = false;
 
   public static Settings load() {
@@ -278,6 +283,11 @@ public class Settings {
     perfettoBattery = getBoolean(properties, "perfetto.battery", perfettoBattery);
     perfettoBatteryRate = getInt(properties, "perfetto.battery.rate", perfettoBatteryRate);
     perfettoVulkanCPUTiming = getBoolean(properties, "perfetto.vulkan.cpu_timing", perfettoVulkanCPUTiming);
+    perfettoVulkanCPUTimingCommandBuffer = getBoolean(properties, "perfetto.vulkan.cpu_timing.command_buffer", perfettoVulkanCPUTimingCommandBuffer);
+    perfettoVulkanCPUTimingDevice = getBoolean(properties, "perfetto.vulkan.cpu_timing.device", perfettoVulkanCPUTimingDevice);
+    perfettoVulkanCPUTimingInstance = getBoolean(properties, "perfetto.vulkan.cpu_timing.instance", perfettoVulkanCPUTimingInstance);
+    perfettoVulkanCPUTimingQueue = getBoolean(properties, "perfetto.vulkan.cpu_timing.queue", perfettoVulkanCPUTimingQueue);
+    perfettoVulkanCPUTimingPhysicalDevice = getBoolean(properties, "perfetto.vulkan.cpu_timing.physical_device", perfettoVulkanCPUTimingPhysicalDevice);
     perfettoVulkanMemoryTracker =
         getBoolean(properties, "perfetto.vulkan.memory_tracker", perfettoVulkanMemoryTracker);
   }
@@ -339,6 +349,12 @@ public class Settings {
     properties.setProperty("perfetto.battery", Boolean.toString(perfettoBattery));
     properties.setProperty("perfetto.battery.rate", Integer.toString(perfettoBatteryRate));
     properties.setProperty("perfetto.vulkan.cpu_timing", Boolean.toString(perfettoVulkanCPUTiming));
+    properties.setProperty("perfetto.vulkan.cpu_timing.command_buffer", Boolean.toString(perfettoVulkanCPUTimingCommandBuffer));
+    properties.setProperty("perfetto.vulkan.cpu_timing.device", Boolean.toString(perfettoVulkanCPUTimingDevice));
+    properties.setProperty("perfetto.vulkan.cpu_timing.instance", Boolean.toString(perfettoVulkanCPUTimingInstance));
+    properties.setProperty("perfetto.vulkan.cpu_timing.queue", Boolean.toString(perfettoVulkanCPUTimingQueue));
+    properties.setProperty("perfetto.vulkan.cpu_timing.physical_device", Boolean.toString(perfettoVulkanCPUTimingPhysicalDevice));
+
     properties.setProperty(
         "perfetto.vulkan.memory_tracker", Boolean.toString(perfettoVulkanMemoryTracker));
   }

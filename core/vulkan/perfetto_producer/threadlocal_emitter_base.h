@@ -21,6 +21,8 @@
 class ThreadlocalEmitterBase {
  public:
   virtual void StartTracing() = 0;
+  virtual void SetupTracing(
+      const typename perfetto::DataSourceBase::SetupArgs&) = 0;
   virtual void StopTracing() = 0;
 };
 
