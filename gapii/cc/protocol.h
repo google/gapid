@@ -25,6 +25,8 @@
  * as a 40bit unsigned integer, sent as 5 little-endian bytes.
  */
 
+// This protocol is mirrored in gapii/client/protocol.go
+
 #ifndef GAPII_PROTOCOL_H
 #define GAPII_PROTOCOL_H
 
