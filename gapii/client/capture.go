@@ -21,7 +21,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/gapid/core/app/analytics"
@@ -64,16 +63,6 @@ const (
 	// GvrAPI is hard-coded bit mask for GVR API, it needs to be kept in sync
 	// with the api_index in the gvr.api file.
 	GvrAPI = uint32(1 << 3)
-)
-
-type messageType byte
-
-const (
-	messageData       messageType = 0x00
-	messageStartTrace messageType = 0x01
-	messageEndTrace   messageType = 0x02
-	messageError      messageType = 0x03
-	messageInvalid    messageType = 0xff
 )
 
 // Options to use when creating a capture.
@@ -176,52 +165,6 @@ func handleCommError(ctx context.Context, commErr error, anyDataReceived bool) (
 	return
 }
 
-func readHeader(conn net.Conn) (msgType messageType, dataSize uint64, err error) {
-	msgType = messageInvalid
-	now := time.Now()
-	conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-	buf := make([]byte, 6)
-	if _, err = io.ReadFull(conn, buf); err == nil {
-		// first header byte contains the message type
-		msgType = messageType(buf[0])
-		// next 5 bytes contain the data size as little-endian 40bit unsigned integer
-		for i := uint(0); i < 5; i++ {
-			dataSize += uint64(buf[i+1]) << (i * 8)
-		}
-	}
-	return
-}
-
-func readData(ctx context.Context, conn net.Conn, dataSize uint64, w io.Writer, written *int64) (read siSize, err error) {
-	const maxBufSize siSize = 64 * 1024
-	for read < siSize(dataSize) {
-		copyCount := siSize(dataSize) - read
-		if copyCount > maxBufSize {
-			copyCount = maxBufSize
-		}
-		now := time.Now()
-		conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-		writeCount, copyErr := io.CopyN(w, conn, int64(copyCount))
-		read += siSize(writeCount)
-		atomic.AddInt64(written, writeCount)
-		if abort, abortErr := handleCommError(ctx, copyErr, true); abort {
-			err = abortErr
-			return
-		}
-	}
-	return
-}
-
-func readError(conn net.Conn, dataSize uint64) (errorMsg string, err error) {
-	now := time.Now()
-	conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
-	buf := make([]byte, dataSize)
-	if _, err = io.ReadFull(conn, buf); err == nil {
-		errorMsg = string(buf)
-	}
-	return
-}
-
 // Capture opens up the specified port and then waits for a capture to be
 // delivered using the specified capture options o.
 // It copies the capture into the supplied writer.
@@ -261,7 +204,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	if (p.Options.Flags & DeferStart) != 0 {
 		go func() {
 			if start.Wait(ctx) {
-				if _, err := conn.Write([]byte{byte(messageStartTrace), 0, 0, 0, 0, 0}); err != nil {
+				if err := writeStartTrace(conn); err != nil {
 					writeErr <- err
 				}
 			}
@@ -269,7 +212,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	}
 	go func() {
 		if stop.Wait(ctx) {
-			if _, err := conn.Write([]byte{byte(messageEndTrace), 0, 0, 0, 0, 0}); err != nil {
+			if err := writeEndTrace(conn); err != nil {
 				writeErr <- err
 			}
 		}
