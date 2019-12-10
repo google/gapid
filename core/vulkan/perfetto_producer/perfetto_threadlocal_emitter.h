@@ -47,10 +47,12 @@ class ThreadlocalEmitter : ThreadlocalEmitterBase {
     reset_ = true;
     enabled_ = true;
   }
+  void SetupTracing(
+      const typename perfetto::DataSourceBase::SetupArgs&) override;
   void StopTracing() override { enabled_ = false; }
   bool Enabled() { return enabled_; }
-  void StartEvent(const char* name);
-  void EndEvent();
+  void StartEvent(const char* catagory, const char* name);
+  void EndEvent(const char* category);
   void EmitVulkanMemoryUsageEvent(const VulkanMemoryEvent* vulkan_memory_event);
 
  private:
@@ -90,6 +92,7 @@ class ThreadlocalEmitter : ThreadlocalEmitterBase {
   gapil::Map<std::string, uint64_t, false> interned_categories_;
   gapil::Map<std::string, uint64_t, false> interned_function_names_;
   gapil::Map<std::string, uint64_t, false> interned_vulkan_annotation_keys_;
+  gapil::Map<std::string, uint64_t, false> enabled_categories;
   bool emitted_thread_data_ = false;
   bool emitted_process_data_ = false;
   uint64_t last_reset_timestamp_;

@@ -78,7 +78,8 @@ void PerfettoProducerData<T>::UnregisterEmitter(ThreadlocalEmitterBase* v) {
 }
 
 template<typename T>
-void PerfettoProducer<T>::OnSetup(const typename perfetto::DataSourceBase::SetupArgs&) {
+void PerfettoProducer<T>::OnSetup(const typename perfetto::DataSourceBase::SetupArgs& a) {
+    Get().OnSetup(a);
 }
 
 template<typename T>
@@ -89,6 +90,16 @@ void PerfettoProducer<T>::OnStart(const typename perfetto::DataSourceBase::Start
 template<typename T>
 void PerfettoProducer<T>::OnStop(const typename perfetto::DataSourceBase::StopArgs& a) {
     Get().OnStop(a);
+}
+
+template<typename T>
+void PerfettoProducerData<T>::OnSetup(const typename perfetto::DataSourceBase::SetupArgs& a) {
+    emitter_lock_.Lock();
+    started_ = true;
+    for (auto& e : emitters_) {
+        e.first->SetupTracing(a);
+    }
+    emitter_lock_.Unlock();
 }
 
 template<typename T>

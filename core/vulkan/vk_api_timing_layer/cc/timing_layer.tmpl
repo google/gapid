@@ -31,18 +31,21 @@
 
 namespace api_timing {
 struct timer {
-    timer(const char* name) {
-        Emit().StartEvent(name);
+    timer(const char* category, const char* name):
+        cat(category) {
+        Emit().StartEvent(category, name);
     }
     ~timer() {
-        Emit().EndEvent();
+        Emit().EndEvent(cat);
     }
+    const char* cat;
 };
 {{range $c := AllCommands $}}
 {{if and (not (GetAnnotation $c "pfn")) (not (GetAnnotation $c "synthetic"))}}
 {{Template "BeginPlatformIfDef" $c}}
 {{Template "C++.BaseType" $c.Return.Type}} {{$c.Name}}(PFN_{{$c.Name}} next, {{Macro "C++.BaseCallParameters" $c | JoinWith ", "}}) {
-    timer t("{{$c.Name}}");
+    {{$ind := Title (Macro "InitialIndirection" $c)}}
+    timer t("{{$ind}}", "{{$c.Name}}");
     return next({{Template "C++.CallArguments" $c}});
 }
 {{Template "EndPlatformIfDef" $c}}
