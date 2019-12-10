@@ -326,9 +326,7 @@ public class TrackContainer {
 
     @Override
     public Hover onMouseMove(Fonts.TextMeasurer m, double x, double y) {
-      if (y < TITLE_HEIGHT && expanded && x >= LABEL_WIDTH) {
-        return Hover.NONE;
-      } else if (y < TITLE_HEIGHT && (expanded || x < LABEL_WIDTH)) {
+      if (y < TITLE_HEIGHT && (expanded || x < LABEL_WIDTH)) {
         hovered = true;
         double textEnd =
             Math.ceil(m.measure(Fonts.Style.Normal, summary.getTitle()).w) + LABEL_OFFSET;
