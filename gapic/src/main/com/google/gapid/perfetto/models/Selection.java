@@ -44,6 +44,7 @@ public interface Selection<Key> {
   public Composite buildUi(Composite parent, State state);
   public default void markTime(@SuppressWarnings("unused") State state) { /* do nothing */ }
   public default void zoom(@SuppressWarnings("unused") State state) { /* do nothing */ }
+  public default boolean isEmpty() { return this == EMPTY_SELECTION; }
 
   @SuppressWarnings("rawtypes")
   public static final Selection EMPTY_SELECTION = new EmptySelection<>();

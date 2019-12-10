@@ -255,7 +255,7 @@ public class State {
     lastSelectionUpdateId.incrementAndGet();
     this.selection = selection;
     // If selection is cleared or set to a non-cpu one, don't do color grouping for cpu slices.
-    if (selection == null || selection.getSelection(Selection.Kind.Cpu) == Selection.EMPTY_SELECTION) {
+    if (selection == null || selection.getSelection(Selection.Kind.Cpu).isEmpty()) {
       clearSelectedThreads();
     }
     listeners.fire().onSelectionChanged(selection);
