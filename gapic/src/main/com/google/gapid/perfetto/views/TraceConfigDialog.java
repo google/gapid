@@ -229,17 +229,22 @@ public class TraceConfigDialog extends DialogBase {
     if (settings.perfettoVulkanCPUTiming) {
       largeBuffer = true;
       config.addDataSourcesBuilder()
-        .getConfigBuilder()
-          .setName("VulkanCPUTiming");
+          .getConfigBuilder()
+              .setName("VulkanCPUTiming");
+    }
+
+    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
+        .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE));
+
+    if (largeBuffer) {
       config.setWriteIntoFile(true);
       config.setFileWritePeriodMs((int)HOURS.toMillis(1));
     }
 
-    config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
-      .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE));
-
     if (settings.perfettoVulkanMemoryTracker) {
-      config.addDataSourcesBuilder().getConfigBuilder().setName("VulkanMemoryTracker");
+      config.addDataSourcesBuilder()
+          .getConfigBuilder()
+              .setName("VulkanMemoryTracker");
     }
 
     return config;
