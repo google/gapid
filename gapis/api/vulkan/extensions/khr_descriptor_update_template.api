@@ -102,7 +102,6 @@ sub dense_map!(u32, VkDescriptorUpdateTemplateEntry) rewriteDescriptorUpdateEntr
   return ret_val.Map
 }
 
-
 @internal
 class DescriptorUpdateTemplateObject {
     @unused VkDevice                           Device
@@ -122,26 +121,27 @@ sub ref!DescriptorUpdateTemplateObject createDescriptorUpdateTemplate(
     const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
     VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate,
     bool fromKHR) {
+    obj := new!DescriptorUpdateTemplateObject()
     if !(device in Devices) { vkErrorInvalidDevice(device) }
-    if pCreateInfo == null { vkErrorNullPointer("pDescriptorUpdateTemplate") }
-    info := pCreateInfo[0]
-    if !(info.descriptorSetLayout in DescriptorSetLayouts) { vkErrorInvalidDescriptorSetLayout(info.descriptorSetLayout) }
-    obj := new!DescriptorUpdateTemplateObject(
-        Device: device,
-        Flags: info.flags,
-        TemplateType: info.templateType,
-        DescriptorSetLayout: info.descriptorSetLayout,
-        PipelineBindPoint: info.pipelineBindPoint,
-        PipelineLayout: info.pipelineLayout,
-        SetNumber: info.set,
-        FromKHR: fromKHR,
-    )
-
-    obj.Entries = rewriteDescriptorUpdateEntries(
-        info.descriptorUpdateEntryCount,
-        info.pDescriptorUpdateEntries,
-        info.descriptorSetLayout)
-
+    if pCreateInfo == null {
+        vkErrorNullPointer("pDescriptorUpdateTemplate")
+    } else if !(pCreateInfo[0].descriptorSetLayout in DescriptorSetLayouts) {
+        vkErrorInvalidDescriptorSetLayout(pCreateInfo[0].descriptorSetLayout)
+    } else {
+        info := pCreateInfo[0]
+        obj.Device = device
+        obj.Flags = info.flags
+        obj.TemplateType = info.templateType
+        obj.DescriptorSetLayout = info.descriptorSetLayout
+        obj.PipelineBindPoint = info.pipelineBindPoint
+        obj.PipelineLayout = info.pipelineLayout
+        obj.SetNumber = info.set
+        obj.FromKHR = fromKHR
+        obj.Entries = rewriteDescriptorUpdateEntries(
+            info.descriptorUpdateEntryCount,
+            info.pDescriptorUpdateEntries,
+            info.descriptorSetLayout)
+    }
     return obj
 }
 
@@ -149,75 +149,81 @@ sub void updateDescriptorSetWithTemplate(
     VkDescriptorSet                             descriptorSet,
     VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
     const void*                                 pData) {
-    if !(descriptorSet in DescriptorSets) { vkErrorInvalidDescriptorSet(descriptorSet) }
-    if !(descriptorUpdateTemplate in DescriptorUpdateTemplates) { vkErrorInvalidDescriptorUpdateTemplate(descriptorUpdateTemplate) }
-    dat := as!const char*(pData)
-    template := DescriptorUpdateTemplates[descriptorUpdateTemplate]
-    set := DescriptorSets[descriptorSet]
+    if !(descriptorSet in DescriptorSets) {
+        vkErrorInvalidDescriptorSet(descriptorSet)
+    } else {
+        if !(descriptorUpdateTemplate in DescriptorUpdateTemplates) {
+	    vkErrorInvalidDescriptorUpdateTemplate(descriptorUpdateTemplate)
+	} else {
+            dat := as!const char*(pData)
+            template := DescriptorUpdateTemplates[descriptorUpdateTemplate]
+            set := DescriptorSets[descriptorSet]
 
-    for i in (0 .. len(template.Entries)) {
-        entry := template.Entries[as!u32(i)]
-        setBinding := switch set.Bindings[entry.dstBinding] == null {
-        case false:
-            set.Bindings[entry.dstBinding]
-        case true:
-            new!DescriptorBinding(BindingType: set.Layout.Bindings[entry.dstBinding].Type)
+            for i in (0 .. len(template.Entries)) {
+                entry := template.Entries[as!u32(i)]
+                setBinding := switch set.Bindings[entry.dstBinding] == null {
+                case false:
+                    set.Bindings[entry.dstBinding]
+                case true:
+                    new!DescriptorBinding(BindingType: set.Layout.Bindings[entry.dstBinding].Type)
+                }
+                switch(entry.descriptorType) {
+                    case VK_DESCRIPTOR_TYPE_SAMPLER,
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+                        inf := as!VkDescriptorImageInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
+                        imageBinding := setBinding.ImageBinding
+                        imageBinding[entry.dstArrayElement] = new!VkDescriptorImageInfo(
+                            Sampler: inf.Sampler,
+                            ImageView: inf.ImageView,
+                            ImageLayout: inf.ImageLayout
+                        )
+                        setBinding.ImageBinding = imageBinding
+                        if inf.Sampler in Samplers {
+                          samObj := Samplers[inf.Sampler]
+                          if samObj != null {
+                            registerDescriptorUser!SamplerObject(samObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                        if inf.ImageView in ImageViews {
+                          viewObj := ImageViews[inf.ImageView]
+                          if viewObj != null {
+                            registerDescriptorUser!ImageViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                    }
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+                        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+                        view := as!VkBufferView[](dat[entry.offset:entry.offset + as!size(8)])[0]
+                        viewBindings := setBinding.BufferViewBindings
+                        viewBindings[entry.dstArrayElement] = view
+                        setBinding.BufferViewBindings = viewBindings
+                        if view in BufferViews {
+                          viewObj := BufferViews[view]
+                          if viewObj != null {
+                            registerDescriptorUser!BufferViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
+                          }
+                        }
+                    }
+                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+                        bufferInfo := as!VkDescriptorBufferInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
+                        bufferBindings := setBinding.BufferBinding
+                        bufferBindings[entry.dstArrayElement] = new!VkDescriptorBufferInfo(
+                            Buffer: bufferInfo.Buffer,
+                            Offset: bufferInfo.Offset,
+                            Range: bufferInfo.Range
+                        )
+                        setBinding.BufferBinding = bufferBindings
+                    }
+                }
+                set.Bindings[entry.dstBinding] = setBinding
+            }
         }
-        switch(entry.descriptorType) {
-            case VK_DESCRIPTOR_TYPE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-                inf := as!VkDescriptorImageInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
-                imageBinding := setBinding.ImageBinding
-                imageBinding[entry.dstArrayElement] = new!VkDescriptorImageInfo(
-                    Sampler: inf.Sampler,
-                    ImageView: inf.ImageView,
-                    ImageLayout: inf.ImageLayout
-                )
-                setBinding.ImageBinding = imageBinding
-                if inf.Sampler in Samplers {
-                  samObj := Samplers[inf.Sampler]
-                  if samObj != null {
-                    registerDescriptorUser!SamplerObject(samObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
-                  }
-                }
-                if inf.ImageView in ImageViews {
-                  viewObj := ImageViews[inf.ImageView]
-                  if viewObj != null {
-                    registerDescriptorUser!ImageViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
-                  }
-                }
-            }
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-                view := as!VkBufferView[](dat[entry.offset:entry.offset + as!size(8)])[0]
-                viewBindings := setBinding.BufferViewBindings
-                viewBindings[entry.dstArrayElement] = view
-                setBinding.BufferViewBindings = viewBindings
-                if view in BufferViews {
-                  viewObj := BufferViews[view]
-                  if viewObj != null {
-                    registerDescriptorUser!BufferViewObject(viewObj, descriptorSet, entry.dstBinding, entry.dstArrayElement)
-                  }
-                }
-            }
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-                bufferInfo := as!VkDescriptorBufferInfo[](dat[entry.offset:entry.offset + as!size(24)])[0]
-                bufferBindings := setBinding.BufferBinding
-                bufferBindings[entry.dstArrayElement] = new!VkDescriptorBufferInfo(
-                    Buffer: bufferInfo.Buffer,
-                    Offset: bufferInfo.Offset,
-                    Range: bufferInfo.Range
-                )
-                setBinding.BufferBinding = bufferBindings
-            }
-        }
-        set.Bindings[entry.dstBinding] = setBinding
     }
 }
 
