@@ -17,6 +17,7 @@
 #ifndef CORE_STRING_WRITER_H
 #define CORE_STRING_WRITER_H
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 
@@ -28,11 +29,11 @@ class StringWriter {
  public:
   typedef std::shared_ptr<StringWriter> SPtr;
 
-  // write attempts to write the string 'data' to the underlying stream,
-  // returning false upon failure.  'data' may be in an unknown state past
+  // write attempts to write the strings in 'strings' to the underlying stream,
+  // returning false upon failure. 'strings' may be in an unknown state past
   // this call, as implementations of this interface may use move semantics
   // as a memory optimization.
-  virtual bool write(std::string& data) = 0;
+  virtual bool write(std::initializer_list<std::string*> strings) = 0;
 
   // flush flushes out all of the pending in the steam
   virtual void flush() = 0;

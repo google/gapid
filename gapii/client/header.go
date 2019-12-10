@@ -23,7 +23,7 @@ import (
 
 var magic = [4]byte{'s', 'p', 'y', '0'}
 
-const version = 1
+const version = 2
 
 // The GAPII header is defined as:
 //
@@ -31,7 +31,7 @@ const version = 1
 //
 // struct ConnectionHeader {
 //     uint8_t  mMagic[4];                     // 's', 'p', 'y', '0'
-//     uint32_t mVersion;                      // 1
+//     uint32_t mVersion;                      // 2
 //     uint32_t mObserveFrameFrequency;        // non-zero == enabled.
 //     uint32_t mObserveDrawFrequency;         // non-zero == enabled.
 //     uint32_t mStartFrame;                   // non-zero == Frame to start at.

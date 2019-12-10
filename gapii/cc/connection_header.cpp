@@ -48,8 +48,8 @@ bool ConnectionHeader::read(core::StreamReader* reader) {
     return false;
   }
 
-  const int kMinSupportedVersion = 1;
-  const int kMaxSupportedVersion = 1;
+  const int kMinSupportedVersion = 2;
+  const int kMaxSupportedVersion = 2;
 
   if (mVersion < kMinSupportedVersion || mVersion > kMaxSupportedVersion) {
     GAPID_WARNING(
