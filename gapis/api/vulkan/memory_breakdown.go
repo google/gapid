@@ -70,7 +70,7 @@ func (a API) MemoryBreakdown(st *api.GlobalState) (*api.MemoryBreakdown, error) 
 		if err != nil {
 			return nil, err
 		}
-		bindings, err := s.getAllocationBindings(info.Get())
+		bindings, err := s.getAllocationBindings(info.Get(), st)
 		if err != nil {
 			return nil, err
 		}
@@ -302,7 +302,7 @@ func (s *State) getMemoryTypeFlags(device VkDevice, typeIndex uint32) (VkMemoryP
 	return props.MemoryTypes().Get(int(typeIndex)).PropertyFlags(), nil
 }
 
-func (s *State) getAllocationBindings(allocation DeviceMemoryObject) ([]*api.MemoryBinding, error) {
+func (s *State) getAllocationBindings(allocation DeviceMemoryObject, st *api.GlobalState) ([]*api.MemoryBinding, error) {
 	bindings := []*api.MemoryBinding{}
 	for handle, offset := range allocation.BoundObjects().All() {
 		binding := api.MemoryBinding{
@@ -315,7 +315,7 @@ func (s *State) getAllocationBindings(allocation DeviceMemoryObject) ([]*api.Mem
 			binding.Type = &api.MemoryBinding_Buffer{&api.NormalBinding{}}
 		} else if image, ok := s.Images().Lookup(VkImage(handle)); ok {
 			ctx := context.Background()
-			memInfo, _ := subGetImagePlaneMemoryInfo(ctx, nil, api.CmdNoID, nil, nil, s, 0, nil, nil, image, VkImageAspectFlagBits(0))
+			memInfo, _ := subGetImagePlaneMemoryInfo(ctx, nil, api.CmdNoID, nil, st, s, 0, nil, nil, image, VkImageAspectFlagBits(0))
 			memRequirement := memInfo.MemoryRequirements()
 			binding.Size = uint64(memRequirement.Size())
 			binding.Type = &api.MemoryBinding_Image{&api.NormalBinding{}}
