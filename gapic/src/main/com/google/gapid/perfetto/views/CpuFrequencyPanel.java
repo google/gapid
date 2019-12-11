@@ -52,7 +52,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
 
   @Override
   public String getTitle() {
-    return "CPU " + (track.getCpu().id + 1) + " Frequency";
+    return "CPU " + track.getCpu().id + " Frequency";
   }
 
   @Override
