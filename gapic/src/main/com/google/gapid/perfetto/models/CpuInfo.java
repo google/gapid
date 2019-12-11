@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.gapid.models;
+package com.google.gapid.perfetto.models;
 
 import static com.google.common.base.Functions.identity;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
@@ -22,7 +22,7 @@ import static com.google.gapid.util.MoreFutures.transform;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.perfetto.models.QueryEngine;
+import com.google.gapid.models.Perfetto;
 
 public class CpuInfo {
   public static final CpuInfo NONE = new CpuInfo(ImmutableList.of());

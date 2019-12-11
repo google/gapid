@@ -23,7 +23,6 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.CpuInfo;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.models.TrackConfig.Group;
