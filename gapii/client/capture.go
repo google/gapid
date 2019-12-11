@@ -21,12 +21,15 @@ import (
 	"io"
 	"math"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/gapid/core/app/analytics"
 	"github.com/google/gapid/core/app/status"
+	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/pkg/errors"
 )
 
@@ -46,7 +49,7 @@ const (
 	// NoBuffer causes the trace to not buffer any data. This will allow
 	// more data to be preserved if an application may crash.
 	NoBuffer Flags = 0x00000020
-	// HideUnknownExtensions will prevent any unknown extensions from being
+	// HideUnkownExtensions will prevent any unknown extensions from being
 	// seen by the application
 	HideUnknownExtensions Flags = 0x00000040
 	// StoreTimestamps requests that the capture contain timestamps
@@ -87,6 +90,7 @@ type Options struct {
 
 const sizeGap = 1024 * 1024 * 5
 const timeGap = time.Second
+const startMidExecutionCapture = 0xdeadbeef
 
 type siSize int64
 
@@ -142,29 +146,6 @@ func (p *Process) connect(ctx context.Context, gvrHandle uint64, interceptorPath
 	})
 }
 
-func handleCommError(ctx context.Context, commErr error, anyDataReceived bool) (abort bool, err error) {
-	switch {
-	case errors.Cause(commErr) == io.EOF:
-		log.E(ctx, "unexpected end of stream")
-		abort = true
-		err = commErr
-	case commErr != nil && anyDataReceived:
-		netErr, isnet := commErr.(net.Error)
-		if !isnet || (!netErr.Temporary() && !netErr.Timeout()) {
-			log.E(ctx, "Connection error: %v", commErr)
-			// Got an error mid-stream terminate.
-			abort = true
-			err = commErr
-		}
-	case commErr != nil && !anyDataReceived:
-		log.E(ctx, "Target not ready: %v", commErr)
-		// Got an error without receiving a byte of data.
-		// Treat failure-to-connect as target-not-ready instead of an error.
-		abort = true
-	}
-	return
-}
-
 // Capture opens up the specified port and then waits for a capture to be
 // delivered using the specified capture options o.
 // It copies the capture into the supplied writer.
@@ -200,65 +181,41 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	conn := p.conn
 	defer conn.Close()
 
-	writeErr := make(chan error)
-	if (p.Options.Flags & DeferStart) != 0 {
-		go func() {
-			if start.Wait(ctx) {
-				if err := writeStartTrace(conn); err != nil {
-					writeErr <- err
-				}
-			}
-		}()
-	}
-	go func() {
-		if stop.Wait(ctx) {
-			if err := writeEndTrace(conn); err != nil {
-				writeErr <- err
-			}
-		}
-	}()
-
 	var count siSize
-	var lastErrorMsg string
-mainLoop:
+	started := false
 	for {
-		select {
-		case err := <-writeErr:
-			log.E(ctx, "Write error: %v", err)
-			return int64(count), err
-		default:
-		}
-		if task.Stopped(ctx) {
+		if task.Stopped(ctx) || stop.Fired() {
 			log.I(ctx, "Stop: %v", count)
-			break mainLoop
+			break
 		}
-		msgType, dataSize, headerErr := readHeader(conn)
-		if abort, err := handleCommError(ctx, headerErr, count > 0); abort {
-			return int64(count), err
+		if (p.Options.Flags & DeferStart) != 0 {
+			if !started && start.Fired() {
+				started = true
+				w := endian.Writer(conn, device.LittleEndian)
+				w.Uint32(startMidExecutionCapture)
+			}
 		}
-		switch msgType {
-		case messageData:
-			read, dataErr := readData(ctx, conn, dataSize, w, written)
-			count += read
-			if dataErr != nil {
-				return int64(count), dataErr
-			}
-		case messageEndTrace:
-			log.D(ctx, "Received end trace message: %v", count)
-			// if received error messages, return most recent
-			if lastErrorMsg != "" {
-				return int64(count), errors.New(lastErrorMsg)
-			}
-			break mainLoop
-		case messageError:
-			errorMsg, errorErr := readError(conn, dataSize)
-			if errorMsg != "" {
-				log.E(ctx, "Received error: %s", errorMsg)
-				lastErrorMsg = errorMsg
-			}
-			if abort, err := handleCommError(ctx, errorErr, true); abort {
+		now := time.Now()
+		conn.SetReadDeadline(now.Add(time.Millisecond * 500)) // Allow for stop event and UI refreshes.
+		n, err := io.CopyN(w, conn, 1024*64)
+		count += siSize(n)
+		atomic.StoreInt64(written, int64(count))
+		switch {
+		case errors.Cause(err) == io.EOF:
+			// End of stream. End.
+			log.I(ctx, "EOF: %v", count)
+			return int64(count), nil
+		case err != nil && count > 0:
+			err, isnet := err.(net.Error)
+			if !isnet || (!err.Temporary() && !err.Timeout()) {
+				log.I(ctx, "Connection error: %v", err)
+				// Got an error mid-stream terminate.
 				return int64(count), err
 			}
+		case err != nil && count == 0:
+			// Got an error without receiving a byte of data.
+			// Treat failure-to-connect as target-not-ready instead of an error.
+			return 0, nil
 		}
 	}
 	return int64(count), nil
