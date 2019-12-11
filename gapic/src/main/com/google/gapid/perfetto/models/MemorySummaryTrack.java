@@ -26,6 +26,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
@@ -39,12 +40,12 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
       "select ts, lead(ts) over (order by ts) - ts dur, max(a) total, max(b) unused," +
       "   max(c) + max(d) + max(e) buffCache " +
       "from (select ts," +
-      "  case when counter_id = %d then cast(value as int) end a," +
-      "  case when counter_id = %d then cast(value as int) end b," +
-      "  case when counter_id = %d then cast(value as int) end c," +
-      "  case when counter_id = %d then cast(value as int) end d," +
-      "  case when counter_id = %d then cast(value as int) end e " +
-      "  from counter_values where counter_id in (%d, %d, %d, %d, %d))" +
+      "  case when track_id = %d then cast(value as int) end a," +
+      "  case when track_id = %d then cast(value as int) end b," +
+      "  case when track_id = %d then cast(value as int) end c," +
+      "  case when track_id = %d then cast(value as int) end d," +
+      "  case when track_id = %d then cast(value as int) end e " +
+      "  from counter where track_id in (%d, %d, %d, %d, %d))" +
       "group by ts";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), cast(avg(total) as int), cast(avg(unused) as int)," +
@@ -132,11 +133,12 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
-    CounterInfo total = onlyOne(data.getCountersByName().get("MemTotal"));
-    CounterInfo free = onlyOne(data.getCountersByName().get("MemFree"));
-    CounterInfo buffers = onlyOne(data.getCountersByName().get("Buffers"));
-    CounterInfo cached = onlyOne(data.getCountersByName().get("Cached"));
-    CounterInfo swapCached = onlyOne(data.getCountersByName().get("SwapCached"));
+    ImmutableListMultimap<String, CounterInfo> counters = data.getCounters(CounterInfo.Type.Global);
+    CounterInfo total = onlyOne(counters.get("MemTotal"));
+    CounterInfo free = onlyOne(counters.get("MemFree"));
+    CounterInfo buffers = onlyOne(counters.get("Buffers"));
+    CounterInfo cached = onlyOne(counters.get("Cached"));
+    CounterInfo swapCached = onlyOne(counters.get("SwapCached"));
     if ((total == null) || (free  == null) || (buffers  == null) || (cached  == null) ||
         (swapCached  == null)) {
       return Futures.immediateFuture(data);

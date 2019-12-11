@@ -100,8 +100,8 @@ public class Tracks {
   }
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {
-    List<CounterInfo> counters = data.getCounters().values().stream()
-        .filter(c -> (c.count > 0) && ("gpu_counter_track".equals(c.type)))
+    List<CounterInfo> counters = data.getCounters(CounterInfo.Type.Gpu).values().stream()
+        .filter(c -> c.count > 0)
         .collect(toList());
 
     if (counters.isEmpty() && (data.getGpu().queueCount() == 0)) {

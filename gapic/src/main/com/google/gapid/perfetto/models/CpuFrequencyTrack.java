@@ -32,10 +32,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
   private static final String FREQ_VIEW_SQL =
       "select %d cpu, ts, lead(ts) over (order by ts) - ts dur, value freq_value " +
-      "from counter_values where counter_id = %d";
+      "from counter where track_id = %d";
   private static final String IDLE_VIEW_SQL =
       "select %d cpu, ts, lead(ts) over (order by ts) - ts dur, value idle_value " +
-      "from counter_values where counter_id = %d";
+      "from counter where track_id = %d";
   private static final String ACT_VIEW_SQL =
       "select ts, dur, quantum_ts, cpu, freq_value freq, " +
         "case idle_value when 4294967295 then -1 else idle_value end idle " +
