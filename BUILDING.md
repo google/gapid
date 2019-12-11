@@ -44,7 +44,7 @@ Using the msys64 shell at `C:\tools\msys64\mingw64`:
 
 ### Install Java Development Kit 8
 
-A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net) (good defaults are version 8 and Hotspot JVM).
 
 Make sure the `JAVA_HOME` environment variable points to the JDK.
 
@@ -102,7 +102,7 @@ Follow the [MacOS Bazel Install](https://docs.bazel.build/versions/master/instal
 
 ### Install Java Development Kit 8
 
-A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net) (good defaults are version 8 and Hotspot JVM).
 
 Make sure the `JAVA_HOME` environment variable points to the JDK.
 
@@ -169,7 +169,7 @@ Alternatively, bazel can be downloaded from its [GitHub Releases Page](https://g
 
 ### Install Java Development Kit 8
 
-A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net/releases.html) (good defaults are version 8 and Hotspot JVM).
+A JDK is required to build the user interface. If you do not already have a JDK installed, you can [install OpenJDK from here](https://adoptopenjdk.net) (good defaults are version 8 and Hotspot JVM).
 
 Make sure the `JAVA_HOME` environment variable points to the JDK.
 
