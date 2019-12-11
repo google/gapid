@@ -25,7 +25,6 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.CpuInfo;
 
 /**
  * {@link Track} containing the CPU frequency and idle data.

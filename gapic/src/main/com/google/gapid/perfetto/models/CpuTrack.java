@@ -30,7 +30,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.models.CpuInfo;
 import com.google.gapid.perfetto.ThreadState;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.views.CpuSliceSelectionView;
