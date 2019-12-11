@@ -69,12 +69,11 @@ public class Tracks {
     boolean hasAnyFrequency = false;
     for (CpuInfo.Cpu cpu : data.getCpu().cpus()) {
       CpuTrack track = new CpuTrack(cpu);
-      data.tracks.addTrack(summary.getId(), track.getId(), "CPU " + (cpu.id + 1),
+      data.tracks.addTrack(summary.getId(), track.getId(), "CPU " + cpu.id,
           single(state -> new CpuPanel(state, track), false));
       if (cpu.hasFrequency()) {
         CpuFrequencyTrack freqTrack = new CpuFrequencyTrack(cpu);
-        data.tracks.addTrack(summary.getId(), freqTrack.getId(),
-            "CPU " + (cpu.id + 1) + " Frequency",
+        data.tracks.addTrack(summary.getId(), freqTrack.getId(), "CPU " + cpu.id + " Frequency",
             single(state -> new CpuFrequencyPanel(state, freqTrack), false));
         hasAnyFrequency = true;
       }

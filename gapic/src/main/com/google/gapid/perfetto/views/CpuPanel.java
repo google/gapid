@@ -67,7 +67,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
 
   @Override
   public String getTitle() {
-    return "CPU " + (track.getCpu().id + 1);
+    return "CPU " + track.getCpu().id;
   }
 
   @Override
