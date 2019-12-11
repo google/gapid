@@ -15,11 +15,12 @@
  */
 
 #include "chunk_writer.h"
-#include "protocol.h"
 
 #include "core/cc/stream_writer.h"
 
-using namespace gapii::protocol;
+#include <google/protobuf/io/coded_stream.h>
+
+using ::google::protobuf::io::CodedOutputStream;
 
 namespace {
 
@@ -32,14 +33,10 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
 
   ~ChunkWriterImpl();
 
-  // virtual from core::StringWriter
-  bool write(std::initializer_list<std::string*> strings) override;
-  void flush() override;
+  virtual bool write(std::string& s) override;
+  virtual void flush() override;
 
  private:
-  // returns effective buffer size without reserved space
-  size_t getBufferSize() const { return mBuffer.size() - kHeaderSize; }
-
   std::string mBuffer;
 
   std::shared_ptr<core::StreamWriter> mWriter;
@@ -51,44 +48,30 @@ class ChunkWriterImpl : public gapii::ChunkWriter {
 
 ChunkWriterImpl::ChunkWriterImpl(
     const std::shared_ptr<core::StreamWriter>& writer, bool no_buffer)
-    // always reserve space for protocol header size at buffer start
-    : mBuffer(kHeaderSize, '\0'),
-      mWriter(writer),
-      mStreamGood(true),
-      mNoBuffer(no_buffer) {}
+    : mWriter(writer), mStreamGood(true), mNoBuffer(no_buffer) {}
 
 ChunkWriterImpl::~ChunkWriterImpl() {
-  if (getBufferSize() > 0u && mStreamGood) {
+  if (mBuffer.size() && mStreamGood) {
     flush();
   }
 }
 
-bool ChunkWriterImpl::write(std::initializer_list<std::string*> strings) {
+bool ChunkWriterImpl::write(std::string& s) {
   if (mStreamGood) {
-    for (auto* s : strings) {
-      mBuffer.append(*s);
-    }
-    if (mNoBuffer || (getBufferSize() >= kBufferSize)) {
+    mBuffer.append(s);
+
+    if (mNoBuffer || (mBuffer.size() >= kBufferSize)) {
       flush();
     }
   }
+
   return mStreamGood;
 }
 
 void ChunkWriterImpl::flush() {
-  size_t buf_size = getBufferSize();
-  if (buf_size > 0u) {
-    // replace reserved space at start of buffer with actual header
-    writeHeader(reinterpret_cast<uint8_t*>(&mBuffer.front()),
-                MessageType::kData, buf_size);
-
-    // send buffer including header with a single write command
-    mStreamGood =
-        mWriter->write(mBuffer.data(), mBuffer.size()) == mBuffer.size();
-
-    // continue to reserve protocol header size
-    mBuffer.resize(kHeaderSize);
-  }
+  size_t bufferSize = mBuffer.size();
+  mStreamGood = mWriter->write(mBuffer.data(), mBuffer.size()) == bufferSize;
+  mBuffer.clear();
 }
 
 }  // anonymous namespace

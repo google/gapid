@@ -22,7 +22,7 @@
 namespace core {
 
 bool Connection::sendString(const std::string& s) {
-  const auto length = static_cast<size_t>(s.size() + 1u);
+  const uint32_t length = static_cast<uint32_t>(s.size()) + 1;
   return this->send(s.c_str(), length) == length;
 }
 
@@ -32,7 +32,7 @@ bool Connection::sendString(const char* s) {
   if (s == nullptr) {
     s = "";
   }
-  const auto length = strlen(s) + 1u;
+  const uint32_t length = strlen(s) + 1;
   return this->send(s, length) == length;
 }
 

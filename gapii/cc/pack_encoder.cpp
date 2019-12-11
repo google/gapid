@@ -295,10 +295,11 @@ void PackEncoderImpl::writeVarint(std::string& buffer, uint64_t value) {
 }
 
 uint64_t PackEncoderImpl::flushChunk(std::string& buffer, bool isTypeDefChunk) {
-  const int64_t size = buffer.size();
+  int64_t size = buffer.size();
   std::string sizeBuffer;
   writeZigzag(sizeBuffer, isTypeDefChunk ? -size : size);
-  mShared->writer->write({&sizeBuffer, &buffer});
+  mShared->writer->write(sizeBuffer);
+  mShared->writer->write(buffer);
   buffer.clear();
   return mShared->mCurrentChunkId++;
 }
@@ -332,10 +333,8 @@ namespace gapii {
 // create returns a PackEncoder::SPtr that writes to output.
 PackEncoder::SPtr PackEncoder::create(
     std::shared_ptr<core::StreamWriter> stream, bool no_buffer) {
+  stream->write(header, sizeof(header));
   auto writer = ChunkWriter::create(stream, no_buffer);
-  std::string header_chunk(header, sizeof(header));
-  writer->write({&header_chunk});
-  writer->flush();  // don't buffer header, otherwise client will time out
   return PackEncoder::SPtr(new PackEncoderImpl(writer));
 }
 

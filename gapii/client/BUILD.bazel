@@ -22,7 +22,6 @@ go_library(
         "doc.go",
         "header.go",
         "jdwp_loader.go",
-        "protocol.go",
     ],
     importpath = "github.com/google/gapid/gapii/client",
     visibility = ["//visibility:public"],
