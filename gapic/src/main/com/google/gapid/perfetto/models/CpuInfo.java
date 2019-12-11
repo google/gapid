@@ -30,7 +30,7 @@ public class CpuInfo {
   private static final String CPU_FREQ_IDLE_QUERY =
       "with freq as (" +
         "select cpu, cd.id freq_id, max(value) freq " +
-        "from cpu_counter_track cd left join counter_values cv on cd.id = cv.counter_id " +
+        "from cpu_counter_track cd left join counter cv on cd.id = cv.track_id " +
         "where name = 'cpufreq' group by cd.id), " +
       "idle as (select cpu, id idle_id from cpu_counter_track where name = 'cpuidle'), " +
       "cpus as (select distinct(cpu) from sched union select distinct(cpu) from idle) " +

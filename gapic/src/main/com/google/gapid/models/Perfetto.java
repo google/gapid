@@ -24,6 +24,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static com.google.gapid.widgets.Widgets.scheduleIfNotDisposed;
 import static java.util.function.Function.identity;
 import static java.util.logging.Level.WARNING;
+import static java.util.stream.Collectors.groupingBy;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
@@ -49,6 +50,7 @@ import com.google.gapid.views.StatusBar;
 
 import org.eclipse.swt.widgets.Shell;
 
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
@@ -197,7 +199,7 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
       private ImmutableMap<Long, ThreadInfo> threads;
       private GpuInfo gpu = GpuInfo.NONE;
       private ImmutableMap<Long, CounterInfo> counters;
-      private ImmutableListMultimap<String, CounterInfo> countersByName;
+      private Map<CounterInfo.Type, ImmutableListMultimap<String, CounterInfo>> countersByName;
       public final TrackConfig.Builder tracks = new TrackConfig.Builder();
 
       public Builder(QueryEngine qe) {
@@ -253,14 +255,15 @@ public class Perfetto extends ModelBase<Perfetto.Data, Path.Capture, Loadable.Me
         return counters;
       }
 
-      public ImmutableListMultimap<String, CounterInfo> getCountersByName() {
-        return countersByName;
+      public ImmutableListMultimap<String, CounterInfo> getCounters(CounterInfo.Type type) {
+        ImmutableListMultimap<String, CounterInfo> r = countersByName.get(type);
+        return (r == null) ? ImmutableListMultimap.of() : r;
       }
 
       public Builder setCounters(ImmutableMap<Long, CounterInfo> counters) {
         this.counters = counters;
         this.countersByName = counters.values().stream()
-            .collect(toImmutableListMultimap(c -> c.name, identity()));
+            .collect(groupingBy(c -> c.type, toImmutableListMultimap(c -> c.name, identity())));
         return this;
       }
 

@@ -26,6 +26,7 @@ import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
@@ -36,10 +37,10 @@ public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
       "select ts, lead(ts) over (order by ts) - ts dur, max(a) capacity, max(b) charge," +
       "   max(c) current " +
       "from (select ts," +
-      "  case when counter_id = %d then cast(value as int) end a," +
-      "  case when counter_id = %d then cast(value as int) end b," +
-      "  case when counter_id = %d then cast(value as int) end c " +
-      "  from counter_values where counter_id in (%d, %d, %d))" +
+      "  case when track_id = %d then cast(value as int) end a," +
+      "  case when track_id = %d then cast(value as int) end b," +
+      "  case when track_id = %d then cast(value as int) end c " +
+      "  from counter where track_id in (%d, %d, %d))" +
       "group by ts";
   private static final String SUMMARY_SQL =
       "select min(ts), max(ts + dur), cast(avg(capacity) as int), cast(avg(charge) as int)," +
@@ -118,9 +119,10 @@ public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
-    CounterInfo battCap = onlyOne(data.getCountersByName().get("batt.capacity_pct"));
-    CounterInfo battCharge = onlyOne(data.getCountersByName().get("batt.charge_uah"));
-    CounterInfo battCurrent = onlyOne(data.getCountersByName().get("batt.current_ua"));
+    ImmutableListMultimap<String, CounterInfo> counters = data.getCounters(CounterInfo.Type.Global);
+    CounterInfo battCap = onlyOne(counters.get("batt.capacity_pct"));
+    CounterInfo battCharge = onlyOne(counters.get("batt.charge_uah"));
+    CounterInfo battCurrent = onlyOne(counters.get("batt.current_ua"));
     if ((battCap == null) || (battCharge  == null) || (battCurrent  == null)) {
       return Futures.immediateFuture(data);
     }
