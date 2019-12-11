@@ -15,18 +15,17 @@
  */
 package com.google.gapid.models;
 
+import static com.google.common.base.Functions.identity;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.models.QueryEngine;
 
-import java.util.Collections;
-import java.util.List;
-
 public class CpuInfo {
-  public static final CpuInfo NONE = new CpuInfo(Collections.emptyList());
+  public static final CpuInfo NONE = new CpuInfo(ImmutableList.of());
 
   private static final String CPU_FREQ_IDLE_QUERY =
       "with freq as (" +
@@ -39,10 +38,12 @@ public class CpuInfo {
       "from cpus left join idle using (cpu) left join freq using (cpu) " +
       "order by cpu";
 
-  private final List<Cpu> cpus;
+  private final ImmutableList<Cpu> cpus;
+  private final ImmutableMap<Integer, Cpu> cpusById;
 
-  private CpuInfo(List<Cpu> cpus) {
+  private CpuInfo(ImmutableList<Cpu> cpus) {
     this.cpus = cpus;
+    this.cpusById = cpus.stream().collect(toImmutableMap(c -> c.id, identity()));
   }
 
   public int count() {
@@ -57,15 +58,19 @@ public class CpuInfo {
     return cpus.get(idx);
   }
 
+  public Cpu getById(int id) {
+    return cpusById.get(id);
+  }
+
   public Iterable<Cpu> cpus() {
-    return Iterables.unmodifiableIterable(cpus);
+    return cpus;
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> listCpus(Perfetto.Data.Builder data) {
     return transform(data.qe.query(CPU_FREQ_IDLE_QUERY), res -> {
       ImmutableList.Builder<Cpu> cpus = ImmutableList.builderWithExpectedSize(res.getNumRows());
-      res.forEachRow(($, r) -> {
-        cpus.add(Cpu.of(r));
+      res.forEachRow((idx, r) -> {
+        cpus.add(Cpu.of(idx, r));
       });
       return data.setCpu(new CpuInfo(cpus.build()));
     });
@@ -73,28 +78,31 @@ public class CpuInfo {
 
   public static class Cpu {
     public final int id;
+    public final int index;
     public final long freqId;
     public final double maxFreq;
     public final long idleId;
 
-    private Cpu(int id) {
+    private Cpu(int id, int index) {
       this.id = id;
+      this.index = index;
       this.freqId = -1;
       this.maxFreq = Double.NaN;
       this.idleId = -1;
     }
 
-    private Cpu(int id, long freqId, double maxFreq, long idleId) {
+    private Cpu(int id, int index, long freqId, double maxFreq, long idleId) {
       this.id = id;
+      this.index = index;
       this.freqId = freqId;
       this.maxFreq = maxFreq;
       this.idleId = idleId;
     }
 
-    public static Cpu of(QueryEngine.Row r) {
+    public static Cpu of(int index, QueryEngine.Row r) {
       int cpu = r.getInt(0);
-      return (r.isNull(1) || r.isNull(3)) ? new Cpu(cpu) :
-          new Cpu(cpu, r.getLong(1), r.getDouble(2), r.getLong(3));
+      return (r.isNull(1) || r.isNull(3)) ? new Cpu(cpu, index) :
+          new Cpu(cpu, index, r.getLong(1), r.getDouble(2), r.getLong(3));
     }
 
     public boolean hasFrequency() {

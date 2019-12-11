@@ -35,10 +35,8 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   private static final String PROCESS_VIEW_SQL = "select * from sched where utid in (%s)";
   private static final String SUMMARY_SQL =
       "select quantum_ts, sum(dur)/cast(%d * %d as float) " +
-      "from %s where cpu < %d " +
-      "group by quantum_ts";
-  private static final String SLICES_SQL =
-      "select ts, dur, cpu, utid, row_id from %s where cpu < %d";
+      "from %s group by quantum_ts";
+  private static final String SLICES_SQL = "select ts, dur, cpu, utid, row_id from %s";
 
   private final int numCpus;
   private final ProcessInfo process;
@@ -84,7 +82,7 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   }
 
   private String summarySql(long ns) {
-    return format(SUMMARY_SQL, numCpus, ns, tableName("span"), numCpus);
+    return format(SUMMARY_SQL, numCpus, ns, tableName("span"));
   }
 
   private ListenableFuture<Data> computeSlices(QueryEngine qe, DataRequest req) {
@@ -105,7 +103,7 @@ public class ProcessSummaryTrack extends Track<ProcessSummaryTrack.Data> {
   }
 
   private String slicesSql() {
-    return format(SLICES_SQL, tableName("span"), numCpus);
+    return format(SLICES_SQL, tableName("span"));
   }
 
   public static class Data extends Track.Data {
