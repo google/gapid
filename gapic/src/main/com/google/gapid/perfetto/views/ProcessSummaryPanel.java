@@ -26,6 +26,7 @@ import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
+import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
@@ -155,15 +156,15 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
-      int cpu = data.cpus[i];
+      CpuInfo.Cpu cpu = state.getData().cpu.getById(data.cpus[i]);
       long utid = data.utids[i];
-      if (tEnd <= visible.start || tStart >= visible.end) {
+      if (cpu == null || tEnd <= visible.start || tStart >= visible.end) {
         continue;
       }
       double rectStart = state.timeToPx(tStart);
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
-      double y = cpuH * cpu + cpu;
+      double y = cpuH * cpu.index + cpu.index;
       ctx.setBackgroundColor(ThreadInfo.getColor(state, utid));
       ctx.fillRect(rectStart, y, rectWidth, cpuH);
 
@@ -177,8 +178,9 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
       ctx.setForegroundColor(ThreadInfo.getBorderColor(state, data.utids[index]));
       double rectStart = state.timeToPx(data.starts[index]);
       double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
-      double cpu = data.cpus[index];
-      ctx.drawRect(rectStart, cpuH * cpu + cpu, rectWidth, cpuH, BOUNDING_BOX_LINE_WIDTH);
+      CpuInfo.Cpu cpu = state.getData().cpu.getById(data.cpus[index]);
+      ctx.drawRect(
+          rectStart, cpuH * cpu.index + cpu.index, rectWidth, cpuH, BOUNDING_BOX_LINE_WIDTH);
     }
 
     if (hoveredThread != null) {
