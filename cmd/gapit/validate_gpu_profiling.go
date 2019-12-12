@@ -47,14 +47,20 @@ func (verb *validateGpuProfilingVerb) Run(ctx context.Context, flags flag.FlagSe
 		return log.Err(ctx, err, "Failed to get device list.")
 	}
 	stdout := os.Stdout
+	someDeviceFailed := false
 	for i, p := range devices {
 		fmt.Fprintf(stdout, "-- Device %v: %v --\n", i, p.ID.ID())
 		err = client.ValidateDevice(ctx, p)
 		if err != nil {
 			fmt.Fprintf(stdout, "%v\n", log.Err(ctx, err, "Failed to validate device"))
+			someDeviceFailed = true
 			continue
 		}
 		fmt.Fprintf(stdout, "Device is validated.\n")
+	}
+	if someDeviceFailed {
+		err := fmt.Errorf("Some device failed validation")
+		return err
 	}
 	return nil
 }
