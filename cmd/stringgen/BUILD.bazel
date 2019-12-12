@@ -34,7 +34,6 @@ go_library(
         "//core/app:go_default_library",
         "//core/fault:go_default_library",
         "//core/log:go_default_library",
-        "//core/text/copyright:go_default_library",
         "//core/text/reflow:go_default_library",
         "//gapis/stringtable:go_default_library",
         "//gapis/stringtable/parser:go_default_library",
