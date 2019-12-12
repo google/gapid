@@ -62,7 +62,7 @@ class ConnectionHeader {
     mMagic[1] = 'p';
     mMagic[2] = 'y';
     mMagic[3] = '0';
-    mVersion = 1;
+    mVersion = 2;
     mObserveFrameFrequency = 0;
     mObserveDrawFrequency = 0;
     mStartFrame = -1;
@@ -74,7 +74,7 @@ class ConnectionHeader {
   }
 
   uint8_t mMagic[4];                // 's', 'p', 'y', '0'
-  uint32_t mVersion;                // 1
+  uint32_t mVersion;                // 2
   uint32_t mObserveFrameFrequency;  // non-zero == enabled.
   uint32_t mObserveDrawFrequency;   // non-zero == enabled.
   uint32_t mStartFrame;             // non-zero == Frame to start at.
