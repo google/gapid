@@ -149,6 +149,8 @@ int osMajor();
 int osMinor();
 int osPoint();
 
+bool hasAtrace();
+
 }  // namespace query
 
 #endif  // DEVICEINFO_QUERY_H

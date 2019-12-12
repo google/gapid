@@ -523,4 +523,6 @@ device::VulkanProfilingLayers* get_vulkan_profiling_layers() {
   return layers;
 }
 
+bool hasAtrace() { return true; }
+
 }  // namespace query

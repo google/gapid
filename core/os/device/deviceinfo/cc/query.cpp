@@ -161,7 +161,7 @@ void buildDeviceInstance(const query::Option& opt, device::Instance** out) {
     perfetto_config->set_allocated_vulkan_profile_layers(
         vulkan_performance_layers);
   }
-
+  perfetto_config->set_can_specify_atrace_apps(query::hasAtrace());
   configuration->set_allocated_perfetto_capability(perfetto_config);
 
   // Instance

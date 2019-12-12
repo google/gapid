@@ -175,7 +175,7 @@ public class TraceConfigDialog extends DialogBase {
       if (settings.perfettoCpuChain) {
         ftrace.addAllFtraceEvents(Arrays.asList(CPU_CHAIN_FTRACE));
       }
-      if (settings.perfettoCpuSlices) {
+      if (settings.perfettoCpuSlices && caps.getCanSpecifyAtraceApps()) {
         ftrace.addAllAtraceCategories(Arrays.asList(CPU_SLICES_ATRACE));
         if (!traceTarget.isEmpty()) {
           Matcher m = APP_REGEX.matcher(traceTarget);
