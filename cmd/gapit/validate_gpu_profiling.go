@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -59,8 +60,7 @@ func (verb *validateGpuProfilingVerb) Run(ctx context.Context, flags flag.FlagSe
 		fmt.Fprintf(stdout, "Device is validated.\n")
 	}
 	if someDeviceFailed {
-		err := fmt.Errorf("Some device failed validation")
-		return err
+		return errors.New("Some device failed validation")
 	}
 	return nil
 }
