@@ -644,6 +644,12 @@ public class TracerDialog {
               if (firstIsAndroid != secondIsAndroid) {
                 return firstIsAndroid ? devices.get(0) : devices.get(1);
               }
+              // Same reasoning for Stadia instances.
+              boolean firstIsStadia = devices.get(0).isStadia();
+              boolean secondIsStadia = devices.get(1).isStadia();
+              if (firstIsStadia != secondIsStadia) {
+                return firstIsStadia ? devices.get(0) : devices.get(1);
+              }
             }
             return null;
           });
@@ -657,9 +663,18 @@ public class TracerDialog {
       }
 
       private Optional<DeviceCaptureInfo> getPreviouslySelectedDevice(Settings settings) {
-        return (settings.traceDevice.isEmpty()) ? Optional.empty() : devices.stream()
-            .filter(dev -> settings.traceDevice.equals(dev.device.getSerial()))
-            .findAny();
+        if (!settings.traceDeviceSerial.isEmpty()) {
+          return devices.stream()
+              .filter(dev -> settings.traceDeviceSerial.equals(dev.device.getSerial()))
+              .findAny();
+        } else if (!settings.traceDeviceName.isEmpty()) {
+          return devices.stream()
+              .filter(dev -> "".equals(dev.device.getSerial()) &&
+                  settings.traceDeviceName.equals(dev.device.getName()))
+              .findAny();
+        } else {
+          return Optional.empty();
+        }
       }
 
       private void updateApiDropdown(DeviceTraceConfiguration config, Settings settings) {
@@ -763,7 +778,8 @@ public class TracerDialog {
         TraceTypeCapabilities config = getSelectedApi();
         File output = getOutputFile();
 
-        settings.traceDevice = dev.device.getSerial();
+        settings.traceDeviceSerial = dev.device.getSerial();
+        settings.traceDeviceName = dev.device.getName();
         settings.traceType = config.getType().name();
         settings.traceApi = config.getApi();
         settings.traceUri = traceTarget.getText();
