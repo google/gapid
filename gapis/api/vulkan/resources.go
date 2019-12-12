@@ -1013,15 +1013,24 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		}
 	}
 
+	// Convert the DynamicStates map to have VkDynamicState be the key
+	// for quick lookup (i.e. make it a set)
+	dynamicStates := make(map[VkDynamicState]bool)
+	if !p.DynamicState().IsNil() {
+		for _, k := range p.DynamicState().DynamicStates().Keys() {
+			dynamicStates[p.DynamicState().DynamicStates().Get(k)] = true
+		}
+	}
+
 	stages := []*api.Stage{
 		p.inputAssembly(),
 		p.vertexShader(ctx, s),
 		p.tessellationControlShader(ctx, s),
 		p.tessellationEvulationShader(ctx, s),
 		p.geometryShader(ctx, s),
-		p.rasterizer(),
+		p.rasterizer(s, dynamicStates),
 		p.fragmentShader(ctx, s),
-		p.colorBlending(ctx, s, cmd),
+		p.colorBlending(ctx, s, cmd, dynamicStates),
 	}
 
 	return &api.ResourceData{
@@ -1254,7 +1263,7 @@ func (p GraphicsPipelineObjectʳ) geometryShader(ctx context.Context, s *api.Glo
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
+func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates map[VkDynamicState]bool) *api.Stage {
 	rasterState := p.RasterizationState()
 	rasterList := &api.KeyValuePairList{}
 	rasterList = rasterList.AppendKeyValuePair("Depth Clamp Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthClampEnable() != 0))
@@ -1263,10 +1272,30 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 	rasterList = rasterList.AppendKeyValuePair("Cull Mode", api.CreateBitfieldDataValue("VkCullModeFlags", rasterState.CullMode(), VkCullModeFlagBitsConstants(), API{}))
 	rasterList = rasterList.AppendKeyValuePair("Front Face", api.CreateEnumDataValue("VkFrontFace", rasterState.FrontFace()))
 	rasterList = rasterList.AppendKeyValuePair("Depth Bias Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthBiasEnable() != 0))
-	rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasConstantFactor()))
-	rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", rasterState.DepthBiasClamp()))
-	rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()))
-	rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()))
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BIAS]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasConstantFactor()))
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", ldps.DepthBiasClamp()))
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasSlopeFactor()))
+		}
+	} else {
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasConstantFactor()))
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", rasterState.DepthBiasClamp()))
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()))
+	}
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_LINE_WIDTH]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", ldps.LineWidth()))
+		}
+	} else {
+		rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()))
+	}
 
 	multiState := p.MultisampleState()
 	multiList := &api.KeyValuePairList{}
@@ -1284,12 +1313,21 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 	multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0))
 	multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0))
 
-	viewports := p.ViewportState().Viewports()
-	viewportRows := make([]*api.Row, viewports.Len())
-	for i, index := range viewports.Keys() {
-		viewport := viewports.Get(index)
+	viewports := make(map[uint32]VkViewport)
 
-		viewportRows[i] = &api.Row{
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_VIEWPORT]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			viewports = ldps.Viewports().All()
+		}
+	} else {
+		viewports = p.ViewportState().Viewports().All()
+	}
+
+	viewportRows := []*api.Row{}
+	for _, viewport := range viewports {
+		viewportRows = append(viewportRows, &api.Row{
 			RowValues: []*api.DataValue{
 				api.CreatePoDDataValue("f32", viewport.X()),
 				api.CreatePoDDataValue("f32", viewport.Y()),
@@ -1298,7 +1336,7 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 				api.CreatePoDDataValue("f32", viewport.MinDepth()),
 				api.CreatePoDDataValue("f32", viewport.MaxDepth()),
 			},
-		}
+		})
 	}
 
 	viewportTable := &api.Table{
@@ -1306,19 +1344,28 @@ func (p GraphicsPipelineObjectʳ) rasterizer() *api.Stage {
 		Rows:    viewportRows,
 	}
 
-	scissors := p.ViewportState().Scissors()
-	scissorRows := make([]*api.Row, scissors.Len())
-	for i, index := range scissors.Keys() {
-		scissor := scissors.Get(index)
+	scissors := make(map[uint32]VkRect2D)
 
-		scissorRows[i] = &api.Row{
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_SCISSOR]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			scissors = ldps.Scissors().All()
+		}
+	} else {
+		scissors = p.ViewportState().Scissors().All()
+	}
+
+	scissorRows := []*api.Row{}
+	for _, scissor := range scissors {
+		scissorRows = append(scissorRows, &api.Row{
 			RowValues: []*api.DataValue{
 				api.CreatePoDDataValue("s32", scissor.Offset().X()),
 				api.CreatePoDDataValue("s32", scissor.Offset().Y()),
 				api.CreatePoDDataValue("u32", scissor.Extent().Width()),
 				api.CreatePoDDataValue("u32", scissor.Extent().Height()),
 			},
-		}
+		})
 	}
 
 	scissorTable := &api.Table{
@@ -1393,7 +1440,7 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.Glo
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command) *api.Stage {
+func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool) *api.Stage {
 	depthData := p.DepthState()
 	depthList := &api.KeyValuePairList{}
 	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0))
@@ -1401,39 +1448,103 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 	depthList = depthList.AppendKeyValuePair("Function", api.CreateEnumDataValue("VkCompareOp", depthData.DepthCompareOp()))
 	depthList = depthList.AppendKeyValuePair("Bounds Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthBoundsTestEnable() != 0))
 
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BOUNDS]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", ldps.MinDepthBounds()))
+			depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", ldps.MaxDepthBounds()))
+		}
+	} else {
+		depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", depthData.MinDepthBounds()))
+		depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", depthData.MaxDepthBounds()))
+	}
+
 	stencilRows := []*api.Row{}
 
 	if depthData.StencilTestEnable() != 0 {
 		frontStencil := depthData.Front()
+		frontRow := []*api.DataValue{
+			api.CreatePoDDataValue("string", "Front"),
+			api.CreateEnumDataValue("VkStencilOp", frontStencil.FailOp()),
+			api.CreateEnumDataValue("VkStencilOp", frontStencil.PassOp()),
+			api.CreateEnumDataValue("VkStencilOp", frontStencil.DepthFailOp()),
+			api.CreateEnumDataValue("VkCompareOp", frontStencil.CompareOp()),
+		}
 
-		stencilRows = append(stencilRows, &api.Row{
-			RowValues: []*api.DataValue{
-				api.CreatePoDDataValue("string", "Front"),
-				api.CreateEnumDataValue("VkStencilOp", frontStencil.FailOp()),
-				api.CreateEnumDataValue("VkStencilOp", frontStencil.PassOp()),
-				api.CreateEnumDataValue("VkStencilOp", frontStencil.DepthFailOp()),
-				api.CreateEnumDataValue("VkCompareOp", frontStencil.CompareOp()),
-				api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.CompareMask())),
-				api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.WriteMask())),
-				api.CreatePoDDataValue("uint32_t", frontStencil.Reference()),
-			},
-		})
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().CompareMask())))
+			}
+		} else {
+			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.CompareMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().WriteMask())))
+			}
+		} else {
+			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.WriteMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", ldps.StencilFront().Reference()))
+			}
+		} else {
+			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", frontStencil.Reference()))
+		}
+
+		stencilRows = append(stencilRows, &api.Row{RowValues: frontRow})
 
 		backStencil := depthData.Back()
 
-		stencilRows = append(stencilRows, &api.Row{
-			RowValues: []*api.DataValue{
-				api.CreatePoDDataValue("string", "Back"),
-				api.CreateEnumDataValue("VkStencilOp", backStencil.FailOp()),
-				api.CreateEnumDataValue("VkStencilOp", backStencil.PassOp()),
-				api.CreateEnumDataValue("VkStencilOp", backStencil.DepthFailOp()),
-				api.CreateEnumDataValue("VkCompareOp", backStencil.CompareOp()),
-				api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.CompareMask())),
-				api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.WriteMask())),
-				api.CreatePoDDataValue("uint32_t", backStencil.Reference()),
-			},
-		})
+		backRow := []*api.DataValue{
+			api.CreatePoDDataValue("string", "Back"),
+			api.CreateEnumDataValue("VkStencilOp", backStencil.FailOp()),
+			api.CreateEnumDataValue("VkStencilOp", backStencil.PassOp()),
+			api.CreateEnumDataValue("VkStencilOp", backStencil.DepthFailOp()),
+			api.CreateEnumDataValue("VkCompareOp", backStencil.CompareOp()),
+		}
 
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().CompareMask())))
+			}
+		} else {
+			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.CompareMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().WriteMask())))
+			}
+		} else {
+			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.WriteMask())))
+		}
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", ldps.StencilBack().Reference()))
+			}
+		} else {
+			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", backStencil.Reference()))
+		}
+
+		stencilRows = append(stencilRows, &api.Row{RowValues: backRow})
 	}
 
 	stencilTable := &api.Table{
@@ -1445,7 +1556,16 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 	blendList := &api.KeyValuePairList{}
 	blendList = blendList.AppendKeyValuePair("Logic Op Enabled", api.CreatePoDDataValue("VkBool32", blendData.LogicOpEnable() != 0))
 	blendList = blendList.AppendKeyValuePair("Logic Op", api.CreateEnumDataValue("VkLogicOp", blendData.LogicOp()))
-	blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()))
+
+	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_BLEND_CONSTANTS]; ok {
+		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+		if ok2 {
+			blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", ldps.BlendConstants().GetArrayValues()))
+		}
+	} else {
+		blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()))
+	}
 
 	targets := blendData.Attachments()
 	targetRows := make([]*api.Row, targets.Len())
