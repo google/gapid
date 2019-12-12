@@ -183,6 +183,7 @@ message VulkanProfilingLayers {
 message PerfettoCapability {
   GPUProfiling gpu_profiling = 1;
   VulkanProfilingLayers vulkan_profile_layers = 2;
+  bool can_specify_atrace_apps = 3;
 }
 
 message GPUProfiling {

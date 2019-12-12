@@ -277,7 +277,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 	if err != nil {
 		return 0, err
 	}
-	p.cleanup.Invoke(ctx)
+	defer p.cleanup.Invoke(ctx)
 
 	f := file.Abs(traceLoc)
 	size := f.Info().Size()
