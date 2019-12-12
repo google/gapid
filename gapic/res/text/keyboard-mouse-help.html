@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head i18n-values="dir:textdirection;">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta charset="utf-8"/>
+<title>Keyboard/Mouse Help</title>
+<body>
+   <style>
+    :host {
+      flex: 1 1 auto;
+      flex-direction: row;
+      display: flex;
+      width: 700px;
+    }
+    .pair {
+      flex: 1 1 auto;
+      flex-direction: row;
+      display: flex;
+    }
+    .column {
+      padding: 0 40px 40px 0;
+      vertical-align: top;
+    }
+    .command {
+      font-family: monospace;
+      display:inline;
+      margin-right: 5px;
+      text-align: right;
+      min-width: 200px;
+    }
+    .action {
+      font-size: 0.8em;
+      display:inline;
+      text-align: left;
+      min-width: 400px;
+    }
+    h4 {
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+
+    </style>
+
+    <table>
+    <tr>
+     
+    <td class="column">
+      <h2>General</h2>
+      <div class="pair">
+        <div class="command">1-4</div>
+        <div class="action">Switch mouse mode</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">shift</div>
+        <div class="action">Hold for temporary select</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">space</div>
+        <div class="action">Hold for temporary pan</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">f</div>
+        <div class="action">Zoom into selection</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">z/0</div>
+        <div class="action">Reset zoom and pan</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">v</div>
+        <div class="action">Highlight VSync</div>
+      </div>
+      <div class="pair">
+        <div class="command">m</div>
+        <div class="action">Mark current selection</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">?</div>
+        <div class="action">Show help</div>
+      </div>
+
+      <h2>Navigation</h2>
+      <div class="pair">
+        <div class="command">w/s</div><div class="action">Zoom in/out (+shift: faster)</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">a/d</div>
+        <div class="action">Pan left/right (+shift: faster)</div>
+      </div>
+
+      <h2>Mouse Controls</h2>
+      <div class="pair">
+        <div class="command">click</div>
+        <div class="action">Select event</div>
+      </div>
+      <div class="pair">
+        <div class="command">alt-mousewheel</div>
+        <div class="action">Zoom in/out</div>
+      </div>
+
+    </td>
+
+     <td class="column">
+
+      <h2>   
+        Modes
+      </h2>
+      <h4> Select Mode </h4>
+      <div class="pair">
+        <div class="command">drag</div>
+        <div class="action">Box select</div>
+      </div>
+
+      <div class="pair">
+        <div class="command"><span class="mod"></span>-click/drag</div>
+        <div class="action">Add events to the current selection</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">double click</div>
+        <div class="action">Select all events with same title</div>
+      </div>
+
+      <h4>
+        Pan mode
+      </h4>
+      <div class="pair">
+        <div class="command">drag</div>
+        <div class="action">Pan the view</div>
+      </div>
+
+      <h4>
+        Zoom mode
+      </h4>
+      <div class="pair">
+        <div class="command">drag</div>
+        <div class="action">Zoom in/out by dragging up/down</div>
+      </div>
+
+      <h4>
+        Timing mode
+      </h4>
+      <div class="pair">
+        <div class="command">drag</div>
+        <div class="action">Create or move markers</div>
+      </div>
+
+      <div class="pair">
+        <div class="command">double click</div>
+        <div class="action">Set marker range to slice</div>
+      </div>
+    </td>
+    </tr>
+   </table>
+
+</body>
+</html>
+

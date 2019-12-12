@@ -32,6 +32,7 @@ import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.MultiSelection;
+import com.google.gapid.perfetto.views.KeyboardMouseHelpDialog;
 import com.google.gapid.perfetto.views.RootPanel;
 import com.google.gapid.perfetto.views.RootPanel.MouseMode;
 import com.google.gapid.perfetto.views.SelectionView;
@@ -190,6 +191,9 @@ public class TraceView extends Composite
         case 'z':
         case '0':
           redraw = state.setVisibleTime(state.getTraceTime());
+          break;
+        case '?':
+          KeyboardMouseHelpDialog.showHelp(getShell(), models.analytics, widgets);
           break;
       }
 
