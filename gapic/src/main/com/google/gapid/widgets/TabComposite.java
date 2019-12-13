@@ -512,8 +512,25 @@ public class TabComposite extends Composite {
         } else if (state == MergeState.DO_NOTHING) {
           // Do nothing.
         } else {
-          state.replacement.weight = current.weight;
-          it.set(state.replacement);
+          if (state.replacement instanceof Folder) {
+            state.replacement.weight = current.weight;
+            it.set(state.replacement);
+          } else {
+            // The current child (C) is a group where it's only child is also a group (G). Thus,
+            // C is superfluous and can be removed. However, G can not just become our child, since
+            // it has the same horizontal vs. vertical layout as us, while our children must have
+            // the opposite from us. This does mean, however, that G, too, is superfluous and all
+            // it's children - our great-grand-children - can just become our children.
+            it.remove(); // Has to be done before we add any new children.
+            int totalWeight = 0;
+            for (Element child : ((Group)state.replacement).children) {
+              it.add(child);
+              totalWeight += child.weight;
+            }
+            for (Element child : ((Group)state.replacement).children) {
+              child.weight = (int)((child.weight * current.weight) / (double)totalWeight);
+            }
+          }
         }
       }
 
