@@ -181,8 +181,6 @@ gapil::String CallObserver::string(const gapil::Slice<char>& slice) {
   return gapil::String(mSpy->arena(), slice.begin(), slice.end());
 }
 
-void CallObserver::checkEndTrace() {
-  mSpy->checkEndTrace();
-}
+void CallObserver::checkEndTrace() { mSpy->checkEndTrace(); }
 
 }  // namespace gapii
