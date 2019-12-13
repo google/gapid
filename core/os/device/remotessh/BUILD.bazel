@@ -20,6 +20,7 @@ go_library(
         "commands.go",
         "configuration.go",
         "device.go",
+        "forward.go",
     ],
     importpath = "github.com/google/gapid/core/os/device/remotessh",
     visibility = ["//visibility:public"],
