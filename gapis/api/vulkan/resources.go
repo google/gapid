@@ -1001,6 +1001,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	vkState := GetState(s)
 	isBound := false
 	var drawCallInfo DrawParameters = NilDrawParameters
+	var framebuffer FramebufferObjectʳ
 	// Use LastDrawInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1011,6 +1012,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 			if ldi.GraphicsPipeline() == p {
 				isBound = true
 				drawCallInfo = ldi.CommandParameters()
+				framebuffer = ldi.Framebuffer()
 			}
 		}
 	}
@@ -1032,7 +1034,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		p.geometryShader(ctx, s),
 		p.rasterizer(s, dynamicStates),
 		p.fragmentShader(ctx, s),
-		p.colorBlending(ctx, s, cmd, dynamicStates),
+		p.colorBlending(ctx, s, cmd, dynamicStates, framebuffer),
 	}
 
 	return &api.ResourceData{
@@ -1518,7 +1520,7 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.Glo
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool) *api.Stage {
+func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool, fb FramebufferObjectʳ) *api.Stage {
 	depthData := p.DepthState()
 	depthList := &api.KeyValuePairList{}
 	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0))
@@ -1674,9 +1676,15 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 	renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
 	renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)))
 
+	if !fb.IsNil() {
+		fbHandle := fb.VulkanHandle()
+		fbPath := path.NewField("Framebuffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(fbHandle)
+		renderPassList = renderPassList.AppendKeyValuePair("Framebuffer", api.CreateLinkedDataValue("url", fbPath, api.CreatePoDDataValue("VkFramebuffer", fbHandle)))
+	}
+
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
-			GroupName: "Render Pass Attachments",
+			GroupName: "Attachments",
 			Data:      &api.DataGroup_KeyValues{renderPassList},
 		},
 
