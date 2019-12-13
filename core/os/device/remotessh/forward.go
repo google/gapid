@@ -24,10 +24,31 @@ import (
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/event/task"
 	"github.com/google/gapid/core/log"
+	"golang.org/x/crypto/ssh"
 )
 
+// Port is the interface for socket ports that can be tunneled through SSH.
+type Port interface {
+	// Dial returns a net.Conn to this port via an SSH tunnel.
+	dial(conn *ssh.Client) (net.Conn, error)
+}
+
+// TCPPort represents a TCP/IP port on the remote machine.
+type TCPPort int
+
+func (p TCPPort) dial(conn *ssh.Client) (net.Conn, error) {
+	return conn.Dial("tcp", fmt.Sprintf("localhost:", p))
+}
+
+// UnixPort represents a Unix port on the remote machine.
+type UnixPort string
+
+func (p UnixPort) dial(conn *ssh.Client) (net.Conn, error) {
+	return conn.Dial("unix", string(p))
+}
+
 // doTunnel tunnels a single connection through the SSH connection.
-func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) error {
+func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort Port) error {
 	remote, err := b.connection.Dial("tcp", fmt.Sprintf("localhost:%d", remotePort))
 	if err != nil {
 		local.Close()
@@ -98,7 +119,7 @@ func (b binding) SetupLocalPort(ctx context.Context, remotePort int) (int, error
 			if err != nil {
 				return
 			}
-			if err = b.doTunnel(ctx, local, remotePort); err != nil {
+			if err = b.doTunnel(ctx, local, TCPPort(remotePort)); err != nil {
 				return
 			}
 		}
