@@ -109,7 +109,7 @@ bool CreateNativeWindow(int width, int height) {
     write_error(kOutHandle, "Could not register class");
     return false;
   }
-  RECT rect = {0, 0, LONG(width), LONG(heigth)};
+  RECT rect = {0, 0, LONG(width), LONG(height)};
 
   AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
@@ -379,7 +379,7 @@ uint32_t inline GetMemoryIndex(
 
 void usage() {
   std::cout << "Options: \n";
-  std::cout << "-h=<height> Set desktop window heigth (default: 768)\n";
+  std::cout << "-h=<height> Set desktop window height (default: 768)\n";
   std::cout << "-w=<width>  Set desktop window width (default: 1024)\n";
 }
 

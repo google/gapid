@@ -63,6 +63,9 @@ done
 # Build the package and symbol file.
 build //:pkg //cmd/gapir/cc:gapir.sym
 
+# Build the Vulkan sample
+build //cmd/vulkan_sample:vulkan_sample
+
 # Build and run the smoketests.
 build //cmd/smoketests:smoketests
 echo $(date): Run smoketests...
