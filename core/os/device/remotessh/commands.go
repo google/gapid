@@ -33,6 +33,7 @@ import (
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
 	"github.com/google/gapid/core/text"
+	"github.com/google/gapid/gapis/perfetto"
 )
 
 // remoteProcess is the interface to a running process, as started by a Target.
@@ -362,4 +363,18 @@ func (b binding) SupportsPerfetto(ctx context.Context) bool {
 		return support
 	}
 	return false
+}
+
+// ConnectPerfetto connects to a Perfetto service running on this device
+// and returns an open socket connection to the service.
+func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error) {
+	if !b.SupportsPerfetto(ctx) {
+		return nil, fmt.Errorf("Perfetto is not supported on this device")
+	}
+
+	conn, err := UnixPort("/tmp/perfetto-consumer").dial(b.connection)
+	if err != nil {
+		return nil, err
+	}
+	return perfetto.NewClient(ctx, conn, nil)
 }
