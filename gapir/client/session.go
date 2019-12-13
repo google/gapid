@@ -329,7 +329,7 @@ func (s *session) newADB(ctx context.Context, d adb.Device, abi *device.ABI, lau
 
 	log.I(ctx, "Launching GAPIR...")
 	// Configure GAPIR to be traceable for replay profiling
-	cleanup, err := perfetto_android.SetupProfileLayers(ctx, d, apk.Name, true, abi, []string{})
+	cleanup, err := perfetto_android.SetupProfileLayersSource(ctx, d, apk.Name, abi)
 	s.onClose(func() {
 		cleanup.Invoke(ctx)
 	})

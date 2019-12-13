@@ -561,7 +561,11 @@ func (s *grpcServer) Find(req *service.FindRequest, server service.Gapid_FindSer
 
 func (s *grpcServer) GpuProfile(ctx xctx.Context, req *service.GpuProfileRequest) (*service.GpuProfileResponse, error) {
 	defer s.inRPC()()
-	return s.handler.GpuProfile(s.bindCtx(ctx), req)
+	res, err := s.handler.GpuProfile(s.bindCtx(ctx), req)
+	if err := service.NewError(err); err != nil {
+		return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_Error{Error: err}}, nil
+	}
+	return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_ProfilingData{ProfilingData: res}}, nil
 }
 
 func (s *grpcServer) UpdateSettings(ctx xctx.Context, req *service.UpdateSettingsRequest) (*service.UpdateSettingsResponse, error) {

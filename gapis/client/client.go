@@ -529,8 +529,15 @@ func (c *client) UpdateSettings(ctx context.Context, req *service.UpdateSettings
 	return nil
 }
 
-func (c *client) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.GpuProfileResponse, error) {
-	return c.client.GpuProfile(ctx, req)
+func (c *client) GpuProfile(ctx context.Context, req *service.GpuProfileRequest) (*service.ProfilingData, error) {
+	res, err := c.client.GpuProfile(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if err := res.GetError(); err != nil {
+		return nil, err.Get()
+	}
+	return res.GetProfilingData(), nil
 }
 
 func (c *client) GetTimestamps(ctx context.Context, req *service.GetTimestampsRequest, handler service.TimeStampsHandler) error {

@@ -82,6 +82,7 @@ go_library(
         "minimize_viewport.go",
         "overdraw.go",
         "primeable_image_data.go",
+        "profiling_layers.go",
         "query_timestamps.go",
         "queue_task.go",
         "read_framebuffer.go",

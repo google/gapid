@@ -126,6 +126,7 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 		return nil, log.Err(ctx, err, "Failed to read trace buffer")
 	}
 	processor, err := perfetto.NewProcessor(ctx, rawData)
+	defer processor.Close()
 	if err != nil {
 		return nil, log.Errf(ctx, err, "Failed to create trace processor")
 	}
@@ -216,7 +217,7 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	defer processor.Close()
 	ctx = status.Start(ctx, "Validation")
 	defer status.Finish(ctx)
 	return t.v.Validate(ctx, processor)

@@ -185,7 +185,7 @@ type Service interface {
 	GetTimestamps(ctx context.Context, req *GetTimestampsRequest, h TimeStampsHandler) error
 
 	// Get timestamps from GPU for commands.
-	GpuProfile(ctx context.Context, req *GpuProfileRequest) (*GpuProfileResponse, error)
+	GpuProfile(ctx context.Context, req *GpuProfileRequest) (*ProfilingData, error)
 
 	// Run a perfetto query
 	PerfettoQuery(ctx context.Context, c *path.Capture, query string) (*perfetto.QueryResult, error)

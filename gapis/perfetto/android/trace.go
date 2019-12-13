@@ -71,6 +71,41 @@ func setupVulkanLayers(ctx context.Context, d adb.Device, packageName string, ab
 	return cleanup, nil
 }
 
+func getDriverPackageName(ctx context.Context, d adb.Device) (string, error) {
+	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
+	if err != nil {
+		return "", err
+	}
+	if driverPackageOverride, err := d.SystemSetting(ctx, "global", prereleaseDriverOverrideSettingVariable); driverPackageOverride != "" && driverPackageOverride != "null" && err == nil {
+		driverPackageName = driverPackageOverride
+	}
+	if driverPackageName == "" {
+		return "", nil
+	}
+	if res, err := d.Shell("pm", "path", driverPackageName).Call(ctx); err != nil || res == "" {
+		return "", log.Err(ctx, err, "No driver package found.")
+	}
+	return driverPackageName, nil
+}
+
+// SetupProfileLayersSource configures the device to allow packages to be used as layer sources for profiling
+func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName string, abi *device.ABI) (app.Cleanup, error) {
+	driverPackageName, err := getDriverPackageName(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	packages := []string{driverPackageName}
+	if abi != nil {
+		packages = append(packages, gapidapk.PackageName(abi))
+	}
+
+	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, []string{}, true)
+	if err != nil {
+		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages layer packages.")
+	}
+	return cleanup, nil
+}
+
 // SetupProfileLayers configures the device to allow the app being traced to load the layers required for render stage profiling
 func SetupProfileLayers(ctx context.Context, d adb.Device, packageName string, hasRenderStages bool, abi *device.ABI, layers []string) (app.Cleanup, error) {
 	if !hasRenderStages {
@@ -79,18 +114,9 @@ func SetupProfileLayers(ctx context.Context, d adb.Device, packageName string, h
 		}
 		return nil, nil
 	}
-	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
+	driverPackageName, err := getDriverPackageName(ctx, d)
 	if err != nil {
 		return nil, err
-	}
-	if driverPackageOverride, err := d.SystemSetting(ctx, "global", prereleaseDriverOverrideSettingVariable); driverPackageOverride != "" && driverPackageOverride != "null" && err == nil {
-		driverPackageName = driverPackageOverride
-	}
-	if driverPackageName == "" {
-		return nil, nil
-	}
-	if res, err := d.Shell("pm", "path", driverPackageName).Call(ctx); err != nil || res == "" {
-		return nil, log.Err(ctx, err, "No driver package found.")
 	}
 	packages := []string{driverPackageName}
 	enabledLayers := []string{renderStageVulkanLayerName}

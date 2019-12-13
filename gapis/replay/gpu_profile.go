@@ -29,15 +29,15 @@ import (
 // Eyeball some generous trace config parameters
 const (
 	bufferSizeKb                            = uint32(256 * 1024)
-	durationMs                              = 10000
+	durationMs                              = 30000
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
 )
 
 // GpuProfile replays the trace and writes a Perfetto trace of the replay
-func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device) (*service.GpuProfileResponse, error) {
+func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Device) (*service.ProfilingData, error) {
 	c, err := capture.ResolveGraphicsFromPath(ctx, capturePath)
 	if err != nil {
-		return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_Error{Error: service.NewError(err)}}, err
+		return nil, err
 	}
 
 	if device != nil {
@@ -76,13 +76,13 @@ func GpuProfile(ctx context.Context, capturePath *path.Capture, device *path.Dev
 					continue
 				}
 				log.I(ctx, "Replay profiling finished.")
-				return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_ProfilingData{ProfilingData: data}}, nil
+				return data, nil
 			}
 		}
 	} else {
 		err = log.Err(ctx, nil, "Failed to find replay device.")
-		return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_Error{Error: service.NewError(err)}}, err
+		return nil, err
 	}
 	err = log.Err(ctx, nil, "Failed to profile replay")
-	return &service.GpuProfileResponse{Res: &service.GpuProfileResponse_Error{Error: service.NewError(err)}}, err
+	return nil, err
 }

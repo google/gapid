@@ -821,7 +821,6 @@ func (a API) Replay(
 	if a.GetReplayPriority(ctx, device, c.Header) == 0 {
 		return log.Errf(ctx, nil, "Cannot replay Vulkan commands on device '%v'", device.Name)
 	}
-
 	optimize := !config.DisableDeadCodeElimination
 
 	cmds := c.Commands
@@ -1002,10 +1001,15 @@ func (a API) Replay(
 			if profile == nil {
 				profile = &replay.EndOfReplay{}
 			}
+			numInitialCommands, err := expandCommands(false)
+			if err != nil {
+				return err
+			}
 			profile.AddResult(rr.Result)
 			makeReadable.imagesOnly = true
 			optimize = false
-			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer))
+			transforms.Add(NewWaitForPerfetto(req.traceOptions, req.handler, req.buffer, api.CmdID(numInitialCommands)))
+			transforms.Add(&profilingLayers{})
 			if req.overrides.GetViewportSize() {
 				transforms.Add(minimizeViewport(ctx))
 			}
@@ -1221,7 +1225,7 @@ func (a API) Profile(
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
 	r := profileRequest{overrides, traceOptions, handler, &buffer}
-	_, err := mgr.Replay(ctx, intent, c, r, a, hints, false)
+	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	handler.DoneSignal.Wait(ctx)
 	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer)
 	return d, err
