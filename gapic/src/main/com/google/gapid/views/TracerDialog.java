@@ -255,8 +255,10 @@ public class TracerDialog {
       private static final String TARGET_LABEL = "Application";
       private static final String FRAMES_LABEL = "Stop After:";
       private static final String DURATION_LABEL = "Duration:";
+      private static final int DURATION_MAX = 999999;
       private static final String FRAMES_UNIT = "Frames (0 for manual)";
       private static final String DURATION_UNIT = "Seconds (0 for manual)";
+      private static final String DURATION_UNIT_NO_MANUAL = "Seconds";
       private static final String MEC_LABEL_WARNING =
           "NOTE: Mid-Execution capture for %s is experimental";
       private static final int DEFAULT_START_FRAME = 100;
@@ -396,7 +398,7 @@ public class TracerDialog {
 
         durationLabel = createLabel(durGroup, FRAMES_LABEL);
         duration = withLayoutData(
-            createSpinner(durGroup, models.settings.traceDuration, 0, 999999),
+            createSpinner(durGroup, models.settings.traceDuration, 0, DURATION_MAX),
             new GridData(SWT.FILL, SWT.TOP, false, false));
         durationUnit = createLabel(durGroup, FRAMES_UNIT);
 
@@ -468,9 +470,10 @@ public class TracerDialog {
         adbWarning.setForeground(getDisplay().getSystemColor(SWT.COLOR_DARK_RED));
         adbWarning.setVisible(!models.settings.isAdbValid());
 
-        device.getCombo().addListener(
-            SWT.Selection, e -> update(models.settings, getSelectedDevice()));
-        api.getCombo().addListener(SWT.Selection, e -> update(models.settings, getSelectedApi()));
+        device.getCombo().addListener(SWT.Selection,
+            e -> updateOnDeviceChange(models.settings, getSelectedDevice(), getSelectedApi()));
+        api.getCombo().addListener(SWT.Selection,
+            e -> updateOnApiChange(models.settings, getSelectedDevice(), getSelectedApi()));
 
         Listener gpuProfilingCapabilityListener = e -> {
           // Skip if the device is not Android device, or trace type is not Perfetto.
@@ -579,31 +582,34 @@ public class TracerDialog {
         return combo;
       }
 
-      private void update(Settings settings, DeviceCaptureInfo dev) {
-        DeviceTraceConfiguration config = (dev == null) ? null : dev.config;
+      private void updateOnDeviceChange(
+          Settings settings, DeviceCaptureInfo dev, TraceTypeCapabilities capabilities) {
+        DeviceTraceConfiguration traceConfig = (dev == null) ? null : dev.config;
         traceTarget.setActionEnabled(dev != null);
-        cwd.setEnabled(config != null && config.getCanSpecifyCwd());
-        envVars.setEnabled(config != null && config.getCanSpecifyEnv());
-        clearCache.setEnabled(config != null && config.getHasCache());
-        updateApiDropdown(config, settings);
+        cwd.setEnabled(traceConfig != null && traceConfig.getCanSpecifyCwd());
+        envVars.setEnabled(traceConfig != null && traceConfig.getCanSpecifyEnv());
+        clearCache.setEnabled(traceConfig != null && traceConfig.getHasCache());
+        updateApiDropdown(traceConfig, settings);
+        updateDurationSpinner(dev, capabilities);
         updatePerfettoConfigLabel(settings);
       }
 
-      private void update(Settings settings, TraceTypeCapabilities config) {
-        boolean pcs = config != null && config.getCanDisablePcs();
+      private void updateOnApiChange(
+          Settings settings, DeviceCaptureInfo dev, TraceTypeCapabilities capabilities) {
+        boolean pcs = capabilities != null && capabilities.getCanDisablePcs();
         disablePcs.setEnabled(pcs);
         disablePcs.setSelection(pcs && settings.traceDisablePcs);
         pcsWarning.setVisible(pcs && !settings.traceDisablePcs);
 
-        boolean ext = config != null && config.getCanEnableUnsupportedExtensions();
+        boolean ext = capabilities != null && capabilities.getCanEnableUnsupportedExtensions();
         hideUnknownExtensions.setEnabled(ext);
         hideUnknownExtensions.setSelection(!ext || settings.traceHideUnknownExtensions);
 
-        boolean appRequired = config != null && config.getRequiresApplication();
+        boolean appRequired = capabilities != null && capabilities.getRequiresApplication();
         targetLabel.setText(TARGET_LABEL + (appRequired ? "*:" : ":"));
         targetLabel.requestLayout();
 
-        boolean isPerfetto = isPerfetto(config);
+        boolean isPerfetto = isPerfetto(capabilities);
         getShell().setText(
             isPerfetto ? Messages.CAPTURE_TRACE_PERFETTO : Messages.CAPTURE_TRACE_GRAPHICS);
         withoutBuffering.setEnabled(!isPerfetto);
@@ -618,14 +624,29 @@ public class TracerDialog {
           startType.add(StartType.Frame.name());
         }
         durationLabel.setText(isPerfetto ? DURATION_LABEL : FRAMES_LABEL);
-        durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
-        durationUnit.requestLayout();
+        updateDurationSpinner(dev, capabilities);
         perfettoConfig.setVisible(isPerfetto);
 
         if (!userHasChangedOutputFile) {
           file.setText(formatTraceName(friendlyName));
           userHasChangedOutputFile = false; // cancel the modify event from set call.
         }
+      }
+
+      private void updateDurationSpinner(DeviceCaptureInfo dev, TraceTypeCapabilities capabilities) {
+        boolean isStadia = dev != null && dev.isStadia();
+        boolean isPerfetto = isPerfetto(capabilities);
+        if (isStadia && isPerfetto) {
+          // On Stadia, force limit Perfetto traces to 10 seconds.
+          duration.setMinimum(1);
+          duration.setMaximum(10);
+          durationUnit.setText(DURATION_UNIT_NO_MANUAL);
+        } else {
+          duration.setMinimum(0);
+          duration.setMaximum(DURATION_MAX);
+          durationUnit.setText(isPerfetto ? DURATION_UNIT : FRAMES_UNIT);
+        }
+        durationUnit.requestLayout();
       }
 
       private void updateDevicesDropDown(Settings settings) {
@@ -900,7 +921,7 @@ public class TracerDialog {
       }
 
       private static boolean isPerfetto(TraceTypeCapabilities config) {
-        return config.getType() == TraceType.Perfetto;
+        return config != null && config.getType() == TraceType.Perfetto;
       }
     }
   }
