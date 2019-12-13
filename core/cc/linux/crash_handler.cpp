@@ -52,6 +52,14 @@ CrashHandler::CrashHandler()
   registerHandler(defaultHandler);
 }
 
+CrashHandler::CrashHandler(const std::string& crashDir)
+    : mNextHandlerID(0),
+      mExceptionHandler(new google_breakpad::ExceptionHandler(
+          google_breakpad::MinidumpDescriptor(crashDir), NULL, ::handleCrash,
+          reinterpret_cast<void*>(this), true, -1)) {
+  registerHandler(defaultHandler);
+}
+
 // this prevents unique_ptr<CrashHandler> from causing an incomplete type error
 // from inlining the destructor. The incomplete type is the previously forward
 // declared google_breakpad::ExceptionHandler.

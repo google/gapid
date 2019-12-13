@@ -22,6 +22,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "core/cc/target.h"
+
 namespace google_breakpad {
 class ExceptionHandler;
 }
@@ -35,7 +37,12 @@ class CrashHandler {
       Handler;
   typedef std::function<void()> Unregister;
 
+#if TARGET_OS == GAPID_OS_ANDROID
+  CrashHandler() = delete;
+#else
   CrashHandler();
+#endif
+  CrashHandler(const std::string& crashFolder);
   ~CrashHandler();
 
   Unregister registerHandler(Handler handler);
