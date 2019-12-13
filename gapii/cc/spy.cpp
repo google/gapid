@@ -41,6 +41,7 @@
 #include <cstdlib>
 #include <memory>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 #if TARGET_OS == GAPID_OS_WINDOWS
@@ -495,6 +496,8 @@ bool Spy::checkEndTrace() {
     // mConnection->write(err.data(), err.size());
     auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
     mConnection->write(msg.data(), msg.size());
+    // allow some time for the message to arrive
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     mConnection->close();
     set_suspended(true);
     return true;

@@ -125,6 +125,7 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   // The connection stream to the server
   std::shared_ptr<ConnectionStream> mConnection;
   // The number of frames that we want to capture
+  // 0 for manual stop, -1 for ending the trace
   std::atomic_int mCaptureFrames;
   int mNumDraws;
   int mNumDrawsPerFrame;
