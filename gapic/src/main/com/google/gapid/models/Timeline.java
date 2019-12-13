@@ -31,7 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class Timeline extends CaptureDependentModel<Timeline.Data, Timeline.Listener>
+public class Timeline extends CaptureDependentModel.ForPath<Timeline.Data, Timeline.Listener>
     implements ApiContext.Listener {
   private static final Logger LOG = Logger.getLogger(Timeline.class.getName());
 
@@ -54,18 +54,18 @@ public class Timeline extends CaptureDependentModel<Timeline.Data, Timeline.List
 
   @Override
   public void onContextSelected(FilteringContext ctx) {
-    load(getPath(capture.getData().path), false);
+    load(getSource(capture.getData()), false);
   }
 
   @Override
-  protected Path.Any getPath(Path.Capture capturePath) {
+  protected Path.Any getSource(Capture.Data data) {
     FilteringContext ctx = context.isLoaded() ? context.getSelectedContext() : null;
-    return (ctx == null) ? null : events(capturePath, ctx);
+    return (ctx == null) ? null : events(data.path, ctx);
   }
 
   @Override
-  protected boolean shouldLoad(Capture c) {
-    return c.isGraphics();
+  protected boolean shouldLoad(Capture.Data data) {
+    return data.isGraphics();
   }
 
   @Override

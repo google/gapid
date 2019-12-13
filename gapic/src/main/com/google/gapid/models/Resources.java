@@ -59,16 +59,16 @@ public class Resources extends CaptureDependentModel.ForValue<Resources.Data, Re
   }
 
   @Override
-  protected Path.Any getPath(Path.Capture capturePath) {
+  protected Path.Any getSource(Capture.Data data) {
     return Path.Any.newBuilder()
         .setResources(Path.Resources.newBuilder()
-            .setCapture(capturePath))
+            .setCapture(data.path))
         .build();
   }
 
   @Override
-  protected boolean shouldLoad(Capture c) {
-    return c.isGraphics();
+  protected boolean shouldLoad(Capture.Data data) {
+    return data.isGraphics();
   }
 
   @Override
