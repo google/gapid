@@ -16,7 +16,6 @@
 package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.util.MoreFutures.transform;
-import static com.google.gapid.util.MoreFutures.transformAsync;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -34,12 +33,17 @@ import java.util.Map;
  */
 public class ThreadInfo {
   private static final long MIN_DUR = State.MAX_ZOOM_SPAN_NSEC / 1600;
-  private static final String MAX_DEPTH_QUERY =
-      "select utid, max(track_id), max(depth) + 1 from slices where dur >= " + MIN_DUR + " group by utid";
   private static final String THREAD_QUERY =
-      "select utid, tid, thread.name, upid, pid, process.name, sum(dur) " +
-      "from thread left join process using(upid) left join sched using (utid) " +
-      "where utid != 0 group by utid";
+      "with threads as (" +
+        "select utid, tid, thread.name tname, upid, pid, process.name pname, sum(dur) dur " +
+        "from thread left join process using(upid) left join sched using (utid) " +
+        "where utid != 0 group by utid), " +
+      "depth as (" +
+        "select t.utid utid, t.id track_id, max(depth) + 1 depth " +
+        "from thread_track t inner join slice s on (s.track_id = t.id) " +
+        "where dur >= " + MIN_DUR + " group by t.id) " +
+      "select utid, tid, tname, upid, pid, pname, dur, track_id, depth " +
+      "from threads left join depth using (utid)";
 
   public final long utid;  // the perfetto id.
   public final long tid;   // the system id.
@@ -65,37 +69,31 @@ public class ThreadInfo {
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> listThreads(Perfetto.Data.Builder data) {
-    return transformAsync(maxDepth(data.qe), maxDepth ->
-      transform(data.qe.query(THREAD_QUERY), res -> {
-        Map<Long, ProcessInfo.Builder> procs = Maps.newHashMap();
-        ImmutableMap.Builder<Long, ThreadInfo> threads = ImmutableMap.builder();
-        res.forEachRow(($1, row) -> {
-          long utid = row.getLong(0);
-          long tid = row.getLong(1);
-          String tName = row.getString(2);
-          long upid = row.getLong(3);
-          long pid = row.getLong(4);
-          String pName = row.getString(5);
-          long dur = row.getLong(6);
-          TrackDepth td = maxDepth.getOrDefault(utid, TrackDepth.NULL);
-          threads.put(
-              utid, new ThreadInfo(utid, tid, upid, td.trackId, tName, td.depth, dur));
-          procs.computeIfAbsent(upid, $2 -> new ProcessInfo.Builder(upid, pid, pName))
-              .addThread(utid, dur);
-        });
-        data.setThreads(threads.build());
+    return transform(data.qe.query(THREAD_QUERY), res -> {
+      Map<Long, ProcessInfo.Builder> procs = Maps.newHashMap();
+      ImmutableMap.Builder<Long, ThreadInfo> threads = ImmutableMap.builder();
+      res.forEachRow(($1, row) -> {
+        long utid = row.getLong(0);
+        long tid = row.getLong(1);
+        String tName = row.getString(2);
+        long upid = row.getLong(3);
+        long pid = row.getLong(4);
+        String pName = row.getString(5);
+        long dur = row.getLong(6);
+        long trackId = row.getLong(7, -1);
+        int depth = row.getInt(8);
+        threads.put(utid, new ThreadInfo(utid, tid, upid, trackId, tName, depth, dur));
+        procs.computeIfAbsent(upid, $2 -> new ProcessInfo.Builder(upid, pid, pName))
+            .addThread(utid, dur);
+      });
+      data.setThreads(threads.build());
 
-        ImmutableMap.Builder<Long, ProcessInfo> procMap = ImmutableMap.builder();
-        procs.forEach((id, builder) -> procMap.put(id, builder.build()));
-        data.setProcesses(procMap.build());
+      ImmutableMap.Builder<Long, ProcessInfo> procMap = ImmutableMap.builder();
+      procs.forEach((id, builder) -> procMap.put(id, builder.build()));
+      data.setProcesses(procMap.build());
 
-        return data;
-      }));
-  }
-
-  private static ListenableFuture<Map<Long, TrackDepth>> maxDepth(QueryEngine qe) {
-    return transform(qe.queries(MAX_DEPTH_QUERY),
-        res -> res.map(row -> row.getLong(0), TrackDepth::new));
+      return data;
+    });
   }
 
   public static RGBA getColor(State state, long utid) {
@@ -150,22 +148,6 @@ public class ThreadInfo {
       this.thread = thread;
       this.title = title;
       this.subTitle = subTitle;
-    }
-  }
-
-  private static class TrackDepth {
-    public static final TrackDepth NULL = new TrackDepth(-1, 0);
-
-    public final long trackId;
-    public final int depth;
-
-    public TrackDepth(long trackId, int depth) {
-      this.trackId = trackId;
-      this.depth = depth;
-    }
-
-    public TrackDepth(QueryEngine.Row row) {
-      this(row.getLong(1), row.getInt(2));
     }
   }
 }
