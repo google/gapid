@@ -1000,6 +1000,7 @@ func (p GraphicsPipelineObjectʳ) ResourceType(ctx context.Context) api.Resource
 func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	vkState := GetState(s)
 	isBound := false
+	var drawCallInfo DrawParameters = NilDrawParameters
 	// Use LastDrawInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1009,6 +1010,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 		if ok {
 			if ldi.GraphicsPipeline() == p {
 				isBound = true
+				drawCallInfo = ldi.CommandParameters()
 			}
 		}
 	}
@@ -1023,7 +1025,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	}
 
 	stages := []*api.Stage{
-		p.inputAssembly(),
+		p.inputAssembly(cmd, drawCallInfo),
 		p.vertexShader(ctx, s),
 		p.tessellationControlShader(ctx, s),
 		p.tessellationEvulationShader(ctx, s),
@@ -1046,7 +1048,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	}, nil
 }
 
-func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
+func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo DrawParameters) *api.Stage {
 	bindings := p.VertexInputState().BindingDescriptions()
 
 	bindingRows := make([]*api.Row, bindings.Len())
@@ -1093,6 +1095,77 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 	assemblyList = assemblyList.AppendKeyValuePair("Primitive Restart Enabled", api.CreatePoDDataValue("VkBool32",
 		p.InputAssemblyState().PrimitiveRestartEnable() != 0))
 
+	drawCallList := &api.KeyValuePairList{}
+
+	if !drawCallInfo.Draw().IsNil() {
+		callArgs := drawCallInfo.Draw()
+		drawCallList = drawCallList.AppendKeyValuePair("Vertex Count", api.CreatePoDDataValue("u32", callArgs.VertexCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("First Vertex", api.CreatePoDDataValue("u32", callArgs.FirstVertex()))
+		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()))
+	} else if !drawCallInfo.DrawIndexed().IsNil() {
+		callArgs := drawCallInfo.DrawIndexed()
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.IndexCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("First Index", api.CreatePoDDataValue("u32", callArgs.FirstIndex()))
+		drawCallList = drawCallList.AppendKeyValuePair("Vertex Offset", api.CreatePoDDataValue("u32", callArgs.VertexOffset()))
+		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()))
+	} else if !drawCallInfo.DrawIndirect().IsNil() {
+		callArgs := drawCallInfo.DrawIndirect()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+	} else if !drawCallInfo.DrawIndexedIndirect().IsNil() {
+		callArgs := drawCallInfo.DrawIndexedIndirect()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+	} else if !drawCallInfo.DrawIndirectCountKHR().IsNil() {
+		callArgs := drawCallInfo.DrawIndirectCountKHR()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+	} else if !drawCallInfo.DrawIndexedIndirectCountKHR().IsNil() {
+		callArgs := drawCallInfo.DrawIndexedIndirectCountKHR()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+	} else if !drawCallInfo.DrawIndirectCountAMD().IsNil() {
+		callArgs := drawCallInfo.DrawIndirectCountAMD()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+	} else if !drawCallInfo.DrawIndexedIndirectCountAMD().IsNil() {
+		callArgs := drawCallInfo.DrawIndexedIndirectCountAMD()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+	}
+
 	dataGroups := []*api.DataGroup{
 		&api.DataGroup{
 			GroupName: "Vertex Bindings",
@@ -1107,6 +1180,11 @@ func (p GraphicsPipelineObjectʳ) inputAssembly() *api.Stage {
 		&api.DataGroup{
 			GroupName: "Input Assembly State",
 			Data:      &api.DataGroup_KeyValues{assemblyList},
+		},
+
+		&api.DataGroup{
+			GroupName: "Draw Parameters",
+			Data:      &api.DataGroup_KeyValues{drawCallList},
 		},
 	}
 
