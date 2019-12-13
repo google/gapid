@@ -36,6 +36,7 @@ go_library(
         "//core/log:go_default_library",
         "//core/os/android/adb:go_default_library",
         "//core/os/device/bind:go_default_library",
+        "//core/os/device/remotessh:go_default_library",
         "//gapidapk:go_default_library",
         "//tools/build/third_party/perfetto:common_go_proto",
     ],
