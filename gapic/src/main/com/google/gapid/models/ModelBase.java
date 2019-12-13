@@ -20,7 +20,6 @@ import static com.google.gapid.rpc.UiErrorCallback.success;
 import static com.google.gapid.util.Logging.throttleLogRpcError;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.SingleInFlight;
@@ -149,17 +148,5 @@ abstract class ModelBase<T, S, E, L extends Events.Listener> {
 
   public void removeListener(L listener) {
     listeners.removeListener(listener);
-  }
-
-  /**
-   * A {@link ModelBase} that uses a path as the source.
-   */
-  public abstract static class ForPath<T, E, L extends Events.Listener>
-    extends ModelBase<T, Path.Any, E, L> {
-
-    public ForPath(
-        Logger log, Shell shell, Analytics analytics, Client client, Class<L> listenerClass) {
-      super(log, shell, analytics, client, listenerClass);
-    }
   }
 }

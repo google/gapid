@@ -73,11 +73,11 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
   }
 
   public boolean isGraphics() {
-    return isLoaded() && getData().capture.getType() == Service.TraceType.Graphics;
+    return isLoaded() && getData().isGraphics();
   }
 
   public boolean isPerfetto() {
-    return isLoaded() && getData().capture.getType() == Service.TraceType.Perfetto;
+    return isLoaded() && getData().isPerfetto();
   }
 
   @Override
@@ -226,6 +226,14 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
     public Data(Path.Capture path, Service.Capture capture) {
       this.path = path;
       this.capture = capture;
+    }
+
+    public boolean isGraphics() {
+      return capture != null && capture.getType() == Service.TraceType.Graphics;
+    }
+
+    public boolean isPerfetto() {
+      return capture != null && capture.getType() == Service.TraceType.Perfetto;
     }
   }
 
