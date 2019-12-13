@@ -19,7 +19,7 @@
 {{$ | Macro "constant_sets.go" | NewReflow "\t" | Write "constant_sets.go"}}
 
 {{define "constant_sets.go"}}
-  §{{Copyright "generated" "apic"}}§
+  §{{template "GeneratedCodeWarning"}}§
   package {{Global "OutputDir"}}¶
   ¶
   import (»¶
