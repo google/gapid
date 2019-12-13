@@ -545,3 +545,5 @@ func (t *queryTimestamps) PostLoop(ctx context.Context, out transform.Writer) {
 		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
 	}
 }
+
+func (t *queryTimestamps) BuffersCommands() bool { return false }

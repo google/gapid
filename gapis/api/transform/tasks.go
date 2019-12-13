@@ -70,3 +70,4 @@ func (t *Tasks) Flush(ctx context.Context, out Writer) {
 
 func (t *Tasks) PreLoop(ctx context.Context, output Writer)  {}
 func (t *Tasks) PostLoop(ctx context.Context, output Writer) {}
+func (t *Tasks) BuffersCommands() bool                       { return false }

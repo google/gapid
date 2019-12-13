@@ -2203,3 +2203,4 @@ func (*stencilOverdraw) Flush(ctx context.Context, out transform.Writer) {}
 
 func (*stencilOverdraw) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (*stencilOverdraw) PostLoop(ctx context.Context, output transform.Writer) {}
+func (*stencilOverdraw) BuffersCommands() bool                                 { return false }

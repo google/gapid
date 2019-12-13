@@ -44,6 +44,7 @@ func (t *WaitForFence) Flush(ctx context.Context, out transform.Writer) {
 
 func (t *WaitForFence) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *WaitForFence) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *WaitForFence) BuffersCommands() bool                              { return false }
 
 func (t *WaitForFence) AddTransformWait(ctx context.Context, id api.CmdID, out transform.Writer) {
 	out.MutateAndWrite(ctx, id, Custom{T: 0, F: func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {

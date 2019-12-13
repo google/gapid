@@ -81,6 +81,7 @@ func (t *DeadCodeElimination) Transform(ctx context.Context, id api.CmdID, c api
 
 func (t *DeadCodeElimination) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *DeadCodeElimination) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *DeadCodeElimination) BuffersCommands() bool                              { return false }
 
 func (t *DeadCodeElimination) Flush(ctx context.Context, out transform.Writer) {
 	ctx = status.Start(ctx, "DCE Flush")

@@ -74,6 +74,8 @@ func (t *readFramebuffer) Transform(ctx context.Context, id api.CmdID, cmd api.C
 func (t *readFramebuffer) Flush(ctx context.Context, out transform.Writer)       {}
 func (t *readFramebuffer) PreLoop(ctx context.Context, output transform.Writer)  {}
 func (t *readFramebuffer) PostLoop(ctx context.Context, output transform.Writer) {}
+func (t *readFramebuffer) BuffersCommands() bool                                 { return false }
+
 func (t *readFramebuffer) Depth(id api.CmdID, idx uint32, res replay.Result) {
 	t.injections[id] = append(t.injections[id], func(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 		s := out.State()

@@ -51,3 +51,4 @@ func (t *Injector) Flush(ctx context.Context, out Writer) {}
 
 func (t *Injector) PreLoop(ctx context.Context, output Writer)  {}
 func (t *Injector) PostLoop(ctx context.Context, output Writer) {}
+func (t *Injector) BuffersCommands() bool                       { return false }

@@ -529,6 +529,7 @@ func (f *frameLoop) PreLoop(ctx context.Context, out transform.Writer) {
 }
 func (f *frameLoop) PostLoop(ctx context.Context, out transform.Writer) {
 }
+func (f *frameLoop) BuffersCommands() bool { return true }
 
 func (f *frameLoop) cloneState(ctx context.Context, startState *api.GlobalState) *api.GlobalState {
 

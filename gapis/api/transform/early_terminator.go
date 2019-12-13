@@ -55,3 +55,4 @@ func (t *earlyTerminator) Transform(ctx context.Context, id api.CmdID, cmd api.C
 func (t *earlyTerminator) Flush(ctx context.Context, out Writer)       {}
 func (t *earlyTerminator) PreLoop(ctx context.Context, output Writer)  {}
 func (t *earlyTerminator) PostLoop(ctx context.Context, output Writer) {}
+func (t *earlyTerminator) BuffersCommands() bool                       { return false }

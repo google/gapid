@@ -48,6 +48,7 @@ func (t *WaitForPerfetto) Flush(ctx context.Context, out transform.Writer) {
 
 func (t *WaitForPerfetto) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *WaitForPerfetto) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *WaitForPerfetto) BuffersCommands() bool                              { return false }
 
 func NewWaitForPerfetto(traceOptions *service.TraceOptions, h *replay.SignalHandler) *WaitForPerfetto {
 	tcb := func(ctx context.Context, p *gapir.FenceReadyRequest) {

@@ -35,6 +35,10 @@ type Transformer interface {
 	// PostLoop is called at the end of the loop if the trace is going to
 	// be looped.
 	PostLoop(ctx context.Context, output Writer)
+
+	// BuffersCommands returns true if the transformer is going to buffer
+	// commands, return false otherwise.
+	BuffersCommands() bool
 }
 
 // Writer is the interface which consumes the output of an Transformer.

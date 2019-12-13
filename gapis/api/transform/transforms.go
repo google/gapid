@@ -29,8 +29,8 @@ type Transforms []Transformer
 func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 	chain := out
 	for i := len(l) - 1; i >= 0; i-- {
-		s := out.State()
-		if config.SeparateMutateStates {
+		s := chain.State()
+		if config.SeparateMutateStates || (i+1 < len(l) && l[i+1].BuffersCommands()) {
 			s = api.NewStateWithAllocator(s.Allocator, s.MemoryLayout)
 		}
 		chain = TransformWriter{s, l[i], chain}
@@ -81,6 +81,7 @@ func (t transform) Name() string { return t.N }
 
 func (t transform) PreLoop(ctx context.Context, output Writer)  {}
 func (t transform) PostLoop(ctx context.Context, output Writer) {}
+func (t transform) BuffersCommands() bool                       { return false }
 
 // TransformWriter implements the Writer interface, transforming each command
 // that is written with T, before writing the result to O.
@@ -95,7 +96,7 @@ func (p TransformWriter) State() *api.GlobalState {
 }
 
 func (p TransformWriter) MutateAndWrite(ctx context.Context, id api.CmdID, cmd api.Cmd) {
-	if config.SeparateMutateStates {
+	if config.SeparateMutateStates || p.O.State() != p.S {
 		cmd.Mutate(ctx, id, p.S, nil, nil /* no builder, no watcher, just mutate */)
 	}
 	p.T.Transform(ctx, id, cmd, p.O)

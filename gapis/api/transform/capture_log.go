@@ -93,3 +93,4 @@ func (t *captureLog) Flush(ctx context.Context, out Writer) {
 
 func (t *captureLog) PreLoop(ctx context.Context, output Writer)  {}
 func (t *captureLog) PostLoop(ctx context.Context, output Writer) {}
+func (t *captureLog) BuffersCommands() bool                       { return false }
