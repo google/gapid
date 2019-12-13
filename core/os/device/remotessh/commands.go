@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path"
 	"runtime"
@@ -30,8 +29,6 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
-	"github.com/google/gapid/core/event/task"
-	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/core/os/device/bind"
 	"github.com/google/gapid/core/os/shell"
@@ -241,87 +238,6 @@ func (b binding) PullFile(ctx context.Context, source, dest string) error {
 	}
 	err = contents.Wait(ctx)
 	return err
-}
-
-// doTunnel tunnels a single connection through the SSH connection.
-func (b binding) doTunnel(ctx context.Context, local net.Conn, remotePort int) error {
-	remote, err := b.connection.Dial("tcp", fmt.Sprintf("localhost:%d", remotePort))
-	if err != nil {
-		local.Close()
-		return err
-	}
-
-	wg := sync.WaitGroup{}
-
-	copy := func(writer net.Conn, reader net.Conn) {
-		// Use the same buffer size used in io.Copy
-		buf := make([]byte, 32*1024)
-		var err error
-		for {
-			nr, er := reader.Read(buf)
-			if nr > 0 {
-				nw, ew := writer.Write(buf[0:nr])
-				if ew != nil {
-					err = ew
-					break
-				}
-				if nr != nw {
-					err = fmt.Errorf("short write")
-					break
-				}
-			}
-			if er != nil {
-				if er != io.EOF {
-					err = er
-				}
-				break
-			}
-		}
-		writer.Close()
-		if err != nil {
-			log.E(ctx, "Copy Error %s", err)
-		}
-		wg.Done()
-	}
-
-	wg.Add(2)
-	crash.Go(func() { copy(local, remote) })
-	crash.Go(func() { copy(remote, local) })
-
-	crash.Go(func() {
-		defer local.Close()
-		defer remote.Close()
-		wg.Wait()
-	})
-	return nil
-}
-
-// SetupLocalPort forwards a local TCP port to the remote machine on the remote port.
-// The local port that was opened is returned.
-func (b binding) SetupLocalPort(ctx context.Context, remotePort int) (int, error) {
-	listener, err := net.Listen("tcp", ":0")
-
-	if err != nil {
-		return 0, err
-	}
-	crash.Go(func() {
-		<-task.ShouldStop(ctx)
-		listener.Close()
-	})
-	crash.Go(func() {
-		defer listener.Close()
-		for {
-			local, err := listener.Accept()
-			if err != nil {
-				return
-			}
-			if err = b.doTunnel(ctx, local, remotePort); err != nil {
-				return
-			}
-		}
-	})
-
-	return listener.Addr().(*net.TCPAddr).Port, nil
 }
 
 // TempFile creates a temporary file on the given Device. It returns the
