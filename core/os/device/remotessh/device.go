@@ -234,6 +234,8 @@ func scanDevices(ctx context.Context, configurations []Configuration) error {
 			if device, err := GetConnectedDevice(ctx, cfg); err == nil {
 				registry.AddDevice(ctx, device)
 				cache[cfg.Name] = device.(*binding)
+			} else {
+				log.E(ctx, "Failed to connect to remote device %s: %v", cfg.Name, err)
 			}
 		}
 	}
