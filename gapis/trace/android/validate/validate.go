@@ -25,38 +25,39 @@ import (
 )
 
 const (
-	counterIdQuery = "" +
-		"select counter_id from counter_definitions " +
-		"where name = '%v'"
+	counterIDQuery     = "select id from gpu_counter_track where name = '%v'"
 	counterValuesQuery = "" +
-		"select value from counter_values " +
-		"where counter_id = %v order by ts " +
+		"select value from counter " +
+		"where track_id = %v order by ts " +
 		"limit %v offset 10"
-	renderStageTrackIdsQuery = "" +
-		"select id from gpu_track " +
-		"where scope = 'gpu_render_stage'"
-	sampleCounter = 100
+	renderStageTrackIDQuery = "select id from gpu_track where scope = 'gpu_render_stage'"
+	sampleCounter           = 100
 )
 
+// Checker is a function that checks the validity of the values of the given result set column.
 type Checker func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool
 
+// GpuCounter represents a GPU counter for which the profiling data is validated.
 type GpuCounter struct {
 	Id    uint32
 	Name  string
 	Check Checker
 }
 
+// Validator is an interface implemented by the various hardware specific validators.
 type Validator interface {
 	Validate(ctx context.Context, processor *perfetto.Processor) error
 	GetCounters() []GpuCounter
 }
 
+// And returns a checker that is only valid if both of its arguments are.
 func And(c1, c2 Checker) Checker {
 	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
 		return c1(column, columnType) && c2(column, columnType)
 	}
 }
 
+// IsNumber is a checker that checks that the column is a number type.
 func IsNumber(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
 	if columnType != perfetto_service.QueryResult_ColumnDesc_LONG && columnType != perfetto_service.QueryResult_ColumnDesc_DOUBLE {
 		return false
@@ -64,6 +65,7 @@ func IsNumber(column *perfetto_service.QueryResult_ColumnValues, columnType perf
 	return true
 }
 
+// CheckLargerThanZero is a checker that checks that the values are all greater than zero.
 func CheckLargerThanZero(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
 	longValues := column.GetLongValues()
 	doubleValues := column.GetDoubleValues()
@@ -81,6 +83,7 @@ func CheckLargerThanZero(column *perfetto_service.QueryResult_ColumnValues, colu
 	return true
 }
 
+// CheckEqualTo returns a checker that checks that all returned value equal the given value.
 func CheckEqualTo(num float64) Checker {
 	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
 		longValues := column.GetLongValues()
@@ -100,6 +103,7 @@ func CheckEqualTo(num float64) Checker {
 	}
 }
 
+// CheckApproximateTo returns a checker that checks that values are within a margin of the given value.
 func CheckApproximateTo(num, err float64) Checker {
 	return func(column *perfetto_service.QueryResult_ColumnValues, columnType perfetto_service.QueryResult_ColumnDesc_Type) bool {
 		longValues := column.GetLongValues()
@@ -119,32 +123,33 @@ func CheckApproximateTo(num, err float64) Checker {
 	}
 }
 
+// ValidateGpuCounters validates the GPU counters.
 // GPU counters validation will fail in the below cases:
 // 1. Fail to query
 // 2. Missing GPU counter samples
 // 3. Fail to check
 func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, counters []GpuCounter) error {
 	for _, counter := range counters {
-		queryResult, err := processor.Query(fmt.Sprintf(counterIdQuery, counter.Name))
+		queryResult, err := processor.Query(fmt.Sprintf(counterIDQuery, counter.Name))
 		if err != nil {
-			return log.Errf(ctx, err, "Failed to query with %v", fmt.Sprintf(counterIdQuery, counter.Name))
+			return log.Errf(ctx, err, "Failed to query with %v", fmt.Sprintf(counterIDQuery, counter.Name))
 		}
 		if len(queryResult.GetColumns()) != 1 {
-			return log.Errf(ctx, err, "Expect one result with query: %v", fmt.Sprintf(counterIdQuery, counter.Name))
+			return log.Errf(ctx, err, "Expect one result with query: %v", fmt.Sprintf(counterIDQuery, counter.Name))
 		}
-		var counterId int64
+		var counterID int64
 		for _, column := range queryResult.GetColumns() {
 			longValues := column.GetLongValues()
 			if len(longValues) != 1 {
 				// This should never happen, but sill have a check.
 				return log.Err(ctx, nil, "Query result is not 1.")
 			}
-			counterId = longValues[0]
+			counterID = longValues[0]
 			break
 		}
-		queryResult, err = processor.Query(fmt.Sprintf(counterValuesQuery, counterId, sampleCounter))
+		queryResult, err = processor.Query(fmt.Sprintf(counterValuesQuery, counterID, sampleCounter))
 		if err != nil {
-			return log.Errf(ctx, err, "Failed to query with %v for counter %v", fmt.Sprintf(counterValuesQuery, counterId), counter)
+			return log.Errf(ctx, err, "Failed to query with %v for counter %v", fmt.Sprintf(counterValuesQuery, counterID), counter)
 		}
 
 		// Query exactly #sampleCounter samples, fail if not enough samples
@@ -161,7 +166,7 @@ func ValidateGpuCounters(ctx context.Context, processor *perfetto.Processor, cou
 
 // GetRenderStageTrackIDs returns all track ids from gpu_track where the scope is gpu_render_stage
 func GetRenderStageTrackIDs(ctx context.Context, processor *perfetto.Processor) ([]int64, error) {
-	queryResult, err := processor.Query(renderStageTrackIdsQuery)
+	queryResult, err := processor.Query(renderStageTrackIDQuery)
 	if err != nil || queryResult.GetNumRecords() <= 0 {
 		return []int64{}, log.Err(ctx, err, "Failed to query GPU render stage track ids")
 	}
