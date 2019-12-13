@@ -87,7 +87,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {
   }
 
   public static SliceTrack forThread(ThreadInfo thread) {
-    return new SliceTrack("slices", thread.trackId) {
+    return new SliceTrack("slice", thread.trackId) {
       @Override
       protected Slice buildSlice(Row row, ArgSet args) {
         return new Slice.ThreadSlice(row, args, thread);
