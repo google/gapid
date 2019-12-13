@@ -250,7 +250,10 @@ Spy::Spy()
                   GAPID_DEBUG("Received end trace message");
                   if (!is_suspended()) {
                     GAPID_DEBUG("Ending capture");
-                    mCaptureFrames = 1;
+                    // If app uses frame boundaries, end capture at next one
+                    // otherwise at next traced graphics API call
+                    const bool usesFrameBounds = mFrameNumber > 0u;
+                    mCaptureFrames = usesFrameBounds ? 1 : -1;
                   }
                   break;
                 default:
@@ -265,6 +268,11 @@ Spy::Spy()
   }
   set_suspended(mSuspendCaptureFrames != 0);
   set_observing(mObserveFrameFrequency != 0 || mObserveDrawFrequency != 0);
+}
+
+Spy::~Spy() {
+  mCaptureFrames = -1;
+  checkEndTrace();
 }
 
 void Spy::resolveImports() { GlesSpy::mImports.resolve(); }
@@ -478,6 +486,22 @@ void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
   GvrSpy::gvr_frame_submit(observer, frame, list, head_space_from_start_space);
 }
 
+bool Spy::checkEndTrace() {
+  if (!is_suspended() && mCaptureFrames < 0) {
+    GAPID_DEBUG("Ended capture");
+    mEncoder->flush();
+    // Error messages can be transferred any time during the trace, e.g.:
+    // auto err = protocol::createError("end of the world");
+    // mConnection->write(err.data(), err.size());
+    auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
+    mConnection->write(msg.data(), msg.size());
+    mConnection->close();
+    set_suspended(true);
+    return true;
+  }
+  return false;
+}
+
 void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
   if (is_suspended()) {
     return;
@@ -569,15 +593,8 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
   } else {
     if (mCaptureFrames > 0) {
       if (--mCaptureFrames == 0) {
-        GAPID_DEBUG("Ended capture");
-        mEncoder->flush();
-        // Error messages can be transferred any time during the trace, e.g.:
-        // auto err = protocol::createError("end of the world");
-        // mConnection->write(err.data(), err.size());
-        auto msg = protocol::createHeader(protocol::MessageType::kEndTrace);
-        mConnection->write(msg.data(), msg.size());
-        mConnection->close();
-        set_suspended(true);
+        mCaptureFrames = -1;
+        checkEndTrace();
       }
     }
   }

@@ -32,9 +32,7 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
  public:
   // get lazily constructs and returns the singleton instance to the spy.
   static Spy* get();
-
-  // writeHeader encodes the capture header to the encoder.
-  void writeHeader();
+  ~Spy();
 
   // resolve the imported functions. Call if the functions change due to
   // external factors.
@@ -72,6 +70,8 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
   void gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
                         const gvr_buffer_viewport_list* list,
                         gvr_mat4_abi head_space_from_start_space);
+
+  bool checkEndTrace() override;
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;

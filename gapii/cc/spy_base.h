@@ -112,6 +112,9 @@ class SpyBase {
   void set_record_timestamps(bool record) { mRecordTimestamps = record; }
   bool should_record_timestamps() const { return mRecordTimestamps; }
 
+  // Checks if the current trace should be ended
+  virtual bool checkEndTrace() { return false; }
+
  protected:
   // lock begins the interception of a single command. It must be called
   // before invoking any command on the spy. Blocks if any other thread
