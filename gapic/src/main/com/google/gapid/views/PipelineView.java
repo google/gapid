@@ -102,6 +102,7 @@ public class PipelineView extends Composite
   private final LoadablePanel<Composite> loading;
   private final TableViewer pipelineTable;
   private final Theme theme;
+  private final Composite stagesContainer;
 
   private List<Data> pipelines = Collections.emptyList();
 
@@ -119,7 +120,7 @@ public class PipelineView extends Composite
     SashForm splitter = new SashForm(loading.getContents(), SWT.HORIZONTAL);
 
     Composite pipelineContainer = createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
-    Composite stagesContainer = createComposite(splitter, new FillLayout());
+    stagesContainer = createComposite(splitter, new FillLayout());
     splitter.setWeights(models.settings.pipelineSplitterWeights);
 
     pipelineTable = createTableViewer(pipelineContainer, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
@@ -195,6 +196,11 @@ public class PipelineView extends Composite
   public void onCommandsSelected(CommandIndex path) {
     loading.stopLoading();
     updatePipelines(false);
+
+    disposeAllChildren(stagesContainer);
+    TabFolder folder = createStandardTabFolder(stagesContainer);
+    createPipelineTabs(folder);
+    stagesContainer.requestLayout();
   }
 
   public void updatePipelines(boolean resourcesChanged) {
