@@ -364,7 +364,7 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 	} else if f.loopTerminated == false { // We're not before or at the start of the loop: thus, are we inside the loop or just at the end of it?
 
 		// This is the end of the loop. We have a lot of deferred things to do.
-		if api.CmdID.Real(cmdId) >= f.loopEndIdx {
+		if api.CmdID.Real(cmdId) >= f.loopEndIdx && cmdId != api.CmdNoID {
 
 			if lastObservedCommand == api.CmdNoID {
 				log.F(ctx, true, "FrameLoop: Somehow, the FrameLoop ended before it began. Did an earlier transform delete the whole loop? Were your loop indexes realistic?")
