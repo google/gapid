@@ -16,11 +16,19 @@ package main
 
 import (
 	"context"
+	"flag"
+	"io"
+	"os"
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/os/android/adb"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/core/os/device/remotessh"
 	_ "github.com/google/gapid/gapidapk"
+)
+
+var (
+	remoteSSHConfig = flag.String("ssh-config", "", "_Path to an ssh config file for remote devices")
 )
 
 func main() {
@@ -39,6 +47,17 @@ func setupContext(ctx context.Context) context.Context {
 	if devs, err := adb.Devices(ctx); err == nil {
 		for _, d := range devs {
 			r.AddDevice(ctx, d)
+		}
+	}
+
+	if *remoteSSHConfig != "" {
+		f, err := os.Open(*remoteSSHConfig)
+		if err != nil {
+			log.E(ctx, "Failed to open remote SSH config: %s", err)
+		} else if devs, err := remotessh.Devices(ctx, []io.ReadCloser{f}); err == nil {
+			for _, d := range devs {
+				r.AddDevice(ctx, d)
+			}
 		}
 	}
 
