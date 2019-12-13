@@ -50,7 +50,7 @@ result execute_query(processor processor, const char* query) {
 
   for (uint32_t col = 0; col < it.ColumnCount(); col++) {
     auto* descriptor = raw.add_column_descriptors();
-    descriptor->set_name(it.GetColumName(col));
+    descriptor->set_name(it.GetColumnName(col));
     descriptor->set_type(p::QueryResult::ColumnDesc::UNKNOWN);
     raw.add_columns();
   }
