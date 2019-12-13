@@ -25,6 +25,7 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
 
 import com.google.gapid.models.Models;
@@ -57,6 +58,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import perfetto.protos.PerfettoConfig;
+import perfetto.protos.PerfettoConfig.TraceConfig.BufferConfig.FillPolicy;
 
 public class TraceConfigDialog extends DialogBase {
   private static final int BUFFER_SIZE = 131072;
@@ -234,7 +236,9 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     config.addBuffers(PerfettoConfig.TraceConfig.BufferConfig.newBuilder()
-        .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE));
+        .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE)
+        .setFillPolicy(FillPolicy.DISCARD));
+    config.setFlushPeriodMs((int)SECONDS.toMillis(5));
 
     if (largeBuffer) {
       config.setWriteIntoFile(true);
