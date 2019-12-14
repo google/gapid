@@ -257,6 +257,17 @@ public class Client {
             in -> immediateFuture(throwIfError(in.getResult(), in.getError(), stack))));
   }
 
+  public ListenableFuture<Service.ProfilingData> profile(Path.Capture capture, Path.Device device) {
+    return call(() -> String.format(
+        "RPC->profile(%s, %s)", shortDebugString(capture), shortDebugString(device)),
+        stack -> MoreFutures.transformAsync(
+            client.profile(Service.GpuProfileRequest.newBuilder()
+                .setCapture(capture)
+                .setDevice(device)
+                .build()),
+            in -> immediateFuture(throwIfError(in.getProfilingData(), in.getError(), stack))));
+  }
+
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage) {
     LOG.log(FINE, "RPC->getLogStream()");
     return client.streamLog(onLogMessage);

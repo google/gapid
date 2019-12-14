@@ -24,6 +24,8 @@ import com.google.gapid.proto.service.GapidGrpc;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientEventRequest;
 import com.google.gapid.proto.service.Service.ClientEventResponse;
+import com.google.gapid.proto.service.Service.GpuProfileRequest;
+import com.google.gapid.proto.service.Service.GpuProfileResponse;
 import com.google.gapid.proto.service.Service.PerfettoQueryRequest;
 import com.google.gapid.proto.service.Service.PerfettoQueryResponse;
 import com.google.gapid.proto.service.Service.PingRequest;
@@ -79,13 +81,6 @@ public class GapidClientGrpc implements GapidClient {
   @Override
   public ListenableFuture<Service.FollowResponse> follow(Service.FollowRequest request) {
     return client.follow(request);
-  }
-
-  @Override
-  public GapidClient.StreamSender<Service.ProfileRequest> profile(
-      StreamConsumer<Service.ProfileResponse> response) {
-    StreamHandler<Service.ProfileResponse> handler = StreamHandler.wrap(response);
-    return Sender.wrap(handler.future, stub.profile(handler));
   }
 
   @Override
@@ -167,6 +162,11 @@ public class GapidClientGrpc implements GapidClient {
   @Override
   public ListenableFuture<PerfettoQueryResponse> perfettoQuery(PerfettoQueryRequest request) {
     return client.perfettoQuery(request);
+  }
+
+  @Override
+  public ListenableFuture<GpuProfileResponse> profile(GpuProfileRequest request) {
+    return client.gpuProfile(request);
   }
 
   @Override

@@ -33,8 +33,6 @@ public interface GapidClient {
   public ListenableFuture<Service.GetResponse> get(Service.GetRequest request);
   public ListenableFuture<Service.SetResponse> set(Service.SetRequest request);
   public ListenableFuture<Service.FollowResponse> follow(Service.FollowRequest request);
-  public StreamSender<Service.ProfileRequest> profile(
-      StreamConsumer<Service.ProfileResponse> response);
   public ListenableFuture<Service.GetPerformanceCountersResponse> getPerformanceCounters(
       Service.GetPerformanceCountersRequest request);
   public ListenableFuture<Service.GetProfileResponse> getProfile(Service.GetProfileRequest request);
@@ -61,6 +59,7 @@ public interface GapidClient {
       Service.UpdateSettingsRequest request);
   public ListenableFuture<Service.PerfettoQueryResponse> perfettoQuery(
       Service.PerfettoQueryRequest request);
+  public ListenableFuture<Service.GpuProfileResponse> profile(Service.GpuProfileRequest request);
 
   public ListenableFuture<Void> streamLog(Consumer<Log.Message> onLogMessage);
   public ListenableFuture<Void> streamStatus(
