@@ -60,7 +60,7 @@ import java.util.logging.Logger;
  */
 public class Geometries
     extends DeviceDependentModel<Geometries.Data, Geometries.Source, Loadable.Message, Geometries.Listener> {
-  private static final Logger LOG = Logger.getLogger(ApiState.class.getName());
+  private static final Logger LOG = Logger.getLogger(Geometries.class.getName());
 
   private static final Stringtable.Msg NO_MESH_ERR = Strings.create("ERR_MESH_NOT_AVAILABLE");
   protected static final Vertex.BufferFormat POS_NORM_XYZ_F32 = Vertex.BufferFormat.newBuilder()
