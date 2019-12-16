@@ -39,7 +39,7 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 
 public class MemoryTypes {
-  protected static final Logger LOG = Logger.getLogger(ApiState.class.getName());
+  protected static final Logger LOG = Logger.getLogger(MemoryTypes.class.getName());
 
   protected final FutureCache<Path.Type, TypeInfo.Type> cache;
   private final Client client;
