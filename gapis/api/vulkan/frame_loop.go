@@ -408,8 +408,6 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 					return
 				}
 
-				// Notify the other transforms that we're about to emit the start of the loop.
-				out.NotifyPreLoop(ctx)
 			}
 
 			// Do first iteration of mid-loop stuff.
@@ -478,8 +476,10 @@ func (f *frameLoop) Transform(ctx context.Context, cmdId api.CmdID, cmd api.Cmd,
 
 func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out transform.Writer) {
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
+	// Notify the other transforms that we're about to emit the start of the loop.
+	out.NotifyPreLoop(ctx)
 
+	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
 	// Iterate through the loop contents, emitting instructions one by one.
 	for cmdIndex, cmd := range f.capturedLoopCmds {
 
@@ -511,6 +511,9 @@ func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out tran
 
 		out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd)
 	}
+
+	// Notify the other transforms that we're about to emit the end of the loop.
+	out.NotifyPostLoop(ctx)
 }
 
 func (f *frameLoop) Flush(ctx context.Context, out transform.Writer) {
