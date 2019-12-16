@@ -83,7 +83,7 @@ REM Build everything else.
 %BUILD_ROOT%\bazel build -c opt --config symbols ^
     --define GAPID_BUILD_NUMBER="%KOKORO_BUILD_NUMBER%" ^
     --define GAPID_BUILD_SHA="%BUILD_SHA%" ^
-    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests
+    //:pkg //cmd/gapir/cc:gapir.sym //cmd/smoketests //cmd/vulkan_sample:vulkan_sample
 if %ERRORLEVEL% GEQ 1 exit /b %ERRORLEVEL%
 echo %DATE% %TIME%
 
