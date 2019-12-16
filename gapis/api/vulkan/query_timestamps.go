@@ -563,32 +563,14 @@ func (t *queryTimestamps) cleanup(ctx context.Context, out transform.Writer) {
 	}
 	t.queryPools = make(map[VkQueue]*queryPoolInfo)
 
-	// Free commandbuffer and commandpool allocated in this transform.
+	// Free commandpool allocated in this transform.
 	for commandPoolkey, commandPool := range t.commandPools {
-		commandPoolObj := GetState(s).CommandPools().Get(commandPool)
-		commandBufferIDs := []VkCommandBuffer{}
-
-		for commandBuffer := range commandPoolObj.CommandBuffers().All() {
-			commandBufferIDs = append(commandBufferIDs, commandBuffer)
-		}
-
-		commandBuffersData := t.mustAllocData(ctx, s, commandBufferIDs)
-
-		writeEach(ctx, out,
-			cb.VkFreeCommandBuffers(
-				commandPoolkey.device,
-				commandPool,
-				uint32(len(commandBufferIDs)),
-				commandBuffersData.Ptr(),
-			).AddRead(
-				commandBuffersData.Data(),
-			),
-			cb.VkDestroyCommandPool(
-				commandPoolkey.device,
-				commandPool,
-				memory.Nullptr,
-			),
+		cmd := cb.VkDestroyCommandPool(
+			commandPoolkey.device,
+			commandPool,
+			memory.Nullptr,
 		)
+		out.MutateAndWrite(ctx, api.CmdNoID, cmd)
 	}
 	t.commandPools = make(map[commandPoolKey]VkCommandPool)
 }
