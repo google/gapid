@@ -272,32 +272,40 @@ func (b *binding) SupportsPerfetto(ctx context.Context) bool {
 }
 
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
+	result := b.To.Configuration.PerfettoCapability
 	if b.Instance().GetConfiguration().GetOS().GetAPIVersion() < 29 {
-		return &device.PerfettoCapability{}, log.Errf(ctx, nil, "Querying perfetto capability requires Android API >= 29")
+		return result, log.Errf(ctx, nil, "Querying perfetto capability requires Android API >= 29")
 	}
 	res, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
 	if err != nil {
-		return &device.PerfettoCapability{}, log.Errf(ctx, err, "adb shell perfetto returned error: %s", res)
+		return result, log.Errf(ctx, err, "adb shell perfetto returned error: %s", res)
 	}
 	decoded, _ := base64.StdEncoding.DecodeString(res)
 	tracingServiceState := &perfetto_pb.TracingServiceState{}
 	if err = proto.Unmarshal(decoded, tracingServiceState); err != nil {
-		return &device.PerfettoCapability{}, log.Errf(ctx, err, "Unmarshal returned error")
+		return result, log.Errf(ctx, err, "Unmarshal returned error")
 	}
-	perfettoCapability := &device.PerfettoCapability{
-		GpuProfiling: &device.GPUProfiling{},
+
+	gpu := result.GpuProfiling
+	if gpu == nil {
+		gpu = &device.GPUProfiling{}
+		result.GpuProfiling = gpu
 	}
+
 	dataSources := tracingServiceState.GetDataSources()
 	for _, dataSource := range dataSources {
 		dataSourceDescriptor := dataSource.GetDsDescriptor()
 		if dataSourceDescriptor.GetName() == gpuRenderStagesDataSourceDescriptorName {
-			perfettoCapability.GpuProfiling.HasRenderStage = true
+			gpu.HasRenderStage = true
 			continue
 		}
 		gpuCounterDescriptor := dataSourceDescriptor.GetGpuCounterDescriptor()
 		specs := gpuCounterDescriptor.GetSpecs()
-		if len(specs) == 0 || perfettoCapability.GpuProfiling.GpuCounterDescriptor != nil {
+		if len(specs) == 0 {
 			continue
+		}
+		if gpu.GpuCounterDescriptor == nil {
+			gpu.GpuCounterDescriptor = &device.GpuCounterDescriptor{}
 		}
 
 		// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
@@ -306,14 +314,10 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		if err != nil {
 			continue
 		}
-		deviceGpuCounterDescriptor := &device.GpuCounterDescriptor{}
-		if err = proto.Unmarshal(data, deviceGpuCounterDescriptor); err != nil {
-			continue
-		}
-		perfettoCapability.GpuProfiling.GpuCounterDescriptor = deviceGpuCounterDescriptor
+		proto.UnmarshalMerge(data, gpu.GpuCounterDescriptor)
 	}
 
-	return perfettoCapability, nil
+	return result, nil
 }
 
 func extrasFlags(extras []android.ActionExtra) []string {
