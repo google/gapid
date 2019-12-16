@@ -72,7 +72,7 @@ public class StateView extends Composite
     implements Tab, Capture.Listener, CommandStream.Listener, ApiState.Listener {
   private static final Logger LOG = Logger.getLogger(StateView.class.getName());
 
-  private final Models models;
+  protected final Models models;
   private final LoadablePanel<StateTree> loading;
   protected final StateTree tree;
   private final SelectionHandler<Control> selectionHandler;

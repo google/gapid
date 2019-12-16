@@ -17,10 +17,7 @@ package com.google.gapid.perfetto.views;
 
 import com.google.gapid.perfetto.models.CounterTrack;
 
-import java.util.List;
-
 public class VulkanCounterPanel extends CounterPanel implements Selectable {
-
   public VulkanCounterPanel(State state, CounterTrack track) {
     super(state, track);
   }
