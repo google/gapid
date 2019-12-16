@@ -325,6 +325,7 @@ func (t *makeAttachementReadable) Transform(ctx context.Context, id api.CmdID, c
 func (t *makeAttachementReadable) Flush(ctx context.Context, out transform.Writer)    {}
 func (t *makeAttachementReadable) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *makeAttachementReadable) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *makeAttachementReadable) BuffersCommands() bool                              { return false }
 
 func buildReplayEnumeratePhysicalDevices(
 	ctx context.Context, s *api.GlobalState, cb CommandBuilder, instance VkInstance,
@@ -555,6 +556,7 @@ func (t *dropInvalidDestroy) Transform(ctx context.Context, id api.CmdID, cmd ap
 func (t *dropInvalidDestroy) Flush(ctx context.Context, out transform.Writer)    {}
 func (t *dropInvalidDestroy) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *dropInvalidDestroy) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *dropInvalidDestroy) BuffersCommands() bool                              { return false }
 
 // destroyResourceAtEOS is a transformation that destroys all active
 // resources at the end of stream.
@@ -696,6 +698,7 @@ func (t *destroyResourcesAtEOS) Flush(ctx context.Context, out transform.Writer)
 
 func (t *destroyResourcesAtEOS) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *destroyResourcesAtEOS) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *destroyResourcesAtEOS) BuffersCommands() bool                              { return false }
 
 func newDisplayToSurface() *DisplayToSurface {
 	return &DisplayToSurface{
@@ -750,6 +753,7 @@ func (t *DisplayToSurface) Transform(ctx context.Context, id api.CmdID, cmd api.
 func (t *DisplayToSurface) Flush(ctx context.Context, out transform.Writer)    {}
 func (t *DisplayToSurface) PreLoop(ctx context.Context, out transform.Writer)  {}
 func (t *DisplayToSurface) PostLoop(ctx context.Context, out transform.Writer) {}
+func (t *DisplayToSurface) BuffersCommands() bool                              { return false }
 
 // issuesConfig is a replay.Config used by issuesRequests.
 type issuesConfig struct {

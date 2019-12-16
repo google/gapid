@@ -75,3 +75,5 @@ func (t *fileLog) PostLoop(ctx context.Context, output Writer) {
 	// Bypass the PostLoop to the next
 	output.NotifyPostLoop(ctx)
 }
+
+func (t *fileLog) BuffersCommands() bool { return false }
