@@ -214,7 +214,7 @@ func (p *Process) Capture(ctx context.Context, start task.Signal, stop task.Sign
 		if stop.Wait(ctx) {
 			if err := writeEndTrace(conn); err == nil {
 				time.Sleep(2 * time.Second)
-				writeErr <- errors.New("traced app is unresponsive")
+				writeErr <- errors.New("Traced application is unresponsive.")
 			} else {
 				writeErr <- err
 			}

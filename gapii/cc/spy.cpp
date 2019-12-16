@@ -273,7 +273,7 @@ Spy::Spy()
 
 Spy::~Spy() {
   mCaptureFrames = -1;
-  checkEndTrace();
+  endTraceIfRequested();
 }
 
 void Spy::resolveImports() { GlesSpy::mImports.resolve(); }
@@ -487,7 +487,7 @@ void Spy::gvr_frame_submit(CallObserver* observer, gvr_frame** frame,
   GvrSpy::gvr_frame_submit(observer, frame, list, head_space_from_start_space);
 }
 
-bool Spy::checkEndTrace() {
+void Spy::endTraceIfRequested() {
   if (!is_suspended() && mCaptureFrames < 0) {
     GAPID_DEBUG("Ended capture");
     mEncoder->flush();
@@ -500,9 +500,7 @@ bool Spy::checkEndTrace() {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     mConnection->close();
     set_suspended(true);
-    return true;
   }
-  return false;
 }
 
 void Spy::onPostDrawCall(CallObserver* observer, uint8_t api) {
@@ -597,7 +595,7 @@ void Spy::onPostFrameBoundary(bool isStartOfFrame) {
     if (mCaptureFrames > 0) {
       if (--mCaptureFrames == 0) {
         mCaptureFrames = -1;
-        checkEndTrace();
+        endTraceIfRequested();
       }
     }
   }

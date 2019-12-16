@@ -198,8 +198,8 @@ class CallObserver : public context_t {
   template <typename T>
   inline gapil::Slice<T> make(uint64_t count);
 
-  // Checks if the current trace should be ended
-  void checkEndTrace();
+  // Ends the current trace if requested by client.
+  void endTraceIfRequested();
 
   // A pointer to the spy instance.
   SpyBase* mSpy;
@@ -304,7 +304,7 @@ inline PackEncoder::SPtr CallObserver::encoder() { return mEncoderStack.top(); }
 
 template <typename T, typename /* = enable_if_encodable<T> */>
 inline void CallObserver::enter(const T& obj) {
-  checkEndTrace();
+  endTraceIfRequested();
   if (!mShouldTrace) {
     return;
   }

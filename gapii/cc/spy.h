@@ -71,7 +71,7 @@ class Spy : public GlesSpy, public GvrSpy, public VulkanSpy {
                         const gvr_buffer_viewport_list* list,
                         gvr_mat4_abi head_space_from_start_space);
 
-  bool checkEndTrace() override;
+  void endTraceIfRequested() override;
 
   void onPostDrawCall(CallObserver* observer, uint8_t api) override;
   void onPreStartOfFrame(CallObserver* observer, uint8_t api) override;

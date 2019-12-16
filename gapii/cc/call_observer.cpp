@@ -119,7 +119,7 @@ void CallObserver::observeTimestamp() {
 }
 
 void CallObserver::enter(const ::google::protobuf::Message* cmd) {
-  checkEndTrace();
+  endTraceIfRequested();
   if (!mShouldTrace) {
     return;
   }
@@ -181,6 +181,6 @@ gapil::String CallObserver::string(const gapil::Slice<char>& slice) {
   return gapil::String(mSpy->arena(), slice.begin(), slice.end());
 }
 
-void CallObserver::checkEndTrace() { mSpy->checkEndTrace(); }
+void CallObserver::endTraceIfRequested() { mSpy->endTraceIfRequested(); }
 
 }  // namespace gapii
