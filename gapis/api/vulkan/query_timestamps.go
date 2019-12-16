@@ -530,6 +530,7 @@ func (t *queryTimestamps) Flush(ctx context.Context, out transform.Writer) {
 	for _, queryPoolInfo := range t.queryPools {
 		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
 	}
+	t.cleanup(ctx, out)
 	t.AddNotifyInstruction(ctx, out, func() interface{} { return t.replayResult })
 }
 
@@ -544,6 +545,34 @@ func (t *queryTimestamps) PostLoop(ctx context.Context, out transform.Writer) {
 	for _, queryPoolInfo := range t.queryPools {
 		t.GetQueryResults(ctx, cb, out, queryPoolInfo)
 	}
+	t.cleanup(ctx, out)
+}
+
+func (t *queryTimestamps) cleanup(ctx context.Context, out transform.Writer) {
+	s := out.State()
+	cb := CommandBuilder{Thread: 0, Arena: s.Arena}
+
+	// Destroy query pool created in this transform.
+	for _, info := range t.queryPools {
+		cmd := cb.VkDestroyQueryPool(
+			info.device,
+			info.queryPool,
+			memory.Nullptr,
+		)
+		out.MutateAndWrite(ctx, api.CmdNoID, cmd)
+	}
+	t.queryPools = make(map[VkQueue]*queryPoolInfo)
+
+	// Free commandpool allocated in this transform.
+	for commandPoolkey, commandPool := range t.commandPools {
+		cmd := cb.VkDestroyCommandPool(
+			commandPoolkey.device,
+			commandPool,
+			memory.Nullptr,
+		)
+		out.MutateAndWrite(ctx, api.CmdNoID, cmd)
+	}
+	t.commandPools = make(map[commandPoolKey]VkCommandPool)
 }
 
 func (t *queryTimestamps) BuffersCommands() bool { return false }
