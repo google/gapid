@@ -16,8 +16,8 @@
 package com.google.gapid.perfetto;
 
 import static com.google.gapid.widgets.Widgets.createButton;
-import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
 import static com.google.gapid.widgets.Widgets.createTextarea;
 import static com.google.gapid.widgets.Widgets.packColumns;
@@ -32,8 +32,8 @@ import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Loadable;
-import com.google.gapid.widgets.Widgets;
 import com.google.gapid.util.OS;
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -44,25 +44,21 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.TableColumn;
-import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Spinner;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.Text;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.swing.JPopupMenu.Separator;
 
 /**
  * Allows the user to execute manual queries.
@@ -73,11 +69,10 @@ public class QueryViewer extends Composite
 
   private final Models models;
   private final Button run;
-  private final Button export;
-  private final Spinner tablePage;
+  protected final Spinner tablePage;
   private final Text query;
   protected final TableViewer table;
-  private final ResultContentProvider provider;
+  protected final ResultContentProvider provider;
   private static final int MAX_ENTRIES = 1000;
 
   public QueryViewer(Composite parent, Models models) {
@@ -97,9 +92,9 @@ public class QueryViewer extends Composite
     Composite middle = createComposite(top, new GridLayout(2, false));
     run = withLayoutData(createButton(middle, "Run", e -> exec()),
         new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
-    export = withLayoutData(createButton(middle, "Export", e->export()),
+    withLayoutData(createButton(middle, "Export", e->export()),
         new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
-    tablePage = withLayoutData(createSpinner(middle, 1, 1, 1, e -> turnPage()), 
+    tablePage = withLayoutData(createSpinner(middle, 1, 1, 1, e -> turnPage()),
         new GridData(SWT.FILL, SWT.BOTTOM, false, false, 2, 1));
 
     table = Widgets.createTableViewer(splitter, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
