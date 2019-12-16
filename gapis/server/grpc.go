@@ -96,7 +96,7 @@ type grpcServer struct {
 	handler         Server
 	bindCtx         func(context.Context) context.Context
 	keepAlive       chan struct{}
-	inFlightRPCs    uint32
+	inFlightRPCs    int64
 	interrupters    map[int]func()
 	lastInterrupter int
 }
@@ -104,7 +104,7 @@ type grpcServer struct {
 // inRPC should be called at the start of an RPC call. The returned function
 // should be called when the RPC call finishes.
 func (s *grpcServer) inRPC() func() {
-	atomic.AddUint32(&s.inFlightRPCs, 1)
+	atomic.AddInt64(&s.inFlightRPCs, 1)
 	select {
 	case s.keepAlive <- struct{}{}:
 	default:
@@ -114,7 +114,7 @@ func (s *grpcServer) inRPC() func() {
 		case s.keepAlive <- struct{}{}:
 		default:
 		}
-		atomic.AddUint32(&s.inFlightRPCs, ^uint32(0))
+		atomic.AddInt64(&s.inFlightRPCs, -1)
 	}
 }
 
@@ -144,7 +144,7 @@ func (s *grpcServer) stopIfIdle(ctx context.Context, server *grpc.Server, idleTi
 		case <-task.ShouldStop(ctx):
 			return
 		case <-time.After(waitTime):
-			if rpcs := atomic.LoadUint32(&s.inFlightRPCs); rpcs != 0 {
+			if rpcs := atomic.LoadInt64(&s.inFlightRPCs); rpcs != 0 {
 				continue
 			}
 			idleTime += waitTime
