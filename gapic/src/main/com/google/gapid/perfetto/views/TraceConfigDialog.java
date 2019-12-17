@@ -23,7 +23,6 @@ import static com.google.gapid.widgets.Widgets.createSpinner;
 import static com.google.gapid.widgets.Widgets.withIndents;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
-import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toSet;
@@ -52,8 +51,8 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -260,11 +259,6 @@ public class TraceConfigDialog extends DialogBase {
         .setSizeKb((largeBuffer ? 8 : 1) * BUFFER_SIZE)
         .setFillPolicy(FillPolicy.DISCARD));
     config.setFlushPeriodMs((int)SECONDS.toMillis(5));
-
-    if (largeBuffer) {
-      config.setWriteIntoFile(true);
-      config.setFileWritePeriodMs((int)HOURS.toMillis(1));
-    }
 
     if (settings.perfettoVulkanMemoryTracker) {
       config.addDataSourcesBuilder()
