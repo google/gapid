@@ -32,9 +32,9 @@ public class ThreadState {
   public static final ThreadState EXIT_DEAD = new ThreadState(
       "Exit Dead", () -> BaseColor.MAGENTA.rgb, 8);
   public static final ThreadState RUNNABLE = new ThreadState(
-      "Runnable", () -> BaseColor.GREEN.rgb, 1);
+      "Runnable", () -> BaseColor.PACIFIC_BLUE.rgb, 1);
   public static final ThreadState RUNNING = new ThreadState(
-      "Running", () -> BaseColor.PACIFIC_BLUE.rgb, 0);
+      "Running", () -> BaseColor.GREEN.rgb, 0);
   public static final ThreadState SLEEPING = new ThreadState(
       "Sleeping", () -> BaseColor.GREY.rgb, 5);
   public static final ThreadState STOPPED = new ThreadState(
