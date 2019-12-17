@@ -168,7 +168,12 @@ func preparePerfettoProducerLauncherFromApk(ctx context.Context, d adb.Device) e
 }
 
 func launchPerfettoProducerFromApk(ctx context.Context, d adb.Device, startFunc task.Task) error {
-	// Firstly, extract the producer launcher from Apk.
+	driver, err := d.GraphicsDriver(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Extract the producer launcher from the APK.
 	if err := preparePerfettoProducerLauncherFromApk(ctx, d); err != nil {
 		return err
 	}
@@ -198,13 +203,19 @@ func launchPerfettoProducerFromApk(ctx context.Context, d adb.Device, startFunc 
 	})
 
 	// Start the shell command to launch producer
-	process, err := d.Shell(fmt.Sprintf(launcherScript, launcherPath)).
+	script := fmt.Sprintf(launcherScript, launcherPath)
+	if driver.Package != "" {
+		abi := d.Instance().GetConfiguration().PreferredABI(nil)
+		script = "export LD_LIBRARY_PATH=\"" + driver.Path + "!/lib/" + abi.Name + "/\";" + script
+	}
+	process, err := d.Shell(script).
 		Capture(stdout, stdout).
 		Start(ctx)
 	if err != nil {
 		stdout.Close()
 		return err
 	}
+
 	wait := make(chan error, 1)
 	crash.Go(func() {
 		wait <- process.Wait(ctx)
