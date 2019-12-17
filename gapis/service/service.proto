@@ -1309,8 +1309,13 @@ message ProfilingData {
       int32 depth = 4;
       repeated Extra extras = 5;
 
-      path.Commands link = 6;
-      int32 group = 7;  // references Group.id
+      int32 trackId = 6;  // references Track.id
+      int32 group = 7;    // references Group.id
+    }
+
+    message Track {
+      int32 id = 1;
+      string name = 2;
     }
 
     message Group {
@@ -1320,7 +1325,8 @@ message ProfilingData {
     }
 
     repeated Slice slices = 1;
-    repeated Group groups = 2;
+    repeated Track tracks = 2;
+    repeated Group groups = 3;
   }
 
   GpuSlices slices = 1;
