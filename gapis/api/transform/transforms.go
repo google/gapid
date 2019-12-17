@@ -31,7 +31,14 @@ func (l Transforms) Transform(ctx context.Context, cmds []api.Cmd, out Writer) {
 	for i := len(l) - 1; i >= 0; i-- {
 		s := chain.State()
 		if config.SeparateMutateStates || (i+1 < len(l) && l[i+1].BuffersCommands()) {
-			s = api.NewStateWithAllocator(s.Allocator, s.MemoryLayout)
+			newState := api.NewStateWithAllocator(s.Allocator, s.MemoryLayout)
+			newState.Memory = s.Memory.Clone()
+			for k, v := range s.APIs {
+				clonedState := v.Clone(newState.Arena)
+				clonedState.SetupInitialState(ctx)
+				newState.APIs[k] = clonedState
+			}
+			s = newState
 		}
 		chain = TransformWriter{s, l[i], chain}
 	}
