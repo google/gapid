@@ -1505,12 +1505,791 @@ func (f *frameLoop) backupChangedImages(ctx context.Context, stateBuilder *state
 	return nil
 }
 
+func (f *frameLoop) updateChangedResourcesMap(ctx context.Context, stateBuilder *stateBuilder) {
+
+	// Instances
+	{
+		for _, deviceObject := range GetState(f.loopStartState).Devices().All() {
+
+			physicalDevice := deviceObject.PhysicalDevice()
+			physicalDeviceObject := GetState(f.loopStartState).PhysicalDevices().All()[physicalDevice]
+			instance := physicalDeviceObject.Instance()
+
+			if _, ok := f.instanceToCreate[instance]; ok {
+				f.deviceToDestroy[deviceObject.VulkanHandle()] = true
+				f.deviceToCreate[deviceObject.VulkanHandle()] = true
+			}
+			if _, ok := f.instanceToDestroy[instance]; ok {
+				f.deviceToDestroy[deviceObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, surfaceObject := range GetState(f.loopStartState).Surfaces().All() {
+
+			instance := surfaceObject.Instance()
+
+			if _, ok := f.instanceToCreate[instance]; ok {
+				f.surfaceToDestroy[surfaceObject.VulkanHandle()] = true
+				f.surfaceToCreate[surfaceObject.VulkanHandle()] = true
+			}
+			if _, ok := f.instanceToDestroy[instance]; ok {
+				f.surfaceToDestroy[surfaceObject.VulkanHandle()] = true
+			}
+		}
+	}
+
+	// Devices
+	{
+		for _, memoryObject := range GetState(f.loopStartState).DeviceMemories().All() {
+
+			device := memoryObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.memoryToFree[memoryObject.VulkanHandle()] = true
+				f.memoryToAllocate[memoryObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, bufferObject := range GetState(f.loopStartState).Buffers().All() {
+
+			device := bufferObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.bufferToDestroy[bufferObject.VulkanHandle()] = true
+				f.bufferToCreate[bufferObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, imageObject := range GetState(f.loopStartState).Images().All() {
+
+			device := imageObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.imageToDestroy[imageObject.VulkanHandle()] = true
+				f.imageToCreate[imageObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, samplerYcbcrObject := range GetState(f.loopStartState).SamplerYcbcrConversions().All() {
+
+			device := samplerYcbcrObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.samplerYcbcrConversionToDestroy[samplerYcbcrObject.VulkanHandle()] = true
+				f.samplerYcbcrConversionToCreate[samplerYcbcrObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
+
+			device := samplerObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.samplerToDestroy[samplerObject.VulkanHandle()] = true
+				f.samplerToCreate[samplerObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, shaderModuleObject := range GetState(f.loopStartState).ShaderModules().All() {
+
+			device := shaderModuleObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.shaderModuleToDestroy[shaderModuleObject.VulkanHandle()] = true
+				f.shaderModuleToCreate[shaderModuleObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, descriptorSetLayoutObject := range GetState(f.loopStartState).DescriptorSetLayouts().All() {
+
+			device := descriptorSetLayoutObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.descriptorSetLayoutToDestroy[descriptorSetLayoutObject.VulkanHandle()] = true
+				f.descriptorSetLayoutToCreate[descriptorSetLayoutObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, pipelineLayoutObject := range GetState(f.loopStartState).PipelineLayouts().All() {
+
+			device := pipelineLayoutObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.pipelineLayoutToDestroy[pipelineLayoutObject.VulkanHandle()] = true
+				f.pipelineLayoutToCreate[pipelineLayoutObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, pipelineCacheObject := range GetState(f.loopStartState).PipelineCaches().All() {
+
+			device := pipelineCacheObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.pipelineCacheToDestroy[pipelineCacheObject.VulkanHandle()] = true
+				f.pipelineCacheToCreate[pipelineCacheObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, pipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+
+			device := pipelineObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.pipelineToDestroy[pipelineObject.VulkanHandle()] = true
+				f.graphicsPipelineToCreate[pipelineObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, pipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+
+			device := pipelineObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.pipelineToDestroy[pipelineObject.VulkanHandle()] = true
+				f.computePipelineToCreate[pipelineObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, descriptorPoolObject := range GetState(f.loopStartState).DescriptorPools().All() {
+
+			device := descriptorPoolObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.descriptorPoolToDestroy[descriptorPoolObject.VulkanHandle()] = true
+				f.descriptorPoolToCreate[descriptorPoolObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, descriptorSetObject := range GetState(f.loopStartState).DescriptorSets().All() {
+
+			device := descriptorSetObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.descriptorSetToFree[descriptorSetObject.VulkanHandle()] = true
+				f.descriptorSetChanged[descriptorSetObject.VulkanHandle()] = true
+				f.descriptorSetToAllocate[descriptorSetObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, semaphoreObject := range GetState(f.loopStartState).Semaphores().All() {
+
+			device := semaphoreObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.semaphoreToDestroy[semaphoreObject.VulkanHandle()] = true
+				f.semaphoreChanged[semaphoreObject.VulkanHandle()] = true
+				f.semaphoreToCreate[semaphoreObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, fenceObject := range GetState(f.loopStartState).Fences().All() {
+
+			device := fenceObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.fenceToDestroy[fenceObject.VulkanHandle()] = true
+				f.fenceChanged[fenceObject.VulkanHandle()] = true
+				f.fenceToCreate[fenceObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, eventObject := range GetState(f.loopStartState).Events().All() {
+
+			device := eventObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.eventToDestroy[eventObject.VulkanHandle()] = true
+				f.eventChanged[eventObject.VulkanHandle()] = true
+				f.eventToCreate[eventObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, framebufferObject := range GetState(f.loopStartState).Framebuffers().All() {
+
+			device := framebufferObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.framebufferToDestroy[framebufferObject.VulkanHandle()] = true
+				f.framebufferToCreate[framebufferObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, renderPassObject := range GetState(f.loopStartState).RenderPasses().All() {
+
+			device := renderPassObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.renderPassToDestroy[renderPassObject.VulkanHandle()] = true
+				f.renderPassToCreate[renderPassObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, queryPoolObject := range GetState(f.loopStartState).QueryPools().All() {
+
+			device := queryPoolObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.queryPoolToDestroy[queryPoolObject.VulkanHandle()] = true
+				f.queryPoolToCreate[queryPoolObject.VulkanHandle()] = true
+			}
+		}
+
+		for _, commandPoolObject := range GetState(f.loopStartState).CommandPools().All() {
+			log.D(ctx, "commandPoolObject %v ", commandPoolObject.VulkanHandle())
+
+			device := commandPoolObject.Device()
+
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.commandPoolToDestroy[commandPoolObject.VulkanHandle()] = true
+				f.commandPoolToCreate[commandPoolObject.VulkanHandle()] = true
+				log.D(ctx, "Command pool %v is going to be recreated ", commandPoolObject.VulkanHandle())
+			}
+			if _, ok := f.deviceToDestroy[device]; ok {
+				f.commandPoolToDestroy[commandPoolObject.VulkanHandle()] = true
+				log.D(ctx, "Command pool %v is going to be destroyed ", commandPoolObject.VulkanHandle())
+
+			}
+		}
+		for _, commandBufferObject := range GetState(f.loopStartState).CommandBuffers().All() {
+			device := commandBufferObject.Device()
+			if _, ok := f.deviceToCreate[device]; ok {
+				f.commandBufferToFree[commandBufferObject.VulkanHandle()] = true
+				f.commandBufferToAllocate[commandBufferObject.VulkanHandle()] = true
+			}
+		}
+	}
+
+	// Surfaces
+	{
+		// The shadow state for Surfaces does not contain reference to the Swapchains they are used in. So we have to loop around finding the story.
+		for _, swapchainObject := range GetState(f.loopStartState).Swapchains().All() {
+
+			surface := swapchainObject.Surface()
+			if surface == NilSurfaceObjectʳ {
+				continue
+			}
+
+			if _, ok := f.surfaceToCreate[surface.VulkanHandle()]; ok {
+				f.swapchainToDestroy[swapchainObject.VulkanHandle()] = true
+				f.swapchainToCreate[swapchainObject.VulkanHandle()] = true
+			}
+		}
+	}
+
+	// Images
+	{
+		for dst := range f.imageToRestore {
+			// If we (re)created an Image, then we will have invalidated all ImageViews that were using it at the time the loop started.
+			// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
+			// These ImageViews will need to be (re)created, so add them to the maps to destroy and create in that order.
+			imageViewUsers := GetState(f.loopStartState).images.Get(dst).Views().All()
+			for imageView := range imageViewUsers {
+				f.imageViewToDestroy[imageView] = true
+				f.imageViewToCreate[imageView] = true
+			}
+		}
+	}
+
+	// ImageViews
+	{
+		for toCreate := range f.imageViewToCreate {
+			// Write the commands needed to recreate the destroyed object
+			imageView := GetState(f.loopStartState).imageViews.Get(toCreate)
+			framebufferUsers := imageView.FramebufferUsers().All()
+			for framebuffer := range framebufferUsers {
+				f.framebufferToDestroy[framebuffer] = true
+				f.framebufferToCreate[framebuffer] = true
+			}
+		}
+	}
+
+	// SamplerYcbcrConversions
+	{
+		// The shadow state for SamplerYcbcrConversions does not contain reference to the Samplers they are used in. So we have to loop around finding the story.
+		for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
+			ycbcrConversion := samplerObject.YcbcrConversion()
+			if ycbcrConversion == NilSamplerYcbcrConversionObjectʳ {
+				log.D(ctx, "Sampler %v doesn't enable ycbcrConversion", samplerObject)
+				continue
+			}
+			if _, ok := f.samplerYcbcrConversionToCreate[ycbcrConversion.VulkanHandle()]; ok {
+				f.samplerToDestroy[samplerObject.VulkanHandle()] = true
+				f.samplerToCreate[samplerObject.VulkanHandle()] = true
+			}
+		}
+	}
+
+	// Samplers
+	{
+		// For every Sampler that we need to create at the end of the loop...
+		for toCreate := range f.samplerToCreate {
+			// Write the commands needed to recreate the destroyed object
+			sampler := GetState(f.loopStartState).samplers.Get(toCreate)
+
+			// If we (re)created a sampler, then we will have invalidated all descriptor sets that were using it at the time the loop started.
+			// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
+			// These descriptor sets will need to be (re)created, so add them to the maps to destroy, create and restore state in that order.
+			descriptorSetUsers := sampler.DescriptorUsers().All()
+			for descriptorSet := range descriptorSetUsers {
+				f.descriptorSetToFree[descriptorSet] = true
+				f.descriptorSetToAllocate[descriptorSet] = true
+				f.descriptorSetChanged[descriptorSet] = true
+			}
+		}
+	}
+
+	// ShaderModules
+	{
+		// The shadow state for ShaderModules does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
+		for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+			shaderModule := computePipelineObject.Stage().Module()
+			if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
+				f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
+				f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
+			}
+		}
+
+		for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+			for _, stage := range graphicsPipelineObject.Stages().All() {
+				shaderModule := stage.Module()
+				if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
+					f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
+					f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
+				}
+			}
+		}
+	}
+
+	//DescriptorSetLayout
+	{
+		// The shadow state for DescriptorSetLayouts does not contain reference to the PipelineLayouts they are used in. So we have to loop around finding the story.
+		for _, pipelineLayout := range GetState(f.loopStartState).PipelineLayouts().All() {
+			for _, descriptorSetLayout := range pipelineLayout.SetLayouts().All() {
+				if _, ok := f.descriptorSetLayoutToCreate[descriptorSetLayout.VulkanHandle()]; ok {
+					f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
+					f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
+				}
+			}
+		}
+
+		// The shadow state for DescriptorSetLayouts does not contain reference to DescriptorSets that are created from them. So we have to loop around finding the story.
+		for _, descriptorSet := range GetState(f.loopStartState).DescriptorSets().All() {
+			descriptorSetLayout := descriptorSet.Layout()
+			if _, ok := f.descriptorSetLayoutToCreate[descriptorSetLayout.VulkanHandle()]; ok {
+				f.descriptorSetToFree[descriptorSet.VulkanHandle()] = true
+				f.descriptorSetToAllocate[descriptorSet.VulkanHandle()] = true
+				f.descriptorSetChanged[descriptorSet.VulkanHandle()] = true
+			}
+		}
+	}
+
+	//PipelineLayout
+	{
+		// The shadow state for PipelineLayouts does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
+		for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+			pipelineLayout := computePipelineObject.PipelineLayout()
+			if _, ok := f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()]; ok {
+				f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
+				f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
+			}
+		}
+
+		// The shadow state for PipelineLayouts does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
+		for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+			pipelineLayout := graphicsPipelineObject.Layout()
+			if _, ok := f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()]; ok {
+				f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
+				f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
+			}
+		}
+	}
+
+	//PipelineCache
+	{
+		// The shadow state for PipelineCaches does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
+		for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
+			pipelineCache := computePipelineObject.PipelineCache()
+			if pipelineCache == NilPipelineCacheObjectʳ {
+				log.D(ctx, "computePipelineObject %v doesn't have a pipeline cache.", computePipelineObject)
+				continue
+			}
+			if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
+				f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
+				f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
+			}
+		}
+
+		// The shadow state for PipelineCaches does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
+		for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
+			pipelineCache := graphicsPipelineObject.PipelineCache()
+			if pipelineCache == NilPipelineCacheObjectʳ {
+				log.D(ctx, "graphicsPipelineObject %v doesn't have a pipeline cache.", graphicsPipelineObject)
+				continue
+			}
+			if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
+				f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
+				f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
+			}
+		}
+	}
+
+	//DescriptorPool
+	{
+		// For every DescriptorPool that we need to create at the end of the loop...
+		for toCreate := range f.descriptorPoolToCreate {
+			// Write the commands needed to recreate the destroyed object
+			descPool := GetState(f.loopStartState).DescriptorPools().Get(toCreate)
+
+			// Iterate through all the descriptor sets that we just recreated, adding them to the list of descriptor sets
+			// that need to be redefined.
+			for _, descriptorSetDataValue := range descPool.DescriptorSets().All() {
+				f.descriptorSetChanged[descriptorSetDataValue.VulkanHandle()] = true
+			}
+		}
+	}
+
+	// CommandPool
+	{
+		// For every CommandPool that we need to create at the end of the loop...
+		for toCreate := range f.commandPoolToCreate {
+			// Write the commands needed to recreate the destroyed object
+			commandPool := GetState(f.loopStartState).commandPools.Get(toCreate)
+
+			// Iterate through all the command pools that we just recreated, adding them to the list of command buffers
+			// that need to be redefined.
+			for _, commandSetDataValue := range commandPool.CommandBuffers().All() {
+				delete(f.commandBufferToFree, commandSetDataValue.VulkanHandle())
+				f.commandBufferToAllocate[commandSetDataValue.VulkanHandle()] = true
+				f.commandBufferToRecord[commandSetDataValue.VulkanHandle()] = true
+			}
+		}
+	}
+
+}
+
+func (f *frameLoop) destroyAllocatedResources(ctx context.Context, stateBuilder *stateBuilder) {
+	//commandBuffers
+	{
+		for cmdBuf := range f.commandBufferToFree {
+			log.D(ctx, "Command buffer %v allocated during loop, free it.", cmdBuf)
+			cmdBufObj := GetState(f.loopEndState).CommandBuffers().Get(cmdBuf)
+			if cmdBufObj != NilCommandBufferObjectʳ {
+				stateBuilder.write(stateBuilder.cb.VkFreeCommandBuffers(
+					cmdBufObj.Device(),
+					cmdBufObj.Pool(),
+					1,
+					stateBuilder.MustAllocReadData(cmdBufObj.VulkanHandle()).Ptr(),
+				))
+			} else {
+				log.F(ctx, true, "Command buffer %v cannot be found in loop ending state", cmdBuf)
+			}
+		}
+	}
+	//CommandPool
+	{
+		// For every CommandPool that we need to destroy at the end of the loop...
+		for toDestroy := range f.commandPoolToDestroy {
+			// Write the command to delete the created object
+			commandPool := GetState(f.loopEndState).commandPools.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyCommandPool(commandPool.Device(), commandPool.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	// QueryPools
+	{
+		// For every QueryPools that we need to destroy at the end of the loop...
+		for toDestroy := range f.queryPoolToDestroy {
+			// Write the command to delete the created object
+			queryPool := GetState(f.loopEndState).queryPools.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyQueryPool(queryPool.Device(), queryPool.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	// RenderPass
+	{
+		// For every RenderPass that we need to destroy at the end of the loop...
+		for toDestroy := range f.renderPassToDestroy {
+			// Write the command to delete the created object
+			renderPass := GetState(f.loopEndState).renderPasses.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyRenderPass(renderPass.Device(), renderPass.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	//Framebuffers
+	{
+		// For every Framebuffers that we need to destroy at the end of the loop...
+		for toDestroy := range f.framebufferToDestroy {
+			// Write the command to delete the created object
+			framebuffer := GetState(f.loopEndState).framebuffers.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyFramebuffer(framebuffer.Device(), framebuffer.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	// Events
+	{
+		for event := range f.eventToDestroy {
+			eventObj := GetState(f.loopEndState).Events().Get(event)
+			if eventObj != NilEventObjectʳ {
+				log.D(ctx, "Destroy event: %v which was created during loop.", event)
+				stateBuilder.write(stateBuilder.cb.VkDestroyEvent(eventObj.Device(), eventObj.VulkanHandle(), memory.Nullptr))
+			} else {
+				log.E(ctx, "Event %v cannot be found in loop ending state.", event)
+			}
+		}
+	}
+	//Fences
+	{
+		for fence := range f.fenceToDestroy {
+			fenceObj := GetState(f.loopEndState).Fences().Get(fence)
+			if fenceObj != NilFenceObjectʳ {
+				log.D(ctx, "Destroy fence: %v which was created during loop.", fence)
+				stateBuilder.write(stateBuilder.cb.VkDestroyFence(fenceObj.Device(), fenceObj.VulkanHandle(), memory.Nullptr))
+			} else {
+				log.E(ctx, "Fence %v cannot be found in the loop ending state", fence)
+			}
+		}
+	}
+	//Semaphores
+	{
+		for sem := range f.semaphoreToDestroy {
+			semObj := GetState(f.loopEndState).Semaphores().Get(sem)
+			if semObj != NilSemaphoreObjectʳ {
+				log.D(ctx, "Destroy semaphore %v which was created during loop.", sem)
+				stateBuilder.write(stateBuilder.cb.VkDestroySemaphore(semObj.Device(), semObj.VulkanHandle(), memory.Nullptr))
+			} else {
+				log.E(ctx, "Semaphore %v cannot be found in the loop ending state", sem)
+			}
+		}
+	}
+	//DescriptorSet
+	{
+		// For every DescriptorSet that we need to free at the end of the loop...
+		for toDestroy := range f.descriptorSetToFree {
+			// Write the command to free the created object
+			descSetObj := GetState(f.loopEndState).descriptorSets.Get(toDestroy)
+			handle := []VkDescriptorSet{descSetObj.VulkanHandle()}
+			stateBuilder.write(stateBuilder.cb.VkFreeDescriptorSets(descSetObj.Device(),
+				descSetObj.DescriptorPool(),
+				1,
+				stateBuilder.MustAllocReadData(handle).Ptr(),
+				VkResult_VK_SUCCESS))
+		}
+	}
+	//DescriptorPool
+	{
+		// For every DescriptorPool that we need to destroy at the end of the loop...
+		for toDestroy := range f.descriptorPoolToDestroy {
+			// Write the command to delete the created object
+			descPool := GetState(f.loopEndState).descriptorPools.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorPool(descPool.Device(), descPool.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	//PipelineCache
+	{
+		// For every PipelineCache that we need to destroy at the end of the loop...
+		for toDestroy := range f.pipelineCacheToDestroy {
+			// Write the command to delete the created object
+			pipelineCache := GetState(f.loopEndState).pipelineCaches.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyPipelineCache(pipelineCache.Device(), pipelineCache.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	// Pipeline
+	{
+		// For every Pipeline that we need to destroy at the end of the loop...
+		for toDestroy := range f.pipelineToDestroy {
+
+			// Write the command to delete the created object
+			computePipeline, isComputePipeline := GetState(f.loopEndState).ComputePipelines().All()[toDestroy]
+			graphicsPipeline, isGraphicsPipeline := GetState(f.loopEndState).GraphicsPipelines().All()[toDestroy]
+
+			if isComputePipeline && isGraphicsPipeline {
+				log.F(ctx, true, "Control flow error: Pipeline can't be both Graphics and Compute at the same time.")
+			}
+
+			if isComputePipeline {
+				stateBuilder.write(stateBuilder.cb.VkDestroyPipeline(computePipeline.Device(), computePipeline.VulkanHandle(), memory.Nullptr))
+			} else if isGraphicsPipeline {
+				stateBuilder.write(stateBuilder.cb.VkDestroyPipeline(graphicsPipeline.Device(), graphicsPipeline.VulkanHandle(), memory.Nullptr))
+			} else {
+				log.F(ctx, true, "FrameLooping: resetPipelines(): Unknown pipeline type")
+			}
+		}
+	}
+
+	//PipelineLayout
+	{
+		// For every PipelineLayout that we need to destroy at the end of the loop...
+		for toDestroy := range f.pipelineLayoutToDestroy {
+			// Write the command to delete the created object
+			pipelineLayout := GetState(f.loopEndState).pipelineLayouts.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyPipelineLayout(pipelineLayout.Device(), pipelineLayout.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	//DescriptorSetLayout
+	{
+		// For every DescriptorSetLayout that we need to destroy at the end of the loop...
+		for toDestroy := range f.descriptorSetLayoutToDestroy {
+			// Write the command to delete the created object
+			descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(descSetLay.Device(), descSetLay.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	// ShaderModules
+	{
+		// For every ShaderModule that we need to destroy at the end of the loop...
+		for toDestroy := range f.shaderModuleToDestroy {
+			// Write the command to delete the created object
+			shaderModule := GetState(f.loopEndState).shaderModules.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyShaderModule(shaderModule.Device(), shaderModule.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	// Samplers
+	{
+		// For every Sampler that we need to destroy at the end of the loop...
+		for toDestroy := range f.samplerToDestroy {
+			// Write the command to delete the created object
+			sampler := GetState(f.loopEndState).samplers.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroySampler(sampler.Device(), sampler.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	//SamplerYcbcrConversions
+	{
+		// For every SamplerYcbcrConversion that we need to destroy at the end of the loop...
+		for toDestroy := range f.samplerYcbcrConversionToDestroy {
+			// Write the command to delete the created object
+			samplerYcbcrConversion := GetState(f.loopEndState).samplerYcbcrConversions.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroySamplerYcbcrConversion(samplerYcbcrConversion.Device(), samplerYcbcrConversion.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+	// ImageViews
+	{
+		// For every ImageView that we need to destroy at the end of the loop...
+		for toDestroy := range f.imageViewToDestroy {
+			// Write the command to delete the created object
+			imageView := GetState(f.loopEndState).imageViews.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyImageView(imageView.Device(), imageView.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	// Images
+	{
+		for toDestroy := range f.imageToDestroy {
+			log.D(ctx, "Destroy image %v which was created during loop.", toDestroy)
+			image := GetState(f.loopEndState).Images().Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyImage(image.Device(), toDestroy, memory.Nullptr))
+
+			imageViewUsers := image.Views().All()
+			for imageView := range imageViewUsers {
+				f.imageViewToDestroy[imageView] = true
+			}
+		}
+
+	}
+	// SwapChain
+	{
+		// For every Swapchain that we need to destroy at the end of the loop...
+		for toDestroy := range f.swapchainToDestroy {
+			// Write the command to delete the created object
+			swapchain := GetState(f.loopEndState).swapchains.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroySwapchainKHR(swapchain.Device(), swapchain.VulkanHandle(), memory.Nullptr))
+		}
+
+	}
+
+	// Surfaces
+	{
+		// For every Surface that we need to destroy at the end of the loop...
+		for toDestroy := range f.surfaceToDestroy {
+			// Write the command to delete the created object
+			surface := GetState(f.loopEndState).surfaces.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroySurfaceKHR(surface.Instance(), surface.VulkanHandle(), memory.Nullptr))
+		}
+	}
+	// bufferviews
+	{
+		// For every BufferView that we need to destroy at the end of the loop...
+		for toDestroy := range f.bufferViewToDestroy {
+			// Write the command to delete the created object
+			bufferView := GetState(f.loopEndState).bufferViews.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyBufferView(bufferView.Device(), bufferView.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	// buffers
+	{
+		for buf := range f.bufferToDestroy {
+			log.D(ctx, "Destroy buffer %v which was created during loop.", buf)
+			bufObj := GetState(stateBuilder.newState).Buffers().Get(buf)
+			stateBuilder.write(stateBuilder.cb.VkDestroyBuffer(bufObj.Device(), buf, memory.Nullptr))
+		}
+	}
+
+	// device memory
+	{
+
+		for mem := range f.memoryToUnmap {
+			memObj := GetState(f.loopEndState).DeviceMemories().Get(mem)
+			if memObj == NilDeviceMemoryObjectʳ {
+				log.E(ctx, "device memory %s doesn't exist in the loop ending state", mem)
+			}
+			stateBuilder.write(stateBuilder.cb.VkUnmapMemory(memObj.Device(), mem))
+		}
+
+		for mem := range f.memoryToFree {
+			log.D(ctx, "Free memory %v which was allocated during loop.", mem)
+			memObj := GetState(f.loopEndState).DeviceMemories().Get(mem)
+			if memObj == NilDeviceMemoryObjectʳ {
+				log.E(ctx, "device memory %s doesn't exist in the loop ending state", mem)
+			}
+
+			stateBuilder.write(stateBuilder.cb.VkFreeMemory(
+				memObj.Device(),
+				memObj.VulkanHandle(),
+				memory.Nullptr,
+			))
+		}
+
+	}
+
+	// Device
+	{
+		// For every Device that we need to destroy at the end of the loop...
+		for toDestroy := range f.deviceToDestroy {
+			// Write the command to delete the created object
+			device := GetState(f.loopEndState).devices.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyDevice(device.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+	// Instance
+	{
+		// For every Instance that we need to destroy at the end of the loop...
+		for toDestroy := range f.instanceToDestroy {
+			// Write the command to delete the created object
+			instance := GetState(f.loopEndState).instances.Get(toDestroy)
+			stateBuilder.write(stateBuilder.cb.VkDestroyInstance(instance.VulkanHandle(), memory.Nullptr))
+		}
+	}
+
+}
+
 func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuilder) error {
 
+	log.D(ctx, "Begin to reset resources in frame loop")
 	// TODO: remove those waitdeviceidle after we're sure it is safe to do so.
 	f.waitDeviceIdle(stateBuilder)
 	defer f.waitDeviceIdle(stateBuilder)
 
+	f.updateChangedResourcesMap(ctx, stateBuilder)
+	f.destroyAllocatedResources(ctx, stateBuilder)
+	f.waitDeviceIdle(stateBuilder)
 	imgPrimer := newImagePrimer(stateBuilder)
 	// imgPrimer.Free() needs to be called after stateBuilder.scratchRes.Free().
 	// As the later will submit all the commands and wait for queue to be idle.
@@ -1622,17 +2401,12 @@ func (f *frameLoop) resetResources(ctx context.Context, stateBuilder *stateBuild
 		return err
 	}
 
+	log.D(ctx, "End reset resources in frame loop")
+
 	return nil
 }
 
 func (f *frameLoop) resetInstances(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every Instance that we need to destroy at the end of the loop...
-	for toDestroy := range f.instanceToDestroy {
-		// Write the command to delete the created object
-		instance := GetState(f.loopEndState).instances.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyInstance(instance.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every Instance that we need to create at the end of the loop...
 	for toCreate := range f.instanceToCreate {
@@ -1641,39 +2415,10 @@ func (f *frameLoop) resetInstances(ctx context.Context, stateBuilder *stateBuild
 		stateBuilder.createInstance(instance.VulkanHandle(), instance)
 	}
 
-	for _, deviceObject := range GetState(f.loopStartState).Devices().All() {
-
-		physicalDevice := deviceObject.PhysicalDevice()
-		physicalDeviceObject := GetState(f.loopStartState).PhysicalDevices().All()[physicalDevice]
-		instance := physicalDeviceObject.Instance()
-
-		if _, ok := f.instanceToCreate[instance]; ok {
-			f.deviceToDestroy[deviceObject.VulkanHandle()] = true
-			f.deviceToCreate[deviceObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, surfaceObject := range GetState(f.loopStartState).Surfaces().All() {
-
-		instance := surfaceObject.Instance()
-
-		if _, ok := f.instanceToCreate[instance]; ok {
-			f.surfaceToDestroy[surfaceObject.VulkanHandle()] = true
-			f.surfaceToCreate[surfaceObject.VulkanHandle()] = true
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetDevices(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every Device that we need to destroy at the end of the loop...
-	for toDestroy := range f.deviceToDestroy {
-		// Write the command to delete the created object
-		device := GetState(f.loopEndState).devices.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyDevice(device.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every Device that we need to create at the end of the loop...
 	for toCreate := range f.deviceToCreate {
@@ -1682,239 +2427,10 @@ func (f *frameLoop) resetDevices(ctx context.Context, stateBuilder *stateBuilder
 		stateBuilder.createDevice(device)
 	}
 
-	for _, memoryObject := range GetState(f.loopStartState).DeviceMemories().All() {
-
-		device := memoryObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.memoryToFree[memoryObject.VulkanHandle()] = true
-			f.memoryToAllocate[memoryObject.VulkanHandle()] = true
-			// TODO: @renfengliu What do we need to do here with memoryToUnmap/memoryToMap/mappedAddress?
-		}
-	}
-
-	for _, bufferObject := range GetState(f.loopStartState).Buffers().All() {
-
-		device := bufferObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.bufferToDestroy[bufferObject.VulkanHandle()] = true
-			f.bufferToCreate[bufferObject.VulkanHandle()] = true
-			// TODO: @renfengliu What do we need to do here with bufferChanged/bufferToRestore?
-		}
-	}
-
-	for _, imageObject := range GetState(f.loopStartState).Images().All() {
-
-		device := imageObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.imageToDestroy[imageObject.VulkanHandle()] = true
-			f.imageToCreate[imageObject.VulkanHandle()] = true
-			// TODO: @renfengliu What do we need to do here with imageChanged/imageToRestore?
-		}
-	}
-
-	for _, samplerYcbcrObject := range GetState(f.loopStartState).SamplerYcbcrConversions().All() {
-
-		device := samplerYcbcrObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.samplerYcbcrConversionToDestroy[samplerYcbcrObject.VulkanHandle()] = true
-			f.samplerYcbcrConversionToCreate[samplerYcbcrObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
-
-		device := samplerObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.samplerToDestroy[samplerObject.VulkanHandle()] = true
-			f.samplerToCreate[samplerObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, shaderModuleObject := range GetState(f.loopStartState).ShaderModules().All() {
-
-		device := shaderModuleObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.shaderModuleToDestroy[shaderModuleObject.VulkanHandle()] = true
-			f.shaderModuleToCreate[shaderModuleObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, descriptorSetLayoutObject := range GetState(f.loopStartState).DescriptorSetLayouts().All() {
-
-		device := descriptorSetLayoutObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.descriptorSetLayoutToDestroy[descriptorSetLayoutObject.VulkanHandle()] = true
-			f.descriptorSetLayoutToCreate[descriptorSetLayoutObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, pipelineLayoutObject := range GetState(f.loopStartState).PipelineLayouts().All() {
-
-		device := pipelineLayoutObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.pipelineLayoutToDestroy[pipelineLayoutObject.VulkanHandle()] = true
-			f.pipelineLayoutToCreate[pipelineLayoutObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, pipelineCacheObject := range GetState(f.loopStartState).PipelineCaches().All() {
-
-		device := pipelineCacheObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.pipelineCacheToDestroy[pipelineCacheObject.VulkanHandle()] = true
-			f.pipelineCacheToCreate[pipelineCacheObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, pipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
-
-		device := pipelineObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.pipelineToDestroy[pipelineObject.VulkanHandle()] = true
-			f.graphicsPipelineToCreate[pipelineObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, pipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
-
-		device := pipelineObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.pipelineToDestroy[pipelineObject.VulkanHandle()] = true
-			f.computePipelineToCreate[pipelineObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, descriptorPoolObject := range GetState(f.loopStartState).DescriptorPools().All() {
-
-		device := descriptorPoolObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.descriptorPoolToDestroy[descriptorPoolObject.VulkanHandle()] = true
-			f.descriptorPoolToCreate[descriptorPoolObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, descriptorSetObject := range GetState(f.loopStartState).DescriptorSets().All() {
-
-		device := descriptorSetObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.descriptorSetToFree[descriptorSetObject.VulkanHandle()] = true
-			f.descriptorSetChanged[descriptorSetObject.VulkanHandle()] = true
-			f.descriptorSetToAllocate[descriptorSetObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, semaphoreObject := range GetState(f.loopStartState).Semaphores().All() {
-
-		device := semaphoreObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.semaphoreToDestroy[semaphoreObject.VulkanHandle()] = true
-			f.semaphoreChanged[semaphoreObject.VulkanHandle()] = true
-			f.semaphoreToCreate[semaphoreObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, fenceObject := range GetState(f.loopStartState).Fences().All() {
-
-		device := fenceObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.fenceToDestroy[fenceObject.VulkanHandle()] = true
-			f.fenceChanged[fenceObject.VulkanHandle()] = true
-			f.fenceToCreate[fenceObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, eventObject := range GetState(f.loopStartState).Events().All() {
-
-		device := eventObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.eventToDestroy[eventObject.VulkanHandle()] = true
-			f.eventChanged[eventObject.VulkanHandle()] = true
-			f.eventToCreate[eventObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, framebufferObject := range GetState(f.loopStartState).Framebuffers().All() {
-
-		device := framebufferObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.framebufferToDestroy[framebufferObject.VulkanHandle()] = true
-			f.framebufferToCreate[framebufferObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, renderPassObject := range GetState(f.loopStartState).RenderPasses().All() {
-
-		device := renderPassObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.renderPassToDestroy[renderPassObject.VulkanHandle()] = true
-			f.renderPassToCreate[renderPassObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, queryPoolObject := range GetState(f.loopStartState).QueryPools().All() {
-
-		device := queryPoolObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.queryPoolToDestroy[queryPoolObject.VulkanHandle()] = true
-			f.queryPoolToCreate[queryPoolObject.VulkanHandle()] = true
-		}
-	}
-
-	for _, commandPoolObject := range GetState(f.loopStartState).CommandPools().All() {
-
-		device := commandPoolObject.Device()
-
-		if _, ok := f.deviceToCreate[device]; ok {
-			f.commandPoolToDestroy[commandPoolObject.VulkanHandle()] = true
-			f.commandPoolToCreate[commandPoolObject.VulkanHandle()] = true
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetDeviceMemory(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	for mem := range f.memoryToUnmap {
-		memObj := GetState(f.loopEndState).DeviceMemories().Get(mem)
-		if memObj == NilDeviceMemoryObjectʳ {
-			return fmt.Errorf("device memory %s doesn't exist in the loop ending state", mem)
-		}
-		stateBuilder.write(stateBuilder.cb.VkUnmapMemory(memObj.Device(), mem))
-	}
-
-	for mem := range f.memoryToFree {
-		log.D(ctx, "Free memory %v which was allocated during loop.", mem)
-		memObj := GetState(f.loopEndState).DeviceMemories().Get(mem)
-		if memObj == NilDeviceMemoryObjectʳ {
-			return fmt.Errorf("device memory %s doesn't exist in the loop ending state", mem)
-		}
-
-		stateBuilder.write(stateBuilder.cb.VkFreeMemory(
-			memObj.Device(),
-			memObj.VulkanHandle(),
-			memory.Nullptr,
-		))
-	}
 
 	for mem := range f.memoryToAllocate {
 		log.D(ctx, "Allcate memory %v which was freed during loop.", mem)
@@ -1970,12 +2486,6 @@ func (f *frameLoop) resetDeviceMemory(ctx context.Context, stateBuilder *stateBu
 
 func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	for buf := range f.bufferToDestroy {
-		log.D(ctx, "Destroy buffer %v which was created during loop.", buf)
-		bufObj := GetState(stateBuilder.newState).Buffers().Get(buf)
-		stateBuilder.write(stateBuilder.cb.VkDestroyBuffer(bufObj.Device(), buf, memory.Nullptr))
-	}
-
 	for buf := range f.bufferToCreate {
 		log.D(ctx, "Recreate buffer %v which was destroyed during loop.", buf)
 		srcBuffer := GetState(f.loopStartState).Buffers().Get(buf)
@@ -2011,13 +2521,6 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 
 func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every BufferView that we need to destroy at the end of the loop...
-	for toDestroy := range f.bufferViewToDestroy {
-		// Write the command to delete the created object
-		bufferView := GetState(f.loopEndState).bufferViews.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyBufferView(bufferView.Device(), bufferView.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every BufferView that we need to create at the end of the loop...
 	for toCreate := range f.bufferViewToCreate {
 		// Write the commands needed to recreate the destroyed object
@@ -2030,13 +2533,6 @@ func (f *frameLoop) resetBufferViews(ctx context.Context, stateBuilder *stateBui
 
 func (f *frameLoop) resetSurfaces(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every Surface that we need to destroy at the end of the loop...
-	for toDestroy := range f.surfaceToDestroy {
-		// Write the command to delete the created object
-		surface := GetState(f.loopEndState).surfaces.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroySurfaceKHR(surface.Instance(), surface.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every Surface that we need to create at the end of the loop...
 	for toCreate := range f.surfaceToCreate {
 		// Write the commands needed to recreate the destroyed object
@@ -2044,31 +2540,10 @@ func (f *frameLoop) resetSurfaces(ctx context.Context, stateBuilder *stateBuilde
 		stateBuilder.createSurface(surface)
 	}
 
-	// The shadow state for Surfaces does not contain reference to the Swapchains they are used in. So we have to loop around finding the story.
-	for _, swapchainObject := range GetState(f.loopStartState).Swapchains().All() {
-
-		surface := swapchainObject.Surface()
-		if surface == NilSurfaceObjectʳ {
-			continue
-		}
-
-		if _, ok := f.surfaceToCreate[surface.VulkanHandle()]; ok {
-			f.swapchainToDestroy[swapchainObject.VulkanHandle()] = true
-			f.swapchainToCreate[swapchainObject.VulkanHandle()] = true
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every Swapchain that we need to destroy at the end of the loop...
-	for toDestroy := range f.swapchainToDestroy {
-		// Write the command to delete the created object
-		swapchain := GetState(f.loopEndState).swapchains.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroySwapchainKHR(swapchain.Device(), swapchain.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every Swapchain that we need to create at the end of the loop...
 	for toCreate := range f.swapchainToCreate {
@@ -2081,17 +2556,6 @@ func (f *frameLoop) resetSwapchains(ctx context.Context, stateBuilder *stateBuil
 }
 
 func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder, imgPrimer *imagePrimer) error {
-
-	for toDestroy := range f.imageToDestroy {
-		log.D(ctx, "Destroy image %v which was created during loop.", toDestroy)
-		image := GetState(f.loopEndState).Images().Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyImage(image.Device(), toDestroy, memory.Nullptr))
-
-		imageViewUsers := image.Views().All()
-		for imageView := range imageViewUsers {
-			f.imageViewToDestroy[imageView] = true
-		}
-	}
 
 	if len(f.imageToRestore) == 0 {
 		return nil
@@ -2123,14 +2587,6 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder,
 
 		log.D(ctx, "Prime image from [%v] to [%v] succeed", src, dst)
 
-		// If we (re)created an Image, then we will have invalidated all ImageViews that were using it at the time the loop started.
-		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
-		// These ImageViews will need to be (re)created, so add them to the maps to destroy and create in that order.
-		imageViewUsers := GetState(f.loopStartState).images.Get(dst).Views().All()
-		for imageView := range imageViewUsers {
-			f.imageViewToDestroy[imageView] = true
-			f.imageViewToCreate[imageView] = true
-		}
 	}
 
 	return nil
@@ -2138,24 +2594,11 @@ func (f *frameLoop) resetImages(ctx context.Context, stateBuilder *stateBuilder,
 
 func (f *frameLoop) resetImageViews(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every ImageView that we need to destroy at the end of the loop...
-	for toDestroy := range f.imageViewToDestroy {
-		// Write the command to delete the created object
-		imageView := GetState(f.loopEndState).imageViews.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyImageView(imageView.Device(), imageView.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every ImageView that we need to create at the end of the loop...
 	for toCreate := range f.imageViewToCreate {
 		// Write the commands needed to recreate the destroyed object
 		imageView := GetState(f.loopStartState).imageViews.Get(toCreate)
 		stateBuilder.createImageView(imageView)
-
-		framebufferUsers := imageView.FramebufferUsers().All()
-		for framebuffer := range framebufferUsers {
-			f.framebufferToDestroy[framebuffer] = true
-			f.framebufferToCreate[framebuffer] = true
-		}
 	}
 
 	return nil
@@ -2222,13 +2665,6 @@ func (f *frameLoop) copyImage(ctx context.Context, srcImg, dstImg ImageObjectʳ,
 
 func (f *frameLoop) resetSamplerYcbcrConversions(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every SamplerYcbcrConversion that we need to destroy at the end of the loop...
-	for toDestroy := range f.samplerYcbcrConversionToDestroy {
-		// Write the command to delete the created object
-		samplerYcbcrConversion := GetState(f.loopEndState).samplerYcbcrConversions.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroySamplerYcbcrConversion(samplerYcbcrConversion.Device(), samplerYcbcrConversion.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every SamplerYcbcrConversion that we need to create at the end of the loop...
 	for toCreate := range f.samplerYcbcrConversionToCreate {
 		// Write the commands needed to recreate the destroyed object
@@ -2236,30 +2672,10 @@ func (f *frameLoop) resetSamplerYcbcrConversions(ctx context.Context, stateBuild
 		stateBuilder.createSamplerYcbcrConversion(samplerYcbcrConversion)
 	}
 
-	// The shadow state for SamplerYcbcrConversions does not contain reference to the Samplers they are used in. So we have to loop around finding the story.
-	for _, samplerObject := range GetState(f.loopStartState).Samplers().All() {
-		ycbcrConversion := samplerObject.YcbcrConversion()
-		if ycbcrConversion == NilSamplerYcbcrConversionObjectʳ {
-			log.D(ctx, "Sampler %v doesn't enable ycbcrConversion", samplerObject)
-			continue
-		}
-		if _, ok := f.samplerYcbcrConversionToCreate[ycbcrConversion.VulkanHandle()]; ok {
-			f.samplerToDestroy[samplerObject.VulkanHandle()] = true
-			f.samplerToCreate[samplerObject.VulkanHandle()] = true
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every Sampler that we need to destroy at the end of the loop...
-	for toDestroy := range f.samplerToDestroy {
-		// Write the command to delete the created object
-		sampler := GetState(f.loopEndState).samplers.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroySampler(sampler.Device(), sampler.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every Sampler that we need to create at the end of the loop...
 	for toCreate := range f.samplerToCreate {
@@ -2267,28 +2683,12 @@ func (f *frameLoop) resetSamplers(ctx context.Context, stateBuilder *stateBuilde
 		sampler := GetState(f.loopStartState).samplers.Get(toCreate)
 		stateBuilder.createSampler(sampler)
 
-		// If we (re)created a sampler, then we will have invalidated all descriptor sets that were using it at the time the loop started.
-		// (things using it that were created inside the loop will be automatically recreated anyway so they don't need special treatment here)
-		// These descriptor sets will need to be (re)created, so add them to the maps to destroy, create and restore state in that order.
-		descriptorSetUsers := sampler.DescriptorUsers().All()
-		for descriptorSet := range descriptorSetUsers {
-			f.descriptorSetToFree[descriptorSet] = true
-			f.descriptorSetToAllocate[descriptorSet] = true
-			f.descriptorSetChanged[descriptorSet] = true
-		}
 	}
 
 	return nil
 }
 
 func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every ShaderModule that we need to destroy at the end of the loop...
-	for toDestroy := range f.shaderModuleToDestroy {
-		// Write the command to delete the created object
-		shaderModule := GetState(f.loopEndState).shaderModules.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyShaderModule(shaderModule.Device(), shaderModule.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every ShaderModule that we need to create at the end of the loop...
 	for toCreate := range f.shaderModuleToCreate {
@@ -2297,36 +2697,10 @@ func (f *frameLoop) resetShaderModules(ctx context.Context, stateBuilder *stateB
 		stateBuilder.createShaderModule(shaderModule)
 	}
 
-	// The shadow state for ShaderModules does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
-	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
-		shaderModule := computePipelineObject.Stage().Module()
-		if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
-			f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
-			f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
-		}
-	}
-
-	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
-		for _, stage := range graphicsPipelineObject.Stages().All() {
-			shaderModule := stage.Module()
-			if _, ok := f.shaderModuleToCreate[shaderModule.VulkanHandle()]; ok {
-				f.shaderModuleToDestroy[shaderModule.VulkanHandle()] = true
-				f.shaderModuleToCreate[shaderModule.VulkanHandle()] = true
-			}
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every DescriptorSetLayout that we need to destroy at the end of the loop...
-	for toDestroy := range f.descriptorSetLayoutToDestroy {
-		// Write the command to delete the created object
-		descSetLay := GetState(f.loopEndState).descriptorSetLayouts.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorSetLayout(descSetLay.Device(), descSetLay.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every DescriptorSetLayout that we need to create at the end of the loop...
 	for toCreate := range f.descriptorSetLayoutToCreate {
@@ -2334,37 +2708,10 @@ func (f *frameLoop) resetDescriptorSetLayouts(ctx context.Context, stateBuilder 
 		stateBuilder.createDescriptorSetLayout(GetState(f.loopStartState).descriptorSetLayouts.Get(toCreate))
 	}
 
-	// The shadow state for DescriptorSetLayouts does not contain reference to the PipelineLayouts they are used in. So we have to loop around finding the story.
-	for _, pipelineLayout := range GetState(f.loopStartState).PipelineLayouts().All() {
-		for _, descriptorSetLayout := range pipelineLayout.SetLayouts().All() {
-			if _, ok := f.descriptorSetLayoutToCreate[descriptorSetLayout.VulkanHandle()]; ok {
-				f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
-				f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
-			}
-		}
-	}
-
-	// The shadow state for DescriptorSetLayouts does not contain reference to DescriptorSets that are created from them. So we have to loop around finding the story.
-	for _, descriptorSet := range GetState(f.loopStartState).DescriptorSets().All() {
-		descriptorSetLayout := descriptorSet.Layout()
-		if _, ok := f.descriptorSetLayoutToCreate[descriptorSetLayout.VulkanHandle()]; ok {
-			f.descriptorSetToFree[descriptorSet.VulkanHandle()] = true
-			f.descriptorSetToAllocate[descriptorSet.VulkanHandle()] = true
-			f.descriptorSetChanged[descriptorSet.VulkanHandle()] = true
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every PipelineLayout that we need to destroy at the end of the loop...
-	for toDestroy := range f.pipelineLayoutToDestroy {
-		// Write the command to delete the created object
-		pipelineLayout := GetState(f.loopEndState).pipelineLayouts.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyPipelineLayout(pipelineLayout.Device(), pipelineLayout.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every PipelineLayout that we need to create at the end of the loop...
 	for toCreate := range f.pipelineLayoutToCreate {
@@ -2372,48 +2719,10 @@ func (f *frameLoop) resetPipelineLayouts(ctx context.Context, stateBuilder *stat
 		stateBuilder.createPipelineLayout(GetState(f.loopStartState).pipelineLayouts.Get(toCreate))
 	}
 
-	// The shadow state for PipelineLayouts does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
-	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
-		pipelineLayout := computePipelineObject.PipelineLayout()
-		if _, ok := f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()]; ok {
-			f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
-			f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
-		}
-	}
-
-	// The shadow state for PipelineLayouts does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
-	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
-		pipelineLayout := graphicsPipelineObject.Layout()
-		if _, ok := f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()]; ok {
-			f.pipelineLayoutToDestroy[pipelineLayout.VulkanHandle()] = true
-			f.pipelineLayoutToCreate[pipelineLayout.VulkanHandle()] = true
-		}
-	}
-
 	return nil
 }
 
 func (f *frameLoop) resetPipelines(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every Pipeline that we need to destroy at the end of the loop...
-	for toDestroy := range f.pipelineToDestroy {
-
-		// Write the command to delete the created object
-		computePipeline, isComputePipeline := GetState(f.loopEndState).ComputePipelines().All()[toDestroy]
-		graphicsPipeline, isGraphicsPipeline := GetState(f.loopEndState).GraphicsPipelines().All()[toDestroy]
-
-		if isComputePipeline && isGraphicsPipeline {
-			log.F(ctx, true, "Control flow error: Pipeline can't be both Graphics and Compute at the same time.")
-		}
-
-		if isComputePipeline {
-			stateBuilder.write(stateBuilder.cb.VkDestroyPipeline(computePipeline.Device(), computePipeline.VulkanHandle(), memory.Nullptr))
-		} else if isGraphicsPipeline {
-			stateBuilder.write(stateBuilder.cb.VkDestroyPipeline(graphicsPipeline.Device(), graphicsPipeline.VulkanHandle(), memory.Nullptr))
-		} else {
-			log.F(ctx, true, "FrameLooping: resetPipelines(): Unknown pipeline type")
-		}
-	}
 
 	// For every ComputePipeline that we need to create at the end of the loop...
 	for toCreate := range f.computePipelineToCreate {
@@ -2432,43 +2741,10 @@ func (f *frameLoop) resetPipelines(ctx context.Context, stateBuilder *stateBuild
 
 func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every PipelineCache that we need to destroy at the end of the loop...
-	for toDestroy := range f.pipelineCacheToDestroy {
-		// Write the command to delete the created object
-		pipelineCache := GetState(f.loopEndState).pipelineCaches.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyPipelineCache(pipelineCache.Device(), pipelineCache.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every PipelineCache that we need to create at the end of the loop...
 	for toCreate := range f.pipelineCacheToCreate {
 		// Write the commands needed to recreate the destroyed object
 		stateBuilder.createPipelineCache(GetState(f.loopStartState).pipelineCaches.Get(toCreate))
-	}
-
-	// The shadow state for PipelineCaches does not contain reference to the ComputePipelines they are used in. So we have to loop around finding the story.
-	for _, computePipelineObject := range GetState(f.loopStartState).ComputePipelines().All() {
-		pipelineCache := computePipelineObject.PipelineCache()
-		if pipelineCache == NilPipelineCacheObjectʳ {
-			log.D(ctx, "computePipelineObject %v doesn't have a pipeline cache.", computePipelineObject)
-			continue
-		}
-		if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
-			f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
-			f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
-		}
-	}
-
-	// The shadow state for PipelineCaches does not contain reference to the GraphicsPipelines they are used in. So we have to loop around finding the story
-	for _, graphicsPipelineObject := range GetState(f.loopStartState).GraphicsPipelines().All() {
-		pipelineCache := graphicsPipelineObject.PipelineCache()
-		if pipelineCache == NilPipelineCacheObjectʳ {
-			log.D(ctx, "graphicsPipelineObject %v doesn't have a pipeline cache.", graphicsPipelineObject)
-			continue
-		}
-		if _, ok := f.pipelineCacheToCreate[pipelineCache.VulkanHandle()]; ok {
-			f.pipelineCacheToDestroy[pipelineCache.VulkanHandle()] = true
-			f.pipelineCacheToCreate[pipelineCache.VulkanHandle()] = true
-		}
 	}
 
 	return nil
@@ -2476,24 +2752,11 @@ func (f *frameLoop) resetPipelineCaches(ctx context.Context, stateBuilder *state
 
 func (f *frameLoop) resetDescriptorPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorPool that we need to destroy at the end of the loop...
-	for toDestroy := range f.descriptorPoolToDestroy {
-		// Write the command to delete the created object
-		descPool := GetState(f.loopEndState).descriptorPools.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyDescriptorPool(descPool.Device(), descPool.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every DescriptorPool that we need to create at the end of the loop...
 	for toCreate := range f.descriptorPoolToCreate {
 		// Write the commands needed to recreate the destroyed object
 		descPool := GetState(f.loopStartState).DescriptorPools().Get(toCreate)
 		stateBuilder.createDescriptorPoolAndAllocateDescriptorSets(descPool)
-
-		// Iterate through all the descriptor sets that we just recreated, adding them to the list of descriptor sets
-		// that need to be redefined.
-		for _, descriptorSetDataValue := range descPool.DescriptorSets().All() {
-			f.descriptorSetChanged[descriptorSetDataValue.VulkanHandle()] = true
-		}
 	}
 
 	return nil
@@ -2541,18 +2804,6 @@ func (f *frameLoop) updateChangedDescriptorSet(ctx context.Context) {
 
 func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every DescriptorSet that we need to free at the end of the loop...
-	for toDestroy := range f.descriptorSetToFree {
-		// Write the command to free the created object
-		descSetObj := GetState(f.loopEndState).descriptorSets.Get(toDestroy)
-		handle := []VkDescriptorSet{descSetObj.VulkanHandle()}
-		stateBuilder.write(stateBuilder.cb.VkFreeDescriptorSets(descSetObj.Device(),
-			descSetObj.DescriptorPool(),
-			1,
-			stateBuilder.MustAllocReadData(handle).Ptr(),
-			VkResult_VK_SUCCESS))
-	}
-
 	// For every DescriptorSet that we need to create at the end of the loop...
 	for toCreate := range f.descriptorSetToAllocate {
 		// Write the commands needed to reallocate the freed object
@@ -2577,16 +2828,6 @@ func (f *frameLoop) resetDescriptorSets(ctx context.Context, stateBuilder *state
 }
 
 func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	for sem := range f.semaphoreToDestroy {
-		semObj := GetState(f.loopEndState).Semaphores().Get(sem)
-		if semObj != NilSemaphoreObjectʳ {
-			log.D(ctx, "Destroy semaphore %v which was created during loop.", sem)
-			stateBuilder.write(stateBuilder.cb.VkDestroySemaphore(semObj.Device(), semObj.VulkanHandle(), memory.Nullptr))
-		} else {
-			log.E(ctx, "Semaphore %v cannot be found in the loop ending state", sem)
-		}
-	}
 
 	for sem := range f.semaphoreToCreate {
 		semObj := GetState(f.loopStartState).Semaphores().Get(sem)
@@ -2650,16 +2891,6 @@ func (f *frameLoop) resetSemaphores(ctx context.Context, stateBuilder *stateBuil
 
 func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	for fence := range f.fenceToDestroy {
-		fenceObj := GetState(f.loopEndState).Fences().Get(fence)
-		if fenceObj != NilFenceObjectʳ {
-			log.D(ctx, "Destroy fence: %v which was created during loop.", fence)
-			stateBuilder.write(stateBuilder.cb.VkDestroyFence(fenceObj.Device(), fenceObj.VulkanHandle(), memory.Nullptr))
-		} else {
-			log.E(ctx, "Fence %v cannot be found in the loop ending state", fence)
-		}
-	}
-
 	for fence := range f.fenceToCreate {
 		fenceObj := GetState(f.loopStartState).Fences().Get(fence)
 		if fenceObj != NilFenceObjectʳ {
@@ -2717,16 +2948,6 @@ func (f *frameLoop) resetFences(ctx context.Context, stateBuilder *stateBuilder)
 
 func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	for event := range f.eventToDestroy {
-		eventObj := GetState(f.loopEndState).Events().Get(event)
-		if eventObj != NilEventObjectʳ {
-			log.D(ctx, "Destroy event: %v which was created during loop.", event)
-			stateBuilder.write(stateBuilder.cb.VkDestroyEvent(eventObj.Device(), eventObj.VulkanHandle(), memory.Nullptr))
-		} else {
-			log.E(ctx, "Event %v cannot be found in loop ending state.", event)
-		}
-	}
-
 	for event := range f.eventToCreate {
 		eventObj := GetState(f.loopStartState).Events().Get(event)
 		if eventObj != NilEventObjectʳ {
@@ -2768,13 +2989,6 @@ func (f *frameLoop) resetEvents(ctx context.Context, stateBuilder *stateBuilder)
 
 func (f *frameLoop) resetFramebuffers(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every Framebuffers that we need to destroy at the end of the loop...
-	for toDestroy := range f.framebufferToDestroy {
-		// Write the command to delete the created object
-		framebuffer := GetState(f.loopEndState).framebuffers.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyFramebuffer(framebuffer.Device(), framebuffer.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every Framebuffers that we need to create at the end of the loop...
 	for toCreate := range f.framebufferToCreate {
 		// Write the commands needed to recreate the destroyed object
@@ -2786,13 +3000,6 @@ func (f *frameLoop) resetFramebuffers(ctx context.Context, stateBuilder *stateBu
 }
 
 func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	// For every RenderPass that we need to destroy at the end of the loop...
-	for toDestroy := range f.renderPassToDestroy {
-		// Write the command to delete the created object
-		renderPass := GetState(f.loopEndState).renderPasses.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyRenderPass(renderPass.Device(), renderPass.VulkanHandle(), memory.Nullptr))
-	}
 
 	// For every RenderPass that we need to create at the end of the loop...
 	for toCreate := range f.renderPassToCreate {
@@ -2806,13 +3013,6 @@ func (f *frameLoop) resetRenderPasses(ctx context.Context, stateBuilder *stateBu
 
 func (f *frameLoop) resetQueryPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every QueryPools that we need to destroy at the end of the loop...
-	for toDestroy := range f.queryPoolToDestroy {
-		// Write the command to delete the created object
-		queryPool := GetState(f.loopEndState).queryPools.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyQueryPool(queryPool.Device(), queryPool.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every QueryPools that we need to create at the end of the loop...
 	for toCreate := range f.queryPoolToCreate {
 		// Write the commands needed to recreate the destroyed object
@@ -2825,47 +3025,18 @@ func (f *frameLoop) resetQueryPools(ctx context.Context, stateBuilder *stateBuil
 
 func (f *frameLoop) resetCommandPools(ctx context.Context, stateBuilder *stateBuilder) error {
 
-	// For every CommandPool that we need to destroy at the end of the loop...
-	for toDestroy := range f.commandPoolToDestroy {
-		// Write the command to delete the created object
-		commandPool := GetState(f.loopEndState).commandPools.Get(toDestroy)
-		stateBuilder.write(stateBuilder.cb.VkDestroyCommandPool(commandPool.Device(), commandPool.VulkanHandle(), memory.Nullptr))
-	}
-
 	// For every CommandPool that we need to create at the end of the loop...
 	for toCreate := range f.commandPoolToCreate {
 		// Write the commands needed to recreate the destroyed object
 		commandPool := GetState(f.loopStartState).commandPools.Get(toCreate)
 		stateBuilder.createCommandPool(commandPool)
 
-		// Iterate through all the command pools that we just recreated, adding them to the list of command buffers
-		// that need to be redefined.
-		for _, commandSetDataValue := range commandPool.CommandBuffers().All() {
-			delete(f.commandBufferToFree, commandSetDataValue.VulkanHandle())
-			f.commandBufferToAllocate[commandSetDataValue.VulkanHandle()] = true
-			f.commandBufferToRecord[commandSetDataValue.VulkanHandle()] = true
-		}
 	}
 
 	return nil
 }
 
 func (f *frameLoop) resetCommandBuffers(ctx context.Context, stateBuilder *stateBuilder) error {
-
-	for cmdBuf := range f.commandBufferToFree {
-		log.D(ctx, "Command buffer %v allocated during loop, free it.", cmdBuf)
-		cmdBufObj := GetState(f.loopEndState).CommandBuffers().Get(cmdBuf)
-		if cmdBufObj != NilCommandBufferObjectʳ {
-			stateBuilder.write(stateBuilder.cb.VkFreeCommandBuffers(
-				cmdBufObj.Device(),
-				cmdBufObj.Pool(),
-				1,
-				stateBuilder.MustAllocReadData(cmdBufObj.VulkanHandle()).Ptr(),
-			))
-		} else {
-			log.F(ctx, true, "Command buffer %v cannot be found in loop ending state", cmdBuf)
-		}
-	}
 
 	for cmdBuf := range f.commandBufferToAllocate {
 		cmdBufObj := GetState(f.loopStartState).CommandBuffers().Get(cmdBuf)
