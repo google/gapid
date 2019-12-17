@@ -525,6 +525,9 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     private void updateVulkan() {
+      if (vulkanCPUTiming == null) {
+        return;
+      }
       boolean enabled = vulkanCPUTiming.getSelection();
       vulkanCPUTimingInstance.setEnabled(enabled);
       vulkanCPUTimingPhysicalDevice.setEnabled(enabled);
