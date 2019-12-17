@@ -1,3 +1,17 @@
+<!-- Copyright (C) 2019 Google Inc.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
 <!DOCTYPE html>
 <html>
 <head i18n-values="dir:textdirection;">
@@ -12,154 +26,160 @@
       display: flex;
       width: 700px;
     }
-    .pair {
-      flex: 1 1 auto;
-      flex-direction: row;
-      display: flex;
+
+    table.centered{
+	margin-left:auto; margin-right:auto; 
     }
     .column {
       padding: 0 40px 40px 0;
-      vertical-align: top;
+      vertical-align:top;
     }
     .command {
       font-family: monospace;
-      display:inline;
+      font-weight: bold;
       margin-right: 5px;
-      text-align: right;
-      min-width: 200px;
     }
     .action {
       font-size: 0.8em;
-      display:inline;
-      text-align: left;
-      min-width: 400px;
+    }
+    h2 {
+      font-weight: bold;
+      font-size: 1.2em;
     }
     h4 {
-      font-weight: bold;
+      padding: 3 0 0 0;
       font-size: 0.9em;
     }
 
     </style>
 
-    <table>
+    <table class="centered">
     <tr>
      
     <td class="column">
-      <h2>General</h2>
-      <div class="pair">
-        <div class="command">1-4</div>
-        <div class="action">Switch mouse mode</div>
-      </div>
+      <table>
+      <tr><td colspan=2><h2>General</h2></td></tr>
 
-      <div class="pair">
-        <div class="command">shift</div>
-        <div class="action">Hold for temporary select</div>
-      </div>
+      <tr class="pair">
+        <td class="command">1-4</td>
+        <td class="action">Switch mouse mode</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">space</div>
-        <div class="action">Hold for temporary pan</div>
-      </div>
+      <tr class="pair">
+        <td class="command">shift-drag</td>
+        <td class="action">Box-select</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">f</div>
-        <div class="action">Zoom into selection</div>
-      </div>
+      <tr class="pair">
+        <td class="command">ctrl-drag</td>
+        <td class="action">Time-select</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">z/0</div>
-        <div class="action">Reset zoom and pan</div>
-      </div>
+      <tr class="pair">
+        <td class="command">space-drag</td>
+        <td class="action">Vertical pan</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">v</div>
-        <div class="action">Highlight VSync</div>
-      </div>
-      <div class="pair">
-        <div class="command">m</div>
-        <div class="action">Mark current selection</div>
-      </div>
+      <tr class="pair">
+        <td class="command">f</td>
+        <td class="action">Zoom into selection</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">?</div>
-        <div class="action">Show help</div>
-      </div>
+      <tr class="pair">
+        <td class="command">z/0</td>
+        <td class="action">Reset zoom and pan</td>
+      </tr>
 
-      <h2>Navigation</h2>
-      <div class="pair">
-        <div class="command">w/s</div><div class="action">Zoom in/out (+shift: faster)</div>
-      </div>
+<!--      <tr class="pair">
+        <td class="command">v</td>
+        <td class="action">Highlight VSync</td>
+      </tr>
+-->
+      <tr class="pair">
+        <td class="command">m</td>
+        <td class="action">Mark current selection</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">a/d</div>
-        <div class="action">Pan left/right (+shift: faster)</div>
-      </div>
+      <tr class="pair">
+        <td class="command">?</td>
+        <td class="action">Show help</td>
+      </tr>
 
-      <h2>Mouse Controls</h2>
-      <div class="pair">
-        <div class="command">click</div>
-        <div class="action">Select event</div>
-      </div>
-      <div class="pair">
-        <div class="command">alt-mousewheel</div>
-        <div class="action">Zoom in/out</div>
-      </div>
+      <tr><td colspan=2><h2>Navigation</h2></td></tr>
+      <tr class="pair">
+        <td class="command">w/s (or Ctrl +/-) </td><td class="action">Zoom in/out (+shift: faster)</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">a/d</td>
+        <td class="action">Pan left/right (+shift: faster)</td>
+      </tr>
+
+      <tr class="pair">
+        <td class="command">q/e</td>
+        <td class="action">Pan up/down (+shift: faster)</td>
+      </tr>
+
+
+      <tr><td colspan=2><h2>Mouse Controls</h2></td></tr>
+      <tr class="pair">
+        <td class="command">click</td>
+        <td class="action">Select event</td>
+      </tr>
+      <tr class="pair">
+        <td class="command">ctrl-mousewheel</td>
+        <td class="action">Zoom in/out</td>
+      </tr>
+      </table>
 
     </td>
 
      <td class="column">
 
-      <h2>   
+      <table>
+      <tr><td colspan=2><h2>   
         Modes
-      </h2>
-      <h4> Select Mode </h4>
-      <div class="pair">
-        <div class="command">drag</div>
-        <div class="action">Box select</div>
-      </div>
+      </h2></td></tr>
 
-      <div class="pair">
-        <div class="command"><span class="mod"></span>-click/drag</div>
-        <div class="action">Add events to the current selection</div>
-      </div>
+      <tr><td colspan=2><h4> Select Mode </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Box select</td>
+      </tr>
 
-      <div class="pair">
-        <div class="command">double click</div>
-        <div class="action">Select all events with same title</div>
-      </div>
+<!--      <tr class="pair">
+        <td class="command"><span class="mod"></span>-click/drag</td>
+        <td class="action">Add events to the current selection</td>
+      </tr>
+-->
 
-      <h4>
+      <tr><td colspan=2><h4>
         Pan mode
-      </h4>
-      <div class="pair">
-        <div class="command">drag</div>
-        <div class="action">Pan the view</div>
-      </div>
+      </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Pan the view</td>
+      </tr>
 
-      <h4>
+      <tr><td colspan=2><h4>
         Zoom mode
-      </h4>
-      <div class="pair">
-        <div class="command">drag</div>
-        <div class="action">Zoom in/out by dragging up/down</div>
-      </div>
+      </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Zoom in/out by dragging up/down</td>
+      </tr>
 
-      <h4>
+      <tr><td colspan=2><h4>
         Timing mode
-      </h4>
-      <div class="pair">
-        <div class="command">drag</div>
-        <div class="action">Create or move markers</div>
-      </div>
-
-      <div class="pair">
-        <div class="command">double click</div>
-        <div class="action">Set marker range to slice</div>
-      </div>
+      </h4></td></tr>
+      <tr class="pair">
+        <td class="command">drag</td>
+        <td class="action">Create or move markers</td>
+      </tr>
+      </table>
     </td>
     </tr>
    </table>
-
 </body>
 </html>
 

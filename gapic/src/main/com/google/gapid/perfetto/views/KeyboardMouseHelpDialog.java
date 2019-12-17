@@ -73,8 +73,8 @@ public class KeyboardMouseHelpDialog {
         }
 
         GridData data = new GridData(SWT.FILL, SWT.FILL, true, true);
-        data.widthHint = 800;
-        data.heightHint = 600;
+        data.widthHint = 850;
+        data.heightHint = 650;
         browser.setLayoutData(data);
         browser.setText(readKeyboardMouseHelp(true));
         browser.addLocationListener(new LocationAdapter() {
