@@ -67,11 +67,18 @@ build //:pkg //cmd/gapir/cc:gapir.sym
 build //cmd/vulkan_sample:vulkan_sample
 
 # Build and run the smoketests.
+set +e
 build //cmd/smoketests:smoketests
 echo $(date): Run smoketests...
 # Using "bazel run //cmd/smoketests seems to make 'bazel-bin/pkg/gapit'
 # disappear, hence we call the binary directly
 bazel-bin/cmd/smoketests/linux_amd64_stripped/smoketests -gapit bazel-bin/pkg/gapit -traces test/traces
+for i in smoketests.*/*/*.log
+do
+  echo "============================================================"
+  echo $i
+  cat $i
+done
 echo $(date): Smoketests completed.
 
 # Build the release packages.
