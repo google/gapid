@@ -24,8 +24,6 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSizeHints;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
-import com.google.common.escape.Escaper;
-import com.google.common.net.UrlEscapers;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -135,7 +133,7 @@ public class ErrorDialog {
         Composite inner = createComposite(details, new GridLayout(1, false));
         withLayoutData(createTextbox(inner, DETAILS_STYLE, detailString),
             new GridData(SWT.FILL, SWT.FILL, true, true));
-        withLayoutData(createLink(inner, "<a>File a bug</a> on GitHub", e -> {
+        withLayoutData(createLink(inner, "<a>File a bug</a>", e -> {
           Program.launch(URLs.FILE_BUG_URL);
         }), new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
         withLayoutData(createLink(inner, "<a>Show logs</a> directory", e -> {

@@ -442,7 +442,7 @@ public class MainWindow extends ApplicationWindow {
     HelpAbout("&About"),
     HelpShowLogs("Open &Log Directory"),
     HelpLicenses("&Licenses"),
-    HelpFileBug("File a &Bug on Github");
+    HelpFileBug("File a &Bug");
 
     public static final String FILE_ID = "file";
     public static final String VIEW_ID = "view";
