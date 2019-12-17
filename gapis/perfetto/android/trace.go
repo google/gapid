@@ -40,11 +40,9 @@ const (
 
 	// perfettoTraceFile is the location on the device where we'll ask Perfetto
 	// to store the trace data while tracing.
-	perfettoTraceFile                       = "/data/misc/perfetto-traces/gapis-trace"
-	prereleaseDriverProperty                = "ro.gfx.driver.1"
-	prereleaseDriverOverrideSettingVariable = "gapid.driver_package_override"
-	prereleaseDriverSettingVariable         = "game_driver_prerelease_opt_in_apps"
-	renderStageVulkanLayerName              = "VkRenderStagesProducer"
+	perfettoTraceFile               = "/data/misc/perfetto-traces/gapis-trace"
+	prereleaseDriverSettingVariable = "game_driver_prerelease_opt_in_apps"
+	renderStageVulkanLayerName      = "VkRenderStagesProducer"
 )
 
 // Process represents a running Perfetto capture.
@@ -63,40 +61,13 @@ func hasRenderStageEnabled(perfettoConfig *perfetto_pb.TraceConfig) bool {
 	return false
 }
 
-func setupVulkanLayers(ctx context.Context, d adb.Device, packageName string, abi *device.ABI, layers []string) (app.Cleanup, error) {
-	packages := []string{gapidapk.PackageName(abi)}
-
-	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, layers, true)
-	if err != nil {
-		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages environment.")
-	}
-	return cleanup, nil
-}
-
-func getDriverPackageName(ctx context.Context, d adb.Device) (string, error) {
-	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
-	if err != nil {
-		return "", err
-	}
-	if driverPackageOverride, err := d.SystemSetting(ctx, "global", prereleaseDriverOverrideSettingVariable); driverPackageOverride != "" && driverPackageOverride != "null" && err == nil {
-		driverPackageName = driverPackageOverride
-	}
-	if driverPackageName == "" {
-		return "", nil
-	}
-	if res, err := d.Shell("pm", "path", driverPackageName).Call(ctx); err != nil || res == "" {
-		return "", log.Err(ctx, err, "No driver package found.")
-	}
-	return driverPackageName, nil
-}
-
 // SetupProfileLayersSource configures the device to allow packages to be used as layer sources for profiling
 func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName string, abi *device.ABI) (app.Cleanup, error) {
-	driverPackageName, err := getDriverPackageName(ctx, d)
+	driver, err := d.GraphicsDriver(ctx)
 	if err != nil {
 		return nil, err
 	}
-	packages := []string{driverPackageName}
+	packages := []string{driver.Package}
 	if abi != nil {
 		packages = append(packages, gapidapk.PackageName(abi))
 	}
@@ -108,20 +79,16 @@ func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName str
 	return cleanup, nil
 }
 
-// SetupProfileLayers configures the device to allow the app being traced to load the layers required for render stage profiling
-func SetupProfileLayers(ctx context.Context, d adb.Device, packageName string, hasRenderStages bool, abi *device.ABI, layers []string) (app.Cleanup, error) {
-	if !hasRenderStages {
-		if abi != nil {
-			return setupVulkanLayers(ctx, d, packageName, abi, layers)
-		}
-		return nil, nil
+// setupProfileLayers configures the device to allow the app being traced to load the layers required for render stage profiling
+func setupProfileLayers(ctx context.Context, d adb.Device, driver adb.Driver, packageName string, hasRenderStages bool, abi *device.ABI, layers []string) (app.Cleanup, error) {
+	packages := []string{}
+	enabledLayers := []string{}
+
+	if hasRenderStages {
+		packages = append(packages, driver.Package)
+		enabledLayers = append(enabledLayers, renderStageVulkanLayerName)
 	}
-	driverPackageName, err := getDriverPackageName(ctx, d)
-	if err != nil {
-		return nil, err
-	}
-	packages := []string{driverPackageName}
-	enabledLayers := []string{renderStageVulkanLayerName}
+
 	if abi != nil {
 		packages = append(packages, gapidapk.PackageName(abi))
 		enabledLayers = append(enabledLayers, layers...)
@@ -135,13 +102,6 @@ func SetupProfileLayers(ctx context.Context, d adb.Device, packageName string, h
 }
 
 func setupPrereleaseDriver(ctx context.Context, d adb.Device, p *android.InstalledPackage) (app.Cleanup, error) {
-	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
-	if err != nil {
-		return nil, err
-	}
-	if driverPackageName == "" {
-		return nil, nil
-	}
 	oldOptinApps, err := d.SystemSetting(ctx, "global", prereleaseDriverSettingVariable)
 	if err != nil {
 		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
@@ -163,27 +123,39 @@ func setupPrereleaseDriver(ctx context.Context, d adb.Device, p *android.Install
 func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions, abi *device.ABI, layers []string) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
 
-	var cleanup app.Cleanup
 	if abi != nil {
 		_, err := gapidapk.EnsureInstalled(ctx, d, abi)
 		if err != nil {
-			return nil, cleanup, err
+			return nil, nil, err
 		}
 	}
+
+	var cleanup app.Cleanup
+
 	if a != nil {
 		ctx = log.V{
 			"package":  a.Package.Name,
 			"activity": a.Activity,
 		}.Bind(ctx)
-		// Before start the activity, attempt to setup prerelease driver.
-		nextCleanup, err := setupPrereleaseDriver(ctx, d, a.Package)
-		cleanup = cleanup.Then(nextCleanup)
+
+		driver, err := d.GraphicsDriver(ctx)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err
 		}
-		// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
-		hasRenderStages := hasRenderStageEnabled(opts.PerfettoConfig)
-		nextCleanup, err = SetupProfileLayers(ctx, d, a.Package.Name, hasRenderStages, abi, layers)
+
+		hasRenderStages := false
+		if driver.Package != "" {
+			// Setup the application to use the prerelease driver.
+			nextCleanup, err := setupPrereleaseDriver(ctx, d, a.Package)
+			cleanup = cleanup.Then(nextCleanup)
+			if err != nil {
+				return nil, cleanup.Invoke(ctx), err
+			}
+			hasRenderStages = hasRenderStageEnabled(opts.PerfettoConfig)
+		}
+
+		// Setup the profiling layers.
+		nextCleanup, err := setupProfileLayers(ctx, d, driver, a.Package.Name, hasRenderStages, abi, layers)
 		cleanup = cleanup.Then(nextCleanup)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err

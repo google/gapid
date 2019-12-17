@@ -45,6 +45,9 @@ const (
 	gpuRenderStagesDataSourceDescriptorName = "gpu.renderstages"
 
 	perfettoPort = NamedFileSystemSocket("/dev/socket/traced_consumer")
+
+	driverOverride = "gapid.driver_package_override"
+	driverProperty = "ro.gfx.driver.1"
 )
 
 func isRootSuccessful(line string) bool {
@@ -351,4 +354,42 @@ func extrasFlags(extras []android.ActionExtra) []string {
 		flags = append(flags, e.Flags()...)
 	}
 	return flags
+}
+
+// DriverPackage queries and returns the package of the preview graphics driver.
+func (b *binding) GraphicsDriver(ctx context.Context) (Driver, error) {
+	// Check if there is an override setup.
+	driver, err := b.SystemSetting(ctx, "global", driverOverride)
+	if err != nil {
+		driver = ""
+	}
+
+	if driver == "" || driver == "null" {
+		driver, err = b.SystemProperty(ctx, driverProperty)
+		if err != nil {
+			return Driver{}, err
+		}
+		if driver == "" {
+			// There is no prerelease driver.
+			return Driver{}, nil
+		}
+	}
+
+	// Check the package path of the driver.
+	path, err := b.Shell("pm", "path", driver).Call(ctx)
+	if err != nil {
+		return Driver{}, err
+	}
+	if !strings.HasPrefix(path, "package:") {
+		return Driver{}, nil
+	}
+	path = path[8:]
+	if path == "" {
+		return Driver{}, nil
+	}
+
+	return Driver{
+		Package: driver,
+		Path:    path,
+	}, nil
 }
