@@ -120,15 +120,15 @@ public class ThreadInfo {
     return StyleConstants.Palette.getColor((int)(ti.upid != 0 ? ti.upid : ti.utid), shadeIdx);
   }
 
-  public static Display getDisplay(Perfetto.Data data, long utid, boolean hover) {
-    ThreadInfo thread = data.threads.get(utid);
+  public static Display getDisplay(State state, long utid, boolean hover) {
+    ThreadInfo thread = state.getThreadInfo(utid);
     if (thread == null) {
       // fallback, should not really happen.
       return hover ? null : new Display(null, null, "??? [id: " + utid + "]", "");
     }
     String threadLabel = (hover ? "T: " : "") + thread.name + " [" + thread.tid + "]";
 
-    ProcessInfo process = data.processes.get(thread.upid);
+    ProcessInfo process = state.getProcessInfo(thread.upid);
     if (process == null || process.name.isEmpty()) {
       return new Display(process, thread, threadLabel, "");
     }

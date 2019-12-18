@@ -143,7 +143,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
       double rectStart = state.timeToPx(tStart);
       double rectWidth = Math.max(1, state.timeToPx(tEnd) - rectStart);
 
-      ThreadInfo.Display threadInfo = ThreadInfo.getDisplay(state.getData(), utid, false);
+      ThreadInfo.Display threadInfo = ThreadInfo.getDisplay(state, utid, false);
 
       ctx.setBackgroundColor(ThreadInfo.getColor(state, utid));
       ctx.fillRect(rectStart, 0, rectWidth, h);
@@ -208,7 +208,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
       if (data.starts[i] <= t && t <= data.ends[i]) {
-        hoveredThread = ThreadInfo.getDisplay(state.getData(), data.utids[i], true);
+        hoveredThread = ThreadInfo.getDisplay(state, data.utids[i], true);
         if (hoveredThread == null) {
           return Hover.NONE;
         }
