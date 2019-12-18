@@ -4,3 +4,4 @@ vkEnumerateInstanceLayerProperties
 vkEnumerateInstanceExtensionProperties
 vkEnumerateDeviceLayerProperties
 vkEnumerateDeviceExtensionProperties
+virtual_swapchain_write_png

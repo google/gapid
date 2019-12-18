@@ -228,6 +228,17 @@ class VirtualSwapchain {
   // variable "IMAGE_DUMP_PATH" is set.
   void DumpImageToFile(uint8_t* image_data, size_t size);
 };
+
+// Exposes the virtual swapchain's functionality for writing a PNG file to a
+// function.  This is useful, for example, if the virtual swapchain's callback
+// method needs to get an image as a PNG but do something other than write it
+// to a file (e.g. display it in a user interface).
+extern "C" void virtual_swapchain_write_png(
+    void (*func)(void* context, void* data, int size), void* context,
+    uint8_t* image_data, size_t size, uint32_t width, uint32_t height,
+    uint32_t image_format);
+
 }  // namespace swapchain
+
 
 #endif  //  VK_VIRTUAL_SWAPCHAIN_VIRTUAL_SWAPCHAIN_H_

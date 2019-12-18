@@ -49,18 +49,33 @@ void null_callback(void*, uint8_t*, size_t) {}
 
 const char* kImageDumpPathEnv = "IMAGE_DUMP_PATH";
 
-void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
-                  std::string file_name, uint32_t width, uint32_t height,
-                  VkFormat image_format) {
-  auto data = image_data.get();
+// A function of type 'stbi_write_func' that writes |size| bytes of |data| to a
+// file whose name passed via |context| as a string pointer.
+void WriteDataToFile(void* context, void* data, int size) {
+  std::string* file_name = static_cast<std::string*>(context);
+  std::ofstream output_file;
+  output_file.open(*file_name, std::ios::binary | std::ios::out);
+  output_file.write(reinterpret_cast<char*>(data), size);
+  output_file.close();
+}
 
+// If |image_format| is a suitable format, the image in |image_data| is
+// converted to a PNG, with the data for the PNG being sent to function |func|.
+// The function |func| could e.g. write the data to a file, or process the data
+// in some other way.  The |context| parameter will be passed to |func|, and
+// could e.g. reference the name of an output file.
+void WritePng(stbi_write_func* func, void* context, uint8_t* image_data,
+              size_t size, uint32_t width, uint32_t height,
+              VkFormat image_format) {
   switch (image_format) {
     case VK_FORMAT_B8G8R8A8_UNORM:
-    case VK_FORMAT_B8G8R8A8_UINT:
+    case VK_FORMAT_B8G8R8A8_UINT: {
+      // Convert the image data from BGRA to RGBA
+      auto data = image_data;
       for (uint32_t y = 0; y < height; y++) {
-        uint32_t* row = (uint32_t*)data;
+        uint32_t* row = reinterpret_cast<uint32_t*>(data);
         for (uint32_t x = 0; x < width; x++) {
-          uint8_t* bgra = (uint8_t*)row;
+          uint8_t* bgra = reinterpret_cast<uint8_t*>(row);
           uint8_t b = *bgra;
           *bgra = *(bgra + 2);
           *(bgra + 2) = b;
@@ -68,17 +83,27 @@ void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
         }
         data += width * 4;
       }
+    }
       // fall through
 
     case VK_FORMAT_R8G8B8A8_UNORM:
     case VK_FORMAT_R8G8B8A8_UINT:
-      data = image_data.get();
-      stbi_write_png(file_name.c_str(), width, height, 4, data, width * 4);
+      stbi_write_png_to_func(func, context, width, height, 4, image_data,
+                             width * 4);
       break;
 
     default:
       break;
   }
+}
+
+// If |image_format| is a suitable image format, the |image_data| is written to
+// |file_name| in PNG format.
+void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
+                  std::string file_name, uint32_t width, uint32_t height,
+                  VkFormat image_format) {
+  WritePng(&WriteDataToFile, &file_name, image_data.get(), size, width, height,
+           image_format);
 }
 
 }  // namespace
@@ -472,4 +497,14 @@ void VirtualSwapchain::CreateBaseSwapchain(
     base_swapchain_.reset();
   }
 }
+
+extern "C" void virtual_swapchain_write_png(stbi_write_func* func,
+                                            void* context, uint8_t* image_data,
+                                            size_t size, uint32_t width,
+                                            uint32_t height,
+                                            uint32_t image_format) {
+  WritePng(func, context, image_data, size, width, height,
+           static_cast<VkFormat>(image_format));
+}
+
 }  // namespace swapchain
