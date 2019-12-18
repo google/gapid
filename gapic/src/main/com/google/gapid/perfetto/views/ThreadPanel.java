@@ -100,9 +100,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("ThreadPanel", () -> {
-      ThreadTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      ThreadTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -259,7 +257,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
   @Override
   protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    ThreadTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    ThreadTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
@@ -300,8 +298,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
             @Override
             public boolean click() {
               if (data.schedIds[index] != 0) {
-                state.setSelection(Selection.Kind.Cpu,
-                    CpuTrack.getSlice(state.getQueryEngine(), data.schedIds[index]));
+                state.setSelection(Selection.Kind.Cpu, track.getCpuSlice(data.schedIds[index]));
                 state.setSelectedThread(state.getThreadInfo(track.getThread().utid));
               } else {
                 state.setSelection(Selection.Kind.ThreadState,
@@ -356,8 +353,7 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
             @Override
             public boolean click() {
               if (id >= 0) {
-                state.setSelection(Selection.Kind.Thread,
-                    track.getSlice(state.getQueryEngine(), id));
+                state.setSelection(Selection.Kind.Thread, track.getSlice(id));
               }
               return true;
             }
@@ -387,10 +383,9 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
 
     if (startDepth == 0) {
       builder.add(Selection.Kind.ThreadState,
-          transform(track.getStates(state.getQueryEngine(), ts), ThreadTrack.StateSlices::new));
+          transform(track.getStates(ts), ThreadTrack.StateSlices::new));
       builder.add(Selection.Kind.Cpu, transform(
-          CpuTrack.getSlicesForThread(state.getQueryEngine(), track.getThread().utid, ts),
-          r -> new CpuTrack.Slices(state, r)));
+          track.getCpuSlices(ts), r -> new CpuTrack.Slices(state, r)));
     }
 
     startDepth = Math.max(0, startDepth - 1);
@@ -399,9 +394,8 @@ public class ThreadPanel extends TrackPanel<ThreadPanel> implements Selectable {
       if (endDepth >= track.getThread().maxDepth) {
         endDepth = Integer.MAX_VALUE;
       }
-      builder.add(Selection.Kind.Thread, transform(
-          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
-          SliceTrack.Slices::new));
+      builder.add(Selection.Kind.Thread,
+          transform(track.getSlices(ts, startDepth, endDepth), SliceTrack.Slices::new));
     }
   }
 }

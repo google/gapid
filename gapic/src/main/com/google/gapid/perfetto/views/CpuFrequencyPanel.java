@@ -63,9 +63,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("CpuFrequencyPanel", () -> {
-      CpuFrequencyTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      CpuFrequencyTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null || data.tsStarts.length == 0) {
@@ -176,7 +174,7 @@ public class CpuFrequencyPanel extends TrackPanel<CpuFrequencyPanel> {
 
   @Override
   public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    CpuFrequencyTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    CpuFrequencyTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }

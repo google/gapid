@@ -72,9 +72,7 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("CpuSummary", () -> {
-      CpuSummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      CpuSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -122,7 +120,7 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
 
   @Override
   protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    CpuSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    CpuSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.utilizations.length == 0) {
       return Hover.NONE;
     }
@@ -158,11 +156,10 @@ public class CpuSummaryPanel extends TrackPanel<CpuSummaryPanel> implements Sele
   @Override
   public void computeSelection(Selection.CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Selection.Kind.Cpu, transform(
-          CpuSummaryTrack.getSlices(state.getQueryEngine(), ts), r -> {
-            r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-            return new CpuTrack.Slices(state, r);
-          }));
+      builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
+        r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
+        return new CpuTrack.Slices(state, r);
+      }));
     }
   }
 

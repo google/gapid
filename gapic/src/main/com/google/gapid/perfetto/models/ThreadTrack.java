@@ -49,7 +49,7 @@ import java.util.Set;
 /**
  * {@link Track} containing thread state and slices of a thread.
  */
-public class ThreadTrack extends Track<ThreadTrack.Data> {
+public class ThreadTrack extends Track.WithQueryEngine<ThreadTrack.Data> {
   private static final String SCHED_VIEW =
       "select ts, dur, end_state, row_id from sched where utid = %d";
   private static final String INSTANT_VIEW =
@@ -79,10 +79,10 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
   private final ThreadInfo thread;
   private final SliceFetcher sliceTrack;
 
-  public ThreadTrack(ThreadInfo thread) {
-    super("thread_" + thread.utid);
+  public ThreadTrack(QueryEngine qe, ThreadInfo thread) {
+    super(qe, "thread_" + thread.utid);
     this.thread = thread;
-    this.sliceTrack = SliceFetcher.forThread(thread);
+    this.sliceTrack = SliceFetcher.forThread(qe, thread);
   }
 
   public ThreadInfo getThread() {
@@ -90,14 +90,14 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String wakeup = tableName("wakeup");
     String sched = tableName("sched");
     String spanJoin = tableName("span_join");
     String spanView = tableName("span_view");
     String span = tableName("span");
     String window = tableName("window");
-    return transformAsync(sliceTrack.initialize(qe), $ -> qe.queries(
+    return transformAsync(sliceTrack.initialize(), $ -> qe.queries(
         dropTable(span),
         dropView(spanView),
         dropTable(spanJoin),
@@ -113,15 +113,14 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.compute(req);
-    return transformAsync(sliceTrack.computeData(qe, req), slices ->
+    return transformAsync(sliceTrack.computeData(req), slices ->
         transformAsync(window.update(qe, tableName("window")), $ ->
-            computeSched(qe, req, slices)));
+            computeSched(req, slices)));
   }
 
-  private ListenableFuture<Data> computeSched(
-      QueryEngine qe, DataRequest req, SliceTrack.Data slices) {
+  private ListenableFuture<Data> computeSched(DataRequest req, SliceTrack.Data slices) {
     return transform(qe.query(schedSql()), res -> {
       int rows = res.getNumRows();
       Data data = new Data(req, new long[rows], new long[rows], new long[rows],
@@ -141,16 +140,23 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     return format(SCHED_SQL, tableName("span"));
   }
 
-  public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
-    return sliceTrack.getSlice(qe, id);
+  public ListenableFuture<Slice> getSlice(long id) {
+    return sliceTrack.getSlice(id);
   }
 
-  public ListenableFuture<List<Slice>> getSlices(
-      QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
-    return sliceTrack.getSlices(qe, ts, minDepth, maxDepth);
+  public ListenableFuture<CpuTrack.Slice> getCpuSlice(long id) {
+    return CpuTrack.getSlice(qe, id);
   }
 
-  public ListenableFuture<List<StateSlice>> getStates(QueryEngine qe, TimeSpan ts) {
+  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+    return sliceTrack.getSlices(ts, minDepth, maxDepth);
+  }
+
+  public ListenableFuture<List<CpuTrack.Slice>> getCpuSlices(TimeSpan ts) {
+    return CpuTrack.getSlices(qe, thread.utid, ts);
+  }
+
+  public ListenableFuture<List<StateSlice>> getStates(TimeSpan ts) {
     return transform(qe.query(stateRangeSql(ts)), res -> {
       List<StateSlice> slices = Lists.newArrayList();
       res.forEachRow((i, r) -> slices.add(new StateSlice(r, thread.utid)));
@@ -336,52 +342,51 @@ public class ThreadTrack extends Track<ThreadTrack.Data> {
     public static final SliceFetcher NONE = new SliceFetcher() { /* empty */ };
 
     @SuppressWarnings("unused")
-    public default ListenableFuture<?> initialize(QueryEngine qe) {
+    public default ListenableFuture<?> initialize() {
       return Futures.immediateFuture(null);
     }
 
     @SuppressWarnings("unused")
-    public default ListenableFuture<SliceTrack.Data> computeData(QueryEngine qe, DataRequest req) {
+    public default ListenableFuture<SliceTrack.Data> computeData(DataRequest req) {
       return Futures.immediateFuture(new SliceTrack.Data(req));
     }
 
     @SuppressWarnings("unused")
-    public default ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
+    public default ListenableFuture<Slice> getSlice(long id) {
       throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("unused")
     public default ListenableFuture<List<Slice>> getSlices(
-        QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
+        TimeSpan ts, int minDepth, int maxDepth) {
       return Futures.immediateFuture(Collections.emptyList());
     }
 
-    public static SliceFetcher forThread(ThreadInfo thread) {
+    public static SliceFetcher forThread(QueryEngine q, ThreadInfo thread) {
       if (thread.trackId < 0) {
         return SliceFetcher.NONE;
       }
 
-      SliceTrack track = SliceTrack.forThread(thread);
+      SliceTrack track = SliceTrack.forThread(q, thread);
       return new SliceFetcher() {
         @Override
-        public ListenableFuture<?> initialize(QueryEngine qe) {
-          return track.initialize(qe);
+        public ListenableFuture<?> initialize() {
+          return track.initialize();
         }
 
         @Override
-        public ListenableFuture<SliceTrack.Data> computeData(QueryEngine qe, DataRequest req) {
-          return track.computeData(qe, req);
+        public ListenableFuture<SliceTrack.Data> computeData(DataRequest req) {
+          return track.computeData(req);
         }
 
         @Override
-        public ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
-          return track.getSlice(qe, id);
+        public ListenableFuture<Slice> getSlice(long id) {
+          return track.getSlice(id);
         }
 
         @Override
-        public ListenableFuture<List<Slice>> getSlices(
-            QueryEngine qe, TimeSpan ts, int minDepth, int maxDepth) {
-          return track.getSlices(qe, ts, minDepth, maxDepth);
+        public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+          return track.getSlices(ts, minDepth, maxDepth);
         }
       };
     }

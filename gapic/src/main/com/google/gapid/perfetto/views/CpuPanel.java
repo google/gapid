@@ -49,7 +49,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   private static final double CURSOR_SIZE = 5;
   private static final int BOUNDING_BOX_LINE_WIDTH = 3;
 
-  private final CpuTrack track;
+  protected final CpuTrack track;
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
   protected double hoveredWidth;
@@ -78,9 +78,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("CpuTrack", () -> {
-      CpuTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      CpuTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -193,7 +191,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
 
   @Override
   public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    CpuTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    CpuTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
@@ -239,7 +237,7 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
 
           @Override
           public boolean click() {
-            state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
             state.setSelectedThread(state.getThreadInfo(utid));
             return true;
           }
@@ -281,11 +279,10 @@ public class CpuPanel extends TrackPanel<CpuPanel> implements Selectable {
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
     if (area.h / height >= SELECTION_THRESHOLD) {
-      builder.add(Selection.Kind.Cpu, transform(
-          CpuTrack.getSlices(state.getQueryEngine(), track.getCpu().id, ts), r -> {
-            r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
-            return new CpuTrack.Slices(state, r);
-          }));
+      builder.add(Selection.Kind.Cpu, transform(track.getSlices(ts), r -> {
+        r.stream().forEach(s -> state.addSelectedThread(state.getThreadInfo(s.utid)));
+        return new CpuTrack.Slices(state, r);
+      }));
     }
   }
 

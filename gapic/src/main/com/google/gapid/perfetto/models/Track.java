@@ -26,11 +26,11 @@ import com.google.common.cache.Cache;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.perfetto.TimeSpan;
-import com.google.gapid.perfetto.views.State;
 import com.google.gapid.util.Caches;
 
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 // Note on multi-threading issues here:
@@ -75,19 +75,19 @@ public abstract class Track<D extends Track.Data> {
   }
 
   // on UI Thread
-  public D getData(State state, Runnable repainter) {
-    if (checkScheduledRequest(state) && (data == null || !data.request.satisfies(state))) {
-      schedule(state, repainter);
+  public D getData(DataRequest req, OnUiThread<D> onUiThread) {
+    if (checkScheduledRequest(req) && (data == null || !data.request.satisfies(req))) {
+      schedule(req.pageAlign(), onUiThread);
     }
     return data;
   }
 
   // on UI Thread. returns true, if a new request may be scheduled.
-  private boolean checkScheduledRequest(State state) {
+  private boolean checkScheduledRequest(DataRequest req) {
     DataRequest scheduled = scheduledRequest.get();
     if (scheduled == null) {
       return true;
-    } else if (scheduled.satisfies(state)) {
+    } else if (scheduled.satisfies(req)) {
       return false;
     }
 
@@ -98,8 +98,7 @@ public abstract class Track<D extends Track.Data> {
   }
 
   // on UI Thread
-  private void schedule(State state, Runnable repainter) {
-    DataRequest request = DataRequest.from(state);
+  private void schedule(DataRequest request, OnUiThread<D> onUiThread) {
     D newData = cache.getIfPresent(this, request);
     if (newData != null) {
       data = newData;
@@ -108,15 +107,15 @@ public abstract class Track<D extends Track.Data> {
 
     scheduledRequest.set(request);
     scheduledFuture = EXECUTOR.schedule(
-        () -> getData(state, request, repainter), REQUEST_DELAY_MS, MILLISECONDS);
+        () -> query(request, onUiThread), REQUEST_DELAY_MS, MILLISECONDS);
   }
 
   // *not* on UI Thread
-  private void getData(State state, DataRequest req, Runnable repainter) {
+  private void query(DataRequest req, OnUiThread<D> onUiThread) {
     try {
       if (!getDataLock.tryAcquire(ACQUIRE_TIMEOUT_MS, MILLISECONDS)) {
         logFailure(LOG, EXECUTOR.schedule(
-            () -> getData(state, req, repainter), ACQUIRE_RETRY_MS, MILLISECONDS));
+            () -> query(req, onUiThread), ACQUIRE_RETRY_MS, MILLISECONDS));
         return;
       }
     } catch (InterruptedException e) {
@@ -131,9 +130,8 @@ public abstract class Track<D extends Track.Data> {
     }
 
     try {
-      ListenableFuture<D> future =
-          transformAsync(setup(state), $ -> computeData(state.getQueryEngine(), req));
-      state.thenOnUiThread(future, newData -> update(req, newData, repainter));
+      ListenableFuture<D> future = transformAsync(setup(), $ -> computeData(req));
+      onUiThread.onUiThreadAndRepaint(future, newData -> update(req, newData));
       // Always unlock when the future completes/fails/is cancelled.
       future.addListener(getDataLock::release, EXECUTOR);
     } catch (RuntimeException e) {
@@ -143,27 +141,34 @@ public abstract class Track<D extends Track.Data> {
   }
 
   // on UI Thread
-  private void update(DataRequest req, D newData, Runnable repainter) {
+  private void update(DataRequest req, D newData) {
     cache.put(this, req, newData);
     if (scheduledRequest.compareAndSet(req, null)) {
       data = newData;
       scheduledFuture = null;
-      repainter.run();
     }
   }
 
-  private ListenableFuture<?> setup(State state) {
+  private ListenableFuture<?> setup() {
     if (initialized) {
       return Futures.immediateFuture(null);
     }
-    return transform(initialize(state.getQueryEngine()), $ -> initialized = true);
+    return transform(initialize(), $ -> initialized = true);
   }
 
-  protected abstract ListenableFuture<?> initialize(QueryEngine qe);
-  protected abstract ListenableFuture<D> computeData(QueryEngine qe, DataRequest req);
+  protected abstract ListenableFuture<?> initialize();
+  protected abstract ListenableFuture<D> computeData(DataRequest req);
 
   protected String tableName(String prefix) {
     return prefix + "_" + trackId;
+  }
+
+  public static interface OnUiThread<T> {
+    /**
+     * Runs the consumer with the result of the given future on the UI thread and repaints upon
+     * completion.
+     */
+    public void onUiThreadAndRepaint(ListenableFuture<T> future, Consumer<T> callback);
   }
 
   public static class Data {
@@ -183,13 +188,12 @@ public abstract class Track<D extends Track.Data> {
       this.resolution = resolution;
     }
 
-    public static DataRequest from(State state) {
-      long resolution = state.getResolution();
-      return new DataRequest(state.getVisibleTime().align(PAGE_SIZE * resolution), resolution);
+    public DataRequest pageAlign() {
+      return new DataRequest(range.align(PAGE_SIZE * resolution), resolution);
     }
 
-    public boolean satisfies(State state) {
-      return resolution == state.getResolution() && range.contains(state.getVisibleTime());
+    public boolean satisfies(DataRequest other) {
+      return resolution == other.resolution && range.contains(other.range);
     }
 
     @Override
@@ -246,6 +250,15 @@ public abstract class Track<D extends Track.Data> {
     public String toString() {
       return "window{start: " + start + ", end: " + end +
           (quantized ? ", " + getNumberOfBuckets() : "") + "}";
+    }
+  }
+
+  public abstract static class WithQueryEngine<D extends Track.Data> extends Track<D> {
+    protected final QueryEngine qe;
+
+    public WithQueryEngine(QueryEngine qe, String trackId) {
+      super(trackId);
+      this.qe = qe;
     }
   }
 

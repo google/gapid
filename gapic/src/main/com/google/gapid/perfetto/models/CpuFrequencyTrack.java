@@ -29,7 +29,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 /**
  * {@link Track} containing the CPU frequency and idle data.
  */
-public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
+public class CpuFrequencyTrack extends Track.WithQueryEngine<CpuFrequencyTrack.Data> {
   private static final String FREQ_VIEW_SQL =
       "select %d cpu, ts, lead(ts) over (order by ts) - ts dur, value freq_value " +
       "from counter where track_id = %d";
@@ -50,8 +50,8 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
 
   private final CpuInfo.Cpu cpu;
 
-  public CpuFrequencyTrack(CpuInfo.Cpu cpu) {
-    super("cpu_freq_" + cpu.id);
+  public CpuFrequencyTrack(QueryEngine qe, CpuInfo.Cpu cpu) {
+    super(qe, "cpu_freq_" + cpu.id);
     this.cpu = cpu;
   }
 
@@ -60,7 +60,7 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String activity = tableName("activity");
     String span = tableName("span");
     String idle = tableName("idle");
@@ -84,13 +84,13 @@ public class CpuFrequencyTrack extends Track<CpuFrequencyTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.compute(req, 10);
     return transformAsync(window.update(qe, tableName("window")),
-        $ -> compute(qe, req, window.quantized));
+        $ -> compute(req, window.quantized));
   }
 
-  private ListenableFuture<Data> compute(QueryEngine qe, DataRequest req, boolean quantized) {
+  private ListenableFuture<Data> compute(DataRequest req, boolean quantized) {
     return transform(qe.query(
         format(quantized ? DATA_QUANTIZED_SQL : DATA_SQL, tableName("activity"))), result -> {
       int rows = result.getNumRows();

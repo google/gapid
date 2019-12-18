@@ -27,7 +27,6 @@ import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.CpuInfo;
-import com.google.gapid.perfetto.models.CpuTrack;
 import com.google.gapid.perfetto.models.ProcessSummaryTrack;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
@@ -49,7 +48,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
   private static final double CURSOR_SIZE = 5;
   private static final int BOUNDING_BOX_LINE_WIDTH = 1;
 
-  private final ProcessSummaryTrack track;
+  protected final ProcessSummaryTrack track;
 
   protected double mouseXpos;
   protected ThreadInfo.Display hoveredThread;
@@ -90,9 +89,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("ProcessSummaryPanel", () -> {
-      ProcessSummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -199,7 +196,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
 
   @Override
   public Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    ProcessSummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    ProcessSummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
@@ -253,7 +250,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
 
           @Override
           public boolean click() {
-            state.setSelection(Selection.Kind.Cpu, CpuTrack.getSlice(state.getQueryEngine(), id));
+            state.setSelection(Selection.Kind.Cpu, track.getSlice(id));
             state.setSelectedThread(state.getThreadInfo(utid));
             return true;
           }

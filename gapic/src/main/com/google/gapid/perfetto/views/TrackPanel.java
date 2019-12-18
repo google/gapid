@@ -29,6 +29,7 @@ import com.google.gapid.perfetto.canvas.Fonts;
 import com.google.gapid.perfetto.canvas.Panel;
 import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
+import com.google.gapid.perfetto.models.Track;
 
 import java.util.List;
 
@@ -123,6 +124,23 @@ public abstract class TrackPanel<T extends TrackPanel<T>> extends Panel.Base
   }
 
   protected abstract Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y);
+
+  //Helper functions for the track.getData(..) calls.
+  protected <D> Track.OnUiThread<D> onUiThread() {
+    return (future, consumer) -> {
+      state.thenOnUiThread(future, consumer);
+    };
+  }
+
+  // Helper functions for the track.getData(..) calls.
+  protected <D> Track.OnUiThread<D> onUiThread(Repainter repainter) {
+    return (future, consumer) -> {
+      state.thenOnUiThread(future, result -> {
+        consumer.accept(result);
+        repainter.repaint(new Area(0, 0, width, height));
+      });
+    };
+  }
 
   private static class Tooltip {
     private static final Splitter LINE_SPLITTER =

@@ -37,7 +37,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.LongStream;
 
-public class CounterTrack extends Track<CounterTrack.Data> {
+public class CounterTrack extends Track.WithQueryEngine<CounterTrack.Data> {
   private static final String VIEW_SQL =
       "select ts + 1 ts, lead(ts) over win - ts dur, lead(value) over win value " +
       "from counter where track_id = %d window win as (order by ts)";
@@ -51,8 +51,8 @@ public class CounterTrack extends Track<CounterTrack.Data> {
 
   private final CounterInfo counter;
 
-  public CounterTrack(CounterInfo counter) {
-    super("counter_" + counter.id);
+  public CounterTrack(QueryEngine qe, CounterInfo counter) {
+    super(qe, "counter_" + counter.id);
     this.counter = counter;
   }
 
@@ -61,7 +61,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String vals = tableName("vals");
     String span = tableName("span");
     String window = tableName("window");
@@ -79,13 +79,13 @@ public class CounterTrack extends Track<CounterTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window win = (counter.count > Track.QUANTIZE_CUT_OFF) ? Window.compute(req, 5) :
         Window.compute(req);
-    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(qe, req, win));
+    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(req, win));
   }
 
-  private ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req, Window win) {
+  private ListenableFuture<Data> computeData(DataRequest req, Window win) {
     return transform(qe.query(win.quantized ? summarySql() : counterSQL()), res -> {
       int rows = res.getNumRows();
       if (rows == 0) {
@@ -111,7 +111,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     return format(COUNTER_SQL, tableName("span"));
   }
 
-  public ListenableFuture<Data> getValue(QueryEngine qe, long t) {
+  public ListenableFuture<Data> getValue(long t) {
     return transform(expectOneRow(qe.query(valueSql(t))), row -> {
       Data data = new Data(null, new long[1], new double[1]);
       data.ts[0] = row.getLong(0);
@@ -120,7 +120,7 @@ public class CounterTrack extends Track<CounterTrack.Data> {
     });
   }
 
-  public ListenableFuture<Data> getValues(QueryEngine qe, TimeSpan ts) {
+  public ListenableFuture<Data> getValues(TimeSpan ts) {
     return transform(qe.query(rangeSql(ts)), res -> {
       int rows = res.getNumRows();
       Data data = new Data(null, new long[rows], new double[rows]);

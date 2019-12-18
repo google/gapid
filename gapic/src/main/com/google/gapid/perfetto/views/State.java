@@ -28,6 +28,7 @@ import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
+import com.google.gapid.perfetto.models.Track;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
@@ -176,6 +177,10 @@ public class State {
       this.width = width;
       update();
     }
+  }
+
+  public Track.DataRequest toRequest() {
+    return new Track.DataRequest(visibleTime, resolution);
   }
 
   public void setMaxScrollOffset(double maxScrollOffset) {
