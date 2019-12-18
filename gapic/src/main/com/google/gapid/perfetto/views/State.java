@@ -50,6 +50,8 @@ public class State {
 
   private static final Logger LOG = Logger.getLogger(State.class.getName());
 
+  private static final double MIN_WIDTH = 32;
+
   private final Widget owner;
   private Perfetto.Data data;
   private TimeSpan visibleTime;
@@ -172,6 +174,7 @@ public class State {
   }
 
   public void setWidth(double width) {
+    width = Math.max(MIN_WIDTH, width);
     if (this.width != width) {
       this.width = width;
       update();
