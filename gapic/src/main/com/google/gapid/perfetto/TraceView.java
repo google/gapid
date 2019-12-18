@@ -60,7 +60,7 @@ import java.util.function.Consumer;
 public class TraceView extends Composite
     implements Capture.Listener, Perfetto.Listener, State.Listener {
   private final Models models;
-  private final State state;
+  private final State.ForSystemTrace state;
   private final LoadablePanel<DrawerComposite> loading;
   private final RootPanel rootPanel;
   private final PanelCanvas canvas;
@@ -68,7 +68,7 @@ public class TraceView extends Composite
   public TraceView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
-    this.state = new State(this);
+    this.state = new State.ForSystemTrace(this);
 
     setLayout(withMargin(new GridLayout(1, false), 0, 0));
 

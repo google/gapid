@@ -49,7 +49,7 @@ public class TrackConfig {
       this.uiFactory = uiFactory;
     }
 
-    public abstract CopyablePanel<?> createUi(State state);
+    public abstract CopyablePanel<?> createUi(State.ForSystemTrace state);
   }
 
   public static class Track<T extends CopyablePanel<T>> extends Element<Track.UiFactory<T>> {
@@ -58,12 +58,12 @@ public class TrackConfig {
     }
 
     @Override
-    public T createUi(State state) {
+    public T createUi(State.ForSystemTrace state) {
       return uiFactory.createPanel(state);
     }
 
     public interface UiFactory<T extends Panel> {
-      public T createPanel(State state);
+      public T createPanel(State.ForSystemTrace state);
     }
   }
 
@@ -76,14 +76,15 @@ public class TrackConfig {
     }
 
     @Override
-    public CopyablePanel<?> createUi(State state) {
+    public CopyablePanel<?> createUi(State.ForSystemTrace state) {
       ImmutableList.Builder<CopyablePanel<?>> children = ImmutableList.builder();
       tracks.forEach(track -> children.add(track.createUi(state)));
       return uiFactory.createPanel(state, children.build());
     }
 
     public interface UiFactory {
-      public CopyablePanel<?> createPanel(State state, ImmutableList<CopyablePanel<?>> children);
+      public CopyablePanel<?> createPanel(
+          State.ForSystemTrace state, ImmutableList<CopyablePanel<?>> children);
     }
   }
 
