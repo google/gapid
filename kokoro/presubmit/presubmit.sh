@@ -71,15 +71,15 @@ function run_copyright_headers() {
 }
 
 function run_clang_format() {
-  find . \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print | parallel $CLANG_FORMAT -i -style=file {}
+  find . \( -name "*.h" -o -name "*.cpp" -o -name "*.mm" -o -name "*.proto" \) -print | xargs $CLANG_FORMAT -i -style=file
 }
 
 function run_gofmt() {
-  find . -name "*.go" | parallel $GOFMT -w {}
+  find . -name "*.go" | xargs $GOFMT -w
 }
 
 function run_buildifier() {
-  find . -name "*.BUILD" -o -name "BUILD.bazel" | parallel $BUILDIFIER {}
+  find . -name "*.BUILD" -o -name "BUILD.bazel" | xargs $BUILDIFIER
 }
 
 function run_buildozer() {
