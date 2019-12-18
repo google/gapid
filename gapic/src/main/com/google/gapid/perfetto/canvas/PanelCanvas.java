@@ -50,7 +50,7 @@ public class PanelCanvas extends Canvas {
   private Point lastMouse = new Point(-1, -1);
 
   public PanelCanvas(Composite parent, int style, Theme theme, Panel panel) {
-    super(parent, style | SWT.V_SCROLL | SWT.NO_BACKGROUND | SWT.DOUBLE_BUFFERED);
+    super(parent, style | SWT.NO_BACKGROUND | SWT.DOUBLE_BUFFERED);
     this.panel = panel;
     this.context = new RenderContext.Global(theme, this);
 
