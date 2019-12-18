@@ -24,6 +24,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.TimeSpan;
+import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
 import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.Selection;
@@ -134,6 +135,10 @@ public class State {
 
   public long deltaPxToDuration(double px) {
     return Math.round(px * nanosPerPx);
+  }
+
+  public CpuInfo getCpuInfo() {
+    return data.cpu;
   }
 
   public ProcessInfo getProcessInfo(long id) {

@@ -148,12 +148,12 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
     TimeSpan visible = state.getVisibleTime();
     Selection<Long> selected = state.getSelection(Selection.Kind.Cpu);
     List<Integer> visibleSelected = Lists.newArrayList();
-    int cpuCount = state.getData().cpu.count();
+    int cpuCount = state.getCpuInfo().count();
     double cpuH = (h - cpuCount + 1) / cpuCount;
     for (int i = 0; i < data.starts.length; i++) {
       long tStart = data.starts[i];
       long tEnd = data.ends[i];
-      CpuInfo.Cpu cpu = state.getData().cpu.getById(data.cpus[i]);
+      CpuInfo.Cpu cpu = state.getCpuInfo().getById(data.cpus[i]);
       long utid = data.utids[i];
       if (cpu == null || tEnd <= visible.start || tStart >= visible.end) {
         continue;
@@ -175,7 +175,7 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
       ctx.setForegroundColor(ThreadInfo.getBorderColor(state, data.utids[index]));
       double rectStart = state.timeToPx(data.starts[index]);
       double rectWidth = Math.max(1, state.timeToPx(data.ends[index]) - rectStart);
-      CpuInfo.Cpu cpu = state.getData().cpu.getById(data.cpus[index]);
+      CpuInfo.Cpu cpu = state.getCpuInfo().getById(data.cpus[index]);
       ctx.drawRect(
           rectStart, cpuH * cpu.index + cpu.index, rectWidth, cpuH, BOUNDING_BOX_LINE_WIDTH);
     }
@@ -210,18 +210,18 @@ public class ProcessSummaryPanel extends TrackPanel<ProcessSummaryPanel> {
 
   private Hover sliceHover(
       ProcessSummaryTrack.Data data, Fonts.TextMeasurer m, double x, double y) {
-    int cpuCount = state.getData().cpu.count();
+    int cpuCount = state.getCpuInfo().count();
     int cpuIdx = (int)(y * cpuCount / HEIGHT);
     if (cpuIdx < 0 || cpuIdx >= cpuCount) {
       return Hover.NONE;
     }
-    int cpu = state.getData().cpu.get(cpuIdx).id;
+    int cpu = state.getCpuInfo().get(cpuIdx).id;
 
     mouseXpos = x;
     long t = state.pxToTime(x);
     for (int i = 0; i < data.starts.length; i++) {
       if (data.cpus[i] == cpu && data.starts[i] <= t && t <= data.ends[i]) {
-        hoveredThread = ThreadInfo.getDisplay(state.getData(), data.utids[i], true);
+        hoveredThread = ThreadInfo.getDisplay(state, data.utids[i], true);
         if (hoveredThread == null) {
           return Hover.NONE;
         }
