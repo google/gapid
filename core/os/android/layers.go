@@ -64,13 +64,15 @@ func SetupLayers(ctx context.Context, d Device, appPkg string, layerPkgs []strin
 	if err := pushSetting("global", "gpu_debug_layer_app", "\""+strings.Join(layerPkgs, ":")+"\""); err != nil {
 		return cleanup.Invoke(ctx), err
 	}
-	if vulkan {
-		if err := pushSetting("global", "gpu_debug_layers", "\""+strings.Join(layers, ";")+"\""); err != nil {
-			return cleanup.Invoke(ctx), err
-		}
-	} else {
-		if err := pushSetting("global", "gpu_debug_layers_gles", "\""+strings.Join(layers, ";")+"\""); err != nil {
-			return cleanup.Invoke(ctx), err
+	if len(layers) > 0 {
+		if vulkan {
+			if err := pushSetting("global", "gpu_debug_layers", "\""+strings.Join(layers, ";")+"\""); err != nil {
+				return cleanup.Invoke(ctx), err
+			}
+		} else {
+			if err := pushSetting("global", "gpu_debug_layers_gles", "\""+strings.Join(layers, ";")+"\""); err != nil {
+				return cleanup.Invoke(ctx), err
+			}
 		}
 	}
 

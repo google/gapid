@@ -71,25 +71,52 @@ func setupVulkanLayers(ctx context.Context, d adb.Device, packageName string, ab
 	return cleanup, nil
 }
 
-func setupRenderStagesEnvironment(ctx context.Context, d adb.Device, packageName string, perfettoConfig *perfetto_pb.TraceConfig, abi *device.ABI, layers []string) (app.Cleanup, error) {
-	if !hasRenderStageEnabled(perfettoConfig) {
-		if abi != nil {
-			return setupVulkanLayers(ctx, d, packageName, abi, layers)
-		}
-		return nil, nil
-	}
+func getDriverPackageName(ctx context.Context, d adb.Device) (string, error) {
 	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if driverPackageOverride, err := d.SystemSetting(ctx, "global", prereleaseDriverOverrideSettingVariable); driverPackageOverride != "" && driverPackageOverride != "null" && err == nil {
 		driverPackageName = driverPackageOverride
 	}
 	if driverPackageName == "" {
-		return nil, nil
+		return "", nil
 	}
 	if res, err := d.Shell("pm", "path", driverPackageName).Call(ctx); err != nil || res == "" {
-		return nil, log.Err(ctx, err, "No driver package found.")
+		return "", log.Err(ctx, err, "No driver package found.")
+	}
+	return driverPackageName, nil
+}
+
+// SetupProfileLayersSource configures the device to allow packages to be used as layer sources for profiling
+func SetupProfileLayersSource(ctx context.Context, d adb.Device, packageName string, abi *device.ABI) (app.Cleanup, error) {
+	driverPackageName, err := getDriverPackageName(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	packages := []string{driverPackageName}
+	if abi != nil {
+		packages = append(packages, gapidapk.PackageName(abi))
+	}
+
+	cleanup, err := android.SetupLayers(ctx, d, packageName, packages, []string{}, true)
+	if err != nil {
+		return cleanup.Invoke(ctx), log.Err(ctx, err, "Failed to setup gpu.renderstages layer packages.")
+	}
+	return cleanup, nil
+}
+
+// SetupProfileLayers configures the device to allow the app being traced to load the layers required for render stage profiling
+func SetupProfileLayers(ctx context.Context, d adb.Device, packageName string, hasRenderStages bool, abi *device.ABI, layers []string) (app.Cleanup, error) {
+	if !hasRenderStages {
+		if abi != nil {
+			return setupVulkanLayers(ctx, d, packageName, abi, layers)
+		}
+		return nil, nil
+	}
+	driverPackageName, err := getDriverPackageName(ctx, d)
+	if err != nil {
+		return nil, err
 	}
 	packages := []string{driverPackageName}
 	enabledLayers := []string{renderStageVulkanLayerName}
@@ -123,7 +150,8 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 		}.Bind(ctx)
 		// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
 		var err error
-		cleanup, err := setupRenderStagesEnvironment(ctx, d, a.Package.Name, opts.PerfettoConfig, abi, layers)
+		hasRenderStages := hasRenderStageEnabled(opts.PerfettoConfig)
+		cleanup, err := SetupProfileLayers(ctx, d, a.Package.Name, hasRenderStages, abi, layers)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err
 		}

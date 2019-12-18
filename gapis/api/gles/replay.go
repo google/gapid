@@ -363,14 +363,13 @@ func (a API) Profile(
 	mgr replay.Manager,
 	hints *service.UsageHints,
 	traceOptions *service.TraceOptions,
-	handler *replay.SignalHandler,
-	overrides *path.OverrideConfig) error {
+	overrides *path.OverrideConfig) (*service.ProfilingData, error) {
 
 	c := uniqueConfig()
 	r := profileRequest{overrides}
 
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
-	return err
+	return nil, err
 }
 
 // destroyResourcesAtEOS is a transform that destroys all textures,

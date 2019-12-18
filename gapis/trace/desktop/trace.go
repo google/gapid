@@ -15,6 +15,7 @@
 package desktop
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path"
@@ -45,6 +46,10 @@ func NewTracer(dev bind.Device) *DesktopTracer {
 
 func (t *DesktopTracer) GetDevice() bind.Device {
 	return t.b
+}
+
+func (t *DesktopTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer) (*service.ProfilingData, error) {
+	return nil, log.Err(ctx, nil, "Desktop replay profiling is unsupported.")
 }
 
 func (t *DesktopTracer) Validate(ctx context.Context) error {

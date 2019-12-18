@@ -19,6 +19,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "benchmark.go",
+        "coarse_profile.go",
         "commands.go",
         "common.go",
         "create_graph_visualization.go",

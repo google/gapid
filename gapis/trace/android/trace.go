@@ -118,6 +118,26 @@ func (t *androidTracer) GetDevice() bind.Device {
 	return t.b
 }
 
+func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer) (*service.ProfilingData, error) {
+	// Load Perfetto trace and create trace processor.
+	rawData := make([]byte, buffer.Len())
+	_, err := buffer.Read(rawData)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to read trace buffer")
+	}
+	processor, err := perfetto.NewProcessor(ctx, rawData)
+	defer processor.Close()
+	if err != nil {
+		return nil, log.Errf(ctx, err, "Failed to create trace processor")
+	}
+	gpu := t.b.Instance().GetConfiguration().GetHardware().GetGPU()
+	gpuName := gpu.GetName()
+	if strings.Contains(gpuName, "Adreno") {
+		return adreno.ProcessProfilingData(ctx, processor)
+	}
+	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
+}
+
 func (t *androidTracer) Validate(ctx context.Context) error {
 	ctx = status.Start(ctx, "Android Device Validation")
 	defer status.Finish(ctx)
@@ -198,7 +218,7 @@ func (t *androidTracer) Validate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	defer processor.Close()
 	ctx = status.Start(ctx, "Validation")
 	defer status.Finish(ctx)
 	return t.v.Validate(ctx, processor)
