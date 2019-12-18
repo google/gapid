@@ -93,3 +93,6 @@ func (t *profilingLayers) PostLoop(ctx context.Context, out transform.Writer) {
 	out.NotifyPostLoop(ctx)
 }
 func (t *profilingLayers) Flush(ctx context.Context, out transform.Writer) {}
+func (t *profilingLayers) BuffersCommands() bool {
+	return false
+}

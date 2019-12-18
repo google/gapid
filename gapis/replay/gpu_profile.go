@@ -23,7 +23,7 @@ import (
 	"github.com/google/gapid/gapis/service"
 	"github.com/google/gapid/gapis/service/path"
 
-	perfetto_pb "perfetto/config"
+	perfetto_pb "protos/perfetto/config"
 )
 
 // Eyeball some generous trace config parameters
