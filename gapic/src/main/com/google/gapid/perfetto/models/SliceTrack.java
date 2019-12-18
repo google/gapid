@@ -51,43 +51,13 @@ import java.util.Set;
 /**
  * {@link Track} containing slices.
  */
-public abstract class SliceTrack extends Track.WithQueryEngine<SliceTrack.Data> {
-  private static final String BASE_COLUMNS =
-      "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
-  private static final String SLICES_VIEW =
-      "select " + BASE_COLUMNS + " from %s where track_id = %d";
-  private static final String SLICES_SQL =
-      "select " + BASE_COLUMNS + " from %s " +
-      "where ts >= %d - dur and ts <= %d order by ts";
-  private static final String SLICES_QUANT_SQL =
-      "select min(start_ts), max(end_ts), depth, label, max(cnt) from (" +
-      "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
-      "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i from (" +
-      "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
-      "        substr(group_concat(name) over win1, 0, 101) label" +
-      "    from %s" +
-      "    window win1 as (partition by quantum_ts, depth order by dur desc" +
-      "        range between unbounded preceding and unbounded following))" +
-      "  group by quantum_ts, depth) " +
-      "group by depth, label, i";
-
-  private static final String SLICE_SQL =
-      "select " + BASE_COLUMNS + " from %s where slice_id = %d";
-  private static final String SLICE_RANGE_SQL =
-      "select " + BASE_COLUMNS + " from %s " +
-      "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
-
-  private final String table;
-  private final long trackId;
-
-  protected SliceTrack(QueryEngine qe, String table, long trackId) {
-    super(qe, "slices_" + trackId);
-    this.table = table;
-    this.trackId = trackId;
+public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track.WithQueryEngine<SliceTrack.Data>*/
+  protected SliceTrack(long trackId) {
+    super("slices_" + trackId);
   }
 
   public static SliceTrack forThread(QueryEngine qe, ThreadInfo thread) {
-    return new SliceTrack(qe, "slice", thread.trackId) {
+    return new WithQueryEngine(qe, "slice", thread.trackId) {
       @Override
       protected Slice buildSlice(Row row, ArgSet args) {
         return new Slice.ThreadSlice(row, args, thread);
@@ -96,7 +66,7 @@ public abstract class SliceTrack extends Track.WithQueryEngine<SliceTrack.Data> 
   }
 
   public static SliceTrack forGpuQueue(QueryEngine qe, GpuInfo.Queue queue) {
-    return new SliceTrack(qe, "gpu_slice", queue.trackId) {
+    return new WithQueryEngine(qe, "gpu_slice", queue.trackId) {
       @Override
       protected Slice buildSlice(Row row, ArgSet args) {
         return new Slice(row, args) {
@@ -109,98 +79,20 @@ public abstract class SliceTrack extends Track.WithQueryEngine<SliceTrack.Data> 
     };
   }
 
-  @Override
-  protected ListenableFuture<?> initialize() {
-    String slices = tableName("slices");
-    String window = tableName("window");
-    String span = tableName("span");
-    return qe.queries(
-        dropTable(span),
-        dropView(slices),
-        dropTable(window),
-        createWindow(window),
-        createView(slices, format(SLICES_VIEW, table, trackId)),
-        createSpan(span, window + ", " + slices + " PARTITIONED depth"));
+  public abstract ListenableFuture<Slice> getSlice(long id);
+  public abstract ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth);
+
+  public static RGBA getColor(String title, int depth) {
+    return colorForSlice(title, depth, 0);
   }
 
-  @Override
-  protected ListenableFuture<Data> computeData(DataRequest req) {
-    Window window = Window.compute(req, 5);
-    return transformAsync(window.update(qe, tableName("window")), $ ->
-        window.quantized ? computeQuantSlices(req) : computeSlices(req));
+  public static RGBA getBorderColor(String title, int depth) {
+    return colorForSlice(title, depth, StyleConstants.isLight() ? -5 : 5);
   }
 
-  private ListenableFuture<Data> computeQuantSlices(DataRequest req) {
-    return transform(qe.query(slicesQuantSql()), res -> {
-      int rows = res.getNumRows();
-      Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
-          new String[rows], new String[rows], new ArgSet[rows]);
-      res.forEachRow((i, row) -> {
-        data.ids[i] = -1;
-        data.starts[i] = row.getLong(0);
-        data.ends[i] = row.getLong(1);
-        data.depths[i] = row.getInt(2);
-        data.categories[i] = "";
-        data.titles[i] = row.getString(3);
-        if (data.titles[i].length() >= 100 && row.getInt(4) > 1) {
-          data.titles[i] += "...";
-        }
-        data.args[i] = ArgSet.EMPTY;
-      });
-      return data;
-    });
-  }
-
-  private String slicesQuantSql() {
-    return format(SLICES_QUANT_SQL, tableName("span"));
-  }
-
-  private ListenableFuture<Data> computeSlices(DataRequest req) {
-    return transformAsync(qe.query(slicesSql(req)), res ->
-      transform(qe.getAllArgs(res.stream().mapToLong(r -> r.getLong(8))), args -> {
-        int rows = res.getNumRows();
-        Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
-            new String[rows], new String[rows], new ArgSet[rows]);
-        res.forEachRow((i, row) -> {
-          long start = row.getLong(1);
-          data.ids[i] = row.getLong(0);
-          data.starts[i] = start;
-          data.ends[i] = start + row.getLong(2);
-          data.categories[i] = row.getString(3);
-          data.titles[i] = row.getString(4);
-          data.depths[i] = row.getInt(5);
-          data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
-        });
-        return data;
-      }));
-  }
-
-  private String slicesSql(DataRequest req) {
-    return format(SLICES_SQL, tableName("slices"), req.range.start, req.range.end);
-  }
-
-  public ListenableFuture<Slice> getSlice(long id) {
-    return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
-        transform(qe.getArgs(r.getLong(8)), args -> buildSlice(r, args)));
-  }
-
-  private Slice buildSlice(QueryEngine.Row row) {
-    return buildSlice(row, ArgSet.EMPTY);
-  }
-
-  protected abstract Slice buildSlice(QueryEngine.Row row, ArgSet args);
-
-  private String sliceSql(long id) {
-    return format(SLICE_SQL, tableName("slices"), id);
-  }
-
-  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
-    return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
-        res -> res.list(($, row) -> buildSlice(row)));
-  }
-
-  private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
-    return format(SLICE_RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
+  private static RGBA colorForSlice(String title, int depth, int shadeIdx) {
+    return StyleConstants.Palette.getColor(
+        (title.hashCode() ^ depth) & 0x7fffffff, shadeIdx);
   }
 
   public static class Data extends Track.Data {
@@ -488,16 +380,137 @@ public abstract class SliceTrack extends Track.WithQueryEngine<SliceTrack.Data> 
     }
   }
 
-  public static RGBA getColor(String title, int depth) {
-    return colorForSlice(title, depth, 0);
-  }
+  private abstract static class WithQueryEngine extends SliceTrack {
+    private static final String BASE_COLUMNS =
+        "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
+    private static final String SLICES_VIEW =
+        "select " + BASE_COLUMNS + " from %s where track_id = %d";
+    private static final String SLICES_SQL =
+        "select " + BASE_COLUMNS + " from %s " +
+        "where ts >= %d - dur and ts <= %d order by ts";
+    private static final String SLICES_QUANT_SQL =
+        "select min(start_ts), max(end_ts), depth, label, max(cnt) from (" +
+        "  select quantum_ts, start_ts, end_ts, depth, label, count(1) cnt, " +
+        "      quantum_ts-row_number() over (partition by depth, label order by quantum_ts) i from (" +
+        "    select quantum_ts, min(ts) over win1 start_ts, max(ts + dur) over win1 end_ts, depth, " +
+        "        substr(group_concat(name) over win1, 0, 101) label" +
+        "    from %s" +
+        "    window win1 as (partition by quantum_ts, depth order by dur desc" +
+        "        range between unbounded preceding and unbounded following))" +
+        "  group by quantum_ts, depth) " +
+        "group by depth, label, i";
 
-  public static RGBA getBorderColor(String title, int depth) {
-    return colorForSlice(title, depth, StyleConstants.isLight() ? -5 : 5);
-  }
+    private static final String SLICE_SQL =
+        "select " + BASE_COLUMNS + " from %s where slice_id = %d";
+    private static final String SLICE_RANGE_SQL =
+        "select " + BASE_COLUMNS + " from %s " +
+        "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";
 
-  private static RGBA colorForSlice(String title, int depth, int shadeIdx) {
-    return StyleConstants.Palette.getColor(
-        (title.hashCode() ^ depth) & 0x7fffffff, shadeIdx);
+    private final QueryEngine qe;
+    private final String table;
+    private final long trackId;
+
+    protected WithQueryEngine(QueryEngine qe, String table, long trackId) {
+      super(trackId);
+      this.qe = qe;
+      this.table = table;
+      this.trackId = trackId;
+    }
+
+    @Override
+    protected ListenableFuture<?> initialize() {
+      String slices = tableName("slices");
+      String window = tableName("window");
+      String span = tableName("span");
+      return qe.queries(
+          dropTable(span),
+          dropView(slices),
+          dropTable(window),
+          createWindow(window),
+          createView(slices, format(SLICES_VIEW, table, trackId)),
+          createSpan(span, window + ", " + slices + " PARTITIONED depth"));
+    }
+
+    @Override
+    protected ListenableFuture<Data> computeData(DataRequest req) {
+      Window window = Window.compute(req, 5);
+      return transformAsync(window.update(qe, tableName("window")), $ ->
+          window.quantized ? computeQuantSlices(req) : computeSlices(req));
+    }
+
+    private ListenableFuture<Data> computeQuantSlices(DataRequest req) {
+      return transform(qe.query(slicesQuantSql()), res -> {
+        int rows = res.getNumRows();
+        Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
+            new String[rows], new String[rows], new ArgSet[rows]);
+        res.forEachRow((i, row) -> {
+          data.ids[i] = -1;
+          data.starts[i] = row.getLong(0);
+          data.ends[i] = row.getLong(1);
+          data.depths[i] = row.getInt(2);
+          data.categories[i] = "";
+          data.titles[i] = row.getString(3);
+          if (data.titles[i].length() >= 100 && row.getInt(4) > 1) {
+            data.titles[i] += "...";
+          }
+          data.args[i] = ArgSet.EMPTY;
+        });
+        return data;
+      });
+    }
+
+    private String slicesQuantSql() {
+      return format(SLICES_QUANT_SQL, tableName("span"));
+    }
+
+    private ListenableFuture<Data> computeSlices(DataRequest req) {
+      return transformAsync(qe.query(slicesSql(req)), res ->
+        transform(qe.getAllArgs(res.stream().mapToLong(r -> r.getLong(8))), args -> {
+          int rows = res.getNumRows();
+          Data data = new Data(req, new long[rows], new long[rows], new long[rows], new int[rows],
+              new String[rows], new String[rows], new ArgSet[rows]);
+          res.forEachRow((i, row) -> {
+            long start = row.getLong(1);
+            data.ids[i] = row.getLong(0);
+            data.starts[i] = start;
+            data.ends[i] = start + row.getLong(2);
+            data.categories[i] = row.getString(3);
+            data.titles[i] = row.getString(4);
+            data.depths[i] = row.getInt(5);
+            data.args[i] = args.getOrDefault(row.getLong(8), ArgSet.EMPTY);
+          });
+          return data;
+        }));
+    }
+
+    private String slicesSql(DataRequest req) {
+      return format(SLICES_SQL, tableName("slices"), req.range.start, req.range.end);
+    }
+
+    @Override
+    public ListenableFuture<Slice> getSlice(long id) {
+      return transformAsync(expectOneRow(qe.query(sliceSql(id))), r ->
+          transform(qe.getArgs(r.getLong(8)), args -> buildSlice(r, args)));
+    }
+
+    private Slice buildSlice(QueryEngine.Row row) {
+      return buildSlice(row, ArgSet.EMPTY);
+    }
+
+    protected abstract Slice buildSlice(QueryEngine.Row row, ArgSet args);
+
+    private String sliceSql(long id) {
+      return format(SLICE_SQL, tableName("slices"), id);
+    }
+
+    @Override
+    public ListenableFuture<List<Slice>> getSlices(TimeSpan ts, int minDepth, int maxDepth) {
+      return transform(qe.query(sliceRangeSql(ts, minDepth, maxDepth)),
+          res -> res.list(($, row) -> buildSlice(row)));
+    }
+
+    private String sliceRangeSql(TimeSpan ts, int minDepth, int maxDepth) {
+      return format(SLICE_RANGE_SQL, tableName("slices"), ts.end, ts.start, minDepth, maxDepth);
+    }
   }
 }
