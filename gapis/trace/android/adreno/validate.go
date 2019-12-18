@@ -38,7 +38,6 @@ var (
 		{3, "GPU % Utilization", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{21, "% Shaders Busy", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
 		{26, "Fragment ALU Instructions / Sec (Full)", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
-		{29, "Fragment EFU Instructions / Second", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
 		{30, "Textures / Vertex", validate.And(validate.IsNumber, validate.CheckEqualTo(0.0))},
 		{31, "Textures / Fragment", validate.And(validate.IsNumber, validate.CheckApproximateTo(1.0, 0.01))},
 		{37, "% Time Shading Fragments", validate.And(validate.IsNumber, validate.CheckLargerThanZero)},
