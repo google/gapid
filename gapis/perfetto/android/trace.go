@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync/atomic"
 
 	perfetto_pb "protos/perfetto/config"
@@ -42,6 +43,7 @@ const (
 	perfettoTraceFile                       = "/data/misc/perfetto-traces/gapis-trace"
 	prereleaseDriverProperty                = "ro.gfx.driver.1"
 	prereleaseDriverOverrideSettingVariable = "gapid.driver_package_override"
+	prereleaseDriverSettingVariable         = "game_driver_prerelease_opt_in_apps"
 	renderStageVulkanLayerName              = "VkRenderStagesProducer"
 )
 
@@ -132,6 +134,31 @@ func SetupProfileLayers(ctx context.Context, d adb.Device, packageName string, h
 	return cleanup, nil
 }
 
+func setupPrereleaseDriver(ctx context.Context, d adb.Device, p *android.InstalledPackage) (app.Cleanup, error) {
+	driverPackageName, err := d.SystemProperty(ctx, prereleaseDriverProperty)
+	if err != nil {
+		return nil, err
+	}
+	if driverPackageName == "" {
+		return nil, nil
+	}
+	oldOptinApps, err := d.SystemSetting(ctx, "global", prereleaseDriverSettingVariable)
+	if err != nil {
+		return nil, log.Err(ctx, err, "Failed to get prerelease driver opt in apps.")
+	}
+	if strings.Contains(oldOptinApps, p.Name) {
+		return nil, nil
+	}
+	newOptinApps := oldOptinApps + "," + p.Name
+	// TODO(b/145893290) Check whether application has developer driver enabled once b/145893290 is fixed.
+	if err := d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, newOptinApps); err != nil {
+		return nil, log.Errf(ctx, err, "Failed to set up prerelease driver for app: %v.", p.Name)
+	}
+	return func(ctx context.Context) {
+		d.SetSystemSetting(ctx, "global", prereleaseDriverSettingVariable, oldOptinApps)
+	}, nil
+}
+
 // Start optional starts an app and sets up a Perfetto trace
 func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *service.TraceOptions, abi *device.ABI, layers []string) (*Process, app.Cleanup, error) {
 	ctx = log.Enter(ctx, "start")
@@ -148,10 +175,16 @@ func Start(ctx context.Context, d adb.Device, a *android.ActivityAction, opts *s
 			"package":  a.Package.Name,
 			"activity": a.Activity,
 		}.Bind(ctx)
+		// Before start the activity, attempt to setup prerelease driver.
+		nextCleanup, err := setupPrereleaseDriver(ctx, d, a.Package)
+		cleanup = cleanup.Then(nextCleanup)
+		if err != nil {
+			return nil, cleanup.Invoke(ctx), err
+		}
 		// Before we start the activity, attempt to setup environment if gpu.renderstages is selected.
-		var err error
 		hasRenderStages := hasRenderStageEnabled(opts.PerfettoConfig)
-		cleanup, err := SetupProfileLayers(ctx, d, a.Package.Name, hasRenderStages, abi, layers)
+		nextCleanup, err = SetupProfileLayers(ctx, d, a.Package.Name, hasRenderStages, abi, layers)
+		cleanup = cleanup.Then(nextCleanup)
 		if err != nil {
 			return nil, cleanup.Invoke(ctx), err
 		}
