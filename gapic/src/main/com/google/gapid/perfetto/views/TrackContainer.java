@@ -105,8 +105,8 @@ public class TrackContainer {
     protected boolean filtered;
     protected boolean hovered = false;
 
-    public Single(
-        State state, T track, boolean sep, BiConsumer<T, Boolean> filter, boolean filtered) {
+    public Single(State.ForSystemTrace state, T track, boolean sep, BiConsumer<T, Boolean> filter,
+        boolean filtered) {
       this(track ,sep, filter, filtered, new PinState(state));
     }
 
@@ -227,8 +227,9 @@ public class TrackContainer {
     }
 
     public static <T extends CopyablePanel<T> & TitledPanel, D extends CopyablePanel<D>>
-        TrackContainer.Group<T, D> of(State state, T summary, CopyablePanel.Group detail,
-            boolean expanded, BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
+        TrackContainer.Group<T, D> of(State.ForSystemTrace state, T summary,
+            CopyablePanel.Group detail, boolean expanded,
+            BiConsumer<CopyablePanel.Group, Boolean> filter, boolean filtered) {
       return new TrackContainer.Group<T, D>(
           summary, detail, expanded, filter, filtered, new PinState(state));
     }
@@ -389,10 +390,10 @@ public class TrackContainer {
   }
 
   private static class PinState {
-    private final State state;
+    private final State.ForSystemTrace state;
     private Panel pinned;
 
-    public PinState(State state) {
+    public PinState(State.ForSystemTrace state) {
       this.state = state;
       pinned = null;
     }

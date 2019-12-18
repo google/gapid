@@ -26,10 +26,10 @@ import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.models.CpuInfo;
 import com.google.gapid.perfetto.models.ProcessInfo;
-import com.google.gapid.perfetto.models.QueryEngine;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.models.Track;
+import com.google.gapid.perfetto.models.TrackConfig;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
@@ -47,15 +47,14 @@ import java.util.logging.Logger;
 /**
  * Represents the current UI state.
  */
-public class State {
+public abstract class State {
   public static final long MAX_ZOOM_SPAN_NSEC = MICROSECONDS.toNanos(100);
 
   private static final Logger LOG = Logger.getLogger(State.class.getName());
 
   private final Widget owner;
-  private Perfetto.Data data;
+  private TimeSpan traceTime;
   private TimeSpan visibleTime;
-  private final PinnedTracks pinnedTracks;
   private double scrollOffset = 0;
   private double width;
   private double maxScrollOffset = 0;
@@ -69,19 +68,17 @@ public class State {
   private final Events.ListenerCollection<Listener> listeners = Events.listeners(Listener.class);
 
   public State(Widget owner) {
-    this.data = null; // TODO: zero value
     this.owner = owner;
+    this.traceTime = TimeSpan.ZERO;
     this.visibleTime = TimeSpan.ZERO;
-    this.pinnedTracks = new PinnedTracks();
     this.width = 0;
     this.selection = null;
     this.selectedThreads = HashMultimap.create();
   }
 
-  public void update(Perfetto.Data newData) {
-    this.data = newData;
-    this.visibleTime = (newData == null) ? TimeSpan.ZERO : data.traceTime;
-    this.pinnedTracks.clear();
+  public void update(TimeSpan newTraceTime) {
+    this.traceTime = newTraceTime;
+    this.visibleTime = newTraceTime;
     this.selection = null;
     this.selectedThreads = HashMultimap.create();
     this.highlight = TimeSpan.ZERO;
@@ -89,20 +86,8 @@ public class State {
     listeners.fire().onDataChanged();
   }
 
-  public QueryEngine getQueryEngine() {
-    return data.qe;
-  }
-
-  public Perfetto.Data getData() {
-    return data;
-  }
-
   public TimeSpan getVisibleTime() {
     return visibleTime;
-  }
-
-  public PinnedTracks getPinnedTracks() {
-    return pinnedTracks;
   }
 
   public double getScrollOffset() {
@@ -114,7 +99,7 @@ public class State {
   }
 
   public TimeSpan getTraceTime() {
-    return data.traceTime;
+    return traceTime;
   }
 
   public long getResolution() {
@@ -137,17 +122,9 @@ public class State {
     return Math.round(px * nanosPerPx);
   }
 
-  public CpuInfo getCpuInfo() {
-    return data.cpu;
-  }
-
-  public ProcessInfo getProcessInfo(long id) {
-    return data.processes.get(id);
-  }
-
-  public ThreadInfo getThreadInfo(long id) {
-    return data.threads.get(id);
-  }
+  public abstract CpuInfo getCpuInfo();
+  public abstract ProcessInfo getProcessInfo(long id);
+  public abstract ThreadInfo getThreadInfo(long id);
 
   public Selection.MultiSelection getSelection() {
     return selection;
@@ -197,7 +174,7 @@ public class State {
   public boolean setVisibleTime(TimeSpan visibleTime) {
     // TODO: this is not optimal: when zooming in on the right side, then zooming out on the left,
     // the zoom out will hardly zoom.
-    visibleTime = visibleTime.boundedBy((data == null) ? TimeSpan.ZERO : data.traceTime);
+    visibleTime = visibleTime.boundedBy(traceTime);
     if (!this.visibleTime.equals(visibleTime)) {
       this.visibleTime = visibleTime;
       update();
@@ -209,8 +186,7 @@ public class State {
 
   public boolean dragX(TimeSpan atDragStart, double dx) {
     long dt = deltaPxToDuration(dx);
-    return setVisibleTime(atDragStart.move(-dt)
-        .boundedByPreservingDuration((data == null) ? TimeSpan.ZERO : data.traceTime));
+    return setVisibleTime(atDragStart.move(-dt).boundedByPreservingDuration(traceTime));
   }
 
   public boolean dragY(double dy) {
@@ -218,8 +194,7 @@ public class State {
   }
 
   public boolean scrollToX(long t) {
-    return setVisibleTime(visibleTime.moveTo(t)
-        .boundedByPreservingDuration((data == null) ? TimeSpan.ZERO : data.traceTime));
+    return setVisibleTime(visibleTime.moveTo(t).boundedByPreservingDuration(traceTime));
   }
 
   public boolean scrollToY(double y) {
@@ -285,7 +260,7 @@ public class State {
   }
 
   public void setHighlight(TimeSpan highlight) {
-    this.highlight = highlight.boundedBy(data.traceTime);
+    this.highlight = highlight.boundedBy(traceTime);
   }
 
   public <T> void thenOnUiThread(ListenableFuture<T> future, Consumer<T> callback) {
@@ -338,5 +313,49 @@ public class State {
     public default void onDataChanged() { /* do nothing */ }
     public default void onVisibleAreaChanged() { /* do nothing */ }
     public default void onSelectionChanged(Selection.MultiSelection selection) { /* do nothing */}
+  }
+
+  public static class ForSystemTrace extends State {
+    private Perfetto.Data data;
+    private final PinnedTracks pinnedTracks;
+
+    public ForSystemTrace(Widget owner) {
+      super(owner);
+      this.data = null; // TODO: null object
+      this.pinnedTracks = new PinnedTracks();
+    }
+
+    public void update(Perfetto.Data newData) {
+      this.data = newData;
+      this.pinnedTracks.clear();
+      super.update((data == null) ? TimeSpan.ZERO : data.traceTime);
+    }
+
+    public boolean hasData() {
+      return data != null;
+    }
+
+    @Override
+    public CpuInfo getCpuInfo() {
+      return data.cpu;
+    }
+
+    @Override
+    public ProcessInfo getProcessInfo(long id) {
+      return data.processes.get(id);
+    }
+
+    @Override
+    public ThreadInfo getThreadInfo(long id) {
+      return data.threads.get(id);
+    }
+
+    public TrackConfig getTracks() {
+      return data.tracks;
+    }
+
+    public PinnedTracks getPinnedTracks() {
+      return pinnedTracks;
+    }
   }
 }

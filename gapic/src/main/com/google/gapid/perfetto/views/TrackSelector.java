@@ -43,10 +43,10 @@ import org.eclipse.swt.widgets.Text;
  * Shows a searchable tree of all the tracks in the UI.
  */
 public class TrackSelector extends Composite implements State.Listener {
-  private final State state;
+  private final State.ForSystemTrace state;
   protected final CheckboxTreeViewer tree;
 
-  public TrackSelector(Composite parent, State state, Theme theme) {
+  public TrackSelector(Composite parent, State.ForSystemTrace state, Theme theme) {
     super(parent, SWT.NONE);
     this.state = state;
 
@@ -93,10 +93,10 @@ public class TrackSelector extends Composite implements State.Listener {
 
   @Override
   public void onDataChanged() {
-    if (state.getData() == null) {
+    if (!state.hasData()) {
       tree.setInput(null);
     } else {
-      tree.setInput(state.getData().tracks);
+      tree.setInput(state.getTracks());
     }
   }
 

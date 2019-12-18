@@ -57,13 +57,13 @@ public class RootPanel extends Panel.Base implements State.Listener {
   private final TimelinePanel timeline;
   private final PanelGroup top = new PanelGroup();
   private final PanelGroup bottom = new PanelGroup();
-  private final State state;
+  private final State.ForSystemTrace state;
 
   private MouseMode mouseMode = MouseMode.Pan;
   private boolean panOverride = false;
   private Area selection = Area.NONE;
 
-  public RootPanel(State state) {
+  public RootPanel(State.ForSystemTrace state) {
     this.timeline = new TimelinePanel(state);
     this.state = state;
     state.addListener(this);
@@ -78,10 +78,12 @@ public class RootPanel extends Panel.Base implements State.Listener {
   public void onDataChanged() {
     clear();
 
-    top.add(timeline);
-    top.add(state.getPinnedTracks());
-    for (TrackConfig.Element<?> el : state.getData().tracks.elements) {
-      bottom.add(el.createUi(state));
+    if (state.hasData()) {
+      top.add(timeline);
+      top.add(state.getPinnedTracks());
+      for (TrackConfig.Element<?> el : state.getTracks().elements) {
+        bottom.add(el.createUi(state));
+      }
     }
   }
 
