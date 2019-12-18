@@ -1765,6 +1765,7 @@ func (p ComputePipelineObjectʳ) ResourceType(ctx context.Context) api.ResourceT
 func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.GlobalState, cmd *path.Command) (*api.ResourceData, error) {
 	vkState := GetState(s)
 	isBound := false
+	var dispatchInfo DispatchParameters = NilDispatchParameters
 	// Use LastComputeInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1774,6 +1775,7 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 		if ok {
 			if lci.ComputePipeline() == p {
 				isBound = true
+				dispatchInfo = lci.CommandParameters()
 			}
 		}
 	}
@@ -1785,6 +1787,20 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 	source := shadertools.DisassembleSpirvBinary(words)
 	shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
 
+	dispatchList := &api.KeyValuePairList{}
+
+	if !dispatchInfo.Dispatch().IsNil() {
+		dispatchParams := dispatchInfo.Dispatch()
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count X", api.CreatePoDDataValue("u32", dispatchParams.GroupCountX()))
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count Y", api.CreatePoDDataValue("u32", dispatchParams.GroupCountY()))
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count Z", api.CreatePoDDataValue("u32", dispatchParams.GroupCountZ()))
+	} else if !dispatchInfo.DispatchIndirect().IsNil() {
+		dispatchParams := dispatchInfo.DispatchIndirect()
+		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(dispatchParams.Buffer())
+		dispatchList = dispatchList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", dispatchParams.Buffer())))
+		dispatchList = dispatchList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", dispatchParams.Offset()))
+	}
+
 	stages := []*api.Stage{
 		&api.Stage{
 			StageName: "Compute Shader",
@@ -1794,6 +1810,11 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 				&api.DataGroup{
 					GroupName: "Shader Code",
 					Data:      &api.DataGroup_Shader{shader},
+				},
+
+				&api.DataGroup{
+					GroupName: "Dispatch Parameters",
+					Data:      &api.DataGroup_KeyValues{dispatchList},
 				},
 			},
 		},

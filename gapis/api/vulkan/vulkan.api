@@ -319,14 +319,23 @@ sub ref!ExtensionSet supportedDeviceExtensions() {
   VkStencilOpState StencilBack
 }
 
+// This contains the dispatch command parameters. Only one of the dispatch data should be
+// valid at a time. Others should be null.
+@internal class DispatchParameters {
+  ref!vkCmdDispatchArgs           Dispatch
+  ref!vkCmdDispatchIndirectArgs   DispatchIndirect
+}
+
 @internal class ComputeInfo {
   // A mapping from the descriptor set bound numbers to descriptor set objects
   map!(u32, ref!DescriptorSetObject) DescriptorSets
-  // The compute pipeline used for the draw
+  // The compute pipeline used for the dispatch
   ref!ComputePipelineObject ComputePipeline
   // BufferBindingOffsets[setNum][bindingNum][bufferBindingNum] :=
   //    buffer offset for given descriptor set number, binding number, and index of buffer binding
   map!(u32, map!(u32, map!(u32, VkDeviceSize))) BufferBindingOffsets
+  // The dispatch parameters used for the dispatch
+  DispatchParameters CommandParameters
 }
 
 @internal class PresentInfo {
@@ -456,6 +465,12 @@ sub ref!ComputeInfo lastComputeInfo() {
       new!ComputeInfo()
   }
   return lci
+}
+
+sub void clearLastComputeInfoDispatchCommandParameters() {
+  lci := lastComputeInfo()
+  lci.CommandParameters.Dispatch = null
+  lci.CommandParameters.DispatchIndirect = null
 }
 
 sub ref!PushConstantInfo lastPushConstants() {
