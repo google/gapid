@@ -78,9 +78,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
   @Override
   protected void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("Counter", () -> {
-      CounterTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      CounterTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -149,7 +147,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
   @Override
   protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    CounterTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    CounterTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
     }
@@ -190,8 +188,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
       @Override
       public boolean click() {
         state.setSelection(Selection.Kind.Counter,
-            transform(track.getValue(state.getQueryEngine(), t),
-                d -> new CounterTrack.Values(track.getCounter().name, d)));
+            transform(track.getValue(t), d -> new CounterTrack.Values(track.getCounter().name, d)));
         return true;
       }
     };
@@ -199,7 +196,7 @@ public class CounterPanel extends TrackPanel<CounterPanel> implements Selectable
 
   @Override
   public void computeSelection(CombiningBuilder builder, Area area, TimeSpan ts) {
-    builder.add(Selection.Kind.Counter, transform(track.getValues(state.getQueryEngine(), ts),
+    builder.add(Selection.Kind.Counter, transform(track.getValues(ts),
         data -> new CounterTrack.Values(track.getCounter().name, data)));
   }
 

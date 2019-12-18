@@ -64,9 +64,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
   @Override
   protected void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("MemSummary", () -> {
-      MemorySummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      MemorySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -149,7 +147,7 @@ public class MemorySummaryPanel extends TrackPanel<MemorySummaryPanel> {
 
   @Override
   protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    MemorySummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    MemorySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
     }

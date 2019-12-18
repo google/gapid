@@ -31,7 +31,7 @@ import java.util.List;
 /**
  * {@link Track} summarizing the total CPU usage.
  */
-public class CpuSummaryTrack extends Track<CpuSummaryTrack.Data> {
+public class CpuSummaryTrack extends Track.WithQueryEngine<CpuSummaryTrack.Data> {
   private static final String DATA_SQL =
       "select quantum_ts, sum(dur)/cast(%d * %d as float) " +
       "from %s where utid != 0 group by quantum_ts";
@@ -41,8 +41,8 @@ public class CpuSummaryTrack extends Track<CpuSummaryTrack.Data> {
 
   private final int numCpus;
 
-  public CpuSummaryTrack(int numCpus) {
-    super("cpu_sum");
+  public CpuSummaryTrack(QueryEngine qe, int numCpus) {
+    super(qe, "cpu_sum");
     this.numCpus = numCpus;
   }
 
@@ -51,7 +51,7 @@ public class CpuSummaryTrack extends Track<CpuSummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String span = tableName("span"), window = tableName("window");
     return qe.queries(
         dropTable(span),
@@ -61,7 +61,7 @@ public class CpuSummaryTrack extends Track<CpuSummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.quantized(req, 5);
     return transformAsync(window.update(qe, tableName("window")), $1 ->
       transform(qe.query(sql(window.bucketSize)), res -> {
@@ -75,7 +75,7 @@ public class CpuSummaryTrack extends Track<CpuSummaryTrack.Data> {
     return format(DATA_SQL, numCpus, ns, tableName("span"));
   }
 
-  public static ListenableFuture<List<CpuTrack.Slice>> getSlices(QueryEngine qe, TimeSpan ts) {
+  public ListenableFuture<List<CpuTrack.Slice>> getSlices(TimeSpan ts) {
     return transform(qe.query(sliceRangeSql(ts)), result -> {
       List<CpuTrack.Slice> slices = Lists.newArrayList();
       result.forEachRow((i, r) -> slices.add(new CpuTrack.Slice(r)));

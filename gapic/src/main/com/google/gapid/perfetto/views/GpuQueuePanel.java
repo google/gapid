@@ -81,9 +81,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
   @Override
   public void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("GpuQueue", () -> {
-      SliceTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      SliceTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -157,7 +155,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
 
   @Override
   protected Hover onTrackMouseMove(Fonts.TextMeasurer m, double x, double y) {
-    SliceTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    SliceTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null) {
       return Hover.NONE;
     }
@@ -210,7 +208,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
           @Override
           public boolean click() {
             if (id >= 0) {
-              state.setSelection(Selection.Kind.Gpu, track.getSlice(state.getQueryEngine(), id));
+              state.setSelection(Selection.Kind.Gpu, track.getSlice(id));
               return true;
             }
             return false;
@@ -244,7 +242,7 @@ public class GpuQueuePanel extends TrackPanel<GpuQueuePanel> implements Selectab
       }
 
       builder.add(Selection.Kind.Gpu, transform(
-          track.getSlices(state.getQueryEngine(), ts, startDepth, endDepth),
+          track.getSlices(ts, startDepth, endDepth),
           SliceTrack.Slices::new));
     }
   }

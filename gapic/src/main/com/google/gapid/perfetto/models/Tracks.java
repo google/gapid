@@ -65,14 +65,14 @@ public class Tracks {
       return data;
     }
 
-    CpuSummaryTrack summary = new CpuSummaryTrack(data.getCpu().count());
+    CpuSummaryTrack summary = new CpuSummaryTrack(data.qe, data.getCpu().count());
     boolean hasAnyFrequency = false;
     for (CpuInfo.Cpu cpu : data.getCpu().cpus()) {
-      CpuTrack track = new CpuTrack(cpu);
+      CpuTrack track = new CpuTrack(data.qe, cpu);
       data.tracks.addTrack(summary.getId(), track.getId(), "CPU " + cpu.id,
           single(state -> new CpuPanel(state, track), false));
       if (cpu.hasFrequency()) {
-        CpuFrequencyTrack freqTrack = new CpuFrequencyTrack(cpu);
+        CpuFrequencyTrack freqTrack = new CpuFrequencyTrack(data.qe, cpu);
         data.tracks.addTrack(summary.getId(), freqTrack.getId(), "CPU " + cpu.id + " Frequency",
             single(state -> new CpuFrequencyPanel(state, freqTrack), false));
         hasAnyFrequency = true;
@@ -115,7 +115,7 @@ public class Tracks {
       data.tracks.addLabelGroup(
           "gpu", "gpu_queues", "GPU Queues", group(state -> new TitlePanel("GPU Queues"), true));
       for (GpuInfo.Queue queue : data.getGpu().queues()) {
-        SliceTrack track = SliceTrack.forGpuQueue(queue);
+        SliceTrack track = SliceTrack.forGpuQueue(data.qe, queue);
         data.tracks.addTrack("gpu_queues", track.getId(), queue.getDisplay(),
             single(state -> new GpuQueuePanel(state, queue, track), true));
       }
@@ -125,7 +125,7 @@ public class Tracks {
       data.tracks.addLabelGroup("gpu", "gpu_counters", "GPU Counters",
           group(state -> new TitlePanel("GPU Counters"), true));
       for (CounterInfo counter : counters) {
-        CounterTrack track = new CounterTrack(counter);
+        CounterTrack track = new CounterTrack(data.qe, counter);
         data.tracks.addTrack("gpu_counters", track.getId(), counter.name,
             single(state -> new CounterPanel(state, track), true));
       }
@@ -148,7 +148,8 @@ public class Tracks {
     // Whether we have at least two idle processes.
     boolean hasIdles = count > 1 && processes.get(processes.size() - 2).totalDur < idleCutoffProc;
     processes.forEach(process -> {
-      ProcessSummaryTrack summary = new ProcessSummaryTrack(data.getCpu().count(), process);
+      ProcessSummaryTrack summary =
+          new ProcessSummaryTrack(data.qe, data.getCpu().count(), process);
       String parent = (process.totalDur >= idleCutoffProc || !hasIdles) ? "procs" : "procs_idle";
       data.tracks.addGroup(parent, summary.getId(), process.getDisplay(),
           group(state -> new ProcessSummaryPanel(state, summary), false));
@@ -157,7 +158,7 @@ public class Tracks {
           .map(tid -> data.getThreads().get(tid))
           .filter(Objects::nonNull)
           .sorted((t1, t2) -> Long.compare(t2.totalDur, t1.totalDur))
-          .map(ThreadTrack::new)
+          .map(t -> new ThreadTrack(data.qe, t))
           .collect(Collectors.toList());
       final long idleCutoffThread =
           Math.min(idleCutoffProc, Math.round(IDLE_PERCENT_CUTOFF * process.totalDur));
@@ -200,7 +201,7 @@ public class Tracks {
         data.tracks.addLabelGroup(summary.getId(), "vulkan_counters", "Vulkan Counters",
             group(state -> new TitlePanel("Vulkan Memory Usage Counters"), true));
         for (CounterInfo counter : counters) {
-          CounterTrack track = new CounterTrack(counter);
+          CounterTrack track = new CounterTrack(data.qe, counter);
           data.tracks.addTrack("vulkan_counters", track.getId(), counter.name,
               single(state -> new VulkanCounterPanel(state, track), true));
         }

@@ -32,7 +32,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.views.BatterySummaryPanel;
 
-public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
+public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTrack.Data>{
   private static final String VIEW_SQL =
       "select ts, lead(ts) over (order by ts) - ts dur, max(a) capacity, max(b) charge," +
       "   max(c) current " +
@@ -54,8 +54,9 @@ public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
   private final long currentId;
   private final boolean needQuantize;
 
-  public BatterySummaryTrack(CounterInfo capacity, CounterInfo charge, CounterInfo current) {
-    super("bat_sum");
+  public BatterySummaryTrack(
+      QueryEngine qe, CounterInfo capacity, CounterInfo charge, CounterInfo current) {
+    super(qe, "bat_sum");
     this.capacityId = capacity.id;
     this.chargeId = charge.id;
     this.currentId = current.id;
@@ -64,7 +65,7 @@ public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String vals = tableName("vals");
     String span = tableName("span");
     String window = tableName("window");
@@ -82,12 +83,12 @@ public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window win = needQuantize ? Window.compute(req, 5) : Window.compute(req);
-    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(qe, req, win));
+    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(req, win));
   }
 
-  private ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req, Window win) {
+  private ListenableFuture<Data> computeData(DataRequest req, Window win) {
     return transform(qe.query(win.quantized ? summarySql() : counterSQL()), res -> {
       int rows = res.getNumRows();
       if (rows == 0) {
@@ -127,7 +128,7 @@ public class BatterySummaryTrack extends Track<BatterySummaryTrack.Data>{
       return Futures.immediateFuture(data);
     }
 
-    BatterySummaryTrack track = new BatterySummaryTrack(battCap, battCharge, battCurrent);
+    BatterySummaryTrack track = new BatterySummaryTrack(data.qe, battCap, battCharge, battCurrent);
     data.tracks.addTrack(null, track.getId(), "Battery Usage",
         single(state -> new BatterySummaryPanel(state, track), true));
     return Futures.immediateFuture(data);

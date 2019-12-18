@@ -46,7 +46,7 @@ import java.util.Set;
 /**
  * {@link Track} containing CPU slices for a single core.
  */
-public class CpuTrack extends Track<CpuTrack.Data> {
+public class CpuTrack extends Track.WithQueryEngine<CpuTrack.Data> {
   private static final String SUMMARY_SQL =
       "select quantum_ts, sum(dur)/cast(%d as float) " +
       "from %s where cpu = %d and utid != 0 " +
@@ -64,8 +64,8 @@ public class CpuTrack extends Track<CpuTrack.Data> {
 
   private final CpuInfo.Cpu cpu;
 
-  public CpuTrack(CpuInfo.Cpu cpu) {
-    super("cpu_" + cpu.id);
+  public CpuTrack(QueryEngine qe, CpuInfo.Cpu cpu) {
+    super(qe, "cpu_" + cpu.id);
     this.cpu = cpu;
   }
 
@@ -74,7 +74,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String span = tableName("span"), window = tableName("window");
     return qe.queries(
         dropTable(span),
@@ -84,13 +84,13 @@ public class CpuTrack extends Track<CpuTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window window = Window.compute(req, 10);
     return transformAsync(window.update(qe, tableName("window")),
-        $ -> window.quantized ? computeSummary(qe, req, window) : computeSlices(qe, req));
+        $ -> window.quantized ? computeSummary(req, window) : computeSlices(req));
   }
 
-  private ListenableFuture<Data> computeSummary(QueryEngine qe, DataRequest req, Window w) {
+  private ListenableFuture<Data> computeSummary(DataRequest req, Window w) {
     return transform(qe.query(summarySql(w.bucketSize)), result -> {
       Data data = new Data(req, w.bucketSize, new double[w.getNumberOfBuckets()]);
       result.forEachRow(($, r) -> data.utilizations[r.getInt(0)] = r.getDouble(1));
@@ -102,7 +102,7 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SUMMARY_SQL, ns, tableName("span"), cpu.id);
   }
 
-  private ListenableFuture<Data> computeSlices(QueryEngine qe, DataRequest req) {
+  private ListenableFuture<Data> computeSlices(DataRequest req) {
     return transform(qe.query(slicesSql()), result -> {
       int rows = result.getNumRows();
       Data data = new Data(req, new long[rows], new long[rows], new long[rows], new long[rows]);
@@ -121,6 +121,10 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SLICES_SQL, tableName("span"), cpu.id);
   }
 
+  public ListenableFuture<Slice> getSlice(long id) {
+    return getSlice(qe, id);
+  }
+
   public static ListenableFuture<Slice> getSlice(QueryEngine qe, long id) {
     return transform(expectOneRow(qe.query(sliceSql(id))), Slice::new);
   }
@@ -129,16 +133,15 @@ public class CpuTrack extends Track<CpuTrack.Data> {
     return format(SLICE_SQL, id);
   }
 
-  public static ListenableFuture<List<Slice>> getSlices(QueryEngine qe, int cpu, TimeSpan ts) {
-    return transform(qe.query(sliceRangeSql(cpu, ts)), result -> {
+  public ListenableFuture<List<Slice>> getSlices(TimeSpan ts) {
+    return transform(qe.query(sliceRangeSql(cpu.id, ts)), result -> {
       List<Slice> slices = Lists.newArrayList();
       result.forEachRow((i, r) -> slices.add(new Slice(r)));
       return slices;
     });
   }
 
-  public static ListenableFuture<List<Slice>> getSlicesForThread(QueryEngine qe, long utid,
-      TimeSpan ts) {
+  public static ListenableFuture<List<Slice>> getSlices(QueryEngine qe, long utid, TimeSpan ts) {
     return transform(qe.query(sliceRangeForThreadSql(utid, ts)), result -> {
       List<Slice> slices = Lists.newArrayList();
       result.forEachRow((i, r) -> slices.add(new Slice(r)));

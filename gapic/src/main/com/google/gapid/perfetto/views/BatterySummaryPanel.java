@@ -65,9 +65,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
   @Override
   protected void renderTrack(RenderContext ctx, Repainter repainter, double w, double h) {
     ctx.trace("BatSummary", () -> {
-      BatterySummaryTrack.Data data = track.getData(state, () -> {
-        repainter.repaint(new Area(0, 0, width, height));
-      });
+      BatterySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread(repainter));
       drawLoading(ctx, data, state, h);
 
       if (data == null) {
@@ -143,7 +141,7 @@ public class BatterySummaryPanel extends TrackPanel<BatterySummaryPanel> {
 
   @Override
   protected Hover onTrackMouseMove(TextMeasurer m, double x, double y) {
-    BatterySummaryTrack.Data data = track.getData(state, () -> { /* nothing */ });
+    BatterySummaryTrack.Data data = track.getData(state.toRequest(), onUiThread());
     if (data == null || data.ts.length == 0) {
       return Hover.NONE;
     }

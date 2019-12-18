@@ -35,7 +35,7 @@ import com.google.gapid.perfetto.views.MemorySummaryPanel;
 /**
  * {@link Track} containing the total system memory usage data.
  */
-public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
+public class MemorySummaryTrack extends Track.WithQueryEngine<MemorySummaryTrack.Data> {
   private static final String VIEW_SQL =
       "select ts, lead(ts) over (order by ts) - ts dur, max(a) total, max(b) unused," +
       "   max(c) + max(d) + max(e) buffCache " +
@@ -61,9 +61,9 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   private final long cachedId;
   private final long swapCachedId;
 
-  public MemorySummaryTrack(long maxTotal, long totalId, long unusedId, long buffersId,
-      long cachedId, long swapCachedId) {
-    super("mem_sum");
+  public MemorySummaryTrack(QueryEngine qe, long maxTotal, long totalId, long unusedId,
+      long buffersId, long cachedId, long swapCachedId) {
+    super(qe, "mem_sum");
     this.maxTotal = maxTotal;
     this.totalId = totalId;
     this.unusedId = unusedId;
@@ -77,7 +77,7 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<?> initialize(QueryEngine qe) {
+  protected ListenableFuture<?> initialize() {
     String vals = tableName("vals");
     String span = tableName("span");
     String window = tableName("window");
@@ -96,12 +96,12 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
   }
 
   @Override
-  protected ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req) {
+  protected ListenableFuture<Data> computeData(DataRequest req) {
     Window win = Window.compute(req, 5);
-    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(qe, req, win));
+    return transformAsync(win.update(qe, tableName("window")), $ -> computeData(req, win));
   }
 
-  private ListenableFuture<Data> computeData(QueryEngine qe, DataRequest req, Window win) {
+  private ListenableFuture<Data> computeData(DataRequest req, Window win) {
     return transform(qe.query(win.quantized ? summarySql() : counterSQL()), res -> {
       int rows = res.getNumRows();
       if (rows == 0) {
@@ -145,7 +145,7 @@ public class MemorySummaryTrack extends Track<MemorySummaryTrack.Data> {
     }
 
     MemorySummaryTrack track = new MemorySummaryTrack(
-        (long)total.max, total.id, free.id, buffers.id, cached.id, swapCached.id);
+        data.qe, (long)total.max, total.id, free.id, buffers.id, cached.id, swapCached.id);
     data.tracks.addTrack(null, track.getId(), "Memory Usage",
         single(state -> new MemorySummaryPanel(state, track), true));
     return Futures.immediateFuture(data);
