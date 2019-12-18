@@ -81,7 +81,8 @@ public class TraceView extends Composite
 
     DrawerComposite container = loading.getContents();
     container.setText("Selection");
-    canvas = new PanelCanvas(container.getMain(), SWT.H_SCROLL, widgets.theme, rootPanel);
+    canvas = new PanelCanvas(
+        container.getMain(), SWT.H_SCROLL | SWT.V_SCROLL, widgets.theme, rootPanel);
     new SelectionView(container.getDrawer(), state);
 
     Consumer<RootPanel.MouseMode> modeSelector =
