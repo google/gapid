@@ -44,12 +44,15 @@ import org.eclipse.swt.widgets.Text;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+/**
+ * Dialog showing keyboard and mouse help for the trace view.
+ */
 public class KeyboardMouseHelpDialog {
 
   private static final Logger LOG = Logger.getLogger(KeyboardMouseHelpDialog.class.getName());
 
   public static void showHelp(Shell shell, Analytics analytics, Widgets widgets) {
-    analytics.postInteraction(View.About, ClientAction.Show);
+    analytics.postInteraction(View.Help, ClientAction.Show);
     new DialogBase(shell, widgets.theme) {
       @Override
       public String getTitle() {
@@ -98,8 +101,7 @@ public class KeyboardMouseHelpDialog {
 
   protected static String readKeyboardMouseHelp(boolean html) {
     try {
-      String result = Resources.toString(Resources.getResource("text/keyboard-mouse-help.html"), UTF_8);
-      return result;
+      return Resources.toString(Resources.getResource("text/keyboard-mouse-help.html"), UTF_8);
     } catch (IOException | IllegalArgumentException e) {
       LOG.log(SEVERE, "Failed to load help.", e);
       return "Failed to load help.";

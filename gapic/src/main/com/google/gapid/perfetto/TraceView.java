@@ -22,7 +22,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_FAST;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.ZOOM_FACTOR_SCALE;
 import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createButton;
+import static com.google.gapid.widgets.Widgets.createButtonWithImage;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 
@@ -345,7 +345,7 @@ public class TraceView extends Composite
       createLabel(this, "Mode:");
       toolBar = withLayoutData(new ToolBar(this, SWT.FLAT | SWT.HORIZONTAL | SWT.TRAIL),
           new GridData(SWT.FILL, SWT.FILL, true, true));
-      createButton(this, "[?]", e -> KeyboardMouseHelpDialog.showHelp(getShell(), models.analytics, widgets));
+      createButtonWithImage(this, widgets.theme.help(), e -> KeyboardMouseHelpDialog.showHelp(getShell(), models.analytics, widgets));
     }
 
     public Consumer<RootPanel.MouseMode> buildModeActions(Theme theme, Consumer<MouseMode> onClick) {

@@ -368,6 +368,13 @@ public class Widgets {
     return result;
   }
 
+  public static Button createButtonWithImage(Composite parent, Image image, Listener listener) {
+    Button result = new Button(parent, SWT.PUSH);
+    result.setImage(image);
+    result.addListener(SWT.Selection, listener);
+    return result;
+  }
+
   public static Spinner createSpinner(Composite parent, int value, int min, int max) {
     Spinner result = new Spinner(parent, SWT.BORDER);
     // Avoid not being able to update the minimum value.
