@@ -54,9 +54,9 @@ function run_copyright_headers() {
   tmpfile=`mktemp`
   for suffix in "cc" "cpp" "frag" "glsl" "go" "h" "hpp" "java" "js" "sh" "vert" "xml"; do
     # Grep flag '-L' print files that DO NOT match the copyright regex
-    # Filter out third party files
+    # Filter out third party files, and Jetbrains files
     # Grep seems to match "(standard input)", filter this out in the for loop output
-    find . -type f -name "*.${suffix}" | grep -v "./tools/build/third_party" | xargs grep -L "Copyright .* Google"
+    find . -type f -name "*.${suffix}" | grep -v -e "\./tools/build/third_party" -e ".*/\.ijwb" -e ".*/\.idea" | xargs grep -L "Copyright .* Google"
   done | grep -v "(standard input)" > ${tmpfile}
   if test -s ${tmpfile}; then
     # tempfile is NOT empty
