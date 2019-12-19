@@ -92,7 +92,7 @@ public class QueryViewer extends Composite
     Composite middle = createComposite(top, new GridLayout(2, false));
     run = withLayoutData(createButton(middle, "Run", e -> exec()),
         new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
-    withLayoutData(createButton(middle, "Export", e->export()),
+    withLayoutData(createButton(middle, "Export", e -> export()),
         new GridData(SWT.LEFT, SWT.BOTTOM, false, false));
     tablePage = withLayoutData(createSpinner(middle, 1, 1, 1, e -> turnPage()),
         new GridData(SWT.FILL, SWT.BOTTOM, false, false, 2, 1));
@@ -178,7 +178,7 @@ public class QueryViewer extends Composite
   }
 
   private void export() {
-    FileDialog dialog = new FileDialog(getShell(), SWT.OPEN);
+    FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
     dialog.setFilterPath(OS.cwd);
 
     dialog.setText("Export");
