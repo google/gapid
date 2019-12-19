@@ -141,7 +141,7 @@ public class TraceConfigDialog extends DialogBase {
     if (settings.perfettoVulkan) {
       Device.VulkanProfilingLayers vkLayers = caps.getVulkanProfileLayers();
       if ((settings.perfettoVulkanCPUTiming && vkLayers.getCpuTiming()) ||
-          (settings.perfettoVulkanMemoryTracker && vkLayers.getMemoryTracker())) {
+          (settings.perfettoVulkanMemoryTracking && vkLayers.getMemoryTracker())) {
         enabled.add("Vulkan");
       }
     }
@@ -248,10 +248,18 @@ public class TraceConfigDialog extends DialogBase {
                 .setName("VulkanCPUTiming")
                 .setLegacyConfig(enabled.stream().collect(joining(":")));
       }
-      if (vkLayers.getMemoryTracker() && settings.perfettoVulkanMemoryTracker) {
+      if (vkLayers.getMemoryTracker() && settings.perfettoVulkanMemoryTracking) {
+        List<String> enabled = Lists.newArrayList();
+        if (settings.perfettoVulkanMemoryTrackingDevice) {
+          enabled.add("Device");
+        }
+        if (settings.perfettoVulkanMemoryTrackingDriver) {
+          enabled.add("Driver");
+        }
         config.addDataSourcesBuilder()
             .getConfigBuilder()
-                .setName("VulkanMemoryTracker");
+                .setName("VulkanMemoryTracking")
+                .setLegacyConfig(enabled.stream().collect(joining(":")));
       }
     }
 
@@ -313,6 +321,8 @@ public class TraceConfigDialog extends DialogBase {
     private final Button vulkanCPUTimingQueue;
 
     private final Button vulkanMemoryTracking;
+    private final Button vulkanMemoryTrackingDevice;
+    private final Button vulkanMemoryTrackingDriver;
 
     public InputArea(
         Composite parent, Settings settings, Theme theme, Device.PerfettoCapability caps) {
@@ -433,10 +443,20 @@ public class TraceConfigDialog extends DialogBase {
           vulkanCPUTimingCommandBuffer = null;
         }
         if (caps.getVulkanProfileLayers().getMemoryTracker()) {
-          vulkanMemoryTracking = createCheckbox(vkGroup, "Memory Tracking",
-              settings.perfettoVulkanMemoryTracker, e -> updateVulkan());
+          vulkanMemoryTracking = createCheckbox(
+              vkGroup, "Memory Tracking", settings.perfettoVulkanMemoryTracking, e -> updateVulkan());
+          Composite memoryTrackingGroup = withLayoutData(
+              createComposite(vkGroup, withMargin(new GridLayout(1, false), 5, 0)),
+              withIndents(new GridData(), GROUP_INDENT, 0));
+
+          vulkanMemoryTrackingDevice =
+              createCheckbox(memoryTrackingGroup, "Device", settings.perfettoVulkanMemoryTrackingDevice);
+          vulkanMemoryTrackingDriver =
+              createCheckbox(memoryTrackingGroup, "Driver", settings.perfettoVulkanMemoryTrackingDriver);
         } else {
           vulkanMemoryTracking = null;
+          vulkanMemoryTrackingDevice = null;
+          vulkanMemoryTrackingDriver = null;
         }
       } else {
         vulkan = null;
@@ -447,6 +467,8 @@ public class TraceConfigDialog extends DialogBase {
         vulkanCPUTimingQueue = null;
         vulkanCPUTimingCommandBuffer = null;
         vulkanMemoryTracking = null;
+        vulkanMemoryTrackingDevice = null;
+        vulkanMemoryTrackingDriver = null;
       }
 
       updateCpu();
@@ -490,7 +512,9 @@ public class TraceConfigDialog extends DialogBase {
         settings.perfettoVulkanCPUTimingQueue = vulkanCPUTimingQueue.getSelection();
       }
       if (vulkanMemoryTracking != null) {
-        settings.perfettoVulkanMemoryTracker = vulkanMemoryTracking.getSelection();
+        settings.perfettoVulkanMemoryTracking = vulkanMemoryTracking.getSelection();
+        settings.perfettoVulkanMemoryTrackingDevice = vulkanMemoryTrackingDevice.getSelection();
+        settings.perfettoVulkanMemoryTrackingDriver = vulkanMemoryTrackingDriver.getSelection();
       }
     }
 
@@ -543,6 +567,9 @@ public class TraceConfigDialog extends DialogBase {
       }
       if (vulkanMemoryTracking != null) {
         vulkanMemoryTracking.setEnabled(vkEnabled);
+        boolean enabled = vkEnabled && vulkanMemoryTracking.getSelection();
+        vulkanMemoryTrackingDevice.setEnabled(enabled);
+        vulkanMemoryTrackingDriver.setEnabled(enabled);
       }
     }
 

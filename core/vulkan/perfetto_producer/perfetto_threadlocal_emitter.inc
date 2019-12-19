@@ -48,7 +48,7 @@ ThreadlocalEmitter<T>::ThreadlocalEmitter()
       interned_categories_(&arena_),
       interned_function_names_(&arena_),
       interned_vulkan_annotation_keys_(&arena_),
-      enabled_categories(&arena_),
+      enabled_categories_(&arena_),
       last_reset_timestamp_(0),
       reset_period_ms_(SEQUENCE_RESET_PERIOD_MS),
       reset_(false) {
@@ -239,16 +239,16 @@ void ThreadlocalEmitter<T>::SetupTracing(
     const typename perfetto::DataSourceBase::SetupArgs& a) {
   auto config = a.config;
   if (config) {
-    enabled_categories.clear();
+    enabled_categories_.clear();
     std::istringstream f(config->legacy_config());
     std::string s;
-    enabled_categories[""] = 1;
+    enabled_categories_[""] = 1;
     while (std::getline(f, s, ':')) {
-      enabled_categories[s] = 1;
+      enabled_categories_[s] = 1;
     }
   } else {
-    enabled_categories.clear();
-    enabled_categories[""] = 1;
+    enabled_categories_.clear();
+    enabled_categories_[""] = 1;
   }
 }
 
@@ -257,7 +257,7 @@ void ThreadlocalEmitter<T>::StartEvent(const char* category, const char* name) {
   if (!enabled_) {
     return;
   }
-  if (category && !enabled_categories.contains(category)) {
+  if (category && !enabled_categories_.contains(category)) {
     return;
   }
   ResetIfNecessary();
@@ -291,7 +291,7 @@ void ThreadlocalEmitter<T>::EndEvent(const char* category) {
   if (!enabled_) {
     return;
   }
-  if (category && !enabled_categories.contains(category)) {
+  if (category && !enabled_categories_.contains(category)) {
     return;
   }
   uint64_t time = perfetto::base::GetBootTimeNs().count();
