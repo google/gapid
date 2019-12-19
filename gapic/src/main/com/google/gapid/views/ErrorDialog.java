@@ -24,12 +24,11 @@ import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withSizeHints;
 import static com.google.gapid.widgets.Widgets.withSpans;
 
-import com.google.common.escape.Escaper;
-import com.google.common.net.UrlEscapers;
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.URLs;
 
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IconAndMessageDialog;
@@ -54,8 +53,6 @@ public class ErrorDialog {
   private static final int MAX_DETAILS_SIZE = 300;
   private static final int DETAILS_STYLE =
       SWT.MULTI | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL | SWT.READ_ONLY;
-  private static final String FILE_BUG_URL =
-      "https://github.com/google/gapid/issues/new?title=%s&body=%s&labels=user";
 
   public static void showErrorDialog(
       Shell shell, Analytics analytics, String text, Throwable exception) {
@@ -136,17 +133,12 @@ public class ErrorDialog {
         Composite inner = createComposite(details, new GridLayout(1, false));
         withLayoutData(createTextbox(inner, DETAILS_STYLE, detailString),
             new GridData(SWT.FILL, SWT.FILL, true, true));
-        withLayoutData(createLink(inner, "<a>File a bug</a> on GitHub", e -> {
-          Program.launch(getFileBugUrl());
+        withLayoutData(createLink(inner, "<a>File a bug</a>", e -> {
+          Program.launch(URLs.FILE_BUG_URL);
         }), new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
         withLayoutData(createLink(inner, "<a>Show logs</a> directory", e -> {
           AboutDialog.showLogDir(analytics);
         }), new GridData(SWT.RIGHT, SWT.BOTTOM, false, false));
-      }
-
-      private String getFileBugUrl() {
-        Escaper esc = UrlEscapers.urlFormParameterEscaper();
-        return String.format(FILE_BUG_URL, esc.escape(text), esc.escape(Messages.BUG_BODY));
       }
 
       @Override

@@ -45,6 +45,7 @@ import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.StatusWatcher;
 import com.google.gapid.util.UpdateWatcher;
+import com.google.gapid.util.URLs;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.LoadablePanel;
@@ -374,6 +375,8 @@ public class MainWindow extends ApplicationWindow {
     manager.add(MenuItems.HelpShowLogs.create(() -> showLogDir(models.analytics)));
     manager.add(MenuItems.HelpLicenses.create(
         () -> showLicensesDialog(getShell(), models.analytics, widgets.theme)));
+    manager.add(MenuItems.HelpFileBug.create(
+        () -> Program.launch(URLs.FILE_BUG_URL)));
     return manager;
   }
 
@@ -437,7 +440,8 @@ public class MainWindow extends ApplicationWindow {
     HelpOnlineHelp("&Online Help\tF1", SWT.F1),
     HelpAbout("&About"),
     HelpShowLogs("Open &Log Directory"),
-    HelpLicenses("&Licenses");
+    HelpLicenses("&Licenses"),
+    HelpFileBug("File a &Bug");
 
     public static final String FILE_ID = "file";
     public static final String VIEW_ID = "view";
