@@ -154,6 +154,22 @@ public class Tracks {
       data.tracks.addGroup(parent, summary.getId(), process.getDisplay(),
           group(state -> new ProcessSummaryPanel(state, summary), false));
 
+      // For each process, add Vulkan memory usage counters if any exist
+      List<CounterInfo> counters = data.getCounters().values().stream()
+          .filter(c -> c.type == CounterInfo.Type.Process && c.ref == process.upid &&
+              c.count > 0 && c.name.startsWith("vulkan"))
+          .collect(toList());
+      if (!counters.isEmpty()) {
+        String groupId = "vulkan_counters_" + process.upid;
+        data.tracks.addLabelGroup(summary.getId(), groupId, "Vulkan Memory Usage",
+            group(state -> new TitlePanel("Vulkan Memory Usage"), true));
+        for (CounterInfo counter : counters) {
+          CounterTrack track = new CounterTrack(data.qe, counter);
+          data.tracks.addTrack(groupId, track.getId(), counter.name,
+              single(state -> new VulkanCounterPanel(state, track), false));
+        }
+      }
+
       List<ThreadTrack> threads = process.utids.stream()
           .map(tid -> data.getThreads().get(tid))
           .filter(Objects::nonNull)
@@ -190,21 +206,6 @@ public class Tracks {
         final int idleCount = threads.size() - firstIdle;
         data.tracks.addLabelGroup(summary.getId(), summary.getId() + "_idle", "Idle Threads",
             group(state -> new TitlePanel(idleCount + " Idle Threads (< 0.1%)"), false));
-      }
-
-      // For each process, add Vulkan memory usage counters if any exist
-      List<CounterInfo> counters = data.getCounters().values().stream()
-      .filter(c -> (c.count > 0) && (c.name.startsWith("vulkan")))
-      .collect(toList());
-
-      if (!counters.isEmpty()) {
-        data.tracks.addLabelGroup(summary.getId(), "vulkan_counters", "Vulkan Counters",
-            group(state -> new TitlePanel("Vulkan Memory Usage Counters"), true));
-        for (CounterInfo counter : counters) {
-          CounterTrack track = new CounterTrack(data.qe, counter);
-          data.tracks.addTrack("vulkan_counters", track.getId(), counter.name,
-              single(state -> new VulkanCounterPanel(state, track), true));
-        }
       }
     });
 
