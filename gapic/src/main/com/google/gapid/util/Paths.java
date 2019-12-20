@@ -232,6 +232,16 @@ public class Paths {
         .build();
   }
 
+  public static Path.Any pipelinesAfter(CommandIndex command) {
+    if (command == null) {
+      return null;
+    }
+    return Path.Any.newBuilder()
+        .setPipelines(Path.Pipelines.newBuilder()
+            .setAfter(command.getCommand()))
+        .build();
+  }
+
   public static final Path.MeshOptions NODATA_MESH_OPTIONS = Path.MeshOptions.newBuilder()
       .setExcludeData(true)
       .build();
