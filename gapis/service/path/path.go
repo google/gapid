@@ -83,6 +83,7 @@ func (n *MemoryAsType) Path() *Any              { return &Any{Path: &Any_MemoryA
 func (n *Mesh) Path() *Any                      { return &Any{Path: &Any_Mesh{n}} }
 func (n *Metrics) Path() *Any                   { return &Any{Path: &Any_Metrics{n}} }
 func (n *Parameter) Path() *Any                 { return &Any{Path: &Any_Parameter{n}} }
+func (n *Pipelines) Path() *Any                 { return &Any{Path: &Any_Pipelines{n}} }
 func (n *Report) Path() *Any                    { return &Any{Path: &Any_Report{n}} }
 func (n *ResourceData) Path() *Any              { return &Any{Path: &Any_ResourceData{n}} }
 func (n *Messages) Path() *Any                  { return &Any{Path: &Any_Messages{n}} }
@@ -125,6 +126,7 @@ func (n Mesh) Parent() Node                      { return oneOfNode(n.Object) }
 func (n Metrics) Parent() Node                   { return n.Command }
 func (n Messages) Parent() Node                  { return n.Capture }
 func (n Parameter) Parent() Node                 { return n.Command }
+func (n Pipelines) Parent() Node                 { return n.After }
 func (n Report) Parent() Node                    { return n.Capture }
 func (n ResourceData) Parent() Node              { return n.After }
 func (n MultiResourceData) Parent() Node         { return n.After }
@@ -160,6 +162,7 @@ func (n *Memory) SetParent(p Node)                    { n.After, _ = p.(*Command
 func (n *MemoryAsType) SetParent(p Node)              { n.After, _ = p.(*Command) }
 func (n *Metrics) SetParent(p Node)                   { n.Command, _ = p.(*Command) }
 func (n *Messages) SetParent(p Node)                  { n.Capture, _ = p.(*Capture) }
+func (n *Pipelines) SetParent(p Node)                 { n.After, _ = p.(*Command) }
 func (n *Parameter) SetParent(p Node)                 { n.Command, _ = p.(*Command) }
 func (n *Report) SetParent(p Node)                    { n.Capture, _ = p.(*Capture) }
 func (n *ResourceData) SetParent(p Node)              { n.After, _ = p.(*Command) }
@@ -273,6 +276,9 @@ func (n ResourceData) Format(f fmt.State, c rune) {
 func (n MultiResourceData) Format(f fmt.State, c rune) {
 	fmt.Fprintf(f, "%v.resource-data<%x>", n.Parent(), n.IDs)
 }
+
+// Format implements fmt.Formatter to print the path.
+func (n Pipelines) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.pipelines", n.Parent()) }
 
 // Format implements fmt.Formatter to print the path.
 func (n Resources) Format(f fmt.State, c rune) { fmt.Fprintf(f, "%v.resources", n.Parent()) }
