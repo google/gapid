@@ -23,11 +23,12 @@ import (
 	"github.com/google/gapid/gapis/service/path"
 )
 
-func (list *KeyValuePairList) AppendKeyValuePair(name string, value *DataValue) *KeyValuePairList {
+func (list *KeyValuePairList) AppendKeyValuePair(name string, value *DataValue, dynamic bool) *KeyValuePairList {
 	values := append(list.KeyValues,
 		&KeyValuePair{
-			Name:  name,
-			Value: value,
+			Name:    name,
+			Value:   value,
+			Dynamic: dynamic,
 		})
 
 	return &KeyValuePairList{
