@@ -106,6 +106,8 @@ func NewResourceData(data interface{}) *ResourceData {
 		return &ResourceData{Data: &ResourceData_Shader{data}}
 	case *Program:
 		return &ResourceData{Data: &ResourceData_Program{data}}
+	case *Pipeline:
+		return &ResourceData{Data: &ResourceData_Pipeline{data}}
 	default:
 		panic(fmt.Errorf("%T is not a ResourceData type", data))
 	}
