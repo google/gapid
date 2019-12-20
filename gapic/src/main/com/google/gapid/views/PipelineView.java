@@ -15,106 +15,83 @@
  */
 package com.google.gapid.views;
 
-import static com.google.gapid.proto.service.api.API.ResourceType.PipelineResource;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
 import static com.google.gapid.util.MoreFutures.transform;
+import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
+import static com.google.gapid.widgets.Widgets.createGroup;
+import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.createScrolledComposite;
-import static com.google.gapid.widgets.Widgets.createTextarea;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
-import static com.google.gapid.widgets.Widgets.createTableViewer;
-import static com.google.gapid.widgets.Widgets.createGroup;
-import static com.google.gapid.widgets.Widgets.createLabel;
-import static com.google.gapid.widgets.Widgets.createBoldLabel;
-import static com.google.gapid.widgets.Widgets.createLink;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
-import static com.google.gapid.widgets.Widgets.sorting;
-import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
-import static com.google.gapid.widgets.Widgets.ColumnAndComparator;
-import static java.util.logging.Level.FINE;
 import static java.util.stream.Collectors.toList;
 
-import com.google.gapid.models.Models;
-import com.google.gapid.models.Resources;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
+import com.google.gapid.models.Models;
+import com.google.gapid.models.Resources;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
-import com.google.gapid.util.MoreFutures;
-import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.widgets.LoadablePanel;
-import com.google.gapid.widgets.Widgets;
 import com.google.gapid.widgets.Theme;
-import com.google.common.base.Joiner;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.collect.Lists;
-
+import com.google.gapid.widgets.Widgets;
 
 import org.eclipse.jface.text.source.SourceViewer;
-import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ViewerComparator;
+import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ST;
-import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.TableItem;
-import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Widget;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.stream.Collectors;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
-import java.lang.StringBuilder;
 
 /**
  * View the displays the information for each stage of the pipeline.
  */
 public class PipelineView extends Composite
     implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener {
-  protected static final Logger LOG = Logger.getLogger(ShaderView.class.getName());
+  protected static final Logger LOG = Logger.getLogger(PipelineView.class.getName());
 
   private Models models;
-  private Widgets widgets;
 
   private final LoadablePanel<Composite> loading;
   private final Theme theme;
-  private final Composite stagesContainer;
-  
+  protected final Composite stagesContainer;
+
   public PipelineView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
-    this.widgets = widgets;
     this.theme = widgets.theme;
 
     setLayout(new FillLayout());
@@ -134,7 +111,7 @@ public class PipelineView extends Composite
 
   @Override
   public void reinitialize() {
-    updatePipelines(true);
+    updatePipelines();
   }
 
   @Override
@@ -151,7 +128,7 @@ public class PipelineView extends Composite
 
   @Override
   public void onResourcesLoaded() {
-    updatePipelines(true);
+    updatePipelines();
   }
 
   @Override
@@ -170,12 +147,10 @@ public class PipelineView extends Composite
   @Override
   public void onCommandsSelected(CommandIndex path) {
     loading.stopLoading();
-    updatePipelines(false);
-
-
+    updatePipelines();
   }
 
-  public void updatePipelines(boolean resourcesChanged) {
+  private void updatePipelines() {
     Resources.ResourceList resources = models.resources.getResources(API.ResourceType.PipelineResource);
     List<ListenableFuture<Data>> pipelineFutures = Lists.newArrayList();
     if (!resources.isEmpty()) {
@@ -203,12 +178,9 @@ public class PipelineView extends Composite
         stagesContainer.requestLayout();
       }
     });
-
-
-   
   }
 
-  public void createPipelineTabs(TabFolder folder, List<Data> pipelines) {
+  protected void createPipelineTabs(TabFolder folder, List<Data> pipelines) {
     if (!pipelines.isEmpty()) {
       for (Data data : pipelines) {
         API.Pipeline result = data.resource;
@@ -222,7 +194,7 @@ public class PipelineView extends Composite
           item.setControl(stageGroup);
 
           if (!stage.getEnabled()) {
-              continue;
+            continue;
           }
 
           for (API.DataGroup dataGroup : stage.getGroupsList()) {
@@ -232,7 +204,8 @@ public class PipelineView extends Composite
               case KEY_VALUES:
                 RowLayout rowLayout = new RowLayout();
                 rowLayout.wrap = true;
-                ScrolledComposite scrollComposite = createScrolledComposite(dataComposite, new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
+                ScrolledComposite scrollComposite = createScrolledComposite(dataComposite,
+                    new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
 
                 Composite contentComposite = createComposite(scrollComposite, rowLayout);
 
@@ -241,24 +214,27 @@ public class PipelineView extends Composite
                 boolean dynamicExists = false;
 
                 for (API.KeyValuePair kvp : kvpList) {
-                  Composite kvpComposite = createComposite(contentComposite, new GridLayout(2, false));
-                  
-                  withLayoutData(createBoldLabel(kvpComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
-                    new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                  Composite kvpComposite =
+                      createComposite(contentComposite, new GridLayout(2, false));
+
+                  withLayoutData(
+                      createBoldLabel(kvpComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
+                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
 
                   if (!dynamicExists && kvp.getDynamic()) {
                     dataComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
                     dynamicExists = true;
                   }
-                  
+
                   DataValue dv = convertDataValue(kvp.getValue());
 
                   if (dv.link != null) {
-                    withLayoutData(createLink(kvpComposite, dv.displayValue, e -> {models.follower.onFollow(dv.link);}),
-                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                    withLayoutData(createLink(
+                        kvpComposite, dv.displayValue, e -> models.follower.onFollow(dv.link)),
+                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
                   } else {
                     withLayoutData(createLabel(kvpComposite, dv.displayValue),
-                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
                   }
                 }
 
@@ -277,9 +253,10 @@ public class PipelineView extends Composite
                   dataComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
                 }
 
-                TableViewer groupTable = Widgets.createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+                TableViewer groupTable =
+                    createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
                 List<API.Row> rows = dataGroup.getTable().getRowsList();
-                
+
                 groupTable.setContentProvider(ArrayContentProvider.getInstance());
 
                 for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
@@ -288,21 +265,27 @@ public class PipelineView extends Composite
                     return convertDataValue(((API.Row)row).getRowValues(col)).displayValue;
                   });
                 }
-                
+
                 groupTable.setInput(rows);
                 packColumns(groupTable.getTable());
-                
+
                 break;
 
               case SHADER:
-                SourceViewer viewer = new SourceViewer(dataComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+                SourceViewer viewer = new SourceViewer(
+                    dataComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
                 StyledText textWidget = viewer.getTextWidget();
                 textWidget.setFont(theme.monoSpaceFont());
                 textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
                 viewer.configure(new GlslSourceConfiguration(theme));
                 viewer.setEditable(false);
-                viewer.setDocument(GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
+                viewer.setDocument(
+                    GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
 
+                break;
+
+              case DATA_NOT_SET:
+                // Ignore;
                 break;
             }
           }
@@ -318,17 +301,7 @@ public class PipelineView extends Composite
     return this;
   }
 
-  private class DataValue {
-    public String displayValue;
-    public Path.Any link;
-
-    public DataValue(String displayValue) {
-      link = null;
-      this.displayValue = displayValue;
-    }
-  }
-
-  private DataValue convertDataValue(API.DataValue val) {
+  private static DataValue convertDataValue(API.DataValue val) {
     switch (val.getValCase()) {
       case VALUE:
         Joiner valueJoiner = Joiner.on(", ");
@@ -474,7 +447,7 @@ public class PipelineView extends Composite
         dv.displayValue = "<a>" + dv.displayValue + "</a>";
         dv.link = val.getLink().getLink();
         return dv;
-        
+
 
       default:
         return new DataValue("???");
@@ -489,28 +462,25 @@ public class PipelineView extends Composite
       this.info = info;
     }
 
-    public String getId() {
-      return info.getHandle();
-    }
-
-    public long getSortId() {
-      return info.getOrder();
-    }
-
-    public String getLabel() {
-      return info.getLabel();
-    }
-
     public boolean isBound() {
       return resource != null && resource.getBound();
     }
-
 
     public ListenableFuture<Data> load(Models models) {
       return transform(models.resources.loadResource(info), value -> {
         resource = value.getPipeline();
         return Data.this;
       });
+    }
+  }
+
+  private static class DataValue {
+    public String displayValue;
+    public Path.Any link;
+
+    public DataValue(String displayValue) {
+      this.link = null;
+      this.displayValue = displayValue;
     }
   }
 }
