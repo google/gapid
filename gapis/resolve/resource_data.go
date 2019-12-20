@@ -116,7 +116,7 @@ func buildResources(ctx context.Context, p *path.Command, t api.ResourceType) (*
 			}
 			i++
 
-			res, err := v.ResourceData(ctx, state)
+			res, err := v.ResourceData(ctx, state, p)
 			if err != nil {
 				resourceData[k] = err
 			} else {
