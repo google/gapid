@@ -14,14 +14,18 @@
 
 workspace(name = "gapid")
 
+load("@gapid//tools/build:locals.bzl", "user_local_repos")
+user_local_repos(__workspace_dir__)
+load("@user_locals//:locals.bzl", "LOCALS")
+
 load("@gapid//tools/build:workspace.bzl", "gapid_dependencies")
-gapid_dependencies()
+gapid_dependencies(locals = LOCALS)
 
 load("@gapid//tools/build:workspace_go.bzl", "gapid_go_dependencies")
 gapid_go_dependencies()
 
 load("@gapid//tools/build:workspace_gapic.bzl", "gapic_dependencies", "gapic_third_party")
-gapic_dependencies()
+gapic_dependencies(locals = LOCALS)
 gapic_third_party()
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
