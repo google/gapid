@@ -151,12 +151,16 @@ public class TracerDialog {
     TraceInputDialog input =
         new TraceInputDialog(shell, models, widgets, models.devices::loadDevices);
     if (loadDevicesAndShowDialog(input, models) == Window.OK) {
+      Tracer.TraceRequest request = input.getValue();
       TraceProgressDialog progress = new TraceProgressDialog(
-          shell, models.analytics, input.getValue(), widgets.theme);
-      Tracer.Trace trace = Tracer.trace(client, shell, input.getValue(), progress);
+          shell, models.analytics, request, widgets.theme);
+      Tracer.Trace trace = Tracer.trace(client, shell, request, progress);
       progress.setTrace(trace);
+      if (request.options.getType() == TraceType.Perfetto) {
+        progress.setOpenOnDone(true);
+      }
       if (progress.open() == Window.OK && progress.successful()) {
-        models.capture.loadCapture(input.getValue().output);
+        models.capture.loadCapture(request.output);
       }
     }
   }
@@ -938,6 +942,7 @@ public class TracerDialog {
     private Button errorButton;
 
     private Tracer.Trace trace;
+    private boolean openOnDone = false;
 
     private StatusResponse status;
     private Throwable error;
@@ -953,6 +958,10 @@ public class TracerDialog {
       this.trace = trace;
     }
 
+    public void setOpenOnDone(boolean openOnDone) {
+      this.openOnDone = openOnDone;
+    }
+
     public boolean successful() {
       return error == null && status != null && status.getStatus() == Service.TraceStatus.Done;
     }
@@ -961,6 +970,9 @@ public class TracerDialog {
     public void onProgress(StatusResponse progress) {
       status = progress;
       update();
+      if (progress.getStatus() == Service.TraceStatus.Done) {
+        okPressed();
+      }
     }
 
     @Override
