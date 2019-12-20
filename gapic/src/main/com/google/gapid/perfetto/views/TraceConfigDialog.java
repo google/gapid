@@ -258,7 +258,7 @@ public class TraceConfigDialog extends DialogBase {
         }
         config.addDataSourcesBuilder()
             .getConfigBuilder()
-                .setName("VulkanMemoryTracking")
+                .setName("VulkanMemoryTracker")
                 .setLegacyConfig(enabled.stream().collect(joining(":")));
       }
     }
