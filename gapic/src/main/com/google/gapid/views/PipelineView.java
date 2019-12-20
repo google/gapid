@@ -18,6 +18,7 @@ package com.google.gapid.views;
 import static com.google.gapid.proto.service.api.API.ResourceType.PipelineResource;
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
+import static com.google.gapid.util.MoreFutures.transform;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createScrolledComposite;
 import static com.google.gapid.widgets.Widgets.createTextarea;
@@ -36,6 +37,7 @@ import static com.google.gapid.widgets.Widgets.withAsyncRefresh;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.ColumnAndComparator;
 import static java.util.logging.Level.FINE;
+import static java.util.stream.Collectors.toList;
 
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
@@ -51,11 +53,16 @@ import com.google.gapid.rpc.SingleInFlight;
 import com.google.gapid.rpc.UiCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
+import com.google.gapid.util.MoreFutures;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.widgets.LoadablePanel;
 import com.google.gapid.widgets.Widgets;
 import com.google.gapid.widgets.Theme;
 import com.google.common.base.Joiner;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.Lists;
+
 
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.viewers.TableViewer;
@@ -85,6 +92,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.stream.Collectors;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 import java.lang.StringBuilder;
@@ -100,12 +108,9 @@ public class PipelineView extends Composite
   private Widgets widgets;
 
   private final LoadablePanel<Composite> loading;
-  private final TableViewer pipelineTable;
   private final Theme theme;
   private final Composite stagesContainer;
-
-  private List<Data> pipelines = Collections.emptyList();
-
+  
   public PipelineView(Composite parent, Models models, Widgets widgets) {
     super(parent, SWT.NONE);
     this.models = models;
@@ -117,37 +122,7 @@ public class PipelineView extends Composite
     loading = LoadablePanel.create(this, widgets,
         panel -> createComposite(panel, new FillLayout(SWT.VERTICAL)));
 
-    SashForm splitter = new SashForm(loading.getContents(), SWT.HORIZONTAL);
-
-    Composite pipelineContainer = createComposite(splitter, new GridLayout(1, false), SWT.BORDER);
-    stagesContainer = createComposite(splitter, new FillLayout());
-    splitter.setWeights(models.settings.pipelineSplitterWeights);
-
-    pipelineTable = createTableViewer(pipelineContainer, SWT.BORDER | SWT.SINGLE | SWT.FULL_SELECTION);
-    pipelineTable.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-    pipelineTable.setContentProvider(ArrayContentProvider.getInstance());
-
-    ColumnAndComparator[] columns = new ColumnAndComparator[]{
-      createTableColumn(pipelineTable, "Pipelines", Data::getId,
-          Comparator.comparingLong(Data::getSortId)),
-      createTableColumn(pipelineTable, "Bound", Data::getBound,
-          Comparator.comparingInt(Data::getSortBound))
-    };
-
-    sorting(pipelineTable, Arrays.asList(columns));
-    pipelineTable.getTable().setSortColumn(columns[1].getTableColumn());
-    pipelineTable.getTable().setSortDirection(SWT.UP);
-    pipelineTable.setComparator(columns[1].getComparator(false));
-
-    pipelineTable.setInput(pipelines);
-    packColumns(pipelineTable.getTable());
-
-    pipelineTable.getTable().addListener(SWT.Selection, e -> {
-      disposeAllChildren(stagesContainer);
-      TabFolder folder = createStandardTabFolder(stagesContainer);
-      createPipelineTabs(folder);
-      stagesContainer.requestLayout();
-    });
+    stagesContainer = createComposite(loading.getContents(), new FillLayout());
 
     models.resources.addListener(this);
     models.commands.addListener(this);
@@ -197,81 +172,73 @@ public class PipelineView extends Composite
     loading.stopLoading();
     updatePipelines(false);
 
-    disposeAllChildren(stagesContainer);
-    TabFolder folder = createStandardTabFolder(stagesContainer);
-    createPipelineTabs(folder);
-    stagesContainer.requestLayout();
+
   }
 
   public void updatePipelines(boolean resourcesChanged) {
-    ViewerComparator comparator = pipelineTable.getComparator();
-    pipelineTable.setComparator(null);
-    int selection = pipelineTable.getTable().getSelectionIndex();
-
-    Widgets.Refresher refresher = withAsyncRefresh(pipelineTable);
     Resources.ResourceList resources = models.resources.getResources(API.ResourceType.PipelineResource);
-    pipelines = new ArrayList<Data>();
+    List<ListenableFuture<Data>> pipelineFutures = Lists.newArrayList();
     if (!resources.isEmpty()) {
       resources.stream()
         .map(r -> new Data(r.resource))
         .forEach(data -> {
-          pipelines.add(data);
-          data.load(models, pipelineTable.getTable(), refresher);
+          pipelineFutures.add(data.load(models));
         });
     }
 
-    pipelineTable.setInput(pipelines);
-    packColumns(pipelineTable.getTable());
+    Rpc.listen(Futures.allAsList(pipelineFutures), new UiCallback<List<Data>, List<Data>>(this, LOG) {
+      @Override
+      protected List<Data> onRpcThread(Rpc.Result<List<Data>> result)
+          throws RpcException, ExecutionException {
+        return result.get().stream()
+              .filter(Data::isBound)
+              .collect(toList());
+      }
 
-    if (!resourcesChanged && selection >= 0 && selection < pipelines.size()) {
-      pipelineTable.getTable().select(selection);
-    }
-    pipelineTable.setComparator(comparator);
+      @Override
+      protected void onUiThread(List<Data> pipelines) {
+        disposeAllChildren(stagesContainer);
+        TabFolder folder = createStandardTabFolder(stagesContainer);
+        createPipelineTabs(folder, pipelines);
+        stagesContainer.requestLayout();
+      }
+    });
+
+
+   
   }
 
-  public void createPipelineTabs(TabFolder folder) {
-    int selection = pipelineTable.getTable().getSelectionIndex();
-    if (selection >= 0) {
-      Data data = (Data)pipelineTable.getElementAt(selection);
-      Rpc.listen(models.resources.loadResource(data.info),
-          new UiCallback<API.ResourceData, API.Pipeline>(this, LOG) {
-        @Override
-        protected API.Pipeline onRpcThread(Rpc.Result<API.ResourceData> result)
-            throws RpcException, ExecutionException {
-          API.Pipeline pipeline = result.get().getPipeline();
-          data.resource = pipeline;
-          return pipeline;
-        }
-  
-        @Override
-        protected void onUiThread(API.Pipeline result) {
-          List<API.Stage> stages = result.getStagesList();
+  public void createPipelineTabs(TabFolder folder, List<Data> pipelines) {
+    if (!pipelines.isEmpty()) {
+      for (Data data : pipelines) {
+        API.Pipeline result = data.resource;
+        List<API.Stage> stages = result.getStagesList();
 
-          for (API.Stage stage : stages) {
-            TabItem item = createStandardTabItem(folder, stage.getDebugName());
+        for (API.Stage stage : stages) {
+          TabItem item = createStandardTabItem(folder, stage.getDebugName());
 
-            Group stageGroup = createGroup(folder, stage.getStageName());
+          Group stageGroup = createGroup(folder, stage.getStageName());
 
-            item.setControl(stageGroup);
+          item.setControl(stageGroup);
 
-            if (!stage.getEnabled()) {
-                continue;
-            }
+          if (!stage.getEnabled()) {
+              continue;
+          }
 
-            for (API.DataGroup dataGroup : stage.getGroupsList()) {
-              Group dataComposite = createGroup(stageGroup, dataGroup.getGroupName());
+          for (API.DataGroup dataGroup : stage.getGroupsList()) {
+            Group dataComposite = createGroup(stageGroup, dataGroup.getGroupName());
 
-              switch (dataGroup.getDataCase()) {
-                case KEY_VALUES:
-                  RowLayout rowLayout = new RowLayout();
-                  rowLayout.wrap = true;
-                  ScrolledComposite scrollComposite = createScrolledComposite(dataComposite, new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
+            switch (dataGroup.getDataCase()) {
+              case KEY_VALUES:
+                RowLayout rowLayout = new RowLayout();
+                rowLayout.wrap = true;
+                ScrolledComposite scrollComposite = createScrolledComposite(dataComposite, new FillLayout(), SWT.V_SCROLL | SWT.H_SCROLL);
 
-                  Composite contentComposite = createComposite(scrollComposite, rowLayout);
+                Composite contentComposite = createComposite(scrollComposite, rowLayout);
 
-                  List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
+                List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
 
-                  boolean dynamicExists = false;
+                boolean dynamicExists = false;
 
                 for (API.KeyValuePair kvp : kvpList) {
                   Composite kvpComposite = createComposite(contentComposite, new GridLayout(2, false));
@@ -283,7 +250,7 @@ public class PipelineView extends Composite
                     dataComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
                     dynamicExists = true;
                   }
-
+                  
                   DataValue dv = convertDataValue(kvp.getValue());
 
                   if (dv.link != null) {
@@ -337,13 +304,12 @@ public class PipelineView extends Composite
                 viewer.setDocument(GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
 
                 break;
-              }
-
-              stageGroup.requestLayout();
             }
           }
+
+          stageGroup.requestLayout();
         }
-      });
+      }
     }
   }
 
@@ -517,8 +483,7 @@ public class PipelineView extends Composite
 
   private static class Data {
     public final Service.Resource info;
-    public Object resource;
-    public boolean bound;
+    public API.Pipeline resource;
 
     public Data(Service.Resource info) {
       this.info = info;
@@ -536,29 +501,16 @@ public class PipelineView extends Composite
       return info.getLabel();
     }
 
-    public String getBound() {
-      return (bound ? "Yes" : "No");
+    public boolean isBound() {
+      return resource != null && resource.getBound();
     }
 
-    public int getSortBound() {
-      return (bound ? 0 : 1);
-    }
 
-    public void load(Models models, Widget widget, Widgets.Refresher refresher) {
-      Rpc.listen(models.resources.loadResource(info),
-          new UiCallback<API.ResourceData, API.Pipeline>(widget, LOG) {
-            @Override
-            protected API.Pipeline onRpcThread(Rpc.Result<API.ResourceData> result)
-                throws RpcException, ExecutionException {
-              return result.get().getPipeline();
-            }
-      
-            @Override
-            protected void onUiThread(API.Pipeline result) {
-              bound = result.getBound();
-              refresher.refresh();
-            }
-          });
+    public ListenableFuture<Data> load(Models models) {
+      return transform(models.resources.loadResource(info), value -> {
+        resource = value.getPipeline();
+        return Data.this;
+      });
     }
   }
 }
