@@ -2495,13 +2495,30 @@ func (f *frameLoop) resetBuffers(ctx context.Context, stateBuilder *stateBuilder
 
 	for dst, src := range f.bufferToRestore {
 
-		bufferObj := GetState(stateBuilder.newState).Buffers().Get(src)
+		srcBufferObj := GetState(stateBuilder.newState).Buffers().Get(src)
+		dstBufferObj := GetState(f.loopStartState).Buffers().Get(dst)
+		if dstBufferObj.Memory().IsNil() == false && dstBufferObj.Memory().MappedLocation() != 0 {
+			rng := memory.Range{uint64(dstBufferObj.Memory().MappedLocation() + Voidᵖ(dstBufferObj.Memory().MappedOffset())), uint64(dstBufferObj.Memory().MappedSize())}
+			id := dstBufferObj.Memory().Data().ResourceID(ctx, f.loopStartState)
+			stateBuilder.write(stateBuilder.cb.VkFlushMappedMemoryRanges(
+				dstBufferObj.Device(), 1,
+				stateBuilder.MustAllocReadData(NewVkMappedMemoryRange(stateBuilder.ta,
+					VkStructureType_VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, // sType
+					0,                                    // pNext
+					dstBufferObj.Memory().VulkanHandle(), // memory
+					VkDeviceSize(dstBufferObj.Memory().MappedOffset()), // offset
+					VkDeviceSize(dstBufferObj.Memory().MappedSize()),   // size
+				)).Ptr(),
+				VkResult_VK_SUCCESS,
+			).AddRead(rng, id))
+			continue
+		}
 
 		queue := stateBuilder.getQueueFor(
 			VkQueueFlagBits_VK_QUEUE_GRAPHICS_BIT|VkQueueFlagBits_VK_QUEUE_COMPUTE_BIT|VkQueueFlagBits_VK_QUEUE_TRANSFER_BIT,
-			queueFamilyIndicesToU32Slice(bufferObj.Info().QueueFamilyIndices()),
-			bufferObj.Device(),
-			bufferObj.LastBoundQueue())
+			queueFamilyIndicesToU32Slice(srcBufferObj.Info().QueueFamilyIndices()),
+			srcBufferObj.Device(),
+			srcBufferObj.LastBoundQueue())
 
 		task := newQueueCommandBatch(
 			fmt.Sprintf("Reset buffer %v", dst),
