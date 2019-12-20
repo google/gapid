@@ -116,6 +116,7 @@ public class Settings {
   public boolean perfettoVulkanMemoryTracking = false;
   public boolean perfettoVulkanMemoryTrackingDevice = false;
   public boolean perfettoVulkanMemoryTrackingDriver = false;
+  public boolean perfettoSurfaceFlinger = true;
 
   public static Settings load() {
     Settings result = new Settings();
@@ -293,6 +294,7 @@ public class Settings {
     perfettoVulkanMemoryTracking = getBoolean(properties, "perfetto.vulkan.memory_tracking", perfettoVulkanMemoryTracking);
     perfettoVulkanMemoryTrackingDevice = getBoolean(properties, "perfetto.vulkan.memory_tracking.device", perfettoVulkanMemoryTrackingDevice);
     perfettoVulkanMemoryTrackingDriver = getBoolean(properties, "perfetto.vulkan.memory_tracking.driver", perfettoVulkanMemoryTrackingDriver);
+    perfettoSurfaceFlinger = getBoolean(properties, "perfetto.surfaceflinger.frame", perfettoSurfaceFlinger);
   }
 
   private void updateTo(Properties properties) {
@@ -360,6 +362,7 @@ public class Settings {
     properties.setProperty("perfetto.vulkan.memory_tracking", Boolean.toString(perfettoVulkanMemoryTracking));
     properties.setProperty("perfetto.vulkan.memory_tracking.device", Boolean.toString(perfettoVulkanMemoryTrackingDevice));
     properties.setProperty("perfetto.vulkan.memory_tracking.driver", Boolean.toString(perfettoVulkanMemoryTrackingDriver));
+    properties.setProperty("perfetto.surfaceflinger.frame", Boolean.toString(perfettoSurfaceFlinger));
   }
 
   private static Point getPoint(Properties properties, String name) {

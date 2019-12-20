@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.models;
 import static com.google.gapid.util.MoreFutures.transform;
 
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 
@@ -28,19 +29,24 @@ import java.util.List;
  * Data about a GPU in the trace.
  */
 public class GpuInfo {
-  public static final GpuInfo NONE = new GpuInfo(Collections.emptyList());
+  public static final GpuInfo NONE = new GpuInfo(Collections.emptyList(), Collections.emptyList());
 
   private static final String MAX_DEPTH_QUERY =
-      "select t.id, max(depth) + 1 " +
-      "from gpu_track t, gpu_slice s " +
-      "where t.id = s.track_id and t.scope = 'gpu_render_stage' " +
+      "select t.id, t.name, t.scope, max(depth) + 1 " +
+      "from gpu_track t left join gpu_slice s on (t.id = s.track_id) " +
       "group by t.id " +
       "order by t.id";
 
   private final List<Queue> queues;
+  private final List<Buffer> buffers;
 
-  private GpuInfo(List<Queue> queues) {
+  private GpuInfo(List<Queue> queues, List<Buffer> buffers) {
     this.queues = queues;
+    this.buffers = buffers;
+  }
+
+  public boolean isEmpty() {
+    return queues.isEmpty() && buffers.isEmpty();
   }
 
   public int queueCount() {
@@ -51,14 +57,37 @@ public class GpuInfo {
     return Iterables.unmodifiableIterable(queues);
   }
 
-  public static ListenableFuture<Perfetto.Data.Builder> listGpus(Perfetto.Data.Builder data) {
-    return transform(queues(data.qe), queues -> {
-      return data.setGpu(new GpuInfo(queues));
-    });
+  public int bufferCount() {
+    return buffers.size();
   }
 
-  private static ListenableFuture<List<Queue>> queues(QueryEngine qe) {
-    return transform(qe.queries(MAX_DEPTH_QUERY), res -> res.list(Queue::new));
+  public Iterable<Buffer> buffers() {
+    return Iterables.unmodifiableIterable(buffers);
+  }
+
+  public static ListenableFuture<Perfetto.Data.Builder> listGpus(Perfetto.Data.Builder data) {
+    return transform(info(data.qe), gpu -> data.setGpu(gpu));
+  }
+
+  private static ListenableFuture<GpuInfo> info(QueryEngine qe) {
+    return transform(qe.queries(MAX_DEPTH_QUERY), res -> {
+      List<Queue> queues = Lists.newArrayList();
+      List<Buffer> buffers = Lists.newArrayList();
+      res.forEachRow(($, r) -> {
+        switch (r.getString(2)) {
+          case "gpu_render_stage":
+            queues.add(new Queue(queues.size(), r));
+            break;
+          case "graphics_frame_event":
+            buffers.add(new Buffer(r));
+            break;
+        }
+      });
+
+      // Sort buffers by name, the query is sorted by track id for the queues.
+      buffers.sort((b1, b2) -> b1.name.compareTo(b2.name));
+      return new GpuInfo(queues, buffers);
+    });
   }
 
   public static class Queue {
@@ -73,11 +102,31 @@ public class GpuInfo {
     }
 
     public Queue(int id, QueryEngine.Row row) {
-      this(id, row.getLong(0), row.getInt(1));
+      this(id, row.getLong(0), row.getInt(3));
     }
 
     public String getDisplay() {
       return "GPU Queue " + id;
+    }
+  }
+
+  public static class Buffer {
+    public final long trackId;
+    public final String name;
+    public final int maxDepth;
+
+    public Buffer(long trackId, String name, int maxDepth) {
+      this.trackId = trackId;
+      this.name = name;
+      this.maxDepth = maxDepth;
+    }
+
+    public Buffer(QueryEngine.Row row) {
+      this(row.getLong(0), row.getString(1), row.getInt(3));
+    }
+
+    public String getDisplay() {
+      return name;
     }
   }
 }

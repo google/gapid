@@ -168,6 +168,15 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     gc.drawOval(scale(cx - r), scale(cy - r), d, d);
   }
 
+  public void fillPolygon(double[] xPoints, double[] yPoints, int n) {
+    int[] points = new int[2 * n];
+    for (int i = 0, j = 0; i < n; i++, j += 2) {
+      points[j + 0] = scale(xPoints[i]);
+      points[j + 1] = scale(yPoints[i]);
+    }
+    gc.fillPolygon(points);
+  }
+
   // x, y is top left corner of text.
   public void drawText(Fonts.Style style, String text, double x, double y) {
     if (style != lastFontStyle) {

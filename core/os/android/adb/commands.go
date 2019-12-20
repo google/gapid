@@ -302,17 +302,22 @@ func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error)
 
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
 	result := b.To.Configuration.PerfettoCapability
-	c, err := b.ConnectPerfetto(ctx)
-	if err != nil {
-		return result, err
-	}
-	defer c.Close(ctx)
-
 	gpu := result.GpuProfiling
 	if gpu == nil {
 		gpu = &device.GPUProfiling{}
 		result.GpuProfiling = gpu
 	}
+
+	if b.Instance().GetConfiguration().GetOS().GetName() == "R" {
+		// TODO(b/146384733): Change this to API version when it releases
+		gpu.HasFrameLifecycle = true
+	}
+
+	c, err := b.ConnectPerfetto(ctx)
+	if err != nil {
+		return result, err
+	}
+	defer c.Close(ctx)
 
 	err = c.Query(ctx, func(s *common_pb.TracingServiceState) error {
 		for _, ds := range s.GetDataSources() {

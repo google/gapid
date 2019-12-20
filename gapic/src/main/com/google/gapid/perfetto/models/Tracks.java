@@ -30,6 +30,7 @@ import com.google.gapid.perfetto.views.CounterPanel;
 import com.google.gapid.perfetto.views.CpuFrequencyPanel;
 import com.google.gapid.perfetto.views.CpuPanel;
 import com.google.gapid.perfetto.views.CpuSummaryPanel;
+import com.google.gapid.perfetto.views.FrameEventsSummaryPanel;
 import com.google.gapid.perfetto.views.GpuQueuePanel;
 import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
@@ -104,7 +105,7 @@ public class Tracks {
         .filter(c -> c.count > 0)
         .collect(toList());
 
-    if (counters.isEmpty() && (data.getGpu().queueCount() == 0)) {
+    if (counters.isEmpty() && data.getGpu().isEmpty()) {
       // No GPU data available.
       return data;
     }
@@ -118,6 +119,16 @@ public class Tracks {
         SliceTrack track = SliceTrack.forGpuQueue(data.qe, queue);
         data.tracks.addTrack("gpu_queues", track.getId(), queue.getDisplay(),
             single(state -> new GpuQueuePanel(state, queue, track), true));
+      }
+    }
+
+    if (data.getGpu().bufferCount() > 0) {
+      data.tracks.addLabelGroup("gpu", "sf_events", "Surface Flinger Events",
+          group(state -> new TitlePanel("Surface Flinger Events"), true));
+      for (GpuInfo.Buffer buffer : data.getGpu().buffers()) {
+        FrameEventsTrack track = FrameEventsTrack.forBuffer(data.qe, buffer);
+        data.tracks.addTrack("sf_events", track.getId(), buffer.getDisplay(),
+            single(state -> new FrameEventsSummaryPanel(state, buffer, track), true));
       }
     }
 
