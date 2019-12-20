@@ -778,7 +778,7 @@ public class Widgets {
     sash.addListener(SWT.Selection, selectionListener);
     return sash;
   }
-  
+
   public static ScrolledComposite createScrolledComposite(Composite parent, Layout layout, int style) {
     ScrolledComposite composite = new ScrolledComposite(parent, style);
     composite.setLayout(layout);
