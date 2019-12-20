@@ -17,7 +17,7 @@ package com.google.gapid.views;
 
 import static com.google.gapid.util.Loadable.MessageType.Error;
 import static com.google.gapid.util.Loadable.MessageType.Info;
-import static com.google.gapid.util.MoreFutures.transform;
+import static com.google.gapid.util.Logging.throttleLogRpcError;
 import static com.google.gapid.widgets.Widgets.createBoldLabel;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createGroup;
@@ -27,27 +27,23 @@ import static com.google.gapid.widgets.Widgets.createScrolledComposite;
 import static com.google.gapid.widgets.Widgets.createStandardTabFolder;
 import static com.google.gapid.widgets.Widgets.createStandardTabItem;
 import static com.google.gapid.widgets.Widgets.createTableColumn;
+import static com.google.gapid.widgets.Widgets.createTableViewer;
 import static com.google.gapid.widgets.Widgets.disposeAllChildren;
 import static com.google.gapid.widgets.Widgets.packColumns;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
-import static java.util.stream.Collectors.toList;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.lang.glsl.GlslSourceConfiguration;
 import com.google.gapid.models.Capture;
 import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
-import com.google.gapid.models.Resources;
-import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.api.API;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.RpcException;
-import com.google.gapid.rpc.UiCallback;
+import com.google.gapid.rpc.UiErrorCallback;
 import com.google.gapid.util.Loadable;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.LoadablePanel;
@@ -80,12 +76,11 @@ import java.util.logging.Logger;
  * View the displays the information for each stage of the pipeline.
  */
 public class PipelineView extends Composite
-    implements Tab, Capture.Listener, Resources.Listener, CommandStream.Listener {
+implements Tab, Capture.Listener, CommandStream.Listener {
   protected static final Logger LOG = Logger.getLogger(PipelineView.class.getName());
 
-  private Models models;
-
-  private final LoadablePanel<Composite> loading;
+  protected final Models models;
+  protected final LoadablePanel<Composite> loading;
   private final Theme theme;
   protected final Composite stagesContainer;
 
@@ -101,10 +96,8 @@ public class PipelineView extends Composite
 
     stagesContainer = createComposite(loading.getContents(), new FillLayout());
 
-    models.resources.addListener(this);
     models.commands.addListener(this);
     addListener(SWT.Dispose, e -> {
-      models.resources.removeListener(this);
       models.commands.removeListener(this);
     });
   }
@@ -127,11 +120,6 @@ public class PipelineView extends Composite
   }
 
   @Override
-  public void onResourcesLoaded() {
-    updatePipelines();
-  }
-
-  @Override
   public void onCommandsLoaded() {
     if (!models.commands.isLoaded()) {
       loading.showMessage(Info, Messages.CAPTURE_LOAD_FAILURE);
@@ -146,44 +134,57 @@ public class PipelineView extends Composite
 
   @Override
   public void onCommandsSelected(CommandIndex path) {
-    loading.stopLoading();
     updatePipelines();
   }
 
   private void updatePipelines() {
-    Resources.ResourceList resources = models.resources.getResources(API.ResourceType.PipelineResource);
-    List<ListenableFuture<Data>> pipelineFutures = Lists.newArrayList();
-    if (!resources.isEmpty()) {
-      resources.stream()
-        .map(r -> new Data(r.resource))
-        .forEach(data -> {
-          pipelineFutures.add(data.load(models));
-        });
-    }
-
-    Rpc.listen(Futures.allAsList(pipelineFutures), new UiCallback<List<Data>, List<Data>>(this, LOG) {
+    loading.startLoading();
+    Rpc.listen(models.resources.loadBoundPipelines(),
+        new UiErrorCallback<API.MultiResourceData, List<API.Pipeline>, Loadable.Message>(this, LOG) {
       @Override
-      protected List<Data> onRpcThread(Rpc.Result<List<Data>> result)
-          throws RpcException, ExecutionException {
-        return result.get().stream()
-              .filter(Data::isBound)
-              .collect(toList());
+      protected ResultOrError<List<API.Pipeline>, Loadable.Message> onRpcThread(
+          Rpc.Result<API.MultiResourceData> result) {
+        try {
+          List<API.Pipeline> pipelines = Lists.newArrayList();
+          for (API.ResourceData resource : result.get().getResourcesList()) {
+            if (resource.hasPipeline()) {
+              pipelines.add(resource.getPipeline());
+            }
+          }
+          return success(pipelines);
+        } catch (RpcException e) {
+          models.analytics.reportException(e);
+          return error(Loadable.Message.error(e));
+        } catch (ExecutionException e) {
+          models.analytics.reportException(e);
+          throttleLogRpcError(LOG, "Failed to load pipelines", e);
+          return error(Loadable.Message.error(e.getCause().getMessage()));
+        }
       }
 
       @Override
-      protected void onUiThread(List<Data> pipelines) {
-        disposeAllChildren(stagesContainer);
-        TabFolder folder = createStandardTabFolder(stagesContainer);
-        createPipelineTabs(folder, pipelines);
-        stagesContainer.requestLayout();
+      protected void onUiThreadSuccess(List<API.Pipeline> pipelines) {
+        setPipelines(pipelines);
+      }
+
+      @Override
+      protected void onUiThreadError(Loadable.Message error) {
+        loading.showMessage(error);
       }
     });
   }
 
-  protected void createPipelineTabs(TabFolder folder, List<Data> pipelines) {
+  protected void setPipelines(List<API.Pipeline> pipelines) {
+    loading.stopLoading();
+    disposeAllChildren(stagesContainer);
+    TabFolder folder = createStandardTabFolder(stagesContainer);
+    createPipelineTabs(folder, pipelines);
+    stagesContainer.requestLayout();
+  }
+
+  private void createPipelineTabs(TabFolder folder, List<API.Pipeline> pipelines) {
     if (!pipelines.isEmpty()) {
-      for (Data data : pipelines) {
-        API.Pipeline result = data.resource;
+      for (API.Pipeline result : pipelines) {
         List<API.Stage> stages = result.getStagesList();
 
         for (API.Stage stage : stages) {
@@ -451,26 +452,6 @@ public class PipelineView extends Composite
 
       default:
         return new DataValue("???");
-    }
-  }
-
-  private static class Data {
-    public final Service.Resource info;
-    public API.Pipeline resource;
-
-    public Data(Service.Resource info) {
-      this.info = info;
-    }
-
-    public boolean isBound() {
-      return resource != null && resource.getBound();
-    }
-
-    public ListenableFuture<Data> load(Models models) {
-      return transform(models.resources.loadResource(info), value -> {
-        resource = value.getPipeline();
-        return Data.this;
-      });
     }
   }
 
