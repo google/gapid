@@ -271,65 +271,76 @@ public class PipelineView extends Composite
 
                   List<API.KeyValuePair> kvpList = dataGroup.getKeyValues().getKeyValuesList();
 
-                  for (API.KeyValuePair kvp : kvpList) {
-                    Composite kvpComposite = createComposite(contentComposite, new GridLayout(2, false));
+                  boolean dynamicExists = false;
 
-                    withLayoutData(createBoldLabel(kvpComposite, kvp.getName()+":"),
-                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
-
-                    DataValue dv = convertDataValue(kvp.getValue());
-
-                    if (dv.link != null) {
-                      withLayoutData(createLink(kvpComposite, dv.displayValue, e -> {models.follower.onFollow(dv.link);}),
-                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
-                    } else {
-                      withLayoutData(createLabel(kvpComposite, dv.displayValue),
-                        new GridData(SWT.BEGINNING, SWT.TOP, false, false));
-                    }
-                  }
-
-                  scrollComposite.setContent(contentComposite);
-                  scrollComposite.setExpandVertical(true);
-                  scrollComposite.setExpandHorizontal(true);
-                  scrollComposite.addListener(SWT.Resize, event -> {
-                    int width = scrollComposite.getClientArea().width;
-                    scrollComposite.setMinHeight(contentComposite.computeSize(width, SWT.DEFAULT).y);
-                  });
-
-                  break;
-
-                case TABLE:
-                  TableViewer groupTable = Widgets.createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-                  List<API.Row> rows = dataGroup.getTable().getRowsList();
+                for (API.KeyValuePair kvp : kvpList) {
+                  Composite kvpComposite = createComposite(contentComposite, new GridLayout(2, false));
                   
-                  groupTable.setContentProvider(ArrayContentProvider.getInstance());
+                  withLayoutData(createBoldLabel(kvpComposite, kvp.getName() + (kvp.getDynamic() ? "*:" : ":")),
+                    new GridData(SWT.BEGINNING, SWT.TOP, false, false));
 
-                  for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
-                    int col = i;
-                    createTableColumn(groupTable, dataGroup.getTable().getHeaders(i), row -> {
-                      return convertDataValue(((API.Row)row).getRowValues(col)).displayValue;
-                    });
+                  if (!dynamicExists && kvp.getDynamic()) {
+                    dataComposite.setText(dataGroup.getGroupName() + " (* value set dynamically)");
+                    dynamicExists = true;
                   }
 
-                  groupTable.setInput(rows);
-                  packColumns(groupTable.getTable());
+                  DataValue dv = convertDataValue(kvp.getValue());
 
-                  break;
+                  if (dv.link != null) {
+                    withLayoutData(createLink(kvpComposite, dv.displayValue, e -> {models.follower.onFollow(dv.link);}),
+                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                  } else {
+                    withLayoutData(createLabel(kvpComposite, dv.displayValue),
+                      new GridData(SWT.BEGINNING, SWT.TOP, false, false));
+                  }
+                }
 
-                case SHADER:
-                  SourceViewer viewer = new SourceViewer(dataComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-                  StyledText textWidget = viewer.getTextWidget();
-                  textWidget.setFont(theme.monoSpaceFont());
-                  textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
-                  viewer.configure(new GlslSourceConfiguration(theme));
-                  viewer.setEditable(false);
-                  viewer.setDocument(GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
+                scrollComposite.setContent(contentComposite);
+                scrollComposite.setExpandVertical(true);
+                scrollComposite.setExpandHorizontal(true);
+                scrollComposite.addListener(SWT.Resize, event -> {
+                  int width = scrollComposite.getClientArea().width;
+                  scrollComposite.setMinHeight(contentComposite.computeSize(width, SWT.DEFAULT).y);
+                });
 
-                  break;
+                break;
+
+              case TABLE:
+                if (dataGroup.getTable().getDynamic()) {
+                  dataComposite.setText(dataGroup.getGroupName() + " (table was set dynamically)");
+                }
+
+                TableViewer groupTable = Widgets.createTableViewer(dataComposite, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+                List<API.Row> rows = dataGroup.getTable().getRowsList();
+                
+                groupTable.setContentProvider(ArrayContentProvider.getInstance());
+
+                for (int i = 0; i < dataGroup.getTable().getHeadersCount(); i++) {
+                  int col = i;
+                  createTableColumn(groupTable, dataGroup.getTable().getHeaders(i), row -> {
+                    return convertDataValue(((API.Row)row).getRowValues(col)).displayValue;
+                  });
+                }
+                
+                groupTable.setInput(rows);
+                packColumns(groupTable.getTable());
+                
+                break;
+
+              case SHADER:
+                SourceViewer viewer = new SourceViewer(dataComposite, null, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+                StyledText textWidget = viewer.getTextWidget();
+                textWidget.setFont(theme.monoSpaceFont());
+                textWidget.setKeyBinding(ST.SELECT_ALL, ST.SELECT_ALL);
+                viewer.configure(new GlslSourceConfiguration(theme));
+                viewer.setEditable(false);
+                viewer.setDocument(GlslSourceConfiguration.createDocument(dataGroup.getShader().getSource()));
+
+                break;
               }
-            }
 
-            stageGroup.requestLayout();
+              stageGroup.requestLayout();
+            }
           }
         }
       });

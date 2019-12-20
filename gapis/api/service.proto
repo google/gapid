@@ -306,11 +306,13 @@ message KeyValuePairList {
 message KeyValuePair {
   string name = 1;
   DataValue value = 2;
+  bool dynamic = 3;
 }
 
 message Table {
   repeated string headers = 1;
   repeated Row rows = 2;
+  bool dynamic = 3;
 }
 
 message Row {

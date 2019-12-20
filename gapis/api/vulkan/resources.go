@@ -1069,6 +1069,7 @@ func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo 
 	vertexBindingsTable := &api.Table{
 		Headers: []string{"Binding", "Stride", "Vertex Input Rate"},
 		Rows:    bindingRows,
+		Dynamic: false,
 	}
 
 	attributes := p.VertexInputState().AttributeDescriptions()
@@ -1090,82 +1091,83 @@ func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo 
 	vertexAttributesTable := &api.Table{
 		Headers: []string{"Location", "Binding", "Format", "Offset"},
 		Rows:    attributeRows,
+		Dynamic: false,
 	}
 
 	assemblyList := &api.KeyValuePairList{}
-	assemblyList = assemblyList.AppendKeyValuePair("Topology", api.CreateEnumDataValue("VkPrimitiveTopology", p.InputAssemblyState().Topology()))
+	assemblyList = assemblyList.AppendKeyValuePair("Topology", api.CreateEnumDataValue("VkPrimitiveTopology", p.InputAssemblyState().Topology()), false)
 	assemblyList = assemblyList.AppendKeyValuePair("Primitive Restart Enabled", api.CreatePoDDataValue("VkBool32",
-		p.InputAssemblyState().PrimitiveRestartEnable() != 0))
+		p.InputAssemblyState().PrimitiveRestartEnable() != 0), false)
 
 	drawCallList := &api.KeyValuePairList{}
 
 	if !drawCallInfo.Draw().IsNil() {
 		callArgs := drawCallInfo.Draw()
-		drawCallList = drawCallList.AppendKeyValuePair("Vertex Count", api.CreatePoDDataValue("u32", callArgs.VertexCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("First Vertex", api.CreatePoDDataValue("u32", callArgs.FirstVertex()))
-		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()))
+		drawCallList = drawCallList.AppendKeyValuePair("Vertex Count", api.CreatePoDDataValue("u32", callArgs.VertexCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Vertex", api.CreatePoDDataValue("u32", callArgs.FirstVertex()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()), false)
 	} else if !drawCallInfo.DrawIndexed().IsNil() {
 		callArgs := drawCallInfo.DrawIndexed()
-		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.IndexCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("First Index", api.CreatePoDDataValue("u32", callArgs.FirstIndex()))
-		drawCallList = drawCallList.AppendKeyValuePair("Vertex Offset", api.CreatePoDDataValue("u32", callArgs.VertexOffset()))
-		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()))
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.IndexCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Instance Count", api.CreatePoDDataValue("u32", callArgs.InstanceCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Index", api.CreatePoDDataValue("u32", callArgs.FirstIndex()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Vertex Offset", api.CreatePoDDataValue("u32", callArgs.VertexOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("First Instance", api.CreatePoDDataValue("u32", callArgs.FirstInstance()), false)
 	} else if !drawCallInfo.DrawIndirect().IsNil() {
 		callArgs := drawCallInfo.DrawIndirect()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
-		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
 	} else if !drawCallInfo.DrawIndexedIndirect().IsNil() {
 		callArgs := drawCallInfo.DrawIndexedIndirect()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
-		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Draw Count", api.CreatePoDDataValue("u32", callArgs.DrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
 	} else if !drawCallInfo.DrawIndirectCountKHR().IsNil() {
 		callArgs := drawCallInfo.DrawIndirectCountKHR()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
 		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
-		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
 	} else if !drawCallInfo.DrawIndexedIndirectCountKHR().IsNil() {
 		callArgs := drawCallInfo.DrawIndexedIndirectCountKHR()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
 		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
-		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
 	} else if !drawCallInfo.DrawIndirectCountAMD().IsNil() {
 		callArgs := drawCallInfo.DrawIndirectCountAMD()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
 		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
-		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
 	} else if !drawCallInfo.DrawIndexedIndirectCountAMD().IsNil() {
 		callArgs := drawCallInfo.DrawIndexedIndirectCountAMD()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()))
+		drawCallList = drawCallList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.Buffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.Offset()), false)
 		countBufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(callArgs.Buffer())
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())))
-		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()))
-		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()))
-		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()))
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer", api.CreateLinkedDataValue("url", countBufferPath, api.CreatePoDDataValue("VkBuffer", callArgs.CountBuffer())), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Count Buffer Offset", api.CreatePoDDataValue("VkDeviceSize", callArgs.CountBufferOffset()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Max Draw Count", api.CreatePoDDataValue("u32", callArgs.MaxDrawCount()), false)
+		drawCallList = drawCallList.AppendKeyValuePair("Stride", api.CreatePoDDataValue("u32", callArgs.Stride()), false)
 	}
 
 	dataGroups := []*api.DataGroup{
@@ -1346,60 +1348,62 @@ func (p GraphicsPipelineObjectʳ) geometryShader(ctx context.Context, s *api.Glo
 func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates map[VkDynamicState]bool) *api.Stage {
 	rasterState := p.RasterizationState()
 	rasterList := &api.KeyValuePairList{}
-	rasterList = rasterList.AppendKeyValuePair("Depth Clamp Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthClampEnable() != 0))
-	rasterList = rasterList.AppendKeyValuePair("Rasterizer Discard", api.CreatePoDDataValue("VkBool32", rasterState.RasterizerDiscardEnable() != 0))
-	rasterList = rasterList.AppendKeyValuePair("Polygon Mode", api.CreateEnumDataValue("VkPolygonMode", rasterState.PolygonMode()))
-	rasterList = rasterList.AppendKeyValuePair("Cull Mode", api.CreateBitfieldDataValue("VkCullModeFlags", rasterState.CullMode(), VkCullModeFlagBitsConstants(), API{}))
-	rasterList = rasterList.AppendKeyValuePair("Front Face", api.CreateEnumDataValue("VkFrontFace", rasterState.FrontFace()))
-	rasterList = rasterList.AppendKeyValuePair("Depth Bias Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthBiasEnable() != 0))
+	rasterList = rasterList.AppendKeyValuePair("Depth Clamp Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthClampEnable() != 0), false)
+	rasterList = rasterList.AppendKeyValuePair("Rasterizer Discard", api.CreatePoDDataValue("VkBool32", rasterState.RasterizerDiscardEnable() != 0), false)
+	rasterList = rasterList.AppendKeyValuePair("Polygon Mode", api.CreateEnumDataValue("VkPolygonMode", rasterState.PolygonMode()), false)
+	rasterList = rasterList.AppendKeyValuePair("Cull Mode", api.CreateBitfieldDataValue("VkCullModeFlags", rasterState.CullMode(), VkCullModeFlagBitsConstants(), API{}), false)
+	rasterList = rasterList.AppendKeyValuePair("Front Face", api.CreateEnumDataValue("VkFrontFace", rasterState.FrontFace()), false)
+	rasterList = rasterList.AppendKeyValuePair("Depth Bias Enabled", api.CreatePoDDataValue("VkBool32", rasterState.DepthBiasEnable() != 0), false)
 
 	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BIAS]; ok {
 		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
 
 		if ok2 {
-			rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasConstantFactor()))
-			rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", ldps.DepthBiasClamp()))
-			rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasSlopeFactor()))
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasConstantFactor()), true)
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", ldps.DepthBiasClamp()), true)
+			rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", ldps.DepthBiasSlopeFactor()), true)
 		}
 	} else {
-		rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasConstantFactor()))
-		rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", rasterState.DepthBiasClamp()))
-		rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()))
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Constant Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasConstantFactor()), false)
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Clamp", api.CreatePoDDataValue("f32", rasterState.DepthBiasClamp()), false)
+		rasterList = rasterList.AppendKeyValuePair("Depth Bias Slope Factor", api.CreatePoDDataValue("f32", rasterState.DepthBiasSlopeFactor()), false)
 	}
 
 	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_LINE_WIDTH]; ok {
 		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
 
 		if ok2 {
-			rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", ldps.LineWidth()))
+			rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", ldps.LineWidth()), true)
 		}
 	} else {
-		rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()))
+		rasterList = rasterList.AppendKeyValuePair("Line Width", api.CreatePoDDataValue("f32", rasterState.LineWidth()), false)
 	}
 
 	multiState := p.MultisampleState()
 	multiList := &api.KeyValuePairList{}
-	multiList = multiList.AppendKeyValuePair("Sample Count", api.CreateBitfieldDataValue("VkSampleCountFlagBits", multiState.RasterizationSamples(), VkSampleCountFlagBitsConstants(), API{}))
+	multiList = multiList.AppendKeyValuePair("Sample Count", api.CreateBitfieldDataValue("VkSampleCountFlagBits", multiState.RasterizationSamples(), VkSampleCountFlagBitsConstants(), API{}), false)
 
 	// // For now, only display the first element of the sample mask array. There's rarely more in practice.
 	mask := uint64(0xFFFFFFFF)
 	if multiState.SampleMask().Len() > 0 {
 		mask = uint64(multiState.SampleMask().Get(multiState.SampleMask().Keys()[0]))
 	}
-	multiList = multiList.AppendKeyValuePair("Sample Mask", api.CreatePoDDataValue("VkSampleMask", fmt.Sprintf("%X", mask)))
+	multiList = multiList.AppendKeyValuePair("Sample Mask", api.CreatePoDDataValue("VkSampleMask", fmt.Sprintf("%X", mask)), false)
 
-	multiList = multiList.AppendKeyValuePair("Sample Shading Enabled", api.CreatePoDDataValue("VkBool32", multiState.SampleShadingEnable() != 0))
-	multiList = multiList.AppendKeyValuePair("Min Sample Shading", api.CreatePoDDataValue("f32", multiState.MinSampleShading()))
-	multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0))
-	multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0))
+	multiList = multiList.AppendKeyValuePair("Sample Shading Enabled", api.CreatePoDDataValue("VkBool32", multiState.SampleShadingEnable() != 0), false)
+	multiList = multiList.AppendKeyValuePair("Min Sample Shading", api.CreatePoDDataValue("f32", multiState.MinSampleShading()), false)
+	multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0), false)
+	multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0), false)
 
 	viewports := make(map[uint32]VkViewport)
+	viewDyanmic := false
 
 	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_VIEWPORT]; ok {
 		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
 
 		if ok2 {
 			viewports = ldps.Viewports().All()
+			viewDyanmic = true
 		}
 	} else {
 		viewports = p.ViewportState().Viewports().All()
@@ -1422,15 +1426,18 @@ func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates m
 	viewportTable := &api.Table{
 		Headers: []string{"X", "Y", "Width", "Height", "Min Depth", "Max Depth"},
 		Rows:    viewportRows,
+		Dynamic: viewDyanmic,
 	}
 
 	scissors := make(map[uint32]VkRect2D)
+	sciDynamic := false
 
 	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_SCISSOR]; ok {
 		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
 
 		if ok2 {
 			scissors = ldps.Scissors().All()
+			sciDynamic = true
 		}
 	} else {
 		scissors = p.ViewportState().Scissors().All()
@@ -1451,6 +1458,7 @@ func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates m
 	scissorTable := &api.Table{
 		Headers: []string{"X", "Y", "Width", "Height"},
 		Rows:    scissorRows,
+		Dynamic: sciDynamic,
 	}
 
 	dataGroups := []*api.DataGroup{
@@ -1523,24 +1531,25 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.Glo
 func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool, fb FramebufferObjectʳ) *api.Stage {
 	depthData := p.DepthState()
 	depthList := &api.KeyValuePairList{}
-	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0))
-	depthList = depthList.AppendKeyValuePair("Write Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthWriteEnable() != 0))
-	depthList = depthList.AppendKeyValuePair("Function", api.CreateEnumDataValue("VkCompareOp", depthData.DepthCompareOp()))
-	depthList = depthList.AppendKeyValuePair("Bounds Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthBoundsTestEnable() != 0))
+	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0), false)
+	depthList = depthList.AppendKeyValuePair("Write Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthWriteEnable() != 0), false)
+	depthList = depthList.AppendKeyValuePair("Function", api.CreateEnumDataValue("VkCompareOp", depthData.DepthCompareOp()), false)
+	depthList = depthList.AppendKeyValuePair("Bounds Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthBoundsTestEnable() != 0), false)
 
 	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BOUNDS]; ok {
 		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
 
 		if ok2 {
-			depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", ldps.MinDepthBounds()))
-			depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", ldps.MaxDepthBounds()))
+			depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", ldps.MinDepthBounds()), true)
+			depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", ldps.MaxDepthBounds()), true)
 		}
 	} else {
-		depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", depthData.MinDepthBounds()))
-		depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", depthData.MaxDepthBounds()))
+		depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", depthData.MinDepthBounds()), false)
+		depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", depthData.MaxDepthBounds()), false)
 	}
 
 	stencilRows := []*api.Row{}
+	stencilDynamic := false
 
 	if depthData.StencilTestEnable() != 0 {
 		frontStencil := depthData.Front()
@@ -1557,6 +1566,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 
 			if ok2 {
 				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().CompareMask())))
+				stencilDynamic = true
 			}
 		} else {
 			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.CompareMask())))
@@ -1567,6 +1577,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 
 			if ok2 {
 				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().WriteMask())))
+				stencilDynamic = true
 			}
 		} else {
 			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.WriteMask())))
@@ -1577,6 +1588,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 
 			if ok2 {
 				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", ldps.StencilFront().Reference()))
+				stencilDynamic = true
 			}
 		} else {
 			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", frontStencil.Reference()))
@@ -1599,6 +1611,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 
 			if ok2 {
 				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().CompareMask())))
+				stencilDynamic = true
 			}
 		} else {
 			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.CompareMask())))
@@ -1609,6 +1622,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 
 			if ok2 {
 				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().WriteMask())))
+				stencilDynamic = true
 			}
 		} else {
 			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.WriteMask())))
@@ -1619,6 +1633,7 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 
 			if ok2 {
 				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", ldps.StencilBack().Reference()))
+				stencilDynamic = true
 			}
 		} else {
 			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", backStencil.Reference()))
@@ -1630,21 +1645,22 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 	stencilTable := &api.Table{
 		Headers: []string{"Face", "Fail Op", "Pass Op", "Depth Fail Op", "Func", "Compare Mask", "Write Mask", "Ref"},
 		Rows:    stencilRows,
+		Dynamic: stencilDynamic,
 	}
 
 	blendData := p.ColorBlendState()
 	blendList := &api.KeyValuePairList{}
-	blendList = blendList.AppendKeyValuePair("Logic Op Enabled", api.CreatePoDDataValue("VkBool32", blendData.LogicOpEnable() != 0))
-	blendList = blendList.AppendKeyValuePair("Logic Op", api.CreateEnumDataValue("VkLogicOp", blendData.LogicOp()))
+	blendList = blendList.AppendKeyValuePair("Logic Op Enabled", api.CreatePoDDataValue("VkBool32", blendData.LogicOpEnable() != 0), false)
+	blendList = blendList.AppendKeyValuePair("Logic Op", api.CreateEnumDataValue("VkLogicOp", blendData.LogicOp()), false)
 
 	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_BLEND_CONSTANTS]; ok {
 		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
 
 		if ok2 {
-			blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", ldps.BlendConstants().GetArrayValues()))
+			blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", ldps.BlendConstants().GetArrayValues()), true)
 		}
 	} else {
-		blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()))
+		blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()), false)
 	}
 
 	targets := blendData.Attachments()
@@ -1669,17 +1685,18 @@ func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.Glob
 	targetTable := &api.Table{
 		Headers: []string{"Enabled", "Color Src", "Color Dst", "Color Op", "Alpha Src", "Alpha Dst", "Alpha Op", "Color Write Mask"},
 		Rows:    targetRows,
+		Dynamic: false,
 	}
 
 	renderPassList := &api.KeyValuePairList{}
 	renderPassHandle := p.RenderPass().VulkanHandle()
 	renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
-	renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)))
+	renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)), false)
 
 	if !fb.IsNil() {
 		fbHandle := fb.VulkanHandle()
 		fbPath := path.NewField("Framebuffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(fbHandle)
-		renderPassList = renderPassList.AppendKeyValuePair("Framebuffer", api.CreateLinkedDataValue("url", fbPath, api.CreatePoDDataValue("VkFramebuffer", fbHandle)))
+		renderPassList = renderPassList.AppendKeyValuePair("Framebuffer", api.CreateLinkedDataValue("url", fbPath, api.CreatePoDDataValue("VkFramebuffer", fbHandle)), false)
 	}
 
 	dataGroups := []*api.DataGroup{
@@ -1791,14 +1808,14 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 
 	if !dispatchInfo.Dispatch().IsNil() {
 		dispatchParams := dispatchInfo.Dispatch()
-		dispatchList = dispatchList.AppendKeyValuePair("Group Count X", api.CreatePoDDataValue("u32", dispatchParams.GroupCountX()))
-		dispatchList = dispatchList.AppendKeyValuePair("Group Count Y", api.CreatePoDDataValue("u32", dispatchParams.GroupCountY()))
-		dispatchList = dispatchList.AppendKeyValuePair("Group Count Z", api.CreatePoDDataValue("u32", dispatchParams.GroupCountZ()))
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count X", api.CreatePoDDataValue("u32", dispatchParams.GroupCountX()), false)
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count Y", api.CreatePoDDataValue("u32", dispatchParams.GroupCountY()), false)
+		dispatchList = dispatchList.AppendKeyValuePair("Group Count Z", api.CreatePoDDataValue("u32", dispatchParams.GroupCountZ()), false)
 	} else if !dispatchInfo.DispatchIndirect().IsNil() {
 		dispatchParams := dispatchInfo.DispatchIndirect()
 		bufferPath := path.NewField("Buffers", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(dispatchParams.Buffer())
-		dispatchList = dispatchList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", dispatchParams.Buffer())))
-		dispatchList = dispatchList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", dispatchParams.Offset()))
+		dispatchList = dispatchList.AppendKeyValuePair("Buffer", api.CreateLinkedDataValue("url", bufferPath, api.CreatePoDDataValue("VkBuffer", dispatchParams.Buffer())), false)
+		dispatchList = dispatchList.AppendKeyValuePair("Offset", api.CreatePoDDataValue("VkDeviceSize", dispatchParams.Offset()), false)
 	}
 
 	stages := []*api.Stage{
