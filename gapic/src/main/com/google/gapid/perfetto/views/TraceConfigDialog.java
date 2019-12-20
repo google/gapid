@@ -127,7 +127,9 @@ public class TraceConfigDialog extends DialogBase {
       enabled.add("CPU");
     }
     Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
-    if (gpuCaps.getHasRenderStage() || gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
+    if (gpuCaps.getHasRenderStage() ||
+        gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
+        gpuCaps.getHasFrameLifecycle()) {
       if (settings.perfettoGpu) {
         enabled.add("GPU");
       }
@@ -181,24 +183,28 @@ public class TraceConfigDialog extends DialogBase {
       }
     }
 
-    Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
-    if (gpuCaps.getHasRenderStage() || gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
-      if (settings.perfettoGpu) {
-        if (settings.perfettoGpuSlices) {
-          config.addDataSourcesBuilder()
-              .getConfigBuilder()
-                  .setName("gpu.renderstages");
+    if (settings.perfettoGpu) {
+      Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
+      if (gpuCaps.getHasRenderStage() && settings.perfettoGpuSlices) {
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("gpu.renderstages");
+      }
+      if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 &&
+          settings.perfettoGpuCounters && settings.perfettoGpuCounterIds.length > 0) {
+        PerfettoConfig.GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("gpu.counters")
+                .getGpuCounterConfigBuilder()
+                    .setCounterPeriodNs(MILLISECONDS.toNanos(settings.perfettoGpuCounterRate));
+        for (int counter : settings.perfettoGpuCounterIds) {
+          counters.addCounterIds(counter);
         }
-        if (settings.perfettoGpuCounters && settings.perfettoGpuCounterIds.length > 0) {
-          PerfettoConfig.GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
-              .getConfigBuilder()
-                  .setName("gpu.counters")
-                  .getGpuCounterConfigBuilder()
-                      .setCounterPeriodNs(MILLISECONDS.toNanos(settings.perfettoGpuCounterRate));
-          for (int counter : settings.perfettoGpuCounterIds) {
-            counters.addCounterIds(counter);
-          }
-        }
+      }
+      if (gpuCaps.getHasFrameLifecycle() && settings.perfettoSurfaceFlinger) {
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("android.surfaceflinger.frame");
       }
     }
 
@@ -304,6 +310,7 @@ public class TraceConfigDialog extends DialogBase {
     private final Label[] gpuCountersLabels;
     private final Button gpuCountersSelect;
     private final Spinner gpuCountersRate;
+    private final Button gpuFrame;
 
     private final Button mem;
     private final Label[] memLabels;
@@ -339,7 +346,9 @@ public class TraceConfigDialog extends DialogBase {
       addSeparator();
 
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
-      if (gpuCaps.getHasRenderStage() || gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
+      if (gpuCaps.getHasRenderStage() ||
+          gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
+          gpuCaps.getHasFrameLifecycle()) {
         gpu = createCheckbox(this, "GPU", settings.perfettoGpu, e -> updateGpu());
         Composite gpuGroup = withLayoutData(
             createComposite(this, withMargin(new GridLayout(1, false), 5, 0)),
@@ -380,6 +389,13 @@ public class TraceConfigDialog extends DialogBase {
           gpuCountersRate = null;
           gpuCountersSelect = null;
         }
+
+        if (gpuCaps.getHasFrameLifecycle()) {
+          gpuFrame = createCheckbox(
+              gpuGroup, "Frame Lifecycle", settings.perfettoSurfaceFlinger, e -> updateGpu());
+        } else {
+          gpuFrame = null;
+        }
         addSeparator();
       } else {
         gpu = null;
@@ -388,6 +404,7 @@ public class TraceConfigDialog extends DialogBase {
         gpuCountersLabels = null;
         gpuCountersRate = null;
         gpuCountersSelect = null;
+        gpuFrame = null;
       }
 
       mem = createCheckbox(this, "Memory", settings.perfettoMem, e -> updateMem());
@@ -494,6 +511,9 @@ public class TraceConfigDialog extends DialogBase {
         settings.perfettoGpuCounters = gpuCounters.getSelection();
         settings.perfettoGpuCounterRate = gpuCountersRate.getSelection();
       }
+      if (gpuFrame != null) {
+        settings.perfettoSurfaceFlinger = gpuFrame.getSelection();
+      }
 
       settings.perfettoMem = mem.getSelection();
       settings.perfettoMemRate = memRate.getSelection();
@@ -547,6 +567,9 @@ public class TraceConfigDialog extends DialogBase {
         for (Label label : gpuCountersLabels) {
           label.setEnabled(countersEnabled);
         }
+      }
+      if (gpuFrame != null) {
+        gpuFrame.setEnabled(enabled);
       }
     }
 

@@ -190,6 +190,7 @@ message GPUProfiling {
   bool hasRenderStage = 1;
   // The GPU performance counters.
   GpuCounterDescriptor gpu_counter_descriptor = 2;
+  bool hasFrameLifecycle = 3;
 }
 
 // Instance represents a physical device.
