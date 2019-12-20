@@ -54,18 +54,19 @@ message Any {
     Messages messages = 26;
     MultiResourceData multi_resource_data = 27;
     Parameter parameter = 28;
-    Report report = 29;
-    ResourceData resource_data = 30;
-    Resources resources = 31;
-    Result result = 32;
-    Slice slice = 33;
-    State state = 34;
-    StateTree state_tree = 35;
-    StateTreeNode state_tree_node = 36;
-    StateTreeNodeForPath state_tree_node_for_path = 37;
-    Stats stats = 38;
-    Thumbnail thumbnail = 39;
-    Type type = 40;
+    Pipelines pipelines = 29;
+    Report report = 30;
+    ResourceData resource_data = 31;
+    Resources resources = 32;
+    Result result = 33;
+    Slice slice = 34;
+    State state = 35;
+    StateTree state_tree = 36;
+    StateTreeNode state_tree_node = 37;
+    StateTreeNodeForPath state_tree_node_for_path = 38;
+    Stats stats = 39;
+    Thumbnail thumbnail = 40;
+    Type type = 41;
   }
 }
 
@@ -399,6 +400,12 @@ message Metrics {
 
   // Whether to get the memory breakdown metrics.
   bool memory_breakdown = 2;
+}
+
+// Pipelines requests the currently bound piplines for a given command.
+message Pipelines {
+  // The command after which to get the currently bound piplines.
+  Command after = 1;
 }
 
 // Report is a path to a list of report items for a capture.
