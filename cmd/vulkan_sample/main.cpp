@@ -513,7 +513,6 @@ int main(int argc, const char** argv) {
 #endif
   VkSurfaceCapabilitiesKHR surface_capabilities = {};
   VkSurfaceFormatKHR surface_format = {};
-  VkPresentModeKHR present_mode = {};
 
   VkPhysicalDevice physical_device = {};
   uint32_t queue_family_index = static_cast<uint32_t>(-1);
@@ -531,7 +530,6 @@ int main(int argc, const char** argv) {
     LOAD_INSTANCE_FUNCTION(vkGetPhysicalDeviceQueueFamilyProperties, instance);
     LOAD_INSTANCE_FUNCTION(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, instance);
     LOAD_INSTANCE_FUNCTION(vkGetPhysicalDeviceSurfaceFormatsKHR, instance);
-    LOAD_INSTANCE_FUNCTION(vkGetPhysicalDeviceSurfacePresentModesKHR, instance);
 
     uint32_t i;
     for (i = 0; i < nPhysicalDevices; ++i) {
@@ -566,14 +564,6 @@ int main(int argc, const char** argv) {
           continue;
         }
         if (queue_properties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-          uint32_t nPresentModes;
-          REQUIRE_SUCCESS(vkGetPhysicalDeviceSurfacePresentModesKHR(
-              physical_devices[i], surface, &nPresentModes, nullptr));
-          std::vector<VkPresentModeKHR> present_modes(nPresentModes);
-          REQUIRE_SUCCESS(vkGetPhysicalDeviceSurfacePresentModesKHR(
-              physical_devices[i], surface, &nPresentModes,
-              present_modes.data()));
-          present_mode = present_modes[0];
           queue_family_index = j;
           break;
         }
@@ -638,6 +628,12 @@ int main(int argc, const char** argv) {
   LOAD_DEVICE_FUNCTION(vkGetDeviceQueue)
   vkGetDeviceQueue(device, queue_family_index, 0, &queue);
 
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+  constexpr uint32_t kDesiredImageCount = 3;
+#else
+  constexpr uint32_t kDesiredImageCount = 2;
+#endif
+
   VkSwapchainKHR swapchain;
   {
     LOAD_DEVICE_FUNCTION(vkCreateSwapchainKHR);
@@ -646,9 +642,7 @@ int main(int argc, const char** argv) {
         nullptr,
         0,
         surface,
-        surface_capabilities.minImageCount > 2
-            ? surface_capabilities.minImageCount
-            : 2,
+        std::max(surface_capabilities.minImageCount, kDesiredImageCount),
         surface_format.format,
         surface_format.colorSpace,
         surface_capabilities.currentExtent,
@@ -659,7 +653,7 @@ int main(int argc, const char** argv) {
         nullptr,
         VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
         VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        present_mode,
+        VK_PRESENT_MODE_FIFO_KHR,
         VK_FALSE,
         VK_NULL_HANDLE};
 
