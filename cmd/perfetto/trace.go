@@ -20,26 +20,31 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/app/crash"
 	"github.com/google/gapid/core/log"
 	"github.com/google/gapid/core/os/device/bind"
+	"github.com/google/gapid/gapis/perfetto"
 
 	config "protos/perfetto/config"
 )
 
 type traceVerb struct {
-	Config string `help:"File containing the trace configuration proto."`
-	Out    string `help:"The file to store the trace data in."`
+	Config string        `help:"File containing the trace configuration proto."`
+	Out    string        `help:"The file to store the trace data in."`
+	Read   time.Duration `help:"The time to wait in-between read requests."`
 }
 
 func init() {
 	verb := &traceVerb{
-		Out: "trace.perfetto",
+		Out:  "trace.perfetto",
+		Read: 100 * time.Millisecond,
 	}
 	app.AddVerb(&app.Verb{
 		Name:      "trace",
@@ -77,7 +82,7 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 	defer c.Close(ctx)
 
-	sess, err := c.Trace(ctx, cfg, out)
+	sess, err := c.Trace(ctx, cfg, &trackingWriter{out, 0, time.Now()})
 	if err != nil {
 		return log.Errf(ctx, err, "Failed to start Perfetto trace")
 	}
@@ -92,6 +97,20 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 			sess.Start(ctx)
 		}
 
+		crash.Go(func() {
+			ticker := time.NewTicker(verb.Read)
+			for {
+				<-ticker.C
+				if err := sess.Read(ctx); err != nil {
+					if err != perfetto.ErrDone {
+						fmt.Println("Reading failed:", err)
+					}
+					ticker.Stop()
+					break
+				}
+			}
+		})
+
 		fmt.Println("Press enter to stop capturing...")
 		if _, err := reader.ReadString('\n'); err != nil {
 			return
@@ -104,6 +123,23 @@ func (verb *traceVerb) Run(ctx context.Context, flags flag.FlagSet) error {
 	}
 
 	return nil
+}
+
+type trackingWriter struct {
+	out  io.Writer
+	done int64
+	last time.Time
+}
+
+// Write implements the io.Writer interface.
+func (w *trackingWriter) Write(p []byte) (int, error) {
+	n, err := w.out.Write(p)
+	w.done += int64(n)
+	if time.Since(w.last) >= 1*time.Second {
+		fmt.Println("Got", w.done, "bytes...")
+		w.last = time.Now()
+	}
+	return n, err
 }
 
 func (verb *traceVerb) readConfig(ctx context.Context) (*config.TraceConfig, error) {
