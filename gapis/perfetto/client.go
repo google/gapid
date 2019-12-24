@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/gapid/core/app"
 	"github.com/google/gapid/core/event/task"
+	"github.com/google/gapid/core/fault"
 	"github.com/google/gapid/gapis/perfetto/client"
 
 	common "protos/perfetto/common"
@@ -30,6 +31,9 @@ import (
 )
 
 const (
+	// ErrDone is returned for calls on a trace session that is already stopped.
+	ErrDone = fault.Const("Trace already stopped")
+
 	consumerService = "ConsumerPort"
 	queryMethod     = "QueryServiceState"
 	traceMethod     = "EnableTracing"
@@ -94,7 +98,9 @@ type TraceSession struct {
 	wait  task.Signal
 	done  task.Task
 	start *client.Method
+	read  *client.Method
 	stop  *client.Method
+	out   *client.PacketWriter
 	err   error
 }
 
@@ -120,14 +126,18 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 		wait:  wait,
 		done:  done,
 		start: start,
+		read:  read,
 		stop:  stop,
+		out:   client.NewPacketWriter(out),
 	}
-
-	pw := client.NewPacketWriter(out)
 
 	h := client.NewTraceHandler(ctx, func(r *ipc.EnableTracingResponse, err error) {
 		if !s.onResult(ctx, err) {
-			c.readBuffers(ctx, read, s, pw)
+			s.readBuffers(ctx, func(err error) {
+				if !s.onResult(ctx, err) {
+					s.done(ctx)
+				}
+			})
 		}
 	})
 
@@ -136,23 +146,6 @@ func (c *Client) Trace(ctx context.Context, cfg *config.TraceConfig, out io.Writ
 	}
 
 	return s, nil
-}
-
-func (c *Client) readBuffers(ctx context.Context, m *client.Method, s *TraceSession, out *client.PacketWriter) {
-	h := client.NewReadHandler(ctx, func(r *ipc.ReadBuffersResponse, more bool, err error) {
-		if s.onResult(ctx, err) {
-			return
-		}
-
-		if s.onResult(ctx, out.Write(r.Slices)) {
-			return
-		}
-
-		if !more {
-			s.done(ctx)
-		}
-	})
-	s.onResult(ctx, c.conn.Invoke(ctx, m, &ipc.ReadBuffersRequest{}, h))
 }
 
 // Start starts the currently deferred trace of this session. Does nothing, if
@@ -169,6 +162,28 @@ func (s *TraceSession) Start(ctx context.Context) {
 		s.onResult(ctx, err)
 	})
 	s.onResult(ctx, s.conn.Invoke(ctx, s.start, &ipc.StartTracingRequest{}, h))
+}
+
+// Read requests the service to transfer the buffered data and writes it into
+// the output writer. This is a synchronous call that blocks until the service
+// is done sending data and it has been written.
+func (s *TraceSession) Read(ctx context.Context) error {
+	if s.wait.Fired() {
+		// Ignore any reads after we've already marked this session as done.
+		return ErrDone
+	}
+
+	fail := make(chan error, 1)
+	s.readBuffers(ctx, func(err error) {
+		fail <- err
+	})
+
+	select {
+	case err := <-fail:
+		return err
+	case <-task.ShouldStop(ctx):
+		return task.StopReason(ctx)
+	}
 }
 
 // Stop stops the currently running trace of this session.
@@ -202,6 +217,25 @@ func (s *TraceSession) onResult(ctx context.Context, err error) bool {
 		return true
 	}
 	return false
+}
+
+func (s *TraceSession) readBuffers(ctx context.Context, done func(error)) {
+	h := client.NewReadHandler(ctx, func(r *ipc.ReadBuffersResponse, more bool, err error) {
+		if err != nil {
+			done(err)
+			return
+		}
+
+		if err := s.out.Write(r.Slices); err != nil {
+			done(err)
+			return
+		}
+
+		if !more {
+			done(nil)
+		}
+	})
+	s.onResult(ctx, s.conn.Invoke(ctx, s.read, &ipc.ReadBuffersRequest{}, h))
 }
 
 // Close closes the underlying connection to the Perfetto service of this client.

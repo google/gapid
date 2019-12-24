@@ -28,6 +28,7 @@ go_library(
     deps = [
         "//core/app:go_default_library",
         "//core/event/task:go_default_library",
+        "//core/fault:go_default_library",
         "//core/log:go_default_library",
         "//gapis/perfetto/client:go_default_library",
         "//gapis/perfetto/service:go_default_library",
