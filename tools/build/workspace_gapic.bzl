@@ -15,7 +15,7 @@
 # Defines macros to be called from a WORKSPACE file to setup the GAPID
 # Java client dependencies.
 
-load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository")
+load("@gapid//tools/build/rules:repository.bzl", "github_repository", "maybe_repository", "maven_jar")
 load("@gapid//tools/build/third_party:jface.bzl", "jface")
 load("@gapid//tools/build/third_party:swt.bzl", "swt")
 
@@ -42,7 +42,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         # gRPC and it's dependencies.
         ########################################################################
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_grpc_context",
             locals = locals,
             artifact = "io.grpc:grpc-context:1.16.1",
@@ -51,7 +51,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_grpc_core",
             locals = locals,
             artifact = "io.grpc:grpc-core:1.16.1",
@@ -60,7 +60,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_grpc_okhttp",
             locals = locals,
             artifact = "io.grpc:grpc-okhttp:1.16.1",
@@ -69,7 +69,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_grpc_protobuf",
             locals = locals,
             artifact = "io.grpc:grpc-protobuf:1.16.1",
@@ -78,7 +78,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_grpc_protobuf_lite",
             locals = locals,
             artifact = "io.grpc:grpc-protobuf-lite:1.16.1",
@@ -87,7 +87,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_grpc_stub",
             locals = locals,
             artifact = "io.grpc:grpc-stub:1.16.1",
@@ -97,7 +97,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
 
         # OKHttp used by gRPC.
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "com_squareup_okhttp",
             locals = locals,
             artifact = "com.squareup.okhttp:okhttp:2.5.0",
@@ -106,7 +106,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "com_squareup_okio",
             locals = locals,
             artifact = "com.squareup.okio:okio:1.6.0",
@@ -116,7 +116,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
 
         # Opencensus used by gRPC.
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_opencensus_api",
             locals = locals,
             artifact = "io.opencensus:opencensus-api:0.12.3",
@@ -125,7 +125,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "io_opencensus_contrib_grpc_metrics",
             locals = locals,
             artifact = "io.opencensus:opencensus-contrib-grpc-metrics:0.12.3",
@@ -134,7 +134,7 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         )
 
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "javax_annotation_api",
             locals = locals,
             artifact = "javax.annotation:javax.annotation-api:1.2",
@@ -145,37 +145,33 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
         # LWJGL.
         ############################################################################
         maybe_repository(
-            _maven_jar_with_natives,
+            maven_jar,
             name = "org_lwjgl_core",
             locals = locals,
             artifact = "org.lwjgl:lwjgl:3.2.0",
-            shas = {
-                "base": "97af9a688081bbdf0cf208b93f02b58fe2db0504ee7333e54780c4b6f70694f8",
-                "base-src": "1919899fbea2dcf392d0bba6161da058f7f8c4da0877a7e6258ee57305c398e7",
-                "linux": "08ca6d394ef7ac97002bc939642dc285c7f61c94a69070fa9a916921fee637ab",
-                "windows": "ee93b31388356835fe8fbc6155dc83c73ceec7422b777aa2e7e3187e9689b2cc",
-                "macos": "6db0910dea5323a3b61c8b16a28e5f84ee780f2affc2cd06da34b9fe09295051",
-            },
+            sha256 = "97af9a688081bbdf0cf208b93f02b58fe2db0504ee7333e54780c4b6f70694f8",
+            sha256_src = "1919899fbea2dcf392d0bba6161da058f7f8c4da0877a7e6258ee57305c398e7",
+            sha256_linux = "08ca6d394ef7ac97002bc939642dc285c7f61c94a69070fa9a916921fee637ab",
+            sha256_windows = "ee93b31388356835fe8fbc6155dc83c73ceec7422b777aa2e7e3187e9689b2cc",
+            sha256_macos = "6db0910dea5323a3b61c8b16a28e5f84ee780f2affc2cd06da34b9fe09295051",
         )
 
         maybe_repository(
-            _maven_jar_with_natives,
+            maven_jar,
             name = "org_lwjgl_opengl",
             locals = locals,
             artifact = "org.lwjgl:lwjgl-opengl:3.2.0",
-            shas = {
-                "base": "4cc168087708653bdbc1d700daf3fb4b8c1fc89d23d4cf6ee834c3b1208c85a6",
-                "base-src": "3693081b41f4259be2df7e37c36a5a2b9ce3f8a451b7acc9d609749a1c6e7974",
-                "linux": "1f04e87ab78cb9616447f2abbf3d8b0c3cf25c73aea7f40b2580caba2a1269f6",
-                "windows": "4e515b2c596a7a0794f0fe855637aafe1427a1f4e331d6b5be83c03add04e0eb",
-                "macos": "a9cc1b2de4be574261c9923027076d5ef5c9565dc2c98c074857d4455ed14848",
-            },
+            sha256 = "4cc168087708653bdbc1d700daf3fb4b8c1fc89d23d4cf6ee834c3b1208c85a6",
+            sha256_src = "3693081b41f4259be2df7e37c36a5a2b9ce3f8a451b7acc9d609749a1c6e7974",
+            sha256_linux = "1f04e87ab78cb9616447f2abbf3d8b0c3cf25c73aea7f40b2580caba2a1269f6",
+            sha256_windows = "4e515b2c596a7a0794f0fe855637aafe1427a1f4e331d6b5be83c03add04e0eb",
+            sha256_macos = "a9cc1b2de4be574261c9923027076d5ef5c9565dc2c98c074857d4455ed14848",
         )
 
         # Other dependencies.
         ############################################################################
         maybe_repository(
-            native.maven_jar,
+            maven_jar,
             name = "com_google_guava",
             locals = locals,
             artifact = "com.google.guava:guava:27.0-jre",
@@ -199,28 +195,28 @@ def gapic_dependencies(no_maven = False, no_swt = False, no_jface = False, local
 
 DEFAULT_MAPPINGS = {
     # gRPC
-    "io_grpc_context": "@io_grpc_context//jar",
-    "io_grpc_core": "@io_grpc_core//jar",
-    "io_grpc_okhttp": "@io_grpc_okhttp//jar",
-    "io_grpc_protobuf": "@io_grpc_protobuf//jar",
-    "io_grpc_protobuf_lite": "@io_grpc_protobuf_lite//jar",
-    "io_grpc_stub": "@io_grpc_stub//jar",
-    "com_squareup_okhttp": "@com_squareup_okhttp//jar",
-    "com_squareup_okio": "@com_squareup_okio//jar",
-    "io_opencensus_api": "@io_opencensus_api//jar",
-    "io_opencensus_contrib_grpc_metrics": "@io_opencensus_contrib_grpc_metrics//jar",
-    "javax_annotation_api": "@javax_annotation_api//jar",
+    "io_grpc_context": "@io_grpc_context//:jar",
+    "io_grpc_core": "@io_grpc_core//:jar",
+    "io_grpc_okhttp": "@io_grpc_okhttp//:jar",
+    "io_grpc_protobuf": "@io_grpc_protobuf//:jar",
+    "io_grpc_protobuf_lite": "@io_grpc_protobuf_lite//:jar",
+    "io_grpc_stub": "@io_grpc_stub//:jar",
+    "com_squareup_okhttp": "@com_squareup_okhttp//:jar",
+    "com_squareup_okio": "@com_squareup_okio//:jar",
+    "io_opencensus_api": "@io_opencensus_api//:jar",
+    "io_opencensus_contrib_grpc_metrics": "@io_opencensus_contrib_grpc_metrics//:jar",
+    "javax_annotation_api": "@javax_annotation_api//:jar",
     # LWJGL
-    "org_lwjgl_core": "@org_lwjgl_core//jar",
-    "org_lwjgl_core_natives_linux": "@org_lwjgl_core_natives_linux//jar",
-    "org_lwjgl_core_natives_windows": "@org_lwjgl_core_natives_windows//jar",
-    "org_lwjgl_core_natives_macos": "@org_lwjgl_core_natives_macos//jar",
-    "org_lwjgl_opengl": "@org_lwjgl_opengl//jar",
-    "org_lwjgl_opengl_natives_linux": "@org_lwjgl_opengl_natives_linux//jar",
-    "org_lwjgl_opengl_natives_windows": "@org_lwjgl_opengl_natives_windows//jar",
-    "org_lwjgl_opengl_natives_macos": "@org_lwjgl_opengl_natives_macos//jar",
+    "org_lwjgl_core": "@org_lwjgl_core//:jar",
+    "org_lwjgl_core_natives_linux": "@org_lwjgl_core//:jar-natives-linux",
+    "org_lwjgl_core_natives_windows": "@org_lwjgl_core//:jar-natives-windows",
+    "org_lwjgl_core_natives_macos": "@org_lwjgl_core//:jar-natives-macos",
+    "org_lwjgl_opengl": "@org_lwjgl_opengl//:jar",
+    "org_lwjgl_opengl_natives_linux": "@org_lwjgl_opengl//:jar-natives-linux",
+    "org_lwjgl_opengl_natives_windows": "@org_lwjgl_opengl//:jar-natives-windows",
+    "org_lwjgl_opengl_natives_macos": "@org_lwjgl_opengl//:jar-natives-macos",
     # Others
-    "com_google_guava": "@com_google_guava//jar",
+    "com_google_guava": "@com_google_guava//:jar",
     "jface": "@jface",
     "swt": "@swt",
 }
@@ -229,38 +225,6 @@ def gapic_third_party(mappings = DEFAULT_MAPPINGS):
     _gapic_third_party(
         name = "gapic_third_party",
         mappings = mappings,
-    )
-
-def _maven_jar_with_natives(name, artifact, shas = {}):
-    native.maven_jar(
-        name = name,
-        artifact = artifact,
-        sha256 = shas["base"],
-        sha256_src = shas["base-src"]
-    )
-
-    toks = artifact.split(":")
-    toks.insert(len(toks) - 1, "jar")
-
-    toks.insert(len(toks) - 1, "natives-linux")
-    native.maven_jar(
-        name = name + "_natives_linux",
-        artifact = ":".join(toks),
-        sha256 = shas["linux"],
-    )
-
-    toks[len(toks) - 2] = "natives-windows"
-    native.maven_jar(
-        name = name + "_natives_windows",
-        artifact = ":".join(toks),
-        sha256 = shas["windows"],
-    )
-
-    toks[len(toks) - 2] = "natives-macos"
-    native.maven_jar(
-        name = name + "_natives_macos",
-        artifact = ":".join(toks),
-        sha256 = shas["macos"],
     )
 
 def _gapic_third_party_impl(ctx):
