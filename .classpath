@@ -25,17 +25,17 @@
 	<classpathentry kind="lib" path="bazel-bin/gapis/stringtable/libstringtable_proto-speed.jar" sourcepath="bazel-genfiles/gapis/stringtable/stringtable_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapis/vertex/libvertex_proto-speed.jar" sourcepath="bazel-genfiles/gapis/vertex/vertex_proto-speed-src.jar"/>
 	<classpathentry kind="lib" path="bazel-bin/gapic/src/main/libservice_grpc.jar" sourcepath="bazel-bin/gapic/src/main/service_grpc-src-src.jar"/>
-	<classpathentry kind="lib" path="bazel-external/com_google_guava/jar/guava-27.0-jre.jar" sourcepath="bazel-external/com_google_guava/jar/guava-27.0-jre-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/com_squareup_okhttp/jar/okhttp-2.5.0.jar" sourcepath="bazel-external/com_squareup_okhttp/jar/okhttp-2.5.0-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/com_squareup_okio/jar/okio-1.6.0.jar" sourcepath="bazel-external/com_squareup_okio/jar/okio-1.6.0-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_grpc_context/jar/grpc-context-1.16.1.jar" sourcepath="bazel-external/io_grpc_context/jar/grpc-context-1.16.1-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_grpc_core/jar/grpc-core-1.16.1.jar" sourcepath="bazel-external/io_grpc_core/jar/grpc-core-1.16.1-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_grpc_okhttp/jar/grpc-okhttp-1.16.1.jar" sourcepath="bazel-external/io_grpc_okhttp/jar/grpc-okhttp-1.16.1-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_grpc_protobuf/jar/grpc-protobuf-1.16.1.jar" sourcepath="bazel-external/io_grpc_protobuf/jar/grpc-protobuf-1.16.1-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_grpc_protobuf_lite/jar/grpc-protobuf-lite-1.16.1.jar" sourcepath="bazel-external/io_grpc_protobuf_lite/jar/grpc-protobuf-lite-1.16.1-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_grpc_stub/jar/grpc-stub-1.16.1.jar" sourcepath="bazel-external/io_grpc_stub/jar/grpc-stub-1.16.1-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_opencensus_api/jar/opencensus-api-0.12.3.jar" sourcepath="bazel-external/io_opencensus_api/jar/opencensus-api-0.12.3-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/io_opencensus_contrib_grpc_metrics/jar/opencensus-contrib-grpc-metrics-0.12.3.jar" sourcepath="bazel-external/io_opencensus_contrib_grpc_metrics/jar/opencensus-contrib-grpc-metrics-0.12.3-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_google_guava/guava.jar" sourcepath="bazel-external/com_google_guava/guava-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_squareup_okhttp/okhttp.jar" sourcepath="bazel-external/com_squareup_okhttp/okhttp-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/com_squareup_okio/okio.jar" sourcepath="bazel-external/com_squareup_okio/okio-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_context/grpc-context.jar" sourcepath="bazel-external/io_grpc_context/grpc-context-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_core/grpc-core.jar" sourcepath="bazel-external/io_grpc_core/grpc-core-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_okhttp/grpc-okhttp.jar" sourcepath="bazel-external/io_grpc_okhttp/grpc-okhttp-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_protobuf/grpc-protobuf.jar" sourcepath="bazel-external/io_grpc_protobuf/grpc-protobuf-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_protobuf_lite/grpc-protobuf-lite.jar" sourcepath="bazel-external/io_grpc_protobuf_lite/grpc-protobuf-lite-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_grpc_stub/grpc-stub.jar" sourcepath="bazel-external/io_grpc_stub/grpc-stub-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_opencensus_api/opencensus-api.jar" sourcepath="bazel-external/io_opencensus_api/opencensus-api-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/io_opencensus_contrib_grpc_metrics/opencensus-contrib-grpc-metrics.jar" sourcepath="bazel-external/io_opencensus_contrib_grpc_metrics/opencensus-contrib-grpc-metrics-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.core.commands.jar" sourcepath="bazel-external/jface/org.eclipse.core.commands-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.core.runtime.jar" sourcepath="bazel-external/jface/org.eclipse.core.runtime-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.equinox.common.jar" sourcepath="bazel-external/jface/org.eclipse.equinox.common-sources.jar"/>
@@ -44,8 +44,8 @@
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.jface.text.jar" sourcepath="bazel-external/jface/org.eclipse.jface.text-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.osgi.jar" sourcepath="bazel-external/jface/org.eclipse.osgi-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/jface/org.eclipse.text.jar" sourcepath="bazel-external/jface/org.eclipse.text-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/org_lwjgl_core/jar/lwjgl-3.2.0.jar" sourcepath="bazel-external/org_lwjgl_core/jar/lwjgl-3.2.0-sources.jar"/>
-	<classpathentry kind="lib" path="bazel-external/org_lwjgl_opengl/jar/lwjgl-opengl-3.2.0.jar" sourcepath="bazel-external/org_lwjgl_opengl/jar/lwjgl-opengl-3.2.0-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/org_lwjgl_core/lwjgl.jar" sourcepath="bazel-external/org_lwjgl_core/lwjgl-sources.jar"/>
+	<classpathentry kind="lib" path="bazel-external/org_lwjgl_opengl/lwjgl-opengl.jar" sourcepath="bazel-external/org_lwjgl_opengl/lwjgl-opengl-sources.jar"/>
 	<classpathentry kind="lib" path="bazel-external/swt/swt.jar" sourcepath="bazel-external/swt/src.zip"/>
 	<classpathentry kind="output" path="gapic/bin"/>
 </classpath>
