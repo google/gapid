@@ -27,7 +27,6 @@ import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.views.BatterySummaryPanel;
@@ -119,19 +118,19 @@ public class BatterySummaryTrack extends Track.WithQueryEngine<BatterySummaryTra
     return format(COUNTER_SQL, tableName("span"));
   }
 
-  public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
+  public static Perfetto.Data.Builder enumerate(Perfetto.Data.Builder data) {
     ImmutableListMultimap<String, CounterInfo> counters = data.getCounters(CounterInfo.Type.Global);
     CounterInfo battCap = onlyOne(counters.get("batt.capacity_pct"));
     CounterInfo battCharge = onlyOne(counters.get("batt.charge_uah"));
     CounterInfo battCurrent = onlyOne(counters.get("batt.current_ua"));
     if ((battCap == null) || (battCharge  == null) || (battCurrent  == null)) {
-      return Futures.immediateFuture(data);
+      return data;
     }
 
     BatterySummaryTrack track = new BatterySummaryTrack(data.qe, battCap, battCharge, battCurrent);
     data.tracks.addTrack(null, track.getId(), "Battery Usage",
         single(state -> new BatterySummaryPanel(state, track), true));
-    return Futures.immediateFuture(data);
+    return data;
   }
 
   private static CounterInfo onlyOne(ImmutableList<CounterInfo> counters) {
