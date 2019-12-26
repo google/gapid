@@ -17,8 +17,6 @@ package com.google.gapid.perfetto.models;
 
 import static com.google.gapid.perfetto.views.TrackContainer.group;
 import static com.google.gapid.perfetto.views.TrackContainer.single;
-import static com.google.gapid.util.MoreFutures.transform;
-import static com.google.gapid.util.MoreFutures.transformAsync;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.Lists;
@@ -36,6 +34,7 @@ import com.google.gapid.perfetto.views.ProcessSummaryPanel;
 import com.google.gapid.perfetto.views.ThreadPanel;
 import com.google.gapid.perfetto.views.TitlePanel;
 import com.google.gapid.perfetto.views.VulkanCounterPanel;
+import com.google.gapid.util.Scheduler;
 
 import java.util.Collections;
 import java.util.List;
@@ -53,8 +52,9 @@ public class Tracks {
   }
 
   public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
-    enumerateCpu(data);
-    return transform(enumerateCounters(data), $2 -> {
+    return Scheduler.EXECUTOR.submit(() -> {
+      enumerateCpu(data);
+      enumerateCounters(data);
       enumerateGpu(data);
       enumerateProcesses(data);
       return data;
@@ -94,10 +94,10 @@ public class Tracks {
     return data;
   }
 
-  public static ListenableFuture<Perfetto.Data.Builder> enumerateCounters(
-      Perfetto.Data.Builder data) {
-    return transformAsync(MemorySummaryTrack.enumerate(data), $1 ->
-        BatterySummaryTrack.enumerate(data));
+  public static Perfetto.Data.Builder enumerateCounters(Perfetto.Data.Builder data) {
+    MemorySummaryTrack.enumerate(data);
+    BatterySummaryTrack.enumerate(data);
+    return data;
   }
 
   public static Perfetto.Data.Builder enumerateGpu(Perfetto.Data.Builder data) {

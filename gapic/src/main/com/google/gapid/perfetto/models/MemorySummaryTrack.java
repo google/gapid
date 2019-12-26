@@ -27,7 +27,6 @@ import static java.lang.String.format;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gapid.models.Perfetto;
 import com.google.gapid.perfetto.views.MemorySummaryPanel;
@@ -132,7 +131,7 @@ public class MemorySummaryTrack extends Track.WithQueryEngine<MemorySummaryTrack
     return format(COUNTER_SQL, tableName("span"));
   }
 
-  public static ListenableFuture<Perfetto.Data.Builder> enumerate(Perfetto.Data.Builder data) {
+  public static Perfetto.Data.Builder enumerate(Perfetto.Data.Builder data) {
     ImmutableListMultimap<String, CounterInfo> counters = data.getCounters(CounterInfo.Type.Global);
     CounterInfo total = onlyOne(counters.get("MemTotal"));
     CounterInfo free = onlyOne(counters.get("MemFree"));
@@ -141,14 +140,14 @@ public class MemorySummaryTrack extends Track.WithQueryEngine<MemorySummaryTrack
     CounterInfo swapCached = onlyOne(counters.get("SwapCached"));
     if ((total == null) || (free  == null) || (buffers  == null) || (cached  == null) ||
         (swapCached  == null)) {
-      return Futures.immediateFuture(data);
+      return data;
     }
 
     MemorySummaryTrack track = new MemorySummaryTrack(
         data.qe, (long)total.max, total.id, free.id, buffers.id, cached.id, swapCached.id);
     data.tracks.addTrack(null, track.getId(), "Memory Usage",
         single(state -> new MemorySummaryPanel(state, track), true));
-    return Futures.immediateFuture(data);
+    return data;
   }
 
   private static CounterInfo onlyOne(ImmutableList<CounterInfo> counters) {
