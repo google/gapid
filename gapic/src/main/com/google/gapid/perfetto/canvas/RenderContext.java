@@ -22,6 +22,7 @@ import com.google.gapid.perfetto.canvas.Fonts.Style;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGBA;
@@ -392,6 +393,10 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
 
     public RenderContext newContext(GC gc) {
       return new RenderContext(theme, gc, colors, fontContext);
+    }
+
+    public Color getColor(RGBA rgba) {
+      return colors.get(rgba);
     }
 
     @Override
