@@ -30,6 +30,7 @@ import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.ThreadInfo;
 import com.google.gapid.perfetto.models.Track;
 import com.google.gapid.perfetto.models.TrackConfig;
+import com.google.gapid.perfetto.models.VSync;
 import com.google.gapid.rpc.Rpc;
 import com.google.gapid.rpc.Rpc.Result;
 import com.google.gapid.rpc.RpcException;
@@ -351,6 +352,10 @@ public abstract class State {
     @Override
     public ThreadInfo getThreadInfo(long id) {
       return data.threads.get(id);
+    }
+
+    public VSync getVSync() {
+      return data.vsync;
     }
 
     public TrackConfig getTracks() {

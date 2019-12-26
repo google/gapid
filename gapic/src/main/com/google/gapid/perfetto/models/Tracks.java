@@ -57,6 +57,7 @@ public class Tracks {
       enumerateCounters(data);
       enumerateGpu(data);
       enumerateProcesses(data);
+      enumerateVSync(data);
       return data;
     });
   }
@@ -235,5 +236,14 @@ public class Tracks {
           group(state -> new TitlePanel(idleCount + " Idle Processes (< 0.1%)"), false));
     }
     return data;
+  }
+
+  public static Perfetto.Data.Builder enumerateVSync(Perfetto.Data.Builder data) {
+    List<CounterInfo> counters = data.getCounters(CounterInfo.Type.Process).get("VSYNC-app");
+    if (counters.size() != 1) {
+      return data;
+    }
+
+    return data.setVSync(new VSync.FromSurfaceFlingerAppCounter(data.qe, counters.get(0)));
   }
 }

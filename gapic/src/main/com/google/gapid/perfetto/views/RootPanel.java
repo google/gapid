@@ -31,6 +31,7 @@ import com.google.gapid.perfetto.canvas.RenderContext;
 import com.google.gapid.perfetto.canvas.Size;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.TrackConfig;
+import com.google.gapid.perfetto.models.VSync;
 import com.google.gapid.widgets.Theme;
 
 import org.eclipse.swt.SWT;
@@ -113,6 +114,9 @@ public class RootPanel extends Panel.Base implements State.Listener {
       double newClipY = Math.max(clip.y, topHeight);
       ctx.withClip(clip.x, newClipY, clip.w, clip.h - (newClipY - clip.y), () -> {
         ctx.withTranslation(0, topHeight - state.getScrollOffset(), () -> {
+          if (state.hasData() && state.getVSync().hasData()) {
+            renderVSync(ctx, repainter, state.getVSync());
+          }
           bottom.render(ctx, repainter.transformed(
               a -> a.translate(0, topHeight - state.getScrollOffset())));
         });
@@ -178,6 +182,40 @@ public class RootPanel extends Panel.Base implements State.Listener {
       ctx.setBackgroundColor(colors().selectionBackground);
       ctx.fillRect(selection.x, selection.y, selection.w, selection.h);
     }
+  }
+
+  private void renderVSync(RenderContext ctx, Repainter repainter, VSync vsync) {
+    ctx.trace("VSync", () -> {
+      VSync.Data data = vsync.getData(state.toRequest(), (future, consumer) -> {
+        state.thenOnUiThread(future, result -> {
+          consumer.accept(result);
+          repainter.repaint(new Area(0, 0, width, height));
+        });
+      });
+      if (data == null) {
+        return;
+      }
+
+      TimeSpan visible = state.getVisibleTime();
+      ctx.setBackgroundColor(colors().vsyncBackground);
+      boolean fill = !data.fillFirst;
+      double lastX = LABEL_WIDTH;
+      double h = bottom.getPreferredHeight();
+      for (long time : data.ts) {
+        fill = !fill;
+        if (time < visible.start) {
+          continue;
+        }
+        double x = LABEL_WIDTH + state.timeToPx(time);
+        if (fill) {
+          ctx.fillRect(lastX, 0, x - lastX, h);
+        }
+        lastX = x;
+        if (time > visible.end) {
+          break;
+        }
+      }
+    });
   }
 
   @Override
