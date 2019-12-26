@@ -56,7 +56,7 @@ public class PanelCanvas extends Canvas {
 
     addListener(SWT.Paint, e -> {
       long start = System.nanoTime();
-      e.gc.setBackground(getDisplay().getSystemColor(colors().background));
+      e.gc.setBackground(context.getColor(colors().background));
       Rectangle size = e.gc.getClipping();
       e.gc.fillRectangle(size);
       Map<String, Long> traces;

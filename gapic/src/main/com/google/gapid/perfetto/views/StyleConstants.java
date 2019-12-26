@@ -21,7 +21,6 @@ import static com.google.gapid.util.Colors.rgba;
 
 import com.google.gapid.widgets.Theme;
 
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGBA;
 
@@ -52,7 +51,7 @@ public class StyleConstants {
   public static final double KB_ZOOM_FAST = 3 * ZOOM_FACTOR_SCALE;
 
   public static class Colors {
-    public final int background;
+    public final RGBA background;
     public final RGBA titleBackground;
     public final RGBA gridline;
     public final RGBA panelBorder;
@@ -73,7 +72,7 @@ public class StyleConstants {
     public final RGBA textInvertedMain;
     public final RGBA textInvertedAlt;
 
-    public Colors(int background,
+    public Colors(RGBA background,
         RGBA titleBackground,
         RGBA gridline,
         RGBA panelBorder,
@@ -113,7 +112,7 @@ public class StyleConstants {
       this.textInvertedAlt = textInvertedAlt;
     }
 
-    private static final int LIGHT_BACKGROUND = SWT.COLOR_WHITE;
+    private static final RGBA LIGHT_BACKGROUND = rgb(0xff, 0xff, 0xff);
     private static final RGBA LIGHT_TITLE_BACKGROUND = rgb(0xf7, 0xf7, 0xf7);
     private static final RGBA LIGHT_GRIDLINE = rgb(0xda, 0xda, 0xda);
     private static final RGBA LIGHT_PANEL_BORDER = LIGHT_GRIDLINE;
@@ -157,7 +156,7 @@ public class StyleConstants {
             LIGHT_TEXT_INVERTED_ALT);
     }
 
-    private static final int DARK_BACKGROUND = SWT.COLOR_BLACK;
+    private static final RGBA DARK_BACKGROUND = rgb(0x00, 0x00, 0x00);
     private static final RGBA DARK_TITLE_BACKGROUND = rgb(0x25, 0x25, 0x25);
     private static final RGBA DARK_GRIDLINE = rgb(0x40, 0x40, 0x40);
     private static final RGBA DARK_PANEL_BORDER = DARK_GRIDLINE;
