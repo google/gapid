@@ -305,6 +305,11 @@ func (b *binding) ConnectPerfetto(ctx context.Context) (*perfetto.Client, error)
 
 func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.PerfettoCapability, error) {
 	result := b.To.Configuration.PerfettoCapability
+	if result == nil {
+		result = &device.PerfettoCapability{
+			GpuProfiling: &device.GPUProfiling{},
+		}
+	}
 	gpu := result.GpuProfiling
 	if gpu == nil {
 		gpu = &device.GPUProfiling{}
