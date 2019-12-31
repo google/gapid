@@ -788,7 +788,7 @@ type profileRequest struct {
 	traceOptions *service.TraceOptions
 	handler      *replay.SignalHandler
 	buffer       *bytes.Buffer
-	mappings     *[]replay.VulkanHandleMappingItem
+	mappings     *map[uint64][]service.VulkanHandleMappingItem
 }
 
 func (a API) GetInitialPayload(ctx context.Context,
@@ -1230,11 +1230,11 @@ func (a API) Profile(
 	c := uniqueConfig()
 	handler := replay.NewSignalHandler()
 	var buffer bytes.Buffer
-	mappings := make([]replay.VulkanHandleMappingItem, 0, 0)
+	mappings := make(map[uint64][]service.VulkanHandleMappingItem)
 	r := profileRequest{overrides, traceOptions, handler, &buffer, &mappings}
 	_, err := mgr.Replay(ctx, intent, c, r, a, hints, true)
 	handler.DoneSignal.Wait(ctx)
 
-	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer)
+	d, err := trace.ProcessProfilingData(ctx, intent.Device, &buffer, &mappings)
 	return d, err
 }

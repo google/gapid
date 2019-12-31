@@ -106,12 +106,12 @@ func TraceConfiguration(ctx context.Context, device *path.Device) (*service.Devi
 	return t.TraceConfiguration(ctx)
 }
 
-func ProcessProfilingData(ctx context.Context, device *path.Device, buffer *bytes.Buffer) (*service.ProfilingData, error) {
+func ProcessProfilingData(ctx context.Context, device *path.Device, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
 	t, err := getTracer(ctx, device)
 	if err != nil {
 		return nil, err
 	}
-	return t.ProcessProfilingData(ctx, buffer)
+	return t.ProcessProfilingData(ctx, buffer, handleMapping)
 }
 
 func Validate(ctx context.Context, device *path.Device) error {

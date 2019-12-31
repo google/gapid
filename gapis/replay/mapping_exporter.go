@@ -27,21 +27,16 @@ import (
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
 	"github.com/google/gapid/gapis/replay/builder"
+	"github.com/google/gapid/gapis/service"
 )
 
-type VulkanHandleMappingItem struct {
-	HandleType  string
-	TraceValue  string
-	ReplayValue string
-}
-
 type MappingExporter struct {
-	mappings *[]VulkanHandleMappingItem
+	mappings *map[uint64][]service.VulkanHandleMappingItem
 	thread   uint64
 	path     string
 }
 
-func NewMappingExporter(ctx context.Context, mappings *[]VulkanHandleMappingItem) *MappingExporter {
+func NewMappingExporter(ctx context.Context, mappings *map[uint64][]service.VulkanHandleMappingItem) *MappingExporter {
 	return &MappingExporter{
 		mappings: mappings,
 		thread:   0,
@@ -50,7 +45,7 @@ func NewMappingExporter(ctx context.Context, mappings *[]VulkanHandleMappingItem
 }
 
 func NewMappingExporterWithPrint(ctx context.Context, path string) *MappingExporter {
-	mapping := make([]VulkanHandleMappingItem, 0, 0)
+	mapping := make(map[uint64][]service.VulkanHandleMappingItem)
 	return &MappingExporter{
 		mappings: &mapping,
 		thread:   0,
@@ -94,14 +89,19 @@ func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalSt
 					ret = err
 					return
 				}
-				val := binary.ReadUint(r, int32(size*8))
+				replayValue := binary.ReadUint(r, int32(size*8))
 				err = r.Error()
 				if err != nil {
 					ret = err
 					return
 				}
 
-				*m.mappings = append(*m.mappings, VulkanHandleMappingItem{HandleType: typ.Name(), TraceValue: fmt.Sprintf("%v", k), ReplayValue: fmt.Sprintf("%v", val)})
+				traceValue := reflect.ValueOf(k).Uint()
+
+				if _, ok := (*m.mappings)[replayValue]; !ok {
+					(*m.mappings)[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
+				}
+				(*m.mappings)[replayValue] = append((*m.mappings)[replayValue], service.VulkanHandleMappingItem{HandleType: typ.Name(), TraceValue: traceValue, ReplayValue: replayValue})
 			})
 		}(k, typ, size)
 	}
@@ -118,7 +118,7 @@ func (m *MappingExporter) Transform(ctx context.Context, id api.CmdID, cmd api.C
 	out.MutateAndWrite(ctx, id, cmd)
 }
 
-func printToFile(ctx context.Context, path string, mappings *[]VulkanHandleMappingItem) {
+func printToFile(ctx context.Context, path string, mappings *map[uint64][]service.VulkanHandleMappingItem) {
 	f, err := os.Create(path)
 	if err != nil {
 		log.E(ctx, "Failed to create mapping file %v: %v", path, err)
@@ -127,8 +127,11 @@ func printToFile(ctx context.Context, path string, mappings *[]VulkanHandleMappi
 
 	mappingsToFile := make([]string, 0, 0)
 
-	for _, m := range *mappings {
-		mappingsToFile = append(mappingsToFile, fmt.Sprintf("%v(%v): %v\n", m.HandleType, m.TraceValue, m.ReplayValue))
+	for _, v := range *mappings {
+		for i := range v {
+			m := v[i]
+			mappingsToFile = append(mappingsToFile, fmt.Sprintf("%v(%v): %v\n", m.HandleType, m.TraceValue, m.ReplayValue))
+		}
 	}
 
 	sort.Strings(mappingsToFile)
