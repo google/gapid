@@ -84,8 +84,6 @@ cmd VkResult vkCreateBuffer(
   if pCreateInfo == null { vkErrorNullPointer("VkBufferCreateInfo") }
   buffer_create_info := pCreateInfo[0]
 
-  queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
-  0:buffer_create_info.queueFamilyIndexCount]
 
   bufferInfo := BufferInfo(
     CreateFlags:  buffer_create_info.flags,
@@ -93,8 +91,13 @@ cmd VkResult vkCreateBuffer(
     Usage:        buffer_create_info.usage,
     SharingMode:  buffer_create_info.sharingMode,
   )
-  for i in (0 .. buffer_create_info.queueFamilyIndexCount) {
-    bufferInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+
+  if (buffer_create_info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+    queueFamilyIndices := buffer_create_info.pQueueFamilyIndices[
+    0:buffer_create_info.queueFamilyIndexCount]
+    for i in (0 .. buffer_create_info.queueFamilyIndexCount) {
+      bufferInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+    }
   }
 
   // Handle pNext
