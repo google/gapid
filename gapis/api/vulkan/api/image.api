@@ -171,7 +171,6 @@ cmd VkResult vkCreateImage(
   if !(device in Devices) { vkErrorInvalidDevice(device) }
   if pCreateInfo == null { vkErrorNullPointer("VkImageCreateInfo") }
   info := pCreateInfo[0]
-  queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
 
   imageInfo := ImageInfo(
     Flags:          info.flags,
@@ -187,8 +186,11 @@ cmd VkResult vkCreateImage(
     InitialLayout:  info.initialLayout,
   )
 
-  for i in (0 .. info.queueFamilyIndexCount) {
-    imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+  if (info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+    queueFamilyIndices := info.pQueueFamilyIndices[0:info.queueFamilyIndexCount]
+    for i in (0 .. info.queueFamilyIndexCount) {
+      imageInfo.QueueFamilyIndices[i] = queueFamilyIndices[i]
+    }
   }
 
   imageAspect := as!VkImageAspectFlags(getAspectBitsFromImageFormat(info.format))
