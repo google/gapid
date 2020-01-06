@@ -102,7 +102,6 @@ type frameLoop struct {
 	memoryToAllocate map[VkDeviceMemory]bool
 	memoryToUnmap    map[VkDeviceMemory]bool
 	memoryToMap      map[VkDeviceMemory]bool
-	mappedAddress    map[uint64]value.Pointer
 
 	bufferToDestroy map[VkBuffer]bool
 	bufferChanged   map[VkBuffer]bool
@@ -229,7 +228,6 @@ func newFrameLoop(ctx context.Context, graphicsCapture *capture.GraphicsCapture,
 		memoryToAllocate: make(map[VkDeviceMemory]bool),
 		memoryToUnmap:    make(map[VkDeviceMemory]bool),
 		memoryToMap:      make(map[VkDeviceMemory]bool),
-		mappedAddress:    make(map[uint64]value.Pointer),
 
 		bufferToDestroy: make(map[VkBuffer]bool),
 		bufferChanged:   make(map[VkBuffer]bool),
@@ -479,36 +477,8 @@ func (f *frameLoop) writeLoopContents(ctx context.Context, cmd api.Cmd, out tran
 	// Notify the other transforms that we're about to emit the start of the loop.
 	out.NotifyPreLoop(ctx)
 
-	cb := CommandBuilder{Thread: cmd.Thread(), Arena: out.State().Arena}
 	// Iterate through the loop contents, emitting instructions one by one.
 	for cmdIndex, cmd := range f.capturedLoopCmds {
-
-		switch cmd.(type) {
-		case *VkUnmapMemory:
-			vkCmd := cmd.(*VkUnmapMemory)
-			mem := vkCmd.Memory()
-			if _, ok := f.memoryToMap[mem]; !ok {
-				break
-			}
-
-			memObj := GetState(out.State()).DeviceMemories().Get(mem)
-			addr := memObj.MappedLocation().Address()
-			if addr == 0 {
-				break
-			}
-
-			// Only remember the first mapped target.
-			if _, ok := f.mappedAddress[addr]; !ok {
-				out.MutateAndWrite(ctx, api.CmdNoID, cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-					target, err := b.GetMappedTarget(value.ObservedPointer(addr))
-					if err == nil {
-						f.mappedAddress[addr] = target
-					}
-					return err
-				}))
-			}
-		}
-
 		out.MutateAndWrite(ctx, f.capturedLoopCmdIds[cmdIndex], cmd)
 	}
 
@@ -2461,24 +2431,6 @@ func (f *frameLoop) resetDeviceMemory(ctx context.Context, stateBuilder *stateBu
 				VkResult_VK_SUCCESS,
 			))
 		}
-
-		// Handles the remapping of the mapped address.
-		stateBuilder.write(stateBuilder.cb.Custom(func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-			addr := memObj.MappedLocation().Address()
-			originalTarget, ok := f.mappedAddress[addr]
-			if !ok {
-				return fmt.Errorf("did not find the original mapped address: %v", addr)
-			}
-
-			newTarget, err := b.GetMappedTarget(value.ObservedPointer(addr))
-			if err != nil {
-				return err
-			}
-			b.Load(protocol.Type_AbsolutePointer, newTarget)
-			b.Store(originalTarget)
-
-			return nil
-		}))
 	}
 
 	return nil
