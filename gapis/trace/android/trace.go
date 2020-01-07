@@ -118,7 +118,7 @@ func (t *androidTracer) GetDevice() bind.Device {
 	return t.b
 }
 
-func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer) (*service.ProfilingData, error) {
+func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMappings *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
 	// Load Perfetto trace and create trace processor.
 	rawData := make([]byte, buffer.Len())
 	_, err := buffer.Read(rawData)
@@ -133,7 +133,7 @@ func (t *androidTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.
 	gpu := t.b.Instance().GetConfiguration().GetHardware().GetGPU()
 	gpuName := gpu.GetName()
 	if strings.Contains(gpuName, "Adreno") {
-		return adreno.ProcessProfilingData(ctx, processor)
+		return adreno.ProcessProfilingData(ctx, processor, handleMappings)
 	}
 	return nil, log.Errf(ctx, nil, "Failed to process Perfetto trace for device %v", gpuName)
 }

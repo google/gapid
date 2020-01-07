@@ -1332,6 +1332,12 @@ message ProfilingData {
   GpuSlices slices = 1;
 }
 
+message VulkanHandleMappingItem {
+  string handle_type = 1;
+  uint64 trace_value = 2;
+  uint64 replay_value = 3;
+}
+
 message GpuProfileResponse {
   oneof res {
     ProfilingData profiling_data = 1;

@@ -33,11 +33,12 @@ var (
 		"SELECT key, string_value FROM args WHERE args.arg_set_id = %d"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor) (*service.ProfilingData, error) {
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
 	}
+
 	trackIdCache := make(map[int64]bool)
 	argsQueryCache := make(map[int64]*perfetto_service.QueryResult)
 	slicesColumns := slicesQueryResult.GetColumns()
@@ -45,8 +46,25 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor) (*
 	slices := make([]*service.ProfilingData_GpuSlices_Slice, numSliceRows)
 	var tracks []*service.ProfilingData_GpuSlices_Track
 	// Grab all the column values. Depends on the order of columns selected in slicesQuery
+
 	contextIds := slicesColumns[0].GetLongValues()
+	for i, v := range contextIds {
+		if m, ok := (*handleMapping)[uint64(v)]; ok {
+			contextIds[i] = int64(m[0].TraceValue)
+		} else {
+			log.E(ctx, "Context Id could not found: %v", v)
+		}
+	}
+
 	renderTargets := slicesColumns[1].GetLongValues()
+	for i, v := range renderTargets {
+		if m, ok := (*handleMapping)[uint64(v)]; ok {
+			renderTargets[i] = int64(m[0].TraceValue)
+		} else {
+			log.E(ctx, "Render Target could not found: %v", v)
+		}
+	}
+
 	frameIds := slicesColumns[2].GetLongValues()
 	submissionIds := slicesColumns[3].GetLongValues()
 	hwQueueIds := slicesColumns[4].GetLongValues()

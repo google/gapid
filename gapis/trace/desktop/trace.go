@@ -48,7 +48,7 @@ func (t *DesktopTracer) GetDevice() bind.Device {
 	return t.b
 }
 
-func (t *DesktopTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer) (*service.ProfilingData, error) {
+func (t *DesktopTracer) ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
 	return nil, log.Err(ctx, nil, "Desktop replay profiling is unsupported.")
 }
 

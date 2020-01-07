@@ -72,7 +72,7 @@ type Tracer interface {
 	GetDevice() bind.Device
 	// ProcessProfilingData takes a buffer for a Perfetto trace and translates it into
 	// a ProfilingData
-	ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer) (*service.ProfilingData, error)
+	ProcessProfilingData(ctx context.Context, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error)
 	// Validate validates the GPU profiling capabilities of the given device and returns
 	// an error if validation failed or the GPU profiling data is invalid.
 	Validate(ctx context.Context) error
