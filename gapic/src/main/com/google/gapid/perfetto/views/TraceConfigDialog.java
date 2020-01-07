@@ -200,6 +200,9 @@ public class TraceConfigDialog extends DialogBase {
         for (int counter : settings.perfettoGpuCounterIds) {
           counters.addCounterIds(counter);
         }
+        config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("VulkanAPI");
       }
       if (gpuCaps.getHasFrameLifecycle() && settings.perfettoSurfaceFlinger) {
         config.addDataSourcesBuilder()
