@@ -251,6 +251,10 @@ public class TabComposite extends Composite {
     return group.showTab(id);
   }
 
+  public void addTabToFirstFolder(TabInfo info) {
+    group.addTabToFirstFolder(info);
+  }
+
   public void addTabToLargestFolder(TabInfo info) {
     group.addTabToLargestFolder(info);
   }
@@ -334,6 +338,7 @@ public class TabComposite extends Composite {
     }
 
     public abstract boolean showTab(Object id);
+    public abstract void addTabToFirstFolder(TabInfo tab);
     public abstract void addTabToLargestFolder(TabInfo tab);
     public abstract boolean disposeTab(Object id);
 
@@ -403,6 +408,19 @@ public class TabComposite extends Composite {
         }
       }
       return false;
+    }
+
+    @Override
+    public void addTabToFirstFolder(TabInfo tab) {
+      Element firstChild = children.get(0);
+      if (firstChild instanceof Folder) {
+        ((Folder)firstChild).newTab(tab);
+      } else {
+        firstChild.weight /= 2;
+        Folder folder = new Folder(firstChild.weight);
+        children.add(0, folder);
+        folder.newTab(tab);
+      }
     }
 
     @Override
@@ -823,6 +841,11 @@ public class TabComposite extends Composite {
         }
       }
       return false;
+    }
+
+    @Override
+    public void addTabToFirstFolder(TabInfo tab) {
+      newTab(tab);
     }
 
     @Override

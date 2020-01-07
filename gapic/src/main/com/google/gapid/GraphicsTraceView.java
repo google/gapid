@@ -135,11 +135,16 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
         models.analytics.postInteraction(
             type.view, shown ? ClientAction.Enable : ClientAction.Disable);
         if (shown) {
-          tabs.addTabToLargestFolder(new MainTab(type, parent -> {
+          TabInfo tabInfo = new MainTab(type, parent -> {
             Tab tab = type.factory.create(parent, models, widgets);
             tab.reinitialize();
             return tab.getControl();
-          }));
+          });
+          if (type.top) {
+            tabs.addTabToFirstFolder(tabInfo);
+          } else {
+            tabs.addTabToLargestFolder(tabInfo);
+          }
           tabs.showTab(type);
           hiddenTabs.remove(type);
         } else {
@@ -351,28 +356,30 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
      * Information about the available tabs.
      */
     public static enum Type {
-      Filmstrip(View.FilmStrip, "Filmstrip", ThumbnailScrubber::new),
+      Filmstrip(View.FilmStrip, "Filmstrip", true, ThumbnailScrubber::new),
 
-      ApiCalls(View.Commands, "Commands", CommandTree::new),
+      ApiCalls(View.Commands, "Commands", false, CommandTree::new),
 
-      Framebuffer(View.Framebuffer, "Framebuffer", FramebufferView::new),
-      Pipeline(View.Pipeline, "Pipeline", PipelineView::new),
-      Textures(View.Textures, "Textures", TextureView::new),
-      Geometry(View.Geometry, "Geometry", GeometryView::new),
-      Shaders(View.Shaders, "Shaders", ShaderView::new),
-      Report(View.Report, "Report", ReportView::new),
-      Log(View.Log, "Log", (p, m, w) -> new LogView(p, w)),
+      Framebuffer(View.Framebuffer, "Framebuffer", false, FramebufferView::new),
+      Pipeline(View.Pipeline, "Pipeline", false, PipelineView::new),
+      Textures(View.Textures, "Textures", false, TextureView::new),
+      Geometry(View.Geometry, "Geometry", false, GeometryView::new),
+      Shaders(View.Shaders, "Shaders", false, ShaderView::new),
+      Report(View.Report, "Report", false, ReportView::new),
+      Log(View.Log, "Log", false, (p, m, w) -> new LogView(p, w)),
 
-      ApiState(View.State, "State", StateView::new),
-      Memory(View.Memory, "Memory", MemoryView::new);
+      ApiState(View.State, "State", false, StateView::new),
+      Memory(View.Memory, "Memory", false, MemoryView::new);
 
       public final View view;
       public final String label;
+      public final boolean top;
       public final TabFactory factory;
 
-      private Type(View view, String label, TabFactory factory) {
+      private Type(View view, String label, boolean top, TabFactory factory) {
         this.view = view;
         this.label = label;
+        this.top = top;
         this.factory = factory;
       }
 
