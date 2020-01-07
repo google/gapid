@@ -1329,7 +1329,18 @@ message ProfilingData {
     repeated Group groups = 3;
   }
 
+  message Counter {
+    uint32 id = 1;
+    string name = 2;
+    string description = 3;
+    string unit = 4;
+    bool default = 5;
+    repeated uint64 timestamps = 6;
+    repeated double values = 7;
+  }
+
   GpuSlices slices = 1;
+  repeated Counter counters = 2;
 }
 
 message GpuProfileResponse {
