@@ -67,7 +67,7 @@ public class ImagesModel {
       API.FramebufferAttachment attachment, Service.RenderSettings renderSettings) {
     return FetchedImage.load(client, getReplayDevice(), client.getFramebufferAttachment(
         getReplayDevice(), command.getCommand(), attachment, renderSettings,
-        FB_HINTS, settings.disableReplayOptimization));
+        FB_HINTS, shouldDisableReplayOptimization()));
   }
 
   public ListenableFuture<FetchedImage> getResource(Path.ResourceData path) {
@@ -93,19 +93,23 @@ public class ImagesModel {
   }
 
   private Path.Thumbnail thumbnail(Path.Command command) {
-    return Paths.thumbnail(command, THUMB_PIXELS, settings.disableReplayOptimization);
+    return Paths.thumbnail(command, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
 
   private Path.Thumbnail thumbnail(Path.CommandTreeNode node) {
-    return Paths.thumbnail(node, THUMB_PIXELS, settings.disableReplayOptimization);
+    return Paths.thumbnail(node, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
 
   private Path.Thumbnail thumbnail(Path.ResourceData resource) {
-    return Paths.thumbnail(resource, THUMB_PIXELS, settings.disableReplayOptimization);
+    return Paths.thumbnail(resource, THUMB_PIXELS, shouldDisableReplayOptimization());
   }
 
   private Path.Device getReplayDevice() {
     return devices.getReplayDevicePath();
+  }
+
+  private boolean shouldDisableReplayOptimization() {
+    return settings.preferences().getDisableReplayOptimization();
   }
 
   private static ImageData processImage(ImageData image, int size) {

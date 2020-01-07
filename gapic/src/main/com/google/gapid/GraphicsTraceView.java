@@ -15,6 +15,8 @@
  */
 package com.google.gapid;
 
+import static java.util.stream.Collectors.toList;
+
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -22,6 +24,7 @@ import com.google.gapid.models.Analytics.View;
 import com.google.gapid.models.Follower;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.service.Service.ClientAction;
 import com.google.gapid.proto.service.path.Path;
 import com.google.gapid.views.CommandTree;
@@ -109,7 +112,7 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
 
   private static Set<MainTab.Type> getHiddenTabs(Settings settings) {
     Set<MainTab.Type> hiddenTabs = Sets.newHashSet();
-    for (String hidden : settings.hiddenTabs) {
+    for (String hidden : settings.tabs().getHiddenList()) {
       try {
         hiddenTabs.add(MainTab.Type.valueOf(hidden));
       } catch (IllegalArgumentException e) {
@@ -143,8 +146,9 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
           tabs.disposeTab(type);
           hiddenTabs.add(type);
         }
-        models.settings.hiddenTabs =
-            hiddenTabs.stream().map(MainTab.Type::name).toArray(n -> new String[n]);
+        models.settings.writeTabs()
+            .clearHidden()
+            .addAllHidden(hiddenTabs.stream().map(MainTab.Type::name).collect(toList()));
       });
       action.setChecked(!hiddenTabs.contains(type));
       manager.add(action);
@@ -169,15 +173,16 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
      * recursive children in case of groups, or the number of tabs in case of folders.
      */
     public static FolderInfo[] getFolders(Models models, Widgets widgets, Set<Type> hidden) {
+      SettingsProto.TabsOrBuilder sTabs = models.settings.tabs();
       Set<Type> allTabs = Sets.newLinkedHashSet(Arrays.asList(Type.values()));
       allTabs.removeAll(hidden);
       Iterator<String> structs = Splitter.on(';')
           .trimResults()
           .omitEmptyStrings()
-          .split(models.settings.tabStructure)
+          .split(sTabs.getStructure())
           .iterator();
-      Iterator<Integer> weights = Arrays.stream(models.settings.tabWeights).iterator();
-      Iterator<String> tabs = Arrays.asList(models.settings.tabs).iterator();
+      Iterator<Integer> weights = sTabs.getWeightsList().iterator();
+      Iterator<String> tabs = sTabs.getTabsList().iterator();
 
       FolderInfo root = parse(models, widgets, structs, weights, tabs, allTabs);
       if (structs.hasNext()) {
@@ -301,9 +306,10 @@ public class GraphicsTraceView extends Composite implements MainWindow.MainView 
       for (FolderInfo folder : folders) {
         flatten(folder, weights, structure, tabs);
       }
-      models.settings.tabs = tabs.toArray(new String[tabs.size()]);
-      models.settings.tabWeights = weights.stream().mapToInt(x -> x).toArray();
-      models.settings.tabStructure = structure.toString();
+      models.settings.writeTabs()
+          .setStructure(structure.toString())
+          .clearTabs().addAllTabs(tabs)
+          .clearWeights().addAllWeights(weights);
     }
 
     private static void flatten(

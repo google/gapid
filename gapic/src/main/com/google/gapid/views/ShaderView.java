@@ -46,6 +46,7 @@ import com.google.gapid.models.CommandStream;
 import com.google.gapid.models.CommandStream.CommandIndex;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Resources;
+import com.google.gapid.models.Settings;
 import com.google.gapid.proto.core.pod.Pod;
 import com.google.gapid.proto.service.Service;
 import com.google.gapid.proto.service.Service.ClientAction;
@@ -161,15 +162,15 @@ public class ShaderView extends Composite
     Composite uniformsGroup = createGroup(splitter, "Uniforms");
     UniformsPanel uniforms = new UniformsPanel(uniformsGroup);
 
-    splitter.setWeights(models.settings.programUniformsSplitterWeights);
+    splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Uniforms));
 
     panel.addListener(SWT.Selection, e -> {
       models.analytics.postInteraction(View.Shaders, ClientAction.SelectProgram);
       getProgramSource((Data)e.data, program ->
           scheduleIfNotDisposed(uniforms, () -> uniforms.setUniforms(program)), panel::setSource);
     });
-    splitter.addListener(
-        SWT.Dispose, e -> models.settings.programUniformsSplitterWeights = splitter.getWeights());
+    splitter.addListener(SWT.Dispose, e ->
+      models.settings.setSplitterWeights(Settings.SplitterWeights.Uniforms, splitter.getWeights()));
     return splitter;
   }
 
@@ -327,13 +328,13 @@ public class ShaderView extends Composite
       Composite sourcesContainer = createComposite(splitter, new GridLayout(1, false));
 
       if (type.type == API.ResourceType.ShaderResource) {
-        splitter.setWeights(models.settings.shaderTreeSplitterWeights);
-        splitter.addListener(
-            SWT.Dispose, e -> models.settings.shaderTreeSplitterWeights = splitter.getWeights());
+        splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Shaders));
+        splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
+            Settings.SplitterWeights.Shaders, splitter.getWeights()));
       } else if (type.type == API.ResourceType.ProgramResource) {
-        splitter.setWeights(models.settings.programTreeSplitterWeights);
-        splitter.addListener(
-            SWT.Dispose, e -> models.settings.programTreeSplitterWeights = splitter.getWeights());
+        splitter.setWeights(models.settings.getSplitterWeights(Settings.SplitterWeights.Programs));
+        splitter.addListener(SWT.Dispose, e -> models.settings.setSplitterWeights(
+            Settings.SplitterWeights.Programs, splitter.getWeights()));
       }
 
       SearchBox searchBox = new SearchBox(treeViewerContainer, true, theme);

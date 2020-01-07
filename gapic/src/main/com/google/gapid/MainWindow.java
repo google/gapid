@@ -44,8 +44,8 @@ import com.google.gapid.util.MacApplication;
 import com.google.gapid.util.Messages;
 import com.google.gapid.util.OS;
 import com.google.gapid.util.StatusWatcher;
-import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.util.URLs;
+import com.google.gapid.util.UpdateWatcher;
 import com.google.gapid.views.StatusBar;
 import com.google.gapid.widgets.CopyPaste;
 import com.google.gapid.widgets.LoadablePanel;
@@ -139,7 +139,7 @@ public class MainWindow extends ApplicationWindow {
           file -> models.capture.loadCapture(new File(file)));
     }
 
-    if (settings.autoCheckForUpdates) {
+    if (settings.preferences().getCheckForUpdates()) {
       // Only show the status message if we're actually checking for updates. watchForUpdates only
       //schedules a periodic check to see if we should check for updates and if so, checks.
       showLoadingMessage("Watching for updates...");
@@ -188,8 +188,10 @@ public class MainWindow extends ApplicationWindow {
 
     super.configureShell(shell);
 
-    shell.addListener(SWT.Move, e -> settings.windowLocation = shell.getLocation());
-    shell.addListener(SWT.Resize, e -> settings.windowSize = shell.getSize());
+    shell.addListener(
+        SWT.Move, e -> settings.writeWindow().setLocation(Settings.setPoint(shell.getLocation())));
+    shell.addListener(
+        SWT.Resize, e -> settings.writeWindow().setSize(Settings.setPoint(shell.getSize())));
   }
 
   @Override
@@ -213,7 +215,7 @@ public class MainWindow extends ApplicationWindow {
 
   @Override
   protected Point getInitialSize() {
-    Point size = settings.windowSize;
+    Point size = Settings.getPoint(settings.window().getSize());
     return (size != null) ? size : getDefaultInitialSize();
   }
 
@@ -224,7 +226,7 @@ public class MainWindow extends ApplicationWindow {
 
   @Override
   protected Point getInitialLocation(Point initialSize) {
-    Point location = settings.windowLocation;
+    Point location = Settings.getPoint(settings.window().getLocation());
     return (location != null) ? location : getDefaultInitialLocation(initialSize);
   }
 

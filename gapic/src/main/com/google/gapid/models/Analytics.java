@@ -50,7 +50,7 @@ public class Analytics implements ExceptionHandler {
 
   @Override
   public void reportException(Throwable thrown) {
-    if (settings.reportCrashes) {
+    if (settings.preferences().getReportCrashes()) {
       handler.reportException(thrown);
     }
   }

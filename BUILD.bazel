@@ -30,6 +30,7 @@ load("//tools/build:rules.bzl", "copy_to", "copy_tree")
 # gazelle:resolve go    go    protos/perfetto/ipc                          //tools/build/third_party/perfetto:ipc_go_proto
 # gazelle:resolve proto proto protos/perfetto/config/perfetto_config.proto @perfetto//:protos_perfetto_config_merged_config_protos
 # gazelle:resolve proto go    protos/perfetto/config/perfetto_config.proto @gapid//tools/build/third_party/perfetto:config_go_proto
+# gazelle:exclude gapic
 
 gazelle(
     name = "gazelle",

@@ -15,16 +15,21 @@
  */
 package com.google.gapid.models;
 
-import static java.util.Arrays.stream;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_DEVICE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_INSTANCE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_PHYSICAL_DEVICE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_QUEUE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.MemoryTracking.MEMORY_TRACKING_DEVICE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.MemoryTracking.MEMORY_TRACKING_DRIVER;
 import static java.util.logging.Level.FINE;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.StreamSupport.stream;
 
-import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.server.Client;
 import com.google.gapid.server.GapiPaths;
 import com.google.gapid.util.OS;
+import com.google.protobuf.TextFormat;
 
 import org.eclipse.swt.graphics.Point;
 
@@ -38,7 +43,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.Properties;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -50,133 +56,209 @@ import java.util.logging.Logger;
  */
 public class Settings {
   private static final Logger LOG = Logger.getLogger(Settings.class.getName());
+
   private static final String SETTINGS_FILE = ".gapic";
   private static final int MAX_RECENT_FILES = 16;
+  private static final int CURRENT_VERSION = 0;
 
-  public Point windowLocation = null;
-  public Point windowSize = null;
-  public int[] tabWeights = new int[] { 1, 1, 4, 1, 3, 1 };
-  public String tabStructure = "g2;f1;g3;f1;f1;f2"; // See GraphicsTraceView.MainTab.getFolders().
-  public String[] tabs = new String[] { "Filmstrip", "ApiCalls", "Framebuffer", "ApiState", "Memory" };
-  public String[] hiddenTabs = new String[] { "Log" };
-  public String lastOpenDir = "";
-  public int[] programTreeSplitterWeights = new int[] { 20, 80 };
-  public int[] programUniformsSplitterWeights = new int[] { 70, 30 };
-  public int[] reportSplitterWeights = new int[] { 75, 25 };
-  public int[] shaderTreeSplitterWeights = new int[] { 20, 80 };
-  public int[] texturesSplitterWeights = new int[] { 20, 80 };
-  public String traceDeviceSerial = "";
-  public String traceDeviceName = "";
-  public String traceType = "Graphics";
-  public String traceApi = "";
-  public String traceUri = "";
-  public String traceArguments = "";
-  public String traceCwd = "";
-  public String traceEnv = "";
-  public int traceStartAt = -1; // -1: manual (mec), 0: beginning, 1+ frame x
-  public int traceDuration = 7; // 0: manual, 1+ frames/seconds
-  public boolean traceWithoutBuffering = false;
-  public boolean traceHideUnknownExtensions = false;
-  public boolean traceClearCache = false;
-  public boolean traceDisablePcs = true;
-  public String traceOutDir = "";
-  public String traceFriendlyName = "";
-  public boolean skipFirstRunDialog = false;
-  public String[] recentFiles = new String[0];
-  public String adb = "";
-  public boolean autoCheckForUpdates = true;
-  public boolean includeDevReleases = false;
-  public boolean updateAvailable = false;
-  public long lastCheckForUpdates = 0; // milliseconds since midnight, January 1, 1970 UTC.
-  public String analyticsClientId = ""; // Empty means do not track.
-  public boolean disableReplayOptimization = false;
-  public boolean reportCrashes = false;
-  public int perfettoDrawerHeight = 250;
-  public boolean perfettoDarkMode = false;
-  public boolean perfettoCpu = true;
-  public boolean perfettoCpuFreq = false;
-  public boolean perfettoCpuChain = true;
-  public boolean perfettoCpuSlices = true;
-  public boolean perfettoGpu = true;
-  public boolean perfettoGpuSlices = true;
-  public boolean perfettoGpuCounters = true;
-  public int perfettoGpuCounterRate = 50;
-  public int[] perfettoGpuCounterIds = new int[0];
-  public boolean perfettoMem = true;
-  public int perfettoMemRate = 10;
-  public boolean perfettoBattery = true;
-  public int perfettoBatteryRate = 250;
-  public boolean perfettoVulkan = true;
-  public boolean perfettoVulkanCPUTiming = false;
-  public boolean perfettoVulkanCPUTimingCommandBuffer = false;
-  public boolean perfettoVulkanCPUTimingDevice = false;
-  public boolean perfettoVulkanCPUTimingInstance = false;
-  public boolean perfettoVulkanCPUTimingPhysicalDevice = false;
-  public boolean perfettoVulkanCPUTimingQueue = false;
-  public boolean perfettoVulkanMemoryTracking = false;
-  public boolean perfettoVulkanMemoryTrackingDevice = false;
-  public boolean perfettoVulkanMemoryTrackingDriver = false;
-  public boolean perfettoSurfaceFlinger = true;
+  // Only set values for fields where the proto zero/false/empty default doesn't make sense.
+  private static SettingsProto.Settings DEFAULT_SETTINGS = SettingsProto.Settings.newBuilder()
+      .setVersion(CURRENT_VERSION)
+      .setTabs(SettingsProto.Tabs.newBuilder()
+          .setStructure("g2;f1;g3;f1;f1;f2") // See GraphicsTraceView.MainTab.getFolders().
+          .addAllWeights(Arrays.asList(1, 1, 4, 1, 3, 1))
+          .addAllTabs(Arrays.asList("Filmstrip", "ApiCalls", "Framebuffer", "ApiState", "Memory"))
+          .addAllHidden(Arrays.asList("Log")))
+      .setPreferences(SettingsProto.Preferences.newBuilder()
+          .setCheckForUpdates(true))
+      .setUi(SettingsProto.UI.newBuilder()
+          .setPerfetto(SettingsProto.UI.Perfetto.newBuilder()
+              .setDrawerHeight(250)))
+      .setTrace(SettingsProto.Trace.newBuilder()
+          .setType("Graphics")
+          .setStartAt(-1) // MEC
+          .setDuration(7) // 7 frames
+          .setDisablePcs(true))
+      .setPerfetto(SettingsProto.Perfetto.newBuilder()
+          .setCpu(SettingsProto.Perfetto.CPU.newBuilder()
+              .setEnabled(true)
+              .setChain(true)
+              .setSlices(true))
+          .setGpu(SettingsProto.Perfetto.GPU.newBuilder()
+              .setEnabled(true)
+              .setSlices(true)
+              .setCounters(true)
+              .setCounterRate(1)
+              .setSurfaceFlinger(true))
+          .setMemory(SettingsProto.Perfetto.Memory.newBuilder()
+              .setEnabled(true)
+              .setRate(10))
+          .setBattery(SettingsProto.Perfetto.Battery.newBuilder()
+              .setEnabled(true)
+              .setRate(250))
+          .setVulkan(SettingsProto.Perfetto.Vulkan.newBuilder()
+              .setEnabled(true)
+              .addCpuTimingCategories(CPU_TIMING_DEVICE)
+              .addCpuTimingCategories(CPU_TIMING_INSTANCE)
+              .addCpuTimingCategories(CPU_TIMING_PHYSICAL_DEVICE)
+              .addCpuTimingCategories(CPU_TIMING_QUEUE)
+              .addMemoryTrackingCategories(MEMORY_TRACKING_DEVICE)
+              .addMemoryTrackingCategories(MEMORY_TRACKING_DRIVER)))
+      .build();
+
+  private final SettingsProto.Settings.Builder proto;
+
+  private Settings(SettingsProto.Settings.Builder proto) {
+    this.proto = fixup(proto);
+  }
+
+  private static SettingsProto.Settings.Builder fixup(SettingsProto.Settings.Builder proto) {
+    tryFindAdb(proto.getPreferencesBuilder());
+    return proto.setVersion(CURRENT_VERSION);
+  }
 
   public static Settings load() {
-    Settings result = new Settings();
-
     File file = new File(OS.userHomeDir, SETTINGS_FILE);
     if (file.exists() && file.canRead()) {
       try (Reader reader = new FileReader(file)) {
-        Properties properties = new Properties();
-        properties.load(reader);
-        result.updateFrom(properties);
+        SettingsProto.Settings.Builder read = SettingsProto.Settings.newBuilder();
+        TextFormat.merge(reader, read);
+        return new Settings(read);
+      } catch (TextFormat.ParseException e) {
+        LOG.log(FINE, "Proto parse error reading properties from " + file, e);
       } catch (IOException e) {
         LOG.log(FINE, "IO error reading properties from " + file, e);
       }
     }
-
-    return result;
+    return new Settings(DEFAULT_SETTINGS.toBuilder());
   }
 
   public void save() {
     File file = new File(OS.userHomeDir, SETTINGS_FILE);
     try (Writer writer = new FileWriter(file)) {
-      Properties properties = new Properties();
-      updateTo(properties);
-      properties.store(writer, " GAPIC Properties");
+      TextFormat.print(proto, writer);
     } catch (IOException e) {
       LOG.log(FINE, "IO error writing properties to " + file, e);
     }
   }
 
+  public SettingsProto.WindowOrBuilder window() {
+    return proto.getWindowOrBuilder();
+  }
+
+  public SettingsProto.TabsOrBuilder tabs() {
+    return proto.getTabsOrBuilder();
+  }
+
+  public SettingsProto.FilesOrBuilder files() {
+    return proto.getFilesOrBuilder();
+  }
+
+  public SettingsProto.PreferencesOrBuilder preferences() {
+    return proto.getPreferencesOrBuilder();
+  }
+
+  public SettingsProto.UIOrBuilder ui() {
+    return proto.getUiOrBuilder();
+  }
+
+  public SettingsProto.TraceOrBuilder trace() {
+    return proto.getTraceOrBuilder();
+  }
+
+  public SettingsProto.PerfettoOrBuilder perfetto() {
+    return proto.getPerfettoOrBuilder();
+  }
+
+  public SettingsProto.Window.Builder writeWindow() {
+    return proto.getWindowBuilder();
+  }
+
+  public SettingsProto.Tabs.Builder writeTabs() {
+    return proto.getTabsBuilder();
+  }
+
+  public SettingsProto.Files.Builder writeFiles() {
+    return proto.getFilesBuilder();
+  }
+
+  public SettingsProto.Preferences.Builder writePreferences() {
+    return proto.getPreferencesBuilder();
+  }
+
+  public SettingsProto.UI.Builder writeUi() {
+    return proto.getUiBuilder();
+  }
+
+  public SettingsProto.Trace.Builder writeTrace() {
+    return proto.getTraceBuilder();
+  }
+
+  public SettingsProto.Perfetto.Builder writePerfetto() {
+    return proto.getPerfettoBuilder();
+  }
+
+  public int[] getSplitterWeights(SplitterWeights type) {
+    return type.get(ui());
+  }
+
+  public void setSplitterWeights(SplitterWeights type, int[] weights) {
+    type.set(writeUi(), weights);
+  }
+
+  // -1 to gracefully handle defaults.
+  public static Point getPoint(SettingsProto.Point point) {
+    if (point.getX() <= 0 && point.getY() <= 0) {
+      return null;
+    }
+    return new Point(point.getX() - 1, point.getY() - 1);
+  }
+
+  // +1 to gracefully handle defaults.
+  public static SettingsProto.Point setPoint(Point point) {
+    if (point == null) {
+      return SettingsProto.Point.getDefaultInstance();
+    }
+    return SettingsProto.Point.newBuilder()
+        .setX(point.x + 1)
+        .setY(point.y + 1)
+        .build();
+  }
+
   public ListenableFuture<Void> updateOnServer(Client client) {
-    return client.updateSettings(reportCrashes, analyticsEnabled(), analyticsClientId, adb);
+    SettingsProto.Preferences.Builder prefs = writePreferences();
+    return client.updateSettings(prefs.getReportCrashes(), !prefs.getAnalyticsClientId().isEmpty(),
+        prefs.getAnalyticsClientId(), prefs.getAdb());
   }
 
   public void addToRecent(String file) {
-    for (int i = 0; i < recentFiles.length; i++) {
-      if (file.equals(recentFiles[i])) {
-        if (i != 0) {
-          // Move to front.
-          System.arraycopy(recentFiles, 0, recentFiles, 1, i);
-          recentFiles[0] = file;
-        }
-        return;
+    List<String> recentFiles = Lists.newArrayList(files().getRecentList());
+    if (!recentFiles.isEmpty() && file.equals(recentFiles.get(0))) {
+      // Nothing to do.
+      return;
+    }
+
+    for (int i = 1; i < recentFiles.size(); i++) {
+      String recent = recentFiles.get(i);
+      if (file.equals(recent)) {
+        // Move to front.
+        recentFiles.remove(i);
+        break;
       }
     }
 
-    // Not found.
-    if (recentFiles.length >= MAX_RECENT_FILES) {
-      String[] tmp = new String[MAX_RECENT_FILES];
-      System.arraycopy(recentFiles, 0, tmp, 1, MAX_RECENT_FILES - 1);
-      recentFiles = tmp;
-    } else {
-      String[] tmp = new String[recentFiles.length + 1];
-      System.arraycopy(recentFiles, 0, tmp, 1, recentFiles.length);
-      recentFiles = tmp;
+    while (recentFiles.size() >= MAX_RECENT_FILES) {
+      recentFiles.remove(recentFiles.size() - 1);
     }
-    recentFiles[0] = file;
+
+    writeFiles()
+      .clearRecent()
+      .addRecent(file)
+      .addAllRecent(recentFiles);
   }
 
   public String[] getRecent() {
-    return stream(recentFiles)
+    return files().getRecentList().stream()
         .map(file -> new File(file))
         .filter(File::exists)
         .filter(File::canRead)
@@ -185,19 +267,19 @@ public class Settings {
   }
 
   public boolean analyticsEnabled() {
-    return !analyticsClientId.isEmpty();
+    return !preferences().getAnalyticsClientId().isEmpty();
   }
 
   public void setAnalyticsEnabled(boolean enabled) {
     if (enabled && !analyticsEnabled()) {
-      analyticsClientId = UUID.randomUUID().toString();
+      writePreferences().setAnalyticsClientId(UUID.randomUUID().toString());
     } else if (!enabled && analyticsEnabled()) {
-      analyticsClientId = "";
+      writePreferences().clearAnalyticsClientId();
     }
   }
 
   public boolean isAdbValid() {
-    return checkAdbIsValid(adb) == null;
+    return checkAdbIsValid(preferences().getAdb()) == null;
   }
 
   /**
@@ -224,241 +306,26 @@ public class Settings {
     return null;
   }
 
-  private void updateFrom(Properties properties) {
-    windowLocation = getPoint(properties, "window.pos");
-    windowSize = getPoint(properties, "window.size");
-    tabs = getStringList(properties, "tabs", tabs);
-    tabWeights = getIntList(properties, "tabs.iweights", tabWeights);
-    tabStructure = properties.getProperty("tabs.structure", tabStructure);
-    hiddenTabs = getStringList(properties, "tabs.hidden", hiddenTabs);
-    lastOpenDir = properties.getProperty("lastOpenDir", lastOpenDir);
-    programTreeSplitterWeights =
-        getIntList(properties, "programTree.splitter.weights", programTreeSplitterWeights);
-    programUniformsSplitterWeights =
-        getIntList(properties, "programUniforms.splitter.weights", programUniformsSplitterWeights);
-    reportSplitterWeights =
-        getIntList(properties, "report.splitter.weights", reportSplitterWeights);
-    shaderTreeSplitterWeights =
-        getIntList(properties, "shaderTree.splitter.weights", shaderTreeSplitterWeights);
-    texturesSplitterWeights =
-        getIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
-    traceDeviceSerial = properties.getProperty("trace.device.serial", traceDeviceSerial);
-    traceDeviceName = properties.getProperty("trace.device.name", traceDeviceName);
-    traceType = properties.getProperty("trace.type", traceType);
-    traceApi = properties.getProperty("trace.api", traceApi);
-    traceUri = properties.getProperty("trace.uri", traceUri);
-    traceArguments = properties.getProperty("trace.arguments", traceArguments);
-    traceCwd = properties.getProperty("trace.cwd", traceCwd);
-    traceEnv = properties.getProperty("trace.env", traceEnv);
-    traceStartAt = getInt(properties, "trace.startAt", traceStartAt);
-    traceDuration = getInt(properties, "trace.duration", traceDuration);
-    traceWithoutBuffering = getBoolean(properties, "trace.withoutBuffering", traceWithoutBuffering);
-    traceHideUnknownExtensions = getBoolean(properties, "trace.hideUnknownExtensions", traceHideUnknownExtensions);
-    traceClearCache = getBoolean(properties, "trace.clearCache", traceClearCache);
-    traceDisablePcs = getBoolean(properties, "trace.disablePCS", traceDisablePcs);
-    traceOutDir = properties.getProperty("trace.dir", traceOutDir);
-    traceFriendlyName = properties.getProperty("trace.friendly", traceFriendlyName);
-    skipFirstRunDialog = getBoolean(properties, "skip.firstTime", skipFirstRunDialog);
-    recentFiles = getStringList(properties, "open.recent", recentFiles);
-    adb = tryFindAdb(properties.getProperty("adb.path", ""));
-    autoCheckForUpdates = getBoolean(properties, "updates.autoCheck", autoCheckForUpdates);
-    includeDevReleases = getBoolean(properties, "updates.includeDevReleases", includeDevReleases);
-    lastCheckForUpdates = getLong(properties, "updates.lastCheck", 0);
-    updateAvailable = getBoolean(properties, "updates.available", updateAvailable);
-    analyticsClientId = properties.getProperty("analytics.clientId", "");
-    disableReplayOptimization =
-        getBoolean(properties, "replay.disableOptimization", disableReplayOptimization);
-    reportCrashes = getBoolean(properties, "crash.reporting", reportCrashes);
-    perfettoDrawerHeight = getInt(properties, "perfetto.drawer.height", perfettoDrawerHeight);
-    perfettoDarkMode = getBoolean(properties, "perfetto.dark", perfettoDarkMode);
-    perfettoCpu = getBoolean(properties, "perfetto.cpu", perfettoCpu);
-    perfettoCpuFreq = getBoolean(properties, "perfetto.cpu.freq", perfettoCpuFreq);
-    perfettoCpuChain = getBoolean(properties, "perfetto.cpu.chain", perfettoCpuChain);
-    perfettoCpuSlices = getBoolean(properties, "perfetto.cpu.slices", perfettoCpuSlices);
-    perfettoGpu = getBoolean(properties, "perfetto.gpu", perfettoGpu);
-    perfettoGpuSlices = getBoolean(properties, "perfetto.gpu.slices", perfettoGpuSlices);
-    perfettoGpuCounters = getBoolean(properties, "perfetto.gpu.counters", perfettoGpuCounters);
-    perfettoGpuCounterRate = getInt(properties, "perfetto.gpu.counters.rate", perfettoGpuCounterRate);
-    perfettoGpuCounterIds = getIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
-    perfettoMem = getBoolean(properties, "perfetto.mem", perfettoMem);
-    perfettoMemRate = getInt(properties, "perfetto.mem.rate", perfettoMemRate);
-    perfettoBattery = getBoolean(properties, "perfetto.battery", perfettoBattery);
-    perfettoBatteryRate = getInt(properties, "perfetto.battery.rate", perfettoBatteryRate);
-    perfettoVulkan = getBoolean(properties, "perfetto.vulkan", perfettoVulkan);
-    perfettoVulkanCPUTiming = getBoolean(properties, "perfetto.vulkan.cpu_timing", perfettoVulkanCPUTiming);
-    perfettoVulkanCPUTimingCommandBuffer = getBoolean(properties, "perfetto.vulkan.cpu_timing.command_buffer", perfettoVulkanCPUTimingCommandBuffer);
-    perfettoVulkanCPUTimingDevice = getBoolean(properties, "perfetto.vulkan.cpu_timing.device", perfettoVulkanCPUTimingDevice);
-    perfettoVulkanCPUTimingInstance = getBoolean(properties, "perfetto.vulkan.cpu_timing.instance", perfettoVulkanCPUTimingInstance);
-    perfettoVulkanCPUTimingQueue = getBoolean(properties, "perfetto.vulkan.cpu_timing.queue", perfettoVulkanCPUTimingQueue);
-    perfettoVulkanCPUTimingPhysicalDevice = getBoolean(properties, "perfetto.vulkan.cpu_timing.physical_device", perfettoVulkanCPUTimingPhysicalDevice);
-    perfettoVulkanMemoryTracking = getBoolean(properties, "perfetto.vulkan.memory_tracking", perfettoVulkanMemoryTracking);
-    perfettoVulkanMemoryTrackingDevice = getBoolean(properties, "perfetto.vulkan.memory_tracking.device", perfettoVulkanMemoryTrackingDevice);
-    perfettoVulkanMemoryTrackingDriver = getBoolean(properties, "perfetto.vulkan.memory_tracking.driver", perfettoVulkanMemoryTrackingDriver);
-    perfettoSurfaceFlinger = getBoolean(properties, "perfetto.surfaceflinger.frame", perfettoSurfaceFlinger);
-  }
-
-  private void updateTo(Properties properties) {
-    setPoint(properties, "window.pos", windowLocation);
-    setPoint(properties, "window.size", windowSize);
-    setStringList(properties, "tabs", tabs);
-    setIntList(properties, "tabs.iweights", tabWeights);
-    properties.setProperty("tabs.structure", tabStructure);
-    setStringList(properties, "tabs.hidden", hiddenTabs);
-    properties.setProperty("lastOpenDir", lastOpenDir);
-    setIntList(properties, "programTree.splitter.weights", programTreeSplitterWeights);
-    setIntList(properties, "programUniforms.splitter.weights", programUniformsSplitterWeights);
-    setIntList(properties, "report.splitter.weights", reportSplitterWeights);
-    setIntList(properties, "shaderTree.splitter.weights", shaderTreeSplitterWeights);
-    setIntList(properties, "texture.splitter.weights", texturesSplitterWeights);
-    properties.setProperty("trace.device.serial", traceDeviceSerial);
-    properties.setProperty("trace.device.name", traceDeviceName);
-    properties.setProperty("trace.type", traceType);
-    properties.setProperty("trace.api", traceApi);
-    properties.setProperty("trace.uri", traceUri);
-    properties.setProperty("trace.arguments", traceArguments);
-    properties.setProperty("trace.cwd", traceCwd);
-    properties.setProperty("trace.env", traceEnv);
-    properties.setProperty("trace.startAt", Integer.toString(traceStartAt));
-    properties.setProperty("trace.duration", Integer.toString(traceDuration));
-    properties.setProperty("trace.withoutBuffering", Boolean.toString(traceWithoutBuffering));
-    properties.setProperty("trace.hideUnknownExtensions", Boolean.toString(traceHideUnknownExtensions));
-    properties.setProperty("trace.clearCache", Boolean.toString(traceClearCache));
-    properties.setProperty("trace.disablePCS", Boolean.toString(traceDisablePcs));
-    properties.setProperty("trace.dir", traceOutDir);
-    properties.setProperty("trace.friendly",  traceFriendlyName);
-    properties.setProperty("skip.firstTime", Boolean.toString(skipFirstRunDialog));
-    setStringList(properties, "open.recent", recentFiles);
-    properties.setProperty("adb.path", adb);
-    properties.setProperty("updates.autoCheck", Boolean.toString(autoCheckForUpdates));
-    properties.setProperty("updates.includeDevReleases", Boolean.toString(includeDevReleases));
-    properties.setProperty("updates.lastCheck", Long.toString(lastCheckForUpdates));
-    properties.setProperty("updates.available", Boolean.toString(updateAvailable));
-    properties.setProperty("analytics.clientId", analyticsClientId);
-    properties.setProperty(
-        "replay.disableOptimization",  Boolean.toString(disableReplayOptimization));
-    properties.setProperty("crash.reporting", Boolean.toString(reportCrashes));
-    properties.setProperty("perfetto.drawer.height", Integer.toString(perfettoDrawerHeight));
-    properties.setProperty("perfetto.dark", Boolean.toString(perfettoDarkMode));
-    properties.setProperty("perfetto.cpu", Boolean.toString(perfettoCpu));
-    properties.setProperty("perfetto.cpu.freq", Boolean.toString(perfettoCpuFreq));
-    properties.setProperty("perfetto.cpu.chain", Boolean.toString(perfettoCpuChain));
-    properties.setProperty("perfetto.cpu.slices", Boolean.toString(perfettoCpuSlices));
-    properties.setProperty("perfetto.gpu", Boolean.toString(perfettoGpu));
-    properties.setProperty("perfetto.gpu.slices", Boolean.toString(perfettoGpuSlices));
-    properties.setProperty("perfetto.gpu.counters", Boolean.toString(perfettoGpuCounters));
-    properties.setProperty("perfetto.gpu.counters.rate", Integer.toString(perfettoGpuCounterRate));
-    setIntList(properties, "perfetto.gpu.counters.ids", perfettoGpuCounterIds);
-    properties.setProperty("perfetto.mem", Boolean.toString(perfettoMem));
-    properties.setProperty("perfetto.mem.rate", Integer.toString(perfettoMemRate));
-    properties.setProperty("perfetto.battery", Boolean.toString(perfettoBattery));
-    properties.setProperty("perfetto.battery.rate", Integer.toString(perfettoBatteryRate));
-    properties.setProperty("perfetto.vulkan", Boolean.toString(perfettoVulkan));
-    properties.setProperty("perfetto.vulkan.cpu_timing", Boolean.toString(perfettoVulkanCPUTiming));
-    properties.setProperty("perfetto.vulkan.cpu_timing.command_buffer", Boolean.toString(perfettoVulkanCPUTimingCommandBuffer));
-    properties.setProperty("perfetto.vulkan.cpu_timing.device", Boolean.toString(perfettoVulkanCPUTimingDevice));
-    properties.setProperty("perfetto.vulkan.cpu_timing.instance", Boolean.toString(perfettoVulkanCPUTimingInstance));
-    properties.setProperty("perfetto.vulkan.cpu_timing.queue", Boolean.toString(perfettoVulkanCPUTimingQueue));
-    properties.setProperty("perfetto.vulkan.cpu_timing.physical_device", Boolean.toString(perfettoVulkanCPUTimingPhysicalDevice));
-    properties.setProperty("perfetto.vulkan.memory_tracking", Boolean.toString(perfettoVulkanMemoryTracking));
-    properties.setProperty("perfetto.vulkan.memory_tracking.device", Boolean.toString(perfettoVulkanMemoryTrackingDevice));
-    properties.setProperty("perfetto.vulkan.memory_tracking.driver", Boolean.toString(perfettoVulkanMemoryTrackingDriver));
-    properties.setProperty("perfetto.surfaceflinger.frame", Boolean.toString(perfettoSurfaceFlinger));
-  }
-
-  private static Point getPoint(Properties properties, String name) {
-    int x = getInt(properties, name + ".x", -1), y = getInt(properties, name + ".y", -1);
-    return (x >= 0 && y >= 0) ? new Point(x, y) : null;
-  }
-
-  private static int getInt(Properties properties, String name, int dflt) {
-    String value = properties.getProperty(name);
-    if (value == null) {
-      return dflt;
-    }
-
-    try {
-      return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      return dflt;
-    }
-  }
-
-  private static long getLong(Properties properties, String name, long dflt) {
-    String value = properties.getProperty(name);
-    if (value == null) {
-      return dflt;
-    }
-
-    try {
-      return Long.parseLong(value);
-    } catch (NumberFormatException e) {
-      return dflt;
-    }
-  }
-
-  private static boolean getBoolean(Properties properties, String name, boolean dflt) {
-    if (dflt) {
-      return !"false".equalsIgnoreCase(properties.getProperty(name));
-    } else {
-      return "true".equalsIgnoreCase(properties.getProperty(name));
-    }
-  }
-
-  private static int[] getIntList(Properties properties, String name, int[] dflt) {
-    String value = properties.getProperty(name);
-    if (value == null) {
-      return dflt;
-    }
-
-    try {
-      return stream(Splitter.on(',').split(value).spliterator(), false)
-          .mapToInt(Integer::parseInt)
-          .toArray();
-    } catch (NumberFormatException e) {
-      return dflt;
-    }
-  }
-
-  private static String[] getStringList(Properties properties, String name, String[] dflt) {
-    String value = properties.getProperty(name);
-    if (value == null) {
-      return dflt;
-    }
-    return stream(
-        Splitter.on(',').trimResults().omitEmptyStrings().split(value).spliterator(), false)
-        .toArray(String[]::new);
-  }
-
-  private static void setPoint(Properties properties, String name, Point point) {
-    if (point != null) {
-      properties.setProperty(name + ".x", Integer.toString(point.x));
-      properties.setProperty(name + ".y", Integer.toString(point.y));
-    }
-  }
-
-  private static void setIntList(Properties properties, String name, int[] value) {
-    properties.setProperty(name, stream(value).mapToObj(String::valueOf).collect(joining(",")));
-  }
-
-  private static void setStringList(Properties properties, String name, String[] value) {
-    properties.setProperty(name, stream(value).collect(joining(",")));
-  }
-
-  private static String tryFindAdb(String current) {
-    if (!current.isEmpty()) {
-      return current;
+  private static void tryFindAdb(SettingsProto.Preferences.Builder current) {
+    if (!current.getAdb().isEmpty()) {
+      return;
     }
 
     String[] sdkVars = { "ANDROID_HOME", "ANDROID_SDK_HOME", "ANDROID_ROOT", "ANDROID_SDK_ROOT" };
     for (String sdkVar : sdkVars) {
       File adb = findAdbInSdk(System.getenv(sdkVar));
       if (adb != null) {
-        return adb.getAbsolutePath();
+        current.setAdb(adb.getAbsolutePath());
+        return;
       }
     }
 
     // If not found, but the flag is specified, use that.
-    return GapiPaths.adbPath.get();
+    String adb = GapiPaths.adbPath.get();
+    if (!adb.isEmpty()) {
+      current.setAdb(adb);
+      return;
+    }
   }
 
   private static File findAdbInSdk(String sdk) {
@@ -467,5 +334,43 @@ public class Settings {
     }
     File adb = new File(sdk, "platform-tools" + File.separator + "adb" + OS.exeExtension);
     return (adb.exists() && adb.canExecute()) ? adb : null;
+  }
+
+  public static enum SplitterWeights {
+    Textures(new int[] { 20, 80 }),
+    Report(new int[] { 75, 25 }),
+    Shaders(new int[] { 20, 80 }),
+    Programs(new int[] { 20, 80 }),
+    Uniforms(new int[] { 70, 30 });
+
+    private final int[] dflt;
+
+    private SplitterWeights(int[] dflt) {
+      this.dflt = dflt;
+    }
+
+    public int[] get(SettingsProto.UIOrBuilder ui) {
+      return (ui.containsSplitterWeights(name())) ?
+          toArray(ui.getSplitterWeightsOrThrow(name())) : dflt;
+    }
+
+    public void set(SettingsProto.UI.Builder ui, int[] weights) {
+      SettingsProto.UI.SplitterWeights.Builder sw = SettingsProto.UI.SplitterWeights.newBuilder();
+      for (int weight : weights) {
+        sw.addWeight(weight);
+      }
+      ui.putSplitterWeights(name(), sw.build());
+    }
+
+    private int[] toArray(SettingsProto.UI.SplitterWeights w) {
+      if (w.getWeightCount() == 0) {
+        return dflt;
+      }
+      int[] r = new int[w.getWeightCount()];
+      for (int i = 0; i < r.length; i++) {
+        r[i] = w.getWeight(i);
+      }
+      return r;
+    }
   }
 }

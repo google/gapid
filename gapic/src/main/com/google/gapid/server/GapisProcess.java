@@ -87,13 +87,13 @@ public class GapisProcess extends ChildProcess<Integer> {
 
     args.add("-enable-local-files");
 
-    if (settings.reportCrashes) {
+    if (settings.preferences().getReportCrashes()) {
       args.add("-crashreport");
     }
 
     if (settings.analyticsEnabled()) {
       args.add("-analytics");
-      args.add(settings.analyticsClientId);
+      args.add(settings.preferences().getAnalyticsClientId());
     }
 
     File logDir = Logging.getLogDir();
