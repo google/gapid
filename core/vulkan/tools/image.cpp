@@ -32,11 +32,14 @@ void WriteDataToStream(void* context, void* data, int size) {
 
 namespace vk_tools {
 
-void WritePng(std::ostream* stream, uint8_t* image_data, size_t size,
+bool WritePng(std::ostream* stream, uint8_t* image_data, size_t size,
               uint32_t width, uint32_t height, VkFormat image_format) {
   switch (image_format) {
     case VK_FORMAT_B8G8R8A8_UNORM:
     case VK_FORMAT_B8G8R8A8_UINT: {
+      if (width * height * 4u != size) {
+        return false;
+      }
       // Convert the image data from BGRA to RGBA
       auto data = image_data;
       for (uint32_t y = 0; y < height; y++) {
@@ -55,13 +58,17 @@ void WritePng(std::ostream* stream, uint8_t* image_data, size_t size,
 
     case VK_FORMAT_R8G8B8A8_UNORM:
     case VK_FORMAT_R8G8B8A8_UINT:
+      if (width * height * 4u != size) {
+        return false;
+      }
       stbi_write_png_to_func(&WriteDataToStream, stream, width, height, 4,
                              image_data, width * 4);
-      break;
+      return true;
 
     default:
       break;
   }
+  return false;
 }
 
 }  // namespace vk_tools

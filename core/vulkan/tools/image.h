@@ -24,8 +24,14 @@ namespace vk_tools {
 
 // If |image_format| is a suitable format, the image in |image_data| is
 // converted to a PNG, with the data for the PNG being sent to |stream|.
-extern void WritePng(std::ostream* stream, uint8_t* image_data, size_t size,
-                     uint32_t width, uint32_t height, VkFormat image_format);
+// If |image_format| is in an unsuitable format, the |image_data| might
+// be converted in-place to a suitable format before being converted to
+// a PNG, or might not be sent to the stream at all.
+// Returns true if the data has been sent to the stream.
+// Returns false otherwise, and also if |size| does not match the expected
+// size from |width|, |height| and |image_format|.
+bool WritePng(std::ostream* stream, uint8_t* image_data, size_t size,
+              uint32_t width, uint32_t height, VkFormat image_format);
 
 }  // namespace vk_tools
 
