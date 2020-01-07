@@ -49,22 +49,22 @@ import java.util.function.IntConsumer;
  * The main {@link Panel} containing all track panels. Shows a {@link TimelinePanel} at the top,
  * and tracks below.
  */
-public class RootPanel extends Panel.Base implements State.Listener {
+public abstract class RootPanel<S extends State> extends Panel.Base implements State.Listener {
   private static final double HIGHLIGHT_TOP = 22;
   private static final double HIGHLIGHT_BOTTOM = 30;
   private static final double HIGHLIGHT_CENTER = (HIGHLIGHT_TOP + HIGHLIGHT_BOTTOM) / 2;
   private static final double HIGHLIGHT_PADDING = 3;
 
-  private final TimelinePanel timeline;
-  private final PanelGroup top = new PanelGroup();
-  private final PanelGroup bottom = new PanelGroup();
-  private final State.ForSystemTrace state;
+  protected final TimelinePanel timeline;
+  protected final PanelGroup top = new PanelGroup();
+  protected final PanelGroup bottom = new PanelGroup();
+  protected final S state;
 
   private MouseMode mouseMode = MouseMode.Pan;
   private boolean panOverride = false;
   private Area selection = Area.NONE;
 
-  public RootPanel(State.ForSystemTrace state) {
+  public RootPanel(S state) {
     this.timeline = new TimelinePanel(state);
     this.state = state;
     state.addListener(this);
@@ -78,15 +78,10 @@ public class RootPanel extends Panel.Base implements State.Listener {
   @Override
   public void onDataChanged() {
     clear();
-
-    if (state.hasData()) {
-      top.add(timeline);
-      top.add(state.getPinnedTracks());
-      for (TrackConfig.Element<?> el : state.getTracks().elements) {
-        bottom.add(el.createUi(state));
-      }
-    }
+    createUi();
   }
+
+  protected abstract void createUi();
 
   @Override
   public double getPreferredHeight() {
@@ -114,9 +109,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
       double newClipY = Math.max(clip.y, topHeight);
       ctx.withClip(clip.x, newClipY, clip.w, clip.h - (newClipY - clip.y), () -> {
         ctx.withTranslation(0, topHeight - state.getScrollOffset(), () -> {
-          if (state.hasData() && state.getVSync().hasData()) {
-            renderVSync(ctx, repainter, state.getVSync());
-          }
+          preMainUiRender(ctx, repainter);
           bottom.render(ctx, repainter.transformed(
               a -> a.translate(0, topHeight - state.getScrollOffset())));
         });
@@ -184,39 +177,7 @@ public class RootPanel extends Panel.Base implements State.Listener {
     }
   }
 
-  private void renderVSync(RenderContext ctx, Repainter repainter, VSync vsync) {
-    ctx.trace("VSync", () -> {
-      VSync.Data data = vsync.getData(state.toRequest(), (future, consumer) -> {
-        state.thenOnUiThread(future, result -> {
-          consumer.accept(result);
-          repainter.repaint(new Area(0, 0, width, height));
-        });
-      });
-      if (data == null) {
-        return;
-      }
-
-      TimeSpan visible = state.getVisibleTime();
-      ctx.setBackgroundColor(colors().vsyncBackground);
-      boolean fill = !data.fillFirst;
-      double lastX = LABEL_WIDTH;
-      double h = bottom.getPreferredHeight();
-      for (long time : data.ts) {
-        fill = !fill;
-        if (time < visible.start) {
-          continue;
-        }
-        double x = LABEL_WIDTH + state.timeToPx(time);
-        if (fill) {
-          ctx.fillRect(lastX, 0, x - lastX, h);
-        }
-        lastX = x;
-        if (time > visible.end) {
-          break;
-        }
-      }
-    });
-  }
+  protected abstract void preMainUiRender(RenderContext ctx, Repainter repainter);
 
   @Override
   public void visit(Visitor v, Area area) {
@@ -405,6 +366,65 @@ public class RootPanel extends Panel.Base implements State.Listener {
     long newStart = Math.round(cursorTime - (newSpan / curSpan) * (cursorTime - visible.start));
     long newEnd = Math.round(newStart + newSpan);
     return state.setVisibleTime(new TimeSpan(newStart, newEnd));
+  }
+
+  public static class ForSystemTrace extends RootPanel<State.ForSystemTrace> {
+
+    public ForSystemTrace(State.ForSystemTrace state) {
+      super(state);
+    }
+
+    @Override
+    protected void createUi() {
+      if (state.hasData()) {
+        top.add(timeline);
+        top.add(state.getPinnedTracks());
+        for (TrackConfig.Element<?> el : state.getTracks().elements) {
+          bottom.add(el.createUi(state));
+        }
+      }
+    }
+
+    @Override
+    protected void preMainUiRender(RenderContext ctx, Repainter repainter) {
+      if (state.hasData() && state.getVSync().hasData()) {
+        renderVSync(ctx, repainter, state.getVSync());
+      }
+    }
+
+    private void renderVSync(RenderContext ctx, Repainter repainter, VSync vsync) {
+      ctx.trace("VSync", () -> {
+        VSync.Data data = vsync.getData(state.toRequest(), (future, consumer) -> {
+          state.thenOnUiThread(future, result -> {
+            consumer.accept(result);
+            repainter.repaint(new Area(0, 0, width, height));
+          });
+        });
+        if (data == null) {
+          return;
+        }
+
+        TimeSpan visible = state.getVisibleTime();
+        ctx.setBackgroundColor(colors().vsyncBackground);
+        boolean fill = !data.fillFirst;
+        double lastX = LABEL_WIDTH;
+        double h = bottom.getPreferredHeight();
+        for (long time : data.ts) {
+          fill = !fill;
+          if (time < visible.start) {
+            continue;
+          }
+          double x = LABEL_WIDTH + state.timeToPx(time);
+          if (fill) {
+            ctx.fillRect(lastX, 0, x - lastX, h);
+          }
+          lastX = x;
+          if (time > visible.end) {
+            break;
+          }
+        }
+      });
+    }
   }
 
   public static enum MouseMode {
