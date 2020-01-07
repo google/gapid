@@ -220,6 +220,24 @@ class rwlock {
 #endif
 };
 
+class scoped_read_lock {
+ public:
+  scoped_read_lock(rwlock* lock) : lock_(lock) { lock_->rlock(); }
+  ~scoped_read_lock() { lock_->runlock(); }
+
+ private:
+  rwlock* lock_;
+};
+
+class scoped_write_lock {
+ public:
+  scoped_write_lock(rwlock* lock) : lock_(lock) { lock_->wlock(); }
+  ~scoped_write_lock() { lock_->wunlock(); }
+
+ private:
+  rwlock* lock_;
+};
+
 }  // namespace threading
 }  // namespace layer_helpers
 #endif  // VULKAN_LAYER_THREADING_H__
