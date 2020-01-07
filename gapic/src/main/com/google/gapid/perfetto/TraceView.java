@@ -74,8 +74,8 @@ public class TraceView extends Composite
 
     TopBar topBar = withLayoutData(new TopBar(this), new GridData(SWT.FILL, SWT.TOP, true, false));
     loading = withLayoutData(
-        new LoadablePanel<DrawerComposite>(this, widgets, p ->
-          new DrawerComposite(p, SWT.NONE, models.settings.perfettoDrawerHeight, widgets.theme)),
+        new LoadablePanel<DrawerComposite>(this, widgets, p -> new DrawerComposite(
+            p, SWT.NONE, models.settings.ui().getPerfetto().getDrawerHeight(), widgets.theme)),
         new GridData(SWT.FILL, SWT.FILL, true, true));
     rootPanel = new RootPanel(state);
 
@@ -204,7 +204,7 @@ public class TraceView extends Composite
     models.perfetto.addListener(this);
     state.addListener(this);
     addListener(SWT.Dispose, e -> {
-      models.settings.perfettoDrawerHeight = container.getDrawerHeight();
+      models.settings.writeUi().getPerfettoBuilder().setDrawerHeight(container.getDrawerHeight());
       models.capture.removeListener(this);
       models.perfetto.removeListener(this);
     });

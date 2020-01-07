@@ -87,7 +87,7 @@ public class WelcomeDialog {
 
       @Override
       protected void okPressed() {
-        models.settings.skipFirstRunDialog = true;
+        models.settings.writePreferences().setSkipFirstRunDialog(true);
         form.save();
 
         super.okPressed();

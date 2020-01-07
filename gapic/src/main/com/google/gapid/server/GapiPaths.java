@@ -124,7 +124,7 @@ public final class GapiPaths {
 
   public static String adb(Settings settings) {
     String adb = adbPath.get();
-    return adb.isEmpty() ? settings.adb : adb;
+    return adb.isEmpty() ? settings.preferences().getAdb() : adb;
   }
 
   private static GapiPaths checkForTools(File dir) {

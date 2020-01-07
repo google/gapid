@@ -98,11 +98,11 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
       File canonicalFile = file.getCanonicalFile();
       canonicalPath = canonicalFile.getAbsolutePath();
       if (canonicalFile.getParentFile() != null) {
-        settings.lastOpenDir = canonicalFile.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(canonicalFile.getParentFile().getAbsolutePath());
       }
     } catch (IOException e) {
       if (file.getParentFile() != null) {
-        settings.lastOpenDir = file.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(file.getParentFile().getAbsolutePath());
       }
 
       return Futures.immediateFailedFuture(
@@ -160,11 +160,11 @@ public class Capture extends ModelBase<Capture.Data, File, Loadable.Message, Cap
       File canonicalFile = file.getCanonicalFile();
       canonicalPath = canonicalFile.getAbsolutePath();
       if (canonicalFile.getParentFile() != null) {
-        settings.lastOpenDir = canonicalFile.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(canonicalFile.getParentFile().getAbsolutePath());
       }
     } catch (IOException e) {
       if (file.getParentFile() != null) {
-        settings.lastOpenDir = file.getParentFile().getAbsolutePath();
+        settings.writeFiles().setLastOpenDir(file.getParentFile().getAbsolutePath());
       }
 
       LOG.log(Level.WARNING, "Failed to save trace", e);

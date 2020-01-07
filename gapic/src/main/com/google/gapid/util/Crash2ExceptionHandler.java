@@ -91,7 +91,7 @@ public class Crash2ExceptionHandler implements Thread.UncaughtExceptionHandler, 
 
   @Override
   public void reportException(Throwable thrown) {
-    if (!settings.reportCrashes) {
+    if (!settings.preferences().getReportCrashes()) {
       return;
     }
 

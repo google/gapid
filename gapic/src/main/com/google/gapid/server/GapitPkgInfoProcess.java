@@ -52,7 +52,7 @@ public class GapitPkgInfoProcess extends ChildProcess<PkgInfo.PackageList> {
 
     if (settings.analyticsEnabled()) {
       args.add("-analytics");
-      args.add(settings.analyticsClientId);
+      args.add(settings.preferences().getAnalyticsClientId());
     }
 
     GapiPaths.get().addRunfilesFlag(args);

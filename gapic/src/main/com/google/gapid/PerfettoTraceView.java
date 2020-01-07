@@ -56,13 +56,14 @@ public class PerfettoTraceView extends Composite implements MainWindow.MainView 
     manager.removeAll();
 
     Action darkMode = MainWindow.MenuItems.ViewDarkMode.createCheckbox((dark) -> {
-      models.settings.perfettoDarkMode = dark;
+      models.settings.writeUi().getPerfettoBuilder().setDarkMode(dark);
       StyleConstants.setDark(dark);
       Rectangle size = getClientArea();
       redraw(size.x, size.y, size.width, size.height, true);
     });
-    darkMode.setChecked(models.settings.perfettoDarkMode);
-    StyleConstants.setDark(models.settings.perfettoDarkMode);
+    boolean dark = models.settings.ui().getPerfettoOrBuilder().getDarkMode();
+    darkMode.setChecked(dark);
+    StyleConstants.setDark(dark);
 
     Action queryView = MainWindow.MenuItems.ViewQueryShell.create(() -> {
       Window window = new Window(new SameShellProvider(this)) {

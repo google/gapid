@@ -15,6 +15,13 @@
  */
 package com.google.gapid.perfetto.views;
 
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_COMMAND_BUFFER;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_DEVICE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_INSTANCE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_PHYSICAL_DEVICE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.CpuTiming.CPU_TIMING_QUEUE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.MemoryTracking.MEMORY_TRACKING_DEVICE;
+import static com.google.gapid.proto.SettingsProto.Perfetto.Vulkan.MemoryTracking.MEMORY_TRACKING_DRIVER;
 import static com.google.gapid.widgets.Widgets.createCheckbox;
 import static com.google.gapid.widgets.Widgets.createComposite;
 import static com.google.gapid.widgets.Widgets.createLabel;
@@ -26,17 +33,21 @@ import static com.google.gapid.widgets.Widgets.withMargin;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.toList;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.gapid.models.Models;
 import com.google.gapid.models.Settings;
+import com.google.gapid.proto.SettingsProto;
 import com.google.gapid.proto.device.Device;
 import com.google.gapid.proto.device.GpuProfiling;
 import com.google.gapid.util.Messages;
 import com.google.gapid.widgets.DialogBase;
 import com.google.gapid.widgets.Theme;
 import com.google.gapid.widgets.Widgets;
+import com.google.protobuf.ProtocolMessageEnum;
 
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
@@ -55,6 +66,7 @@ import org.eclipse.swt.widgets.TableItem;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -103,6 +115,17 @@ public class TraceConfigDialog extends DialogBase {
       PerfettoConfig.AndroidPowerConfig.BatteryCounters.BATTERY_COUNTER_CURRENT,
   };
 
+  private static final ImmutableMap<ProtocolMessageEnum, String> VK_LABLES =
+      ImmutableMap.<ProtocolMessageEnum, String> builder()
+        .put(CPU_TIMING_COMMAND_BUFFER, "VkCommandBuffer")
+        .put(CPU_TIMING_DEVICE, "VkDevice")
+        .put(CPU_TIMING_INSTANCE, "VkInstance")
+        .put(CPU_TIMING_PHYSICAL_DEVICE, "VkPhysicalDevice")
+        .put(CPU_TIMING_QUEUE, "VkQueue")
+        .put(MEMORY_TRACKING_DEVICE, "Device")
+        .put(MEMORY_TRACKING_DRIVER, "Driver")
+        .build();
+
   private static final Pattern APP_REGEX = Pattern.compile("(?:[^:]*)?:([^/]+)(?:/[^/]+)");
 
   private final Settings settings;
@@ -123,27 +146,29 @@ public class TraceConfigDialog extends DialogBase {
 
   public static String getConfigSummary(Settings settings, Device.PerfettoCapability caps) {
     List<String> enabled = Lists.newArrayList();
-    if (settings.perfettoCpu) {
+    SettingsProto.PerfettoOrBuilder p = settings.perfetto();
+    if (p.getCpuOrBuilder().getEnabled()) {
       enabled.add("CPU");
     }
     Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
     if (gpuCaps.getHasRenderStage() ||
         gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
         gpuCaps.getHasFrameLifecycle()) {
-      if (settings.perfettoGpu) {
+      if (p.getGpuOrBuilder().getEnabled()) {
         enabled.add("GPU");
       }
     }
-    if (settings.perfettoMem) {
+    if (p.getMemoryOrBuilder().getEnabled()) {
       enabled.add("Memory");
     }
-    if (settings.perfettoBattery) {
+    if (p.getBatteryOrBuilder().getEnabled()) {
       enabled.add("Battery");
     }
-    if (settings.perfettoVulkan) {
+    if (p.getVulkanOrBuilder().getEnabled()) {
       Device.VulkanProfilingLayers vkLayers = caps.getVulkanProfileLayers();
-      if ((settings.perfettoVulkanCPUTiming && vkLayers.getCpuTiming()) ||
-          (settings.perfettoVulkanMemoryTracking && vkLayers.getMemoryTracker())) {
+      SettingsProto.Perfetto.VulkanOrBuilder vk = p.getVulkanOrBuilder();
+      if ((vk.getCpuTiming() && vkLayers.getCpuTiming()) ||
+          (vk.getMemoryTracking() && vkLayers.getMemoryTracker())) {
         enabled.add("Vulkan");
       }
     }
@@ -153,8 +178,9 @@ public class TraceConfigDialog extends DialogBase {
   public static PerfettoConfig.TraceConfig.Builder getConfig(
       Settings settings, Device.PerfettoCapability caps, String traceTarget) {
     PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
+    SettingsProto.PerfettoOrBuilder p = settings.perfetto();
 
-    if (settings.perfettoCpu) {
+    if (p.getCpuOrBuilder().getEnabled()) {
       // Record process names.
       config.addDataSourcesBuilder()
           .getConfigBuilder()
@@ -168,13 +194,13 @@ public class TraceConfigDialog extends DialogBase {
               .getFtraceConfigBuilder()
                   .setBufferSizeKb(FTRACE_BUFFER_SIZE)
                   .addAllFtraceEvents(Arrays.asList(CPU_BASE_FTRACE));
-      if (settings.perfettoCpuFreq) {
+      if (p.getCpuOrBuilder().getFrequency()) {
         ftrace.addAllFtraceEvents(Arrays.asList(CPU_FREQ_FTRACE));
       }
-      if (settings.perfettoCpuChain) {
+      if (p.getCpuOrBuilder().getChain()) {
         ftrace.addAllFtraceEvents(Arrays.asList(CPU_CHAIN_FTRACE));
       }
-      if (settings.perfettoCpuSlices && caps.getCanSpecifyAtraceApps()) {
+      if (p.getCpuOrBuilder().getSlices() && caps.getCanSpecifyAtraceApps()) {
         ftrace.addAllAtraceCategories(Arrays.asList(CPU_SLICES_ATRACE));
         if (!traceTarget.isEmpty()) {
           Matcher m = APP_REGEX.matcher(traceTarget);
@@ -183,92 +209,69 @@ public class TraceConfigDialog extends DialogBase {
       }
     }
 
-    if (settings.perfettoGpu) {
+    if (p.getGpuOrBuilder().getEnabled()) {
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
-      if (gpuCaps.getHasRenderStage() && settings.perfettoGpuSlices) {
+      SettingsProto.Perfetto.GPUOrBuilder gpu = p.getGpuOrBuilder();
+      if (gpuCaps.getHasRenderStage() && gpu.getSlices()) {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("gpu.renderstages");
       }
       if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 &&
-          settings.perfettoGpuCounters && settings.perfettoGpuCounterIds.length > 0) {
+          gpu.getCounters() && gpu.getCounterIdsCount() > 0) {
         PerfettoConfig.GpuCounterConfig.Builder counters = config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("gpu.counters")
                 .getGpuCounterConfigBuilder()
-                    .setCounterPeriodNs(MILLISECONDS.toNanos(settings.perfettoGpuCounterRate));
-        for (int counter : settings.perfettoGpuCounterIds) {
-          counters.addCounterIds(counter);
-        }
+                    .setCounterPeriodNs(MILLISECONDS.toNanos(gpu.getCounterRate()));
+        counters.addAllCounterIds(gpu.getCounterIdsList());
+
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("VulkanAPI");
       }
-      if (gpuCaps.getHasFrameLifecycle() && settings.perfettoSurfaceFlinger) {
+      if (gpuCaps.getHasFrameLifecycle() && gpu.getSurfaceFlinger()) {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("android.surfaceflinger.frame");
       }
     }
 
-    if (settings.perfettoMem) {
+    if (p.getMemoryOrBuilder().getEnabled()) {
       config.addDataSourcesBuilder()
           .getConfigBuilder()
               .setName("linux.sys_stats")
               .getSysStatsConfigBuilder()
-                  .setMeminfoPeriodMs(settings.perfettoMemRate)
+                  .setMeminfoPeriodMs(p.getMemoryOrBuilder().getRate())
                   .addAllMeminfoCounters(Arrays.asList(MEM_COUNTERS));
     }
 
-    if (settings.perfettoBattery) {
+    if (p.getBatteryOrBuilder().getEnabled()) {
       config.addDataSourcesBuilder()
           .getConfigBuilder()
               .setName("android.power")
               .getAndroidPowerConfigBuilder()
-                  .setBatteryPollMs(settings.perfettoBatteryRate)
+                  .setBatteryPollMs(p.getBatteryOrBuilder().getRate())
                   .setCollectPowerRails(true)
                   .addAllBatteryCounters(Arrays.asList(BAT_COUNTERS));
     }
 
     boolean largeBuffer = false;
-    if (settings.perfettoVulkan) {
+    if (p.getVulkanOrBuilder().getEnabled()) {
       Device.VulkanProfilingLayers vkLayers = caps.getVulkanProfileLayers();
-      if (vkLayers.getCpuTiming() && settings.perfettoVulkanCPUTiming) {
-        List<String> enabled = Lists.newArrayList();
-        if (settings.perfettoVulkanCPUTimingCommandBuffer) {
-          enabled.add("VkCommandBuffer");
-        }
-        if (settings.perfettoVulkanCPUTimingDevice) {
-          enabled.add("VkDevice");
-        }
-        if (settings.perfettoVulkanCPUTimingInstance) {
-          enabled.add("VkInstance");
-        }
-        if (settings.perfettoVulkanCPUTimingPhysicalDevice) {
-          enabled.add("VkPhysicalDevice");
-        }
-        if (settings.perfettoVulkanCPUTimingQueue) {
-          enabled.add("VkQueue");
-        }
-
+      SettingsProto.Perfetto.VulkanOrBuilder vk = p.getVulkanOrBuilder();
+      if (vkLayers.getCpuTiming() && vk.getCpuTiming()) {
         largeBuffer = true;
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("VulkanCPUTiming")
-                .setLegacyConfig(enabled.stream().collect(joining(":")));
+                .setLegacyConfig(vkLabels(vk.getCpuTimingCategoriesList()));
       }
-      if (vkLayers.getMemoryTracker() && settings.perfettoVulkanMemoryTracking) {
-        List<String> enabled = Lists.newArrayList();
-        if (settings.perfettoVulkanMemoryTrackingDevice) {
-          enabled.add("Device");
-        }
-        if (settings.perfettoVulkanMemoryTrackingDriver) {
-          enabled.add("Driver");
-        }
+      if (vkLayers.getMemoryTracker() && vk.getMemoryTracking()) {
         config.addDataSourcesBuilder()
             .getConfigBuilder()
                 .setName("VulkanMemoryTracker")
-                .setLegacyConfig(enabled.stream().collect(joining(":")));
+                .setLegacyConfig(vkLabels(vk.getMemoryTrackingCategoriesList()));
       }
     }
 
@@ -278,6 +281,14 @@ public class TraceConfigDialog extends DialogBase {
     config.setFlushPeriodMs((int)SECONDS.toMillis(5));
 
     return config;
+  }
+
+  private static String vkLabels(List<?> list) {
+    return list.stream()
+      .map(VK_LABLES::get)
+      .filter(Objects::nonNull)
+      .distinct()
+      .collect(joining(":"));
   }
 
   @Override
@@ -339,49 +350,57 @@ public class TraceConfigDialog extends DialogBase {
       super(parent, SWT.NONE);
       setLayout(new GridLayout(1, false));
 
-      cpu = createCheckbox(this, "CPU", settings.perfettoCpu, e -> updateCpu());
+      SettingsProto.Perfetto.CPUOrBuilder sCpu = settings.perfetto().getCpuOrBuilder();
+      SettingsProto.Perfetto.GPUOrBuilder sGpu = settings.perfetto().getGpuOrBuilder();
+      SettingsProto.Perfetto.MemoryOrBuilder sMem = settings.perfetto().getMemoryOrBuilder();
+      SettingsProto.Perfetto.BatteryOrBuilder sBatt = settings.perfetto().getBatteryOrBuilder();
+      SettingsProto.Perfetto.VulkanOrBuilder sVk = settings.perfetto().getVulkanOrBuilder();
+
+      cpu = createCheckbox(this, "CPU", sCpu.getEnabled(), e -> updateCpu());
       Composite cpuGroup = withLayoutData(
           createComposite(this, withMargin(new GridLayout(1, false), 5, 0)),
           withIndents(new GridData(), GROUP_INDENT, 0));
-      cpuFreq = createCheckbox(cpuGroup, "Frequency and idle states", settings.perfettoCpuFreq);
-      cpuChain = createCheckbox(cpuGroup, "Scheduling chains / latency", settings.perfettoCpuChain);
-      cpuSlices = createCheckbox(cpuGroup, "Thread slices", settings.perfettoCpuSlices);
+      cpuFreq = createCheckbox(cpuGroup, "Frequency and idle states", sCpu.getFrequency());
+      cpuChain = createCheckbox(cpuGroup, "Scheduling chains / latency", sCpu.getChain());
+      cpuSlices = createCheckbox(cpuGroup, "Thread slices", sCpu.getSlices());
       addSeparator();
 
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
       if (gpuCaps.getHasRenderStage() ||
           gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0 ||
           gpuCaps.getHasFrameLifecycle()) {
-        gpu = createCheckbox(this, "GPU", settings.perfettoGpu, e -> updateGpu());
+        gpu = createCheckbox(this, "GPU", sGpu.getEnabled(), e -> updateGpu());
         Composite gpuGroup = withLayoutData(
             createComposite(this, withMargin(new GridLayout(1, false), 5, 0)),
             withIndents(new GridData(), GROUP_INDENT, 0));
         if (gpuCaps.getHasRenderStage()) {
-          gpuSlices = createCheckbox(gpuGroup, "Renderstage slices", settings.perfettoGpuSlices);
+          gpuSlices = createCheckbox(gpuGroup, "Renderstage slices", sGpu.getSlices());
         } else {
           gpuSlices = null;
         }
 
         if (gpuCaps.getGpuCounterDescriptor().getSpecsCount() > 0) {
           gpuCounters = createCheckbox(
-              gpuGroup, "Counters", settings.perfettoGpuCounters, e -> updateGpu());
+              gpuGroup, "Counters", sGpu.getCounters(), e -> updateGpu());
           Composite counterGroup = withLayoutData(
               createComposite(gpuGroup, withMargin(new GridLayout(3, false), 5, 0)),
               withIndents(new GridData(), GROUP_INDENT, 0));
           gpuCountersLabels = new Label[3];
           gpuCountersLabels[1] = createLabel(counterGroup, "Poll Rate:");
-          gpuCountersRate = createSpinner(counterGroup, settings.perfettoGpuCounterRate, 1, 1000);
+          gpuCountersRate = createSpinner(counterGroup, sGpu.getCounterRate(), 1, 1000);
           gpuCountersLabels[2] = createLabel(counterGroup, "ms");
 
-          gpuCountersLabels[0] = createLabel(
-              counterGroup, settings.perfettoGpuCounterIds.length + " selected");
+          gpuCountersLabels[0] = createLabel(counterGroup, sGpu.getCounterIdsCount() + " selected");
           gpuCountersSelect = Widgets.createButton(counterGroup, "Select", e -> {
             GpuCountersDialog dialog =
-                new GpuCountersDialog(getShell(), theme, caps, settings.perfettoGpuCounterIds);
+                new GpuCountersDialog(getShell(), theme, caps, sGpu.getCounterIdsList());
             if (dialog.open() == Window.OK) {
-              settings.perfettoGpuCounterIds = dialog.getSelectedIds();
-              gpuCounters.setSelection(settings.perfettoGpuCounterIds.length != 0);
-              gpuCountersLabels[0].setText(settings.perfettoGpuCounterIds.length + " selected");
+              List<Integer> newIds = dialog.getSelectedIds();
+              settings.writePerfetto().getGpuBuilder()
+                  .clearCounterIds()
+                  .addAllCounterIds(newIds)
+                  .setCounters(!newIds.isEmpty());
+              gpuCountersLabels[0].setText(newIds.size() + " selected");
               gpuCountersLabels[0].requestLayout();
               updateGpu();
             }
@@ -395,7 +414,7 @@ public class TraceConfigDialog extends DialogBase {
 
         if (gpuCaps.getHasFrameLifecycle()) {
           gpuFrame = createCheckbox(
-              gpuGroup, "Frame Lifecycle", settings.perfettoSurfaceFlinger, e -> updateGpu());
+              gpuGroup, "Frame Lifecycle", sGpu.getSurfaceFlinger(), e -> updateGpu());
         } else {
           gpuFrame = null;
         }
@@ -410,50 +429,50 @@ public class TraceConfigDialog extends DialogBase {
         gpuFrame = null;
       }
 
-      mem = createCheckbox(this, "Memory", settings.perfettoMem, e -> updateMem());
+      mem = createCheckbox(this, "Memory", sMem.getEnabled(), e -> updateMem());
       memLabels = new Label[2];
       Composite memGroup = withLayoutData(
           createComposite(this, withMargin(new GridLayout(3, false), 5, 0)),
           withIndents(new GridData(), GROUP_INDENT, 0));
       memLabels[0] = createLabel(memGroup, "Poll Rate:");
-      memRate = createSpinner(memGroup, settings.perfettoMemRate, 1, 1000);
+      memRate = createSpinner(memGroup, sMem.getRate(), 1, 1000);
       memLabels[1] = createLabel(memGroup, "ms");
       addSeparator();
 
-      bat = createCheckbox(this, "Battery", settings.perfettoBattery, e -> updateBat());
+      bat = createCheckbox(this, "Battery", sBatt.getEnabled(), e -> updateBat());
       batLabels = new Label[2];
       Composite batGroup = withLayoutData(
           createComposite(this, withMargin(new GridLayout(3, false), 5, 0)),
           withIndents(new GridData(), GROUP_INDENT, 0));
       batLabels[0] = createLabel(batGroup, "Poll Rate:");
-      batRate = createSpinner(batGroup, settings.perfettoBatteryRate, 250, 60000);
+      batRate = createSpinner(batGroup, sBatt.getRate(), 250, 60000);
       batLabels[1] = createLabel(batGroup, "ms");
 
       Device.VulkanProfilingLayers vkLayers = caps.getVulkanProfileLayers();
       if (vkLayers.getCpuTiming() || vkLayers.getMemoryTracker()) {
         addSeparator();
-        vulkan = createCheckbox(this, "Vulkan", settings.perfettoVulkan, e -> updateVulkan());
+        vulkan = createCheckbox(this, "Vulkan", sVk.getEnabled(), e -> updateVulkan());
         Composite vkGroup = withLayoutData(
             createComposite(this, new GridLayout(1, false)),
             withIndents(new GridData(), GROUP_INDENT, 0));
 
         if (vkLayers.getCpuTiming()) {
           vulkanCPUTiming = createCheckbox(
-              vkGroup, "CPU Timing", settings.perfettoVulkanCPUTiming, e -> updateVulkan());
+              vkGroup, "CPU Timing", sVk.getCpuTiming(), e -> updateVulkan());
           Composite cpuTimingGroup = withLayoutData(
               createComposite(vkGroup, withMargin(new GridLayout(1, false), 5, 0)),
               withIndents(new GridData(), GROUP_INDENT, 0));
 
           vulkanCPUTimingInstance =
-              createCheckbox(cpuTimingGroup, "Instance", settings.perfettoVulkanCPUTimingInstance);
+              createCheckbox(cpuTimingGroup, "Instance", hasCategory(sVk, CPU_TIMING_INSTANCE));
           vulkanCPUTimingPhysicalDevice = createCheckbox(
-              cpuTimingGroup, "Physical Device", settings.perfettoVulkanCPUTimingPhysicalDevice);
+              cpuTimingGroup, "Physical Device", hasCategory(sVk, CPU_TIMING_PHYSICAL_DEVICE));
           vulkanCPUTimingDevice =
-              createCheckbox(cpuTimingGroup, "Device", settings.perfettoVulkanCPUTimingDevice);
+              createCheckbox(cpuTimingGroup, "Device", hasCategory(sVk, CPU_TIMING_DEVICE));
           vulkanCPUTimingQueue =
-              createCheckbox(cpuTimingGroup, "Queue", settings.perfettoVulkanCPUTimingQueue);
+              createCheckbox(cpuTimingGroup, "Queue", hasCategory(sVk, CPU_TIMING_QUEUE));
           vulkanCPUTimingCommandBuffer = createCheckbox(
-              cpuTimingGroup, "CommandBuffer", settings.perfettoVulkanCPUTimingCommandBuffer);
+              cpuTimingGroup, "CommandBuffer", hasCategory(sVk, CPU_TIMING_COMMAND_BUFFER));
         } else {
           vulkanCPUTiming = null;
           vulkanCPUTimingInstance = null;
@@ -464,15 +483,15 @@ public class TraceConfigDialog extends DialogBase {
         }
         if (caps.getVulkanProfileLayers().getMemoryTracker()) {
           vulkanMemoryTracking = createCheckbox(
-              vkGroup, "Memory Tracking", settings.perfettoVulkanMemoryTracking, e -> updateVulkan());
+              vkGroup, "Memory Tracking", sVk.getMemoryTracking(), e -> updateVulkan());
           Composite memoryTrackingGroup = withLayoutData(
               createComposite(vkGroup, withMargin(new GridLayout(1, false), 5, 0)),
               withIndents(new GridData(), GROUP_INDENT, 0));
 
-          vulkanMemoryTrackingDevice =
-              createCheckbox(memoryTrackingGroup, "Device", settings.perfettoVulkanMemoryTrackingDevice);
-          vulkanMemoryTrackingDriver =
-              createCheckbox(memoryTrackingGroup, "Driver", settings.perfettoVulkanMemoryTrackingDriver);
+          vulkanMemoryTrackingDevice = createCheckbox(
+              memoryTrackingGroup, "Device", hasCategory(sVk, MEMORY_TRACKING_DEVICE));
+          vulkanMemoryTrackingDriver = createCheckbox(
+              memoryTrackingGroup, "Driver", hasCategory(sVk, MEMORY_TRACKING_DRIVER));
         } else {
           vulkanMemoryTracking = null;
           vulkanMemoryTrackingDevice = null;
@@ -498,46 +517,78 @@ public class TraceConfigDialog extends DialogBase {
       updateVulkan();
     }
 
+    private static boolean hasCategory(
+        SettingsProto.Perfetto.VulkanOrBuilder vk, SettingsProto.Perfetto.Vulkan.CpuTiming cat) {
+      return vk.getCpuTimingCategoriesList().contains(cat);
+    }
+
+    private static boolean hasCategory(SettingsProto.Perfetto.VulkanOrBuilder vk,
+        SettingsProto.Perfetto.Vulkan.MemoryTracking cat) {
+      return vk.getMemoryTrackingCategoriesList().contains(cat);
+    }
+
     public void update(Settings settings) {
-      settings.perfettoCpu = cpu.getSelection();
-      settings.perfettoCpuChain = cpuChain.getSelection();
-      settings.perfettoCpuFreq = cpuFreq.getSelection();
-      settings.perfettoCpuSlices = cpuSlices.getSelection();
+      SettingsProto.Perfetto.CPU.Builder sCpu = settings.writePerfetto().getCpuBuilder();
+      SettingsProto.Perfetto.GPU.Builder sGpu = settings.writePerfetto().getGpuBuilder();
+      SettingsProto.Perfetto.Memory.Builder sMem = settings.writePerfetto().getMemoryBuilder();
+      SettingsProto.Perfetto.Battery.Builder sBatt = settings.writePerfetto().getBatteryBuilder();
+      SettingsProto.Perfetto.Vulkan.Builder sVk = settings.writePerfetto().getVulkanBuilder();
+
+      sCpu.setEnabled(cpu.getSelection());
+      sCpu.setChain(cpuChain.getSelection());
+      sCpu.setFrequency(cpuFreq.getSelection());
+      sCpu.setSlices(cpuSlices.getSelection());
 
       if (gpu != null) {
-        settings.perfettoGpu = gpu.getSelection();
+        sGpu.setEnabled(gpu.getSelection());
       }
       if (gpuSlices != null) {
-        settings.perfettoGpuSlices = gpuSlices.getSelection();
+        sGpu.setSlices(gpuSlices.getSelection());
       }
       if (gpuCounters != null) {
-        settings.perfettoGpuCounters = gpuCounters.getSelection();
-        settings.perfettoGpuCounterRate = gpuCountersRate.getSelection();
+        sGpu.setCounters(gpuCounters.getSelection());
+        sGpu.setCounterRate(gpuCountersRate.getSelection());
       }
       if (gpuFrame != null) {
-        settings.perfettoSurfaceFlinger = gpuFrame.getSelection();
+        sGpu.setSurfaceFlinger(gpuFrame.getSelection());
       }
 
-      settings.perfettoMem = mem.getSelection();
-      settings.perfettoMemRate = memRate.getSelection();
-      settings.perfettoBattery = bat.getSelection();
-      settings.perfettoBatteryRate = batRate.getSelection();
+      sMem.setEnabled(mem.getSelection());
+      sMem.setRate(memRate.getSelection());
+      sBatt.setEnabled(bat.getSelection());
+      sBatt.setRate(batRate.getSelection());
 
       if (vulkan != null) {
-        settings.perfettoVulkan = vulkan.getSelection();
+        sVk.setEnabled(vulkan.getSelection());
       }
       if (vulkanCPUTiming != null) {
-        settings.perfettoVulkanCPUTiming = vulkanCPUTiming.getSelection();
-        settings.perfettoVulkanCPUTimingCommandBuffer = vulkanCPUTimingCommandBuffer.getSelection();
-        settings.perfettoVulkanCPUTimingDevice = vulkanCPUTimingDevice.getSelection();
-        settings.perfettoVulkanCPUTimingPhysicalDevice = vulkanCPUTimingPhysicalDevice.getSelection();
-        settings.perfettoVulkanCPUTimingInstance = vulkanCPUTimingInstance.getSelection();
-        settings.perfettoVulkanCPUTimingQueue = vulkanCPUTimingQueue.getSelection();
+        sVk.setCpuTiming(vulkanCPUTiming.getSelection());
+        sVk.clearCpuTimingCategories();
+        addCategory(vulkanCPUTimingCommandBuffer, sVk, CPU_TIMING_COMMAND_BUFFER);
+        addCategory(vulkanCPUTimingDevice, sVk, CPU_TIMING_DEVICE);
+        addCategory(vulkanCPUTimingPhysicalDevice, sVk, CPU_TIMING_PHYSICAL_DEVICE);
+        addCategory(vulkanCPUTimingInstance, sVk, CPU_TIMING_INSTANCE);
+        addCategory(vulkanCPUTimingQueue, sVk, CPU_TIMING_QUEUE);
       }
       if (vulkanMemoryTracking != null) {
-        settings.perfettoVulkanMemoryTracking = vulkanMemoryTracking.getSelection();
-        settings.perfettoVulkanMemoryTrackingDevice = vulkanMemoryTrackingDevice.getSelection();
-        settings.perfettoVulkanMemoryTrackingDriver = vulkanMemoryTrackingDriver.getSelection();
+        sVk.setMemoryTracking(vulkanMemoryTracking.getSelection());
+        sVk.clearMemoryTrackingCategories();
+        addCategory(vulkanMemoryTrackingDevice, sVk, MEMORY_TRACKING_DEVICE);
+        addCategory(vulkanMemoryTrackingDriver, sVk, MEMORY_TRACKING_DRIVER);
+      }
+    }
+
+    private static void addCategory(Button checkbox, SettingsProto.Perfetto.Vulkan.Builder vk,
+        SettingsProto.Perfetto.Vulkan.CpuTiming cat) {
+      if (checkbox.getSelection()) {
+        vk.addCpuTimingCategories(cat);
+      }
+    }
+
+    private static void addCategory(Button checkbox, SettingsProto.Perfetto.Vulkan.Builder vk,
+        SettingsProto.Perfetto.Vulkan.MemoryTracking cat) {
+      if (checkbox.getSelection()) {
+        vk.addMemoryTrackingCategories(cat);
       }
     }
 
@@ -620,16 +671,16 @@ public class TraceConfigDialog extends DialogBase {
       private final Set<Integer> currentIds;
 
       private Table table;
-      private int[] selectedIds;
+      private List<Integer> selectedIds;
 
       public GpuCountersDialog(
-          Shell shell, Theme theme, Device.PerfettoCapability caps, int[] currentIds) {
+          Shell shell, Theme theme, Device.PerfettoCapability caps, List<Integer> currentIds) {
         super(shell, theme);
         this.caps = caps;
-        this.currentIds = Arrays.stream(currentIds).boxed().collect(toSet());
+        this.currentIds = Sets.newHashSet(currentIds);
       }
 
-      public int[] getSelectedIds() {
+      public List<Integer> getSelectedIds() {
         return selectedIds;
       }
 
@@ -677,7 +728,8 @@ public class TraceConfigDialog extends DialogBase {
             .filter(item -> item.getChecked())
             .map(item -> (GpuProfiling.GpuCounterDescriptor.GpuCounterSpec)item.getData())
             .mapToInt(GpuProfiling.GpuCounterDescriptor.GpuCounterSpec::getCounterId)
-            .toArray();
+            .boxed()
+            .collect(toList());
         super.okPressed();
       }
     }
