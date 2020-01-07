@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Google Inc.
+# Copyright (C) 2019 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//tools/build:rules.bzl", "android_dynamic_library", "cc_copts", "cc_dynamic_library")
+load("//tools/build:rules.bzl", "cc_copts")
 
 cc_library(
-    name = "cc",
+    name = "tools",
     srcs = glob([
         "*.cpp",
         "*.h",
@@ -46,7 +46,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//core/vulkan/cc/include/ggp_c:vulkan_ggp_dummy",
-        "//core/vulkan/tools:tools",
+        "@stb",
         "@vulkan-headers//:vulkan",
     ],
 )
@@ -69,24 +69,4 @@ cc_library(
     deps = [
         "@vulkan-headers//:vulkan",
     ],
-)
-
-cc_dynamic_library(
-    name = "libVkLayer_VirtualSwapchain",
-    visibility = ["//visibility:public"],
-    exports = "virtual_swapchain_desktop.exports",
-    deps = [":cc"],
-)
-
-android_dynamic_library(
-    name = "libVkLayer_VirtualSwapchain_android",
-    visibility = ["//visibility:public"],
-    exports = "virtual_swapchain_android.exports",
-    deps = [":cc"],
-)
-
-filegroup(
-    name = "json",
-    srcs = ["VirtualSwapchainLayer.json"],
-    visibility = ["//visibility:public"],
 )

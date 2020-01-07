@@ -26,8 +26,7 @@
 #include <string>
 #include <thread>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "core/vulkan/tools/image.h"
 
 namespace {
 
@@ -52,33 +51,11 @@ const char* kImageDumpPathEnv = "IMAGE_DUMP_PATH";
 void WritePngFile(std::unique_ptr<uint8_t[]> image_data, size_t size,
                   std::string file_name, uint32_t width, uint32_t height,
                   VkFormat image_format) {
-  auto data = image_data.get();
-
-  switch (image_format) {
-    case VK_FORMAT_B8G8R8A8_UNORM:
-    case VK_FORMAT_B8G8R8A8_UINT:
-      for (uint32_t y = 0; y < height; y++) {
-        uint32_t* row = (uint32_t*)data;
-        for (uint32_t x = 0; x < width; x++) {
-          uint8_t* bgra = (uint8_t*)row;
-          uint8_t b = *bgra;
-          *bgra = *(bgra + 2);
-          *(bgra + 2) = b;
-          row++;
-        }
-        data += width * 4;
-      }
-      // fall through
-
-    case VK_FORMAT_R8G8B8A8_UNORM:
-    case VK_FORMAT_R8G8B8A8_UINT:
-      data = image_data.get();
-      stbi_write_png(file_name.c_str(), width, height, 4, data, width * 4);
-      break;
-
-    default:
-      break;
-  }
+  std::ofstream output_file;
+  output_file.open(file_name, std::ios::binary | std::ios::out);
+  vk_tools::WritePng(&output_file, image_data.get(), size, width, height,
+                     image_format);
+  output_file.close();
 }
 
 }  // namespace
