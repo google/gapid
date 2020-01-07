@@ -64,7 +64,7 @@ public class TraceView extends Composite
   private final Models models;
   private final State.ForSystemTrace state;
   private final LoadablePanel<DrawerComposite> loading;
-  private final RootPanel rootPanel;
+  private final RootPanel<State.ForSystemTrace> rootPanel;
   private final PanelCanvas canvas;
 
   public TraceView(Composite parent, Models models, Widgets widgets) {
@@ -81,7 +81,7 @@ public class TraceView extends Composite
         new LoadablePanel<DrawerComposite>(this, widgets, p -> new DrawerComposite(
             p, SWT.NONE, models.settings.ui().getPerfetto().getDrawerHeight(), widgets.theme)),
         new GridData(SWT.FILL, SWT.FILL, true, true));
-    rootPanel = new RootPanel(state);
+    rootPanel = new RootPanel.ForSystemTrace(state);
 
     DrawerComposite container = loading.getContents();
     container.setText("Selection");
