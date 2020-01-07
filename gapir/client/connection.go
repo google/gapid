@@ -242,8 +242,10 @@ func (c *connection) HandleReplayCommunication(
 			if err := handler.HandleCrashDump(ctx, r.GetCrashDump(), c); err != nil {
 				return log.Errf(ctx, err, "Handling replay crash dump")
 			}
-			// No valid replay response after crash dump.
-			return nil
+			if err := handler.HandleFinished(ctx, nil, c); err != nil {
+				return log.Errf(ctx, err, "Handling finished")
+			}
+			return log.Errf(ctx, err, "Gapir crashed")
 		case *replaysrv.ReplayResponse_PostData:
 			if err := handler.HandlePostData(ctx, r.GetPostData(), c); err != nil {
 				return log.Errf(ctx, err, "Handling post data")
