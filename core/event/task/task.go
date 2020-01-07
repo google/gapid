@@ -37,6 +37,17 @@ func Once(task Task) Task {
 	}
 }
 
+// Delay wraps a task in a coroutine to asynchronously execute after a specified duration
+func Delay(task Task, duration time.Duration) Task {
+	return func(ctx context.Context) error {
+		crash.Go(func() {
+			time.Sleep(duration)
+			task(ctx)
+		})
+		return nil
+	}
+}
+
 func Noop() Task {
 	return func(context.Context) error {
 		return nil
