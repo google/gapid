@@ -47,6 +47,11 @@ vkCmdDebugMarkerEndEXT
 vkCmdDebugMarkerInsertEXT
 {{end}}
 
+{{define "ALL_DEBUG_FUNCTIONS"}}
+ {{Macro "DEBUG_MARKER_FUNCTIONS"}}
+ {{Macro "DEBUG_UTILS_FUNCTIONS"}}
+{{end}}
+
 {{define "IS_DEBUG_MARKER_FUNCTIONS"}}
   {{$filters := Strings (Macro "DEBUG_MARKER_FUNCTIONS") | SplitEOL}}
   {{range $f := $filters}}
@@ -54,6 +59,7 @@ vkCmdDebugMarkerInsertEXT
   {{end}}
 {{end}}
 
+{{Global "Vulkan.ImplementedFunctions" (Strings (Macro "ALL_DEBUG_FUNCTIONS") | SplitEOL)}}
 
 {{Include "../../../../gapis/api/vulkan/templates/vulkan_layer.tmpl"}}
 
