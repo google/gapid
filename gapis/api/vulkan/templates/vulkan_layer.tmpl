@@ -23,6 +23,7 @@
     {{Global "Vulkan.LayerNamespace" "<The namespace of your vulkan functions>"}}
     {{Global "Vulkan.OverrideFunctions" List Of Functions That Should Be Overriden}}
     {{Global "Vulkan.OtherUsedFunctions" List Of Functions That your layer will call down into}}
+    {{Global "Vulkan.ImplementedFunctions" List Of Functions That your layer implements regardless of if the underlying driver does}}
 */}}
 
 {{Include "vulkan_common.tmpl"}}
@@ -56,6 +57,11 @@
 {{define "InOthers"}}
   {{if not (GetAnnotation $ "synthetic")}}{{if not (GetAnnotation $ "pfn")}}{{if not (eq (IndexOf (Global "Vulkan.OtherUsedFunctions") $.Name) -1)}}1{{end}}{{end}}{{end}}
 {{end}}
+
+{{define "InImplemented"}}
+  {{if not (GetAnnotation $ "synthetic")}}{{if not (GetAnnotation $ "pfn")}}{{if not (eq (IndexOf (Global "Vulkan.ImplementedFunctions") $.Name) -1)}}1{{end}}{{end}}{{end}}
+{{end}}
+
 
 {{define "layer.h"}}
 {{Template "C++.Copyright"}}
@@ -609,7 +615,13 @@ if (strcmp(pName, "vkCreateDevice") == 0) {
   return (PFN_vkVoidFunction)(internal::vkCreateDevice);
 }
 
+  PFN_vkGetInstanceProcAddr instance_proc_addr =
+      GetGlobalContext().GetVkInstanceData(instance)->get_instance_proc_addr;
+  auto fn = instance_proc_addr(instance, pName);
 #define INTERCEPT(func)         \
+  if ((strcmp(pName, #func) == 0) && fn) \
+          return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
+#define ALWAYS_INTERCEPT(func)  \
   if (strcmp(pName, #func) == 0) \
           return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
 
@@ -618,16 +630,19 @@ if (strcmp(pName, "vkCreateDevice") == 0) {
       {{if Macro "InOverrides" $c}}
         {{$name := Macro "CmdName" $c}}
          {{Template "BeginPlatformIfDef" $c}}
+         {{if not (Macro "InImplemented" $c)}}
           INTERCEPT({{$name}});
+         {{else}}
+          ALWAYS_INTERCEPT({{$name}});
+         {{end}}
          {{Template "EndPlatformIfDef" $c}}
       {{end}}
     {{end}}
   {{end}}
 
 #undef INTERCEPT
-  PFN_vkGetInstanceProcAddr instance_proc_addr =
-      GetGlobalContext().GetVkInstanceData(instance)->get_instance_proc_addr;
-  return instance_proc_addr(instance, pName);
+#undef ALWAYS_INTERCEPT
+  return fn;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(
@@ -883,8 +898,13 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
     return (PFN_vkVoidFunction)internal::vkGetDeviceProcAddr;
   }
 
-
+  PFN_vkGetDeviceProcAddr device_proc_addr =
+      GetGlobalContext().GetVkDeviceData(device)->get_device_proc_addr;
+  auto fn = device_proc_addr(device, pName);
 #define INTERCEPT(func)         \
+  if ((strcmp(pName, #func) == 0) && fn) \
+          return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
+#define ALWAYS_INTERCEPT(func)         \
   if (strcmp(pName, #func) == 0) \
           return reinterpret_cast<PFN_vkVoidFunction>({{(Global "Vulkan.LayerNamespace")}}::wrapped::func);
   {{range $c := AllCommands $}}
@@ -892,16 +912,19 @@ vkGetDeviceProcAddr(VkDevice device, const char *pName) {
       {{if Macro "InOverrides" $c}}
         {{$name := Macro "CmdName" $c}}
           {{Template "BeginPlatformIfDef" $c}}
-          INTERCEPT({{$name}});
+          {{if not (Macro "InImplemented" $c)}}
+            INTERCEPT({{$name}});
+          {{else}}
+            ALWAYS_INTERCEPT({{$name}});
+          {{end}}
           {{Template "EndPlatformIfDef" $c}}
       {{end}}
     {{end}}
   {{end}}
 #undef INTERCEPT
+#undef ALWAYS_INTERCEPT
 
-  PFN_vkGetDeviceProcAddr device_proc_addr =
-      GetGlobalContext().GetVkDeviceData(device)->get_device_proc_addr;
-  return device_proc_addr(device, pName);
+  return fn;
 }
 
 
