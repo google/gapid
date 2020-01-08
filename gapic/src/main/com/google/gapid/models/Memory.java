@@ -680,9 +680,15 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
      */
     private static StructNode removeExtraLayers(StructNode root) {
       TypeInfo.Type.TyCase tyCase = root.getTypeCase();
-      if ((tyCase == TyCase.SLICE || tyCase == TyCase.PSEUDONYM) && root.hasChildren() &&
-          root.children.size() == 1 && root.children.get(0).hasChildren()) {
+      // Remove the outer layer for SLICE type. E.g. {[()]} -> [()].
+      if ((tyCase == TyCase.SLICE) && root.hasChildren() && root.children.size() == 1
+          && root.children.get(0).hasChildren()) {
         root = root.children.get(0);
+      }
+      // Remove the inner layer for PSEUDONYM type. E.g. {[()]} -> {()}.
+      if (tyCase == TyCase.PSEUDONYM && root.hasChildren() && root.children.size() == 1
+          && root.children.get(0).hasChildren()) {
+        root.children = root.children.get(0).children;
       }
       for (int i = 0; i < root.children.size(); i++) {
         root.children.set(i, removeExtraLayers(root.children.get(i)));
