@@ -18,6 +18,7 @@ package com.google.gapid.perfetto.views;
 import com.google.common.io.Resources;
 import static java.util.logging.Level.SEVERE;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static com.google.gapid.widgets.Widgets.withSizeHints;
 
 import com.google.gapid.models.Analytics;
 import com.google.gapid.models.Analytics.View;
@@ -71,20 +72,17 @@ public class KeyboardMouseHelpDialog {
           Text text = new Text(
               area, SWT.MULTI | SWT.READ_ONLY | SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
           text.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-          text.setText(readKeyboardMouseHelp(false));
+          text.setText(readKeyboardMouseHelp());
           return text;
         }
 
-        GridData data = new GridData(SWT.FILL, SWT.FILL, true, true);
-        data.widthHint = 850;
-        data.heightHint = 650;
-        browser.setLayoutData(data);
-        browser.setText(readKeyboardMouseHelp(true));
+        browser.setLayoutData(withSizeHints(new GridData(SWT.FILL, SWT.FILL, true, true), 1024, 768));
+        browser.setText(readKeyboardMouseHelp());
         browser.addLocationListener(new LocationAdapter() {
           @Override
           public void changing(LocationEvent event) {
             if ("about:blank".equals(event.location)) {
-              browser.setText(readKeyboardMouseHelp(true));
+              browser.setText(readKeyboardMouseHelp());
             }
           }
         });
@@ -99,7 +97,7 @@ public class KeyboardMouseHelpDialog {
     }.open();
   }
 
-  protected static String readKeyboardMouseHelp(boolean html) {
+  protected static String readKeyboardMouseHelp() {
     try {
       return Resources.toString(Resources.getResource("text/keyboard-mouse-help.html"), UTF_8);
     } catch (IOException | IllegalArgumentException e) {

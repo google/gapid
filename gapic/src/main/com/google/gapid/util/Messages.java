@@ -82,5 +82,5 @@ public interface Messages {
   public static final String GEO_SEMANTICS_TITLE = "Vertex Semantics";
   public static final String GEO_SEMANTICS_HINT = "Manually configure the vertex stream semantics:";
   public static final String QUERY_VIEW_WINDOW_TITLE = "GAPID - Query Shell";
-  public static final String KEYBOARD_MOUSE_HELP_TITLE = "Keyboard/Mouse shortcut help";
+  public static final String KEYBOARD_MOUSE_HELP_TITLE = "Keyboard/Mouse Shortcut Help";
 }
