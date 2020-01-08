@@ -15,14 +15,17 @@
 package replay
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"reflect"
 	"sort"
+	"sync"
 
-	"github.com/google/gapid/core/data/binary"
+	"github.com/google/gapid/core/data/endian"
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/gapir"
 	"github.com/google/gapid/gapis/api"
 	"github.com/google/gapid/gapis/api/transform"
 	"github.com/google/gapid/gapis/memory"
@@ -34,6 +37,8 @@ type MappingExporter struct {
 	mappings *map[uint64][]service.VulkanHandleMappingItem
 	thread   uint64
 	path     string
+	results  map[uint64]service.VulkanHandleMappingItem
+	mutex    sync.RWMutex
 }
 
 func NewMappingExporter(ctx context.Context, mappings *map[uint64][]service.VulkanHandleMappingItem) *MappingExporter {
@@ -41,6 +46,8 @@ func NewMappingExporter(ctx context.Context, mappings *map[uint64][]service.Vulk
 		mappings: mappings,
 		thread:   0,
 		path:     "",
+		results:  make(map[uint64]service.VulkanHandleMappingItem),
+		mutex:    sync.RWMutex{},
 	}
 }
 
@@ -50,14 +57,47 @@ func NewMappingExporterWithPrint(ctx context.Context, path string) *MappingExpor
 		mappings: &mapping,
 		thread:   0,
 		path:     path,
+		results:  make(map[uint64]service.VulkanHandleMappingItem),
+		mutex:    sync.RWMutex{},
 	}
 }
 
-func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalState, b *builder.Builder, done func()) error {
-	var ret error
+func (m *MappingExporter) processNotification(ctx context.Context, s *api.GlobalState, n gapir.Notification) {
+	notificationData := n.GetData()
+	notificationID := n.GetId()
+	mappingData := notificationData.GetData()
 
-	total := 0
+	m.mutex.Lock()
 
+	result, ok := m.results[notificationID]
+	if !ok {
+		log.I(ctx, "Invalid notificationID %d", notificationID)
+		return
+	}
+
+	byteOrder := s.MemoryLayout.GetEndian()
+	r := endian.Reader(bytes.NewReader(mappingData), byteOrder)
+	replayValue := r.Uint64()
+	result.ReplayValue = replayValue
+
+	if _, ok := (*m.mappings)[replayValue]; !ok {
+		(*m.mappings)[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
+	}
+
+	(*m.mappings)[replayValue] = append((*m.mappings)[replayValue], result)
+
+	delete(m.results, notificationID)
+
+	m.mutex.Unlock()
+
+	if len(m.results) == 0 {
+		if len(m.path) > 0 {
+			printToFile(ctx, m.path, m.mappings)
+		}
+	}
+}
+
+func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
 	for k, v := range b.Remappings {
 		typ := reflect.TypeOf(k)
 		var size uint64
@@ -70,47 +110,22 @@ func (m *MappingExporter) ExtractRemappings(ctx context.Context, s *api.GlobalSt
 			// Ignore objects that are not handles
 			continue
 		}
-		// Count the number of actual Posts we expect
-		total += 1
-		func(k interface{}, typ reflect.Type, size uint64) {
-			b.Post(v, size, func(r binary.Reader, err error) {
-				defer func() {
-					total -= 1
 
-					if total == 0 {
-						done()
-					}
-				}()
+		notificationID := b.GetNotificationID()
+		traceValue := reflect.ValueOf(k).Uint()
+		m.results[notificationID] = service.VulkanHandleMappingItem{HandleType: typ.Name(), TraceValue: traceValue, ReplayValue: 0}
+		b.Notification(notificationID, v, size)
+		err := b.RegisterNotificationReader(notificationID, func(n gapir.Notification) {
+			m.processNotification(ctx, s, n)
+		})
 
-				if ret != nil {
-					return
-				}
-				if err != nil {
-					ret = err
-					return
-				}
-				replayValue := binary.ReadUint(r, int32(size*8))
-				err = r.Error()
-				if err != nil {
-					ret = err
-					return
-				}
-
-				traceValue := reflect.ValueOf(k).Uint()
-
-				if _, ok := (*m.mappings)[replayValue]; !ok {
-					(*m.mappings)[replayValue] = make([]service.VulkanHandleMappingItem, 0, 0)
-				}
-				(*m.mappings)[replayValue] = append((*m.mappings)[replayValue], service.VulkanHandleMappingItem{HandleType: typ.Name(), TraceValue: traceValue, ReplayValue: replayValue})
-			})
-		}(k, typ, size)
+		if err != nil {
+			log.W(ctx, "Vulkan Mapping Notification could not registered: ", err)
+			return err
+		}
 	}
 
-	if total == 0 {
-		done()
-	}
-
-	return ret
+	return nil
 }
 
 func (m *MappingExporter) Transform(ctx context.Context, id api.CmdID, cmd api.Cmd, out transform.Writer) {
@@ -144,17 +159,19 @@ func printToFile(ctx context.Context, path string, mappings *map[uint64][]servic
 func (m *MappingExporter) Flush(ctx context.Context, out transform.Writer) {
 	out.MutateAndWrite(ctx, api.CmdNoID, Custom{m.thread,
 		func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
-			return m.ExtractRemappings(ctx, s, b, func() {
-				if len(m.path) > 0 {
-					printToFile(ctx, m.path, m.mappings)
-				}
-			})
+			return m.ExtractRemappings(ctx, s, b)
 		},
 	})
 }
 
-func (m *MappingExporter) PreLoop(ctx context.Context, out transform.Writer)  {}
-func (m *MappingExporter) PostLoop(ctx context.Context, out transform.Writer) {}
+func (m *MappingExporter) PreLoop(ctx context.Context, out transform.Writer) {}
+func (m *MappingExporter) PostLoop(ctx context.Context, out transform.Writer) {
+	out.MutateAndWrite(ctx, api.CmdNoID, Custom{m.thread,
+		func(ctx context.Context, s *api.GlobalState, b *builder.Builder) error {
+			return m.ExtractRemappings(ctx, s, b)
+		},
+	})
+}
 
 func (t *MappingExporter) BuffersCommands() bool {
 	return false

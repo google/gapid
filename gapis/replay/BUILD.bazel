@@ -49,6 +49,7 @@ go_library(
         "//core/app/status:go_default_library",
         "//core/context/keys:go_default_library",
         "//core/data/binary:go_default_library",
+        "//core/data/endian:go_default_library",
         "//core/data/id:go_default_library",
         "//core/event/task:go_default_library",
         "//core/image:go_default_library",
