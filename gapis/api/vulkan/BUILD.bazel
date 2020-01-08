@@ -60,6 +60,7 @@ go_library(
     srcs = [
         "buffer_command.go",
         "command_buffer_rebuilder.go",
+        "command_splitter.go",
         "custom_replay.go",
         "doc.go",
         "drawCall.go",
