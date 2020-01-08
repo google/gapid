@@ -605,7 +605,6 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         case STRUCT:
           TypeInfo.StructType struct = type.getStruct();
           List<TypeInfo.StructField> childrenTypes = struct.getFieldsList();
-
           List<MemoryBox.Value> childrenValues = value.getStruct().getFieldsList();
           for (int i = 0; i < childrenValues.size(); i++) {
             StructNode childNode = new StructNode(api,
@@ -629,7 +628,9 @@ public class Memory extends DeviceDependentModel<Memory.Data, Memory.Source, Voi
         case PSEUDONYM:
           TypeInfo.PseudonymType pseudonym = type.getPseudonym();
           childType = typesModel.getType(type(pseudonym.getUnderlying(), api));
-          children.add(new StructNode(api, childType, value, rootAddress, typesModel, structName));
+          StructNode childNode = new StructNode(api, childType, value, rootAddress, typesModel);
+          children.add(childNode);
+          childNode.setStructName(structName);
           break;
         default:
           break;
