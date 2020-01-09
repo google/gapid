@@ -37,7 +37,7 @@ func trace(ctx context.Context, device *path.Device, start task.Signal, stop tas
 	var process tracer.Process
 	var cleanup app.Cleanup
 
-	t, err := getTracer(ctx, device)
+	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func TraceBuffered(ctx context.Context, device *path.Device, start task.Signal, 
 }
 
 func TraceConfiguration(ctx context.Context, device *path.Device) (*service.DeviceTraceConfiguration, error) {
-	t, err := getTracer(ctx, device)
+	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func TraceConfiguration(ctx context.Context, device *path.Device) (*service.Devi
 }
 
 func ProcessProfilingData(ctx context.Context, device *path.Device, buffer *bytes.Buffer, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
-	t, err := getTracer(ctx, device)
+	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return nil, err
 	}
@@ -115,11 +115,23 @@ func ProcessProfilingData(ctx context.Context, device *path.Device, buffer *byte
 }
 
 func Validate(ctx context.Context, device *path.Device) error {
-	t, err := getTracer(ctx, device)
+	t, err := GetTracer(ctx, device)
 	if err != nil {
 		return err
 	}
 	return t.Validate(ctx)
+}
+
+func GetTracer(ctx context.Context, device *path.Device) (tracer.Tracer, error) {
+	mgr := GetManager(ctx)
+	if device == nil {
+		return nil, log.Errf(ctx, nil, "Invalid device path")
+	}
+	t, ok := mgr.tracers[device.ID.ID()]
+	if !ok {
+		return nil, log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
+	}
+	return t, nil
 }
 
 func dumpTrace(ctx context.Context, buffer *bytes.Buffer) {
@@ -154,16 +166,4 @@ func isSupported(config *service.DeviceTraceConfiguration, options *service.Trac
 		}
 	}
 	return false
-}
-
-func getTracer(ctx context.Context, device *path.Device) (tracer.Tracer, error) {
-	mgr := GetManager(ctx)
-	if device == nil {
-		return nil, log.Errf(ctx, nil, "Invalid device path")
-	}
-	t, ok := mgr.tracers[device.ID.ID()]
-	if !ok {
-		return nil, log.Errf(ctx, nil, "Could not find tracer for device %d", device.ID.ID())
-	}
-	return t, nil
 }

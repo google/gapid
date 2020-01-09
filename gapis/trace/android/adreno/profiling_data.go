@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/google/gapid/core/log"
+	"github.com/google/gapid/core/os/device"
 	"github.com/google/gapid/gapis/perfetto"
 	perfetto_service "github.com/google/gapid/gapis/perfetto/service"
 	"github.com/google/gapid/gapis/service"
@@ -31,9 +32,25 @@ var (
 		"ON s.track_id = t.id AND t.scope = 'gpu_render_stage'"
 	argsQueryFmt = "" +
 		"SELECT key, string_value FROM args WHERE args.arg_set_id = %d"
+	counterTracksQuery = "" +
+		"SELECT id, name, unit, description FROM gpu_counter_track ORDER BY id"
+	countersQueryFmt = "" +
+		"SELECT ts, value FROM counter c WHERE c.track_id = %d ORDER BY ts"
 )
 
-func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
+func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData, error) {
+	slices, err := processGpuSlices(ctx, processor, handleMapping)
+	if err != nil {
+		log.Err(ctx, err, "Failed to get GPU slices")
+	}
+	counters, err := processCounters(ctx, processor, desc)
+	if err != nil {
+		log.Err(ctx, err, "Failed to get GPU counters")
+	}
+	return &service.ProfilingData{Slices: slices, Counters: counters}, nil
+}
+
+func processGpuSlices(ctx context.Context, processor *perfetto.Processor, handleMapping *map[uint64][]service.VulkanHandleMappingItem) (*service.ProfilingData_GpuSlices, error) {
 	slicesQueryResult, err := processor.Query(slicesQuery)
 	if err != nil {
 		return nil, log.Errf(ctx, err, "SQL query failed: %v", slicesQuery)
@@ -137,8 +154,49 @@ func ProcessProfilingData(ctx context.Context, processor *perfetto.Processor, ha
 		}
 	}
 
-	return &service.ProfilingData{Slices: &service.ProfilingData_GpuSlices{
+	return &service.ProfilingData_GpuSlices{
 		Slices: slices,
 		Tracks: tracks,
-	}}, nil
+	}, nil
+}
+
+func processCounters(ctx context.Context, processor *perfetto.Processor, desc *device.GpuCounterDescriptor) ([]*service.ProfilingData_Counter, error) {
+	counterTracksQueryResult, err := processor.Query(counterTracksQuery)
+	if err != nil {
+		return nil, log.Errf(ctx, err, "SQL query failed: %v", counterTracksQuery)
+	}
+	// t.id, name, unit, description, ts, value
+	tracksColumns := counterTracksQueryResult.GetColumns()
+	numTracksRows := counterTracksQueryResult.GetNumRecords()
+	counters := make([]*service.ProfilingData_Counter, numTracksRows)
+	// Grab all the column values. Depends on the order of columns selected in countersQuery
+	trackIds := tracksColumns[0].GetLongValues()
+	names := tracksColumns[1].GetStringValues()
+	units := tracksColumns[2].GetStringValues()
+	descriptions := tracksColumns[3].GetStringValues()
+
+	for i := uint64(0); i < numTracksRows; i++ {
+		countersQuery := fmt.Sprintf(countersQueryFmt, trackIds[i])
+		countersQueryResult, err := processor.Query(countersQuery)
+		countersColumns := countersQueryResult.GetColumns()
+		if err != nil {
+			return nil, log.Errf(ctx, err, "SQL query failed: %v", counterTracksQuery)
+		}
+		timestampsLong := countersColumns[0].GetLongValues()
+		timestamps := make([]uint64, len(timestampsLong))
+		for i, t := range timestampsLong {
+			timestamps[i] = uint64(t)
+		}
+		values := countersColumns[1].GetDoubleValues()
+		// TODO(apbodnar) Populate the `default` field once the trace processor supports it (b/147432390)
+		counters[i] = &service.ProfilingData_Counter{
+			Id:          uint32(trackIds[i]),
+			Name:        names[i],
+			Unit:        units[i],
+			Description: descriptions[i],
+			Timestamps:  timestamps,
+			Values:      values,
+		}
+	}
+	return counters, nil
 }
