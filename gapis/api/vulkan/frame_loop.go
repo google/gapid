@@ -2986,7 +2986,9 @@ func (f *frameLoop) resetQueryPools(ctx context.Context, stateBuilder *stateBuil
 	for toCreate := range f.queryPoolToCreate {
 		// Write the commands needed to recreate the destroyed object
 		queryPool := GetState(f.loopStartState).queryPools.Get(toCreate)
-		stateBuilder.createQueryPool(queryPool)
+		if !queryPool.IsNil() {
+			stateBuilder.createQueryPool(queryPool)
+		}
 	}
 
 	return nil
