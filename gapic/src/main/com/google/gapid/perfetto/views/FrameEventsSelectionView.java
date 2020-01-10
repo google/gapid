@@ -47,6 +47,9 @@ public class FrameEventsSelectionView extends Composite {
         new GridData(SWT.LEFT, SWT.TOP, false, false));
     withLayoutData(createBoldLabel(main, "Slice:"), withSpans(new GridData(), 2, 1));
 
+    createLabel(main, "Name:");
+    createLabel(main, slice.name);
+
     createLabel(main, "Time:");
     createLabel(main, timeToString(slice.time - state.getTraceTime().start));
 
