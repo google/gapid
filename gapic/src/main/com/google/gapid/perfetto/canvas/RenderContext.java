@@ -145,6 +145,16 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     gc.drawLine(scale(x1), scale(y1), scale(x2), scale(y2));
   }
 
+  public void drawLine(double x1, double y1, double x2, double y2, int lineWidthScale) {
+    int lineWidth = gc.getLineWidth();
+    try {
+      gc.setLineWidth(lineWidth * lineWidthScale);
+      drawLine(x1, y1, x2, y2);
+    } finally {
+      gc.setLineWidth(lineWidth);
+    }
+  }
+
   public void drawRect(double x, double y, double w, double h) {
     gc.drawRectangle(rect(x, y, w, h));
   }
@@ -153,7 +163,7 @@ public class RenderContext implements Fonts.TextMeasurer, AutoCloseable {
     int lineWidth = gc.getLineWidth();
     try {
       gc.setLineWidth(lineWidth * lineWidthScale);
-      gc.drawRectangle(rect(x, y, w, h));
+      drawRect(x, y, w, h);
     } finally {
       gc.setLineWidth(lineWidth);
     }

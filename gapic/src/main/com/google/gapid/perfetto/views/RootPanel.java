@@ -16,6 +16,7 @@
 package com.google.gapid.perfetto.views;
 
 import static com.google.gapid.perfetto.views.State.MAX_ZOOM_SPAN_NSEC;
+import static com.google.gapid.perfetto.views.StyleConstants.HIGHLIGHT_EDGE_NEARBY_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.LABEL_WIDTH;
 import static com.google.gapid.perfetto.views.StyleConstants.colors;
 import static com.google.gapid.widgets.Widgets.createToggleToolItem;
@@ -63,6 +64,8 @@ public class RootPanel extends Panel.Base implements State.Listener {
   private MouseMode mouseMode = MouseMode.Pan;
   private boolean panOverride = false;
   private Area selection = Area.NONE;
+  private boolean isHighlightStartHovered = false;
+  private boolean isHighlightEndHovered = false;
 
   public RootPanel(State.ForSystemTrace state) {
     this.timeline = new TimelinePanel(state);
@@ -175,6 +178,17 @@ public class RootPanel extends Panel.Base implements State.Listener {
             ctx.fillRect(x2, 0, width - x2, height);
           }
         }
+
+        ctx.setForegroundColor(colors().timeHighlightEmphasize);
+        if (isHighlightStartHovered && mouseMode == MouseMode.Select) {
+          ctx.drawLine(x1, 0, x1, timeline.getPreferredHeight(), 3);
+        } else if (isHighlightStartHovered && mouseMode == MouseMode.TimeSelect) {
+          ctx.drawLine(x1, 0, x1, height, 3);
+        } else if (isHighlightEndHovered && mouseMode == MouseMode.Select) {
+          ctx.drawLine(x2, 0, x2, timeline.getPreferredHeight(), 3);
+        } else if (isHighlightEndHovered && mouseMode == MouseMode.TimeSelect) {
+          ctx.drawLine(x2, 0, x2, height, 3);
+        }
       });
     }
 
@@ -252,15 +266,16 @@ public class RootPanel extends Panel.Base implements State.Listener {
 
   private Dragger selectDragger(double sx, double sy) {
     boolean onTimeline = sy <= timeline.getPreferredHeight();
+    double hFixedEnd = findHighlightFixedEnd(sx);
     return new Dragger() {
       @Override
       public Area onDrag(double x, double y) {
-        return onTimeline ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+        return onTimeline ? updateHighlight(hFixedEnd, x) : updateSelection(sx, sy, x, y);
       }
 
       @Override
       public Area onDragEnd(double x, double y) {
-        Area redraw = onTimeline ? updateHighlight(sx, x) : updateSelection(sx, sy, x, y);
+        Area redraw = onTimeline ? updateHighlight(hFixedEnd, x) : updateSelection(sx, sy, x, y);
         if (!onTimeline) {
           finishSelection();
         }
@@ -319,10 +334,11 @@ public class RootPanel extends Panel.Base implements State.Listener {
   }
 
   private Dragger timeSelectDragger(double sx) {
+    double hFixedEnd = findHighlightFixedEnd(sx);
     return new Dragger() {
       @Override
       public Area onDrag(double x, double y) {
-        return updateHighlight(sx, x);
+        return updateHighlight(hFixedEnd, x);
       }
 
       @Override
@@ -379,14 +395,55 @@ public class RootPanel extends Panel.Base implements State.Listener {
     if (x >= LABEL_WIDTH && y >= topHeight && result == Hover.NONE) {
       result = result.withClick(() -> state.resetSelections());
     }
-    return (x >= LABEL_WIDTH) ? result.withClick(() -> {
-      TimeSpan highlight = state.getHighlight();
-      if (!highlight.isEmpty() && !highlight.contains(state.pxToTime(x - LABEL_WIDTH))) {
-        state.setHighlight(TimeSpan.ZERO);
-        return true;
-      }
-      return false;
-    }) : result;
+    if (x >= LABEL_WIDTH) {
+      result = result.withClick(() -> {
+        TimeSpan highlight = state.getHighlight();
+        if (!highlight.isEmpty() && !highlight.contains(state.pxToTime(x - LABEL_WIDTH))) {
+          state.setHighlight(TimeSpan.ZERO);
+          return true;
+        }
+        return false;
+      });
+    }
+    if (checkHighlightEdgeHovered(x, y)) {
+      result = result.withRedraw(Area.FULL);
+    }
+    return result;
+  }
+
+  private double findHighlightFixedEnd(double sx) {
+    double hStart = state.timeToPx(state.getHighlight().start) + LABEL_WIDTH;
+    double hEnd = state.timeToPx(state.getHighlight().end) + LABEL_WIDTH;
+    boolean nearStart = Math.abs(sx - hStart) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
+    boolean nearEnd = Math.abs(sx - hEnd) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
+    if (nearStart && nearEnd) {
+      return Math.abs(sx - hStart) < Math.abs(sx - hEnd) ? hEnd : hStart;
+    } else if (nearStart) {
+      return hEnd;
+    } else if (nearEnd) {
+      return hStart;
+    } else {
+      return sx;
+    }
+  }
+
+  // Return true if the highlight edge's hovering status changes.
+  private boolean checkHighlightEdgeHovered(double x, double y) {
+    boolean preStartStatus = isHighlightStartHovered;
+    boolean preEndStatus = isHighlightEndHovered;
+    double hStart = state.timeToPx(state.getHighlight().start) + LABEL_WIDTH;
+    double hEnd = state.timeToPx(state.getHighlight().end) + LABEL_WIDTH;
+    boolean nearStart = Math.abs(x - hStart) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
+    boolean nearEnd = Math.abs(x - hEnd) <= HIGHLIGHT_EDGE_NEARBY_WIDTH;
+    boolean closerToStart = Math.abs(x - hStart) < Math.abs(x - hEnd);
+    if (mouseMode == MouseMode.Select) {
+      isHighlightStartHovered = nearStart && closerToStart && y <= timeline.getPreferredHeight();
+      isHighlightEndHovered = nearEnd && !closerToStart && y <= timeline.getPreferredHeight();
+    } else if (mouseMode == MouseMode.TimeSelect) {
+      isHighlightStartHovered = nearStart && closerToStart;
+      isHighlightEndHovered = nearEnd && !closerToStart;
+    }
+    return preStartStatus != isHighlightStartHovered || preEndStatus != isHighlightEndHovered;
   }
 
   public void setMouseMode(MouseMode mode) {
