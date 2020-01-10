@@ -22,6 +22,7 @@ import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_FAST;
 import static com.google.gapid.perfetto.views.StyleConstants.KB_ZOOM_SLOW;
 import static com.google.gapid.perfetto.views.StyleConstants.ZOOM_FACTOR_SCALE;
 import static com.google.gapid.widgets.Widgets.createLabel;
+import static com.google.gapid.widgets.Widgets.createButtonWithImage;
 import static com.google.gapid.widgets.Widgets.withLayoutData;
 import static com.google.gapid.widgets.Widgets.withMargin;
 
@@ -32,6 +33,7 @@ import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.PanelCanvas;
 import com.google.gapid.perfetto.models.Selection;
 import com.google.gapid.perfetto.models.Selection.MultiSelection;
+import com.google.gapid.perfetto.views.KeyboardMouseHelpDialog;
 import com.google.gapid.perfetto.views.RootPanel;
 import com.google.gapid.perfetto.views.RootPanel.MouseMode;
 import com.google.gapid.perfetto.views.SelectionView;
@@ -72,7 +74,9 @@ public class TraceView extends Composite
 
     setLayout(withMargin(new GridLayout(1, false), 0, 0));
 
-    TopBar topBar = withLayoutData(new TopBar(this), new GridData(SWT.FILL, SWT.TOP, true, false));
+    TopBar topBar = withLayoutData(new TopBar(this, models, widgets),
+        new GridData(SWT.FILL, SWT.TOP, true, false));
+
     loading = withLayoutData(
         new LoadablePanel<DrawerComposite>(this, widgets, p -> new DrawerComposite(
             p, SWT.NONE, models.settings.ui().getPerfetto().getDrawerHeight(), widgets.theme)),
@@ -191,6 +195,10 @@ public class TraceView extends Composite
         case 'z':
         case '0':
           redraw = state.setVisibleTime(state.getTraceTime());
+          break;
+        case 'h':
+        case '?':
+          KeyboardMouseHelpDialog.showHelp(getShell(), models.analytics, widgets);
           break;
       }
 
@@ -332,12 +340,13 @@ public class TraceView extends Composite
   private static class TopBar extends Composite {
     private final ToolBar toolBar;
 
-    public TopBar(Composite parent) {
+    public TopBar(Composite parent, Models models, Widgets widgets) {
       super(parent, SWT.NONE);
-      setLayout(new GridLayout(2, false));
+      setLayout(new GridLayout(3, false));
       createLabel(this, "Mode:");
       toolBar = withLayoutData(new ToolBar(this, SWT.FLAT | SWT.HORIZONTAL | SWT.TRAIL),
           new GridData(SWT.FILL, SWT.FILL, true, true));
+      createButtonWithImage(this, widgets.theme.help(), e -> KeyboardMouseHelpDialog.showHelp(getShell(), models.analytics, widgets));
     }
 
     public Consumer<RootPanel.MouseMode> buildModeActions(Theme theme, Consumer<MouseMode> onClick) {
