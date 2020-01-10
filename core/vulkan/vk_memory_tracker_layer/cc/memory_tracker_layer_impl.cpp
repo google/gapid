@@ -718,7 +718,7 @@ VulkanMemoryEventContainerPtr Heap::GetVulkanMemoryEvents(VkDevice device,
 
   {
     // Bound buffers
-    scoped_write_lock wlock(&rwl_buffers);
+    scoped_read_lock rlock(&rwl_buffers);
     for (auto it = buffers.begin(); it != buffers.end(); it++) {
       auto buffer_events = it->second->GetVulkanMemoryEvents();
       for (auto itt = buffer_events->begin(); itt != buffer_events->end();) {
@@ -734,7 +734,7 @@ VulkanMemoryEventContainerPtr Heap::GetVulkanMemoryEvents(VkDevice device,
 
   {
     // Bound images
-    scoped_write_lock wlock(&rwl_images);
+    scoped_read_lock rlock(&rwl_images);
     for (auto it = images.begin(); it != images.end(); it++) {
       auto image_events = it->second->GetVulkanMemoryEvents();
       for (auto itt = image_events->begin(); itt != image_events->end();) {
@@ -1101,22 +1101,14 @@ const VkAllocationCallbacks* MemoryTracker::GetTrackedAllocator(
 
   auto cb_handle = AllocationCallbacksTracker::GetAllocationCallbacksHandle(
       pUserAllocator, caller);
-  const VkAllocationCallbacks* allocator = nullptr;
-
-  {
-    scoped_read_lock rlock(&rwl_allocation_trackers);
-    auto it = m_allocation_callbacks_trackers.find(cb_handle);
-    if (it != m_allocation_callbacks_trackers.end())
-      allocator = it->second->TrackedAllocator();
-    if (allocator) return allocator;
-  }
-
+  scoped_write_lock wlock(&rwl_allocation_trackers);
+  auto it = m_allocation_callbacks_trackers.find(cb_handle);
+  if (it != m_allocation_callbacks_trackers.end())
+    return it->second->TrackedAllocator();
   auto allocation_cb_tracker =
       make_unique<AllocationCallbacksTracker>(pUserAllocator, caller);
-  scoped_write_lock wlock(&rwl_allocation_trackers);
   m_allocation_callbacks_trackers[cb_handle] = std::move(allocation_cb_tracker);
-  allocator = m_allocation_callbacks_trackers[cb_handle]->TrackedAllocator();
-  return allocator;
+  return m_allocation_callbacks_trackers[cb_handle]->TrackedAllocator();
 }
 
 // --------------- Storing the events in the state of the memory ---------------
