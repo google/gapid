@@ -48,11 +48,11 @@ import java.util.TreeMap;
 // TODO: dedupe code with SliceTrack.
 public class FrameEventsTrack extends Track.WithQueryEngine<FrameEventsTrack.Data>{
   private static final String BASE_COLUMNS =
-      "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
+      "id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
   private static final String SLICES_VIEW =
       "select " + BASE_COLUMNS + " from gpu_slice where track_id = %d";
   private static final String SLICE_SQL =
-      "select " + BASE_COLUMNS + " from gpu_slice where slice_id = %d";
+      "select " + BASE_COLUMNS + " from gpu_slice where id = %d";
   private static final String SLICES_SQL =
        "select " + BASE_COLUMNS + " from %s " +
        "where ts >= %d - dur and ts <= %d order by ts";

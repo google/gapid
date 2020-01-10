@@ -382,7 +382,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
 
   private abstract static class WithQueryEngine extends SliceTrack {
     private static final String BASE_COLUMNS =
-        "slice_id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
+        "id, ts, dur, category, name, depth, stack_id, parent_stack_id, arg_set_id";
     private static final String SLICES_VIEW =
         "select " + BASE_COLUMNS + " from %s where track_id = %d";
     private static final String SLICES_SQL =
@@ -401,7 +401,7 @@ public abstract class SliceTrack extends Track<SliceTrack.Data> {/*extends Track
         "group by depth, label, i";
 
     private static final String SLICE_SQL =
-        "select " + BASE_COLUMNS + " from %s where slice_id = %d";
+        "select " + BASE_COLUMNS + " from %s where id = %d";
     private static final String SLICE_RANGE_SQL =
         "select " + BASE_COLUMNS + " from %s " +
         "where ts < %d and ts + dur >= %d and depth >= %d and depth <= %d";

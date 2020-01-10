@@ -29,7 +29,7 @@ const (
 		"select name, depth, parent_stack_id " +
 		"from gpu_slice " +
 		"where track_id = %v " +
-		"order by slice_id"
+		"order by id"
 )
 
 var (
