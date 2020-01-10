@@ -1002,6 +1002,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 	isBound := false
 	var drawCallInfo DrawParameters = NilDrawParameters
 	var framebuffer FramebufferObjectʳ
+	var boundDsets map[uint32]DescriptorSetObjectʳ
 	// Use LastDrawInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1013,6 +1014,7 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 				isBound = true
 				drawCallInfo = ldi.CommandParameters()
 				framebuffer = ldi.Framebuffer()
+				boundDsets = ldi.DescriptorSets().All()
 			}
 		}
 	}
@@ -1028,12 +1030,12 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 
 	stages := []*api.Stage{
 		p.inputAssembly(cmd, drawCallInfo),
-		p.vertexShader(ctx, s),
-		p.tessellationControlShader(ctx, s),
-		p.tessellationEvulationShader(ctx, s),
-		p.geometryShader(ctx, s),
+		p.vertexShader(ctx, s, boundDsets),
+		p.tessellationControlShader(ctx, s, boundDsets),
+		p.tessellationEvulationShader(ctx, s, boundDsets),
+		p.geometryShader(ctx, s, boundDsets),
 		p.rasterizer(s, dynamicStates),
-		p.fragmentShader(ctx, s),
+		p.fragmentShader(ctx, s, boundDsets),
 		p.colorBlending(ctx, s, cmd, dynamicStates, framebuffer),
 	}
 
@@ -1048,6 +1050,105 @@ func (p GraphicsPipelineObjectʳ) ResourceData(ctx context.Context, s *api.Globa
 			},
 		},
 	}, nil
+}
+
+func commonShaderDataGroups(ctx context.Context,
+	s *api.GlobalState,
+	boundDsets map[uint32]DescriptorSetObjectʳ,
+	usedSets map[uint32]DescriptorUsage,
+	vkStage VkShaderStageFlagBits,
+	stages map[uint32]StageData,
+) []*api.DataGroup {
+	for _, stage := range stages {
+		if stage.Stage() == vkStage {
+			module := stage.Module()
+
+			words, _ := module.Words().Read(ctx, nil, s, nil)
+			source := shadertools.DisassembleSpirvBinary(words)
+			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+
+			dsetRows := []*api.Row{}
+			for _, usedSet := range usedSets {
+				setInfo, ok := boundDsets[usedSet.Set()]
+				if ok {
+					bindingInfo := setInfo.Bindings().Get(usedSet.Binding())
+					if !bindingInfo.IsNil() {
+						layoutBinding := setInfo.Layout().Bindings().Get(usedSet.Binding())
+
+						if layoutBinding.Stages()&VkShaderStageFlags(vkStage) != 0 {
+							bindingType := bindingInfo.BindingType()
+
+							for i := uint32(0); i < usedSet.DescriptorCount(); i++ {
+								currentSetData := []*api.DataValue{
+									api.CreatePoDDataValue("u32", usedSet.Set()),
+									api.CreatePoDDataValue("u32", usedSet.Binding()),
+									api.CreatePoDDataValue("u32", i),
+									api.CreateEnumDataValue("VkDescriptorType", bindingType),
+								}
+
+								switch bindingType {
+								case VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLER, VkDescriptorType_VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+									VkDescriptorType_VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+									VkDescriptorType_VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+									descInfo := bindingInfo.ImageBinding().Get(i)
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkSampler", descInfo.Sampler()))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkImageView", descInfo.ImageView()))
+									currentSetData = append(currentSetData, api.CreateEnumDataValue("VkImageLayout", descInfo.ImageLayout()))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+								case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+									VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+									descInfo := bindingInfo.BufferViewBindings().Get(i)
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkBufferView", descInfo))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+
+								case VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+									VkDescriptorType_VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+									VkDescriptorType_VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+									descInfo := bindingInfo.BufferBinding().Get(i)
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkBuffer", descInfo.Buffer()))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("", "-"))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Offset()))
+									currentSetData = append(currentSetData, api.CreatePoDDataValue("VkDeviceSize", descInfo.Range()))
+
+								}
+
+								dsetRows = append(dsetRows, &api.Row{
+									RowValues: currentSetData,
+								})
+							}
+						}
+					}
+				}
+
+			}
+
+			dsetTable := &api.Table{
+				Headers: []string{"Set", "Binding", "Array Index", "Type", "Handle", "View", "Layout", "Offset", "Range"},
+				Rows:    dsetRows,
+				Dynamic: false,
+			}
+
+			return []*api.DataGroup{
+				&api.DataGroup{
+					GroupName: "Shader Code",
+					Data:      &api.DataGroup_Shader{shader},
+				},
+
+				&api.DataGroup{
+					GroupName: "Descriptor Sets",
+					Data:      &api.DataGroup_Table{dsetTable},
+				},
+			}
+		}
+	}
+
+	return nil
 }
 
 func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo DrawParameters) *api.Stage {
@@ -1200,31 +1301,15 @@ func (p GraphicsPipelineObjectʳ) inputAssembly(cmd *path.Command, drawCallInfo 
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) vertexShader(ctx context.Context, s *api.GlobalState) *api.Stage {
-	stages := p.Stages()
-	for _, index := range stages.Keys() {
-		stage := stages.Get(index)
-
-		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT {
-			module := stage.Module()
-
-			words, _ := module.Words().Read(ctx, nil, s, nil)
-			source := shadertools.DisassembleSpirvBinary(words)
-			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
-
-			dataGroups := []*api.DataGroup{
-				&api.DataGroup{
-					GroupName: "Shader Code",
-					Data:      &api.DataGroup_Shader{shader},
-				},
-			}
-
-			return &api.Stage{
-				StageName: "Vertex Shader",
-				DebugName: "VS",
-				Enabled:   true,
-				Groups:    dataGroups,
-			}
+func (p GraphicsPipelineObjectʳ) vertexShader(ctx context.Context, s *api.GlobalState, boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
+		VkShaderStageFlagBits_VK_SHADER_STAGE_VERTEX_BIT, p.Stages().All())
+	if dataGroups != nil {
+		return &api.Stage{
+			StageName: "Vertex Shader",
+			DebugName: "VS",
+			Enabled:   true,
+			Groups:    dataGroups,
 		}
 	}
 
@@ -1236,31 +1321,15 @@ func (p GraphicsPipelineObjectʳ) vertexShader(ctx context.Context, s *api.Globa
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context, s *api.GlobalState) *api.Stage {
-	stages := p.Stages()
-	for _, index := range stages.Keys() {
-		stage := stages.Get(index)
-
-		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT {
-			module := stage.Module()
-
-			words, _ := module.Words().Read(ctx, nil, s, nil)
-			source := shadertools.DisassembleSpirvBinary(words)
-			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
-
-			dataGroups := []*api.DataGroup{
-				&api.DataGroup{
-					GroupName: "Shader Code",
-					Data:      &api.DataGroup_Shader{shader},
-				},
-			}
-
-			return &api.Stage{
-				StageName: "Tessellation Control Shader",
-				DebugName: "TCS",
-				Enabled:   true,
-				Groups:    dataGroups,
-			}
+func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context, s *api.GlobalState, boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
+		VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, p.Stages().All())
+	if dataGroups != nil {
+		return &api.Stage{
+			StageName: "Tessellation Control Shader",
+			DebugName: "TCS",
+			Enabled:   true,
+			Groups:    dataGroups,
 		}
 	}
 
@@ -1271,33 +1340,15 @@ func (p GraphicsPipelineObjectʳ) tessellationControlShader(ctx context.Context,
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) tessellationEvulationShader(ctx context.Context, s *api.GlobalState) *api.Stage {
-	stages := p.Stages()
-	for _, index := range stages.Keys() {
-		stage := stages.Get(index)
-
-		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT {
-			stage := stages.Get(index)
-
-			module := stage.Module()
-
-			words, _ := module.Words().Read(ctx, nil, s, nil)
-			source := shadertools.DisassembleSpirvBinary(words)
-			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
-
-			dataGroups := []*api.DataGroup{
-				&api.DataGroup{
-					GroupName: "Shader Code",
-					Data:      &api.DataGroup_Shader{shader},
-				},
-			}
-
-			return &api.Stage{
-				StageName: "Tessellation Evaluation Shader",
-				DebugName: "TES",
-				Enabled:   true,
-				Groups:    dataGroups,
-			}
+func (p GraphicsPipelineObjectʳ) tessellationEvulationShader(ctx context.Context, s *api.GlobalState, boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
+		VkShaderStageFlagBits_VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, p.Stages().All())
+	if dataGroups != nil {
+		return &api.Stage{
+			StageName: "Tessellation Evaluation Shader",
+			DebugName: "TES",
+			Enabled:   true,
+			Groups:    dataGroups,
 		}
 	}
 
@@ -1308,33 +1359,15 @@ func (p GraphicsPipelineObjectʳ) tessellationEvulationShader(ctx context.Contex
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) geometryShader(ctx context.Context, s *api.GlobalState) *api.Stage {
-	stages := p.Stages()
-	for _, index := range stages.Keys() {
-		stage := stages.Get(index)
-
-		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT {
-			stage := stages.Get(index)
-
-			module := stage.Module()
-
-			words, _ := module.Words().Read(ctx, nil, s, nil)
-			source := shadertools.DisassembleSpirvBinary(words)
-			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
-
-			dataGroups := []*api.DataGroup{
-				&api.DataGroup{
-					GroupName: "Shader Code",
-					Data:      &api.DataGroup_Shader{shader},
-				},
-			}
-
-			return &api.Stage{
-				StageName: "Geometry Shader",
-				DebugName: "GS",
-				Enabled:   true,
-				Groups:    dataGroups,
-			}
+func (p GraphicsPipelineObjectʳ) geometryShader(ctx context.Context, s *api.GlobalState, boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
+		VkShaderStageFlagBits_VK_SHADER_STAGE_GEOMETRY_BIT, p.Stages().All())
+	if dataGroups != nil {
+		return &api.Stage{
+			StageName: "Geometry Shader",
+			DebugName: "GS",
+			Enabled:   true,
+			Groups:    dataGroups,
 		}
 	}
 
@@ -1491,33 +1524,15 @@ func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates m
 	}
 }
 
-func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.GlobalState) *api.Stage {
-	stages := p.Stages()
-	for _, index := range stages.Keys() {
-		stage := stages.Get(index)
-
-		if stage.Stage() == VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT {
-			stage := stages.Get(index)
-
-			module := stage.Module()
-
-			words, _ := module.Words().Read(ctx, nil, s, nil)
-			source := shadertools.DisassembleSpirvBinary(words)
-			shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
-
-			dataGroups := []*api.DataGroup{
-				&api.DataGroup{
-					GroupName: "Shader Code",
-					Data:      &api.DataGroup_Shader{shader},
-				},
-			}
-
-			return &api.Stage{
-				StageName: "Fragment Shader",
-				DebugName: "FS",
-				Enabled:   true,
-				Groups:    dataGroups,
-			}
+func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.GlobalState, boundDsets map[uint32]DescriptorSetObjectʳ) *api.Stage {
+	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
+		VkShaderStageFlagBits_VK_SHADER_STAGE_FRAGMENT_BIT, p.Stages().All())
+	if dataGroups != nil {
+		return &api.Stage{
+			StageName: "Fragment Shader",
+			DebugName: "FS",
+			Enabled:   true,
+			Groups:    dataGroups,
 		}
 	}
 
@@ -1783,6 +1798,7 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 	vkState := GetState(s)
 	isBound := false
 	var dispatchInfo DispatchParameters = NilDispatchParameters
+	var boundDsets map[uint32]DescriptorSetObjectʳ
 	// Use LastComputeInfos to get bound descriptor set data.
 	// TODO: Ideally we could look at just a specific pipeline/descriptor
 	// set pair.  Maybe we could modify mutate to track which what
@@ -1793,16 +1809,13 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 			if lci.ComputePipeline() == p {
 				isBound = true
 				dispatchInfo = lci.CommandParameters()
+				boundDsets = lci.DescriptorSets().All()
 			}
 		}
 	}
 
-	stage := p.Stage()
-	module := stage.Module()
-
-	words, _ := module.Words().Read(ctx, nil, s, nil)
-	source := shadertools.DisassembleSpirvBinary(words)
-	shader := &api.Shader{Type: api.ShaderType_Spirv, Source: source}
+	dataGroups := commonShaderDataGroups(ctx, s, boundDsets, p.UsedDescriptors().All(),
+		VkShaderStageFlagBits_VK_SHADER_STAGE_COMPUTE_BIT, map[uint32]StageData{0: p.Stage()})
 
 	dispatchList := &api.KeyValuePairList{}
 
@@ -1823,17 +1836,11 @@ func (p ComputePipelineObjectʳ) ResourceData(ctx context.Context, s *api.Global
 			StageName: "Compute Shader",
 			DebugName: "CS",
 			Enabled:   true,
-			Groups: []*api.DataGroup{
-				&api.DataGroup{
-					GroupName: "Shader Code",
-					Data:      &api.DataGroup_Shader{shader},
-				},
-
+			Groups: append(dataGroups,
 				&api.DataGroup{
 					GroupName: "Dispatch Parameters",
 					Data:      &api.DataGroup_KeyValues{dispatchList},
-				},
-			},
+				}),
 		},
 	}
 
