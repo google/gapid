@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"strings"
@@ -321,36 +322,41 @@ func (b *binding) QueryPerfettoServiceState(ctx context.Context) (*device.Perfet
 		gpu.HasFrameLifecycle = true
 	}
 
-	c, err := b.ConnectPerfetto(ctx)
-	if err != nil {
-		return result, err
+	if !b.SupportsPerfetto(ctx) {
+		return result, fmt.Errorf("Perfetto is not supported on this device")
 	}
-	defer c.Close(ctx)
 
-	err = c.Query(ctx, func(s *common_pb.TracingServiceState) error {
-		for _, ds := range s.GetDataSources() {
-			desc := ds.GetDsDescriptor()
-			if desc.GetName() == gpuRenderStagesDataSourceDescriptorName {
-				gpu.HasRenderStage = true
+	encoded, err := b.Shell("perfetto", "--query-raw", "|", "base64").Call(ctx)
+	if err != nil {
+		return result, log.Errf(ctx, err, "adb shell perfetto returned error: %s", encoded)
+	}
+	decoded, _ := base64.StdEncoding.DecodeString(encoded)
+	state := &common_pb.TracingServiceState{}
+	if err = proto.Unmarshal(decoded, state); err != nil {
+		return result, log.Errf(ctx, err, "Unmarshal returned error")
+	}
+
+	for _, ds := range state.GetDataSources() {
+		desc := ds.GetDsDescriptor()
+		if desc.GetName() == gpuRenderStagesDataSourceDescriptorName {
+			gpu.HasRenderStage = true
+			continue
+		}
+		counters := desc.GetGpuCounterDescriptor().GetSpecs()
+		if len(counters) != 0 {
+			if gpu.GpuCounterDescriptor == nil {
+				gpu.GpuCounterDescriptor = &device.GpuCounterDescriptor{}
+			}
+			// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
+			// they are binary format compatible.
+			data, err := proto.Marshal(desc.GetGpuCounterDescriptor())
+			if err != nil {
 				continue
 			}
-			counters := desc.GetGpuCounterDescriptor().GetSpecs()
-			if len(counters) != 0 {
-				if gpu.GpuCounterDescriptor == nil {
-					gpu.GpuCounterDescriptor = &device.GpuCounterDescriptor{}
-				}
-				// We mirror the Perfetto GpuCounterDescriptor proto into GAPID, hence
-				// they are binary format compatible.
-				data, err := proto.Marshal(desc.GetGpuCounterDescriptor())
-				if err != nil {
-					continue
-				}
-				proto.UnmarshalMerge(data, gpu.GpuCounterDescriptor)
-			}
+			proto.UnmarshalMerge(data, gpu.GpuCounterDescriptor)
 		}
-		return nil
-	})
-	return result, err
+	}
+	return result, nil
 }
 
 func extrasFlags(extras []android.ActionExtra) []string {
