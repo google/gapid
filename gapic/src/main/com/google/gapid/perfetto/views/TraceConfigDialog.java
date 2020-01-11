@@ -101,6 +101,9 @@ public class TraceConfigDialog extends DialogBase {
       "ion", "memory", "memreclaim", "network", "nnapi", "pdx", "pm", "power", "res", "rro", "rs",
       "sched", "sm", "ss", "sync", "vibrator", "video", "view", "webview", "wm",
   };
+  private static final String[] GPU_FREQ_FTRACE = {
+      "power/gpu_frequency",
+  };
   private static final PerfettoConfig.MeminfoCounters[] MEM_COUNTERS = {
       PerfettoConfig.MeminfoCounters.MEMINFO_MEM_TOTAL,
       PerfettoConfig.MeminfoCounters.MEMINFO_MEM_FREE,
@@ -179,6 +182,15 @@ public class TraceConfigDialog extends DialogBase {
     PerfettoConfig.TraceConfig.Builder config = PerfettoConfig.TraceConfig.newBuilder();
     SettingsProto.PerfettoOrBuilder p = settings.perfetto();
 
+    PerfettoConfig.FtraceConfig.Builder ftrace = null;
+    if (p.getCpuOrBuilder().getEnabled() || (p.getGpuOrBuilder().getEnabled())) {
+      ftrace = config.addDataSourcesBuilder()
+            .getConfigBuilder()
+                .setName("linux.ftrace")
+                .getFtraceConfigBuilder()
+                    .setBufferSizeKb(FTRACE_BUFFER_SIZE);
+    }
+
     if (p.getCpuOrBuilder().getEnabled()) {
       // Record process names.
       config.addDataSourcesBuilder()
@@ -187,12 +199,7 @@ public class TraceConfigDialog extends DialogBase {
               .getProcessStatsConfigBuilder()
                   .setScanAllProcessesOnStart(true);
 
-      PerfettoConfig.FtraceConfig.Builder ftrace = config.addDataSourcesBuilder()
-          .getConfigBuilder()
-              .setName("linux.ftrace")
-              .getFtraceConfigBuilder()
-                  .setBufferSizeKb(FTRACE_BUFFER_SIZE)
-                  .addAllFtraceEvents(Arrays.asList(CPU_BASE_FTRACE));
+      ftrace.addAllFtraceEvents(Arrays.asList(CPU_BASE_FTRACE));
       if (p.getCpuOrBuilder().getFrequency()) {
         ftrace.addAllFtraceEvents(Arrays.asList(CPU_FREQ_FTRACE));
       }
@@ -209,6 +216,8 @@ public class TraceConfigDialog extends DialogBase {
     }
 
     if (p.getGpuOrBuilder().getEnabled()) {
+      ftrace.addAllFtraceEvents(Arrays.asList(GPU_FREQ_FTRACE));
+
       Device.GPUProfiling gpuCaps = caps.getGpuProfiling();
       SettingsProto.Perfetto.GPUOrBuilder gpu = p.getGpuOrBuilder();
       if (gpuCaps.getHasRenderStage() && gpu.getSlices()) {
