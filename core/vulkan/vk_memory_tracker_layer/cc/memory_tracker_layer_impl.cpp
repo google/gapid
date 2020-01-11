@@ -1247,11 +1247,9 @@ void MemoryTracker::StoreHostMemoryFreeEvent(uintptr_t ptr) {
 }
 
 void MemoryTracker::EmitAndClearAllStoredEvents() {
-  // Device information also includes physical device and heaps information.
-  // Emit and clear device memory events
-  // Get a lock on devices and physical devices to make sure every other thread
-  // has finished their event store operations.
-  {
+  // Emit and clear GPU memory events. Device information also includes physical
+  // device and heaps information.
+  if (Emit().CategoryEnabled("Device")) {
     scoped_read_lock rlock(&rwl_devices);
     for (auto it = devices.begin(); it != devices.end(); ++it) {
       auto event_container_set = it->second->GetVulkanMemoryEvents();
