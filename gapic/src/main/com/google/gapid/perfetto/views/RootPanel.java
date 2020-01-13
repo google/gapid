@@ -23,6 +23,7 @@ import static com.google.gapid.widgets.Widgets.createToggleToolItem;
 import static com.google.gapid.widgets.Widgets.exclusiveSelection;
 import static java.util.Arrays.stream;
 
+import com.google.gapid.models.Settings;
 import com.google.gapid.perfetto.TimeSpan;
 import com.google.gapid.perfetto.canvas.Area;
 import com.google.gapid.perfetto.canvas.Fonts;
@@ -56,6 +57,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
   private static final double HIGHLIGHT_CENTER = (HIGHLIGHT_TOP + HIGHLIGHT_BOTTOM) / 2;
   private static final double HIGHLIGHT_PADDING = 3;
 
+  protected final Settings settings;
   protected final TimelinePanel timeline;
   protected final PanelGroup top = new PanelGroup();
   protected final PanelGroup bottom = new PanelGroup();
@@ -63,14 +65,16 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
 
   private MouseMode mouseMode = MouseMode.Pan;
   private boolean panOverride = false;
-  protected boolean showVSync = false;
+  protected boolean showVSync;
   private Area selection = Area.NONE;
   private boolean isHighlightStartHovered = false;
   private boolean isHighlightEndHovered = false;
 
-  public RootPanel(S state) {
+  public RootPanel(S state, Settings settings) {
+    this.settings = settings;
     this.timeline = new TimelinePanel(state);
     this.state = state;
+    this.showVSync = settings.ui().getPerfetto().getShowVsync();
     state.addListener(this);
   }
 
@@ -420,6 +424,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
 
   public void toggleVSync() {
     this.showVSync = !showVSync;
+    settings.writeUi().getPerfettoBuilder().setShowVsync(showVSync);
   }
 
   public boolean zoom(double x, double zoomFactor) {
@@ -434,8 +439,8 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
 
   public static class ForSystemTrace extends RootPanel<State.ForSystemTrace> {
 
-    public ForSystemTrace(State.ForSystemTrace state) {
-      super(state);
+    public ForSystemTrace(State.ForSystemTrace state, Settings settings) {
+      super(state, settings);
     }
 
     @Override
