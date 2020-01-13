@@ -97,10 +97,9 @@ public class TraceConfigDialog extends DialogBase {
   private static final String[] CPU_SLICES_ATRACE = {
       // TODO: this should come from the device.
       "adb", "aidl", "am", "audio", "binder_driver", "binder_lock", "bionic", "camera",
-      "core_services", "dalvik", "database", "disk", "freq", "gfx", "hal", "i2c", "idle", "input",
-      "ion", "irq", "memory", "memreclaim", "network", "nnapi", "pagecache", "pdx", "pm", "power",
-      "regulators", "res", "rro", "rs", "sched", "sm", "ss", "sync", "vibrator", "video", "view",
-      "webview", "wm", "workq"
+      "core_services", "dalvik", "database", "disk", "freq", "gfx", "hal", "idle", "input",
+      "ion", "memory", "memreclaim", "network", "nnapi", "pdx", "pm", "power", "res", "rro", "rs",
+      "sched", "sm", "ss", "sync", "vibrator", "video", "view", "webview", "wm",
   };
   private static final PerfettoConfig.MeminfoCounters[] MEM_COUNTERS = {
       PerfettoConfig.MeminfoCounters.MEMINFO_MEM_TOTAL,
