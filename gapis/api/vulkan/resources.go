@@ -1381,19 +1381,22 @@ func (p GraphicsPipelineObjectʳ) rasterizer(s *api.GlobalState, dynamicStates m
 
 	multiState := p.MultisampleState()
 	multiList := &api.KeyValuePairList{}
-	multiList = multiList.AppendKeyValuePair("Sample Count", api.CreateBitfieldDataValue("VkSampleCountFlagBits", multiState.RasterizationSamples(), VkSampleCountFlagBitsConstants(), API{}), false)
 
-	// // For now, only display the first element of the sample mask array. There's rarely more in practice.
-	mask := uint64(0xFFFFFFFF)
-	if multiState.SampleMask().Len() > 0 {
-		mask = uint64(multiState.SampleMask().Get(multiState.SampleMask().Keys()[0]))
+	if !multiState.IsNil() {
+		multiList = multiList.AppendKeyValuePair("Sample Count", api.CreateBitfieldDataValue("VkSampleCountFlagBits", multiState.RasterizationSamples(), VkSampleCountFlagBitsConstants(), API{}), false)
+
+		// // For now, only display the first element of the sample mask array. There's rarely more in practice.
+		mask := uint64(0xFFFFFFFF)
+		if multiState.SampleMask().Len() > 0 {
+			mask = uint64(multiState.SampleMask().Get(multiState.SampleMask().Keys()[0]))
+		}
+		multiList = multiList.AppendKeyValuePair("Sample Mask", api.CreatePoDDataValue("VkSampleMask", fmt.Sprintf("%X", mask)), false)
+
+		multiList = multiList.AppendKeyValuePair("Sample Shading Enabled", api.CreatePoDDataValue("VkBool32", multiState.SampleShadingEnable() != 0), false)
+		multiList = multiList.AppendKeyValuePair("Min Sample Shading", api.CreatePoDDataValue("f32", multiState.MinSampleShading()), false)
+		multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0), false)
+		multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0), false)
 	}
-	multiList = multiList.AppendKeyValuePair("Sample Mask", api.CreatePoDDataValue("VkSampleMask", fmt.Sprintf("%X", mask)), false)
-
-	multiList = multiList.AppendKeyValuePair("Sample Shading Enabled", api.CreatePoDDataValue("VkBool32", multiState.SampleShadingEnable() != 0), false)
-	multiList = multiList.AppendKeyValuePair("Min Sample Shading", api.CreatePoDDataValue("f32", multiState.MinSampleShading()), false)
-	multiList = multiList.AppendKeyValuePair("Alpha to Coverage", api.CreatePoDDataValue("VkBool32", multiState.AlphaToCoverageEnable() != 0), false)
-	multiList = multiList.AppendKeyValuePair("Alpha to One", api.CreatePoDDataValue("VkBool32", multiState.AlphaToOneEnable() != 0), false)
 
 	viewports := make(map[uint32]VkViewport)
 	viewDyanmic := false
@@ -1531,167 +1534,177 @@ func (p GraphicsPipelineObjectʳ) fragmentShader(ctx context.Context, s *api.Glo
 func (p GraphicsPipelineObjectʳ) colorBlending(ctx context.Context, s *api.GlobalState, cmd *path.Command, dynamicStates map[VkDynamicState]bool, fb FramebufferObjectʳ) *api.Stage {
 	depthData := p.DepthState()
 	depthList := &api.KeyValuePairList{}
-	depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0), false)
-	depthList = depthList.AppendKeyValuePair("Write Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthWriteEnable() != 0), false)
-	depthList = depthList.AppendKeyValuePair("Function", api.CreateEnumDataValue("VkCompareOp", depthData.DepthCompareOp()), false)
-	depthList = depthList.AppendKeyValuePair("Bounds Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthBoundsTestEnable() != 0), false)
-
-	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BOUNDS]; ok {
-		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-		if ok2 {
-			depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", ldps.MinDepthBounds()), true)
-			depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", ldps.MaxDepthBounds()), true)
-		}
-	} else {
-		depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", depthData.MinDepthBounds()), false)
-		depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", depthData.MaxDepthBounds()), false)
-	}
-
-	stencilRows := []*api.Row{}
-	stencilDynamic := false
-
-	if depthData.StencilTestEnable() != 0 {
-		frontStencil := depthData.Front()
-		frontRow := []*api.DataValue{
-			api.CreatePoDDataValue("string", "Front"),
-			api.CreateEnumDataValue("VkStencilOp", frontStencil.FailOp()),
-			api.CreateEnumDataValue("VkStencilOp", frontStencil.PassOp()),
-			api.CreateEnumDataValue("VkStencilOp", frontStencil.DepthFailOp()),
-			api.CreateEnumDataValue("VkCompareOp", frontStencil.CompareOp()),
-		}
-
-		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
-			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-			if ok2 {
-				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().CompareMask())))
-				stencilDynamic = true
-			}
-		} else {
-			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.CompareMask())))
-		}
-
-		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
-			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-			if ok2 {
-				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().WriteMask())))
-				stencilDynamic = true
-			}
-		} else {
-			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.WriteMask())))
-		}
-
-		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
-			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-			if ok2 {
-				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", ldps.StencilFront().Reference()))
-				stencilDynamic = true
-			}
-		} else {
-			frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", frontStencil.Reference()))
-		}
-
-		stencilRows = append(stencilRows, &api.Row{RowValues: frontRow})
-
-		backStencil := depthData.Back()
-
-		backRow := []*api.DataValue{
-			api.CreatePoDDataValue("string", "Back"),
-			api.CreateEnumDataValue("VkStencilOp", backStencil.FailOp()),
-			api.CreateEnumDataValue("VkStencilOp", backStencil.PassOp()),
-			api.CreateEnumDataValue("VkStencilOp", backStencil.DepthFailOp()),
-			api.CreateEnumDataValue("VkCompareOp", backStencil.CompareOp()),
-		}
-
-		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
-			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-			if ok2 {
-				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().CompareMask())))
-				stencilDynamic = true
-			}
-		} else {
-			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.CompareMask())))
-		}
-
-		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
-			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-			if ok2 {
-				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().WriteMask())))
-				stencilDynamic = true
-			}
-		} else {
-			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.WriteMask())))
-		}
-
-		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
-			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-			if ok2 {
-				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", ldps.StencilBack().Reference()))
-				stencilDynamic = true
-			}
-		} else {
-			backRow = append(backRow, api.CreatePoDDataValue("uint32_t", backStencil.Reference()))
-		}
-
-		stencilRows = append(stencilRows, &api.Row{RowValues: backRow})
-	}
 
 	stencilTable := &api.Table{
 		Headers: []string{"Face", "Fail Op", "Pass Op", "Depth Fail Op", "Func", "Compare Mask", "Write Mask", "Ref"},
-		Rows:    stencilRows,
-		Dynamic: stencilDynamic,
+	}
+
+	if !depthData.IsNil() {
+		depthList = depthList.AppendKeyValuePair("Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthTestEnable() != 0), false)
+		depthList = depthList.AppendKeyValuePair("Write Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthWriteEnable() != 0), false)
+		depthList = depthList.AppendKeyValuePair("Function", api.CreateEnumDataValue("VkCompareOp", depthData.DepthCompareOp()), false)
+		depthList = depthList.AppendKeyValuePair("Bounds Test Enabled", api.CreatePoDDataValue("VkBool32", depthData.DepthBoundsTestEnable() != 0), false)
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_DEPTH_BOUNDS]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", ldps.MinDepthBounds()), true)
+				depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", ldps.MaxDepthBounds()), true)
+			}
+		} else {
+			depthList = depthList.AppendKeyValuePair("Min Depth Bounds", api.CreatePoDDataValue("f32", depthData.MinDepthBounds()), false)
+			depthList = depthList.AppendKeyValuePair("Max Depth Bounds", api.CreatePoDDataValue("f32", depthData.MaxDepthBounds()), false)
+		}
+
+		stencilRows := []*api.Row{}
+		stencilDynamic := false
+
+		if depthData.StencilTestEnable() != 0 {
+			frontStencil := depthData.Front()
+			frontRow := []*api.DataValue{
+				api.CreatePoDDataValue("string", "Front"),
+				api.CreateEnumDataValue("VkStencilOp", frontStencil.FailOp()),
+				api.CreateEnumDataValue("VkStencilOp", frontStencil.PassOp()),
+				api.CreateEnumDataValue("VkStencilOp", frontStencil.DepthFailOp()),
+				api.CreateEnumDataValue("VkCompareOp", frontStencil.CompareOp()),
+			}
+
+			if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
+				ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+				if ok2 {
+					frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().CompareMask())))
+					stencilDynamic = true
+				}
+			} else {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.CompareMask())))
+			}
+
+			if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
+				ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+				if ok2 {
+					frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilFront().WriteMask())))
+					stencilDynamic = true
+				}
+			} else {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", frontStencil.WriteMask())))
+			}
+
+			if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
+				ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+				if ok2 {
+					frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", ldps.StencilFront().Reference()))
+					stencilDynamic = true
+				}
+			} else {
+				frontRow = append(frontRow, api.CreatePoDDataValue("uint32_t", frontStencil.Reference()))
+			}
+
+			stencilRows = append(stencilRows, &api.Row{RowValues: frontRow})
+
+			backStencil := depthData.Back()
+
+			backRow := []*api.DataValue{
+				api.CreatePoDDataValue("string", "Back"),
+				api.CreateEnumDataValue("VkStencilOp", backStencil.FailOp()),
+				api.CreateEnumDataValue("VkStencilOp", backStencil.PassOp()),
+				api.CreateEnumDataValue("VkStencilOp", backStencil.DepthFailOp()),
+				api.CreateEnumDataValue("VkCompareOp", backStencil.CompareOp()),
+			}
+
+			if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]; ok {
+				ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+				if ok2 {
+					backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().CompareMask())))
+					stencilDynamic = true
+				}
+			} else {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.CompareMask())))
+			}
+
+			if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_WRITE_MASK]; ok {
+				ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+				if ok2 {
+					backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", ldps.StencilBack().WriteMask())))
+					stencilDynamic = true
+				}
+			} else {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", fmt.Sprintf("%X", backStencil.WriteMask())))
+			}
+
+			if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_STENCIL_REFERENCE]; ok {
+				ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+				if ok2 {
+					backRow = append(backRow, api.CreatePoDDataValue("uint32_t", ldps.StencilBack().Reference()))
+					stencilDynamic = true
+				}
+			} else {
+				backRow = append(backRow, api.CreatePoDDataValue("uint32_t", backStencil.Reference()))
+			}
+
+			stencilRows = append(stencilRows, &api.Row{RowValues: backRow})
+		}
+
+		stencilTable.Rows = stencilRows
+		stencilTable.Dynamic = stencilDynamic
 	}
 
 	blendData := p.ColorBlendState()
 	blendList := &api.KeyValuePairList{}
-	blendList = blendList.AppendKeyValuePair("Logic Op Enabled", api.CreatePoDDataValue("VkBool32", blendData.LogicOpEnable() != 0), false)
-	blendList = blendList.AppendKeyValuePair("Logic Op", api.CreateEnumDataValue("VkLogicOp", blendData.LogicOp()), false)
-
-	if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_BLEND_CONSTANTS]; ok {
-		ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
-
-		if ok2 {
-			blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", ldps.BlendConstants().GetArrayValues()), true)
-		}
-	} else {
-		blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()), false)
-	}
-
-	targets := blendData.Attachments()
-	targetRows := make([]*api.Row, targets.Len())
-	for i, index := range targets.Keys() {
-		target := targets.Get(index)
-
-		targetRows[i] = &api.Row{
-			RowValues: []*api.DataValue{
-				api.CreatePoDDataValue("VkBool32", target.BlendEnable() != 0),
-				api.CreateEnumDataValue("VkBlendFactor", target.SrcColorBlendFactor()),
-				api.CreateEnumDataValue("VkBlendFactor", target.DstColorBlendFactor()),
-				api.CreateEnumDataValue("VkBlendOp", target.ColorBlendOp()),
-				api.CreateEnumDataValue("VkBlendFactor", target.SrcAlphaBlendFactor()),
-				api.CreateEnumDataValue("VkBlendFactor", target.DstAlphaBlendFactor()),
-				api.CreateEnumDataValue("VkBlendOp", target.AlphaBlendOp()),
-				api.CreateBitfieldDataValue("VkColorComponentFlagBits", target.ColorWriteMask(), VkColorComponentFlagBitsConstants(), API{}),
-			},
-		}
-	}
 
 	targetTable := &api.Table{
 		Headers: []string{"Enabled", "Color Src", "Color Dst", "Color Op", "Alpha Src", "Alpha Dst", "Alpha Op", "Color Write Mask"},
-		Rows:    targetRows,
 		Dynamic: false,
 	}
 
+	if !blendData.IsNil() {
+		blendList = blendList.AppendKeyValuePair("Logic Op Enabled", api.CreatePoDDataValue("VkBool32", blendData.LogicOpEnable() != 0), false)
+		blendList = blendList.AppendKeyValuePair("Logic Op", api.CreateEnumDataValue("VkLogicOp", blendData.LogicOp()), false)
+
+		if _, ok := dynamicStates[VkDynamicState_VK_DYNAMIC_STATE_BLEND_CONSTANTS]; ok {
+			ldps, ok2 := GetState(s).LastDynamicPipelineStates().Lookup(GetState(s).LastBoundQueue().VulkanHandle())
+
+			if ok2 {
+				blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", ldps.BlendConstants().GetArrayValues()), true)
+			}
+		} else {
+			blendList = blendList.AppendKeyValuePair("Blend Constants", api.CreatePoDDataValue("float[4]", blendData.BlendConstants().GetArrayValues()), false)
+		}
+
+		targets := blendData.Attachments()
+		targetRows := make([]*api.Row, targets.Len())
+		for i, index := range targets.Keys() {
+			target := targets.Get(index)
+
+			targetRows[i] = &api.Row{
+				RowValues: []*api.DataValue{
+					api.CreatePoDDataValue("VkBool32", target.BlendEnable() != 0),
+					api.CreateEnumDataValue("VkBlendFactor", target.SrcColorBlendFactor()),
+					api.CreateEnumDataValue("VkBlendFactor", target.DstColorBlendFactor()),
+					api.CreateEnumDataValue("VkBlendOp", target.ColorBlendOp()),
+					api.CreateEnumDataValue("VkBlendFactor", target.SrcAlphaBlendFactor()),
+					api.CreateEnumDataValue("VkBlendFactor", target.DstAlphaBlendFactor()),
+					api.CreateEnumDataValue("VkBlendOp", target.AlphaBlendOp()),
+					api.CreateBitfieldDataValue("VkColorComponentFlagBits", target.ColorWriteMask(), VkColorComponentFlagBitsConstants(), API{}),
+				},
+			}
+		}
+
+		targetTable.Rows = targetRows
+	}
+
 	renderPassList := &api.KeyValuePairList{}
-	renderPassHandle := p.RenderPass().VulkanHandle()
-	renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
-	renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)), false)
+	if !p.RenderPass().IsNil() {
+		renderPassHandle := p.RenderPass().VulkanHandle()
+		renderPassPath := path.NewField("RenderPasses", resolve.APIStateAfter(path.FindCommand(cmd), ID)).MapIndex(renderPassHandle)
+		renderPassList = renderPassList.AppendKeyValuePair("Render Pass", api.CreateLinkedDataValue("url", renderPassPath, api.CreatePoDDataValue("VkRenderPass", renderPassHandle)), false)
+	}
 
 	if !fb.IsNil() {
 		fbHandle := fb.VulkanHandle()
