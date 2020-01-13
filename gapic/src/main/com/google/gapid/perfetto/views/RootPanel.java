@@ -63,6 +63,7 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
 
   private MouseMode mouseMode = MouseMode.Pan;
   private boolean panOverride = false;
+  protected boolean showVSync = false;
   private Area selection = Area.NONE;
   private boolean isHighlightStartHovered = false;
   private boolean isHighlightEndHovered = false;
@@ -417,6 +418,10 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
     this.panOverride = panOverride;
   }
 
+  public void toggleVSync() {
+    this.showVSync = !showVSync;
+  }
+
   public boolean zoom(double x, double zoomFactor) {
     TimeSpan visible = state.getVisibleTime();
     long cursorTime = state.pxToTime(x - LABEL_WIDTH);
@@ -446,14 +451,14 @@ public abstract class RootPanel<S extends State> extends Panel.Base implements S
 
     @Override
     protected void preTopUiRender(RenderContext ctx, Repainter repainter) {
-      if (state.hasData() && state.getVSync().hasData()) {
+      if (showVSync && state.hasData() && state.getVSync().hasData()) {
         renderVSync(ctx, repainter, top, state.getVSync());
       }
     }
 
     @Override
     protected void preMainUiRender(RenderContext ctx, Repainter repainter) {
-      if (state.hasData() && state.getVSync().hasData()) {
+      if (showVSync && state.hasData() && state.getVSync().hasData()) {
         renderVSync(ctx, repainter, bottom, state.getVSync());
       }
     }
